@@ -16,6 +16,7 @@ import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
 import { DamageRepairTemplatesService } from '@/modules/damage-repair-templates/damage-repair-templates.service';
 import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
 import { normalizeReportImageCategory } from './report-image-category';
+import { resolveReportImageFilePath } from './report-image-paths';
 import {
   isExpertFirmCustomer,
   REPAIR_REPORT_INITIAL_VERSION,
@@ -32,7 +33,6 @@ import {
   SendEmailDto,
   AddQuickRepairItemsDto,
 } from './dto/repair-reports.dto';
-import * as path from 'path';
 import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 
@@ -126,7 +126,6 @@ function isMissingAssignedInspectorVendorColumn(error: unknown): boolean {
 
 @Injectable()
 export class RepairReportsService {
-  private readonly uploadDir: string;
   private readonly logger = new Logger(RepairReportsService.name);
 
   constructor(
@@ -139,12 +138,7 @@ export class RepairReportsService {
     @Optional() private readonly damageRepairTemplates?: DamageRepairTemplatesService,
     @Optional() private readonly anomalyDetection?: AnomalyDetectionService,
     @Optional() private readonly vendorRisk?: VendorRiskService,
-  ) {
-    this.uploadDir = path.join(process.cwd(), 'uploads', 'report-images');
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
-    }
-  }
+  ) {}
 
   // ── Reports ─────────────────────────────────────────────────────────────────
 
@@ -702,11 +696,16 @@ export class RepairReportsService {
   async deleteImage(imageId: string) {
     const img = await this.prisma.reportImage.findUnique({ where: { id: imageId } });
     if (!img) throw new NotFoundException('Fotoğraf bulunamadı');
-    // Attempt to delete physical file
     try {
-      const filePath = path.join(this.uploadDir, img.storageKey);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    } catch {}
+      const filePath = resolveReportImageFilePath(img.storageKey);
+      if (filePath) fs.unlinkSync(filePath);
+      if (img.annotatedKey) {
+        const annotated = resolveReportImageFilePath(img.annotatedKey);
+        if (annotated) fs.unlinkSync(annotated);
+      }
+    } catch {
+      /* dosya yoksa DB kaydı yine silinir */
+    }
     await this.prisma.reportImage.delete({ where: { id: imageId } });
     return { message: 'Fotoğraf silindi' };
   }
@@ -715,8 +714,8 @@ export class RepairReportsService {
     const img = await this.prisma.reportImage.findUnique({ where: { id: imageId } });
     if (!img) throw new NotFoundException('Fotoğraf bulunamadı');
     const key = img.hasAnnotation && img.annotatedKey ? img.annotatedKey : img.storageKey;
-    const filePath = path.join(this.uploadDir, path.basename(key));
-    if (!fs.existsSync(filePath)) {
+    const filePath = resolveReportImageFilePath(key);
+    if (!filePath) {
       throw new NotFoundException('Fotoğraf dosyası bulunamadı');
     }
     return { filePath, mimeType: img.mimeType ?? 'image/jpeg' };

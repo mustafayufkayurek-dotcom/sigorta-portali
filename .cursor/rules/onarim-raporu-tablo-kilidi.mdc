@@ -1,0 +1,21 @@
+# Onarım Raporu Tablo Kilidi (kalıcı)
+
+**Kaynak olay (09.08.2026):** Kalem tablosunda `Tespit:` / `Mahal/Bölge:` / `İş Grubu:` grup şerit satırları sade kolon hizasını bozuyordu. Mustafa: **eski sade kabul edilmiş tablo** geri gelsin.
+
+**Temel cümle:** Onarım raporu kalem listesi **hücre tablosudur**; grup şerit satırı yoktur.
+
+## Zorunlu sözleşmeler
+
+1. `EditableItemsTable` gövdesi `displayRows.map` ile **yalnız veri satırı** üretir.
+2. `g-scope-*` / `g-loc-*` / `g-wg-*` grup `<tr>` satırları **yasak**.
+3. `colSpan` ile `Tespit:` / `Mahal/Bölge:` / `İş Grubu:` şerit metni **yasak**.
+4. Tespit, mahal, iş grubu değerleri **yalnız kendi kolon hücrelerinde** gösterilir.
+5. Kaynakta `ONARIM_TABLO_SADE_KILIT` yorum işareti korunur.
+
+## Durdurma
+
+Gruplama / “daha okunaklı şerit” / flatMap ile header birleştirme önerisi → **dur, Mustafa onayı iste**.
+
+## Regresyon
+
+`apps/web/src/utils/onarim-raporu-tablo.lock.spec.ts`

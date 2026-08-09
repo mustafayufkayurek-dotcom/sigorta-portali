@@ -140,12 +140,6 @@ export const REPORT_IMAGE_CATEGORY_LABELS: Record<ReportImageCategoryKey, string
   after: 'Onarım Sonrası Resimleri',
 };
 
-export const REPORT_IMAGE_CATEGORY_COLORS: Record<ReportImageCategoryKey, string> = {
-  before: 'bg-indigo-600 text-white',
-  damage: 'bg-amber-600 text-white',
-  after: 'bg-emerald-600 text-white',
-};
-
 export function normalizeReportImageCategory(raw?: string | null): ReportImageCategoryKey {
   const v = (raw ?? '').trim().toLowerCase();
   if (v === 'before' || v === 'tespit') return 'before';
@@ -162,9 +156,4 @@ export function normalizeReportImageCategory(raw?: string | null): ReportImageCa
 export function reportImageCategoryLabel(category?: string | null): string {
   const key = normalizeReportImageCategory(category);
   return REPORT_IMAGE_CATEGORY_LABELS[key];
-}
-
-export function reportImageCategoryColor(category?: string | null): string {
-  const key = normalizeReportImageCategory(category);
-  return REPORT_IMAGE_CATEGORY_COLORS[key];
 }

@@ -6,9 +6,8 @@ import {
   normalizeReportImageCategory,
   REPORT_IMAGE_CATEGORY_KEYS,
   REPORT_IMAGE_CATEGORY_LABELS,
-  reportImageCategoryColor,
-  reportImageCategoryLabel,
 } from '@/utils/quick-repair-damage-types';
+import { formatReportImageFrameLabel } from '@/utils/report-image-frame-label';
 import { getReportImageStreamUrl, getReportImageUrl } from '@/utils/upload-url';
 
 type ReportImage = {
@@ -30,6 +29,8 @@ type ReportImageGalleryProps = {
   images: ReportImage[];
   pendingUploads?: PendingReportImageUpload[];
   isEditable?: boolean;
+  /** Hasar dosya no — çerçeve sol üst: 123456/Tespit Resimleri */
+  fileNo?: string | null;
   onDelete?: (imageId: string) => void;
   onAnnotate?: (image: ReportImage) => void;
 };
@@ -41,12 +42,10 @@ function resolveStorageKey(img: ReportImage): string {
   return img.storageKey;
 }
 
-function CategoryBadge({ category, className = '' }: { category?: string | null; className?: string }) {
+function FrameLabel({ label }: { label: string }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide shadow-md ring-2 ring-white/90 ${reportImageCategoryColor(category)} ${className}`}
-    >
-      {reportImageCategoryLabel(category)}
+    <span className="absolute top-1 left-1 z-20 max-w-[calc(100%-0.5rem)] truncate rounded bg-slate-900/75 px-1.5 py-0.5 text-[9px] font-semibold leading-tight text-white pointer-events-none">
+      {label}
     </span>
   );
 }
@@ -54,7 +53,7 @@ function CategoryBadge({ category, className = '' }: { category?: string | null;
 function LoadingPlaceholder({ label = 'Yükleniyor...' }: { label?: string }) {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-100 text-slate-500">
-      <svg className="h-5 w-5 animate-spin text-blue-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <svg className="h-5 w-5 animate-spin text-brand-600" viewBox="0 0 24 24" fill="none" aria-hidden>
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
       </svg>
@@ -64,18 +63,23 @@ function LoadingPlaceholder({ label = 'Yükleniyor...' }: { label?: string }) {
 }
 
 async function fetchImageBlob(imageId: string): Promise<Blob | null> {
-  await ensureValidSession(API);
   for (const delay of STREAM_RETRY_DELAYS_MS) {
     if (delay > 0) await new Promise((r) => setTimeout(r, delay));
     try {
-      const res = await fetch(getReportImageStreamUrl(imageId), { headers: authHeader() });
-      if (res.ok) {
-        const blob = await res.blob();
-        // JSON hata gövdesi (Nest NotFound) image sanılmasın
-        if (blob.type && blob.type.includes('application/json')) continue;
-        if (blob.size === 0) continue;
-        return blob;
+      await ensureValidSession(API);
+      const res = await fetch(getReportImageStreamUrl(imageId), {
+        headers: { ...authHeader(), Accept: 'image/*,*/*' },
+        cache: 'no-store',
+      });
+      if (res.status === 401 || res.status === 403) {
+        await ensureValidSession(API);
+        continue;
       }
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      if (blob.type && blob.type.includes('application/json')) continue;
+      if (blob.size < 32) continue;
+      return blob;
     } catch {
       /* sonraki deneme */
     }
@@ -85,18 +89,20 @@ async function fetchImageBlob(imageId: string): Promise<Blob | null> {
 
 function ReportImageThumb({
   image,
+  fileNo,
   onOpen,
   isEditable,
   onDelete,
 }: {
   image: ReportImage;
+  fileNo?: string | null;
   onOpen: () => void;
   isEditable?: boolean;
   onDelete?: (imageId: string) => void;
 }) {
   const [src, setSrc] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-  const categoryLabel = reportImageCategoryLabel(image.category);
+  const frameLabel = formatReportImageFrameLabel(fileNo, image.category);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,17 +140,28 @@ function ReportImageThumb({
     };
   }, [image.id, image.storageKey, image.annotatedKey, image.hasAnnotation]);
 
-  const showError = status === 'error';
+  const handleImgError = async () => {
+    // Doğrudan URL kırıldıysa stream’i bir kez daha dene (kalıcı «Yüklenemedi» döngüsü)
+    const blob = await fetchImageBlob(image.id);
+    if (blob) {
+      const objectUrl = URL.createObjectURL(blob);
+      setSrc(objectUrl);
+      setStatus('ready');
+      return;
+    }
+    setStatus('error');
+  };
 
   return (
     <button
       type="button"
       onClick={onOpen}
       disabled={status !== 'ready'}
-      className="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-50 w-24 h-24 shrink-0 text-left focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:cursor-default"
+      className="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-50 w-28 h-28 shrink-0 text-left focus:outline-none focus:ring-2 focus:ring-brand-600 disabled:cursor-default"
+      title={frameLabel}
     >
       {status === 'loading' && <LoadingPlaceholder />}
-      {showError && (
+      {status === 'error' && (
         <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 px-2 text-center bg-slate-100">
           Yüklenemedi
         </div>
@@ -152,14 +169,12 @@ function ReportImageThumb({
       {status === 'ready' && src && (
         <img
           src={src}
-          alt={image.caption ?? image.fileName ?? categoryLabel}
+          alt={image.caption ?? image.fileName ?? frameLabel}
           className="w-full h-full object-cover"
-          onError={() => setStatus('error')}
+          onError={() => { void handleImgError(); }}
         />
       )}
-      <div className="absolute top-1.5 right-1.5 z-20 pointer-events-none">
-        <CategoryBadge category={image.category} />
-      </div>
+      <FrameLabel label={frameLabel} />
       {isEditable && onDelete && status === 'ready' && (
         <span
           role="button"
@@ -168,7 +183,7 @@ function ReportImageThumb({
             e.stopPropagation();
             onDelete(image.id);
           }}
-          className="absolute bottom-1.5 left-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100"
+          className="absolute bottom-1.5 right-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-status-danger text-xs text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100"
           title="Sil"
         >
           ×
@@ -178,13 +193,12 @@ function ReportImageThumb({
   );
 }
 
-function PendingUploadThumb({ category }: { category: string }) {
+function PendingUploadThumb({ category, fileNo }: { category: string; fileNo?: string | null }) {
+  const frameLabel = formatReportImageFrameLabel(fileNo, category);
   return (
-    <div className="relative rounded-lg overflow-hidden border border-dashed border-blue-200 bg-blue-50/60 w-24 h-24 shrink-0">
+    <div className="relative rounded-lg overflow-hidden border border-dashed border-brand-200 bg-brand-50/40 w-28 h-28 shrink-0">
       <LoadingPlaceholder label="Yükleniyor..." />
-      <div className="absolute top-1.5 right-1.5 z-20 pointer-events-none">
-        <CategoryBadge category={category} />
-      </div>
+      <FrameLabel label={frameLabel} />
     </div>
   );
 }
@@ -193,6 +207,7 @@ export default function ReportImageGallery({
   images,
   pendingUploads = [],
   isEditable = false,
+  fileNo,
   onDelete,
   onAnnotate,
 }: ReportImageGalleryProps) {
@@ -236,13 +251,18 @@ export default function ReportImageGallery({
                   <ReportImageThumb
                     key={img.id}
                     image={img}
+                    fileNo={fileNo}
                     isEditable={isEditable}
                     onDelete={onDelete}
                     onOpen={() => setActiveIndex(idx)}
                   />
                 ))}
                 {catPending.map((pending) => (
-                  <PendingUploadThumb key={pending.tempId} category={pending.category} />
+                  <PendingUploadThumb
+                    key={pending.tempId}
+                    category={pending.category}
+                    fileNo={fileNo}
+                  />
                 ))}
               </div>
             </div>
@@ -261,7 +281,7 @@ export default function ReportImageGallery({
             className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <LightboxImage image={active} />
+            <LightboxImage image={active} fileNo={fileNo} />
             <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
@@ -274,7 +294,7 @@ export default function ReportImageGallery({
               <span className="text-xs text-slate-300 tabular-nums">
                 {activeIndex + 1} / {images.length}
                 {' · '}
-                {reportImageCategoryLabel(active.category)}
+                {formatReportImageFrameLabel(fileNo, active.category)}
               </span>
               <button
                 type="button"
@@ -288,7 +308,7 @@ export default function ReportImageGallery({
                 <button
                   type="button"
                   onClick={() => { onAnnotate(active); closeLightbox(); }}
-                  className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+                  className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700"
                 >
                   İşaretle
                 </button>
@@ -297,7 +317,7 @@ export default function ReportImageGallery({
                 <button
                   type="button"
                   onClick={() => { onDelete(active.id); closeLightbox(); }}
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+                  className="rounded-lg bg-status-danger px-4 py-2 text-sm text-white hover:opacity-90"
                 >
                   Sil
                 </button>
@@ -317,9 +337,10 @@ export default function ReportImageGallery({
   );
 }
 
-function LightboxImage({ image }: { image: ReportImage }) {
+function LightboxImage({ image, fileNo }: { image: ReportImage; fileNo?: string | null }) {
   const [src, setSrc] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const frameLabel = formatReportImageFrameLabel(fileNo, image.category);
 
   useEffect(() => {
     let cancelled = false;
@@ -366,13 +387,15 @@ function LightboxImage({ image }: { image: ReportImage }) {
       {status === 'ready' && src && (
         <img
           src={src}
-          alt={image.caption ?? reportImageCategoryLabel(image.category)}
+          alt={image.caption ?? frameLabel}
           className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl"
           onError={() => setStatus('error')}
         />
       )}
-      <div className="absolute top-3 right-3 z-10 pointer-events-none">
-        <CategoryBadge category={image.category} className="text-xs px-2.5 py-1" />
+      <div className="absolute top-3 left-3 z-10 pointer-events-none">
+        <span className="rounded bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white">
+          {frameLabel}
+        </span>
       </div>
     </div>
   );

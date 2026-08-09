@@ -15,16 +15,16 @@ function buildReportImagePath(storageKey: string): string {
   return `uploads/report-images/${encodeURIComponent(fileName)}`;
 }
 
-/** Onarım raporu fotoğrafları — nginx /uploads/ → backend static */
+/**
+ * Onarım raporu fotoğrafları — her zaman API/uploads kökü.
+ * Tarayıcı origin’i kullanılmaz (web :3001, API :3000 → kırık fallback).
+ */
 export function getReportImageUrl(storageKey: string | null | undefined): string {
   if (!storageKey) return '';
   if (storageKey.startsWith('http://') || storageKey.startsWith('https://')) {
     return storageKey;
   }
   const path = buildReportImagePath(storageKey);
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}/${path}`;
-  }
   return `${getUploadsBaseUrl()}/${path}`;
 }
 

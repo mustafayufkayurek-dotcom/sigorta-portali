@@ -2923,7 +2923,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     }
   };
 
-  const tableColSpan = (isEditable ? 1 : 0) + 9 + (viewMode === 'internal' ? 1 : 0) + 1 + (isEditable ? 1 : 0);
+  // ONARIM_TABLO_SADE_KILIT: grup şerit satırları (Tespit:/Mahal:/İş Grubu:) yasak — sade hücre tablosu.
+  // Regresyon: apps/web/src/utils/onarim-raporu-tablo.lock.spec.ts + .cursor/rules/onarim-raporu-tablo-kilidi.mdc
 
   const cellCls = (rowIdx: number | 'new', col: string, editable: boolean) => {
     const isActive = activeCell?.rowIdx === rowIdx && activeCell?.col === col;
@@ -3038,7 +3039,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {displayRows.flatMap((row, rowIdx) => {
+          {displayRows.map((row, rowIdx) => {
             const total = calcTotal(row);
             const isSaving = savingId === row._id;
             const wgName = workGroups.find((wg: any) => wg.id === row.workGroupId)?.name ?? '';
@@ -3048,42 +3049,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             const salesVal = parseFloat(row.salesUnitPrice) || 0;
             const isLoss = viewMode === 'internal' && supplierVal > 0 && supplierVal > salesVal;
 
-            const prev = rowIdx > 0 ? displayRows[rowIdx - 1] : null;
-            const prevWgName = prev ? (workGroups.find((wg: any) => wg.id === prev.workGroupId)?.name ?? '') : '';
-            const scopeLabel = row.detectionScope ? formatDisplayLabel(row.detectionScope) : 'Belirtilmemiş';
-            const locLabel = row.location ? formatDisplayLabel(row.location) : 'Belirtilmemiş';
-            const wgLabel = wgName ? formatDisplayLabel(wgName) : 'Belirtilmemiş';
-            const headerNodes: React.ReactNode[] = [];
-
-            if (!prev || (prev.detectionScope || '') !== (row.detectionScope || '')) {
-              headerNodes.push(
-                <tr key={`g-scope-${row._id}`} className="bg-indigo-50/70 border-t-2 border-indigo-100">
-                  <td colSpan={tableColSpan} className="px-3 py-1.5 text-[10px] font-semibold text-indigo-800">
-                    Tespit: {scopeLabel}
-                  </td>
-                </tr>,
-              );
-            }
-            if (!prev || (prev.location || '') !== (row.location || '') || (prev.detectionScope || '') !== (row.detectionScope || '')) {
-              headerNodes.push(
-                <tr key={`g-loc-${row._id}`} className="bg-slate-100/80">
-                  <td colSpan={tableColSpan} className="px-4 py-1 text-[10px] font-medium text-slate-700">
-                    Mahal/Bölge: {locLabel}
-                  </td>
-                </tr>,
-              );
-            }
-            if (!prev || prevWgName !== wgName || (prev.location || '') !== (row.location || '')) {
-              headerNodes.push(
-                <tr key={`g-wg-${row._id}`} className="bg-slate-50/90">
-                  <td colSpan={tableColSpan} className="px-5 py-0.5 text-[10px] text-slate-600">
-                    İş Grubu: {wgLabel}
-                  </td>
-                </tr>,
-              );
-            }
-
-            const dataRow = (
+            return (
               <tr key={row._id} className={`group transition-colors ${row._savedFlash ? 'saved-flash' : rowIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'} hover:bg-blue-50/10 ${row._isDirty ? 'border-l-2 border-l-amber-400' : ''}`}>
                 {isEditable && (
                   <td className="w-8 px-1 text-center border-r border-slate-100">
@@ -3421,7 +3387,6 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 )}
               </tr>
             );
-            return [...headerNodes, dataRow];
           })}
 
           {/* Yeni Kalem Satırı */}
@@ -4052,6 +4017,7 @@ function EmergencyReportEditor({
                 images={localReport.images ?? []}
                 pendingUploads={pendingImageUploads}
                 isEditable={isEditable}
+                fileNo={localReport.claimFile?.fileNo ?? localReport.fileNo}
                 onDelete={(imageId) => void handleDeleteImage(imageId)}
               />
             )}
@@ -5859,6 +5825,7 @@ export default function RepairReportPage() {
             images={report.images ?? []}
             pendingUploads={pendingImageUploads}
             isEditable={isEditable}
+            fileNo={report.claimFile?.fileNo ?? report.fileNo}
             onDelete={(imageId) => void handleDeleteImage(imageId)}
             onAnnotate={(img) => setShowAnnotation(img)}
           />

@@ -81,6 +81,7 @@ import { ReviseReportDto } from './dto/revise-report.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { CostMaskingInterceptor } from '@/common/interceptors/cost-masking.interceptor';
 import { ApprovalContextService } from '@/modules/vendor-risk/approval-context.service';
+import { getReportImagesDir } from './report-image-paths';
 
 @Controller()
 @UseInterceptors(CostMaskingInterceptor)
@@ -237,9 +238,11 @@ export class RepairReportsController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination: (_req: Express.Request, _file: Express.Multer.File, cb: (error: Error | null, dest: string) => void) => {
-          const dir = require('path').join(process.cwd(), 'uploads', 'report-images');
-          require('fs').mkdirSync(dir, { recursive: true });
-          cb(null, dir);
+          try {
+            cb(null, getReportImagesDir());
+          } catch (err) {
+            cb(err as Error, '');
+          }
         },
         filename: (_req: Express.Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
           cb(null, `${randomUUID()}${extname(file.originalname)}`);

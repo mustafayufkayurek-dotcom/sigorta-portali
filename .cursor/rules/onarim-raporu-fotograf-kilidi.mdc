@@ -1,0 +1,22 @@
+# Onarım Raporu Fotoğraf Kilidi (kalıcı)
+
+**Kaynak olay (09.08.2026):** Bölüm başlığı altında toplanan fotoğraflarda çerçeve içinde tekrar «Tespit Resimleri» rozeti anlamsızdı; görseller sık «Yüklenemedi» oluyordu.
+
+**Temel cümle:** Bölüm başlığı kategoriyi söyler; çerçevede yalnız `DosyaNo/Kategori` (sol üst) vardır. Görsel yükleme API stream + doğru uploads kökü ile kalıcıdır.
+
+## Zorunlu
+
+1. `ReportImageGallery` — `CategoryBadge` / `reportImageCategoryColor` çerçevede **yasak**.
+2. Sol üst etiket: `formatReportImageFrameLabel(fileNo, category)` → örn. `123456/Tespit Resimleri`.
+3. Sayfa galeriye `fileNo={claimFile.fileNo}` verir.
+4. `getReportImageUrl` **`window.location.origin` kullanmaz** (web/API port ayrımı).
+5. Backend yazma/okuma: `getReportImagesDir` / `resolveReportImageFilePath` (cwd sapmasına dayanıklı).
+
+## Durdurma
+
+Çerçeveye tekrar kategori rozeti, origin fallback, tek `process.cwd()` yolu → **dur, Mustafa onayı**.
+
+## Regresyon
+
+- `apps/web/src/utils/report-image-gallery.lock.spec.ts`
+- `apps/backend/src/modules/repair-reports/report-image-paths.lock.spec.ts`

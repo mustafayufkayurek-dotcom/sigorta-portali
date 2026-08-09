@@ -794,31 +794,3 @@ export function CommercialPricingDrawer({
     </div>
   );
 }
-
-/** Eski inline kart — geriye uyumluluk; sayfa artık drawer kullanır. */
-export function CommercialPricingWorkspace({
-  items,
-  workGroups,
-  canEdit,
-  onApply,
-}: {
-  items: any[];
-  workGroups: WorkGroup[];
-  canEdit: boolean;
-  onApply: (rates: Record<string, number>) => Promise<void>;
-}) {
-  return (
-    <CommercialPricingDrawer
-      open
-      onClose={() => undefined}
-      items={items}
-      workGroups={workGroups}
-      canEdit={canEdit}
-      reportId="legacy"
-      claimFileId={undefined}
-      onApplyCommercialRevision={onApply}
-      onApplySupplierGroupQuote={async () => undefined}
-      onApproveAndTransferToHakedis={async () => undefined}
-    />
-  );
-}
