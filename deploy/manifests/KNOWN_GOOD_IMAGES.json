@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-07",
-  "label": "v471-yetkilendirme-finans-silme",
-  "description": "Full: Ayarlar Yetkilendirme (kayan düğme) + Finans vendor.delete + Dosya Sorumlusu erişim. Migration yok. Rollback web v470 / backend v470.",
+  "updatedAt": "2026-08-09",
+  "label": "v472-butce-satinalma",
+  "description": "Full: Bütçe & Satınalma drawer + vendor payment_due_days (15/30) migration + kart notu iç ekip + ilişki türü usageAreas filtresi. Rollback web v471 / backend v471.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v471-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v471-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v472-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v472-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v470-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v470-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v471-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v471-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
