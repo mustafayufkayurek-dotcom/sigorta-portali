@@ -1,6 +1,21 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 
+/** Migration yok — rapor bağını notes alanında taşır (UI'da gösterilmez). */
+export const REPAIR_REPORT_BUDGET_NOTE_PREFIX = 'repairReportId:';
+
+export function buildRepairReportBudgetNote(reportId: string): string {
+  return `${REPAIR_REPORT_BUDGET_NOTE_PREFIX}${reportId}`;
+}
+
+export function parseRepairReportIdFromBudgetNote(notes: string | null | undefined): string | null {
+  if (!notes) return null;
+  const line = notes.split('\n').map((s) => s.trim()).find((s) => s.startsWith(REPAIR_REPORT_BUDGET_NOTE_PREFIX));
+  if (!line) return null;
+  const id = line.slice(REPAIR_REPORT_BUDGET_NOTE_PREFIX.length).trim();
+  return id || null;
+}
+
 @Injectable()
 export class BudgetService {
   constructor(private prisma: PrismaService) {}
@@ -18,6 +33,144 @@ export class BudgetService {
       },
       orderBy: { versionNo: 'desc' },
     });
+  }
+
+  /**
+   * Onarım raporu özelinde bütçe sürümü — yoksa oluşturur.
+   * Bağ: notes = repairReportId:<uuid>
+   */
+  async getOrCreateForRepairReport(claimFileId: string, reportId: string) {
+    const claimFile = await this.prisma.claimFile.findUnique({ where: { id: claimFileId } });
+    if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      select: { id: true, claimFileId: true, reportNo: true },
+    });
+    if (!report || report.claimFileId !== claimFileId) {
+      throw new NotFoundException('Onarım raporu bu dosyada bulunamadı');
+    }
+
+    const noteMarker = buildRepairReportBudgetNote(reportId);
+    const existing = await this.prisma.budgetVersion.findFirst({
+      where: {
+        claimFileId,
+        notes: { startsWith: noteMarker },
+      },
+      include: {
+        items: { include: { vendor: true }, orderBy: { createdAt: 'asc' } },
+      },
+      orderBy: { versionNo: 'desc' },
+    });
+    if (existing) {
+      return {
+        ...existing,
+        repairReportId: reportId,
+        reportNo: report.reportNo,
+      };
+    }
+
+    const created = await this.createVersion(claimFileId, { notes: noteMarker });
+    return {
+      ...created,
+      repairReportId: reportId,
+      reportNo: report.reportNo,
+      items: created?.items ?? [],
+    };
+  }
+
+  /** Dosya tedarikçileri + iş grupları — rapor içi bütçe formu için */
+  async getSupplierWorkGroupContext(claimFileId: string) {
+    const claimFile = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      select: {
+        id: true,
+        supplierAssignments: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            vendor: {
+              select: {
+                id: true,
+                name: true,
+                paymentDueDays: true,
+                vendorWorkGroups: {
+                  include: { workGroup: { select: { id: true, name: true, code: true } } },
+                },
+              },
+            },
+          },
+        },
+        assignedSupplier: {
+          select: {
+            id: true,
+            name: true,
+            paymentDueDays: true,
+            vendorWorkGroups: {
+              include: { workGroup: { select: { id: true, name: true, code: true } } },
+            },
+          },
+        },
+      },
+    });
+    if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+
+    const byId = new Map<string, {
+      id: string;
+      name: string;
+      paymentDueDays: number | null;
+      workGroups: { id: string; name: string; code: string }[];
+    }>();
+
+    const pushVendor = (vendor: {
+      id: string;
+      name: string;
+      paymentDueDays?: number | null;
+      vendorWorkGroups?: { workGroup: { id: string; name: string; code: string } }[];
+    } | null | undefined) => {
+      if (!vendor?.id) return;
+      const workGroups = (vendor.vendorWorkGroups ?? []).map((vw) => ({
+        id: vw.workGroup.id,
+        name: vw.workGroup.name,
+        code: vw.workGroup.code,
+      }));
+      const prev = byId.get(vendor.id);
+      if (!prev) {
+        byId.set(vendor.id, {
+          id: vendor.id,
+          name: vendor.name,
+          paymentDueDays: vendor.paymentDueDays ?? null,
+          workGroups,
+        });
+        return;
+      }
+      const seen = new Set(prev.workGroups.map((g) => g.id));
+      for (const g of workGroups) {
+        if (!seen.has(g.id)) prev.workGroups.push(g);
+      }
+      if (prev.paymentDueDays == null && vendor.paymentDueDays != null) {
+        prev.paymentDueDays = vendor.paymentDueDays;
+      }
+    };
+
+    for (const link of claimFile.supplierAssignments) {
+      pushVendor(link.vendor);
+    }
+    pushVendor(claimFile.assignedSupplier);
+
+    // Tedarikçide iş grubu yoksa aktif katalogdan sun (seçim boş kalmasın)
+    const catalogGroups = await this.prisma.workGroup.findMany({
+      where: { status: 'active' },
+      select: { id: true, name: true, code: true },
+      orderBy: { name: 'asc' },
+      take: 200,
+    });
+
+    const suppliers = Array.from(byId.values()).map((s) => ({
+      ...s,
+      workGroups: s.workGroups.length > 0 ? s.workGroups : catalogGroups,
+    }));
+
+    return { suppliers, catalogWorkGroups: catalogGroups };
   }
 
   async createVersion(claimFileId: string, dto: { notes?: string; copyFromVersionId?: string }) {
@@ -135,22 +288,31 @@ export class BudgetService {
     quantity: number;
     unitPrice: number;
     vatRate?: number;
+    /** İş grubu adı — category'ye yazılır (migration yok) */
+    workGroupName?: string;
   }) {
     const version = await this.prisma.budgetVersion.findUnique({ where: { id: versionId } });
     if (!version) throw new NotFoundException('Bütçe versiyonu bulunamadı');
     if (!['draft', 'revision'].includes(version.status)) {
       throw new BadRequestException('Bu versiyona kalem eklenemez');
     }
+    if (!dto.vendorId) {
+      throw new BadRequestException('Dosya tedarikçisi seçiniz');
+    }
+    if (!dto.description?.trim()) {
+      throw new BadRequestException('Açıklama zorunludur');
+    }
 
     const vatRate = dto.vatRate ?? 18;
     const totalAmount = dto.quantity * dto.unitPrice * (1 + vatRate / 100);
+    const category = (dto.workGroupName?.trim() || dto.category || 'labor').slice(0, 120);
 
     const item = await this.prisma.budgetItem.create({
       data: {
         budgetVersionId: versionId,
         vendorId: dto.vendorId,
-        category: dto.category,
-        description: dto.description,
+        category,
+        description: dto.description.trim(),
         unit: dto.unit,
         quantity: dto.quantity,
         unitPrice: dto.unitPrice,

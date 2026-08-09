@@ -294,6 +294,7 @@ const emptyForm = () => ({
   phone: '', phoneType: 'gsm' as 'gsm' | 'landline', extensionNo: '', email: '',
   cityCode: '', city: '', district: '', neighborhood: '', streetName: '', buildingNo: '', doorNo: '', address: '',
   iban: '', bankName: '', accountHolderName: '',
+  paymentDueDays: '' as '' | '15' | '30',
   ibanWhatsappConfirmStatus: '', referral: '', tags: [] as string[], cardNotes: emptyCardNoteEntries() as CardNoteFormEntry[],
   contractStartDate: '', contractEndDate: '', contractNotes: '',
   category: 'hasar' as VendorCategory,
@@ -1082,11 +1083,16 @@ export default function VendorsPage() {
     try {
       const res = await axios.get(`${API}/system-settings/relationship-types`, { headers: authHeader() });
       const existing = res.data.data ?? [];
-      const full: Array<{ label: string; active: boolean }> = existing.length > 0 && typeof existing[0] === 'string'
-        ? existing.map((l: string) => ({ label: l, active: true }))
-        : existing;
-      if (!full.some((t: { label: string }) => t.label === val)) {
-        full.push({ label: val, active: true });
+      type RelType = { label: string; active: boolean; usageAreas?: Array<'musteri' | 'eksper' | 'tedarikci' | 'dosya'> };
+      const full: RelType[] = existing.length > 0 && typeof existing[0] === 'string'
+        ? (existing as string[]).map((l) => ({ label: l, active: true, usageAreas: ['tedarikci'] }))
+        : (existing as RelType[]);
+      const found = full.find((t) => t.label === val);
+      if (!found) {
+        full.push({ label: val, active: true, usageAreas: ['tedarikci'] });
+        await axios.put(`${API}/system-settings/relationship-types`, { values: full }, { headers: authHeader() });
+      } else if (!(found.usageAreas ?? []).includes('tedarikci')) {
+        found.usageAreas = [...(found.usageAreas ?? []), 'tedarikci'];
         await axios.put(`${API}/system-settings/relationship-types`, { values: full }, { headers: authHeader() });
       }
       setRelationshipTypes((prev) => prev.includes(val) ? prev : [...prev, val]);
@@ -1344,11 +1350,12 @@ export default function VendorsPage() {
       .then((r) => {
         const data = r.data.data ?? [];
         if (data.length > 0 && typeof data[0] === 'string') {
-          setRelationshipTypes(data as string[]);
+          // Eski string[] — kullanım alanı yok; tedarikçi formunda gösterme (müşteri listesi sızmasın)
+          setRelationshipTypes([]);
         } else {
           setRelationshipTypes(
-            (data as { label: string; active: boolean }[])
-              .filter((t) => t.active)
+            (data as { label: string; active: boolean; usageAreas?: string[] }[])
+              .filter((t) => t.active !== false && (t.usageAreas ?? []).includes('tedarikci'))
               .map((t) => t.label)
           );
         }
@@ -1592,6 +1599,7 @@ export default function VendorsPage() {
       neighborhood: v.neighborhood ?? '', streetName: v.streetName ?? '',
       buildingNo: v.buildingNo ?? '', doorNo: v.doorNo ?? '',
       address: v.address ?? '', iban: v.iban ?? '', bankName: v.bankName ?? '',
+      paymentDueDays: v.paymentDueDays === 15 || v.paymentDueDays === 30 ? String(v.paymentDueDays) as '15' | '30' : '',
       accountHolderName: v.accountHolderName ?? '',
       ibanWhatsappConfirmStatus: v.ibanWhatsappConfirmStatus ?? '',
       referral: v.referral ?? '', tags: Array.isArray(v.tags) ? v.tags : [], cardNotes: cardNotesToFormEntries(v.notes ?? ''),
@@ -1754,6 +1762,9 @@ export default function VendorsPage() {
         buildingNo: form.buildingNo || null, doorNo: form.doorNo || null,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
         iban: form.iban || null, accountHolderName: form.accountHolderName || null,
+        paymentDueDays: form.paymentDueDays === '15' || form.paymentDueDays === '30'
+          ? Number(form.paymentDueDays)
+          : null,
         referral: form.referral ? toTitleCaseTR(form.referral.trim()) : null,
         tags: form.tags.map((t) => toTitleCaseTR(t.trim())).filter(Boolean),
         notes: serializeCardNotes(form.cardNotes),
@@ -3677,6 +3688,35 @@ export default function VendorsPage() {
                       {form.iban && !form.accountHolderName.trim() && (
                         <p className="mt-1.5 text-xs font-medium text-amber-700">
                           Ödeme güvenliği için hesap sahibi bilgisini girmeniz önerilir.
+                        </p>
+                      )}
+                    </FormField>
+                    <FormField label="Hakediş Ödeme Vadesi">
+                      <div className="flex gap-2">
+                        {(['15', '30'] as const).map((days) => (
+                          <button
+                            key={days}
+                            type="button"
+                            onClick={() => setForm((p) => ({
+                              ...p,
+                              paymentDueDays: p.paymentDueDays === days ? '' : days,
+                            }))}
+                            className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
+                              form.paymentDueDays === days
+                                ? 'border-brand-600 bg-brand-50 text-brand-700'
+                                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {days} Gün
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-1.5 text-xs text-slate-500">
+                        Hakediş onayından sonra ödeme sırası vadesi. Seçim zorunludur.
+                      </p>
+                      {!form.paymentDueDays && (
+                        <p className="mt-1 text-xs font-medium text-amber-700">
+                          15 veya 30 gün seçiniz; aksi halde hakediş ödemesi doğru planlanamaz.
                         </p>
                       )}
                     </FormField>

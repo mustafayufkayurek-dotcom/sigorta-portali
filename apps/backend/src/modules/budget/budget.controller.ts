@@ -29,6 +29,39 @@ export class BudgetController {
     return { success: true, data };
   }
 
+  @Get('claim-files/:id/budget-versions/for-repair-report/:reportId')
+  @RequirePermissions('budget.view')
+  @ApiOperation({ summary: 'Onarım raporu bütçesini getir veya oluştur' })
+  async getOrCreateForRepairReport(
+    @Param('id') id: string,
+    @Param('reportId') reportId: string,
+  ) {
+    const data = await this.budgetService.getOrCreateForRepairReport(id, reportId);
+    return { success: true, data };
+  }
+
+  @Post('claim-files/:id/budget-versions/for-repair-report')
+  @RequirePermissions('budget.create')
+  @ApiOperation({ summary: 'Onarım raporu için bütçe sürümü hazırla' })
+  async ensureForRepairReport(
+    @Param('id') id: string,
+    @Body() dto: { reportId: string },
+  ) {
+    if (!dto?.reportId) {
+      return { success: false, message: 'reportId zorunludur' };
+    }
+    const data = await this.budgetService.getOrCreateForRepairReport(id, dto.reportId);
+    return { success: true, data };
+  }
+
+  @Get('claim-files/:id/budget-supplier-context')
+  @RequirePermissions('budget.view')
+  @ApiOperation({ summary: 'Dosya tedarikçileri ve iş grupları (rapor içi bütçe)' })
+  async getSupplierWorkGroupContext(@Param('id') id: string) {
+    const data = await this.budgetService.getSupplierWorkGroupContext(id);
+    return { success: true, data };
+  }
+
   @Patch('budget-versions/:id')
   @RequirePermissions('budget.update')
   @ApiOperation({ summary: 'Bütçe versiyonu güncelle' })

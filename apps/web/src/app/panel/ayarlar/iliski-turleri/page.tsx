@@ -146,7 +146,7 @@ export default function IliskiTurleriPage() {
   return (
     <SettingsPageLayout
       title="İlişki Türleri"
-      description="İlgili kişi eklerken kullanılacak görev / ünvan seçeneklerini ve kullanım alanlarını yönetin"
+      description="Kullanım alanına göre ayrılır: Müşteri formunda yalnız «Müşteri», tedarikçi formunda yalnız «Tedarikçi» işaretli türler görünür"
       addButtonText="Yeni İlişki Türü"
       onAdd={openCreate}
       backHref={TANIMLAR_BACK_HREF}

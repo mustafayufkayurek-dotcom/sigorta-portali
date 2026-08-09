@@ -168,10 +168,25 @@ function VendorBankConfirmationCard({
         />
         <InfoRow label="Hesap Sahibi Adı Soyadı / Unvanı" value={vendor.accountHolderName ? toTitleCaseTR(vendor.accountHolderName) : null} />
         <InfoRow
+          label="Hakediş Ödeme Vadesi"
+          value={
+            vendor.paymentDueDays === 15 || vendor.paymentDueDays === 30
+              ? `${vendor.paymentDueDays} Gün`
+              : (
+                <span className="font-medium text-amber-700">Seçilmedi — kartı güncelleyin</span>
+              )
+          }
+        />
+        <InfoRow
           label="Teyit Durumu"
           value={BANK_CONFIRMATION_STATUS_LABELS[status] ?? 'Henüz Teyit Edilmedi'}
         />
       </div>
+      {(vendor.paymentDueDays !== 15 && vendor.paymentDueDays !== 30) && (
+        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-sm text-amber-800">
+          Hakediş ödeme vadesi (15 veya 30 gün) seçilmemiş. Doğru ödeme planı için tedarikçi kartını güncelleyin.
+        </div>
+      )}
       {vendor.ibanAccountHolderMatchStatus === 'mismatch' && (
         <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-sm text-amber-800">
           Girilen hesap sahibi adı, tedarikçi kaydındaki unvan/ad ile uyuşmuyor. Ödeme öncesi bilgiyi teyit edin.

@@ -17,8 +17,9 @@ import {
   RequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
 
-/** Onaylı tedarikçi hakedişinden sonra ödeme vadesi (gün) */
-export const VENDOR_HAKEDIS_DUE_DAYS = 30;
+/** Varsayılan vade — tedarikçi kartında seçim yoksa (geçici geri uyumluluk) */
+export const VENDOR_HAKEDIS_DUE_DAYS_DEFAULT = 30;
+export const VENDOR_HAKEDIS_DUE_DAYS_OPTIONS = [15, 30] as const;
 
 export type PaymentListParams = {
   claimFileId?: string;
@@ -235,7 +236,15 @@ export class PaymentsService {
     const item = await this.prisma.vendorStatementItem.findUnique({
       where: { id: itemId },
       include: {
-        statement: { select: { id: true, vendorId: true, statementNo: true, createdByUserId: true } },
+        statement: {
+          select: {
+            id: true,
+            vendorId: true,
+            statementNo: true,
+            createdByUserId: true,
+            vendor: { select: { paymentDueDays: true } },
+          },
+        },
       },
     });
     if (!item || !item.claimFileId) return;
@@ -249,8 +258,12 @@ export class PaymentsService {
     if (existing) return;
 
     const approvedAt = item.approvedAt ?? new Date();
+    const vendorDays = item.statement.vendor?.paymentDueDays;
+    const dueDays = VENDOR_HAKEDIS_DUE_DAYS_OPTIONS.includes(vendorDays as 15 | 30)
+      ? Number(vendorDays)
+      : VENDOR_HAKEDIS_DUE_DAYS_DEFAULT;
     const dueDate = new Date(approvedAt);
-    dueDate.setDate(dueDate.getDate() + VENDOR_HAKEDIS_DUE_DAYS);
+    dueDate.setDate(dueDate.getDate() + dueDays);
 
     const payment = await this.prisma.payment.create({
       data: {

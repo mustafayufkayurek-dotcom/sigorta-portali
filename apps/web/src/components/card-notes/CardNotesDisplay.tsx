@@ -40,11 +40,6 @@ export function CardNotesDisplay({
           <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{note.text}</p>
         </div>
       ))}
-      {allNotes.length > visibleNotes.length && (
-        <p className="text-xs text-slate-400">
-          Rolünüze göre gizlenen {allNotes.length - visibleNotes.length} not daha var.
-        </p>
-      )}
     </div>
   );
 }

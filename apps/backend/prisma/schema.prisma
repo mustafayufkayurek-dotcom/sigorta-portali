@@ -951,6 +951,8 @@ model Vendor {
   iban             String?
   bankName         String?  @map("bank_name")
   accountHolderName String? @map("account_holder_name")
+  /// Hakediş onayı sonrası ödeme vadesi (gün): 15 | 30
+  paymentDueDays   Int?     @map("payment_due_days")
   ibanAccountHolderMatchStatus String? @map("iban_account_holder_match_status")
   ibanWhatsappConfirmStatus String? @map("iban_whatsapp_confirm_status")
   ibanWhatsappConfirmPhone String? @map("iban_whatsapp_confirm_phone")

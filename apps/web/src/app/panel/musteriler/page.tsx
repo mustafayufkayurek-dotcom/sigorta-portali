@@ -1436,14 +1436,12 @@ export default function MusterilerPage() {
     axios.get(`${API}/system-settings/relationship-types`, { headers: authHeader() })
       .then((r) => {
         const data = r.data.data ?? [];
-        // Geriye dönük uyumluluk: eski string[] veya yeni {label,active}[]
         if (data.length > 0 && typeof data[0] === 'string') {
-          setRelationshipTypes(data as string[]);
+          setRelationshipTypes([]);
         } else {
-          // Sadece aktif olanların label'ını al
           setRelationshipTypes(
-            (data as { label: string; active: boolean }[])
-              .filter((t) => t.active)
+            (data as { label: string; active: boolean; usageAreas?: string[] }[])
+              .filter((t) => t.active !== false && (t.usageAreas ?? []).includes('musteri'))
               .map((t) => t.label)
           );
         }
@@ -1462,14 +1460,18 @@ export default function MusterilerPage() {
     }
     setSavingRelType(true);
     try {
-      // Önce tüm türleri getir (aktif+pasif), yeni ekle, kaydet
       const res = await axios.get(`${API}/system-settings/relationship-types`, { headers: authHeader() });
       const existing = res.data.data ?? [];
-      const full: Array<{ label: string; active: boolean }> = existing.length > 0 && typeof existing[0] === 'string'
-        ? existing.map((l: string) => ({ label: l, active: true }))
-        : existing;
-      if (!full.some((t: { label: string }) => t.label === val)) {
-        full.push({ label: val, active: true });
+      type RelType = { label: string; active: boolean; usageAreas?: Array<'musteri' | 'eksper' | 'tedarikci' | 'dosya'> };
+      const full: RelType[] = existing.length > 0 && typeof existing[0] === 'string'
+        ? (existing as string[]).map((l) => ({ label: l, active: true, usageAreas: ['musteri'] }))
+        : (existing as RelType[]);
+      const found = full.find((t) => t.label === val);
+      if (!found) {
+        full.push({ label: val, active: true, usageAreas: ['musteri'] });
+        await axios.put(`${API}/system-settings/relationship-types`, { values: full }, { headers: authHeader() });
+      } else if (!(found.usageAreas ?? []).includes('musteri')) {
+        found.usageAreas = [...(found.usageAreas ?? []), 'musteri'];
         await axios.put(`${API}/system-settings/relationship-types`, { values: full }, { headers: authHeader() });
       }
       setRelationshipTypes((prev) => prev.includes(val) ? prev : [...prev, val]);

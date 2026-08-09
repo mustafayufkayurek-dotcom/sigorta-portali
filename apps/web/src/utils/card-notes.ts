@@ -1,4 +1,4 @@
-/** AK-001 — Müşteri / tedarikçi kart notları (numaralı + görünürlük) */
+/** AK-001 — Müşteri / tedarikçi kart notları (numaralı; iç ekip görünür) */
 
 export type CardNoteVisibility = 'admin_only' | 'operations' | 'file_officer';
 
@@ -12,14 +12,18 @@ export type CardNoteFormEntry = {
   visibility: CardNoteVisibility | '';
 };
 
+/** Kayıt formatı geriye uyumlu; yeni notlar her zaman operations yazar. */
 export const CARD_NOTE_VISIBILITY_OPTIONS: Array<{ value: CardNoteVisibility; label: string }> = [
   { value: 'admin_only', label: 'Yalnız Yönetici' },
-  { value: 'operations', label: 'Tüm Operasyon' },
+  { value: 'operations', label: 'İç Ekip' },
   { value: 'file_officer', label: 'Dosya Sorumlusu' },
 ];
 
+/** Varsayılan: müşteri / portal hariç tüm iç ekip. */
+export const DEFAULT_CARD_NOTE_VISIBILITY: CardNoteVisibility = 'operations';
+
 export const CARD_NOTES_RELATION_HINT =
-  'Numaralı notlar müşteri veya tedarikçi kartında kalıcı olarak görünür. Her not için kimlerin göreceğini seçin.';
+  'Numaralı notlar müşteri veya tedarikçi kartında kalıcı olarak görünür. Notlar müşteri portalları hariç iç ekibe açıktır.';
 
 const CARD_NOTES_JSON_MARKER = '__cardNotesV1__';
 
@@ -32,12 +36,30 @@ function normalizeRoleCode(roleCode?: string | null): string {
   return String(roleCode ?? '').trim().toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_');
 }
 
-export function cardNoteVisibilityLabel(value?: string | null): string {
-  return CARD_NOTE_VISIBILITY_OPTIONS.find((item) => item.value === value)?.label ?? '—';
+/** Müşteri / dış portal rolleri — kart notu görmez. */
+function isCustomerOrPortalRole(roleCode?: string | null): boolean {
+  const role = normalizeRoleCode(roleCode);
+  if (!role) return false;
+  return (
+    role.includes('insurance') ||
+    role.includes('customer') ||
+    role === 'insured' ||
+    role === 'portal_user' ||
+    role === 'expert' ||
+    role === 'adjuster' ||
+    role === 'insurance_company_user'
+  );
+}
+
+export function cardNoteVisibilityLabel(_value?: string | null): string {
+  return 'İç Ekip';
 }
 
 export function emptyCardNoteEntries(minCount = 2): CardNoteFormEntry[] {
-  return Array.from({ length: minCount }, () => ({ text: '', visibility: '' }));
+  return Array.from({ length: minCount }, () => ({
+    text: '',
+    visibility: DEFAULT_CARD_NOTE_VISIBILITY,
+  }));
 }
 
 export function parseCardNotes(raw: string | null | undefined): CardNote[] {
@@ -51,16 +73,17 @@ export function parseCardNotes(raw: string | null | undefined): CardNote[] {
         return parsed.items
           .map((item) => ({
             text: String(item?.text ?? '').trim(),
-            visibility: item?.visibility as CardNoteVisibility,
+            // Eski kısıtlı görünürlükler okumada iç ekibe açılır
+            visibility: DEFAULT_CARD_NOTE_VISIBILITY,
           }))
-          .filter((item) => item.text && CARD_NOTE_VISIBILITY_OPTIONS.some((opt) => opt.value === item.visibility));
+          .filter((item) => item.text);
       }
     } catch {
       /* düz metin olarak devam */
     }
   }
 
-  return [{ text: trimmed, visibility: 'operations' }];
+  return [{ text: trimmed, visibility: DEFAULT_CARD_NOTE_VISIBILITY }];
 }
 
 export function cardNotesToFormEntries(raw: string | null | undefined, minCount = 2): CardNoteFormEntry[] {
@@ -69,11 +92,11 @@ export function cardNotesToFormEntries(raw: string | null | undefined, minCount 
 
   const entries: CardNoteFormEntry[] = parsed.map((item) => ({
     text: item.text,
-    visibility: item.visibility,
+    visibility: DEFAULT_CARD_NOTE_VISIBILITY,
   }));
 
   while (entries.length < minCount) {
-    entries.push({ text: '', visibility: '' });
+    entries.push({ text: '', visibility: DEFAULT_CARD_NOTE_VISIBILITY });
   }
 
   return entries;
@@ -83,12 +106,9 @@ export function serializeCardNotes(entries: CardNoteFormEntry[]): string | null 
   const items = entries
     .map((entry) => ({
       text: entry.text.trim(),
-      visibility: entry.visibility,
+      visibility: DEFAULT_CARD_NOTE_VISIBILITY,
     }))
-    .filter(
-      (entry): entry is CardNote =>
-        Boolean(entry.text) && CARD_NOTE_VISIBILITY_OPTIONS.some((opt) => opt.value === entry.visibility),
-    );
+    .filter((entry): entry is CardNote => Boolean(entry.text));
 
   if (!items.length) return null;
 
@@ -100,37 +120,13 @@ export function serializeCardNotes(entries: CardNoteFormEntry[]): string | null 
   return JSON.stringify({ [CARD_NOTES_JSON_MARKER]: true, ...payload });
 }
 
-export function validateCardNoteEntries(entries: CardNoteFormEntry[]): string | null {
-  for (let i = 0; i < entries.length; i += 1) {
-    const text = entries[i].text.trim();
-    const visibility = entries[i].visibility;
-    if (!text && !visibility) continue;
-    if (text && !visibility) {
-      return `${i + 1}. Not için «Kimler görsün» seçimi zorunludur.`;
-    }
-    if (!text && visibility) {
-      return `${i + 1}. Not metni boş bırakılamaz.`;
-    }
-  }
+export function validateCardNoteEntries(_entries: CardNoteFormEntry[]): string | null {
+  // Görünürlük seçimi kaldırıldı; boş satırlar serbest, dolu satırlar geçerlidir.
   return null;
 }
 
-export function canViewCardNote(visibility: CardNoteVisibility, roleCode?: string | null): boolean {
-  const role = normalizeRoleCode(roleCode);
-  const isAdmin = role === 'admin' || role === 'manager' || role === 'ops_manager';
-  const isOffice = role === 'office_staff';
-  const isField = role === 'field_staff';
-
-  switch (visibility) {
-    case 'admin_only':
-      return isAdmin;
-    case 'operations':
-      return isAdmin || isOffice || isField;
-    case 'file_officer':
-      return isAdmin || isOffice;
-    default:
-      return false;
-  }
+export function canViewCardNote(_visibility: CardNoteVisibility, roleCode?: string | null): boolean {
+  return !isCustomerOrPortalRole(roleCode);
 }
 
 export function filterCardNotesForRole(notes: CardNote[], roleCode?: string | null): CardNote[] {

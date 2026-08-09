@@ -8,6 +8,7 @@ import {
 type TrAmountInputProps = {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   className?: string;
   placeholder?: string;
   id?: string;
@@ -19,6 +20,7 @@ type TrAmountInputProps = {
 export function TrAmountInput({
   value,
   onChange,
+  onBlur,
   className = '',
   placeholder = '0',
   id,
@@ -44,6 +46,7 @@ export function TrAmountInput({
         className={`${className}${prefix ? ' pl-7' : ''}${prefix ? '' : ' pr-10'}`}
         value={display}
         onChange={(e) => onChange(formatTrAmountInput(e.target.value))}
+        onBlur={onBlur}
       />
       {!prefix ? (
         <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-400">

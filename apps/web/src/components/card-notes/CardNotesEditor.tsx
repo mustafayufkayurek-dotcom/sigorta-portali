@@ -1,9 +1,6 @@
 'use client';
 
-import {
-  CARD_NOTE_VISIBILITY_OPTIONS,
-  type CardNoteFormEntry,
-} from '@/utils/card-notes';
+import { DEFAULT_CARD_NOTE_VISIBILITY, type CardNoteFormEntry } from '@/utils/card-notes';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 
 type Accent = 'emerald' | 'indigo';
@@ -29,11 +26,17 @@ export function CardNotesEditor({
   const ring = accentRing[accent];
 
   const updateEntry = (index: number, patch: Partial<CardNoteFormEntry>) => {
-    onChange(entries.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)));
+    onChange(
+      entries.map((entry, i) =>
+        i === index
+          ? { ...entry, ...patch, visibility: DEFAULT_CARD_NOTE_VISIBILITY }
+          : entry,
+      ),
+    );
   };
 
   const addEntry = () => {
-    onChange([...entries, { text: '', visibility: '' }]);
+    onChange([...entries, { text: '', visibility: DEFAULT_CARD_NOTE_VISIBILITY }]);
   };
 
   const removeEntry = (index: number) => {
@@ -71,23 +74,7 @@ export function CardNotesEditor({
               if (v !== entry.text) updateEntry(index, { text: v });
             }}
           />
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Kimler Görsün</label>
-            <select
-              className={`w-full border border-slate-200 rounded-lg px-3 py-2 h-[38px] text-sm bg-white focus:outline-none focus:ring-2 ${ring}`}
-              value={entry.visibility}
-              onChange={(e) =>
-                updateEntry(index, { visibility: e.target.value as CardNoteFormEntry['visibility'] })
-              }
-            >
-              <option value="">Seçin...</option>
-              {CARD_NOTE_VISIBILITY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <p className="text-[11px] text-slate-400">Müşteri portalları hariç iç ekibe görünür.</p>
         </div>
       ))}
 

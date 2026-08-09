@@ -223,6 +223,20 @@ export class VendorsService {
       vendorData.ibanWhatsappConfirmAt = null;
       vendorData.ibanWhatsappConfirmByUserId = null;
     }
+
+    if (Object.prototype.hasOwnProperty.call(vendorData, 'paymentDueDays')) {
+      const raw = vendorData.paymentDueDays;
+      if (raw === null || raw === '' || raw === undefined) {
+        vendorData.paymentDueDays = null;
+      } else {
+        const days = Number(raw);
+        if (![15, 30].includes(days)) {
+          throw new BadRequestException('Ödeme vadesi 15 veya 30 gün olmalıdır.');
+        }
+        vendorData.paymentDueDays = days;
+      }
+    }
+
     return vendorData;
   }
 

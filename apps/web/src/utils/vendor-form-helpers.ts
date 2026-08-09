@@ -255,7 +255,7 @@ export const VENDOR_FILE_PAYMENT_RECEIPT_RULE =
 export const VENDOR_RELATION_SECTION_TITLE = 'İlişki Özeti';
 
 export const VENDOR_RELATION_SECTION_HINT =
-  'Numaralı notlar tedarikçi kartında kalıcı olarak görünür. Her not için kimlerin göreceğini seçin.';
+  'Numaralı notlar tedarikçi kartında kalıcı olarak görünür. Müşteri portalları hariç iç ekibe açıktır.';
 
 /** Tedarikçi formu sekme başlıkları */
 export const VENDOR_FORM_SECTIONS = [

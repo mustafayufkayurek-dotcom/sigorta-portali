@@ -13,6 +13,7 @@ import SpeechToText from '@/components/SpeechToText';
 import { getReportImageUrl } from '@/utils/upload-url';
 import ReportImageGallery, { type PendingReportImageUpload } from '@/components/damage-reports/ReportImageGallery';
 import RepairReportReviseModal, { type ReviseReportPayload } from '@/components/damage-reports/RepairReportReviseModal';
+import { CommercialPricingDrawer } from '@/components/damage-reports/CommercialPricingDrawer';
 import { ClaimFileHeaderStatusCluster } from '@/components/damage-reports/ClaimFileHeaderStatusCluster';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
 import type { ManualDecisionAction } from '@/components/operasyon/ManualDecisionModal';
@@ -2746,9 +2747,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     try {
       for (const row of rows) {
         const newSales = ((parseFloat(row.salesUnitPrice) || 0) * multiplier);
-        const newSupplier = ((parseFloat(row.supplierUnitPrice) || 0) * multiplier);
         const salesStr = String(Math.round(newSales * 100) / 100);
-        const supplierStr = String(Math.round(newSupplier * 100) / 100);
         await onSave(row._id, {
           workGroupId: row.workGroupId || undefined,
           location: row.location ? normalizeLocationLabel(row.location) : undefined,
@@ -2757,7 +2756,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           quantity: parseFloat(row.quantity) || 1,
           unit: row.unit,
           salesUnitPrice: parseFloat(salesStr),
-          supplierUnitPrice: parseFloat(supplierStr),
+          // Tedarikçi teklifi maliyet referansıdır; ticari revizyonla değiştirilmez.
+          supplierUnitPrice: parseFloat(row.supplierUnitPrice) || 0,
           pricingType: row.pricingType,
           lumpSumPrice: row.pricingType === 'lumpsum' ? parseFloat(row.lumpSumPrice) || 0 : undefined,
           damageCategory: row.damageCategory,
@@ -4178,6 +4178,7 @@ export default function RepairReportPage() {
   }, []);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'internal' | 'external'>('internal');
+  const [budgetQuotesOpen, setBudgetQuotesOpen] = useState(false);
   const [showAnnotation, setShowAnnotation] = useState<any>(null);
   const [damageFilter, setDamageFilter] = useState<string>('all');
   const [showDamageTypeModal, setShowDamageTypeModal] = useState(false);
@@ -4843,6 +4844,209 @@ export default function RepairReportPage() {
       const items = sortReportItems((prev?.items ?? []).map((item: any) => item.id === itemId ? updatedItem : item));
       return { ...prev, items, ...recomputeReportTotals(items) };
     });
+  };
+
+  const handleApplyCommercialRevision = async (rates: Record<string, number>) => {
+    try {
+      for (const item of report?.items ?? []) {
+        const workGroupId = item.workGroupId ?? item.workGroup?.id ?? '__other__';
+        const percentage = rates[workGroupId] ?? 0;
+        if (!percentage) continue;
+        const multiplier = 1 + percentage / 100;
+        const isLumpSum = item.pricingType === 'lumpsum';
+        await handleUpdateItemMain(item.id, {
+          workGroupId: item.workGroupId || undefined,
+          location: item.location ? normalizeLocationLabel(item.location) : undefined,
+          jobDescription: item.jobDescription,
+          description: item.description || undefined,
+          quantity: Number(item.quantity) || 1,
+          unit: item.unit,
+          salesUnitPrice: isLumpSum ? Number(item.salesUnitPrice ?? 0) : Math.round(Number(item.salesUnitPrice ?? 0) * multiplier * 100) / 100,
+          // Tedarikçi teklifi maliyet referansıdır; ticari revizyonla değiştirilmez.
+          supplierUnitPrice: Number(item.supplierUnitPrice ?? 0),
+          pricingType: item.pricingType,
+          lumpSumPrice: isLumpSum ? Math.round(Number(item.lumpSumPrice ?? 0) * multiplier * 100) / 100 : undefined,
+          damageCategory: item.damageCategory,
+          damageTypeId: item.damageTypeId || undefined,
+        });
+      }
+      showToast('success', 'Ticari revizyon uygulandı. Tedarikçi teklifleri korunmuştur.');
+    } catch (error: unknown) {
+      showToast('error', getApiErrorMessage(error, 'Ticari revizyon uygulanamadı.'));
+      throw error;
+    }
+  };
+
+  /**
+   * İş grubu tedarikçi teklifini birim fiyatlı kalemlere oransal dağıtır.
+   * Metraj/miktar ve satış fiyatı değişmez. Götürü (lumpsum) kalemlerde
+   * tedarikçi maliyeti şema gereği satışla aynıdır; bu yüzden onlara dokunulmaz.
+   */
+  const handleApplySupplierGroupQuote = async (
+    workGroupId: string,
+    quoteTotal: number,
+    options?: { quiet?: boolean },
+  ) => {
+    const groupItems = (report?.items ?? []).filter(
+      (item: any) => (item.workGroupId ?? item.workGroup?.id ?? '__other__') === workGroupId,
+    );
+    const unitItems = groupItems.filter((item: any) => item.pricingType !== 'lumpsum');
+    if (unitItems.length === 0) return;
+    const currentTotal = unitItems.reduce((sum: number, item: any) => {
+      return sum + Number(
+        item.supplierTotal ?? Number(item.quantity ?? 0) * Number(item.supplierUnitPrice ?? 0),
+      );
+    }, 0);
+    try {
+      for (const item of unitItems) {
+        const itemSupplier = Number(
+          item.supplierTotal ?? Number(item.quantity ?? 0) * Number(item.supplierUnitPrice ?? 0),
+        );
+        const share = currentTotal > 0 ? itemSupplier / currentTotal : 1 / unitItems.length;
+        const newItemTotal = Math.round(quoteTotal * share * 100) / 100;
+        const qty = Number(item.quantity) || 1;
+        await handleUpdateItemMain(item.id, {
+          workGroupId: item.workGroupId || undefined,
+          location: item.location ? normalizeLocationLabel(item.location) : undefined,
+          jobDescription: item.jobDescription,
+          description: item.description || undefined,
+          quantity: qty,
+          unit: item.unit,
+          salesUnitPrice: Number(item.salesUnitPrice ?? 0),
+          supplierUnitPrice: Math.round((newItemTotal / qty) * 100) / 100,
+          pricingType: item.pricingType,
+          damageCategory: item.damageCategory,
+          damageTypeId: item.damageTypeId || undefined,
+        });
+      }
+      if (!options?.quiet) {
+        showToast('success', 'Tedarikçi teklifi iş grubuna uygulandı.');
+      }
+    } catch (error: unknown) {
+      showToast('error', getApiErrorMessage(error, 'Tedarikçi teklifi uygulanamadı.'));
+      throw error;
+    }
+  };
+
+  /**
+   * Tek adım: teklifleri rapora yazar + rapor bütçesine iş grubu satırı olarak aktarır + onaya gönderir.
+   * Metraj/miktar değişmez. Schema/migration yok (mevcut BudgetVersion API).
+   */
+  const handleApproveAndTransferToHakedis = async (quotes: Record<string, number>) => {
+    const entries = Object.entries(quotes).filter(([, amount]) => Number(amount) > 0);
+    if (entries.length === 0) {
+      showToast('error', 'Aktarılacak tedarikçi teklifi bulunamadı.');
+      return;
+    }
+
+    try {
+      for (const [workGroupId, amount] of entries) {
+        await handleApplySupplierGroupQuote(workGroupId, amount, { quiet: true });
+      }
+
+      const [ctxRes, verRes] = await Promise.all([
+        axios.get(`${API}/claim-files/${claimId}/budget-supplier-context`, { headers: authHeader() }),
+        axios.get(`${API}/claim-files/${claimId}/budget-versions/for-repair-report/${reportId}`, {
+          headers: authHeader(),
+        }),
+      ]);
+      const suppliers = (ctxRes.data?.data?.suppliers ?? ctxRes.data?.suppliers ?? []) as Array<{
+        id: string;
+        name: string;
+        paymentDueDays?: number | null;
+      }>;
+      const vendor = suppliers[0];
+      if (!vendor?.id) {
+        showToast('error', 'Önce dosyaya tedarikçi atayın. Sonra tekrar Onayla ve Hakedişe Aktar deneyin.');
+        return;
+      }
+      if (vendor.paymentDueDays !== 15 && vendor.paymentDueDays !== 30) {
+        showToast(
+          'error',
+          `${vendor.name} kartında hakediş ödeme vadesi (15 veya 30 gün) seçili değil. Önce tedarikçi kartını güncelleyin.`,
+        );
+        return;
+      }
+
+      let version = verRes.data?.data ?? verRes.data;
+      if (!version?.id) {
+        showToast('error', 'Dosya bütçesi hazırlanamadı.');
+        return;
+      }
+
+      if (!['draft', 'revision'].includes(String(version.status))) {
+        const created = await axios.post(
+          `${API}/claim-files/${claimId}/budget-versions`,
+          {
+            notes: `repairReportId:${reportId}`,
+            copyFromVersionId: version.id,
+          },
+          { headers: authHeader() },
+        );
+        version = created.data?.data ?? created.data;
+      }
+
+      if (!version?.id || !['draft', 'revision'].includes(String(version.status))) {
+        showToast('error', 'Bütçe düzenlenebilir durumda değil. Finans bütçe sekmesinden kontrol edin.');
+        return;
+      }
+
+      const existingItems = (version.items ?? []) as Array<{
+        id: string;
+        vendorId?: string | null;
+        category?: string | null;
+      }>;
+
+      for (const [workGroupId, amount] of entries) {
+        const wgName =
+          workGroups.find((g: any) => g.id === workGroupId)?.name
+          || (report?.items ?? []).find((i: any) => (i.workGroupId ?? i.workGroup?.id) === workGroupId)?.workGroup?.name
+          || 'İş Grubu';
+        const description = toTitleCaseTR(`Pazarlık Onayı — ${wgName}`);
+        const match = existingItems.find(
+          (it) => it.vendorId === vendor.id && String(it.category || '').toLowerCase() === wgName.toLowerCase(),
+        );
+        if (match?.id) {
+          await axios.patch(
+            `${API}/budget-items/${match.id}`,
+            {
+              vendorId: vendor.id,
+              category: wgName,
+              description,
+              quantity: 1,
+              unitPrice: amount,
+              vatRate: 0,
+              unit: 'Kalem',
+            },
+            { headers: authHeader() },
+          );
+        } else {
+          const added = await axios.post(
+            `${API}/budget-versions/${version.id}/items`,
+            {
+              vendorId: vendor.id,
+              category: wgName,
+              workGroupName: wgName,
+              description,
+              quantity: 1,
+              unitPrice: amount,
+              vatRate: 0,
+              unit: 'Kalem',
+            },
+            { headers: authHeader() },
+          );
+          const item = added.data?.data ?? added.data;
+          if (item?.id) existingItems.push({ id: item.id, vendorId: vendor.id, category: wgName });
+        }
+      }
+
+      await axios.post(`${API}/budget-versions/${version.id}/submit`, {}, { headers: authHeader() });
+      showToast('success', 'Teklifler onaylandı ve hakediş hazırlığına aktarıldı.');
+      setBudgetQuotesOpen(false);
+    } catch (error: unknown) {
+      showToast('error', getApiErrorMessage(error, 'Hakedişe aktarım yapılamadı.'));
+      throw error;
+    }
   };
 
   const handleRemoveItem = async (itemId: string) => {
@@ -5616,9 +5820,24 @@ export default function RepairReportPage() {
         )}
       </SectionCard>
 
-      {/* Dosya Bütçesi — sadece tam görünümde */}
+      {/* İş grubu kâr özeti — sadece tam görünümde */}
       {effectiveViewMode === 'internal' && !isFieldStaff && (
         <WorkGroupProfitSummary items={report.items ?? []} workGroups={workGroups} />
+      )}
+
+      {effectiveViewMode === 'internal' && !isFieldStaff && (
+        <CommercialPricingDrawer
+          open={budgetQuotesOpen}
+          onClose={() => setBudgetQuotesOpen(false)}
+          items={report.items ?? []}
+          workGroups={workGroups}
+          canEdit={isEditable}
+          reportId={reportId}
+          claimFileId={claimId}
+          onApplyCommercialRevision={handleApplyCommercialRevision}
+          onApplySupplierGroupQuote={handleApplySupplierGroupQuote}
+          onApproveAndTransferToHakedis={handleApproveAndTransferToHakedis}
+        />
       )}
 
       {/* Fotoğraflar */}
@@ -5758,6 +5977,16 @@ export default function RepairReportPage() {
               <span className="lg:hidden text-[11px] text-slate-500 tabular-nums mr-1">
                 Oluşturma → Onay: {creationToApprovalLabel}
               </span>
+            )}
+            {effectiveViewMode === 'internal' && !isFieldStaff && (
+              <button
+                type="button"
+                onClick={() => setBudgetQuotesOpen(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg border-2 border-brand-500 bg-brand-50 text-brand-700 text-sm font-semibold hover:bg-brand-100 transition-colors shadow-sm"
+                title="Bütçe ve satınalma panelini aç"
+              >
+                Bütçe & Satınalma
+              </button>
             )}
             {isEditable && (
               <>
@@ -6448,4 +6677,3 @@ export default function RepairReportPage() {
     </div>
   );
 }
-
