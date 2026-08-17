@@ -219,6 +219,12 @@ interface NavigationLink {
   groupStart?: boolean;
 }
 
+const OPERASYON_NAV_CHILDREN: NavigationLink[] = [
+  { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
+  { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
+  { title: 'Gelen Kutusu', href: '/panel/operasyon/gelen-kutusu' },
+];
+
 interface PanelSidebarProps {
   pathname: string;
   roleCode: string;
@@ -273,10 +279,7 @@ function getPanelMainLinks({
               href: '/panel/operasyon',
               alertCount: opsBadge,
               icon: ClipboardList,
-              children: [
-                { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
-                { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
-              ],
+              children: OPERASYON_NAV_CHILDREN,
             },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
@@ -307,10 +310,7 @@ function getPanelMainLinks({
               href: '/panel/operasyon',
               alertCount: opsBadge,
               icon: ClipboardList,
-              children: [
-                { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
-                { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
-              ],
+              children: OPERASYON_NAV_CHILDREN,
             },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
@@ -333,10 +333,7 @@ function getPanelMainLinks({
             alertCount: opsBadge,
             icon: ClipboardList,
             groupStart: true,
-            children: [
-              { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
-              { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
-            ],
+            children: OPERASYON_NAV_CHILDREN,
           },
           { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList, groupStart: true },
           { title: 'Sahiplik', href: '/panel/sahiplik', icon: ShieldCheck },
@@ -828,8 +825,11 @@ function Navbar({
                           if (pathOnly === '/panel') return pathname === '/panel';
                           return pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
                         });
+                      const parentPath = link.href.split('?')[0] || link.href;
+                      const parentIsActive =
+                        pathname === parentPath || pathname.startsWith(`${parentPath}/`);
                       const isExpanded = hasChildren
-                        ? (mobileExpandedGroups[link.href] ?? childIsActive)
+                        ? (mobileExpandedGroups[link.href] ?? (childIsActive || parentIsActive))
                         : false;
 
                       return (
@@ -1130,12 +1130,14 @@ function PanelSidebar({
 
   const renderNavLink = (link: NavigationLink, compact = false, isFirst = false) => {
     const tooltipLabel = getNavTooltipLabel(link);
-    const hasChildren = !!link.children?.length;
+    const visibleChildren = (link.children ?? []).filter((child) => canSee(child.href));
+    const hasChildren = visibleChildren.length > 0;
     const childIsActive = hasChildren
-      ? link.children!.some((child) => isActive(child.href, child.exactMatch))
+      ? visibleChildren.some((child) => isActive(child.href, child.exactMatch))
       : false;
+    const parentIsActive = isActive(link.href, link.exactMatch);
     const isExpanded = hasChildren
-      ? expandedGroupOverrides[link.href] ?? childIsActive
+      ? expandedGroupOverrides[link.href] ?? (childIsActive || parentIsActive)
       : false;
 
     const linkNode = (
@@ -1144,9 +1146,6 @@ function PanelSidebar({
         className={`${linkClass(link.href, compact, undefined, link.exactMatch, isFirst)}${collapsed ? ' relative justify-center px-2' : hasChildren ? ' flex-1 min-w-0' : ''}`}
         aria-label={collapsed ? tooltipLabel : undefined}
         onClick={() => {
-          if (hasChildren && !collapsed) {
-            setExpandedGroupOverrides((prev) => ({ ...prev, [link.href]: !isExpanded }));
-          }
           const hrefQueryString = link.href.split('?')[1] ?? '';
           setActiveQueueParam(new URLSearchParams(hrefQueryString).get('queue'));
         }}
@@ -1200,7 +1199,7 @@ function PanelSidebar({
         </div>
         {hasChildren && (isExpanded || collapsed) ? (
           <div className={collapsed ? 'space-y-0.5' : 'panel-sidebar-nav-children'}>
-            {link.children!.map((child) => renderNavLink(child, true))}
+            {visibleChildren.map((child) => renderNavLink(child, true))}
           </div>
         ) : null}
       </div>

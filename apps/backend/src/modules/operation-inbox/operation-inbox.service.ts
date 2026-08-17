@@ -35,7 +35,7 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
-import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, INBOUND_FILE_NO_BRAND_WARNING } from '@sigorta/shared';
+import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -1177,6 +1177,10 @@ export class OperationInboxService {
     const preferred = resolved.fileNo?.trim() || undefined;
     if (preferred && isInsuranceBrandFileNo(preferred, heuristic.insurer)) {
       throw new BadRequestException(INBOUND_FILE_NO_BRAND_WARNING);
+    }
+    const policyNo = dtoPolicyNo?.trim() || extracted.policyNo;
+    if (preferred && isSameInboundNumber(preferred, policyNo)) {
+      throw new BadRequestException(INBOUND_FILE_NO_POLICY_WARNING);
     }
     if (resolved.bodyRejected && !preferred) {
       throw new BadRequestException(resolved.warning || INBOUND_FILE_NO_BRAND_WARNING);

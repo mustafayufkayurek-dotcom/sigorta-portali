@@ -85,4 +85,20 @@ Sigortalı: İLKNUR YILMAZ
     expect(fields.fileNo).toBe('26645495');
     expect(fields.fileNoWarning).toContain('26645495');
   });
+
+  it('Dosya No alanındaki poliçe numarasını konu satırındaki gerçek numarayla değiştirir', () => {
+    const fields = extractHeuristicFields({
+      subject: 'EUREKO 26645495 ILKNUR YILMAZ',
+      bodyText: `
+Sigorta şirketi: EUREKO
+Poliçe No: 89046645
+Dosya No: 89046645
+Sigortalı: İLKNUR YILMAZ
+`.trim(),
+      bodyPreview: null,
+      bodyHtml: null,
+    });
+    expect(fields.fileNo).toBe('26645495');
+    expect(fields.fileNoWarning).toMatch(/poliçe/i);
+  });
 });

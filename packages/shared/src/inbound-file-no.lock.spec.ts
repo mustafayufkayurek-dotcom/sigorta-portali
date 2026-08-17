@@ -35,6 +35,28 @@ describe('inbound file no × sigorta markası LOCK', () => {
     assert.equal(resolved.fileNo, '26645495');
   });
 
+  it('poliçe numarası dosya no olarak yazılmışsa konu satırındaki gerçek numarayı alır', () => {
+    const resolved = resolveInboundFileNo({
+      bodyFileNo: '89046645',
+      insurer: 'Eureko Sigorta',
+      subject: 'EUREKO 26645495 ILKNUR YILMAZ',
+      policyNo: '89046645',
+    });
+    assert.equal(resolved.fileNo, '26645495');
+    assert.equal(resolved.bodyRejected, true);
+    assert.match(resolved.warning ?? '', /poliçe/i);
+  });
+
+  it('Dosya No satırına yapışan poliçe numarasını da reddeder', () => {
+    const resolved = resolveInboundFileNo({
+      bodyFileNo: '89046645\nSigortalı: İLKNUR YILMAZ',
+      insurer: 'Eureko Sigorta',
+      subject: 'EUREKO 26645495 ILKNUR YILMAZ',
+      policyNo: '89046645',
+    });
+    assert.equal(resolved.fileNo, '26645495');
+  });
+
   it('geçerli dosya no durur', () => {
     const resolved = resolveInboundFileNo({
       bodyFileNo: 'RCS-20261805465',

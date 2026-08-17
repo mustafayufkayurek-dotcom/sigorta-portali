@@ -318,8 +318,9 @@ export function InboxOpenFileModal({
     !createNewCustomer
     || (!!newCustomerEntityType && !!newCustomerSubType?.trim());
   const fileNoBrand = isInsuranceBrandFileNo(fileNo, draft.insurer);
+  const fileNoIsPolicy = Boolean(fileNo.trim() && policyNo.trim() && fileNo.trim() === policyNo.trim());
   const canConfirm =
-    !loading && instructionOk && insuranceOk && insuredOk && assistantOk && newCustomerTypeOk && !fileNoBrand;
+    !loading && instructionOk && insuranceOk && insuredOk && assistantOk && newCustomerTypeOk && !fileNoBrand && !fileNoIsPolicy;
 
   const confirmBlockers: string[] = [];
   if (!instructionOk) confirmBlockers.push('Talimat en az 3 karakter olmalı');
@@ -327,6 +328,7 @@ export function InboxOpenFileModal({
   if (kind === 'emergency' && !assistantOk) confirmBlockers.push('Asistan firması seçilmeli');
   if (kind === 'claim' && !insuranceOk) confirmBlockers.push('Sigorta şirketi seçilmeli');
   if (fileNoBrand) confirmBlockers.push('Dosya No sigorta şirketi adı olamaz');
+  if (fileNoIsPolicy) confirmBlockers.push('Poliçe numarası dosya no olarak kaydedilemez');
   if (createNewCustomer && !newCustomerTypeOk) {
     confirmBlockers.push('Müşteri tipi ve alt tip seçilmeli');
   }

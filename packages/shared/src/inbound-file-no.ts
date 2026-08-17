@@ -25,8 +25,21 @@ export function isInsuranceBrandFileNo(value: string, insuranceName?: string | n
 export const INBOUND_FILE_NO_BRAND_WARNING =
   'Maildeki Dosya No alanına sigorta şirketi adı yazılmış. Gerçek dosya numarasını girin.';
 
+export const INBOUND_FILE_NO_POLICY_WARNING =
+  'Maildeki Dosya No alanına poliçe numarası yazılmış. Gerçek dosya numarasını girin.';
+
 export function inboundFileNoRecoveredWarning(fileNo: string): string {
   return `Maildeki Dosya No alanına sigorta şirketi adı yazılmış. Konu satırından dosya numarası alındı: ${fileNo}. Lütfen kontrol edin.`;
+}
+
+export function inboundFileNoPolicyRecoveredWarning(fileNo: string): string {
+  return `Maildeki Dosya No alanına poliçe numarası yazılmış. Konu satırından dosya numarası alındı: ${fileNo}. Lütfen kontrol edin.`;
+}
+
+export function isSameInboundNumber(a?: string | null, b?: string | null): boolean {
+  const left = compactFileNo(a);
+  const right = compactFileNo(b);
+  return Boolean(left && right && left === right);
 }
 
 const DIGIT_FILE_NO = /\b\d{6,12}\b/g;
@@ -65,7 +78,11 @@ export function resolveInboundFileNo(input: {
 }): InboundFileNoResolution {
   const body = input.bodyFileNo?.trim() || '';
   const insurer = input.insurer?.trim() || '';
-  const bodyRejected = Boolean(body && isInsuranceBrandFileNo(body, insurer || body));
+  const brandRejected = Boolean(body && isInsuranceBrandFileNo(body, insurer || body));
+  const policyRejected =
+    isSameInboundNumber(body, input.policyNo)
+    || extractDigitFileNoCandidates(body).some((n) => isSameInboundNumber(n, input.policyNo));
+  const bodyRejected = brandRejected || policyRejected;
 
   if (body && !bodyRejected) {
     return { fileNo: body, warning: null, bodyRejected: false };
@@ -80,9 +97,15 @@ export function resolveInboundFileNo(input: {
   if (candidates[0]) {
     return {
       fileNo: candidates[0],
-      warning: inboundFileNoRecoveredWarning(candidates[0]),
+      warning: policyRejected
+        ? inboundFileNoPolicyRecoveredWarning(candidates[0])
+        : inboundFileNoRecoveredWarning(candidates[0]),
       bodyRejected: true,
     };
   }
-  return { fileNo: null, warning: INBOUND_FILE_NO_BRAND_WARNING, bodyRejected: true };
+  return {
+    fileNo: null,
+    warning: policyRejected ? INBOUND_FILE_NO_POLICY_WARNING : INBOUND_FILE_NO_BRAND_WARNING,
+    bodyRejected: true,
+  };
 }
