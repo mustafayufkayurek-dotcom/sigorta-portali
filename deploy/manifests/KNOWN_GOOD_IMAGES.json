@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-08-17",
-  "label": "v506-hasar-is-tanimi",
-  "description": "Web-only v506: hasar raporunda iş tanımı ekle. Migration yok. Backend v501. Rollback web v505 / backend v500.",
+  "label": "v507-dosya-no-sigorta",
+  "description": "Web-only v507: Dosya No kolonuna sigorta markası (EUREKO) yazılmaz. Migration yok. Backend v501. Rollback web v506 / backend v500.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v501-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v506-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v507-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v505-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v506-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v500-amd64"
   },
   "mustPassSmokeRoutes": [
