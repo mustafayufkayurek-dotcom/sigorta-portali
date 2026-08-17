@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-08-17",
-  "label": "v505-yedek-sagligi-restore",
-  "description": "Web v505 / backend v501. Yedek Sağlığı Genel Durum + restoreTest + 5dk polling. Migration yok. Backup dump/cron saatleri değişmedi. Rollback web v504 / backend v500.",
+  "label": "v506-hasar-is-tanimi",
+  "description": "Web-only v506: hasar raporunda iş tanımı ekle. Migration yok. Backend v501. Rollback web v505 / backend v500.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v501-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v505-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v506-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v504-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v505-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v500-amd64"
   },
   "mustPassSmokeRoutes": [

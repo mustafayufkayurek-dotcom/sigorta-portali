@@ -79,8 +79,9 @@ cd $REMOTE_APP
 bash scripts/pre-deploy-safety.sh $DEPLOY_TAG
 echo '=== docker build web ==='
 docker build -f Dockerfile.web -t $WEB_IMAGE $WEB_NO_CACHE --build-arg NEXT_PUBLIC_API_URL=$API_URL .
-if docker run --rm --entrypoint sh $WEB_IMAGE -c 'grep -R -l "http://localhost" apps/web/.next/static 2>/dev/null | head -1' | grep -q .; then
-  echo 'HATA: web image içinde localhost API adresi gömülü — canlıya alma.'
+MERIDYEN_HITS=\$(docker run --rm --entrypoint sh $WEB_IMAGE -c 'grep -RhoaF "https://app.meridyen-tr.com/api/v1" apps/web/.next/static 2>/dev/null | wc -l' | tr -d ' ')
+if [ "\${MERIDYEN_HITS:-0}" -lt 20 ]; then
+  echo "HATA: production API adresi derlemeye gömülmemiş (hits=\$MERIDYEN_HITS) — canlıya alma."
   exit 1
 fi
 TS=\$(date +%Y%m%d_%H%M%S)
