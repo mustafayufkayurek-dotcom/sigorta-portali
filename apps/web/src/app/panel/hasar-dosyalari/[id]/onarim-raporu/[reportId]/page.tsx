@@ -1535,6 +1535,7 @@ function WorkDefinitionSelector({
   workGroupId,
   onSelect,
   onAddNew,
+  onNotify,
   className,
   'data-cell': dataCell,
   tabIndex,
@@ -1547,6 +1548,7 @@ function WorkDefinitionSelector({
   workGroupId: string;
   onSelect: (v: string, unit?: string) => void;
   onAddNew: (name: string, workGroupId: string) => Promise<any>;
+  onNotify?: (type: 'error' | 'warning' | 'success', message: string) => void;
   className?: string;
   'data-cell'?: string;
   tabIndex?: number;
@@ -1570,11 +1572,17 @@ function WorkDefinitionSelector({
     try {
       const result = await onAddNew(trimmed, workGroupId);
       onSelect(normalizeLocationLabel(result?.name ?? trimmed), result?.unitType ?? result?.defaultUnit);
-    } catch { /* ignore */ } finally {
+      onNotify?.('success', 'İş tanımı eklendi.');
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+      const msg = Array.isArray(data) ? data[0] : (data || 'İş tanımı eklenemedi.');
+      onNotify?.('error', msg);
+      return;
+    } finally {
       setSaving(false);
-      setAddingNew(false);
-      setNewVal('');
     }
+    setAddingNew(false);
+    setNewVal('');
   };
 
   if (addingNew) {
@@ -1600,29 +1608,42 @@ function WorkDefinitionSelector({
   }
 
   return (
-    <select
-      data-cell={dataCell}
-      className={className}
-      value={value}
-      tabIndex={tabIndex}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      onKeyDown={onKeyDown}
-      onChange={(e) => {
-        if (e.target.value === '__add_new__') {
-          setAddingNew(true);
-        } else {
-          const sg = subGroups.find((s: any) => (s.name ?? s.id) === e.target.value);
-          onSelect(normalizeLocationLabel(e.target.value), sg?.unitType ?? sg?.defaultUnit);
-        }
-      }}
-    >
-      <option value="">— İş Tanımı Seç —</option>
-      {subGroups.map((sg: any) => (
-        <option key={sg.id} value={sg.name ?? sg.id}>{formatDisplayLabel(sg.name)}</option>
-      ))}
-      <option value="__add_new__">+ Yeni İş Tanımı Ekle</option>
-    </select>
+    <div className="flex min-w-0 items-center gap-0.5">
+      <select
+        data-cell={dataCell}
+        className={`${className ?? ''} min-w-0 flex-1`}
+        value={value}
+        tabIndex={tabIndex}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        onKeyDown={onKeyDown}
+        onChange={(e) => {
+          if (e.target.value === '__add_new__') {
+            setAddingNew(true);
+          } else {
+            const sg = subGroups.find((s: any) => (s.name ?? s.id) === e.target.value);
+            onSelect(normalizeLocationLabel(e.target.value), sg?.unitType ?? sg?.defaultUnit);
+          }
+        }}
+      >
+        <option value="">— İş Tanımı Seç —</option>
+        {subGroups.map((sg: any) => (
+          <option key={sg.id} value={sg.name ?? sg.id}>{formatDisplayLabel(sg.name)}</option>
+        ))}
+        <option value="__add_new__">+ Yeni İş Tanımı Ekle</option>
+      </select>
+      <button
+        type="button"
+        title="Yeni İş Tanımı Ekle"
+        aria-label="Yeni İş Tanımı Ekle"
+        disabled={!workGroupId}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setAddingNew(true)}
+        className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700 disabled:opacity-40"
+      >
+        +
+      </button>
+    </div>
   );
 }
 
@@ -2502,7 +2523,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
   // Inline yeni iş tanımı ekleme
   const createSubGroup = async (name: string, workGroupId: string): Promise<{ name: string; unitType?: string; defaultUnit?: string }> => {
-    const code = `${name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}_${Date.now()}`;
+    const code = `IS_TANIM_${Date.now()}`;
     const res = await axios.post(
       `${API}/work-groups/${workGroupId}/sub-groups`,
       { code, name: toTitleCaseTR(name.trim()), unitType: 'm²', sortOrder: 0 },
@@ -3311,6 +3332,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                           }));
                         }}
                         onAddNew={createSubGroup}
+                        onNotify={onNotify}
                         onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'jobDescription', row._id)}
                       />
                       )
@@ -3616,6 +3638,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       setAddingDirty(true);
                     }}
                     onAddNew={createSubGroup}
+                    onNotify={onNotify}
                     onKeyDown={(e) => handleCellKeyDown(e, 'new', 'jobDescription')}
                   />
                 )}
