@@ -759,6 +759,8 @@ export class ClaimFilesService {
     ]);
 
     return {
+      openClaims,
+      openedTodayClaims,
       /** Açık hasar + açık acil */
       open: openClaims + openEmergency,
       /**

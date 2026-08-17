@@ -12,7 +12,6 @@ import {
   FolderInput,
   FolderOpen,
   Hourglass,
-  type LucideIcon,
 } from 'lucide-react';
 import { getCases, EmergencyCase } from '@/utils/emergencyApi';
 import { apiClient } from '@/lib/api-client';
@@ -38,6 +37,7 @@ import {
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
+import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import { DoubleDeleteConfirm } from '@/components/operasyon/DoubleDeleteConfirm';
 import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
 import { formatTryAmount } from '@/utils/format-try-amount';
@@ -203,53 +203,6 @@ type UnifiedRow =
       defaultEmailTo: string | null;
     };
 
-function OpsStripKpi({
-  label,
-  value,
-  color,
-  icon: Icon,
-  onClick,
-  active,
-}: {
-  label: string;
-  value: string | number;
-  color: string;
-  icon: LucideIcon;
-  onClick?: () => void;
-  active?: boolean;
-}) {
-  /** Operasyon KPI — yatay kart; ikon solda, rakam ve başlık sağda; eşit yükseklik */
-  const body = (
-    <div
-      className={`group flex h-[102px] w-full min-w-0 flex-row items-center gap-3 overflow-hidden rounded-xl border bg-white px-2.5 py-2.5 shadow-md transition ${
-        active
-          ? 'border-blue-400 ring-2 ring-blue-200 shadow-blue-100'
-          : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50 hover:shadow-lg'
-      }`}
-      data-testid="ops-kpi-card"
-      data-kpi-label={label}
-    >
-      <span className={`inline-flex w-fit shrink-0 rounded-lg p-2 shadow-sm ${color}`}>
-        <Icon className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1 text-left">
-        <span className="block text-xl font-bold leading-none tabular-nums text-slate-950">{value}</span>
-        <span className="mt-1.5 block text-[10px] font-semibold leading-snug text-slate-600 [overflow-wrap:anywhere]">
-          {label}
-        </span>
-      </span>
-    </div>
-  );
-  if (onClick) {
-    return (
-      <button type="button" onClick={onClick} className="block w-full min-w-0 text-left" data-testid={`ops-kpi-${label}`}>
-        {body}
-      </button>
-    );
-  }
-  return body;
-}
-
 function resolveClaimDisplayDate(claim: {
   notificationDate?: string | null;
   lossDate?: string | null;
@@ -313,6 +266,10 @@ const COL_DIVIDER =
 
 type OpsStats = {
   open: number;
+  openClaims?: number;
+  openedTodayClaims?: number;
+  openEmergency?: number;
+  openedTodayEmergency?: number;
   urgent: number;
   openedToday: number;
   approvalPending: number;
@@ -399,6 +356,14 @@ function OperasyonPageContent() {
 
   useEffect(() => {
     setColsStorageKey(resolveOpsColumnsStorageKey(filterType));
+  }, [filterType]);
+
+  useEffect(() => {
+    const previous = document.title;
+    document.title = filterType === 'acil' ? 'Acil Yardım Dosyaları' : 'Dosya Özeti';
+    return () => {
+      document.title = previous;
+    };
   }, [filterType]);
 
   const patchClaimInsuredName = useCallback((claimId: string, insuredName: string) => {
@@ -778,7 +743,7 @@ function OperasyonPageContent() {
         {isAcilListMode ? (
           <span className="text-slate-600 font-medium">Acil Yardım Dosyaları</span>
         ) : (
-          <span className="text-slate-600 font-medium">Operasyon</span>
+          <span className="text-slate-600 font-medium">Dosya Özeti</span>
         )}
       </nav>
 
@@ -816,7 +781,7 @@ function OperasyonPageContent() {
               </>
             ) : (
               <>
-                <h1 className="page-title">Operasyon</h1>
+                <h2 className="page-title">Dosya Özeti</h2>
                 <p className="page-subtitle">Dosyaya girmeden: durum, kimde, risk ve gecikme süresi</p>
               </>
             )}
@@ -858,8 +823,32 @@ function OperasyonPageContent() {
         </div>
       </div>
 
-      {/* Operasyon KPI — Acil listesinde Hasar gibi sade kabuk; KPI gizlenir */}
-      {!isAcilListMode && (
+      {/* Dosya Özeti KPI — Acil listesinde yalnız acil sayıları */}
+      {isAcilListMode ? (
+      <div
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+        data-testid="ops-kpi-band-acil"
+      >
+        <OpsStripKpi
+          label="Açık Dosya"
+          value={opsStats?.openEmergency ?? opsStats?.urgent ?? '—'}
+          color="bg-brand-600"
+          icon={FolderOpen}
+        />
+        <OpsStripKpi
+          label="Bugün Açılan"
+          value={opsStats?.openedTodayEmergency ?? '—'}
+          color="bg-emerald-600"
+          icon={CalendarPlus}
+        />
+        <OpsStripKpi
+          label="Toplam Satır"
+          value={filteredRows.length}
+          color="bg-orange-600"
+          icon={FileText}
+        />
+      </div>
+      ) : (
       <div
         className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8"
         data-testid="ops-kpi-band"

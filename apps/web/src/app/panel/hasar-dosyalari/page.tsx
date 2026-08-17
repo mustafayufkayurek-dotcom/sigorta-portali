@@ -24,6 +24,14 @@ import { resolveClaimSupplierDisplayName } from '@/utils/claim-supplier-display'
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
+import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
+import {
+  CalendarPlus,
+  ClipboardCheck,
+  FileEdit,
+  FolderOpen,
+  Hourglass,
+} from 'lucide-react';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
@@ -314,6 +322,18 @@ function ClaimFilesPageContent() {
     [claims],
   );
 
+  const { data: opsStats } = useApiQuery<{
+    openClaims?: number;
+    openedTodayClaims?: number;
+    approvalPending?: number;
+    reportWriting?: number;
+    reportApproval?: number;
+  }>(
+    ['claim-files-operation-stats'],
+    '/claim-files/operation-stats',
+    { enabled: !isFieldStaff },
+  );
+
   // --- TanStack Query: Pending Revisions ---
   const { data: revisionsResponse } = useApiQuery<unknown>(
     ['revision-requests-pending'],
@@ -483,6 +503,41 @@ function ClaimFilesPageContent() {
           )}
         </div>
       </div>
+
+      {!isFieldStaff && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" data-testid="hasar-kpi-band">
+          <OpsStripKpi
+            label="Açık Dosya"
+            value={opsStats?.openClaims ?? '—'}
+            color="bg-brand-600"
+            icon={FolderOpen}
+          />
+          <OpsStripKpi
+            label="Onay Bekleyen"
+            value={opsStats?.approvalPending ?? '—'}
+            color="bg-status-warning"
+            icon={Hourglass}
+          />
+          <OpsStripKpi
+            label="Rapor Yazılıyor"
+            value={opsStats?.reportWriting ?? '—'}
+            color="bg-orange-500"
+            icon={FileEdit}
+          />
+          <OpsStripKpi
+            label="Rapor Onayı"
+            value={opsStats?.reportApproval ?? '—'}
+            color="bg-amber-600"
+            icon={ClipboardCheck}
+          />
+          <OpsStripKpi
+            label="Bugün Açılan"
+            value={opsStats?.openedTodayClaims ?? '—'}
+            color="bg-emerald-600"
+            icon={CalendarPlus}
+          />
+        </div>
+      )}
 
       <SlidePanel
         open={showNewPanel}

@@ -1573,7 +1573,9 @@ export default function GelenKutusuPage() {
           <div>
             <h1 className="page-title">Gelen Kutusu</h1>
             <p className="page-subtitle">
-              ihbar@ ve hasar@ paylaşımlı kutularından gelen mailler — sınıflandırma ve yönlendirme
+              {stats
+                ? `${stats.pending} bekleyen · ${stats.unownedCount ?? 0} sahipsiz · ${stats.today} bugün gelen`
+                : 'ihbar@ ve hasar@ paylaşımlı kutularından gelen mailler'}
             </p>
           </div>
         </div>

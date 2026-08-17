@@ -217,13 +217,34 @@ interface NavigationLink {
   exactMatch?: boolean;
   /** Öncesinde +8px grup boşluğu (Enterprise Sol Menü) */
   groupStart?: boolean;
+  /** Sayfa değil; yalnız alt menü aç/kapa (Operasyon grubu) */
+  groupOnly?: boolean;
 }
 
 const OPERASYON_NAV_CHILDREN: NavigationLink[] = [
+  { title: 'Gelen Kutusu', href: '/panel/operasyon/gelen-kutusu' },
   { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
   { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
-  { title: 'Gelen Kutusu', href: '/panel/operasyon/gelen-kutusu' },
+  { title: 'Dosya Özeti', href: '/panel/operasyon', exactMatch: true },
 ];
+
+function isOperasyonChildActive(
+  pathname: string,
+  href: string,
+  opsFilter: string | null,
+  exactMatch?: boolean,
+): boolean {
+  const [path, qs = ''] = href.split('?');
+  const hrefFilter = new URLSearchParams(qs).get('filter');
+  if (path === '/panel/operasyon' && hrefFilter === 'acil') {
+    return pathname === '/panel/operasyon' && opsFilter === 'acil';
+  }
+  if (path === '/panel/operasyon' && (exactMatch || !hrefFilter)) {
+    return pathname === '/panel/operasyon' && opsFilter !== 'acil';
+  }
+  if (path === '/panel') return pathname === '/panel';
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
 
 interface PanelSidebarProps {
   pathname: string;
@@ -279,6 +300,7 @@ function getPanelMainLinks({
               href: '/panel/operasyon',
               alertCount: opsBadge,
               icon: ClipboardList,
+              groupOnly: true,
               children: OPERASYON_NAV_CHILDREN,
             },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
@@ -310,6 +332,7 @@ function getPanelMainLinks({
               href: '/panel/operasyon',
               alertCount: opsBadge,
               icon: ClipboardList,
+              groupOnly: true,
               children: OPERASYON_NAV_CHILDREN,
             },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
@@ -333,6 +356,7 @@ function getPanelMainLinks({
             alertCount: opsBadge,
             icon: ClipboardList,
             groupStart: true,
+            groupOnly: true,
             children: OPERASYON_NAV_CHILDREN,
           },
           { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList, groupStart: true },
@@ -421,6 +445,7 @@ function Navbar({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   /** Mobil alt menü accordion — masaüstü sidebar ile aynı davranış */
   const [mobileExpandedGroups, setMobileExpandedGroups] = useState<Record<string, boolean>>({});
+  const [mobileOpsFilter, setMobileOpsFilter] = useState<string | null>(null);
   const [profileDropOpen, setProfileDropOpen] = useState(false);
   const [quickActionOpen, setQuickActionOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -438,6 +463,11 @@ function Navbar({
       /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
     setSearchShortcut(isMac ? '⌘K' : 'Ctrl+K');
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setMobileOpsFilter(new URLSearchParams(window.location.search).get('filter'));
+  }, [pathname, mobileMenuOpen]);
 
   // Ctrl+K / Cmd+K → arama aç
   useEffect(() => {
@@ -820,40 +850,57 @@ function Navbar({
                       const visibleChildren = (link.children ?? []).filter((child) => canSee(child.href));
                       const hasChildren = visibleChildren.length > 0;
                       const childIsActive = hasChildren
-                        && visibleChildren.some((child) => {
-                          const pathOnly = child.href.split('?')[0] || child.href;
-                          if (pathOnly === '/panel') return pathname === '/panel';
-                          return pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
-                        });
-                      const parentPath = link.href.split('?')[0] || link.href;
-                      const parentIsActive =
-                        pathname === parentPath || pathname.startsWith(`${parentPath}/`);
+                        && visibleChildren.some((child) =>
+                          isOperasyonChildActive(pathname, child.href, mobileOpsFilter, child.exactMatch),
+                        );
                       const isExpanded = hasChildren
-                        ? (mobileExpandedGroups[link.href] ?? (childIsActive || parentIsActive))
+                        ? (mobileExpandedGroups[link.href] ?? childIsActive)
                         : false;
+                      const parentClassName = `flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:hover:bg-slate-800 ${
+                        childIsActive
+                          ? 'bg-blue-50/50 text-blue-700 dark:bg-slate-800 dark:text-blue-300'
+                          : 'text-slate-700 dark:text-slate-200'
+                      }`;
+                      const parentInner = (
+                        <>
+                          <span className="inline-flex min-w-0 items-center gap-2">
+                            {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
+                            <span className="truncate">{link.title}</span>
+                          </span>
+                          {link.alertCount && link.alertCount > 0 ? (
+                            <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-status-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
+                              {link.alertCount > 99 ? '99+' : link.alertCount}
+                            </span>
+                          ) : null}
+                        </>
+                      );
 
                       return (
                         <div key={`${link.href}:${link.title}`} className="space-y-0.5">
                           <div className="flex items-stretch gap-0.5">
-                            <Link
-                              href={link.href}
-                              className={`flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:hover:bg-slate-800 ${
-                                childIsActive || pathname === link.href.split('?')[0]
-                                  ? 'bg-blue-50/50 text-blue-700 dark:bg-slate-800 dark:text-blue-300'
-                                  : 'text-slate-700 dark:text-slate-200'
-                              }`}
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              <span className="inline-flex min-w-0 items-center gap-2">
-                                {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
-                                <span className="truncate">{link.title}</span>
-                              </span>
-                              {link.alertCount && link.alertCount > 0 ? (
-                                <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-status-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                  {link.alertCount > 99 ? '99+' : link.alertCount}
-                                </span>
-                              ) : null}
-                            </Link>
+                            {link.groupOnly ? (
+                              <button
+                                type="button"
+                                className={parentClassName}
+                                aria-expanded={isExpanded}
+                                onClick={() =>
+                                  setMobileExpandedGroups((prev) => ({
+                                    ...prev,
+                                    [link.href]: !isExpanded,
+                                  }))
+                                }
+                              >
+                                {parentInner}
+                              </button>
+                            ) : (
+                              <Link
+                                href={link.href}
+                                className={parentClassName}
+                                onClick={() => setMobileMenuOpen(false)}
+                              >
+                                {parentInner}
+                              </Link>
+                            )}
                             {hasChildren ? (
                               <button
                                 type="button"
@@ -877,9 +924,12 @@ function Navbar({
                           {hasChildren && isExpanded ? (
                             <div className="ml-4 space-y-0.5 border-l border-slate-100 pl-2 dark:border-slate-800">
                               {visibleChildren.map((child) => {
-                                const pathOnly = child.href.split('?')[0] || child.href;
-                                const active =
-                                  pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
+                                const active = isOperasyonChildActive(
+                                  pathname,
+                                  child.href,
+                                  mobileOpsFilter,
+                                  child.exactMatch,
+                                );
                                 return (
                                   <Link
                                     key={`${child.href}:${child.title}`}
@@ -994,12 +1044,17 @@ function PanelSidebar({
   // (useSearchParams paylaşılan layout'ta build hatasına yol açtığından) query'yi burada
   // window.location üzerinden takip ediyoruz.
   const [activeQueueParam, setActiveQueueParam] = useState<string | null>(null);
+  const [activeOpsFilter, setActiveOpsFilter] = useState<string | null>(null);
   const [expertNavCounts, setExpertNavCounts] = useState<ExpertPortalNavCounts>({});
   const [insuranceNavCounts, setInsuranceNavCounts] = useState<InsurancePortalNavCounts>({});
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const readQueue = () => setActiveQueueParam(new URLSearchParams(window.location.search).get('queue'));
+    const readQueue = () => {
+      const params = new URLSearchParams(window.location.search);
+      setActiveQueueParam(params.get('queue'));
+      setActiveOpsFilter(params.get('filter'));
+    };
     readQueue();
     window.addEventListener('popstate', readQueue);
     return () => window.removeEventListener('popstate', readQueue);
@@ -1074,6 +1129,9 @@ function PanelSidebar({
 
   const isActive = (href: string, exactMatch?: boolean) => {
     const [normalizedHref, hrefQueryString = ''] = href.split('?');
+    if (normalizedHref === '/panel/operasyon' || normalizedHref.startsWith('/panel/operasyon/')) {
+      return isOperasyonChildActive(pathname, href, activeOpsFilter, exactMatch);
+    }
     const pathMatches = exactMatch
       ? pathname === normalizedHref
       : normalizedHref === '/panel'
@@ -1135,21 +1193,16 @@ function PanelSidebar({
     const childIsActive = hasChildren
       ? visibleChildren.some((child) => isActive(child.href, child.exactMatch))
       : false;
-    const parentIsActive = isActive(link.href, link.exactMatch);
+    const parentIsActive = link.groupOnly ? childIsActive : isActive(link.href, link.exactMatch);
     const isExpanded = hasChildren
-      ? expandedGroupOverrides[link.href] ?? (childIsActive || parentIsActive)
+      ? expandedGroupOverrides[link.href] ?? childIsActive
       : false;
+    const toggleGroup = () =>
+      setExpandedGroupOverrides((prev) => ({ ...prev, [link.href]: !isExpanded }));
 
-    const linkNode = (
-      <Link
-        href={link.href}
-        className={`${linkClass(link.href, compact, undefined, link.exactMatch, isFirst)}${collapsed ? ' relative justify-center px-2' : hasChildren ? ' flex-1 min-w-0' : ''}`}
-        aria-label={collapsed ? tooltipLabel : undefined}
-        onClick={() => {
-          const hrefQueryString = link.href.split('?')[1] ?? '';
-          setActiveQueueParam(new URLSearchParams(hrefQueryString).get('queue'));
-        }}
-      >
+    const sharedClass = `${linkClass(link.href, compact, parentIsActive, link.exactMatch, isFirst)}${collapsed ? ' relative justify-center px-2' : hasChildren ? ' flex-1 min-w-0' : ''}`;
+    const inner = (
+      <>
         <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2.5'}`}>
           {link.icon ? <link.icon className="panel-sidebar-nav-icon" strokeWidth={1.75} /> : null}
           {!collapsed ? <span className="truncate">{link.title}</span> : null}
@@ -1171,6 +1224,35 @@ function PanelSidebar({
             aria-hidden="true"
           />
         ) : null}
+      </>
+    );
+
+    const linkNode = link.groupOnly && hasChildren && !collapsed ? (
+      <button
+        type="button"
+        className={sharedClass}
+        aria-label={tooltipLabel}
+        aria-expanded={isExpanded}
+        onClick={toggleGroup}
+      >
+        {inner}
+      </button>
+    ) : (
+      <Link
+        href={link.href}
+        className={sharedClass}
+        aria-label={collapsed ? tooltipLabel : undefined}
+        onClick={() => {
+          const hrefQueryString = link.href.split('?')[1] ?? '';
+          setActiveQueueParam(new URLSearchParams(hrefQueryString).get('queue'));
+          if (hrefQueryString.includes('filter=')) {
+            setActiveOpsFilter(new URLSearchParams(hrefQueryString).get('filter'));
+          } else if (link.href.split('?')[0] === '/panel/operasyon') {
+            setActiveOpsFilter(null);
+          }
+        }}
+      >
+        {inner}
       </Link>
     );
 
