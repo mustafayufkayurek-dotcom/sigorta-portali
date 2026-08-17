@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-17",
-  "label": "v509-inbox-nav",
-  "description": "Full v509: Gelen Kutusu Operasyon alt menüsünde. Operasyon tıklaması sayfayı açar (ok alt menüyü açar/kapar). Poliçe no dosya no olarak kaydedilmez. Migration yok. Rollback web v508 / backend v508.",
+  "label": "v510-dosya-ozeti",
+  "description": "Full v510: Operasyon menü grubu; Dosya Özeti sayfa başlığı; Gelen Kutusu üstte; Hasar/Acil/Gelen Kutusu rakam özeti. Migration yok. Rollback web v509 / backend v509.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v509-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v509-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v510-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v510-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v508-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v508-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v509-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v509-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
