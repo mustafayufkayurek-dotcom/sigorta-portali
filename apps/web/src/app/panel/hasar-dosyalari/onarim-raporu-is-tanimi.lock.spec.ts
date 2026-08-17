@@ -34,4 +34,9 @@ describe('onarim-raporu iş tanımı LOCK', () => {
     assert.match(selector, /İş tanımı eklenemedi/);
     assert.doesNotMatch(selector, /catch \{ \/\* ignore \*\/ \}/);
   });
+
+  it('Acil rapor başlığı Taslak/Sunuldu ikilisi kullanmaz; gerçek aşama etiketi gösterir', () => {
+    assert.doesNotMatch(page, /status === 'draft' \? 'Taslak' : 'Sunuldu'/);
+    assert.match(page, /repairReportStatusLabel\(report\.status\)/);
+  });
 });

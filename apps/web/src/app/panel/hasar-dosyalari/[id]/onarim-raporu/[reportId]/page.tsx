@@ -4062,8 +4062,8 @@ function EmergencyReportEditor({
           </div>
         </div>
         <Badge
-          text={report.status === 'draft' ? 'Taslak' : 'Sunuldu'}
-          color={report.status === 'draft' ? 'bg-slate-100 text-slate-600' : 'bg-blue-100 text-blue-700'}
+          text={repairReportStatusLabel(report.status)}
+          color={repairReportStatusBadge(report.status)}
         />
         <div className="ml-auto flex items-center gap-2 flex-wrap">
           {/* Müşteri Görünümü / Tam Görünüm toggle */}
@@ -4248,8 +4248,8 @@ function EmergencyReportEditor({
           <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
             <p className="text-xs font-medium text-slate-500 mb-2">Rapor Durumu</p>
             <Badge
-              text={report.status === 'draft' ? 'Taslak' : 'Sunuldu'}
-              color={report.status === 'draft' ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700'}
+              text={repairReportStatusLabel(report.status)}
+              color={repairReportStatusBadge(report.status)}
             />
             {isEditable && (
               <button type="button" onClick={handleSubmitReport} className="w-full mt-3 bg-emerald-600 text-white py-2 rounded-lg text-xs hover:bg-emerald-700">

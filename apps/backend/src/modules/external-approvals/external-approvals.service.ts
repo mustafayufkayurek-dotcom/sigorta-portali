@@ -101,7 +101,7 @@ export class ExternalApprovalsService {
 
     // E-posta gönderimi
     if (dto.channel === 'email' && dto.approverEmail) {
-      await this.sendApprovalEmail(approval.id, report, dto.approverEmail, token);
+      await this.sendApprovalEmail(approval.id, reportId, dto.approverEmail, token);
     }
 
     const publicUrl = this.buildPublicUrl(token);
@@ -533,14 +533,53 @@ export class ExternalApprovalsService {
 
   private async sendApprovalEmail(
     approvalId: string,
-    report: any,
+    reportId: string,
     email: string,
     token: string,
   ) {
     const approvalUrl = this.buildPublicUrl(token);
+    const pdfReport = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      include: {
+        claimFile: {
+          select: {
+            id: true,
+            fileNo: true,
+            claimNo: true,
+            lossType: true,
+            insuredName: true,
+            insuredPhone: true,
+            commercialTitle: true,
+            insuranceCompany: { select: { name: true } },
+            customer: { select: { fullName: true, companyName: true, entityType: true, subType: true, firstName: true, lastName: true } },
+            claimSubject: { select: { name: true } },
+            propertyAddress: { select: { city: true, district: true, addressLine: true } },
+            assignedOfficeUser: { select: { firstName: true, lastName: true } },
+          },
+        },
+        expertOffice: {
+          select: { id: true, companyName: true, phone: true, email: true },
+        },
+        originalReport: { select: { id: true, reportNo: true, versionNo: true, createdAt: true } },
+        items: {
+          include: { workGroup: true, damageType: true },
+          orderBy: [{ workGroup: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
+        },
+        images: { orderBy: { sortOrder: 'asc' } },
+        damageTypes: { orderBy: { sortOrder: 'asc' } },
+        approvalHistory: {
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+    if (!pdfReport) throw new NotFoundException('Rapor bulunamadı');
+
     let pdfBuffer: Buffer | null = null;
     try {
-      pdfBuffer = await this.pdfService.generate(report as any, 'external');
+      pdfBuffer = await this.pdfService.generate(pdfReport as any, 'external');
     } catch (pdfErr) {
       this.logger.error(
         `Dış onay maili için PDF üretilemedi (approval: ${approvalId}): ${(pdfErr as Error)?.message ?? pdfErr}`,
@@ -553,16 +592,16 @@ export class ExternalApprovalsService {
 
     const result = await this.email.sendEmail(
       email,
-      `Onay Talebi: ${report.reportNo} — Hasar Onarım Raporu`,
+      `Onay Talebi: ${pdfReport.reportNo} — Hasar Onarım Raporu`,
       `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #1e40af;">Hasar Onarım Raporu Onay Talebi</h2>
             <p>Sayın yetkili,</p>
-            <p><strong>${report.reportNo}</strong> numaralı hasar onarım raporu onayınızı beklemektedir.</p>
+            <p><strong>${pdfReport.reportNo}</strong> numaralı hasar onarım raporu onayınızı beklemektedir.</p>
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
-              <p style="margin: 4px 0;"><strong>Rapor No:</strong> ${report.reportNo}</p>
-              <p style="margin: 4px 0;"><strong>Hasar Dosya No:</strong> ${report.claimFile?.fileNo ?? '—'}</p>
-              <p style="margin: 4px 0;"><strong>Sigorta Şirketi:</strong> ${report.claimFile?.insuranceCompany?.name ?? '—'}</p>
+              <p style="margin: 4px 0;"><strong>Rapor No:</strong> ${pdfReport.reportNo}</p>
+              <p style="margin: 4px 0;"><strong>Hasar Dosya No:</strong> ${pdfReport.claimFile?.fileNo ?? '—'}</p>
+              <p style="margin: 4px 0;"><strong>Sigorta Şirketi:</strong> ${pdfReport.claimFile?.insuranceCompany?.name ?? '—'}</p>
             </div>
             <p>Rapor PDF ektedir. İncelemek ve onaylamak için aşağıdaki linke tıklayın:</p>
             <a href="${approvalUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
@@ -574,10 +613,10 @@ export class ExternalApprovalsService {
           </div>
         `,
       {
-        text: `${report.reportNo} numaralı hasar onarım raporu onayınızı bekliyor: ${approvalUrl}`,
+        text: `${pdfReport.reportNo} numaralı hasar onarım raporu onayınızı bekliyor: ${approvalUrl}`,
         attachments: [
           {
-            filename: `hasar-raporu-DIS-${report.reportNo}.pdf`,
+            filename: `hasar-raporu-DIS-${pdfReport.reportNo}.pdf`,
             content: pdfBuffer,
             contentType: 'application/pdf',
           },

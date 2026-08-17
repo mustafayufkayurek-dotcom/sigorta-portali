@@ -17,6 +17,7 @@ import {
   allocateExternalColWidths,
   chunkPhotoRows,
 } from './report-pdf-fields';
+import { isRepairReportPdfDraft } from '@sigorta/shared';
 
 interface ReportItem {
   workGroup?: { name: string; id?: string } | null;
@@ -392,7 +393,7 @@ export class ReportPdfService {
     // Dynamic base URL — falls back to APP_BASE_URL then APP_URL
     const appUrl = resolveAppUrl(this.config);
 
-    const isDraft = report.status === 'draft' || !report.status;
+    const isDraft = isRepairReportPdfDraft(report.status, report.approvalHistory);
     const identity = mapRepairReportPdfIdentity(report);
     const dash = (v: string) => (v ? escHtml(v) : '—');
 
