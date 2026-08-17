@@ -222,10 +222,10 @@ interface NavigationLink {
 }
 
 const OPERASYON_NAV_CHILDREN: NavigationLink[] = [
+  { title: 'Dosya Özeti', href: '/panel/operasyon', exactMatch: true },
   { title: 'Gelen Kutusu', href: '/panel/operasyon/gelen-kutusu' },
   { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
   { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
-  { title: 'Dosya Özeti', href: '/panel/operasyon', exactMatch: true },
 ];
 
 function isOperasyonChildActive(
