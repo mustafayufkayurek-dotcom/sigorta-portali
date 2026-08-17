@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-17",
-  "label": "v507-dosya-no-sigorta",
-  "description": "Web-only v507: Dosya No kolonuna sigorta markası (EUREKO) yazılmaz. Migration yok. Backend v501. Rollback web v506 / backend v500.",
+  "label": "v508-inbox-dosya-no",
+  "description": "Full v508: Gelen kutu mailinde Dosya No olarak sigorta markası (EUREKO) kabul edilmez; konudan numara alınır ve uyarı gösterilir. Migration yok. Rollback web v507 / backend v501.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v501-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v507-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v508-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v508-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v506-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v500-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v507-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v501-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
