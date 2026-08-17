@@ -5,6 +5,7 @@ export * from './agreement-templates';
 export * from './inbound-mail-terminology';
 export * from './inbound-form-fields';
 export * from './file-no-normalize';
+export * from './inbound-file-no';
 export * from './repair-report-expert';
 export * from './repair-report-revision';
 export * from './claim-file-stage';

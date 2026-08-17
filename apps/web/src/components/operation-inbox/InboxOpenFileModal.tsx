@@ -2,6 +2,7 @@
 
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import type { InboxFileOpenDraft } from '@/utils/inbox-file-open-draft';
+import { isInsuranceBrandFileNo } from '@/utils/claim-list-column-fields';
 import {
   CUSTOMER_TYPE_OPTIONS,
   DEFAULT_CUSTOMER_SUB_TYPES,
@@ -316,14 +317,16 @@ export function InboxOpenFileModal({
   const newCustomerTypeOk =
     !createNewCustomer
     || (!!newCustomerEntityType && !!newCustomerSubType?.trim());
+  const fileNoBrand = isInsuranceBrandFileNo(fileNo, draft.insurer);
   const canConfirm =
-    !loading && instructionOk && insuranceOk && insuredOk && assistantOk && newCustomerTypeOk;
+    !loading && instructionOk && insuranceOk && insuredOk && assistantOk && newCustomerTypeOk && !fileNoBrand;
 
   const confirmBlockers: string[] = [];
   if (!instructionOk) confirmBlockers.push('Talimat en az 3 karakter olmalı');
   if (!insuredOk) confirmBlockers.push('Sigortalı adı soyadı gerekli');
   if (kind === 'emergency' && !assistantOk) confirmBlockers.push('Asistan firması seçilmeli');
   if (kind === 'claim' && !insuranceOk) confirmBlockers.push('Sigorta şirketi seçilmeli');
+  if (fileNoBrand) confirmBlockers.push('Dosya No sigorta şirketi adı olamaz');
   if (createNewCustomer && !newCustomerTypeOk) {
     confirmBlockers.push('Müşteri tipi ve alt tip seçilmeli');
   }
@@ -352,6 +355,12 @@ export function InboxOpenFileModal({
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
               Mail içeriği otomatik okunamadı veya eksik. Tüm alanları manuel girebilirsiniz;
               dosya sorumlusu eksper sisteme giremese bile dosyayı buradan tamamlayabilir.
+            </div>
+          )}
+
+          {draft.fileNoWarning && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+              {draft.fileNoWarning}
             </div>
           )}
 

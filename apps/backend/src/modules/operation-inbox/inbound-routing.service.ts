@@ -4,6 +4,7 @@ import {
   mapInboundCategoryToMeridyen,
   mapInboundLossTypeToMeridyen,
   resolveInsuredPhoneForInbox,
+  resolveInboundFileNo,
 } from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ClaimResponsibilitiesService } from '../claim-responsibilities/claim-responsibilities.service';
@@ -295,6 +296,13 @@ export class InboundRoutingService {
       }) ?? null;
     if (!extracted.policyNo?.trim()) extracted.policyNo = heuristic.policyNo ?? null;
     if (!extracted.fileNo?.trim()) extracted.fileNo = heuristic.fileNo ?? null;
+    const resolvedFileNo = resolveInboundFileNo({
+      bodyFileNo: extracted.fileNo,
+      insurer: heuristic.insurer,
+      subject: message.subject,
+      policyNo: extracted.policyNo,
+    });
+    extracted.fileNo = resolvedFileNo.fileNo;
     if (!extracted.claimNo?.trim()) extracted.claimNo = heuristic.claimNo ?? null;
     if (!extracted.fileSubject?.trim()) extracted.fileSubject = heuristic.fileSubject ?? null;
     if (!extracted.lossType?.trim()) extracted.lossType = heuristic.lossType ?? null;
@@ -326,6 +334,9 @@ export class InboundRoutingService {
 
     const warnings: string[] = [];
     const reasons: string[] = [];
+    if (resolvedFileNo.warning) {
+      warnings.push(resolvedFileNo.warning);
+    }
     if (addressInferredFromExistingFile) {
       reasons.push('Adres mevcut dosya kaydından eşleştirildi');
     }

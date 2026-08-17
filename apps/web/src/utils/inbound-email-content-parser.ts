@@ -11,6 +11,7 @@ import {
   decodeInboundEmailText,
   extractInboundFormFields,
   INBOUND_ADDRESS_FIELD_LABELS,
+  resolveInboundFileNo,
 } from '@sigorta/shared';
 
 export type InboxSenderProfile = 'remed' | 'safran' | 'insurance' | 'unknown';
@@ -40,6 +41,7 @@ export interface ParsedInboxEmailContent {
   phone?: string;
   claimNo?: string;
   fileNo?: string;
+  fileNoWarning?: string;
   policyNo?: string;
   address?: string;
   insurer?: string;
@@ -160,12 +162,19 @@ export function parseInboundEmailContent(input: {
   );
   const phone = phoneFromFields ?? findInsuredMobilePhoneInText(text);
 
-  const fileNo = fieldValue(fieldMap, 'Dosya No') ?? subjectParts?.remedFileNo ?? subjectParts?.claimNo;
+  const rawFileNo = fieldValue(fieldMap, 'Dosya No') ?? subjectParts?.remedFileNo ?? subjectParts?.claimNo;
   const policyNo = fieldValue(fieldMap, 'Poliçe No') ?? subjectParts?.fileOrPolicyNo;
+  const insurer = fieldValue(fieldMap, 'Sigorta Şirketi');
+  const resolvedFileNo = resolveInboundFileNo({
+    bodyFileNo: rawFileNo,
+    insurer,
+    subject: input.subject,
+    policyNo,
+  });
+  const fileNo = resolvedFileNo.fileNo ?? undefined;
   const claimRaw = fieldValue(fieldMap, 'Referans No') ?? subjectParts?.fileOrPolicyNo ?? subjectParts?.remedFileNo;
   const claimNo = normalizeClaimNo(claimRaw);
   const address = fieldValue(fieldMap, ...INBOUND_ADDRESS_FIELD_LABELS);
-  const insurer = fieldValue(fieldMap, 'Sigorta Şirketi');
   const bodyCategory = fieldValue(fieldMap, 'Hasar Şekli', 'Branş');
   const category = bodyCategory ?? subjectParts?.category;
   const fileSubject =
@@ -190,6 +199,7 @@ export function parseInboundEmailContent(input: {
     phone,
     claimNo,
     fileNo,
+    fileNoWarning: resolvedFileNo.warning ?? undefined,
     policyNo,
     address,
     insurer,

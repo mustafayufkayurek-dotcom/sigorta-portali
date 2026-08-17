@@ -69,4 +69,20 @@ Adres: ${address}
     expect(found).toContain('539');
     expect(found).not.toContain('174');
   });
+
+  it('Dosya No alanındaki sigorta markasını konu satırındaki numarayla değiştirir', () => {
+    const fields = extractHeuristicFields({
+      subject: 'EUREKO 26645495 ILKNUR YILMAZ',
+      bodyText: `
+Sigorta şirketi: EUREKO
+Poliçe No: 89046645
+Dosya No: EUREKO
+Sigortalı: İLKNUR YILMAZ
+`.trim(),
+      bodyPreview: null,
+      bodyHtml: null,
+    });
+    expect(fields.fileNo).toBe('26645495');
+    expect(fields.fileNoWarning).toContain('26645495');
+  });
 });
