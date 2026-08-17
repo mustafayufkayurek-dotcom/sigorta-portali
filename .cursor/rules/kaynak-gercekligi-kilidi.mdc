@@ -1,0 +1,40 @@
+---
+description: Onaylı canlı kaynak ile laptop WIP karışmasını yasaklar — yapılmış işin bozulmasının kök kilidi
+alwaysApply: true
+---
+
+# Kaynak Gerçekliği Kilidi (kalıcı)
+
+**Kaynak olay:** Onaylı canlı ekranlar, laptop WIP (~yüzlerce kayıtsız dosya), eski worktree veya kısmi rsync ile eziliyordu. GitHub uzun süre canlıyı temsil etmiyordu.
+
+**Temel cümle:** Canlıya gidecek tek kod, kilitli production snapshot’tır. Kirli çalışma ağacı canlı değildir.
+
+## Üç doğru kopya (karışmaz)
+
+| Kopya | Rol | Canlıya gider mi? |
+|-------|-----|-------------------|
+| Production VPS `/opt/app` + Docker image (KNOWN_GOOD) | Çalışan ürün | Zaten canlı |
+| GitHub `release/production-v505-clean` + tag `production-v505-2026-08-17` (`04d52b8` uygulama; sonraki docs commit’leri tag’i taşımaz) | Resmi kaynak | Yalnızca bu soydan, onaylı deploy |
+| Laptop WIP (`fix/v483-guven-paketi` ve kayıtsız dosyalar) | Deneme | **Asla rsync / build context / “şuradan kopyala”** |
+
+Yeni iş: **tag / clean branch’ten yeni dal.** WIP’ten devam edip canlıya sürme yok.
+
+## Yasak (açık onay yoksa)
+
+1. Laptop dirty tree’den production rsync.
+2. Eski worktree (d272, d278, `/tmp` karışık snapshot hariç bilinçli DR) dosya kopyası.
+3. “Hazır duruyor” diye WIP dosyayı onaylı ekrana yapıştırma.
+4. Kısmi rsync sonrası hash yokken build.
+5. `docker compose up` **`-p sigorta-hasar-sistemi` olmadan** web/backend.
+6. Feature freeze açıkken yeni ekran + aynı PR’da kilitli kabuk.
+
+## Zorunlu
+
+1. Deploy öncesi: kaynak dal = clean release soyu veya Mustafa’nın yazdığı etiket. `git status` kirliyse **dur**.
+2. Tek görev = mümkün olan en az dosya; kilitli ekrana (liste, planlayıcı, kabuk, finans KPI) “yanından geçerken” dokunma.
+3. Bitmiş işin dosyasına yeni özellik için girmek ürün kararıdır — dur, sor.
+4. Canlı doğrulama: Cursor production login yapmaz; kullanıcı kabulü kapanıştır.
+
+## Durdurma
+
+WIP’ten canlı, tag’siz “full rsync”, veya onaylı UI’yı estetik için açma → **dur, Mustafa onayı iste**.
