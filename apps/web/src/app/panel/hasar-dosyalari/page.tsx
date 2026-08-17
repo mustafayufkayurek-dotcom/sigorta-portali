@@ -19,7 +19,7 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
-import { claimListFileNo } from '@/utils/claim-list-column-fields';
+import { claimListFileNo, claimListInsuranceCompanyName } from '@/utils/claim-list-column-fields';
 import { resolveClaimSupplierDisplayName } from '@/utils/claim-supplier-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
@@ -710,7 +710,7 @@ function ClaimFilesPageContent() {
                   </div>
                 );
               }
-              const customerName = claim.insuranceCompany?.name ?? '—';
+              const customerName = claimListInsuranceCompanyName(claim);
               const insuredName = resolveHasarInsuredName(claim);
               const revCount = pendingRevisionMap[claim.id] ?? 0;
               const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
@@ -841,7 +841,7 @@ function ClaimFilesPageContent() {
               </thead>
               <tbody className="table-body">
                 {visibleClaims.map((claim: any) => {
-                  const customerName = claim.insuranceCompany?.name ?? '—';
+                  const customerName = claimListInsuranceCompanyName(claim);
                   const insuredName = resolveHasarInsuredName(claim);
                   const revCount = pendingRevisionMap[claim.id] ?? 0;
                   const invStatus = deriveInvoiceStatus(claim.invoices ?? []);

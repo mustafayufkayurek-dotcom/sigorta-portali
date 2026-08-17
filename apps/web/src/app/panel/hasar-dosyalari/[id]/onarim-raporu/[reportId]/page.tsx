@@ -26,6 +26,7 @@ import {
   buildVendorQuoteMetrajData,
   type VendorQuoteData,
 } from '@/components/damage-reports/VendorQuotePopover';
+import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
 import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_VERSION, REPAIR_REPORT_MAX_REVISION_MESSAGE, canCreateRepairReportRevision, isRepairReportRevision } from '@sigorta/shared';
 import RepairItemsModal, {
@@ -5543,8 +5544,9 @@ export default function RepairReportPage() {
           tryNavigate(() => router.push(claimPath), 'leave');
         }} className="text-slate-400 hover:text-slate-700 text-sm shrink-0 mt-1">← Geri</button>
         <div className="min-w-0 flex-1 basis-[12rem]">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h2 className="text-lg font-bold text-slate-900">{report.claimFile?.fileNo ?? '—'}</h2>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">{claimListFileNo(report.claimFile)}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             {report.claimFile?.insuranceCompany?.name && (
               <span className="text-xs text-slate-500">
                 Sigorta Şirketi: <span className="font-semibold text-slate-700">{report.claimFile.insuranceCompany.name}</span>
@@ -5575,6 +5577,7 @@ export default function RepairReportPage() {
           <p className="text-xs text-slate-400 mt-0.5">
             {fmtDateTime(report.reportDate ?? report.createdAt)}
           </p>
+          </div>
         </div>
         <div className="ml-auto flex min-w-0 max-w-full flex-col items-end gap-2">
           <ClaimFileHeaderStatusCluster

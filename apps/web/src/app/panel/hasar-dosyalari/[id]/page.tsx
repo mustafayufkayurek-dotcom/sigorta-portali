@@ -55,6 +55,7 @@ import {
 import { resolveOperationStatusLabel, INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE } from '@sigorta/shared';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { claimListFileNo } from '@/utils/claim-list-column-fields';
 
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
@@ -295,7 +296,7 @@ function FieldStaffVisitCard({
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold tracking-wide text-brand-700">Saha Tespit</p>
             <h2 className="mt-0.5 break-all font-mono text-lg font-bold leading-snug text-slate-950">
-              {claim.fileNo ?? '—'}
+              {claimListFileNo(claim)}
             </h2>
           </div>
           <span
@@ -435,8 +436,9 @@ function DosyaSayfaUstu({
           ← Geri
         </button>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h2 className="break-all text-lg font-bold leading-snug text-slate-900">{claim.fileNo}</h2>
+          <div>
+            <h2 className="break-all text-lg font-bold leading-snug text-slate-900">{claimListFileNo(claim)}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             {sigortaSirketi && (
               <span className="text-xs text-slate-500">
                 Sigorta Şirketi: <span className="font-semibold text-slate-700">{sigortaSirketi}</span>
@@ -478,6 +480,7 @@ function DosyaSayfaUstu({
             </p>
           )}
           {ihbarChip !== '—' && <p className="mt-0.5 text-xs text-slate-500">{ihbarChip}</p>}
+          </div>
         </div>
         <div className="w-full min-w-0 sm:ml-auto sm:w-auto sm:max-w-[min(100%,16rem)]">
           <ClaimFileHeaderStatusCluster
