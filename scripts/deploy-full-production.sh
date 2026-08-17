@@ -100,7 +100,7 @@ docker stop sigorta-backend sigorta-web 2>/dev/null || true
 docker rm sigorta-backend sigorta-web 2>/dev/null || true
 bash scripts/restart-web-production.sh
 docker compose -p $COMPOSE_PROJECT_NAME --env-file .env.production -f docker-compose.prod.yml -f docker-compose.override.yml up -d --no-deps backend
-sleep 30
+sleep 70
 docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health
 echo '=== prisma migrate deploy ==='
 docker exec sigorta-backend sh -c 'cd /app/apps/backend && npx prisma migrate deploy' || {

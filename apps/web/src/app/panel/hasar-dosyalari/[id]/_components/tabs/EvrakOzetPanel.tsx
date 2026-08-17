@@ -5,6 +5,7 @@ import {
   ClaimClosureConditions,
   getClaimClosureConditions,
 } from '@/utils/fileDocumentApi';
+import { ClaimManualDocumentsPanel } from '@/components/file-documents/ClaimManualDocumentsPanel';
 
 type EvrakSubTab = 'ozet' | 'sozlesmeler';
 
@@ -215,7 +216,8 @@ export function EvrakOzetPanel({
   const vendorBadge = resolveVendorBadge(conditions);
   const kapamaBadge = resolveKapamaBadge(conditions);
 
-  const muvafakatDone = conditions.muvafakatnameDigitallyApproved;
+  const muvafakatDone =
+    conditions.muvafakatnameDigitallyApproved || conditions.muvafakatnamePhysicallyUploaded;
   const vendorDone = conditions.vendorContractSigned;
 
   const muvafakatDesc =
@@ -294,6 +296,8 @@ export function EvrakOzetPanel({
           />
         </div>
       </div>
+
+      <ClaimManualDocumentsPanel claimId={claimId} onUploaded={load} />
     </div>
   );
 }

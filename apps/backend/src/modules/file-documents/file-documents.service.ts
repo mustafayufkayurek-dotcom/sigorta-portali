@@ -22,6 +22,7 @@ import {
 } from './dto/file-documents.dto';
 import { MUVAFAKATNAME_TEMPLATE } from './muvafakatname.template';
 import { escHtml, escHtmlRecord } from '@/common/utils/html-escape';
+import { StorageService } from '@/modules/storage/storage.service';
 
 /** Müşteriye dönük matbu — iç fiyat / kâr etiketleri sızmaz */
 const INTERNAL_COST_DESC_RE =
@@ -181,6 +182,7 @@ export class FileDocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly storage: StorageService,
   ) {}
 
   private renderTemplate(template: string, placeholders: Record<string, string>): string {
@@ -453,8 +455,8 @@ export class FileDocumentsService {
 
   async uploadPhysical(id: string, storageKey: string, uploadedByUserId: string) {
     const doc = await this.findOne(id);
-    if (doc.documentKind !== 'muvafakatname') {
-      throw new BadRequestException('Fiziki yükleme yalnızca muvafakatname için gereklidir');
+    if (doc.documentKind !== 'muvafakatname' && doc.documentKind !== 'anket_formu') {
+      throw new BadRequestException('Bu evrak türüne fiziki yükleme yapılamaz');
     }
     return this.prisma.fileDocument.update({
       where: { id },
@@ -465,6 +467,67 @@ export class FileDocumentsService {
         status: 'physically_uploaded',
       },
     });
+  }
+
+  /** Dosya Sorumlusu — tür seçerek imzalı / doldurulmuş evrak yükler */
+  async uploadManualForClaim(
+    claimFileId: string,
+    documentKind: 'muvafakatname' | 'anket_formu',
+    file: Express.Multer.File,
+    uploadedByUserId: string,
+  ) {
+    const cf = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      select: { id: true },
+    });
+    if (!cf) throw new NotFoundException('Hasar dosyası bulunamadı');
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Dosya seçilmedi veya okunamadı');
+    }
+
+    let doc = await this.prisma.fileDocument.findFirst({
+      where: { entityType: 'claim_file', entityId: claimFileId, documentKind },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!doc) {
+      if (documentKind === 'muvafakatname') {
+        doc = await this.create(
+          { entityType: 'claim_file', entityId: claimFileId, documentKind: 'muvafakatname' },
+          uploadedByUserId,
+        );
+      } else {
+        doc = await this.prisma.fileDocument.create({
+          data: {
+            entityType: 'claim_file',
+            entityId: claimFileId,
+            documentKind: 'anket_formu',
+            status: 'draft',
+            renderedContent: '<p>Manuel yüklenen anket formu.</p>',
+            claimFileId,
+            createdByUserId: uploadedByUserId,
+          },
+        });
+      }
+    }
+
+    const safeName = (file.originalname || 'evrak').replace(/[^\w.\-ğüşıöçĞÜŞİÖÇ ]+/g, '_');
+    const result = await this.storage.upload(
+      file.buffer,
+      `file-documents/${doc.id}/${safeName}`,
+      file.mimetype,
+    );
+    return this.uploadPhysical(doc.id, result.key, uploadedByUserId);
+  }
+
+  async getPhysicalFileUrl(id: string): Promise<{ url: string; fileName: string }> {
+    const doc = await this.findOne(id);
+    if (!doc.physicalUploadKey) {
+      throw new NotFoundException('Yüklenmiş evrak dosyası yok');
+    }
+    const url = await this.storage.getSignedUrl(doc.physicalUploadKey, 900);
+    const fileName = doc.physicalUploadKey.split('/').pop() || 'evrak';
+    return { url, fileName };
   }
 
   // ── Public Token — Görüntüleme ────────────────────────────────────────────
