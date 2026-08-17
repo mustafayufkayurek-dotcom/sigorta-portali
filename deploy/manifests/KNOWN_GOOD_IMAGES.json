@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-17",
-  "label": "v508-inbox-dosya-no",
-  "description": "Full v508: Gelen kutu mailinde Dosya No olarak sigorta markası (EUREKO) kabul edilmez; konudan numara alınır ve uyarı gösterilir. Migration yok. Rollback web v507 / backend v501.",
+  "label": "v509-inbox-nav",
+  "description": "Full v509: Gelen Kutusu Operasyon alt menüsünde. Operasyon tıklaması sayfayı açar (ok alt menüyü açar/kapar). Poliçe no dosya no olarak kaydedilmez. Migration yok. Rollback web v508 / backend v508.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v508-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v508-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v509-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v509-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v507-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v501-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v508-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v508-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
