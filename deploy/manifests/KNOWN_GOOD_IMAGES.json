@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-17",
-  "label": "v512-repair-pdf-draft",
-  "description": "Full v512: Onaya gönderilmiş hasar raporu PDF’sinde Taslak damgası yok. Migration yok. Rollback web v511 / backend v510.",
+  "label": "v513-hasar-manuel-evrak",
+  "description": "Full v513: Hasar Evraklar Özet — tür seçerek Muvafakatname / Anket Formu yükleme. Migration yok. Rollback web v512 / backend v512.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v512-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v512-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v513-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v513-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v511-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v510-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v512-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v512-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
