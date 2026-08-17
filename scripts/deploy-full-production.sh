@@ -25,6 +25,10 @@ BACKEND_VERSION="${BACKEND_VERSION:-$WEB_VERSION}"
 WEB_IMAGE="sigorta-web:dalga2-agreement-hr-01-${WEB_VERSION}-amd64"
 BACKEND_IMAGE="app-backend:dalga2-agreement-hr-01-${BACKEND_VERSION}-amd64"
 API_URL="${NEXT_PUBLIC_API_URL:-https://app.meridyen-tr.com/api/v1}"
+if printf '%s' "$API_URL" | grep -qiE 'localhost|127\.0\.0\.1'; then
+  echo "HATA: NEXT_PUBLIC_API_URL localhost olamaz (canlı derleme bozulur)."
+  exit 1
+fi
 
 run_remote() {
   ssh -o BatchMode=yes "$REMOTE_HOST" "$@"
@@ -37,7 +41,10 @@ echo "Backend: $BACKEND_IMAGE"
 if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   rsync -avz --delete \
     --exclude node_modules --exclude .next --exclude dist --exclude .DS_Store --exclude '._*' \
+    --exclude '.env' --exclude '.env.local' --exclude '.env.*.local' \
+    --exclude '.env.development' --exclude '.env.production' \
     "$PROJECT_DIR/apps/web/" "$REMOTE_HOST:$REMOTE_APP/apps/web/"
+  run_remote "rm -f $REMOTE_APP/apps/web/.env $REMOTE_APP/apps/web/.env.local $REMOTE_APP/apps/web/.env.*.local"
 
   # ZORUNLU: uploads asla --delete ile sync edilmez (rapor fotoğraf kaybı — 2026-08 olayı)
   rsync -avz --delete \
@@ -54,6 +61,7 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   rsync -avz \
     "$PROJECT_DIR/Dockerfile.backend" \
     "$PROJECT_DIR/Dockerfile.web" \
+    "$PROJECT_DIR/.dockerignore" \
     "$PROJECT_DIR/docker-compose.prod.yml" \
     "$PROJECT_DIR/package.json" \
     "$PROJECT_DIR/pnpm-workspace.yaml" \

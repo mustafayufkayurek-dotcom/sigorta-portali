@@ -28,6 +28,12 @@ if [ -z "$WEB_VERSION" ]; then
 fi
 WEB_IMAGE="sigorta-web:dalga2-agreement-hr-01-${WEB_VERSION}-amd64"
 API_URL="${NEXT_PUBLIC_API_URL:-https://app.meridyen-tr.com/api/v1}"
+if printf '%s' "$API_URL" | grep -qiE 'localhost|127\.0\.0\.1'; then
+  echo "HATA: NEXT_PUBLIC_API_URL localhost olamaz (canlı derleme bozulur)."
+  exit 1
+fi
+WEB_NO_CACHE=""
+if [ "${NO_CACHE:-}" = "1" ]; then WEB_NO_CACHE="--no-cache"; fi
 
 run_remote() {
   ssh -o BatchMode=yes "$REMOTE_HOST" "$@"
@@ -41,10 +47,14 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   echo "=== rsync apps/web ==="
   rsync -avz --delete \
     --exclude node_modules --exclude .next --exclude dist --exclude .DS_Store --exclude '._*' \
+    --exclude '.env' --exclude '.env.local' --exclude '.env.*.local' \
+    --exclude '.env.development' --exclude '.env.production' \
     "$PROJECT_DIR/apps/web/" "$REMOTE_HOST:$REMOTE_APP/apps/web/"
+  run_remote "rm -f $REMOTE_APP/apps/web/.env $REMOTE_APP/apps/web/.env.local $REMOTE_APP/apps/web/.env.*.local"
 
   rsync -avz \
     "$PROJECT_DIR/Dockerfile.web" \
+    "$PROJECT_DIR/.dockerignore" \
     "$PROJECT_DIR/package.json" \
     "$PROJECT_DIR/pnpm-workspace.yaml" \
     "$PROJECT_DIR/pnpm-lock.yaml" \
@@ -68,7 +78,11 @@ run_remote "set -e
 cd $REMOTE_APP
 bash scripts/pre-deploy-safety.sh $DEPLOY_TAG
 echo '=== docker build web ==='
-docker build -f Dockerfile.web -t $WEB_IMAGE --build-arg NEXT_PUBLIC_API_URL=$API_URL .
+docker build -f Dockerfile.web -t $WEB_IMAGE $WEB_NO_CACHE --build-arg NEXT_PUBLIC_API_URL=$API_URL .
+if docker run --rm --entrypoint sh $WEB_IMAGE -c 'grep -R -l "http://localhost" apps/web/.next/static 2>/dev/null | head -1' | grep -q .; then
+  echo 'HATA: web image içinde localhost API adresi gömülü — canlıya alma.'
+  exit 1
+fi
 TS=\$(date +%Y%m%d_%H%M%S)
 cp docker-compose.override.yml backups/override_pre_\${TS}.yml
 CURRENT_BACKEND=\$(docker inspect sigorta-backend --format '{{.Config.Image}}' 2>/dev/null | tr -d '\r\n' || true)
