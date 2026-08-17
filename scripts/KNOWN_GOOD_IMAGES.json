@@ -1,0 +1,30 @@
+{
+  "updatedAt": "2026-07-16",
+  "label": "v367-epic05-acil-dosya-detay",
+  "description": "Full: EPIC-05 Acil Yardım dosya detay operasyon ekranı. Web v367 + backend v367. Migration yok (migrate no-op). Smoke: route PASS, auth login PARTIAL. Production browser: oturum yok — UI maddeleri FAIL (kullanıcı ürün kabulü). Rollback web v366 / backend v366.",
+  "composeProject": "sigorta-hasar-sistemi",
+  "remoteHost": "94.138.216.18",
+  "remoteAppDir": "/opt/app",
+  "images": {
+    "backend": "app-backend:dalga2-agreement-hr-01-v367-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v367-amd64"
+  },
+  "rollbackImages": {
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v366-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v366-amd64"
+  },
+  "mustPassSmokeRoutes": [
+    "/giris",
+    "/panel",
+    "/panel/musteriler",
+    "/panel/kullanicilar",
+    "/panel/tedarikciler",
+    "/panel/raporlar",
+    "/panel/carilerim",
+    "/panel/ayarlar/tanimlar",
+    "/panel/operasyon",
+    "/panel/operasyon/gelen-kutusu",
+    "/panel/hasar-dosyalari",
+    "/panel/pazartesi-toplantisi"
+  ]
+}

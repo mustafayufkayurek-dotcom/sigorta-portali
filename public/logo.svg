@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" fill="none" role="img" aria-label="Meridyen Assistance">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1E3A6E"/>
+      <stop offset="100%" stop-color="#0F2040"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F0B830"/>
+      <stop offset="100%" stop-color="#D4870A"/>
+    </linearGradient>
+    <filter id="shieldShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0F2040" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Shield body -->
+  <path
+    d="M36 6 L10 16 L10 38 C10 52 22 63 36 67 C50 63 62 52 62 38 L62 16 Z"
+    fill="url(#shieldGrad)"
+    filter="url(#shieldShadow)"
+  />
+
+  <!-- Shield inner highlight (top edge) -->
+  <path
+    d="M36 10 L14 19 L14 38 C14 50 24.5 60 36 63.5 C47.5 60 58 50 58 38 L58 19 Z"
+    fill="none"
+    stroke="#2A5BA8"
+    stroke-width="0.5"
+    opacity="0.4"
+  />
+
+  <!-- Gold accent bar at shield top -->
+  <path
+    d="M36 6 L62 16 L58 18 L36 9.5 L14 18 L10 16 Z"
+    fill="url(#goldGrad)"
+    opacity="0.9"
+  />
+
+  <!-- M as staircase / ladder steps inside shield -->
+  <!-- Step 1 (bottom-left) -->
+  <rect x="20" y="44" width="6" height="3" rx="0.8" fill="url(#goldGrad)"/>
+  <!-- Step 2 -->
+  <rect x="20" y="38" width="6" height="3" rx="0.8" fill="url(#goldGrad)"/>
+  <!-- Step 3 -->
+  <rect x="20" y="32" width="6" height="3" rx="0.8" fill="url(#goldGrad)"/>
+
+  <!-- Center vertical connector -->
+  <rect x="33" y="27" width="6" height="3" rx="0.8" fill="url(#goldGrad)"/>
+  <rect x="33" y="33" width="6" height="3" rx="0.8" fill="url(#goldGrad)" opacity="0.7"/>
+
+  <!-- Step 1 (bottom-right) -->
+  <rect x="46" y="44" width="6" height="3" rx="0.8" fill="url(#goldGrad)"/>
+  <!-- Step 2 -->
+  <rect x="46" y="38" width="6" height="3" rx="0.8" fill="url(#goldGrad)"/>
+  <!-- Step 3 -->
+  <rect x="46" y="32" width="6" height="3" rx="0.8" fill="url(#goldGrad)"/>
+
+  <!-- Left vertical bar of M -->
+  <rect x="20" y="22" width="6" height="20" rx="1" fill="#FFFFFF" opacity="0.08"/>
+  <!-- Right vertical bar of M -->
+  <rect x="46" y="22" width="6" height="20" rx="1" fill="#FFFFFF" opacity="0.08"/>
+
+  <!-- M left diagonal -->
+  <path d="M21 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
+  <!-- M right diagonal -->
+  <path d="M51 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
+  <!-- M left leg -->
+  <line x1="21" y1="23" x2="21" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- M right leg -->
+  <line x1="51" y1="23" x2="51" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+
+  <!-- Gold horizontal step accents on M legs -->
+  <line x1="21" y1="29" x2="27" y2="29" stroke="url(#goldGrad)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="21" y1="35" x2="27" y2="35" stroke="url(#goldGrad)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="21" y1="41" x2="27" y2="41" stroke="url(#goldGrad)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="45" y1="29" x2="51" y2="29" stroke="url(#goldGrad)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="45" y1="35" x2="51" y2="35" stroke="url(#goldGrad)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="45" y1="41" x2="51" y2="41" stroke="url(#goldGrad)" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- MERIDYEN text -->
+  <text
+    x="78"
+    y="36"
+    font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+    font-size="22"
+    font-weight="800"
+    letter-spacing="3"
+    fill="#0F2040"
+  >MERIDYEN</text>
+
+  <!-- Gold underline accent -->
+  <rect x="78" y="40" width="168" height="2" rx="1" fill="url(#goldGrad)"/>
+
+  <!-- ASSISTANCE text -->
+  <text
+    x="78"
+    y="56"
+    font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+    font-size="11"
+    font-weight="500"
+    letter-spacing="5"
+    fill="#4A6FA5"
+  >ASSISTANCE</text>
+</svg>

@@ -1,0 +1,35 @@
+{
+  "status": 403,
+  "headers": {
+    "server": "nginx/1.25.5",
+    "date": "Sun, 17 May 2026 16:31:06 GMT",
+    "content-type": "application/json; charset=utf-8",
+    "content-length": "251",
+    "connection": "keep-alive",
+    "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+    "cross-origin-opener-policy": "same-origin",
+    "cross-origin-resource-policy": "cross-origin",
+    "origin-agent-cluster": "?1",
+    "referrer-policy": "no-referrer, strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=15552000; includeSubDomains, max-age=63072000; includeSubDomains; preload",
+    "x-content-type-options": "nosniff, nosniff",
+    "x-dns-prefetch-control": "off",
+    "x-download-options": "noopen",
+    "x-frame-options": "SAMEORIGIN, SAMEORIGIN",
+    "x-permitted-cross-domain-policies": "none",
+    "x-xss-protection": "0, 1; mode=block",
+    "access-control-allow-origin": "https://app.meridyen-tr.com",
+    "vary": "Origin",
+    "access-control-allow-credentials": "true",
+    "etag": "W/\"fb-2Mdkg8c1KSe0DJ5osrwv1D/Sh1M\"",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(self)"
+  },
+  "body": {
+    "statusCode": 403,
+    "message": "Önce aktif sözleşmeleri onaylamanız gerekiyor.",
+    "error": "ForbiddenException",
+    "path": "/api/v1/claim-files?page=1&limit=50&insuranceCompanyIds=81f842ab-0920-44c4-88fc-4f806a543f75",
+    "timestamp": "2026-05-17T16:31:06.284Z"
+  },
+  "text": "{\"statusCode\":403,\"message\":\"Önce aktif sözleşmeleri onaylamanız gerekiyor.\",\"error\":\"ForbiddenException\",\"path\":\"/api/v1/claim-files?page=1&limit=50&insuranceCompanyIds=81f842ab-0920-44c4-88fc-4f806a543f75\",\"timestamp\":\"2026-05-17T16:31:06.284Z\"}"
+}

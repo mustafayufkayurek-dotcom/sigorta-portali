@@ -1,0 +1,37 @@
+# Deploy öncesi/sonrası hash doğrulaması — sayfa kaybı ve eski UI regresyonu önleme
+# Her satır: apps/ altında göreli yol
+
+apps/web/src/app/panel/layout.tsx
+apps/web/src/app/panel/kullanicilar/page.tsx
+apps/web/src/app/panel/ayarlar/page.tsx
+apps/web/src/app/panel/ayarlar/tanimlar/page.tsx
+apps/web/src/config/settings-nav.ts
+apps/web/src/components/settings/SettingsPageLayout.tsx
+apps/web/src/components/settings/DepartmentTabSelector.tsx
+apps/web/src/components/settings/SettingsLegacyRedirect.tsx
+apps/web/src/utils/settings-definition-nav.ts
+apps/web/src/utils/settings-breadcrumbs.ts
+apps/web/src/app/giris/page.tsx
+apps/web/src/constants/brand.ts
+apps/web/src/app/panel/musteriler/page.tsx
+apps/web/src/app/panel/musteriler/[id]/page.tsx
+apps/web/src/utils/customer-form-helpers.ts
+apps/web/src/app/panel/tedarikciler/page.tsx
+apps/web/src/app/panel/tedarikciler/[id]/page.tsx
+apps/web/src/utils/vendor-form-helpers.ts
+apps/web/src/components/ui/PhoneContactActions.tsx
+apps/web/src/components/LocationPickerModal.tsx
+apps/web/src/components/SlidePanel.tsx
+apps/web/src/app/globals.css
+apps/backend/src/modules/users/users.service.ts
+apps/web/src/app/panel/hasar-dosyalari/[id]/page.tsx
+apps/web/src/app/panel/hasar-dosyalari/[id]/_components/FinansRaporOzeti.tsx
+apps/web/src/app/panel/hasar-dosyalari/[id]/_components/tabs/finans-subtabs.tsx
+apps/web/src/app/panel/hasar-dosyalari/[id]/_components/tabs/EvraklarTab.tsx
+apps/web/src/app/panel/hasar-dosyalari/[id]/_components/tabs/EvrakOzetPanel.tsx
+apps/web/src/app/panel/hasar-dosyalari/[id]/_components/tabs/OnarimRaporuTab.tsx
+apps/web/src/app/panel/hasar-dosyalari/[id]/_components/tabs/SozlesmelerSection.tsx
+apps/web/src/utils/repair-report-status.ts
+apps/backend/src/modules/claim-files/claim-files.service.ts
+apps/backend/src/modules/finance/dto/create-claim-file-revenue.dto.ts
+deploy/manifests/KNOWN_GOOD_IMAGES.json

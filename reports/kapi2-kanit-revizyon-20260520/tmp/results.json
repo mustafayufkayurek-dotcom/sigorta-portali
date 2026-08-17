@@ -1,0 +1,78 @@
+[
+  {
+    "madde": "P0-1",
+    "pass": true,
+    "shotFile": "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/kapi2-kanit-revizyon-20260520/evidence/P0-1-user-permission-persisted.png",
+    "apiSummary": "GET/PUT screen-permissions ok; first checkbox false->true; api rows=13",
+    "files": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/apps/backend/src/modules/users/users.controller.ts"
+    ],
+    "risk": ""
+  },
+  {
+    "madde": "P0-2",
+    "pass": false,
+    "shotFile": "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/kapi2-kanit-revizyon-20260520/evidence/P0-2-user-create-result.png",
+    "apiSummary": "Hata: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('button:has-text(\"Kaydet\")').last()\n",
+    "files": [],
+    "risk": "Form validasyon veya create sonucu net görünmedi"
+  },
+  {
+    "madde": "P0-3",
+    "pass": false,
+    "shotFile": "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/kapi2-kanit-revizyon-20260520/evidence/P0-3-claim-create-screen.png",
+    "apiSummary": "Manual file no input visible and used=KAPI2-1779301348191; insurance visible=true; create navigation=false",
+    "files": [
+      "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/apps/web/src/app/panel/hasar-dosyalari/yeni/page.tsx"
+    ],
+    "risk": "Yeni dosya submit akışı tamamlanamadı"
+  },
+  {
+    "madde": "P0-4",
+    "pass": true,
+    "shotFile": "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/kapi2-kanit-revizyon-20260520/evidence/P0-4-claim-edit-open.png",
+    "apiSummary": "Claim edit route opened=true; claimId=09fe8f7a-855d-437b-a34c-971c8cbdea7e",
+    "files": [],
+    "risk": ""
+  },
+  {
+    "madde": "P0-5",
+    "pass": true,
+    "shotFile": "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/kapi2-kanit-revizyon-20260520/evidence/P0-5-ihbar-konulari-screen.png",
+    "apiSummary": "Ihbar route ok=true; active subjects=12",
+    "files": [],
+    "risk": ""
+  },
+  {
+    "madde": "P0-6",
+    "pass": true,
+    "shotFile": "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/kapi2-kanit-revizyon-20260520/evidence/P0-6-anonymous-panel-redirect.png",
+    "apiSummary": "Anonymous /panel redirected=true; url=https://app.meridyen-tr.com/giris",
+    "files": [],
+    "risk": ""
+  },
+  {
+    "madde": "P1-1",
+    "pass": true,
+    "shotFile": "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/kapi2-kanit-revizyon-20260520/evidence/P1-1-evrak-turleri-screen.png",
+    "apiSummary": "document-types api=404; route ok=true",
+    "files": [],
+    "risk": ""
+  },
+  {
+    "madde": "P1-2",
+    "pass": true,
+    "shotFile": "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/kapi2-kanit-revizyon-20260520/evidence/P1-2-panel-settings-consistency.png",
+    "apiSummary": "panelOk=true; settingsOk=true; finalUrl=https://app.meridyen-tr.com/panel/ayarlar",
+    "files": [],
+    "risk": ""
+  },
+  {
+    "madde": "P1-3",
+    "pass": false,
+    "shotFile": "/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/kapi2-kanit-revizyon-20260520/evidence/P1-3-form-feedback-screen.png",
+    "apiSummary": "Hata: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('button:has-text(\"Kaydet\")').last()\n",
+    "files": [],
+    "risk": "Form success/error feedback görünmedi"
+  }
+]

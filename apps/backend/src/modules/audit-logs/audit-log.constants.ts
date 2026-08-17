@@ -1,0 +1,16 @@
+export const SENSITIVE_AUDIT_KEYS = [
+  'password',
+  'passwordHash',
+  'password_hash',
+  'token',
+  'accessToken',
+  'refreshToken',
+  'secret',
+  'secretKey',
+  'tcKimlik',
+  'tcNo',
+  'creditCard',
+  'iban',
+  'accountHolderName',
+  'account_holder_name',
+] as const;

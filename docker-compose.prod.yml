@@ -1,0 +1,275 @@
+version: '3.8'
+
+# ─── Production Docker Compose ────────────────────────────────────────────────
+# Kullanım: bash scripts/deploy.sh
+# Elle başlatmak için:
+#   docker compose -p sigorta-hasar-sistemi -f docker-compose.prod.yml --env-file .env.production up -d
+# Web restart: bash scripts/restart-web-production.sh  (502 önleme)
+
+networks:
+  sigorta-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    external: true
+    name: app_postgres_data
+  redis_data:
+    external: true
+    name: app_redis_data
+  minio_data:
+    external: true
+    name: app_minio_data
+
+services:
+  # ─── Nginx Reverse Proxy ──────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: sigorta-nginx
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    networks:
+      - sigorta-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ─── Certbot (SSL Otomatik Yenileme) ──────────────────────────────────────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: sigorta-certbot
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "trap exit TERM;
+      while :; do
+        certbot renew --webroot -w /var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done"
+    networks:
+      - sigorta-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '5m'
+        max-file: '2'
+
+  # ─── Backend (NestJS) ─────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: sigorta-backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      BACKEND_PORT: '3000'
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER}
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: ${S3_REGION}
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: ${S3_BUCKET}
+      WEB_URL: ${WEB_URL}
+      APP_URL: ${APP_URL}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      LOGO_INTEGRATION_ENABLED: ${LOGO_INTEGRATION_ENABLED:-false}
+      LOGO_API_BASE_URL: ${LOGO_API_BASE_URL:-}
+      LOGO_API_CLIENT_ID: ${LOGO_API_CLIENT_ID:-}
+      LOGO_API_CLIENT_SECRET: ${LOGO_API_CLIENT_SECRET:-}
+      LOGO_API_USERNAME: ${LOGO_API_USERNAME:-}
+      LOGO_API_PASSWORD: ${LOGO_API_PASSWORD:-}
+      LOGO_FIRM_NO: ${LOGO_FIRM_NO:-1}
+      LOGO_COMPANY_CODE_PREFIX: ${LOGO_COMPANY_CODE_PREFIX:-SHS_}
+      LOGO_TOKEN_CACHE_TTL_MINUTES: ${LOGO_TOKEN_CACHE_TTL_MINUTES:-55}
+      ONLINE_CARD_COLLECTION_ENABLED: ${ONLINE_CARD_COLLECTION_ENABLED:-false}
+      PAYTR_MERCHANT_ID: ${PAYTR_MERCHANT_ID:-}
+      PAYTR_MERCHANT_KEY: ${PAYTR_MERCHANT_KEY:-}
+      PAYTR_MERCHANT_SALT: ${PAYTR_MERCHANT_SALT:-}
+      PAYTR_TEST_MODE: ${PAYTR_TEST_MODE:-1}
+      PAYTR_DEBUG_ON: ${PAYTR_DEBUG_ON:-0}
+      PAYTR_TIMEOUT_MINUTES: ${PAYTR_TIMEOUT_MINUTES:-30}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${S3_BUCKET}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-}
+      # Rapor fotoğrafları — bind-mount ile aynı kalıcı dizin (cwd sapması yok)
+      REPORT_IMAGES_DIR: /app/apps/backend/uploads/report-images
+      # Meridyen Sistem Alarmları — personel özetleri (token .env.production)
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      TELEGRAM_INSPECTION_REMINDER_ENABLED: ${TELEGRAM_INSPECTION_REMINDER_ENABLED:-false}
+      TELEGRAM_APPROVAL_DELAY_REMINDER_ENABLED: ${TELEGRAM_APPROVAL_DELAY_REMINDER_ENABLED:-false}
+      TELEGRAM_INVOICE_REQUEST_NOTIFY_ENABLED: ${TELEGRAM_INVOICE_REQUEST_NOTIFY_ENABLED:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - sigorta-net
+    expose:
+      - '3000'
+    volumes:
+      # Bind mount: host /opt/app/apps/backend/uploads kalıcı (rapor fotoğrafları)
+      - ./apps/backend/uploads:/app/apps/backend/uploads
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/api/v1/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ─── Frontend (Next.js) ───────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: sigorta-web
+    restart: always
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - sigorta-net
+    expose:
+      - '3001'
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3001']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ─── PostgreSQL ───────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: sigorta-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Güvenlik: Port dışarıya kapalı, sadece iç Docker ağından erişilir
+    expose:
+      - '5432'
+    networks:
+      - sigorta-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: sigorta-redis
+    restart: always
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    # Güvenlik: Port dışarıya kapalı
+    expose:
+      - '6379'
+    networks:
+      - sigorta-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '5m'
+        max-file: '3'
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── MinIO (Dosya Depolama) ───────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: sigorta-minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    # Admin paneli sadece localhost üzerinden (SSH tüneli ile erişilir)
+    ports:
+      - '127.0.0.1:9001:9001'
+    expose:
+      - '9000'
+    networks:
+      - sigorta-net
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

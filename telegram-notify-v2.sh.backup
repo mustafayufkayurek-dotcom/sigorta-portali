@@ -1,0 +1,83 @@
+#!/bin/bash
+# telegram-notify v2 — CRITICAL için de hash-based suppression eklendi
+set -euo pipefail
+
+ENV_FILE="/opt/app/.env.production"
+if [ -f "$ENV_FILE" ]; then
+  export $(grep -E "^TELEGRAM_" "$ENV_FILE" | xargs)
+fi
+
+TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+CHAT_ID="${TELEGRAM_CHAT_ID:-}"
+if [ -z "$TOKEN" ] || [ -z "$CHAT_ID" ]; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: TELEGRAM vars missing" >> /opt/app/logs/telegram.log
+  exit 1
+fi
+
+SEVERITY="${1:-INFO}"
+MESSAGE="${2:-No message}"
+TS=$(date '+%Y-%m-%d %H:%M:%S')
+LOG="/opt/app/logs/telegram.log"
+SUPPRESS_DIR="/opt/app/logs/suppress"
+mkdir -p "$SUPPRESS_DIR"
+
+case "$SEVERITY" in
+  CRITICAL) EMOJI="[CRITICAL]" ;;
+  WARNING)  EMOJI="[WARNING]" ;;
+  INFO)     EMOJI="[INFO]" ;;
+  *)        EMOJI="[UNKNOWN]" ;;
+esac
+
+# Suppression mantığı:
+#   WARNING: aynı hash, 1 saat içinde 3'ten fazla → suppress (eski davranış)
+#   CRITICAL: aynı hash, 30 dakika içinde 1'den fazla → suppress (yeni — spam koruma)
+#   INFO: suppression yok (RECOVERED gibi pozitif mesajlar gelsin)
+suppress_check() {
+  local sev="$1"; local msg="$2"
+  local hash=$(echo "$msg" | md5sum | cut -d' ' -f1)
+  local sf="$SUPPRESS_DIR/${sev}_${hash}"
+  local now=$(date +%s)
+  
+  case "$sev" in
+    WARNING)
+      local window=3600; local maxn=3
+      ;;
+    CRITICAL)
+      local window=1800; local maxn=1
+      ;;
+    *)
+      return 1  # suppress yok
+      ;;
+  esac
+  
+  if [ -f "$sf" ]; then
+    local lt=$(head -1 "$sf"); local ct=$(tail -1 "$sf")
+    local diff=$((now - lt))
+    if [ $diff -lt $window ] && [ $ct -ge $maxn ]; then
+      echo "[$TS] SUPPRESSED ($sev): $msg" >> "$LOG"
+      return 0  # suppress
+    elif [ $diff -ge $((window * 6)) ]; then
+      printf '%s\n1' "$now" > "$sf"
+    else
+      printf '%s\n%s' "$now" "$((ct + 1))" > "$sf"
+    fi
+  else
+    printf '%s\n1' "$now" > "$sf"
+  fi
+  return 1  # gönder
+}
+
+if suppress_check "$SEVERITY" "$MESSAGE"; then
+  exit 0
+fi
+
+FULL_MSG="$EMOJI $TS
+$MESSAGE
+Server: $(hostname)"
+
+RESP=$(curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+  -d chat_id="$CHAT_ID" \
+  -d text="$FULL_MSG" \
+  -d parse_mode="Markdown" 2>&1)
+
+echo "[$TS] SENT ($SEVERITY): $MESSAGE | $(echo $RESP | grep -o '"ok":[a-z]*')" >> "$LOG"

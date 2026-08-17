@@ -1,0 +1,38 @@
+[
+  {
+    "type": "text",
+    "placeholder": "Örn. Su sızıntısı",
+    "name": null,
+    "value": ""
+  },
+  {
+    "type": "text",
+    "placeholder": "Opsiyonel",
+    "name": null,
+    "value": ""
+  },
+  {
+    "type": "text",
+    "placeholder": "Dosya numarasını manuel girin",
+    "name": null,
+    "value": ""
+  },
+  {
+    "type": "date",
+    "placeholder": null,
+    "name": null,
+    "value": ""
+  },
+  {
+    "type": "date",
+    "placeholder": null,
+    "name": null,
+    "value": ""
+  },
+  {
+    "type": "text",
+    "placeholder": "İsim, telefon veya TC ile ara...",
+    "name": null,
+    "value": ""
+  }
+]

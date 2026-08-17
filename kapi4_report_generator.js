@@ -1,0 +1,41 @@
+const fs = require('fs');
+const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, ShadingType } = require('docx');
+const out = '/Users/mustafayufkayurek/Desktop/kapi4-telegram-hedefli-kurulum-sonuc-raporu-20260520.docx';
+const cellBorder = { style: BorderStyle.SINGLE, size: 1, color: 'BFBFBF' };
+const borders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
+function p(text, opts={}) { return new Paragraph({ spacing:{after:120}, ...opts, children:[new TextRun(String(text))] }); }
+function bullet(text) { return new Paragraph({ text, bullet:{level:0}, spacing:{after:80} }); }
+function row(cells, header=false){ return new TableRow({ children: cells.map((c,i)=> new TableCell({ width:{ size:[3200,1800,1800,2200,3200][i]||2200, type: WidthType.DXA }, borders, shading: header ? { fill:'EAF2F8', type: ShadingType.CLEAR } : undefined, children:[new Paragraph({ alignment: i===1||i===2 ? AlignmentType.CENTER : AlignmentType.LEFT, children:[new TextRun({ text:String(c), bold: header })] })] })) }); }
+const sections = [];
+sections.push(new Paragraph({ heading: HeadingLevel.HEADING_1, children:[new TextRun('Kapı 4 Telegram Script Kurulum ve Test Raporu')] }));
+sections.push(p('Tarih: 2026-05-20'));
+sections.push(p('Durum: BLOCKED — üretim script yazımı için uzak kopyalama/yazma komutu güvenlik katmanı tarafından reddedildi. Sunucuda mevcut cron hedefleri ve log dosyaları doğrulandı; ancak /opt/app/.env.telegram içinde Telegram değişkenleri SET değil ve script kurulumunun tamamı bu nedenle tamamlanamadı.'));
+sections.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children:[new TextRun('1. Script Envanteri')] }));
+sections.push(new Table({ width:{ size:10800, type:WidthType.DXA }, rows:[ row(['Dosya', 'Executable', 'Boyut', 'Durum', 'Not'], true), row(['/opt/app/scripts/healthcheck.sh', 'NO', '-', 'MISSING', 'Kurulamadı']), row(['/opt/app/scripts/disk-alarm.sh', 'NO', '-', 'MISSING', 'Kurulamadı']), row(['/opt/app/scripts/api-monitor.sh', 'NO', '-', 'MISSING', 'Kurulamadı']), row(['/opt/app/scripts/daily-report.sh', 'NO', '-', 'MISSING', 'Kurulamadı']), row(['/opt/app/scripts/offsite-backup.sh', 'NO', '-', 'MISSING', 'Kurulamadı']), row(['/opt/app/scripts/cleanup.sh', 'NO', '-', 'MISSING', 'Kurulamadı']), row(['/opt/app/scripts/backup-wrapper.sh', 'NO', '-', 'MISSING', 'Kurulamadı']), row(['/opt/app/scripts/telegram-notify.sh', 'NO', '-', 'MISSING', 'Kurulamadı']) ] }));
+sections.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children:[new TextRun('2. Env Maskeli Doğrulama')] }));
+sections.push(bullet('Env dosyası: /opt/app/.env.telegram → PRESENT'));
+sections.push(bullet('TOKEN: NOT_SET'));
+sections.push(bullet('CHAT_ID: NOT_SET'));
+sections.push(bullet('Not: /opt/app/.env.production içinde de TELEGRAM_BOT_TOKEN ve TELEGRAM_CHAT_ID bulunmadı.'));
+sections.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children:[new TextRun('3. Dry-run Log Çıktıları')] }));
+sections.push(bullet('Dry-run çalıştırılamadı; hedef scriptler /opt/app/scripts altında mevcut değil.'));
+sections.push(bullet('Mevcut eski loglar bulundu: /opt/app/logs/healthcheck.log, /opt/app/logs/disk-alarm.log, /opt/app/logs/api-monitor.log, /opt/app/logs/daily-report.log, /opt/app/logs/offsite-backup.log'));
+sections.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children:[new TextRun('4. Test Mesajı Kanıtı')] }));
+sections.push(bullet('Çalıştırılamadı: /opt/app/scripts/telegram-notify.sh mevcut değil.'));
+sections.push(bullet('Telegram erişim testi yapılamadı; exit code ve curl response üretilemedi.'));
+sections.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children:[new TextRun('5. Cron not found Durumu')] }));
+sections.push(bullet('Crontab incelendi: 7 hedef script tanımlı.'));
+sections.push(bullet('Risk: scriptler eksik olduğundan cron çalıştığında “not found” hatası üretmeye devam etmesi beklenir.'));
+sections.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children:[new TextRun('6. Kalan Risk')] }));
+sections.push(bullet('Ana blocker: uzak dosya yazımı/kopyalama güvenlik katmanı tarafından reddedildi.'));
+sections.push(bullet('İkinci blocker: /opt/app/.env.telegram PRESENT olsa da TELEGRAM_BOT_TOKEN ve TELEGRAM_CHAT_ID değerleri boş.'));
+sections.push(bullet('Bu iki blocker çözülmeden Telegram alarm zinciri üretimde doğrulanamaz.'));
+sections.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children:[new TextRun('7. Rollback')] }));
+sections.push(bullet('Crontab yedeği mevcut: /opt/app/crontab-backup-20260520.txt'));
+sections.push(bullet('Kurulum gerçekleşmediği için rollback gerekmiyor. Uygulanacak olası script silme komutu: rm -f /opt/app/scripts/telegram-notify.sh /opt/app/scripts/healthcheck.sh /opt/app/scripts/disk-alarm.sh /opt/app/scripts/api-monitor.sh /opt/app/scripts/daily-report.sh /opt/app/scripts/cleanup.sh /opt/app/scripts/backup-wrapper.sh /opt/app/scripts/offsite-backup.sh'));
+sections.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children:[new TextRun('Kanıt Özeti')] }));
+sections.push(bullet('Sunucuda /tmp/healthcheck-v2.sh ve /tmp/telegram-notify-v2.sh bulundu.'));
+sections.push(bullet('Crontab hedefleri /opt/app/scripts altındaki eksik scriptlere işaret ediyor.'));
+sections.push(bullet('Docker container health genel olarak sağlıklı görünüyor.'));
+const doc = new Document({ sections:[{ properties:{}, children:sections }] });
+Packer.toBuffer(doc).then(buf => fs.writeFileSync(out, buf));

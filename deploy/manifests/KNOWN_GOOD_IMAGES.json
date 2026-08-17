@@ -1,0 +1,42 @@
+{
+  "updatedAt": "2026-08-17",
+  "label": "v505-yedek-sagligi-restore",
+  "description": "Web v505 / backend v501. Yedek Sağlığı Genel Durum + restoreTest + 5dk polling. Migration yok. Backup dump/cron saatleri değişmedi. Rollback web v504 / backend v500.",
+  "composeProject": "sigorta-hasar-sistemi",
+  "remoteHost": "94.138.216.18",
+  "remoteAppDir": "/opt/app",
+  "images": {
+    "backend": "app-backend:dalga2-agreement-hr-01-v501-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v505-amd64"
+  },
+  "rollbackImages": {
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v504-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v500-amd64"
+  },
+  "mustPassSmokeRoutes": [
+    "/giris",
+    "/panel",
+    "/panel/musteriler",
+    "/panel/kullanicilar",
+    "/panel/tedarikciler",
+    "/panel/raporlar",
+    "/panel/carilerim",
+    "/panel/ayarlar/tanimlar",
+    "/panel/ayarlar/yetkilendirme",
+    "/panel/operasyon",
+    "/panel/operasyon/gelen-kutusu",
+    "/panel/hasar-dosyalari",
+    "/panel/pazartesi-toplantisi",
+    "/panel/sahiplik",
+    "/panel/anketler/sonuclar",
+    "/panel/eksper-portal",
+    "/panel/sigorta-portal",
+    "/panel/sigorta-portal/canli-izle",
+    "/panel/sigorta-portal/dosyalar",
+    "/panel/sigorta-portal/onaylar",
+    "/panel/sigorta-portal/faturalar",
+    "/panel/asistans-portal",
+    "/panel/asistans-portal/dosyalar",
+    "/panel/personel-ozluk"
+  ]
+}

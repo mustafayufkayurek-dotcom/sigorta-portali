@@ -1,0 +1,70 @@
+#!/bin/bash
+# Healthcheck v2 — state-tracking + RECOVERED akışı
+# Sadece state transition'larında alarm (DOWN/UP); aynı durum tekrarında alarm YOK
+set -uo pipefail
+
+NOTIFY="/opt/app/scripts/telegram-notify.sh"
+STATE_DIR="/opt/app/state"
+mkdir -p "$STATE_DIR"
+STATE_FILE="$STATE_DIR/container-states.txt"
+LOG="/opt/app/logs/healthcheck.log"
+
+# Gerçek docker compose container isimleri (docker ps ile teyit)
+CONTAINERS="sigorta-web sigorta-backend sigorta-postgres sigorta-redis sigorta-minio sigorta-nginx"
+
+# Önceki state'leri oku
+declare -A PREV
+if [ -f "$STATE_FILE" ]; then
+  while IFS=: read -r name state; do
+    [ -n "$name" ] && PREV[$name]="$state"
+  done < "$STATE_FILE"
+fi
+
+FAILED=""
+RECOVERED=""
+> "$STATE_FILE.tmp"
+
+for C in $CONTAINERS; do
+  RUNNING=$(docker inspect --format='{{.State.Running}}' "$C" 2>/dev/null || echo "false")
+  HSTATUS=$(docker inspect --format='{{.State.Health.Status}}' "$C" 2>/dev/null || echo "missing")
+  
+  if [ "$RUNNING" != "true" ]; then
+    CURRENT="down"
+  elif [ "$HSTATUS" = "unhealthy" ] || [ "$HSTATUS" = "starting" ]; then
+    CURRENT="unhealthy"
+  else
+    # healthy veya health check yok (running ise OK)
+    CURRENT="ok"
+  fi
+  
+  P="${PREV[$C]:-unknown}"
+  
+  # Transition tespiti
+  if [ "$P" != "$CURRENT" ]; then
+    if [ "$CURRENT" = "ok" ] && [ "$P" != "unknown" ]; then
+      RECOVERED="$RECOVERED $C(was:$P)"
+    elif [ "$CURRENT" != "ok" ]; then
+      FAILED="$FAILED $C($CURRENT)"
+    fi
+  fi
+  
+  echo "$C:$CURRENT" >> "$STATE_FILE.tmp"
+done
+
+mv "$STATE_FILE.tmp" "$STATE_FILE"
+
+TS=$(date '+%Y-%m-%d %H:%M:%S')
+
+if [ -n "$FAILED" ]; then
+  echo "[$TS] FAILED transition:$FAILED" >> "$LOG"
+  $NOTIFY CRITICAL "Container(s) DOWN:$FAILED"
+fi
+
+if [ -n "$RECOVERED" ]; then
+  echo "[$TS] RECOVERED:$RECOVERED" >> "$LOG"
+  $NOTIFY INFO "Container(s) RECOVERED:$RECOVERED"
+fi
+
+if [ -z "$FAILED" ] && [ -z "$RECOVERED" ]; then
+  echo "[$TS] All containers stable, no transition" >> "$LOG"
+fi

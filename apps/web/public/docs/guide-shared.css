@@ -1,0 +1,81 @@
+/* Meridyen kılavuz — ekran ortalama, boşluk düzeltme, yazdırma uyumu */
+
+.cover-page {
+  width: 100%;
+  max-width: 210mm;
+  margin: 0 auto;
+}
+
+.cover-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.cover-badge,
+.cover-title,
+.cover-subtitle,
+.cover-version,
+.cover-footer {
+  text-align: center;
+}
+
+/* Ekranda A4 yüksekliği zorlamayı kaldır — sayfalar arası dev boşluk önlenir */
+@media screen {
+  .cover-page {
+    min-height: auto;
+    height: auto;
+    padding-bottom: 2rem;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 210mm;
+    margin: 0 auto;
+    min-height: auto !important;
+    height: auto !important;
+  }
+
+  .page-break {
+    page-break-before: auto;
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  .page + .page {
+    margin-top: 0;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .doc-footer {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media print {
+  .cover-page {
+    width: 210mm;
+    height: 297mm;
+    max-width: none;
+    min-height: 297mm;
+  }
+
+  .cover-inner {
+    padding: 0;
+    min-height: 100%;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+}

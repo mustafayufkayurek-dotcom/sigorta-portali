@@ -1,0 +1,18 @@
+-- Finans ve saha personeli Carilerim (/customers/my-customers) için customer.view
+INSERT INTO "role_permissions" ("role_id", "permission_id")
+SELECT role_records.id, permission_records.id
+FROM (
+  VALUES
+    ('finance', 'customer.view'),
+    ('field_staff', 'customer.view')
+) AS role_permission_data(role_code, permission_code)
+JOIN "roles" role_records
+  ON role_records."code" = role_permission_data.role_code
+JOIN "permissions" permission_records
+  ON permission_records."code" = role_permission_data.permission_code
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM "role_permissions" existing_role_permissions
+  WHERE existing_role_permissions."role_id" = role_records.id
+    AND existing_role_permissions."permission_id" = permission_records.id
+);

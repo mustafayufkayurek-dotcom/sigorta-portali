@@ -1,0 +1,7 @@
+page.waitForSelector: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('text=Kullanıcılar') to be visible
+
+    at run (/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/runtime-stabilization/ui-hydration-check.js:17:16) {
+  name: 'TimeoutError'
+}

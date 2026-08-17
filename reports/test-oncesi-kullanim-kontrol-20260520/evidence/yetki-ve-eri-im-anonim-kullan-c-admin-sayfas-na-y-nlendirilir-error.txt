@@ -1,0 +1,4 @@
+ReferenceError: browser is not defined
+    at Object.run (/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/scripts/verify-production-flows.js:298:23)
+    at runCase (/Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/scripts/verify-production-flows.js:85:20)
+    at async /Users/mustafayufkayurek/Projects/sigorta-hasar-sistemi/reports/test-oncesi-kullanim-kontrol-20260520/scripts/verify-production-flows.js:376:22

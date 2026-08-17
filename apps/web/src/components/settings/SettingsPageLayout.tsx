@@ -1,0 +1,78 @@
+'use client';
+
+import React from 'react';
+import { usePathname } from 'next/navigation';
+import { SettingsBreadcrumbs } from '@/components/settings/SettingsBreadcrumbs';
+import { getSettingsBreadcrumbs, type SettingsBreadcrumb } from '@/utils/settings-breadcrumbs';
+
+interface SettingsPageLayoutProps {
+  title: string;
+  description?: string;
+  addButtonText?: string;
+  onAdd?: () => void;
+  children: React.ReactNode;
+  headerExtra?: React.ReactNode;
+  /** @deprecated breadcrumbs kullanın */
+  backHref?: string;
+  /** @deprecated breadcrumbs kullanın */
+  backText?: string;
+  breadcrumbs?: SettingsBreadcrumb[];
+}
+
+function normalizeAddLabel(text: string): string {
+  return text.replace(/^\+\s*/, '').trim();
+}
+
+export function SettingsPageLayout({
+  title,
+  description,
+  addButtonText,
+  onAdd,
+  children,
+  headerExtra,
+  backHref,
+  backText,
+  breadcrumbs,
+}: SettingsPageLayoutProps) {
+  const pathname = usePathname();
+  const addLabel = addButtonText ? normalizeAddLabel(addButtonText) : '';
+  const trail = breadcrumbs ?? getSettingsBreadcrumbs(pathname, title);
+
+  return (
+    <div className="min-w-0 overflow-x-hidden">
+      <div className="mb-6 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <SettingsBreadcrumbs items={trail} />
+          {!breadcrumbs && backHref && backText && trail.length <= 1 ? (
+            <a
+              href={backHref}
+              className="mb-2 inline-flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-slate-700"
+            >
+              {backText}
+            </a>
+          ) : null}
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h1>
+          {description && (
+            <p className="mt-0.5 text-sm text-slate-400 dark:text-slate-500">{description}</p>
+          )}
+        </div>
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          {headerExtra}
+          {addButtonText && onAdd && (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 sm:w-auto"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              {addLabel}
+            </button>
+          )}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}

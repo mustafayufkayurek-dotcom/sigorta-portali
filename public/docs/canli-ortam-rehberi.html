@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sigorta Hasar Sistemi — Canlı Ortama Alma Rehberi</title>
+  <style>
+    /* ── Genel ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      color: #1a1a2e;
+      background: #f8f9fb;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+
+    /* ── Header ── */
+    .page-header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+      color: #fff;
+      padding: 48px 32px 40px;
+      border-radius: 12px;
+      margin-bottom: 36px;
+    }
+    .page-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .page-header p  { font-size: 15px; opacity: 0.8; }
+    .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 14px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── İçindekiler ── */
+    .toc {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-bottom: 36px;
+    }
+    .toc h2 { font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px; }
+    .toc ol { padding-left: 20px; }
+    .toc li { margin-bottom: 6px; }
+    .toc a  { color: #0f3460; text-decoration: none; font-size: 14px; }
+    .toc a:hover { text-decoration: underline; }
+
+    /* ── Bölümler ── */
+    .section {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 32px 32px 28px;
+      margin-bottom: 28px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #f1f5f9;
+    }
+    .step-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: #0f3460;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .section-title { font-size: 19px; font-weight: 700; color: #1a1a2e; }
+
+    /* ── Metin ── */
+    h3 { font-size: 15px; font-weight: 700; color: #334155; margin: 20px 0 8px; }
+    p  { margin-bottom: 12px; color: #475569; }
+    ul, ol { padding-left: 22px; margin-bottom: 12px; }
+    li { margin-bottom: 6px; color: #475569; }
+    strong { color: #1e293b; }
+
+    /* ── Komut kutuları ── */
+    .cmd {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      padding: 16px 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0 16px;
+      position: relative;
+    }
+    .cmd .comment { color: #64748b; }
+    .cmd .prompt  { color: #4ade80; user-select: none; }
+    code {
+      background: #f1f5f9;
+      color: #0f3460;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* ── Uyarı Kutuları ── */
+    .box {
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 14px;
+      display: flex;
+      gap: 12px;
+    }
+    .box-icon { font-size: 18px; flex-shrink: 0; line-height: 1.5; }
+    .box-body { flex: 1; }
+    .box-body strong { display: block; margin-bottom: 4px; }
+    .box-warning  { background: #fefce8; border: 1px solid #fde047; }
+    .box-info     { background: #eff6ff; border: 1px solid #93c5fd; }
+    .box-success  { background: #f0fdf4; border: 1px solid #86efac; }
+    .box-danger   { background: #fef2f2; border: 1px solid #fca5a5; }
+
+    /* ── Tablo ── */
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #475569;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    .tag-recommended {
+      background: #dcfce7;
+      color: #16a34a;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+    }
+    .tag-cheap {
+      background: #dbeafe;
+      color: #2563eb;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+    }
+    .tag-local {
+      background: #fef3c7;
+      color: #d97706;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+    }
+
+    /* ── Adım listesi ── */
+    .step-list { list-style: none; padding: 0; }
+    .step-list li {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .step-list li:last-child { border-bottom: none; }
+    .step-list .sn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      background: #eff6ff;
+      color: #2563eb;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 50%;
+    }
+    .step-list .sc { flex: 1; }
+    .step-list .sc strong { display: block; margin-bottom: 4px; color: #1e293b; }
+
+    /* ── Divider ── */
+    hr { border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    /* ── Print ── */
+    @media print {
+      body { background: #fff; font-size: 13px; }
+      .container { padding: 0; max-width: 100%; }
+      .page-header { background: #1a1a2e !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; border-radius: 0; }
+      .section { border: 1px solid #ccc; break-inside: avoid; }
+      .cmd { background: #f8f9fb !important; color: #1a1a2e !important; border: 1px solid #ccc; }
+      .cmd .comment { color: #888 !important; }
+      .cmd .prompt  { color: #000 !important; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="badge">Teknik Rehber</div>
+    <h1>Sigorta Hasar Sistemi<br>Canlı Ortama Alma Rehberi</h1>
+    <p>Bu doküman, sistemi bir sunucuya kurarak internet üzerinden erişilebilir hale getirme sürecini adım adım anlatmaktadır.<br>
+    Teknik bilgi gerekmez — her adım açık ve ayrıntılı şekilde açıklanmıştır.</p>
+  </div>
+
+  <!-- İçindekiler -->
+  <div class="toc">
+    <h2>İçindekiler</h2>
+    <ol>
+      <li><a href="#sunucu-gereksinimleri">Sunucu Gereksinimleri</a></li>
+      <li><a href="#hosting-onerileri">Hosting Önerileri (Fiyat Karşılaştırması)</a></li>
+      <li><a href="#sunucu-satin-alma">Sunucu Satın Alma (Adım Adım)</a></li>
+      <li><a href="#sunucuya-baglanma">Sunucuya Bağlanma (SSH)</a></li>
+      <li><a href="#docker-kurulumu">Docker Kurulumu</a></li>
+      <li><a href="#projeyi-yukleme">Projeyi Sunucuya Yükleme</a></li>
+      <li><a href="#env-ayarlama">Ortam Değişkenlerini Ayarlama (.env.production)</a></li>
+      <li><a href="#deploy">Sistemi Başlatma (Deploy)</a></li>
+      <li><a href="#dns-ayari">Alan Adını Sunucuya Yönlendirme (DNS)</a></li>
+      <li><a href="#ssl">SSL Sertifikası (HTTPS)</a></li>
+      <li><a href="#test">Test Etme</a></li>
+      <li><a href="#ilk-kullanici">İlk Admin Kullanıcısı ve Başlangıç Verisi</a></li>
+      <li><a href="#yedekleme">Otomatik Yedekleme Kurulumu</a></li>
+      <li><a href="#sorun-giderme">Sorun Giderme</a></li>
+    </ol>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 1 ───────────────────────── -->
+  <div class="section" id="sunucu-gereksinimleri">
+    <div class="section-header">
+      <div class="step-number">1</div>
+      <div class="section-title">Sunucu Gereksinimleri</div>
+    </div>
+
+    <p>Sistemi çalıştırmak için bir <strong>sanal sunucu (VPS)</strong> gereklidir. Bu, aylık belirli bir ücret karşılığında kiralanan ve her zaman açık olan bir bilgisayardır.</p>
+
+    <h3>Minimum Gereksinimler</h3>
+    <table>
+      <thead><tr><th>Bileşen</th><th>Minimum</th><th>Önerilen</th></tr></thead>
+      <tbody>
+        <tr><td><strong>İşlemci (CPU)</strong></td><td>2 çekirdek</td><td>4 çekirdek</td></tr>
+        <tr><td><strong>RAM (Bellek)</strong></td><td>4 GB</td><td>8 GB</td></tr>
+        <tr><td><strong>Disk (SSD)</strong></td><td>50 GB</td><td>100 GB</td></tr>
+        <tr><td><strong>İşletim Sistemi</strong></td><td colspan="2">Ubuntu 22.04 LTS (64-bit)</td></tr>
+        <tr><td><strong>Ağ Bant Genişliği</strong></td><td>100 Mbps</td><td>1 Gbps</td></tr>
+      </tbody>
+    </table>
+
+    <div class="box box-info">
+      <span class="box-icon">ℹ</span>
+      <div class="box-body">
+        <strong>Neden Ubuntu 22.04?</strong>
+        Ubuntu 22.04 LTS, Nisan 2027'ye kadar güvenlik güncellemesi almaktadır. "LTS" (Long Term Support) yani "Uzun Vadeli Destek" anlamına gelir ve production sistemler için en güvenli seçimdir.
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 2 ───────────────────────── -->
+  <div class="section" id="hosting-onerileri">
+    <div class="section-header">
+      <div class="step-number">2</div>
+      <div class="section-title">Hosting Önerileri</div>
+    </div>
+
+    <p>Aşağıdaki sağlayıcılardan birini seçebilirsiniz. <strong>Hetzner en iyi fiyat/performans oranını</strong> sunar ve kurulumu kolaydır.</p>
+
+    <table>
+      <thead><tr><th>Sağlayıcı</th><th>Konum</th><th>Paket Adı</th><th>Aylık Ücret</th><th>Özellik</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Hetzner</strong><br><small>hetzner.com</small></td>
+          <td>Almanya / Finlandiya</td>
+          <td>CX22<br><small>2 vCPU, 4 GB RAM, 40 GB SSD</small></td>
+          <td>~5-6 €/ay<br><small>~170 ₺/ay</small></td>
+          <td>Kolay arayüz, Türkçe destek yok ama forum var</td>
+          <td><span class="tag-recommended">Önerilen</span></td>
+        </tr>
+        <tr>
+          <td><strong>DigitalOcean</strong><br><small>digitalocean.com</small></td>
+          <td>Amsterdam / Frankfurt</td>
+          <td>Basic Droplet<br><small>2 vCPU, 4 GB RAM, 80 GB SSD</small></td>
+          <td>~24 $/ay<br><small>~750 ₺/ay</small></td>
+          <td>Çok kolay arayüz, İngilizce destek</td>
+          <td><span class="tag-recommended">Önerilen</span></td>
+        </tr>
+        <tr>
+          <td><strong>Contabo</strong><br><small>contabo.com</small></td>
+          <td>Almanya</td>
+          <td>VPS S<br><small>4 vCPU, 8 GB RAM, 200 GB SSD</small></td>
+          <td>~7 €/ay<br><small>~230 ₺/ay</small></td>
+          <td>Çok uygun, destek biraz yavaş</td>
+          <td><span class="tag-cheap">Ekonomik</span></td>
+        </tr>
+        <tr>
+          <td><strong>Turhost</strong><br><small>turhost.com</small></td>
+          <td>Türkiye (İstanbul)</td>
+          <td>VPS-1<br><small>2 vCPU, 4 GB RAM, 60 GB SSD</small></td>
+          <td>~300-400 ₺/ay</td>
+          <td>Türkçe destek, Türkiye'de barındırma (KVKK)</td>
+          <td><span class="tag-local">Yerli</span></td>
+        </tr>
+        <tr>
+          <td><strong>Natro</strong><br><small>natro.com</small></td>
+          <td>Türkiye (İstanbul)</td>
+          <td>SSD VPS Lite<br><small>2 vCPU, 4 GB RAM, 50 GB SSD</small></td>
+          <td>~350-450 ₺/ay</td>
+          <td>Türkçe destek, cPanel seçeneği</td>
+          <td><span class="tag-local">Yerli</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="box box-warning">
+      <span class="box-icon">⚠</span>
+      <div class="box-body">
+        <strong>KVKK Uyumu Hakkında</strong>
+        Eğer sigorta şirketinizin hukuk birimi Türkiye'de barındırma zorunluluğu getiriyorsa Turhost veya Natro tercih edin. Aksi hâlde Hetzner (Almanya) hem daha ucuz hem daha hızlıdır ve GDPR kapsamındadır.
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 3 ───────────────────────── -->
+  <div class="section" id="sunucu-satin-alma">
+    <div class="section-header">
+      <div class="step-number">3</div>
+      <div class="section-title">Sunucu Satın Alma (Hetzner Örneği)</div>
+    </div>
+
+    <p>Aşağıdaki adımlar Hetzner için gösterilmektedir. Diğer sağlayıcılar için arayüz farklı olsa da mantık aynıdır.</p>
+
+    <ol class="step-list">
+      <li>
+        <div class="sn">1</div>
+        <div class="sc">
+          <strong>Hesap Açın</strong>
+          Tarayıcınızda <code>https://hetzner.com</code> adresini açın. Sağ üstteki <strong>"Sign Up"</strong> butonuna tıklayın. E-posta adresinizi ve şifrenizi girin.
+        </div>
+      </li>
+      <li>
+        <div class="sn">2</div>
+        <div class="sc">
+          <strong>Ödeme Yöntemini Ekleyin</strong>
+          Hesabınıza giriş yaptıktan sonra sol menüden <strong>"Billing"</strong> → <strong>"Payment"</strong> seçin. Kredi kartınızı veya PayPal hesabınızı ekleyin.
+        </div>
+      </li>
+      <li>
+        <div class="sn">3</div>
+        <div class="sc">
+          <strong>Yeni Sunucu Oluşturun</strong>
+          Sol menüden <strong>"Servers"</strong> → sağ üstteki <strong>"+ Create Server"</strong> butonuna tıklayın.
+        </div>
+      </li>
+      <li>
+        <div class="sn">4</div>
+        <div class="sc">
+          <strong>Konum Seçin</strong>
+          <strong>"Location"</strong> bölümünden <strong>"Falkenstein"</strong> (Almanya) veya <strong>"Helsinki"</strong> (Finlandiya) seçin. Türkiye'ye en yakın veri merkezi Falkenstein'dır.
+        </div>
+      </li>
+      <li>
+        <div class="sn">5</div>
+        <div class="sc">
+          <strong>İşletim Sistemi Seçin</strong>
+          <strong>"Image"</strong> bölümünden <strong>"Ubuntu 22.04"</strong> seçin.
+        </div>
+      </li>
+      <li>
+        <div class="sn">6</div>
+        <div class="sc">
+          <strong>Sunucu Tipi Seçin</strong>
+          <strong>"Type"</strong> bölümünden <strong>"Shared vCPU"</strong> → <strong>"CX22"</strong> seçin (2 vCPU, 4 GB RAM, ~5€/ay).
+        </div>
+      </li>
+      <li>
+        <div class="sn">7</div>
+        <div class="sc">
+          <strong>Root Şifresi Ayarlayın</strong>
+          <strong>"Authentication"</strong> bölümünden <strong>"Password"</strong> seçin ve güçlü bir şifre girin. Bu şifreyi mutlaka bir yere not edin — sunucunuza girerken kullanacaksınız.
+        </div>
+      </li>
+      <li>
+        <div class="sn">8</div>
+        <div class="sc">
+          <strong>Sunucuyu Satın Alın</strong>
+          Sayfanın altındaki <strong>"Create &amp; Buy now"</strong> butonuna tıklayın. Birkaç saniye içinde sunucunuz hazır olacak.
+        </div>
+      </li>
+      <li>
+        <div class="sn">9</div>
+        <div class="sc">
+          <strong>IP Adresini Not Alın</strong>
+          Sunucu listesinde oluşturulan sunucunuzu göreceksiniz. <strong>IPv4 adresini not alın</strong> (örn: <code>65.21.123.45</code>). Bu adres sunucunuzun internet adresidir.
+        </div>
+      </li>
+    </ol>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 4 ───────────────────────── -->
+  <div class="section" id="sunucuya-baglanma">
+    <div class="section-header">
+      <div class="step-number">4</div>
+      <div class="section-title">Sunucuya Bağlanma (SSH)</div>
+    </div>
+
+    <p>SSH, bilgisayarınızdan uzaktaki sunucuya güvenli şekilde bağlanmanızı sağlayan bir yöntemdir. Sanki sunucunun klavyesinin başında oturuyormuşsunuz gibi komut çalıştırabilirsiniz.</p>
+
+    <h3>macOS'te Terminal'i Açma</h3>
+    <ol class="step-list">
+      <li>
+        <div class="sn">1</div>
+        <div class="sc">
+          <strong>Spotlight'ı Açın</strong>
+          Klavyede <strong>Command (⌘) + Boşluk</strong> tuşlarına birlikte basın.
+        </div>
+      </li>
+      <li>
+        <div class="sn">2</div>
+        <div class="sc">
+          <strong>Terminal Arayın</strong>
+          Açılan arama kutusuna <strong>"Terminal"</strong> yazın ve Enter'a basın. Siyah bir pencere açılacak.
+        </div>
+      </li>
+      <li>
+        <div class="sn">3</div>
+        <div class="sc">
+          <strong>Sunucuya Bağlanın</strong>
+          Aşağıdaki komutu yazın ve Enter'a basın (<code>65.21.123.45</code> yerine kendi sunucu IP'nizi yazın):
+          <div class="cmd"><span class="prompt">$ </span>ssh root@65.21.123.45</div>
+        </div>
+      </li>
+      <li>
+        <div class="sn">4</div>
+        <div class="sc">
+          <strong>"yes" Yazın</strong>
+          İlk bağlantıda şöyle bir soru çıkacak: <em>"Are you sure you want to continue connecting (yes/no)?"</em><br>
+          <strong>yes</strong> yazın ve Enter'a basın.
+        </div>
+      </li>
+      <li>
+        <div class="sn">5</div>
+        <div class="sc">
+          <strong>Şifrenizi Girin</strong>
+          Sunucu satın alırken belirlediğiniz şifreyi yazın. <em>Yazdığınız karakterler görünmez — bu normaldir, güvenlik için gizlenir.</em> Yazıp Enter'a basın.
+        </div>
+      </li>
+    </ol>
+
+    <div class="box box-success">
+      <span class="box-icon">✓</span>
+      <div class="box-body">
+        <strong>Bağlantı Başarılı!</strong>
+        Ekranda <code>root@sunucu-adi:~#</code> şeklinde bir yazı görüyorsanız sunucuya bağlandınız. Artık sunucuda komut çalıştırabilirsiniz.
+      </div>
+    </div>
+
+    <div class="box box-warning">
+      <span class="box-icon">⚠</span>
+      <div class="box-body">
+        <strong>Bağlantıyı Kesmeden Önce</strong>
+        Sunucudan çıkmak için <code>exit</code> yazıp Enter'a basın. Terminal penceresini direkt kapatmayın — çalışan işlemleri yarıda kesebilir.
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 5 ───────────────────────── -->
+  <div class="section" id="docker-kurulumu">
+    <div class="section-header">
+      <div class="step-number">5</div>
+      <div class="section-title">Docker Kurulumu</div>
+    </div>
+
+    <p>Docker, uygulamaları "konteyner" adı verilen izole kutucuklar içinde çalıştıran bir yazılımdır. Projenin tüm bileşenleri (veritabanı, backend, frontend) Docker ile başlatılmaktadır.</p>
+
+    <p><strong>Sunucuya bağlıyken</strong> aşağıdaki komutları sırayla çalıştırın:</p>
+
+    <h3>1. Sistemi Güncelle</h3>
+    <div class="cmd"><span class="comment"># Mevcut yazılımları güncelle (~2-3 dakika sürer)</span>
+<span class="prompt">$ </span>apt-get update && apt-get upgrade -y</div>
+
+    <h3>2. Docker'ı Kur</h3>
+    <div class="cmd"><span class="comment"># Docker'ı tek komutla kur</span>
+<span class="prompt">$ </span>curl -fsSL https://get.docker.com | sh</div>
+
+    <h3>3. Docker'ı Otomatik Başlatmaya Al</h3>
+    <div class="cmd"><span class="comment"># Sunucu yeniden başladığında Docker otomatik açılsın</span>
+<span class="prompt">$ </span>systemctl enable docker
+<span class="prompt">$ </span>systemctl start docker</div>
+
+    <h3>4. Kurulumu Doğrula</h3>
+    <div class="cmd"><span class="prompt">$ </span>docker --version
+<span class="comment"># Çıktı şöyle görünmeli: Docker version 25.x.x, build xxxxxxx</span></div>
+
+    <div class="box box-success">
+      <span class="box-icon">✓</span>
+      <div class="box-body">
+        <strong>Docker hazır!</strong>
+        "Docker version" çıktısını gördüyseniz kurulum tamamdır.
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 6 ───────────────────────── -->
+  <div class="section" id="projeyi-yukleme">
+    <div class="section-header">
+      <div class="step-number">6</div>
+      <div class="section-title">Projeyi Sunucuya Yükleme</div>
+    </div>
+
+    <p>Projeyi sunucuya yüklemek için <strong>Git</strong> kullanılır. Git, yazılımları versiyon kontrolüyle indirip güncellemenizi sağlar.</p>
+
+    <h3>1. Git'i Kur</h3>
+    <div class="cmd"><span class="prompt">$ </span>apt-get install -y git</div>
+
+    <h3>2. Kurulum Klasörünü Oluştur</h3>
+    <div class="cmd"><span class="comment"># /opt/sigorta klasörüne kuracağız</span>
+<span class="prompt">$ </span>mkdir -p /opt/sigorta
+<span class="prompt">$ </span>cd /opt/sigorta</div>
+
+    <h3>3. Projeyi İndir</h3>
+    <div class="cmd"><span class="comment"># GitHub adresinizi yazın</span>
+<span class="prompt">$ </span>git clone https://github.com/KULLANICI_ADI/sigorta-hasar-sistemi.git .
+
+<span class="comment"># İndirme tamamlandıktan sonra dosyaları listele</span>
+<span class="prompt">$ </span>ls</div>
+
+    <div class="box box-info">
+      <span class="box-icon">ℹ</span>
+      <div class="box-body">
+        <strong>GitHub Adresi Nerede?</strong>
+        Projenizin GitHub adresini projeyi geliştiren ekipten alın. Format şöyle olmalı: <code>https://github.com/kullanici/proje-adi</code>
+      </div>
+    </div>
+
+    <h3>Güncellemeleri Almak İçin</h3>
+    <p>Yazılım güncellemesi yapıldıktan sonra sunucuya çekmek için:</p>
+    <div class="cmd"><span class="prompt">$ </span>cd /opt/sigorta
+<span class="prompt">$ </span>git pull origin main
+<span class="prompt">$ </span>bash scripts/deploy.sh</div>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 7 ───────────────────────── -->
+  <div class="section" id="env-ayarlama">
+    <div class="section-header">
+      <div class="step-number">7</div>
+      <div class="section-title">Ortam Değişkenlerini Ayarlama</div>
+    </div>
+
+    <p>Ortam değişkenleri, uygulamanın hangi veritabanına bağlanacağını, hangi şifreleri kullanacağını gibi önemli ayarları içeren bir yapılandırma dosyasıdır.</p>
+
+    <h3>1. Şablon Dosyasını Kopyala</h3>
+    <div class="cmd"><span class="prompt">$ </span>cd /opt/sigorta
+<span class="prompt">$ </span>cp .env.production.example .env.production</div>
+
+    <h3>2. Dosyayı Düzenle</h3>
+    <div class="cmd"><span class="comment"># nano metin editörünü aç</span>
+<span class="prompt">$ </span>nano .env.production</div>
+
+    <div class="box box-info">
+      <span class="box-icon">ℹ</span>
+      <div class="box-body">
+        <strong>nano Editörü Kullanımı</strong>
+        <ul style="margin-top:8px">
+          <li>Ok tuşlarıyla hareket edin</li>
+          <li>Değiştirmek istediğiniz yere gelin ve yazın</li>
+          <li>Bitince <strong>Ctrl + X</strong> basın → <strong>Y</strong> basın → <strong>Enter</strong> basın</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>3. Güçlü Şifreler Üretin</h3>
+    <p>Her şifre için aşağıdaki komutu çalıştırın, çıkan metni kopyalayıp .env dosyasına yapıştırın:</p>
+    <div class="cmd"><span class="comment"># PostgreSQL şifresi için:</span>
+<span class="prompt">$ </span>openssl rand -base64 24
+
+<span class="comment"># Redis şifresi için:</span>
+<span class="prompt">$ </span>openssl rand -base64 24
+
+<span class="comment"># JWT_SECRET için (daha uzun olmalı):</span>
+<span class="prompt">$ </span>openssl rand -hex 32
+
+<span class="comment"># MinIO şifresi için:</span>
+<span class="prompt">$ </span>openssl rand -base64 16</div>
+
+    <h3>Doldurmanız Gereken Alanlar</h3>
+    <table>
+      <thead><tr><th>Değişken</th><th>Ne Yazacaksınız</th></tr></thead>
+      <tbody>
+        <tr><td><code>DOMAIN</code></td><td>Alan adınız, örn: <code>hasar.sirketim.com.tr</code></td></tr>
+        <tr><td><code>POSTGRES_PASSWORD</code></td><td><code>openssl rand -base64 24</code> çıktısı</td></tr>
+        <tr><td><code>REDIS_PASSWORD</code></td><td><code>openssl rand -base64 24</code> çıktısı</td></tr>
+        <tr><td><code>JWT_SECRET</code></td><td><code>openssl rand -hex 32</code> çıktısı</td></tr>
+        <tr><td><code>MINIO_ROOT_PASSWORD</code></td><td><code>openssl rand -base64 16</code> çıktısı</td></tr>
+        <tr><td><code>WEB_URL</code></td><td><code>https://hasar.sirketim.com.tr</code></td></tr>
+        <tr><td><code>NEXT_PUBLIC_API_URL</code></td><td><code>https://hasar.sirketim.com.tr/api/v1</code></td></tr>
+        <tr><td><code>APP_PUBLIC_URL</code></td><td><code>https://hasar.sirketim.com.tr</code></td></tr>
+        <tr><td><code>SMTP_HOST</code></td><td>Mail sağlayıcınızın SMTP adresi</td></tr>
+        <tr><td><code>SMTP_USER</code></td><td>Mail adresiniz</td></tr>
+        <tr><td><code>SMTP_PASS</code></td><td>Mail şifreniz</td></tr>
+      </tbody>
+    </table>
+
+    <div class="box box-danger">
+      <span class="box-icon">🔒</span>
+      <div class="box-body">
+        <strong>GÜVENLİK UYARISI</strong>
+        .env.production dosyasını kimseyle paylaşmayın ve Git'e yüklemeyin. Bu dosya veritabanı şifrelerinizi içerir. Dosya zaten .gitignore ile korunuyor, ama dikkatli olun.
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 8 ───────────────────────── -->
+  <div class="section" id="deploy">
+    <div class="section-header">
+      <div class="step-number">8</div>
+      <div class="section-title">Sistemi Başlatma (Deploy)</div>
+    </div>
+
+    <p>Tüm ayarlar yapıldıktan sonra tek bir komutla sistemi başlatabilirsiniz:</p>
+
+    <div class="cmd"><span class="prompt">$ </span>cd /opt/sigorta
+<span class="prompt">$ </span>bash scripts/deploy.sh</div>
+
+    <p>Bu komut şunları otomatik olarak yapar:</p>
+    <ul>
+      <li>Ayarları kontrol eder</li>
+      <li>Docker image'larını oluşturur (5-10 dakika sürer)</li>
+      <li>Veritabanını başlatır</li>
+      <li>Backend ve frontend'i başlatır</li>
+      <li>Veritabanı tablolarını oluşturur</li>
+      <li>Nginx proxy'yi başlatır</li>
+    </ul>
+
+    <div class="box box-info">
+      <span class="box-icon">ℹ</span>
+      <div class="box-body">
+        <strong>İlk kurulum 10-15 dakika sürebilir</strong> — Docker her şeyi internetten indiriyor. Sonraki başlatmalar çok daha hızlı olur.
+      </div>
+    </div>
+
+    <h3>Çalışan Servisleri Görme</h3>
+    <div class="cmd"><span class="prompt">$ </span>docker compose -f docker-compose.prod.yml ps</div>
+
+    <p>Tüm servislerin <strong>"running"</strong> veya <strong>"healthy"</strong> durumunda olması gerekir.</p>
+
+    <h3>Logları Takip Etme</h3>
+    <div class="cmd"><span class="comment"># Tüm servislerin logları (Ctrl+C ile çıkılır)</span>
+<span class="prompt">$ </span>docker compose -f docker-compose.prod.yml logs -f
+
+<span class="comment"># Sadece backend logları</span>
+<span class="prompt">$ </span>docker compose -f docker-compose.prod.yml logs -f backend
+
+<span class="comment"># Sadece nginx logları</span>
+<span class="prompt">$ </span>docker compose -f docker-compose.prod.yml logs -f nginx</div>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 9 ───────────────────────── -->
+  <div class="section" id="dns-ayari">
+    <div class="section-header">
+      <div class="step-number">9</div>
+      <div class="section-title">Alan Adını Sunucuya Yönlendirme (DNS)</div>
+    </div>
+
+    <p>DNS, alan adınızın (örn: <code>hasar.sirketim.com.tr</code>) sunucunuzun IP adresine yönlendirilmesini sağlar. Bunu alan adı sağlayıcınızın panelinden yaparsınız.</p>
+
+    <div class="box box-warning">
+      <span class="box-icon">⚠</span>
+      <div class="box-body">
+        <strong>Sunucu IP'nizi hazır bulundurun</strong>
+        DNS ayarını yapmadan önce sunucunuzun IP adresini (Hetzner/DigitalOcean panelinden aldığınız) not defterinizde hazır bulundurun. Örnek: <code>65.21.123.45</code>
+      </div>
+    </div>
+
+    <!-- ── İHS ÖZEL ADIMLAR ── -->
+    <div style="background:#f0f7ff;border:2px solid #3b82f6;border-radius:10px;padding:24px 28px;margin:20px 0;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+        <span style="background:#3b82f6;color:#fff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:0.5px;">IHS.COM.TR</span>
+        <span style="font-size:16px;font-weight:700;color:#1e40af;">İHS Paneli — Adım Adım DNS Ayarı</span>
+      </div>
+      <p style="color:#1e40af;margin-bottom:16px;">Alan adınız <strong>ihs.com.tr</strong> üzerinde kayıtlıysa aşağıdaki adımları takip edin.</p>
+
+      <ol class="step-list">
+        <li>
+          <div class="sn" style="background:#dbeafe;color:#1d4ed8;">1</div>
+          <div class="sc">
+            <strong>ihs.com.tr Paneline Giriş Yapın</strong>
+            Tarayıcınızda <code>https://www.ihs.com.tr</code> adresini açın. Sağ üstteki <strong>"Müşteri Girişi"</strong> veya <strong>"Giriş Yap"</strong> butonuna tıklayın. Kullanıcı adınız ve şifrenizi girin.
+          </div>
+        </li>
+        <li>
+          <div class="sn" style="background:#dbeafe;color:#1d4ed8;">2</div>
+          <div class="sc">
+            <strong>"Alan Adlarım" Menüsüne Tıklayın</strong>
+            Giriş yaptıktan sonra üst menüde veya sol panelde <strong>"Alan Adlarım"</strong> seçeneğini bulun ve tıklayın. Sahip olduğunuz alan adlarının listesi görünecektir.
+          </div>
+        </li>
+        <li>
+          <div class="sn" style="background:#dbeafe;color:#1d4ed8;">3</div>
+          <div class="sc">
+            <strong>İlgili Alan Adının "Yönet" Butonuna Tıklayın</strong>
+            Listede sisteminizi kuracağınız alan adını bulun. O alan adının sağındaki <strong>"Yönet"</strong> butonuna tıklayın.
+          </div>
+        </li>
+        <li>
+          <div class="sn" style="background:#dbeafe;color:#1d4ed8;">4</div>
+          <div class="sc">
+            <strong>"DNS Yönetimi" Bölümüne Gidin</strong>
+            Alan adı yönetim sayfasında <strong>"DNS Yönetimi"</strong> veya <strong>"Name Server Ayarları"</strong> sekmesine tıklayın.
+          </div>
+        </li>
+        <li>
+          <div class="sn" style="background:#dbeafe;color:#1d4ed8;">5</div>
+          <div class="sc">
+            <strong>Ana Domain İçin A Kaydı Ekleyin</strong>
+            <strong>"Yeni Kayıt Ekle"</strong> butonuna tıklayın ve şu değerleri girin:
+            <table style="margin-top:10px">
+              <thead><tr><th>Alan</th><th>Yazacağınız Değer</th></tr></thead>
+              <tbody>
+                <tr><td>Kayıt Türü / Type</td><td><strong>A</strong></td></tr>
+                <tr><td>Host / Ad</td><td><strong>@</strong> <small style="color:#64748b;">(@ işareti ana domain anlamına gelir)</small></td></tr>
+                <tr><td>Değer / IP Adresi</td><td><strong>Sunucunuzun IP adresi</strong> <small style="color:#64748b;">(örn: 65.21.123.45)</small></td></tr>
+                <tr><td>TTL</td><td><strong>3600</strong> <small style="color:#64748b;">(veya varsayılan bırakın)</small></td></tr>
+              </tbody>
+            </table>
+            <strong>"Kaydet"</strong> butonuna tıklayın.
+          </div>
+        </li>
+        <li>
+          <div class="sn" style="background:#dbeafe;color:#1d4ed8;">6</div>
+          <div class="sc">
+            <strong>www İçin A Kaydı Ekleyin</strong>
+            Tekrar <strong>"Yeni Kayıt Ekle"</strong> butonuna tıklayın:
+            <table style="margin-top:10px">
+              <thead><tr><th>Alan</th><th>Yazacağınız Değer</th></tr></thead>
+              <tbody>
+                <tr><td>Kayıt Türü / Type</td><td><strong>A</strong></td></tr>
+                <tr><td>Host / Ad</td><td><strong>www</strong></td></tr>
+                <tr><td>Değer / IP Adresi</td><td><strong>Sunucunuzun IP adresi</strong> <small style="color:#64748b;">(5. adımdaki ile aynı)</small></td></tr>
+                <tr><td>TTL</td><td><strong>3600</strong></td></tr>
+              </tbody>
+            </table>
+            <strong>"Kaydet"</strong> butonuna tıklayın.
+          </div>
+        </li>
+        <li>
+          <div class="sn" style="background:#dbeafe;color:#1d4ed8;">7</div>
+          <div class="sc">
+            <strong>API Subdomain İçin A Kaydı Ekleyin</strong>
+            <em>(Bu adım, backend API'sinin ayrı bir adreste çalışması için gerekir.)</em><br>
+            Tekrar <strong>"Yeni Kayıt Ekle"</strong> butonuna tıklayın:
+            <table style="margin-top:10px">
+              <thead><tr><th>Alan</th><th>Yazacağınız Değer</th></tr></thead>
+              <tbody>
+                <tr><td>Kayıt Türü / Type</td><td><strong>A</strong></td></tr>
+                <tr><td>Host / Ad</td><td><strong>api</strong></td></tr>
+                <tr><td>Değer / IP Adresi</td><td><strong>Sunucunuzun IP adresi</strong> <small style="color:#64748b;">(aynı IP)</small></td></tr>
+                <tr><td>TTL</td><td><strong>3600</strong></td></tr>
+              </tbody>
+            </table>
+            <strong>"Kaydet"</strong> butonuna tıklayın.
+          </div>
+        </li>
+        <li>
+          <div class="sn" style="background:#dbeafe;color:#1d4ed8;">8</div>
+          <div class="sc">
+            <strong>Yayılmasını Bekleyin</strong>
+            Tüm kayıtları kaydettikten sonra değişikliklerin internete yayılması için <strong>30 dakika ile 4 saat</strong> arasında bekleyin. İHS genellikle 1-2 saat içinde aktif eder.
+          </div>
+        </li>
+      </ol>
+
+      <div style="background:#dbeafe;border-radius:8px;padding:14px 16px;margin-top:16px;">
+        <strong style="color:#1e40af;">Eklemeniz Gereken Kayıtların Özeti:</strong>
+        <table style="margin-top:10px">
+          <thead><tr><th>Tür</th><th>Host</th><th>Değer (IP)</th><th>Açıklama</th></tr></thead>
+          <tbody>
+            <tr><td>A</td><td><strong>@</strong></td><td>Sunucu IP'niz</td><td>Ana site (sirketim.com.tr)</td></tr>
+            <tr><td>A</td><td><strong>www</strong></td><td>Sunucu IP'niz</td><td>www.sirketim.com.tr</td></tr>
+            <tr><td>A</td><td><strong>api</strong></td><td>Sunucu IP'niz</td><td>api.sirketim.com.tr (ilerisi için)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3>Genel Adımlar (Diğer Sağlayıcılar İçin)</h3>
+    <p style="color:#64748b;font-size:14px;margin-bottom:16px;">İHS dışında başka bir sağlayıcı kullanıyorsanız aşağıdaki genel adımları takip edin.</p>
+    <ol class="step-list">
+      <li>
+        <div class="sn">1</div>
+        <div class="sc">
+          <strong>Alan Adı Panelinize Girin</strong>
+          Alan adınızı satın aldığınız firmanın web sitesine gidin (örn: turhost.com, natro.com, isimtescil.net) ve hesabınıza giriş yapın.
+        </div>
+      </li>
+      <li>
+        <div class="sn">2</div>
+        <div class="sc">
+          <strong>DNS Yönetimi'ne Gidin</strong>
+          Menüde <strong>"Alan Adlarım"</strong> veya <strong>"Domains"</strong> → alan adınıza tıklayın → <strong>"DNS Yönetimi"</strong> veya <strong>"DNS Ayarları"</strong> seçeneğini bulun.
+        </div>
+      </li>
+      <li>
+        <div class="sn">3</div>
+        <div class="sc">
+          <strong>A Kaydı Ekleyin (Ana Domain)</strong>
+          <strong>"Yeni Kayıt Ekle"</strong> veya <strong>"Add Record"</strong> butonuna tıklayın.<br>
+          <table style="margin-top:10px">
+            <thead><tr><th>Alan</th><th>Yazacağınız Değer</th></tr></thead>
+            <tbody>
+              <tr><td>Tür / Type</td><td><strong>A</strong></td></tr>
+              <tr><td>Ad / Name / Host</td><td><strong>@</strong> <small>(bu sembol ana domain anlamına gelir)</small></td></tr>
+              <tr><td>Değer / Value / IP</td><td><strong>Sunucunuzun IP adresi</strong> (örn: 65.21.123.45)</td></tr>
+              <tr><td>TTL</td><td><strong>3600</strong> (veya varsayılan bırakın)</td></tr>
+            </tbody>
+          </table>
+          Kaydedin.
+        </div>
+      </li>
+      <li>
+        <div class="sn">4</div>
+        <div class="sc">
+          <strong>www İçin A Kaydı Ekleyin</strong>
+          Aynı işlemi tekrar yapın, bu sefer <strong>Ad/Host alanına <code>www</code></strong> yazın. IP adresi aynı olacak.
+        </div>
+      </li>
+      <li>
+        <div class="sn">5</div>
+        <div class="sc">
+          <strong>API Subdomain İçin A Kaydı Ekleyin</strong>
+          Bir kez daha <strong>"Yeni Kayıt Ekle"</strong> butonuna tıklayın. Bu sefer <strong>Ad/Host alanına <code>api</code></strong> yazın. IP adresi aynı olacak.
+        </div>
+      </li>
+      <li>
+        <div class="sn">6</div>
+        <div class="sc">
+          <strong>Yayılmasını Bekleyin</strong>
+          DNS değişiklikleri internete yayılmak için <strong>birkaç dakika ile 24 saat</strong> arasında sürebilir. Genellikle 30-60 dakika içinde aktif olur.
+        </div>
+      </li>
+    </ol>
+
+    <h3>DNS Yayılmasını Kontrol Etme</h3>
+    <p>Sunucu terminalinde aşağıdaki komutu çalıştırın (<code>alanadi.com.tr</code> yerine kendinizinkini yazın):</p>
+    <div class="cmd"><span class="prompt">$ </span>nslookup alanadi.com.tr
+<span class="comment"># Çıktıda sunucu IP'nizi görüyorsanız DNS yayıldı demektir</span></div>
+
+    <p>Ya da tarayıcıdan kontrol etmek için: <a href="https://dnschecker.org" target="_blank" style="color:#0f3460;">dnschecker.org</a> adresine gidin, alan adınızı yazın ve tüm lokasyonlarda sunucu IP'nizi görüp görmediğinizi kontrol edin.</p>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 10 ───────────────────────── -->
+  <div class="section" id="ssl">
+    <div class="section-header">
+      <div class="step-number">10</div>
+      <div class="section-title">SSL Sertifikası (HTTPS)</div>
+    </div>
+
+    <p>SSL sertifikası, sitenizin <strong>https://</strong> ile erişilmesini ve tüm iletişimin şifrelenmesini sağlar. Let's Encrypt ücretsiz SSL sertifikası vermektedir.</p>
+
+    <div class="box box-warning">
+      <span class="box-icon">⚠</span>
+      <div class="box-body">
+        <strong>Önce DNS Yayılmasını Bekleyin!</strong>
+        SSL sertifikası almadan önce alan adınızın sunucu IP'nize yönlendirilmiş olması gerekir. Bölüm 9'u tamamlayıp DNS'in yayıldığından emin olun.
+      </div>
+    </div>
+
+    <p>Deploy script'i SSL sertifikasını otomatik alır. Eğer deploy sırasında DNS henüz yayılmamışsa, DNS yayıldıktan sonra şu komutu çalıştırın:</p>
+
+    <div class="cmd"><span class="prompt">$ </span>cd /opt/sigorta
+
+<span class="comment"># SSL sertifikasını al (e-posta adresinizi girin)</span>
+<span class="prompt">$ </span>docker compose -f docker-compose.prod.yml exec certbot \
+    certbot certonly \
+    --webroot \
+    --webroot-path /var/www/certbot \
+    --email noreply@sirketim.com.tr \
+    --agree-tos \
+    --no-eff-email \
+    -d alanadi.com.tr \
+    -d www.alanadi.com.tr
+
+<span class="comment"># Nginx'i yenile (SSL'i devreye almak için)</span>
+<span class="prompt">$ </span>docker compose -f docker-compose.prod.yml exec nginx nginx -s reload</div>
+
+    <h3>SSL Yenileme Otomatik mi?</h3>
+    <p>Evet. Certbot container'ı her 12 saatte bir sertifikayı kontrol eder ve süresi dolmadan önce (<strong>30 gün öncesinde</strong>) otomatik olarak yeniler. Elle bir şey yapmanıza gerek yok.</p>
+
+    <div class="box box-success">
+      <span class="box-icon">✓</span>
+      <div class="box-body">
+        <strong>Başarılı!</strong>
+        Tarayıcınızdan <code>https://alanadi.com.tr</code> adresini açtığınızda adres çubuğunda kilit simgesi görüyorsanız SSL çalışıyor demektir.
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 11 ───────────────────────── -->
+  <div class="section" id="test">
+    <div class="section-header">
+      <div class="step-number">11</div>
+      <div class="section-title">Test Etme</div>
+    </div>
+
+    <h3>Tarayıcıdan Test</h3>
+    <ol>
+      <li>Tarayıcınızda <code>https://alanadi.com.tr</code> adresini açın — giriş sayfası gelmelidir.</li>
+      <li><code>https://alanadi.com.tr/api/v1/health</code> adresini açın — <code>{"status":"ok"}</code> görmeli.</li>
+    </ol>
+
+    <h3>Sunucudan Test</h3>
+    <div class="cmd"><span class="comment"># API sağlık kontrolü</span>
+<span class="prompt">$ </span>curl -s https://alanadi.com.tr/api/v1/health
+
+<span class="comment"># Tüm container'ların durumu</span>
+<span class="prompt">$ </span>docker compose -f docker-compose.prod.yml ps
+
+<span class="comment"># Disk kullanımı</span>
+<span class="prompt">$ </span>df -h
+
+<span class="comment"># RAM kullanımı</span>
+<span class="prompt">$ </span>free -h</div>
+
+    <h3>Beklenen Çıktılar</h3>
+    <table>
+      <thead><tr><th>Kontrol</th><th>Beklenen Sonuç</th></tr></thead>
+      <tbody>
+        <tr><td>https://alanadi.com.tr</td><td>Giriş sayfası yüklenir, kilit simgesi görünür</td></tr>
+        <tr><td>/api/v1/health</td><td><code>{"status":"ok"}</code> veya benzer JSON</td></tr>
+        <tr><td>docker compose ps</td><td>Tüm servisler "running" veya "healthy"</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 12 ───────────────────────── -->
+  <div class="section" id="ilk-kullanici">
+    <div class="section-header">
+      <div class="step-number">12</div>
+      <div class="section-title">İlk Admin Kullanıcısı ve Başlangıç Verisi</div>
+    </div>
+
+    <p>Sistem kurulduğunda veritabanı boş gelir. Seed (başlangıç verisi) komutu ilk admin kullanıcısını ve temel verileri oluşturur.</p>
+
+    <div class="box box-warning">
+      <span class="box-icon">⚠</span>
+      <div class="box-body">
+        <strong>Seed bir kez çalıştırılmalı!</strong>
+        Bu komut yalnızca ilk kurulumda çalıştırılır. Tekrar çalıştırırsanız veriler mükerrer oluşabilir.
+      </div>
+    </div>
+
+    <h3>Seed Komutunu Çalıştırma</h3>
+    <div class="cmd"><span class="prompt">$ </span>docker exec -it sigorta-backend sh -c "cd /app/apps/backend && npx prisma db seed"</div>
+
+    <p>Komut tamamlandıktan sonra varsayılan admin bilgilerini geliştirici ekibinden alın. Sisteme ilk giriş yaptıktan sonra <strong>şifrenizi mutlaka değiştirin.</strong></p>
+
+    <h3>Admin Şifresini Değiştirme</h3>
+    <ol>
+      <li>Siteye giriş yapın.</li>
+      <li>Sağ üstteki kullanıcı ikonuna tıklayın.</li>
+      <li><strong>"Profil"</strong> veya <strong>"Hesap Ayarları"</strong> seçeneğini açın.</li>
+      <li>Şifrenizi güncelleyin.</li>
+    </ol>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 13 ───────────────────────── -->
+  <div class="section" id="yedekleme">
+    <div class="section-header">
+      <div class="step-number">13</div>
+      <div class="section-title">Otomatik Yedekleme Kurulumu</div>
+    </div>
+
+    <p>Yedekleme script'i her gece saat 02:00'de otomatik çalışacak şekilde ayarlanır. Her yedek sıkıştırılmış şekilde sunucuya kaydedilir ve 30 günden eskileri otomatik silinir.</p>
+
+    <h3>Cron Görevi Oluşturma</h3>
+    <div class="cmd"><span class="comment"># Cron editörünü aç</span>
+<span class="prompt">$ </span>crontab -e
+
+<span class="comment"># İlk açılışta editör sorabilir, nano için 1 yazıp Enter'a basın</span>
+<span class="comment"># Açılan dosyanın EN ALTINA şu satırı ekleyin:</span>
+0 2 * * * /opt/sigorta/scripts/backup.sh >> /var/log/sigorta-backup.log 2>&1
+
+<span class="comment"># Kaydet: Ctrl+X → Y → Enter</span></div>
+
+    <h3>Elle Yedek Alma</h3>
+    <div class="cmd"><span class="prompt">$ </span>bash /opt/sigorta/scripts/backup.sh</div>
+
+    <h3>Yedekleri Görmek</h3>
+    <div class="cmd"><span class="prompt">$ </span>ls -lh /var/backups/sigorta/</div>
+
+    <h3>Yedeği Geri Yükleme</h3>
+    <p>Bir felakette veritabanını geri yüklemek için:</p>
+    <div class="cmd"><span class="comment"># backup_2026-01-15_02-00-00.sql.gz dosyasını geri yükle</span>
+<span class="prompt">$ </span>gunzip -c /var/backups/sigorta/backup_TARIH.sql.gz | \
+    docker exec -i sigorta-postgres \
+    psql -U sigorta_user -d sigorta_hasar</div>
+  </div>
+
+  <!-- ───────────────────────── BÖLÜM 14 ───────────────────────── -->
+  <div class="section" id="sorun-giderme">
+    <div class="section-header">
+      <div class="step-number">14</div>
+      <div class="section-title">Sorun Giderme</div>
+    </div>
+
+    <table>
+      <thead><tr><th>Sorun</th><th>Çözüm</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Site açılmıyor</strong></td>
+          <td>
+            1. <code>docker compose -f docker-compose.prod.yml ps</code> ile container'ların çalışıp çalışmadığını kontrol edin.<br>
+            2. <code>docker compose -f docker-compose.prod.yml logs nginx</code> ile nginx loglarına bakın.<br>
+            3. DNS yayıldı mı kontrol edin: <code>nslookup alanadi.com.tr</code>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>SSL sertifikası hatası</strong></td>
+          <td>
+            1. DNS yayılmasını bekleyin (en az 30 dakika).<br>
+            2. Deploy script'ini tekrar çalıştırın: <code>bash scripts/deploy.sh</code>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Backend başlamıyor</strong></td>
+          <td>
+            <code>docker logs sigorta-backend</code> ile hata mesajını okuyun.<br>
+            Genellikle .env.production'da eksik veya yanlış değer vardır.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Disk doldu</strong></td>
+          <td>
+            <code>df -h</code> ile disk kullanımını görün.<br>
+            <code>docker system prune -f</code> ile eski Docker katmanlarını temizleyin.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Güncelleme sonrası site çalışmıyor</strong></td>
+          <td>
+            <code>docker compose -f docker-compose.prod.yml restart</code> ile tüm servisleri yeniden başlatın.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Tüm servisleri durdurmak</strong></td>
+          <td>
+            <code>docker compose -f docker-compose.prod.yml down</code>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Tüm servisleri yeniden başlatmak</strong></td>
+          <td>
+            <code>docker compose -f docker-compose.prod.yml up -d</code>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Destek</h3>
+    <p>Çözemediğiniz bir sorunla karşılaşırsanız, aşağıdaki logları geliştirici ekibine iletin:</p>
+    <div class="cmd"><span class="comment"># Son 100 satır log (bu çıktıyı kopyalayıp gönderin)</span>
+<span class="prompt">$ </span>docker compose -f docker-compose.prod.yml logs --tail=100 > /tmp/system-logs.txt
+<span class="prompt">$ </span>cat /tmp/system-logs.txt</div>
+  </div>
+
+  <div class="footer">
+    <p>Sigorta Hasar Sistemi — Production Deployment Rehberi</p>
+    <p style="margin-top:4px;font-size:12px;">Bu doküman projeyle birlikte güncellenmektedir.</p>
+  </div>
+
+</div>
+</body>
+</html>

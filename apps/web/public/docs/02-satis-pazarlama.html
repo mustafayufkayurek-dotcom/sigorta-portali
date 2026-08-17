@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meridyen Assistance — Satış ve Pazarlama Broşürü</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 10pt;
+      color: #1a1a2e;
+      background: #fff;
+      line-height: 1.65;
+    }
+    :root {
+      --navy: #0F2040;
+      --navy-mid: #1E3A6E;
+      --blue-accent: #4A6FA5;
+      --gold: #F0B830;
+      --gold-dark: #D4870A;
+      --light-bg: #F8FAFF;
+      --border: #D1DCF0;
+      --white: #ffffff;
+    }
+
+    /* ─── Inline SVG logo helper ─── */
+    .logo-svg { display: block; }
+
+    /* ─── Cover / Hero ─── */
+    .hero {
+      background: linear-gradient(145deg, var(--navy) 0%, var(--navy-mid) 55%, #1a4d8a 100%);
+      color: #fff;
+      padding: 44px 32px 36px;
+      position: relative;
+      overflow: hidden;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -100px; right: -80px;
+      width: 380px; height: 380px; border-radius: 50%;
+      background: rgba(240,184,48,0.07);
+    }
+    .hero::after {
+      content: '';
+      position: absolute; bottom: -70px; left: -50px;
+      width: 260px; height: 260px; border-radius: 50%;
+      background: rgba(74,111,165,0.12);
+    }
+    .hero-inner { position: relative; z-index: 1; }
+    .hero-logo { margin-bottom: 28px; }
+    .hero-tag {
+      display: inline-block;
+      background: rgba(240,184,48,0.18);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .hero-title {
+      font-size: 24pt;
+      font-weight: 900;
+      line-height: 1.2;
+      margin-bottom: 10px;
+      max-width: 160mm;
+    }
+    .hero-title span { color: var(--gold); }
+    .hero-slogan {
+      font-size: 13pt;
+      color: rgba(255,255,255,0.75);
+      font-style: italic;
+      margin-bottom: 20px;
+    }
+    .hero-divider {
+      width: 64px; height: 3px;
+      background: linear-gradient(90deg, var(--gold), var(--gold-dark));
+      border-radius: 2px;
+      margin: 16px 0;
+    }
+    .hero-desc {
+      max-width: 140mm;
+      font-size: 10pt;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.7;
+    }
+
+    /* ─── Section Titles ─── */
+    .section-wrap { padding: 28px 32px; }
+    .section-label {
+      font-size: 7.5pt;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold-dark);
+      margin-bottom: 6px;
+    }
+    .section-title {
+      font-size: 15pt;
+      font-weight: 800;
+      color: var(--navy);
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+    .section-lead {
+      font-size: 9.5pt;
+      color: #4B5563;
+      max-width: 140mm;
+      line-height: 1.65;
+    }
+    .section-divider {
+      width: 48px; height: 3px;
+      background: linear-gradient(90deg, var(--gold), var(--gold-dark));
+      border-radius: 2px;
+      margin: 10px 0 20px;
+    }
+
+    /* ─── About Strip ─── */
+    .about-strip {
+      background: var(--light-bg);
+      border-top: 3px solid var(--gold);
+      padding: 22px 32px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px; }
+    .about-item { font-size: 9pt; color: #374151; }
+    .about-item strong { color: var(--navy); display: block; margin-bottom: 2px; font-size: 9.5pt; }
+
+    /* ─── Feature Cards ─── */
+    .cards-wrap {
+      padding: 28px 32px;
+      background: #fff;
+    }
+    .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+    .feature-card {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .card-top {
+      background: var(--navy);
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .card-icon {
+      width: 32px; height: 32px;
+      background: rgba(240,184,48,0.15);
+      border: 1px solid rgba(240,184,48,0.4);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14pt;
+      flex-shrink: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .card-title { color: #fff; font-size: 10pt; font-weight: 700; }
+    .card-body { padding: 12px 16px; font-size: 9pt; color: #374151; line-height: 1.6; }
+    .card-body ul { padding-left: 14px; }
+    .card-body li { margin-bottom: 4px; }
+    .card-body li::marker { color: var(--gold-dark); }
+
+    /* ─── Stats Band ─── */
+    .stats-band {
+      background: var(--navy-mid);
+      padding: 26px 32px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-size: 22pt;
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 4px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .stat-label { font-size: 8pt; color: rgba(255,255,255,0.75); text-align: center; line-height: 1.4; }
+    .stats-title { font-size: 12pt; font-weight: 700; color: #fff; text-align: center; }
+
+    /* ─── Platform Features ─── */
+    .platform-wrap { padding: 28px 32px; background: var(--light-bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .feature-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .feature-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 10px 12px;
+      font-size: 9pt;
+    }
+    .feature-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--gold);
+      flex-shrink: 0; margin-top: 4px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .feature-item strong { display: block; color: var(--navy); font-size: 9pt; margin-bottom: 2px; }
+
+    /* ─── Why Us ─── */
+    .why-wrap { padding: 28px 32px; }
+    .why-list { margin-top: 16px; }
+    .why-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 9.5pt;
+    }
+    .why-item:last-child { border-bottom: none; }
+    .why-num {
+      min-width: 26px; height: 26px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      color: var(--navy);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9pt; font-weight: 800;
+      flex-shrink: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .why-item strong { display: block; color: var(--navy); margin-bottom: 2px; }
+    .why-item p { color: #4B5563; font-size: 9pt; margin: 0; }
+
+    /* ─── Insurance Companies ─── */
+    .insurers-wrap { padding: 24px 32px; background: var(--light-bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .insurer-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .insurer-badge {
+      background: #fff;
+      border: 1.5px solid var(--navy-mid);
+      color: var(--navy);
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 8.5pt;
+      font-weight: 600;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ─── Trust Band ─── */
+    .trust-band {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+      padding: 24px 32px;
+      text-align: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .trust-title { font-size: 14pt; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .trust-sub { font-size: 9.5pt; color: rgba(255,255,255,0.75); }
+    .trust-divider { width: 48px; height: 2px; background: var(--gold); margin: 12px auto; border-radius: 2px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    /* ─── Contact ─── */
+    .contact-wrap { padding: 28px 32px; }
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px; }
+    .contact-box {
+      background: var(--light-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 20px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .contact-box h4 { color: var(--navy-mid); font-size: 10pt; font-weight: 700; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .contact-line { font-size: 9pt; color: #374151; margin-bottom: 6px; }
+    .contact-line strong { color: var(--navy); }
+    .demo-box {
+      background: var(--navy);
+      border-radius: 6px;
+      padding: 16px 20px;
+      color: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .demo-box h4 { color: var(--gold); font-size: 10pt; font-weight: 700; margin-bottom: 8px; }
+    .demo-box p { font-size: 9pt; color: rgba(255,255,255,0.85); margin-bottom: 10px; }
+    .demo-cta {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 800;
+      font-size: 9.5pt;
+      padding: 7px 20px;
+      border-radius: 4px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ─── Footer ─── */
+    .doc-footer {
+      background: var(--navy);
+      color: rgba(255,255,255,0.6);
+      padding: 10px 32px;
+      font-size: 7.5pt;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .doc-footer strong { color: rgba(255,255,255,0.9); }
+
+    /* ─── Print ─── */
+    @media print {
+      @page { size: A4; margin: 0; }
+      body { font-size: 9.5pt; }
+      .page-break { page-break-before: always; }
+      a { text-decoration: none; color: inherit; }
+    }
+
+    p { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     HERO / COVER
+═══════════════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72" fill="none" width="220" height="57" role="img" aria-label="Meridyen Assistance">
+        <defs>
+          <linearGradient id="hsg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A8FD4"/><stop offset="100%" stop-color="#2A5BA8"/></linearGradient>
+          <linearGradient id="hgg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F0B830"/><stop offset="100%" stop-color="#D4870A"/></linearGradient>
+        </defs>
+        <path d="M36 6 L10 16 L10 38 C10 52 22 63 36 67 C50 63 62 52 62 38 L62 16 Z" fill="url(#hsg)"/>
+        <path d="M36 6 L62 16 L58 18 L36 9.5 L14 18 L10 16 Z" fill="url(#hgg)" opacity="0.9"/>
+        <path d="M21 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
+        <path d="M51 23 L36 33 L36 23" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
+        <line x1="21" y1="23" x2="21" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="51" y1="23" x2="51" y2="46" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+        <text x="78" y="36" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="3" fill="#FFFFFF">MERIDYEN</text>
+        <rect x="78" y="40" width="168" height="2" rx="1" fill="url(#hgg)"/>
+        <text x="78" y="56" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="11" font-weight="500" letter-spacing="5" fill="#a0c4e8">ASSISTANCE</text>
+      </svg>
+    </div>
+    <div class="hero-tag">Eksperlere ve Sigorta Şirketlerine Özel Yazılım</div>
+    <div class="hero-title">Tek Platform,<br><span>Sınırsız Kontrol</span></div>
+    <div class="hero-slogan">"Tüm Süreçlerde Güvenilir Çözüm Ortağınız"</div>
+    <div class="hero-divider"></div>
+    <div class="hero-desc">
+      Meridyen Assistance, hasar onarım ve restorasyon süreçlerini baştan sona dijitalleştiren, sigorta şirketleri ve eksperler için özel olarak tasarlanmış entegre bir yönetim platformudur. 1999'dan bu yana sektörde edindiğimiz deneyimi teknoloji ile birleştiriyoruz.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     HAKKIMIZDA
+═══════════════════════════════════════════ -->
+<div class="about-strip">
+  <div class="section-label">Kurumsal Kimlik</div>
+  <div class="section-title" style="font-size:13pt; color: var(--navy);">Safran Birleşik Hizmetler / Meridyen Assistance</div>
+  <div class="about-grid">
+    <div class="about-item">
+      <strong>Sektör Deneyimi</strong>
+      1999'dan bu yana 25 yılı aşkın hasar ve restorasyon hizmet birikimi
+    </div>
+    <div class="about-item">
+      <strong>Kuruluş</strong>
+      2010 yılında Safran Birleşik Hizmetler olarak yapılandırıldı
+    </div>
+    <div class="about-item">
+      <strong>Yazılım Markası</strong>
+      Meridyen Assistance — sektöre özel hasar yönetim platformu
+    </div>
+    <div class="about-item">
+      <strong>Coğrafi Kapsam</strong>
+      Tüm Türkiye'de koordineli eksper ve tedarikçi ağı
+    </div>
+    <div class="about-item">
+      <strong>Temel Hizmetler</strong>
+      Hasar onarım/restorasyon, güneş enerji santrali onarım, sovtaj, iş makinası/elektronik iade parça, danışmanlık
+    </div>
+    <div class="about-item">
+      <strong>Müşteri Tabanı</strong>
+      Türkiye'nin önde gelen 10+ sigorta şirketi ile aktif iş birliği
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     4 ÖZELLİK KARTI
+═══════════════════════════════════════════ -->
+<div class="cards-wrap">
+  <div class="section-label">Platform Yetenekleri</div>
+  <div class="section-title">Neler Sunuyoruz?</div>
+  <div class="section-divider"></div>
+  <div class="cards-grid">
+
+    <div class="feature-card">
+      <div class="card-top">
+        <div class="card-icon">&#127968;</div>
+        <div class="card-title">Konut ve Endüstriyel Onarım</div>
+      </div>
+      <div class="card-body">
+        <ul>
+          <li>Su baskını, yangın, deprem hasarı restorasyonu</li>
+          <li>Güneş enerji santrali onarım ve bakım</li>
+          <li>Sovtaj ve enkaz kaldırma hizmetleri</li>
+          <li>Sertifikalı tedarikçi ağı ile kaliteli iş çıktısı</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-top">
+        <div class="card-icon">&#128187;</div>
+        <div class="card-title">Sektöre Özel Yazılım Hizmetleri</div>
+      </div>
+      <div class="card-body">
+        <ul>
+          <li>Hasar dosyası açma ve uçtan uca takip</li>
+          <li>Dijital sözleşme ve evrak onay sistemi</li>
+          <li>Gerçek zamanlı SLA izleme ve uyarı</li>
+          <li>Detaylı raporlama ve PDF ihraç modülü</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-top">
+        <div class="card-icon">&#128101;</div>
+        <div class="card-title">Eksper Koordinasyon Ağı</div>
+      </div>
+      <div class="card-body">
+        <ul>
+          <li>Bölge bazlı eksper atama ve iş yükü takibi</li>
+          <li>Eksperlere özel portal ve mobil erişim</li>
+          <li>İhbar → İnceleme → Onay dijital akışı</li>
+          <li>Anlık bildirim ve iletişim altyapısı</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-top">
+        <div class="card-icon">&#127758;</div>
+        <div class="card-title">Tüm Türkiye'deyiz</div>
+      </div>
+      <div class="card-body">
+        <ul>
+          <li>81 ilde aktif tedarikçi ve eksper ağı</li>
+          <li>48 saat içinde sahaya müdahale garantisi</li>
+          <li>Merkezi koordinasyon, yerel iş gücü</li>
+          <li>7/24 operasyon ve destek imkânı</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     İSTATİSTİKLER BANDI
+═══════════════════════════════════════════ -->
+<div class="stats-band">
+  <div class="stats-title">Rakamlarla Meridyen Assistance</div>
+  <div class="stats-grid">
+    <div class="stat-item">
+      <div class="stat-num">1.200+</div>
+      <div class="stat-label">Yönetilen<br>Hasar Dosyası</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">%98.5</div>
+      <div class="stat-label">SLA Uyum<br>Oranı</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">48 Saat</div>
+      <div class="stat-label">Garantili<br>Müdahale Süresi</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">8+</div>
+      <div class="stat-label">Aktif Sigorta<br>Şirketi Partneri</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PLATFORM ÖZELLİKLERİ
+═══════════════════════════════════════════ -->
+<div class="platform-wrap">
+  <div class="section-label">Teknoloji</div>
+  <div class="section-title" style="color: var(--navy);">Platform Özellikleri</div>
+  <div class="section-divider"></div>
+  <div class="feature-list">
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div>
+        <strong>Eksper Portalı</strong>
+        Eksperler kendi özel portallarından ihbar gönderir, dosya takibi yapar ve dijital onay verir.
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div>
+        <strong>Dijital Onay Sistemi</strong>
+        Sözleşmeler ve evraklar SMS/e-posta bağlantısıyla elektronik imzalanır; fiziksel belge gerekmez.
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div>
+        <strong>Anket Sistemi</strong>
+        Dosya kapanışında müşteriye otomatik memnuniyet anketi gönderilir; sonuçlar anlık analiz edilir.
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div>
+        <strong>Gelişmiş Raporlama</strong>
+        İç ve dış rapor ayrımı, fotoğraflı hasar raporu, otomatik A4 PDF çıktısı.
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div>
+        <strong>7/24 Takip</strong>
+        Tüm dosyalar anlık durum güncellemesiyle izlenir; gecikme uyarıları otomatik iletilir.
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-dot"></div>
+      <div>
+        <strong>Finans Yönetimi</strong>
+        Fatura, tedarikçi maliyet, kar marjı ve SLA uyum raporları tek panelde.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     NEDEN MERİDYEN ASSİSTANCE?
+═══════════════════════════════════════════ -->
+<div class="why-wrap">
+  <div class="section-label">Rekabet Avantajı</div>
+  <div class="section-title">Neden Meridyen Assistance?</div>
+  <div class="section-divider"></div>
+  <div class="why-list">
+    <div class="why-item">
+      <div class="why-num">1</div>
+      <div>
+        <strong>Sektöre Özel Geliştirme</strong>
+        <p>Platform, sigorta hasarı süreçleri için sıfırdan tasarlanmıştır. Genel yazılım adaptasyonu değil, sektörün ihtiyaçlarına özel çözüm sunar.</p>
+      </div>
+    </div>
+    <div class="why-item">
+      <div class="why-num">2</div>
+      <div>
+        <strong>Eksper Odaklı Tasarım</strong>
+        <p>Eksperler için ayrı portal, mobil uyumlu arayüz ve anlık bildirim sistemi — saha ekibi verimliliği maksimuma çıkar.</p>
+      </div>
+    </div>
+    <div class="why-item">
+      <div class="why-num">3</div>
+      <div>
+        <strong>Tam Entegrasyon</strong>
+        <p>İhbardan dosya kapanışına kadar tüm süreç tek platformda; farklı sistemler arası geçiş, veri kaybı veya gecikme riski yoktur.</p>
+      </div>
+    </div>
+    <div class="why-item">
+      <div class="why-num">4</div>
+      <div>
+        <strong>Kanıtlanmış SLA Performansı</strong>
+        <p>%98.5 SLA uyum oranı ve 48 saatlik müdahale garantisi; sigorta şirketlerinin hizmet standartlarını karşılar ve aşar.</p>
+      </div>
+    </div>
+    <div class="why-item">
+      <div class="why-num">5</div>
+      <div>
+        <strong>Güvenilir ve Şeffaf Süreç</strong>
+        <p>Dijital onay, gerçek zamanlı durum güncellemesi ve detaylı denetim izi; tüm paydaşlar için şeffaflık ve güven sağlar.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SİGORTA ŞİRKETLERİ
+═══════════════════════════════════════════ -->
+<div class="insurers-wrap">
+  <div class="section-label">İş Birliklerimiz</div>
+  <div class="section-title" style="color: var(--navy);">Çalıştığımız Sigorta Şirketleri</div>
+  <div class="section-divider"></div>
+  <div class="insurer-grid">
+    <div class="insurer-badge">Türkiye Sigorta</div>
+    <div class="insurer-badge">Anadolu Sigorta</div>
+    <div class="insurer-badge">Neova Sigorta</div>
+    <div class="insurer-badge">Ray Sigorta</div>
+    <div class="insurer-badge">Allianz Sigorta</div>
+    <div class="insurer-badge">Quick Sigorta</div>
+    <div class="insurer-badge">Bereket Sigorta</div>
+    <div class="insurer-badge">Sompo Sigorta</div>
+    <div class="insurer-badge">Hepiyi Sigorta</div>
+    <div class="insurer-badge">Aksigorta</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     GÜVEN BANDI
+═══════════════════════════════════════════ -->
+<div class="trust-band">
+  <div class="trust-title">Tüm Süreçlerde Güvenilir Çözüm Ortağınız</div>
+  <div class="trust-divider"></div>
+  <div class="trust-sub">1999'dan Bu Yana Sektörün Güvenilir Adresi — Safran Birleşik Hizmetler</div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     İLETİŞİM & DEMO
+═══════════════════════════════════════════ -->
+<div class="contact-wrap">
+  <div class="section-label">İletişim</div>
+  <div class="section-title">Demo Talep Edin</div>
+  <div class="section-divider"></div>
+  <div class="contact-grid">
+    <div class="contact-box">
+      <h4>İletişim Bilgileri</h4>
+      <div class="contact-line"><strong>Sabit Hat:</strong> 0 850 885 25 55</div>
+      <div class="contact-line"><strong>GSM:</strong> 0533 633 07 13</div>
+      <div class="contact-line"><strong>E-posta:</strong> info@meridyenassistance.com</div>
+      <div class="contact-line"><strong>Web:</strong> www.safranbh.com</div>
+      <div class="contact-line" style="margin-top:8px; color:#6B7280; font-size:8.5pt;">Hafta içi 08:00 – 18:00 arasında ulaşabilirsiniz.<br>Acil durumlarda GSM hattımız 7/24 aktiftir.</div>
+    </div>
+    <div class="demo-box">
+      <h4>Ücretsiz Demo Talep Edin</h4>
+      <p>Platformu canlı olarak keşfedin. Uzman ekibimiz sizi sistemi tanıtmaktan memnuniyet duyar.</p>
+      <div class="demo-cta">Demo Randevusu Al</div>
+      <div style="margin-top:12px; font-size:8.5pt; color:rgba(255,255,255,0.65);">
+        0533 633 07 13 arayın veya e-posta gönderin.<br>
+        info@meridyenassistance.com
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════ -->
+<div class="doc-footer">
+  <div><strong>Safran Birleşik Hizmetler</strong> — Meridyen Assistance &nbsp;|&nbsp; www.safranbh.com</div>
+  <div>Tüm hakları saklıdır &copy; 2025 &nbsp;|&nbsp; Bu doküman ticari bilgi içermektedir</div>
+</div>
+
+</body>
+</html>
