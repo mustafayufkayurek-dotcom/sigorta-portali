@@ -74,25 +74,27 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   rsync -avz "$SCRIPT_DIR/lib/route-gate-smoke.mjs" "$REMOTE_HOST:$REMOTE_APP/scripts/lib/"
 fi
 
-run_remote "set -e
+run_remote "$(cat <<REMOTE
+set -e
 cd $REMOTE_APP
 bash scripts/pre-deploy-safety.sh $DEPLOY_TAG
 echo '=== docker build web ==='
 docker build -f Dockerfile.web -t $WEB_IMAGE $WEB_NO_CACHE --build-arg NEXT_PUBLIC_API_URL=$API_URL .
-MERIDYEN_HITS=\$(docker run --rm --entrypoint sh $WEB_IMAGE -c 'grep -RhoaF "https://app.meridyen-tr.com/api/v1" apps/web/.next/static 2>/dev/null | wc -l' | tr -d ' ')
+MERIDYEN_HITS=\$(docker run --rm --entrypoint sh $WEB_IMAGE -c 'grep -RhoaF https://app.meridyen-tr.com/api/v1 apps/web/.next/static 2>/dev/null | wc -l' | tr -d ' ')
 if [ "\${MERIDYEN_HITS:-0}" -lt 20 ]; then
-  echo "HATA: production API adresi derlemeye gömülmemiş (hits=\$MERIDYEN_HITS) — canlıya alma."
+  echo "HATA: production API adresi derlemeye gomulmemis (hits=\$MERIDYEN_HITS) — canliya alma."
   exit 1
 fi
 TS=\$(date +%Y%m%d_%H%M%S)
 cp docker-compose.override.yml backups/override_pre_\${TS}.yml
 CURRENT_BACKEND=\$(docker inspect sigorta-backend --format '{{.Config.Image}}' 2>/dev/null | tr -d '\r\n' || true)
-if [ -z \"\$CURRENT_BACKEND\" ]; then
+if [ -z "\$CURRENT_BACKEND" ]; then
   CURRENT_BACKEND='app-backend:dalga2-agreement-hr-01-v249-amd64'
 fi
-printf '%s\n' 'services:' '  backend:' \"    image: \${CURRENT_BACKEND}\" '  web:' \"    image: $WEB_IMAGE\" > docker-compose.override.yml
+printf '%s\n' 'services:' '  backend:' "    image: \${CURRENT_BACKEND}" '  web:' "    image: $WEB_IMAGE" > docker-compose.override.yml
 bash scripts/restart-web-production.sh
-"
+REMOTE
+)"
 
 echo "=== Yerel smoke ==="
 bash "$SCRIPT_DIR/post-deploy-smoke.sh" || {
