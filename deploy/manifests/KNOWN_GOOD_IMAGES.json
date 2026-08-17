@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-17",
-  "label": "v511-dosya-ozeti-sira",
-  "description": "Web-only v511: Operasyon altında Dosya Özeti en üstte. Migration yok. Backend v510. Rollback web v510 / backend v509.",
+  "label": "v512-repair-pdf-draft",
+  "description": "Full v512: Onaya gönderilmiş hasar raporu PDF’sinde Taslak damgası yok. Migration yok. Rollback web v511 / backend v510.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v510-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v511-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v512-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v512-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v510-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v509-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v511-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v510-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
