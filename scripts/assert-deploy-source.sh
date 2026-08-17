@@ -19,4 +19,9 @@ if [ -n "$(git status --porcelain)" ]; then
   git status -sb | head
   exit 1
 fi
+SNAPSHOT="04d52b8aa432bf739e01a47030245bdfcada6f68"
+if ! git merge-base --is-ancestor "$SNAPSHOT" HEAD 2>/dev/null; then
+  echo "HATA: Bu kopya production-v505 snapshot soyundan değil. Tezgâh/arşivden canlı yok."
+  exit 1
+fi
 echo "PASS kaynak: $BRANCH $(git rev-parse --short HEAD)"

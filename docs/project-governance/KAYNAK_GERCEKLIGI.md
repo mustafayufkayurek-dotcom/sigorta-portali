@@ -35,4 +35,6 @@ VPS kaybında kod = GitHub tag. Veri = B2. Secret = kasa (FAZ E listesi doldurul
 
 ## Bu belge tek başına yetmez
 
-Kural AI’ya yazılıdır (`.cursor/rules/kaynak-gercekligi-kilidi.mdc`). İnsan deploy’u aynı kuralı çiğnerse döngü döner. Sunucu tarafı kapı (`pre-deploy-safety` + kaynak dal kontrolü) ayrı onayla eklenir.
+Kural AI’ya yazılıdır (`.cursor/rules/kaynak-gercekligi-kilidi.mdc`, `.cursor/rules/sirket-sahibi-rejim.mdc`).
+
+Laptop canlı rsync (`scripts/deploy-web-production.sh`, `scripts/deploy-full-production.sh`) önce `scripts/assert-deploy-source.sh` çalıştırır: kirli ağaç, arşiv/WIP dal, v505 snapshot soyundan olmayan kopya **durur**. Production `/opt/app` git değildir; sunucudaki `--skip-rsync` bu kapıyı atlar.

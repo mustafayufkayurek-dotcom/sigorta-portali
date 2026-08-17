@@ -11,6 +11,10 @@ source "$SCRIPT_DIR/deploy-env.sh"
 DEPLOY_TAG="${1:?Kullanım: deploy-full-production.sh ETİKET}"
 SKIP_RSYNC="${2:-}"
 
+if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
+  bash "$SCRIPT_DIR/assert-deploy-source.sh"
+fi
+
 WEB_VERSION="$(printf '%s' "$DEPLOY_TAG" | grep -oE 'v[0-9]+' | head -1 || true)"
 if [ -z "$WEB_VERSION" ]; then
   echo "HATA: ETİKET içinde sürüm olmalı (ör. v128-multi-district)"

@@ -34,6 +34,8 @@ Yeni iş: **tag / clean branch’ten yeni dal.** WIP’ten devam edip canlıya s
 2. Tek görev = mümkün olan en az dosya; kilitli ekrana (liste, planlayıcı, kabuk, finans KPI) “yanından geçerken” dokunma.
 3. Bitmiş işin dosyasına yeni özellik için girmek ürün kararıdır — dur, sor.
 4. Canlı doğrulama: Cursor production login yapmaz; kullanıcı kabulü kapanıştır.
+5. Sabah kullanıcı şikâyeti: Mustafa tarif etmez. AI tarar, düzeltir, aynı kırılmaya kilit koyar.
+6. Canlı rsync (`deploy-web-production.sh` / `deploy-full-production.sh`) önce `assert-deploy-source.sh` — kirli ağaç, `archive/*`, `fix/v483-guven-paketi`, v505 soyundan olmayan HEAD **durur**. Sunucu `--skip-rsync` bu kapıyı atlar (orası git değil).
 
 ## Durdurma
 
