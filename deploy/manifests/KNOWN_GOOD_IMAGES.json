@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-08-17",
-  "label": "v510-dosya-ozeti",
-  "description": "Full v510: Operasyon menü grubu; Dosya Özeti sayfa başlığı; Gelen Kutusu üstte; Hasar/Acil/Gelen Kutusu rakam özeti. Migration yok. Rollback web v509 / backend v509.",
+  "label": "v511-dosya-ozeti-sira",
+  "description": "Web-only v511: Operasyon altında Dosya Özeti en üstte. Migration yok. Backend v510. Rollback web v510 / backend v509.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v510-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v510-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v511-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v509-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v510-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v509-amd64"
   },
   "mustPassSmokeRoutes": [
