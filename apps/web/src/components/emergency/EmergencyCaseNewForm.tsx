@@ -272,7 +272,7 @@ export function EmergencyCaseNewForm({
       const usersRes = await axios
         .get(`${API}/claim-files/assignable-staff`, {
           headers: authHeader(),
-          params: { role: 'office_staff' },
+          params: { role: 'office_staff', includeDelegates: 'acil_yardim' },
         })
         .catch(() => ({ data: { data: [] } }));
       setUsers((usersRes.data?.data ?? []) as PanelUser[]);

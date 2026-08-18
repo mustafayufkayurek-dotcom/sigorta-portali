@@ -27,6 +27,7 @@ import {
   normalizeLocationLabel,
   resolveProvinceDistrictIds,
 } from './vendor-area-match.util';
+import { mergeAssignableStaffWithDelegates } from './assignable-file-owners';
 import { resolveCityDistrictFromAddress } from '@/modules/operation-inbox/inbound-location.util';
 import {
   resolveClaimSubjectIdByLabel,
@@ -2184,13 +2185,16 @@ export class ClaimFilesService {
       }));
   }
 
-  async getAssignableStaff(role: 'office_staff' | 'field_staff' = 'office_staff') {
+  async getAssignableStaff(
+    role: 'office_staff' | 'field_staff' = 'office_staff',
+    includeDelegates?: 'acil_yardim' | 'hasar' | 'both',
+  ) {
     const roleCodes =
       role === 'field_staff'
         ? ['field_staff', 'FIELD_STAFF']
         : ['office_staff', 'OFFICE_STAFF'];
 
-    return this.prisma.user.findMany({
+    const staff = await this.prisma.user.findMany({
       where: {
         status: { notIn: ['inactive', 'INACTIVE', 'archived', 'ARCHIVED'] },
         role: { code: { in: roleCodes } },
@@ -2206,6 +2210,33 @@ export class ClaimFilesService {
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
       take: 200,
     });
+
+    if (role === 'field_staff' || !includeDelegates || !this.operationalAccessGrants) {
+      return staff;
+    }
+
+    const delegates = await this.operationalAccessGrants.listActiveFunctionDelegates(includeDelegates);
+    const extraIds = delegates
+      .map((d) => d.id)
+      .filter((id) => !staff.some((s) => s.id === id));
+    if (extraIds.length === 0) return staff;
+
+    const extra = await this.prisma.user.findMany({
+      where: {
+        id: { in: extraIds },
+        status: { notIn: ['inactive', 'INACTIVE', 'archived', 'ARCHIVED'] },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        role: { select: { id: true, name: true, code: true } },
+      },
+    });
+
+    return mergeAssignableStaffWithDelegates(staff, extra);
   }
 
   async suggestResponsible(claimFileId: string, role: 'office_staff' | 'field_staff' = 'office_staff') {

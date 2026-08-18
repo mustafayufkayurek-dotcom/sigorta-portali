@@ -94,8 +94,17 @@ export class ClaimFilesController {
   @Get('assignable-staff')
   @RequirePermissions('claim_file.assign')
   @ApiOperation({ summary: 'Hasar dosyası ataması için seçilebilir personel listesi' })
-  async getAssignableStaff(@Query('role') role?: 'office_staff' | 'field_staff') {
-    const data = await this.claimFilesService.getAssignableStaff(role ?? 'office_staff');
+  async getAssignableStaff(
+    @Query('role') role?: 'office_staff' | 'field_staff',
+    @Query('includeDelegates') includeDelegates?: 'acil_yardim' | 'hasar' | 'both',
+  ) {
+    const scope =
+      includeDelegates === 'acil_yardim'
+      || includeDelegates === 'hasar'
+      || includeDelegates === 'both'
+        ? includeDelegates
+        : undefined;
+    const data = await this.claimFilesService.getAssignableStaff(role ?? 'office_staff', scope);
     return { success: true, data };
   }
 

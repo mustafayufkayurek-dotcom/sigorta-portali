@@ -47,7 +47,12 @@ else
   fail "Acil supplier assignment smoke (scripts/smoke-acil-supplier-assignment.sh)"
 fi
 
-echo "=== Route Gate Smoke B — session / token / logout (API) ==="
+echo "=== Route Gate Smoke A2c — acil dosya sorumlusu (finans vekili) ==="
+if bash "$SCRIPT_DIR/smoke-acil-file-owner.sh"; then
+  pass "Finans personeli acil dosya sorumlusu listesinde (vekalet)"
+else
+  fail "Acil file owner smoke (scripts/smoke-acil-file-owner.sh)"
+fi
 
 curl_api() {
   local method="$1"
