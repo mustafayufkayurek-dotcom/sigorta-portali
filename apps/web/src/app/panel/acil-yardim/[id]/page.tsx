@@ -39,6 +39,8 @@ import {
   writeHistoricalFinanceOptIn,
 } from './historical-file';
 import { RecommendedVendorsTabs } from '@/components/vendor-discovery/RecommendedVendorsTabs';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import SpeechToText from '@/components/SpeechToText';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
@@ -2448,6 +2450,13 @@ export default function AcilDosyaDetayPage() {
           data-testid="sol-tedarikci-kolon"
         >
           <div className="min-w-0 order-1 xl:flex-1 xl:flex xl:flex-col xl:min-h-0">
+            <OpsFirstRunNotice
+              noticeId={OPS_NOTICE.acilKayitliTedarikci.id}
+              title={OPS_NOTICE.acilKayitliTedarikci.title}
+              body={OPS_NOTICE.acilKayitliTedarikci.body}
+              testId="tedarikci-ilk-kullanim-seridi"
+              className="mb-2"
+            />
             <RecommendedVendorsTabs
               assignedBadge={Boolean(vaka.assignedVendor)}
               loading={recsLoading}

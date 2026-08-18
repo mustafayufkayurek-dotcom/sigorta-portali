@@ -26,6 +26,9 @@ const form = read('apps/web/src/components/emergency/EmergencyCaseNewForm.tsx');
 if (!form.includes("includeDelegates: 'acil_yardim'")) {
   fail('Yeni Acil dosya formu finans vekillerini istemiyor');
 }
+if (!form.includes('dosya-sorumlusu-ilk-kullanim-seridi')) {
+  fail('Dosya sorumlusu vekalet şeridi yok');
+}
 if (form.includes("params: { role: 'office_staff' }") && !form.includes('includeDelegates')) {
   fail('Dosya sorumlusu yalnız office_staff; vekalet düşmüş');
 }

@@ -20,6 +20,7 @@ alwaysApply: true
 7. UI başlığı: **Önerilen Tedarikçiler**.
 8. Hasar `recommendForClaimFile` yolu **dokunulmaz** (acil `allowNationalFallback: false` hasara sızmaz).
 9. Memnuniyet &lt; 3 veya geçmişli düşük maliyet skoru → uyarı: alternatif arayın. Buna rağmen atama 2. kez ise **admin** e-posta.
+10. Personel bu davranışı Acil dosyada **bir kez** görür (`OpsFirstRunNotice` / `tedarikci-ilk-kullanim-seridi`). Kılavuz tek başına yetmez.
 
 ## Yasak (açık onay yoksa)
 
@@ -39,6 +40,7 @@ pnpm smoke:acil-supplier
 # smoke-route-gate içinde A2b olarak da çalışır
 node --experimental-strip-types --test \
   apps/web/src/utils/acil-supplier-assignment.lock.spec.ts \
+  apps/web/src/utils/ops-first-run-notice.lock.spec.ts \
   apps/backend/src/modules/vendors/acil-supplier-recommendation.lock.spec.ts \
   packages/shared/src/acil-vendor-quality.lock.spec.ts
 ```

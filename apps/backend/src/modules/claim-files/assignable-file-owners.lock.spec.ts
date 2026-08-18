@@ -34,6 +34,7 @@ describe('acil dosya sorumlusu listesi LOCK', () => {
     );
     assert.match(form, /includeDelegates:\s*'acil_yardim'/);
     assert.match(form, /claim-files\/assignable-staff/);
+    assert.match(form, /dosya-sorumlusu-ilk-kullanim-seridi/);
   });
 
   it('API ofis personeline acil fonksiyon vekillerini katar', () => {

@@ -75,6 +75,9 @@ if (!page.includes('tedarikci-havuz-tavsiye') || !page.includes('isAcilFileOnlyV
 if (!page.includes('qualityWarning') || !tabs.includes('tedarikci-olumsuz-uyari')) {
   fail('Olumsuz memnuniyet/maliyet uyarısı yok');
 }
+if (!page.includes('tedarikci-ilk-kullanim-seridi') || !page.includes('OpsFirstRunNotice')) {
+  fail('Acil tedarikçi ilk kullanım şeridi yok');
+}
 pass('Dosya sayfası: skorlu öneri + havuz tavsiyesi');
 
 const cases = read('apps/backend/src/modules/emergency/emergency-cases.service.ts');
