@@ -22,6 +22,10 @@ const notice = readFileSync(
   join(here, '../components/operasyon/OpsFirstRunNotice.tsx'),
   'utf8',
 );
+const guide = readFileSync(
+  join(here, '../../public/docs/01-personel-kullanim-kilavuzu.html'),
+  'utf8',
+);
 
 describe('operasyon ilk kullanım şeridi LOCK', () => {
   it('şerit Anladım ile kapanır; Google / API yok', () => {
@@ -41,5 +45,14 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(acilForm, /OpsFirstRunNotice/);
     assert.match(acilForm, /OPS_NOTICE\.acilDosyaSorumlusuVekalet/);
     assert.match(acilForm, /dosya-sorumlusu-ilk-kullanim-seridi/);
+  });
+
+  it('personel kılavuzu Acil tedarikçi ve dosya sorumlusu maddelerini taşır', () => {
+    assert.match(guide, /id="acil-yardim"/);
+    assert.match(guide, /Önerilen Tedarikçiler/);
+    assert.match(guide, /kayıtlı tedarikçileri gösterir/);
+    assert.match(guide, /2\. kez çalışılırsa yöneticiye e-posta/);
+    assert.match(guide, /Acil Yardım vekaleti olan finans personeli/);
+    assert.doesNotMatch(guide, /Google Places/);
   });
 });
