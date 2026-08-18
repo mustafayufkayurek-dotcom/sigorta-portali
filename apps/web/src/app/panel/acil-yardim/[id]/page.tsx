@@ -917,12 +917,40 @@ export default function AcilDosyaDetayPage() {
 
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     setRecsLoading(true);
-    getRecommendedVendors(id, 8)
-      .then((res) => setVendorRecs(res.data ?? []))
-      .catch(() => setVendorRecs([]))
-      .finally(() => setRecsLoading(false));
-  }, [id]);
+    (async () => {
+      try {
+        const recRes = await getRecommendedVendors(id, 20);
+        let list = recRes.data ?? [];
+        if (list.length === 0) {
+          const loc = { city: vaka?.city ?? null, district: vaka?.district ?? null };
+          if (loc.city) {
+            const pool = await getEmergencyVendors(undefined, loc);
+            list = (pool.data ?? []).map((v) => ({
+              id: v.id,
+              name: v.name,
+              phone: v.phone,
+              city: v.city ?? loc.city,
+              district: v.district ?? loc.district,
+              avgServiceScore: null,
+              avgCost: null,
+              avgResponseTime: null,
+              completedFileCount: 0,
+            }));
+          }
+        }
+        if (!cancelled) setVendorRecs(list);
+      } catch {
+        if (!cancelled) setVendorRecs([]);
+      } finally {
+        if (!cancelled) setRecsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, vaka?.city, vaka?.district]);
 
   useEffect(() => {
     if (!id) return;
@@ -941,6 +969,13 @@ export default function AcilDosyaDetayPage() {
   }
 
   async function handleAssignVendor(vendorId: string) {
+    const rec = vendorRecs.find((v) => v.id === vendorId);
+    if (rec?.qualityWarning) {
+      const ok = window.confirm(
+        'Bu tedarikçinin memnuniyet veya maliyet değerlendirmesi olumsuz. Alternatif tedarikçi aramanız gerekir. Yine de atamak istiyor musunuz?',
+      );
+      if (!ok) return;
+    }
     setAssignLoading(true);
     try {
       const res = await updateCase(id, { assignedVendorId: vendorId } as Partial<EmergencyCase>);

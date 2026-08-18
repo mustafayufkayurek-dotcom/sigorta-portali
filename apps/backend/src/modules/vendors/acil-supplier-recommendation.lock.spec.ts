@@ -14,12 +14,17 @@ const controller = readFileSync(
   join(specDir, '../emergency/emergency-cases.controller.ts'),
   'utf8',
 );
+const cases = readFileSync(
+  join(specDir, '../emergency/emergency-cases.service.ts'),
+  'utf8',
+);
 
 describe('acil tedarikçi öneri LOCK', () => {
   it('Acil skorlu ve ulusal fallback kapalı', () => {
     assert.match(rec, /sortBy: 'score'/);
     assert.match(rec, /allowNationalFallback: false/);
-    assert.match(rec, /recommendForEmergencyCase\(caseId: string, limit = 8\)/);
+    assert.match(rec, /recommendForEmergencyCase\(caseId: string, limit = 20\)/);
+    assert.match(rec, /keepAllAreaCandidates: true/);
     assert.doesNotMatch(
       rec,
       /recommendForEmergencyCase[\s\S]{0,800}sortBy: 'name'/,
@@ -32,9 +37,15 @@ describe('acil tedarikçi öneri LOCK', () => {
     assert.match(rec, /Yalnızca bu dosyada kullanım/);
   });
 
-  it('acil API varsayılan limit 8 (ulusal 80 / 3 değil)', () => {
-    assert.match(controller, /limit \? Number\(limit\) : 8/);
+  it('acil API varsayılan limit 20 (ulusal 80 / 3 değil)', () => {
+    assert.match(controller, /limit \? Number\(limit\) : 20/);
     assert.doesNotMatch(controller, /recommendForEmergencyCase\(\s*id,\s*limit \? Number\(limit\) : 3/);
     assert.doesNotMatch(controller, /limit \? Number\(limit\) : 80/);
+  });
+
+  it('olumsuz tedarikçi 2. çalışmada yöneticiye e-posta', () => {
+    assert.match(cases, /reportNegativeVendorIfNeeded/);
+    assert.match(cases, /shouldReportAcilNegativeVendorStrike/);
+    assert.match(cases, /role: \{ code: \{ in: \['admin', 'ADMIN'\] \} \}/);
   });
 });

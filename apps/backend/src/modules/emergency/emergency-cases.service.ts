@@ -20,7 +20,13 @@ import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { StorageService } from '@/modules/storage/storage.service';
-import { resolveInsuredPhoneForInbox, resolveEmergencyOperationLabel } from '@sigorta/shared';
+import {
+  resolveInsuredPhoneForInbox,
+  resolveEmergencyOperationLabel,
+  isAcilVendorQualityWarning,
+  shouldReportAcilNegativeVendorStrike,
+} from '@sigorta/shared';
+import { VendorRecommendationService } from '@/modules/vendors/vendor-recommendation.service';
 import type { SendMailOptions } from 'nodemailer';
 import {
   resolveCustomerReminderEmail,
@@ -69,6 +75,7 @@ export class EmergencyCasesService {
     private readonly fileDocumentsService: FileDocumentsService,
     private readonly invoiceRequestsService: InvoiceRequestsService,
     private readonly vendorProfile: VendorIntelligenceProfileService,
+    private readonly vendorRecommendation: VendorRecommendationService,
     private readonly emailService: EmailService,
     private readonly claimEventEmail: ClaimEventEmailService,
     private readonly storage: StorageService,
@@ -408,6 +415,11 @@ export class EmergencyCasesService {
       },
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
     });
+    if (dto.assignedVendorId) {
+      void this.reportNegativeVendorIfNeeded(created.id, dto.assignedVendorId).catch((err) =>
+        this.logger.warn(`[Acil tedarikçi] Olumsuz atama raporu atlandı: ${err?.message}`),
+      );
+    }
     return { data: this.enrichCase(created) };
   }
 
@@ -708,7 +720,7 @@ export class EmergencyCasesService {
   }
 
   async update(id: string, dto: UpdateEmergencyCaseDto) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
 
     // fileNo benzersizlik kontrolü (dolu ise, kendi ID'si hariç)
     if (dto.fileNo !== undefined && dto.fileNo?.trim()) {
@@ -737,7 +749,75 @@ export class EmergencyCasesService {
       },
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
     });
+    const nextVendorId = dto.assignedVendorId;
+    const prevVendorId = existing.data?.assignedVendorId ?? null;
+    if (nextVendorId && nextVendorId !== prevVendorId) {
+      void this.reportNegativeVendorIfNeeded(id, nextVendorId).catch((err) =>
+        this.logger.warn(`[Acil tedarikçi] Olumsuz atama raporu atlandı: ${err?.message}`),
+      );
+    }
     return { data: this.enrichCase(updated) };
+  }
+
+  /**
+   * Olumsuz memnuniyet/maliyet ile 2. Acil çalışma → yöneticiye e-posta.
+   * Atamayı bloklamaz; SMTP yoksa yalnızca log.
+   */
+  private async reportNegativeVendorIfNeeded(caseId: string, vendorId: string): Promise<void> {
+    const [priorOtherAssignments, metrics, recs, vendor, emergencyCase, admins] = await Promise.all([
+      this.prisma.emergencyCase.count({
+        where: { assignedVendorId: vendorId, NOT: { id: caseId } },
+      }),
+      this.vendorRecommendation.getOperationMetrics(vendorId, 'acil'),
+      this.vendorRecommendation.recommendForEmergencyCase(caseId, 40).catch(() => []),
+      this.prisma.vendor.findUnique({ where: { id: vendorId }, select: { name: true } }),
+      this.prisma.emergencyCase.findUnique({
+        where: { id: caseId },
+        select: { caseNo: true, fileNo: true, customerName: true, city: true, district: true },
+      }),
+      this.prisma.user.findMany({
+        where: {
+          status: 'active',
+          role: { code: { in: ['admin', 'ADMIN'] } },
+          email: { not: null },
+        },
+        select: { email: true },
+        take: 20,
+      }),
+    ]);
+
+    const rec = recs.find((item) => item.id === vendorId);
+    const qualityWarning = rec?.qualityWarning
+      ?? isAcilVendorQualityWarning({
+        avgServiceScore: metrics.avgServiceScore,
+        compositeScore: rec?.compositeScore ?? null,
+        completedFileCount: metrics.completedFileCount,
+      });
+    if (!qualityWarning) return;
+    if (!shouldReportAcilNegativeVendorStrike(priorOtherAssignments)) return;
+
+    const emails = [...new Set(admins.map((u) => u.email).filter((e): e is string => Boolean(e?.trim())))];
+    if (emails.length === 0) {
+      this.logger.warn('[Acil tedarikçi] Olumsuz 2. atama — yönetici e-postası yok');
+      return;
+    }
+
+    const fileNo = emergencyCase?.fileNo || emergencyCase?.caseNo || caseId;
+    const vendorName = vendor?.name ?? vendorId;
+    const location = [emergencyCase?.district, emergencyCase?.city].filter(Boolean).join(' / ') || '—';
+    const subject = `Acil Yardım — Olumsuz Tedarikçi 2. Çalışma (${fileNo})`;
+    const html = `
+      <p>Dosya sorumlusu, memnuniyet veya maliyet değerlendirmesi olumsuz olan bir tedarikçiyle ikinci kez çalıştı.</p>
+      <p><strong>Dosya:</strong> ${fileNo}<br/>
+      <strong>Müşteri:</strong> ${emergencyCase?.customerName ?? '—'}<br/>
+      <strong>Bölge:</strong> ${location}<br/>
+      <strong>Tedarikçi:</strong> ${vendorName}<br/>
+      <strong>Önceki Acil atama sayısı:</strong> ${priorOtherAssignments}</p>
+    `;
+    const text = `Dosya ${fileNo} — olumsuz tedarikçi ${vendorName} ile 2. çalışma.`;
+    await Promise.all(
+      emails.map((to) => this.emailService.sendEmail(to, subject, html, { text })),
+    );
   }
 
   async updateStatus(id: string, dto: UpdateEmergencyStatusDto, userId = 'system') {

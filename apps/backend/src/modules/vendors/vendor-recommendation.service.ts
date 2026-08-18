@@ -13,6 +13,7 @@ import {
   vendorExpertiseMatchesHints,
   vendorExpertiseOverlapScore,
 } from '@/modules/vendor-intelligence-profile/terminology-memory.helper';
+import { isAcilVendorQualityWarning } from '@sigorta/shared';
 import type {
   VendorOperationMetrics,
   VendorRecommendationItem,
@@ -60,9 +61,12 @@ export class VendorRecommendationService {
 
   async recommend(query: VendorRecommendQuery): Promise<VendorRecommendationItem[]> {
     const sortByName = query.sortBy === 'name';
-    const limit = sortByName
-      ? Math.min(Math.max(query.limit ?? 80, 1), 80)
-      : Math.min(Math.max(query.limit ?? 3, 1), 10);
+    const keepArea = Boolean(query.keepAllAreaCandidates);
+    const limit = keepArea
+      ? Math.min(Math.max(query.limit ?? 20, 1), 40)
+      : sortByName
+        ? Math.min(Math.max(query.limit ?? 80, 1), 80)
+        : Math.min(Math.max(query.limit ?? 3, 1), 10);
 
     const terminology = query.serviceType?.trim()
       ? await resolveTerminology(this.prisma, query.serviceType)
@@ -180,6 +184,13 @@ export class VendorRecommendationService {
         canonicalLabel,
         originalServiceType,
         expertiseMatchScore: Math.round(expertiseMatchScore * 100) / 100,
+        qualityWarning: (query.category === 'acil' || query.keepAllAreaCandidates)
+          ? isAcilVendorQualityWarning({
+              avgServiceScore: metrics.avgServiceScore,
+              compositeScore: Math.max(0, Math.min(100, compositeScore)),
+              completedFileCount: metrics.completedFileCount,
+            })
+          : false,
       };
     });
 
@@ -235,9 +246,18 @@ export class VendorRecommendationService {
     });
   }
 
-  async recommendForEmergencyCase(caseId: string, limit = 8): Promise<VendorRecommendationItem[]> {
+  async recommendForEmergencyCase(caseId: string, limit = 20): Promise<VendorRecommendationItem[]> {
     const emergencyCase = await this.prisma.emergencyCase.findUnique({ where: { id: caseId } });
     if (!emergencyCase) throw new NotFoundException('Acil dosya bulunamadı.');
+
+    let city = normalizeLocationLabel(emergencyCase.city);
+    let district = normalizeLocationLabel(emergencyCase.district);
+    const addressLine = emergencyCase.address?.trim() || '';
+    if ((!city || !district) && addressLine) {
+      const parsed = await resolveCityDistrictFromAddress(this.prisma, addressLine);
+      if (!city && parsed.city) city = parsed.city;
+      if (!district && parsed.district) district = parsed.district;
+    }
 
     const terminology = await resolveTerminology(this.prisma, emergencyCase.issueType);
     const serviceType =
@@ -245,10 +265,10 @@ export class VendorRecommendationService {
       ?? terminology.canonicalLabel
       ?? emergencyCase.issueType;
 
-    // Acil: il/ilçe + Hasar ile aynı compositeScore. Ulusal kesit yok.
+    // Acil: il/ilçe kayıtlı havuzun tamamı skorlanır. Uzmanlık süzgeci adayı düşürmez.
     return this.recommend({
-      city: normalizeLocationLabel(emergencyCase.city) ?? undefined,
-      district: normalizeLocationLabel(emergencyCase.district) ?? undefined,
+      city: city ?? undefined,
+      district: district ?? undefined,
       serviceType,
       operationGroup: terminology.operationGroup,
       canonicalLabel: terminology.canonicalLabel,
@@ -257,6 +277,7 @@ export class VendorRecommendationService {
       category: 'acil',
       sortBy: 'score',
       allowNationalFallback: false,
+      keepAllAreaCandidates: true,
       limit,
     });
   }
@@ -425,7 +446,7 @@ export class VendorRecommendationService {
     });
 
     const hints = query.expertiseHints ?? [];
-    if (!hints.length) return mapped;
+    if (!hints.length || query.keepAllAreaCandidates) return mapped;
 
     // Aynı Operasyon Grubu — uzmanlık eşleşen adaylar; eşleşme yoksa alan adaylarına düş.
     const inGroup = mapped.filter((v) =>

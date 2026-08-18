@@ -33,8 +33,11 @@ describe('acil tedarikçi atama UI LOCK', () => {
   it('bölge boşken alternatif sekmeye geçer; Google etiketi yok', () => {
     assert.match(tabs, /Alternatif Önerilere Bak/);
     assert.match(page, /vendorRecs\.length === 0/);
-    assert.match(page, /getRecommendedVendors\(id, 8\)/);
+    assert.match(page, /getRecommendedVendors\(id, 20\)/);
     assert.doesNotMatch(page, /getRecommendedVendors\(id, 80\)/);
+    assert.match(page, /getEmergencyVendors\(undefined, loc\)/);
+    assert.match(page, /qualityWarning/);
+    assert.match(tabs, /tedarikci-olumsuz-uyari/);
     assert.doesNotMatch(alt, /Google Places/);
     assert.match(alt, /Alternatif tedarikçi şu anda önerilemiyor/);
   });

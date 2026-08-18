@@ -8,7 +8,9 @@ import { VendorCandidateCard } from './VendorCandidateCard';
 
 export type VendorTabId = 'kayitli' | 'alternatif';
 
-const TOP_N = 5;
+const TOP_N = 20;
+const QUALITY_WARN_TEXT =
+  'Memnuniyet veya maliyet değerlendirmesi olumsuz. Alternatif tedarikçi arayın.';
 
 function formatScore(score: number | null | undefined): string {
   if (score == null || !Number.isFinite(score)) return '—';
@@ -116,6 +118,9 @@ export function RecommendedVendorsTabs({
     return list.slice(0, TOP_N);
   }, [vendors]);
 
+  const hasQualityWarning = ranked.some((v) => v.qualityWarning);
+  const firstSuggestionId = ranked.find((v) => !v.qualityWarning)?.id ?? null;
+
   const [tab, setTab] = useState<VendorTabId>('kayitli');
 
   useEffect(() => {
@@ -189,8 +194,18 @@ export function RecommendedVendorsTabs({
           {loading ? (
             <p className="text-xs text-slate-400 py-1 text-center">Öneriler yükleniyor...</p>
           ) : ranked.length > 0 ? (
+            <>
+              {hasQualityWarning ? (
+                <p
+                  className="mb-2 text-[11px] font-medium text-status-warning leading-snug"
+                  data-testid="tedarikci-olumsuz-uyari"
+                  role="status"
+                >
+                  Kayıtlı tedarikçilerde olumsuz değerlendirme var. Alternatif tedarikçi aramanız gerekir.
+                </p>
+              ) : null}
             <ul className="space-y-2">
-              {ranked.map((v, index) => {
+              {ranked.map((v) => {
                 const selected = assignedVendorId === v.id;
                 return (
                   <VendorCandidateCard
@@ -199,8 +214,9 @@ export function RecommendedVendorsTabs({
                     phone={v.phone}
                     address={locationLine(v) || null}
                     metrics={rationaleMetrics(v)}
-                    systemSuggestion={index === 0}
+                    systemSuggestion={firstSuggestionId === v.id}
                     selected={selected}
+                    warningText={v.qualityWarning ? QUALITY_WARN_TEXT : null}
                     testId="tedarikci-oneri"
                     primaryAction={
                       selected
@@ -216,6 +232,7 @@ export function RecommendedVendorsTabs({
                 );
               })}
             </ul>
+            </>
           ) : (
             <div
               className="flex flex-col gap-2 min-h-0"

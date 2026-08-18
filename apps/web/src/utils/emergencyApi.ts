@@ -440,9 +440,11 @@ export interface VendorOption {
   name: string;
   phone?: string | null;
   category?: string | null;
+  city?: string | null;
+  district?: string | null;
 }
 
-export async function getRecommendedVendors(caseId: string, limit = 8): Promise<{ data: VendorRecommendation[] }> {
+export async function getRecommendedVendors(caseId: string, limit = 20): Promise<{ data: VendorRecommendation[] }> {
   const data = await apiClient.get<unknown>(`/emergency/cases/${caseId}/vendors/recommended`, { limit });
   return { data: asList<VendorRecommendation>(data) };
 }
@@ -465,6 +467,8 @@ export interface VendorRecommendation {
   distanceLabel?: string | null;
   /** Son çalışma tarihi (ISO) — API varsa gösterilir */
   lastWorkedAt?: string | null;
+  /** Memnuniyet veya maliyet olumsuz */
+  qualityWarning?: boolean;
 }
 
 export async function getEmergencyVendors(

@@ -49,6 +49,8 @@ export type VendorCandidateCardProps = {
   systemSuggestion?: boolean;
   /** Opsiyonel kaynak rozeti (sağlayıcı adı yok) */
   sourceBadge?: { label: string; testId?: string } | null;
+  /** Memnuniyet / maliyet uyarısı (operasyon metni) */
+  warningText?: string | null;
   directionsUrl?: string | null;
   /** true: Yol Tarifi satırı (link yoksa —) */
   showDirections?: boolean;
@@ -90,6 +92,7 @@ export function VendorCandidateCard({
   metrics,
   systemSuggestion = false,
   sourceBadge = null,
+  warningText = null,
   directionsUrl,
   showDirections = false,
   showWebsite = false,
@@ -201,6 +204,15 @@ export function VendorCandidateCard({
               </div>
             ))}
           </dl>
+        ) : null}
+
+        {warningText ? (
+          <p
+            className="mt-1.5 text-[11px] font-medium text-status-warning leading-snug"
+            data-testid="tedarikci-kalite-uyari"
+          >
+            {warningText}
+          </p>
         ) : null}
 
         {showLinkRow ? (

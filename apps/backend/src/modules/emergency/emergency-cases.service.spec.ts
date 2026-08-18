@@ -34,8 +34,20 @@ describe('EmergencyCasesService', () => {
     const vendorProfile = {
       onFileCompleted: jest.fn().mockResolvedValue(undefined),
     };
+    const vendorRecommendation = {
+      getOperationMetrics: jest.fn().mockResolvedValue({
+        avgServiceScore: null,
+        avgCost: null,
+        avgResponseTimeHours: null,
+        completedFileCount: 0,
+      }),
+      recommendForEmergencyCase: jest.fn().mockResolvedValue([]),
+    };
     const emailService = {
       sendEmail: jest.fn().mockResolvedValue({ sent: true }),
+    };
+    const claimEventEmail = {
+      onManualDecision: jest.fn(),
     };
     const storage = {
       download: jest.fn().mockResolvedValue(Buffer.from('x')),
@@ -46,7 +58,9 @@ describe('EmergencyCasesService', () => {
       fileDocumentsService as any,
       invoiceRequestsService as any,
       vendorProfile as any,
+      vendorRecommendation as any,
       emailService as any,
+      claimEventEmail as any,
       storage as any,
     );
   });

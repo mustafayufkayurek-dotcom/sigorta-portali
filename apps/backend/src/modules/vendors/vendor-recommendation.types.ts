@@ -25,6 +25,8 @@ export interface VendorRecommendationItem {
   originalServiceType?: string | null;
   /** Operasyon Grubu ile uzmanlık örtüşmesi (0–1). */
   expertiseMatchScore?: number | null;
+  /** Acil: memnuniyet/maliyet olumsuz — alternatif arayın uyarısı. */
+  qualityWarning?: boolean;
 }
 
 export interface VendorRecommendQuery {
@@ -52,6 +54,8 @@ export interface VendorRecommendQuery {
   /** Standart hizmet türü (UI doğrulama). */
   canonicalLabel?: string | null;
   expertiseHints?: string[];
+  /** Acil: uzmanlık süzgeci il/ilçe kayıtlı adayı düşürmez. */
+  keepAllAreaCandidates?: boolean;
 }
 
 export interface VendorOperationMetrics {
