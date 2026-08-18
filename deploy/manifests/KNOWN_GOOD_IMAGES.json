@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-17",
-  "label": "v513-hasar-manuel-evrak",
-  "description": "Full v513: Hasar Evraklar Özet — tür seçerek Muvafakatname / Anket Formu yükleme. Migration yok. Rollback web v512 / backend v512.",
+  "updatedAt": "2026-08-18",
+  "label": "v514-acil-tedarikci-oneri",
+  "description": "Full v514: Acil öneri il/ilçe + memnuniyet/maliyet skoru; boş bölgede alternatif; dosya-özel atama havuza girmez. Migration yok. Rollback web v513 / backend v513.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v513-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v513-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v514-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v514-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v512-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v512-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v513-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v513-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
