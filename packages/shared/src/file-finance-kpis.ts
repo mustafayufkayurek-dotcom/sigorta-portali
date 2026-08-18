@@ -55,7 +55,6 @@ export const FILE_PROFIT_STAGE_LABEL: Record<FileProfitStage, string> = {
 const REPORT_APPROVED = new Set([
   'approved',
   'externally_approved',
-  'sent_for_external_approval',
 ]);
 
 export function isRepairReportApproved(status?: string | null): boolean {

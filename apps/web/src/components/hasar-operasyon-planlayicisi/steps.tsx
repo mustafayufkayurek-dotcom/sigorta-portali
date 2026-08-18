@@ -38,6 +38,7 @@ import { isoToTrDateDisplay } from '@/utils/tr-date-input';
 import type { StepId } from './types';
 import { usePlanner } from './planner-context';
 import { sendPlannerApprovalMail } from './planner-send-approval-mail';
+import { repairReportStatusLabel } from '@/utils/repair-report-status';
 import {
   plannerApprovalPartyLabel,
   resolvePlannerApprovalParty,
@@ -1201,7 +1202,7 @@ export function StepReportWriting() {
         <div className="space-y-1 text-xs text-slate-700">
           <p>Rapor Numarası: <span className="font-semibold">{r.number}</span></p>
           <p>Aktif Revizyon: <span className="font-semibold">Revizyon {r.revision}</span></p>
-          <p>Rapor Durumu: <StatusPill label={r.status} tone="orange" /></p>
+          <p>Rapor Durumu: <StatusPill label={repairReportStatusLabel(r.status)} tone="orange" /></p>
           <p>Rapor Sorumlusu: {r.owner}</p>
           <p className="flex items-center gap-1">
             <Clock3 className="h-3 w-3" /> Son Güncelleme: {r.updatedAt}

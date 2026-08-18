@@ -6,6 +6,7 @@
 export const APPROVAL_WAITING_REPORT_STATUSES = [
   'pending_approval',
   'submitted',
+  'sent_for_external_approval',
 ] as const;
 
 export const APPROVAL_72H_MS = 72 * 60 * 60 * 1000;
@@ -209,7 +210,6 @@ const CLAIM_CODE_TO_STAGE: Record<string, OperationStageId> = {
 const REPORT_AWAITING = new Set<string>(APPROVAL_WAITING_REPORT_STATUSES);
 const REPORT_APPROVED = new Set([
   'approved',
-  'sent_for_external_approval',
   'externally_approved',
 ]);
 /** Taslak rapor — yazım aşaması. Red, ayrı «Reddedildi» aşamasıdır. */
