@@ -1,9 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Building2 } from 'lucide-react';
 import type { VendorRecommendation } from '@/utils/emergencyApi';
-import { getEmergencyVendors, type VendorOption } from '@/utils/emergencyApi';
 import { AlternativeVendorServicePanel } from './AlternativeVendorServicePanel';
 import { VendorCandidateCard } from './VendorCandidateCard';
 
@@ -108,18 +107,14 @@ export function RecommendedVendorsTabs({
 }: Props) {
   const ranked = useMemo(() => {
     const list = [...vendors];
-    const acilAlpha =
-      category === 'acil' || category === 'acil_yardim' || category === 'emergency';
-    // Acil: alfabetik tercih. Hasar / diğer: rank veya compositeScore.
     list.sort((a, b) => {
-      if (acilAlpha) return a.name.localeCompare(b.name, 'tr');
       if (a.rank != null && b.rank != null) return a.rank - b.rank;
       const ca = a.compositeScore ?? a.avgServiceScore ?? 0;
       const cb = b.compositeScore ?? b.avgServiceScore ?? 0;
       return cb - ca;
     });
     return list.slice(0, TOP_N);
-  }, [vendors, category]);
+  }, [vendors]);
 
   const [tab, setTab] = useState<VendorTabId>('kayitli');
 
@@ -222,13 +217,26 @@ export function RecommendedVendorsTabs({
               })}
             </ul>
           ) : (
-            <RegisteredVendorPoolPicker
-              assignedVendorId={assignedVendorId}
-              assignLoading={assignLoading}
-              onAssign={onAssign}
-              city={city}
-              district={district}
-            />
+            <div
+              className="flex flex-col gap-2 min-h-0"
+              data-testid="tedarikci-bolge-bos"
+              role="status"
+            >
+              <p className="text-xs font-semibold text-slate-700 text-center leading-snug">
+                Bu İl Ve İlçede Kayıtlı Tedarikçi Yok
+              </p>
+              <p className="text-[11px] text-slate-500 text-center leading-snug">
+                Alternatif önerilere bakın. Yeni kayıt sonraki dosyalarda önerilir.
+              </p>
+              <button
+                type="button"
+                onClick={() => setTab('alternatif')}
+                className="mx-auto rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                data-testid="tedarikci-alternatife-gec"
+              >
+                Alternatif Önerilere Bak
+              </button>
+            </div>
           )}
         </div>
       ) : (
@@ -249,117 +257,6 @@ export function RecommendedVendorsTabs({
             onSavedToPool={onSavedToPool}
           />
         </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Öneri motoru boş dönse bile kayıtlı acil havuzundan seçim — operasyon kilidi olmasın.
- */
-function RegisteredVendorPoolPicker({
-  assignedVendorId,
-  assignLoading,
-  onAssign,
-  city,
-  district,
-}: {
-  assignedVendorId?: string | null;
-  assignLoading: boolean;
-  onAssign: (vendorId: string) => void | Promise<void>;
-  city?: string;
-  district?: string;
-}) {
-  const [search, setSearch] = useState('');
-  const [options, setOptions] = useState<VendorOption[]>([]);
-  const [poolLoading, setPoolLoading] = useState(true);
-
-  const load = useCallback(async (q: string) => {
-    setPoolLoading(true);
-    try {
-      const res = await getEmergencyVendors(q.trim() || undefined, { city, district });
-      setOptions(res.data ?? []);
-    } catch {
-      setOptions([]);
-    } finally {
-      setPoolLoading(false);
-    }
-  }, [city, district]);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      void load(search);
-    }, 250);
-    return () => window.clearTimeout(t);
-  }, [search, load]);
-
-  return (
-    <div
-      className="flex flex-col gap-2 min-h-0"
-      data-testid="tedarikci-havuz-bos"
-      role="status"
-    >
-      <p className="text-xs font-semibold text-slate-700 text-center leading-snug">
-        Bu Bölgede Acil Yardım Önerisi Yok — Kayıtlı Havuzdan Seçin
-      </p>
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Tedarikçi Ara"
-        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        data-testid="tedarikci-havuz-ara"
-        aria-label="Kayıtlı tedarikçi ara"
-      />
-      {poolLoading ? (
-        <p className="text-xs text-slate-400 py-1 text-center">Havuz yükleniyor...</p>
-      ) : options.length === 0 ? (
-        <div className="py-2 px-1 space-y-1.5 text-center">
-          <p className="text-xs text-slate-500 leading-snug">
-            Kayıtlı Acil Yardım Tedarikçisi Bulunamadı
-          </p>
-          <a
-            href="/panel/tedarikciler"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex text-xs font-semibold text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline"
-          >
-            Tedarikçiler Sayfasından Ekleyin
-          </a>
-        </div>
-      ) : (
-        <ul className="space-y-1.5 max-h-48 overflow-y-auto">
-          {options.slice(0, 12).map((v) => {
-            const selected = assignedVendorId === v.id;
-            return (
-              <li
-                key={v.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2"
-                data-testid="tedarikci-havuz-satir"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-slate-800 truncate">{v.name}</p>
-                  {v.phone ? (
-                    <p className="text-[11px] text-slate-500 truncate">{v.phone}</p>
-                  ) : null}
-                </div>
-                {selected ? (
-                  <span className="shrink-0 text-[11px] font-medium text-emerald-700">Seçili</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void onAssign(v.id)}
-                    disabled={assignLoading || Boolean(assignedVendorId)}
-                    className="shrink-0 rounded-md bg-brand-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    data-testid="tedarikci-ata"
-                  >
-                    Dosyaya Ata
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
       )}
     </div>
   );

@@ -602,7 +602,7 @@ export class EmergencyCasesService {
     const cases = await this.prisma.emergencyCase.findMany({
       where,
       include: {
-        assignedVendor: { select: { id: true, name: true, phone: true } },
+        assignedVendor: { select: { id: true, name: true, phone: true, notes: true } },
         assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         customer: {
           select: {
@@ -638,7 +638,7 @@ export class EmergencyCasesService {
     const c = await this.prisma.emergencyCase.findUnique({
       where: { id },
       include: {
-        assignedVendor: { select: { id: true, name: true, phone: true } },
+        assignedVendor: { select: { id: true, name: true, phone: true, notes: true } },
         assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         customer: {

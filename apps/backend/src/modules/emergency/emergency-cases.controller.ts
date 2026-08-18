@@ -123,7 +123,7 @@ export class EmergencyCasesController {
   ) {
     const data = await this.vendorProfileService.recommendForEmergencyCase(
       id,
-      limit ? Number(limit) : 3,
+      limit ? Number(limit) : 8,
     );
     return { success: true, data };
   }

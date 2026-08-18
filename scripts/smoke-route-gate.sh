@@ -40,6 +40,13 @@ else
   fail "Field open list smoke (scripts/smoke-field-open-list.sh)"
 fi
 
+echo "=== Route Gate Smoke A2b — acil tedarikçi öneri kilidi ==="
+if bash "$SCRIPT_DIR/smoke-acil-supplier-assignment.sh"; then
+  pass "Acil il/ilçe skor önerisi; ulusal A kesiti ve Google etiketi kapalı"
+else
+  fail "Acil supplier assignment smoke (scripts/smoke-acil-supplier-assignment.sh)"
+fi
+
 echo "=== Route Gate Smoke B — session / token / logout (API) ==="
 
 curl_api() {

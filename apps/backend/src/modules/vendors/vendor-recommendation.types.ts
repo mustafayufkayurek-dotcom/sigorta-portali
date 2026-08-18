@@ -36,10 +36,15 @@ export interface VendorRecommendQuery {
   category?: string;
   limit?: number;
   /**
-   * score = hasar/varsayılan (compositeScore)
-   * name = Acil Yardım (A→Z, tr) — hasar skor yoluna sızmaz
+   * score = varsayılan (compositeScore: memnuniyet + maliyet hafızası)
+   * name = alfabetik (yalnız özel çağrı; Acil varsayılanı score)
    */
   sortBy?: 'score' | 'name';
+  /**
+   * false = yalnız il/ilçe havuzu. Ulusal kesit öneri diye gösterilmez.
+   * Acil zorunlu false. Hasar varsayılan true (bölge boşsa kategori havuzu).
+   */
+  allowNationalFallback?: boolean;
   /** Karar motorundan gelen Operasyon Grubu (opsiyonel; serviceType resolve edilir). */
   operationGroup?: string | null;
   /** Dosya / sorgu orijinal metni (UI doğrulama). */

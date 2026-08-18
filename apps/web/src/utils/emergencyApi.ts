@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api-client';
+import { ACIL_POOL_VENDOR_NOTE } from '@/utils/acil-vendor-pool';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ export interface EmergencyCase {
   netKar: number;
   operationStatusLabel?: string | null;
   // relations
-  assignedVendor?: { id: string; name: string; phone?: string | null } | null;
+  assignedVendor?: { id: string; name: string; phone?: string | null; notes?: string | null } | null;
   assignedUser?: {
     id: string;
     firstName: string;
@@ -441,7 +442,7 @@ export interface VendorOption {
   category?: string | null;
 }
 
-export async function getRecommendedVendors(caseId: string, limit = 3): Promise<{ data: VendorRecommendation[] }> {
+export async function getRecommendedVendors(caseId: string, limit = 8): Promise<{ data: VendorRecommendation[] }> {
   const data = await apiClient.get<unknown>(`/emergency/cases/${caseId}/vendors/recommended`, { limit });
   return { data: asList<VendorRecommendation>(data) };
 }
@@ -500,4 +501,10 @@ export async function createVendorQuick(body: {
 }): Promise<{ data: VendorOption }> {
   const data = await apiClient.post<unknown>('/vendors', body);
   return { data: asEntity<VendorOption>(data) };
+}
+
+export async function promoteVendorToPool(vendorId: string): Promise<void> {
+  await apiClient.patch(`/vendors/${vendorId}`, {
+    notes: ACIL_POOL_VENDOR_NOTE,
+  });
 }

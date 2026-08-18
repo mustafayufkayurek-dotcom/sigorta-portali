@@ -21,7 +21,7 @@ import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHead
 import type { ManualDecisionAction } from '@/components/operasyon/ManualDecisionModal';
 import {
   getCase, updateCase, updateCaseStatus, recordEmergencyManualDecision, addCostEntry, getCostEntries, deleteCostEntry, updateCostEntry,
-  getEmergencyVendors, createVendorQuick, getRecommendedVendors,
+  getEmergencyVendors, createVendorQuick, getRecommendedVendors, promoteVendorToPool,
   previewClosureEmail, sendClosureEmail,
   listEmergencyProcessEvents, recordEmergencyProcessEvent,
   EmergencyCase, EmergencyCostEntry, EmergencyStatus, VendorOption, VendorRecommendation,
@@ -91,6 +91,7 @@ import {
 import { usePanelRoleCode } from '@/hooks/usePanelRole';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { SETTINGS_API, settingsAuthHeader } from '@/utils/settings-api';
+import { isAcilFileOnlyVendor } from '@/utils/acil-vendor-pool';
 
 const INVOICE_STATUS_LABELS: Record<string, string> = {
   pending: 'Bekliyor',
@@ -777,6 +778,9 @@ export default function AcilDosyaDetayPage() {
   const [insuredMsgErrors, setInsuredMsgErrors] = useState<string[]>([]);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [forceAltVendor, setForceAltVendor] = useState(false);
+  const [poolSuggestDismissed, setPoolSuggestDismissed] = useState(false);
+  const [poolPromoteBusy, setPoolPromoteBusy] = useState(false);
+  const [poolPromoteMsg, setPoolPromoteMsg] = useState<string | null>(null);
   const [marginToast, setMarginToast] = useState<MarginWarning>(null);
   const marginToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showVatDetail, setShowVatDetail] = useState(false);
@@ -914,10 +918,20 @@ export default function AcilDosyaDetayPage() {
   useEffect(() => {
     if (!id) return;
     setRecsLoading(true);
-    getRecommendedVendors(id, 5)
+    getRecommendedVendors(id, 8)
       .then((res) => setVendorRecs(res.data ?? []))
       .catch(() => setVendorRecs([]))
       .finally(() => setRecsLoading(false));
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      setPoolSuggestDismissed(window.localStorage.getItem(`acil-pool-suggest:${id}`) === '1');
+    } catch {
+      setPoolSuggestDismissed(false);
+    }
+    setPoolPromoteMsg(null);
   }, [id]);
 
   async function refreshCosts() {
@@ -949,6 +963,32 @@ export default function AcilDosyaDetayPage() {
     } finally {
       setAssignLoading(false);
     }
+  }
+
+  async function handlePromoteAssignedVendorToPool() {
+    const vendorId = vaka?.assignedVendorId;
+    if (!vendorId) return;
+    setPoolPromoteBusy(true);
+    setPoolPromoteMsg(null);
+    try {
+      await promoteVendorToPool(vendorId);
+      const res = await getCase(id);
+      setVaka(res.data);
+      setPoolPromoteMsg('Tedarikçi kayıtlı havuza eklendi. Sonraki dosyalarda önerilir.');
+    } catch {
+      setPoolPromoteMsg('Kayıt tamamlanamadı. Lütfen tekrar deneyin.');
+    } finally {
+      setPoolPromoteBusy(false);
+    }
+  }
+
+  function dismissPoolSuggest() {
+    try {
+      window.localStorage.setItem(`acil-pool-suggest:${id}`, '1');
+    } catch {
+      /* ignore */
+    }
+    setPoolSuggestDismissed(true);
   }
 
   function syncPriceDraftsFromSaved() {
@@ -2380,15 +2420,57 @@ export default function AcilDosyaDetayPage() {
               assignedVendorId={vaka.assignedVendorId}
               assignLoading={assignLoading}
               onAssign={handleAssignVendor}
-              preferAlternatif={forceAltVendor || flow.vendorProcess === 'reddedildi'}
+              preferAlternatif={
+                forceAltVendor
+                || flow.vendorProcess === 'reddedildi'
+                || (!recsLoading && vendorRecs.length === 0 && !vaka.assignedVendorId)
+              }
               city={vaka.city ?? undefined}
               district={vaka.district ?? undefined}
               serviceType={vaka.issueType ?? undefined}
               category="acil"
+              helpText="Kayıtlı öneri memnuniyet ve maliyet ile sıralanır. Bölgede yoksa alternatif önerilere bakın."
               onAlternativeAssigned={async (vendor) => {
                 await handleAssignVendor(vendor.id);
               }}
+              onSavedToPool={() => {
+                setActionFlash('Tedarikçi havuza kaydedildi. Sonraki dosyalarda önerilir.');
+              }}
             />
+            {serviceDone && isAcilFileOnlyVendor(vaka.assignedVendor) && !poolSuggestDismissed ? (
+              <div
+                className="mt-2 rounded-xl border border-slate-200 bg-white p-3 space-y-2"
+                data-testid="tedarikci-havuz-tavsiye"
+              >
+                <p className="text-sm font-semibold text-content-primary">Tedarikçi Kaydı</p>
+                <p className="text-xs text-content-secondary leading-snug">
+                  Hizmet tamamlandı. Memnuniyet olumluyduysa bu tedarikçiyi kayıtlı havuza ekleyin.
+                  Sonraki aynı bölge dosyalarında önerilir.
+                </p>
+                {poolPromoteMsg ? (
+                  <p className="text-xs text-status-success">{poolPromoteMsg}</p>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handlePromoteAssignedVendorToPool()}
+                    disabled={poolPromoteBusy}
+                    className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                    data-testid="tedarikci-havuza-kaydet"
+                  >
+                    {poolPromoteBusy ? 'Kaydediliyor...' : 'Havuza Kaydet'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={dismissPoolSuggest}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    data-testid="tedarikci-havuz-atla"
+                  >
+                    Şimdi Değil
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
 <div
           id="hizli-islemler"
