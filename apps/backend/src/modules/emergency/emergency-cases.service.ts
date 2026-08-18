@@ -779,7 +779,6 @@ export class EmergencyCasesService {
         where: {
           status: 'active',
           role: { code: { in: ['admin', 'ADMIN'] } },
-          email: { not: null },
         },
         select: { email: true },
         take: 20,
