@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-18",
-  "label": "v515-acil-dosya-sorumlusu",
-  "description": "Full v515: Acil yeni dosyada finans personeli (Acil Yardım vekaleti) dosya sorumlusu listesinde. Migration yok. Rollback web v514 / backend v514.",
+  "label": "v516-acil-kayitli-tedarikci",
+  "description": "Full v516: Acil öneride il/ilçe kayıtlı tedarikçiler önce; olumsuz memnuniyet/maliyet uyarısı; 2. çalışmada admin e-posta. Migration yok. Rollback web v515 / backend v515.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v515-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v515-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v516-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v516-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v514-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v514-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v515-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v515-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
