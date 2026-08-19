@@ -163,6 +163,8 @@ describe('field-staff-claim-view lock', () => {
   it('detay saha ziyaret kartı + tespit foto/not + işaretleme; ofis sekmeleri yok', () => {
     const detail = read('../app/panel/hasar-dosyalari/[id]/page.tsx');
     assert.match(detail, /Saha Tespit/);
+    assert.match(detail, /import \{ DelegationBanner \}/);
+    assert.match(detail, /<DelegationBanner/);
     assert.match(detail, /fieldStaffDirectionsUrl/);
     assert.match(detail, /fieldStaffInspectionStatus/);
     assert.match(detail, /FieldInsuredContactActions/);
