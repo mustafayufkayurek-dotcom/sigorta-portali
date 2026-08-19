@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ClaimNewForm } from '@/components/claim-files/ClaimNewForm';
 import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
@@ -26,11 +27,14 @@ import { OperationRowActions } from '@/components/operasyon/OperationRowActions'
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
 import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import {
+  ArrowRight,
   CalendarPlus,
+  Camera,
   ClipboardCheck,
   FileEdit,
   FolderOpen,
   Hourglass,
+  StickyNote,
 } from 'lucide-react';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatTryAmount } from '@/utils/format-try-amount';
@@ -168,6 +172,13 @@ function getUserScope() {
       isFieldStaff: rc === 'field_staff',
     };
   } catch { return { officeStaffUserId: null, isFieldStaff: false }; }
+}
+
+function fieldStaffClaimHref(id: string, section?: 'foto' | 'not'): string {
+  const base = `/panel/hasar-dosyalari/${encodeURIComponent(id)}`;
+  if (section === 'foto') return `${base}?saha=foto`;
+  if (section === 'not') return `${base}?saha=not`;
+  return base;
 }
 
 const TABLE_COLUMNS: TableColumnDef[] = [
@@ -714,46 +725,87 @@ function ClaimFilesPageContent() {
                 const phone = fieldStaffPhone(claim);
                 const address = fieldStaffAddress(claim);
                 const inspection = fieldStaffInspectionStatus(claim);
+                const cityLine = [claim.propertyAddress?.city, claim.propertyAddress?.district]
+                  .filter(Boolean)
+                  .join(' / ');
+                const subject =
+                  claim.claimSubject?.name ||
+                  claim.lossType ||
+                  claim.productBranch ||
+                  'Hasar Dosyası';
                 return (
                   <div
                     key={claim.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        router.push(`/panel/hasar-dosyalari/${claim.id}`);
-                      }
-                    }}
-                    className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+                    className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-900/[0.03]"
                     data-testid="saha-dosya-karti"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-base font-semibold text-slate-900">{insuredName}</p>
-                      <span
-                        className={`shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
-                        data-testid="saha-tespit-rozet"
-                      >
-                        {inspection.label}
-                      </span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-gradient-to-r from-brand-50/70 via-white to-white px-3.5 py-2.5 sm:px-4">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-sm font-bold text-slate-950">
+                          {claim.fileNo ?? '—'}
+                        </span>
+                        <span
+                          className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
+                          data-testid="saha-tespit-rozet"
+                        >
+                          {inspection.label}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                      <FieldInsuredContactActions
-                        claim={{
-                          id: claim.id,
-                          fileNo: claim.fileNo,
-                          insuredName: claim.insuredName ?? insuredName,
-                          propertyAddress: claim.propertyAddress,
-                        }}
-                        phone={phone}
-                      />
+                    <div className="flex flex-col gap-3 p-3.5 sm:p-4 lg:flex-row lg:items-stretch lg:justify-between">
+                      <div className="min-w-0 flex-[1.4] space-y-2.5">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                            <p className="text-[11px] font-medium text-slate-500">Sigortalı</p>
+                            <p className="mt-0.5 text-sm font-semibold text-slate-950">
+                              {insuredName !== '—' ? insuredName : '—'}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                            <p className="text-[11px] font-medium text-slate-500">Konu / Yer</p>
+                            <p className="mt-0.5 text-sm font-semibold text-slate-900">{subject}</p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">{cityLine || address || '—'}</p>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-brand-100 bg-brand-50/25 px-3 py-2.5">
+                          <p className="text-[11px] font-medium text-slate-500">İletişim</p>
+                          <div className="mt-1.5">
+                            <FieldInsuredContactActions
+                              claim={{
+                                id: claim.id,
+                                fileNo: claim.fileNo,
+                                insuredName: claim.insuredName ?? insuredName,
+                                propertyAddress: claim.propertyAddress,
+                              }}
+                              phone={phone}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex w-full shrink-0 flex-col justify-center gap-1.5 border-t border-slate-100 pt-3 lg:w-[11.5rem] lg:border-l lg:border-t-0 lg:pl-3.5 lg:pt-0">
+                        <Link
+                          href={fieldStaffClaimHref(claim.id, 'foto')}
+                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:border-brand-300 hover:bg-brand-50"
+                        >
+                          <Camera className="h-3.5 w-3.5" strokeWidth={2} />
+                          Tespit Fotoğrafları
+                        </Link>
+                        <Link
+                          href={fieldStaffClaimHref(claim.id, 'not')}
+                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:border-brand-300 hover:bg-brand-50"
+                        >
+                          <StickyNote className="h-3.5 w-3.5" strokeWidth={2} />
+                          Tespit Notları
+                        </Link>
+                        <Link
+                          href={fieldStaffClaimHref(claim.id)}
+                          className="inline-flex w-full items-center justify-center gap-1 rounded-xl bg-brand-600 px-3 py-2.5 text-xs font-semibold text-white hover:bg-brand-700"
+                        >
+                          Dosyaya Git
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
                     </div>
-                    <p className="mt-2 text-xs leading-relaxed text-slate-600">{address}</p>
-                    <p className="mt-2 text-[11px] text-slate-500">
-                      Tespit Tarih Saati:{' '}
-                      <span className="font-medium text-slate-700">{inspection.doneAtLabel}</span>
-                    </p>
                   </div>
                 );
               }

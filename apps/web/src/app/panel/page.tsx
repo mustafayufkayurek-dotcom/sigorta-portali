@@ -84,7 +84,7 @@ export default function PanelPage() {
 
   const title =
     layout.layoutId === 'field_staff'
-      ? 'Saha Operasyon Merkezi'
+      ? 'Saha Merkezi'
       : showOfficeLayout
         ? 'Dosya Sorumlusu Merkezi'
         : layout.layoutId === 'management'
@@ -93,7 +93,7 @@ export default function PanelPage() {
 
   const subtitle =
     layout.layoutId === 'field_staff'
-      ? 'Size atanan hasar dosyaları, görevler ve talepler'
+      ? 'Atanan Dosyalar ve Tamamlanan Tespitler'
       : showOfficeLayout
         ? scopeLabel
           ? `${scopeLabel} kapsamındaki dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar.`

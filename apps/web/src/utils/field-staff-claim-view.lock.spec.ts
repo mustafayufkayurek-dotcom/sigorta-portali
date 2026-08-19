@@ -29,6 +29,7 @@ describe('field-staff-claim-view lock', () => {
     assert.match(util, /fieldStaffAssignedListSplit/);
     assert.match(util, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
     assert.match(util, /FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL/);
+    assert.match(util, /FIELD_STAFF_ASSIGNMENTS_HREF/);
     assert.match(util, /FIELD_STAFF_ASSIGNMENTS_LABEL/);
     assert.match(util, /Tamamlanan Tespitler/);
     assert.match(util, /Atanan Dosyalar/);
@@ -54,6 +55,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(list, /if \(isFieldStaff\)/);
     assert.match(list, /Atanan Dosyalar/);
     assert.match(list, /Tamamlanan Tespitler/);
+    assert.match(list, /Tespit Fotoğrafları/);
+    assert.match(list, /Dosyaya Git/);
     assert.doesNotMatch(list, /saha-tespit-filtre/);
     const fieldCardStart = list.indexOf('data-testid="saha-dosya-karti"');
     assert.ok(fieldCardStart >= 0);
@@ -78,24 +81,35 @@ describe('field-staff-claim-view lock', () => {
     assert.match(msg, /Dosya No:/);
   });
 
-  it('Saha Merkezi hatırlatma bandı ve Bekleyen Tespit Dosyaları başlığı', () => {
+  it('Saha Merkezi özeti Atanan Dosyalar ve Tamamlanan Tespitler sayfalarına gider', () => {
     const home = read('../features/dashboard/components/admin/field-operations-home.tsx');
     assert.match(home, /saha-tespit-hatirlatma/);
     assert.match(home, /InspectionReminderBanner/);
     assert.match(home, /fieldStaffInspectionReminder/);
-    assert.match(home, /Tamamlanan Tespitler/);
+    assert.match(home, /FIELD_STAFF_ASSIGNMENTS_HREF/);
+    assert.match(home, /FIELD_STAFF_ASSIGNMENTS_LABEL/);
+    assert.match(home, /FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL/);
     assert.match(home, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(home, /saha-kpi-atanan-dosyalar/);
     assert.match(home, /saha-kpi-tespiti-tamamlananlar/);
     assert.doesNotMatch(home, /filter === 'completed'/);
+    assert.doesNotMatch(home, /setFilter/);
+    assert.doesNotMatch(home, /Bekleyen Görevler/);
+    assert.doesNotMatch(home, /Bana Atanan/);
+    assert.doesNotMatch(home, /Bekleyen Tespit Dosyaları/);
     assert.match(home, /FieldInsuredContactActions/);
     assert.match(home, /fieldStaffPhone/);
     assert.match(home, /fieldStaffInspectionStatus/);
     assert.match(home, /Sigortalı/);
     assert.match(home, /from-brand-50/);
     assert.match(home, /compact/);
-    assert.match(home, /saha-merkez-bekleyen-kart/);
+    assert.match(home, /saha-merkez-dosya-karti/);
+    assert.match(home, /saha-merkez-tamamlanan-kart/);
     assert.match(home, /saha-merkez-yaklasan-kart/);
     assert.doesNotMatch(home, /Benden İstenenler/);
+    const panel = read('../app/panel/page.tsx');
+    assert.match(panel, /Saha Merkezi/);
+    assert.match(panel, /Atanan Dosyalar ve Tamamlanan Tespitler/);
   });
 
   it('ofis + saha aynı tespit uyarı bandı yöntemi; çan/WhatsApp kanalı yok', () => {

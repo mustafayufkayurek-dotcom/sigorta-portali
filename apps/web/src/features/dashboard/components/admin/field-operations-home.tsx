@@ -10,13 +10,10 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  AlertTriangle,
   ArrowRight,
   Camera,
   CheckCircle2,
-  Clock3,
   FolderOpen,
-  ListTodo,
   StickyNote,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
@@ -29,12 +26,13 @@ import {
   fieldStaffPhone,
   fieldStaffAssignedListSplit,
   fieldStaffCompletedInspectionFiles,
+  FIELD_STAFF_ASSIGNMENTS_HREF,
+  FIELD_STAFF_ASSIGNMENTS_LABEL,
   FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 import { InspectionReminderBanner } from '@/components/field-survey/InspectionReminderBanner';
-
-type ListFilter = 'assigned' | 'pending' | 'upcoming' | 'sla';
 
 type FieldClaimRow = {
   id: string;
@@ -376,7 +374,6 @@ function toFieldTask(
 }
 
 export function FieldOperationsHome() {
-  const [filter, setFilter] = useState<ListFilter>('assigned');
   const [me, setMe] = useState<{ id?: string; firstName?: string; lastName?: string } | null>(null);
 
   useEffect(() => {
@@ -400,7 +397,7 @@ export function FieldOperationsHome() {
     return m;
   }, [openClaims]);
 
-  /** Bekleyen Tespit Dosyaları: API görevleri; yoksa atanmış açık dosyalardan türetilir */
+  /** Yaklaşan işler: API görevleri; yoksa atanmış açık dosyalardan türetilir */
   const requestedTasks = useMemo((): FieldTask[] => {
     const apiTasks = tasksQuery.data ?? [];
     if (apiTasks.length > 0) {
@@ -467,12 +464,6 @@ export function FieldOperationsHome() {
     [scheduleGroups],
   );
 
-  const primaryTaskByClaim = useMemo(() => {
-    const m = new Map<string, FieldTask>();
-    for (const t of requestedTasks) {
-      if (!m.has(t.claimId)) m.set(t.claimId, t);
-    }
-    return m;
   }, [requestedTasks]);
 
   const completedInspections = useMemo(
@@ -480,37 +471,9 @@ export function FieldOperationsHome() {
     [openClaims, closedClaimsQuery.data?.items],
   );
   const openCount = pendingInspection.length;
-  const pendingCount = requestedTasks.length;
-  const upcomingCount = scheduleTasks.length;
-  const slaCount = requestedTasks.filter((t) => t.overdue).length;
   const completedCount = completedInspections.length;
-
-  const filteredFiles = useMemo(() => {
-    if (filter === 'pending') {
-      const ids = new Set(requestedTasks.map((t) => t.claimId));
-      return pendingInspection.filter((c) => ids.has(c.id));
-    }
-    if (filter === 'upcoming') {
-      const ids = new Set(scheduleTasks.map((t) => t.claimId));
-      return pendingInspection.filter((c) => ids.has(c.id));
-    }
-    if (filter === 'sla') {
-      return pendingInspection.filter((c) => {
-        const t = primaryTaskByClaim.get(c.id);
-        if (t?.overdue) return true;
-        if (!c.slaDueAt) return false;
-        const due = new Date(c.slaDueAt).getTime();
-        return !Number.isNaN(due) && due < Date.now();
-      });
-    }
-    return pendingInspection;
-  }, [
-    filter,
-    pendingInspection,
-    requestedTasks,
-    scheduleTasks,
-    primaryTaskByClaim,
-  ]);
+  const previewAssigned = pendingInspection.slice(0, 8);
+  const previewCompleted = completedInspections.slice(0, 5);
 
   const recentOwn = useMemo(() => {
     return [...openClaims]
@@ -535,33 +498,24 @@ export function FieldOperationsHome() {
     [openClaims],
   );
 
-  const listSubtitle =
-    filter === 'sla'
-      ? 'SLA / gecikme riski taşıyan dosyalar'
-      : filter === 'upcoming'
-        ? 'Bugün ve yakın zaman penceresindeki işler'
-        : filter === 'pending'
-          ? 'Açık görev / talep bulunan dosyalar'
-          : 'Yalnızca tespit bekleyen atanmış dosyalar';
-
   return (
     <div className="space-y-4">
       {!loading && inspectionReminder.pendingCount > 0 ? (
         <InspectionReminderBanner
           message={inspectionReminder.message}
-          href={CLAIM_LIST_OPEN_HREF}
+          href={FIELD_STAFF_ASSIGNMENTS_HREF}
           testId="saha-tespit-hatirlatma"
         />
       ) : null}
 
-      <section aria-label="Saha Özeti" className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+      <section aria-label="Saha Özeti" className="grid grid-cols-2 gap-2">
         {loading
-          ? Array.from({ length: 5 }).map((_, i) => (
+          ? Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="h-[60px] animate-pulse rounded-xl bg-slate-100" />
             ))
           : kpisFailed
             ? (
-              <p className="col-span-2 text-sm text-slate-600 lg:col-span-5">
+              <p className="col-span-2 text-sm text-slate-600">
                 Dosya özeti yüklenemedi. Lütfen sayfayı yenileyin.
               </p>
             )
@@ -569,39 +523,16 @@ export function FieldOperationsHome() {
             <>
               <KpiButton
                 icon={FolderOpen}
-                label="Atanan Dosyalar"
+                label={FIELD_STAFF_ASSIGNMENTS_LABEL}
                 value={openCount}
                 tone="brand"
-                active={filter === 'assigned'}
-                onClick={() => setFilter('assigned')}
-              />
-              <KpiButton
-                icon={ListTodo}
-                label="Bekleyen Görevler"
-                value={pendingCount}
-                tone="warning"
-                active={filter === 'pending'}
-                onClick={() => setFilter('pending')}
-              />
-              <KpiButton
-                icon={Clock3}
-                label="Yaklaşan İşler"
-                value={upcomingCount}
-                tone="upcoming"
-                active={filter === 'upcoming'}
-                onClick={() => setFilter('upcoming')}
-              />
-              <KpiButton
-                icon={AlertTriangle}
-                label="SLA Riski"
-                value={slaCount}
-                tone="danger"
-                active={filter === 'sla'}
-                onClick={() => setFilter('sla')}
+                active={false}
+                href={FIELD_STAFF_ASSIGNMENTS_HREF}
+                testId="saha-kpi-atanan-dosyalar"
               />
               <KpiButton
                 icon={CheckCircle2}
-                label="Tamamlanan Tespitler"
+                label={FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
                 value={completedCount}
                 tone="success"
                 active={false}
@@ -614,11 +545,20 @@ export function FieldOperationsHome() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <section className="xl:col-span-8">
-          <div className="mb-2.5">
-            <h2 className="text-base font-semibold text-slate-950">
-              Bana Atanan Dosyalar
-            </h2>
-            <p className="text-xs text-slate-500">{listSubtitle}</p>
+          <div className="mb-2.5 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold text-slate-950">
+                {FIELD_STAFF_ASSIGNMENTS_LABEL}
+              </h2>
+              <p className="text-xs text-slate-500">Tespit bekleyen atanmış dosyalar</p>
+            </div>
+            <Link
+              href={FIELD_STAFF_ASSIGNMENTS_HREF}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
+            >
+              Tümünü Gör
+              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
+            </Link>
           </div>
 
           {loading ? (
@@ -629,13 +569,11 @@ export function FieldOperationsHome() {
             </div>
           ) : openClaimsQuery.isError ? (
             <EmptyState text="Dosyalar yüklenemedi. Lütfen sayfayı yenileyin." />
-          ) : filteredFiles.length === 0 ? (
-            <EmptyState text="Bu görünümde gösterilecek dosya yok." />
+          ) : previewAssigned.length === 0 ? (
+            <EmptyState text="Tespit bekleyen atanmış dosya yok." />
           ) : (
             <ul className="space-y-3">
-              {filteredFiles.slice(0, 12).map((claim) => {
-                const task = primaryTaskByClaim.get(claim.id);
-                const prio = priorityLabel(task?.priority ?? claim.priority);
+              {previewAssigned.map((claim) => {
                 const insured = fieldStaffInsuredName(claim);
                 const phone = fieldStaffPhone(claim);
                 const inspection = fieldStaffInspectionStatus(claim);
@@ -664,20 +602,6 @@ export function FieldOperationsHome() {
                           data-testid="saha-tespit-rozet"
                         >
                           {inspection.label}
-                        </span>
-                        {task?.overdue ? (
-                          <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-status-danger ring-1 ring-red-100">
-                            Gecikme
-                          </span>
-                        ) : task?.inScheduleWindow ? (
-                          <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-100">
-                            Yaklaşan
-                          </span>
-                        ) : null}
-                        <span
-                          className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${prio.className}`}
-                        >
-                          {prio.text}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500">
@@ -718,20 +642,6 @@ export function FieldOperationsHome() {
                             />
                           </div>
                         </div>
-
-                        {task ? (
-                          <div className="rounded-xl border border-slate-100 px-3 py-2 text-xs text-slate-700">
-                            <p>
-                              <span className="font-semibold text-slate-900">Görev:</span>{' '}
-                              {task.title}
-                            </p>
-                            <p className="mt-0.5 text-[11px] text-slate-500">
-                              {task.statusLabel} · {task.priorityLabel} · {task.timeLabel}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-500">Açık görev / talep yok</p>
-                        )}
                       </div>
 
                       <div className="flex w-full shrink-0 flex-col justify-center gap-1.5 border-t border-slate-100 pt-3 lg:w-[11.5rem] lg:border-l lg:border-t-0 lg:pl-3.5 lg:pt-0">
@@ -758,56 +668,49 @@ export function FieldOperationsHome() {
         </section>
 
         <aside className="space-y-3 xl:col-span-4 xl:min-w-0">
-          {/* Bekleyen Tespit Dosyaları — saha kuyruğu */}
           <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3 shadow-sm ring-1 ring-slate-900/[0.03]">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-slate-950">Bekleyen Tespit Dosyaları</h2>
-              {pendingCount > 0 ? (
-                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                  {pendingCount}
+              <h2 className="text-sm font-semibold text-slate-950">
+                {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+              </h2>
+              {completedCount > 0 ? (
+                <span className="rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-status-success">
+                  {completedCount}
                 </span>
               ) : null}
             </div>
             {loading ? (
               <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
-            ) : requestedTasks.length === 0 ? (
-              <EmptyState text="Bekleyen tespit dosyası yok." />
+            ) : previewCompleted.length === 0 ? (
+              <EmptyState text="Tamamlanan tespit yok." />
             ) : (
               <ul className="space-y-1.5">
-                {requestedTasks.slice(0, 10).map((task) => {
-                  const claim = claimById.get(task.claimId);
-                  const insured = claim ? fieldStaffInsuredName(claim) : '—';
-                  const phone = claim ? fieldStaffPhone(claim) : '';
+                {previewCompleted.map((claim) => {
+                  const insured = fieldStaffInsuredName(claim);
+                  const phone = fieldStaffPhone(claim);
+                  const inspection = fieldStaffInspectionStatus(claim);
                   return (
                     <li
-                      key={task.id}
+                      key={claim.id}
                       className="rounded-xl border border-slate-100 bg-slate-50/70 px-2.5 py-2.5 transition hover:border-brand-200 hover:bg-brand-50/40"
-                      data-testid="saha-merkez-bekleyen-kart"
+                      data-testid="saha-merkez-tamamlanan-kart"
                     >
-                      <Link href={fieldClaimHref(task.claimId)} className="block">
+                      <Link href={fieldClaimHref(claim.id)} className="block">
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-xs font-semibold text-slate-900">
-                            <span className="font-mono text-slate-500">{task.fileNo}</span>
-                            {' — '}
-                            {task.title}
+                            <span className="font-mono text-slate-500">{claim.fileNo ?? '—'}</span>
+                            {insured !== '—' ? ` — ${insured}` : ''}
                           </p>
-                          <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">
-                            {task.timeLabel}
+                          <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(true)}`}>
+                            {inspection.label}
                           </span>
                         </div>
-                        {insured !== '—' ? (
-                          <p className="mt-0.5 truncate text-[11px] font-medium text-slate-700">
-                            {insured}
-                          </p>
-                        ) : null}
-                        <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                          <span>
-                            {task.statusLabel} · {task.priorityLabel}
-                          </span>
-                          <span className="font-semibold text-brand-600">İşleme Git →</span>
-                        </div>
+                        <p className="mt-0.5 text-[11px] text-slate-500">
+                          Tespit: {inspection.doneAtLabel}
+                        </p>
+                        <p className="mt-1 text-[11px] font-semibold text-brand-600">Dosyaya Git →</p>
                       </Link>
-                      {claim && phone ? (
+                      {phone ? (
                         <FieldInsuredContactActions
                           claim={{
                             id: claim.id,
@@ -825,6 +728,13 @@ export function FieldOperationsHome() {
                 })}
               </ul>
             )}
+            <Link
+              href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
+            >
+              Tümünü Gör
+              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
+            </Link>
           </section>
 
           {/* Bugün / Yaklaşan — zaman özeti (görev listesi kopyası değil) */}

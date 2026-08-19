@@ -33,7 +33,7 @@ export function DashboardHeader({
   isFieldStaff = false,
 }: DashboardHeaderProps) {
   const compactChrome = isManagement || isOfficeStaff || isFieldStaff;
-  const showBreadcrumb = compactChrome;
+  const showBreadcrumb = (isManagement || isOfficeStaff) && !isFieldStaff;
 
   // SSR/client locale farkı hydration “Text content does not match” üretmesin
   const [todayLabel, setTodayLabel] = useState('');
