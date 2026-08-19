@@ -50,6 +50,8 @@ describe('invoice-request-telegram.rule', () => {
   it('müşteri kısa ad + finans roller', () => {
     expect(resolveInvoiceCustomerShortName({ shortName: 'X', companyName: 'Y' })).toBe('X');
     expect(isInvoiceRequestNotifyRole('finance')).toBe(true);
+    expect(isInvoiceRequestNotifyRole('FINANCE')).toBe(true);
+    expect(isInvoiceRequestNotifyRole('FINANS')).toBe(true);
     expect(isInvoiceRequestNotifyRole('admin')).toBe(true);
     expect(isInvoiceRequestNotifyRole('office_staff')).toBe(false);
   });

@@ -29,5 +29,6 @@ const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
 
 export function getDefaultScreensForRole(roleCode: string): string[] {
   const code = String(roleCode ?? '').trim().toLowerCase();
-  return ROLE_DEFAULT_SCREENS[code] ?? [];
+  const aliased = code === 'finans' ? 'finance' : code;
+  return ROLE_DEFAULT_SCREENS[aliased] ?? [];
 }

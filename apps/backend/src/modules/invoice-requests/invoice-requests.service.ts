@@ -200,7 +200,18 @@ export class InvoiceRequestsService {
       where: {
         status: 'active',
         role: {
-          code: { in: ['admin', 'ADMIN', 'finance', 'finans', 'FINANS', 'accountant', 'ACCOUNTANT'] },
+          code: {
+            in: [
+              'admin',
+              'ADMIN',
+              'finance',
+              'FINANCE',
+              'finans',
+              'FINANS',
+              'accountant',
+              'ACCOUNTANT',
+            ],
+          },
         },
       },
       select: { id: true, role: { select: { code: true } } },
