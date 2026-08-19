@@ -322,7 +322,7 @@ function getPanelMainLinks({
       : isFieldStaff
         ? [
             { title: 'Saha Merkezi', href: '/panel', icon: MonitorCheck },
-            { title: 'Atamalar', href: '/panel/hasar-dosyalari', icon: ClipboardList },
+            { title: 'Atanan Dosyalar', href: '/panel/hasar-dosyalari', icon: ClipboardList },
             { title: 'Tamamlanan Tespitler', href: '/panel/saha/tespiti-tamamlananlar', icon: CheckCircle2 },
           ]
       : isFinance

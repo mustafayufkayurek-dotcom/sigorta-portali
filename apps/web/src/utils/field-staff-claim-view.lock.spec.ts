@@ -31,7 +31,7 @@ describe('field-staff-claim-view lock', () => {
     assert.match(util, /FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL/);
     assert.match(util, /FIELD_STAFF_ASSIGNMENTS_LABEL/);
     assert.match(util, /Tamamlanan Tespitler/);
-    assert.match(util, /Atamalar/);
+    assert.match(util, /Atanan Dosyalar/);
     assert.match(util, /fieldStaffCompletedInspectionFiles/);
     assert.match(util, /FIELD_STAFF_HIDDEN_CLAIM_TABS/);
     assert.match(util, /'finans'/);
@@ -50,7 +50,7 @@ describe('field-staff-claim-view lock', () => {
     assert.match(list, /fieldStaffInspectionStatus/);
     assert.match(list, /FieldInsuredContactActions/);
     assert.match(list, /if \(isFieldStaff\)/);
-    assert.match(list, /Atamalar/);
+    assert.match(list, /Atanan Dosyalar/);
     assert.match(list, /Tamamlanan Tespitler/);
     assert.doesNotMatch(list, /saha-tespit-filtre/);
     const fieldCardStart = list.indexOf('data-testid="saha-dosya-karti"');
@@ -174,10 +174,11 @@ describe('field-staff-claim-view lock', () => {
     assert.match(view, /saha-tespiti-tamamlananlar/);
     assert.match(view, /saha-tamamlanan-tespit-ara/);
     assert.match(view, /SearchInput/);
+    assert.match(view, /size="lg"/);
     assert.match(view, /statusCode: includeClosed \? 'closed' : 'open'/);
     const layout = read('../app/panel/layout.tsx');
     assert.match(layout, /Tamamlanan Tespitler/);
-    assert.match(layout, /title: 'Atamalar'/);
+    assert.match(layout, /title: 'Atanan Dosyalar'/);
     assert.match(layout, /\/panel\/saha\/tespiti-tamamlananlar/);
   });
 

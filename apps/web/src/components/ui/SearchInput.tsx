@@ -9,6 +9,7 @@ interface SearchInputProps {
   onClear?: () => void;
   loading?: boolean;
   className?: string;
+  size?: 'md' | 'lg';
 }
 
 export function SearchInput({
@@ -18,6 +19,7 @@ export function SearchInput({
   onClear,
   loading = false,
   className = '',
+  size = 'md',
 }: SearchInputProps) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -40,10 +42,16 @@ export function SearchInput({
     onClear?.();
   }, [onChange, onClear]);
 
+  const inputSizeClass =
+    size === 'lg'
+      ? 'rounded-xl py-3 pl-11 pr-11 text-[15px]'
+      : 'rounded-lg py-2 pl-10 pr-10 text-sm';
+  const iconSizeClass = size === 'lg' ? 'left-3.5 h-5 w-5' : 'left-3 h-4 w-4';
+
   return (
     <div className={`relative flex items-center ${className}`}>
       <svg
-        className="absolute left-3 h-4 w-4 text-gray-400"
+        className={`absolute text-gray-400 ${iconSizeClass}`}
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -60,7 +68,7 @@ export function SearchInput({
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-10 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className={`w-full border border-gray-300 bg-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${inputSizeClass}`}
       />
       {loading && (
         <div className="absolute right-8 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />

@@ -428,7 +428,7 @@ function ClaimFilesPageContent() {
           {isFieldStaff ? 'Saha Merkezi' : 'Dashboard'}
         </a>
         <span>/</span>
-        <span className="text-slate-600 font-medium">{isFieldStaff ? 'Atamalar' : 'Hasar Dosyaları'}</span>
+        <span className="text-slate-600 font-medium">{isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}</span>
       </nav>
 
       {/* Header */}
@@ -449,7 +449,7 @@ function ClaimFilesPageContent() {
             </svg>
           </div>
           <div>
-            <h2 className="page-title">{isFieldStaff ? 'Atamalar' : 'Hasar Dosyaları'}</h2>
+            <h2 className="page-title">{isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}</h2>
             {!loading && (
               <p className="page-subtitle">
                 {isFieldStaff
@@ -562,6 +562,7 @@ function ClaimFilesPageContent() {
               value={search}
               onChange={(val) => { setSearch(val); setPage(1); }}
               onClear={() => { setSearch(''); setPage(1); }}
+              size={isFieldStaff ? 'lg' : 'md'}
             />
           </div>
           {!isFieldStaff && (

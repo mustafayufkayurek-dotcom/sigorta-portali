@@ -154,6 +154,7 @@ export function FieldCompletedInspectionsPage() {
               value={search}
               onChange={setSearch}
               onClear={() => setSearch('')}
+              size="lg"
             />
           </div>
         </div>
