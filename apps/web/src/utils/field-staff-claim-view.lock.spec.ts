@@ -28,6 +28,10 @@ describe('field-staff-claim-view lock', () => {
     assert.match(util, /tespit bekleniyor/);
     assert.match(util, /fieldStaffAssignedListSplit/);
     assert.match(util, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(util, /FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL/);
+    assert.match(util, /FIELD_STAFF_ASSIGNMENTS_LABEL/);
+    assert.match(util, /Tamamlanan Tespitler/);
+    assert.match(util, /Atamalar/);
     assert.match(util, /fieldStaffCompletedInspectionFiles/);
     assert.match(util, /FIELD_STAFF_HIDDEN_CLAIM_TABS/);
     assert.match(util, /'finans'/);
@@ -46,10 +50,12 @@ describe('field-staff-claim-view lock', () => {
     assert.match(list, /fieldStaffInspectionStatus/);
     assert.match(list, /FieldInsuredContactActions/);
     assert.match(list, /if \(isFieldStaff\)/);
-    const fieldCard = list.slice(
-      list.indexOf('if (isFieldStaff)'),
-      list.indexOf('if (isFieldStaff)') + 1800,
-    );
+    assert.match(list, /Atamalar/);
+    assert.match(list, /Tamamlanan Tespitler/);
+    assert.doesNotMatch(list, /saha-tespit-filtre/);
+    const fieldCardStart = list.indexOf('data-testid="saha-dosya-karti"');
+    assert.ok(fieldCardStart >= 0);
+    const fieldCard = list.slice(fieldCardStart, fieldCardStart + 1800);
     assert.doesNotMatch(fieldCard, /resolveClaimSupplierDisplayName/);
     assert.doesNotMatch(fieldCard, /invoicedAmount/);
   });
@@ -75,7 +81,7 @@ describe('field-staff-claim-view lock', () => {
     assert.match(home, /saha-tespit-hatirlatma/);
     assert.match(home, /InspectionReminderBanner/);
     assert.match(home, /fieldStaffInspectionReminder/);
-    assert.match(home, /Tespiti Tamamlananlar/);
+    assert.match(home, /Tamamlanan Tespitler/);
     assert.match(home, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
     assert.match(home, /saha-kpi-tespiti-tamamlananlar/);
     assert.doesNotMatch(home, /filter === 'completed'/);
@@ -159,16 +165,19 @@ describe('field-staff-claim-view lock', () => {
     assert.doesNotMatch(photos, /Yaşam Döngüsü/);
   });
 
-  it('Tespiti Tamamlananlar sayfası tespit bitenleri toplar', () => {
+  it('Tamamlanan Tespitler sayfası tespit bitenleri toplar', () => {
     const page = read('../app/panel/saha/tespiti-tamamlananlar/page.tsx');
     const view = read('../features/dashboard/components/admin/field-completed-inspections-page.tsx');
     assert.match(page, /FieldCompletedInspectionsPage/);
-    assert.match(view, /Tespiti Tamamlananlar/);
+    assert.match(view, /Tamamlanan Tespitler/);
     assert.match(view, /fieldStaffCompletedInspectionFiles/);
     assert.match(view, /saha-tespiti-tamamlananlar/);
+    assert.match(view, /saha-tamamlanan-tespit-ara/);
+    assert.match(view, /SearchInput/);
     assert.match(view, /statusCode: includeClosed \? 'closed' : 'open'/);
     const layout = read('../app/panel/layout.tsx');
-    assert.match(layout, /Tespiti Tamamlananlar/);
+    assert.match(layout, /Tamamlanan Tespitler/);
+    assert.match(layout, /title: 'Atamalar'/);
     assert.match(layout, /\/panel\/saha\/tespiti-tamamlananlar/);
   });
 

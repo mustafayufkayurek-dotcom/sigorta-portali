@@ -601,7 +601,7 @@ export function FieldOperationsHome() {
               />
               <KpiButton
                 icon={CheckCircle2}
-                label="Tespiti Tamamlananlar"
+                label="Tamamlanan Tespitler"
                 value={completedCount}
                 tone="success"
                 active={false}

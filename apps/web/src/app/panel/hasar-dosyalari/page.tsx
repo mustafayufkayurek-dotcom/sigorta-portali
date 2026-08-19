@@ -232,8 +232,6 @@ function ClaimFilesPageContent() {
   const [noteInsuredName, setNoteInsuredName] = useState<string | undefined>(undefined);
   const [emailTarget, setEmailTarget] = useState<OperationSendEmailTarget | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  /** Saha: tespit durumu istemci filtresi (tümü / yapıldı / yapılmadı) */
-  const [inspectionFilter, setInspectionFilter] = useState<'all' | 'done' | 'pending'>('all');
   const limit = 20;
   /** v5: Hasar listesi sütun tercihleri — Operasyon/Acil ile paylaşılmaz */
   const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v5', TABLE_COLUMNS);
@@ -349,19 +347,16 @@ function ClaimFilesPageContent() {
   }, [revisionsData]);
 
   // Derived
-  const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter || pendingReportFilter || repairReportStatusFilter || (isFieldStaff && inspectionFilter !== 'all'));
+  const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter || pendingReportFilter || repairReportStatusFilter);
   const filteredClaims = useMemo(() => {
     let rows = pendingRevisionFilter
       ? claims.filter((c: any) => (pendingRevisionMap[c.id] ?? 0) > 0)
       : claims;
-    if (isFieldStaff && inspectionFilter !== 'all') {
-      rows = rows.filter((c: any) => {
-        const done = fieldStaffInspectionStatus(c).done;
-        return inspectionFilter === 'done' ? done : !done;
-      });
+    if (isFieldStaff) {
+      rows = rows.filter((c: any) => !fieldStaffInspectionStatus(c).done);
     }
     return rows;
-  }, [claims, pendingRevisionFilter, pendingRevisionMap, isFieldStaff, inspectionFilter]);
+  }, [claims, pendingRevisionFilter, pendingRevisionMap, isFieldStaff]);
   const visibleClaims = useMemo(
     () =>
       sortRowsByClientSort(filteredClaims, clientSort, (claim: any, key) => {
@@ -404,7 +399,7 @@ function ClaimFilesPageContent() {
   const clearFilters = () => {
     setSearch(''); setStatusFilter(''); setPriorityFilter('');
     setInsuranceFilter(''); setDateFrom(''); setDateTo('');
-    setInvoiceStatusFilter(''); setInspectionFilter('all'); setPage(1);
+    setInvoiceStatusFilter(''); setPage(1);
     setPendingRevisionFilter(false);
     setPendingReportFilter(false);
     setRepairReportStatusFilter('');
@@ -429,9 +424,11 @@ function ClaimFilesPageContent() {
     <div className="space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">
+          {isFieldStaff ? 'Saha Merkezi' : 'Dashboard'}
+        </a>
         <span>/</span>
-        <span className="text-slate-600 font-medium">Hasar Dosyaları</span>
+        <span className="text-slate-600 font-medium">{isFieldStaff ? 'Atamalar' : 'Hasar Dosyaları'}</span>
       </nav>
 
       {/* Header */}
@@ -452,12 +449,14 @@ function ClaimFilesPageContent() {
             </svg>
           </div>
           <div>
-            <h2 className="page-title">Hasar Dosyaları</h2>
+            <h2 className="page-title">{isFieldStaff ? 'Atamalar' : 'Hasar Dosyaları'}</h2>
             {!loading && (
               <p className="page-subtitle">
-                {total} dosya bulundu
-                {urlStatusCode === 'open' && <span className="ml-2 text-orange-500 font-semibold">· Açık Dosyalar</span>}
-                {urlStatusCode === 'closed' && <span className="ml-2 text-status-success font-semibold">· Kapalı Dosyalar</span>}
+                {isFieldStaff
+                  ? `${visibleClaims.length} atanan iş. Tespiti bitenler Tamamlanan Tespitler sayfasına gider.`
+                  : `${total} dosya bulundu`}
+                {!isFieldStaff && urlStatusCode === 'open' && <span className="ml-2 text-orange-500 font-semibold">· Açık Dosyalar</span>}
+                {!isFieldStaff && urlStatusCode === 'closed' && <span className="ml-2 text-status-success font-semibold">· Kapalı Dosyalar</span>}
                 {urlStatusCode === 'sla_exceeded' && <span className="ml-2 text-status-danger font-semibold">· SLA Aşanlar</span>}
                 {search && <span className="ml-2 text-blue-500 font-semibold">· Arama: {search}</span>}
                 {invoiceStatusFilter === 'overdue' && <span className="ml-2 text-status-danger font-semibold">· Gecikmiş fatura</span>}
@@ -559,7 +558,7 @@ function ClaimFilesPageContent() {
         <div className="panel-filter-bar">
           <div className="panel-filter-search-wrap">
             <SearchInput
-              placeholder={isFieldStaff ? 'Sigortalı Ara...' : 'Dosya No, Sigortalı...'}
+              placeholder={isFieldStaff ? 'Dosya No, Sigortalı Ara...' : 'Dosya No, Sigortalı...'}
               value={search}
               onChange={(val) => { setSearch(val); setPage(1); }}
               onClear={() => { setSearch(''); setPage(1); }}
@@ -578,21 +577,6 @@ function ClaimFilesPageContent() {
             {!isFieldStaff && <option value="__sla_exceeded__">SLA Aşanlar</option>}
             {!isFieldStaff && claimStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          {isFieldStaff && (
-            <select
-              className="panel-filter-control"
-              value={inspectionFilter}
-              onChange={(e) => {
-                setInspectionFilter(e.target.value as 'all' | 'done' | 'pending');
-                setPage(1);
-              }}
-              data-testid="saha-tespit-filtre"
-            >
-              <option value="all">Tüm Tespitler</option>
-              <option value="done">Tespit Yapıldı</option>
-              <option value="pending">Tespit Yapılmadı</option>
-            </select>
-          )}
           {!isFieldStaff && (
             <>
               <select className="panel-filter-control" value={invoiceStatusFilter} onChange={(e) => { setInvoiceStatusFilter(e.target.value); setPage(1); }}>
@@ -698,10 +682,18 @@ function ClaimFilesPageContent() {
               </svg>
             </div>
             <p className="text-sm font-semibold text-slate-600">
-              {hasFilters ? 'Filtrelere Uyan Dosya Bulunamadı' : 'Henüz Hasar Dosyası Yok'}
+              {hasFilters
+                ? 'Filtrelere Uyan Dosya Bulunamadı'
+                : isFieldStaff
+                  ? 'Atanan İş Yok'
+                  : 'Henüz Hasar Dosyası Yok'}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              {hasFilters ? 'Farklı filtreler deneyin veya filtreleri temizleyin.' : 'İlk dosyanızı oluşturun!'}
+              {hasFilters
+                ? 'Farklı filtreler deneyin veya filtreleri temizleyin.'
+                : isFieldStaff
+                  ? 'Tespiti biten işler Tamamlanan Tespitler sayfasındadır.'
+                  : 'İlk dosyanızı oluşturun!'}
             </p>
             {hasFilters ? (
               <button type="button" onClick={clearFilters} className="btn-secondary mt-4">Filtreleri Temizle</button>

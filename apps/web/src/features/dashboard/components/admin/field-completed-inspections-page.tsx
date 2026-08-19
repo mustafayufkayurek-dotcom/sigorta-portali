@@ -1,17 +1,18 @@
 'use client';
 
 /**
- * Saha — Tespiti Tamamlananlar.
+ * Saha — Tamamlanan Tespitler.
  * Tespit işlemi biten açık ve kapalı dosyalar burada toplanır.
  */
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Camera, StickyNote } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
+import { SearchInput } from '@/components/ui/SearchInput';
 import {
   fieldStaffCompletedInspectionFiles,
   fieldStaffInspectionBadgeClass,
@@ -97,6 +98,28 @@ export function FieldCompletedInspectionsPage() {
     () => fieldStaffCompletedInspectionFiles([openQuery.data ?? [], closedQuery.data ?? []]),
     [openQuery.data, closedQuery.data],
   );
+  const [search, setSearch] = useState('');
+  const filteredFiles = useMemo(() => {
+    const q = search.trim().toLocaleLowerCase('tr-TR');
+    if (!q) return files;
+    return files.filter((claim) => {
+      const hay = [
+        claim.fileNo,
+        fieldStaffInsuredName(claim),
+        fieldStaffPhone(claim),
+        claim.propertyAddress?.city,
+        claim.propertyAddress?.district,
+        claim.propertyAddress?.addressLine,
+        claim.claimSubject?.name,
+        claim.lossType,
+        claim.productBranch,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('tr-TR');
+      return hay.includes(q);
+    });
+  }, [files, search]);
 
   const loading = !accessReady || openQuery.isLoading || closedQuery.isLoading;
 
@@ -113,14 +136,27 @@ export function FieldCompletedInspectionsPage() {
             <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
             Saha Merkezi
           </Link>
-          <h1 className="text-lg font-semibold text-slate-950">Tespiti Tamamlananlar</h1>
+          <h1 className="text-lg font-semibold text-slate-950">Tamamlanan Tespitler</h1>
           <p className="mt-0.5 text-xs text-slate-500">
             Tespit işlemi biten dosyalar burada toplanır.
           </p>
         </div>
         <p className="text-sm font-semibold tabular-nums text-slate-800">
-          {loading ? '…' : `${files.length} Dosya`}
+          {loading ? '…' : `${filteredFiles.length} Dosya`}
         </p>
+      </div>
+
+      <div className="filter-bar" data-testid="saha-tamamlanan-tespit-ara">
+        <div className="panel-filter-bar">
+          <div className="panel-filter-search-wrap">
+            <SearchInput
+              placeholder="Dosya No, Sigortalı Ara..."
+              value={search}
+              onChange={setSearch}
+              onClear={() => setSearch('')}
+            />
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -132,10 +168,12 @@ export function FieldCompletedInspectionsPage() {
       ) : openQuery.isError && closedQuery.isError ? (
         <p className="text-sm text-slate-600">Dosyalar yüklenemedi. Lütfen sayfayı yenileyin.</p>
       ) : files.length === 0 ? (
-        <p className="text-sm text-slate-500">Tespiti tamamlanan dosya yok.</p>
+        <p className="text-sm text-slate-500">Tamamlanan tespit yok.</p>
+      ) : filteredFiles.length === 0 ? (
+        <p className="text-sm text-slate-500">Aramaya uyan tespit yok.</p>
       ) : (
         <ul className="space-y-3">
-          {files.map((claim) => {
+          {filteredFiles.map((claim) => {
             const insured = fieldStaffInsuredName(claim);
             const phone = fieldStaffPhone(claim);
             const inspection = fieldStaffInspectionStatus(claim);

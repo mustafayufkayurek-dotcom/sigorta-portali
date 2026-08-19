@@ -85,6 +85,8 @@ export function fieldStaffAssignedListSplit<T extends FieldStaffClaimLite>(claim
 }
 
 export const FIELD_STAFF_COMPLETED_INSPECTIONS_HREF = '/panel/saha/tespiti-tamamlananlar';
+export const FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL = 'Tamamlanan Tespitler';
+export const FIELD_STAFF_ASSIGNMENTS_LABEL = 'Atamalar';
 
 /** Tespit işlemi biten dosyalar — açık + kapalı, tekilleştirilmiş, yeni tamamlanan üstte. */
 export function fieldStaffCompletedInspectionFiles<T extends FieldStaffClaimLite & { id: string }>(
