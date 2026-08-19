@@ -350,11 +350,15 @@ export class VendorRecommendationService {
       const resolved = await resolveProvinceDistrictIds(this.prisma, city, districtName);
       provinceId = resolved.provinceId;
       districtId = resolved.districtId;
+      // Resmi il adı — "Afyon" kaydı "Afyonkarahisar" hizmet bölgesiyle eşleşsin.
+      if (resolved.provinceName) city = resolved.provinceName;
+      if (!districtName && resolved.districtName) districtName = resolved.districtName;
     }
 
     const where = buildVendorNearbyWhere({
       provinceId,
-      districtId,
+      // Acil: ildeki kayıtlı havuzun tamamı; ilçe satırı tedarikçiyi düşürmez.
+      districtId: query.keepAllAreaCandidates ? null : districtId,
       city,
       districtName,
       purpose: 'supplier',

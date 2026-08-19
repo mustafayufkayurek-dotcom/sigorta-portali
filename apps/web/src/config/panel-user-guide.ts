@@ -44,7 +44,7 @@ const GUIDE_BY_ROLE: Record<string, PanelGuideEntry> = {
   field_staff: {
     href: `${PERSONEL_HTML}#saha-personeli`,
     title: 'Saha Personeli Kılavuzu',
-    subtitle: 'Atanan hasar dosyaları, görevler ve talepler',
+    subtitle: 'Atanan Dosyalar ve Tamamlanan Tespitler',
   },
   finance: {
     href: `${PERSONEL_HTML}#finans-modulleri`,

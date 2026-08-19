@@ -19,6 +19,7 @@ import {
   OfficeChartsRow,
   OfficeBottomRow,
   OfficeInspectionReminder,
+  OfficeSurveyReminder,
   FieldOperationsHome,
 } from '@/features/dashboard/components/admin';
 import { ManagementDashboard } from '@/features/dashboard/components/management-dashboard';
@@ -84,7 +85,7 @@ export default function PanelPage() {
 
   const title =
     layout.layoutId === 'field_staff'
-      ? 'Saha Operasyon Merkezi'
+      ? 'Saha Merkezi'
       : showOfficeLayout
         ? 'Dosya Sorumlusu Merkezi'
         : layout.layoutId === 'management'
@@ -93,7 +94,7 @@ export default function PanelPage() {
 
   const subtitle =
     layout.layoutId === 'field_staff'
-      ? 'Size atanan hasar dosyaları, görevler ve talepler'
+      ? 'Atanan Dosyalar ve Tamamlanan Tespitler'
       : showOfficeLayout
         ? scopeLabel
           ? `${scopeLabel} kapsamındaki dosyalarınız, onay gecikmeleri ve bekleyen aksiyonlar.`
@@ -128,6 +129,7 @@ export default function PanelPage() {
 
         {/* Tespit uyarı bandı — saha ile aynı yöntem; yalnız office_staff */}
         <OfficeInspectionReminder />
+        <OfficeSurveyReminder />
 
         <OfficeKpiBand staggerIndex={0} />
 

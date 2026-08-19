@@ -26,6 +26,22 @@ describe('field-staff-claim-view lock', () => {
     assert.match(util, /Tespit Yapıldı/);
     assert.match(util, /Tespit Yapılmadı/);
     assert.match(util, /tespit bekleniyor/);
+    assert.match(util, /fieldStaffAssignedListSplit/);
+    assert.match(util, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(util, /FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL/);
+    assert.match(util, /FIELD_STAFF_ASSIGNMENTS_HREF/);
+    assert.match(util, /FIELD_STAFF_ASSIGNMENTS_LABEL/);
+    assert.match(util, /FIELD_STAFF_CLAIMS_CHANGED_EVENT/);
+    assert.match(util, /notifyFieldStaffClaimsChanged/);
+    assert.match(util, /Tamamlanan Tespitler/);
+    assert.match(util, /Atanan Dosyalar/);
+    assert.match(util, /fieldStaffCompletedInspectionFiles/);
+    assert.match(util, /OFFICE_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(util, /OFFICE_COMPLETED_INSPECTIONS_LABEL/);
+    assert.match(util, /Tespiti Tamamlanan/);
+    assert.match(util, /status=open/);
+    assert.doesNotMatch(util, /FIELD_STAFF_PENDING_INSPECTIONS/);
+    assert.doesNotMatch(util, /fieldStaffPendingInspectionFiles/);
     assert.match(util, /FIELD_STAFF_HIDDEN_CLAIM_TABS/);
     assert.match(util, /'finans'/);
     assert.match(util, /'operasyon'/);
@@ -43,10 +59,17 @@ describe('field-staff-claim-view lock', () => {
     assert.match(list, /fieldStaffInspectionStatus/);
     assert.match(list, /FieldInsuredContactActions/);
     assert.match(list, /if \(isFieldStaff\)/);
-    const fieldCard = list.slice(
-      list.indexOf('if (isFieldStaff)'),
-      list.indexOf('if (isFieldStaff)') + 1800,
-    );
+    assert.match(list, /Atanan Dosyalar/);
+    assert.match(list, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(list, /Tamamlanan Tespitler/);
+    assert.match(list, /Tespit Fotoğrafları/);
+    assert.match(list, /Dosyaya Git/);
+    assert.match(list, /ofis-tespit-rozet/);
+    assert.doesNotMatch(list, /officeCompletedFilter/);
+    assert.doesNotMatch(list, /saha-tespit-filtre/);
+    const fieldCardStart = list.indexOf('data-testid="saha-dosya-karti"');
+    assert.ok(fieldCardStart >= 0);
+    const fieldCard = list.slice(fieldCardStart, fieldCardStart + 1800);
     assert.doesNotMatch(fieldCard, /resolveClaimSupplierDisplayName/);
     assert.doesNotMatch(fieldCard, /invoicedAmount/);
   });
@@ -67,21 +90,39 @@ describe('field-staff-claim-view lock', () => {
     assert.match(msg, /Dosya No:/);
   });
 
-  it('Saha Merkezi hatırlatma bandı ve Bekleyen Tespit Dosyaları başlığı', () => {
+  it('Saha Merkezi özeti Atanan Dosyalar ve Tamamlanan Tespitler sayfalarına gider', () => {
     const home = read('../features/dashboard/components/admin/field-operations-home.tsx');
     assert.match(home, /saha-tespit-hatirlatma/);
     assert.match(home, /InspectionReminderBanner/);
     assert.match(home, /fieldStaffInspectionReminder/);
-    assert.match(home, /Bekleyen Tespit Dosyaları/);
+    assert.match(home, /FIELD_STAFF_ASSIGNMENTS_HREF/);
+    assert.match(home, /FIELD_STAFF_ASSIGNMENTS_LABEL/);
+    assert.match(home, /FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL/);
+    assert.match(home, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(home, /saha-kpi-atanan-dosyalar/);
+    assert.match(home, /saha-kpi-tespiti-tamamlananlar/);
+    assert.doesNotMatch(home, /filter === 'completed'/);
+    assert.doesNotMatch(home, /setFilter/);
+    assert.doesNotMatch(home, /Bekleyen Görevler/);
+    assert.doesNotMatch(home, /Bana Atanan/);
+    assert.doesNotMatch(home, /Bekleyen Tespit Dosyaları/);
     assert.match(home, /FieldInsuredContactActions/);
     assert.match(home, /fieldStaffPhone/);
     assert.match(home, /fieldStaffInspectionStatus/);
     assert.match(home, /Sigortalı/);
     assert.match(home, /from-brand-50/);
     assert.match(home, /compact/);
-    assert.match(home, /saha-merkez-bekleyen-kart/);
+    assert.match(home, /saha-merkez-dosya-karti/);
+    assert.match(home, /saha-merkez-tamamlanan-kart/);
     assert.match(home, /saha-merkez-yaklasan-kart/);
     assert.doesNotMatch(home, /Benden İstenenler/);
+    const panel = read('../app/panel/page.tsx');
+    assert.match(panel, /Saha Merkezi/);
+    assert.match(panel, /Atanan Dosyalar ve Tamamlanan Tespitler/);
+    const header = read('../app/panel/_components/dashboard-header.tsx');
+    assert.doesNotMatch(header, /Dosyalarıma Git/);
+    const banner = read('../components/field-survey/InspectionReminderBanner.tsx');
+    assert.match(banner, /Dosyalarıma Git/);
   });
 
   it('ofis + saha aynı tespit uyarı bandı yöntemi; çan/WhatsApp kanalı yok', () => {
@@ -99,6 +140,12 @@ describe('field-staff-claim-view lock', () => {
     assert.match(office, /assignedOfficeUserId/);
     assert.match(office, /statusCode: 'open'/);
     assert.match(office, /ofis-tespit-hatirlatma/);
+    assert.match(office, /ofis-tespiti-tamamlanan/);
+    assert.match(office, /OFFICE_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(office, /OFFICE_COMPLETED_INSPECTIONS_LABEL/);
+    assert.match(office, /Hasar Dosyaları/);
+    assert.match(office, /fieldStaffCompletedInspectionFiles/);
+    assert.doesNotMatch(office, /\/panel\/saha\/tespiti-tamamlananlar/);
     assert.doesNotMatch(office, /\/notifications/);
     assert.doesNotMatch(office, /openWhatsAppChat/);
     assert.doesNotMatch(office, /PendingOperations/);
@@ -130,6 +177,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(detail, /variant="field"/);
     assert.match(detail, /\{!isFieldStaff && \(/);
     assert.match(detail, /FIELD_STAFF_HIDDEN_CLAIM_TABS/);
+    assert.match(detail, /office-inspection-reminder/);
+    assert.match(detail, /ofis-saha-tespit/);
     // Ofis evrak yaşam döngüsü saha bloğunda olmamalı
     const fieldBlock = detail.slice(
       detail.indexOf('{isFieldStaff && ('),
@@ -139,6 +188,13 @@ describe('field-staff-claim-view lock', () => {
     assert.doesNotMatch(fieldBlock, /EvrakOzetPanel/);
     assert.doesNotMatch(fieldBlock, /Dosya Yaşam Döngüsü/);
     assert.doesNotMatch(fieldBlock, /Sözleşmeler/);
+    const officeBlock = detail.slice(detail.indexOf('{!isFieldStaff && ('));
+    assert.match(officeBlock, /ofis-saha-tespit/);
+    assert.match(officeBlock, /FieldInspectionPhotosPanel/);
+    assert.match(officeBlock, /IletisimGunluguPanel/);
+    assert.match(officeBlock, /Tespit Fotoğrafları/);
+    assert.doesNotMatch(officeBlock, /Tespit Yapıldı Olarak İşaretle/);
+    assert.doesNotMatch(officeBlock, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
   });
 
   it('saha tespit foto paneli entity-documents kullanır; yaşam döngüsü yok', () => {
@@ -153,10 +209,47 @@ describe('field-staff-claim-view lock', () => {
     assert.doesNotMatch(photos, /Yaşam Döngüsü/);
   });
 
+  it('Tamamlanan Tespitler sayfası tespit bitenleri toplar', () => {
+    const page = read('../app/panel/saha/tespiti-tamamlananlar/page.tsx');
+    const view = read('../features/dashboard/components/admin/field-completed-inspections-page.tsx');
+    assert.match(page, /FieldCompletedInspectionsPage/);
+    assert.match(view, /Tamamlanan Tespitler/);
+    assert.match(view, /FIELD_STAFF_ASSIGNMENTS_HREF/);
+    assert.match(view, /FIELD_STAFF_ASSIGNMENTS_LABEL/);
+    assert.match(view, /fieldStaffCompletedInspectionFiles/);
+    assert.match(view, /saha-tespiti-tamamlananlar/);
+    assert.match(view, /saha-tamamlanan-tespit-ara/);
+    assert.match(view, /SearchInput/);
+    assert.match(view, /sm:w-\[17rem\]/);
+    assert.match(view, /filter-bar/);
+    assert.doesNotMatch(view, /size="lg"/);
+    assert.doesNotMatch(view, /basis-full/);
+    assert.match(view, /statusCode: includeClosed \? 'closed' : 'open'/);
+    const layout = read('../app/panel/layout.tsx');
+    assert.match(layout, /FIELD_STAFF_ASSIGNMENTS_LABEL/);
+    assert.match(layout, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(layout, /FIELD_STAFF_CLAIMS_CHANGED_EVENT/);
+    assert.match(layout, /alertCount: fieldAssignedCount/);
+    assert.match(layout, /useFieldAssignedNavCount/);
+    assert.doesNotMatch(layout, /Bekleyen Tespitler/);
+    const officeNav = layout.slice(layout.indexOf(': isOfficeStaff'), layout.indexOf(': isFieldStaff'));
+    assert.match(officeNav, /Dosya Merkezi/);
+    assert.doesNotMatch(officeNav, /Tamamlanan Tespitler/);
+    assert.doesNotMatch(officeNav, /FIELD_STAFF_COMPLETED_INSPECTIONS/);
+    const rules = read('./panel-route-access.rules.json');
+    assert.match(rules, /\/panel\/saha\/bekleyen-tespitler/);
+    const redirect = read('../app/panel/saha/bekleyen-tespitler/page.tsx');
+    assert.match(redirect, /FIELD_STAFF_ASSIGNMENTS_HREF/);
+    assert.match(redirect, /router\.replace/);
+  });
+
   it('tespit tamamla ve dosya kapat onay ister', () => {
     const detail = read('../app/panel/hasar-dosyalari/[id]/page.tsx');
     assert.match(detail, /window\.confirm/);
     assert.match(detail, /saha-dosya-kapat/);
     assert.match(detail, /field-close/);
+    assert.match(detail, /notifyFieldStaffClaimsChanged/);
+    assert.match(detail, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(detail, /FIELD_STAFF_ASSIGNMENTS_HREF/);
   });
 });

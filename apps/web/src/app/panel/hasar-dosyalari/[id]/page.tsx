@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   repairReportStatusBadge,
   repairReportStatusLabel,
@@ -26,11 +27,14 @@ import {
 } from './_components/financial-visibility-config';
 import { resolveClaimIhbarKonusu, toTitleCaseTR, formatHasarAdresi } from '@/utils/text-helpers';
 import { SmartMeasureList } from '@/components/smart-measures/SmartMeasureList';
-import { DelegationBanner } from '@/components/delegation/DelegationBanner';
+import { ClaimSurveyUnsentBanner } from '@/components/survey/ClaimSurveyUnsentBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
 import { ClaimFileHeaderStatusCluster } from '@/components/damage-reports/ClaimFileHeaderStatusCluster';
 import {
+  FIELD_STAFF_ASSIGNMENTS_HREF,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
   FIELD_STAFF_HIDDEN_CLAIM_TABS,
   fieldStaffAddress,
   fieldStaffDirectionsUrl,
@@ -38,6 +42,7 @@ import {
   fieldStaffInspectionStatus,
   fieldStaffInsuredName,
   fieldStaffPhone,
+  notifyFieldStaffClaimsChanged,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 import { FieldContactHistory } from '@/components/field-survey/FieldContactHistory';
@@ -204,6 +209,7 @@ function FieldStaffVisitCard({
   onClaimUpdated?: (patch: Partial<any>) => void;
 }) {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [marking, setMarking] = useState(false);
   const [contactRefreshKey, setContactRefreshKey] = useState(0);
   const insuredLine = fieldStaffInsuredName(claim);
@@ -237,6 +243,11 @@ function FieldStaffVisitCard({
         statusChangedAt: nowIso,
       });
       showToast('success', 'Tespit Yapıldı Olarak İşaretlendi');
+      notifyFieldStaffClaimsChanged();
+      void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
+      void queryClient.invalidateQueries({ queryKey: ['office-inspection-reminder'] });
     } catch (err) {
       reportCaughtError(err, getApiErrorMessage(err, 'Tespit işaretlenemedi.'));
     } finally {
@@ -269,6 +280,11 @@ function FieldStaffVisitCard({
         closedAt: res.data?.data?.closedAt ?? new Date().toISOString(),
       });
       showToast('success', 'Dosya Kapatıldı');
+      notifyFieldStaffClaimsChanged();
+      void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
+      void queryClient.invalidateQueries({ queryKey: ['office-inspection-reminder'] });
     } catch (err) {
       reportCaughtError(
         err,
@@ -374,6 +390,12 @@ function FieldStaffVisitCard({
             <p className="rounded-xl border border-status-success/30 bg-status-success/10 px-3.5 py-2.5 text-center text-sm font-semibold text-status-success">
               Tespit Tamamlandı
             </p>
+            <Link
+              href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}
+              className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+            </Link>
             {!claim?.currentStatus?.isClosedState && !claim?.closedAt ? (
               <button
                 type="button"
@@ -1631,14 +1653,14 @@ export default function ClaimFileDetailPage() {
   }, [isFieldStaff, activeGroup]);
 
   useEffect(() => {
-    if (!isFieldStaff || loading || !claim) return;
+    if (loading || !claim) return;
     if (sahaSection !== 'foto' && sahaSection !== 'not') return;
     const targetId = sahaSection === 'not' ? 'saha-not' : 'saha-foto';
     const t = window.setTimeout(() => {
       document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 120);
     return () => window.clearTimeout(t);
-  }, [isFieldStaff, loading, claim, sahaSection]);
+  }, [loading, claim, sahaSection]);
 
   useEffect(() => {
     if (!id) return;
@@ -1675,6 +1697,10 @@ export default function ClaimFileDetailPage() {
       <DosyaSayfaUstu
         claim={claim}
         onBack={() => {
+          if (isFieldStaff) {
+            router.push(FIELD_STAFF_ASSIGNMENTS_HREF);
+            return;
+          }
           if (typeof window !== 'undefined' && window.history.length > 1) {
             router.back();
           } else {
@@ -1687,6 +1713,14 @@ export default function ClaimFileDetailPage() {
         openEdit={openEdit}
         isFieldStaff={isFieldStaff}
       />
+
+      {!isFieldStaff && (
+        <ClaimSurveyUnsentBanner
+          claimFileId={claim.id}
+          assignedOfficeUserId={claim.assignedOfficeUserId ?? claim.assignedOfficeUser?.id}
+          fileClosed={Boolean(claim.currentStatus?.isClosedState || claim.closedAt)}
+        />
+      )}
 
       {/* Saha: ziyaret + foto + not — ofis evrak yaşam döngüsü yok */}
       {isFieldStaff && (
@@ -1716,6 +1750,42 @@ export default function ClaimFileDetailPage() {
 
       {!isFieldStaff && (
         <>
+          {(() => {
+            const inspection = fieldStaffInspectionStatus(claim);
+            return (
+              <section
+                className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5"
+                data-testid="ofis-saha-tespit"
+              >
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <h3 className="text-sm font-semibold text-slate-950">Saha Tespit</h3>
+                    <span
+                      className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
+                    >
+                      {inspection.label}
+                    </span>
+                  </div>
+                  {inspection.done ? (
+                    <p className="text-[11px] text-slate-500">Tespit: {inspection.doneAtLabel}</p>
+                  ) : (
+                    <p className="text-[11px] text-slate-500">Saha tespiti bekleniyor</p>
+                  )}
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div id="saha-foto" className="scroll-mt-4">
+                    <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Fotoğrafları</h4>
+                    <FieldInspectionPhotosPanel claimId={id!} />
+                  </div>
+                  <div id="saha-not" className="scroll-mt-4">
+                    <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Notları</h4>
+                    <IletisimGunluguPanel claimId={id!} variant="field" />
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
+
           {canViewFinancials && activeGroup !== 'finans' && (
             <div className="mb-4">
               <FinansRaporOzeti

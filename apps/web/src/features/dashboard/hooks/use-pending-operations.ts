@@ -12,6 +12,7 @@ import {
 } from '../utils/build-pending-operations';
 import { repairReportStatusLabel } from '@/utils/repair-report-status';
 import type { PendingOperationsView } from '../types/pending-operations';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
 import {
   approvalDelayWaitingParty,
   approvalDelayWorkflowStep,
@@ -29,9 +30,10 @@ export function usePendingOperations(): {
   refetch: () => void;
   isFetching: boolean;
 } {
+  const { showFinanceWidgets } = usePanelAccess();
   const pendingQuery = usePendingActions();
   const approvalQuery = useApprovalDelays();
-  const financeQuery = useFinanceBottlenecks();
+  const financeQuery = useFinanceBottlenecks(showFinanceWidgets);
 
   const view = useMemo(() => {
     const raw: RawPendingSource[] = [];

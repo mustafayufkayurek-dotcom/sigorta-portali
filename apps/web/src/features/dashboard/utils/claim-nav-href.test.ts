@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   CLAIM_LIST_HREF,
   CLAIM_LIST_OPEN_HREF,
+  CLAIM_LIST_CLOSED_HREF,
   CLAIM_LIST_SLA_HREF,
   OPERATIONS_CENTER_HREF,
   STAFF_MGMT_HREF,
@@ -9,7 +10,7 @@ import {
   claimNavHref,
   claimSearchHref,
   staffLoadHref,
-} from './claim-nav-href';
+} from './claim-nav-href.ts';
 
 assert.equal(
   claimDetailHref('abc-123'),
@@ -45,6 +46,7 @@ assert.equal(claimNavHref({}), null, 'no target → null');
 
 assert.equal(CLAIM_LIST_SLA_HREF, '/panel/hasar-dosyalari?status=sla_exceeded');
 assert.equal(CLAIM_LIST_OPEN_HREF, '/panel/hasar-dosyalari?status=open');
+assert.equal(CLAIM_LIST_CLOSED_HREF, '/panel/hasar-dosyalari?status=closed');
 assert.equal(CLAIM_LIST_HREF, '/panel/hasar-dosyalari');
 assert.equal(OPERATIONS_CENTER_HREF, '/panel/operasyon');
 assert.equal(STAFF_MGMT_HREF, '/panel/personel-yonetimi');

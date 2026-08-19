@@ -112,10 +112,15 @@ const CASES = [
   ['RG-25', 'Portal → Personel', 'assistance_company_user', '/panel/ayarlar', false],
   ['RG-26', 'Doğrudan URL / Deep Link', 'assistance_company_user', '/panel/asistans-portal/dosyalar', true],
   ['RG-27', 'Portal profil', 'assistance_company_user', '/panel/profil', true],
+  ['RG-28', 'Saha tespit tamamlananlar', 'field_staff', '/panel/saha/tespiti-tamamlananlar', true],
+  ['RG-29', 'Ofis tespit tamamlananlar yok', 'office_staff', '/panel/saha/tespiti-tamamlananlar', false],
+  ['RG-30', 'Saha eski bekleyen URL yönlenir', 'field_staff', '/panel/saha/bekleyen-tespitler', true],
+  ['RG-31', 'Ofis eski bekleyen URL yok', 'office_staff', '/panel/saha/bekleyen-tespitler', false],
 ];
 
 const NAV_SEQ = [
   ['field_staff', '/panel/hasar-dosyalari', true],
+  ['field_staff', '/panel/saha/tespiti-tamamlananlar', true],
   ['field_staff', '/panel/finans', false],
   ['field_staff', '/panel/hasar-dosyalari', true],
   ['field_staff', '/panel/hasar-dosyalari/yeni', true],

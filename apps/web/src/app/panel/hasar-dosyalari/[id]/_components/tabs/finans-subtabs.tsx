@@ -790,6 +790,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
           showClosureChecklist={false}
           showInvoiceRequest
           showSurvey
+          fileClosed={Boolean(claim?.currentStatus?.isClosedState || claim?.closedAt)}
         />
       </FinansPanelCard>
 

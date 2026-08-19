@@ -44,4 +44,15 @@ describe('matchCityDistrictFromAddressText', () => {
     );
     expect(result).toEqual({ city: null, district: null });
   });
+
+  it('Afyon kısa adını Afyonkarahisar olarak çözer', () => {
+    const afyonProvinces = [{ id: '03', name: 'Afyonkarahisar' }, ...provinces];
+    const result = matchCityDistrictFromAddressText(
+      'Sandıklı / Afyon',
+      afyonProvinces,
+      new Map([['03', [{ name: 'Sandıklı' }, { name: 'Dinar' }]]]),
+      [{ name: 'Sandıklı', province: { name: 'Afyonkarahisar' } }],
+    );
+    expect(result).toEqual({ city: 'Afyonkarahisar', district: 'Sandıklı' });
+  });
 });

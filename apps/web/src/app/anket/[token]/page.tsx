@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { toTitleCaseTR } from '@/utils/text-helpers';
+import {
+  SURVEY_STAR_QUESTIONS,
+  SURVEY_Q6_LABEL,
+  SURVEY_Q7_LABEL,
+  SURVEY_DISSATISFIED_COMMENT_MESSAGE,
+  surveyDissatisfiedCommentMissing,
+} from '@/utils/survey-form';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -20,29 +28,6 @@ type Ratings = {
   q4: number;
   q5: number;
 };
-
-const QUESTIONS = [
-  {
-    key: 'q1' as keyof Ratings,
-    label: 'Telefonda Size Yardımcı Olan Personelimizin Hizmet Kalitesi',
-  },
-  {
-    key: 'q2' as keyof Ratings,
-    label: 'Hasar Onarım Ekibinin Randevu ve İş Programı Zamanlaması',
-  },
-  {
-    key: 'q3' as keyof Ratings,
-    label: 'Hasar Onarım Ekibinin Davranışları',
-  },
-  {
-    key: 'q4' as keyof Ratings,
-    label: 'Hasar Onarım Ekibinin Dış Görünümü',
-  },
-  {
-    key: 'q5' as keyof Ratings,
-    label: 'Hasar Onarım Ekibinin İş Kalitesi',
-  },
-];
 
 function StarRating({
   value,
@@ -121,6 +106,10 @@ export default function AnketPage() {
     }
     if (recommend === null) {
       setSubmitError('Lütfen genel memnuniyet sorusunu yanıtlayın');
+      return;
+    }
+    if (surveyDissatisfiedCommentMissing(recommend, comment)) {
+      setSubmitError(SURVEY_DISSATISFIED_COMMENT_MESSAGE);
       return;
     }
 
@@ -245,7 +234,7 @@ export default function AnketPage() {
 
         {/* Yıldız soruları */}
         <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 shadow-sm overflow-hidden">
-          {QUESTIONS.map((q, idx) => (
+          {SURVEY_STAR_QUESTIONS.map((q, idx) => (
             <div key={q.key} className="px-5 py-5">
               <p className="text-sm font-medium text-slate-700 mb-3">
                 <span className="text-brand-500 font-semibold">{idx + 1}.</span>{' '}
@@ -264,7 +253,7 @@ export default function AnketPage() {
         <div className="bg-white border border-slate-200 rounded-2xl px-5 py-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-4">
             <span className="text-brand-500 font-semibold">6.</span>{' '}
-            Genel Olarak Memnuniyet Derecesi
+            {SURVEY_Q6_LABEL}
           </p>
           <div className="flex gap-3">
             <button
@@ -297,14 +286,31 @@ export default function AnketPage() {
         {/* Teşekkür, şikayet, öneri */}
         <div className="bg-white border border-slate-200 rounded-2xl px-5 py-5 shadow-sm">
           <p className="text-sm font-medium text-slate-700 mb-3">
-            Teşekkür, Şikayet ve Önerileriniz{' '}
-            <span className="text-slate-400 font-normal">(Opsiyonel)</span>
+            {SURVEY_Q7_LABEL}{' '}
+            {recommend === false ? (
+              <span className="text-red-600 font-semibold">*</span>
+            ) : (
+              <span className="text-slate-400 font-normal">(Opsiyonel)</span>
+            )}
           </p>
+          {recommend === false && (
+            <p className="text-xs text-amber-800 mb-2">
+              Memnun Değilim Cevabında Açıklama Zorunludur
+            </p>
+          )}
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
+            onBlur={(e) => {
+              const v = toTitleCaseTR(e.target.value.trim());
+              setComment(v);
+            }}
             disabled={submitting}
-            placeholder="Görüş veya önerinizi buraya yazabilirsiniz…"
+            placeholder={
+              recommend === false
+                ? 'Lütfen Memnun Değilim Nedeninizi Yazın…'
+                : 'Görüş Veya Önerinizi Buraya Yazabilirsiniz…'
+            }
             rows={3}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-slate-300"
           />

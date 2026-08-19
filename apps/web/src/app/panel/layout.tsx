@@ -59,12 +59,14 @@ import {
   type InsurancePortalNavCounts,
 } from '@/config/portal-nav';
 import { countExpertQueues, normalizeExpertQueueParam } from '@/utils/expert-portal-queues';
+import { fieldStaffInspectionStatus, FIELD_STAFF_ASSIGNMENTS_HREF, FIELD_STAFF_ASSIGNMENTS_LABEL, FIELD_STAFF_CLAIMS_CHANGED_EVENT, FIELD_STAFF_COMPLETED_INSPECTIONS_HREF, FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL } from '@/utils/field-staff-claim-view';
 import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
 import type { LucideIcon } from 'lucide-react';
 import {
   BookOpen,
   Building2,
   CalendarDays,
+  CheckCircle2,
   ChevronDown,
   ClipboardList,
   FileText,
@@ -95,6 +97,8 @@ interface NavItemAccess {
 
 const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/hasar-dosyalari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'MANAGER'] },
+  { path: '/panel/saha/tespiti-tamamlananlar', roles: ['field_staff', 'FIELD_STAFF'] },
+  { path: '/panel/saha/bekleyen-tespitler', roles: ['field_staff', 'FIELD_STAFF'] },
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT'] },
@@ -221,6 +225,51 @@ interface NavigationLink {
   groupOnly?: boolean;
 }
 
+/** Saha — Atanan Dosyalar menü özeti (tespit bekleyen açık dosya sayısı). */
+function useFieldAssignedNavCount(enabled: boolean, pathname: string): number {
+  const [count, setCount] = useState(0);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const bump = () => setTick((n) => n + 1);
+    window.addEventListener(FIELD_STAFF_CLAIMS_CHANGED_EVENT, bump);
+    window.addEventListener('focus', bump);
+    return () => {
+      window.removeEventListener(FIELD_STAFF_CLAIMS_CHANGED_EVENT, bump);
+      window.removeEventListener('focus', bump);
+    };
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) {
+      setCount(0);
+      return;
+    }
+    let cancelled = false;
+    const token = getAccessToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/claim-files?limit=80&statusCode=open`, { headers });
+        const json = res.ok ? await res.json() : null;
+        const files = Array.isArray(json?.data) ? json.data : [];
+        const pending = files.filter((claim: { inspectionDone?: boolean | null; currentStatus?: { code?: string | null } | null }) =>
+          !fieldStaffInspectionStatus(claim).done,
+        ).length;
+        if (!cancelled) setCount(pending);
+      } catch {
+        if (!cancelled) setCount(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [enabled, pathname, tick]);
+  return count;
+}
+
 const OPERASYON_NAV_CHILDREN: NavigationLink[] = [
   { title: 'Dosya Özeti', href: '/panel/operasyon', exactMatch: true },
   { title: 'Gelen Kutusu', href: '/panel/operasyon/gelen-kutusu' },
@@ -273,6 +322,7 @@ function getPanelMainLinks({
   expertNavCounts,
   insuranceNavCounts,
   assistanceNavCounts,
+  fieldAssignedCount,
 }: {
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
@@ -284,6 +334,7 @@ function getPanelMainLinks({
   expertNavCounts?: ExpertPortalNavCounts;
   insuranceNavCounts?: InsurancePortalNavCounts;
   assistanceNavCounts?: InsurancePortalNavCounts;
+  fieldAssignedCount?: number;
 }): NavigationLink[] {
   const opsBadge = pendingRevisionCount > 0 ? pendingRevisionCount : undefined;
   return isExpert
@@ -320,7 +371,17 @@ function getPanelMainLinks({
       : isFieldStaff
         ? [
             { title: 'Saha Merkezi', href: '/panel', icon: MonitorCheck },
-            { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari', icon: ClipboardList },
+            {
+              title: FIELD_STAFF_ASSIGNMENTS_LABEL,
+              href: FIELD_STAFF_ASSIGNMENTS_HREF,
+              icon: ClipboardList,
+              alertCount: fieldAssignedCount && fieldAssignedCount > 0 ? fieldAssignedCount : undefined,
+            },
+            {
+              title: FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
+              href: FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
+              icon: CheckCircle2,
+            },
           ]
       : isFinance
         ? [
@@ -494,6 +555,8 @@ function Navbar({
     return () => document.removeEventListener('pointerdown', handler);
   }, [onNotifClose]);
 
+  const fieldAssignedCount = useFieldAssignedNavCount(isFieldStaff, pathname);
+
   const mainLinks = getPanelMainLinks({
     isExpert,
     isInsuranceCompanyUser,
@@ -502,6 +565,7 @@ function Navbar({
     isFinance,
     isFieldStaff,
     pendingRevisionCount,
+    fieldAssignedCount,
   });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
@@ -868,7 +932,11 @@ function Navbar({
                             <span className="truncate">{link.title}</span>
                           </span>
                           {link.alertCount && link.alertCount > 0 ? (
-                            <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-status-danger px-1.5 py-0.5 text-[10px] font-bold text-white">
+                            <span className={`inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                              isFieldStaff
+                                ? 'bg-brand-50 text-brand-800 ring-1 ring-brand-200/80'
+                                : 'bg-status-danger text-white'
+                            }`}>
                               {link.alertCount > 99 ? '99+' : link.alertCount}
                             </span>
                           ) : null}
@@ -1045,8 +1113,10 @@ function PanelSidebar({
   // window.location üzerinden takip ediyoruz.
   const [activeQueueParam, setActiveQueueParam] = useState<string | null>(null);
   const [activeOpsFilter, setActiveOpsFilter] = useState<string | null>(null);
+  const [activeTabParam, setActiveTabParam] = useState<string | null>(null);
   const [expertNavCounts, setExpertNavCounts] = useState<ExpertPortalNavCounts>({});
   const [insuranceNavCounts, setInsuranceNavCounts] = useState<InsurancePortalNavCounts>({});
+  const fieldAssignedCount = useFieldAssignedNavCount(isFieldStaff, pathname);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1054,6 +1124,7 @@ function PanelSidebar({
       const params = new URLSearchParams(window.location.search);
       setActiveQueueParam(params.get('queue'));
       setActiveOpsFilter(params.get('filter'));
+      setActiveTabParam(params.get('tab'));
     };
     readQueue();
     window.addEventListener('popstate', readQueue);
@@ -1145,6 +1216,10 @@ function PanelSidebar({
       const activeQueue = normalizeExpertQueueParam(activeQueueParam);
       return hrefQueue === activeQueue;
     }
+    if (normalizedHref === '/panel/finans/faturalar') {
+      const hrefTab = new URLSearchParams(hrefQueryString).get('tab');
+      if (hrefTab) return activeTabParam === hrefTab;
+    }
     return true;
   };
 
@@ -1159,6 +1234,7 @@ function PanelSidebar({
     expertNavCounts,
     insuranceNavCounts,
     assistanceNavCounts: insuranceNavCounts,
+    fieldAssignedCount,
   });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
@@ -1212,7 +1288,9 @@ function PanelSidebar({
             className={`ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums ${
               isExpert
                 ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-200/80'
-                : 'bg-status-danger text-white'
+                : isFieldStaff
+                  ? 'bg-brand-50 text-brand-800 ring-1 ring-brand-200/80'
+                  : 'bg-status-danger text-white'
             }`}
           >
             {link.alertCount > 99 ? '99+' : link.alertCount}
@@ -1220,7 +1298,7 @@ function PanelSidebar({
         ) : null}
         {collapsed && link.alertCount != null && link.alertCount > 0 ? (
           <span
-            className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-status-danger"
+            className={`absolute right-1.5 top-1.5 h-2 w-2 rounded-full ${isFieldStaff ? 'bg-brand-600' : 'bg-status-danger'}`}
             aria-hidden="true"
           />
         ) : null}
@@ -1684,6 +1762,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     }
     if (notif.relatedEntityType === 'inbound_message' && notif.relatedEntityId) {
       router.push(`/panel/operasyon/gelen-kutusu?messageId=${notif.relatedEntityId}`);
+      return;
+    }
+    if (notif.relatedEntityType === 'invoice_request') {
+      router.push('/panel/finans/faturalar?tab=talepler');
     }
   };
 

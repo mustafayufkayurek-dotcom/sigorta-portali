@@ -67,4 +67,25 @@ describe('inbound file no × sigorta markası LOCK', () => {
     assert.equal(resolved.fileNo, 'RCS-20261805465');
     assert.equal(resolved.warning, null);
   });
+
+  it('Remed konu satırındaki RCS dosya no, poliçe numarasının yerini alır', () => {
+    const resolved = resolveInboundFileNo({
+      bodyFileNo: '1619479924',
+      insurer: 'Anadolu Sigorta',
+      subject: 'Ynt: 1619479924/KARAKOL KARDEŞLER OTOMOTİV/RCS-20261854032/CAM',
+      policyNo: '1619479924',
+    });
+    assert.equal(resolved.fileNo, 'RCS-20261854032');
+    assert.equal(resolved.bodyRejected, true);
+    assert.match(resolved.warning ?? '', /RCS-20261854032/);
+  });
+
+  it('poliçe alanı boş olsa da RCS varken çıplak sayıyı dosya no yazmaz', () => {
+    const resolved = resolveInboundFileNo({
+      bodyFileNo: '362086678',
+      subject: '362086678/ALI ANIL GURKAS/RCS-20261859999/KONUT',
+    });
+    assert.equal(resolved.fileNo, 'RCS-20261859999');
+    assert.equal(resolved.bodyRejected, true);
+  });
 });

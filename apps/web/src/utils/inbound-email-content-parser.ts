@@ -170,6 +170,7 @@ export function parseInboundEmailContent(input: {
     insurer,
     subject: input.subject,
     policyNo,
+    extraText: text,
   });
   const fileNo = resolvedFileNo.fileNo ?? undefined;
   const claimRaw = fieldValue(fieldMap, 'Referans No') ?? subjectParts?.fileOrPolicyNo ?? subjectParts?.remedFileNo;
