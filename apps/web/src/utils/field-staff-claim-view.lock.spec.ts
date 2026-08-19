@@ -110,6 +110,10 @@ describe('field-staff-claim-view lock', () => {
     const panel = read('../app/panel/page.tsx');
     assert.match(panel, /Saha Merkezi/);
     assert.match(panel, /Atanan Dosyalar ve Tamamlanan Tespitler/);
+    const header = read('../app/panel/_components/dashboard-header.tsx');
+    assert.doesNotMatch(header, /Dosyalarıma Git/);
+    const banner = read('../components/field-survey/InspectionReminderBanner.tsx');
+    assert.match(banner, /Dosyalarıma Git/);
   });
 
   it('ofis + saha aynı tespit uyarı bandı yöntemi; çan/WhatsApp kanalı yok', () => {

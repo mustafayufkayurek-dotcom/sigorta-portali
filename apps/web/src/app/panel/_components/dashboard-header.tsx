@@ -153,26 +153,7 @@ export function DashboardHeader({
                     </Link>
                   ) : null}
                 </div>
-              ) : isFieldStaff ? (
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                  <Link
-                    href="/panel/hasar-dosyalari?status=open"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-brand-800 sm:text-sm"
-                  >
-                    <HASAR_OPERATION_ICON className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Dosyalarıma Git
-                  </Link>
-                  {showAcilAction ? (
-                    <Link
-                      href="/panel/operasyon?filter=acil"
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#DC2626] px-3 py-2 text-xs font-medium text-white shadow-sm shadow-red-200/60 transition-colors hover:bg-red-700 sm:text-sm"
-                    >
-                      <ACIL_OPERATION_ICON className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      Acil Dosyalar
-                    </Link>
-                  ) : null}
-                </div>
-              ) : (
+              ) : isFieldStaff ? null : (
                 <>
                   <div
                     className={`grid w-full gap-2 sm:flex sm:w-auto ${
