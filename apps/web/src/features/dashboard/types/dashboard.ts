@@ -97,6 +97,7 @@ export type FinanceBottlenecksResponse = {
 
 export type ActivityItem = {
   fileNo: string;
+  claimFileId?: string | null;
   action: string;
   description: string;
   userName: string;

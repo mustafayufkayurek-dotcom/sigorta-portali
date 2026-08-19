@@ -82,8 +82,12 @@ export function useOwnershipLoad() {
   return useApiQuery<OwnershipLoadResponse>(['dashboard-ownership-load'], '/dashboard/ownership-load');
 }
 
-export function useFinanceBottlenecks() {
-  return useApiQuery<FinanceBottlenecksResponse>(['dashboard-finance-bottlenecks'], '/dashboard/finance-bottlenecks');
+export function useFinanceBottlenecks(enabled = true) {
+  return useApiQuery<FinanceBottlenecksResponse>(
+    ['dashboard-finance-bottlenecks'],
+    '/dashboard/finance-bottlenecks',
+    { enabled },
+  );
 }
 
 export function usePortfolioPL(year: number, month: number) {
