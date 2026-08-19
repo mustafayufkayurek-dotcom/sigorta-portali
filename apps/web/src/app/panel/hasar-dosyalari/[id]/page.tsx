@@ -247,6 +247,7 @@ function FieldStaffVisitCard({
       void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
       void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
       void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
+      void queryClient.invalidateQueries({ queryKey: ['office-inspection-reminder'] });
     } catch (err) {
       reportCaughtError(err, getApiErrorMessage(err, 'Tespit işaretlenemedi.'));
     } finally {
@@ -283,6 +284,7 @@ function FieldStaffVisitCard({
       void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
       void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
       void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
+      void queryClient.invalidateQueries({ queryKey: ['office-inspection-reminder'] });
     } catch (err) {
       reportCaughtError(
         err,
@@ -1651,14 +1653,14 @@ export default function ClaimFileDetailPage() {
   }, [isFieldStaff, activeGroup]);
 
   useEffect(() => {
-    if (!isFieldStaff || loading || !claim) return;
+    if (loading || !claim) return;
     if (sahaSection !== 'foto' && sahaSection !== 'not') return;
     const targetId = sahaSection === 'not' ? 'saha-not' : 'saha-foto';
     const t = window.setTimeout(() => {
       document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 120);
     return () => window.clearTimeout(t);
-  }, [isFieldStaff, loading, claim, sahaSection]);
+  }, [loading, claim, sahaSection]);
 
   useEffect(() => {
     if (!id) return;
@@ -1740,6 +1742,42 @@ export default function ClaimFileDetailPage() {
 
       {!isFieldStaff && (
         <>
+          {(() => {
+            const inspection = fieldStaffInspectionStatus(claim);
+            return (
+              <section
+                className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5"
+                data-testid="ofis-saha-tespit"
+              >
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <h3 className="text-sm font-semibold text-slate-950">Saha Tespit</h3>
+                    <span
+                      className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
+                    >
+                      {inspection.label}
+                    </span>
+                  </div>
+                  {inspection.done ? (
+                    <p className="text-[11px] text-slate-500">Tespit: {inspection.doneAtLabel}</p>
+                  ) : (
+                    <p className="text-[11px] text-slate-500">Saha tespiti bekleniyor</p>
+                  )}
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div id="saha-foto" className="scroll-mt-4">
+                    <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Fotoğrafları</h4>
+                    <FieldInspectionPhotosPanel claimId={id!} />
+                  </div>
+                  <div id="saha-not" className="scroll-mt-4">
+                    <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Notları</h4>
+                    <IletisimGunluguPanel claimId={id!} variant="field" />
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
+
           {canViewFinancials && activeGroup !== 'finans' && (
             <div className="mb-4">
               <FinansRaporOzeti

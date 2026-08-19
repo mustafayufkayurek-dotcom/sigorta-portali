@@ -89,6 +89,10 @@ export const FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL = 'Tamamlanan Tespitler';
 export const FIELD_STAFF_ASSIGNMENTS_HREF = '/panel/hasar-dosyalari';
 export const FIELD_STAFF_ASSIGNMENTS_LABEL = 'Atanan Dosyalar';
 
+/** Dosya sorumlusu — saha sayfası yok; tespit biten açık dosya Hasar Dosyaları’nda işlenir. */
+export const OFFICE_COMPLETED_INSPECTIONS_HREF = '/panel/hasar-dosyalari?status=open';
+export const OFFICE_COMPLETED_INSPECTIONS_LABEL = 'Tespiti Tamamlanan';
+
 /** Tespit işareti sonrası menü özeti / listeler yenilensin. */
 export const FIELD_STAFF_CLAIMS_CHANGED_EVENT = 'meridyen:field-staff-claims-changed';
 
