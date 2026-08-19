@@ -14,6 +14,7 @@ import { VendorIntelligenceProfileModule } from '@/modules/vendor-intelligence-p
 import { ClaimOperationCenterController } from './claim-operation-center.controller';
 import { ClaimOperationCenterService } from './claim-operation-center.service';
 import { RepairReportsModule } from '@/modules/repair-reports/repair-reports.module';
+import { SurveysModule } from '@/modules/surveys/surveys.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { RepairReportsModule } from '@/modules/repair-reports/repair-reports.mod
     VendorsModule,
     VendorIntelligenceProfileModule,
     RepairReportsModule,
+    SurveysModule,
   ],
   providers: [
     ClaimFilesService,

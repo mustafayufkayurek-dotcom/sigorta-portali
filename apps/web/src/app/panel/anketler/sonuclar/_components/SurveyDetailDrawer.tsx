@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { SlidePanel } from '@/components/SlidePanel';
 import type { SurveyCampaign } from '@/utils/surveyApi';
+import { SURVEY_STAR_QUESTION_LABELS, SURVEY_Q6_LABEL } from '@/utils/survey-form';
 import {
   averageScore,
   campaignDisplayName,
@@ -20,14 +21,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'yanitlar', label: 'Yanıtlar' },
   { id: 'yorumlar', label: 'Yorumlar' },
 ];
-
-const QUESTION_LABELS = [
-  'Genel Memnuniyet',
-  'İletişim Kalitesi',
-  'Hız / Süreç',
-  'Çözüm Kalitesi',
-  'Personel Yaklaşımı',
-] as const;
 
 export function SurveyDetailDrawer({
   open,
@@ -83,12 +76,12 @@ export function SurveyDetailDrawer({
               <Row label="Ortalama Puan" value={avg == null ? '—' : `${formatTrNumber(avg, 2)} / 5`} />
               <Row label="NPS" value="—" hint="NPS sorusu tanımlı değil" />
               <Row
-                label="Tavsiye"
+                label={SURVEY_Q6_LABEL}
                 value={
                   response
                     ? response.q6Recommend
-                      ? 'Evet'
-                      : 'Hayır'
+                      ? 'Memnunum'
+                      : 'Memnun Değilim'
                     : '—'
                 }
               />
@@ -99,11 +92,11 @@ export function SurveyDetailDrawer({
             response ? (
               <ul className="space-y-3">
                 {[
-                  { label: QUESTION_LABELS[0], value: response.q1Rating },
-                  { label: QUESTION_LABELS[1], value: response.q2Rating },
-                  { label: QUESTION_LABELS[2], value: response.q3Rating },
-                  { label: QUESTION_LABELS[3], value: response.q4Rating },
-                  { label: QUESTION_LABELS[4], value: response.q5Rating },
+                  { label: SURVEY_STAR_QUESTION_LABELS[0], value: response.q1Rating },
+                  { label: SURVEY_STAR_QUESTION_LABELS[1], value: response.q2Rating },
+                  { label: SURVEY_STAR_QUESTION_LABELS[2], value: response.q3Rating },
+                  { label: SURVEY_STAR_QUESTION_LABELS[3], value: response.q4Rating },
+                  { label: SURVEY_STAR_QUESTION_LABELS[4], value: response.q5Rating },
                 ].map((item) => (
                   <li
                     key={item.label}

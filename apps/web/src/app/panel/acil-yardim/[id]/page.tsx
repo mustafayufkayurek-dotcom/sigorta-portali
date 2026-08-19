@@ -3667,6 +3667,7 @@ export default function AcilDosyaDetayPage() {
                 fileNo={vaka.caseNo}
                 totalAmount={costs.reduce((s, c) => s + c.amount, 0)}
                 workItemsSummary={[]}
+                fileClosed={vaka.status === 'COZULDU' || vaka.status === 'FATURALANDILDI'}
               />
             )}
           </div>

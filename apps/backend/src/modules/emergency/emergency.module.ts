@@ -13,6 +13,7 @@ import { VendorsModule } from '@/modules/vendors/vendors.module';
 import { VendorIntelligenceProfileModule } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.module';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
 import { StorageModule } from '@/modules/storage/storage.module';
+import { SurveysModule } from '@/modules/surveys/surveys.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { StorageModule } from '@/modules/storage/storage.module';
     VendorIntelligenceProfileModule,
     NotificationsModule,
     StorageModule,
+    SurveysModule,
   ],
   controllers: [EmergencyCasesController, EmergencyFinanceController],
   providers: [EmergencyCasesService, EmergencyFinanceService],
