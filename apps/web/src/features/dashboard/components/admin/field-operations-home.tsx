@@ -464,8 +464,6 @@ export function FieldOperationsHome() {
     [scheduleGroups],
   );
 
-  }, [requestedTasks]);
-
   const completedInspections = useMemo(
     () => fieldStaffCompletedInspectionFiles([openClaims, closedClaimsQuery.data?.items ?? []]),
     [openClaims, closedClaimsQuery.data?.items],
