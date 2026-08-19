@@ -15,6 +15,7 @@ import { CacheService } from '@/cache/cache.service';
 import { ClaimResponsibilitiesService } from '@/modules/claim-responsibilities/claim-responsibilities.service';
 import { OperationalAccessGrantsService } from '@/modules/operational-access-grants/operational-access-grants.service';
 import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
+import { SurveysService } from '@/modules/surveys/surveys.service';
 import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
@@ -181,6 +182,7 @@ export class ClaimFilesService {
     @Optional() private readonly claimResponsibilities?: ClaimResponsibilitiesService,
     @Optional() private readonly operationalAccessGrants?: OperationalAccessGrantsService,
     @Optional() private readonly vendorProfile?: VendorIntelligenceProfileService,
+    @Optional() private readonly surveys?: SurveysService,
   ) {}
 
   private async resolveHasarDepartmentId(): Promise<string | null> {
@@ -1994,6 +1996,11 @@ export class ClaimFilesService {
       void this.vendorProfile?.onFileCompleted({ type: 'claim_file', id }).catch((err) =>
         this.logger.warn(`[VendorIntelligenceProfile] Kapanış hook: ${err?.message}`),
       );
+
+      // Anket zorunlu değil; kapanışta kampanya oluşur, WhatsApp linki gönderilmez.
+      void this.surveys?.ensureCampaignForClaimFile(id).catch((err) =>
+        this.logger.warn(`[Survey] Kapanış kampanyası: ${err?.message}`),
+      );
     }
 
     return updated;
@@ -3067,6 +3074,11 @@ export class ClaimFilesService {
     });
 
     this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
+
+    void this.surveys?.ensureCampaignForClaimFile(fileId).catch((err) =>
+      this.logger.warn(`[Survey] Kapanış kampanyası: ${err?.message}`),
+    );
+
     return updated;
   }
 

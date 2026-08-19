@@ -15,9 +15,11 @@ import {
 } from '@/utils/invoiceRequestApi';
 import {
   SurveyCampaign,
-  getSurveyByInvoiceRequest,
+  getSurveyByClaimFile,
+  getSurveyByEmergencyCase,
   sendSurveyLink,
-  createAndSendSurvey,
+  createAndSendSurveyForClaim,
+  createAndSendSurveyForEmergency,
 } from '@/utils/surveyApi';
 import { formatTryAmount } from '@/utils/format-try-amount';
 
@@ -28,8 +30,10 @@ interface SharedProps {
   showClosureChecklist?: boolean;
   /** Fatura talebi oluşturma ve durum takibi */
   showInvoiceRequest?: boolean;
-  /** Müşteri memnuniyet anketi (fatura kesildikten sonra) */
+  /** Müşteri memnuniyet anketi (dosya kapanışında; zorunlu değil) */
   showSurvey?: boolean;
+  /** Dosya kapalıysa anket bloğu fatura kesilmeden de görünür */
+  fileClosed?: boolean;
 }
 
 interface ClaimProps extends SharedProps {
@@ -117,6 +121,7 @@ export default function ClosureConditionsPanel(props: Props) {
     showClosureChecklist = true,
     showInvoiceRequest = true,
     showSurvey = true,
+    fileClosed = false,
   } = props;
 
   const [conditions, setConditions] = useState<
@@ -160,30 +165,36 @@ export default function ClosureConditionsPanel(props: Props) {
           ? await getInvoiceRequestsByClaimFile(entityId)
           : await getInvoiceRequestsByEmergencyCase(entityId);
       setExistingRequests(reqs);
-
-      const invoicedReq = reqs.find((r) => r.status === 'invoiced');
-      if (showSurvey && invoicedReq) {
-        getSurveyByInvoiceRequest(invoicedReq.id)
-          .then((s) => setSurvey(s))
-          .catch(() => setSurvey(null));
-      } else {
-        setSurvey(null);
-      }
       return reqs;
     } catch (e: unknown) {
       if (showInvoiceRequest) {
         setError(e instanceof Error ? e.message : 'Fatura talepleri yüklenemedi');
       }
       setExistingRequests([]);
-      setSurvey(null);
       return [];
+    }
+  };
+
+  const loadSurvey = async () => {
+    if (!showSurvey) {
+      setSurvey(null);
+      return;
+    }
+    try {
+      const s =
+        serviceType === 'claim'
+          ? await getSurveyByClaimFile(entityId)
+          : await getSurveyByEmergencyCase(entityId);
+      setSurvey(s);
+    } catch {
+      setSurvey(null);
     }
   };
 
   const load = async () => {
     setLoadingConds(true);
     setError('');
-    await Promise.all([loadConditions(), loadRequests()]);
+    await Promise.all([loadConditions(), loadRequests(), loadSurvey()]);
     setLoadingConds(false);
   };
 
@@ -220,15 +231,16 @@ export default function ClosureConditionsPanel(props: Props) {
   };
 
   const handleSendSurvey = async () => {
-    if (!invoicedRequest) return;
     setSendingSurvey(true);
     setSurveyError('');
     try {
       let result: { deepLink: string; campaign: SurveyCampaign };
       if (survey) {
         result = await sendSurveyLink(survey.id);
+      } else if (serviceType === 'claim') {
+        result = await createAndSendSurveyForClaim(entityId);
       } else {
-        result = await createAndSendSurvey(invoicedRequest.id);
+        result = await createAndSendSurveyForEmergency(entityId);
       }
       setSurveyDeepLink(result.deepLink);
       setSurvey(result.campaign);
@@ -376,7 +388,7 @@ export default function ClosureConditionsPanel(props: Props) {
         </div>
       )}
 
-      {showSurvey && invoicedRequest && (
+      {showSurvey && (fileClosed || invoicedRequest || survey) && (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-800">Müşteri Memnuniyet Anketi</h3>
@@ -412,7 +424,7 @@ export default function ClosureConditionsPanel(props: Props) {
             )}
             {survey?.status === 'completed' && survey.response?.q6Recommend !== undefined && (
               <p className="text-xs text-slate-600">
-                Tavsiye: <strong className={survey.response.q6Recommend ? 'text-green-600' : 'text-status-danger'}>{survey.response.q6Recommend ? 'Evet' : 'Hayır'}</strong>
+                Memnuniyet: <strong className={survey.response.q6Recommend ? 'text-green-600' : 'text-status-danger'}>{survey.response.q6Recommend ? 'Memnunum' : 'Memnun Değilim'}</strong>
               </p>
             )}
             {survey?.status === 'completed' && survey.response?.q7Comment && (
@@ -477,6 +489,11 @@ export default function ClosureConditionsPanel(props: Props) {
                   </>
                 )}
               </button>
+            )}
+            {survey?.status !== 'completed' && !survey?.whatsappSentAt && (
+              <p className="text-xs text-slate-500">
+                Anket zorunlu değildir. Link sigortalıya WhatsApp ile açılır; yanıt kamu anket sayfasından geri gelir.
+              </p>
             )}
           </div>
         </div>

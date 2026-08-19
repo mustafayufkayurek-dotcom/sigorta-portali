@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException, ForbiddenException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmergencyStatus, Prisma } from '@prisma/client';
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
@@ -42,6 +42,7 @@ import {
   type EmergencyProcessAction,
 } from './emergency-process-events';
 import { RecordEmergencyProcessEventDto } from './dto/record-emergency-process-event.dto';
+import { SurveysService } from '@/modules/surveys/surveys.service';
 
 const MANUAL_DECISION_MIN_REASON = 10;
 const PORTAL_ROLE_CODES = new Set([
@@ -79,6 +80,7 @@ export class EmergencyCasesService {
     private readonly emailService: EmailService,
     private readonly claimEventEmail: ClaimEventEmailService,
     private readonly storage: StorageService,
+    @Optional() private readonly surveys?: SurveysService,
   ) {}
 
   /** EPIC-04: Kapanışta tedarikçi hakediş entegrasyon noktası (onay sonrası VendorStatements bağlanacak). */
@@ -832,6 +834,9 @@ export class EmergencyCasesService {
     if (dto.status === EmergencyStatus.COZULDU) {
       await this.onEmergencyCaseClosed(id, userId).catch((err) =>
         this.logger.warn(`[EPIC-04] Kapanış hook hatası: ${err?.message}`),
+      );
+      void this.surveys?.ensureCampaignForEmergencyCase(id).catch((err) =>
+        this.logger.warn(`[Survey] Acil kapanış kampanyası: ${err?.message}`),
       );
     }
     if (dto.status === EmergencyStatus.FATURALANDILDI) {

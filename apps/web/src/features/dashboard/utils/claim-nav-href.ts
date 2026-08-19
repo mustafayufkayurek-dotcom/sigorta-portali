@@ -22,6 +22,7 @@ export function claimNavHref(opts: {
 }
 
 export const CLAIM_LIST_OPEN_HREF = '/panel/hasar-dosyalari?status=open';
+export const CLAIM_LIST_CLOSED_HREF = '/panel/hasar-dosyalari?status=closed';
 export const CLAIM_LIST_SLA_HREF = '/panel/hasar-dosyalari?status=sla_exceeded';
 export const CLAIM_LIST_HREF = '/panel/hasar-dosyalari';
 export const OPERATIONS_CENTER_HREF = '/panel/operasyon';

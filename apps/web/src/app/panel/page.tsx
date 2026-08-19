@@ -19,6 +19,7 @@ import {
   OfficeChartsRow,
   OfficeBottomRow,
   OfficeInspectionReminder,
+  OfficeSurveyReminder,
   FieldOperationsHome,
 } from '@/features/dashboard/components/admin';
 import { ManagementDashboard } from '@/features/dashboard/components/management-dashboard';
@@ -128,6 +129,7 @@ export default function PanelPage() {
 
         {/* Tespit uyarı bandı — saha ile aynı yöntem; yalnız office_staff */}
         <OfficeInspectionReminder />
+        <OfficeSurveyReminder />
 
         <OfficeKpiBand staggerIndex={0} />
 
