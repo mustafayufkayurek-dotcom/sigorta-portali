@@ -116,6 +116,7 @@ export function buildInboxFileOpenDraft(
     insurer: insurerRaw,
     subject: message.subject,
     policyNo: policyNoRaw,
+    extraText: [message.bodyText, message.bodyPreview, parsed.fileNo].filter(Boolean).join('\n'),
   });
 
   const draft: InboxFileOpenDraft = {
@@ -165,6 +166,7 @@ export function applyMailFieldsToDraft(
     insurer,
     subject: draft.subject,
     policyNo,
+    extraText: draft.fileNo,
   });
   return {
     ...draft,

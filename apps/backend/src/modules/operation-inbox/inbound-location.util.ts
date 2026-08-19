@@ -1,5 +1,7 @@
 /** Adres metninden il / ilçe çıkarımı (province adı yoksa ilçe üzerinden). */
 
+import { provinceSearchNames } from '../../common/helpers/turkey-location-normalize';
+
 type ProvinceRow = { id: string; name: string };
 type DistrictRow = { name: string; province: { name: string } };
 
@@ -40,7 +42,8 @@ export function matchCityDistrictFromAddressText(
   const sortedProvinces = [...provinces].sort((a, b) => b.name.length - a.name.length);
   let matchedProvince: ProvinceRow | null = null;
   for (const p of sortedProvinces) {
-    if (includesPlaceName(text, p.name)) {
+    const labels = provinceSearchNames(p.name).sort((a, b) => b.length - a.length);
+    if (labels.some((label) => includesPlaceName(text, label))) {
       matchedProvince = p;
       break;
     }

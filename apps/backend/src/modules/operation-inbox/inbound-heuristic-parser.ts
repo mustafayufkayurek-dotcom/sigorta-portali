@@ -68,6 +68,7 @@ export function extractHeuristicFields(
     insurer,
     subject: message.subject,
     policyNo,
+    extraText: textForFields,
   });
 
   return {

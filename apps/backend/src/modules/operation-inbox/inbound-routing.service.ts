@@ -301,6 +301,7 @@ export class InboundRoutingService {
       insurer: heuristic.insurer,
       subject: message.subject,
       policyNo: extracted.policyNo,
+      extraText: [message.bodyText, message.bodyPreview].filter(Boolean).join('\n'),
     });
     extracted.fileNo = resolvedFileNo.fileNo;
     if (!extracted.claimNo?.trim()) extracted.claimNo = heuristic.claimNo ?? null;

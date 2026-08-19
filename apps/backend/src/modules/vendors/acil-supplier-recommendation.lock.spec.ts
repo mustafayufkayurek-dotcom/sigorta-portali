@@ -37,6 +37,11 @@ describe('acil tedarikçi öneri LOCK', () => {
     assert.match(rec, /Yalnızca bu dosyada kullanım/);
   });
 
+  it('Acil ildeki kayıtlı havuzun tamamını alır, ilçe satırı düşürmez', () => {
+    assert.match(rec, /keepAllAreaCandidates \? null : districtId/);
+    assert.match(rec, /resolved\.provinceName/);
+  });
+
   it('acil API varsayılan limit 20 (ulusal 80 / 3 değil)', () => {
     assert.match(controller, /limit \? Number\(limit\) : 20/);
     assert.doesNotMatch(controller, /recommendForEmergencyCase\(\s*id,\s*limit \? Number\(limit\) : 3/);

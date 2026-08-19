@@ -9,6 +9,19 @@ function foldTR(value: string): string {
   return value.trim().toLocaleUpperCase('tr-TR').replace(/\s+/g, ' ');
 }
 
+const RCS_FILE_NO = /\bRCS-(\d{6,})\b/i;
+
+/** Remed dosya no: RCS-20261854032. Konu veya gövdeden alır. */
+export function extractRcsFileNo(text?: string | null): string | null {
+  if (!text?.trim()) return null;
+  const match = text.match(RCS_FILE_NO);
+  return match?.[1] ? `RCS-${match[1]}` : null;
+}
+
+export function isBareDigitFileNo(value: string): boolean {
+  return /^\d{6,12}$/.test(value.trim());
+}
+
 /** "EUREKO" / "Eureko Sigorta" aynı markadır; rakamsız metin dosya no değildir. */
 export function isInsuranceBrandFileNo(value: string, insuranceName?: string | null): boolean {
   const text = value.trim();
@@ -78,22 +91,36 @@ export function resolveInboundFileNo(input: {
 }): InboundFileNoResolution {
   const body = input.bodyFileNo?.trim() || '';
   const insurer = input.insurer?.trim() || '';
+  const haystack = [input.subject, input.extraText, body].filter(Boolean).join(' ');
+  const rcs = extractRcsFileNo(haystack);
   const brandRejected = Boolean(body && isInsuranceBrandFileNo(body, insurer || body));
   const policyRejected =
     isSameInboundNumber(body, input.policyNo)
     || extractDigitFileNoCandidates(body).some((n) => isSameInboundNumber(n, input.policyNo));
-  const bodyRejected = brandRejected || policyRejected;
+  const rcsOverridesBareDigit = Boolean(
+    rcs && body && isBareDigitFileNo(body) && !isSameInboundNumber(body, rcs),
+  );
+  const bodyRejected = brandRejected || policyRejected || rcsOverridesBareDigit;
 
   if (body && !bodyRejected) {
     return { fileNo: body, warning: null, bodyRejected: false };
+  }
+
+  if (rcs && (bodyRejected || !body)) {
+    const warning = !body
+      ? null
+      : policyRejected || rcsOverridesBareDigit
+        ? inboundFileNoPolicyRecoveredWarning(rcs)
+        : inboundFileNoRecoveredWarning(rcs);
+    return { fileNo: rcs, warning, bodyRejected: Boolean(body) && bodyRejected };
   }
 
   if (!bodyRejected) {
     return { fileNo: body || null, warning: null, bodyRejected: false };
   }
 
-  const haystack = [input.subject, input.extraText].filter(Boolean).join(' ');
-  const candidates = extractDigitFileNoCandidates(haystack, input.policyNo);
+  const candidateHaystack = [input.subject, input.extraText].filter(Boolean).join(' ');
+  const candidates = extractDigitFileNoCandidates(candidateHaystack, input.policyNo);
   if (candidates[0]) {
     return {
       fileNo: candidates[0],
@@ -105,7 +132,9 @@ export function resolveInboundFileNo(input: {
   }
   return {
     fileNo: null,
-    warning: policyRejected ? INBOUND_FILE_NO_POLICY_WARNING : INBOUND_FILE_NO_BRAND_WARNING,
+    warning: policyRejected || rcsOverridesBareDigit
+      ? INBOUND_FILE_NO_POLICY_WARNING
+      : INBOUND_FILE_NO_BRAND_WARNING,
     bodyRejected: true,
   };
 }

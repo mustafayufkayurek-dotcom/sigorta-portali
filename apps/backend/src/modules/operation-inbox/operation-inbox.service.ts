@@ -1147,6 +1147,7 @@ export class OperationInboxService {
       insurer: heuristic.insurer,
       subject: message.subject,
       policyNo: extracted.policyNo?.trim() || heuristic.policyNo,
+      extraText: [message.bodyText, message.bodyPreview].filter(Boolean).join('\n'),
     });
     return {
       ...extracted,
@@ -1173,6 +1174,7 @@ export class OperationInboxService {
       insurer: heuristic.insurer,
       subject: message.subject,
       policyNo: dtoPolicyNo?.trim() || extracted.policyNo,
+      extraText: [message.bodyText, message.bodyPreview].filter(Boolean).join('\n'),
     });
     const preferred = resolved.fileNo?.trim() || undefined;
     if (preferred && isInsuranceBrandFileNo(preferred, heuristic.insurer)) {

@@ -101,4 +101,20 @@ Sigortalı: İLKNUR YILMAZ
     expect(fields.fileNo).toBe('26645495');
     expect(fields.fileNoWarning).toMatch(/poliçe/i);
   });
+
+  it('Remed Dosya No alanındaki poliçe numarasını konu satırındaki RCS ile değiştirir', () => {
+    const fields = extractHeuristicFields({
+      subject: 'Ynt: 1619479924/KARAKOL KARDEŞLER OTOMOTİV/RCS-20261854032/CAM',
+      bodyText: `
+Sigorta Ettiren Ad-Soyad: Karakol Kardeşler Otomotiv
+Dosya No: 1619479924
+Poliçe No: 1619479924
+Adres: Sandıklı / Afyon
+`.trim(),
+      bodyPreview: null,
+      bodyHtml: null,
+    });
+    expect(fields.fileNo).toBe('RCS-20261854032');
+    expect(fields.fileNoWarning).toMatch(/RCS-20261854032/);
+  });
 });
