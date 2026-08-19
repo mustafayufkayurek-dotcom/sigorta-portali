@@ -15,5 +15,4 @@ export { FieldDailyFlowSection } from './field-daily-flow-section';
 export { FieldBottomRow } from './field-bottom-row';
 export { FieldOperationsHome } from './field-operations-home';
 export { FieldCompletedInspectionsPage } from './field-completed-inspections-page';
-export { FieldPendingInspectionsPage } from './field-pending-inspections-page';
 export { OfficeInspectionReminder } from './office-inspection-reminder';

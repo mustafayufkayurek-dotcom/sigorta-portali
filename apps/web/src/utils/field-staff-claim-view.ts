@@ -86,8 +86,6 @@ export function fieldStaffAssignedListSplit<T extends FieldStaffClaimLite>(claim
 
 export const FIELD_STAFF_COMPLETED_INSPECTIONS_HREF = '/panel/saha/tespiti-tamamlananlar';
 export const FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL = 'Tamamlanan Tespitler';
-export const FIELD_STAFF_PENDING_INSPECTIONS_HREF = '/panel/saha/bekleyen-tespitler';
-export const FIELD_STAFF_PENDING_INSPECTIONS_LABEL = 'Bekleyen Tespitler';
 export const FIELD_STAFF_ASSIGNMENTS_LABEL = 'Atanan Dosyalar';
 
 /** Tespit işlemi biten dosyalar — açık + kapalı, tekilleştirilmiş, yeni tamamlanan üstte. */
@@ -108,32 +106,6 @@ export function fieldStaffCompletedInspectionFiles<T extends FieldStaffClaimLite
     const ta = new Date(a.inspectionDoneAt ?? a.statusChangedAt ?? 0).getTime();
     const tb = new Date(b.inspectionDoneAt ?? b.statusChangedAt ?? 0).getTime();
     return tb - ta;
-  });
-  return out;
-}
-
-/** Tespit bekleyen dosyalar — tekilleştirilmiş, en uzun bekleyen üstte. */
-export function fieldStaffPendingInspectionFiles<T extends FieldStaffClaimLite & {
-  id: string;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-}>(
-  groups: T[][],
-): T[] {
-  const seen = new Set<string>();
-  const out: T[] = [];
-  for (const group of groups) {
-    for (const claim of group) {
-      if (!claim?.id || seen.has(claim.id)) continue;
-      if (fieldStaffInspectionStatus(claim).done) continue;
-      seen.add(claim.id);
-      out.push(claim);
-    }
-  }
-  out.sort((a, b) => {
-    const ta = new Date(a.createdAt ?? a.updatedAt ?? 0).getTime();
-    const tb = new Date(b.createdAt ?? b.updatedAt ?? 0).getTime();
-    return ta - tb;
   });
   return out;
 }

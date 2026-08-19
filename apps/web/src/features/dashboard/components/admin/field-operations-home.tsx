@@ -30,7 +30,6 @@ import {
   fieldStaffAssignedListSplit,
   fieldStaffCompletedInspectionFiles,
   FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
-  FIELD_STAFF_PENDING_INSPECTIONS_HREF,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 import { InspectionReminderBanner } from '@/components/field-survey/InspectionReminderBanner';
@@ -550,7 +549,7 @@ export function FieldOperationsHome() {
       {!loading && inspectionReminder.pendingCount > 0 ? (
         <InspectionReminderBanner
           message={inspectionReminder.message}
-          href={FIELD_STAFF_PENDING_INSPECTIONS_HREF}
+          href={CLAIM_LIST_OPEN_HREF}
           testId="saha-tespit-hatirlatma"
         />
       ) : null}
