@@ -28,6 +28,7 @@ import {
 import { resolveClaimIhbarKonusu, toTitleCaseTR, formatHasarAdresi } from '@/utils/text-helpers';
 import { SmartMeasureList } from '@/components/smart-measures/SmartMeasureList';
 import { ClaimSurveyUnsentBanner } from '@/components/survey/ClaimSurveyUnsentBanner';
+import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
 import { ClaimFileHeaderStatusCluster } from '@/components/damage-reports/ClaimFileHeaderStatusCluster';
