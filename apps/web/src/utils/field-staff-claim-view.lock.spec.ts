@@ -174,9 +174,10 @@ describe('field-staff-claim-view lock', () => {
     assert.match(view, /saha-tespiti-tamamlananlar/);
     assert.match(view, /saha-tamamlanan-tespit-ara/);
     assert.match(view, /SearchInput/);
-    assert.match(view, /className="w-full"/);
+    assert.match(view, /sm:w-\[17rem\]/);
+    assert.match(view, /filter-bar/);
     assert.doesNotMatch(view, /size="lg"/);
-    assert.doesNotMatch(view, /filter-bar/);
+    assert.doesNotMatch(view, /basis-full/);
     assert.match(view, /statusCode: includeClosed \? 'closed' : 'open'/);
     const layout = read('../app/panel/layout.tsx');
     assert.match(layout, /Tamamlanan Tespitler/);
