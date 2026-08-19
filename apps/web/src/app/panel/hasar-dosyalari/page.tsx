@@ -56,6 +56,8 @@ import {
   fieldStaffInspectionStatus,
   fieldStaffInsuredName,
   fieldStaffPhone,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 
@@ -464,7 +466,18 @@ function ClaimFilesPageContent() {
             {!loading && (
               <p className="page-subtitle">
                 {isFieldStaff
-                  ? `${visibleClaims.length} atanan iş. Tespiti bitenler Tamamlanan Tespitler sayfasına gider.`
+                  ? (
+                    <>
+                      {visibleClaims.length} atanan iş.{' '}
+                      <Link
+                        href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}
+                        className="font-semibold text-brand-700 hover:text-brand-800"
+                      >
+                        {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+                      </Link>
+                      {' '}sayfasına gider.
+                    </>
+                  )
                   : `${total} dosya bulundu`}
                 {!isFieldStaff && urlStatusCode === 'open' && <span className="ml-2 text-orange-500 font-semibold">· Açık Dosyalar</span>}
                 {!isFieldStaff && urlStatusCode === 'closed' && <span className="ml-2 text-status-success font-semibold">· Kapalı Dosyalar</span>}
@@ -708,6 +721,10 @@ function ClaimFilesPageContent() {
             </p>
             {hasFilters ? (
               <button type="button" onClick={clearFilters} className="btn-secondary mt-4">Filtreleri Temizle</button>
+            ) : isFieldStaff ? (
+              <Link href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF} className="btn-secondary mt-4">
+                {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+              </Link>
             ) : !isFieldStaff ? (
               <button type="button" onClick={openNewPanel} className="btn-primary mt-4">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>

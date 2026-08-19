@@ -19,6 +19,8 @@ import {
   fieldStaffInspectionStatus,
   fieldStaffInsuredName,
   fieldStaffPhone,
+  FIELD_STAFF_ASSIGNMENTS_HREF,
+  FIELD_STAFF_ASSIGNMENTS_LABEL,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 
@@ -136,6 +138,14 @@ export function FieldCompletedInspectionsPage() {
             <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
             Saha Merkezi
           </Link>
+          <p className="mb-2">
+            <Link
+              href={FIELD_STAFF_ASSIGNMENTS_HREF}
+              className="text-xs font-semibold text-brand-700 hover:text-brand-800"
+            >
+              {FIELD_STAFF_ASSIGNMENTS_LABEL}
+            </Link>
+          </p>
           <h1 className="text-lg font-semibold text-slate-950">Tamamlanan Tespitler</h1>
           <p className="mt-0.5 text-xs text-slate-500">
             Tespit işlemi biten dosyalar burada toplanır.

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   repairReportStatusBadge,
   repairReportStatusLabel,
@@ -31,6 +32,9 @@ import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
 import { ClaimFileHeaderStatusCluster } from '@/components/damage-reports/ClaimFileHeaderStatusCluster';
 import {
+  FIELD_STAFF_ASSIGNMENTS_HREF,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
   FIELD_STAFF_HIDDEN_CLAIM_TABS,
   fieldStaffAddress,
   fieldStaffDirectionsUrl,
@@ -38,6 +42,7 @@ import {
   fieldStaffInspectionStatus,
   fieldStaffInsuredName,
   fieldStaffPhone,
+  notifyFieldStaffClaimsChanged,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 import { FieldContactHistory } from '@/components/field-survey/FieldContactHistory';
@@ -204,6 +209,7 @@ function FieldStaffVisitCard({
   onClaimUpdated?: (patch: Partial<any>) => void;
 }) {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [marking, setMarking] = useState(false);
   const [contactRefreshKey, setContactRefreshKey] = useState(0);
   const insuredLine = fieldStaffInsuredName(claim);
@@ -237,6 +243,10 @@ function FieldStaffVisitCard({
         statusChangedAt: nowIso,
       });
       showToast('success', 'Tespit Yapıldı Olarak İşaretlendi');
+      notifyFieldStaffClaimsChanged();
+      void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
     } catch (err) {
       reportCaughtError(err, getApiErrorMessage(err, 'Tespit işaretlenemedi.'));
     } finally {
@@ -269,6 +279,10 @@ function FieldStaffVisitCard({
         closedAt: res.data?.data?.closedAt ?? new Date().toISOString(),
       });
       showToast('success', 'Dosya Kapatıldı');
+      notifyFieldStaffClaimsChanged();
+      void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
     } catch (err) {
       reportCaughtError(
         err,
@@ -374,6 +388,12 @@ function FieldStaffVisitCard({
             <p className="rounded-xl border border-status-success/30 bg-status-success/10 px-3.5 py-2.5 text-center text-sm font-semibold text-status-success">
               Tespit Tamamlandı
             </p>
+            <Link
+              href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}
+              className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+            </Link>
             {!claim?.currentStatus?.isClosedState && !claim?.closedAt ? (
               <button
                 type="button"
@@ -1675,6 +1695,10 @@ export default function ClaimFileDetailPage() {
       <DosyaSayfaUstu
         claim={claim}
         onBack={() => {
+          if (isFieldStaff) {
+            router.push(FIELD_STAFF_ASSIGNMENTS_HREF);
+            return;
+          }
           if (typeof window !== 'undefined' && window.history.length > 1) {
             router.back();
           } else {

@@ -89,6 +89,14 @@ export const FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL = 'Tamamlanan Tespitler';
 export const FIELD_STAFF_ASSIGNMENTS_HREF = '/panel/hasar-dosyalari';
 export const FIELD_STAFF_ASSIGNMENTS_LABEL = 'Atanan Dosyalar';
 
+/** Tespit işareti sonrası menü özeti / listeler yenilensin. */
+export const FIELD_STAFF_CLAIMS_CHANGED_EVENT = 'meridyen:field-staff-claims-changed';
+
+export function notifyFieldStaffClaimsChanged(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(FIELD_STAFF_CLAIMS_CHANGED_EVENT));
+}
+
 /** Tespit işlemi biten dosyalar — açık + kapalı, tekilleştirilmiş, yeni tamamlanan üstte. */
 export function fieldStaffCompletedInspectionFiles<T extends FieldStaffClaimLite & { id: string }>(
   groups: T[][],

@@ -59,7 +59,7 @@ import {
   type InsurancePortalNavCounts,
 } from '@/config/portal-nav';
 import { countExpertQueues, normalizeExpertQueueParam } from '@/utils/expert-portal-queues';
-import { fieldStaffInspectionStatus } from '@/utils/field-staff-claim-view';
+import { fieldStaffInspectionStatus, FIELD_STAFF_ASSIGNMENTS_HREF, FIELD_STAFF_ASSIGNMENTS_LABEL, FIELD_STAFF_CLAIMS_CHANGED_EVENT, FIELD_STAFF_COMPLETED_INSPECTIONS_HREF, FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL } from '@/utils/field-staff-claim-view';
 import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -98,6 +98,7 @@ interface NavItemAccess {
 const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/hasar-dosyalari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/saha/tespiti-tamamlananlar', roles: ['field_staff', 'FIELD_STAFF'] },
+  { path: '/panel/saha/bekleyen-tespitler', roles: ['field_staff', 'FIELD_STAFF'] },
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT'] },
@@ -227,6 +228,19 @@ interface NavigationLink {
 /** Saha — Atanan Dosyalar menü özeti (tespit bekleyen açık dosya sayısı). */
 function useFieldAssignedNavCount(enabled: boolean, pathname: string): number {
   const [count, setCount] = useState(0);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const bump = () => setTick((n) => n + 1);
+    window.addEventListener(FIELD_STAFF_CLAIMS_CHANGED_EVENT, bump);
+    window.addEventListener('focus', bump);
+    return () => {
+      window.removeEventListener(FIELD_STAFF_CLAIMS_CHANGED_EVENT, bump);
+      window.removeEventListener('focus', bump);
+    };
+  }, [enabled]);
+
   useEffect(() => {
     if (!enabled) {
       setCount(0);
@@ -252,7 +266,7 @@ function useFieldAssignedNavCount(enabled: boolean, pathname: string): number {
       }
     })();
     return () => { cancelled = true; };
-  }, [enabled, pathname]);
+  }, [enabled, pathname, tick]);
   return count;
 }
 
@@ -358,12 +372,16 @@ function getPanelMainLinks({
         ? [
             { title: 'Saha Merkezi', href: '/panel', icon: MonitorCheck },
             {
-              title: 'Atanan Dosyalar',
-              href: '/panel/hasar-dosyalari',
+              title: FIELD_STAFF_ASSIGNMENTS_LABEL,
+              href: FIELD_STAFF_ASSIGNMENTS_HREF,
               icon: ClipboardList,
               alertCount: fieldAssignedCount && fieldAssignedCount > 0 ? fieldAssignedCount : undefined,
             },
-            { title: 'Tamamlanan Tespitler', href: '/panel/saha/tespiti-tamamlananlar', icon: CheckCircle2 },
+            {
+              title: FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
+              href: FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
+              icon: CheckCircle2,
+            },
           ]
       : isFinance
         ? [

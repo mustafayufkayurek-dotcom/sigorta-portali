@@ -114,6 +114,8 @@ const CASES = [
   ['RG-27', 'Portal profil', 'assistance_company_user', '/panel/profil', true],
   ['RG-28', 'Saha tespit tamamlananlar', 'field_staff', '/panel/saha/tespiti-tamamlananlar', true],
   ['RG-29', 'Ofis tespit tamamlananlar yok', 'office_staff', '/panel/saha/tespiti-tamamlananlar', false],
+  ['RG-30', 'Saha eski bekleyen URL yönlenir', 'field_staff', '/panel/saha/bekleyen-tespitler', true],
+  ['RG-31', 'Ofis eski bekleyen URL yok', 'office_staff', '/panel/saha/bekleyen-tespitler', false],
 ];
 
 const NAV_SEQ = [
