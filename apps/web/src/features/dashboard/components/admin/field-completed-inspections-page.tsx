@@ -146,17 +146,14 @@ export function FieldCompletedInspectionsPage() {
         </p>
       </div>
 
-      <div className="filter-bar" data-testid="saha-tamamlanan-tespit-ara">
-        <div className="panel-filter-bar">
-          <div className="relative min-w-0 w-full flex-[1_1_100%]">
-            <SearchInput
-              placeholder="Dosya No, Sigortalı Ara..."
-              value={search}
-              onChange={setSearch}
-              onClear={() => setSearch('')}
-            />
-          </div>
-        </div>
+      <div className="w-full min-w-0" data-testid="saha-tamamlanan-tespit-ara">
+        <SearchInput
+          className="w-full"
+          placeholder="Dosya No, Sigortalı Ara..."
+          value={search}
+          onChange={setSearch}
+          onClear={() => setSearch('')}
+        />
       </div>
 
       {loading ? (

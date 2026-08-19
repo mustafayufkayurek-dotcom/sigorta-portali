@@ -556,7 +556,7 @@ function ClaimFilesPageContent() {
       {/* Filter Bar — saha: yalnız arama + açık/kapalı */}
       <div className="filter-bar">
         <div className="panel-filter-bar">
-          <div className={isFieldStaff ? 'relative min-w-0 flex-[1_1_100%] sm:min-w-[22rem] sm:flex-[1_1_auto]' : 'panel-filter-search-wrap'}>
+          <div className={isFieldStaff ? 'relative w-full min-w-0 basis-full' : 'panel-filter-search-wrap'}>
             <SearchInput
               placeholder={isFieldStaff ? 'Dosya No, Sigortalı Ara...' : 'Dosya No, Sigortalı...'}
               value={search}
