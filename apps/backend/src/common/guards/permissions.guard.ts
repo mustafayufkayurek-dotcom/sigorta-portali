@@ -32,6 +32,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'budget.view', 'budget.create', 'budget.review',
     'payment.view', 'payment.create', 'payment.update',
     'report.view',
+    'dashboard.view',
     'operation_inbox.view', 'operation_inbox.manage',
   ],
   ACCOUNTANT: [
@@ -40,6 +41,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'payment.view',
     'budget.view', 'budget.review',
     'report.view',
+    'dashboard.view',
     'operation_inbox.view',
   ],
   MANAGER: [

@@ -7,6 +7,11 @@ import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
+import {
+  hasDashboardFinanceAccessRole,
+  isOfficeStaffDashboardRole,
+  normalizeDashboardRoleCode,
+} from './dashboard-role';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
@@ -24,8 +29,9 @@ export class DashboardController {
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Operasyon KPI verileri' })
   async getOperations(@CurrentUser() user: any) {
-    const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
-    const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
+    const scopeUserId = isOfficeStaffDashboardRole(normalizeDashboardRoleCode(user))
+      ? user.id
+      : undefined;
     const data = await this.dashboardService.getOperationsKpis(scopeUserId);
     return { success: true, data };
   }
@@ -34,8 +40,9 @@ export class DashboardController {
   @RequirePermissions('dashboard.view')
   @ApiOperation({ summary: 'Dosya sorumlusu bazlı performans takibi' })
   async getUserPerformance(@Query() filters: DashboardFiltersDto, @CurrentUser() user: any) {
-    const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
-    const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
+    const scopeUserId = isOfficeStaffDashboardRole(normalizeDashboardRoleCode(user))
+      ? user.id
+      : undefined;
     const data = await this.dashboardService.getUserPerformance(filters, scopeUserId);
     return { success: true, data };
   }
@@ -143,8 +150,9 @@ export class DashboardController {
   @ApiOperation({ summary: 'SLA escalation + hareketsiz dosyalar' })
   async getCriticalAlerts(@CurrentUser() user: any) {
     try {
-      const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
-      const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
+      const scopeUserId = isOfficeStaffDashboardRole(normalizeDashboardRoleCode(user))
+        ? user.id
+        : undefined;
       return { success: true, data: await this.dashboardService.getCriticalAlerts(scopeUserId) };
     } catch (e) {
       this.logger.error('getCriticalAlerts başarısız, boş veri döndürüldü', e as Error);
@@ -157,8 +165,9 @@ export class DashboardController {
   @ApiOperation({ summary: 'Onay gecikmesi uyarıları (onarım raporu)' })
   async getApprovalDelays(@CurrentUser() user: any) {
     try {
-      const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
-      const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
+      const scopeUserId = isOfficeStaffDashboardRole(normalizeDashboardRoleCode(user))
+        ? user.id
+        : undefined;
       return { success: true, data: await this.dashboardService.getApprovalDelays(scopeUserId) };
     } catch (e) {
       this.logger.error('getApprovalDelays başarısız, boş veri döndürüldü', e as Error);
@@ -189,8 +198,9 @@ export class DashboardController {
   @ApiOperation({ summary: 'Aşama bazlı SLA dağılımı' })
   async getSlaSummary(@CurrentUser() user: any) {
     try {
-      const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
-      const scopeUserId = roleCode === 'office_staff' ? user.id : undefined;
+      const scopeUserId = isOfficeStaffDashboardRole(normalizeDashboardRoleCode(user))
+        ? user.id
+        : undefined;
       return { success: true, data: await this.dashboardService.getSlaSummary(scopeUserId) };
     } catch (e) {
       this.logger.error('getSlaSummary başarısız, boş veri döndürüldü', e as Error);
@@ -280,11 +290,7 @@ export class DashboardController {
    * İzin: admin, manager, finance (+ ops_manager).
    */
   private hasDashboardFinanceAccess(user: any): boolean {
-    const roleCode = String(user?.role?.code ?? user?.roleCode ?? '')
-      .toLowerCase()
-      .replace(/-/g, '_');
-    const allowed = new Set(['admin', 'manager', 'finance', 'finans', 'accountant', 'ops_manager']);
-    return allowed.has(roleCode);
+    return hasDashboardFinanceAccessRole(normalizeDashboardRoleCode(user));
   }
 
   /**

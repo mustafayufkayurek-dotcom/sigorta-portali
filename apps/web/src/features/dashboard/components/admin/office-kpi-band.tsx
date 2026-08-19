@@ -50,7 +50,7 @@ export function OfficeKpiBand({ staggerIndex = 0 }: OfficeKpiBandProps) {
   const pendingCount = pendingItems.length;
   const density = dailyQuery.data?.teamDensity?.map((d) => d.count) ?? [];
   const isLoading =
-    opsQuery.isLoading || pendingQuery.isLoading || dailyQuery.isLoading || opsQuery.isFetching;
+    opsQuery.isLoading || pendingQuery.isLoading || opsQuery.isFetching;
   const opsFailed = opsQuery.isError;
 
   const total = ops?.totalOperationalFiles ?? 0;

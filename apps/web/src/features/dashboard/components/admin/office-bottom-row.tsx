@@ -131,7 +131,7 @@ export function OfficeBottomRow({ staggerIndex = 0 }: OfficeBottomRowProps) {
             {activityItems.map((item, index) => (
               <li key={`${item.fileNo}-${item.createdAt}-${index}`}>
                 <DashboardRowLink
-                  href={claimNavHref({ fileNo: item.fileNo }) ?? CLAIM_LIST_HREF}
+                  href={claimNavHref({ id: item.claimFileId, fileNo: item.fileNo }) ?? CLAIM_LIST_HREF}
                   aria-label={`${formatActivityAction(item.action)} ${item.fileNo}`}
                   className="flex items-start justify-between gap-2 rounded-lg border border-slate-100 px-2.5 py-2 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
                 >
