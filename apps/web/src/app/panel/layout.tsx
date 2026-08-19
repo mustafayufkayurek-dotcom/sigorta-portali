@@ -1045,6 +1045,7 @@ function PanelSidebar({
   // window.location üzerinden takip ediyoruz.
   const [activeQueueParam, setActiveQueueParam] = useState<string | null>(null);
   const [activeOpsFilter, setActiveOpsFilter] = useState<string | null>(null);
+  const [activeTabParam, setActiveTabParam] = useState<string | null>(null);
   const [expertNavCounts, setExpertNavCounts] = useState<ExpertPortalNavCounts>({});
   const [insuranceNavCounts, setInsuranceNavCounts] = useState<InsurancePortalNavCounts>({});
 
@@ -1054,6 +1055,7 @@ function PanelSidebar({
       const params = new URLSearchParams(window.location.search);
       setActiveQueueParam(params.get('queue'));
       setActiveOpsFilter(params.get('filter'));
+      setActiveTabParam(params.get('tab'));
     };
     readQueue();
     window.addEventListener('popstate', readQueue);
@@ -1144,6 +1146,10 @@ function PanelSidebar({
       const hrefQueue = normalizeExpertQueueParam(new URLSearchParams(hrefQueryString).get('queue'));
       const activeQueue = normalizeExpertQueueParam(activeQueueParam);
       return hrefQueue === activeQueue;
+    }
+    if (normalizedHref === '/panel/finans/faturalar') {
+      const hrefTab = new URLSearchParams(hrefQueryString).get('tab');
+      if (hrefTab) return activeTabParam === hrefTab;
     }
     return true;
   };
@@ -1684,6 +1690,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     }
     if (notif.relatedEntityType === 'inbound_message' && notif.relatedEntityId) {
       router.push(`/panel/operasyon/gelen-kutusu?messageId=${notif.relatedEntityId}`);
+      return;
+    }
+    if (notif.relatedEntityType === 'invoice_request') {
+      router.push('/panel/finans/faturalar?tab=talepler');
     }
   };
 

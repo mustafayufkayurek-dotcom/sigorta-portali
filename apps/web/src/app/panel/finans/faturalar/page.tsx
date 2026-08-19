@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
@@ -12,6 +12,8 @@ import {
   type TalepOzet,
 } from '@/components/finance/FaturaTalepleriSection';
 import { getInvoiceRequests } from '@/utils/invoiceRequestApi';
+import { faturaListTabHref, resolveFaturaListTab, type FaturaListTab } from '@/utils/invoice-request-envelope';
+import { isFinanceRole, usePanelRoleCode } from '@/hooks/usePanelRole';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
@@ -54,18 +56,39 @@ const STATUS_COLOR: Record<string, string> = {
 
 type SortKey = 'invoiceDate' | 'totalAmount' | 'invoiceNo' | 'status';
 type SortDir = 'asc' | 'desc';
-type FaturaTab = 'kesilen' | 'talepler';
 
 export default function FaturalarPage() {
+  return (
+    <Suspense fallback={(
+      <div className="flex items-center justify-center h-64">
+        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )}
+    >
+      <FaturalarPageContent />
+    </Suspense>
+  );
+}
+
+function FaturalarPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const roleCode = usePanelRoleCode();
+  const isFinance = isFinanceRole(roleCode);
   const tabParam = searchParams.get('tab');
-  const activeTab: FaturaTab = tabParam === 'talepler' ? 'talepler' : 'kesilen';
+  const activeTab: FaturaListTab = resolveFaturaListTab(tabParam, isFinance);
 
-  const setTab = (tab: FaturaTab) => {
-    const qs = tab === 'talepler' ? '?tab=talepler' : '';
-    router.replace(`/panel/finans/faturalar${qs}`, { scroll: false });
+  const setTab = (tab: FaturaListTab) => {
+    router.replace(faturaListTabHref(tab), { scroll: false });
   };
+
+  useEffect(() => {
+    if (!roleCode) return;
+    if (tabParam === 'talepler' || tabParam === 'kesilen') return;
+    if (isFinance) {
+      router.replace(faturaListTabHref('talepler'), { scroll: false });
+    }
+  }, [roleCode, isFinance, tabParam, router]);
 
   const { showToast } = useToast();
   const [invoices, setInvoices] = useState<any[]>([]);
