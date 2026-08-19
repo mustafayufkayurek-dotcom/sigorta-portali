@@ -148,13 +148,12 @@ export function FieldCompletedInspectionsPage() {
 
       <div className="filter-bar" data-testid="saha-tamamlanan-tespit-ara">
         <div className="panel-filter-bar">
-          <div className="panel-filter-search-wrap">
+          <div className="relative min-w-0 w-full flex-[1_1_100%]">
             <SearchInput
               placeholder="Dosya No, Sigortalı Ara..."
               value={search}
               onChange={setSearch}
               onClear={() => setSearch('')}
-              size="lg"
             />
           </div>
         </div>

@@ -174,7 +174,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(view, /saha-tespiti-tamamlananlar/);
     assert.match(view, /saha-tamamlanan-tespit-ara/);
     assert.match(view, /SearchInput/);
-    assert.match(view, /size="lg"/);
+    assert.match(view, /flex-\[1_1_100%\]/);
+    assert.doesNotMatch(view, /size="lg"/);
     assert.match(view, /statusCode: includeClosed \? 'closed' : 'open'/);
     const layout = read('../app/panel/layout.tsx');
     assert.match(layout, /Tamamlanan Tespitler/);
