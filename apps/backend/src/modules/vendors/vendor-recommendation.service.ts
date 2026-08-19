@@ -337,8 +337,8 @@ export class VendorRecommendationService {
   }
 
   private async findAreaCandidates(query: VendorRecommendQuery & { expertiseHints?: string[] }) {
-    const city = normalizeLocationLabel(query.city);
-    const districtName = normalizeLocationLabel(query.district);
+    let city = normalizeLocationLabel(query.city);
+    let districtName = normalizeLocationLabel(query.district);
     const skipNational = query.allowNationalFallback === false;
     if (skipNational && !city && !query.provinceId) {
       return [];

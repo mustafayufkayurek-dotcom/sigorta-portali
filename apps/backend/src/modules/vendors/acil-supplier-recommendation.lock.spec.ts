@@ -32,6 +32,8 @@ describe('acil tedarikçi öneri LOCK', () => {
   });
 
   it('bölge boşken acil ulusal kesit öneriye düşmez', () => {
+    assert.match(rec, /let city = normalizeLocationLabel/);
+    assert.match(rec, /let districtName = normalizeLocationLabel/);
     assert.match(rec, /skipNational && !city && !query\.provinceId/);
     assert.match(rec, /allowNationalFallback === false/);
     assert.match(rec, /Yalnızca bu dosyada kullanım/);
