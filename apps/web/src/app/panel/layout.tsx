@@ -65,6 +65,7 @@ import {
   BookOpen,
   Building2,
   CalendarDays,
+  CheckCircle2,
   ChevronDown,
   ClipboardList,
   FileText,
@@ -95,6 +96,7 @@ interface NavItemAccess {
 
 const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/hasar-dosyalari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'MANAGER'] },
+  { path: '/panel/saha/tespiti-tamamlananlar', roles: ['field_staff', 'FIELD_STAFF'] },
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT'] },
@@ -321,6 +323,7 @@ function getPanelMainLinks({
         ? [
             { title: 'Saha Merkezi', href: '/panel', icon: MonitorCheck },
             { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari', icon: ClipboardList },
+            { title: 'Tespiti Tamamlananlar', href: '/panel/saha/tespiti-tamamlananlar', icon: CheckCircle2 },
           ]
       : isFinance
         ? [

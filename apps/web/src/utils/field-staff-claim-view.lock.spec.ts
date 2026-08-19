@@ -26,6 +26,9 @@ describe('field-staff-claim-view lock', () => {
     assert.match(util, /Tespit Yapıldı/);
     assert.match(util, /Tespit Yapılmadı/);
     assert.match(util, /tespit bekleniyor/);
+    assert.match(util, /fieldStaffAssignedListSplit/);
+    assert.match(util, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(util, /fieldStaffCompletedInspectionFiles/);
     assert.match(util, /FIELD_STAFF_HIDDEN_CLAIM_TABS/);
     assert.match(util, /'finans'/);
     assert.match(util, /'operasyon'/);
@@ -72,7 +75,10 @@ describe('field-staff-claim-view lock', () => {
     assert.match(home, /saha-tespit-hatirlatma/);
     assert.match(home, /InspectionReminderBanner/);
     assert.match(home, /fieldStaffInspectionReminder/);
-    assert.match(home, /Bekleyen Tespit Dosyaları/);
+    assert.match(home, /Tespiti Tamamlananlar/);
+    assert.match(home, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
+    assert.match(home, /saha-kpi-tespiti-tamamlananlar/);
+    assert.doesNotMatch(home, /filter === 'completed'/);
     assert.match(home, /FieldInsuredContactActions/);
     assert.match(home, /fieldStaffPhone/);
     assert.match(home, /fieldStaffInspectionStatus/);
@@ -151,6 +157,19 @@ describe('field-staff-claim-view lock', () => {
     assert.match(photos, /Galeriden/);
     assert.doesNotMatch(photos, /muvafakat/);
     assert.doesNotMatch(photos, /Yaşam Döngüsü/);
+  });
+
+  it('Tespiti Tamamlananlar sayfası tespit bitenleri toplar', () => {
+    const page = read('../app/panel/saha/tespiti-tamamlananlar/page.tsx');
+    const view = read('../features/dashboard/components/admin/field-completed-inspections-page.tsx');
+    assert.match(page, /FieldCompletedInspectionsPage/);
+    assert.match(view, /Tespiti Tamamlananlar/);
+    assert.match(view, /fieldStaffCompletedInspectionFiles/);
+    assert.match(view, /saha-tespiti-tamamlananlar/);
+    assert.match(view, /statusCode: includeClosed \? 'closed' : 'open'/);
+    const layout = read('../app/panel/layout.tsx');
+    assert.match(layout, /Tespiti Tamamlananlar/);
+    assert.match(layout, /\/panel\/saha\/tespiti-tamamlananlar/);
   });
 
   it('tespit tamamla ve dosya kapat onay ister', () => {

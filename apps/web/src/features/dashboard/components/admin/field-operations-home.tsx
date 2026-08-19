@@ -28,11 +28,13 @@ import {
   fieldStaffInsuredName,
   fieldStaffPhone,
   fieldStaffAssignedListSplit,
+  fieldStaffCompletedInspectionFiles,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 import { InspectionReminderBanner } from '@/components/field-survey/InspectionReminderBanner';
 
-type ListFilter = 'assigned' | 'pending' | 'upcoming' | 'sla' | 'completed';
+type ListFilter = 'assigned' | 'pending' | 'upcoming' | 'sla';
 
 type FieldClaimRow = {
   id: string;
@@ -239,13 +241,17 @@ function KpiButton({
   tone,
   icon: Icon,
   onClick,
+  href,
+  testId,
 }: {
   label: string;
   value: string | number;
   active: boolean;
   tone: 'brand' | 'warning' | 'upcoming' | 'danger' | 'success';
   icon: typeof FolderOpen;
-  onClick: () => void;
+  onClick?: () => void;
+  href?: string;
+  testId?: string;
 }) {
   const toneMap = {
     brand: 'text-brand-600 bg-brand-50',
@@ -255,17 +261,14 @@ function KpiButton({
     success: 'text-status-success bg-green-50',
   } as const;
 
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`flex min-h-[60px] items-center gap-2.5 rounded-xl border bg-white px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
-        active
-          ? 'border-brand-500 ring-1 ring-brand-200'
-          : 'border-slate-200 hover:border-brand-200'
-      }`}
-    >
+  const className = `flex min-h-[60px] items-center gap-2.5 rounded-xl border bg-white px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+    active
+      ? 'border-brand-500 ring-1 ring-brand-200'
+      : 'border-slate-200 hover:border-brand-200'
+  }`;
+
+  const body = (
+    <>
       <span className={`inline-flex shrink-0 rounded-lg p-1.5 ${toneMap[tone]}`}>
         <Icon className="h-3.5 w-3.5" strokeWidth={2} />
       </span>
@@ -277,6 +280,26 @@ function KpiButton({
           {label}
         </span>
       </span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={className} data-testid={testId} aria-current={active ? 'page' : undefined}>
+        {body}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={className}
+      data-testid={testId}
+    >
+      {body}
     </button>
   );
 }
@@ -363,11 +386,11 @@ export function FieldOperationsHome() {
   const myName = `${me?.firstName ?? ''} ${me?.lastName ?? ''}`.trim() || 'Saha';
 
   const openClaimsQuery = useFieldAssignedClaims(false, true, 40);
-  const closedClaimsQuery = useFieldAssignedClaims(true, true, 20);
+  const closedClaimsQuery = useFieldAssignedClaims(true, true, 80);
   const tasksQuery = useMyOpenTasks(me?.id);
 
   const openClaims = openClaimsQuery.data?.items ?? [];
-  const { pendingInspection, inspectionDone } = useMemo(
+  const { pendingInspection } = useMemo(
     () => fieldStaffAssignedListSplit(openClaims),
     [openClaims],
   );
@@ -452,11 +475,15 @@ export function FieldOperationsHome() {
     return m;
   }, [requestedTasks]);
 
+  const completedInspections = useMemo(
+    () => fieldStaffCompletedInspectionFiles([openClaims, closedClaimsQuery.data?.items ?? []]),
+    [openClaims, closedClaimsQuery.data?.items],
+  );
   const openCount = pendingInspection.length;
   const pendingCount = requestedTasks.length;
   const upcomingCount = scheduleTasks.length;
   const slaCount = requestedTasks.filter((t) => t.overdue).length;
-  const completedCount = inspectionDone.length + (closedClaimsQuery.data?.items?.length ?? 0);
+  const completedCount = completedInspections.length;
 
   const filteredFiles = useMemo(() => {
     if (filter === 'pending') {
@@ -476,18 +503,13 @@ export function FieldOperationsHome() {
         return !Number.isNaN(due) && due < Date.now();
       });
     }
-    if (filter === 'completed') {
-      return [...inspectionDone, ...(closedClaimsQuery.data?.items ?? [])];
-    }
     return pendingInspection;
   }, [
     filter,
     pendingInspection,
-    inspectionDone,
     requestedTasks,
     scheduleTasks,
     primaryTaskByClaim,
-    closedClaimsQuery.data?.items,
   ]);
 
   const recentOwn = useMemo(() => {
@@ -514,15 +536,13 @@ export function FieldOperationsHome() {
   );
 
   const listSubtitle =
-    filter === 'completed'
-      ? 'Tespiti yapılan dosyalar'
-      : filter === 'sla'
-        ? 'SLA / gecikme riski taşıyan dosyalar'
-        : filter === 'upcoming'
-          ? 'Bugün ve yakın zaman penceresindeki işler'
-          : filter === 'pending'
-            ? 'Açık görev / talep bulunan dosyalar'
-            : 'Yalnızca tespit bekleyen atanmış dosyalar';
+    filter === 'sla'
+      ? 'SLA / gecikme riski taşıyan dosyalar'
+      : filter === 'upcoming'
+        ? 'Bugün ve yakın zaman penceresindeki işler'
+        : filter === 'pending'
+          ? 'Açık görev / talep bulunan dosyalar'
+          : 'Yalnızca tespit bekleyen atanmış dosyalar';
 
   return (
     <div className="space-y-4">
@@ -581,11 +601,12 @@ export function FieldOperationsHome() {
               />
               <KpiButton
                 icon={CheckCircle2}
-                label="Tespiti Yapılanlar"
+                label="Tespiti Tamamlananlar"
                 value={completedCount}
                 tone="success"
-                active={filter === 'completed'}
-                onClick={() => setFilter('completed')}
+                active={false}
+                href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}
+                testId="saha-kpi-tespiti-tamamlananlar"
               />
             </>
           )}
@@ -595,7 +616,7 @@ export function FieldOperationsHome() {
         <section className="xl:col-span-8">
           <div className="mb-2.5">
             <h2 className="text-base font-semibold text-slate-950">
-              {filter === 'completed' ? 'Tespiti Yapılanlar' : 'Bana Atanan Dosyalar'}
+              Bana Atanan Dosyalar
             </h2>
             <p className="text-xs text-slate-500">{listSubtitle}</p>
           </div>

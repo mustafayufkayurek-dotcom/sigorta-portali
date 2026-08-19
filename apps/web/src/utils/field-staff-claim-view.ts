@@ -84,6 +84,30 @@ export function fieldStaffAssignedListSplit<T extends FieldStaffClaimLite>(claim
   return { pendingInspection, inspectionDone };
 }
 
+export const FIELD_STAFF_COMPLETED_INSPECTIONS_HREF = '/panel/saha/tespiti-tamamlananlar';
+
+/** Tespit işlemi biten dosyalar — açık + kapalı, tekilleştirilmiş, yeni tamamlanan üstte. */
+export function fieldStaffCompletedInspectionFiles<T extends FieldStaffClaimLite & { id: string }>(
+  groups: T[][],
+): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const group of groups) {
+    for (const claim of group) {
+      if (!claim?.id || seen.has(claim.id)) continue;
+      if (!fieldStaffInspectionStatus(claim).done) continue;
+      seen.add(claim.id);
+      out.push(claim);
+    }
+  }
+  out.sort((a, b) => {
+    const ta = new Date(a.inspectionDoneAt ?? a.statusChangedAt ?? 0).getTime();
+    const tb = new Date(b.inspectionDoneAt ?? b.statusChangedAt ?? 0).getTime();
+    return tb - ta;
+  });
+  return out;
+}
+
 /**
  * Rozet renkleri — Yapılmadı belirgin ama yumuşak (yormayan uyarı).
  * Yapıldı: sakin başarı tonu.
