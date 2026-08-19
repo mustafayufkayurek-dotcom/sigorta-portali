@@ -67,6 +67,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  Clock3,
   ClipboardList,
   FileText,
   GitBranch,
@@ -97,6 +98,7 @@ interface NavItemAccess {
 const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/hasar-dosyalari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/saha/tespiti-tamamlananlar', roles: ['field_staff', 'FIELD_STAFF'] },
+  { path: '/panel/saha/bekleyen-tespitler', roles: ['field_staff', 'FIELD_STAFF'] },
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT'] },
@@ -323,6 +325,7 @@ function getPanelMainLinks({
         ? [
             { title: 'Saha Merkezi', href: '/panel', icon: MonitorCheck },
             { title: 'Atanan Dosyalar', href: '/panel/hasar-dosyalari', icon: ClipboardList },
+            { title: 'Bekleyen Tespitler', href: '/panel/saha/bekleyen-tespitler', icon: Clock3 },
             { title: 'Tamamlanan Tespitler', href: '/panel/saha/tespiti-tamamlananlar', icon: CheckCircle2 },
           ]
       : isFinance
