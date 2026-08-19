@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ClaimNewForm } from '@/components/claim-files/ClaimNewForm';
 import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
@@ -26,11 +27,14 @@ import { OperationRowActions } from '@/components/operasyon/OperationRowActions'
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
 import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import {
+  ArrowRight,
   CalendarPlus,
+  Camera,
   ClipboardCheck,
   FileEdit,
   FolderOpen,
   Hourglass,
+  StickyNote,
 } from 'lucide-react';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatTryAmount } from '@/utils/format-try-amount';
@@ -52,6 +56,8 @@ import {
   fieldStaffInspectionStatus,
   fieldStaffInsuredName,
   fieldStaffPhone,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 
@@ -170,6 +176,13 @@ function getUserScope() {
   } catch { return { officeStaffUserId: null, isFieldStaff: false }; }
 }
 
+function fieldStaffClaimHref(id: string, section?: 'foto' | 'not'): string {
+  const base = `/panel/hasar-dosyalari/${encodeURIComponent(id)}`;
+  if (section === 'foto') return `${base}?saha=foto`;
+  if (section === 'not') return `${base}?saha=not`;
+  return base;
+}
+
 const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 88 },
   { id: 'customer', label: 'Müşteri', defaultWidth: 160, minWidth: 100 },
@@ -232,8 +245,6 @@ function ClaimFilesPageContent() {
   const [noteInsuredName, setNoteInsuredName] = useState<string | undefined>(undefined);
   const [emailTarget, setEmailTarget] = useState<OperationSendEmailTarget | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  /** Saha: tespit durumu istemci filtresi (tümü / yapıldı / yapılmadı) */
-  const [inspectionFilter, setInspectionFilter] = useState<'all' | 'done' | 'pending'>('all');
   const limit = 20;
   /** v5: Hasar listesi sütun tercihleri — Operasyon/Acil ile paylaşılmaz */
   const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v5', TABLE_COLUMNS);
@@ -349,19 +360,16 @@ function ClaimFilesPageContent() {
   }, [revisionsData]);
 
   // Derived
-  const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter || pendingReportFilter || repairReportStatusFilter || (isFieldStaff && inspectionFilter !== 'all'));
+  const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter || pendingReportFilter || repairReportStatusFilter);
   const filteredClaims = useMemo(() => {
     let rows = pendingRevisionFilter
       ? claims.filter((c: any) => (pendingRevisionMap[c.id] ?? 0) > 0)
       : claims;
-    if (isFieldStaff && inspectionFilter !== 'all') {
-      rows = rows.filter((c: any) => {
-        const done = fieldStaffInspectionStatus(c).done;
-        return inspectionFilter === 'done' ? done : !done;
-      });
+    if (isFieldStaff) {
+      rows = rows.filter((c: any) => !fieldStaffInspectionStatus(c).done);
     }
     return rows;
-  }, [claims, pendingRevisionFilter, pendingRevisionMap, isFieldStaff, inspectionFilter]);
+  }, [claims, pendingRevisionFilter, pendingRevisionMap, isFieldStaff]);
   const visibleClaims = useMemo(
     () =>
       sortRowsByClientSort(filteredClaims, clientSort, (claim: any, key) => {
@@ -404,7 +412,7 @@ function ClaimFilesPageContent() {
   const clearFilters = () => {
     setSearch(''); setStatusFilter(''); setPriorityFilter('');
     setInsuranceFilter(''); setDateFrom(''); setDateTo('');
-    setInvoiceStatusFilter(''); setInspectionFilter('all'); setPage(1);
+    setInvoiceStatusFilter(''); setPage(1);
     setPendingRevisionFilter(false);
     setPendingReportFilter(false);
     setRepairReportStatusFilter('');
@@ -429,9 +437,11 @@ function ClaimFilesPageContent() {
     <div className="space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">
+          {isFieldStaff ? 'Saha Merkezi' : 'Dashboard'}
+        </a>
         <span>/</span>
-        <span className="text-slate-600 font-medium">Hasar Dosyaları</span>
+        <span className="text-slate-600 font-medium">{isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}</span>
       </nav>
 
       {/* Header */}
@@ -452,12 +462,25 @@ function ClaimFilesPageContent() {
             </svg>
           </div>
           <div>
-            <h2 className="page-title">Hasar Dosyaları</h2>
+            <h2 className="page-title">{isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}</h2>
             {!loading && (
               <p className="page-subtitle">
-                {total} dosya bulundu
-                {urlStatusCode === 'open' && <span className="ml-2 text-orange-500 font-semibold">· Açık Dosyalar</span>}
-                {urlStatusCode === 'closed' && <span className="ml-2 text-status-success font-semibold">· Kapalı Dosyalar</span>}
+                {isFieldStaff
+                  ? (
+                    <>
+                      {visibleClaims.length} atanan iş.{' '}
+                      <Link
+                        href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}
+                        className="font-semibold text-brand-700 hover:text-brand-800"
+                      >
+                        {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+                      </Link>
+                      {' '}sayfasına gider.
+                    </>
+                  )
+                  : `${total} dosya bulundu`}
+                {!isFieldStaff && urlStatusCode === 'open' && <span className="ml-2 text-orange-500 font-semibold">· Açık Dosyalar</span>}
+                {!isFieldStaff && urlStatusCode === 'closed' && <span className="ml-2 text-status-success font-semibold">· Kapalı Dosyalar</span>}
                 {urlStatusCode === 'sla_exceeded' && <span className="ml-2 text-status-danger font-semibold">· SLA Aşanlar</span>}
                 {search && <span className="ml-2 text-blue-500 font-semibold">· Arama: {search}</span>}
                 {invoiceStatusFilter === 'overdue' && <span className="ml-2 text-status-danger font-semibold">· Gecikmiş fatura</span>}
@@ -557,9 +580,9 @@ function ClaimFilesPageContent() {
       {/* Filter Bar — saha: yalnız arama + açık/kapalı */}
       <div className="filter-bar">
         <div className="panel-filter-bar">
-          <div className="panel-filter-search-wrap">
+          <div className={isFieldStaff ? 'relative min-w-[13rem] w-full sm:w-[17rem] sm:flex-none' : 'panel-filter-search-wrap'}>
             <SearchInput
-              placeholder={isFieldStaff ? 'Sigortalı Ara...' : 'Dosya No, Sigortalı...'}
+              placeholder={isFieldStaff ? 'Dosya No, Sigortalı Ara...' : 'Dosya No, Sigortalı...'}
               value={search}
               onChange={(val) => { setSearch(val); setPage(1); }}
               onClear={() => { setSearch(''); setPage(1); }}
@@ -578,21 +601,6 @@ function ClaimFilesPageContent() {
             {!isFieldStaff && <option value="__sla_exceeded__">SLA Aşanlar</option>}
             {!isFieldStaff && claimStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          {isFieldStaff && (
-            <select
-              className="panel-filter-control"
-              value={inspectionFilter}
-              onChange={(e) => {
-                setInspectionFilter(e.target.value as 'all' | 'done' | 'pending');
-                setPage(1);
-              }}
-              data-testid="saha-tespit-filtre"
-            >
-              <option value="all">Tüm Tespitler</option>
-              <option value="done">Tespit Yapıldı</option>
-              <option value="pending">Tespit Yapılmadı</option>
-            </select>
-          )}
           {!isFieldStaff && (
             <>
               <select className="panel-filter-control" value={invoiceStatusFilter} onChange={(e) => { setInvoiceStatusFilter(e.target.value); setPage(1); }}>
@@ -698,13 +706,25 @@ function ClaimFilesPageContent() {
               </svg>
             </div>
             <p className="text-sm font-semibold text-slate-600">
-              {hasFilters ? 'Filtrelere Uyan Dosya Bulunamadı' : 'Henüz Hasar Dosyası Yok'}
+              {hasFilters
+                ? 'Filtrelere Uyan Dosya Bulunamadı'
+                : isFieldStaff
+                  ? 'Atanan İş Yok'
+                  : 'Henüz Hasar Dosyası Yok'}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              {hasFilters ? 'Farklı filtreler deneyin veya filtreleri temizleyin.' : 'İlk dosyanızı oluşturun!'}
+              {hasFilters
+                ? 'Farklı filtreler deneyin veya filtreleri temizleyin.'
+                : isFieldStaff
+                  ? 'Tespiti biten işler Tamamlanan Tespitler sayfasındadır.'
+                  : 'İlk dosyanızı oluşturun!'}
             </p>
             {hasFilters ? (
               <button type="button" onClick={clearFilters} className="btn-secondary mt-4">Filtreleri Temizle</button>
+            ) : isFieldStaff ? (
+              <Link href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF} className="btn-secondary mt-4">
+                {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+              </Link>
             ) : !isFieldStaff ? (
               <button type="button" onClick={openNewPanel} className="btn-primary mt-4">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -722,46 +742,87 @@ function ClaimFilesPageContent() {
                 const phone = fieldStaffPhone(claim);
                 const address = fieldStaffAddress(claim);
                 const inspection = fieldStaffInspectionStatus(claim);
+                const cityLine = [claim.propertyAddress?.city, claim.propertyAddress?.district]
+                  .filter(Boolean)
+                  .join(' / ');
+                const subject =
+                  claim.claimSubject?.name ||
+                  claim.lossType ||
+                  claim.productBranch ||
+                  'Hasar Dosyası';
                 return (
                   <div
                     key={claim.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        router.push(`/panel/hasar-dosyalari/${claim.id}`);
-                      }
-                    }}
-                    className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+                    className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-900/[0.03]"
                     data-testid="saha-dosya-karti"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-base font-semibold text-slate-900">{insuredName}</p>
-                      <span
-                        className={`shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
-                        data-testid="saha-tespit-rozet"
-                      >
-                        {inspection.label}
-                      </span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-gradient-to-r from-brand-50/70 via-white to-white px-3.5 py-2.5 sm:px-4">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-sm font-bold text-slate-950">
+                          {claim.fileNo ?? '—'}
+                        </span>
+                        <span
+                          className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
+                          data-testid="saha-tespit-rozet"
+                        >
+                          {inspection.label}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                      <FieldInsuredContactActions
-                        claim={{
-                          id: claim.id,
-                          fileNo: claim.fileNo,
-                          insuredName: claim.insuredName ?? insuredName,
-                          propertyAddress: claim.propertyAddress,
-                        }}
-                        phone={phone}
-                      />
+                    <div className="flex flex-col gap-3 p-3.5 sm:p-4 lg:flex-row lg:items-stretch lg:justify-between">
+                      <div className="min-w-0 flex-[1.4] space-y-2.5">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                            <p className="text-[11px] font-medium text-slate-500">Sigortalı</p>
+                            <p className="mt-0.5 text-sm font-semibold text-slate-950">
+                              {insuredName !== '—' ? insuredName : '—'}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                            <p className="text-[11px] font-medium text-slate-500">Konu / Yer</p>
+                            <p className="mt-0.5 text-sm font-semibold text-slate-900">{subject}</p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">{cityLine || address || '—'}</p>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-brand-100 bg-brand-50/25 px-3 py-2.5">
+                          <p className="text-[11px] font-medium text-slate-500">İletişim</p>
+                          <div className="mt-1.5">
+                            <FieldInsuredContactActions
+                              claim={{
+                                id: claim.id,
+                                fileNo: claim.fileNo,
+                                insuredName: claim.insuredName ?? insuredName,
+                                propertyAddress: claim.propertyAddress,
+                              }}
+                              phone={phone}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex w-full shrink-0 flex-col justify-center gap-1.5 border-t border-slate-100 pt-3 lg:w-[11.5rem] lg:border-l lg:border-t-0 lg:pl-3.5 lg:pt-0">
+                        <Link
+                          href={fieldStaffClaimHref(claim.id, 'foto')}
+                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:border-brand-300 hover:bg-brand-50"
+                        >
+                          <Camera className="h-3.5 w-3.5" strokeWidth={2} />
+                          Tespit Fotoğrafları
+                        </Link>
+                        <Link
+                          href={fieldStaffClaimHref(claim.id, 'not')}
+                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:border-brand-300 hover:bg-brand-50"
+                        >
+                          <StickyNote className="h-3.5 w-3.5" strokeWidth={2} />
+                          Tespit Notları
+                        </Link>
+                        <Link
+                          href={fieldStaffClaimHref(claim.id)}
+                          className="inline-flex w-full items-center justify-center gap-1 rounded-xl bg-brand-600 px-3 py-2.5 text-xs font-semibold text-white hover:bg-brand-700"
+                        >
+                          Dosyaya Git
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
                     </div>
-                    <p className="mt-2 text-xs leading-relaxed text-slate-600">{address}</p>
-                    <p className="mt-2 text-[11px] text-slate-500">
-                      Tespit Tarih Saati:{' '}
-                      <span className="font-medium text-slate-700">{inspection.doneAtLabel}</span>
-                    </p>
                   </div>
                 );
               }
@@ -774,6 +835,7 @@ function ClaimFilesPageContent() {
               const subject = resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog);
               const supplierName = resolveClaimSupplierDisplayName(claim);
               const priority = claim.priority ?? 'normal';
+              const inspection = fieldStaffInspectionStatus(claim);
               return (
                 <button
                   key={claim.id}
@@ -793,12 +855,20 @@ function ClaimFilesPageContent() {
                         <div className="mt-0.5 truncate text-[11px] text-slate-500">{subject}</div>
                       ) : null}
                     </div>
-                    <ClaimStatusBadge
-                      status={claim.currentStatus}
-                      reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
-                      approval72hExceeded={Boolean(claim.approval72hExceeded)}
-                      operationStatusLabel={claim.operationStatusLabel}
-                    />
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <ClaimStatusBadge
+                        status={claim.currentStatus}
+                        reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
+                        approval72hExceeded={Boolean(claim.approval72hExceeded)}
+                        operationStatusLabel={claim.operationStatusLabel}
+                      />
+                      <span
+                        className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
+                        data-testid="ofis-tespit-rozet"
+                      >
+                        {inspection.label}
+                      </span>
+                    </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div>
@@ -903,6 +973,7 @@ function ClaimFilesPageContent() {
                   const totalAmount = claim.invoicedAmount ?? claim.actualCostAmount ?? null;
                   const rapor = claim.latestRepairReport;
                   const supplierName = resolveClaimSupplierDisplayName(claim);
+                  const inspection = fieldStaffInspectionStatus(claim);
                   const rowAccent = claim.approval72hExceeded
                     ? 'ops-row-approval-72h'
                     : revCount > 0
@@ -932,12 +1003,20 @@ function ClaimFilesPageContent() {
                         {resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}
                       </PanelTableTd>
                       <PanelTableTd colId="status" className="table-td whitespace-nowrap">
-                        <ClaimStatusBadge
+                        <div className="flex flex-col items-start gap-1">
+                          <ClaimStatusBadge
                       status={claim.currentStatus}
                       reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
                       approval72hExceeded={Boolean(claim.approval72hExceeded)}
                       operationStatusLabel={claim.operationStatusLabel}
                     />
+                          <span
+                            className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
+                            data-testid="ofis-tespit-rozet"
+                          >
+                            {inspection.label}
+                          </span>
+                        </div>
                       </PanelTableTd>
                       <PanelTableTd colId="supplier" className="table-td text-xs whitespace-nowrap max-w-[120px]" title={supplierName ?? undefined}>
                         {supplierName ?? <span className="text-slate-300">Atanmadı</span>}

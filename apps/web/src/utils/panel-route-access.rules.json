@@ -1,6 +1,8 @@
 [
   { "path": "/panel", "roles": [] },
   { "path": "/panel/hasar-dosyalari", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "field_staff", "FIELD_STAFF", "FINANS", "MANAGER"] },
+  { "path": "/panel/saha/tespiti-tamamlananlar", "roles": ["field_staff", "FIELD_STAFF"] },
+  { "path": "/panel/saha/bekleyen-tespitler", "roles": ["field_staff", "FIELD_STAFF"] },
   { "path": "/panel/revizyon-talepleri", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "FINANS", "MANAGER"] },
   { "path": "/panel/sahiplik", "roles": ["admin", "ADMIN", "MANAGER"] },
   { "path": "/panel/personel-yonetimi", "roles": ["admin", "ADMIN", "MANAGER"] },

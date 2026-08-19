@@ -84,6 +84,45 @@ export function fieldStaffAssignedListSplit<T extends FieldStaffClaimLite>(claim
   return { pendingInspection, inspectionDone };
 }
 
+export const FIELD_STAFF_COMPLETED_INSPECTIONS_HREF = '/panel/saha/tespiti-tamamlananlar';
+export const FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL = 'Tamamlanan Tespitler';
+export const FIELD_STAFF_ASSIGNMENTS_HREF = '/panel/hasar-dosyalari';
+export const FIELD_STAFF_ASSIGNMENTS_LABEL = 'Atanan Dosyalar';
+
+/** Dosya sorumlusu — saha sayfası yok; tespit biten açık dosya Hasar Dosyaları’nda işlenir. */
+export const OFFICE_COMPLETED_INSPECTIONS_HREF = '/panel/hasar-dosyalari?status=open';
+export const OFFICE_COMPLETED_INSPECTIONS_LABEL = 'Tespiti Tamamlanan';
+
+/** Tespit işareti sonrası menü özeti / listeler yenilensin. */
+export const FIELD_STAFF_CLAIMS_CHANGED_EVENT = 'meridyen:field-staff-claims-changed';
+
+export function notifyFieldStaffClaimsChanged(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(FIELD_STAFF_CLAIMS_CHANGED_EVENT));
+}
+
+/** Tespit işlemi biten dosyalar — açık + kapalı, tekilleştirilmiş, yeni tamamlanan üstte. */
+export function fieldStaffCompletedInspectionFiles<T extends FieldStaffClaimLite & { id: string }>(
+  groups: T[][],
+): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const group of groups) {
+    for (const claim of group) {
+      if (!claim?.id || seen.has(claim.id)) continue;
+      if (!fieldStaffInspectionStatus(claim).done) continue;
+      seen.add(claim.id);
+      out.push(claim);
+    }
+  }
+  out.sort((a, b) => {
+    const ta = new Date(a.inspectionDoneAt ?? a.statusChangedAt ?? 0).getTime();
+    const tb = new Date(b.inspectionDoneAt ?? b.statusChangedAt ?? 0).getTime();
+    return tb - ta;
+  });
+  return out;
+}
+
 /**
  * Rozet renkleri — Yapılmadı belirgin ama yumuşak (yormayan uyarı).
  * Yapıldı: sakin başarı tonu.
