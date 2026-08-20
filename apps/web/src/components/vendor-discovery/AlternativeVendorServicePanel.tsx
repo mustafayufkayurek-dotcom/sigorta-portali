@@ -296,7 +296,9 @@ export function AlternativeVendorServicePanel({
                 phoneEmptyLabel="Telefon Bilgisi Bulunamadı"
                 address={addressLine || null}
                 serviceBranches={c.serviceTypes}
-                serviceAreaLabels={[c.district, c.city].filter(Boolean)}
+                serviceAreaLabels={[c.district, c.city].filter(
+                  (x): x is string => Boolean(x),
+                )}
                 rating={c.rating}
                 reviewCount={c.reviewCount}
                 systemSuggestion={index === 0}
