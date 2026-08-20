@@ -7,6 +7,7 @@ import {
   mapInboundCategoryKnown,
   mapInboundLossTypeToMeridyen,
   sanitizeInboundPhone,
+  stripInboundAddressPollution,
 } from '@sigorta/shared';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { resolveInboundFileNo } from '@sigorta/shared';
@@ -77,6 +78,11 @@ function mergeField(...values: Array<string | null | undefined>): string {
   return '';
 }
 
+function cleanAddressField(raw?: string | null): string {
+  const stripped = stripInboundAddressPollution(raw);
+  return stripped ? toTitleCaseTR(stripped) : '';
+}
+
 /** Müşteri dili → Meridyen dosya konusu (Cam Kırığı → Cam Kırılması). */
 function lockMeridyenLossLabel(raw?: string | null): string {
   const t = raw?.trim();
@@ -135,7 +141,7 @@ export function buildInboxFileOpenDraft(
     fileSubject: lockMeridyenLossLabel(fileSubjectRaw),
     insuredName: insuredNameRaw ? toTitleCaseTR(insuredNameRaw) : '',
     insuredPhone: insuredPhoneRaw,
-    insuredAddress: addressRaw ? toTitleCaseTR(addressRaw) : '',
+    insuredAddress: cleanAddressField(addressRaw),
     description: parsed.description?.trim() || undefined,
     manualFallback: options?.manualFallback,
   };
@@ -175,7 +181,7 @@ export function applyMailFieldsToDraft(
       : draft.insuredName,
     insuredPhone: sanitizeInboundPhone(fields.insuredPhone?.trim()) || draft.insuredPhone,
     insuredAddress: fields.insuredAddress?.trim()
-      ? toTitleCaseTR(fields.insuredAddress.trim())
+      ? cleanAddressField(fields.insuredAddress)
       : draft.insuredAddress,
     fileNo: resolvedFileNo.fileNo ?? '',
     fileNoWarning: resolvedFileNo.warning ?? draft.fileNoWarning,

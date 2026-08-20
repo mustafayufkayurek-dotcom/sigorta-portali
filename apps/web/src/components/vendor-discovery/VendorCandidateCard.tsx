@@ -72,6 +72,10 @@ export type VendorCandidateCardProps = {
     disabled?: boolean;
     testId?: string;
   };
+  /** Hizmet kolları (acil branş / iş grubu) */
+  serviceBranches?: string[] | null;
+  /** Hizmet verdiği il / ilçe */
+  serviceAreaLabels?: string[] | null;
   testId?: string;
 };
 
@@ -101,6 +105,8 @@ export function VendorCandidateCard({
   selectedLabel = 'Atandı',
   primaryAction,
   secondaryAction,
+  serviceBranches,
+  serviceAreaLabels,
   testId = 'tedarikci-aday-kart',
 }: VendorCandidateCardProps) {
   const phoneTrim = phone?.trim() || '';
@@ -169,6 +175,18 @@ export function VendorCandidateCard({
             <span className="text-slate-400">—</span>
           )}
         </FieldRow>
+
+        {serviceAreaLabels && serviceAreaLabels.length > 0 ? (
+          <FieldRow label="Hizmet Bölgeleri" testId="tedarikci-kart-hizmet-bolgeleri">
+            <span className="leading-snug">{serviceAreaLabels.join(', ')}</span>
+          </FieldRow>
+        ) : null}
+
+        {serviceBranches && serviceBranches.length > 0 ? (
+          <FieldRow label="Hizmet Kolları" testId="tedarikci-kart-hizmet-kollari">
+            <span className="leading-snug">{serviceBranches.join(', ')}</span>
+          </FieldRow>
+        ) : null}
 
         {showPuanFields ? (
           <>

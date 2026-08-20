@@ -268,6 +268,9 @@ export class DepartmentsService {
     if (dept.reportFormat === 'repair') {
       await this.ensureDefaultRepairFileSubjects(departmentId);
     }
+    if (dept.code === 'acil-yardim' || dept.reportFormat === 'emergency') {
+      await this.ensureAcilTesisatCatalog(departmentId);
+    }
     return this.prisma.departmentFileSubject.findMany({
       where: { departmentId },
       orderBy: { sortOrder: 'asc' },
@@ -357,6 +360,28 @@ export class DepartmentsService {
       ),
     );
     return results;
+  }
+
+  /** Acil yardım hattında Tesisat ailesi yoksa kataloga ekler (hizmet kolu ile örtüşme). */
+  private async ensureAcilTesisatCatalog(departmentId: string) {
+    const extras = [
+      { code: 'TESISAT', name: 'Tesisat', sortOrder: 90 },
+      { code: 'SIHHI_TESISAT', name: 'Sıhhi Tesisat', sortOrder: 91 },
+    ];
+    for (const subject of extras) {
+      const existing = await this.prisma.departmentFileSubject.findUnique({
+        where: { departmentId_code: { departmentId, code: subject.code } },
+      });
+      if (existing) continue;
+      await this.prisma.departmentFileSubject.create({
+        data: {
+          ...subject,
+          departmentId,
+          isSystem: true,
+          status: 'active',
+        },
+      });
+    }
   }
 
   /** Operasyon hattında aktif dosya konusu yoksa varsayılan hasar nedenlerini ekler. */

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { stripInboundAddressPollution } from '@sigorta/shared';
 import { parseSenderPersonName } from '@/utils/inbox-customer-prefill';
 import {
   InboxLinkFilePickerModal,
@@ -1286,14 +1287,26 @@ export default function GelenKutusuPage() {
       return;
     }
 
+    if (
+      (actionModal.kind === 'claim' || actionModal.kind === 'emergency')
+      && !fileSubjectInput.trim()
+    ) {
+      setActionError('Dosya konusu seçilmelidir.');
+      return;
+    }
+
     setActionLoading(true);
     setActionError('');
     try {
+      const insuredAddressClean = (() => {
+        const stripped = stripInboundAddressPollution(insuredAddressInput);
+        return stripped ? toTitleCaseTR(stripped) : '';
+      })();
       const assigneePayload = selectedAssigneeId ? { assignedUserId: selectedAssigneeId } : {};
       const fileFieldsPayload = {
         insuredName,
         insuredPhone: insuredPhoneInput.trim() || undefined,
-        insuredAddress: toTitleCaseTR(insuredAddressInput.trim()) || undefined,
+        insuredAddress: insuredAddressClean || undefined,
         fileNo: fileNoInput.trim() || undefined,
         policyNo: policyNoInput.trim() || undefined,
         claimNo: claimNoInput.trim() || undefined,
@@ -1311,7 +1324,7 @@ export default function GelenKutusuPage() {
                 firstName: firstName || undefined,
                 lastName: lastName || undefined,
                 phone: insuredPhoneInput.trim() || undefined,
-                address: toTitleCaseTR(insuredAddressInput.trim()) || undefined,
+                address: insuredAddressClean || undefined,
               },
             }
           : {};

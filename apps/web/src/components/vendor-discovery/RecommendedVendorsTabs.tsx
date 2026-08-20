@@ -208,11 +208,13 @@ export function RecommendedVendorsTabs({
               {ranked.map((v) => {
                 const selected = assignedVendorId === v.id;
                 return (
-                  <VendorCandidateCard
+                    <VendorCandidateCard
                     key={v.id}
                     name={v.name}
                     phone={v.phone}
                     address={locationLine(v) || null}
+                    serviceBranches={v.serviceBranches}
+                    serviceAreaLabels={v.serviceAreaLabels?.length ? v.serviceAreaLabels : undefined}
                     metrics={rationaleMetrics(v)}
                     systemSuggestion={firstSuggestionId === v.id}
                     selected={selected}

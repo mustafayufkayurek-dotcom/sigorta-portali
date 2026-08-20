@@ -455,6 +455,8 @@ export interface VendorRecommendation {
   phone?: string | null;
   city?: string | null;
   district?: string | null;
+  serviceBranches?: string[];
+  serviceAreaLabels?: string[];
   avgServiceScore: number | null;
   avgCost: number | null;
   avgResponseTime: number | null;

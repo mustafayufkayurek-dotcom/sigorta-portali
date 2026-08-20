@@ -5,6 +5,7 @@ import {
   getInboundFormFieldValue,
   INBOUND_ADDRESS_FIELD_LABELS,
   mapInboundLossTypeToMeridyen,
+  matchCatalogFileSubject,
 } from '@sigorta/shared';
 import { sanitizeInboundLossType } from '@/common/helpers/ihbar-konusu.helper';
 
@@ -41,10 +42,27 @@ describe('inbound address + terminology locks', () => {
     expect(getInboundFormFieldValue(fields, 'Hasar Şekli')).toBe('Cam Kırığı');
   });
 
+  it('Hasar Türü adres satırına sızmaz', () => {
+    const text = `
+Adres: Atatürk Cad. No: 5 Merkez / Uşak Hasar Türü : Tesisat
+Hasar Şekli: Tesisat
+`.trim();
+    const fields = extractInboundFormFields(text);
+    expect(getInboundFormFieldValue(fields, ...INBOUND_ADDRESS_FIELD_LABELS)).toBe(
+      'Atatürk Cad. No: 5 Merkez / Uşak',
+    );
+  });
+
   it('Cam Kırığı → Cam Kırılması kilitli eşlemesi', () => {
     expect(mapInboundLossTypeToMeridyen('Cam Kırığı')).toBe('Cam Kırılması');
     expect(mapInboundLossTypeToMeridyen('cam kirigi')).toBe('Cam Kırılması');
     expect(mapInboundLossTypeToMeridyen('CAM KIRIK')).toBe('Cam Kırılması');
     expect(sanitizeInboundLossType('Cam Kırığı', 'Konut Cam')).toBe('Cam Kırılması');
+  });
+
+  it('Tesisat kaba konusunu Sıhhi Tesisat kataloğuna hizalar', () => {
+    expect(matchCatalogFileSubject('Tesisat', ['Cam Kırılması', 'Sıhhi Tesisat', 'Elektrik Arızası'])).toBe(
+      'Sıhhi Tesisat',
+    );
   });
 });

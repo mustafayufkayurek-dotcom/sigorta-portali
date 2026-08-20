@@ -40,7 +40,7 @@ export function extractHeuristicFields(
   const subjectHints = extractSubjectHints(message.subject);
   const remed = parseRemedSubjectLine(message.subject);
 
-  const bodyLossType = getInboundFormFieldValue(fields, 'Hasar Şekli', 'Branş');
+  const bodyLossType = getInboundFormFieldValue(fields, 'Hasar Şekli', 'Hasar Türü', 'Branş', 'Dosya Konusu');
   const subjectCategory = remed?.rawCategory;
   const fileSubject =
     mapInboundCategoryToMeridyen(subjectCategory)

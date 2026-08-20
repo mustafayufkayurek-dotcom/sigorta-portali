@@ -16,7 +16,7 @@ import {
   Send,
   Wallet,
 } from 'lucide-react';
-import { resolveEmergencyOperationLabel } from '@sigorta/shared';
+import { resolveEmergencyOperationLabel, stripInboundAddressPollution } from '@sigorta/shared';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
 import type { ManualDecisionAction } from '@/components/operasyon/ManualDecisionModal';
 import {
@@ -33,6 +33,8 @@ import ClosurePhotosPanel from '@/components/file-documents/ClosurePhotosPanel';
 import { InboundEmailCorrespondencePanel } from '@/components/operation-inbox/InboundEmailCorrespondencePanel';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
+import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
+import { deriveEmergencyLocation } from '@/utils/emergency-location-from-address';
 import {
   isHistoricalEmergencyFile,
   readHistoricalFinanceOptIn,
@@ -926,7 +928,11 @@ export default function AcilDosyaDetayPage() {
         const recRes = await getRecommendedVendors(id, 20);
         let list = recRes.data ?? [];
         if (list.length === 0) {
-          const loc = { city: vaka?.city ?? null, district: vaka?.district ?? null };
+          const loc = deriveEmergencyLocation({
+            city: vaka?.city,
+            district: vaka?.district,
+            address: vaka?.address,
+          });
           if (loc.city) {
             const pool = await getEmergencyVendors(undefined, loc);
             list = (pool.data ?? []).map((v) => ({
@@ -952,7 +958,7 @@ export default function AcilDosyaDetayPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, vaka?.city, vaka?.district]);
+  }, [id, vaka?.city, vaka?.district, vaka?.address]);
 
   useEffect(() => {
     if (!id) return;
@@ -2000,10 +2006,14 @@ export default function AcilDosyaDetayPage() {
   const assigneeName = owner.name;
   const assigneeInitials = assigneeName !== '—' ? personInitials(assigneeName) : '—';
   const assigneeContact = [owner.phone, owner.email].filter(Boolean).join(' · ');
-  const addressDisplay = [
-    vaka.address,
-    vaka.city || null,
-  ].filter(Boolean).join(', ') + (vaka.district ? ` / ${vaka.district}` : '') || '—';
+  const addressDisplay = stripInboundAddressPollution(vaka.address)
+    || [vaka.city, vaka.district].filter(Boolean).join(' / ')
+    || '—';
+  const recommendLocation = deriveEmergencyLocation({
+    city: vaka.city,
+    district: vaka.district,
+    address: vaka.address,
+  });
   const liveBudgetForKpis = readLiveBudgetAmounts();
   const finansKpis = resolveAcilFinanceDisplayKpis({
     totalGelir: costSummary.totalGelir,
@@ -2217,13 +2227,13 @@ export default function AcilDosyaDetayPage() {
           <div className="min-w-0" data-testid="sigortali-telefon">
             <p className="text-xs text-slate-400">Sigortalı Telefon</p>
             {phone !== '—' ? (
-              <a
-                href={`tel:${phone.replace(/\s/g, '')}`}
-                className="mt-0.5 block text-sm font-medium text-slate-800 truncate hover:text-blue-700 hover:underline tabular-nums"
-                title={phone}
-              >
-                {phone}
-              </a>
+              <PhoneContactActions
+                phone={phone}
+                variant="inline"
+                accent="blue"
+                size="sm"
+                className="mt-0.5"
+              />
             ) : (
               <p className="mt-0.5 text-sm font-medium text-slate-800 truncate" title={phone}>{phone}</p>
             )}
@@ -2469,8 +2479,8 @@ export default function AcilDosyaDetayPage() {
                 || flow.vendorProcess === 'reddedildi'
                 || (!recsLoading && vendorRecs.length === 0 && !vaka.assignedVendorId)
               }
-              city={vaka.city ?? undefined}
-              district={vaka.district ?? undefined}
+              city={recommendLocation.city}
+              district={recommendLocation.district}
               serviceType={vaka.issueType ?? undefined}
               category="acil"
               helpText="Kayıtlı öneri memnuniyet ve maliyet ile sıralanır. Bölgede yoksa alternatif önerilere bakın."

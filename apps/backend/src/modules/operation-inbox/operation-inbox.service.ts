@@ -35,7 +35,7 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
-import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING } from '@sigorta/shared';
+import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -671,14 +671,15 @@ export class OperationInboxService {
       dto.claimNo?.trim()
       || extracted.claimNo?.trim()
       || fileNo;
-    const propertyAddressText =
+    const propertyAddressText = stripInboundAddressPollution(
       dto.insuredAddress?.trim()
       || extracted.address?.trim()
       || (await this.routingService.resolveAddressFromExistingFiles(
         policyNo !== 'Belirtilmedi' ? policyNo : extracted.policyNo,
         fileNo,
       ))
-      || undefined;
+      || '',
+    ) || undefined;
     const { city, district } = await resolveCityDistrictFromAddress(
       this.prisma,
       propertyAddressText,
@@ -826,15 +827,18 @@ export class OperationInboxService {
       this.resolveInsuredName(dto.insuredName, extracted, message.fromName, message.fromAddress)
       || 'Belirtilmemiş';
     const customerPhone = dto.insuredPhone?.trim() || extracted.phone?.trim() || undefined;
-    let address = dto.insuredAddress?.trim() || extracted.address?.trim() || '';
+    let address = stripInboundAddressPollution(
+      dto.insuredAddress?.trim() || extracted.address?.trim() || '',
+    );
     if (!address || address === 'Belirtilmemiş') {
       const inferred = await this.routingService.resolveAddressFromExistingFiles(
         dto.policyNo?.trim() || extracted.policyNo,
         dto.fileNo?.trim() || extracted.fileNo,
       );
-      if (inferred?.trim()) address = inferred.trim();
+      if (inferred?.trim()) address = stripInboundAddressPollution(inferred.trim());
     }
     if (!address) address = 'Belirtilmemiş';
+    const { city, district } = await resolveCityDistrictFromAddress(this.prisma, address);
     const issueType = (() => {
       const canonical = sanitizeInboundLossType(
         dto.lossType?.trim() || extracted.lossType,
@@ -879,6 +883,8 @@ export class OperationInboxService {
         customerId: assistantCustomerId,
         fileNo,
         address,
+        city: city ?? undefined,
+        district: district ?? undefined,
         issueType,
         urgency,
         fileDate: (message.receivedAt ?? new Date()).toISOString(),

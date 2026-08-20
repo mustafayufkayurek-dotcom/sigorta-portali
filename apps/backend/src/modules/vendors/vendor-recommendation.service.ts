@@ -167,6 +167,13 @@ export class VendorRecommendationService {
         phone: vendor.phone,
         city: vendor.city,
         district: vendor.district,
+        serviceBranches: [...new Set([
+          ...(vendor.serviceBranches ?? []),
+          ...(vendor.workGroupNames ?? []),
+        ])],
+        serviceAreaLabels: vendor.serviceAreaLabels?.length
+          ? vendor.serviceAreaLabels
+          : [vendor.district, vendor.city].filter((x): x is string => Boolean(x)),
         avgServiceScore: metrics.avgServiceScore,
         avgCost: metrics.avgCost,
         avgResponseTime: metrics.avgResponseTimeHours,
@@ -389,6 +396,13 @@ export class VendorRecommendationService {
           workGroup: { select: { code: true, name: true } },
         },
       },
+      serviceAreas: {
+        select: {
+          districtId: true,
+          province: { select: { name: true } },
+          district: { select: { name: true } },
+        },
+      },
     } as const;
 
     let rows = await this.prisma.vendor.findMany({
@@ -436,6 +450,11 @@ export class VendorRecommendationService {
       const branches = Array.isArray(v.serviceBranches)
         ? (v.serviceBranches as unknown[]).map((b) => String(b))
         : [];
+      const serviceAreaLabels = (v.serviceAreas ?? []).map((sa) => (
+        sa.districtId && sa.district?.name
+          ? `${sa.province?.name ?? ''} / ${sa.district.name}`
+          : `${sa.province?.name ?? ''} (Tümü)`
+      ).trim()).filter(Boolean);
       return {
         id: v.id,
         name: v.name,
@@ -444,6 +463,7 @@ export class VendorRecommendationService {
         district: v.district,
         category: v.category,
         serviceBranches: branches,
+        serviceAreaLabels,
         workGroupNames: v.vendorWorkGroups.map((wg) => wg.workGroup.name),
         workGroupCodes: v.vendorWorkGroups.map((wg) => wg.workGroup.code),
       };
