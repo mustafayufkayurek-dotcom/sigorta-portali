@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-08-20",
-  "label": "v520-acil-oneri-adres-telefon",
-  "description": "Full v520: Acil tedarikçi önerisi adres/telefon temizliği, alternatif kart alanları. Migration yok (No pending). Rollback web/backend v519 (deploy öncesi canlı).",
+  "label": "v521-acil-oneri-ilk3-accordion",
+  "description": "Web-only v521: Acil kayıtlı öneride skorlu ilk 3 açık, diğerleri kapalı/açılır. Backend v520 aynı. Migration yok. Rollback web v520 / backend v519.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v520-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v520-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v521-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v519-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v520-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v519-amd64"
   },
   "mustPassSmokeRoutes": [
