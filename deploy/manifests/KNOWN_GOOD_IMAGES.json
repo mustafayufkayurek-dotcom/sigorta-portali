@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-19",
-  "label": "v518-hasar-dis-onay-bekliyor",
-  "description": "Full v518: dış onay bekleyen hasar raporu Onay Bekliyor; liste e-postası gerçek onaya gider. Migration yok. Rollback web v517 / backend v516.",
+  "updatedAt": "2026-08-20",
+  "label": "v520-acil-oneri-adres-telefon",
+  "description": "Full v520: Acil tedarikçi önerisi adres/telefon temizliği, alternatif kart alanları. Migration yok (No pending). Rollback web/backend v519 (deploy öncesi canlı).",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v518-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v518-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v520-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v520-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v517-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v516-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v519-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v519-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
