@@ -30,6 +30,8 @@ export const INBOUND_FORM_FIELD_LABELS: { key: string; label: string }[] = [
   { key: 'addressAlt10', label: 'Hasar Mahalli' },
   { key: 'category', label: 'Hasar Şekli' },
   { key: 'categoryAlt', label: 'Branş' },
+  { key: 'categoryAlt2', label: 'Hasar Türü' },
+  { key: 'categoryAlt3', label: 'Dosya Konusu' },
   { key: 'description', label: 'Açıklama' },
   { key: 'descriptionAlt', label: 'Hasar Açıklaması' },
 ];
@@ -38,6 +40,16 @@ export const INBOUND_FORM_FIELD_LABELS: { key: string; label: string }[] = [
 export const INBOUND_ADDRESS_FIELD_LABELS = INBOUND_FORM_FIELD_LABELS
   .filter((f) => f.key.startsWith('address'))
   .map((f) => f.label);
+
+/** Adres değerine sızan sonraki form etiketi (Hasar Türü : Tesisat). */
+const INBOUND_ADDRESS_TRAILING_LABEL =
+  /\s+(Hasar\s+T[uü]r[uü]|Hasar\s+[SŞ]ekli|Dosya\s+Konusu|Bran[sş])\s*[:：]\s*[\s\S]*$/i;
+
+/** Kayıtlı veya çıkarılmış adresten konu/hasar etiketi kirliliğini keser. */
+export function stripInboundAddressPollution(value?: string | null): string {
+  if (!value?.trim()) return '';
+  return value.trim().replace(INBOUND_ADDRESS_TRAILING_LABEL, '').trim();
+}
 
 const INBOUND_FORM_TITLE_PATTERN =
   /\b(KONUT HASAR İHBAR FORMU|HASAR İHBAR FORMU|ACİL YARDIM İHBAR FORMU|İHBAR FORMU)\b/i;
@@ -121,6 +133,12 @@ export function extractInboundFormFields(text: string): InboundFormField[] {
     const displayLabel = INBOUND_FORM_FIELD_LABELS.find(
       (f) => f.label.toLocaleLowerCase('tr-TR') === label.toLocaleLowerCase('tr-TR'),
     )?.label ?? label;
+
+    if (INBOUND_ADDRESS_FIELD_LABELS.some(
+      (l) => l.toLocaleLowerCase('tr-TR') === displayLabel.toLocaleLowerCase('tr-TR'),
+    )) {
+      value = stripInboundAddressPollution(value);
+    }
 
     const dedupeKey = displayLabel.toLocaleLowerCase('tr-TR');
     if (value && !seen.has(dedupeKey)) {

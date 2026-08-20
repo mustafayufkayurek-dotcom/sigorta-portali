@@ -973,7 +973,20 @@ function GenelBakisTab({
             <InfoRow label="Yetkili E-posta" value={vendor.authorizedEmail ? <a href={`mailto:${vendor.authorizedEmail}`} className="text-brand-600 hover:underline">{vendor.authorizedEmail}</a> : null} />
             <InfoRow label="Vergi Bilgileri" value={[vendor.taxOffice ? toTitleCaseTR(vendor.taxOffice) : null, vendor.taxNumber].filter(Boolean).join(' · ') || null} />
             <InfoRow label="Referans" value={vendor.referral ? toTitleCaseTR(vendor.referral) : null} />
-            <InfoRow label="Hizmet Bölgeleri" value={coverageAreas.length ? `${coverageAreas.length} Bölge Tanımlı` : 'Henüz Tanımlı Değil'} />
+            <InfoRow
+              label="Hizmet Bölgeleri"
+              value={
+                coverageAreas.length
+                  ? coverageAreas.map((area: any) => (
+                    area.district?.name
+                      ? `${area.province?.name ?? 'İl'} / ${area.district.name}`
+                      : `${area.province?.name ?? 'İl'} (Tümü)`
+                  )).join(', ')
+                  : (vendor.city || vendor.district)
+                    ? [vendor.city, vendor.district].filter(Boolean).join(' / ')
+                    : 'Henüz Tanımlı Değil'
+              }
+            />
             <InfoRow label="Hizmet Türleri" value={serviceTypes.length ? serviceTypes.map((s) => toTitleCaseTR(s)).join(', ') : 'Henüz Tanımlı Değil'} />
           </div>
         </SectionCard>

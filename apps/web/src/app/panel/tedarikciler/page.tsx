@@ -617,12 +617,12 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
           </div>
 
           {/* Hizmet Kolları */}
-          {(workGroups.length > 0 || acilBranches.length > 0) && (
-            <div className="px-5 pt-4 pb-4 border-b border-slate-50">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 flex-shrink-0">{Icon.briefcase}</span>
-                <p className="text-xs font-semibold text-slate-700 tracking-wide">Tedarikçi Hizmet Kolları</p>
-              </div>
+          <div className="px-5 pt-4 pb-4 border-b border-slate-50">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 flex-shrink-0">{Icon.briefcase}</span>
+              <p className="text-xs font-semibold text-slate-700 tracking-wide">Tedarikçi Hizmet Kolları</p>
+            </div>
+            {workGroups.length > 0 || acilBranches.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {workGroups.map((vwg: any) => (
                   <span key={vwg.workGroupId ?? vwg.id} className="inline-flex items-center text-xs bg-blue-50 text-blue-700 rounded-full px-2.5 py-1 border border-blue-100">
@@ -635,16 +635,18 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
                   </span>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-xs text-slate-400">Henüz Tanımlı Değil</p>
+            )}
+          </div>
 
           {/* Hizmet Bölgeleri */}
-          {serviceAreas.length > 0 && (
-            <div className="px-5 pt-4 pb-4 border-b border-slate-50">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-brand-600 flex-shrink-0">{Icon.mapPin}</span>
-                <p className="text-xs font-semibold text-slate-700 tracking-wide">Hizmet Bölgeleri</p>
-              </div>
+          <div className="px-5 pt-4 pb-4 border-b border-slate-50">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-brand-600 flex-shrink-0">{Icon.mapPin}</span>
+              <p className="text-xs font-semibold text-slate-700 tracking-wide">Hizmet Bölgeleri</p>
+            </div>
+            {serviceAreas.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {serviceAreas.map((sa: any, i: number) => {
                   const label = sa.districtId
@@ -657,8 +659,16 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
                   );
                 })}
               </div>
-            </div>
-          )}
+            ) : (vendor.city || vendor.district) ? (
+              <div className="flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center text-xs bg-slate-50 text-slate-700 rounded-full px-2.5 py-1 border border-slate-200">
+                  {[vendor.city, vendor.district].filter(Boolean).join(' / ')}
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">Henüz Tanımlı Değil</p>
+            )}
+          </div>
 
           {/* Banka Bilgileri */}
           {(vendor.iban || vendor.bankName) && (

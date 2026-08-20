@@ -1,7 +1,10 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import type { InboxFileOpenDraft } from '@/utils/inbox-file-open-draft';
+import { fetchInboxFileSubjectNames } from '@/utils/damage-reason-options';
+import { matchCatalogFileSubject } from '@sigorta/shared';
 import { isInsuranceBrandFileNo } from '@/utils/claim-list-column-fields';
 import {
   CUSTOMER_TYPE_OPTIONS,
@@ -304,6 +307,34 @@ export function InboxOpenFileModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const [subjectCatalog, setSubjectCatalog] = useState<string[]>([]);
+  const userTouchedSubject = useRef(false);
+
+  useEffect(() => {
+    if (!open) {
+      userTouchedSubject.current = false;
+      setSubjectCatalog([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchInboxFileSubjectNames(kind)
+      .then((names) => {
+        if (!cancelled) setSubjectCatalog(names);
+      })
+      .catch(() => {
+        if (!cancelled) setSubjectCatalog([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, kind]);
+
+  useEffect(() => {
+    if (!open || userTouchedSubject.current || subjectCatalog.length === 0) return;
+    const matched = matchCatalogFileSubject(fileSubject, subjectCatalog);
+    if (matched && matched !== fileSubject) onFileSubjectChange(matched);
+  }, [open, subjectCatalog, fileSubject, onFileSubjectChange]);
+
   if (!open || !draft) return null;
 
   const insuranceOk =
@@ -319,12 +350,14 @@ export function InboxOpenFileModal({
     || (!!newCustomerEntityType && !!newCustomerSubType?.trim());
   const fileNoBrand = isInsuranceBrandFileNo(fileNo, draft.insurer);
   const fileNoIsPolicy = Boolean(fileNo.trim() && policyNo.trim() && fileNo.trim() === policyNo.trim());
+  const fileSubjectOk = !!fileSubject.trim();
   const canConfirm =
-    !loading && instructionOk && insuranceOk && insuredOk && assistantOk && newCustomerTypeOk && !fileNoBrand && !fileNoIsPolicy;
+    !loading && instructionOk && insuranceOk && insuredOk && assistantOk && newCustomerTypeOk && fileSubjectOk && !fileNoBrand && !fileNoIsPolicy;
 
   const confirmBlockers: string[] = [];
   if (!instructionOk) confirmBlockers.push('Talimat en az 3 karakter olmalı');
   if (!insuredOk) confirmBlockers.push('Sigortalı adı soyadı gerekli');
+  if (!fileSubjectOk) confirmBlockers.push('Dosya konusu seçilmeli');
   if (kind === 'emergency' && !assistantOk) confirmBlockers.push('Asistan firması seçilmeli');
   if (kind === 'claim' && !insuranceOk) confirmBlockers.push('Sigorta şirketi seçilmeli');
   if (fileNoBrand) confirmBlockers.push('Dosya No sigorta şirketi adı olamaz');
@@ -474,14 +507,32 @@ export function InboxOpenFileModal({
               <p className="text-xs font-medium text-slate-600">Dosya Detayları</p>
             </div>
             <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FieldInput
-                label="Dosya Konusu"
-                value={fileSubject}
-                onChange={onFileSubjectChange}
-                onBlurTitleCase
-                disabled={loading || usersLoading}
-                placeholder="Mail konusundan (ör. Konut Cam)"
-              />
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  Dosya Konusu
+                  <span className="text-status-danger ml-0.5">*</span>
+                </label>
+                <select
+                  value={fileSubject}
+                  onChange={(e) => {
+                    userTouchedSubject.current = true;
+                    onFileSubjectChange(e.target.value);
+                  }}
+                  disabled={loading || usersLoading}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-60"
+                >
+                  <option value="">Seçiniz...</option>
+                  {subjectCatalog.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                  {fileSubject.trim() && !subjectCatalog.some((n) => n.toLocaleLowerCase('tr-TR') === fileSubject.trim().toLocaleLowerCase('tr-TR')) && (
+                    <option value={fileSubject}>{fileSubject}</option>
+                  )}
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Katalogdan seçin. Mail konusu kaba ise (ör. Tesisat) doğru hizmet kolunu işaretleyin.
+                </p>
+              </div>
               <FieldInput
                 label="Poliçe No"
                 value={policyNo}

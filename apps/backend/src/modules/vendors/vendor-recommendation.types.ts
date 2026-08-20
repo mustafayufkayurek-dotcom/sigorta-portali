@@ -7,6 +7,10 @@ export interface VendorRecommendationItem {
   phone: string | null;
   city: string | null;
   district: string | null;
+  /** Acil hizmet kolları (serviceBranches). */
+  serviceBranches?: string[];
+  /** Hizmet verdiği il / ilçe etiketleri. */
+  serviceAreaLabels?: string[];
   avgServiceScore: number | null;
   avgCost: number | null;
   /** Ortalama müdahale süresi (saat). */

@@ -1143,7 +1143,9 @@ async function main() {
     { code: 'hirsizlik-guvenlik', name: 'Hırsızlık/Güvenlik', category: 'acil_yardim', sortOrder: 8 },
     { code: 'boru-patlamasi', name: 'Boru Patlaması', category: 'acil_yardim', sortOrder: 9 },
     { code: 'asansor-arizasi', name: 'Asansör Arızası', category: 'acil_yardim', sortOrder: 10 },
-    { code: 'diger-acil', name: 'Diğer', category: 'acil_yardim', sortOrder: 11 },
+    { code: 'tesisat', name: 'Tesisat', category: 'acil_yardim', sortOrder: 11 },
+    { code: 'sihhi-tesisat', name: 'Sıhhi Tesisat', category: 'acil_yardim', sortOrder: 12 },
+    { code: 'diger-acil', name: 'Diğer', category: 'acil_yardim', sortOrder: 13 },
   ];
 
   for (const cs of claimSubjects) {
