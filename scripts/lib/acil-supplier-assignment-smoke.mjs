@@ -57,10 +57,17 @@ if (tabs.includes('acilAlpha') || tabs.includes("localeCompare(b.name, 'tr')")) 
 if (!tabs.includes('list.slice(0, TOP_N)')) {
   fail('UI skorlu TOP_N kesiti yok');
 }
+if (!tabs.includes('TOP_FEATURED = 3')) {
+  fail('UI skorlu ilk 3 (TOP_FEATURED) yok — tasarım kaybolmuş');
+}
+if (!tabs.includes('tedarikci-diger-ac-kapa') || !tabs.includes('Diğer kayıtlı tedarikçiler')) {
+  fail('Diğer kayıtlılar kapalı/açılır kutusu yok');
+}
 if (!tabs.includes('Alternatif Önerilere Bak')) {
   fail('Bölge boşken Alternatif Öneriler geçişi yok');
 }
 pass('UI: skorlu kayıtlı liste, boş bölgede alternatif');
+pass('UI: ilk 3 açık + diğerleri kapalı/açılır kilitli');
 
 const page = read('apps/web/src/app/panel/acil-yardim/[id]/page.tsx');
 if (!page.includes('getRecommendedVendors(id, 20)')) {
