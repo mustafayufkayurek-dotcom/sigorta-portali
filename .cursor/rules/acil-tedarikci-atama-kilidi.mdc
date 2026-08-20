@@ -14,7 +14,7 @@ alwaysApply: true
 1. **Dosya Sorumlusu kalır** (`office_staff`).
 2. Liste **il + ilçe** (+ `serviceAreas`). Kocaeli dosyasına Muğla düşmez. Kayıtlı aday uzmanlık süzgeciyle düşmez (`keepAllAreaCandidates`).
 3. Sıra Hasar ile aynı **compositeScore** (kalite, maliyet hafızası, müdahale, tamamlama). Ulusal A→Z kesiti yok.
-4. Bölgede aday yoksa kayıtlı liste boş + **Alternatif Öneriler** (UI’da Google / API yazılmaz).
+4. UI: skorlu **ilk 3 açık önerilir**; aynı listedeki diğer kayıtlılar **kapalı/açılır**. Bölgede aday yoksa kayıtlı liste boş + **Alternatif Öneriler** (UI’da Google / API yazılmaz).
 5. «Yalnızca bu dosyada kullanım» kaydı öneri havuzuna girmez. Havuza eklenince sonraki dosyada önerilir.
 6. Hizmet bitince dosyaya özel tedarikçi için **Tedarikçi Kaydı** tavsiyesi.
 7. UI başlığı: **Önerilen Tedarikçiler**.

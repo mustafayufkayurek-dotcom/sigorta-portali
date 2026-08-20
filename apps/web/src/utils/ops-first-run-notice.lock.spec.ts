@@ -38,7 +38,9 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(acilPage, /OpsFirstRunNotice/);
     assert.match(acilPage, /OPS_NOTICE\.acilKayitliTedarikci/);
     assert.match(acilPage, /tedarikci-ilk-kullanim-seridi/);
-    assert.equal(OPS_NOTICE.acilKayitliTedarikci.id, 'acil-kayitli-tedarikci-v516');
+    assert.equal(OPS_NOTICE.acilKayitliTedarikci.id, 'acil-kayitli-tedarikci-v520');
+    assert.match(OPS_NOTICE.acilKayitliTedarikci.body, /ilk 3/);
+    assert.match(OPS_NOTICE.acilKayitliTedarikci.body, /kapalı/);
   });
 
   it('Acil yeni dosyada vekalet şeridi durur', () => {

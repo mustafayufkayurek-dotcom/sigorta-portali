@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Building2 } from 'lucide-react';
+import { Building2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { VendorRecommendation } from '@/utils/emergencyApi';
 import { AlternativeVendorServicePanel } from './AlternativeVendorServicePanel';
 import { VendorCandidateCard } from './VendorCandidateCard';
 
 export type VendorTabId = 'kayitli' | 'alternatif';
 
+/** Bölge havuzu üst sınırı (API ile aynı) */
 const TOP_N = 20;
+/** Memnuniyet + maliyet skoruna göre açık önerilen adet */
+const TOP_FEATURED = 3;
 const QUALITY_WARN_TEXT =
   'Memnuniyet veya maliyet değerlendirmesi olumsuz. Alternatif tedarikçi arayın.';
 
@@ -85,9 +88,49 @@ type Props = {
   }) => void | Promise<void>;
 };
 
+function VendorCardRow({
+  v,
+  firstSuggestionId,
+  assignedVendorId,
+  assignLoading,
+  onAssign,
+}: {
+  v: VendorRecommendation;
+  firstSuggestionId: string | null;
+  assignedVendorId?: string | null;
+  assignLoading: boolean;
+  onAssign: (vendorId: string) => void | Promise<void>;
+}) {
+  const selected = assignedVendorId === v.id;
+  return (
+    <VendorCandidateCard
+      name={v.name}
+      phone={v.phone}
+      address={locationLine(v) || null}
+      serviceBranches={v.serviceBranches}
+      serviceAreaLabels={v.serviceAreaLabels?.length ? v.serviceAreaLabels : undefined}
+      metrics={rationaleMetrics(v)}
+      systemSuggestion={firstSuggestionId === v.id}
+      selected={selected}
+      warningText={v.qualityWarning ? QUALITY_WARN_TEXT : null}
+      testId="tedarikci-oneri"
+      primaryAction={
+        selected
+          ? undefined
+          : {
+              label: 'Dosyaya Ata',
+              onClick: () => void onAssign(v.id),
+              disabled: assignLoading || Boolean(assignedVendorId),
+              testId: 'tedarikci-ata',
+            }
+      }
+    />
+  );
+}
+
 /**
  * Önerilen Tedarikçiler — karar destek sekmeleri.
- * Sekme 1: Kayıtlı Tedarikçiler (varsayılan)
+ * Sekme 1: Kayıtlı Tedarikçiler (varsayılan) — üstte skorlu ilk 3; diğerleri kapalı/açılır
  * Sekme 2: Alternatif Öneriler — yalnızca sekmeden
  */
 export function RecommendedVendorsTabs({
@@ -118,16 +161,24 @@ export function RecommendedVendorsTabs({
     return list.slice(0, TOP_N);
   }, [vendors]);
 
+  const featured = useMemo(() => ranked.slice(0, TOP_FEATURED), [ranked]);
+  const rest = useMemo(() => ranked.slice(TOP_FEATURED), [ranked]);
+
   const hasQualityWarning = ranked.some((v) => v.qualityWarning);
   const firstSuggestionId = ranked.find((v) => !v.qualityWarning)?.id ?? null;
 
   const [tab, setTab] = useState<VendorTabId>('kayitli');
+  const [restOpen, setRestOpen] = useState(false);
 
   useEffect(() => {
     if (preferAlternatif) {
       setTab('alternatif');
     }
   }, [preferAlternatif]);
+
+  useEffect(() => {
+    setRestOpen(false);
+  }, [vendors]);
 
   return (
     <div
@@ -204,36 +255,55 @@ export function RecommendedVendorsTabs({
                   Kayıtlı tedarikçilerde olumsuz değerlendirme var. Alternatif tedarikçi aramanız gerekir.
                 </p>
               ) : null}
-            <ul className="space-y-2">
-              {ranked.map((v) => {
-                const selected = assignedVendorId === v.id;
-                return (
-                    <VendorCandidateCard
+              <p className="mb-1.5 text-[11px] font-semibold text-slate-600" data-testid="tedarikci-oneri-baslik">
+                Önerilen ({featured.length})
+              </p>
+              <ul className="space-y-2" data-testid="tedarikci-oneri-acik-liste">
+                {featured.map((v) => (
+                  <VendorCardRow
                     key={v.id}
-                    name={v.name}
-                    phone={v.phone}
-                    address={locationLine(v) || null}
-                    serviceBranches={v.serviceBranches}
-                    serviceAreaLabels={v.serviceAreaLabels?.length ? v.serviceAreaLabels : undefined}
-                    metrics={rationaleMetrics(v)}
-                    systemSuggestion={firstSuggestionId === v.id}
-                    selected={selected}
-                    warningText={v.qualityWarning ? QUALITY_WARN_TEXT : null}
-                    testId="tedarikci-oneri"
-                    primaryAction={
-                      selected
-                        ? undefined
-                        : {
-                            label: 'Dosyaya Ata',
-                            onClick: () => void onAssign(v.id),
-                            disabled: assignLoading || Boolean(assignedVendorId),
-                            testId: 'tedarikci-ata',
-                          }
-                    }
+                    v={v}
+                    firstSuggestionId={firstSuggestionId}
+                    assignedVendorId={assignedVendorId}
+                    assignLoading={assignLoading}
+                    onAssign={onAssign}
                   />
-                );
-              })}
-            </ul>
+                ))}
+              </ul>
+              {rest.length > 0 ? (
+                <div className="mt-2 border-t border-slate-100 pt-2" data-testid="tedarikci-diger-kutu">
+                  <button
+                    type="button"
+                    onClick={() => setRestOpen((o) => !o)}
+                    className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
+                    aria-expanded={restOpen}
+                    data-testid="tedarikci-diger-ac-kapa"
+                  >
+                    <span>
+                      Diğer kayıtlı tedarikçiler ({rest.length})
+                    </span>
+                    {restOpen ? (
+                      <ChevronUp className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                    )}
+                  </button>
+                  {restOpen ? (
+                    <ul className="mt-2 space-y-2" data-testid="tedarikci-diger-liste">
+                      {rest.map((v) => (
+                        <VendorCardRow
+                          key={v.id}
+                          v={v}
+                          firstSuggestionId={firstSuggestionId}
+                          assignedVendorId={assignedVendorId}
+                          assignLoading={assignLoading}
+                          onAssign={onAssign}
+                        />
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
             </>
           ) : (
             <div

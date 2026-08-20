@@ -23,8 +23,12 @@ const alt = readFileSync(
 );
 
 describe('acil tedarikçi atama UI LOCK', () => {
-  it('kayıtlı listede skor + TOP_N; alfabetik acil kesiti yok', () => {
+  it('kayıtlı listede skor + TOP_N; üstte TOP_FEATURED=3; diğerleri kapalı/açılır; alfabetik acil kesiti yok', () => {
     assert.match(tabs, /list\.slice\(0, TOP_N\)/);
+    assert.match(tabs, /TOP_FEATURED = 3/);
+    assert.match(tabs, /ranked\.slice\(0, TOP_FEATURED\)/);
+    assert.match(tabs, /tedarikci-diger-ac-kapa/);
+    assert.match(tabs, /Diğer kayıtlı tedarikçiler/);
     assert.match(tabs, /compositeScore/);
     assert.doesNotMatch(tabs, /acilAlpha/);
     assert.doesNotMatch(tabs, /localeCompare\(b\.name, 'tr'\)/);

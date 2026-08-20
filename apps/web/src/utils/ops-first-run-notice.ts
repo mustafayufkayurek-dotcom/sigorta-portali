@@ -4,10 +4,10 @@ export const OPS_FIRST_RUN_STORAGE_PREFIX = 'meridyen-ops-notice:';
 
 export const OPS_NOTICE = {
   acilKayitliTedarikci: {
-    id: 'acil-kayitli-tedarikci-v516',
+    id: 'acil-kayitli-tedarikci-v520',
     title: 'Tedarikçi Önerisi',
     body:
-      'Önce bu il ve ilçedeki kayıtlı tedarikçiler çıkar. Memnuniyet veya maliyet olumsuzsa yazılım uyarır; alternatif bakın. Aynı olumsuz tedarikçiyle 2. kez çalışılırsa yöneticiye e-posta gider.',
+      'Üstte memnuniyet ve fiyat avantajı yüksek ilk 3 tedarikçi açık önerilir. Diğer kayıtlılar aynı listede kapalı kalır; açıp bakabilirsiniz. Olumsuz değerlendirmede yazılım uyarır; alternatif bakın. Aynı olumsuz tedarikçiyle 2. kez çalışılırsa yöneticiye e-posta gider.',
   },
   acilDosyaSorumlusuVekalet: {
     id: 'acil-dosya-sorumlusu-vekalet-v515',
