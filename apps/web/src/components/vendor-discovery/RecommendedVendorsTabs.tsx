@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Building2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { VendorRecommendation } from '@/utils/emergencyApi';
+import { resolveRegionProximity } from '@/utils/vendor-region-proximity';
 import { AlternativeVendorServicePanel } from './AlternativeVendorServicePanel';
 import { VendorCandidateCard } from './VendorCandidateCard';
 
@@ -25,20 +26,18 @@ function formatCost(cost: number | null | undefined): string {
   return `${Number(cost).toLocaleString('tr-TR')} TL`;
 }
 
-function formatDistance(v: VendorRecommendation): string {
-  const label = v.distanceLabel?.trim();
-  if (label) return label;
-  if (v.distanceKm != null && Number.isFinite(v.distanceKm)) {
-    return `${(Math.round(v.distanceKm * 10) / 10).toLocaleString('tr-TR')} km`;
-  }
-  return '—';
-}
-
-function formatLastWorkedAt(iso: string | null | undefined): string {
+function formatLastWorkedAgo(iso: string | null | undefined): string {
   if (!iso?.trim()) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('tr-TR');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const then = new Date(d);
+  then.setHours(0, 0, 0, 0);
+  const days = Math.round((today.getTime() - then.getTime()) / 86_400_000);
+  if (days < 0) return '—';
+  if (days === 0) return 'Bugün';
+  return `${days} Gün Önce`;
 }
 
 function formatCompletedCount(count: number | null | undefined): string {
@@ -50,10 +49,9 @@ function formatCompletedCount(count: number | null | undefined): string {
 function rationaleMetrics(v: VendorRecommendation): Array<{ label: string; value: string }> {
   return [
     { label: 'Hizmet Kalitesi', value: formatScore(v.avgServiceScore) },
-    { label: 'Bölgeye Uzaklık', value: formatDistance(v) },
     { label: 'Ortalama Maliyet', value: formatCost(v.avgCost) },
     { label: 'Tamamlanan Dosya Sayısı', value: formatCompletedCount(v.completedFileCount) },
-    { label: 'Son Çalışma Tarihi', value: formatLastWorkedAt(v.lastWorkedAt) },
+    { label: 'Son Çalışma', value: formatLastWorkedAgo(v.lastWorkedAt) },
   ];
 }
 
@@ -88,29 +86,52 @@ type Props = {
   }) => void | Promise<void>;
 };
 
+function formatSuggestionPercent(v: VendorRecommendation): string {
+  const raw = v.compositeScore;
+  if (raw == null || !Number.isFinite(raw)) return '—';
+  const pct = raw <= 1 ? Math.round(raw * 100) : Math.round(raw);
+  return `%${Math.max(0, Math.min(100, pct))}`;
+}
+
 function VendorCardRow({
   v,
-  firstSuggestionId,
+  fileCity,
+  fileDistrict,
+  fileServiceType,
+  featured,
   assignedVendorId,
   assignLoading,
   onAssign,
 }: {
   v: VendorRecommendation;
-  firstSuggestionId: string | null;
+  fileCity?: string;
+  fileDistrict?: string;
+  fileServiceType?: string;
+  featured: boolean;
   assignedVendorId?: string | null;
   assignLoading: boolean;
   onAssign: (vendorId: string) => void | Promise<void>;
 }) {
   const selected = assignedVendorId === v.id;
+  const regionProximity = resolveRegionProximity({
+    fileCity,
+    fileDistrict,
+    vendorCity: v.city,
+    vendorDistrict: v.district,
+  });
+
   return (
     <VendorCandidateCard
       name={v.name}
       phone={v.phone}
       address={locationLine(v) || null}
       serviceBranches={v.serviceBranches}
+      serviceTypeHint={fileServiceType}
       serviceAreaLabels={v.serviceAreaLabels?.length ? v.serviceAreaLabels : undefined}
       metrics={rationaleMetrics(v)}
-      systemSuggestion={firstSuggestionId === v.id}
+      regionProximity={regionProximity}
+      systemSuggestion={featured}
+      systemSuggestionPercent={featured ? formatSuggestionPercent(v) : null}
       selected={selected}
       warningText={v.qualityWarning ? QUALITY_WARN_TEXT : null}
       testId="tedarikci-oneri"
@@ -165,7 +186,6 @@ export function RecommendedVendorsTabs({
   const rest = useMemo(() => ranked.slice(TOP_FEATURED), [ranked]);
 
   const hasQualityWarning = ranked.some((v) => v.qualityWarning);
-  const firstSuggestionId = ranked.find((v) => !v.qualityWarning)?.id ?? null;
 
   const [tab, setTab] = useState<VendorTabId>('kayitli');
   const [restOpen, setRestOpen] = useState(false);
@@ -263,7 +283,10 @@ export function RecommendedVendorsTabs({
                   <VendorCardRow
                     key={v.id}
                     v={v}
-                    firstSuggestionId={firstSuggestionId}
+                    fileCity={city}
+                    fileDistrict={district}
+                    fileServiceType={serviceType}
+                    featured
                     assignedVendorId={assignedVendorId}
                     assignLoading={assignLoading}
                     onAssign={onAssign}
@@ -279,9 +302,7 @@ export function RecommendedVendorsTabs({
                     aria-expanded={restOpen}
                     data-testid="tedarikci-diger-ac-kapa"
                   >
-                    <span>
-                      Diğer kayıtlı tedarikçiler ({rest.length})
-                    </span>
+                    <span>Diğer Kayıtlı Tedarikçiler ({rest.length})</span>
                     {restOpen ? (
                       <ChevronUp className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
                     ) : (
@@ -294,7 +315,10 @@ export function RecommendedVendorsTabs({
                         <VendorCardRow
                           key={v.id}
                           v={v}
-                          firstSuggestionId={firstSuggestionId}
+                          fileCity={city}
+                          fileDistrict={district}
+                          fileServiceType={serviceType}
+                          featured={false}
                           assignedVendorId={assignedVendorId}
                           assignLoading={assignLoading}
                           onAssign={onAssign}

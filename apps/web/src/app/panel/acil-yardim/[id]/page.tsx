@@ -2483,7 +2483,7 @@ export default function AcilDosyaDetayPage() {
               district={recommendLocation.district}
               serviceType={vaka.issueType ?? undefined}
               category="acil"
-              helpText="Üstte memnuniyet ve fiyat avantajı yüksek ilk 3 önerilir. Diğer kayıtlılar aynı listede kapalı/açılır. Bölgede yoksa alternatif önerilere bakın."
+              helpText="Üstte Memnuniyet Ve Fiyat Avantajı Yüksek İlk 3 Önerilir. Diğer Kayıtlılar Aynı Listede Kapalı/Açılır. Bölgede Yoksa Alternatif Önerilere Bakın."
               onAlternativeAssigned={async (vendor) => {
                 await handleAssignVendor(vendor.id);
               }}

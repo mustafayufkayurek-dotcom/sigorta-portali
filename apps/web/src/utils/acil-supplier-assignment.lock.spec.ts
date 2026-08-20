@@ -28,8 +28,11 @@ describe('acil tedarikçi atama UI LOCK', () => {
     assert.match(tabs, /TOP_FEATURED = 3/);
     assert.match(tabs, /ranked\.slice\(0, TOP_FEATURED\)/);
     assert.match(tabs, /tedarikci-diger-ac-kapa/);
-    assert.match(tabs, /Diğer kayıtlı tedarikçiler/);
+    assert.match(tabs, /Diğer Kayıtlı Tedarikçiler/);
+    assert.doesNotMatch(tabs, /Diğer kayıtlı tedarikçiler/);
     assert.match(tabs, /compositeScore/);
+    assert.match(tabs, /systemSuggestion=\{featured\}/);
+    assert.match(tabs, /formatSuggestionPercent/);
     assert.doesNotMatch(tabs, /acilAlpha/);
     assert.doesNotMatch(tabs, /localeCompare\(b\.name, 'tr'\)/);
   });

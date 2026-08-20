@@ -60,8 +60,14 @@ if (!tabs.includes('list.slice(0, TOP_N)')) {
 if (!tabs.includes('TOP_FEATURED = 3')) {
   fail('UI skorlu ilk 3 (TOP_FEATURED) yok — tasarım kaybolmuş');
 }
-if (!tabs.includes('tedarikci-diger-ac-kapa') || !tabs.includes('Diğer kayıtlı tedarikçiler')) {
-  fail('Diğer kayıtlılar kapalı/açılır kutusu yok');
+if (!tabs.includes('tedarikci-diger-ac-kapa') || !tabs.includes('Diğer Kayıtlı Tedarikçiler')) {
+  fail('Diğer Kayıtlı Tedarikçiler kapalı/açılır kutusu yok (Title Case)');
+}
+if (tabs.includes('Diğer kayıtlı tedarikçiler')) {
+  fail('Title Case ihlali: Diğer kayıtlı tedarikçiler');
+}
+if (!tabs.includes('resolveRegionProximity') || !tabs.includes('regionProximity')) {
+  fail('Bölgeye Uzaklık (il/ilçe eşleşmesi) UI yok');
 }
 if (!tabs.includes('Alternatif Önerilere Bak')) {
   fail('Bölge boşken Alternatif Öneriler geçişi yok');

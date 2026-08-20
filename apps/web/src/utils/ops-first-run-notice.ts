@@ -7,7 +7,7 @@ export const OPS_NOTICE = {
     id: 'acil-kayitli-tedarikci-v520',
     title: 'Tedarikçi Önerisi',
     body:
-      'Üstte memnuniyet ve fiyat avantajı yüksek ilk 3 tedarikçi açık önerilir. Diğer kayıtlılar aynı listede kapalı kalır; açıp bakabilirsiniz. Olumsuz değerlendirmede yazılım uyarır; alternatif bakın. Aynı olumsuz tedarikçiyle 2. kez çalışılırsa yöneticiye e-posta gider.',
+      'Üstte Memnuniyet Ve Fiyat Avantajı Yüksek İlk 3 Tedarikçi Açık Önerilir. Diğer Kayıtlılar Aynı Listede Kapalı Kalır; Açıp Bakabilirsiniz. Olumsuz Değerlendirmede Yazılım Uyarır; Alternatif Bakın. Aynı Olumsuz Tedarikçiyle 2. Kez Çalışılırsa Yöneticiye E-Posta Gider.',
   },
   acilDosyaSorumlusuVekalet: {
     id: 'acil-dosya-sorumlusu-vekalet-v515',
