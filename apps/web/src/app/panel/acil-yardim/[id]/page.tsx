@@ -2498,23 +2498,21 @@ export default function AcilDosyaDetayPage() {
           vendors: vendorRecs,
           assigned: vaka.assignedVendorId ?? null,
           assignedVendor:
-            vendorRecs.find((v) => v.id === vaka.assignedVendorId)
-            ?? (vaka.assignedVendor
-              ? {
-                  id: vaka.assignedVendor.id,
-                  name: vaka.assignedVendor.name,
-                  phone: vaka.assignedVendor.phone ?? null,
-                  city: vaka.city ?? null,
-                  district: vaka.district ?? null,
-                  avgResponseTime: null,
-                  avgServiceScore: null,
-                  avgCost: null,
-                  completedFileCount: 0,
-                  compositeScore: null,
-                  rank: 0,
-                  serviceBranches: [],
-                }
-              : null),
+            (vendorRecs.find((v) => v.id === vaka.assignedVendorId)
+              ?? (vaka.assignedVendor
+                ? ({
+                    id: vaka.assignedVendor.id,
+                    name: vaka.assignedVendor.name,
+                    phone: vaka.assignedVendor.phone ?? null,
+                    city: vaka.city ?? null,
+                    district: vaka.district ?? null,
+                    avgResponseTime: null,
+                    avgServiceScore: null,
+                    avgCost: null,
+                    completedFileCount: 0,
+                    serviceBranches: [],
+                  } satisfies VendorRecommendation)
+                : null)),
           alis: alisFiyati,
           satis: satisFiyati,
           workStartOk: workStartDone,
