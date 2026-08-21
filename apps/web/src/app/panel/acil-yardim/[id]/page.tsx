@@ -2490,7 +2490,7 @@ export default function AcilDosyaDetayPage() {
             customer: customerLabel(vaka),
             customerPhone: vaka.customer?.phone || vaka.customerPhone || '',
             customerEmail: '',
-            subject: resolveEmergencyOperationLabel(vaka.issueType) || vaka.issueType || '—',
+            subject: dosyaKonusuLabel,
             appointmentDate: '—',
             appointmentTime: '—',
           },
