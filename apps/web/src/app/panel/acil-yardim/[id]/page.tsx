@@ -41,8 +41,8 @@ import {
   type AcilPlannerStepStatus,
 } from '@/components/acil-operasyon-planlayicisi/AcilOperasyonPlanlayiciPanel';
 import type {
-  ApprovalChannel,
-  ApprovalState,
+  ApprovalChannel as PlannerApprovalChannel,
+  ApprovalState as PlannerApprovalState,
   OperatorStepKey,
 } from '@/components/acil-operasyon-planlayicisi/planner-steps';
 import { InboundEmailCorrespondencePanel } from '@/components/operation-inbox/InboundEmailCorrespondencePanel';
@@ -818,7 +818,7 @@ export default function AcilDosyaDetayPage() {
   const [altTab, setAltTab] = useState<AltBolumTab>('belgeler');
   /** Dosya Kapanış Resimleri — Fotoğraflar kapısı ile senkron */
   const [closurePhotoCount, setClosurePhotoCount] = useState(0);
-  const [plannerApprovalChannel, setPlannerApprovalChannel] = useState<ApprovalChannel>('email');
+  const [plannerApprovalChannel, setPlannerApprovalChannel] = useState<PlannerApprovalChannel>('email');
   const [plannerApprovalText, setPlannerApprovalText] = useState('');
 
   useEffect(() => {
@@ -2529,7 +2529,7 @@ export default function AcilDosyaDetayPage() {
             ? 'onaylandi'
             : guncelDurum === 'Reddedildi'
               ? 'reddedildi'
-              : 'bekliyor') as ApprovalState,
+              : 'bekliyor') as PlannerApprovalState,
           approvalRequestedAt: flow.approvalRequested ? 'Talep gönderildi' : '—',
           approvalDecidedAt: flow.customerApproved ? 'Onaylandı' : null,
           approvalText: plannerApprovalText,
