@@ -28,7 +28,16 @@ function isInspectionPhoto(doc: PhotoDoc) {
 }
 
 /** Saha — ortak tespit fotoğrafları (ofis evrak yaşam döngüsü yok) */
-export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
+export function FieldInspectionPhotosPanel({
+  claimId,
+  entityType = 'claim_file',
+  entityId,
+}: {
+  claimId?: string;
+  entityType?: string;
+  entityId?: string;
+}) {
+  const resolvedId = entityId || claimId || '';
   const [docs, setDocs] = useState<PhotoDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -38,11 +47,16 @@ export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
+    if (!resolvedId) {
+      setDocs([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const r = await axios.get(`${API}/entity-documents`, {
         headers: authHeader(),
-        params: { entityType: 'claim_file', entityId: claimId },
+        params: { entityType, entityId: resolvedId },
       });
       const rows = ((r.data?.data ?? []) as PhotoDoc[]).filter(isInspectionPhoto);
       setDocs(rows);
@@ -52,7 +66,7 @@ export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [claimId]);
+  }, [entityType, resolvedId]);
 
   useEffect(() => {
     void load();
@@ -114,8 +128,8 @@ export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
         if (!looksImage) continue;
         const fd = new FormData();
         fd.append('file', file);
-        fd.append('entityType', 'claim_file');
-        fd.append('entityId', claimId);
+        fd.append('entityType', entityType);
+        fd.append('entityId', resolvedId);
         fd.append('notes', 'Tespit Fotoğrafı');
         await axios.post(`${API}/entity-documents`, fd, {
           headers: authHeader(),

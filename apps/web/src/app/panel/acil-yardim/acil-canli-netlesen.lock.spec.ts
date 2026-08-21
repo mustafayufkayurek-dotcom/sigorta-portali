@@ -37,6 +37,8 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /Vade uygulanmaz/);
     assert.match(acilPage, /acil-hakedis-ilk-kullanim-seridi/);
     assert.match(acilPage, /OPS_NOTICE\.acilTedarikciHakedis/);
+    assert.match(acilPage, /AcilOperasyonPlanlayiciPanel/);
+    assert.match(acilPage, /acil-saha-tespit/);
   });
 
   it('finans personeli hakediş listesini görür; vade yok', () => {
@@ -54,8 +56,12 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(photos, /entity-documents\/\$\{id\}\/download/);
   });
 
-  it('önizleme canlıda açılmaz', () => {
+  it('önizleme canlıda açılmaz; canlı planlayıcı paneli durur', () => {
     assert.match(preview, /NODE_ENV === 'production'/);
     assert.match(preview, /notFound\(\)/);
+    assert.match(
+      readFileSync(join(here, '../../../components/acil-operasyon-planlayicisi/AcilOperasyonPlanlayiciPanel.tsx'), 'utf8'),
+      /acil-planlayici-ac/,
+    );
   });
 });

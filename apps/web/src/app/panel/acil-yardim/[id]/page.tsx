@@ -35,6 +35,16 @@ import {
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import ClosurePhotosPanel from '@/components/file-documents/ClosurePhotosPanel';
+import { FieldInspectionPhotosPanel } from '@/components/field-survey/FieldInspectionPhotosPanel';
+import {
+  AcilOperasyonPlanlayiciPanel,
+  type AcilPlannerStepStatus,
+} from '@/components/acil-operasyon-planlayicisi/AcilOperasyonPlanlayiciPanel';
+import type {
+  ApprovalChannel,
+  ApprovalState,
+  OperatorStepKey,
+} from '@/components/acil-operasyon-planlayicisi/planner-steps';
 import { InboundEmailCorrespondencePanel } from '@/components/operation-inbox/InboundEmailCorrespondencePanel';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
@@ -808,6 +818,8 @@ export default function AcilDosyaDetayPage() {
   const [altTab, setAltTab] = useState<AltBolumTab>('belgeler');
   /** Dosya Kapanış Resimleri — Fotoğraflar kapısı ile senkron */
   const [closurePhotoCount, setClosurePhotoCount] = useState(0);
+  const [plannerApprovalChannel, setPlannerApprovalChannel] = useState<ApprovalChannel>('email');
+  const [plannerApprovalText, setPlannerApprovalText] = useState('');
 
   useEffect(() => {
     setClosurePhotoCount(0);
@@ -2415,6 +2427,182 @@ export default function AcilDosyaDetayPage() {
           </div>
         )}
       </div>
+
+      <section
+        className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5"
+        data-testid="acil-saha-tespit"
+      >
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-950">Saha Tespit</h3>
+            <span className="rounded-lg bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+              Tespit fotoğrafları
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500">Kameradan veya galeriden ekleyin</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div>
+            <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Fotoğrafları</h4>
+            <FieldInspectionPhotosPanel entityType="emergency_case" entityId={vaka.id} />
+          </div>
+          <div>
+            <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Notları</h4>
+            {vaka.findingsText?.trim() ? (
+              <p className="whitespace-pre-wrap text-sm text-slate-700">{vaka.findingsText}</p>
+            ) : (
+              <p className="text-sm text-slate-500">Henüz tespit notu yok. Aşağıdaki bütçe bölümünden kaydedebilirsiniz.</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <AcilOperasyonPlanlayiciPanel
+        stepStatuses={(() => {
+          const statuses: Record<OperatorStepKey, AcilPlannerStepStatus> = {
+            ihbar: 'done',
+            tedarikci_saha: workStartDone
+              ? 'done'
+              : vaka.assignedVendorId
+                ? 'waiting'
+                : 'future',
+            maliyet: hasAlis && (parsePriceInput(satisFiyati) > 0 || costSummary.totalGelir > 0)
+              ? 'done'
+              : vaka.assignedVendorId
+                ? 'waiting'
+                : 'future',
+            onay: flow.customerApproved
+              ? 'done'
+              : flow.approvalRequested
+                ? 'waiting'
+                : 'future',
+            kapanis: fileAlreadyClosed ? 'done' : workStartDone ? 'waiting' : 'future',
+            finans: financeDone ? 'done' : fileAlreadyClosed ? 'waiting' : 'future',
+          };
+          return statuses;
+        })()}
+        body={{
+          step: 'ihbar',
+          file: {
+            fileNo: vaka.fileNo || vaka.caseNo,
+            insured,
+            phone: phone !== '—' ? phone : (vaka.customerPhone || ''),
+            customer: customerLabel(vaka),
+            customerPhone: vaka.customer?.phone || vaka.customerPhone || '',
+            customerEmail: '',
+            subject: resolveEmergencyOperationLabel(vaka.issueType) || vaka.issueType || '—',
+            appointmentDate: '—',
+            appointmentTime: '—',
+          },
+          address: addressDisplay,
+          vendors: vendorRecs,
+          assigned: vaka.assignedVendorId ?? null,
+          assignedVendor:
+            vendorRecs.find((v) => v.id === vaka.assignedVendorId)
+            ?? (vaka.assignedVendor
+              ? {
+                  id: vaka.assignedVendor.id,
+                  name: vaka.assignedVendor.name,
+                  phone: vaka.assignedVendor.phone ?? null,
+                  city: vaka.city ?? null,
+                  district: vaka.district ?? null,
+                  avgResponseTime: null,
+                  avgServiceScore: null,
+                  avgCost: null,
+                  completedFileCount: 0,
+                  compositeScore: null,
+                  rank: 0,
+                  serviceBranches: [],
+                }
+              : null),
+          alis: alisFiyati,
+          satis: satisFiyati,
+          workStartOk: workStartDone,
+          fileClosed: fileAlreadyClosed,
+          hakedisAt: vaka.operationChain?.vendorEntitlementGrantedAt
+            ? fmtDateTime(vaka.operationChain.vendorEntitlementGrantedAt)
+            : null,
+          financeSent: financeDone,
+          financeAt: financeDone && vaka.updatedAt ? fmtDateTime(vaka.updatedAt) : null,
+          approvalChannel: plannerApprovalChannel,
+          approvalState: (flow.customerApproved
+            ? 'onaylandi'
+            : guncelDurum === 'Reddedildi'
+              ? 'reddedildi'
+              : 'bekliyor') as ApprovalState,
+          approvalRequestedAt: flow.approvalRequested ? 'Talep gönderildi' : '—',
+          approvalDecidedAt: flow.customerApproved ? 'Onaylandı' : null,
+          approvalText: plannerApprovalText,
+          waLog: [],
+          photos: [],
+          onAssign: (vid) => { void handleAssignVendor(vid); },
+          onAlis: (v) => {
+            setAlisFiyati(v);
+            setDraftAlis(v);
+            setBudgetEditing(true);
+          },
+          onSatis: (v) => {
+            setSatisFiyati(v);
+            setDraftSatis(v);
+            setBudgetEditing(true);
+          },
+          onWorkStart: (ok) => {
+            if (ok && !flow.workStartPrepared) {
+              void (async () => {
+                try {
+                  if (vaka.status !== 'SAHADA' && vaka.status !== 'COZULDU' && vaka.status !== 'FATURALANDILDI') {
+                    const res = await updateCaseStatus(id, 'SAHADA');
+                    setVaka(res.data);
+                  }
+                  await persistFlow(appendFlowHistory(
+                    { ...flow, workStartPrepared: true },
+                    'İşe başlama (planlayıcı)',
+                  ));
+                } catch (err) {
+                  setActionFlash(getApiErrorMessage(err, 'İşe başlama kaydedilemedi'));
+                }
+              })();
+            }
+          },
+          onCloseFile: () => { void handleCloseAndFinance(); },
+          onFinance: () => { void handleCloseAndFinance(); },
+          onApprovalChannel: setPlannerApprovalChannel,
+          onApprovalState: (st) => {
+            void (async () => {
+              if (st === 'onaylandi') {
+                await persistFlow(appendFlowHistory(
+                  { ...flow, customerApproved: true, approvalDetected: false, approvalRequested: true },
+                  'Müşteri onayı (planlayıcı)',
+                ));
+              } else if (st === 'reddedildi') {
+                await persistFlow(appendFlowHistory(
+                  { ...flow, customerApproved: false, approvalDetected: false, approvalRequested: true },
+                  'Müşteri red (planlayıcı)',
+                ));
+              }
+            })();
+          },
+          onApprovalText: setPlannerApprovalText,
+          onWhatsApp: (_to, ph, text) => openWhatsApp(ph, text),
+        }}
+        onSaved={async (step) => {
+          if (step === 'maliyet') {
+            setDraftAlis(alisFiyati);
+            setDraftSatis(satisFiyati);
+            const ok = await savePriceForm();
+            if (!ok) throw new Error(priceFormError || 'Fiyat kaydedilemedi.');
+          }
+          if (step === 'tedarikci_saha' && !vaka.assignedVendorId) {
+            throw new Error('Tedarikçi atayın.');
+          }
+          if (step === 'kapanis' && !fileAlreadyClosed) {
+            await handleCloseAndFinance();
+          }
+          if (step === 'finans' && !financeDone) {
+            await handleCloseAndFinance();
+          }
+        }}
+      />
 
       {/* Operasyon özeti — Hasar kabuğuyla aynı kart hiyerarşisi */}
       <div

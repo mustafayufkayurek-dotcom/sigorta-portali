@@ -1,5 +1,6 @@
 /**
- * Kilit: Acil planlayıcı önizleme — sekme yok, Kaydet zorunlu kapı, panel tetikleyicisi.
+ * Kilit: Acil planlayıcı — sekme yok, Kaydet zorunlu kapı, panel tetikleyicisi.
+ * Canlı panel + önizleme ortak kaynak.
  * Çalıştır: node --experimental-strip-types --test apps/web/src/app/dev/acil-dosya-akis/acil-dosya-akis.lock.spec.ts
  */
 import assert from 'node:assert/strict';
@@ -7,11 +8,22 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { validateOperatorStep } from './planner-gates.ts';
+import { validateOperatorStep } from '../../../components/acil-operasyon-planlayicisi/planner-gates.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const page = readFileSync(join(here, 'page.tsx'), 'utf8');
-const stepsFile = readFileSync(join(here, 'planner-steps.tsx'), 'utf8');
+const stepsFile = readFileSync(
+  join(here, '../../../components/acil-operasyon-planlayicisi/planner-steps.tsx'),
+  'utf8',
+);
+const livePanel = readFileSync(
+  join(here, '../../../components/acil-operasyon-planlayicisi/AcilOperasyonPlanlayiciPanel.tsx'),
+  'utf8',
+);
+const livePage = readFileSync(
+  join(here, '../../panel/acil-yardim/[id]/page.tsx'),
+  'utf8',
+);
 
 const empty = {
   assigned: null as string | null,
@@ -25,7 +37,7 @@ const empty = {
 };
 
 describe('acil dosya akış önizleme LOCK', () => {
-  it('operatör 6 sayfa; grup sekmesi yok', () => {
+  it('operatör 6 sayfa; grup sekmesi yok (önizleme)', () => {
     assert.equal((stepsFile.match(/key: '/g) ?? []).length, 6);
     assert.doesNotMatch(page, /GROUP_TABS/);
     assert.doesNotMatch(page, /PanelPillTabs/);
@@ -33,15 +45,18 @@ describe('acil dosya akış önizleme LOCK', () => {
     assert.doesNotMatch(page, /setActiveGroup/);
   });
 
-  it('sağ panel özet düğmesi ve karelerden açılır', () => {
-    assert.match(page, /data-testid="acil-planlayici-ac"/);
-    assert.match(page, /setDrawerOpen\(true\)/);
-    assert.match(page, /Operasyon Planlayıcısı/);
+  it('sağ panel özet düğmesi ve karelerden açılır — canlıda da durur', () => {
+    assert.match(livePanel, /data-testid="acil-planlayici-ac"/);
+    assert.match(livePanel, /setDrawerOpen\(true\)/);
+    assert.match(livePanel, /Operasyon Planlayıcısı/);
+    assert.match(livePanel, /data-testid="acil-planlayici-cekmece"/);
+    assert.match(livePage, /AcilOperasyonPlanlayiciPanel/);
+    assert.match(livePage, /acil-saha-tespit/);
   });
 
   it('Kaydet zorunlu kapıyı çalıştırır', () => {
-    assert.match(page, /onClick=\{saveCurrentStep\}/);
-    assert.match(page, /data-testid="planlayici-kaydet"/);
+    assert.match(livePanel, /onClick=\{\(\) => void saveCurrentStep\(\)\}/);
+    assert.match(livePanel, /data-testid="planlayici-kaydet"/);
     assert.equal(validateOperatorStep('tedarikci_saha', empty), 'Tedarikçi atayın.');
     assert.equal(
       validateOperatorStep('maliyet', { ...empty, assigned: 'v1' }),

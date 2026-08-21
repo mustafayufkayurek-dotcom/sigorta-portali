@@ -14,7 +14,8 @@ alwaysApply: true
 
 - Adres satırında telefon yok; telefon aranabilir.
 - Alış/satış kutusunda TL; binlik nokta; kâr/zarar yüzde.
-- Tespit fotoğrafları görünür (oturumla blob).
+- Tespit fotoğrafları görünür (oturumla blob) — **Saha Tespit** bölümü.
+- Sağ **Operasyon Planlayıcısı** (6 kare özet + çekmece + Kaydet kapısı).
 - İş bitiminde dosya tedarikçisine hakediş; tarih-saat kayıtlı; finans ekranına düşer; **vade yok**.
 - Hasar hakediş / 15-30 vade yoluna dokunulmaz.
 
