@@ -134,6 +134,11 @@ function formatScore(score: number | null | undefined): string {
   return (Math.round(score * 10) / 10).toFixed(1);
 }
 
+function formatCost(cost: number | null | undefined): string {
+  if (cost == null || !Number.isFinite(cost)) return '—';
+  return `${Number(cost).toLocaleString('tr-TR')} TL`;
+}
+
 export function CallPhone({ phone, className }: { phone: string | null | undefined; className?: string }) {
   const raw = (phone ?? '').trim();
   const href = `tel:${raw.replace(/[^\d+]/g, '')}`;
