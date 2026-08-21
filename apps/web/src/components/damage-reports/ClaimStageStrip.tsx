@@ -5,8 +5,8 @@ import {
   claimFileStageTone,
   deriveClaimFileStageIndex,
   hasClaimFileSuppliersAssigned,
-  type ClaimFileStageTone,
 } from '@sigorta/shared';
+import { FileStageStrip, type FileStageStep } from '@/components/panel/FileStageStrip';
 
 export type ClaimStageStripSource = {
   reportStatus?: string | null;
@@ -32,14 +32,8 @@ function resolveActiveIndex(source: ClaimStageStripSource): number | null {
   });
 }
 
-function dotTone(tone: ClaimFileStageTone): string {
-  if (tone === 'active') return 'border-status-warning bg-status-warning text-slate-950';
-  if (tone === 'completed') return 'border-status-success bg-status-success text-white';
-  return 'border-slate-300 bg-white text-slate-400';
-}
-
 /**
- * Dosya akışı — başlık çizginin solunda; ilk daire çizginin başında.
+ * Hasar dosya akışı — adımlar hasar iş kuralından, görünüm ortak şeritten gelir.
  */
 export function ClaimStageStrip({
   source,
@@ -53,60 +47,19 @@ export function ClaimStageStrip({
   className?: string;
 }) {
   const activeIndex = resolveActiveIndex(source);
-  const dotSize = compact ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs';
-  const connectorTone = 'bg-status-danger';
-
-  const timeline = (
-    <div className="min-w-0 flex-1 overflow-x-auto overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="relative flex w-full min-w-[9.5rem] items-center py-0.5 pr-2.5">
-        {CLAIM_FILE_STAGE_SLOTS.map((slot, idx) => {
-          const tone = claimFileStageTone(idx, activeIndex);
-          const isLast = idx === CLAIM_FILE_STAGE_SLOTS.length - 1;
-          return (
-            <div
-              key={slot.id}
-              className={`flex items-center ${idx === 0 ? 'shrink-0' : 'min-w-0 flex-1'}`}
-            >
-              {idx > 0 && (
-                <div
-                  className={`relative z-0 h-0.5 min-w-[0.45rem] flex-1 rounded-full ${connectorTone} ${isLast ? 'max-w-[1.15rem]' : ''}`}
-                  aria-hidden
-                />
-              )}
-              <div
-                className="relative z-10 flex shrink-0 flex-col items-center"
-                title={slot.label}
-              >
-                <div
-                  className={`flex items-center justify-center rounded-full border-2 font-semibold tabular-nums shadow-sm ring-2 ring-white ${dotSize} ${dotTone(tone)}`}
-                  aria-current={tone === 'active' ? 'step' : undefined}
-                >
-                  {idx + 1}
-                </div>
-                {!compact ? (
-                  <span className="mt-1.5 max-w-[88px] truncate text-center text-[10px] text-slate-500 whitespace-nowrap">
-                    {slot.label}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  const steps: FileStageStep[] = CLAIM_FILE_STAGE_SLOTS.map((slot, idx) => ({
+    key: slot.id,
+    label: slot.label,
+    tone: claimFileStageTone(idx, activeIndex),
+  }));
 
   return (
-    <div
-      className={`flex min-w-0 items-center gap-2 ${className}`.trim()}
-      data-testid="claim-stage-strip"
-    >
-      {showTitle ? (
-        <p className="shrink-0 whitespace-nowrap text-[10px] font-semibold text-slate-500">
-          Dosya Akışı
-        </p>
-      ) : null}
-      {timeline}
-    </div>
+    <FileStageStrip
+      steps={steps}
+      compact={compact}
+      showTitle={showTitle}
+      className={className}
+      testId="claim-stage-strip"
+    />
   );
 }

@@ -430,6 +430,7 @@ async function main() {
       entityType: 'corporate',
       subType: 'asistan_firmasi',
       companyName: firm.companyName,
+      shortName: 'Remed',
       fullName: firm.companyName,
       serviceType: 'acil_yardim',
       status: 'active',
@@ -504,11 +505,11 @@ async function main() {
 
     // Yerel demo: asistans portalında görünsün diye Remed kapsamlı acil yardım dosyaları
     const demoCases = [
-      { caseNo: 'AY-DEMO-GELEN-01', fileNo: 'AY-DEMO-001', status: 'GELEN' as const, city: 'İstanbul', district: 'Kadıköy', issueType: 'Kapı/Kilit Arızası', address: 'Kadıköy, İstanbul', gelir: 0 },
-      { caseNo: 'AY-DEMO-SAHA-01', fileNo: 'AY-DEMO-002', status: 'ATANDI' as const, city: 'Ankara', district: 'Çankaya', issueType: 'Elektrik Arızası', address: 'Çankaya, Ankara', gelir: 0 },
-      { caseNo: 'AY-DEMO-SAHA-02', fileNo: 'AY-DEMO-003', status: 'SAHADA' as const, city: 'İzmir', district: 'Bornova', issueType: 'Su Baskını', address: 'Bornova, İzmir', gelir: 0 },
-      { caseNo: 'AY-DEMO-ONAY-01', fileNo: 'AY-DEMO-004', status: 'SAHADA' as const, city: 'Bursa', district: 'Nilüfer', issueType: 'Cam Kırılması', address: 'Nilüfer, Bursa', gelir: 1850 },
-      { caseNo: 'AY-DEMO-OK-01', fileNo: 'AY-DEMO-005', status: 'COZULDU' as const, city: 'Antalya', district: 'Muratpaşa', issueType: 'Asansör Arızası', address: 'Muratpaşa, Antalya', gelir: 3200 },
+      { caseNo: 'AY-DEMO-GELEN-01', fileNo: 'AY-DEMO-001', status: 'GELEN' as const, city: 'İstanbul', district: 'Kadıköy', issueType: 'Kapı/Kilit Arızası', address: 'Caferağa Mah. Moda Cad. No: 18 Daire: 4', insuredName: 'Ali Kaya', phone: '05321110001', gelir: 0 },
+      { caseNo: 'AY-DEMO-SAHA-01', fileNo: 'AY-DEMO-002', status: 'ATANDI' as const, city: 'Ankara', district: 'Çankaya', issueType: 'Elektrik Arızası', address: 'Kızılay Mah. Atatürk Blv. No: 91 Daire: 8', insuredName: 'Elif Yıldız', phone: '05321110002', gelir: 0 },
+      { caseNo: 'AY-DEMO-SAHA-02', fileNo: 'AY-DEMO-003', status: 'SAHADA' as const, city: 'İzmir', district: 'Bornova', issueType: 'Su Baskını', address: 'Erzene Mah. Ankara Cad. No: 12 Daire: 3', insuredName: 'Hasan Çelik', phone: '05321110003', gelir: 0 },
+      { caseNo: 'AY-DEMO-ONAY-01', fileNo: 'AY-DEMO-004', status: 'SAHADA' as const, city: 'Bursa', district: 'Nilüfer', issueType: 'Cam Kırılması', address: 'Özlüce Mah. Ata Cad. No: 7 Daire: 11', insuredName: 'Ayşe Koç', phone: '05321110004', gelir: 1850 },
+      { caseNo: 'AY-DEMO-OK-01', fileNo: 'AY-DEMO-005', status: 'COZULDU' as const, city: 'Antalya', district: 'Muratpaşa', issueType: 'Asansör Arızası', address: 'Şirinyalı Mh. Lara Cad. No: 42 Daire: 7', insuredName: 'Mehmet Demir', phone: '05321110005', gelir: 3200 },
     ];
     for (const d of demoCases) {
       const existing = await prisma.emergencyCase.findFirst({ where: { caseNo: d.caseNo } });
@@ -517,7 +518,8 @@ async function main() {
             where: { id: existing.id },
             data: {
               customerId: demoAssistantFirm.id,
-              customerName: demoAssistantFirm.companyName || demoAssistantFirm.fullName || 'Asistans Firması',
+              customerName: d.insuredName,
+              customerPhone: d.phone,
               status: d.status,
               city: d.city,
               district: d.district,
@@ -532,7 +534,8 @@ async function main() {
               caseNo: d.caseNo,
               fileNo: d.fileNo,
               customerId: demoAssistantFirm.id,
-              customerName: demoAssistantFirm.companyName || demoAssistantFirm.fullName || 'Asistans Firması',
+              customerName: d.insuredName,
+              customerPhone: d.phone,
               address: d.address,
               city: d.city,
               district: d.district,

@@ -202,6 +202,8 @@ describe('field-staff-claim-view lock', () => {
   it('saha tespit foto paneli entity-documents kullanır; yaşam döngüsü yok', () => {
     const photos = read('../components/field-survey/FieldInspectionPhotosPanel.tsx');
     assert.match(photos, /entityType: 'claim_file'/);
+    assert.match(photos, /createObjectURL/);
+    assert.match(photos, /entity-documents\/\$\{id\}\/download/);
     assert.match(photos, /Tespit Fotoğrafı/);
     assert.match(photos, /saha-tespit-fotograflari/);
     assert.match(photos, /capture="environment"/);

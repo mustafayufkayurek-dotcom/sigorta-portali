@@ -16,6 +16,7 @@ describe('EmergencyCasesService', () => {
       inboundMessage: { findMany: jest.fn().mockResolvedValue([]) },
       fileDocument: { findMany: jest.fn().mockResolvedValue([]) },
       invoiceRequest: { findMany: jest.fn().mockResolvedValue([]) },
+      emergencyVendorEntitlement: { findUnique: jest.fn().mockResolvedValue(null) },
     };
     const operationalAccessGrants = {
       isDelegationScopedRole: jest.fn().mockReturnValue(false),

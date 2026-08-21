@@ -373,8 +373,8 @@ function OperasyonPageContent() {
   }, []);
 
   const loadClaims = useCallback(async () => {
-    // "Acil Dosya" KPI = acil yardım stoku; hasar listesi karışmasın
-    if (opsPreset === 'urgent') {
+    // Acil listesi / "Acil Dosya" KPI = acil yardım stoku; hasar API hatası kırmızı şerit basmasın
+    if (opsPreset === 'urgent' || filterType === 'acil') {
       setClaims([]);
       setClaimsTotal(0);
       setClaimsLoading(false);
@@ -399,7 +399,7 @@ function OperasyonPageContent() {
     } finally {
       setClaimsLoading(false);
     }
-  }, [page, sort, opsPreset, filterInvoice]);
+  }, [page, sort, opsPreset, filterInvoice, filterType]);
 
   const loadStats = useCallback(async () => {
     try {

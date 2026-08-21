@@ -4,9 +4,10 @@ import { useEffect, useState, useCallback, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  getFinanceList, getMonthlySummary, createInvoiceDraft,
-  FinanceRow, MonthlySummary,
+  getFinanceList, getMonthlySummary, createInvoiceDraft, getAcilVendorEntitlements,
+  FinanceRow, MonthlySummary, AcilVendorEntitlementRow,
 } from '@/utils/emergencyApi';
+import { formatTryAmount } from '@/utils/format-try-amount';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
@@ -61,6 +62,7 @@ function FinansPageInner() {
   const [filterSearch, setFilterSearch] = useState('');
   const [invoiceStatus, setInvoiceStatus] = useState(initInvoiceStatus);
   const [rows, setRows] = useState<FinanceRow[]>([]);
+  const [entitlements, setEntitlements] = useState<AcilVendorEntitlementRow[]>([]);
   const [listSummary, setListSummary] = useState({ totalCases: 0, totalGelir: 0, totalGider: 0, netKar: 0 });
   const [monthly, setMonthly] = useState<MonthlySummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,13 +102,15 @@ function FinansPageInner() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [listRes, monthRes] = await Promise.all([
+      const [listRes, monthRes, entitlementRes] = await Promise.all([
         getFinanceList({ month, year, search: filterSearch || undefined, invoiceStatus: invoiceStatus || undefined }),
         getMonthlySummary(year, month),
+        getAcilVendorEntitlements().catch(() => ({ data: [] as AcilVendorEntitlementRow[] })),
       ]);
       setRows(listRes.data);
       setListSummary(listRes.summary);
       setMonthly(monthRes.data);
+      setEntitlements(entitlementRes.data);
       if (focusCaseId) {
         const focused = listRes.data.find((row) => row.id === focusCaseId);
         if (focused && !focused.isFaturalandildi) {
@@ -203,6 +207,56 @@ function FinansPageInner() {
           </div>
         </div>
       )}
+
+      <section id="tedarikci-hakedis" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3">
+          <h2 className="text-sm font-semibold text-slate-900">Tedarikçi Hakedişleri</h2>
+          <p className="text-xs text-slate-500">
+            İş bitiminde dosya tedarikçisine verilir. Verilme tarih ve saati kayıttadır. Vade uygulanmaz.
+          </p>
+        </div>
+        {entitlements.length === 0 ? (
+          <p className="text-sm text-slate-500">Henüz hakediş yok.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
+                  <th className="pb-2 pr-3">Dosya</th>
+                  <th className="pb-2 pr-3">Tedarikçi</th>
+                  <th className="pb-2 pr-3">Tutar</th>
+                  <th className="pb-2 pr-3">Verilme</th>
+                  <th className="pb-2">Vade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entitlements.map((row) => (
+                  <tr key={row.id} className="border-t border-slate-100">
+                    <td className="py-2 pr-3">
+                      <Link href={`/panel/acil-yardim/${row.caseId}`} className="font-semibold text-brand-700 hover:underline">
+                        {row.caseNo}
+                      </Link>
+                      <p className="text-[11px] text-slate-500">{row.customerName}</p>
+                    </td>
+                    <td className="py-2 pr-3">{row.vendorName}</td>
+                    <td className="py-2 pr-3 font-semibold">{formatTryAmount(row.amount, { fractionDigits: 0 })}</td>
+                    <td className="py-2 pr-3">
+                      {new Date(row.grantedAt).toLocaleString('tr-TR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </td>
+                    <td className="py-2 text-slate-500">Yok</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {/* Filtreler */}
       <div className="flex flex-wrap gap-2">

@@ -1,4 +1,5 @@
 import { isInboundIhbarNoteText, mapInboundCategoryKnown, mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 
 /**
  * Türkçe karakter destekli Title Case dönüştürücü.
@@ -221,7 +222,7 @@ export function formatClaimSubjectLabel(
   });
 }
 
-/** Hasar adresi — sokak/metin önce, sonra İl · İlçe (eksikte Belirtilmemiş) */
+/** Hasar adresi — sokak, sonra ilçe ve il (sonda). «İl (…) · İlçe (…)» yazılmaz. */
 export function formatHasarAdresi(propertyAddress?: {
   addressLine?: string | null;
   neighborhood?: string | null;
@@ -229,8 +230,15 @@ export function formatHasarAdresi(propertyAddress?: {
   city?: string | null;
 } | null): string {
   if (!propertyAddress) return 'Belirtilmemiş';
-  const street = propertyAddress.addressLine?.trim() || 'Belirtilmemiş';
-  const city = propertyAddress.city?.trim() || 'Belirtilmemiş';
-  const district = propertyAddress.district?.trim() || 'Belirtilmemiş';
-  return `${street} · İl (${city}) · İlçe (${district})`;
+  const street = [propertyAddress.addressLine, propertyAddress.neighborhood]
+    .map((p) => p?.trim())
+    .filter(Boolean)
+    .join(' ')
+    || '';
+  const formatted = formatEmergencyFileAddress({
+    address: street || null,
+    district: propertyAddress.district,
+    city: propertyAddress.city,
+  });
+  return formatted === '—' ? 'Belirtilmemiş' : formatted;
 }

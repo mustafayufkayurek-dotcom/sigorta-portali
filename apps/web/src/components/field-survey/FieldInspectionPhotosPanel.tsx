@@ -58,33 +58,47 @@ export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
     void load();
   }, [load]);
 
+  /** İmzalı URL img src'de çoğu ortamda görünmez (yönlendirme / yetki).
+   * Rapor galerisi gibi dosyayı oturumla çekip blob göster. */
   useEffect(() => {
     let cancelled = false;
-    const missing = docs.filter((d) => !thumbUrls[d.id]).slice(0, 12);
-    if (missing.length === 0) return;
+    const created: string[] = [];
+    const ids = docs.map((d) => d.id);
+    if (ids.length === 0) {
+      setThumbUrls({});
+      return;
+    }
     void (async () => {
       const next: Record<string, string> = {};
       await Promise.all(
-        missing.map(async (doc) => {
+        ids.map(async (id) => {
           try {
-            const r = await axios.get(`${API}/entity-documents/${doc.id}/signed-url`, {
+            const r = await axios.get(`${API}/entity-documents/${id}/download`, {
               headers: authHeader(),
+              responseType: 'blob',
             });
-            const url = r.data?.data?.url as string | undefined;
-            if (url) next[doc.id] = url;
+            const blob = r.data as Blob;
+            if (!blob || blob.size < 32) return;
+            if (blob.type && blob.type.includes('json')) return;
+            const url = URL.createObjectURL(blob);
+            created.push(url);
+            next[id] = url;
           } catch {
-            /* önizleme yoksa atla */
+            /* tek foto kırılınca diğerleri dursun */
           }
         }),
       );
-      if (!cancelled && Object.keys(next).length > 0) {
-        setThumbUrls((prev) => ({ ...prev, ...next }));
+      if (cancelled) {
+        created.forEach((u) => URL.revokeObjectURL(u));
+        return;
       }
+      setThumbUrls(next);
     })();
     return () => {
       cancelled = true;
+      created.forEach((u) => URL.revokeObjectURL(u));
     };
-  }, [docs, thumbUrls]);
+  }, [docs]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -107,7 +121,6 @@ export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
           headers: authHeader(),
         });
       }
-      setThumbUrls({});
       await load();
     } catch (err) {
       reportCaughtError(err, 'Fotoğraf yüklenemedi.');
@@ -138,11 +151,12 @@ export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
       return;
     }
     try {
-      const r = await axios.get(`${API}/entity-documents/${docId}/signed-url`, {
+      const r = await axios.get(`${API}/entity-documents/${docId}/download`, {
         headers: authHeader(),
+        responseType: 'blob',
       });
-      const url = r.data?.data?.url as string | undefined;
-      if (url) setPreviewUrl(url);
+      const blob = r.data as Blob;
+      if (blob && blob.size >= 32) setPreviewUrl(URL.createObjectURL(blob));
     } catch (err) {
       reportCaughtError(err, 'Önizleme açılamadı.');
     }

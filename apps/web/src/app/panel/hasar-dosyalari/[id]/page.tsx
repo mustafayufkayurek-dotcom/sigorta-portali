@@ -18,20 +18,22 @@ import { IletisimGunluguPanel } from './_components/tabs/IletisimGunluguPanel';
 import { TakipTab } from './_components/tabs/TakipTab';
 import { OperasyonPlanlayiciPanel } from '@/components/hasar-operasyon-planlayicisi/OperasyonPlanlayiciPanel';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
-import { DosyaBilgileriDetay, resolveDosyaEksperi, resolveIhbarTarihi } from './_components/DosyaBilgileriDetay';
+import { DosyaBilgileriDetay, resolveIhbarTarihi } from './_components/DosyaBilgileriDetay';
 import { FinansOzetErisimPanel } from './_components/FinansOzetErisimPanel';
 import {
   collectOfficeAssignees,
   FinVisConfig,
   resolveFinVisConfig,
 } from './_components/financial-visibility-config';
-import { resolveClaimIhbarKonusu, toTitleCaseTR, formatHasarAdresi } from '@/utils/text-helpers';
+import { toTitleCaseTR, resolveClaimIhbarKonusu } from '@/utils/text-helpers';
+import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { SmartMeasureList } from '@/components/smart-measures/SmartMeasureList';
 import { ClaimSurveyUnsentBanner } from '@/components/survey/ClaimSurveyUnsentBanner';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
 import { ClaimFileHeaderStatusCluster } from '@/components/damage-reports/ClaimFileHeaderStatusCluster';
+import { PanelPillTabs } from '@/components/panel/PanelPillTabs';
 import {
   FIELD_STAFF_ASSIGNMENTS_HREF,
   FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
@@ -58,11 +60,9 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import { resolveOperationStatusLabel, INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE } from '@sigorta/shared';
+import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, isExpertFirmCustomer } from '@sigorta/shared';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
-import { claimListFileNo } from '@/utils/claim-list-column-fields';
-
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
   if (!roleCode) return null;
@@ -81,6 +81,39 @@ function getCurrentUserRole(): string | null {
     }
     return null;
   } catch { return null; }
+}
+
+function buildHasarHeaderBandParts(input: {
+  customer?: {
+    companyName?: string | null;
+    fullName?: string | null;
+    type?: string | null;
+    entityType?: string | null;
+    subType?: string | null;
+  } | null;
+  insuranceCompany?: { name?: string | null } | null;
+  fileNo: string;
+  konu?: string | null;
+}): string[] {
+  const parts: string[] = [];
+  const customerName = (input.customer?.companyName ?? input.customer?.fullName ?? '').trim();
+  const insuranceName = input.insuranceCompany?.name?.trim() ?? '';
+  const sameName = (a: string, b: string) =>
+    a.toLocaleLowerCase('tr') === b.toLocaleLowerCase('tr');
+
+  if (customerName && isExpertFirmCustomer(input.customer)) parts.push(customerName);
+  if (insuranceName && !parts.some((part) => sameName(part, insuranceName))) {
+    parts.push(insuranceName);
+  } else if (
+    customerName
+    && !isExpertFirmCustomer(input.customer)
+    && !parts.some((part) => sameName(part, customerName))
+  ) {
+    parts.push(customerName);
+  }
+  if (input.fileNo.trim()) parts.push(input.fileNo.trim());
+  if (input.konu?.trim() && input.konu !== '—') parts.push(input.konu.trim());
+  return parts;
 }
 
 function userHasPermission(code: string): boolean {
@@ -422,7 +455,6 @@ function DosyaSayfaUstu({
   onBack,
   reportEditHref,
   onClaimUpdated,
-  focusSigortali = false,
   openEdit = false,
   isFieldStaff = false,
 }: {
@@ -434,14 +466,8 @@ function DosyaSayfaUstu({
   openEdit?: boolean;
   isFieldStaff?: boolean;
 }) {
-  const ihbarChip = resolveClaimIhbarKonusu(claim);
-  const insuredLine = fieldStaffInsuredName(claim);
-  const insuredPhone = fieldStaffPhone(claim);
   const latestReport = claim.latestRepairReport;
-  const dosyaEksperi = resolveDosyaEksperi(claim, null);
-  const sigortaSirketi = claim.insuranceCompany?.name?.trim();
 
-  // Saha: yalnız sigortalı · iletişim · adres · tespit durumu — sekme yok, ziyaret kartı
   if (isFieldStaff) {
     return (
       <FieldStaffVisitCard
@@ -452,61 +478,27 @@ function DosyaSayfaUstu({
     );
   }
 
+  const headerBand = buildHasarHeaderBandParts({
+    customer: claim.customer,
+    insuranceCompany: claim.insuranceCompany,
+    fileNo: claimListFileNo(claim),
+    konu: resolveClaimIhbarKonusu(claim),
+  }).join(' - ');
   return (
     <div className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-4 sm:gap-y-2">
-        <button type="button" onClick={onBack} className="mt-0.5 shrink-0 text-sm text-slate-400 hover:text-slate-700">
+      <div className="flex items-center px-4 pt-2.5">
+        <button type="button" onClick={onBack} className="shrink-0 text-sm text-slate-400 hover:text-slate-700">
           ← Geri
         </button>
-        <div className="min-w-0 flex-1">
-          <div>
-            <h2 className="break-all text-lg font-bold leading-snug text-slate-900">{claimListFileNo(claim)}</h2>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            {sigortaSirketi && (
-              <span className="text-xs text-slate-500">
-                Sigorta Şirketi: <span className="font-semibold text-slate-700">{sigortaSirketi}</span>
-              </span>
-            )}
-            <span className="text-xs text-slate-500">
-              Eksper: <span className={`font-semibold ${dosyaEksperi === 'Atanmamış' ? 'text-amber-700' : 'text-slate-700'}`}>{dosyaEksperi}</span>
-            </span>
-            {(claim.operationStatusLabel || claim.currentStatus?.code || claim.currentStatus?.name) && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                <span className="w-2 h-2 rounded-full" style={{ background: claim.currentStatus?.color ?? '#6B7280' }} />
-                {claim.operationStatusLabel
-                  ?? resolveOperationStatusLabel({
-                    claimStatusCode: claim.currentStatus?.code,
-                    reportStatus: claim.newestRepairReportStatus ?? latestReport?.status,
-                    approval72hExceeded: Boolean(claim.approval72hExceeded),
-                  })}
-              </span>
-            )}
-          </div>
-          {insuredLine !== '—' && (
-            <p className="mt-1 text-sm font-medium text-slate-700">
-              <span className="block sm:inline">{insuredLine}</span>
-              {insuredPhone && (
-                <>
-                  <span className="mx-1.5 hidden text-slate-300 sm:inline">·</span>
-                  <a href={`tel:${insuredPhone.replace(/\s/g, '')}`} className="mt-0.5 block tabular-nums text-slate-600 hover:text-brand-700 hover:underline sm:mt-0 sm:inline">
-                    {insuredPhone}
-                  </a>
-                </>
-              )}
-            </p>
-          )}
-          {insuredLine === '—' && insuredPhone && (
-            <p className="mt-1 text-sm font-medium text-slate-700">
-              <a href={`tel:${insuredPhone.replace(/\s/g, '')}`} className="tabular-nums text-slate-600 hover:text-brand-700 hover:underline">
-                {insuredPhone}
-              </a>
-            </p>
-          )}
-          {ihbarChip !== '—' && <p className="mt-0.5 text-xs text-slate-500">{ihbarChip}</p>}
-          </div>
-        </div>
-        <div className="w-full min-w-0 sm:ml-auto sm:w-auto sm:max-w-[min(100%,16rem)]">
+      </div>
+
+      <div className="mx-4 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-blue-100/80 bg-blue-50/60 px-3 py-2">
+        <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-blue-900">
+          {headerBand}
+        </p>
+        <div className="w-full min-w-0 sm:w-auto sm:max-w-[min(100%,16rem)] sm:ml-auto">
           <ClaimFileHeaderStatusCluster
+            showTitle={false}
             statusBadge={
               latestReport ? (
                 <span className={`inline-flex shrink-0 items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(latestReport.status)}`}>
@@ -530,49 +522,10 @@ function DosyaSayfaUstu({
         </div>
       </div>
 
-      {claim.customer && (
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-blue-100/80 bg-blue-50/60 px-4 py-2.5">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-xs font-bold text-white">
-              {(claim.customer.fullName ?? claim.customer.companyName ?? '?').charAt(0).toUpperCase()}
-            </span>
-            <div className="min-w-0">
-              <p className="mb-0.5 text-[10px] leading-none text-blue-500">Müşteri</p>
-              {claim.customer.id ? (
-                <Link href={`/panel/musteriler/${claim.customer.id}`} className="block truncate text-sm font-semibold text-blue-900 hover:underline">
-                  {claim.customer.fullName ?? claim.customer.companyName ?? '—'}
-                </Link>
-              ) : (
-                <p className="truncate text-sm font-semibold text-blue-900">{claim.customer.fullName ?? claim.customer.companyName ?? '—'}</p>
-              )}
-            </div>
-          </div>
-          {claim.customer.phone && (
-            <div>
-              <p className="mb-0.5 text-[10px] leading-none text-blue-500">Telefon</p>
-              <a href={`tel:${claim.customer.phone}`} className="text-sm font-medium text-blue-800 hover:underline">{claim.customer.phone}</a>
-            </div>
-          )}
-          {claim.customer.email && (
-            <div className="min-w-0">
-              <p className="mb-0.5 text-[10px] leading-none text-blue-500">E-Posta</p>
-              <a href={`mailto:${claim.customer.email}`} className="block truncate text-sm font-medium text-blue-800 hover:underline">{claim.customer.email}</a>
-            </div>
-          )}
-        </div>
-      )}
-
-      {claim.propertyAddress && (
-        <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-2 text-xs text-slate-600">
-          <span className="shrink-0 text-slate-400">Hasar Adresi</span>
-          <span className="font-medium">{formatHasarAdresi(claim.propertyAddress)}</span>
-        </div>
-      )}
-
       <DosyaBilgileriDetay
         claim={claim}
         onClaimUpdated={onClaimUpdated}
-        initialOpen={focusSigortali || openEdit || !!claim.latestRepairReport?.id}
+        initialOpen={openEdit}
         initialEditOpen={openEdit}
         repairReportId={claim.latestRepairReport?.id}
       />
@@ -1799,33 +1752,16 @@ export default function ClaimFileDetailPage() {
           )}
 
           <div className="sticky top-0 z-20 -mx-1 px-1 py-2 mb-4 bg-[#f8fafc]/95 backdrop-blur-sm">
-            <div className="flex w-fit flex-wrap gap-1 rounded-xl bg-slate-100 p-1 shadow-sm">
-              {GROUP_TABS.filter((tab) => {
+            <PanelPillTabs
+              tabs={GROUP_TABS.filter((tab) => {
                 if (tab.id === 'finans' && !canViewFinancials) return false;
                 return true;
-              }).map((tab) => {
-                const Icon = tab.Icon;
-                const active = activeGroup === tab.id;
-                return (
-                  <button
-                    type="button"
-                    key={tab.id}
-                    onClick={() => setActiveGroup(tab.id)}
-                    className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                      active
-                        ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    <Icon
-                      className={`h-3.5 w-3.5 ${active ? 'text-slate-700' : 'text-slate-400'}`}
-                      strokeWidth={1.75}
-                    />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
+              }).map((tab) => ({ id: tab.id, label: tab.label, icon: tab.Icon }))}
+              activeId={activeGroup}
+              onSelect={(tabId) => setActiveGroup(tabId as typeof activeGroup)}
+              testId="hasar-grup-sekmeler"
+              tabTestId={(tabId) => `hasar-grup-${tabId}`}
+            />
           </div>
 
           {activeGroup === 'genel-bilgiler' && (

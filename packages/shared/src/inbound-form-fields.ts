@@ -43,12 +43,22 @@ export const INBOUND_ADDRESS_FIELD_LABELS = INBOUND_FORM_FIELD_LABELS
 
 /** Adres değerine sızan sonraki form etiketi (Hasar Türü : Tesisat). */
 const INBOUND_ADDRESS_TRAILING_LABEL =
-  /\s+(Hasar\s+T[uü]r[uü]|Hasar\s+[SŞ]ekli|Dosya\s+Konusu|Bran[sş])\s*[:：]\s*[\s\S]*$/i;
+  /\s+(Hasar\s+T[uü]r[uü]|Hasar\s+[SŞ]ekli|Hasar\s+Resmi|Dosya\s+Konusu|Bran[sş])\s*[:：]\s*[\s\S]*$/i;
 
-/** Kayıtlı veya çıkarılmış adresten konu/hasar etiketi kirliliğini keser. */
+/** Mail adres satırına yapışan telefon — Sigortalı Telefon alanına aittir. */
+const INBOUND_ADDRESS_PHONE =
+  /\s*(?:Tel(?:efon)?|GSM|Cep)\s*[:：]\s*\+?\d[\d\s()]{6,}\d/gi;
+
+/** Kayıtlı veya çıkarılmış adresten konu/hasar etiketi ve telefon kirliliğini keser. */
 export function stripInboundAddressPollution(value?: string | null): string {
   if (!value?.trim()) return '';
-  return value.trim().replace(INBOUND_ADDRESS_TRAILING_LABEL, '').trim();
+  return value
+    .trim()
+    .replace(INBOUND_ADDRESS_TRAILING_LABEL, '')
+    .replace(INBOUND_ADDRESS_PHONE, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+[-–]\s*$/g, '')
+    .trim();
 }
 
 const INBOUND_FORM_TITLE_PATTERN =

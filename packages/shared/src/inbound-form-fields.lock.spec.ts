@@ -17,6 +17,20 @@ describe('inbound address pollution LOCK', () => {
     );
   });
 
+  it('adres satırından telefonu keser', () => {
+    assert.equal(
+      stripInboundAddressPollution('Yokuşbaşı Mh. No:25b Tel : 05493384168 - İl (Muğla)'),
+      'Yokuşbaşı Mh. No:25b - İl (Muğla)',
+    );
+  });
+
+  it('Hasar Resmi sızıntısını adres değerinden keser', () => {
+    assert.equal(
+      stripInboundAddressPollution('Atatürk Cad. No: 5 Hasar Resmi : foto.jpg'),
+      'Atatürk Cad. No: 5',
+    );
+  });
+
   it('Hasar Türü etiketinde durur ve adresi ayırır', () => {
     const text = `
 Adres: Fatih 2.Ulucan No : 10 Daire : 1 Merkez - Türkiye - Usak

@@ -47,11 +47,11 @@ else
   fail "Acil supplier assignment smoke (scripts/smoke-acil-supplier-assignment.sh)"
 fi
 
-echo "=== Route Gate Smoke A2c — acil dosya sorumlusu (finans vekili) ==="
-if bash "$SCRIPT_DIR/smoke-acil-file-owner.sh"; then
-  pass "Finans personeli acil dosya sorumlusu listesinde (vekalet)"
+echo "=== Route Gate Smoke A2d — acil netleşen canlı kilit ==="
+if bash "$SCRIPT_DIR/smoke-acil-netlesen.sh"; then
+  pass "Acil adres/telefon/TL/foto/hakediş vadesiz kilitleri durur"
 else
-  fail "Acil file owner smoke (scripts/smoke-acil-file-owner.sh)"
+  fail "Acil netleşen kilit (scripts/smoke-acil-netlesen.sh)"
 fi
 
 curl_api() {

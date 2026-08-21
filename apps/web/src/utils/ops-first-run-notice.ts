@@ -15,6 +15,12 @@ export const OPS_NOTICE = {
     body:
       'Acil Yardım vekaleti olan finans personeli de bu listede görünür. Dosyayı ona atayabilirsiniz.',
   },
+  acilTedarikciHakedis: {
+    id: 'acil-tedarikci-hakedis-v523',
+    title: 'Tedarikçi Hakedişi',
+    body:
+      'İş bitince bu dosyanın tedarikçisine hakediş verilir. Verilme tarih ve saati kayıttadır. Finans ekranına düşer. Acil tedarikçisine vade uygulanmaz.',
+  },
 } as const;
 
 export function opsNoticeStorageKey(noticeId: string): string {

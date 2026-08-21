@@ -44,6 +44,13 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(OPS_NOTICE.acilKayitliTedarikci.body, /Kapalı/);
   });
 
+  it('Acil hakediş şeridi durur', () => {
+    assert.match(acilPage, /OPS_NOTICE\.acilTedarikciHakedis/);
+    assert.match(acilPage, /acil-hakedis-ilk-kullanim-seridi/);
+    assert.equal(OPS_NOTICE.acilTedarikciHakedis.id, 'acil-tedarikci-hakedis-v523');
+    assert.match(OPS_NOTICE.acilTedarikciHakedis.body, /vade uygulanmaz/i);
+  });
+
   it('Acil yeni dosyada vekalet şeridi durur', () => {
     assert.match(acilForm, /OpsFirstRunNotice/);
     assert.match(acilForm, /OPS_NOTICE\.acilDosyaSorumlusuVekalet/);
@@ -56,6 +63,7 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(guide, /kayıtlı tedarikçileri gösterir/);
     assert.match(guide, /2\. kez çalışılırsa yöneticiye e-posta/);
     assert.match(guide, /Acil Yardım vekaleti olan finans personeli/);
+    assert.match(guide, /Acil tedarikçisine vade uygulanmaz/);
     assert.doesNotMatch(guide, /Google Places/);
   });
 });

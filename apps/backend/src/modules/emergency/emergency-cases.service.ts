@@ -42,7 +42,7 @@ import {
   type EmergencyProcessAction,
 } from './emergency-process-events';
 import { RecordEmergencyProcessEventDto } from './dto/record-emergency-process-event.dto';
-import { SurveysService } from '@/modules/surveys/surveys.service';
+import { EmergencyFinanceService } from './emergency-finance.service';
 
 const MANUAL_DECISION_MIN_REASON = 10;
 const PORTAL_ROLE_CODES = new Set([
@@ -81,21 +81,24 @@ export class EmergencyCasesService {
     private readonly claimEventEmail: ClaimEventEmailService,
     private readonly storage: StorageService,
     @Optional() private readonly surveys?: SurveysService,
+    @Optional() private readonly emergencyFinance?: EmergencyFinanceService,
   ) {}
 
-  /** EPIC-04: Kapanışta tedarikçi hakediş entegrasyon noktası (onay sonrası VendorStatements bağlanacak). */
+  /** İş bitiminde dosya tedarikçisine hakediş (vade yok). Hasar statement yok. */
   private async onEmergencyCaseClosed(caseId: string, userId: string): Promise<void> {
     const emergencyCase = await this.prisma.emergencyCase.findUnique({
       where: { id: caseId },
       select: { id: true, caseNo: true, assignedVendorId: true },
     });
     if (!emergencyCase?.assignedVendorId) {
-      this.logger.debug(`[EPIC-04] Kapanış hakediş atlandı — tedarikçi yok: ${caseId}`);
+      this.logger.debug(`[Acil hakediş] Atlandı — tedarikçi yok: ${caseId}`);
       return;
     }
-    this.logger.log(
-      `[EPIC-04] Kapanış hakediş entegrasyonu bekliyor — case=${emergencyCase.caseNo} vendor=${emergencyCase.assignedVendorId}`,
-    );
+    if (this.emergencyFinance) {
+      await this.emergencyFinance.grantVendorEntitlement(caseId, userId).catch((err) =>
+        this.logger.warn(`[Acil hakediş] Verilemedi: ${err?.message}`),
+      );
+    }
     await this.ensureFinanceTransfer(caseId, userId).catch((err) =>
       this.logger.warn(`[EPIC-04] Otomatik finans aktarımı atlandı: ${err?.message}`),
     );
@@ -116,6 +119,11 @@ export class EmergencyCasesService {
     await this.ensureFinanceTransfer(caseId, userId).catch((err) =>
       this.logger.warn(`[EPIC-04] Fatura talebi senkronu atlandı: ${err?.message}`),
     );
+    if (this.emergencyFinance) {
+      await this.emergencyFinance.grantVendorEntitlement(caseId, userId).catch((err) =>
+        this.logger.warn(`[Acil hakediş] Finans aktarımında: ${err?.message}`),
+      );
+    }
   }
 
   private computeOverdueLevel(
@@ -270,7 +278,7 @@ export class EmergencyCasesService {
   }
 
   private async buildOperationChain(caseId: string) {
-    const [emergencyCase, inboundMessages, documents, invoiceRequests, closure] = await Promise.all([
+    const [emergencyCase, inboundMessages, documents, invoiceRequests, closure, entitlement] = await Promise.all([
       this.prisma.emergencyCase.findUnique({
         where: { id: caseId },
         include: {
@@ -305,6 +313,10 @@ export class EmergencyCasesService {
         orderBy: { createdAt: 'desc' },
       }),
       this.fileDocumentsService.checkEmergencyCaseClosureConditions(caseId),
+      this.prisma.emergencyVendorEntitlement.findUnique({
+        where: { caseId },
+        select: { grantedAt: true },
+      }),
     ]);
 
     if (!emergencyCase) {
@@ -343,6 +355,7 @@ export class EmergencyCasesService {
       canCreateInvoiceRequest: closure.canCreateInvoiceRequest,
       createdAt: emergencyCase.createdAt,
       fileDate: emergencyCase.fileDate,
+      vendorEntitlementGrantedAt: entitlement?.grantedAt ?? null,
     });
   }
 

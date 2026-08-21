@@ -61,4 +61,14 @@ export class EmergencyFinanceController {
   approveInvoice(@Param('id') id: string) {
     return this.service.approveDraft(id);
   }
+
+  @Get('vendor-entitlements')
+  listVendorEntitlements() {
+    return this.service.listVendorEntitlements();
+  }
+
+  @Post('cases/:caseId/vendor-entitlement')
+  grantVendorEntitlement(@Param('caseId') caseId: string, @Request() req: any) {
+    return this.service.grantVendorEntitlement(caseId, req.user?.id ?? 'system');
+  }
 }

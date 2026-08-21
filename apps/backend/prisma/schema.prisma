@@ -170,6 +170,7 @@ model User {
   emergencyCasesAssigned     EmergencyCase[]           @relation("EmergencyAssignedUser")
   emergencyCostEntries       EmergencyCostEntry[]      @relation("EmergencyCostCreatedBy")
   emergencyInvoicesCreated   EmergencyInvoiceDraft[]   @relation("EmergencyInvoiceCreatedBy")
+  emergencyVendorEntitlementsGranted EmergencyVendorEntitlement[] @relation("EmergencyEntitlementGrantedBy")
   // Tedarikçi Sözleşmeleri
   createdVendorContracts     VendorContract[]          @relation("CreatedVendorContracts")
   createdVendors             Vendor[]                  @relation("CreatedVendors")
@@ -995,6 +996,7 @@ model Vendor {
   concentrationSnapshots   VendorConcentrationSnapshot[]
   emergencyCases           EmergencyCase[]             @relation("EmergencyVendor")
   emergencyCostEntries     EmergencyCostEntry[]        @relation("EmergencyCostVendor")
+  emergencyVendorEntitlements EmergencyVendorEntitlement[]
   // Tedarikçi Sözleşmeleri
   vendorContracts          VendorContract[]
 
@@ -2814,12 +2816,32 @@ model EmergencyCase {
   fileDocuments  FileDocument[]
   invoiceRequests InvoiceRequest[]
   inboundMessages InboundMessage[]
+  vendorEntitlement EmergencyVendorEntitlement?
 
   @@index([status])
   @@index([urgency])
   @@index([fileDate])
   @@index([createdAt])
   @@map("emergency_cases")
+}
+
+// Acil Yardım dosya hakedişi — Hasar VendorPaymentStatement kullanılmaz; vade yok.
+model EmergencyVendorEntitlement {
+  id              String   @id @default(uuid())
+  caseId          String   @unique @map("case_id")
+  vendorId        String   @map("vendor_id")
+  amount          Float
+  grantedAt       DateTime @map("granted_at")
+  grantedByUserId String   @map("granted_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  case      EmergencyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  vendor    Vendor        @relation(fields: [vendorId], references: [id])
+  grantedBy User          @relation("EmergencyEntitlementGrantedBy", fields: [grantedByUserId], references: [id])
+
+  @@index([vendorId])
+  @@index([grantedAt])
+  @@map("emergency_vendor_entitlements")
 }
 
 model EmergencyCostEntry {

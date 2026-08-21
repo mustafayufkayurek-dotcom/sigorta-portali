@@ -15,12 +15,14 @@ export function ClaimFileHeaderStatusCluster({
   extraBadges,
   actionsMenu,
   stageSource,
+  showTitle = true,
 }: {
   /** @deprecated Sağ rozet kaldırıldı; prop geri uyumluluk için tutulur. */
   statusBadge?: ReactNode;
   extraBadges?: ReactNode;
   actionsMenu?: ReactNode;
   stageSource: ClaimStageStripSource;
+  showTitle?: boolean;
 }) {
   return (
     <div
@@ -31,7 +33,7 @@ export function ClaimFileHeaderStatusCluster({
         className="min-w-0 flex-1 sm:w-[15rem] sm:flex-none sm:pr-1"
         data-testid="claim-header-stage-strip"
       >
-        <ClaimStageStrip source={stageSource} compact showTitle />
+        <ClaimStageStrip source={stageSource} compact showTitle={showTitle} />
       </div>
       {extraBadges}
       <div className="shrink-0">{actionsMenu}</div>

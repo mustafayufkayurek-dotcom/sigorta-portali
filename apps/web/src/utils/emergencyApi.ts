@@ -51,6 +51,7 @@ export interface EmergencyOperationChain {
     vendorStatementRequiresClaimFile: boolean;
     paymentRequiresClaimFile: boolean;
   };
+  vendorEntitlementGrantedAt?: string | null;
   steps: EmergencyOperationStep[];
 }
 
@@ -96,6 +97,7 @@ export interface EmergencyCase {
     id: string;
     fullName?: string | null;
     companyName?: string | null;
+    shortName?: string | null;
     firstName?: string | null;
     lastName?: string | null;
     entityType?: string | null;
@@ -398,6 +400,24 @@ export async function getFinanceList(params?: {
     '/emergency/finance/list',
     params,
   );
+}
+
+export type AcilVendorEntitlementRow = {
+  id: string;
+  caseId: string;
+  caseNo: string;
+  customerName: string;
+  issueType: string;
+  vendorId: string;
+  vendorName: string;
+  amount: number;
+  grantedAt: string;
+  grantedByName: string;
+  dueDate: null;
+};
+
+export async function getAcilVendorEntitlements(): Promise<{ data: AcilVendorEntitlementRow[] }> {
+  return apiClient.get<{ data: AcilVendorEntitlementRow[] }>('/emergency/finance/vendor-entitlements');
 }
 
 export async function getMonthlySummary(

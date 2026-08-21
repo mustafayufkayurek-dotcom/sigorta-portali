@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
-import { resolveFileExpertDisplay } from '@sigorta/shared';
+import { deriveOperationStage, resolveFileExpertDisplay } from '@sigorta/shared';
 import { toTitleCaseTR, resolveClaimIhbarKonusu, formatDisplayLabel, formatHasarAdresi } from '@/utils/text-helpers';
 import { fmtDate } from './claim-detail-utils';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
+import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import {
   damageSizeLabel,
 } from '@/components/damage-reports/RepairItemsModal';
@@ -16,6 +17,10 @@ import {
   quickDamageTypeDisplayLabel,
 } from '@/utils/quick-repair-damage-types';
 import { DosyaBilgileriEditModal } from './DosyaBilgileriEditModal';
+import { FILE_STATUS_BADGE_BASE, FILE_STATUS_TONE } from '@/components/panel/file-status-tone';
+
+/** Durum rengi ortak sözlükten gelir; Acil ile aynı renk davranışı. */
+const STAGE_TONE_BADGE: Record<string, string> = FILE_STATUS_TONE;
 
 const PRIORITY_LABELS: Record<string, string> = {
   low: 'Düşük',
@@ -116,18 +121,19 @@ function resolveQuickRepairSummary(reportSummary: any | null): string {
 }
 
 export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null): DosyaField[] {
+  const insuredPhone = typeof claim.insuredPhone === 'string' ? claim.insuredPhone.trim() : '';
   const core: DosyaField[] = [
+    { label: 'Hasar Dosya No', value: claimListFileNo(claim) },
+    { label: 'Sigortalı Adı Soyadı', value: resolveHasarInsuredName(claim) },
+    { label: 'Sigortalı Telefon', value: insuredPhone || '—' },
+    { label: 'Dosya Konusu', value: resolveClaimIhbarKonusu(claim) },
+    { label: 'Sigorta Şirketi', value: claim.insuranceCompany?.name?.trim() || '—' },
     { label: 'İhbar Tarihi', value: resolveIhbarTarihi(claim) },
     { label: 'Hasar Konusu', value: resolveHasarNedeni(claim, reportSummary ?? null) },
     { label: 'Öncelik', value: formatPriority(claim.priority) },
     { label: 'SLA', value: fmtDate(claim.slaDueAt) },
     { label: 'Dosya Eksperi', value: resolveDosyaEksperi(claim, reportSummary ?? null) },
   ];
-
-  const insuredPhone = typeof claim.insuredPhone === 'string' ? claim.insuredPhone.trim() : '';
-  if (insuredPhone) {
-    core.push({ label: 'Sigortalı Telefon', value: insuredPhone });
-  }
 
   const quickRepairValue = resolveQuickRepairSummary(reportSummary ?? null);
   if (quickRepairValue !== '—') {
@@ -163,17 +169,37 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
   return [...core, ...supplementary];
 }
 
-function buildDosyaBilgileriSubtitle(claim: any, reportSummary?: any | null): string {
-  const parts: string[] = [];
-  const notification = resolveIhbarTarihi(claim);
-  if (notification !== '—') parts.push(`İhbar ${notification}`);
-  const eksper = resolveDosyaEksperi(claim, reportSummary ?? null);
-  if (eksper !== 'Atanmamış' && eksper !== '—') parts.push(eksper);
+function buildDosyaBilgileriOzet(claim: any, reportSummary?: any | null): {
+  insured: string;
+  phone: string;
+  address: string;
+  extras: string[];
+  ihbar: string;
+  durum: string;
+  durumTone: string;
+} {
+  const extras: string[] = [];
   const priority = formatPriority(claim.priority);
-  if (priority !== '—') parts.push(priority);
+  if (priority !== '—') extras.push(priority);
   const sla = fmtDate(claim.slaDueAt);
-  if (sla !== '—') parts.push(`SLA ${sla}`);
-  return parts.join(' · ');
+  if (sla !== '—') extras.push(`SLA ${sla}`);
+  const stage = deriveOperationStage({
+    claimStatusCode: claim.currentStatus?.code,
+    reportStatus: reportSummary?.status ?? claim.newestRepairReportStatus ?? claim.latestRepairReport?.status,
+  });
+  return {
+    insured: resolveHasarInsuredName(claim),
+    phone: typeof claim.insuredPhone === 'string' ? claim.insuredPhone.trim() : '',
+    address: (() => {
+      const addr = formatPropertyAddress(claim);
+      return addr && addr !== 'Belirtilmemiş' ? addr : '';
+    })(),
+    extras,
+    ihbar: resolveIhbarTarihi(claim),
+    durum: (typeof claim.operationStatusLabel === 'string' && claim.operationStatusLabel.trim())
+      || stage.label,
+    durumTone: stage.tone,
+  };
 }
 
 function InsuredNameEditor({
@@ -289,14 +315,7 @@ export function DosyaBilgileriDetay({
   );
 
   const fields = buildDosyaBilgileriFields(effectiveClaim, reportSummary);
-  const subtitleParts: string[] = [];
-  const hasarNedeni = resolveHasarNedeni(effectiveClaim, reportSummary);
-  if (hasarNedeni !== '—') subtitleParts.push(hasarNedeni);
-  const quickRepair = resolveQuickRepairSummary(reportSummary);
-  if (quickRepair !== '—') subtitleParts.push(quickRepair);
-  const baseSubtitle = buildDosyaBilgileriSubtitle(effectiveClaim, reportSummary);
-  if (baseSubtitle) subtitleParts.push(baseSubtitle);
-  const subtitle = subtitleParts.join(' · ');
+  const ozet = buildDosyaBilgileriOzet(effectiveClaim, reportSummary);
   const compactFields = fields.filter((field) => !field.wide);
   const wideFields = fields.filter((field) => field.wide);
   const insuredMissing = !claim.insuredName?.trim() && resolveHasarInsuredName(claim) === '—';
@@ -304,16 +323,47 @@ export function DosyaBilgileriDetay({
   return (
     <div className="border-t border-slate-100">
       <div className="w-full flex items-center justify-between gap-3 px-4 py-2.5">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="min-w-0 flex-1 text-left hover:opacity-90 transition-opacity"
-        >
-          <p className="text-[11px] font-semibold text-slate-600">Dosya Bilgileri</p>
-          {!open && subtitle && (
-            <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex flex-wrap items-center gap-2 text-left hover:opacity-90 transition-opacity"
+          >
+            <p className="text-[11px] font-semibold text-slate-600">Dosya Bilgileri</p>
+            {ozet.ihbar !== '—' && (
+              <span className={`${FILE_STATUS_BADGE_BASE} ${FILE_STATUS_TONE.teal}`}>
+                İhbar Tarihi {ozet.ihbar}
+              </span>
+            )}
+            {ozet.durum && (
+              <span className={`${FILE_STATUS_BADGE_BASE} ${STAGE_TONE_BADGE[ozet.durumTone] ?? STAGE_TONE_BADGE.gray}`}>
+                {ozet.durum}
+              </span>
+            )}
+          </button>
+          {!open && (
+            <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+              {ozet.insured && ozet.insured !== '—' ? (
+                <span>Sigortalı {ozet.insured}</span>
+              ) : (
+                <span>Sigortalı —</span>
+              )}
+              {ozet.phone ? (
+                <>
+                  <span> · </span>
+                  <a
+                    href={`tel:${ozet.phone.replace(/\s/g, '')}`}
+                    className="tabular-nums text-brand-700 hover:underline"
+                  >
+                    {ozet.phone}
+                  </a>
+                </>
+              ) : null}
+              {ozet.address ? <span> · {ozet.address}</span> : null}
+              {ozet.extras.length > 0 ? <span> · {ozet.extras.join(' · ')}</span> : null}
+            </p>
           )}
-        </button>
+        </div>
         <div className="flex items-center gap-2 shrink-0">
           {canEdit && onClaimUpdated && (
             <button

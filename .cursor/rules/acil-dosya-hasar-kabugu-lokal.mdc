@@ -1,0 +1,31 @@
+---
+description: Acil dosya Hasar kabuğu — canlı alındı; önizleme durur; geriye dönmez
+alwaysApply: true
+---
+
+# Acil Dosya Hasar Kabuğu (canlı kilit)
+
+**Kaynak (Mustafa · 21.08.2026):** Acil dosya Hasar gibi. Önizleme tutuldu; netleşen iş canlıya alındı. Geriye dönmez.
+
+**Canlı:** `/panel/acil-yardim/[id]` · finans `/panel/acil-yardim/finans#tedarikci-hakedis`  
+**Önizleme (yalnız development):** `http://localhost:3001/dev/acil-dosya-akis` — production’da kapalı.
+
+## Tutulan (bozulmaz)
+
+- Adres satırında telefon yok; telefon aranabilir.
+- Alış/satış kutusunda TL; binlik nokta; kâr/zarar yüzde.
+- Tespit fotoğrafları görünür (oturumla blob).
+- İş bitiminde dosya tedarikçisine hakediş; tarih-saat kayıtlı; finans ekranına düşer; **vade yok**.
+- Hasar hakediş / 15-30 vade yoluna dokunulmaz.
+
+## Yasak (açık onay yoksa)
+
+- Bu akışı “sadeleştirme” diye kaldırmak
+- Google / Places / API etiketi
+- Hasar `recommendForClaimFile` yoluna dokunmak
+
+Regresyon:
+
+```bash
+pnpm smoke:acil-netlesen
+```
