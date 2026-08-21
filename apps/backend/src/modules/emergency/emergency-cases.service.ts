@@ -42,6 +42,7 @@ import {
   type EmergencyProcessAction,
 } from './emergency-process-events';
 import { RecordEmergencyProcessEventDto } from './dto/record-emergency-process-event.dto';
+import { SurveysService } from '@/modules/surveys/surveys.service';
 import { EmergencyFinanceService } from './emergency-finance.service';
 
 const MANUAL_DECISION_MIN_REASON = 10;
@@ -848,8 +849,8 @@ export class EmergencyCasesService {
       await this.onEmergencyCaseClosed(id, userId).catch((err) =>
         this.logger.warn(`[EPIC-04] Kapanış hook hatası: ${err?.message}`),
       );
-      void this.surveys?.ensureCampaignForEmergencyCase(id).catch((err) =>
-        this.logger.warn(`[Survey] Acil kapanış kampanyası: ${err?.message}`),
+      void this.surveys?.ensureCampaignForEmergencyCase(id).catch((err: unknown) =>
+        this.logger.warn(`[Survey] Acil kapanış kampanyası: ${(err as Error)?.message}`),
       );
     }
     if (dto.status === EmergencyStatus.FATURALANDILDI) {

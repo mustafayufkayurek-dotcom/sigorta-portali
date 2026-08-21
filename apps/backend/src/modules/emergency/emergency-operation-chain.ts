@@ -201,7 +201,7 @@ export function buildEmergencyOperationChain(input: {
         ? 'pending'
         : entitlementGranted
           ? 'done'
-          : closed && vendorAssigned
+          : closed && vendorAssigned && vendorCostCaptured
             ? 'current'
             : 'pending',
       note: isHistorical
