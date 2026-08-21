@@ -134,12 +134,13 @@ function formatScore(score: number | null | undefined): string {
   return (Math.round(score * 10) / 10).toFixed(1);
 }
 
-export function CallPhone({ phone, className }: { phone: string; className?: string }) {
-  const href = `tel:${phone.replace(/[^\d+]/g, '')}`;
-  if (!href.replace('tel:', '')) return <span className={className}>{phone}</span>;
+export function CallPhone({ phone, className }: { phone: string | null | undefined; className?: string }) {
+  const raw = (phone ?? '').trim();
+  const href = `tel:${raw.replace(/[^\d+]/g, '')}`;
+  if (!raw || href === 'tel:') return raw ? <span className={className}>{raw}</span> : null;
   return (
     <a href={href} className={className ?? 'font-medium text-brand-600 hover:underline'}>
-      {phone}
+      {raw}
     </a>
   );
 }

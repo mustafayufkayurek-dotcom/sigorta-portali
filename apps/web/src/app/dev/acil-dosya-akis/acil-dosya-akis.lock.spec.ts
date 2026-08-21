@@ -94,7 +94,7 @@ describe('acil dosya akış önizleme LOCK', () => {
     assert.doesNotMatch(stepsFile, /signed-url/);
     assert.match(page, /CallPhone phone=\{FILE.phone\}/);
     assert.match(stepsFile, /CallPhone phone=\{p.file.phone\}/);
-    assert.match(stepsFile, /tel:\$\{phone.replace/);
+    assert.match(stepsFile, /tel:\$\{raw.replace/);
     assert.match(stepsFile, /function AmountField/);
     assert.match(stepsFile, /pr-8/);
     assert.match(stepsFile, />\s*TL/);
