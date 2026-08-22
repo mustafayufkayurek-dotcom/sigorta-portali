@@ -12,7 +12,14 @@ type Props = {
 };
 
 /** İş ekranında bir kez. Anladım deyince kaybolur. Yeni menü / eğitim sayfası değildir. */
-export function OpsFirstRunNotice({ noticeId, title, body, testId, className = '' }: Props) {
+export function OpsFirstRunNotice({
+  noticeId,
+  title,
+  body,
+  testId,
+  className = '',
+  compact = false,
+}: Props & { compact?: boolean }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -20,6 +27,32 @@ export function OpsFirstRunNotice({ noticeId, title, body, testId, className = '
   }, [noticeId]);
 
   if (!visible) return null;
+
+  if (compact) {
+    return (
+      <div
+        className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${className}`.trim()}
+        role="status"
+        data-testid={testId}
+      >
+        <p className="min-w-0 flex-1 text-xs leading-snug text-slate-600">
+          <span className="font-semibold text-slate-800">{title}. </span>
+          {body}
+        </p>
+        <button
+          type="button"
+          className="shrink-0 text-[11px] font-semibold text-brand-700 hover:underline"
+          data-testid={`${testId}-anladim`}
+          onClick={() => {
+            dismissOpsNotice(noticeId);
+            setVisible(false);
+          }}
+        >
+          Anladım
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div

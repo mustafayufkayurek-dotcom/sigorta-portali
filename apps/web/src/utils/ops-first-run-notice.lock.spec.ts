@@ -29,6 +29,7 @@ const guide = readFileSync(
 
 describe('operasyon ilk kullanım şeridi LOCK', () => {
   it('şerit Anladım ile kapanır; Google / API yok', () => {
+    assert.match(notice, /compact/);
     assert.match(notice, /Anladım/);
     assert.match(notice, /dismissOpsNotice/);
     assert.doesNotMatch(notice, /Google/);
@@ -56,6 +57,45 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(acilForm, /OpsFirstRunNotice/);
     assert.match(acilForm, /OPS_NOTICE\.acilDosyaSorumlusuVekalet/);
     assert.match(acilForm, /dosya-sorumlusu-ilk-kullanim-seridi/);
+  });
+
+  it('Hasar ve Acil listesinde son canlı iş şeridi durur', () => {
+    const hasarListe = readFileSync(join(here, '../app/panel/hasar-dosyalari/page.tsx'), 'utf8');
+    const hasarDosya = readFileSync(join(here, '../app/panel/hasar-dosyalari/[id]/page.tsx'), 'utf8');
+    const hasarRapor = readFileSync(
+      join(here, '../app/panel/hasar-dosyalari/[id]/onarim-raporu/[reportId]/page.tsx'),
+      'utf8',
+    );
+    const opsListe = readFileSync(join(here, '../app/panel/operasyon/page.tsx'), 'utf8');
+    assert.match(hasarListe, /OPS_NOTICE\.hasarListeSonDegisiklik/);
+    assert.match(hasarListe, /hasar-liste-ilk-kullanim-seridi/);
+    assert.match(hasarListe, /ops-row-approval-72h/);
+    assert.match(hasarListe, /ops-72s-chip/);
+    assert.match(hasarListe, /OpsStripKpi/);
+    assert.match(hasarListe, /dense/);
+    assert.match(hasarListe, /ops-queue-table/);
+    const css = readFileSync(join(here, '../app/globals.css'), 'utf8');
+    assert.match(css, /ops-row-approval-72h/);
+    assert.match(css, /table-row\.ops-row-approval-72h:nth-child/);
+    assert.match(css, /ops-72s-chip/);
+    assert.match(css, /prefers-reduced-motion: reduce/);
+    assert.match(OPS_NOTICE.hasarListeSonDegisiklik.body, /yanıp söner/);
+    assert.match(hasarDosya, /OPS_NOTICE\.hasarDosyaSonDegisiklik/);
+    assert.match(hasarRapor, /OPS_NOTICE\.hasarRaporSonDegisiklik/);
+    assert.match(opsListe, /OPS_NOTICE\.acilListeSonDegisiklik/);
+    assert.match(opsListe, /acil-liste-ilk-kullanim-seridi/);
+    assert.match(opsListe, /OpsStripKpi/);
+    assert.match(opsListe, /dense/);
+    const picker = readFileSync(join(here, '../components/ui/TableColumnPicker.tsx'), 'utf8');
+    assert.doesNotMatch(picker, /wrap = false \}: PanelTableTdProps/);
+    assert.match(css, /\.ops-queue-table \.table-td > div/);
+    assert.match(hasarListe, /ops-queue-table/);
+    assert.match(opsListe, /ops-queue-table/);
+    assert.match(acilPage, /OPS_NOTICE\.acilDosyaSonDegisiklik/);
+    assert.equal(OPS_NOTICE.hasarListeSonDegisiklik.id, 'hasar-liste-v527');
+    assert.match(OPS_NOTICE.hasarListeSonDegisiklik.body, /yanıp söner/);
+    assert.match(OPS_NOTICE.acilListeSonDegisiklik.body, /Ödeme Durumu/);
+    assert.match(OPS_NOTICE.acilDosyaSonDegisiklik.body, /Konum/);
   });
 
   it('personel kılavuzu Acil tedarikçi ve dosya sorumlusu maddelerini taşır', () => {

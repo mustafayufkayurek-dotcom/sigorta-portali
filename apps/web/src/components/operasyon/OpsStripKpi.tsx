@@ -9,6 +9,7 @@ export function OpsStripKpi({
   icon: Icon,
   onClick,
   active,
+  dense = false,
 }: {
   label: string;
   value: string | number;
@@ -16,23 +17,27 @@ export function OpsStripKpi({
   icon: LucideIcon;
   onClick?: () => void;
   active?: boolean;
+  dense?: boolean;
 }) {
   const body = (
     <div
-      className={`group flex h-[102px] w-full min-w-0 flex-row items-center gap-3 overflow-hidden rounded-xl border bg-white px-2.5 py-2.5 shadow-md transition ${
+      className={`group relative flex w-full min-w-0 flex-row items-center overflow-hidden rounded-xl border bg-white shadow-card transition ${
+        dense ? 'h-[64px] gap-2 py-2 pl-3 pr-2' : 'h-[102px] gap-3 py-2.5 pl-4 pr-2.5 rounded-2xl'
+      } ${
         active
           ? 'border-blue-400 ring-2 ring-blue-200 shadow-blue-100'
-          : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50 hover:shadow-lg'
+          : 'border-slate-200/70 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md'
       }`}
       data-testid="ops-kpi-card"
       data-kpi-label={label}
     >
-      <span className={`inline-flex w-fit shrink-0 rounded-lg p-2 shadow-sm ${color}`}>
-        <Icon className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
+      <span className={`absolute inset-y-0 left-0 w-1 ${color}`} aria-hidden />
+      <span className={`inline-flex w-fit shrink-0 rounded-lg shadow-sm ${color} ${dense ? 'p-1.5' : 'p-2'}`}>
+        <Icon className={dense ? 'h-4 w-4 text-white' : 'h-5 w-5 text-white'} strokeWidth={2.25} aria-hidden />
       </span>
       <span className="min-w-0 flex-1 text-left">
-        <span className="block text-xl font-bold leading-none tabular-nums text-slate-950">{value}</span>
-        <span className="mt-1.5 block text-[10px] font-semibold leading-snug text-slate-600 [overflow-wrap:anywhere]">
+        <span className={`block font-bold leading-none tabular-nums text-slate-950 ${dense ? 'text-lg' : 'text-xl'}`}>{value}</span>
+        <span className={`mt-0.5 block font-semibold leading-snug text-slate-600 [overflow-wrap:anywhere] ${dense ? 'text-[10px]' : 'text-[10px] mt-1.5'}`}>
           {label}
         </span>
       </span>

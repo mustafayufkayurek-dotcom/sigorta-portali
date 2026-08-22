@@ -22,7 +22,6 @@ import {
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { claimListFileNo, claimListInsuranceCompanyName } from '@/utils/claim-list-column-fields';
 import { resolveClaimSupplierDisplayName } from '@/utils/claim-supplier-display';
-import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
 import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
@@ -60,6 +59,8 @@ import {
   FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
 
 const fmtAmount = (n: number | undefined | null) => formatTryAmount(n, { fractionDigits: 0 });
@@ -192,13 +193,13 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'subject', label: 'Dosya Konusu', defaultWidth: 140, minWidth: 100 },
   { id: 'status', label: 'Dosya Durumu', defaultWidth: 130, minWidth: 100 },
   { id: 'supplier', label: 'Tedarikçi', defaultWidth: 120, minWidth: 96 },
-  { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88 },
-  { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
-  { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88 },
-  { id: 'reportCost', label: 'Tedarikçi Maliyet Toplamı', defaultWidth: 140, minWidth: 110 },
-  { id: 'reportProfit', label: 'Beklenen Kar', defaultWidth: 110, minWidth: 88 },
-  { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80 },
-  { id: 'revision', label: 'Revizyon', defaultWidth: 120, minWidth: 96 },
+  { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88, defaultVisible: false },
+  { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88, defaultVisible: false },
+  { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88, defaultVisible: false },
+  { id: 'reportCost', label: 'Tedarikçi Maliyet Toplamı', defaultWidth: 140, minWidth: 110, defaultVisible: false },
+  { id: 'reportProfit', label: 'Beklenen Kar', defaultWidth: 110, minWidth: 88, defaultVisible: false },
+  { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80, defaultVisible: false },
+  { id: 'revision', label: 'Revizyon', defaultWidth: 120, minWidth: 96, defaultVisible: false },
   { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
 ];
 
@@ -247,8 +248,8 @@ function ClaimFilesPageContent() {
   const [emailTarget, setEmailTarget] = useState<OperationSendEmailTarget | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const limit = 20;
-  /** v5: Hasar listesi sütun tercihleri — Operasyon/Acil ile paylaşılmaz */
-  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v5', TABLE_COLUMNS);
+  /** v6: iş kuyruğu varsayılan sütun — para Sütunlar’da */
+  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v7', TABLE_COLUMNS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
 
@@ -435,7 +436,7 @@ function ClaimFilesPageContent() {
 
   return (
     <TableColumnsProvider value={tableColumns}>
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
         <a href="/panel" className="hover:text-brand-600 transition-colors">
@@ -488,6 +489,17 @@ function ClaimFilesPageContent() {
                 {invoiceStatusFilter === 'pending' && <span className="ml-2 text-status-warning font-semibold">· Bekleyen tahsilat</span>}
               </p>
             )}
+            {!isFieldStaff && (
+              <div className="mt-1.5">
+                <OpsFirstRunNotice
+                  compact
+                  noticeId={OPS_NOTICE.hasarListeSonDegisiklik.id}
+                  title={OPS_NOTICE.hasarListeSonDegisiklik.title}
+                  body={OPS_NOTICE.hasarListeSonDegisiklik.body}
+                  testId="hasar-liste-ilk-kullanim-seridi"
+                />
+              </div>
+            )}
           </div>
         </div>
         <div className="page-header-actions">
@@ -529,32 +541,41 @@ function ClaimFilesPageContent() {
       </div>
 
       {!isFieldStaff && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" data-testid="hasar-kpi-band">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" data-testid="hasar-kpi-band">
           <OpsStripKpi
+            dense
             label="Açık Dosya"
             value={opsStats?.openClaims ?? '—'}
             color="bg-brand-600"
             icon={FolderOpen}
+            active={statusFilter === '__open__'}
+            onClick={() => { setStatusFilter((s) => (s === '__open__' ? '' : '__open__')); setPage(1); }}
           />
           <OpsStripKpi
+            dense
             label="Onay Bekleyen"
             value={opsStats?.approvalPending ?? '—'}
             color="bg-status-warning"
             icon={Hourglass}
           />
           <OpsStripKpi
+            dense
             label="Rapor Yazılıyor"
             value={opsStats?.reportWriting ?? '—'}
             color="bg-orange-500"
             icon={FileEdit}
           />
           <OpsStripKpi
+            dense
             label="Rapor Onayı"
             value={opsStats?.reportApproval ?? '—'}
             color="bg-amber-600"
             icon={ClipboardCheck}
+            active={pendingReportFilter}
+            onClick={() => { setPendingReportFilter((v) => !v); setPage(1); }}
           />
           <OpsStripKpi
+            dense
             label="Bugün Açılan"
             value={opsStats?.openedTodayClaims ?? '—'}
             color="bg-emerald-600"
@@ -579,7 +600,7 @@ function ClaimFilesPageContent() {
       </SlidePanel>
 
       {/* Filter Bar — saha: yalnız arama + açık/kapalı */}
-      <div className="filter-bar">
+      <div className="filter-bar !mb-3 !py-2.5">
         <div className="panel-filter-bar">
           <div className={isFieldStaff ? 'relative min-w-[13rem] w-full sm:w-[17rem] sm:flex-none' : 'panel-filter-search-wrap'}>
             <SearchInput
@@ -735,7 +756,7 @@ function ClaimFilesPageContent() {
           </div>
         </div>
       ) : (
-        <div className="table-container">
+        <div className="table-container ops-queue-table">
           <div className={`grid gap-3 p-3 ${isFieldStaff ? '' : 'lg:hidden'}`}>
             {visibleClaims.map((claim: any) => {
               if (isFieldStaff) {
@@ -849,7 +870,12 @@ function ClaimFilesPageContent() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="break-all font-mono text-sm font-bold text-slate-900">{claimListFileNo(claim)}</div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="break-all font-mono text-sm font-bold text-slate-900">{claimListFileNo(claim)}</div>
+                        {claim.approval72hExceeded ? (
+                          <span className="ops-72s-chip" title="Onay süresi 72 saati aştı">72s</span>
+                        ) : null}
+                      </div>
                       <div className="mt-1 truncate text-xs font-medium text-slate-600">{customerName}</div>
                       {subject ? (
                         <div className="mt-0.5 truncate text-[11px] text-slate-500">{subject}</div>
@@ -970,32 +996,42 @@ function ClaimFilesPageContent() {
                   const rowAccent = claim.approval72hExceeded
                     ? 'ops-row-approval-72h'
                     : revCount > 0
-                      ? 'border-l-4 border-amber-300'
+                      ? 'border-l-4 border-amber-400 bg-amber-50'
                       : rapor?.status === 'pending_approval'
-                        ? 'border-l-4 border-orange-400'
+                        ? 'border-l-4 border-orange-500 bg-orange-50'
                         : '';
+                  const rowTitle = claim.approval72hExceeded
+                    ? 'Onay süresi 72 saati aştı'
+                    : revCount > 0
+                      ? `${revCount} revizyon bekliyor`
+                      : rapor?.status === 'pending_approval'
+                        ? 'Rapor onay bekliyor'
+                        : undefined;
 
                   return (
                     <tr
                       key={claim.id}
                       className={`table-row cursor-pointer ${rowAccent}`}
+                      title={rowTitle}
                       onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}?mode=edit`)}
                     >
-                      <PanelTableTd colId="fileNo" className="table-td font-mono text-xs font-semibold text-slate-900 whitespace-nowrap">{claimListFileNo(claim)}</PanelTableTd>
-                      <PanelTableTd colId="customer" className="table-td text-xs font-medium whitespace-nowrap max-w-[160px]" title={customerName}>{customerName}</PanelTableTd>
-                      <PanelTableTd colId="insured" className="table-td text-xs whitespace-nowrap max-w-[180px]">
-                        <InsuredNameInlineEdit
-                          claimId={claim.id}
-                          displayName={insuredName}
-                          onSaved={() => { void refetch(); }}
-                          compact
-                        />
+                      <PanelTableTd colId="fileNo" className="table-td font-mono text-xs font-semibold text-slate-900">
+                        <span className="inline-flex flex-wrap items-center gap-1">
+                          {claimListFileNo(claim)}
+                          {claim.approval72hExceeded ? (
+                            <span className="ops-72s-chip" title="Onay süresi 72 saati aştı">72s</span>
+                          ) : null}
+                        </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="date" className="table-td text-slate-400 text-xs whitespace-nowrap">{fmtDate(claim.createdAt)}</PanelTableTd>
-                      <PanelTableTd colId="subject" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
+                      <PanelTableTd colId="customer" className="table-td text-xs font-medium max-w-[160px]" title={customerName}>{customerName}</PanelTableTd>
+                      <PanelTableTd colId="insured" className="table-td text-xs max-w-[180px]" title={insuredName}>
+                        {insuredName}
+                      </PanelTableTd>
+                      <PanelTableTd colId="date" className="table-td text-slate-400 text-xs">{fmtDate(claim.createdAt)}</PanelTableTd>
+                      <PanelTableTd colId="subject" className="table-td text-xs max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
                         {resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}
                       </PanelTableTd>
-                      <PanelTableTd colId="status" align="center" className="table-td-center whitespace-nowrap">
+                      <PanelTableTd colId="status" align="center" className="table-td-center">
                         <ClaimStatusBadge
                           status={claim.currentStatus}
                           reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
@@ -1003,39 +1039,39 @@ function ClaimFilesPageContent() {
                           operationStatusLabel={claim.operationStatusLabel}
                         />
                       </PanelTableTd>
-                      <PanelTableTd colId="supplier" className="table-td text-xs whitespace-nowrap max-w-[120px]" title={supplierName ?? undefined}>
+                      <PanelTableTd colId="supplier" className="table-td text-xs max-w-[120px]" title={supplierName ?? undefined}>
                         {supplierName ?? <span className="text-slate-300">Atanmadı</span>}
                       </PanelTableTd>
-                      <PanelTableTd colId="invoice" className="table-td whitespace-nowrap">
+                      <PanelTableTd colId="invoice" className="table-td">
                         <span className={INVOICE_STATUS_CLASSES[invStatus] ?? 'badge badge-gray'}>
                           {INVOICE_STATUS_LABELS[invStatus] ?? invStatus}
                         </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="amount" className="table-td text-xs whitespace-nowrap font-semibold">
+                      <PanelTableTd colId="amount" className="table-td text-xs font-semibold">
                         {fmtAmount(totalAmount)}
                       </PanelTableTd>
-                      <PanelTableTd colId="reportSales" className="table-td text-xs whitespace-nowrap font-semibold text-slate-800">
+                      <PanelTableTd colId="reportSales" className="table-td text-xs font-semibold text-slate-800">
                         {rapor ? fmtAmount(rapor.totalSalesAmount) : '—'}
                       </PanelTableTd>
-                      <PanelTableTd colId="reportCost" className="table-td text-xs whitespace-nowrap font-semibold text-slate-800">
+                      <PanelTableTd colId="reportCost" className="table-td text-xs font-semibold text-slate-800">
                         {rapor ? fmtAmount(rapor.totalSupplierCost) : '—'}
                       </PanelTableTd>
                       <PanelTableTd
                         colId="reportProfit"
-                        className={`table-td text-xs whitespace-nowrap font-semibold ${
+                        className={`table-td text-xs font-semibold ${
                           rapor && Number(rapor.grossProfit) < 0 ? 'text-status-danger' : 'text-slate-800'
                         }`}
                       >
                         {rapor ? fmtAmount(rapor.grossProfit) : '—'}
                       </PanelTableTd>
-                      <PanelTableTd colId="priority" className="table-td whitespace-nowrap">
+                      <PanelTableTd colId="priority" className="table-td">
                         {claim.priority && (
                           <span className={priorityBadgeClass(claim.priority)}>
                             {formatPriorityLabel(claim.priority)}
                           </span>
                         )}
                       </PanelTableTd>
-                      <PanelTableTd colId="revision" className="table-td whitespace-nowrap">
+                      <PanelTableTd colId="revision" className="table-td">
                         {revCount > 0 ? (
                           <span className="badge badge-amber">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
@@ -1045,7 +1081,7 @@ function ClaimFilesPageContent() {
                           <span className="text-slate-300 text-xs">—</span>
                         )}
                       </PanelTableTd>
-                      <PanelTableTd colId="actions" className="table-td-center whitespace-nowrap">
+                      <PanelTableTd colId="actions" wrap={false} className="table-td-center">
                         <div
                           className="inline-flex"
                           onClick={(e) => e.stopPropagation()}

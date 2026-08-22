@@ -48,6 +48,8 @@ import axios from 'axios';
 import { SlidePanel } from '@/components/SlidePanel';
 import { EmergencyCaseNewForm } from '@/components/emergency/EmergencyCaseNewForm';
 import { SearchInput } from '@/components/ui/SearchInput';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import {
   BADGE_TONE_CLASS,
   OPERATION_PRESET_LABELS,
@@ -246,7 +248,8 @@ const VENDOR_PAY_COL: TableColumnDef = {
 };
 
 const ACIL_TABLE_COLUMNS: TableColumnDef[] = (() => {
-  const cols = TABLE_COLUMNS.map((c) => (c.id === 'kind' ? { ...c, defaultVisible: false } : c));
+  const hideExtra = new Set(['kind', 'invoice', 'amount', 'reportSales', 'reportCost', 'reportProfit']);
+  const cols = TABLE_COLUMNS.map((c) => (hideExtra.has(c.id) ? { ...c, defaultVisible: false } : c));
   const statusAt = cols.findIndex((c) => c.id === 'status');
   return [
     ...cols.slice(0, statusAt + 1),
@@ -259,12 +262,12 @@ const PAGE_SIZE = 50;
 
 /**
  * Sütun genişlikleri sayfa/filtre bazında ayrılır — Hasar ve Acil birbirini etkilemez.
- * v15: Ödeme Durumu gizlenemez (Sütunlar menüsünden kapatılmaz).
+ * v16: iş kuyruğu varsayılan sütun; Ödeme Durumu gizlenemez.
  */
 const OPS_COLS_KEY_BY_FILTER: Record<'all' | 'hasar' | 'acil', string> = {
   all: 'table-cols:operasyon-all-v11',
   hasar: 'table-cols:operasyon-hasar-v11',
-  acil: 'table-cols:operasyon-acil-v15',
+  acil: 'table-cols:operasyon-acil-v16',
 };
 
 function resolveOpsColumnsStorageKey(filterType: 'all' | 'hasar' | 'acil' = 'all'): string {
@@ -795,7 +798,7 @@ function OperasyonPageContent() {
 
   return (
     <TableColumnsProvider value={tableColumns}>
-    <div className={isAcilListMode ? 'space-y-5' : 'space-y-6'}>
+    <div className={isAcilListMode ? 'space-y-3' : 'space-y-6'}>
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
         <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
@@ -837,6 +840,15 @@ function OperasyonPageContent() {
                     ) : null}
                   </p>
                 )}
+                <div className="mt-1.5">
+                  <OpsFirstRunNotice
+                    compact
+                    noticeId={OPS_NOTICE.acilListeSonDegisiklik.id}
+                    title={OPS_NOTICE.acilListeSonDegisiklik.title}
+                    body={OPS_NOTICE.acilListeSonDegisiklik.body}
+                    testId="acil-liste-ilk-kullanim-seridi"
+                  />
+                </div>
               </>
             ) : (
               <>
@@ -884,35 +896,36 @@ function OperasyonPageContent() {
 
       {/* Dosya Özeti KPI — Acil listesinde yalnız acil sayıları */}
       {isAcilListMode ? (
-      <div
-        className="grid grid-cols-2 gap-3 sm:grid-cols-3"
-        data-testid="ops-kpi-band-acil"
-      >
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" data-testid="ops-kpi-band-acil">
         <OpsStripKpi
+          dense
           label="Açık Dosya"
           value={opsStats?.openEmergency ?? opsStats?.urgent ?? '—'}
           color="bg-brand-600"
           icon={FolderOpen}
         />
         <OpsStripKpi
+          dense
           label="Bugün Açılan"
           value={opsStats?.openedTodayEmergency ?? '—'}
           color="bg-emerald-600"
           icon={CalendarPlus}
         />
         <OpsStripKpi
+          dense
           label="Toplam Satır"
           value={filteredRows.length}
-          color="bg-orange-600"
+          color="bg-slate-600"
           icon={FileText}
         />
       </div>
       ) : (
       <div
-        className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8"
         data-testid="ops-kpi-band"
       >
         <OpsStripKpi
+          dense
           label="Açık Dosya"
           value={opsStats?.open ?? '—'}
           color="bg-brand-600"
@@ -921,6 +934,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('open')}
         />
         <OpsStripKpi
+          dense
           label="Onay Bekleyen"
           value={opsStats?.approvalPending ?? '—'}
           color="bg-status-warning"
@@ -929,6 +943,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('approval_pending')}
         />
         <OpsStripKpi
+          dense
           label="Rapor Yazılıyor"
           value={opsStats?.reportWriting ?? '—'}
           color="bg-orange-500"
@@ -937,6 +952,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('report_writing')}
         />
         <OpsStripKpi
+          dense
           label="Rapor Onayı"
           value={opsStats?.reportApproval ?? '—'}
           color="bg-amber-600"
@@ -945,6 +961,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('report_approval')}
         />
         <OpsStripKpi
+          dense
           label="Finansa Aktarılacak"
           value={opsStats?.financeTransfer ?? '—'}
           color="bg-violet-600"
@@ -953,6 +970,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('finance_transfer')}
         />
         <OpsStripKpi
+          dense
           label="72 Saat + Risk"
           value={opsStats?.delayRisk ?? opsStats?.approval72h ?? '—'}
           color="bg-red-600"
@@ -961,6 +979,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('delay_risk')}
         />
         <OpsStripKpi
+          dense
           label="Bugün Açılan"
           value={opsStats?.openedToday ?? '—'}
           color="bg-emerald-600"
@@ -969,6 +988,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('opened_today')}
         />
         <OpsStripKpi
+          dense
           label="Acil Dosya"
           value={opsStats?.urgent ?? '—'}
           color="bg-orange-600"
@@ -1008,7 +1028,7 @@ function OperasyonPageContent() {
       )}
 
       {isAcilListMode && (
-        <div className="filter-bar">
+        <div className="filter-bar !mb-3 !py-2.5">
           <div className="panel-filter-bar">
             <div className="panel-filter-search-wrap">
               <SearchInput
@@ -1077,7 +1097,7 @@ function OperasyonPageContent() {
         </div>
       )}
 
-      <div className="table-container">
+      <div className={`table-container${isAcilListMode ? ' ops-queue-table' : ''}`}>
         {!isAcilListMode && (
         <div className="flex flex-col gap-2 px-4 py-2.5 border-b border-slate-100">
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -1246,7 +1266,7 @@ function OperasyonPageContent() {
                         <span className="badge badge-orange">Acil</span>
                       )}
                       {row.approval72hExceeded ? (
-                        <span className="badge badge-red">72s</span>
+                        <span className="ops-72s-chip">72s</span>
                       ) : null}
                     </div>
                     <div className="mt-1.5 font-mono text-sm font-bold text-slate-900">{row.fileNo}</div>
@@ -1354,6 +1374,7 @@ function OperasyonPageContent() {
                 {filteredRows.map((row) => (
                   <tr
                     key={`${row.kind}-${row.id}`}
+                    title={row.approval72hExceeded ? 'Onay süresi 72 saati aştı' : undefined}
                     className={`table-row cursor-pointer ${
                       row.approval72hExceeded
                         ? 'ops-row-approval-72h'
@@ -1373,7 +1394,7 @@ function OperasyonPageContent() {
                       switch (col.id) {
                         case 'kind':
                           return (
-                            <PanelTableTd key={col.id} colId="kind" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="kind" className={`table-td !py-2 text-xs ${COL_DIVIDER}`}>
                               {row.kind === 'hasar' ? (
                                 <span className="badge badge-blue">Hasar</span>
                               ) : (
@@ -1386,11 +1407,11 @@ function OperasyonPageContent() {
                           );
                         case 'fileNo':
                           return (
-                            <PanelTableTd key={col.id} colId="fileNo" className={`table-td !py-2 font-mono text-xs font-normal text-slate-800 whitespace-nowrap ${COL_DIVIDER}`}>
-                              <span className={`inline-flex items-center gap-1 ${clientSort?.key === 'fileNo' ? 'font-semibold text-slate-950' : ''}`}>
+                            <PanelTableTd key={col.id} colId="fileNo" className={`table-td !py-2 font-mono text-xs font-normal text-slate-800 ${COL_DIVIDER}`}>
+                              <span className={`inline-flex flex-wrap items-center gap-1 ${clientSort?.key === 'fileNo' ? 'font-semibold text-slate-950' : ''}`}>
                                 {row.fileNo}
                                 {row.approval72hExceeded && (
-                                  <span className="badge badge-red" title="72 saat onay aşıldı">72s</span>
+                                  <span className="ops-72s-chip" title="72 saat onay aşıldı">72s</span>
                                 )}
                               </span>
                             </PanelTableTd>
@@ -1405,7 +1426,7 @@ function OperasyonPageContent() {
                             >
                               <div className="min-w-0 text-left" data-testid="ops-customer-cell" data-kind={row.kind}>
                                 <div
-                                  className={`truncate ${
+                                  className={`[overflow-wrap:anywhere] ${
                                     row.customerName === OPERATION_CUSTOMER_UNDEFINED
                                       ? 'text-slate-500'
                                       : 'font-medium text-slate-800'
@@ -1416,7 +1437,7 @@ function OperasyonPageContent() {
                                 </div>
                                 {row.customerTypeLabel ? (
                                   <div
-                                    className={`mt-0.5 truncate text-[10px] font-medium ${
+                                    className={`mt-0.5 [overflow-wrap:anywhere] text-[10px] font-medium ${
                                       row.kind === 'hasar' ? 'text-slate-500' : 'text-slate-400'
                                     }`}
                                     title={row.customerTypeLabel}
@@ -1429,7 +1450,7 @@ function OperasyonPageContent() {
                           );
                         case 'insured':
                           return (
-                            <PanelTableTd key={col.id} colId="insured" className={`table-td !py-2 text-xs whitespace-nowrap font-medium text-slate-700 ${COL_DIVIDER}`} title={row.insuredName}>
+                            <PanelTableTd key={col.id} colId="insured" className={`table-td !py-2 text-xs font-medium text-slate-700 ${COL_DIVIDER}`} title={row.insuredName}>
                               {row.kind === 'hasar' ? (
                                 <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                                   <InsuredNameInlineEdit
@@ -1447,25 +1468,25 @@ function OperasyonPageContent() {
                           );
                         case 'assignee':
                           return (
-                            <PanelTableTd key={col.id} colId="assignee" className={`table-td !py-2 text-xs whitespace-nowrap text-slate-600 ${COL_DIVIDER}`} title={row.assigneeName}>
+                            <PanelTableTd key={col.id} colId="assignee" className={`table-td !py-2 text-xs text-slate-600 ${COL_DIVIDER}`} title={row.assigneeName}>
                               {row.assigneeName || '—'}
                             </PanelTableTd>
                           );
                         case 'date':
                           return (
-                            <PanelTableTd key={col.id} colId="date" className={`table-td !py-2 text-xs text-slate-400 whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="date" className={`table-td !py-2 text-xs text-slate-400 ${COL_DIVIDER}`}>
                               {fmtDate(row.date)}
                             </PanelTableTd>
                           );
                         case 'subject':
                           return (
-                            <PanelTableTd key={col.id} colId="subject" className={`table-td !py-2 text-xs text-slate-500 whitespace-nowrap ${COL_DIVIDER}`} title={row.subject}>
+                            <PanelTableTd key={col.id} colId="subject" className={`table-td !py-2 text-xs text-slate-500 ${COL_DIVIDER}`} title={row.subject}>
                               {row.subject}
                             </PanelTableTd>
                           );
                         case 'status':
                           return (
-                            <PanelTableTd key={col.id} colId="status" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="status" className={`table-td !py-2 text-xs ${COL_DIVIDER}`}>
                               {row.kind === 'hasar' ? (
                                 <span className={row.statusTone}>{row.statusLabel}</span>
                               ) : (
@@ -1475,7 +1496,7 @@ function OperasyonPageContent() {
                           );
                         case 'vendorPay':
                           return (
-                            <PanelTableTd key={col.id} colId="vendorPay" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="vendorPay" className={`table-td !py-2 text-xs ${COL_DIVIDER}`}>
                               {row.kind === 'acil' ? (
                                 <span className={acilVendorPayTone(row.vendorPaid)} data-testid="acil-liste-odeme">
                                   {acilVendorPayLabel(row.vendorPaid)}
@@ -1487,7 +1508,7 @@ function OperasyonPageContent() {
                           );
                         case 'invoice':
                           return (
-                            <PanelTableTd key={col.id} colId="invoice" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="invoice" className={`table-td !py-2 text-xs ${COL_DIVIDER}`}>
                               <span className={INVOICE_STATUS_COLORS[row.invoiceStatus]}>
                                 {INVOICE_STATUS_LABELS[row.invoiceStatus]}
                               </span>
@@ -1495,19 +1516,19 @@ function OperasyonPageContent() {
                           );
                         case 'amount':
                           return (
-                            <PanelTableTd key={col.id} colId="amount" className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="amount" className={`table-td !py-2 text-xs font-semibold tabular-nums ${COL_DIVIDER}`}>
                               {row.amount ?? <span className="text-slate-300">—</span>}
                             </PanelTableTd>
                           );
                         case 'reportSales':
                           return (
-                            <PanelTableTd key={col.id} colId="reportSales" className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums text-slate-800 ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="reportSales" className={`table-td !py-2 text-xs font-semibold tabular-nums text-slate-800 ${COL_DIVIDER}`}>
                               {row.expectedSales ?? <span className="text-slate-300">—</span>}
                             </PanelTableTd>
                           );
                         case 'reportCost':
                           return (
-                            <PanelTableTd key={col.id} colId="reportCost" className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums text-slate-800 ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="reportCost" className={`table-td !py-2 text-xs font-semibold tabular-nums text-slate-800 ${COL_DIVIDER}`}>
                               {row.supplierCostTotal ?? <span className="text-slate-300">—</span>}
                             </PanelTableTd>
                           );
@@ -1516,7 +1537,7 @@ function OperasyonPageContent() {
                             <PanelTableTd
                               key={col.id}
                               colId="reportProfit"
-                              className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums ${COL_DIVIDER} ${
+                              className={`table-td !py-2 text-xs font-semibold tabular-nums ${COL_DIVIDER} ${
                                 row.expectedProfitNegative ? 'text-status-danger' : 'text-slate-800'
                               }`}
                             >
@@ -1525,7 +1546,7 @@ function OperasyonPageContent() {
                           );
                         case 'actions':
                           return (
-                            <PanelTableTd key={col.id} colId="actions" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="actions" wrap={false} className={`table-td !py-2 text-xs ${COL_DIVIDER}`}>
                               <OperationRowActions
                                 kind={row.kind}
                                 id={row.id}

@@ -22,6 +22,8 @@ import type { ManualDecisionAction } from '@/components/operasyon/ManualDecision
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import VendorQuoteModal, { readVendorPriceMemory, writeVendorPriceMemory } from '@/components/damage-reports/VendorQuoteModal';
 import {
   parseVendorQuoteData,
@@ -5843,6 +5845,13 @@ export default function RepairReportPage() {
           )}
         </div>
       </div>
+
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.hasarRaporSonDegisiklik.id}
+        title={OPS_NOTICE.hasarRaporSonDegisiklik.title}
+        body={OPS_NOTICE.hasarRaporSonDegisiklik.body}
+        testId="hasar-rapor-ilk-kullanim-seridi"
+      />
 
       {/* Onay durumu özeti */}
       {(latestSubmission || latestApprovalDecision) && report.status !== 'draft' && (

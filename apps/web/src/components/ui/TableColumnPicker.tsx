@@ -710,9 +710,11 @@ interface PanelTableTdProps {
   title?: string;
   /** Kurumsal tablo hizası — operasyon listelerinde varsayılan center */
   align?: 'left' | 'center' | 'right';
+  /** true: satır kaydır; false: kes. Boş: diğer ekranların mevcut hücresi (Hasar kabuğu dokunulmaz). */
+  wrap?: boolean;
 }
 
-export function PanelTableTd({ colId, className = '', children, title, align = 'left' }: PanelTableTdProps) {
+export function PanelTableTd({ colId, className = '', children, title, align = 'left', wrap }: PanelTableTdProps) {
   const ctx = useTableColumnsCtx();
   if (ctx && !ctx.prefs.isVisible(colId)) return null;
   const width = ctx?.widths.getWidth(colId);
@@ -720,17 +722,23 @@ export function PanelTableTd({ colId, className = '', children, title, align = '
     align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
   const innerClass =
     align === 'center'
-      ? 'flex min-w-0 justify-center'
+      ? `flex min-w-0 justify-center ${wrap === true ? 'flex-wrap' : ''}`
       : align === 'right'
-        ? 'flex min-w-0 justify-end'
+        ? `flex min-w-0 justify-end ${wrap === true ? 'flex-wrap' : ''}`
         : 'min-w-0';
+  const wrapClass =
+    wrap === true
+      ? 'max-w-full whitespace-normal break-words [overflow-wrap:anywhere] leading-snug'
+      : wrap === false
+        ? 'truncate whitespace-nowrap'
+        : '';
   return (
     <td
       className={`max-w-0 overflow-hidden align-middle ${alignClass} ${className}`}
       style={width ? tableCellStyle(width) : undefined}
       title={title}
     >
-      <div className={innerClass}>{children}</div>
+      <div className={`${innerClass} ${wrapClass}`.trim()}>{children}</div>
     </td>
   );
 }

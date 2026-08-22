@@ -1984,6 +1984,12 @@ export default function AcilDosyaDetayPage() {
 
   return (
     <div className="w-full min-w-0 space-y-2 pb-24 sm:pb-8 overflow-x-hidden" data-testid="acil-dosya-detay">
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.acilDosyaSonDegisiklik.id}
+        title={OPS_NOTICE.acilDosyaSonDegisiklik.title}
+        body={OPS_NOTICE.acilDosyaSonDegisiklik.body}
+        testId="acil-dosya-ilk-kullanim-seridi"
+      />
       <div className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="dosya-basligi">
         <div className="flex items-center px-4 pt-2.5">
           <button

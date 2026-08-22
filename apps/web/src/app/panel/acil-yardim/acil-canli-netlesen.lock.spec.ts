@@ -41,6 +41,8 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /Vade uygulanmaz/);
     assert.match(acilPage, /acil-hakedis-ilk-kullanim-seridi/);
     assert.match(acilPage, /OPS_NOTICE\.acilTedarikciHakedis/);
+    assert.match(acilPage, /OPS_NOTICE\.acilDosyaSonDegisiklik/);
+    assert.match(acilPage, /acil-dosya-ilk-kullanim-seridi/);
     assert.match(acilPage, /AcilOperasyonPlanlayiciPanel/);
     assert.match(acilPage, /acil-saha-tespit/);
     assert.match(acilPage, /FieldInspectionPhotosPanel/);

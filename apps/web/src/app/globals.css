@@ -174,6 +174,26 @@
 .table-td-center {
   @apply px-4 py-3.5 text-sm text-slate-700 text-center align-middle;
 }
+.ops-queue-table .table-head-row {
+  @apply bg-slate-100 border-b border-slate-200;
+}
+
+.ops-queue-table .table-td,
+.ops-queue-table .table-td-center {
+  @apply py-2;
+}
+
+.ops-queue-table .table-th,
+.ops-queue-table .table-th-center {
+  @apply py-2.5 whitespace-nowrap;
+}
+
+.ops-queue-table .table-td > div,
+.ops-queue-table .table-td-center > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Kurumsal tablo — durum/kategori pill'leri hücre ortasında */
 .table-td-center .badge {
@@ -506,21 +526,65 @@
   animation: meridyen-splash-float 3.2s ease-in-out infinite;
 }
 
-/* 72s onay aşımı — liste satırı dikkat sinyali (Hasar / Operasyon) */
+/* 72s onay aşımı — zebra/hover satır zeminini ezer; nabız görünür kalır. */
 @keyframes approval-72h-row-pulse {
   0%,
   100% {
-    background-color: rgb(254 242 242 / 0.35);
-    box-shadow: inset 3px 0 0 0 rgb(220 38 38 / 0.35);
+    background-color: #fee2e2 !important;
   }
   50% {
-    background-color: rgb(254 226 226 / 0.85);
-    box-shadow: inset 3px 0 0 0 rgb(220 38 38 / 0.9);
+    background-color: #fca5a5 !important;
   }
 }
 
-.ops-row-approval-72h {
-  animation: approval-72h-row-pulse 1.6s ease-in-out infinite;
+@keyframes ops-72s-chip-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.ops-row-approval-72h,
+.table-row.ops-row-approval-72h,
+.table-row.ops-row-approval-72h:nth-child(odd),
+.table-row.ops-row-approval-72h:nth-child(even),
+.table-row.ops-row-approval-72h:hover {
+  transition: none;
+  box-shadow: inset 6px 0 0 0 #b91c1c;
+  animation: approval-72h-row-pulse 1.15s ease-in-out infinite;
+}
+
+.ops-72s-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.375rem;
+  background: #b91c1c;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 3px 6px;
+  animation: ops-72s-chip-pulse 1.15s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ops-row-approval-72h,
+  .table-row.ops-row-approval-72h,
+  .table-row.ops-row-approval-72h:nth-child(odd),
+  .table-row.ops-row-approval-72h:nth-child(even),
+  .table-row.ops-row-approval-72h:hover {
+    animation: none;
+    background-color: #fecaca !important;
+    box-shadow: inset 6px 0 0 0 #b91c1c;
+  }
+
+  .ops-72s-chip {
+    animation: none;
+  }
 }
 
 /* ── Enterprise Dashboard v3.0 tema tokenleri ── */

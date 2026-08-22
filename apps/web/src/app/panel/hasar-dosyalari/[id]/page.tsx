@@ -63,6 +63,8 @@ import {
 import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, isExpertFirmCustomer } from '@sigorta/shared';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
   if (!roleCode) return null;
@@ -1668,6 +1670,17 @@ export default function ClaimFileDetailPage() {
         openEdit={openEdit}
         isFieldStaff={isFieldStaff}
       />
+
+      {!isFieldStaff && (
+        <div className="mb-4">
+          <OpsFirstRunNotice
+            noticeId={OPS_NOTICE.hasarDosyaSonDegisiklik.id}
+            title={OPS_NOTICE.hasarDosyaSonDegisiklik.title}
+            body={OPS_NOTICE.hasarDosyaSonDegisiklik.body}
+            testId="hasar-dosya-ilk-kullanim-seridi"
+          />
+        </div>
+      )}
 
       {!isFieldStaff && (
         <ClaimSurveyUnsentBanner
