@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-20",
-  "label": "v522-acil-oneri-kart-ikon",
-  "description": "Web-only v522: Acil öneri kartı (bölge rozeti, çilingir/konut/araç ikonu, aranır telefon, gün farkı, sağa ata+tik). Backend v520 aynı. Migration yok. Rollback web v521 / backend v519.",
+  "updatedAt": "2026-08-22",
+  "label": "v523-acil-anket-odeme-konum",
+  "description": "Full v523: Acil ödeme sütunu, anket, konum, servis onay kilidi. Web+backend v523. Migration: timestamps, vendor_paid, owner_explanation, location. Rollback web v522 / backend v520.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v520-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v522-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v523-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v523-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v521-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v519-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v522-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v520-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -29,6 +29,7 @@
     "/panel/pazartesi-toplantisi",
     "/panel/sahiplik",
     "/panel/anketler/sonuclar",
+    "/panel/acil-yardim",
     "/panel/eksper-portal",
     "/panel/sigorta-portal",
     "/panel/sigorta-portal/canli-izle",
