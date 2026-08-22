@@ -5,7 +5,7 @@
  * Personel dosya ekranına konmaz. Yalnız development.
  */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import {
   SURVEY_Q6_LABEL,
@@ -257,7 +257,7 @@ function MusteriGorunumInner() {
   );
 }
 
-function WhatsAppBubble({ children }: { children: string }) {
+function WhatsAppBubble({ children }: { children: ReactNode }) {
   return (
     <div className="rounded-xl bg-[#dcf8c6] px-3 py-2 text-sm whitespace-pre-wrap text-slate-800 shadow-sm">
       {children}
