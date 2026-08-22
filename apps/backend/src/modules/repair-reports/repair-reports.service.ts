@@ -22,7 +22,9 @@ import {
   REPAIR_REPORT_INITIAL_VERSION,
   REPAIR_REPORT_MAX_REVISION_MESSAGE,
   canCreateRepairReportRevision,
+  canStartRepairReportRevisionFromStatus,
   nextRepairReportVersionNo,
+  repairReportClosesOnRevise,
 } from '@sigorta/shared';
 import {
   CreateRepairReportDto,
@@ -1230,14 +1232,7 @@ export class RepairReportsService {
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
-    const allowedStatuses = new Set([
-      'approved',
-      'externally_approved',
-      'externally_rejected',
-      // Onay beklerken de Revizyona Başla ile taslak açılabilir
-      'pending_approval',
-    ]);
-    if (!allowedStatuses.has(report.status)) {
+    if (!canStartRepairReportRevisionFromStatus(report.status)) {
       throw new BadRequestException('Bu rapor durumunda revizyon başlatılamaz');
     }
 
@@ -1381,7 +1376,7 @@ export class RepairReportsService {
       });
 
       // Onay bekleyen kaynaktan revizyon: eski bekleyen kaydı kapat, tek aktif taslak kalsın
-      if (report.status === 'pending_approval') {
+      if (repairReportClosesOnRevise(report.status)) {
         await tx.repairReport.update({
           where: { id: report.id },
           data: { status: 'rejected' },
@@ -1393,6 +1388,10 @@ export class RepairReportsService {
             action: 'rejected',
             reason: options?.reasonNote?.trim() || 'Revizyon başlatıldı — yeni taslak açıldı',
           },
+        });
+        await tx.externalApproval.updateMany({
+          where: { reportId: report.id, status: 'pending' },
+          data: { status: 'expired' },
         });
       }
 

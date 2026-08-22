@@ -28,7 +28,7 @@ import {
 } from '@/components/damage-reports/VendorQuotePopover';
 import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_VERSION, REPAIR_REPORT_MAX_REVISION_MESSAGE, canCreateRepairReportRevision, isRepairReportRevision } from '@sigorta/shared';
+import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_VERSION, REPAIR_REPORT_MAX_REVISION_MESSAGE, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -4726,6 +4726,10 @@ export default function RepairReportPage() {
   }, [report?.departmentId, report?.claimFile?.lossType, report?.claimFile?.claimSubjectId]);
 
   const handleRevise = () => {
+    if (!canStartRepairReportRevisionFromStatus(report?.status)) {
+      notify('error', 'Bu rapor durumunda revizyon başlatılamaz');
+      return;
+    }
     if (!canCreateRepairReportRevision(report?.versionNo ?? 0)) {
       notify('error', REPAIR_REPORT_MAX_REVISION_MESSAGE);
       return;
@@ -4734,8 +4738,8 @@ export default function RepairReportPage() {
   };
 
   const confirmRevise = async (payload: ReviseReportPayload) => {
-    if (!canCreateRepairReportRevision(report?.versionNo ?? 0)) {
-      notify('error', REPAIR_REPORT_MAX_REVISION_MESSAGE);
+    if (!canStartRepairReportRevisionFromStatus(report?.status)) {
+      notify('error', 'Bu rapor durumunda revizyon başlatılamaz');
       return;
     }
     setRevising(true);
@@ -5394,6 +5398,10 @@ export default function RepairReportPage() {
 
   // Acil Yardım raporu ise ayrı editörü kullan
   const isEditable = (report.status === 'draft' || report.status === 'rejected') && !isFieldStaff;
+  const canReviseThisReport =
+    !isFieldStaff
+    && canStartRepairReportRevisionFromStatus(report.status)
+    && canCreateRepairReportRevision(report.versionNo ?? 0);
   const showExternalChannelButton = ['approved', 'sent_for_external_approval', 'externally_rejected'].includes(report.status);
   const canEditFieldSurvey = (() => {
     if (typeof window === 'undefined') return false;
@@ -5425,20 +5433,12 @@ export default function RepairReportPage() {
       {report.reportType === 'multi' && isEditable && (
         <button type="button" onClick={() => setShowDamageTypeModal(true)} className="text-xs bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-brand-700">+ Hasar Nedeni</button>
       )}
-      {report.status === 'approved' && (
+      {canReviseThisReport && (
         <button type="button"
           onClick={handleRevise}
-          disabled={!canCreateRepairReportRevision(report.versionNo ?? 0)}
-          title={
-            canCreateRepairReportRevision(report.versionNo ?? 0)
-              ? undefined
-              : REPAIR_REPORT_MAX_REVISION_MESSAGE
-          }
-          className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-purple-600"
+          className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
         >
-          {canCreateRepairReportRevision(report.versionNo ?? 0)
-            ? 'Revize Et'
-            : `Revize Et (Max v${REPAIR_REPORT_MAX_VERSION})`}
+          Revize Et
         </button>
       )}
       {(report.status === 'draft' || report.status === 'rejected') && (
@@ -5601,8 +5601,8 @@ export default function RepairReportPage() {
                 fileNo={report.claimFile?.fileNo}
                 reportId={reportId as string}
                 showManualDecision
-                onStartRevision={handleRevise}
-                startRevisionDisabled={!canCreateRepairReportRevision(report.versionNo ?? 0)}
+                onStartRevision={canReviseThisReport ? handleRevise : undefined}
+                startRevisionDisabled={!canReviseThisReport}
                 onManualDecision={async (action: ManualDecisionAction, reason: string) => {
                   if (action === 'revise') return;
                   try {
@@ -6210,22 +6210,8 @@ export default function RepairReportPage() {
               </>
             )}
 
-            {/* Onaylanmış: Revize Et */}
-            {!isEditable && report.status === 'approved' && (
-              <button
-                type="button"
-                onClick={handleRevise}
-                className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 transition-colors"
-              >
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                </svg>
-                Revize Et
-              </button>
-            )}
-
-            {/* Externally approved: Revize Et */}
-            {!isEditable && report.status === 'externally_approved' && (
+            {/* Kilitli rapor: Revize Et (onaylı, dış onay bekleyen, sunulmuş) */}
+            {!isEditable && canReviseThisReport && (
               <button
                 type="button"
                 onClick={handleRevise}
