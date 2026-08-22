@@ -23,6 +23,7 @@ import {
 import { MUVAFAKATNAME_TEMPLATE } from './muvafakatname.template';
 import { escHtml, escHtmlRecord } from '@/common/utils/html-escape';
 import { StorageService } from '@/modules/storage/storage.service';
+import { toInsuredFacingMatbuHtml } from './matbu-insured-view';
 
 /** Müşteriye dönük matbu — iç fiyat / kâr etiketleri sızmaz */
 const INTERNAL_COST_DESC_RE =
@@ -63,7 +64,7 @@ const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>Hizmet Onay Formu — {{case_no}}</title>
+  <title>Servis Onay Formu — {{case_no}}</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 0; background: white; }
@@ -84,6 +85,7 @@ ${DOCUMENT_QR_STYLES}
     .tutar-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
     .tutar-box .label { font-size: 12px; color: #1e40af; font-weight: 600; }
     .tutar-box .value { font-size: 16px; font-weight: bold; color: #1e3a8a; }
+    .tutar-uyari { background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #92400e; line-height: 1.5; }
     .signature-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
     .sig-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 14px; }
     .sig-box h4 { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #374151; margin: 0 0 6px; }
@@ -99,17 +101,14 @@ ${DOCUMENT_QR_STYLES}
   <div class="doc-header-with-qr">
     <div class="doc-header-main">
       <div class="doc-header-logo">
-        <img src="{{logo_url}}" alt="Meridyen Assistance" />
-      </div>
-      <div class="doc-header-meta">
-        <strong>{{sirket_ad}}</strong>
+        <img src="{{logo_url}}" alt="Meridyen" />
       </div>
     </div>
     {{dijital_onay_qr}}
   </div>
 
-  <h1>Hizmet Onay Formu</h1>
-  <p class="form-subtitle">Meridyen Assistance — Acil Yardım Hizmetleri</p>
+  <h1>Servis Onay Formu</h1>
+  <p class="form-subtitle">Acil Yardım Hizmetleri</p>
 
   <div class="header-right">
     <strong>{{case_no}}</strong>
@@ -148,9 +147,8 @@ ${DOCUMENT_QR_STYLES}
   <!-- Onay Metni -->
   <div class="consent-text">
     Ben, aşağıda imzası bulunan <strong>{{musteri_ad}}</strong>, Meridyen Assistance tarafından yukarıda
-    belirtilen adreste gerçekleştirilen hizmetin eksiksiz ve kabul edilebilir kalitede tamamlandığını,
-    açıklanan toplam bedeli onayladığımı beyan ederim. Bu formun imzalanması ile söz konusu hizmet
-    bedelinin sigorta şirketine veya ilgili taraflara fatura edilmesine muvafakat etmiş sayılırım.
+    belirtilen adreste gerçekleştirilen hizmeti ve açıklanan toplam bedeli onayladığımı beyan ederim.
+    Dijital onay, bu dosya için hizmetin kabulü niteliğindedir.
   </div>
 
   <!-- İmza Alanları -->
@@ -430,10 +428,12 @@ export class FileDocumentsService {
     const link = buildAppPath(this.config, `/evrak/${doc.publicToken}`);
 
     const kindLabel =
-      doc.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Matbu Evrak';
+      doc.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Servis Onay Formu';
 
     const message =
-      `Meridyen Assistance tarafından düzenlenen ${kindLabel} belgesini aşağıdaki linkten inceleyebilir ve onaylayabilirsiniz:\n\n${link}\n\nMeridyen Assistance`;
+      doc.documentKind === 'matbu_evrak'
+        ? `Meridyen Assistance Servis Onay Formu. Yazıcı gerekmez. Aşağıdaki linki telefondan açıp Onayla’ya basın:\n\n${link}\n\nMeridyen Assistance`
+        : `Meridyen Assistance tarafından düzenlenen ${kindLabel} belgesini aşağıdaki linkten inceleyebilir ve onaylayabilirsiniz:\n\n${link}\n\nMeridyen Assistance`;
     const waUrl = buildWhatsAppMeUrl(dto.phone, message);
     if (!waUrl) {
       throw new BadRequestException('Geçerli bir WhatsApp telefon numarası giriniz');
@@ -547,6 +547,12 @@ export class FileDocumentsService {
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
     if (doc.publicTokenExpiresAt && doc.publicTokenExpiresAt < new Date()) {
       throw new BadRequestException('Bu evrak linkinin süresi dolmuştur');
+    }
+    if (doc.documentKind === 'matbu_evrak' && doc.renderedContent) {
+      return {
+        ...doc,
+        renderedContent: toInsuredFacingMatbuHtml(doc.renderedContent),
+      };
     }
     return doc;
   }

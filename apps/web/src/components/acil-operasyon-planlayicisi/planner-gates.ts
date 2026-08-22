@@ -1,12 +1,22 @@
 export type OperatorStepKey =
   | 'ihbar'
-  | 'tedarikci_saha'
-  | 'maliyet'
+  | 'tedarikci_maliyet'
   | 'onay'
   | 'kapanis'
   | 'finans';
 
 export type ApprovalState = 'bekliyor' | 'onaylandi' | 'reddedildi';
+
+export const ACIL_ONAY_METIN_ON_EK = 'Riziko adreste;';
+
+export function acilOnayMetinGovde(text: string): string {
+  return (text || '').trim().replace(/^Riziko adreste;\s*/i, '').trim();
+}
+
+export function withAcilOnayMetinOnEk(text: string): string {
+  const body = acilOnayMetinGovde(text);
+  return body ? `${ACIL_ONAY_METIN_ON_EK} ${body}` : `${ACIL_ONAY_METIN_ON_EK} `;
+}
 
 export function validateOperatorStep(
   step: OperatorStepKey,
@@ -19,23 +29,26 @@ export function validateOperatorStep(
     financeSent: boolean;
     approvalState: ApprovalState;
     approvalText: string;
+    digitalDocsOk?: boolean;
+    vendorPaid?: boolean | null;
   },
 ): string | null {
-  if (step === 'tedarikci_saha' && !s.assigned) return 'Tedarikçi atayın.';
-  if (step === 'maliyet') {
-    if (!s.assigned) return 'Önce tedarikçi atayın.';
+  if (step === 'tedarikci_maliyet') {
+    if (!s.assigned) return 'Tedarikçi atayın.';
     if (!s.alis.trim() || !s.satis.trim()) return 'Alış ve satış girin.';
   }
   if (step === 'onay') {
-    if (!s.approvalText.trim()) return 'Onay metni girin.';
+    if (!acilOnayMetinGovde(s.approvalText)) return 'Riziko adreste açıklamasını yazın.';
     if (s.approvalState === 'bekliyor') return 'Onayı kaydet veya red verin.';
+    if (s.digitalDocsOk === false) return 'Servis onay formu dijital onayı olmadan ilerlenemez.';
   }
   if (step === 'kapanis') {
-    if (!s.workStartOk) return 'Önce işe başlama işaretlensin.';
+    if (s.approvalState !== 'onaylandi') return 'Önce onay talep akışı tamamlansın.';
     if (!s.fileClosed) return 'Dosyayı kapatın.';
   }
   if (step === 'finans') {
     if (!s.fileClosed) return 'Önce dosyayı kapatın.';
+    if (s.vendorPaid !== true && s.vendorPaid !== false) return 'Tedarikçi ödemesini ödendi veya ödenmedi olarak onaylayın.';
     if (!s.financeSent) return 'Finansa aktarın.';
   }
   return null;

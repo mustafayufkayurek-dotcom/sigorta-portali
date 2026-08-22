@@ -11,6 +11,7 @@ import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { SurveysService } from './surveys.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
+import { OwnerExplanationDto } from './dto/owner-explanation.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('surveys')
@@ -94,5 +95,10 @@ export class SurveysController {
   @Post(':id/send')
   async sendLink(@Param('id') id: string) {
     return { data: await this.svc.sendSurveyLink(id) };
+  }
+
+  @Post(':id/owner-explanation')
+  async saveOwnerExplanation(@Param('id') id: string, @Body() dto: OwnerExplanationDto) {
+    return { data: await this.svc.saveOwnerExplanation(id, dto.ownerExplanation) };
   }
 }

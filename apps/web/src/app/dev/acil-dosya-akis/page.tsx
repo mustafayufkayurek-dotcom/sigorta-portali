@@ -12,6 +12,7 @@ import { ToastProvider, useToast } from '@/contexts/ToastContext';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 import { toWhatsAppLink } from '@/utils/date-helpers';
 import type { VendorRecommendation } from '@/utils/emergencyApi';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
 import {
   OPERATOR_STEPS,
   PlannerStepBody,
@@ -21,6 +22,7 @@ import {
   type OperatorStepKey,
 } from './planner-steps';
 import { validateOperatorStep } from './planner-gates';
+import type { AnaMusteriHaberlesme } from '@/utils/acil-ana-musteri-haberlesme';
 
 type StepStatus = 'done' | 'waiting' | 'future';
 
@@ -34,7 +36,7 @@ const FILE = {
   insured: 'Yeşim Sultan Tatar',
   phone: '0532 000 00 00',
   subject: 'Çilingir-Konut',
-  ihbarDate: '18.08.2026',
+  ihbarDate: '18.08.2026 14:32',
   owner: 'Ayşe Yılmaz',
   ownerInitials: 'AY',
   ownerContact: '0532 111 22 33',
@@ -141,18 +143,25 @@ function FlowStepDot({ status, active, n }: { status: StepStatus; active: boolea
 }
 
 function PreviewInner() {
+  const { showAcilFinancePage } = usePanelAccess();
   const { showToast } = useToast();
   const [fileInfoOpen, setFileInfoOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(true);
-  const [activeStep, setActiveStep] = useState<OperatorStepKey>('tedarikci_saha');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeStep, setActiveStep] = useState<OperatorStepKey>('tedarikci_maliyet');
   const [assigned, setAssigned] = useState<string | null>('v1');
   const [alis, setAlis] = useState('950');
   const [satis, setSatis] = useState('1.350');
   const [workStartOk, setWorkStartOk] = useState(false);
+  const [serviceDone, setServiceDone] = useState(false);
+  const [workStartedAt, setWorkStartedAt] = useState('');
+  const [serviceDeliveredAt, setServiceDeliveredAt] = useState('');
+  const [closedAt, setClosedAt] = useState('');
   const [fileClosed, setFileClosed] = useState(false);
   const [hakedisAt, setHakedisAt] = useState<string | null>(null);
   const [financeSent, setFinanceSent] = useState(false);
   const [financeAt, setFinanceAt] = useState<string | null>(null);
+  const [vendorPaid, setVendorPaid] = useState<boolean | null>(null);
+  const [customerNotifyChannel, setCustomerNotifyChannel] = useState<AnaMusteriHaberlesme>('both');
   const [approvalChannel, setApprovalChannel] = useState<ApprovalChannel>('email');
   const [approvalState, setApprovalState] = useState<ApprovalState>('bekliyor');
   const [approvalRequestedAt] = useState('21.08.2026 10:42');
@@ -213,6 +222,8 @@ function PreviewInner() {
       financeSent,
       approvalState,
       approvalText,
+      vendorPaid,
+      digitalDocsOk: true,
     });
     if (err) {
       setSaveError(err);
@@ -225,10 +236,9 @@ function PreviewInner() {
 
   const operatorStatus: Record<OperatorStepKey, StepStatus> = {
     ihbar: 'done',
-    tedarikci_saha: assigned ? (workStartOk ? 'done' : 'waiting') : 'waiting',
-    maliyet: alis.trim() ? 'done' : assigned ? 'waiting' : 'future',
+    tedarikci_maliyet: assigned && alis.trim() ? 'done' : 'waiting',
     onay: approvalState === 'onaylandi' ? 'done' : alis.trim() ? 'waiting' : 'future',
-    kapanis: fileClosed ? 'done' : workStartOk ? 'waiting' : 'future',
+    kapanis: fileClosed ? 'done' : approvalState === 'onaylandi' ? 'waiting' : 'future',
     finans: financeSent ? 'done' : fileClosed ? 'waiting' : 'future',
   };
   const address = formatEmergencyFileAddress({
@@ -252,7 +262,7 @@ function PreviewInner() {
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900">
-        Lokal Önizleme · Canlı Acil’de Operasyon Planlayıcısı + Saha Tespit durur
+        Lokal Önizleme · 5 kare: İhbar → Tedarikçi Ve Maliyet → Onay Talep Akışı → Kapanış → Ödeme Ve Finans
       </div>
 
       <div className="px-4 py-4">
@@ -370,84 +380,33 @@ function PreviewInner() {
                   <p className="text-[11px] text-slate-400">Adres</p>
                   <p className="mt-0.5 text-xs font-medium text-slate-800">{address}</p>
                 </div>
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4" data-testid="acil-islem-saatleri">
+                  <div>
+                    <p className="text-[11px] text-slate-400">İhbar</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-800">{FILE.ihbarDate}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400">İşe başlama</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-800">{workStartedAt || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400">Hizmet verilme</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-800">{serviceDeliveredAt || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400">Kapanış</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-800">{closedAt || '—'}</p>
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>
         </div>
 
-        <section className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-slate-950">Saha Tespit</h3>
-              <span className="rounded-lg bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Tespit Yapılmadı</span>
-            </div>
-            <p className="text-[11px] text-slate-500">Saha tespiti bekleniyor</p>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div>
-              <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Fotoğrafları</h4>
-              <p className="mb-2 text-xs text-slate-500">
-                {sahaPhotos.length} fotoğraf · çekimden sonra burada görünür
-              </p>
-              <ul className="mb-3 grid grid-cols-2 gap-2">
-                {sahaPhotos.map((ph) => (
-                  <li key={ph.url} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={ph.url} alt={ph.label} className="h-28 w-full object-cover" />
-                    <p className="px-2 py-1 text-[11px] font-medium text-slate-700">{ph.label}</p>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex flex-wrap gap-2">
-                <input
-                  id="acil-preview-kamera"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    addSahaFiles(e.target.files);
-                    e.target.value = '';
-                  }}
-                />
-                <input
-                  id="acil-preview-galeri"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    addSahaFiles(e.target.files);
-                    e.target.value = '';
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('acil-preview-kamera')?.click()}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-brand-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-brand-800"
-                >
-                  <Camera className="h-4 w-4" /> Kameradan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('acil-preview-galeri')?.click()}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700"
-                >
-                  Galeriden
-                </button>
-              </div>
-            </div>
-            <div>
-              <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Notları</h4>
-              <p className="text-sm text-slate-500">Henüz tespit notu yok.</p>
-            </div>
-          </div>
-        </section>
-
-        <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" data-testid="operasyon-ozet">
+                <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" data-testid="operasyon-ozet">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">Operasyon Planlama Özeti</h2>
+                <h2 className="text-sm font-semibold text-slate-900">Operasyon özeti</h2>
                 <p className="text-xs text-slate-500">
                   Operasyon Durumu:{' '}
                   {steps.filter((s) => s.status === 'done').length} / {steps.length} Tamamlandı
@@ -459,10 +418,10 @@ function PreviewInner() {
                 className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700"
                 data-testid="acil-planlayici-ac"
               >
-                Operasyon Planlayıcısı
+                Operasyonu Başlat
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
               {steps.map((s) => (
                 <button
                   key={s.key}
@@ -483,6 +442,63 @@ function PreviewInner() {
               ))}
             </div>
           </div>
+
+        <div className="mb-4 grid grid-cols-1 gap-2 md:grid-cols-3" data-testid="operasyon-ozet-kartlar">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Tedarikçi</p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {assignedVendor?.name || 'Atanmadı'}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">Atama planlayıcıda.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveStep('tedarikci_maliyet');
+                setDrawerOpen(true);
+              }}
+              className="mt-2 w-full rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white"
+            >
+              Tedarikçiyi Değiştir
+            </button>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Dosya Bütçesi</p>
+            <p className="mt-1 flex justify-between text-sm">
+              <span className="text-slate-500">Alış</span>
+              <span className="font-semibold tabular-nums">{alis || '—'} TL</span>
+            </p>
+            <p className="flex justify-between text-sm">
+              <span className="text-slate-500">Satış</span>
+              <span className="font-semibold tabular-nums">{satis || '—'} TL</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveStep('tedarikci_maliyet');
+                setDrawerOpen(true);
+              }}
+              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
+            >
+              Düzelt
+            </button>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Kapanış</p>
+            <p className="mt-1 text-sm font-semibold text-amber-800">
+              {fileClosed ? 'Kapalı' : 'Kontroller planlayıcıda'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveStep('kapanis');
+                setDrawerOpen(true);
+              }}
+              className="mt-2 w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900"
+            >
+              Kapanış Adımını Aç
+            </button>
+          </div>
+        </div>
       </div>
 
       {drawerOpen ? (
@@ -491,7 +507,7 @@ function PreviewInner() {
           <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl sm:max-w-2xl">
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
               <div>
-                <h2 className="text-base font-bold text-slate-950">Operasyon Planlayıcısı</h2>
+                <h2 className="text-base font-bold text-slate-950">Operasyonu Başlat</h2>
                 <p className="mt-0.5 text-[12px] text-slate-500">Tedarikçi, maliyet, onay, kapanış ve finans bu panelde.</p>
               </div>
               <button type="button" onClick={() => setDrawerOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" aria-label="Kapat">
@@ -552,9 +568,66 @@ function PreviewInner() {
                   <h3 className="text-sm font-bold text-slate-950">{activeMeta.label}</h3>
                   <p className="mt-0.5 text-[11px] text-slate-500">{activeMeta.hint}</p>
                   <div className="mt-3">
+                    {activeStep === 'kapanis' ? (
+                      <div className="mb-3 space-y-2 rounded-xl border border-slate-200 bg-white p-3" data-testid="acil-saha-tespit">
+                        <p className="text-[11px] font-semibold text-slate-800">Saha Tespit</p>
+                        <ul className="grid grid-cols-2 gap-2">
+                          {sahaPhotos.map((ph) => (
+                            <li key={ph.url} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={ph.url} alt={ph.label} className="h-28 w-full object-cover" />
+                              <p className="px-2 py-1 text-[11px] font-medium text-slate-700">{ph.label}</p>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="flex flex-wrap gap-2">
+                          <input
+                            id="acil-preview-kamera"
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={(e) => {
+                              addSahaFiles(e.target.files);
+                              e.target.value = '';
+                            }}
+                          />
+                          <input
+                            id="acil-preview-galeri"
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => {
+                              addSahaFiles(e.target.files);
+                              e.target.value = '';
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => document.getElementById('acil-preview-kamera')?.click()}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-brand-200 bg-white px-3 py-2 text-xs font-semibold text-brand-800"
+                          >
+                            <Camera className="h-3.5 w-3.5" /> Kameradan
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => document.getElementById('acil-preview-galeri')?.click()}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                          >
+                            Galeriden
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                     <PlannerStepBody
                       step={activeStep}
-                      file={FILE}
+                      file={{
+                        ...FILE,
+                        workStartedAt,
+                        serviceDeliveredAt,
+                        closedAt,
+                      }}
                       address={address}
                       vendors={PREVIEW_VENDORS}
                       assigned={assigned}
@@ -562,9 +635,11 @@ function PreviewInner() {
                       alis={alis}
                       satis={satis}
                       workStartOk={workStartOk}
+                      serviceDone={serviceDone}
                       fileClosed={fileClosed}
                       hakedisAt={hakedisAt}
                       financeSent={financeSent}
+                      canOpenFinancePage={showAcilFinancePage}
                       financeAt={financeAt}
                       approvalChannel={approvalChannel}
                       approvalState={approvalState}
@@ -579,15 +654,34 @@ function PreviewInner() {
                       }}
                       onAlis={setAlis}
                       onSatis={setSatis}
-                      onWorkStart={setWorkStartOk}
+                      digitalDocsOk
+                      vendorPaid={vendorPaid}
+                      customerNotifyChannel={customerNotifyChannel}
+                      onCustomerNotifyChannel={setCustomerNotifyChannel}
+                      onWorkStart={(ok) => {
+                        setWorkStartOk(ok);
+                        if (ok && !workStartedAt) setWorkStartedAt(nowLabel());
+                      }}
+                      onServiceComplete={(ok) => {
+                        if (!ok) return;
+                        setServiceDone(true);
+                        if (!serviceDeliveredAt) setServiceDeliveredAt(nowLabel());
+                        showToast('success', 'Hizmet verildi kaydedildi');
+                      }}
+                      onVendorPaid={setVendorPaid}
                       onCloseFile={() => {
                         setFileClosed(true);
-                        setHakedisAt(nowLabel());
-                        showToast('success', 'Dosya kapatıldı, tedarikçiye hakediş verildi');
+                        if (!closedAt) setClosedAt(nowLabel());
+                        if (!serviceDeliveredAt) {
+                          setServiceDone(true);
+                          setServiceDeliveredAt(nowLabel());
+                        }
+                        showToast('success', 'Dosya kapatıldı');
                       }}
                       onFinance={() => {
                         setFinanceSent(true);
                         setFinanceAt(nowLabel());
+                        setHakedisAt(nowLabel());
                         showToast('success', 'Finansa aktarıldı');
                       }}
                       onApprovalChannel={setApprovalChannel}

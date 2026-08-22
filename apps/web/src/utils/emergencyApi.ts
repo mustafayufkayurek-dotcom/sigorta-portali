@@ -65,25 +65,37 @@ export interface EmergencyCase {
   address: string;
   city?: string | null;
   district?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   issueType: string;
   urgency: EmergencyUrgency;
   status: EmergencyStatus;
   fileDate: string;
+  workStartedAt?: string | null;
+  serviceDeliveredAt?: string | null;
+  resolvedAt?: string | null;
+  invoicedAt?: string | null;
   assignedVendorId?: string | null;
   assignedUserId?: string | null;
   notes?: string | null;
   findingsText?: string | null;
-  resolvedAt?: string | null;
-  invoicedAt?: string | null;
+  vendorPaid?: boolean | null;
   createdByUserId: string;
   createdAt: string;
   updatedAt: string;
+  operationTimestamps?: {
+    notifiedAt: string | null;
+    workStartedAt: string | null;
+    serviceDeliveredAt: string | null;
+    closedAt: string | null;
+  };
   // computed
   overdueLevel: OverdueLevel;
   totalGelir: number;
   totalGider: number;
   netKar: number;
   operationStatusLabel?: string | null;
+  autoClosureEmail?: { sent: boolean; to: string | null; error: string | null };
   // relations
   assignedVendor?: { id: string; name: string; phone?: string | null; notes?: string | null } | null;
   assignedUser?: {
@@ -103,6 +115,7 @@ export interface EmergencyCase {
     entityType?: string | null;
     subType?: string | null;
     phone?: string | null;
+    email?: string | null;
   } | null;
   activeDelegation?: {
     actingUser: { id: string; firstName: string; lastName: string };
@@ -170,6 +183,7 @@ export interface FinanceRow {
   overdueLevel: OverdueLevel;
   invoiceDraft?: Partial<EmergencyInvoiceDraft> | null;
   isFaturalandildi: boolean;
+  vendorPaid?: boolean | null;
 }
 
 export interface MonthlySummary {
@@ -395,6 +409,7 @@ export async function getFinanceList(params?: {
   customerId?: string;
   search?: string;
   invoiceStatus?: string;
+  vendorPaid?: string;
 }): Promise<{ data: FinanceRow[]; summary: { totalCases: number; totalGelir: number; totalGider: number; netKar: number } }> {
   return apiClient.get<{ data: FinanceRow[]; summary: { totalCases: number; totalGelir: number; totalGider: number; netKar: number } }>(
     '/emergency/finance/list',
@@ -414,6 +429,7 @@ export type AcilVendorEntitlementRow = {
   grantedAt: string;
   grantedByName: string;
   dueDate: null;
+  vendorPaid?: boolean | null;
 };
 
 export async function getAcilVendorEntitlements(): Promise<{ data: AcilVendorEntitlementRow[] }> {

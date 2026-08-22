@@ -3,33 +3,23 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
-import type { LucideIcon } from 'lucide-react';
 import {
-  CheckCircle2,
-  ClipboardList,
   Files,
   History,
-  Landmark,
-  Mail,
-  MessageCircle,
-  Play,
-  Send,
   Wallet,
 } from 'lucide-react';
 import { resolveEmergencyOperationLabel } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
-import { AcilHeaderStageStrip } from './AcilHeaderStageStrip';
 import { PANEL_CARD_BASE, PanelSectionTitle } from '@/components/panel/PanelCard';
-import { PanelPillTabs } from '@/components/panel/PanelPillTabs';
 import { FILE_STATUS_BADGE_BASE, FILE_STATUS_TONE } from '@/components/panel/file-status-tone';
 import type { ManualDecisionAction } from '@/components/operasyon/ManualDecisionModal';
 import {
   getCase, updateCase, updateCaseStatus, recordEmergencyManualDecision, addCostEntry, getCostEntries, deleteCostEntry, updateCostEntry,
-  getEmergencyVendors, createVendorQuick, getRecommendedVendors, promoteVendorToPool,
+  getEmergencyVendors, getRecommendedVendors, promoteVendorToPool,
   previewClosureEmail, sendClosureEmail,
   listEmergencyProcessEvents, recordEmergencyProcessEvent,
-  EmergencyCase, EmergencyCostEntry, EmergencyStatus, VendorOption, VendorRecommendation,
+  EmergencyCase, EmergencyCostEntry, EmergencyStatus, VendorRecommendation,
   type ClosureEmailPreview, type EmergencyUrgency,
 } from '@/utils/emergencyApi';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
@@ -38,6 +28,7 @@ import ClosurePhotosPanel from '@/components/file-documents/ClosurePhotosPanel';
 import { FieldInspectionPhotosPanel } from '@/components/field-survey/FieldInspectionPhotosPanel';
 import {
   AcilOperasyonPlanlayiciPanel,
+  type AcilOperasyonPlanlayiciHandle,
   type AcilPlannerStepStatus,
 } from '@/components/acil-operasyon-planlayicisi/AcilOperasyonPlanlayiciPanel';
 import type {
@@ -45,10 +36,12 @@ import type {
   ApprovalState as PlannerApprovalState,
   OperatorStepKey,
 } from '@/components/acil-operasyon-planlayicisi/planner-steps';
+import { formatTryAmount } from '@/utils/format-try-amount';
 import { InboundEmailCorrespondencePanel } from '@/components/operation-inbox/InboundEmailCorrespondencePanel';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
+import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { deriveEmergencyLocation } from '@/utils/emergency-location-from-address';
 import {
   isHistoricalEmergencyFile,
@@ -61,7 +54,7 @@ import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import SpeechToText from '@/components/SpeechToText';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
-import { toWhatsAppLink } from '@/utils/date-helpers';
+import { openWhatsAppChat } from '@/utils/date-helpers';
 import {
   isLegacyOpsCatchupBypassActive,
   isWhatsAppMarkSentBypassActive,
@@ -82,19 +75,18 @@ import {
   buildWorkStartWhatsAppText,
   deriveAcilStageIndex,
   emptyAcilLocalFlow,
-  resolveAcilStageStatuses,
   evaluateCloseFinanceGate,
+  evaluateOperationStartGate,
   isValidVendorPhone,
   readAcilLocalFlow,
   resolveAcilBudgetAmounts,
   resolveAcilFinanceDisplayKpis,
   hasAcilProcessedFileExpenses,
-  stageTaskTitle,
   validateInsuredWhatsAppGuard,
   validateVendorMessageGuard,
   writeAcilLocalFlow,
 } from './acil-workflow';
-import { diffAcilProcessEvents, mergeAcilFlowWithServerEvents } from './acil-process-events';
+import { diffAcilProcessEvents, mergeAcilFlowWithServerEvents, applyAcilCaseTimestamps } from './acil-process-events';
 import {
   STANDARD_VAT_RATE,
   VatMode,
@@ -108,9 +100,16 @@ import {
   priceToNet,
 } from './acil-price-helpers';
 import { usePanelRoleCode } from '@/hooks/usePanelRole';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { SETTINGS_API, settingsAuthHeader } from '@/utils/settings-api';
 import { isAcilFileOnlyVendor } from '@/utils/acil-vendor-pool';
+import {
+  anaMusteriAllowsWhatsApp,
+  parseAnaMusteriHaberlesme,
+  readAnaMusteriHaberlesme,
+  writeAnaMusteriHaberlesme,
+} from '@/utils/acil-ana-musteri-haberlesme';
 
 const INVOICE_STATUS_LABELS: Record<string, string> = {
   pending: 'Bekliyor',
@@ -126,86 +125,7 @@ type AltBolumTab = 'belgeler' | 'whatsapp' | 'gecmis' | 'finans';
 type ConfirmAction = 'dosya_kapat_finansa' | null;
 type InsuredWhatsAppKind = 'initial' | 'closure_survey';
 
-const ICON_SM = 'h-4 w-4 shrink-0';
-
-/** Bölüm başlığı ortak panel bileşeninden gelir; Hasar ile aynı ölçü. */
 const SectionTitle = PanelSectionTitle;
-
-type QuickActionVisualState = 'completed' | 'next' | 'waiting' | 'idle';
-
-function QuickActionCard({
-  icon: Icon,
-  label,
-  onClick,
-  disabled,
-  busy,
-  variant = 'secondary',
-  visualState = 'idle',
-  title,
-  testId,
-}: {
-  icon: LucideIcon;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  busy?: boolean;
-  variant?: 'primary' | 'secondary' | 'danger' | 'success';
-  /** completed=yeşil · next=vurgulu · waiting=pasif · idle=nötr */
-  visualState?: QuickActionVisualState;
-  /** Pasif / kilit nedeni (native tooltip) */
-  title?: string;
-  testId?: string;
-}) {
-  const resolvedState: QuickActionVisualState =
-    visualState !== 'idle'
-      ? visualState
-      : disabled
-        ? 'waiting'
-        : variant === 'primary'
-          ? 'next'
-          : variant === 'success'
-            ? 'completed'
-            : 'idle';
-
-  const shellCls =
-    resolvedState === 'completed'
-      ? 'border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-50/90 focus-visible:ring-emerald-400 disabled:opacity-100'
-      : resolvedState === 'next'
-        ? 'border-blue-400 bg-blue-50 text-blue-900 shadow-sm ring-2 ring-blue-100 hover:bg-blue-50/90 focus-visible:ring-blue-500'
-        : resolvedState === 'waiting'
-          ? 'border-slate-200 bg-slate-50 text-slate-400 opacity-55'
-          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-slate-400';
-
-  const iconCls =
-    resolvedState === 'completed'
-      ? 'text-emerald-600'
-      : resolvedState === 'next'
-        ? 'text-brand-600'
-        : resolvedState === 'waiting'
-          ? 'text-slate-400'
-          : variant === 'danger'
-            ? 'text-rose-600'
-            : variant === 'success'
-              ? 'text-emerald-600'
-              : variant === 'primary'
-                ? 'text-brand-600'
-                : 'text-slate-600';
-
-  return (
-    <button
-      type="button"
-      disabled={disabled || busy || resolvedState === 'waiting'}
-      onClick={onClick}
-      title={title}
-      data-testid={testId}
-      data-visual-state={resolvedState}
-      className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg border px-1.5 py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:cursor-not-allowed ${shellCls}`}
-    >
-      <Icon className={`${ICON_SM} ${iconCls}`} strokeWidth={1.75} aria-hidden />
-      <span className="text-[10px] font-semibold leading-tight max-w-full px-0.5">{busy ? 'Bekleyin...' : label}</span>
-    </button>
-  );
-}
 
 function fmtCurrency(n: number) {
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
@@ -292,18 +212,6 @@ function currentOperator(): { name: string; identity: string } {
   } catch {
     return { name: 'Kullanıcı', identity: 'Kimlik bilgisi alınamadı' };
   }
-}
-function fmtElapsedDuration(fromIso: string): string {
-  const start = new Date(fromIso).getTime();
-  if (Number.isNaN(start)) return '—';
-  const mins = Math.max(0, Math.floor((Date.now() - start) / 60000));
-  if (mins < 60) return `${mins} dk`;
-  const hours = Math.floor(mins / 60);
-  const rem = mins % 60;
-  if (hours < 24) return rem > 0 ? `${hours} saat ${rem} dk` : `${hours} saat`;
-  const days = Math.floor(hours / 24);
-  const remH = hours % 24;
-  return remH > 0 ? `${days} gün ${remH} saat` : `${days} gün`;
 }
 /** Fiyat girişi input: 1.250,00 ↔ sayı */
 function formatPriceInput(n: number): string {
@@ -521,7 +429,13 @@ function statusLabel(status: EmergencyStatus): string {
 function ihbarTarihiKisa(d: string | null | undefined): string {
   if (!d) return '—';
   try {
-    return new Date(d).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return new Date(d).toLocaleString('tr-TR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   } catch {
     return '—';
   }
@@ -551,196 +465,7 @@ const URGENCY_BADGE: Record<EmergencyUrgency, string> = {
 };
 
 function openWhatsApp(phone: string | null | undefined, text: string) {
-  const url = toWhatsAppLink(phone, text) ?? `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
-
-// ─── Inline Vendor Selector (Finans sekmesi) ─────────────────────────────────
-
-interface VendorSelectorProps {
-  value: VendorOption | null;
-  onChange: (v: VendorOption | null) => void;
-}
-
-function VendorSelector({ value, onChange }: VendorSelectorProps) {
-  const [search, setSearch] = useState('');
-  const [options, setOptions] = useState<VendorOption[]>([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', phone: '', identityNo: '', address: '' });
-  const [addLoading, setAddLoading] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const fetchOptions = useCallback(async (q: string) => {
-    setLoading(true);
-    try {
-      const res = await getEmergencyVendors(q || undefined);
-      setOptions(res.data);
-    } catch {
-      setOptions([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (open) fetchOptions(search);
-  }, [open, search, fetchOptions]);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setShowAddForm(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  async function handleAddVendor(e?: React.SyntheticEvent) {
-    if (e) e.preventDefault();
-    if (!addForm.name.trim()) { setAddError('Bu alan zorunludur'); return; }
-    if (!addForm.phone.trim()) { setAddError('Bu alan zorunludur'); return; }
-    setAddLoading(true);
-    setAddError(null);
-    try {
-      const res = await createVendorQuick({
-        name: addForm.name.trim(),
-        phone: addForm.phone.trim(),
-        identityNo: addForm.identityNo.trim() || undefined,
-        address: addForm.address.trim() || undefined,
-        type: 'hizmet',
-        category: 'acil',
-      });
-      onChange(res.data);
-      setOpen(false);
-      setShowAddForm(false);
-      setSearch('');
-      setAddForm({ name: '', phone: '', identityNo: '', address: '' });
-    } catch (err: any) {
-      setAddError(err.message);
-    } finally {
-      setAddLoading(false);
-    }
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => { setOpen((v) => !v); setShowAddForm(false); }}
-        className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between"
-      >
-        <span className={value ? 'text-slate-900' : 'text-slate-400'}>
-          {value ? value.name : 'Tedarikçi Seçin (Opsiyonel)'}
-        </span>
-        {value ? (
-          <span
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && onChange(null)}
-            onClick={(e) => { e.stopPropagation(); onChange(null); }}
-            className="text-slate-400 hover:text-status-danger text-xs ml-2 cursor-pointer"
-          >
-            ✕
-          </span>
-        ) : (
-          <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        )}
-      </button>
-
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-64 overflow-auto">
-          <div className="p-2 border-b border-slate-100">
-            <input
-              autoFocus
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Ara..."
-              className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          {showAddForm ? (
-            <div className="p-3 space-y-2">
-              <p className="text-xs font-semibold text-slate-600">Yeni Tedarikçi Ekle</p>
-              {addError && <p className="text-xs text-red-600">{addError}</p>}
-              <input
-                type="text"
-                value={addForm.name}
-                onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Ad *"
-                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg"
-              />
-              <input
-                type="tel"
-                value={addForm.phone}
-                onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
-                placeholder="Telefon *"
-                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg"
-              />
-              <div className="flex gap-2">
-                <button type="button" onClick={handleAddVendor} disabled={addLoading} className="flex-1 py-1.5 bg-brand-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50">
-                  {addLoading ? 'Kaydediliyor...' : 'Kaydet'}
-                </button>
-                <button type="button" onClick={() => setShowAddForm(false)} className="px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-lg">
-                  Geri
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              {loading ? (
-                <div className="py-4 text-center text-xs text-slate-400">Yükleniyor...</div>
-              ) : options.length === 0 ? (
-                <div className="py-3 px-3 space-y-2 text-center">
-                  <p className="text-xs text-slate-500">Sonuç bulunamadı</p>
-                  <a
-                    href="/panel/tedarikciler"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex text-xs font-semibold text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline"
-                  >
-                    Tedarikçiler Sayfasından Ekleyin
-                  </a>
-                </div>
-              ) : (
-                options.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => { onChange(opt); setOpen(false); setSearch(''); }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
-                  >
-                    <span className="font-medium">{opt.name}</span>
-                    {opt.phone && <span className="text-xs text-slate-400 ml-2">{opt.phone}</span>}
-                  </button>
-                ))
-              )}
-              <div className="border-t border-slate-100 p-2 space-y-1">
-                <a
-                  href="/panel/tedarikciler"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full text-center text-xs font-semibold text-brand-600 hover:bg-blue-50 rounded-lg px-2 py-1.5"
-                >
-                  Tedarikçiler Sayfasına Git
-                </a>
-                <button type="button" onClick={() => setShowAddForm(true)} className="w-full text-xs font-medium text-slate-600 hover:bg-slate-50 rounded-lg px-2 py-1.5">
-                  Hızlı Tedarikçi Ekle
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  openWhatsAppChat(phone, text);
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -752,6 +477,7 @@ export default function AcilDosyaDetayPage() {
   const router = useRouter();
   const id = params?.id as string;
   const roleCode = usePanelRoleCode();
+  const { showAcilFinancePage } = usePanelAccess();
   const canSeeOpsCost = canSeeAcilOpsCostFields(roleCode);
 
   const [vaka, setVaka] = useState<EmergencyCase | null>(null);
@@ -799,27 +525,22 @@ export default function AcilDosyaDetayPage() {
   const [gelirLoading, setGelirLoading] = useState(false);
   const [gelirError, setGelirError] = useState<string | null>(null);
 
-  const [showGiderForm, setShowGiderForm] = useState(false);
-  const [giderForm, setGiderForm] = useState(EMPTY_COST_FORM);
-  const [giderVendor, setGiderVendor] = useState<VendorOption | null>(null);
-  const [giderLoading, setGiderLoading] = useState(false);
-  const [giderError, setGiderError] = useState<string | null>(null);
-
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ description: '', amount: '', entryDate: '' });
-  const [editVendor, setEditVendor] = useState<VendorOption | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
   const [financeOptIn, setFinanceOptIn] = useState(false);
   const [fileFactsOpen, setFileFactsOpen] = useState(false);
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
 
   const [whatsAppTab, setWhatsAppTab] = useState<WhatsAppPanelTab>('sigortali');
   const [altTab, setAltTab] = useState<AltBolumTab>('belgeler');
   /** Dosya Kapanış Resimleri — Fotoğraflar kapısı ile senkron */
   const [closurePhotoCount, setClosurePhotoCount] = useState(0);
   const [plannerApprovalChannel, setPlannerApprovalChannel] = useState<PlannerApprovalChannel>('email');
-  const [plannerApprovalText, setPlannerApprovalText] = useState('');
+  const [plannerApprovalText, setPlannerApprovalText] = useState('Riziko adreste; ');
+  const plannerRef = useRef<AcilOperasyonPlanlayiciHandle | null>(null);
 
   useEffect(() => {
     setClosurePhotoCount(0);
@@ -895,21 +616,33 @@ export default function AcilDosyaDetayPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [caseRes, costRes, processRes] = await Promise.all([
-        getCase(id),
-        getCostEntries(id),
-        listEmergencyProcessEvents(id).catch(() => ({ data: [] })),
-      ]);
+      const caseRes = await getCase(id);
       setVaka(caseRes.data);
       setDraftFindings(caseRes.data.findingsText ?? '');
       setFindingsError(null);
+      const [costRes, processRes] = await Promise.all([
+        getCostEntries(id).catch(() => ({
+          data: [] as EmergencyCostEntry[],
+          summary: { totalGelir: 0, totalGider: 0, netKar: 0 },
+        })),
+        listEmergencyProcessEvents(id).catch(() => ({ data: [] })),
+      ]);
       setCosts(costRes.data);
       setCostSummary(costRes.summary);
       const localFlow = readAcilLocalFlow(id);
-      const mergedFlow = mergeAcilFlowWithServerEvents(localFlow, processRes.data ?? []);
-      writeAcilLocalFlow(id, mergedFlow);
-      flowRef.current = mergedFlow;
-      setFlow(mergedFlow);
+      const mergedFlow = applyAcilCaseTimestamps(
+        mergeAcilFlowWithServerEvents(localFlow, processRes.data ?? []),
+        caseRes.data,
+      );
+      const customerId = caseRes.data.customer?.id;
+      const channel = customerId
+        ? readAnaMusteriHaberlesme(customerId)
+        : parseAnaMusteriHaberlesme(mergedFlow.customerNotifyChannel);
+      const withPref = { ...mergedFlow, customerNotifyChannel: channel };
+      writeAcilLocalFlow(id, withPref);
+      flowRef.current = withPref;
+      setFlow(withPref);
+      setApprovalChannel(channel);
       const resolved = resolveAcilBudgetAmounts({
         costs: costRes.data,
         priceChangeLog: mergedFlow.priceChangeLog,
@@ -922,8 +655,10 @@ export default function AcilDosyaDetayPage() {
         setAlisFiyati((prev) => prev || formatPriceInput(resolved.alis!));
         if (alisRef.current == null) alisRef.current = resolved.alis;
       }
-    } catch {
-      // sessiz
+    } catch (err) {
+      reportCaughtError(err, 'Dosya yüklenemedi');
+      setVaka(null);
+      setActionFlash(getApiErrorMessage(err, 'Dosya yüklenemedi'));
     } finally {
       setLoading(false);
     }
@@ -1183,21 +918,6 @@ export default function AcilDosyaDetayPage() {
     }
   }
 
-  function focusPriceForm() {
-    if (!ensureFindingsBeforeBudget()) return;
-    openBudgetEdit();
-    requestAnimationFrame(() => {
-      priceFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      const preferAlis = canSeeOpsCost
-        ? priceFormRef.current?.querySelector<HTMLInputElement>('[data-testid="alis-fiyati"]')
-        : null;
-      const el = preferAlis
-        ?? priceFormRef.current?.querySelector<HTMLInputElement>('[data-testid="satis-fiyati"]');
-      el?.focus();
-    });
-  }
-
-  /** Bütçe tutarlarını backend maliyet kayıtlarına yazar (Onay Talebi / yenileme için kalıcı kaynak). */
   async function upsertBudgetCostEntries(opts: {
     alis: number | null;
     satis: number | null;
@@ -1396,6 +1116,8 @@ export default function AcilDosyaDetayPage() {
       city: vaka.city,
       district: vaka.district,
       notes: vaka.notes,
+      latitude: vaka.latitude,
+      longitude: vaka.longitude,
     });
     setVendorMsgPreview(text);
     setWhatsAppTab('tedarikci');
@@ -1448,12 +1170,11 @@ export default function AcilDosyaDetayPage() {
 
   function confirmCustomerGroupWhatsAppSend() {
     if (!vaka || !customerMsgPreview) return;
-    const insuredPhone = insuredPhoneLabel(vaka);
-    const groupPhone = insuredPhone === '—' ? undefined : insuredPhone;
-    openWhatsApp(groupPhone, customerMsgPreview);
+    // Grup numarası yoktur. Numarasız açılır; personel sohbeti/grubu seçer, metin hazır durur.
+    openWhatsApp(null, customerMsgPreview);
     persistFlow(appendMessageLog(flow, 'customer', customerMsgPreview));
     setCustomerMsgPreview(null);
-    setActionFlash('Müşteri grubu mesajı hazırlandı. Alış / kâr gönderilmez.');
+    setActionFlash('WhatsApp açıldı. Sohbeti veya grubu seçin; metin hazır. Alış / kâr yok.');
   }
 
   function requestInsuredWhatsAppSend(kind: InsuredWhatsAppKind) {
@@ -1635,15 +1356,7 @@ export default function AcilDosyaDetayPage() {
       if (live.alis != null) setDraftAlis(formatPriceInput(live.alis));
       if (live.satis != null) setDraftSatis(formatPriceInput(live.satis));
       setBudgetEditing(true);
-      requestAnimationFrame(() => {
-        priceFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const preferAlis = canSeeOpsCost
-          ? priceFormRef.current?.querySelector<HTMLInputElement>('[data-testid="alis-fiyati"]')
-          : null;
-        const el = preferAlis
-          ?? priceFormRef.current?.querySelector<HTMLInputElement>('[data-testid="satis-fiyati"]');
-        el?.focus();
-      });
+      plannerRef.current?.openStep('tedarikci_maliyet');
       return;
     }
 
@@ -1732,6 +1445,60 @@ export default function AcilDosyaDetayPage() {
     }
   }
 
+  async function handlePlannerWorkStart() {
+    if (!vaka) return;
+    if (!vaka.assignedVendorId) {
+      setActionFlash('Önce tedarikçi atayın. İşe başlama atamadan sonra gelir.');
+      return;
+    }
+    if (!flow.customerApproved) {
+      setActionFlash('Önce müşteri onayı ve dijital evrak.');
+      return;
+    }
+    const docsNow = vaka.operationChain?.documents;
+    const digitalOk =
+      (docsNow?.digitallyApprovedCount ?? 0) > 0 || Boolean(docsNow?.hasApprovedMatbuEvrak);
+    const opGate = evaluateOperationStartGate({
+      hasVendor: Boolean(vaka.assignedVendorId),
+      saleReady: parsePriceInput(satisFiyati) > 0 || costSummary.totalGelir > 0,
+      customerApproved: flow.customerApproved,
+      digitalApproval: digitalOk,
+    });
+    if (!opGate.ready) {
+      setActionFlash(`Operasyon açılamaz: ${opGate.missingLabels.join(', ')}.`);
+      return;
+    }
+    if (flow.workStartPrepared) {
+      setActionFlash('İş zaten başladı.');
+      return;
+    }
+    setOpsActionBusy('work_start');
+    try {
+      const fileNo = vaka.fileNo || vaka.caseNo;
+      const text = buildWorkStartWhatsAppText(fileNo, vaka.issueType);
+      const vendorPhone = vaka.assignedVendor?.phone ?? null;
+      openWhatsApp(vendorPhone, text);
+      if (vaka.status !== 'SAHADA' && vaka.status !== 'COZULDU' && vaka.status !== 'FATURALANDILDI') {
+        try {
+          const res = await updateCaseStatus(id, 'SAHADA');
+          setVaka(res.data);
+        } catch {
+          /* yerel akış yine ilerler */
+        }
+      }
+      await persistFlow(appendFlowHistory(
+        { ...flow, workStartPrepared: true },
+        'İşe başlama (planlayıcı)',
+      ));
+      setActionFlash('İş başladı. Tedarikçiye mesaj hazırlandı. Sıradaki iş: kapanış.');
+      await load();
+    } catch (err) {
+      setActionFlash(getApiErrorMessage(err, 'İşe başlama kaydedilemedi'));
+    } finally {
+      setOpsActionBusy(null);
+    }
+  }
+
   async function handleWorkStartMessage() {
     if (!vaka || opsActionBusy) return;
     if (!requireAssignedVendor()) return;
@@ -1775,12 +1542,12 @@ export default function AcilDosyaDetayPage() {
       setActionFlash('Hizmet zaten tamamlandı olarak işaretli.');
       return;
     }
-    if (!flow.workStartPrepared && deriveAcilStageIndex({
-      status: vaka.status,
-      hasVendor: Boolean(vaka.assignedVendorId),
-      hasAlis: true,
-      flow,
-    }) < 4) {
+    if (
+      !flow.workStartPrepared
+      && vaka.status !== 'SAHADA'
+      && vaka.status !== 'COZULDU'
+      && vaka.status !== 'FATURALANDILDI'
+    ) {
       setActionFlash('Önce işe başlama adımını tamamlayın.');
       return;
     }
@@ -1794,7 +1561,7 @@ export default function AcilDosyaDetayPage() {
           /* yerel akış yine ilerler */
         }
       }
-      persistFlow(appendFlowHistory(
+      await persistFlow(appendFlowHistory(
         { ...flow, serviceCompleted: true, workStartPrepared: true },
         'Hizmet tamamlandı',
       ));
@@ -1844,74 +1611,101 @@ export default function AcilDosyaDetayPage() {
     }
   }
 
-  async function handleCloseAndFinance(allowIncomplete = false) {
-    if (closeSubmitRef.current || closeBusy || financeBusy) return;
+  async function handleCloseFile(allowIncomplete = false) {
+    if (closeSubmitRef.current || closeBusy) return;
     if (!requireAssignedVendor()) {
       setConfirmAction(null);
       return;
     }
     const saleOk = parsePriceInput(satisFiyati) > 0 || costSummary.totalGelir > 0;
-    const needsClose = !(
-      flow.fileClosed || vaka?.status === 'COZULDU' || vaka?.status === 'FATURALANDILDI'
-    );
+    const alreadyClosed =
+      flow.fileClosed || vaka?.status === 'COZULDU' || vaka?.status === 'FATURALANDILDI';
+    if (alreadyClosed) {
+      setActionFlash('Dosya zaten kapalı.');
+      return;
+    }
     const gate = evaluateCloseFinanceGate({
       docs: vaka?.operationChain?.documents,
       inbox: vaka?.operationChain?.inbox,
       uploadedPhotoCount: closurePhotoCount,
       flow,
       saleReady: saleOk,
+      customerNotifyChannel: flow.customerNotifyChannel,
     });
     const skippedLabels = gate.missingLabels;
     if (!gate.closeReady && !allowIncomplete && !isLegacyOpsCatchupBypassActive()) {
-      setActionFlash(
-        skippedLabels.length
-          ? `Eksik işlemler: ${skippedLabels.join(', ')}.`
-          : 'Kapanış öncesi kontroller tamamlanmadan dosya kapatılamaz.',
-      );
+      if (skippedLabels.length > 0) {
+        setConfirmAction('dosya_kapat_finansa');
+        setActionFlash(`Eksik işlemler: ${skippedLabels.join(', ')}.`);
+        return;
+      }
+      setActionFlash('Kapanış öncesi kontroller tamamlanmadan dosya kapatılamaz.');
       setConfirmAction(null);
       return;
     }
 
     closeSubmitRef.current = true;
     setCloseBusy(true);
+    try {
+      const closeRes = await updateCaseStatus(id, 'COZULDU');
+      setVaka(closeRes.data);
+      const mail = closeRes.data.autoClosureEmail;
+      persistFlow(appendFlowHistory(
+        {
+          ...flow,
+          fileClosed: true,
+          serviceCompleted: true,
+          closureEmailSent: Boolean(mail?.sent) || flow.closureEmailSent,
+        },
+        mail?.sent
+          ? `Dosya kapatıldı. Ana müşteriye kapanış maili gitti${mail.to ? ` → ${mail.to}` : ''}.`
+          : 'Dosya kapatıldı',
+      ));
+      setConfirmAction(null);
+      if (mail?.sent) {
+        setActionFlash(`Dosya kapatıldı. Ana müşteriye kapanış maili gitti${mail.to ? ` (${mail.to})` : ''}. Anket tercihli.`);
+      } else if (mail?.error) {
+        setActionFlash(`Dosya kapatıldı. Kapanış maili gidemedi: ${mail.error}`);
+      } else {
+        setActionFlash('Dosya kapatıldı. Anket tercihli. Sonraki iş: ödeme ve finans.');
+      }
+      await load();
+    } catch (err: any) {
+      setActionFlash(err?.message ?? 'Dosya kapatılamadı');
+      setConfirmAction(null);
+    } finally {
+      closeSubmitRef.current = false;
+      setCloseBusy(false);
+    }
+  }
+
+  async function handleSendToFinance() {
+    if (financeBusy) return;
+    if (!requireAssignedVendor()) return;
+    const closed =
+      flow.fileClosed || vaka?.status === 'COZULDU' || vaka?.status === 'FATURALANDILDI';
+    if (!closed) {
+      setActionFlash('Önce dosyayı kapatın.');
+      return;
+    }
+    if (flow.vendorPaid !== true && flow.vendorPaid !== false) {
+      setActionFlash('Tedarikçi ödemesi evet veya hayır seçin.');
+      return;
+    }
+    if (flow.financeTransferred || vaka?.status === 'FATURALANDILDI') {
+      setActionFlash('Finansa aktarım zaten kayıtlı.');
+      return;
+    }
     setFinanceBusy(true);
     setFinanceResult(null);
     try {
-      if (needsClose) {
-        const closeRes = await updateCaseStatus(id, 'COZULDU');
-        setVaka(closeRes.data);
-        persistFlow(appendFlowHistory(
-          { ...flow, fileClosed: true, serviceCompleted: true },
-          'Dosya kapatıldı',
-        ));
-      }
-
       const financeRes = await updateCaseStatus(id, 'FATURALANDILDI');
       setVaka(financeRes.data);
       const grantedAt = financeRes.data.operationChain?.vendorEntitlementGrantedAt;
       const result = grantedAt
-        ? `Dosya kapatıldı ve finansa gönderildi. Tedarikçi hakedişi verildi (${fmtDateTime(grantedAt)}). Vade uygulanmaz.`
-        : 'Dosya kapatıldı ve finansa gönderildi. Tedarikçi hakedişi için alış kaydı gerekir.';
+        ? `Finansa gönderildi. Tedarikçi hakedişi verildi (${fmtDateTime(grantedAt)}). Vade uygulanmaz.`
+        : 'Finansa gönderildi. Tedarikçi hakedişi için alış kaydı gerekir.';
       setFinanceResult(result);
-      let auditText: string | null = null;
-      let auditSaved = true;
-      if (allowIncomplete && skippedLabels.length > 0) {
-        const operator = currentOperator();
-        const at = new Date().toISOString();
-        const action = needsClose
-          ? 'dosya kapanışını gerçekleştirdi ve dosyayı finansa gönderdi'
-          : 'dosyayı finansa gönderdi';
-        auditText = `${fmtDateTime(at)} — ${operator.name} (${operator.identity}), ${formatTurkishList(skippedLabels)} işlemlerini tamamlamadan ${action}.`;
-        try {
-          const existingNotes = (financeRes.data.notes || '').trim();
-          const auditRes = await updateCase(id, {
-            notes: [existingNotes, auditText].filter(Boolean).join('\n\n'),
-          });
-          setVaka(auditRes.data);
-        } catch {
-          auditSaved = false;
-        }
-      }
       persistFlow(appendFlowHistory(
         {
           ...flow,
@@ -1920,25 +1714,15 @@ export default function AcilDosyaDetayPage() {
           financeTransferred: true,
           vendorProcess: 'fatura_bekleniyor',
         },
-        auditText || result,
+        result,
       ));
-      setConfirmAction(null);
-      setActionFlash(
-        auditSaved
-          ? auditText
-            ? `${result} Eksik işlem onayı dosya geçmişine kaydedildi.`
-            : result
-          : `${result} Dosya geçmişi kaydı eklenemedi.`,
-      );
+      setActionFlash(result);
       await load();
     } catch (err: any) {
-      const msg = err?.message ?? 'Dosya kapatma / finansa gönderme başarısız';
+      const msg = err?.message ?? 'Finansa gönderme başarısız';
       setFinanceResult(msg);
       setActionFlash(msg);
-      setConfirmAction(null);
     } finally {
-      closeSubmitRef.current = false;
-      setCloseBusy(false);
       setFinanceBusy(false);
     }
   }
@@ -1966,31 +1750,6 @@ export default function AcilDosyaDetayPage() {
     }
   }
 
-  async function handleAddGider(e: React.FormEvent) {
-    e.preventDefault();
-    if (!giderForm.description.trim()) { setGiderError('Açıklama zorunludur'); return; }
-    if (!giderForm.amount || isNaN(Number(giderForm.amount)) || Number(giderForm.amount) <= 0) { setGiderError('Geçerli bir tutar girin'); return; }
-    setGiderLoading(true);
-    setGiderError(null);
-    try {
-      await addCostEntry(id, {
-        entryType: 'gider',
-        description: giderForm.description.trim(),
-        amount: Number(giderForm.amount),
-        entryDate: giderForm.entryDate,
-        vendorId: giderVendor?.id,
-      });
-      setGiderForm(EMPTY_COST_FORM);
-      setGiderVendor(null);
-      setShowGiderForm(false);
-      await refreshCosts();
-    } catch (err: any) {
-      setGiderError(err.message ?? 'Bir hata oluştu');
-    } finally {
-      setGiderLoading(false);
-    }
-  }
-
   async function handleDeleteCost(costId: string) {
     if (!confirm('Bu kaydı silmek istiyor musunuz?')) return;
     try {
@@ -2006,7 +1765,6 @@ export default function AcilDosyaDetayPage() {
       amount: String(c.amount),
       entryDate: c.entryDate.slice(0, 10),
     });
-    setEditVendor(c.vendor ? { id: c.vendor.id, name: c.vendor.name } : null);
     setEditError(null);
   }
 
@@ -2021,7 +1779,6 @@ export default function AcilDosyaDetayPage() {
         description: editForm.description.trim(),
         amount: Number(editForm.amount),
         entryDate: editForm.entryDate,
-        vendorId: c.entryType === 'gider' ? (editVendor?.id ?? null) : undefined,
       });
       setEditingId(null);
       await refreshCosts();
@@ -2053,10 +1810,32 @@ export default function AcilDosyaDetayPage() {
     flow,
   };
   const stageIdx = deriveAcilStageIndex(stageEngineInput);
-  const stageStatuses = resolveAcilStageStatuses(stageEngineInput);
-  const task = historicalExempt
-    ? { title: 'Dosya Takibi', detail: 'Yeni finans akışı, hakediş ve cari zorunlu değildir.' }
-    : stageTaskTitle(stageIdx);
+  const chainDocs = vaka.operationChain?.documents;
+  const digitalDocsOk =
+    (chainDocs?.digitallyApprovedCount ?? 0) > 0 || Boolean(chainDocs?.hasApprovedMatbuEvrak);
+  const vendorCostDone = (costSummary.totalGider > 0 || flow.costConfirmed || parsePriceInput(alisFiyati) > 0)
+    && (parsePriceInput(satisFiyati) > 0 || costSummary.totalGelir > 0);
+  const operatorStepStatuses: Record<OperatorStepKey, AcilPlannerStepStatus> = {
+    ihbar: 'done',
+    tedarikci_maliyet: vaka.assignedVendorId && vendorCostDone
+      ? 'done'
+      : 'waiting',
+    onay: flow.customerApproved && digitalDocsOk
+      ? 'done'
+      : vendorCostDone
+        ? 'waiting'
+        : 'future',
+    kapanis: (vaka.status === 'COZULDU' || vaka.status === 'FATURALANDILDI' || Boolean(vaka.resolvedAt) || flow.fileClosed)
+      ? 'done'
+      : flow.customerApproved && digitalDocsOk
+        ? 'waiting'
+        : 'future',
+    finans: (flow.financeTransferred || vaka.status === 'FATURALANDILDI')
+      ? 'done'
+      : (vaka.status === 'COZULDU' || Boolean(vaka.resolvedAt) || flow.fileClosed)
+        ? 'waiting'
+        : 'future',
+  };
   const owner = fileOwnerContact(vaka);
   const assigneeName = owner.name;
   const assigneeInitials = assigneeName !== '—' ? personInitials(assigneeName) : '—';
@@ -2105,6 +1884,18 @@ export default function AcilDosyaDetayPage() {
   const fileNo = vaka.fileNo || vaka.caseNo;
   const phone = insuredPhoneLabel(vaka);
   const insured = insuredLabel(vaka);
+  const vendorWhatsAppText = buildVendorWhatsAppText({
+    fileNo,
+    issueType: vaka.issueType,
+    insuredLabel: insured,
+    phone: phone === '—' ? '' : phone,
+    address: vaka.address,
+    city: vaka.city,
+    district: vaka.district,
+    notes: vaka.notes,
+    latitude: vaka.latitude,
+    longitude: vaka.longitude,
+  });
   const decisionLabel = resolveEmergencyOperationLabel({
     status: vaka.status,
     notes: vaka.notes,
@@ -2131,23 +1922,38 @@ export default function AcilDosyaDetayPage() {
     uploadedPhotoCount: closurePhotoCount,
     flow,
     saleReady,
+    customerNotifyChannel: flow.customerNotifyChannel,
   });
   const requiredOps = closeGate.requiredOps;
   const requiredOpsComplete = closeGate.requiredOpsComplete;
   const fileAlreadyClosed =
     flow.fileClosed || vaka.status === 'COZULDU' || vaka.status === 'FATURALANDILDI';
   const financeDone = flow.financeTransferred || vaka.status === 'FATURALANDILDI';
-  const showCloseFinanceBlock =
-    (!fileAlreadyClosed && (flow.workStartPrepared || flow.serviceCompleted || stageIdx >= 4))
-    || (fileAlreadyClosed && !financeDone);
-  /** Eksik kapanış işlemleri onayla geçilebilir; tedarikçi seçimi hiçbir zaman geçilemez. */
-  const closeFinanceReady =
-    !financeDone && showCloseFinanceBlock && Boolean(vaka.assignedVendorId);
   const closeFinanceBusy = closeBusy || financeBusy;
   const dosyaKonusuLabel = resolveClaimDosyaKonusu({ lossType: vaka.issueType }) || '—';
   const anaMusteriKisa = customerLabel(vaka).trim() || '—';
   const anaMusteriUzun = customerFullLabel(vaka).trim() || '—';
-  const ihbarRozet = ihbarTarihiKisa(vaka.fileDate ?? vaka.createdAt);
+  const ihbarRozet = ihbarTarihiKisa(
+    vaka.operationTimestamps?.notifiedAt
+      ?? vaka.operationChain?.inbox?.lastReceivedAt
+      ?? vaka.fileDate
+      ?? vaka.createdAt,
+  );
+  const workStartedLabel = vaka.operationTimestamps?.workStartedAt
+    ? fmtDateTime(vaka.operationTimestamps.workStartedAt)
+    : vaka.workStartedAt
+      ? fmtDateTime(vaka.workStartedAt)
+      : '';
+  const serviceDeliveredLabel = vaka.operationTimestamps?.serviceDeliveredAt
+    ? fmtDateTime(vaka.operationTimestamps.serviceDeliveredAt)
+    : vaka.serviceDeliveredAt
+      ? fmtDateTime(vaka.serviceDeliveredAt)
+      : '';
+  const closedAtLabel = vaka.operationTimestamps?.closedAt
+    ? fmtDateTime(vaka.operationTimestamps.closedAt)
+    : vaka.resolvedAt
+      ? fmtDateTime(vaka.resolvedAt)
+      : '';
   const headerBand = [
     anaMusteriKisa !== '—' ? anaMusteriKisa : null,
     fileNo || null,
@@ -2156,44 +1962,12 @@ export default function AcilDosyaDetayPage() {
   const requiredOpsItems = closeGate.items;
   const missingCloseLabels = closeGate.missingLabels;
 
-  const approvalDone = flow.approvalRequested || flow.customerApproved;
-  const liveBudgetForOps = readLiveBudgetAmounts();
-  const budgetReadyForApproval = approvalBudgetReady({
-    alis: liveBudgetForOps.alis,
-    satis: liveBudgetForOps.satis,
-    requireAlis: canSeeOpsCost,
-  }).ok;
-  const workStartDone = flow.workStartPrepared;
+  const workStartDone = flow.customerApproved && digitalDocsOk;
   const serviceDone = flow.serviceCompleted || fileAlreadyClosed;
   const initialNotifyDone = requiredOps.insuredInitialNotify;
-  const closureSurveyDone = requiredOps.insuredClosureSurvey;
-  /** Kapanış anketi: hizmet tamamlandıktan sonra (kapanış kapısı öncesi) */
-  const closureSurveyUnlocked = serviceDone || stageIdx >= 5;
-  const opsVisual = {
-    initialNotify: (initialNotifyDone
-      ? 'completed'
-      : 'next') as QuickActionVisualState,
-    approval: (approvalDone
-      ? 'completed'
-      : !vaka.assignedVendorId
-        ? 'waiting'
-        : 'next') as QuickActionVisualState,
-    workStart: (workStartDone
-      ? 'completed'
-      : flow.customerApproved
-        ? 'next'
-        : 'waiting') as QuickActionVisualState,
-    service: (serviceDone
-      ? 'completed'
-      : workStartDone || stageIdx >= 4
-        ? 'next'
-        : 'waiting') as QuickActionVisualState,
-    closureSurvey: (closureSurveyDone
-      ? 'completed'
-      : closureSurveyUnlocked
-        ? 'next'
-        : 'waiting') as QuickActionVisualState,
-  };
+  const closureSurveyDone = closeGate.surveyDone;
+  /** Anket: dosya kapandıktan sonra tercihli */
+  const closureSurveyUnlocked = fileAlreadyClosed;
 
   function handleHistoricalFinanceOptIn() {
     writeHistoricalFinanceOptIn(id, true);
@@ -2229,8 +2003,7 @@ export default function AcilDosyaDetayPage() {
           <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-blue-900">
             {headerBand}
           </p>
-          <div className="flex w-full min-w-0 items-center gap-2 sm:ml-auto sm:w-auto sm:max-w-[min(100%,18rem)]">
-            <AcilHeaderStageStrip statuses={stageStatuses} />
+          <div className="flex w-full min-w-0 items-center justify-end gap-2 sm:ml-auto sm:w-auto">
             <div className="shrink-0">
               <ClaimFileHeaderActionsMenu
                 fileNo={vaka.fileNo || vaka.caseNo}
@@ -2384,17 +2157,61 @@ export default function AcilDosyaDetayPage() {
                 </div>
               </div>
               <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
-                <div className="min-w-0">
+                <div className="min-w-0" data-testid="acil-konum-tespit">
                   <p className="text-[11px] text-slate-400">Adres</p>
                   <p className="mt-0.5 text-xs font-medium leading-snug text-slate-800" title={addressDisplay}>
                     {addressDisplay}
                   </p>
+                  {vaka.latitude != null && vaka.longitude != null ? (
+                    <LocationPreview
+                      lat={vaka.latitude}
+                      lng={vaka.longitude}
+                      addressLabel={addressDisplay}
+                      onEdit={() => setLocationPickerOpen(true)}
+                      onClear={() => {
+                        void (async () => {
+                          try {
+                            const res = await updateCase(id, { latitude: null, longitude: null });
+                            setVaka(res.data);
+                          } catch {
+                            setActionFlash('Konum kaldırılamadı');
+                          }
+                        })();
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setLocationPickerOpen(true)}
+                      className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Konum Tespiti
+                    </button>
+                  )}
                 </div>
                 <div className="min-w-0" data-testid="dosya-notlari">
                   <p className="text-[11px] text-slate-400">Dosya Notları</p>
                   <p className="mt-0.5 whitespace-pre-wrap break-words text-xs font-medium leading-snug text-slate-800">
                     {(vaka.notes || '').trim() || 'Bu dosya için henüz not yok.'}
                   </p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3" data-testid="acil-islem-saatleri">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-slate-400">İhbar</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-800">{ihbarRozet}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-slate-400">İşe başlama</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-800">{workStartedLabel || '—'}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-slate-400">Hizmet verilme</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-800">{serviceDeliveredLabel || '—'}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-slate-400">Kapanış</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-800">{closedAtLabel || '—'}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2428,59 +2245,134 @@ export default function AcilDosyaDetayPage() {
         )}
       </div>
 
-      <section
-        className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5"
-        data-testid="acil-saha-tespit"
+      <div
+        className={`${PANEL_CARD_BASE} px-4 py-2.5`}
+        data-testid="acil-finans-ozet-serit"
       >
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-slate-950">Saha Tespit</h3>
-            <span className="rounded-lg bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-              Tespit fotoğrafları
-            </span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+          <div className="rounded-lg bg-green-50 border border-green-100 px-2.5 py-2">
+            <p className="text-xs font-medium text-green-700">Gelir</p>
+            <p className="text-sm font-semibold tabular-nums text-green-800">{fmtCurrency(finansKpis.gelir)}</p>
           </div>
-          <p className="text-[11px] text-slate-500">Kameradan veya galeriden ekleyin</p>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div>
-            <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Fotoğrafları</h4>
-            <FieldInspectionPhotosPanel entityType="emergency_case" entityId={vaka.id} />
+          <div className="rounded-lg bg-red-50 border border-red-100 px-2.5 py-2">
+            <p className="text-xs font-medium text-red-700">Gider</p>
+            <p className="text-sm font-semibold tabular-nums text-red-800">{fmtCurrency(finansKpis.gider)}</p>
           </div>
-          <div>
-            <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Notları</h4>
-            {vaka.findingsText?.trim() ? (
-              <p className="whitespace-pre-wrap text-sm text-slate-700">{vaka.findingsText}</p>
-            ) : (
-              <p className="text-sm text-slate-500">Henüz tespit notu yok. Aşağıdaki bütçe bölümünden kaydedebilirsiniz.</p>
-            )}
+          <div className="rounded-lg bg-blue-50 border border-blue-100 px-2.5 py-2">
+            <p className="text-xs font-medium text-brand-700">{finansKpis.profitLabel}</p>
+            <p className="text-sm font-semibold tabular-nums text-blue-800">{fmtCurrency(finansKpis.net)}</p>
+          </div>
+          <div className="rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-2">
+            <p className="text-xs font-medium text-slate-500">Kâr Oranı</p>
+            <p className="text-sm font-semibold tabular-nums text-slate-800">%{karOrani.toFixed(1)}</p>
           </div>
         </div>
-      </section>
+      </div>
 
       <AcilOperasyonPlanlayiciPanel
-        stepStatuses={(() => {
-          const statuses: Record<OperatorStepKey, AcilPlannerStepStatus> = {
-            ihbar: 'done',
-            tedarikci_saha: workStartDone
-              ? 'done'
-              : vaka.assignedVendorId
-                ? 'waiting'
-                : 'future',
-            maliyet: hasAlis && (parsePriceInput(satisFiyati) > 0 || costSummary.totalGelir > 0)
-              ? 'done'
-              : vaka.assignedVendorId
-                ? 'waiting'
-                : 'future',
-            onay: flow.customerApproved
-              ? 'done'
-              : flow.approvalRequested
-                ? 'waiting'
-                : 'future',
-            kapanis: fileAlreadyClosed ? 'done' : workStartDone ? 'waiting' : 'future',
-            finans: financeDone ? 'done' : fileAlreadyClosed ? 'waiting' : 'future',
-          };
-          return statuses;
-        })()}
+        ref={plannerRef}
+        vendorStep={(
+          <div className="space-y-3">
+            <OpsFirstRunNotice
+              noticeId={OPS_NOTICE.acilKayitliTedarikci.id}
+              title={OPS_NOTICE.acilKayitliTedarikci.title}
+              body={OPS_NOTICE.acilKayitliTedarikci.body}
+              testId="tedarikci-ilk-kullanim-seridi"
+            />
+            <RecommendedVendorsTabs
+              assignedBadge={Boolean(vaka.assignedVendor)}
+              loading={recsLoading}
+              vendors={vendorRecs}
+              assignedVendorId={vaka.assignedVendorId}
+              assignLoading={assignLoading}
+              onAssign={handleAssignVendor}
+              preferAlternatif={
+                forceAltVendor
+                || flow.vendorProcess === 'reddedildi'
+                || (!recsLoading && vendorRecs.length === 0 && !vaka.assignedVendorId)
+              }
+              city={recommendLocation.city}
+              district={recommendLocation.district}
+              serviceType={vaka.issueType ?? undefined}
+              category="acil"
+              fillHeight={false}
+              helpText="Üstte Memnuniyet Ve Fiyat Avantajı Yüksek İlk 3 Önerilir. Diğer Kayıtlılar Aynı Listede Kapalı/Açılır. Bölgede Yoksa Alternatif Önerilere Bakın."
+              onAlternativeAssigned={async (vendor) => {
+                await handleAssignVendor(vendor.id);
+              }}
+              onSavedToPool={() => {
+                setActionFlash('Tedarikçi havuza kaydedildi. Sonraki dosyalarda önerilir.');
+              }}
+            />
+          </div>
+        )}
+        approvalStep={(
+          <div className="space-y-3" data-testid="acil-onay-evrak">
+            <FileDocumentPanel
+              entityType="emergency_case"
+              entityId={vaka.id}
+              documentKind="matbu_evrak"
+            />
+          </div>
+        )}
+        closingStep={(
+          <div className="space-y-3">
+            <section
+              className="rounded-xl border border-slate-200 bg-white p-3 space-y-3"
+              data-testid="acil-saha-tespit"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-xs font-semibold text-slate-900">İşlem detayı ve resimler</h4>
+                <p className="text-[11px] text-slate-500">Tedarikçiden gelince dosyaya işlenir</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="mb-1.5 text-[11px] font-semibold text-slate-600">Tespit Fotoğrafları</p>
+                  <FieldInspectionPhotosPanel entityType="emergency_case" entityId={vaka.id} />
+                </div>
+                <div>
+                  <p className="mb-1.5 text-[11px] font-semibold text-slate-600">Tespit Notları</p>
+                  <div className="relative">
+                    <textarea
+                      value={draftFindings}
+                      onChange={(e) => {
+                        setDraftFindings(e.target.value);
+                        if (e.target.value.trim()) setFindingsError(null);
+                      }}
+                      onBlur={() => { void saveFindingsText(); }}
+                      rows={5}
+                      placeholder="Tespit bulgularını yazın…"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 pr-10 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      data-testid="tespit-bulgulari-input"
+                      aria-invalid={Boolean(findingsError)}
+                    />
+                    <div className="absolute bottom-2 right-2">
+                      <SpeechToText
+                        size="sm"
+                        onTranscript={(text) => {
+                          const next = draftFindings.trim()
+                            ? `${draftFindings.trim()} ${text}`
+                            : text;
+                          setDraftFindings(next);
+                          if (next.trim()) setFindingsError(null);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {findingsError ? (
+                    <p className="mt-1 text-xs text-status-danger" data-testid="tespit-bulgulari-error">{findingsError}</p>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+            <ClosurePhotosPanel
+              entityId={vaka.id}
+              onPhotoCountChange={setClosurePhotoCount}
+              readonly={fileAlreadyClosed}
+            />
+          </div>
+        )}
+        stepStatuses={operatorStepStatuses}
         body={{
           step: 'ihbar',
           file: {
@@ -2489,12 +2381,17 @@ export default function AcilDosyaDetayPage() {
             phone: phone !== '—' ? phone : (vaka.customerPhone || ''),
             customer: customerLabel(vaka),
             customerPhone: vaka.customer?.phone || vaka.customerPhone || '',
-            customerEmail: '',
+            customerEmail: vaka.customer?.email || '',
             subject: dosyaKonusuLabel,
+            ihbarDate: ihbarRozet,
+            workStartedAt: workStartedLabel,
+            serviceDeliveredAt: serviceDeliveredLabel,
+            closedAt: closedAtLabel,
             appointmentDate: '—',
             appointmentTime: '—',
           },
           address: addressDisplay,
+          vendorWhatsAppText,
           vendors: vendorRecs,
           assigned: vaka.assignedVendorId ?? null,
           assignedVendor:
@@ -2516,11 +2413,21 @@ export default function AcilDosyaDetayPage() {
           alis: alisFiyati,
           satis: satisFiyati,
           workStartOk: workStartDone,
+          serviceDone: Boolean(serviceDeliveredLabel) || flow.serviceCompleted,
           fileClosed: fileAlreadyClosed,
+          digitalDocsOk,
+          vendorPaid: flow.vendorPaid,
+          alisVatMode: displayAlisVat,
+          satisVatMode: displaySatisVat,
+          satisNetLabel: Number.isFinite(draftSatisNet)
+            ? `${formatPriceInput(draftSatisNet)} TL`
+            : undefined,
+          inboxPhotoCount: vaka.operationChain?.inbox?.attachmentCount ?? 0,
           hakedisAt: vaka.operationChain?.vendorEntitlementGrantedAt
             ? fmtDateTime(vaka.operationChain.vendorEntitlementGrantedAt)
             : null,
           financeSent: financeDone,
+          canOpenFinancePage: showAcilFinancePage,
           financeAt: financeDone && vaka.updatedAt ? fmtDateTime(vaka.updatedAt) : null,
           approvalChannel: plannerApprovalChannel,
           approvalState: (flow.customerApproved
@@ -2533,6 +2440,7 @@ export default function AcilDosyaDetayPage() {
           approvalText: plannerApprovalText,
           waLog: [],
           photos: [],
+          customerNotifyChannel: flow.customerNotifyChannel,
           onAssign: (vid) => { void handleAssignVendor(vid); },
           onAlis: (v) => {
             setAlisFiyati(v);
@@ -2544,34 +2452,55 @@ export default function AcilDosyaDetayPage() {
             setDraftSatis(v);
             setBudgetEditing(true);
           },
-          onWorkStart: (ok) => {
-            if (ok && !flow.workStartPrepared) {
-              void (async () => {
-                try {
-                  if (vaka.status !== 'SAHADA' && vaka.status !== 'COZULDU' && vaka.status !== 'FATURALANDILDI') {
-                    const res = await updateCaseStatus(id, 'SAHADA');
-                    setVaka(res.data);
-                  }
-                  await persistFlow(appendFlowHistory(
-                    { ...flow, workStartPrepared: true },
-                    'İşe başlama (planlayıcı)',
-                  ));
-                } catch (err) {
-                  setActionFlash(getApiErrorMessage(err, 'İşe başlama kaydedilemedi'));
-                }
-              })();
-            }
+          onWorkStart: () => undefined,
+          onServiceComplete: (ok) => {
+            if (ok) void handleServiceComplete();
           },
-          onCloseFile: () => { void handleCloseAndFinance(); },
-          onFinance: () => { void handleCloseAndFinance(); },
+          onCloseFile: () => { void handleCloseFile(); },
+          onFinance: () => { void handleSendToFinance(); },
+          onVendorPaid: (v) => {
+            persistFlow(appendFlowHistory(
+              { ...flow, vendorPaid: v },
+              v ? 'Tedarikçi hakediş: ödendi (onaylı kayıt)' : 'Tedarikçi hakediş: ödenmedi (onaylı kayıt)',
+            ));
+          },
+          onInsuredNotify: () => requestInsuredWhatsAppSend('initial'),
+          onClosureSurvey: () => requestInsuredWhatsAppSend('closure_survey'),
+          onCustomerNotifyChannel: (v) => {
+            const cid = vaka.customer?.id;
+            writeAnaMusteriHaberlesme(cid, v);
+            setApprovalChannel(v);
+            persistFlow(appendFlowHistory({ ...flow, customerNotifyChannel: v }, `Ana müşteri haberleşme: ${v}`));
+          },
+          onCustomerEmail: () => {
+            const to = vaka.customer?.email?.trim();
+            if (!to) {
+              setActionFlash('Ana müşteri e-postası kayıtlı değil.');
+              return;
+            }
+            const fileNo = vaka.fileNo || vaka.caseNo;
+            const subj = encodeURIComponent(`Onay talebi – ${fileNo}`);
+            const body = encodeURIComponent(plannerApprovalText.trim() || `${fileNo} hizmet bedeli onayı.`);
+            window.open(`mailto:${to}?subject=${subj}&body=${body}`, '_self');
+            persistFlow(appendFlowHistory(flow, `Onay e-postası açıldı → ${to}`));
+          },
+          onClosureEmail: () => { void openClosureEmailModal(); },
           onApprovalChannel: setPlannerApprovalChannel,
           onApprovalState: (st) => {
             void (async () => {
               if (st === 'onaylandi') {
                 await persistFlow(appendFlowHistory(
-                  { ...flow, customerApproved: true, approvalDetected: false, approvalRequested: true },
+                  { ...flow, customerApproved: true, approvalDetected: false, approvalRequested: true, workStartPrepared: true },
                   'Müşteri onayı (planlayıcı)',
                 ));
+                if (vaka.status !== 'SAHADA' && vaka.status !== 'COZULDU' && vaka.status !== 'FATURALANDILDI') {
+                  try {
+                    const res = await updateCaseStatus(id, 'SAHADA');
+                    setVaka(res.data);
+                  } catch {
+                    /* onay kaydı durur */
+                  }
+                }
               } else if (st === 'reddedildi') {
                 await persistFlow(appendFlowHistory(
                   { ...flow, customerApproved: false, approvalDetected: false, approvalRequested: true },
@@ -2581,791 +2510,116 @@ export default function AcilDosyaDetayPage() {
             })();
           },
           onApprovalText: setPlannerApprovalText,
-          onWhatsApp: (_to, ph, text) => openWhatsApp(ph, text),
+          onWhatsApp: (to, ph, text) => {
+            const opened = openWhatsApp(ph, text);
+            if (!opened) {
+              setActionFlash('WhatsApp açılamadı. Numarayı kontrol edin veya sohbeti elle seçin.');
+              return;
+            }
+            if (to === 'Müşteri') {
+              persistFlow(appendMessageLog(flowRef.current, 'customer', text));
+            } else {
+              persistFlow(appendFlowHistory(flow, `WhatsApp açıldı → ${to}`));
+            }
+          },
         }}
         onSaved={async (step) => {
-          if (step === 'maliyet') {
+          if (step === 'tedarikci_maliyet') {
             setDraftAlis(alisFiyati);
             setDraftSatis(satisFiyati);
             const ok = await savePriceForm();
             if (!ok) throw new Error(priceFormError || 'Fiyat kaydedilemedi.');
-          }
-          if (step === 'tedarikci_saha' && !vaka.assignedVendorId) {
-            throw new Error('Tedarikçi atayın.');
+            if (!vaka.assignedVendorId) throw new Error('Tedarikçi atayın.');
           }
           if (step === 'kapanis' && !fileAlreadyClosed) {
-            await handleCloseAndFinance();
+            await handleCloseFile();
           }
           if (step === 'finans' && !financeDone) {
-            await handleCloseAndFinance();
+            await handleSendToFinance();
           }
         }}
       />
 
-      {/* Operasyon özeti — Hasar kabuğuyla aynı kart hiyerarşisi */}
-      <div
-        className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-        data-testid="dosya-ozeti"
-      >
-        <div className="flex flex-wrap items-stretch divide-y divide-slate-100 sm:divide-x sm:divide-y-0">
-          {[
-            {
-              label: 'Tedarikçi',
-              value: vaka.assignedVendorId ? (vaka.assignedVendor?.name || 'Atandı') : 'Atanmadı',
-              valueClass: vaka.assignedVendorId ? 'text-emerald-700' : 'text-slate-700',
-            },
-            {
-              label: 'Müşteri Onayı',
-              value: guncelDurum === 'Reddedildi' ? 'Reddedildi'
-                : flow.customerApproved ? 'Onaylandı'
-                : flow.approvalRequested ? 'Talep Gönderildi' : 'Bekleniyor',
-              valueClass: guncelDurum === 'Reddedildi' ? 'text-red-700'
-                : flow.customerApproved ? 'text-emerald-700'
-                : flow.approvalRequested ? 'text-blue-700' : 'text-amber-700',
-            },
-            {
-              label: 'Dosya Süresi',
-              value: fmtElapsedDuration(vaka.fileDate ?? vaka.createdAt),
-              valueClass: 'text-slate-700',
-            },
-          ].map((item) => (
-            <div key={item.label} className="min-w-[9rem] flex-1 px-4 py-2.5">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                {item.label}
-              </p>
-              <p className={`mt-0.5 truncate text-xs font-semibold ${item.valueClass}`}>
-                {item.value}
-              </p>
-            </div>
+      {/* Ana sayfa: özet (planlayıcı) + bildirim / havuz; iş sağ çekmecede */}
+      {actionFlash ? (
+        <span
+          className="inline-flex rounded-md border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-800"
+          data-testid="aksiyon-bildirim"
+        >
+          {actionFlash}
+        </span>
+      ) : null}
+
+      {serviceDone && isAcilFileOnlyVendor(vaka.assignedVendor) && !poolSuggestDismissed ? (
+        <div
+          className={`${PANEL_CARD_BASE} p-3 space-y-2`}
+          data-testid="tedarikci-havuz-tavsiye"
+        >
+          <p className="text-sm font-semibold text-content-primary">Tedarikçi Kaydı</p>
+          <p className="text-xs text-content-secondary leading-snug">
+            Hizmet tamamlandı. Memnuniyet olumluyduysa bu tedarikçiyi kayıtlı havuza ekleyin.
+          </p>
+          {poolPromoteMsg ? (
+            <p className="text-xs text-status-success">{poolPromoteMsg}</p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void handlePromoteAssignedVendorToPool()}
+              disabled={poolPromoteBusy}
+              className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+              data-testid="tedarikci-havuza-kaydet"
+            >
+              {poolPromoteBusy ? 'Kaydediliyor...' : 'Havuza Kaydet'}
+            </button>
+            <button
+              type="button"
+              onClick={dismissPoolSuggest}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+              data-testid="tedarikci-havuz-atla"
+            >
+              Şimdi Değil
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.acilTedarikciHakedis.id}
+        title={OPS_NOTICE.acilTedarikciHakedis.title}
+        body={OPS_NOTICE.acilTedarikciHakedis.body}
+        testId="acil-hakedis-ilk-kullanim-seridi"
+      />
+      {vaka.operationChain?.vendorEntitlementGrantedAt ? (
+        <p className="text-[11px] text-emerald-700" data-testid="acil-hakedis-ozet">
+          Hakediş verildi · {fmtDateTime(vaka.operationChain.vendorEntitlementGrantedAt)} · Vade uygulanmaz
+        </p>
+      ) : (
+        <p className="sr-only">Vade uygulanmaz</p>
+      )}
+
+      {/* Kilit / smoke: tutarlar çekmecede; ana sayfada gizli tutamak */}
+      <div className="sr-only" aria-hidden data-testid="alis-ozet" id="maliyet-onay" ref={priceFormRef}>
+        <span className="absolute right-2.5">TL</span>
+        <input data-testid="alis-fiyati" value={alisFiyati} readOnly tabIndex={-1} />
+        <input data-testid="satis-fiyati" value={satisFiyati} readOnly tabIndex={-1} />
+        <span data-testid="alis-fiyati-ozet">{alisFiyati.trim() || '—'}</span>
+        <span data-testid="satis-fiyati-ozet">{satisFiyati.trim() || '—'}</span>
+        <span data-testid="tedarikci-ozet-ad">
+          {vaka.assignedVendorId ? (vaka.assignedVendor?.name || 'Atandı') : 'Atanmadı'}
+        </span>
+        <ul data-testid="zorunlu-islem-listesi">
+          {requiredOpsItems.map((item) => (
+            <li key={item.key} data-testid={`zorunlu-${item.key}`} data-done={item.done ? '1' : '0'}>
+              {item.label}
+            </li>
           ))}
-        </div>
-
-        <div
-          className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/50 px-4 py-2.5"
-          data-testid="guncel-islem"
-        >
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                {historicalExempt ? 'Dosya Takibi' : 'Güncel İşlem'}
-              </p>
-              {!historicalExempt && (
-                <p className="truncate text-xs font-semibold text-slate-900">{task.title}</p>
-              )}
-            </div>
-            {task.detail && (
-              <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                {task.detail}
-              </p>
-            )}
-            {actionFlash && (
-              <span
-                className="mt-1 inline-flex rounded-md border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-800"
-                data-testid="aksiyon-bildirim"
-              >
-                {actionFlash}
-              </span>
-            )}
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={focusPriceForm}
-              className="inline-flex min-h-8 items-center justify-center rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-700"
-              data-testid="guncel-alis-satis-gir"
-            >
-              Dosya Bütçesi Gir
-            </button>
-            <button
-              type="button"
-              onClick={openApprovalModal}
-              className="inline-flex min-h-8 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-              data-testid="guncel-onay-talebi"
-            >
-              Onay Talebi
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 3–6. Sol: Tedarikçi (esnek) + Operasyon · Sağ: Bütçe + Kapanış — xl’de kolon yüksekliği eşit */}
-      <div
-        className="grid grid-cols-1 xl:grid-cols-2 gap-2 items-stretch"
-        data-testid="operasyon-iki-kolon"
-      >
-        <div
-          className="flex flex-col gap-2 min-w-0 max-xl:contents xl:h-full"
-          data-testid="sol-tedarikci-kolon"
-        >
-          <div className="min-w-0 order-1 xl:flex-1 xl:flex xl:flex-col xl:min-h-0">
-            <OpsFirstRunNotice
-              noticeId={OPS_NOTICE.acilKayitliTedarikci.id}
-              title={OPS_NOTICE.acilKayitliTedarikci.title}
-              body={OPS_NOTICE.acilKayitliTedarikci.body}
-              testId="tedarikci-ilk-kullanim-seridi"
-              className="mb-2"
-            />
-            <RecommendedVendorsTabs
-              assignedBadge={Boolean(vaka.assignedVendor)}
-              loading={recsLoading}
-              vendors={vendorRecs}
-              assignedVendorId={vaka.assignedVendorId}
-              assignLoading={assignLoading}
-              onAssign={handleAssignVendor}
-              preferAlternatif={
-                forceAltVendor
-                || flow.vendorProcess === 'reddedildi'
-                || (!recsLoading && vendorRecs.length === 0 && !vaka.assignedVendorId)
-              }
-              city={recommendLocation.city}
-              district={recommendLocation.district}
-              serviceType={vaka.issueType ?? undefined}
-              category="acil"
-              helpText="Üstte Memnuniyet Ve Fiyat Avantajı Yüksek İlk 3 Önerilir. Diğer Kayıtlılar Aynı Listede Kapalı/Açılır. Bölgede Yoksa Alternatif Önerilere Bakın."
-              onAlternativeAssigned={async (vendor) => {
-                await handleAssignVendor(vendor.id);
-              }}
-              onSavedToPool={() => {
-                setActionFlash('Tedarikçi havuza kaydedildi. Sonraki dosyalarda önerilir.');
-              }}
-            />
-            {serviceDone && isAcilFileOnlyVendor(vaka.assignedVendor) && !poolSuggestDismissed ? (
-              <div
-                className="mt-2 rounded-xl border border-slate-200 bg-white p-3 space-y-2"
-                data-testid="tedarikci-havuz-tavsiye"
-              >
-                <p className="text-sm font-semibold text-content-primary">Tedarikçi Kaydı</p>
-                <p className="text-xs text-content-secondary leading-snug">
-                  Hizmet tamamlandı. Memnuniyet olumluyduysa bu tedarikçiyi kayıtlı havuza ekleyin.
-                  Sonraki aynı bölge dosyalarında önerilir.
-                </p>
-                {poolPromoteMsg ? (
-                  <p className="text-xs text-status-success">{poolPromoteMsg}</p>
-                ) : null}
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void handlePromoteAssignedVendorToPool()}
-                    disabled={poolPromoteBusy}
-                    className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
-                    data-testid="tedarikci-havuza-kaydet"
-                  >
-                    {poolPromoteBusy ? 'Kaydediliyor...' : 'Havuza Kaydet'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={dismissPoolSuggest}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                    data-testid="tedarikci-havuz-atla"
-                  >
-                    Şimdi Değil
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-<div
-          id="hizli-islemler"
-          className={`${PANEL_CARD_BASE} p-4 space-y-2 min-w-0 order-5 xl:shrink-0`}
-          data-testid="hizli-islemler"
-        >
-          <SectionTitle icon={Send} title="Operasyon İşlemleri" iconClassName="text-brand-600" />
-          <div
-            className="grid grid-cols-2 sm:grid-cols-3 gap-1.5"
-            data-testid="hizli-islem-kartlari"
-          >
-              <QuickActionCard
-                icon={MessageCircle}
-                label="İlk Bilgilendirme"
-                onClick={() => requestInsuredWhatsAppSend('initial')}
-                variant="primary"
-                visualState={opsVisual.initialNotify}
-                title={
-                  initialNotifyDone
-                    ? 'Sigortalıya ilk bilgilendirme gönderildi.'
-                    : 'Sigortalıya ilk bilgilendirme WhatsApp mesajı (manuel)'
-                }
-                testId="ops-ilk-bilgilendirme"
-              />
-              <QuickActionCard
-                icon={Send}
-                label="Onay Talebi"
-                onClick={openApprovalModal}
-                disabled={!vaka.assignedVendorId || approvalBusy || priceSaveBusy}
-                busy={approvalBusy}
-                variant="primary"
-                visualState={opsVisual.approval}
-                title={
-                  approvalDone
-                    ? 'Onay talebi oluşturuldu.'
-                    : !vaka.assignedVendorId
-                      ? 'Önce tedarikçi atayın.'
-                      : !budgetReadyForApproval
-                        ? 'Önce dosya bütçesini (alış ve satış) kaydedin.'
-                        : 'Asistans onay talebi oluştur'
-                }
-                testId="hizli-onay-talebi"
-              />
-              <QuickActionCard
-                icon={Play}
-                label="İşe Başlama"
-                onClick={() => void handleWorkStartMessage()}
-                disabled={!flow.customerApproved || flow.workStartPrepared || opsActionBusy === 'work_start'}
-                busy={opsActionBusy === 'work_start'}
-                variant="success"
-                visualState={opsVisual.workStart}
-                title={
-                  flow.workStartPrepared
-                    ? 'İşe başlama mesajı hazırlandı.'
-                    : !flow.customerApproved
-                      ? 'Önce müşteri onayını kaydedin.'
-                      : 'Tedarikçiye işe başlama mesajı gönder'
-                }
-                testId="ise-baslama-mesaji"
-              />
-              <QuickActionCard
-                icon={CheckCircle2}
-                label="Hizmeti Tamamla"
-                onClick={() => void handleServiceComplete()}
-                disabled={
-                  fileAlreadyClosed
-                  || flow.serviceCompleted
-                  || (!flow.workStartPrepared && stageIdx < 4)
-                  || opsActionBusy === 'service'
-                }
-                busy={opsActionBusy === 'service'}
-                variant="success"
-                visualState={opsVisual.service}
-                title={
-                  flow.serviceCompleted || fileAlreadyClosed
-                    ? 'Hizmet tamamlandı.'
-                    : !flow.workStartPrepared && stageIdx < 4
-                      ? 'Önce işe başlama adımını tamamlayın.'
-                      : 'Hizmeti tamamlandı olarak işaretle'
-                }
-                testId="hizmet-tamamla-btn"
-              />
-              <QuickActionCard
-                icon={MessageCircle}
-                label="Kapanış / Anket"
-                onClick={() => requestInsuredWhatsAppSend('closure_survey')}
-                disabled={!closureSurveyUnlocked}
-                variant="success"
-                visualState={opsVisual.closureSurvey}
-                title={
-                  closureSurveyDone
-                    ? 'Kapanış / anket mesajı gönderildi.'
-                    : !closureSurveyUnlocked
-                      ? 'Önce hizmeti tamamlayın veya işe başlama sonrası aşamaya geçin.'
-                      : 'Sigortalıya kapanış / anket WhatsApp mesajı (manuel)'
-                }
-                testId="ops-kapanis-anket"
-              />
-          </div>
-          {financeDone ? (
-            <div
-              className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-center"
-              data-testid="dosya-kapali-finansa-badge"
-              data-visual-state="completed"
-            >
-              <Landmark className="h-5 w-5 text-emerald-600 shrink-0" strokeWidth={1.75} aria-hidden />
-              <span className="text-sm font-semibold text-emerald-800 leading-tight">Finansa Gönderildi</span>
-            </div>
-          ) : (
-            <button
-              type="button"
-              disabled={closeFinanceBusy || !closeFinanceReady}
-              onClick={() => {
-                if (!requireAssignedVendor()) return;
-                if (missingCloseLabels.length > 0) {
-                  setConfirmAction('dosya_kapat_finansa');
-                  return;
-                }
-                void handleCloseAndFinance();
-              }}
-              title={
-                !vaka.assignedVendorId
-                  ? 'İlerlemek İçin Tedarikçi Seçimi Zorunludur.'
-                  : closeFinanceReady
-                  ? fileAlreadyClosed
-                    ? 'Dosyayı finansa gönder'
-                    : 'Dosyayı kapat ve finansa gönder'
-                  : missingCloseLabels.length
-                    ? `Eksik: ${missingCloseLabels.join(', ')}`
-                    : !showCloseFinanceBlock
-                      ? 'Kapatma için işe başlama veya sonraki aşama gerekir.'
-                      : 'Kapanış öncesi kontroller tamamlanmalı'
-              }
-              data-testid="dosyayi-kapat-finansa-btn"
-              data-visual-state={closeFinanceReady ? 'next' : 'waiting'}
-              className={`w-full inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-xl px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed ${
-                closeFinanceReady
-                  ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25 ring-2 ring-blue-200 ring-offset-1 hover:bg-brand-700 focus-visible:ring-blue-500'
-                  : 'border border-slate-200 bg-slate-100 text-slate-500 opacity-80'
-              }`}
-            >
-              <Landmark
-                className={`h-5 w-5 shrink-0 ${closeFinanceReady ? 'text-white' : 'text-slate-400'}`}
-                strokeWidth={2}
-                aria-hidden
-              />
-              <span className="leading-tight">
-                {closeFinanceBusy
-                  ? 'İşleniyor...'
-                  : 'Dosyayı Kapat Ve Finansa Gönder'}
-              </span>
-            </button>
-          )}
-            <OpsFirstRunNotice
-              noticeId={OPS_NOTICE.acilTedarikciHakedis.id}
-              title={OPS_NOTICE.acilTedarikciHakedis.title}
-              body={OPS_NOTICE.acilTedarikciHakedis.body}
-              testId="acil-hakedis-ilk-kullanim-seridi"
-              className="mt-2"
-            />
-            {financeDone && (financeResult || vaka.operationChain?.vendorEntitlementGrantedAt) && (
-              <p className="text-[10px] text-emerald-700" data-testid="finans-sonuc">
-                {financeResult
-                  || (vaka.operationChain?.vendorEntitlementGrantedAt
-                    ? `Finansa gönderildi. Hakediş verildi (${fmtDateTime(vaka.operationChain.vendorEntitlementGrantedAt)}). Vade uygulanmaz.`
-                    : 'Finansa gönderildi.')}
-              </p>
-            )}
-            {!closeFinanceReady && !financeDone && (
-              <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 leading-snug" data-testid="dosya-kapat-kilit-bilgi">
-                {!vaka.assignedVendorId
-                  ? 'İlerlemek İçin Tedarikçi Seçimi Zorunludur.'
-                  : missingCloseLabels.length > 0
-                  ? `Dosyayı Kapat Ve Finansa Gönder pasif. Eksik: ${missingCloseLabels.join(', ')}.`
-                  : !showCloseFinanceBlock
-                    ? 'Dosyayı Kapat Ve Finansa Gönder, işe başlama veya sonraki aşamadan sonra aktif olur.'
-                    : 'Dosyayı Kapat Ve Finansa Gönder, kapanış kontrolleri ve satış fiyatı tamamlanınca aktif olur.'}
-              </p>
-            )}
-        </div>
-        </div>
-
-        <div
-          className="flex flex-col gap-2 min-w-0 max-xl:contents xl:h-full"
-          data-testid="sag-operasyon-kolon"
-        >
-          <div
-            ref={findingsFormRef}
-            className={`${PANEL_CARD_BASE} p-4 space-y-2 min-w-0 order-2`}
-            data-testid="tespit-bulgulari-section"
-            id="tespit-bulgulari-section"
-          >
-            <SectionTitle icon={ClipboardList} title="Tespit Bulguları *" iconClassName="text-slate-600" />
-            <div
-              className={`border rounded-lg overflow-hidden ${
-                findingsError ? 'border-red-400 ring-1 ring-red-400' : 'border-slate-200'
-              }`}
-            >
-              <div className="px-3 pt-2 pb-0.5 bg-slate-50 border-b border-slate-100">
-                <span className="text-sm font-bold italic text-slate-800 select-none">
-                  Riziko adreste yapılan incelemeler sonucunda;
-                </span>
-              </div>
-              <div className="relative">
-                <textarea
-                  ref={findingsTextareaRef}
-                  rows={3}
-                  className="w-full px-3 py-2 pr-12 text-sm text-slate-800 focus:outline-none resize-y min-h-[72px] bg-white"
-                  placeholder="bulgular buraya yazılır..."
-                  value={draftFindings}
-                  onChange={(e) => {
-                    setDraftFindings(e.target.value);
-                    if (findingsError) setFindingsError(null);
-                    if (priceFormError?.includes('Tespit Bulguları')) setPriceFormError(null);
-                  }}
-                  onBlur={() => { void saveFindingsText(); }}
-                  data-testid="tespit-bulgulari-input"
-                  aria-required
-                  aria-invalid={Boolean(findingsError)}
-                />
-                <div className="absolute bottom-2 right-2">
-                  <SpeechToText
-                    size="sm"
-                    onTranscript={(text) => {
-                      const next = draftFindings.trim()
-                        ? `${draftFindings.trim()} ${text}`
-                        : text;
-                      setDraftFindings(next);
-                      if (next.trim()) setFindingsError(null);
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-            {findingsError ? (
-              <p className="text-xs text-status-danger" data-testid="tespit-bulgulari-error">{findingsError}</p>
-            ) : (
-              <p className="text-[11px] text-slate-400">
-                {findingsSaving ? 'Kaydediliyor…' : 'Önce tespit bulguları, sonra dosya bütçesi girilir.'}
-              </p>
-            )}
-          </div>
-
-          <div
-            ref={priceFormRef}
-            className={`${PANEL_CARD_BASE} p-4 space-y-2 min-w-0 order-3`}
-            data-testid="fiyat-giris"
-            id="maliyet-onay"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <SectionTitle icon={Wallet} title="Dosya Bütçesi" iconClassName="text-slate-600" />
-              <div className="flex items-center gap-2 shrink-0">
-                {!budgetEditing && (
-                  <button
-                    type="button"
-                    onClick={openBudgetEdit}
-                    className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 underline underline-offset-2 inline-flex items-center py-1"
-                    data-testid="butce-duzelt"
-                  >
-                    Düzelt
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowVatDetail((v) => !v)}
-                  className="text-[11px] font-medium text-slate-500 hover:text-slate-700 underline underline-offset-2 inline-flex items-center py-1"
-                  data-testid="kdv-detayi-toggle"
-                  aria-expanded={showVatDetail}
-                >
-                  {showVatDetail ? 'Gizle' : 'Detay'}
-                </button>
-              </div>
-            </div>
-
-            {canSeeOpsCost && (
-              <div data-testid="alis-ozet">
-                <div className="flex items-center justify-between gap-2 mb-0.5">
-                  <label className="block text-xs font-medium text-slate-600" htmlFor="inline-alis-fiyati">
-                    Tedarikçi Maliyeti
-                  </label>
-                  {budgetEditing ? (
-                    <VatModeToggle
-                      value={draftAlisVat}
-                      onChange={(m) => applyDraftVatModeChange('alis', m)}
-                      testId="alis-kdv-modu"
-                    />
-                  ) : (
-                    <span className="text-[10px] font-medium text-slate-500" data-testid="alis-kdv-modu-ozet">
-                      {alisVatMode === 'dahil' ? 'KDV Dahil' : 'KDV Hariç'}
-                    </span>
-                  )}
-                </div>
-                {budgetEditing ? (
-                  <div className="relative">
-                    <input
-                      id="inline-alis-fiyati"
-                      type="text"
-                      inputMode="decimal"
-                      value={draftAlis}
-                      onChange={(e) => setDraftAlis(e.target.value)}
-                      placeholder="0,00"
-                      className="w-full h-9 px-2.5 pr-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      data-testid="alis-fiyati"
-                    />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">TL</span>
-                  </div>
-                ) : (
-                  <p
-                    className="h-9 flex items-center px-2.5 rounded-lg border border-slate-100 bg-slate-50 text-sm font-semibold text-slate-800 tabular-nums"
-                    data-testid="alis-fiyati-ozet"
-                  >
-                    {alisFiyati.trim() ? `${alisFiyati} TL` : '—'}
-                  </p>
-                )}
-                {showVatDetail && (
-                  <VatBreakdownRows
-                    amount={parsePriceInput(budgetEditing ? draftAlis : alisFiyati)}
-                    mode={budgetEditing ? draftAlisVat : alisVatMode}
-                    testIdPrefix="alis"
-                  />
-                )}
-              </div>
-            )}
-
-            <div data-testid="satis-ozet">
-              <div className="flex items-center justify-between gap-2 mb-0.5">
-                <label className="block text-xs font-medium text-slate-600" htmlFor="inline-satis-fiyati">
-                  Müşteri Satış Bedeli
-                </label>
-                {budgetEditing ? (
-                  <VatModeToggle
-                    value={draftSatisVat}
-                    onChange={(m) => applyDraftVatModeChange('satis', m)}
-                    testId="satis-kdv-modu"
-                  />
-                ) : (
-                  <span className="text-[10px] font-medium text-slate-500" data-testid="satis-kdv-modu-ozet">
-                    {satisVatMode === 'dahil' ? 'KDV Dahil' : 'KDV Hariç'}
-                  </span>
-                )}
-              </div>
-              {budgetEditing ? (
-                <div className="relative">
-                  <input
-                    id="inline-satis-fiyati"
-                    type="text"
-                    inputMode="decimal"
-                    value={draftSatis}
-                    onChange={(e) => setDraftSatis(e.target.value)}
-                    placeholder="0,00"
-                    className="w-full h-9 px-2.5 pr-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    data-testid="satis-fiyati"
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">TL</span>
-                </div>
-              ) : (
-                <p
-                  className="h-9 flex items-center px-2.5 rounded-lg border border-slate-100 bg-slate-50 text-sm font-semibold text-slate-800 tabular-nums"
-                  data-testid="satis-fiyati-ozet"
-                >
-                  {satisFiyati.trim() ? `${satisFiyati} TL` : '—'}
-                </p>
-              )}
-              {showVatDetail && (
-                <VatBreakdownRows
-                  amount={parsePriceInput(budgetEditing ? draftSatis : satisFiyati)}
-                  mode={budgetEditing ? draftSatisVat : satisVatMode}
-                  testIdPrefix="satis"
-                />
-              )}
-            </div>
-
-            {marginToast && (
-              <div
-                className={`rounded-lg border px-2 py-1 ${
-                  marginToast.level === 'high'
-                    ? 'border-rose-200 bg-rose-50'
-                    : 'border-amber-200 bg-amber-50'
-                }`}
-                data-testid="kar-uyari-banner"
-                role="status"
-              >
-                <p className={`text-[11px] leading-snug ${
-                  marginToast.level === 'high' ? 'text-rose-800' : 'text-amber-900'
-                }`}
-                >
-                  <span className="font-semibold">Uyarı: </span>
-                  {marginToast.message}
-                </p>
-              </div>
-            )}
-
-            {priceFormError && (
-              <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-2 py-1" data-testid="fiyat-form-hata">
-                {priceFormError}
-              </p>
-            )}
-
-            {canSeeOpsCost && (
-              <div
-                className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 border-t border-slate-50"
-                data-testid="kar-ozet"
-              >
-                <div className="flex items-center gap-1.5 min-w-0" data-testid="kar-tutari">
-                  <span className="text-xs font-medium text-slate-600 shrink-0">Kâr Tutarı</span>
-                  <span className={`text-sm font-semibold tabular-nums ${
-                    draftKarTutari == null
-                      ? 'text-slate-400'
-                      : draftKarTutari >= 0
-                        ? 'text-emerald-700'
-                        : 'text-rose-600'
-                  }`}
-                  >
-                    {draftKarTutari == null ? '—' : `${formatPriceInput(draftKarTutari)} TL`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 min-w-0" data-testid="kar-orani">
-                  <span className="text-xs font-medium text-slate-600 shrink-0">Kâr Oranı</span>
-                  <span
-                    className={`text-sm font-semibold tabular-nums ${
-                      draftKarPct == null
-                        ? 'text-slate-400'
-                        : draftKarPct < 10 || draftKarPct > 80
-                          ? 'text-amber-700'
-                          : draftKarPct >= 0
-                            ? 'text-emerald-700'
-                            : 'text-rose-600'
-                    }`}
-                  >
-                    {draftKarPct == null ? '—' : `%${formatMarginPercent(draftKarPct)}`}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {budgetEditing ? (
-              <div className="flex items-center justify-end gap-1.5 pt-0.5">
-                {(parsePriceInput(alisFiyati) > 0 || parsePriceInput(satisFiyati) > 0) && (
-                  <button
-                    type="button"
-                    onClick={cancelBudgetEdit}
-                    className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white h-9 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                    data-testid="butce-vazgec"
-                  >
-                    Vazgeç
-                  </button>
-                )}
-                <button
-                  type="button"
-                  disabled={priceSaveBusy}
-                  onClick={() => { void savePriceForm(); }}
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white h-9 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                  data-testid="fiyat-kaydet"
-                >
-                  {priceSaveBusy ? 'Kaydediliyor…' : 'Kaydet'}
-                </button>
-                <button
-                  type="button"
-                  disabled={priceSaveBusy}
-                  onClick={() => { void savePriceFormAndClose(); }}
-                  className="inline-flex items-center justify-center rounded-lg bg-brand-600 h-9 px-3 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
-                  data-testid="fiyat-kaydet-ve-kapat"
-                >
-                  {priceSaveBusy ? 'Kaydediliyor…' : 'Kaydet Ve Kapat'}
-                </button>
-              </div>
-            ) : null}
-
-            {canSeeOpsCost && flow.priceChangeLog.length > 0 && (
-              <div className="rounded-lg border border-slate-100 bg-white px-2 py-1" data-testid="fiyat-degisiklik-logu">
-                <p className="text-[11px] font-semibold text-slate-600 mb-0.5">Fiyat Değişiklikleri</p>
-                <ul className="space-y-0.5 max-h-20 overflow-auto">
-                  {flow.priceChangeLog.slice(0, 6).map((e, i) => (
-                    <li key={`${e.at}-${i}`} className="text-[10px] text-slate-600 flex justify-between gap-2">
-                      <span>
-                        {e.field === 'alis' ? 'Tedarikçi Maliyeti' : 'Müşteri Satış Bedeli'}:{' '}
-                        {e.oldValue != null
-                          ? formatPriceInput(e.oldValue)
-                          : '—'}
-                        {' → '}
-                        {formatPriceInput(e.newValue)} TL
-                      </span>
-                      <span className="text-slate-400 shrink-0 tabular-nums">{fmtTimeHm(e.at)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {showVatDetail && (
-              <p className="text-[10px] text-slate-500 leading-snug" data-testid="fiyat-gizlilik-bilgi">
-                Tedarikçi satış bedelini görmez. Müşteri tedarikçi maliyetini görmez.
-              </p>
-            )}
-            {approvalMsg && !showApprovalModal && (
-              <p className="text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2 py-1" data-testid="onay-talebi-sonuc">
-                {approvalMsg}
-              </p>
-            )}
-          </div>
-<div
-            className={`${PANEL_CARD_BASE} p-4 space-y-2 order-4`}
-            data-testid="zorunlu-islemler"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-1.5">
-              <SectionTitle icon={ClipboardList} title="Kapanış Öncesi Kontroller" iconClassName="text-amber-600" />
-              <span
-                className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border tabular-nums ${
-                  requiredOpsComplete
-                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-                    : 'text-amber-700 bg-amber-50 border-amber-200'
-                }`}
-                data-testid="zorunlu-islemler-ozet"
-              >
-                {requiredOpsComplete
-                  ? `${requiredOpsItems.length}/${requiredOpsItems.length} Tamam`
-                  : `${requiredOpsItems.filter((i) => i.done).length}/${requiredOpsItems.length} · ${requiredOpsItems.filter((i) => !i.done).length} Eksik`}
-              </span>
-            </div>
-            {isLegacyOpsCatchupBypassActive() && !requiredOpsComplete ? (
-              <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 leading-snug">
-                {LEGACY_OPS_CATCHUP_BYPASS_NOTE}
-              </p>
-            ) : null}
-            <ul className="grid grid-cols-1 gap-1" data-testid="zorunlu-islem-listesi">
-              {requiredOpsItems.map((item) => (
-                <li
-                  key={item.key}
-                  className={`flex items-center gap-2 rounded-md border px-2 py-1 text-xs ${
-                    item.done
-                      ? 'border-emerald-200 bg-emerald-50/70 text-emerald-800'
-                      : 'border-amber-200 bg-amber-50/60 text-amber-900'
-                  }`}
-                  data-testid={`zorunlu-${item.key}`}
-                  data-done={item.done ? '1' : '0'}
-                  title={item.hint}
-                >
-                  <span className="font-bold shrink-0 w-3 text-center" aria-hidden>{item.done ? '✓' : '○'}</span>
-                  <span className="min-w-0 flex-1 font-semibold leading-tight">{item.label}</span>
-                  <span className="text-[10px] opacity-80 shrink-0">{item.done ? 'Tamam' : 'Eksik'}</span>
-                </li>
-              ))}
-            </ul>
-            <ClosurePhotosPanel
-              entityId={vaka.id}
-              onPhotoCountChange={setClosurePhotoCount}
-              readonly={fileAlreadyClosed}
-            />
-            {!requiredOps.insuredInitialNotify && (
-              <button
-                type="button"
-                onClick={() => requestInsuredWhatsAppSend('initial')}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-status-success bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
-                data-testid="kapanis-ilk-bilgilendirme"
-              >
-                <MessageCircle className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-                Sigortalıya İlk Bilgilendirme
-              </button>
-            )}
-            {!requiredOps.insuredClosureSurvey && (
-              <button
-                type="button"
-                onClick={() => requestInsuredWhatsAppSend('closure_survey')}
-                disabled={!closureSurveyUnlocked}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-status-success bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                data-testid="kapanis-anket-mesaji"
-                title={
-                  closureSurveyUnlocked
-                    ? 'Kapanış / anket WhatsApp mesajı'
-                    : 'Önce hizmeti tamamlayın'
-                }
-              >
-                <MessageCircle className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-                Kapanış / Anket Mesajı
-              </button>
-            )}
-            {!requiredOps.closureEmail && (
-              <button
-                type="button"
-                onClick={() => void openClosureEmailModal()}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                data-testid="kapanis-email-onizle"
-              >
-                <Mail className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-                Kapanış Maili Gönder
-              </button>
-            )}
-            {requiredOps.closureEmail && (
-              <span
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800"
-                data-testid="kapanis-email-gonderildi"
-              >
-                <Mail className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-                Kapanış Maili Gönderildi
-              </span>
-            )}
-            {!saleReady && (
-              <p className="text-[10px] text-amber-700" data-testid="zorunlu-satis-uyari">
-                Dosyayı kapatmak için satış bedeli de gerekli.
-              </p>
-            )}
-          </div>
-        </div>
+        </ul>
+        <span data-testid="zorunlu-islemler-ozet">
+          {requiredOpsComplete
+            ? `${requiredOpsItems.length}/${requiredOpsItems.length} Tamam`
+            : `${requiredOpsItems.filter((i) => i.done).length}/${requiredOpsItems.length}`}
+        </span>
       </div>
 
       {/* 4–5. Bağlam uyarıları (maliyet / onay) */}
@@ -3434,49 +2688,52 @@ export default function AcilDosyaDetayPage() {
         </div>
       )}
 
-      {/* 7. Alt bölüm — sekmeler (üst blokla ~8px; space-y-2 parent) */}
-      <div className="min-w-0 space-y-2" data-testid="alt-operasyon">
-        <PanelPillTabs<AltBolumTab>
-          tabs={[
-            { id: 'belgeler', label: 'Belgeler', icon: Files },
-            {
-              id: 'whatsapp',
-              label: 'WhatsApp',
-              iconNode: <WhatsAppBrandIcon className="h-3.5 w-3.5 text-emerald-600" />,
-            },
-            { id: 'gecmis', label: 'Dosya Geçmişi', icon: History },
-            { id: 'finans', label: 'Finans', icon: Wallet },
-          ]}
-          activeId={altTab}
-          onSelect={setAltTab}
-          testId="alt-bolum-sekmeler"
-          tabTestId={(tabId) => `alt-sekme-${tabId}`}
-        />
+      {/* Alt kayıtlar — Hasar evrak kartı gibi tek pencere */}
+      <div className={`${PANEL_CARD_BASE} overflow-hidden`} data-testid="alt-operasyon">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/40 px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-800">Dosya kayıtları</p>
+            <p className="mt-0.5 text-xs text-slate-500">Belgeler, yazışma, geçmiş ve finans kayıtları</p>
+          </div>
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <span className="sr-only">Kayıt türü</span>
+            <select
+              value={altTab}
+              onChange={(e) => setAltTab(e.target.value as AltBolumTab)}
+              className="min-h-9 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm"
+              data-testid="alt-bolum-sekmeler"
+            >
+              <option value="belgeler">Belgeler</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="gecmis">Dosya Geçmişi</option>
+              <option value="finans">Finans</option>
+            </select>
+          </label>
+        </div>
 
-        <div className={`${PANEL_CARD_BASE} p-4`} data-testid="alt-bolum-icerik">
+        <div className="p-4" data-testid="alt-bolum-icerik">
           {altTab === 'belgeler' && (
             <div
               id="dosya-belgeleri"
-              className="space-y-2 min-w-0"
+              className="space-y-3 min-w-0"
               data-testid="dosya-belgeleri"
             >
-              <SectionTitle
-                icon={Files}
-                title="Dosya Belgeleri"
-                iconClassName="text-slate-600"
-              />
-              <p className="text-[10px] text-slate-500 leading-snug">
-                Matbu evrak ve yazışma ekleri. Kapanış fotoğrafları için üstteki{' '}
-                <span className="font-semibold text-slate-600">Dosya Kapanış Resimleri</span> alanını kullanın.
-              </p>
-              <div className="rounded-lg border border-slate-100 p-2">
-                <FileDocumentPanel
-                  entityType="emergency_case"
-                  entityId={vaka.id}
-                  documentKind="matbu_evrak"
+              <div>
+                <SectionTitle
+                  icon={Files}
+                  title="Dosya Belgeleri"
+                  iconClassName="text-slate-600"
                 />
+                <p className="mt-1 text-xs text-slate-500 leading-snug">
+                  Yazışma ekleri. Servis onay formu burada da durur. Kapanış fotoğrafları kapanış adımında.
+                </p>
               </div>
-              <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-1.5 max-h-36 overflow-auto">
+              <FileDocumentPanel
+                entityType="emergency_case"
+                entityId={vaka.id}
+                documentKind="matbu_evrak"
+              />
+              <div className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2 max-h-36 overflow-auto">
                 <InboundEmailCorrespondencePanel emergencyCaseId={vaka.id} compact />
               </div>
             </div>
@@ -3491,7 +2748,7 @@ export default function AcilDosyaDetayPage() {
         >
           <div className="flex flex-wrap items-center gap-2 min-w-0">
             <div className="flex items-center gap-1.5 shrink-0">
-              <WhatsAppBrandIcon className={`${ICON_SM} text-emerald-600`} />
+              <WhatsAppBrandIcon className="h-3.5 w-3.5 text-emerald-600" />
               <p className="text-sm font-semibold text-slate-800 truncate leading-none">
                 WhatsApp Yazışmaları
               </p>
@@ -3542,7 +2799,7 @@ export default function AcilDosyaDetayPage() {
                 </div>
               )}
               <p className="text-[10px] text-slate-500">
-                Manuel gönderim — otomatik mesaj yok. Kapanış için her iki mesaj zorunludur.
+                Manuel gönderim — otomatik mesaj yok. Anket dosya kapandıktan sonra tercihlidir.
               </p>
               <div className="flex flex-wrap gap-1.5">
                 <button
@@ -3614,12 +2871,20 @@ export default function AcilDosyaDetayPage() {
               className="flex flex-wrap items-center justify-between gap-2"
               data-testid="whatsapp-musteri-panel"
             >
+              {!anaMusteriAllowsWhatsApp(flow.customerNotifyChannel) ? (
+                <span className="text-[10px] text-slate-500 flex-1">
+                  Bu müşteri e-posta ile çalışır. WhatsApp bu müşteride kapalı.
+                </span>
+              ) : (
+                <>
               {customerMsgError ? (
                 <p className="text-[10px] text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-2 py-1.5 flex-1 min-w-0" data-testid="whatsapp-musteri-hata">
                   {customerMsgError}
                 </p>
               ) : (
-                <span className="text-[10px] text-slate-500 flex-1">Müşteri grubuna güvenli mesaj (alış / kâr yok)</span>
+                <span className="text-[10px] text-slate-500 flex-1">
+                  WhatsApp açılınca grubu siz seçersiniz. Metin hazır durur. Alış / kâr yok.
+                </span>
               )}
               <button
                 type="button"
@@ -3630,6 +2895,8 @@ export default function AcilDosyaDetayPage() {
                 <WhatsAppBrandIcon className="h-3.5 w-3.5 text-brand-600" />
                 Müşteri Mesajı Önizle
               </button>
+                </>
+              )}
             </div>
           )}
 
@@ -3730,26 +2997,7 @@ export default function AcilDosyaDetayPage() {
               data-testid="finans-bolumu"
             >
               <SectionTitle icon={Wallet} title="Finans" iconClassName="text-slate-600" />
-<div className="space-y-4" data-testid="sekme-finans-icerik">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-              <div className="rounded-xl bg-green-50 border border-green-100 px-2 py-2">
-                <p className="text-[10px] text-green-600 font-medium">Gelir</p>
-                <p className="text-xs font-bold text-green-700 mt-0.5">{fmtCurrency(finansKpis.gelir)}</p>
-              </div>
-              <div className="rounded-xl bg-red-50 border border-red-100 px-2 py-2">
-                <p className="text-[10px] text-red-600 font-medium">Gider</p>
-                <p className="text-xs font-bold text-red-700 mt-0.5">{fmtCurrency(finansKpis.gider)}</p>
-              </div>
-              <div className="rounded-xl bg-blue-50 border border-blue-100 px-2 py-2">
-                <p className="text-[10px] text-brand-600 font-medium">{finansKpis.profitLabel}</p>
-                <p className="text-xs font-bold text-blue-700 mt-0.5">{fmtCurrency(finansKpis.net)}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 border border-slate-100 px-2 py-2">
-                <p className="text-[10px] text-slate-500 font-medium">Kâr Oranı</p>
-                <p className="text-xs font-bold text-slate-700 mt-0.5">%{karOrani.toFixed(1)}</p>
-              </div>
-            </div>
-
+            <div className="space-y-4" data-testid="sekme-finans-icerik">
             {vaka.operationChain && (
               <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600 space-y-1">
                 {historicalExempt ? (
@@ -3783,7 +3031,7 @@ export default function AcilDosyaDetayPage() {
                   <span className="text-xs font-bold text-green-700">Gelir</span>
                   <button
                     type="button"
-                    onClick={() => { setShowGelirForm((v) => !v); setShowGiderForm(false); }}
+                    onClick={() => { setShowGelirForm((v) => !v); }}
                     className="min-h-[44px] sm:min-h-0 text-xs font-medium text-green-600 px-2"
                   >
                     {showGelirForm ? 'Kapat' : 'Ekle'}
@@ -3836,63 +3084,25 @@ export default function AcilDosyaDetayPage() {
                 )}
               </div>
 
-              <div className="border border-slate-100 rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
+              <div className="border border-slate-100 rounded-xl overflow-hidden" data-testid="acil-gider-ozet">
+                <div className="px-3 py-2 border-b border-slate-100">
                   <span className="text-xs font-bold text-red-700">Gider</span>
-                  <button
-                    type="button"
-                    onClick={() => { setShowGiderForm((v) => !v); setShowGelirForm(false); }}
-                    className="min-h-[44px] sm:min-h-0 text-xs font-medium text-red-600 px-2"
-                  >
-                    {showGiderForm ? 'Kapat' : 'Ekle'}
-                  </button>
+                  <p className="mt-0.5 text-[10px] text-slate-500">Alış tutarı operasyonda girilir. Buradan gider eklenmez.</p>
                 </div>
-                {showGiderForm && (
-                  <form onSubmit={handleAddGider} className="px-3 py-2 bg-red-50 space-y-1.5 border-b border-red-100">
-                    {giderError && <p className="text-xs text-red-600">{giderError}</p>}
-                    <input type="text" value={giderForm.description} onChange={(e) => setGiderForm((f) => ({ ...f, description: e.target.value }))} placeholder="Açıklama" className="w-full h-9 px-2 py-1.5 text-xs border rounded-lg" />
-                    <div className="flex gap-1.5">
-                      <input type="number" step="0.01" value={giderForm.amount} onChange={(e) => setGiderForm((f) => ({ ...f, amount: e.target.value }))} placeholder="Tutar" className="flex-1 h-9 px-2 py-1.5 text-xs border rounded-lg" />
-                      <TrDateInput value={giderForm.entryDate} onChange={(entryDate) => setGiderForm((f) => ({ ...f, entryDate }))} className="flex-1 h-9 px-2 py-1.5 text-xs border rounded-lg" />
-                    </div>
-                    <VendorSelector value={giderVendor} onChange={setGiderVendor} />
-                    <button type="submit" disabled={giderLoading} className="w-full min-h-[44px] py-2 bg-red-600 text-white text-xs font-semibold rounded-lg disabled:opacity-50">
-                      {giderLoading ? 'Kaydediliyor...' : 'Kaydet'}
-                    </button>
-                  </form>
-                )}
                 {costs.filter((c) => c.entryType === 'gider').length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-3">Henüz gider yok</p>
                 ) : (
                   <div className="divide-y divide-slate-50">
                     {costs.filter((c) => c.entryType === 'gider').map((c) => (
                       <div key={c.id} className="px-3 py-2 flex items-center justify-between gap-2">
-                        {editingId === c.id ? (
-                          <form onSubmit={(e) => handleSaveEdit(e, c)} className="w-full space-y-1.5">
-                            {editError && <p className="text-xs text-red-600">{editError}</p>}
-                            <input type="text" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="w-full px-2 py-1 text-xs border rounded" />
-                            <VendorSelector value={editVendor} onChange={setEditVendor} />
-                            <div className="flex gap-1">
-                              <button type="submit" disabled={editLoading} className="flex-1 py-1 bg-brand-600 text-white text-[10px] rounded">Kaydet</button>
-                              <button type="button" onClick={() => setEditingId(null)} className="px-2 py-1 text-[10px] border rounded">İptal</button>
-                            </div>
-                          </form>
-                        ) : (
-                          <>
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium truncate">{c.description}</p>
-                              <p className="text-[10px] text-slate-400">
-                                {fmtDate(c.entryDate)}
-                                {c.vendor ? ` · ${c.vendor.name}` : ''}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <span className="text-xs font-bold text-red-600">-{fmtCurrency(c.amount)}</span>
-                              <button type="button" onClick={() => handleStartEdit(c)} className="text-[10px] text-slate-400 hover:text-brand-600">Düzenle</button>
-                              <button type="button" onClick={() => handleDeleteCost(c.id)} className="text-[10px] text-slate-400 hover:text-red-600">Sil</button>
-                            </div>
-                          </>
-                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">{c.description}</p>
+                          <p className="text-[10px] text-slate-400">
+                            {fmtDate(c.entryDate)}
+                            {c.vendor ? ` · ${c.vendor.name}` : ''}
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold text-red-600 shrink-0">-{fmtCurrency(c.amount)}</span>
                       </div>
                     ))}
                   </div>
@@ -3916,11 +3126,18 @@ export default function AcilDosyaDetayPage() {
         </div>
       </div>
 
-      {/* 12. Mobil sabit alt çubuk */}
+      {/* Mobil: tek operasyon kapısı + WhatsApp */}
       <div
         className="sm:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur px-3 py-2 flex gap-2 safe-area-pb"
         data-testid="mobil-alt-cubuk"
       >
+        <button
+          type="button"
+          onClick={() => plannerRef.current?.openStep(vaka.assignedVendorId ? 'ihbar' : 'tedarikci_maliyet')}
+          className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-brand-600 text-white text-xs font-semibold"
+        >
+          Operasyonu Başlat
+        </button>
         {vaka.assignedVendorId ? (
           <button
             type="button"
@@ -3932,29 +3149,7 @@ export default function AcilDosyaDetayPage() {
           >
             WhatsApp
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => document.querySelector('[data-testid="tedarikci-onerileri"]')?.scrollIntoView({ behavior: 'smooth' })}
-            className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-brand-600 text-white text-xs font-semibold"
-          >
-            Tedarikçi
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => { setShowApprovalModal(true); setApprovalMsg(null); }}
-          className="flex-1 min-h-[44px] py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700"
-        >
-          Onay Talebi
-        </button>
-        <button
-          type="button"
-          onClick={() => document.getElementById('hizli-islemler')?.scrollIntoView({ behavior: 'smooth' })}
-          className="flex-1 min-h-[44px] py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700"
-        >
-          İşlemler
-        </button>
+        ) : null}
       </div>
 
       {/* Onay kanalı modal */}
@@ -3963,10 +3158,7 @@ export default function AcilDosyaDetayPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
             <h3 className="text-base font-semibold text-slate-900">Onay Talebi Oluştur</h3>
             <p className="text-xs text-slate-500">
-              Satış fiyatı (
-              {satisFiyati
-                || (liveBudgetForOps.satis != null ? formatPriceInput(liveBudgetForOps.satis) : '—')}
-              {' '}TL) seçilen kanala iletilir. Alış fiyatı gönderilmez.
+              Bu müşteri için yöntem. Satış fiyatı seçilen kanala iletilir. Alış fiyatı gönderilmez.
             </p>
             {approvalMsg && (
               <p
@@ -3981,7 +3173,7 @@ export default function AcilDosyaDetayPage() {
               {([
                 { id: 'whatsapp' as const, label: 'WhatsApp' },
                 { id: 'email' as const, label: 'E-posta' },
-                { id: 'both' as const, label: 'WhatsApp + E-posta' },
+                { id: 'both' as const, label: 'WhatsApp ve e-posta' },
               ]).map((opt) => (
                 <label
                   key={opt.id}
@@ -3993,7 +3185,12 @@ export default function AcilDosyaDetayPage() {
                     type="radio"
                     name="approvalChannel"
                     checked={approvalChannel === opt.id}
-                    onChange={() => setApprovalChannel(opt.id)}
+                    onChange={() => {
+                      setApprovalChannel(opt.id);
+                      const cid = vaka.customer?.id;
+                      writeAnaMusteriHaberlesme(cid, opt.id);
+                      persistFlow({ ...flow, customerNotifyChannel: opt.id });
+                    }}
                     className="accent-brand-600"
                   />
                   <span className="text-sm font-medium text-slate-800">{opt.label}</span>
@@ -4128,6 +3325,29 @@ export default function AcilDosyaDetayPage() {
         </div>
       )}
 
+      <LocationPickerModal
+        open={locationPickerOpen}
+        initial={
+          vaka.latitude != null && vaka.longitude != null
+            ? { lat: vaka.latitude, lng: vaka.longitude }
+            : null
+        }
+        addressHint={addressDisplay}
+        onClose={() => setLocationPickerOpen(false)}
+        onConfirm={(coords: LatLng) => {
+          setLocationPickerOpen(false);
+          void (async () => {
+            try {
+              const res = await updateCase(id, { latitude: coords.lat, longitude: coords.lng });
+              setVaka(res.data);
+              setActionFlash('Konum kaydedildi.');
+            } catch {
+              setActionFlash('Konum kaydedilemedi');
+            }
+          })();
+        }}
+      />
+
       {/* Tedarikçi WhatsApp önizleme + onay */}
       {vendorMsgPreview && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" data-testid="whatsapp-onizleme-modal">
@@ -4164,7 +3384,7 @@ export default function AcilDosyaDetayPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-3 max-h-[85vh] overflow-auto">
             <h3 className="text-base font-semibold text-slate-900">Müşteri Grubu Mesaj Önizlemesi</h3>
             <p className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2" data-testid="musteri-mesaj-guvenlik-notu">
-              Alış fiyatı, kâr oranı ve iç operasyon notları bu mesajda yoktur.
+              Alış fiyatı, kâr oranı ve iç operasyon notları bu mesajda yoktur. WhatsApp açılınca sohbeti veya müşteri grubunu seçin; metin hazır durur.
             </p>
             <pre className="text-xs text-slate-700 whitespace-pre-wrap bg-slate-50 border border-slate-100 rounded-xl p-3" data-testid="musteri-mesaj-govde">
               {customerMsgPreview}
@@ -4273,7 +3493,7 @@ export default function AcilDosyaDetayPage() {
               <button
                 type="button"
                 disabled={closeBusy || financeBusy}
-                onClick={() => { void handleCloseAndFinance(true); }}
+                onClick={() => { void handleCloseFile(true); }}
                 className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-semibold disabled:opacity-50"
                 data-testid="onay-dialog-onayla"
               >

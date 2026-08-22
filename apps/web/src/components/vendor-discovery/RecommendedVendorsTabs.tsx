@@ -84,6 +84,8 @@ type Props = {
     name: string;
     phone?: string | null;
   }) => void | Promise<void>;
+  /** false: çekmecede kart boyu küçülmesin (faaliyet ikonları görünsün) */
+  fillHeight?: boolean;
 };
 
 function formatSuggestionPercent(v: VendorRecommendation): string {
@@ -170,6 +172,7 @@ export function RecommendedVendorsTabs({
   category = 'acil',
   onAlternativeAssigned,
   onSavedToPool,
+  fillHeight = true,
 }: Props) {
   const ranked = useMemo(() => {
     const list = [...vendors];
@@ -202,7 +205,9 @@ export function RecommendedVendorsTabs({
 
   return (
     <div
-      className="bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 flex flex-col gap-1.5 min-w-0 h-full min-h-0"
+      className={`bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 flex flex-col gap-1.5 min-w-0 ${
+        fillHeight ? 'h-full min-h-0' : ''
+      }`}
       data-testid="tedarikci-onerileri"
     >
       <div className="flex items-center justify-between gap-2 shrink-0">
@@ -258,7 +263,7 @@ export function RecommendedVendorsTabs({
 
       {tab === 'kayitli' ? (
         <div
-          className="flex-1 flex flex-col min-h-0"
+          className={fillHeight ? 'flex-1 flex flex-col min-h-0' : 'flex flex-col'}
           data-testid="sekme-kayitli-icerik"
           role="tabpanel"
         >
@@ -354,7 +359,7 @@ export function RecommendedVendorsTabs({
         </div>
       ) : (
         <div
-          className="flex-1 flex flex-col min-h-0"
+          className={fillHeight ? 'flex-1 flex flex-col min-h-0' : 'flex flex-col'}
           data-testid="sekme-alternatif-icerik"
           role="tabpanel"
         >

@@ -50,6 +50,13 @@ describe('survey closure lock', () => {
     assert.match(service, /SURVEY_DISSATISFIED_COMMENT_MESSAGE/);
   });
 
+  it('tamamlanan anket dosyaya bağlanır; olumsuzda sorumlu açıklaması', () => {
+    assert.match(service, /emergencyCase: \{ select:/);
+    assert.match(service, /channel: campaign.emergencyCaseId \? 'acil' : 'hasar'/);
+    assert.match(service, /saveOwnerExplanation/);
+    assert.match(controller, /owner-explanation/);
+  });
+
   it('statik route :id den önce tanımlanır', () => {
     const closureIdx = controller.indexOf("@Get('closure-unsent')");
     const idIdx = controller.indexOf("@Get(':id')");

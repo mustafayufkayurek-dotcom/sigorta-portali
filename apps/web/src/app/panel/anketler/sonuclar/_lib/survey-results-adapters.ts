@@ -1,4 +1,5 @@
 import type { SurveyCampaign, SurveyCampaignStatus } from '@/utils/surveyApi';
+import { surveyOwnerExplanationMissing } from '@/utils/survey-form';
 import type {
   ActionRequiredItem,
   DepartmentFinanceRow,
@@ -133,7 +134,11 @@ export function formatTrNumber(value: number, digits = 0): string {
 }
 
 export function campaignDisplayName(campaign: SurveyCampaign): string {
-  const fileNo = campaign.invoiceRequest?.fileNo || campaign.claimFile?.fileNo;
+  const fileNo =
+    campaign.invoiceRequest?.fileNo ||
+    campaign.claimFile?.fileNo ||
+    campaign.emergencyCase?.fileNo ||
+    campaign.emergencyCase?.caseNo;
   if (fileNo) return `Dosya ${fileNo} Memnuniyet Anketi`;
   const requestNo = campaign.invoiceRequest?.requestNo;
   if (requestNo) return `Talep ${requestNo} Memnuniyet Anketi`;
@@ -395,6 +400,28 @@ function buildActionItems(
   filtered: SurveyCampaign[],
 ): ActionRequiredItem[] {
   const items: ActionRequiredItem[] = [];
+  items.push({
+    id: 'ay-sonu-musteri',
+    tone: 'warning',
+    title: 'Ay sonu müşteri raporu',
+    detail: 'Anket sonuçları ay sonunda müşteriye gönderilmelidir.',
+    recommendation: 'Olumsuz sonuçları ayrıca raporlayın.',
+  });
+
+  const unexplained = filtered.filter(
+    (c) => c.response && surveyOwnerExplanationMissing(c.response, c.ownerExplanation),
+  );
+  for (const c of unexplained.slice(0, 8)) {
+    const fileNo =
+      c.emergencyCase?.fileNo || c.emergencyCase?.caseNo || c.claimFile?.fileNo || c.insuredName || 'Dosya';
+    items.push({
+      id: `owner-${c.id}`,
+      tone: 'critical',
+      title: String(fileNo),
+      detail: 'Olumsuz anket — dosya sorumlusu açıklaması yok.',
+      recommendation: 'Dosya ekranında açıklama yazılmadan sonuç kapanmaz.',
+    });
+  }
   const last30 = lastNDaysWindow(30);
   const prev30From = new Date(last30.from);
   prev30From.setDate(prev30From.getDate() - 30);
@@ -456,7 +483,7 @@ function buildActionItems(
   }
 
   const order = { critical: 0, warning: 1, positive: 2 } as const;
-  return items.sort((a, b) => order[a.tone] - order[b.tone]).slice(0, 6);
+  return items.sort((a, b) => order[a.tone] - order[b.tone]).slice(0, 12);
 }
 
 function buildTrend(

@@ -34,7 +34,10 @@ export interface SurveyCampaign {
   insuranceCompany?: { name: string } | null;
   invoiceRequest?: { requestNo: string | null; fileNo: string | null } | null;
   claimFile?: { fileNo: string | null; id: string } | null;
+  emergencyCase?: { caseNo: string | null; fileNo: string | null; id: string } | null;
   response?: SurveyResponsePayload | null;
+  ownerExplanation?: string | null;
+  ownerExplanationAt?: string | null;
 }
 
 // ─── API Calls ────────────────────────────────────────────────────────────────
@@ -111,4 +114,13 @@ export function sendSurveyLink(
   campaignId: string,
 ): Promise<{ deepLink: string; campaign: SurveyCampaign }> {
   return apiClient.post<{ deepLink: string; campaign: SurveyCampaign }>(`/surveys/${campaignId}/send`);
+}
+
+export function saveSurveyOwnerExplanation(
+  campaignId: string,
+  ownerExplanation: string,
+): Promise<SurveyCampaign> {
+  return apiClient.post<SurveyCampaign>(`/surveys/${campaignId}/owner-explanation`, {
+    ownerExplanation,
+  });
 }

@@ -29,7 +29,14 @@ export default function EvrakOnayPage() {
   const [fullName, setFullName] = useState('');
   const [approving, setApproving] = useState(false);
   const [approvedAt, setApprovedAt] = useState<string | null>(null);
+  const [leaveWarn, setLeaveWarn] = useState(false);
   const viewedRef = useRef(false);
+  const needsInsuredApprove =
+    doc?.documentKind === 'matbu_evrak' &&
+    stage !== 'done' &&
+    stage !== 'already_approved' &&
+    stage !== 'loading' &&
+    stage !== 'error';
 
   useEffect(() => {
     if (!token) return;
@@ -61,6 +68,17 @@ export default function EvrakOnayPage() {
     return () => window.clearTimeout(timer);
   }, [printMode, stage, doc?.renderedContent]);
 
+  useEffect(() => {
+    if (!needsInsuredApprove) return;
+    const onLeave = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Onay vermeden çıkarsanız işlem tamamlanmaz.';
+      return e.returnValue;
+    };
+    window.addEventListener('beforeunload', onLeave);
+    return () => window.removeEventListener('beforeunload', onLeave);
+  }, [needsInsuredApprove]);
+
   const handleApprove = async () => {
     if (!fullName.trim()) return;
     setApproving(true);
@@ -76,7 +94,11 @@ export default function EvrakOnayPage() {
   };
 
   const kindLabel =
-    doc?.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Matbu Evrak';
+    doc?.documentKind === 'muvafakatname'
+      ? 'Muvafakatname'
+      : doc?.documentKind === 'matbu_evrak'
+        ? 'Servis Onay Formu'
+        : 'Evrak';
 
   if (stage === 'loading') {
     return (
@@ -173,6 +195,19 @@ export default function EvrakOnayPage() {
           )}
         </div>
       </div>
+      {doc?.documentKind === 'matbu_evrak' && (stage === 'view' || stage === 'approve') ? (
+        <div
+          className="print:hidden max-w-3xl mx-auto mt-3 px-4"
+          data-testid="sigortali-onay-uyari"
+        >
+          <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Bu belgeyi onaylamanız gerekir. Onay vermeden sayfayı kapatırsanız işlem tamamlanmaz.
+          </p>
+          <p className="mt-2 text-xs text-slate-600">
+            Yazıcı gerekmez. Aşağıdaki Onayla ile belgenizi telefondan onaylayın.
+          </p>
+        </div>
+      ) : null}
 
       {/* Document HTML */}
       <div className="max-w-3xl mx-auto my-4 px-4 print:max-w-none print:mx-0 print:px-0 print:my-0">
@@ -215,12 +250,22 @@ export default function EvrakOnayPage() {
               sayılırsınız. Bu işlem geri alınamaz.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => { setStage('view'); setError(''); }}
-                className="flex-1 border border-gray-300 text-gray-700 text-sm font-medium py-2 rounded-lg hover:bg-gray-50"
-              >
-                Vazgeç
-              </button>
+              {doc?.documentKind === 'matbu_evrak' ? (
+                <button
+                  type="button"
+                  onClick={() => setLeaveWarn(true)}
+                  className="flex-1 border border-gray-300 text-gray-700 text-sm font-medium py-2 rounded-lg hover:bg-gray-50"
+                >
+                  Vazgeç
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setStage('view'); setError(''); }}
+                  className="flex-1 border border-gray-300 text-gray-700 text-sm font-medium py-2 rounded-lg hover:bg-gray-50"
+                >
+                  Vazgeç
+                </button>
+              )}
               <button
                 onClick={handleApprove}
                 disabled={!fullName.trim() || approving}
@@ -232,6 +277,42 @@ export default function EvrakOnayPage() {
           </div>
         </div>
       )}
+
+      {doc?.documentKind === 'matbu_evrak' && stage === 'view' ? (
+        <div className="print:hidden sticky bottom-0 z-20 border-t border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+            <p className="text-sm font-medium text-amber-950">Onay vermeden işlem tamamlanmaz.</p>
+            <button
+              type="button"
+              onClick={() => setStage('approve')}
+              className="shrink-0 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+            >
+              Onayla
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {leaveWarn ? (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-4 print:hidden">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">Onay gerekli</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Sigortalı onay vermeden bu form kapanmaz. Lütfen adınızı yazıp Onayla düğmesine basın.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setLeaveWarn(false);
+                setStage('approve');
+              }}
+              className="mt-4 w-full rounded-lg bg-brand-600 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              Onaya dön
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

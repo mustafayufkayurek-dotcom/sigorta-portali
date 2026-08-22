@@ -47,8 +47,9 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
   it('Acil hakediş şeridi durur', () => {
     assert.match(acilPage, /OPS_NOTICE\.acilTedarikciHakedis/);
     assert.match(acilPage, /acil-hakedis-ilk-kullanim-seridi/);
-    assert.equal(OPS_NOTICE.acilTedarikciHakedis.id, 'acil-tedarikci-hakedis-v523');
+    assert.equal(OPS_NOTICE.acilTedarikciHakedis.id, 'acil-tedarikci-hakedis-v524');
     assert.match(OPS_NOTICE.acilTedarikciHakedis.body, /vade uygulanmaz/i);
+    assert.match(notice, /border-blue-100 bg-blue-50\/60/);
   });
 
   it('Acil yeni dosyada vekalet şeridi durur', () => {

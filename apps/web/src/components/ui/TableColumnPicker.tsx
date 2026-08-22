@@ -23,12 +23,15 @@ export interface TableColumnDef {
   flex?: boolean;
   /** Sağda sabit kalır (ör. İşlemler) — sürüklenmez, sıranın sonuna kilitlenir */
   pin?: 'end';
+  /** Personel gizleyemez; her zaman tabloda durur */
+  alwaysVisible?: boolean;
 }
 
 export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[]) {
+  const alwaysVisibleIds = columns.filter((c) => c.alwaysVisible).map((c) => c.id);
   const defaultOrder = columns.map((c) => c.id);
   const defaultVisible = columns
-    .filter((c) => c.defaultVisible !== false)
+    .filter((c) => c.defaultVisible !== false || c.alwaysVisible)
     .map((c) => c.id);
 
   const [visibleIds, setVisibleIds] = useState<string[]>(defaultVisible);
@@ -43,12 +46,12 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
         const valid = parsed.filter((id) => columns.some((c) => c.id === id));
         // Yeni eklenen varsayılan sütunlar eski tercihte yoksa görünür hale getir
         const missingDefaults = columns
-          .filter((c) => c.defaultVisible !== false && !valid.includes(c.id))
+          .filter((c) => (c.defaultVisible !== false || c.alwaysVisible) && !valid.includes(c.id))
           .map((c) => c.id);
         if (valid.length > 0) {
-          const merged = [...valid, ...missingDefaults];
+          const merged = Array.from(new Set([...valid, ...missingDefaults, ...alwaysVisibleIds]));
           setVisibleIds(merged);
-          if (missingDefaults.length > 0) {
+          if (missingDefaults.length > 0 || alwaysVisibleIds.some((id) => !valid.includes(id))) {
             localStorage.setItem(storageKey, JSON.stringify(merged));
           }
         }
@@ -76,6 +79,7 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
 
   const toggle = useCallback(
     (id: string) => {
+      if (columns.some((c) => c.id === id && c.alwaysVisible)) return;
       setVisibleIds((prev) => {
         const has = prev.includes(id);
         const next = has ? prev.filter((x) => x !== id) : [...prev, id];
@@ -84,7 +88,7 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
         return next;
       });
     },
-    [storageKey],
+    [columns, storageKey],
   );
 
   const pinnedEndIds = useMemo(
@@ -94,7 +98,22 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
 
   const normalizeOrder = useCallback(
     (order: string[]) => {
-      const unlocked = order.filter((id) => !pinnedEndIds.has(id));
+      const known = new Set(columns.map((c) => c.id));
+      const unlockedSaved = order.filter((id) => known.has(id) && !pinnedEndIds.has(id));
+      const defaultUnlocked = columns.map((c) => c.id).filter((id) => !pinnedEndIds.has(id));
+      const unlocked = [...unlockedSaved];
+      for (const id of defaultUnlocked) {
+        if (unlocked.includes(id)) continue;
+        const defIdx = defaultUnlocked.indexOf(id);
+        let insertAt = unlocked.length;
+        for (let i = 0; i < unlocked.length; i += 1) {
+          if (defaultUnlocked.indexOf(unlocked[i]) > defIdx) {
+            insertAt = i;
+            break;
+          }
+        }
+        unlocked.splice(insertAt, 0, id);
+      }
       const pinned = columns.map((c) => c.id).filter((id) => pinnedEndIds.has(id) && order.includes(id));
       const missingPinned = columns.map((c) => c.id).filter((id) => pinnedEndIds.has(id) && !order.includes(id));
       return [...unlocked, ...pinned, ...missingPinned];
@@ -128,15 +147,19 @@ export function useTableColumnPrefs(storageKey: string, columns: TableColumnDef[
     localStorage.setItem(`${storageKey}:order`, JSON.stringify(defaultOrder));
   }, [defaultOrder, defaultVisible, storageKey]);
 
-  const isVisible = useCallback((id: string) => visibleIds.includes(id), [visibleIds]);
+  const isVisible = useCallback(
+    (id: string) =>
+      columns.some((c) => c.id === id && c.alwaysVisible) || visibleIds.includes(id),
+    [columns, visibleIds],
+  );
 
   const orderedVisibleColumns = useMemo(() => {
     const normalized = normalizeOrder(columnOrder);
     return normalized
-      .filter((id) => visibleIds.includes(id))
+      .filter((id) => isVisible(id))
       .map((id) => columns.find((c) => c.id === id))
       .filter((c): c is TableColumnDef => Boolean(c));
-  }, [columnOrder, columns, normalizeOrder, visibleIds]);
+  }, [columnOrder, columns, isVisible, normalizeOrder]);
 
   const reorderColumn = useCallback(
     (fromId: string, toId: string) => {
@@ -438,8 +461,9 @@ export function TableColumnPicker({
             {columnOrder.map((id) => {
               const col = columns.find((c) => c.id === id);
               if (!col) return null;
-              const visible = visibleIds.includes(id);
+              const visible = visibleIds.includes(id) || Boolean(col.alwaysVisible);
               const pinned = col.pin === 'end';
+              const locked = pinned || Boolean(col.alwaysVisible);
               const movableOrder = columnOrder.filter((cid) => columns.find((c) => c.id === cid)?.pin !== 'end');
               const orderIndex = movableOrder.indexOf(id);
               return (
@@ -478,11 +502,15 @@ export function TableColumnPicker({
                     checked={visible}
                     onChange={() => onToggle(col.id)}
                     className="rounded border-slate-300"
-                    disabled={pinned}
+                    disabled={locked}
                   />
                   <span className="truncate text-slate-700 dark:text-slate-200">
                     {col.label}
-                    {pinned ? <span className="ml-1 text-[10px] text-slate-400">(Sabit)</span> : null}
+                    {col.alwaysVisible ? (
+                      <span className="ml-1 text-[10px] text-slate-400">(Zorunlu)</span>
+                    ) : pinned ? (
+                      <span className="ml-1 text-[10px] text-slate-400">(Sabit)</span>
+                    ) : null}
                   </span>
                 </label>
                 <button

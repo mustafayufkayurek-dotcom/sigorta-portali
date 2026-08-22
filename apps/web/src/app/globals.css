@@ -37,6 +37,26 @@
   animation: toastIn 0.25s ease-out forwards;
 }
 
+@keyframes acilSiradakiPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(245 158 11 / 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgb(245 158 11 / 0);
+  }
+}
+
+.acil-siradaki-pulse {
+  animation: acilSiradakiPulse 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acil-siradaki-pulse {
+    animation: none;
+  }
+}
+
 /* ── Tasarım Sistemi Utility Classes ─────────────────────────────────────── */
 
 /* Stat Kart Sol Accent Çizgisi */

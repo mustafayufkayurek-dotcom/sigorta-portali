@@ -41,6 +41,8 @@ import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import { DoubleDeleteConfirm } from '@/components/operasyon/DoubleDeleteConfirm';
 import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import { acilVendorPayLabel, acilVendorPayMatchesFilter, acilVendorPayMatchesQuery, acilVendorPayTone, type AcilVendorPayFilter } from '@/utils/acil-vendor-pay';
+import { readAcilLocalFlow } from '@/app/panel/acil-yardim/[id]/acil-workflow';
 import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
 import { SlidePanel } from '@/components/SlidePanel';
@@ -201,7 +203,13 @@ type UnifiedRow =
       delayRisk: boolean;
       reportId: string | null;
       defaultEmailTo: string | null;
+      vendorPaid: boolean | null;
     };
+
+function resolveAcilListVendorPaid(c: EmergencyCase): boolean | null {
+  if (c.vendorPaid === true || c.vendorPaid === false) return c.vendorPaid;
+  return readAcilLocalFlow(c.id).vendorPaid;
+}
 
 function resolveClaimDisplayDate(claim: {
   notificationDate?: string | null;
@@ -229,16 +237,34 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
 ];
 
+const VENDOR_PAY_COL: TableColumnDef = {
+  id: 'vendorPay',
+  label: 'Ödeme Durumu',
+  defaultWidth: 132,
+  minWidth: 112,
+  alwaysVisible: true,
+};
+
+const ACIL_TABLE_COLUMNS: TableColumnDef[] = (() => {
+  const cols = TABLE_COLUMNS.map((c) => (c.id === 'kind' ? { ...c, defaultVisible: false } : c));
+  const statusAt = cols.findIndex((c) => c.id === 'status');
+  return [
+    ...cols.slice(0, statusAt + 1),
+    VENDOR_PAY_COL,
+    ...cols.slice(statusAt + 1),
+  ];
+})();
+
 const PAGE_SIZE = 50;
 
 /**
  * Sütun genişlikleri sayfa/filtre bazında ayrılır — Hasar ve Acil birbirini etkilemez.
- * v11: Gecikme Süresi kalktı; filterType başına ayrı anahtar.
+ * v15: Ödeme Durumu gizlenemez (Sütunlar menüsünden kapatılmaz).
  */
 const OPS_COLS_KEY_BY_FILTER: Record<'all' | 'hasar' | 'acil', string> = {
   all: 'table-cols:operasyon-all-v11',
   hasar: 'table-cols:operasyon-hasar-v11',
-  acil: 'table-cols:operasyon-acil-v11',
+  acil: 'table-cols:operasyon-acil-v15',
 };
 
 function resolveOpsColumnsStorageKey(filterType: 'all' | 'hasar' | 'acil' = 'all'): string {
@@ -298,7 +324,6 @@ function OperasyonPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [colsStorageKey, setColsStorageKey] = useState(OPS_COLS_KEY_BY_FILTER.all);
-  const tableColumns = usePanelTableColumns(colsStorageKey, TABLE_COLUMNS);
 
   const [dosyaKonusuCatalog, setDosyaKonusuCatalog] = useState<string[]>([]);
 
@@ -319,7 +344,10 @@ function OperasyonPageContent() {
 
   const [filterType, setFilterType] = useState<'all' | 'hasar' | 'acil'>('all');
   const [filterInvoice, setFilterInvoice] = useState('');
+  const [filterVendorPay, setFilterVendorPay] = useState<AcilVendorPayFilter>('');
   const [opsPreset, setOpsPreset] = useState<OperationPreset | ''>('');
+  const tableColumnDefs = filterType === 'acil' ? ACIL_TABLE_COLUMNS : TABLE_COLUMNS;
+  const tableColumns = usePanelTableColumns(colsStorageKey, tableColumnDefs);
 
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'hasar' | 'acil'; id: string; fileNo: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -548,11 +576,14 @@ function OperasyonPageContent() {
         c.netKar != null ? formatTryAmount(Number(c.netKar), { fractionDigits: 0 }) : null,
       expectedProfitNegative: c.netKar != null ? Number(c.netKar) < 0 : false,
       delayHours: null,
-      assigneeName: '—',
+      assigneeName: c.assignedUser
+        ? `${c.assignedUser.firstName ?? ''} ${c.assignedUser.lastName ?? ''}`.trim() || '—'
+        : '—',
       approval72hExceeded: false,
       delayRisk: false,
       reportId: null,
       defaultEmailTo: null,
+      vendorPaid: resolveAcilListVendorPaid(c),
     };
   });
 
@@ -571,6 +602,8 @@ function OperasyonPageContent() {
       case 'reportSales': return row.expectedSales ?? '';
       case 'reportCost': return row.supplierCostTotal ?? '';
       case 'reportProfit': return row.expectedProfit ?? '';
+      case 'vendorPay':
+        return row.kind === 'acil' ? acilVendorPayLabel(row.vendorPaid) : '';
       default: return '';
     }
   }
@@ -598,10 +631,16 @@ function OperasyonPageContent() {
             if (row.fileNo.toLocaleLowerCase('tr').includes(q)) return true;
             if (row.insuredName.toLocaleLowerCase('tr').includes(q)) return true;
             if ((row.subject ?? '').toLocaleLowerCase('tr').includes(q)) return true;
+            if (acilVendorPayMatchesQuery(row.kind === 'acil' ? row.vendorPaid : null, q)) return true;
           }
           return false;
         })
       : [...merged];
+    if (filterType === 'acil' && filterVendorPay) {
+      rows = rows.filter(
+        (row) => row.kind === 'acil' && acilVendorPayMatchesFilter(row.vendorPaid, filterVendorPay),
+      );
+    }
     if (clientSort) {
       const { key, dir } = clientSort;
       const mul = dir === 'asc' ? 1 : -1;
@@ -683,7 +722,7 @@ function OperasyonPageContent() {
 
   const columnFitSamples = useMemo(() => {
     const samples: Record<string, string[]> = {};
-    for (const col of TABLE_COLUMNS) samples[col.id] = [col.label];
+    for (const col of tableColumnDefs) samples[col.id] = [col.label];
     for (const row of filteredRows) {
       samples.kind?.push(row.kind === 'hasar' ? 'Hasar' : 'Acil');
       samples.fileNo?.push(row.fileNo);
@@ -699,10 +738,30 @@ function OperasyonPageContent() {
       if (row.expectedSales) samples.reportSales?.push(row.expectedSales);
       if (row.supplierCostTotal) samples.reportCost?.push(row.supplierCostTotal);
       if (row.expectedProfit) samples.reportProfit?.push(row.expectedProfit);
+      if (row.kind === 'acil') samples.vendorPay?.push(acilVendorPayLabel(row.vendorPaid));
       samples.actions?.push('İşlemler');
     }
     return samples;
-  }, [filteredRows]);
+  }, [filteredRows, tableColumnDefs]);
+
+  const visibleOpsColumns = useMemo(() => {
+    const cols = tableColumns.prefs.orderedVisibleColumns;
+    if (filterType !== 'acil') return cols;
+    const withoutKind = cols.filter((c) => c.id !== 'kind');
+    if (withoutKind.some((c) => c.id === 'vendorPay')) return withoutKind;
+    const statusAt = withoutKind.findIndex((c) => c.id === 'status');
+    const insertAt = statusAt >= 0 ? statusAt + 1 : withoutKind.length;
+    return [...withoutKind.slice(0, insertAt), VENDOR_PAY_COL, ...withoutKind.slice(insertAt)];
+  }, [filterType, tableColumns.prefs.orderedVisibleColumns]);
+
+  const opsTableStyle = useMemo(() => {
+    if (filterType !== 'acil') return panelTableLayoutStyle(tableColumns);
+    const total = visibleOpsColumns.reduce(
+      (sum, col) => sum + tableColumns.widths.getWidth(col.id),
+      0,
+    );
+    return { tableLayout: 'fixed' as const, width: '100%', minWidth: `${Math.max(total, 720)}px` };
+  }, [filterType, tableColumns, visibleOpsColumns]);
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
@@ -975,6 +1034,18 @@ function OperasyonPageContent() {
             </select>
             <select
               className="panel-filter-control"
+              value={filterVendorPay}
+              onChange={(e) => setFilterVendorPay(e.target.value as AcilVendorPayFilter)}
+              data-testid="acil-odeme-filtre"
+              title="Tedarikçi ödemesi"
+            >
+              <option value="">Tüm ödemeler</option>
+              <option value="paid">Ödendi</option>
+              <option value="unpaid">Ödenmedi</option>
+              <option value="none">Kayıt yok</option>
+            </select>
+            <select
+              className="panel-filter-control"
               value={sort}
               onChange={(e) => setSort(e.target.value)}
               title="Sıralama"
@@ -984,12 +1055,13 @@ function OperasyonPageContent() {
               <option value="updatedAt:desc">Son Güncelleme</option>
               <option value="fileNo:asc">Dosya No A-Z</option>
             </select>
-            {customerQuery.trim() || filterInvoice ? (
+            {customerQuery.trim() || filterInvoice || filterVendorPay ? (
               <button
                 type="button"
                 onClick={() => {
                   setCustomerQuery('');
                   setFilterInvoice('');
+                  setFilterVendorPay('');
                 }}
                 className="text-xs text-slate-500 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-xl hover:border-red-200 transition-colors whitespace-nowrap"
               >
@@ -1217,16 +1289,37 @@ function OperasyonPageContent() {
                       {row.expectedProfit ?? '—'}
                     </p>
                   </div>
+                  {row.kind === 'acil' ? (
+                    <div>
+                      <p className="text-slate-400">Ödeme Durumu</p>
+                      <p className="mt-0.5">
+                        <span className={acilVendorPayTone(row.vendorPaid)} data-testid="acil-liste-odeme">
+                          {acilVendorPayLabel(row.vendorPaid)}
+                        </span>
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </button>
             ))}
           </div>
           <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full text-xs" style={panelTableLayoutStyle(tableColumns)}>
-              <PanelTableColGroup />
+            <table className="w-full text-xs" style={opsTableStyle}>
+              {filterType === 'acil' ? (
+                <colgroup>
+                  {visibleOpsColumns.map((col) => (
+                    <col
+                      key={col.id}
+                      style={col.flex ? undefined : { width: tableColumns.widths.getWidth(col.id) }}
+                    />
+                  ))}
+                </colgroup>
+              ) : (
+                <PanelTableColGroup />
+              )}
               <thead className="table-head-row">
                 <tr>
-                  {tableColumns.prefs.orderedVisibleColumns.map((col) =>
+                  {visibleOpsColumns.map((col) =>
                     col.id === 'actions' ? (
                       <PanelTableTh
                         key={col.id}
@@ -1247,7 +1340,11 @@ function OperasyonPageContent() {
                         sortDir={sortDir}
                         onSort={handleColumnSort}
                       >
-                        {col.label}
+                        {col.id === 'vendorPay' ? (
+                          <span data-testid="acil-odeme-durumu-sutun">{col.label}</span>
+                        ) : (
+                          col.label
+                        )}
                       </SortablePanelTableTh>
                     ),
                   )}
@@ -1272,7 +1369,7 @@ function OperasyonPageContent() {
                       )
                     }
                   >
-                    {tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                    {visibleOpsColumns.map((col) => {
                       switch (col.id) {
                         case 'kind':
                           return (
@@ -1373,6 +1470,18 @@ function OperasyonPageContent() {
                                 <span className={row.statusTone}>{row.statusLabel}</span>
                               ) : (
                                 <AcilDosyaDurumuBadge code={row.statusCode} label={row.statusLabel} />
+                              )}
+                            </PanelTableTd>
+                          );
+                        case 'vendorPay':
+                          return (
+                            <PanelTableTd key={col.id} colId="vendorPay" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                              {row.kind === 'acil' ? (
+                                <span className={acilVendorPayTone(row.vendorPaid)} data-testid="acil-liste-odeme">
+                                  {acilVendorPayLabel(row.vendorPaid)}
+                                </span>
+                              ) : (
+                                <span className="text-slate-300">—</span>
                               )}
                             </PanelTableTd>
                           );

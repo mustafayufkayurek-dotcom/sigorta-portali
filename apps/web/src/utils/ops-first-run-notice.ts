@@ -16,7 +16,7 @@ export const OPS_NOTICE = {
       'Acil Yardım vekaleti olan finans personeli de bu listede görünür. Dosyayı ona atayabilirsiniz.',
   },
   acilTedarikciHakedis: {
-    id: 'acil-tedarikci-hakedis-v523',
+    id: 'acil-tedarikci-hakedis-v524',
     title: 'Tedarikçi Hakedişi',
     body:
       'İş bitince bu dosyanın tedarikçisine hakediş verilir. Verilme tarih ve saati kayıttadır. Finans ekranına düşer. Acil tedarikçisine vade uygulanmaz.',

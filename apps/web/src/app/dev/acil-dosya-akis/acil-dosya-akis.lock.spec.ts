@@ -37,8 +37,8 @@ const empty = {
 };
 
 describe('acil dosya akış önizleme LOCK', () => {
-  it('operatör 6 sayfa; grup sekmesi yok (önizleme)', () => {
-    assert.equal((stepsFile.match(/key: '/g) ?? []).length, 6);
+  it('operatör 5 sayfa; grup sekmesi yok (önizleme)', () => {
+    assert.equal((stepsFile.match(/key: '/g) ?? []).length, 5);
     assert.doesNotMatch(page, /GROUP_TABS/);
     assert.doesNotMatch(page, /PanelPillTabs/);
     assert.doesNotMatch(page, /alt-bolum-sekmeler/);
@@ -48,27 +48,64 @@ describe('acil dosya akış önizleme LOCK', () => {
   it('sağ panel özet düğmesi ve karelerden açılır — canlıda da durur', () => {
     assert.match(livePanel, /data-testid="acil-planlayici-ac"/);
     assert.match(livePanel, /setDrawerOpen\(true\)/);
-    assert.match(livePanel, /Operasyon Planlayıcısı/);
+    assert.match(livePanel, /Operasyonu Başlat/);
     assert.match(livePanel, /data-testid="acil-planlayici-cekmece"/);
     assert.match(livePage, /AcilOperasyonPlanlayiciPanel/);
     assert.match(livePage, /acil-saha-tespit/);
+    assert.match(livePage, /operatorStepStatuses/);
+    assert.doesNotMatch(livePage, /guncel-alis-satis-gir/);
+    assert.doesNotMatch(livePage, /AcilHeaderStageStrip/);
+    assert.doesNotMatch(livePage, /operasyon-iki-kolon/);
+    assert.doesNotMatch(livePage, /Süreci Aç/);
+    assert.match(livePanel, /STEP_ICONS/);
+    assert.match(livePanel, /PhoneCall/);
+    assert.match(livePanel, /BadgeCheck/);
+    assert.match(livePanel, /Landmark/);
+    assert.match(livePanel, /acil-siradaki-is/);
+    assert.match(livePanel, /acil-siradaki-pulse/);
+    assert.match(livePanel, /data-next=/);
+    assert.match(livePanel, /stepResultLine/);
+    assert.doesNotMatch(livePanel, /acil-ozet-yan-pencereler/);
+    assert.doesNotMatch(livePanel, /Süreç ilerlemesi/);
+    assert.doesNotMatch(livePanel, /Dosya durumu/);
+    assert.doesNotMatch(livePanel, /Dosyada Kimler Var/);
+    assert.doesNotMatch(livePanel, /Operasyon Planlama Özeti/);
+    assert.match(stepsFile, /acil-ihbar-tarihi/);
+    assert.match(stepsFile, /Mailin geldiği tarih ve saat/);
+    assert.match(stepsFile, /acil-hizmet-verildi/);
+    assert.match(livePage, /applyAcilCaseTimestamps/);
+    assert.match(livePage, /acil-islem-saatleri/);
+    assert.match(livePage, /ihbarDate: ihbarRozet/);
+    assert.match(livePage, /onServiceComplete/);
+    assert.match(livePage, /hour: '2-digit'/);
+    assert.match(livePage, /lastReceivedAt/);
+    assert.match(livePage, /fillHeight=\{false\}/);
+    assert.match(livePage, /handlePlannerWorkStart/);
+    assert.match(livePage, /assignedVendorId/);
+    assert.match(livePanel, /acil-once-tedarikci/);
+    assert.match(livePanel, /Önce tedarikçiyi atayın/);
+    assert.doesNotMatch(stepsFile, /WaBtn[\s\S]{0,400}Önce tedarikçi atayın/);
   });
 
   it('Kaydet zorunlu kapıyı çalıştırır', () => {
     assert.match(livePanel, /onClick=\{\(\) => void saveCurrentStep\(\)\}/);
     assert.match(livePanel, /data-testid="planlayici-kaydet"/);
-    assert.equal(validateOperatorStep('tedarikci_saha', empty), 'Tedarikçi atayın.');
+    assert.equal(validateOperatorStep('tedarikci_maliyet', empty), 'Tedarikçi atayın.');
     assert.equal(
-      validateOperatorStep('maliyet', { ...empty, assigned: 'v1' }),
+      validateOperatorStep('tedarikci_maliyet', { ...empty, assigned: 'v1' }),
       'Alış ve satış girin.',
     );
     assert.equal(
-      validateOperatorStep('onay', { ...empty, assigned: 'v1', alis: '1', satis: '2', approvalText: 'ok' }),
+      validateOperatorStep('onay', { ...empty, assigned: 'v1', alis: '1', satis: '2', approvalText: 'Riziko adreste; asansör' }),
       'Onayı kaydet veya red verin.',
     );
     assert.equal(
-      validateOperatorStep('kapanis', { ...empty, assigned: 'v1', workStartOk: false }),
-      'Önce işe başlama işaretlensin.',
+      validateOperatorStep('onay', { ...empty, assigned: 'v1', alis: '1', satis: '2', approvalText: 'Riziko adreste;' }),
+      'Riziko adreste açıklamasını yazın.',
+    );
+    assert.equal(
+      validateOperatorStep('kapanis', { ...empty, assigned: 'v1', approvalState: 'bekliyor' }),
+      'Önce onay talep akışı tamamlansın.',
     );
     assert.equal(
       validateOperatorStep('finans', { ...empty, fileClosed: false }),
@@ -86,13 +123,30 @@ describe('acil dosya akış önizleme LOCK', () => {
         approvalState: 'onaylandi',
         approvalText: 'ok',
       }),
+      'Tedarikçi ödemesini ödendi veya ödenmedi olarak onaylayın.',
+    );
+    assert.equal(
+      validateOperatorStep('finans', {
+        ...empty,
+        assigned: 'v1',
+        alis: '1',
+        satis: '2',
+        workStartOk: true,
+        fileClosed: true,
+        financeSent: true,
+        approvalState: 'onaylandi',
+        approvalText: 'ok',
+        vendorPaid: false,
+      }),
       null,
     );
   });
 
   it('kapanış işe başlamadan açılmaz; finans kapanışsız açılmaz', () => {
-    assert.match(stepsFile, /disabled=\{!p.workStartOk\}/);
-    assert.match(stepsFile, /disabled=\{!p.fileClosed\}/);
+    assert.match(stepsFile, /disabled=\{p.approvalState !== 'onaylandi'\}/);
+    assert.match(stepsFile, /disabled=\{!p.fileClosed \|\|/);
+    assert.match(stepsFile, /canOpenFinancePage/);
+    assert.match(stepsFile, /acil-finans-sayfasini-ac/);
     assert.match(stepsFile, /href="\/panel\/acil-yardim\/finans/);
     assert.match(stepsFile, /acil-hakedis-kayit/);
     assert.match(stepsFile, /Vade uygulanmaz/);
@@ -110,7 +164,15 @@ describe('acil dosya akış önizleme LOCK', () => {
     assert.match(page, /CallPhone phone=\{FILE.phone\}/);
     assert.match(stepsFile, /CallPhone phone=\{p.file.phone\}/);
     assert.match(stepsFile, /tel:\$\{raw.replace/);
-    assert.match(stepsFile, /function AmountField/);
+    assert.match(stepsFile, /minimumFractionDigits: 2/);
+    assert.match(stepsFile, /WhatsAppIcon/);
+    assert.match(stepsFile, /Dosya bilgilerini gönder/);
+    assert.match(stepsFile, /vendorWhatsAppText/);
+    assert.match(stepsFile, /Onay Talep Akışı/);
+    assert.match(stepsFile, /acil-finans-kdv/);
+    assert.match(stepsFile, /STANDARD_VAT_RATE/);
+    assert.match(stepsFile, /calcVatBreakdown/);
+    assert.match(stepsFile, /KDV \(%\{STANDARD_VAT_RATE\}\)/);
     assert.match(stepsFile, /pr-8/);
     assert.match(stepsFile, />\s*TL/);
   });

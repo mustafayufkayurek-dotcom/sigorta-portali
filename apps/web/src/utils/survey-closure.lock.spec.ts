@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import {
   surveyDissatisfiedCommentMissing,
   surveyLinkSent,
+  surveyOwnerExplanationMissing,
+  surveyResponseIsNegative,
   SURVEY_STAR_QUESTION_LABELS,
   SURVEY_Q6_LABEL,
 } from './survey-form.ts';
@@ -22,6 +24,10 @@ describe('survey closure UI lock', () => {
     assert.equal(surveyDissatisfiedCommentMissing(true, ''), false);
     assert.equal(surveyDissatisfiedCommentMissing(false, ''), true);
     assert.equal(surveyDissatisfiedCommentMissing(false, 'Geç kaldılar'), false);
+    assert.equal(surveyResponseIsNegative({ q6Recommend: false, q1Rating: 5, q2Rating: 5, q3Rating: 5, q4Rating: 5, q5Rating: 5 }), true);
+    assert.equal(surveyResponseIsNegative({ q6Recommend: true, q1Rating: 2, q2Rating: 5, q3Rating: 5, q4Rating: 5, q5Rating: 5 }), true);
+    assert.equal(surveyOwnerExplanationMissing({ q6Recommend: false }, ''), true);
+    assert.equal(surveyOwnerExplanationMissing({ q6Recommend: true, q1Rating: 5, q2Rating: 5, q3Rating: 5, q4Rating: 5, q5Rating: 5 }, ''), false);
   });
 
   it('gönderilmiş anket uyarılmaz', () => {
@@ -33,16 +39,30 @@ describe('survey closure UI lock', () => {
 
   it('kamu form ve sonuç çekmecesi aynı soru metinleri', () => {
     const publicPage = read('../app/anket/[token]/page.tsx');
-    assert.match(publicPage, /SURVEY_STAR_QUESTIONS/);
-    assert.match(publicPage, /surveyDissatisfiedCommentMissing/);
-    assert.match(publicPage, /SURVEY_DISSATISFIED_COMMENT_MESSAGE/);
-    assert.match(publicPage, /Memnun Değilim/);
+    assert.match(publicPage, /surveyStarQuestionsForChannel/);
+    assert.match(publicPage, /anket-yildiz-olcek/);
+    assert.match(publicPage, /BrandLogo/);
+    assert.match(publicPage, /items-center/);
+    assert.match(publicPage, /Kalite Kontrol Anket Formu/);
+    assert.match(publicPage, /text-amber-400/);
+    const greeting = publicPage.slice(publicPage.indexOf('Karşılama'));
+    assert.match(greeting, /text-left/);
+    assert.match(publicPage, /token === 'ornek'/);
+    assert.match(publicPage, /channel: 'acil'/);
+    assert.doesNotMatch(publicPage, /Hasar Onarım Ekibinin/);
 
-    const drawer = read('../app/panel/anketler/sonuclar/_components/SurveyDetailDrawer.tsx');
-    assert.match(drawer, /SURVEY_STAR_QUESTION_LABELS/);
-    assert.doesNotMatch(drawer, /İletişim Kalitesi/);
-    assert.equal(SURVEY_STAR_QUESTION_LABELS.length, 5);
-    assert.match(SURVEY_Q6_LABEL, /Memnuniyet/);
+    const form = read('../utils/survey-form.ts');
+    assert.match(form, /Acil Yardım Ekibinin/);
+    assert.match(form, /Çok kötü/);
+    assert.match(form, /surveyOwnerExplanationMissing/);
+
+    const results = read('../app/panel/anketler/sonuclar/page.tsx');
+    assert.match(results, /anket-ay-sonu-uyari/);
+    assert.match(results, /SURVEY_MONTH_END_CUSTOMER_NOTICE/);
+
+    const evrak = read('../app/evrak/[token]/page.tsx');
+    assert.match(evrak, /sigortali-onay-uyari/);
+    assert.match(evrak, /beforeunload/);
   });
 
   it('kapanış paneli faturaya kilitlenmez; WhatsApp link üretir', () => {
@@ -53,6 +73,8 @@ describe('survey closure UI lock', () => {
     assert.match(panel, /Anket zorunlu değildir/);
     assert.doesNotMatch(panel, /if \(!invoicedRequest\) return/);
     assert.match(panel, /showSurvey && \(fileClosed \|\| invoicedRequest \|\| survey\)/);
+    assert.match(panel, /anket-sorumlu-aciklama/);
+    assert.match(panel, /saveSurveyOwnerExplanation/);
   });
 
   it('dosya sorumlusu ana sayfa ve dosya ekranında amber uyarı', () => {

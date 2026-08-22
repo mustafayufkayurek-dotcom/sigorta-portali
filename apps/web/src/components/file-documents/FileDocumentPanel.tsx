@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { WhatsAppIcon } from '@/components/ui/PhoneContactActions';
 import {
   FileDocument,
   FileDocumentKind,
@@ -167,7 +168,12 @@ export default function FileDocumentPanel({
     }
   };
 
-  const kindLabel = documentKind === 'muvafakatname' ? 'Mutabakat / Muvafakat Formu' : 'Matbu Evrak';
+  const kindLabel =
+    documentKind === 'muvafakatname'
+      ? 'Mutabakat / Muvafakat Formu'
+      : entityType === 'emergency_case'
+        ? 'Servis Onay Formu'
+        : 'Matbu Evrak';
   const previewToken = activeDoc?.publicToken;
 
   if (loading) {
@@ -229,6 +235,7 @@ export default function FileDocumentPanel({
                   onClick={() => setWaModal(activeDoc)}
                   className="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
                 >
+                  <WhatsAppIcon className="h-3.5 w-3.5" />
                   WhatsApp
                 </button>
               )}
@@ -241,7 +248,7 @@ export default function FileDocumentPanel({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    Önizle
+                    Müşteri nasıl görür
                   </a>
                   <a
                     href={`/evrak/${previewToken}?print=1`}

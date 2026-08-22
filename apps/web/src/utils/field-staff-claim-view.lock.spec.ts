@@ -211,6 +211,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(photos, /capture="environment"/);
     assert.match(photos, /Kameradan/);
     assert.match(photos, /Galeriden/);
+    assert.match(photos, /sürükleyip bırakarak/);
+    assert.match(photos, /onDrop=\{onDropFiles\}/);
     assert.doesNotMatch(photos, /muvafakat/);
     assert.doesNotMatch(photos, /Yaşam Döngüsü/);
   });

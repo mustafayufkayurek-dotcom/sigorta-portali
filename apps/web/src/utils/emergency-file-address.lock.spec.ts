@@ -110,7 +110,7 @@ describe('acil dosya adresi LOCK', () => {
     assert.match(acilPage, /Sigortalı \{insured\}/);
     assert.doesNotMatch(acilPage, /Ana Müşteri \{anaMusteri\}/);
     assert.doesNotMatch(acilPage, /assigneeName !== '—' \? <span> · \{assigneeName\}/);
-    assert.match(acilPage, /AcilHeaderStageStrip/);
+    assert.doesNotMatch(acilPage, /AcilHeaderStageStrip/);
     assert.match(acilPage, /data-testid="dosya-notlari"/);
     assert.doesNotMatch(acilPage, /dosya-notlari-btn/);
     assert.doesNotMatch(hasarPage, /İlçe \(/);

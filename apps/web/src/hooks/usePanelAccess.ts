@@ -5,6 +5,7 @@ import { usePanelUser } from '@/contexts/PanelUserContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   canAccessAcilYardim,
+  canOpenAcilFinancePage,
   hasActiveFunctionDelegation,
   panelShowsFinanceWidgets,
   readStoredPanelUser,
@@ -56,6 +57,7 @@ export function usePanelAccess() {
       isFinance: isFinanceRole(roleCode),
       showAcilYardim: canAccessAcilYardim(roleCode, operationArea, operationalAccessGrants),
       showFinanceWidgets: panelShowsFinanceWidgets(roleCode),
+      showAcilFinancePage: canOpenAcilFinancePage(roleCode, operationalAccessGrants),
       showFinanceExtraAccessAcil:
         isFinanceRole(roleCode) && hasActiveFunctionDelegation(operationalAccessGrants, 'acil_yardim'),
       showFinanceExtraAccessHasar:

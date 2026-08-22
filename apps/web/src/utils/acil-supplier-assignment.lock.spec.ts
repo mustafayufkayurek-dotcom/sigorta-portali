@@ -57,6 +57,9 @@ describe('acil tedarikçi atama UI LOCK', () => {
 
   it('kayıtlı tedarikçi davranışı iş ekranında bir kez anlatılır', () => {
     assert.match(page, /tedarikci-ilk-kullanim-seridi/);
+    assert.match(page, /RecommendedVendorsTabs/);
+    assert.match(page, /fillHeight=\{false\}/);
+    assert.match(page, /handlePlannerWorkStart/);
     assert.match(page, /OpsFirstRunNotice/);
   });
 });

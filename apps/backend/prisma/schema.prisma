@@ -2791,6 +2791,8 @@ model EmergencyCase {
   address          String
   city             String?
   district         String?
+  latitude         Float?
+  longitude        Float?
   issueType        String           @map("issue_type")
   urgency          EmergencyUrgency @default(NORMAL)
   status           EmergencyStatus  @default(GELEN)
@@ -2798,9 +2800,13 @@ model EmergencyCase {
   assignedUserId   String?          @map("assigned_user_id")
   notes            String?
   findingsText     String?          @map("findings_text")
-  fileDate         DateTime         @default(now()) @map("file_date")
-  resolvedAt       DateTime?        @map("resolved_at")
-  invoicedAt       DateTime?        @map("invoiced_at")
+  fileDate            DateTime  @default(now()) @map("file_date")
+  workStartedAt       DateTime? @map("work_started_at")
+  serviceDeliveredAt  DateTime? @map("service_delivered_at")
+  resolvedAt          DateTime? @map("resolved_at")
+  /** Tedarikçi ödemesi: true ödendi, false ödenmedi, null henüz kayıt yok */
+  vendorPaid          Boolean?  @map("vendor_paid")
+  invoicedAt          DateTime? @map("invoiced_at")
   createdByUserId  String           @map("created_by_user_id")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
@@ -2817,6 +2823,7 @@ model EmergencyCase {
   invoiceRequests InvoiceRequest[]
   inboundMessages InboundMessage[]
   vendorEntitlement EmergencyVendorEntitlement?
+  surveyCampaigns SurveyCampaign[]
 
   @@index([status])
   @@index([urgency])
@@ -3102,10 +3109,13 @@ model SurveyCampaign {
   status               String    @default("pending")
   // pending | sent | completed | expired
   completedAt          DateTime? @map("completed_at")
+  ownerExplanation     String?   @map("owner_explanation")
+  ownerExplanationAt   DateTime? @map("owner_explanation_at")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
   claimFile        ClaimFile?        @relation(fields: [claimFileId], references: [id])
+  emergencyCase    EmergencyCase?    @relation(fields: [emergencyCaseId], references: [id])
   insuranceCompany InsuranceCompany? @relation(fields: [insuranceCompanyId], references: [id])
   invoiceRequest   InvoiceRequest?   @relation(fields: [invoiceRequestId], references: [id])
   response         SurveyResponse?
@@ -3113,6 +3123,7 @@ model SurveyCampaign {
   @@index([status])
   @@index([insuranceCompanyId])
   @@index([claimFileId])
+  @@index([emergencyCaseId])
   @@map("survey_campaigns")
 }
 

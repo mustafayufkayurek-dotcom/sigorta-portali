@@ -24,6 +24,7 @@ export class EmergencyFinanceController {
     @Query('customerId') customerId?: string,
     @Query('search') search?: string,
     @Query('invoiceStatus') invoiceStatus?: string,
+    @Query('vendorPaid') vendorPaid?: string,
   ) {
     return this.service.getFinanceList({
       month: month ? parseInt(month, 10) : undefined,
@@ -31,6 +32,7 @@ export class EmergencyFinanceController {
       customerId,
       search,
       invoiceStatus,
+      vendorPaid,
     });
   }
 

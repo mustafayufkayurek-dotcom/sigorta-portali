@@ -14,6 +14,9 @@ import { SubmitSurveyDto } from './dto/submit-survey.dto';
 import {
   surveyDissatisfiedCommentMissing,
   SURVEY_DISSATISFIED_COMMENT_MESSAGE,
+  surveyOwnerExplanationMissing,
+  SURVEY_OWNER_EXPLANATION_MESSAGE,
+  surveyResponseIsNegative,
 } from './survey-submit.rule';
 
 const SENT_OR_DONE = ['sent', 'completed'] as const;
@@ -305,6 +308,7 @@ export class SurveysService {
       insuredName: campaign.insuredName,
       status: campaign.status,
       tokenExpiresAt: campaign.tokenExpiresAt,
+      channel: campaign.emergencyCaseId ? 'acil' : 'hasar',
     };
   }
 
@@ -363,6 +367,7 @@ export class SurveysService {
         insuranceCompany: { select: { name: true } },
         invoiceRequest: { select: { requestNo: true, fileNo: true } },
         claimFile: { select: { fileNo: true, id: true } },
+        emergencyCase: { select: { caseNo: true, fileNo: true, id: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -378,6 +383,7 @@ export class SurveysService {
         insuranceCompany: { select: { name: true } },
         invoiceRequest: { select: { requestNo: true, fileNo: true } },
         claimFile: { select: { fileNo: true, id: true } },
+        emergencyCase: { select: { caseNo: true, fileNo: true, id: true } },
       },
     });
     if (!c) throw new NotFoundException('Kampanya bulunamadı');
@@ -406,6 +412,29 @@ export class SurveysService {
       where: { emergencyCaseId },
       include: { response: true },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async saveOwnerExplanation(id: string, ownerExplanation: string) {
+    const campaign = await this.prisma.surveyCampaign.findUnique({
+      where: { id },
+      include: { response: true },
+    });
+    if (!campaign) throw new NotFoundException('Kampanya bulunamadı');
+    if (campaign.status !== 'completed' || !campaign.response) {
+      throw new BadRequestException('Açıklama yalnız tamamlanmış anket için yazılır');
+    }
+    if (!surveyResponseIsNegative(campaign.response)) {
+      throw new BadRequestException('Bu ankette dosya sorumlusu açıklaması gerekmez');
+    }
+    const text = ownerExplanation.trim();
+    if (surveyOwnerExplanationMissing(campaign.response, text)) {
+      throw new BadRequestException(SURVEY_OWNER_EXPLANATION_MESSAGE);
+    }
+    return this.prisma.surveyCampaign.update({
+      where: { id },
+      data: { ownerExplanation: text, ownerExplanationAt: new Date() },
+      include: { response: true },
     });
   }
 

@@ -20,6 +20,7 @@ import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { StorageService } from '@/modules/storage/storage.service';
+import { htmlDocumentToPdf } from '@/common/utils/html-document-to-pdf';
 import {
   resolveInsuredPhoneForInbox,
   resolveEmergencyOperationLabel,
@@ -44,6 +45,11 @@ import {
 import { RecordEmergencyProcessEventDto } from './dto/record-emergency-process-event.dto';
 import { SurveysService } from '@/modules/surveys/surveys.service';
 import { EmergencyFinanceService } from './emergency-finance.service';
+import { buildAcilClosureReportPdf } from './acil-closure-report-pdf';
+import {
+  buildAcilOperationTimestamps,
+  nextAcilOperationStamps,
+} from './acil-operation-timestamps';
 
 const MANUAL_DECISION_MIN_REASON = 10;
 const PORTAL_ROLE_CODES = new Set([
@@ -85,15 +91,37 @@ export class EmergencyCasesService {
     @Optional() private readonly emergencyFinance?: EmergencyFinanceService,
   ) {}
 
-  /** İş bitiminde dosya tedarikçisine hakediş (vade yok). Hasar statement yok. */
-  private async onEmergencyCaseClosed(caseId: string, userId: string): Promise<void> {
+  /** Dosya kapanınca ana müşteriye kapanış maili (alış/kâr yok). */
+  private async sendClosureEmailOnClose(caseId: string): Promise<{
+    sent: boolean;
+    to: string | null;
+    error: string | null;
+  }> {
+    try {
+      const res = await this.sendClosureEmail(caseId);
+      return {
+        sent: Boolean(res.data.sent),
+        to: res.data.to ?? null,
+        error: res.data.errorMsg ?? null,
+      };
+    } catch (err: any) {
+      const error = err?.message ?? 'Kapanış maili gönderilemedi';
+      this.logger.warn(`[Kapanış maili] Otomatik gönderim atlandı: ${error}`);
+      return { sent: false, to: null, error };
+    }
+  }
+
+  private async onEmergencyCaseClosed(caseId: string, userId: string): Promise<{
+    autoClosureEmail: { sent: boolean; to: string | null; error: string | null };
+  }> {
+    const autoClosureEmail = await this.sendClosureEmailOnClose(caseId);
     const emergencyCase = await this.prisma.emergencyCase.findUnique({
       where: { id: caseId },
       select: { id: true, caseNo: true, assignedVendorId: true },
     });
     if (!emergencyCase?.assignedVendorId) {
       this.logger.debug(`[Acil hakediş] Atlandı — tedarikçi yok: ${caseId}`);
-      return;
+      return { autoClosureEmail };
     }
     if (this.emergencyFinance) {
       await this.emergencyFinance.grantVendorEntitlement(caseId, userId).catch((err) =>
@@ -106,6 +134,7 @@ export class EmergencyCasesService {
     await this.vendorProfile.onFileCompleted({ type: 'emergency_case', id: caseId }).catch((err) =>
       this.logger.warn(`[VendorIntelligenceProfile] Acil kapanış hook: ${err?.message}`),
     );
+    return { autoClosureEmail };
   }
 
   /** EPIC-04: Finansa aktarım entegrasyon noktası (onay sonrası finance modülü bağlanacak). */
@@ -317,7 +346,7 @@ export class EmergencyCasesService {
       this.prisma.emergencyVendorEntitlement.findUnique({
         where: { caseId },
         select: { grantedAt: true },
-      }),
+      }).catch(() => null),
     ]);
 
     if (!emergencyCase) {
@@ -679,6 +708,7 @@ export class EmergencyCasesService {
             lastName: true,
             entityType: true,
             subType: true,
+            email: true,
             phone: true,
           },
         },
@@ -721,6 +751,12 @@ export class EmergencyCasesService {
         c.customer?.phone,
       )) ?? c.customerPhone;
     const { createdBy: _createdBy, ...caseWithoutCreatedBy } = c;
+    const operationTimestamps = buildAcilOperationTimestamps({
+      notifiedAt: operationChain.inbox.lastReceivedAt ?? c.fileDate,
+      workStartedAt: c.workStartedAt,
+      serviceDeliveredAt: c.serviceDeliveredAt,
+      closedAt: c.resolvedAt,
+    });
     return {
       data: {
         ...this.enrichCase({
@@ -731,6 +767,7 @@ export class EmergencyCasesService {
         }),
         activeDelegation,
         operationChain,
+        operationTimestamps,
       },
     };
   }
@@ -762,6 +799,9 @@ export class EmergencyCasesService {
         ...(dto.assignedUserId !== undefined && { assignedUserId: dto.assignedUserId }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
         ...(dto.findingsText !== undefined && { findingsText: dto.findingsText }),
+        ...(dto.vendorPaid !== undefined && { vendorPaid: dto.vendorPaid }),
+        ...(dto.latitude !== undefined && { latitude: dto.latitude }),
+        ...(dto.longitude !== undefined && { longitude: dto.longitude }),
       },
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
     });
@@ -836,19 +876,34 @@ export class EmergencyCasesService {
   }
 
   async updateStatus(id: string, dto: UpdateEmergencyStatusDto, userId = 'system') {
+    const current = await this.prisma.emergencyCase.findUnique({
+      where: { id },
+      select: { workStartedAt: true, serviceDeliveredAt: true },
+    });
     await this.findOne(id);
+    const now = new Date();
     const data: any = { status: dto.status };
-    if (dto.status === EmergencyStatus.COZULDU) data.resolvedAt = new Date();
-    if (dto.status === EmergencyStatus.FATURALANDILDI) data.invoicedAt = new Date();
+    if (dto.status === EmergencyStatus.SAHADA && !current?.workStartedAt) {
+      data.workStartedAt = now;
+    }
+    if (dto.status === EmergencyStatus.COZULDU) {
+      data.resolvedAt = now;
+      if (!current?.serviceDeliveredAt) data.serviceDeliveredAt = now;
+      if (!current?.workStartedAt) data.workStartedAt = now;
+    }
+    if (dto.status === EmergencyStatus.FATURALANDILDI) data.invoicedAt = now;
     const updated = await this.prisma.emergencyCase.update({
       where: { id },
       data,
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
     });
+    let autoClosureEmail: { sent: boolean; to: string | null; error: string | null } | undefined;
     if (dto.status === EmergencyStatus.COZULDU) {
-      await this.onEmergencyCaseClosed(id, userId).catch((err) =>
-        this.logger.warn(`[EPIC-04] Kapanış hook hatası: ${err?.message}`),
-      );
+      const closed = await this.onEmergencyCaseClosed(id, userId).catch((err) => {
+        this.logger.warn(`[EPIC-04] Kapanış hook hatası: ${err?.message}`);
+        return null;
+      });
+      autoClosureEmail = closed?.autoClosureEmail;
       void this.surveys?.ensureCampaignForEmergencyCase(id).catch((err: unknown) =>
         this.logger.warn(`[Survey] Acil kapanış kampanyası: ${(err as Error)?.message}`),
       );
@@ -858,7 +913,7 @@ export class EmergencyCasesService {
         this.logger.warn(`[EPIC-04] Finans aktarım hook hatası: ${err?.message}`),
       );
     }
-    return { data: this.enrichCase(updated) };
+    return { data: { ...this.enrichCase(updated), autoClosureEmail } };
   }
 
   async remove(id: string) {
@@ -1002,6 +1057,17 @@ export class EmergencyCasesService {
         ? `${saleAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`
         : '—';
     const closedAt = (emergencyCase.resolvedAt || new Date()).toLocaleString('tr-TR');
+    const inboundAt = inbound[0]?.receivedAt
+      ? inbound[0].receivedAt.toLocaleString('tr-TR')
+      : emergencyCase.fileDate
+        ? emergencyCase.fileDate.toLocaleString('tr-TR')
+        : '—';
+    const workStartedAt = emergencyCase.workStartedAt
+      ? emergencyCase.workStartedAt.toLocaleString('tr-TR')
+      : '—';
+    const serviceDeliveredAt = emergencyCase.serviceDeliveredAt
+      ? emergencyCase.serviceDeliveredAt.toLocaleString('tr-TR')
+      : '—';
     const summary = (emergencyCase.notes || '').trim().slice(0, 160) || 'Hizmet tamamlandı';
     const subject = `Dosya Kapanışı – ${fileNo}`;
     const bodyText = [
@@ -1013,11 +1079,14 @@ export class EmergencyCasesService {
       `Sigortalı: ${insured}`,
       `Sigortalı Telefon: ${insuredPhone}`,
       `Dosya Konusu: ${emergencyCase.issueType}`,
-      `Tamamlanma: ${summary}`,
+      `İhbar Tarihi: ${inboundAt}`,
+      `İşe Başlama: ${workStartedAt}`,
+      `Hizmet Verilme: ${serviceDeliveredAt}`,
+      `Operasyon / Tamamlanma: ${summary}`,
       `Onaylı Hizmet Bedeli: ${saleLabel}`,
       `Kapanış Tarihi: ${closedAt}`,
       '',
-      'Ekler: onaylı fotoğraflar ve kapanış belgeleri (varsa).',
+      'Ekler: kapanış raporu PDF, onaylı fotoğraflar ve belgeler (varsa).',
       '',
       'Saygılarımızla,',
       'Meridyen Assistance',
@@ -1037,6 +1106,22 @@ export class EmergencyCasesService {
 
     const attachments: NonNullable<SendMailOptions['attachments']> = [];
     const attachmentNames: string[] = [];
+    const reportFile = `kapanis-raporu-${String(fileNo).replace(/[^\w.-]+/g, '_')}.pdf`;
+    attachments.push({
+      filename: reportFile,
+      content: buildAcilClosureReportPdf({
+        fileNo,
+        insured,
+        subject: String(emergencyCase.issueType || ''),
+        ihbarAt: inboundAt,
+        workStartedAt,
+        serviceDeliveredAt,
+        closedAt,
+        summary,
+      }),
+      contentType: 'application/pdf',
+    });
+    attachmentNames.push(reportFile);
 
     for (const doc of docs) {
       const kindLabel = doc.documentKind === 'matbu_evrak' ? 'Matbu-Evrak' : 'Belge';
@@ -1054,7 +1139,25 @@ export class EmergencyCasesService {
           this.logger.warn(`Kapanış eki indirilemedi (${doc.id}): ${err?.message}`);
         }
       } else if (doc.renderedContent) {
-        const filename = `${kindLabel}-${fileNo}.html`;
+        const isMatbu = doc.documentKind === 'matbu_evrak';
+        const pdfName = `${isMatbu ? 'Servis-Onay-Formu' : 'Belge'}-${fileNo}.pdf`;
+        if (isMatbu) {
+          try {
+            const pdf = await htmlDocumentToPdf(doc.renderedContent);
+            if (pdf) {
+              attachments.push({
+                filename: pdfName,
+                content: pdf,
+                contentType: 'application/pdf',
+              });
+              attachmentNames.push(pdfName);
+              continue;
+            }
+          } catch (err: any) {
+            this.logger.warn(`Servis onay PDF üretilemedi (${doc.id}): ${err?.message}`);
+          }
+        }
+        const filename = `${isMatbu ? 'Servis-Onay-Formu' : 'Belge'}-${fileNo}.html`;
         attachments.push({
           filename,
           content: Buffer.from(doc.renderedContent, 'utf8'),
@@ -1375,6 +1478,8 @@ export class EmergencyCasesService {
     }));
     if (isEmergencyProcessDuplicate({ action, incomingMetadata: metadata, existing })) {
       const latest = existingRows[0];
+      await this.applyOperationStamps(caseId, action);
+      await this.applyVendorPaid(caseId, action, metadata);
       return { data: this.mapProcessEvent(latest), duplicate: true };
     }
 
@@ -1389,7 +1494,35 @@ export class EmergencyCasesService {
         userEmail: actor.email ?? null,
       },
     });
+    await this.applyOperationStamps(caseId, action);
+    await this.applyVendorPaid(caseId, action, metadata);
     return { data: this.mapProcessEvent(created), duplicate: false };
+  }
+
+  private async applyOperationStamps(caseId: string, action: string) {
+    const current = await this.prisma.emergencyCase.findUnique({
+      where: { id: caseId },
+      select: { workStartedAt: true, serviceDeliveredAt: true },
+    });
+    const patch = nextAcilOperationStamps(action, current ?? {});
+    if (!patch.workStartedAt && !patch.serviceDeliveredAt) return;
+    await this.prisma.emergencyCase.update({
+      where: { id: caseId },
+      data: patch,
+    });
+  }
+
+  private async applyVendorPaid(
+    caseId: string,
+    action: string,
+    metadata: Record<string, unknown>,
+  ) {
+    if (action !== 'EMERGENCY_VENDOR_PAYMENT_RECORDED') return;
+    if (metadata.paid !== true && metadata.paid !== false) return;
+    await this.prisma.emergencyCase.update({
+      where: { id: caseId },
+      data: { vendorPaid: metadata.paid },
+    });
   }
 
   private mapProcessEvent(row: {

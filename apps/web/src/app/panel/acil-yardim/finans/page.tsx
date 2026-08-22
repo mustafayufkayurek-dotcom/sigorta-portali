@@ -8,6 +8,7 @@ import {
   FinanceRow, MonthlySummary, AcilVendorEntitlementRow,
 } from '@/utils/emergencyApi';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import { acilVendorPayLabel, acilVendorPayMatchesFilter, acilVendorPayTone, type AcilVendorPayFilter } from '@/utils/acil-vendor-pay';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
@@ -27,6 +28,7 @@ const EMERGENCY_FINANCE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'date', label: 'Tarih', defaultWidth: 104, minWidth: 88 },
   { id: 'customer', label: 'Müşteri', defaultWidth: 160, minWidth: 120 },
   { id: 'issueType', label: 'Konu', defaultWidth: 120, minWidth: 96 },
+  { id: 'vendorPay', label: 'Tedarikçi Ödemesi', defaultWidth: 132, minWidth: 112, alwaysVisible: true },
   { id: 'gelir', label: 'Gelir', defaultWidth: 108, minWidth: 88 },
   { id: 'gider', label: 'Gider', defaultWidth: 108, minWidth: 88 },
   { id: 'kar', label: 'Kâr', defaultWidth: 108, minWidth: 88 },
@@ -61,6 +63,7 @@ function FinansPageInner() {
   const [search, setSearch] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
   const [invoiceStatus, setInvoiceStatus] = useState(initInvoiceStatus);
+  const [vendorPaidFilter, setVendorPaidFilter] = useState<AcilVendorPayFilter>('');
   const [rows, setRows] = useState<FinanceRow[]>([]);
   const [entitlements, setEntitlements] = useState<AcilVendorEntitlementRow[]>([]);
   const [listSummary, setListSummary] = useState({ totalCases: 0, totalGelir: 0, totalGider: 0, netKar: 0 });
@@ -72,7 +75,7 @@ function FinansPageInner() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkCustomerName, setBulkCustomerName] = useState('');
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
-  const tableColumns = usePanelTableColumns('table-cols:acil-yardim-finans', EMERGENCY_FINANCE_TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:acil-yardim-finans-v3', EMERGENCY_FINANCE_TABLE_COLUMNS);
 
   const sortedRows = useMemo(
     () =>
@@ -84,6 +87,8 @@ function FinansPageInner() {
             return row.customerName ?? '';
           case 'issueType':
             return row.issueType ?? '';
+          case 'vendorPay':
+            return acilVendorPayLabel(row.vendorPaid);
           case 'gelir':
             return row.totalGelir ?? 0;
           case 'gider':
@@ -103,7 +108,7 @@ function FinansPageInner() {
     setLoading(true);
     try {
       const [listRes, monthRes, entitlementRes] = await Promise.all([
-        getFinanceList({ month, year, search: filterSearch || undefined, invoiceStatus: invoiceStatus || undefined }),
+        getFinanceList({ month, year, search: filterSearch || undefined, invoiceStatus: invoiceStatus || undefined, vendorPaid: vendorPaidFilter || undefined }),
         getMonthlySummary(year, month),
         getAcilVendorEntitlements().catch(() => ({ data: [] as AcilVendorEntitlementRow[] })),
       ]);
@@ -124,7 +129,7 @@ function FinansPageInner() {
     } finally {
       setLoading(false);
     }
-  }, [year, month, filterSearch, invoiceStatus, focusCaseId]);
+  }, [year, month, filterSearch, invoiceStatus, vendorPaidFilter, focusCaseId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -167,6 +172,9 @@ function FinansPageInner() {
 
   const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   const unfaturedCount = rows.filter((r) => !r.isFaturalandildi).length;
+  const shownEntitlements = vendorPaidFilter
+    ? entitlements.filter((row) => acilVendorPayMatchesFilter(row.vendorPaid, vendorPaidFilter))
+    : entitlements;
 
   return (
     <div className="space-y-5">
@@ -215,7 +223,7 @@ function FinansPageInner() {
             İş bitiminde dosya tedarikçisine verilir. Verilme tarih ve saati kayıttadır. Vade uygulanmaz.
           </p>
         </div>
-        {entitlements.length === 0 ? (
+        {shownEntitlements.length === 0 ? (
           <p className="text-sm text-slate-500">Henüz hakediş yok.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -226,11 +234,12 @@ function FinansPageInner() {
                   <th className="pb-2 pr-3">Tedarikçi</th>
                   <th className="pb-2 pr-3">Tutar</th>
                   <th className="pb-2 pr-3">Verilme</th>
+                  <th className="pb-2 pr-3">Tedarikçi Ödemesi</th>
                   <th className="pb-2">Vade</th>
                 </tr>
               </thead>
               <tbody>
-                {entitlements.map((row) => (
+                {shownEntitlements.map((row) => (
                   <tr key={row.id} className="border-t border-slate-100">
                     <td className="py-2 pr-3">
                       <Link href={`/panel/acil-yardim/${row.caseId}`} className="font-semibold text-brand-700 hover:underline">
@@ -248,6 +257,11 @@ function FinansPageInner() {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
+                    </td>
+                    <td className="py-2 pr-3">
+                      <span className={acilVendorPayTone(row.vendorPaid)} data-testid="acil-finans-hakedis-odeme">
+                        {acilVendorPayLabel(row.vendorPaid)}
+                      </span>
                     </td>
                     <td className="py-2 text-slate-500">Yok</td>
                   </tr>
@@ -285,6 +299,17 @@ function FinansPageInner() {
           <option value="pending">Bekliyor</option>
           <option value="overdue">Gecikmiş</option>
           <option value="invoiced">Faturalandı</option>
+        </select>
+        <select
+          value={vendorPaidFilter}
+          onChange={(e) => setVendorPaidFilter(e.target.value as AcilVendorPayFilter)}
+          className="px-3 py-2 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          data-testid="acil-finans-odeme-filtre"
+        >
+          <option value="">Tüm ödemeler</option>
+          <option value="paid">Ödendi</option>
+          <option value="unpaid">Ödenmedi</option>
+          <option value="none">Kayıt yok</option>
         </select>
         {/* Arama */}
         <div className="relative">
@@ -342,6 +367,7 @@ function FinansPageInner() {
                 <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Tarih</SortablePanelTableTh>
                 <SortablePanelTableTh colId="customer" sortKey="customer" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Müşteri</SortablePanelTableTh>
                 <SortablePanelTableTh colId="issueType" sortKey="issueType" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Konu</SortablePanelTableTh>
+                <SortablePanelTableTh colId="vendorPay" sortKey="vendorPay" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Tedarikçi Ödemesi</SortablePanelTableTh>
                 <SortablePanelTableTh colId="gelir" sortKey="gelir" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Gelir</SortablePanelTableTh>
                 <SortablePanelTableTh colId="gider" sortKey="gider" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Gider</SortablePanelTableTh>
                 <SortablePanelTableTh colId="kar" sortKey="kar" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Kâr</SortablePanelTableTh>
@@ -372,6 +398,11 @@ function FinansPageInner() {
                     <p className="text-xs text-slate-400">{row.caseNo}</p>
                   </PanelTableTd>
                   <PanelTableTd colId="issueType" className="px-4 py-3 text-blue-700 font-medium">{row.issueType}</PanelTableTd>
+                  <PanelTableTd colId="vendorPay" className="px-4 py-3">
+                    <span className={acilVendorPayTone(row.vendorPaid)} data-testid="acil-finans-liste-odeme">
+                      {acilVendorPayLabel(row.vendorPaid)}
+                    </span>
+                  </PanelTableTd>
                   <PanelTableTd colId="gelir" className="px-4 py-3 text-right text-green-700 font-semibold">{fmt(row.totalGelir)} ₺</PanelTableTd>
                   <PanelTableTd colId="gider" className="px-4 py-3 text-right text-red-600 font-semibold">{fmt(row.totalGider)} ₺</PanelTableTd>
                   <PanelTableTd colId="kar" className={`px-4 py-3 text-right font-bold ${row.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
@@ -397,7 +428,7 @@ function FinansPageInner() {
             </tbody>
             <tfoot className="border-t-2 border-slate-100 bg-slate-50">
               <tr className="text-xs font-bold text-slate-700">
-                <td colSpan={4} className="px-4 py-3">{listSummary.totalCases} kayıt</td>
+                <td colSpan={5} className="px-4 py-3">{listSummary.totalCases} kayıt</td>
                 <PanelTableTd colId="gelir" className="px-4 py-3 text-right text-green-700">{fmt(listSummary.totalGelir)} ₺</PanelTableTd>
                 <PanelTableTd colId="gider" className="px-4 py-3 text-right text-red-600">{fmt(listSummary.totalGider)} ₺</PanelTableTd>
                 <PanelTableTd colId="kar" className={`px-4 py-3 text-right ${listSummary.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{fmt(listSummary.netKar)} ₺</PanelTableTd>

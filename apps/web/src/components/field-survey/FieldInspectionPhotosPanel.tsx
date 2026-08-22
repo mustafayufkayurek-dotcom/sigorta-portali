@@ -43,6 +43,7 @@ export function FieldInspectionPhotosPanel({
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
+  const [dragOver, setDragOver] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -114,13 +115,11 @@ export function FieldInspectionPhotosPanel({
     };
   }, [docs]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (files.length === 0) return;
+  const uploadFiles = async (files: File[]) => {
+    if (!resolvedId || files.length === 0) return;
     setUploading(true);
     try {
       for (const file of files) {
-        // Mobilde type bazen boş gelir — uzantı ile kabul et
         const looksImage =
           isImageMime(file.type) ||
           !file.type ||
@@ -140,8 +139,21 @@ export function FieldInspectionPhotosPanel({
       reportCaughtError(err, 'Fotoğraf yüklenemedi.');
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    await uploadFiles(files);
+  };
+
+  const onDropFiles = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    if (uploading) return;
+    void uploadFiles(Array.from(e.dataTransfer.files ?? []));
   };
 
   const handleDelete = async (docId: string, fileName: string) => {
@@ -177,10 +189,33 @@ export function FieldInspectionPhotosPanel({
   };
 
   return (
-    <div data-testid="saha-tespit-fotograflari">
+    <div
+      data-testid="saha-tespit-fotograflari"
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!uploading) setDragOver(true);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!uploading) setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setDragOver(false);
+      }}
+      onDrop={onDropFiles}
+      className={dragOver ? 'rounded-xl ring-2 ring-brand-400 ring-offset-2' : undefined}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">
-          {loading ? 'Yükleniyor…' : docs.length === 0 ? 'Henüz tespit fotoğrafı yok. Çekimden sonra burada görünür.' : `${docs.length} fotoğraf`}
+          {loading
+            ? 'Yükleniyor…'
+            : docs.length === 0
+              ? 'Henüz tespit fotoğrafı yok.'
+              : `${docs.length} fotoğraf`}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -227,10 +262,16 @@ export function FieldInspectionPhotosPanel({
       </div>
 
       {!loading && docs.length === 0 ? (
-        <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center">
+        <div
+          className={`mt-3 rounded-xl border border-dashed px-4 py-8 text-center ${
+            dragOver ? 'border-brand-400 bg-brand-50/70' : 'border-slate-200 bg-slate-50/60'
+          }`}
+        >
           <ImagePlus className="mx-auto h-8 w-8 text-slate-300" strokeWidth={1.5} aria-hidden />
           <p className="mt-2 text-sm font-medium text-slate-600">Tespit Fotoğrafı Ekleyin</p>
-          <p className="mt-1 text-xs text-slate-400">Henüz tespit fotoğrafı yok. Çekimden sonra burada görünür.</p>
+          <p className="mt-1 text-xs text-slate-400" data-testid="saha-tespit-surukle-birak">
+            Kameradan, galeriden veya dosyayı buraya sürükleyip bırakarak ekleyin.
+          </p>
         </div>
       ) : (
         <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">

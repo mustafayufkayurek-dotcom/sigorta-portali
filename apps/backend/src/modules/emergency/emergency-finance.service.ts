@@ -13,6 +13,7 @@ export class EmergencyFinanceService {
     customerId?: string;
     search?: string;
     invoiceStatus?: string; // 'invoiced' | 'pending' | 'overdue'
+    vendorPaid?: string; // 'paid' | 'unpaid' | 'none'
   }) {
     const where: any = {};
     if (filters.customerId) where.customerId = filters.customerId;
@@ -22,6 +23,9 @@ export class EmergencyFinanceService {
         { caseNo: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
+    if (filters.vendorPaid === 'paid') where.vendorPaid = true;
+    if (filters.vendorPaid === 'unpaid') where.vendorPaid = false;
+    if (filters.vendorPaid === 'none') where.vendorPaid = null;
     if (filters.year && filters.month) {
       const start = new Date(filters.year, filters.month - 1, 1);
       const end = new Date(filters.year, filters.month, 1);
@@ -69,6 +73,7 @@ export class EmergencyFinanceService {
         overdueLevel,
         invoiceDraft,
         isFaturalandildi,
+        vendorPaid: c.vendorPaid ?? null,
       };
     });
 
@@ -257,6 +262,7 @@ export class EmergencyFinanceService {
             fileNo: true,
             customerName: true,
             issueType: true,
+            vendorPaid: true,
           },
         },
         grantedBy: { select: { id: true, firstName: true, lastName: true } },
@@ -269,6 +275,7 @@ export class EmergencyFinanceService {
         caseNo: row.case.fileNo || row.case.caseNo,
         customerName: row.case.customerName,
         issueType: row.case.issueType,
+        vendorPaid: row.case.vendorPaid ?? null,
         vendorId: row.vendorId,
         vendorName: row.vendor.name,
         amount: row.amount,

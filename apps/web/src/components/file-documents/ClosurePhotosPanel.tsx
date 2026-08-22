@@ -35,6 +35,7 @@ export default function ClosurePhotosPanel({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const onCountRef = useRef(onPhotoCountChange);
   onCountRef.current = onPhotoCountChange;
@@ -65,8 +66,7 @@ export default function ClosurePhotosPanel({
     void load();
   }, [load]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
+  const uploadFiles = async (files: File[]) => {
     if (files.length === 0 || readonly) return;
     setUploading(true);
     setError(null);
@@ -90,8 +90,21 @@ export default function ClosurePhotosPanel({
       setError(getApiErrorMessage(err, 'Dosya yüklenemedi. Lütfen kısa süre sonra tekrar deneyin.'));
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    await uploadFiles(files);
+  };
+
+  const onDropFiles = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    if (readonly || uploading) return;
+    void uploadFiles(Array.from(e.dataTransfer.files ?? []));
   };
 
   const handleDelete = async (docId: string, fileName: string) => {
@@ -126,9 +139,25 @@ export default function ClosurePhotosPanel({
         done
           ? 'border-emerald-200 bg-emerald-50/50'
           : 'border-amber-200 bg-amber-50/40'
-      }`}
+      } ${dragOver && !readonly ? 'ring-2 ring-brand-400' : ''}`}
       data-testid="dosya-kapanis-resimleri"
       data-photo-count={docs.length}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!readonly && !uploading) setDragOver(true);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!readonly && !uploading) setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setDragOver(false);
+      }}
+      onDrop={onDropFiles}
     >
       <div className="flex flex-wrap items-center justify-between gap-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -157,6 +186,14 @@ export default function ClosurePhotosPanel({
 
       <p className="text-[10px] text-slate-500 leading-snug">
         Kapanış öncesi saha / hizmet fotoğraflarını buraya yükleyin. Belgeler sekmesinden ayrıdır.
+        {!readonly ? (
+          <>
+            {' '}
+            <span data-testid="dosya-kapanis-surukle-birak">
+              Resim yükle ile veya dosyayı bu alana sürükleyip bırakarak ekleyin.
+            </span>
+          </>
+        ) : null}
       </p>
 
       {!readonly && (

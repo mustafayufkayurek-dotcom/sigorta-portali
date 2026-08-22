@@ -1,25 +1,31 @@
 'use client';
 
-import { FileStageStrip, type FileStageStep, type FileStageTone } from '@/components/panel/FileStageStrip';
-import { ACIL_STAGES, type AcilStageKey } from './acil-workflow';
-import type { AcilStageStatus } from './acil-stage-status';
+/**
+ * Acil dosya üst şerit — planlayıcı ile aynı 6 operatör adımı.
+ */
 
-function toStageTone(status: AcilStageStatus): FileStageTone {
+import { FileStageStrip, type FileStageStep, type FileStageTone } from '@/components/panel/FileStageStrip';
+import {
+  OPERATOR_STEPS,
+  type OperatorStepKey,
+} from '@/components/acil-operasyon-planlayicisi/planner-steps';
+import type { AcilPlannerStepStatus } from '@/components/acil-operasyon-planlayicisi/AcilOperasyonPlanlayiciPanel';
+
+function toStageTone(status: AcilPlannerStepStatus): FileStageTone {
   if (status === 'done') return 'completed';
   if (status === 'waiting') return 'active';
   return 'future';
 }
 
-/** Acil dosya akışı — adımlar acil iş kuralından, görünüm ortak şeritten gelir. */
 export function AcilHeaderStageStrip({
   statuses,
 }: {
-  statuses: Record<AcilStageKey, AcilStageStatus>;
+  statuses: Record<OperatorStepKey, AcilPlannerStepStatus>;
 }) {
-  const steps: FileStageStep[] = ACIL_STAGES.map((stage) => ({
+  const steps: FileStageStep[] = OPERATOR_STEPS.map((stage) => ({
     key: stage.key,
     label: stage.label,
-    tone: toStageTone(statuses[stage.key]),
+    tone: toStageTone(statuses[stage.key] ?? 'future'),
   }));
 
   return (

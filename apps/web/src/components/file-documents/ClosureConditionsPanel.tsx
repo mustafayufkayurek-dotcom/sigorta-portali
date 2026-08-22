@@ -20,7 +20,14 @@ import {
   sendSurveyLink,
   createAndSendSurveyForClaim,
   createAndSendSurveyForEmergency,
+  saveSurveyOwnerExplanation,
 } from '@/utils/surveyApi';
+import {
+  surveyOwnerExplanationMissing,
+  surveyResponseIsNegative,
+  SURVEY_OWNER_EXPLANATION_MESSAGE,
+  surveyStarQuestionsForCampaign,
+} from '@/utils/survey-form';
 import { formatTryAmount } from '@/utils/format-try-amount';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -138,6 +145,8 @@ export default function ClosureConditionsPanel(props: Props) {
   const [sendingSurvey, setSendingSurvey] = useState(false);
   const [surveyDeepLink, setSurveyDeepLink] = useState<string | null>(null);
   const [surveyError, setSurveyError] = useState('');
+  const [ownerNote, setOwnerNote] = useState('');
+  const [savingOwnerNote, setSavingOwnerNote] = useState(false);
 
   const loadConditions = async () => {
     if (!showClosureChecklist && !showInvoiceRequest) return null;
@@ -186,6 +195,7 @@ export default function ClosureConditionsPanel(props: Props) {
           ? await getSurveyByClaimFile(entityId)
           : await getSurveyByEmergencyCase(entityId);
       setSurvey(s);
+      setOwnerNote(s?.ownerExplanation ?? '');
     } catch {
       setSurvey(null);
     }
@@ -251,6 +261,21 @@ export default function ClosureConditionsPanel(props: Props) {
     }
   };
 
+  const handleSaveOwnerExplanation = async () => {
+    if (!survey) return;
+    setSavingOwnerNote(true);
+    setSurveyError('');
+    try {
+      const updated = await saveSurveyOwnerExplanation(survey.id, ownerNote);
+      setSurvey(updated);
+      setOwnerNote(updated.ownerExplanation ?? ownerNote);
+    } catch (e: unknown) {
+      setSurveyError(e instanceof Error ? e.message : SURVEY_OWNER_EXPLANATION_MESSAGE);
+    } finally {
+      setSavingOwnerNote(false);
+    }
+  };
+
   if (loadingConds) {
     return (
       <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
@@ -301,8 +326,8 @@ export default function ClosureConditionsPanel(props: Props) {
               <>
                 <ConditionRow
                   met={(conditions as EmergencyClosureConditions).matbuEvrakDigitallyApproved}
-                  label="Matbu evrak dijital onayı"
-                  help="Matbu evrak WhatsApp ile gönderilmeli ve onaylanmalı"
+                  label="Servis Onay Formu dijital onayı"
+                  help="Servis onay formu WhatsApp ile gönderilmeli ve onaylanmalı"
                 />
                 <ConditionRow
                   met={(conditions as EmergencyClosureConditions).caseStatusCompleted}
@@ -414,12 +439,23 @@ export default function ClosureConditionsPanel(props: Props) {
             {/* Anket yanıtı var ise özet göster */}
             {survey?.status === 'completed' && survey.response && (
               <div className="grid grid-cols-5 gap-2">
-                {[survey.response.q1Rating, survey.response.q2Rating, survey.response.q3Rating, survey.response.q4Rating, survey.response.q5Rating].map((r, i) => (
-                  <div key={i} className="text-center bg-slate-50 rounded-lg py-2">
-                    <p className="text-xs text-slate-500 mb-0.5">S{i + 1}</p>
-                    <p className="text-sm font-bold text-status-warning">{'★'.repeat(r)}{'☆'.repeat(5 - r)}</p>
-                  </div>
-                ))}
+                {surveyStarQuestionsForCampaign(survey).map((q, i) => {
+                  const r = [
+                    survey.response!.q1Rating,
+                    survey.response!.q2Rating,
+                    survey.response!.q3Rating,
+                    survey.response!.q4Rating,
+                    survey.response!.q5Rating,
+                  ][i];
+                  return (
+                    <div key={q.key} className="text-center bg-slate-50 rounded-lg py-2 px-1">
+                      <p className="text-[10px] leading-tight text-slate-500 mb-0.5 line-clamp-2" title={q.label}>
+                        {q.label}
+                      </p>
+                      <p className="text-sm font-bold text-status-warning">{'★'.repeat(r)}{'☆'.repeat(5 - r)}</p>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {survey?.status === 'completed' && survey.response?.q6Recommend !== undefined && (
@@ -430,6 +466,36 @@ export default function ClosureConditionsPanel(props: Props) {
             {survey?.status === 'completed' && survey.response?.q7Comment && (
               <p className="text-xs text-slate-500 italic">"{survey.response.q7Comment}"</p>
             )}
+
+            {survey?.status === 'completed' && surveyResponseIsNegative(survey.response) ? (
+              <div
+                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 space-y-2"
+                data-testid="anket-sorumlu-aciklama"
+              >
+                <p className="text-xs font-medium text-rose-800">{SURVEY_OWNER_EXPLANATION_MESSAGE}</p>
+                {survey.ownerExplanation && !surveyOwnerExplanationMissing(survey.response, survey.ownerExplanation) ? (
+                  <p className="text-xs text-slate-700 whitespace-pre-wrap">{survey.ownerExplanation}</p>
+                ) : (
+                  <>
+                    <textarea
+                      value={ownerNote}
+                      onChange={(e) => setOwnerNote(e.target.value)}
+                      rows={3}
+                      placeholder="Olumsuz sonucun nedenini ve yapılan işlemi yazın"
+                      className="w-full rounded-lg border border-rose-200 px-3 py-2 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveOwnerExplanation}
+                      disabled={savingOwnerNote || !ownerNote.trim()}
+                      className="w-full rounded-lg bg-rose-700 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                    >
+                      {savingOwnerNote ? 'Kaydediliyor…' : 'Açıklamayı Kaydet'}
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : null}
 
             {/* Deep link göster */}
             {surveyDeepLink && (
