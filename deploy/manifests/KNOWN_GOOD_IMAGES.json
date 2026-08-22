@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-22",
-  "label": "v525-resim-akis",
-  "description": "Full v525: Panel resimleri oturumla akar (302 MinIO yok). Tespit ölçü, düzeltme notu. Web+backend v525. Migration yok. Rollback web v524 / backend v524.",
+  "label": "v526-hasar-dosya-rapor",
+  "description": "Web v526: Hasar dosya kabuğu, Raporlar tespit, onarım yazma (kırmızı iş kalemi), foto ileri/geri dikey orta. Backend v525. Migration yok. Rollback web v525 / backend v525.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v525-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v525-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v526-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v524-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v524-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v525-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v525-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
