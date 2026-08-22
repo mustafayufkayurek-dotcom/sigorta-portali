@@ -2804,7 +2804,7 @@ model EmergencyCase {
   workStartedAt       DateTime? @map("work_started_at")
   serviceDeliveredAt  DateTime? @map("service_delivered_at")
   resolvedAt          DateTime? @map("resolved_at")
-  /** Tedarikçi ödemesi: true ödendi, false ödenmedi, null henüz kayıt yok */
+  /// Tedarikçi ödemesi: true ödendi, false ödenmedi, null henüz kayıt yok
   vendorPaid          Boolean?  @map("vendor_paid")
   invoicedAt          DateTime? @map("invoiced_at")
   createdByUserId  String           @map("created_by_user_id")
