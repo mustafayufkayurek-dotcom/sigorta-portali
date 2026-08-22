@@ -20,6 +20,7 @@ SKIP_RSYNC="${2:-}"
 if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   bash "$SCRIPT_DIR/assert-deploy-source.sh"
   bash "$SCRIPT_DIR/smoke-acil-netlesen.sh"
+  bash "$SCRIPT_DIR/smoke-hasar-rapor-revizyon.sh"
 fi
 
 WEB_VERSION="$(printf '%s' "$DEPLOY_TAG" | grep -oE 'v[0-9]+' | head -1 || true)"
