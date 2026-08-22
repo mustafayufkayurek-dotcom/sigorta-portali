@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-22",
-  "label": "v523-acil-anket-odeme-konum",
-  "description": "Full v523: Acil ödeme sütunu, anket, konum, servis onay kilidi. Web+backend v523. Migration: timestamps, vendor_paid, owner_explanation, location. Rollback web v522 / backend v520.",
+  "label": "v524-hasar-rapor-revizyon",
+  "description": "Full v524: Hasar onarım raporu dış onay/sunulmuş durumda revizyon. Web+backend v524. Migration yok. Rollback web v523 / backend v523.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v523-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v523-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v524-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v524-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v522-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v520-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v523-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v523-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

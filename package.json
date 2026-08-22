@@ -14,6 +14,7 @@
     "smoke:acil-supplier": "bash scripts/smoke-acil-supplier-assignment.sh",
     "smoke:acil-file-owner": "bash scripts/smoke-acil-file-owner.sh",
     "smoke:acil-netlesen": "bash scripts/smoke-acil-netlesen.sh",
+    "smoke:hasar-rapor-revizyon": "bash scripts/smoke-hasar-rapor-revizyon.sh",
     "clean": "turbo run clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "preview:docs": "node scripts/serve-preview.js"
