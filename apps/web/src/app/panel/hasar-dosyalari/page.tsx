@@ -142,12 +142,13 @@ function ClaimStatusBadge({ status, reportStatus, approval72hExceeded, operation
     })
     || portalStatusLabel(code, status.name);
   const cls = STATUS_CODE_BADGE[code];
+  const pill = 'inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-medium text-center';
   if (cls) {
-    return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
+    return <span className={`${pill} ${cls}`}>{label}</span>;
   }
   const style = status.color ? { backgroundColor: `${status.color}22`, color: status.color } : undefined;
   return (
-    <span className={style ? 'inline-block rounded-full px-2.5 py-0.5 text-xs font-medium' : 'badge badge-blue'} style={style}>
+    <span className={style ? pill : `badge badge-blue ${pill}`} style={style}>
       {label || 'N/A'}
     </span>
   );
@@ -835,7 +836,6 @@ function ClaimFilesPageContent() {
               const subject = resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog);
               const supplierName = resolveClaimSupplierDisplayName(claim);
               const priority = claim.priority ?? 'normal';
-              const inspection = fieldStaffInspectionStatus(claim);
               return (
                 <button
                   key={claim.id}
@@ -862,12 +862,6 @@ function ClaimFilesPageContent() {
                         approval72hExceeded={Boolean(claim.approval72hExceeded)}
                         operationStatusLabel={claim.operationStatusLabel}
                       />
-                      <span
-                        className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
-                        data-testid="ofis-tespit-rozet"
-                      >
-                        {inspection.label}
-                      </span>
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
@@ -973,7 +967,6 @@ function ClaimFilesPageContent() {
                   const totalAmount = claim.invoicedAmount ?? claim.actualCostAmount ?? null;
                   const rapor = claim.latestRepairReport;
                   const supplierName = resolveClaimSupplierDisplayName(claim);
-                  const inspection = fieldStaffInspectionStatus(claim);
                   const rowAccent = claim.approval72hExceeded
                     ? 'ops-row-approval-72h'
                     : revCount > 0
@@ -1002,21 +995,13 @@ function ClaimFilesPageContent() {
                       <PanelTableTd colId="subject" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
                         {resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}
                       </PanelTableTd>
-                      <PanelTableTd colId="status" className="table-td whitespace-nowrap">
-                        <div className="flex flex-col items-start gap-1">
-                          <ClaimStatusBadge
-                      status={claim.currentStatus}
-                      reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
-                      approval72hExceeded={Boolean(claim.approval72hExceeded)}
-                      operationStatusLabel={claim.operationStatusLabel}
-                    />
-                          <span
-                            className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
-                            data-testid="ofis-tespit-rozet"
-                          >
-                            {inspection.label}
-                          </span>
-                        </div>
+                      <PanelTableTd colId="status" align="center" className="table-td-center whitespace-nowrap">
+                        <ClaimStatusBadge
+                          status={claim.currentStatus}
+                          reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
+                          approval72hExceeded={Boolean(claim.approval72hExceeded)}
+                          operationStatusLabel={claim.operationStatusLabel}
+                        />
                       </PanelTableTd>
                       <PanelTableTd colId="supplier" className="table-td text-xs whitespace-nowrap max-w-[120px]" title={supplierName ?? undefined}>
                         {supplierName ?? <span className="text-slate-300">Atanmadı</span>}

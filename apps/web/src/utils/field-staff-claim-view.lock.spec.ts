@@ -64,7 +64,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(list, /Tamamlanan Tespitler/);
     assert.match(list, /Tespit Fotoğrafları/);
     assert.match(list, /Dosyaya Git/);
-    assert.match(list, /ofis-tespit-rozet/);
+    assert.match(list, /saha-tespit-rozet/);
+    assert.doesNotMatch(list, /ofis-tespit-rozet/);
     assert.doesNotMatch(list, /officeCompletedFilter/);
     assert.doesNotMatch(list, /saha-tespit-filtre/);
     const fieldCardStart = list.indexOf('data-testid="saha-dosya-karti"');
@@ -178,9 +179,12 @@ describe('field-staff-claim-view lock', () => {
     assert.match(detail, /IletisimGunluguPanel/);
     assert.match(detail, /variant="field"/);
     const notes = read('../app/panel/hasar-dosyalari/[id]/_components/tabs/IletisimGunluguPanel.tsx');
-    assert.match(notes, /tespit-notu-duzeltme/);
-    assert.match(notes, /field_correction/);
-    assert.match(notes, /Düzeltme/);
+    assert.match(notes, /tespit-notu-duzenle/);
+    assert.match(notes, /Düzenle/);
+    assert.doesNotMatch(notes, /tespit-notu-duzeltme/);
+    assert.doesNotMatch(notes, />Düzeltme</);
+    assert.doesNotMatch(notes, /type="checkbox"/);
+    assert.doesNotMatch(notes, /Henüz Tespit Notu Yok/);
     assert.match(detail, /\{!isFieldStaff && \(/);
     assert.match(detail, /FIELD_STAFF_HIDDEN_CLAIM_TABS/);
     assert.match(detail, /office-inspection-reminder/);
@@ -197,9 +201,35 @@ describe('field-staff-claim-view lock', () => {
     assert.doesNotMatch(fieldBlock, /Sözleşmeler/);
     const officeBlock = detail.slice(detail.indexOf('{!isFieldStaff && ('));
     assert.match(officeBlock, /ofis-saha-tespit/);
-    assert.match(officeBlock, /FieldInspectionPhotosPanel/);
-    assert.match(officeBlock, /IletisimGunluguPanel/);
-    assert.match(officeBlock, /Tespit Fotoğrafları/);
+    const officeSaha = officeBlock.slice(
+      officeBlock.indexOf('data-testid="ofis-saha-tespit"'),
+      officeBlock.indexOf("canViewFinancials && activeGroup !== 'finans'"),
+    );
+    assert.doesNotMatch(officeSaha, /FieldInspectionPhotosPanel/);
+    assert.doesNotMatch(officeSaha, /IletisimGunluguPanel/);
+    const raporlar = officeBlock.slice(
+      officeBlock.indexOf("activeGroup === 'raporlar'"),
+      officeBlock.indexOf("activeGroup === 'evraklar'"),
+    );
+    assert.match(raporlar, /RaporlarTespitBlok/);
+    assert.match(raporlar, /OnarimRaporuTab/);
+    const tespitBlok = read('../app/panel/hasar-dosyalari/[id]/_components/tabs/RaporlarTespitBlok.tsx');
+    assert.match(tespitBlok, /RaporlarJumpStrip/);
+    assert.match(tespitBlok, /Tespit Resimleri/);
+    assert.match(tespitBlok, /raporlar-atlama-tespit-resimleri/);
+    assert.match(tespitBlok, /FieldInspectionPhotosPanel/);
+    assert.match(tespitBlok, /IletisimGunluguPanel/);
+    assert.match(tespitBlok, /Tespit Notları/);
+    assert.doesNotMatch(tespitBlok, /Tespit resimlerini incele/);
+    assert.doesNotMatch(tespitBlok, /tespit-resimlerini-incele/);
+    assert.match(tespitBlok, /icon=\{ImagePlus\}/);
+    assert.match(tespitBlok, /SmartMeasureList/);
+    const onarimTab = read('../app/panel/hasar-dosyalari/[id]/_components/tabs/OnarimRaporuTab.tsx');
+    assert.match(onarimTab, /raporlar-onarim/);
+    assert.match(onarimTab, /raporlar-revizyon/);
+    assert.match(onarimTab, /max-h-\[min\(32rem,55vh\)\]/);
+    const reportPage = read('../app/panel/hasar-dosyalari/[id]/onarim-raporu/[reportId]/page.tsx');
+    assert.match(reportPage, /bg-slate-50 px-5 py-3/);
     assert.doesNotMatch(officeBlock, /Tespit Yapıldı Olarak İşaretle/);
     assert.doesNotMatch(officeBlock, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
   });
@@ -211,6 +241,7 @@ describe('field-staff-claim-view lock', () => {
     assert.match(photos, /entity-documents\/\$\{id\}\/file|entityDocumentFileUrl/);
     assert.match(photos, /AuthBlobImg|createObjectURL/);
     assert.match(photos, /h-36 w-36/);
+    assert.match(photos, /PhotoLightbox|Önceki/);
     assert.match(photos, /Tespit Fotoğrafı/);
     assert.match(photos, /saha-tespit-fotograflari/);
     assert.match(photos, /capture="environment"/);

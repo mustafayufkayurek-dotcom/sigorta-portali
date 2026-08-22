@@ -7,5 +7,8 @@ echo "=== Hasar rapor revizyon kilit ==="
 cd "$REPO_ROOT"
 node --experimental-strip-types --test \
   apps/backend/src/modules/repair-reports/repair-report-revise.lock.spec.ts \
-  apps/web/src/app/panel/hasar-dosyalari/onarim-raporu-is-tanimi.lock.spec.ts
+  apps/web/src/app/panel/hasar-dosyalari/onarim-raporu-is-tanimi.lock.spec.ts \
+  apps/web/src/app/panel/hasar-dosyalari/vendor-fiyat-hafizasi.lock.spec.ts \
+  apps/web/src/components/panel/ortak-dosya-kabugu.lock.spec.ts \
+  apps/web/src/utils/field-staff-claim-view.lock.spec.ts
 echo "=== Hasar rapor revizyon kilit: PASS ==="

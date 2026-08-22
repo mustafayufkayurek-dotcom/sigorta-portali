@@ -46,10 +46,13 @@ describe('ortak dosya kabuğu LOCK', () => {
     assert.doesNotMatch(acilStrip, /ring-2 ring-white/);
   });
 
-  it('sekme şeridi Hasar hap görünümünden gelir', () => {
+  it('sekme şeridi Hasar çizgi sekmesinden gelir', () => {
     assert.match(hasarPage, /PanelPillTabs/);
-    assert.match(acilPage, /PanelPillTabs/);
     assert.doesNotMatch(acilPage, /bg-blue-50 text-blue-700'\s*:\s*'text-slate-500/);
+    const tabs = read('./PanelPillTabs.tsx');
+    assert.match(tabs, /border-b-2/);
+    assert.match(tabs, /border-brand-700/);
+    assert.doesNotMatch(tabs, /rounded-xl bg-slate-100 p-1 shadow-sm/);
   });
 
   it('durum rozeti iki ekranda da Dosya Bilgileri satırındadır', () => {

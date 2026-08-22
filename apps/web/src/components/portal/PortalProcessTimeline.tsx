@@ -11,6 +11,7 @@ import {
 import { getAccessToken } from '@/utils/auth-session';
 import { getReportImageStreamUrl } from '@/utils/upload-url';
 import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 import { uploadsFileUrl } from '@/utils/protected-image';
 import { reportImageCategoryLabel } from '@/utils/quick-repair-damage-types';
 
@@ -66,7 +67,7 @@ export default function PortalProcessTimeline({
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [responsibleRole, setResponsibleRole] = useState<string | null>(null);
   const [photos, setPhotos] = useState<GalleryItem[]>([]);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -255,11 +256,11 @@ export default function PortalProcessTimeline({
           <p className="text-sm text-slate-400 text-center py-6">Henüz yüklenmiş görsel yok</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {photos.map((photo) => (
+            {photos.map((photo, idx) => (
               <button
                 key={photo.id}
                 type="button"
-                onClick={() => setPreviewUrl(photo.url)}
+                onClick={() => setPreviewIndex(idx)}
                 className="group relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square"
               >
                 <AuthBlobImg
@@ -309,22 +310,15 @@ export default function PortalProcessTimeline({
         )}
       </div>
 
-      {previewUrl && (
-        <div
-          className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setPreviewUrl(null)}
-          onKeyDown={(e) => e.key === 'Escape' && setPreviewUrl(null)}
-          role="presentation"
-        >
-          <div onClick={(e) => e.stopPropagation()} className="max-h-[90vh] max-w-full">
-            <AuthBlobImg
-              url={previewUrl}
-              alt="Önizleme"
-              className="max-h-[90vh] max-w-full rounded-lg shadow-2xl object-contain"
-            />
-          </div>
-        </div>
-      )}
+      {previewIndex !== null && photos[previewIndex] ? (
+        <PhotoLightbox
+          srcs={photos.map((p) => p.url)}
+          index={previewIndex}
+          onIndex={setPreviewIndex}
+          onClose={() => setPreviewIndex(null)}
+          alt={photos[previewIndex]?.label ?? 'Önizleme'}
+        />
+      ) : null}
     </div>
   );
 }

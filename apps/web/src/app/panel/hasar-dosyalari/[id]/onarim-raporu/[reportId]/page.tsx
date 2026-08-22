@@ -2,6 +2,8 @@
 
 import { API, authHeader, authAxios, ensureSessionBeforeMutation } from '@/utils/api';
 import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { createPortal } from 'react-dom';
+import { Check, X } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toTitleCaseTR, formatDisplayLabel, resolveClaimIhbarKonusu, formatHasarAdresi } from '@/utils/text-helpers';
@@ -119,8 +121,8 @@ function readMetrajDetectionScope(metrajData: unknown): string {
   return typeof scope === 'string' ? normalizeLocationLabel(scope) : '';
 }
 
-function sortReportItems(items: any[]): any[] {
-  return [...items].sort((a, b) => rowSortKey(a).localeCompare(rowSortKey(b), 'tr'));
+function sortReportItems(items: any[] | null | undefined): any[] {
+  return [...(Array.isArray(items) ? items : [])].sort((a, b) => rowSortKey(a).localeCompare(rowSortKey(b), 'tr'));
 }
 
 function rowStateSortKey(row: RowState & { workGroupId?: string }, workGroups: any[]): string {
@@ -288,12 +290,12 @@ function IconChevronDown({ className = 'w-3.5 h-3.5' }: { className?: string }) 
 
 function SectionCard({ title, children, action, id }: { title: string; children: React.ReactNode; action?: React.ReactNode; id?: string }) {
   return (
-    <div id={id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-slate-100 pb-2">
+    <div id={id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-slate-50 px-5 py-3 border-b border-slate-100">
         <h4 className="shrink-0 text-sm font-semibold text-slate-700">{title}</h4>
         {action}
       </div>
-      {children}
+      <div className="p-5">{children}</div>
     </div>
   );
 }
@@ -1529,6 +1531,15 @@ function MetrajHesaplamaModal({
   );
 }
 
+function sameWorkLabel(a: string, b: string): boolean {
+  return a.trim().toLocaleLowerCase('tr') === b.trim().toLocaleLowerCase('tr');
+}
+
+function findExistingSubGroup(subGroups: any[], name: string): any | undefined {
+  const needle = normalizeLocationLabel(name);
+  return subGroups.find((s: any) => sameWorkLabel(String(s.name ?? s.id ?? ''), needle));
+}
+
 // ─── İş Tanımı Seçici (inline yeni ekleme destekli) ──────────────────────────
 function WorkDefinitionSelector({
   value,
@@ -1569,6 +1580,14 @@ function WorkDefinitionSelector({
   const commit = async () => {
     const trimmed = normalizeLocationLabel(newVal);
     if (!trimmed || !workGroupId) { setAddingNew(false); setNewVal(''); return; }
+    const existing = findExistingSubGroup(subGroups, trimmed);
+    if (existing) {
+      onNotify?.('warning', 'Bu iş tanımı zaten tanımlı. Yeni kayıt açılmaz; listeden seçildi.');
+      onSelect(normalizeLocationLabel(existing.name ?? trimmed), existing.unitType ?? existing.defaultUnit);
+      setAddingNew(false);
+      setNewVal('');
+      return;
+    }
     setSaving(true);
     try {
       const result = await onAddNew(trimmed, workGroupId);
@@ -1585,6 +1604,37 @@ function WorkDefinitionSelector({
     setAddingNew(false);
     setNewVal('');
   };
+
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 220 });
+
+  const placeMenu = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setMenuPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 220) });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    placeMenu();
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onScroll = () => placeMenu();
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [open]);
 
   if (addingNew) {
     return (
@@ -1608,42 +1658,65 @@ function WorkDefinitionSelector({
     );
   }
 
+  const selectedLabel = value ? formatDisplayLabel(value) : '— İş Tanımı Seç —';
+
   return (
-    <div className="flex min-w-0 items-center gap-0.5">
-      <select
+    <div ref={wrapRef} className="relative min-w-0 w-full">
+      <button
+        type="button"
         data-cell={dataCell}
-        className={`${className ?? ''} min-w-0 flex-1`}
-        value={value}
+        className={`${className ?? ''} min-w-0 w-full text-left truncate`}
         tabIndex={tabIndex}
         onFocus={onFocus}
         onBlur={onBlur}
-        onKeyDown={onKeyDown}
-        onChange={(e) => {
-          if (e.target.value === '__add_new__') {
-            setAddingNew(true);
-          } else {
-            const sg = subGroups.find((s: any) => (s.name ?? s.id) === e.target.value);
-            onSelect(normalizeLocationLabel(e.target.value), sg?.unitType ?? sg?.defaultUnit);
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === ' ') {
+            e.preventDefault();
+            setOpen(true);
           }
+          if (e.key === 'Escape') setOpen(false);
+          onKeyDown?.(e);
         }}
+        onClick={() => setOpen((v) => !v)}
       >
-        <option value="">— İş Tanımı Seç —</option>
-        {subGroups.map((sg: any) => (
-          <option key={sg.id} value={sg.name ?? sg.id}>{formatDisplayLabel(sg.name)}</option>
-        ))}
-        <option value="__add_new__">+ Yeni İş Tanımı Ekle</option>
-      </select>
-      <button
-        type="button"
-        title="Yeni İş Tanımı Ekle"
-        aria-label="Yeni İş Tanımı Ekle"
-        disabled={!workGroupId}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => setAddingNew(true)}
-        className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700 disabled:opacity-40"
-      >
-        +
+        {selectedLabel}
       </button>
+      {open && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed z-[90] max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-white py-0.5 shadow-lg"
+          style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width }}
+        >
+          <button
+            type="button"
+            className="block w-full px-2 py-1.5 text-left text-xs text-slate-400 hover:bg-slate-50"
+            onClick={() => { onSelect(''); setOpen(false); }}
+          >
+            — İş Tanımı Seç —
+          </button>
+          {subGroups.map((sg: any) => (
+            <button
+              type="button"
+              key={sg.id}
+              className={`block w-full px-2 py-1.5 text-left text-xs hover:bg-slate-50 ${(sg.name ?? sg.id) === value ? 'bg-slate-50 font-medium' : 'text-slate-800'}`}
+              onClick={() => {
+                onSelect(normalizeLocationLabel(sg.name ?? sg.id), sg?.unitType ?? sg?.defaultUnit);
+                setOpen(false);
+              }}
+            >
+              {formatDisplayLabel(sg.name)}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="block w-full border-t border-red-100 px-2 py-1.5 text-left text-xs font-semibold text-status-danger hover:bg-red-50"
+            onClick={() => { setOpen(false); setAddingNew(true); }}
+          >
+            + Yeni İş Kalemi Ekle
+          </button>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
@@ -1808,6 +1881,13 @@ function WorkGroupSelector({
   const commit = async () => {
     const trimmed = toTitleCaseTR(newVal.trim());
     if (!trimmed) { setAddingNew(false); setNewVal(''); return; }
+    const existing = workGroups.find((w: any) => sameWorkLabel(String(w.name ?? ''), trimmed));
+    if (existing) {
+      onSelect(existing.id);
+      setAddingNew(false);
+      setNewVal('');
+      return;
+    }
     setSaving(true);
     try {
       const result = await onAddNew(trimmed);
@@ -2036,6 +2116,10 @@ function looksLikeCalcFormula(raw: string): boolean {
   return /[+\-*/()]/.test(raw) && !/^-?\d+([.,]\d+)?$/.test(raw.trim());
 }
 
+function formulaForEval(raw: string): string {
+  return raw.replace(/,/g, '.');
+}
+
 function CalcInput({
   value,
   onChange,
@@ -2043,6 +2127,7 @@ function CalcInput({
   className,
   placeholder,
   amountFormat,
+  shadowCalc,
   'data-cell': dataCell,
   tabIndex,
   onFocus,
@@ -2055,6 +2140,8 @@ function CalcInput({
   placeholder?: string;
   /** Satış/maliyet: yazarken binlik nokta (15.600) göster */
   amountFormat?: boolean;
+  /** Miktar: 2+ yazınca hücre altında gölge satırda hesap */
+  shadowCalc?: boolean;
   'data-cell'?: string;
   tabIndex?: number;
   onFocus?: () => void;
@@ -2062,7 +2149,12 @@ function CalcInput({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const [shadowOpen, setShadowOpen] = useState(false);
+  const [formula, setFormula] = useState('');
+  const [shadowPos, setShadowPos] = useState({ top: 0, left: 0, width: 240 });
   const inputRef = useRef<HTMLInputElement>(null);
+  const shadowRef = useRef<HTMLInputElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const committingRef = useRef(false);
   const isFormula = looksLikeCalcFormula(value);
 
@@ -2072,6 +2164,29 @@ function CalcInput({
     if (!amountFormat || looksLikeCalcFormula(base)) return base;
     const n = parseFloat(base);
     return Number.isFinite(n) ? numberToTrAmountInput(n) : base;
+  };
+
+  const placeShadow = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setShadowPos({
+      top: r.bottom + 4,
+      left: r.left,
+      width: Math.max(r.width + 88, 320),
+    });
+  };
+
+  const openShadow = (initial: string) => {
+    setFormula(initial);
+    setShadowOpen(true);
+    setDraft(toAmountDraft(value));
+    placeShadow();
+    requestAnimationFrame(() => {
+      shadowRef.current?.focus();
+      const el = shadowRef.current;
+      if (el) el.setSelectionRange(initial.length, initial.length);
+    });
   };
 
   const handleFocus = () => {
@@ -2094,7 +2209,7 @@ function CalcInput({
     if (committingRef.current) return;
     committingRef.current = true;
     setEditing(false);
-    const evaluated = evaluateExpression(raw);
+    const evaluated = evaluateExpression(formulaForEval(raw));
     let final: string;
     if (evaluated !== null) {
       final = String(evaluated);
@@ -2111,12 +2226,29 @@ function CalcInput({
     });
   };
 
+  const commitShadow = () => {
+    const evaluated = evaluateExpression(formulaForEval(formula));
+    if (evaluated === null) return false;
+    setShadowOpen(false);
+    setFormula('');
+    commit(String(evaluated));
+    return true;
+  };
+
+  const closeShadow = () => {
+    setShadowOpen(false);
+    setFormula('');
+    setEditing(false);
+    setDraft(toAmountDraft(value));
+  };
+
   const handleBlur = () => {
-    if (committingRef.current || !editing) return;
+    if (committingRef.current || !editing || shadowOpen) return;
     commit(draft);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (shadowOpen) return;
     if (e.key === 'Enter' || e.key === 'Tab') {
       commit(draft);
       if (onKeyDown) {
@@ -2131,6 +2263,17 @@ function CalcInput({
     onKeyDown?.(e);
   };
 
+  useEffect(() => {
+    if (!shadowOpen) return;
+    const onScroll = () => placeShadow();
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [shadowOpen]);
+
   const idleDisplay =
     amountFormat && value && !looksLikeCalcFormula(value)
       ? (() => {
@@ -2138,11 +2281,12 @@ function CalcInput({
           return Number.isFinite(n) ? numberToTrAmountInput(n) : value;
         })()
       : value;
-  const displayValue = editing ? draft : idleDisplay;
+  const displayValue = editing && !shadowOpen ? draft : idleDisplay;
+  const shadowPreview = evaluateExpression(formulaForEval(formula));
 
   return (
-    <div className="relative flex items-center w-full min-h-11">
-      {isFormula && !editing && (
+    <div ref={wrapRef} className="relative flex items-center w-full min-h-11">
+      {isFormula && !editing && !shadowOpen && (
         <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] font-bold text-indigo-400 bg-indigo-50 rounded px-0.5 leading-none select-none">fx</span>
       )}
       <input
@@ -2158,6 +2302,10 @@ function CalcInput({
         onBlur={handleBlur}
         onChange={(e) => {
           const next = e.target.value;
+          if (shadowCalc && looksLikeCalcFormula(next)) {
+            openShadow(next);
+            return;
+          }
           if (amountFormat && !looksLikeCalcFormula(next) && !/[+\-*/()]/.test(next)) {
             setDraft(formatTrAmountInput(next));
           } else {
@@ -2166,6 +2314,61 @@ function CalcInput({
         }}
         onKeyDown={handleKeyDown}
       />
+      {shadowOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed z-[80] rounded-md border border-slate-200 bg-white px-2 py-1.5 shadow-lg"
+          style={{ top: shadowPos.top, left: shadowPos.left, width: shadowPos.width }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold text-slate-400 shrink-0">fx</span>
+            <input
+              ref={shadowRef}
+              type="text"
+              className="min-w-0 flex-1 rounded border border-slate-200 px-1.5 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-brand-400"
+              value={formula}
+              aria-label="Miktar hesabı"
+              onChange={(e) => setFormula(e.target.value)}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (!commitShadow()) return;
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  closeShadow();
+                }
+              }}
+              onBlur={() => {
+                if (!commitShadow()) closeShadow();
+              }}
+            />
+            <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-700">
+              {shadowPreview !== null ? `= ${shadowPreview}` : '= …'}
+            </span>
+            <button
+              type="button"
+              title="Onayla"
+              aria-label="Onayla"
+              disabled={shadowPreview === null}
+              onClick={() => { void commitShadow(); }}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-40"
+            >
+              <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              title="İptal"
+              aria-label="İptal"
+              onClick={closeShadow}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-status-danger"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
@@ -3338,7 +3541,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       />
                       )
                     ) : (
-                      <span className="px-2 text-xs text-slate-400 block py-3">Önce İş Grubu seçin</span>
+                      <span className="px-2 text-xs font-medium text-status-danger block py-3">Önce İş Grubu seçin</span>
                     )
                   ) : (
                     <span className="px-2 text-xs font-medium text-slate-800 block py-3">{row.jobDescription ? formatDisplayLabel(row.jobDescription) : '—'}</span>
@@ -3383,6 +3586,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       <div className="flex items-center w-full">
                         <CalcInput
                           data-cell={`${rowIdx}-quantity`}
+                          shadowCalc
                           className={`${cellCls(rowIdx, 'quantity', true)} text-right flex-1`}
                           value={row.quantity}
                           onChange={(v) => updateRow(row._id, 'quantity', v)}
@@ -3621,7 +3825,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               {/* İş Tanımı — sub-group varsa dropdown + inline yeni ekleme */}
               <td className={tdCls('new', 'jobDescription')}>
                 {!addingRow.workGroupId ? (
-                  <span className="px-2 text-xs text-slate-400 block py-3">Önce İş Grubu seçin</span>
+                  <span className="px-2 text-xs font-medium text-status-danger block py-3">Önce İş Grubu seçin</span>
                 ) : loadingSubGroupIds.has(addingRow.workGroupId) ? (
                   <span className="px-2 text-xs text-slate-400 block py-3">Yükleniyor...</span>
                 ) : (
@@ -3664,6 +3868,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   <div className="flex items-center w-full">
                     <CalcInput
                       data-cell="new-quantity"
+                      shadowCalc
                       className={`${cellCls('new', 'quantity', true)} text-right flex-1`}
                       value={addingRow.quantity}
                       onChange={(v) => { setAddingRow((p) => ({ ...p, quantity: v })); setAddingDirty(true); }}
@@ -5694,8 +5899,8 @@ export default function RepairReportPage() {
       )}
 
       {/* Dosya Bilgileri — Gizle/Göster; gizliyken aksiyonlar Dosya Akışı altında */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-        <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${dosyaBilgiOpen ? 'mb-4 border-b border-slate-100 pb-2' : ''}`}>
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-slate-50 px-5 py-3 ${dosyaBilgiOpen ? 'border-b border-slate-100' : ''}`}>
           <div className="flex items-center gap-3 min-w-0">
             <h4 className="shrink-0 text-sm font-semibold text-slate-700">Dosya Bilgileri</h4>
             <button
@@ -5713,7 +5918,7 @@ export default function RepairReportPage() {
           )}
         </div>
         {dosyaBilgiOpen && (
-          <>
+          <div className="p-5">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
                 { label: 'Sigorta Şirketi', value: report.claimFile?.insuranceCompany?.name },
@@ -5758,7 +5963,7 @@ export default function RepairReportPage() {
                 )}
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 

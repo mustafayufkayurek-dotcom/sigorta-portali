@@ -2069,7 +2069,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               </Link>
             )}
             <ToastProvider>
-              <ErrorBoundary>
+              <ErrorBoundary key={pathname}>
                 <div className={isAdminContentPath(pathname) ? 'min-w-0 overflow-x-clip' : undefined}>
                   {children}
                 </div>

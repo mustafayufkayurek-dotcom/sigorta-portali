@@ -13,6 +13,7 @@ import {
 import { FinansRaporOzeti } from './_components/FinansRaporOzeti';
 import { FinansTab } from './_components/tabs/FinansTab';
 import { OnarimRaporuTab } from './_components/tabs/OnarimRaporuTab';
+import { RaporlarTespitBlok } from './_components/tabs/RaporlarTespitBlok';
 import { EvraklarTab } from './_components/tabs/EvraklarTab';
 import { IletisimGunluguPanel } from './_components/tabs/IletisimGunluguPanel';
 import { TakipTab } from './_components/tabs/TakipTab';
@@ -27,7 +28,6 @@ import {
 } from './_components/financial-visibility-config';
 import { toTitleCaseTR, resolveClaimIhbarKonusu } from '@/utils/text-helpers';
 import { claimListFileNo } from '@/utils/claim-list-column-fields';
-import { SmartMeasureList } from '@/components/smart-measures/SmartMeasureList';
 import { ClaimSurveyUnsentBanner } from '@/components/survey/ClaimSurveyUnsentBanner';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
@@ -1561,9 +1561,10 @@ export default function ClaimFileDetailPage() {
   const aksiyonParam = searchParams.get('aksiyon');
   const grupParam = searchParams.get('grup');
   const altParam = searchParams.get('alt');
+  const modeParam = searchParams.get('mode');
   /** Operasyon → Onay Talep Et (72s): doğrudan raporlar grubuna */
   const initialGroup: GroupTab =
-    aksiyonParam === 'onay-talep'
+    aksiyonParam === 'onay-talep' || modeParam === 'edit'
       ? 'raporlar'
       : openEdit || focusSigortali
         ? 'genel-bilgiler'
@@ -1708,10 +1709,10 @@ export default function ClaimFileDetailPage() {
             const inspection = fieldStaffInspectionStatus(claim);
             return (
               <section
-                className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5"
+                className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white px-4 py-3 shadow-sm ring-1 ring-slate-900/[0.03] sm:px-5"
                 data-testid="ofis-saha-tespit"
               >
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <h3 className="text-sm font-semibold text-slate-950">Saha Tespit</h3>
                     <span
@@ -1719,22 +1720,19 @@ export default function ClaimFileDetailPage() {
                     >
                       {inspection.label}
                     </span>
+                    {inspection.done ? (
+                      <p className="text-[11px] text-slate-500">Tespit: {inspection.doneAtLabel}</p>
+                    ) : (
+                      <p className="text-[11px] text-slate-500">Saha tespiti bekleniyor</p>
+                    )}
                   </div>
-                  {inspection.done ? (
-                    <p className="text-[11px] text-slate-500">Tespit: {inspection.doneAtLabel}</p>
-                  ) : (
-                    <p className="text-[11px] text-slate-500">Saha tespiti bekleniyor</p>
-                  )}
-                </div>
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <div id="saha-foto" className="scroll-mt-4">
-                    <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Fotoğrafları</h4>
-                    <FieldInspectionPhotosPanel claimId={id!} />
-                  </div>
-                  <div id="saha-not" className="scroll-mt-4">
-                    <h4 className="mb-2 text-xs font-semibold text-slate-700">Tespit Notları</h4>
-                    <IletisimGunluguPanel claimId={id!} variant="field" />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveGroup('raporlar')}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Raporlar’da tespit resmi ve not
+                  </button>
                 </div>
               </section>
             );
@@ -1751,7 +1749,7 @@ export default function ClaimFileDetailPage() {
             </div>
           )}
 
-          <div className="sticky top-0 z-20 -mx-1 px-1 py-2 mb-4 bg-[#f8fafc]/95 backdrop-blur-sm">
+          <div className="sticky top-0 z-20 -mx-1 mb-4 bg-[#f8fafc]/95 px-1 backdrop-blur-sm">
             <PanelPillTabs
               tabs={GROUP_TABS.filter((tab) => {
                 if (tab.id === 'finans' && !canViewFinancials) return false;
@@ -1774,8 +1772,7 @@ export default function ClaimFileDetailPage() {
           )}
           {activeGroup === 'raporlar' && (
             <div className="space-y-3">
-              {/* SMART_TAKEOFF_UI_OFF: Metraj Koşumu paneli ürün kararıyla gizlendi (hata riski). */}
-              <SmartMeasureList claimFileId={id!} showEmpty />
+              <RaporlarTespitBlok claimId={id!} />
               <OnarimRaporuTab claimId={id!} />
             </div>
           )}

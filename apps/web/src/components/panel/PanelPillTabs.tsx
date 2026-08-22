@@ -12,8 +12,8 @@ export type PanelPillTab<TId extends string = string> = {
 };
 
 /**
- * Dosya ekranı sekme şeridi — Hasar dosya kabuğundaki hap görünümü.
- * Acil alt bölümleri de bu bileşeni kullanır; iki departmanda tek sekme dili.
+ * Dosya ekranı sekme şeridi — IBM Carbon / Fluent çizgi sekmesi.
+ * Hap kutu yok; seçili sekme alt çizgi ile okunur.
  */
 export function PanelPillTabs<TId extends string = string>({
   tabs,
@@ -32,7 +32,7 @@ export function PanelPillTabs<TId extends string = string>({
 }) {
   return (
     <div
-      className={`flex w-fit max-w-full flex-wrap gap-1 rounded-xl bg-slate-100 p-1 shadow-sm ${className}`.trim()}
+      className={`flex w-full max-w-full flex-wrap items-end gap-0 border-b border-slate-200 ${className}`.trim()}
       role="tablist"
       data-testid={testId}
     >
@@ -46,10 +46,10 @@ export function PanelPillTabs<TId extends string = string>({
             role="tab"
             aria-selected={active}
             onClick={() => onSelect(tab.id)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+            className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-sm font-medium transition-colors ${
               active
-                ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
-                : 'text-slate-500 hover:text-slate-700'
+                ? '-mb-px border-brand-700 text-slate-900'
+                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800'
             }`}
             data-testid={tabTestId?.(tab.id)}
           >
@@ -58,7 +58,7 @@ export function PanelPillTabs<TId extends string = string>({
               : Icon
                 ? (
                   <Icon
-                    className={`h-3.5 w-3.5 ${active ? 'text-slate-700' : 'text-slate-400'}`}
+                    className={`h-3.5 w-3.5 ${active ? 'text-brand-700' : 'text-slate-400'}`}
                     strokeWidth={1.75}
                   />
                 )

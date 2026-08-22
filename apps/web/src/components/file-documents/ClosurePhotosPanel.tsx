@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { ImagePlus, Trash2, X } from 'lucide-react';
+import { ImagePlus, Trash2 } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
-import { entityDocumentFileUrl, fetchAuthImageBlob } from '@/utils/protected-image';
+import { entityDocumentFileUrl } from '@/utils/protected-image';
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 
 type ClosurePhotoDoc = {
   id: string;
@@ -36,7 +37,7 @@ export default function ClosurePhotosPanel({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const onCountRef = useRef(onPhotoCountChange);
@@ -121,14 +122,9 @@ export default function ClosurePhotosPanel({
     }
   };
 
-  const openPreview = async (docId: string) => {
-    try {
-      const blob = await fetchAuthImageBlob(entityDocumentFileUrl(docId, 'full'));
-      if (blob) setPreviewUrl(URL.createObjectURL(blob));
-      else setError('Önizleme açılamadı');
-    } catch {
-      setError('Önizleme açılamadı');
-    }
+  const openPreview = (docId: string) => {
+    const idx = docs.findIndex((d) => d.id === docId);
+    if (idx >= 0) setPreviewIndex(idx);
   };
 
   const done = docs.length > 0;
@@ -236,7 +232,7 @@ export default function ClosurePhotosPanel({
             >
               <button
                 type="button"
-                onClick={() => void openPreview(doc.id)}
+                onClick={() => openPreview(doc.id)}
                 className="block h-full w-full"
                 title={doc.fileName}
               >
@@ -262,34 +258,15 @@ export default function ClosurePhotosPanel({
         </ul>
       )}
 
-      {previewUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setPreviewUrl(null)}
-        >
-          <div
-            className="relative max-h-[90vh] max-w-3xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setPreviewUrl(null)}
-              className="absolute -right-2 -top-2 rounded-full bg-white p-1 shadow"
-              aria-label="Kapat"
-            >
-              <X className="h-4 w-4 text-slate-700" />
-            </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="Dosya Kapanış Resmi"
-              className="max-h-[85vh] max-w-full rounded-lg object-contain"
-            />
-          </div>
-        </div>
-      )}
+      {previewIndex !== null && docs[previewIndex] ? (
+        <PhotoLightbox
+          srcs={docs.map((d) => entityDocumentFileUrl(d.id, 'full'))}
+          index={previewIndex}
+          onIndex={setPreviewIndex}
+          onClose={() => setPreviewIndex(null)}
+          alt={docs[previewIndex]?.fileName ?? 'Dosya Kapanış Resmi'}
+        />
+      ) : null}
     </div>
   );
 }

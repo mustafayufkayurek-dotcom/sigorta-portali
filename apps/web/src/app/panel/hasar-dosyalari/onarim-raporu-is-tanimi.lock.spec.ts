@@ -19,10 +19,29 @@ describe('onarim-raporu iş tanımı LOCK', () => {
     assert.match(page, /function WorkDefinitionSelector/);
   });
 
-  it('listeden ve + düğmesinden yeni iş tanımı eklenir', () => {
-    assert.match(page, /\+ Yeni İş Tanımı Ekle/);
-    assert.match(page, /aria-label="Yeni İş Tanımı Ekle"/);
+  it('listeden yeni iş kalemi eklenir; satırda + yok', () => {
+    const selector = page.slice(
+      page.indexOf('function WorkDefinitionSelector'),
+      page.indexOf('function DetectionScopeSelector'),
+    );
+    assert.match(selector, /\+ Yeni İş Kalemi Ekle/);
+    assert.match(selector, /text-status-danger/);
     assert.match(page, /onAddNew=\{createSubGroup\}/);
+    assert.doesNotMatch(selector, /aria-label="Yeni İş Tanımı Ekle"/);
+  });
+
+  it('iş grubu yokken uyarı kırmızı durur', () => {
+    assert.match(page, /text-status-danger block py-3">Önce İş Grubu seçin/);
+  });
+
+  it('tanımlı iş tanımı yeniden eklenmez', () => {
+    assert.match(page, /Bu iş tanımı zaten tanımlı/);
+  });
+
+  it('miktar hücresinde gölge hesapta onay ve iptal vardır', () => {
+    assert.match(page, /shadowCalc/);
+    assert.match(page, /aria-label="Onayla"/);
+    assert.match(page, /aria-label="İptal"/);
   });
 
   it('kayıt iş grubu alt grup API’sine gider; hata yutulmaz', () => {

@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { ImagePlus, Trash2, X } from 'lucide-react';
+import { ImagePlus, Trash2 } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
-import { entityDocumentFileUrl, fetchAuthImageBlob } from '@/utils/protected-image';
+import { entityDocumentFileUrl } from '@/utils/protected-image';
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 
 type PhotoDoc = {
   id: string;
@@ -43,7 +44,7 @@ export function FieldInspectionPhotosPanel({
   const [docs, setDocs] = useState<PhotoDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -125,14 +126,9 @@ export function FieldInspectionPhotosPanel({
     }
   };
 
-  const openPreview = async (docId: string) => {
-    try {
-      const blob = await fetchAuthImageBlob(entityDocumentFileUrl(docId, 'full'));
-      if (blob) setPreviewUrl(URL.createObjectURL(blob));
-      else reportCaughtError(new Error('empty'), 'Önizleme açılamadı.');
-    } catch (err) {
-      reportCaughtError(err, 'Önizleme açılamadı.');
-    }
+  const openPreview = (docId: string) => {
+    const idx = docs.findIndex((d) => d.id === docId);
+    if (idx >= 0) setPreviewIndex(idx);
   };
 
   return (
@@ -229,7 +225,7 @@ export function FieldInspectionPhotosPanel({
             >
               <button
                 type="button"
-                onClick={() => void openPreview(doc.id)}
+                onClick={() => openPreview(doc.id)}
                 className="block h-full w-full"
                 title={doc.fileName}
               >
@@ -253,30 +249,14 @@ export function FieldInspectionPhotosPanel({
         </ul>
       )}
 
-      {previewUrl ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setPreviewUrl(null)}
-        >
-          <div className="relative max-h-[90vh] max-w-3xl" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => setPreviewUrl(null)}
-              className="absolute -right-2 -top-2 rounded-full bg-white p-1 shadow"
-              aria-label="Kapat"
-            >
-              <X className="h-4 w-4 text-slate-700" />
-            </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="Tespit Fotoğrafı"
-              className="max-h-[85vh] max-w-full rounded-xl object-contain"
-            />
-          </div>
-        </div>
+      {previewIndex !== null && docs[previewIndex] ? (
+        <PhotoLightbox
+          srcs={docs.map((d) => entityDocumentFileUrl(d.id, 'full'))}
+          index={previewIndex}
+          onIndex={setPreviewIndex}
+          onClose={() => setPreviewIndex(null)}
+          alt={docs[previewIndex]?.fileName ?? 'Tespit Fotoğrafı'}
+        />
       ) : null}
     </div>
   );

@@ -83,12 +83,15 @@ interface SmartMeasureListProps {
   claimFileId: string;
   refreshKey?: number;
   showEmpty?: boolean;
+  /** Dış kart varken ikinci çerçeve basılmaz */
+  embed?: boolean;
 }
 
 export function SmartMeasureList({
   claimFileId,
   refreshKey = 0,
   showEmpty = true,
+  embed = false,
 }: SmartMeasureListProps) {
   const [items, setItems] = useState<ElementRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,9 +177,13 @@ export function SmartMeasureList({
     }
   };
 
+  const frame = embed
+    ? 'overflow-hidden bg-white'
+    : 'overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm';
+
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+      <div className={embed ? 'px-4 py-3 text-sm text-slate-500' : 'rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500'}>
         Akıllı ölçümler yükleniyor…
       </div>
     );
@@ -185,7 +192,7 @@ export function SmartMeasureList({
   if (!items.length) {
     if (!showEmpty) return null;
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4">
+      <div className={embed ? 'px-4 py-4' : 'rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4'}>
         <p className="text-sm font-semibold text-slate-800">Akıllı Ölçümler</p>
         <p className="mt-1 text-xs text-slate-500">
           Henüz kayıt yok. Ölçüm mobil uygulamadan (Kamera ile Ölç) gelecek; web yalnızca görüntüler.
@@ -195,7 +202,7 @@ export function SmartMeasureList({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div className={frame}>
       <div className="border-b border-slate-100 px-4 py-3">
         <p className="text-sm font-semibold text-slate-800">Akıllı Ölçümler</p>
         <p className="text-xs text-slate-500">Ölçüm geçmişi korunur · silinmez</p>

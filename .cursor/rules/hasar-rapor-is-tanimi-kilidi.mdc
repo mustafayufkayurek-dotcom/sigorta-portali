@@ -12,13 +12,13 @@ alwaysApply: true
 ## Zorunlu
 
 1. `onarim-raporu/[reportId]/page.tsx` içinde `WorkDefinitionSelector`.
-2. Görünür ekleme: `+ Yeni İş Tanımı Ekle` **ve** satırdaki **+** düğmesi (`Yeni İş Tanımı Ekle`).
+2. Görünür ekleme: açılır listenin en altında kırmızı **+ Yeni İş Kalemi Ekle**. Satırda **+** düğmesi yok.
 3. Kayıt: `POST /work-groups/:id/sub-groups` (`createSubGroup`). Hata sessiz yutulmaz.
-4. İş grubu yokken: `Önce İş Grubu seçin` — tanım kutusu kilitli kalır, özellik silinmiş sayılmaz.
+4. İş grubu yokken: `Önce İş Grubu seçin` kırmızı — tanım kutusu kilitli kalır, özellik silinmiş sayılmaz.
 
 ## Yasak (açık onay yoksa)
 
-- `WorkDefinitionSelector` veya `+ Yeni İş Tanımı Ekle` kaldırmak
+- `WorkDefinitionSelector` veya listedeki **Yeni İş Kalemi Ekle** satırını kaldırmak
 - Yalnız ayarlar ekranından eklemeye zorlamak
 - `catch { /* ignore */ }` ile kayıt hatasını gizlemek
 
