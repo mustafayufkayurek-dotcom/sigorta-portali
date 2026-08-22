@@ -12,6 +12,7 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/emergency/acil-operation-timestamps.lock.spec.ts \
   apps/backend/src/modules/file-documents/matbu-insured-view.spec.ts \
   apps/backend/src/modules/surveys/surveys-closure.lock.spec.ts \
+  apps/backend/src/modules/surveys/survey-submit.rule.lock.spec.ts \
   apps/web/src/utils/acil-vendor-pay.lock.spec.ts \
   apps/web/src/utils/acil-finance-page-access.lock.spec.ts \
   apps/web/src/utils/acil-ana-musteri-haberlesme.lock.spec.ts \

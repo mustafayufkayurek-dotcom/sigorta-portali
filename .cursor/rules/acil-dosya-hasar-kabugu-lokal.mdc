@@ -21,6 +21,10 @@ alwaysApply: true
 - Tek **Operasyonu Başlat**; durum şeridi / 3 kolon / tekrarlayan aç düğmeleri yok (iş çekmecede).
 - Hasar tipi sekme şeridi yok; Dosya Bütçesi formu ana sayfada yok.
 - İş bitiminde dosya tedarikçisine hakediş; tarih-saat kayıtlı; finans ekranına düşer; **vade yok**.
+- Operasyon Acil listesinde **Ödeme Durumu** durur; personel gizleyemez.
+- Servis onayında yalnız *“Bu onay formunda hizmet bedeli yer almaz.”* Sigortalı onaylamadan kaçamaz (uyarı, yapışık Onayla, “Onay gerekli”).
+- Acil anket: **Acil Yardım Ekibi**; yıldız anlamı; logo+başlık ortada; gönderince dosyaya ve Anket Sonuçları’na düşer; olumsuzda **dosya sorumlusu açıklaması** zorunlu.
+- Dosyada **Konum Tespiti**; tedarikçi WhatsApp’ta pin + *“Konumu sigortalıdan teyit ediniz.”* Alış/satış/kâr gitmez.
 - Dört resmi işlem saati dosyada durur: **ihbar** (mail / `fileDate`), **işe başlama** (`workStartedAt`), **hizmet verilme** (`serviceDeliveredAt`), **kapanış** (`resolvedAt`). Detay ve kapanış PDF iskeleti bunları basar.
 - Hasar hakediş / 15-30 vade yoluna dokunulmaz.
 

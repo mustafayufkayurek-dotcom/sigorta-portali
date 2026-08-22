@@ -45,6 +45,7 @@ describe('survey closure UI lock', () => {
     assert.match(publicPage, /items-center/);
     assert.match(publicPage, /Kalite Kontrol Anket Formu/);
     assert.match(publicPage, /text-amber-400/);
+    assert.match(publicPage, /text-amber-500/);
     const greeting = publicPage.slice(publicPage.indexOf('Karşılama'));
     assert.match(greeting, /text-left/);
     assert.match(publicPage, /token === 'ornek'/);
@@ -63,6 +64,11 @@ describe('survey closure UI lock', () => {
     const evrak = read('../app/evrak/[token]/page.tsx');
     assert.match(evrak, /sigortali-onay-uyari/);
     assert.match(evrak, /beforeunload/);
+    assert.match(evrak, /Onay gerekli/);
+    assert.match(evrak, /sticky bottom-0/);
+    assert.match(evrak, /setLeaveWarn\(true\)/);
+    assert.match(evrak, /Onaya dön/);
+    assert.match(evrak, /Bu belgeyi onaylamanız gerekir/);
   });
 
   it('kapanış paneli faturaya kilitlenmez; WhatsApp link üretir', () => {

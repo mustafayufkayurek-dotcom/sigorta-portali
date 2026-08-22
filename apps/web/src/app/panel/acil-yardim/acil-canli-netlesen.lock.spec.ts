@@ -60,6 +60,25 @@ describe('acil canlı netleşen LOCK', () => {
     const workflow = readFileSync(join(here, '[id]/acil-workflow.ts'), 'utf8');
     assert.match(workflow, /Konumu sigortalıdan teyit ediniz/);
     assert.match(workflow, /latitude/);
+    const vendorStart = workflow.indexOf('export function buildVendorWhatsAppText');
+    const vendorEnd = workflow.indexOf('\n}\n\n/**', vendorStart);
+    assert.ok(vendorStart >= 0 && vendorEnd > vendorStart);
+    const vendorMsg = workflow.slice(vendorStart, vendorEnd + 2);
+    assert.ok(vendorMsg.length > 80);
+    assert.match(vendorMsg, /Dosya No:/);
+    assert.match(vendorMsg, /Hizmet:/);
+    assert.match(vendorMsg, /Sigortalı Telefon:/);
+    assert.match(vendorMsg, /VENDOR_LOCATION_CONFIRM_LINE/);
+    assert.doesNotMatch(vendorMsg, /Alış/);
+    assert.doesNotMatch(vendorMsg, /Satış/);
+    assert.doesNotMatch(vendorMsg, /kâr/i);
+    assert.doesNotMatch(vendorMsg, /formatTryAmount/);
+    const steps = readFileSync(
+      join(here, '../../../components/acil-operasyon-planlayicisi/planner-steps.tsx'),
+      'utf8',
+    );
+    assert.match(steps, /Dosya bilgilerini gönder/);
+    assert.match(steps, /vendorWhatsAppText/);
     assert.doesNotMatch(acilPage, /handleCloseAndFinance/);
     assert.match(acilPage, /openWhatsApp\(null, customerMsgPreview\)/);
     assert.match(

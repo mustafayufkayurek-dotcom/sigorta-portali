@@ -33,6 +33,10 @@ describe('acil tedarikçi ödemesi liste LOCK', () => {
     assert.match(ops, /acil-odeme-filtre/);
     assert.match(ops, /resolveAcilListVendorPaid/);
     assert.doesNotMatch(ops, /hasar: 'table-cols:operasyon-hasar-v12'/);
+    const picker = readFileSync(join(here, '../components/ui/TableColumnPicker.tsx'), 'utf8');
+    assert.match(picker, /alwaysVisible\?: boolean/);
+    assert.match(picker, /c\.id === id && c\.alwaysVisible/);
+    assert.match(picker, /locked = pinned \|\| Boolean\(col\.alwaysVisible\)/);
   });
 
   it('ödeme dosyadan sunucuya yazılır', () => {
