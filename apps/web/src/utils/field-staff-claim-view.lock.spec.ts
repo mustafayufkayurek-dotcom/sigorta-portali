@@ -177,15 +177,20 @@ describe('field-staff-claim-view lock', () => {
     assert.match(detail, /Tespit Notları/);
     assert.match(detail, /IletisimGunluguPanel/);
     assert.match(detail, /variant="field"/);
+    const notes = read('../app/panel/hasar-dosyalari/[id]/_components/tabs/IletisimGunluguPanel.tsx');
+    assert.match(notes, /tespit-notu-duzeltme/);
+    assert.match(notes, /field_correction/);
+    assert.match(notes, /Düzeltme/);
     assert.match(detail, /\{!isFieldStaff && \(/);
     assert.match(detail, /FIELD_STAFF_HIDDEN_CLAIM_TABS/);
     assert.match(detail, /office-inspection-reminder/);
     assert.match(detail, /ofis-saha-tespit/);
     // Ofis evrak yaşam döngüsü saha bloğunda olmamalı
     const fieldBlock = detail.slice(
-      detail.indexOf('{isFieldStaff && ('),
-      detail.indexOf('{!isFieldStaff && ('),
+      detail.indexOf('{/* Saha: ziyaret + foto + not'),
+      detail.indexOf('{!isFieldStaff && (', detail.indexOf('{/* Saha: ziyaret + foto + not')),
     );
+    assert.match(fieldBlock, /lg:grid-cols-2/);
     assert.doesNotMatch(fieldBlock, /EvraklarTab/);
     assert.doesNotMatch(fieldBlock, /EvrakOzetPanel/);
     assert.doesNotMatch(fieldBlock, /Dosya Yaşam Döngüsü/);
@@ -203,9 +208,9 @@ describe('field-staff-claim-view lock', () => {
     const photos = read('../components/field-survey/FieldInspectionPhotosPanel.tsx');
     assert.match(photos, /entityType = 'claim_file'/);
     assert.match(photos, /entityType/);
-    assert.match(photos, /entity-documents\/\$\{id\}\/download|entity-documents\/\$\{/);
-    assert.match(photos, /createObjectURL/);
-    assert.match(photos, /entity-documents\/\$\{id\}\/download/);
+    assert.match(photos, /entity-documents\/\$\{id\}\/file|entityDocumentFileUrl/);
+    assert.match(photos, /AuthBlobImg|createObjectURL/);
+    assert.match(photos, /h-36 w-36/);
     assert.match(photos, /Tespit Fotoğrafı/);
     assert.match(photos, /saha-tespit-fotograflari/);
     assert.match(photos, /capture="environment"/);

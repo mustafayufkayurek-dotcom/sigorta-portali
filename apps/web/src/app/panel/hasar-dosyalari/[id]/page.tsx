@@ -1678,7 +1678,7 @@ export default function ClaimFileDetailPage() {
 
       {/* Saha: ziyaret + foto + not — ofis evrak yaşam döngüsü yok */}
       {isFieldStaff && (
-        <div className="space-y-4">
+        <div className="grid gap-4 lg:grid-cols-2">
           <section
             id="saha-foto"
             className="scroll-mt-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5"

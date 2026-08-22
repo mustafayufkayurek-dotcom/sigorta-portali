@@ -115,8 +115,8 @@ describe('acil canlı netleşen LOCK', () => {
   });
 
   it('tespit fotoğrafı blob ile görünür; sürükle bırak yazılır', () => {
-    assert.match(photos, /createObjectURL/);
-    assert.match(photos, /entity-documents\/\$\{id\}\/download/);
+    assert.match(photos, /createObjectURL|AuthBlobImg/);
+    assert.match(photos, /entityDocumentFileUrl|entity-documents\/\$\{id\}\/file/);
     assert.match(photos, /onDrop=\{onDropFiles\}/);
     assert.match(photos, /sürükleyip bırakarak/);
     const closure = readFileSync(

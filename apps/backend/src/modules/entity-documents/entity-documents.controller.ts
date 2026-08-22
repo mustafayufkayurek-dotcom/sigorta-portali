@@ -79,18 +79,39 @@ export class EntityDocumentsController {
     });
   }
 
-  @Get(':id/download')
-  async download(@Param('id') id: string, @Res() res: Response, @CurrentUser() user: any) {
+  @Get(':id/file')
+  async streamFile(
+    @Param('id') id: string,
+    @Query('variant') variant: string | undefined,
+    @Res() res: Response,
+    @CurrentUser() user: any,
+  ) {
     const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
-    const { url, fileName, mimeType } = await this.service.getSignedUrl(
+    const { buffer, fileName, mimeType } = await this.service.getFileBuffer(
       id,
-      900,
       requestingUser,
       insuranceCompanyIds,
+      variant === 'thumb',
     );
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
-    return res.redirect(302, url);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.send(buffer);
+  }
+
+  @Get(':id/download')
+  async download(@Param('id') id: string, @Res() res: Response, @CurrentUser() user: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    const { buffer, fileName, mimeType } = await this.service.getFileBuffer(
+      id,
+      requestingUser,
+      insuranceCompanyIds,
+      false,
+    );
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.send(buffer);
   }
 
   @Get(':id/signed-url')

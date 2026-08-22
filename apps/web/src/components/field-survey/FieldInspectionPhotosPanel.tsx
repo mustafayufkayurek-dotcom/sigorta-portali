@@ -5,6 +5,8 @@ import axios from 'axios';
 import { ImagePlus, Trash2, X } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
 import { reportCaughtError } from '@/utils/report-caught-error';
+import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
+import { entityDocumentFileUrl, fetchAuthImageBlob } from '@/utils/protected-image';
 
 type PhotoDoc = {
   id: string;
@@ -42,7 +44,6 @@ export function FieldInspectionPhotosPanel({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
   const [dragOver, setDragOver] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -72,48 +73,6 @@ export function FieldInspectionPhotosPanel({
   useEffect(() => {
     void load();
   }, [load]);
-
-  /** İmzalı URL img src'de çoğu ortamda görünmez (yönlendirme / yetki).
-   * Rapor galerisi gibi dosyayı oturumla çekip blob göster. */
-  useEffect(() => {
-    let cancelled = false;
-    const created: string[] = [];
-    const ids = docs.map((d) => d.id);
-    if (ids.length === 0) {
-      setThumbUrls({});
-      return;
-    }
-    void (async () => {
-      const next: Record<string, string> = {};
-      await Promise.all(
-        ids.map(async (id) => {
-          try {
-            const r = await axios.get(`${API}/entity-documents/${id}/download`, {
-              headers: authHeader(),
-              responseType: 'blob',
-            });
-            const blob = r.data as Blob;
-            if (!blob || blob.size < 32) return;
-            if (blob.type && blob.type.includes('json')) return;
-            const url = URL.createObjectURL(blob);
-            created.push(url);
-            next[id] = url;
-          } catch {
-            /* tek foto kırılınca diğerleri dursun */
-          }
-        }),
-      );
-      if (cancelled) {
-        created.forEach((u) => URL.revokeObjectURL(u));
-        return;
-      }
-      setThumbUrls(next);
-    })();
-    return () => {
-      cancelled = true;
-      created.forEach((u) => URL.revokeObjectURL(u));
-    };
-  }, [docs]);
 
   const uploadFiles = async (files: File[]) => {
     if (!resolvedId || files.length === 0) return;
@@ -160,11 +119,6 @@ export function FieldInspectionPhotosPanel({
     if (!confirm(`"${fileName}" silinsin mi?`)) return;
     try {
       await axios.delete(`${API}/entity-documents/${docId}`, { headers: authHeader() });
-      setThumbUrls((prev) => {
-        const copy = { ...prev };
-        delete copy[docId];
-        return copy;
-      });
       await load();
     } catch (err) {
       reportCaughtError(err, 'Fotoğraf silinemedi.');
@@ -172,17 +126,10 @@ export function FieldInspectionPhotosPanel({
   };
 
   const openPreview = async (docId: string) => {
-    if (thumbUrls[docId]) {
-      setPreviewUrl(thumbUrls[docId]);
-      return;
-    }
     try {
-      const r = await axios.get(`${API}/entity-documents/${docId}/download`, {
-        headers: authHeader(),
-        responseType: 'blob',
-      });
-      const blob = r.data as Blob;
-      if (blob && blob.size >= 32) setPreviewUrl(URL.createObjectURL(blob));
+      const blob = await fetchAuthImageBlob(entityDocumentFileUrl(docId, 'full'));
+      if (blob) setPreviewUrl(URL.createObjectURL(blob));
+      else reportCaughtError(new Error('empty'), 'Önizleme açılamadı.');
     } catch (err) {
       reportCaughtError(err, 'Önizleme açılamadı.');
     }
@@ -274,30 +221,23 @@ export function FieldInspectionPhotosPanel({
           </p>
         </div>
       ) : (
-        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+        <ul className="mt-3 flex flex-wrap gap-2">
           {docs.map((doc) => (
             <li
               key={doc.id}
-              className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+              className="group relative h-36 w-36 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
             >
               <button
                 type="button"
                 onClick={() => void openPreview(doc.id)}
-                className="block aspect-square w-full"
+                className="block h-full w-full"
                 title={doc.fileName}
               >
-                {thumbUrls[doc.id] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={thumbUrls[doc.id]}
-                    alt={doc.fileName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-full items-center justify-center px-2 text-center text-[10px] font-medium text-slate-500">
-                    {doc.fileName}
-                  </span>
-                )}
+                <AuthBlobImg
+                  url={entityDocumentFileUrl(doc.id, 'thumb')}
+                  alt={doc.fileName}
+                  className="h-full w-full object-cover"
+                />
               </button>
               <button
                 type="button"

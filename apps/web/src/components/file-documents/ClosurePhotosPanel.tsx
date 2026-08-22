@@ -5,6 +5,8 @@ import axios from 'axios';
 import { ImagePlus, Trash2, X } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
+import { entityDocumentFileUrl, fetchAuthImageBlob } from '@/utils/protected-image';
 
 type ClosurePhotoDoc = {
   id: string;
@@ -121,11 +123,9 @@ export default function ClosurePhotosPanel({
 
   const openPreview = async (docId: string) => {
     try {
-      const r = await axios.get(`${API}/entity-documents/${docId}/signed-url`, {
-        headers: authHeader(),
-      });
-      const url = r.data?.data?.url as string | undefined;
-      if (url) setPreviewUrl(url);
+      const blob = await fetchAuthImageBlob(entityDocumentFileUrl(docId, 'full'));
+      if (blob) setPreviewUrl(URL.createObjectURL(blob));
+      else setError('Önizleme açılamadı');
     } catch {
       setError('Önizleme açılamadı');
     }
@@ -228,25 +228,29 @@ export default function ClosurePhotosPanel({
       )}
 
       {!loading && docs.length > 0 && (
-        <ul className="grid grid-cols-2 sm:grid-cols-3 gap-1" data-testid="dosya-kapanis-resimleri-liste">
+        <ul className="flex flex-wrap gap-1.5" data-testid="dosya-kapanis-resimleri-liste">
           {docs.map((doc) => (
             <li
               key={doc.id}
-              className="flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px]"
+              className="group relative h-36 w-36 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white"
             >
               <button
                 type="button"
                 onClick={() => void openPreview(doc.id)}
-                className="min-w-0 flex-1 truncate text-left font-medium text-slate-700 hover:text-blue-700"
+                className="block h-full w-full"
                 title={doc.fileName}
               >
-                {doc.fileName}
+                <AuthBlobImg
+                  url={entityDocumentFileUrl(doc.id, 'thumb')}
+                  alt={doc.fileName}
+                  className="h-full w-full object-cover"
+                />
               </button>
               {!readonly && (
                 <button
                   type="button"
                   onClick={() => void handleDelete(doc.id, doc.fileName)}
-                  className="shrink-0 rounded p-0.5 text-slate-400 hover:text-red-600"
+                  className="absolute right-1 top-1 rounded bg-white/90 p-0.5 text-slate-400 opacity-0 shadow-sm ring-1 ring-slate-200 group-hover:opacity-100 hover:text-red-600"
                   title="Sil"
                   aria-label="Sil"
                 >

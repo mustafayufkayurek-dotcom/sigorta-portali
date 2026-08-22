@@ -1,0 +1,32 @@
+---
+description: Panel resimleri 302 MinIO ile değil oturumla akar — geri dönmez
+alwaysApply: true
+---
+
+# Resim Gösterimi Akış Kilidi
+
+**Kaynak (Mustafa · 22.08.2026):** Saha tespit ve diğer kutularda dosya adı görünüyor, resim yoktu. Uzun süre çözülmedi.
+
+**Temel cümle:** Panel resmi **oturumla API baytı** (`/file` + blob). İmzalı URL’ye 302 ve `img src` MinIO **yasak**.
+
+## Zorunlu
+
+1. `entity-documents/:id/file`, `vendor-documents/:id/file`, `uploads/file` `res.send(buffer)` — `res.redirect(302)` yok.
+2. Gösterim `fetchAuthImageBlob` / `AuthBlobImg`; axios blob + download 302 yok.
+3. Tespit thumbs `h-36 w-36` (dosya sorumlusu raporu ile aynı ölçü).
+
+## Yasak (açık onay yoksa)
+
+- Download’ı tekrar 302 MinIO’ya çevirmek
+- `img src={signedUrl}` ile tespit / kapanış / evrak resmi
+- Bu kilitleri “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Kutu tekrar dosya adı gösteriyorsa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+pnpm smoke:resim-akis
+```

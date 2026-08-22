@@ -9,11 +9,13 @@ import {
   portalStatusLabel,
 } from '@/utils/portal-file-flow-labels';
 import { getAccessToken } from '@/utils/auth-session';
+import { getReportImageStreamUrl } from '@/utils/upload-url';
+import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
+import { uploadsFileUrl } from '@/utils/protected-image';
 import { reportImageCategoryLabel } from '@/utils/quick-repair-damage-types';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-const UPLOADS_ORIGIN = API.replace(/\/api\/v1$/, '');
 
 function authHeader() {
   const token = getAccessToken();
@@ -145,7 +147,7 @@ export default function PortalProcessTimeline({
               if (!img.storageKey) continue;
               gallery.push({
                 id: img.id,
-                url: `${UPLOADS_ORIGIN}/uploads/report-images/${encodeURIComponent(img.storageKey)}`,
+                url: getReportImageStreamUrl(img.id),
                 label: img.caption || reportImageCategoryLabel(img.category) || img.fileName || 'Rapor Görseli',
               });
             }
@@ -160,26 +162,11 @@ export default function PortalProcessTimeline({
         const mime = doc.fileAsset?.mimeType ?? '';
         const storageKey = doc.fileAsset?.storageKey;
         if (!storageKey || !mime.startsWith('image/')) continue;
-        try {
-          const signed = await axios.get(
-            `${API}/uploads/signed-url?storageKey=${encodeURIComponent(storageKey)}`,
-            { headers: authHeader() },
-          );
-          const url = signed.data?.data?.url ?? signed.data?.url;
-          if (url) {
-            gallery.push({
-              id: doc.id,
-              url,
-              label: doc.fileAsset?.fileName ?? doc.documentType ?? 'Dosya Görseli',
-            });
-          }
-        } catch {
-          gallery.push({
-            id: doc.id,
-            url: `${UPLOADS_ORIGIN}/uploads/${encodeURIComponent(storageKey)}`,
-            label: doc.fileAsset?.fileName ?? 'Dosya Görseli',
-          });
-        }
+        gallery.push({
+          id: doc.id,
+          url: uploadsFileUrl(storageKey),
+          label: doc.fileAsset?.fileName ?? doc.documentType ?? 'Dosya Görseli',
+        });
       }
 
       setPhotos(gallery);
@@ -275,10 +262,10 @@ export default function PortalProcessTimeline({
                 onClick={() => setPreviewUrl(photo.url)}
                 className="group relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square"
               >
-                <img
-                  src={photo.url}
+                <AuthBlobImg
+                  url={photo.url}
                   alt={photo.label}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform"
                 />
                 <span className="absolute inset-x-0 bottom-0 bg-black/50 text-white text-[10px] px-2 py-1 truncate">
                   {photo.label}
@@ -329,12 +316,13 @@ export default function PortalProcessTimeline({
           onKeyDown={(e) => e.key === 'Escape' && setPreviewUrl(null)}
           role="presentation"
         >
-          <img
-            src={previewUrl}
-            alt="Önizleme"
-            className="max-w-full max-h-[90vh] rounded-lg shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div onClick={(e) => e.stopPropagation()} className="max-h-[90vh] max-w-full">
+            <AuthBlobImg
+              url={previewUrl}
+              alt="Önizleme"
+              className="max-h-[90vh] max-w-full rounded-lg shadow-2xl object-contain"
+            />
+          </div>
         </div>
       )}
     </div>

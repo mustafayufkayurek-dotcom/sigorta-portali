@@ -20,5 +20,7 @@ node --experimental-strip-types --test \
   apps/web/src/utils/format-try-amount.lock.spec.ts \
   apps/web/src/utils/emergency-file-address.lock.spec.ts \
   apps/web/src/utils/field-staff-claim-view.lock.spec.ts \
+  apps/web/src/utils/protected-image.lock.spec.ts \
+  apps/backend/src/modules/entity-documents/entity-document-stream.lock.spec.ts \
   apps/web/src/utils/ops-first-run-notice.lock.spec.ts
 echo "=== Acil netleşen canlı kilit: PASS ==="

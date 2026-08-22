@@ -6,6 +6,7 @@ import axios from 'axios';
 import { API, authHeader } from '../claim-detail-utils';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { fetchAuthImageBlob, uploadsFileUrl } from '@/utils/protected-image';
 
 // ─── Tab: Dokümanlar ──────────────────────────────────────────────────────────
 // Helpers for DokumanlarTab
@@ -110,9 +111,10 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
     }
   };
 
-  const getDocUrl = async (storageKey: string): Promise<string> => {
-    const r = await axios.get(`${API}/uploads/signed-url?storageKey=${encodeURIComponent(storageKey)}`, { headers: authHeader() });
-    return r.data.data.url;
+  const getDocBlobUrl = async (storageKey: string): Promise<string | null> => {
+    const blob = await fetchAuthImageBlob(uploadsFileUrl(storageKey));
+    if (!blob) return null;
+    return URL.createObjectURL(blob);
   };
 
   const handleDownload = async (doc: any) => {
@@ -120,14 +122,18 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
     const storageKey = doc.fileAsset?.storageKey;
     if (!storageKey) return;
     try {
-      const url = await getDocUrl(storageKey);
+      const url = await getDocBlobUrl(storageKey);
+      if (!url) {
+        showToast('error', 'İndirilemiyor');
+        return;
+      }
       const a = document.createElement('a');
       a.href = url;
       a.download = fileName;
-      a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch { showToast('error', 'İndirilemiyor'); }
   };
 
@@ -143,7 +149,11 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
     const storageKey = doc.fileAsset?.storageKey;
     if (!storageKey) return;
     try {
-      const url = await getDocUrl(storageKey);
+      const url = await getDocBlobUrl(storageKey);
+      if (!url) {
+        showToast('error', 'Önizleme Açılamadı');
+        return;
+      }
       setPreviewDoc({ ...doc, _url: url });
     } catch { showToast('error', 'Önizleme Açılamadı'); }
   };
@@ -152,7 +162,11 @@ export function DokumanlarTab({ claimId }: { claimId: string }) {
     const storageKey = doc.fileAsset?.storageKey;
     if (!storageKey) return;
     try {
-      const url = await getDocUrl(storageKey);
+      const url = await getDocBlobUrl(storageKey);
+      if (!url) {
+        showToast('error', 'Görüntüleyici Açılamadı');
+        return;
+      }
       setCadUrl(url);
       setCadDoc(doc);
     } catch { showToast('error', 'Görüntüleyici Açılamadı'); }
