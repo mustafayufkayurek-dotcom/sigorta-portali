@@ -36,7 +36,6 @@ import type {
   ApprovalState as PlannerApprovalState,
   OperatorStepKey,
 } from '@/components/acil-operasyon-planlayicisi/planner-steps';
-import { formatTryAmount } from '@/utils/format-try-amount';
 import { InboundEmailCorrespondencePanel } from '@/components/operation-inbox/InboundEmailCorrespondencePanel';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
@@ -58,7 +57,6 @@ import { openWhatsAppChat } from '@/utils/date-helpers';
 import {
   isLegacyOpsCatchupBypassActive,
   isWhatsAppMarkSentBypassActive,
-  LEGACY_OPS_CATCHUP_BYPASS_NOTE,
   WHATSAPP_MARK_SENT_BYPASS_NOTE,
 } from '@/utils/whatsapp-sent-confirm-gate';
 import {
@@ -95,7 +93,6 @@ import {
   calcVatBreakdown,
   canSeeAcilOpsCostFields,
   convertPriceForVatMode,
-  formatMarginPercent,
   getMarginWarning,
   priceToNet,
 } from './acil-price-helpers';
@@ -324,6 +321,11 @@ function VatBreakdownRows({
   );
 }
 
+void formatTurkishList;
+void currentOperator;
+void VatModeToggle;
+void VatBreakdownRows;
+
 function personInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
@@ -465,7 +467,7 @@ const URGENCY_BADGE: Record<EmergencyUrgency, string> = {
 };
 
 function openWhatsApp(phone: string | null | undefined, text: string) {
-  openWhatsAppChat(phone, text);
+  return openWhatsAppChat(phone, text);
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -498,7 +500,7 @@ export default function AcilDosyaDetayPage() {
   const [draftAlisVat, setDraftAlisVat] = useState<VatMode>('haric');
   const [draftSatisVat, setDraftSatisVat] = useState<VatMode>('haric');
   const [priceFormError, setPriceFormError] = useState<string | null>(null);
-  const [priceSaveBusy, setPriceSaveBusy] = useState(false);
+  const [, setPriceSaveBusy] = useState(false);
   const priceFormRef = useRef<HTMLDivElement | null>(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalChannel, setApprovalChannel] = useState<ApprovalChannel>('whatsapp');
@@ -513,7 +515,7 @@ export default function AcilDosyaDetayPage() {
   const [closurePreviewLoading, setClosurePreviewLoading] = useState(false);
   const [closureSendBusy, setClosureSendBusy] = useState(false);
   const [closureSendError, setClosureSendError] = useState<string | null>(null);
-  const [financeResult, setFinanceResult] = useState<string | null>(null);
+  const [, setFinanceResult] = useState<string | null>(null);
   const [closeBusy, setCloseBusy] = useState(false);
   const [financeBusy, setFinanceBusy] = useState(false);
   const closeSubmitRef = useRef(false);
@@ -563,14 +565,12 @@ export default function AcilDosyaDetayPage() {
   const [poolSuggestDismissed, setPoolSuggestDismissed] = useState(false);
   const [poolPromoteBusy, setPoolPromoteBusy] = useState(false);
   const [poolPromoteMsg, setPoolPromoteMsg] = useState<string | null>(null);
-  const [marginToast, setMarginToast] = useState<MarginWarning>(null);
+  const [, setMarginToast] = useState<MarginWarning>(null);
   const marginToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showVatDetail, setShowVatDetail] = useState(false);
-  /** Kayıtlı bütçe varken özet; Düzelt ile düzenleme açılır. */
   const [budgetEditing, setBudgetEditing] = useState(true);
   const [draftFindings, setDraftFindings] = useState('');
   const [findingsError, setFindingsError] = useState<string | null>(null);
-  const [findingsSaving, setFindingsSaving] = useState(false);
+  const [, setFindingsSaving] = useState(false);
   const findingsFormRef = useRef<HTMLDivElement | null>(null);
   const findingsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const alisRef = useRef<number | null>(null);
@@ -638,7 +638,12 @@ export default function AcilDosyaDetayPage() {
       const channel = customerId
         ? readAnaMusteriHaberlesme(customerId)
         : parseAnaMusteriHaberlesme(mergedFlow.customerNotifyChannel);
-      const withPref = { ...mergedFlow, customerNotifyChannel: channel };
+      const withPref: AcilLocalFlow = {
+        ...mergedFlow,
+        customerNotifyChannel: channel,
+        vendorPaid:
+          mergedFlow.vendorPaid === true ? true : mergedFlow.vendorPaid === false ? false : null,
+      };
       writeAcilLocalFlow(id, withPref);
       flowRef.current = withPref;
       setFlow(withPref);
@@ -1535,6 +1540,14 @@ export default function AcilDosyaDetayPage() {
     }
   }
 
+  void applyDraftVatModeChange;
+  void openBudgetEdit;
+  void cancelBudgetEdit;
+  void savePriceFormAndClose;
+  void openApprovalModal;
+  void handlePlannerWorkStart;
+  void handleWorkStartMessage;
+
   async function handleServiceComplete() {
     if (!vaka || opsActionBusy) return;
     if (!requireAssignedVendor()) return;
@@ -1864,22 +1877,10 @@ export default function AcilDosyaDetayPage() {
     hasFileExpenses: hasAcilProcessedFileExpenses(costs),
   });
   const karOrani = finansKpis.karOrani;
-  const displayAlis = budgetEditing ? draftAlis : alisFiyati;
   const displaySatis = budgetEditing ? draftSatis : satisFiyati;
   const displayAlisVat = budgetEditing ? draftAlisVat : alisVatMode;
   const displaySatisVat = budgetEditing ? draftSatisVat : satisVatMode;
-  const draftKarPct = calcMarginPercent(
-    parsePriceInput(displayAlis),
-    displayAlisVat,
-    parsePriceInput(displaySatis),
-    displaySatisVat,
-  );
-  const draftAlisNet = priceToNet(parsePriceInput(displayAlis), displayAlisVat);
   const draftSatisNet = priceToNet(parsePriceInput(displaySatis), displaySatisVat);
-  const draftKarTutari =
-    Number.isFinite(draftAlisNet) && Number.isFinite(draftSatisNet) && draftAlisNet > 0
-      ? draftSatisNet - draftAlisNet
-      : null;
   // Kâr uyarısı formda sürekli değil; yalnızca Kaydet’te (limit aşımında) geçici toast.
   const fileNo = vaka.fileNo || vaka.caseNo;
   const phone = insuredPhoneLabel(vaka);
@@ -1929,7 +1930,6 @@ export default function AcilDosyaDetayPage() {
   const fileAlreadyClosed =
     flow.fileClosed || vaka.status === 'COZULDU' || vaka.status === 'FATURALANDILDI';
   const financeDone = flow.financeTransferred || vaka.status === 'FATURALANDILDI';
-  const closeFinanceBusy = closeBusy || financeBusy;
   const dosyaKonusuLabel = resolveClaimDosyaKonusu({ lossType: vaka.issueType }) || '—';
   const anaMusteriKisa = customerLabel(vaka).trim() || '—';
   const anaMusteriUzun = customerFullLabel(vaka).trim() || '—';

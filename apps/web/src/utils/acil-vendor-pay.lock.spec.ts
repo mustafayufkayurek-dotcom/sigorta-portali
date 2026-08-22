@@ -56,6 +56,7 @@ describe('acil tedarikçi ödemesi liste LOCK', () => {
     assert.match(backend, /EMERGENCY_VENDOR_PAYMENT_RECORDED/);
     assert.match(svc, /applyVendorPaid/);
     assert.match(schema, /vendorPaid\s+Boolean\?/);
+    assert.doesNotMatch(schema, /\/\*\*/);
     const finans = readFileSync(join(here, '../app/panel/acil-yardim/finans/page.tsx'), 'utf8');
     assert.match(finans, /Tedarikçi Ödemesi/);
     assert.match(finans, /acil-finans-odeme-filtre/);

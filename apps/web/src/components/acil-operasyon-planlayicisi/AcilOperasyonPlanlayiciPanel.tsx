@@ -423,10 +423,11 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
                         {vendorStep}
                         <PlannerStepBody {...body} step={activeStep} skipVendorPicker />
                       </div>
-                    ) : activeStep === 'onay' && approvalStep ? (
+                    ) : activeStep === 'onay' && (approvalStep || operationStep) ? (
                       <div className="space-y-3">
                         <PlannerStepBody {...body} step={activeStep} />
                         {approvalStep}
+                        {operationStep}
                       </div>
                     ) : activeStep === 'kapanis' && closingStep ? (
                       <div className="space-y-3">
