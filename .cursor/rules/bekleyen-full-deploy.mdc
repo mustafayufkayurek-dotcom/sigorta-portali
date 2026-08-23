@@ -1,25 +1,21 @@
 ---
-description: Bekleyen full deploy — Mustafa 23.08.2026 listeye ekledi; o demeden canlıya alma
+description: Full deploy v528 alındı — Mustafa evet dedi 23.08.2026
 alwaysApply: true
 ---
 
-# Bekleyen full deploy (23.08.2026)
+# Full deploy v528 (23.08.2026) — alındı
 
-Mustafa: **canlıya alma listesine eklendi, full deploy yapılacak.** Şimdi deploy yok; evet dediğinde tek seferde.
+Canlı: web + backend **v528**. Rollback: web v527 / backend v525. Yeni full deploy yok; yeni paket ayrı yazılır.
 
-## Paket
+## Alınan paket
 
-1. Hasar rapor / onay maili: M365 Graph önce; SMTP `rejected` fail; durum mail’den sonra.
-2. Hasar Dosyaları (`/panel/hasar-dosyalari`) Müşteri sütunu: karttaki **Kısa Ad** üstte (üretilmez, tam unvan basılmaz); altta dosya sigortası soluk. Kart var Kısa Ad yoksa **Kısa Ad Tanımlanmamış** — tıklanınca müşteri kartı açılır. Sarı uyarı (eksik Kısa Ad sayısı + Kısa Ad Tanımla). Dosya Konusu sütunu ortalı. Sayfa boyutu 20 / 50 / 100 / 150.
-3. Acil Yardım Dosyaları (`/panel/operasyon?filter=acil`): aynı Kısa Ad kuralı ve tıklanınca kart; aynı sarı uyarı; sayfa boyutu 20 / 50 / 100 / 150. Liste Hasar kuyruğu gibi.
-4. Müşteri kartı yetkili adı: kişi kutusuna firma / unvan parçası yazılamaz (kural + yapay zeka ikinci kapı; ad uydurulmaz). Form kaydı durur.
-5. Müşteriler (`/panel/musteriler`): üst şerit Hasar kartı — Toplam / Bireysel / Kurumsal (tıklanınca süzgeç). Kısa Ad eksik bu şeritte yok; uyarı Hasar/Acil listede. Satır İşlemler: Görüntüle / Düzenle ikon, Arşivle üç noktada.
+1. Hasar rapor / onay maili (Graph önce)
+2. Hasar Dosyaları Kısa Ad + uyarı + sayfa boyutu
+3. Acil liste aynı Kısa Ad + uyarı + sayfa boyutu
+4. Müşteri yetkili adı kilidi
+5. Müşteriler şerit (Toplam/Bireysel/Kurumsal) + ikon işlemler
 
-## Bu pakette yok
+## Hâlâ yok
 
-- Tedarikçiler satır ikon kabuğu (tespit; henüz yapılmadı)
-- Tarama (Gelen Kutu / portal / liste kabuğu) — ayrı bekler
-
-## Kapı
-
-v505 soyu, temiz ağaç, `assert-deploy-source.sh`. Full web + backend. Production login Cursor yapmaz.
+- Tedarikçiler satır ikon kabuğu
+- Tarama (Gelen Kutu / portal)
