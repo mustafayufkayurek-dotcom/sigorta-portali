@@ -58,10 +58,8 @@ export class InvoiceRequestsService {
         const missing: string[] = [];
         if (!conds.muvafakatnameDigitallyApproved)
           missing.push('Muvafakatname dijital onayı');
-        if (!conds.repairReportApproved) missing.push('Onaylı onarım raporu');
-        if (!conds.vendorContractSigned) missing.push('İmzalı tedarikçi sözleşmesi');
         throw new BadRequestException(
-          `Kapama koşulları tamamlanmamış: ${missing.join(', ')}`,
+          `Fatura talebi için: ${missing.join(', ')}. Onarımın bitmesi beklenmez.`,
         );
       }
     }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
+import { Banknote, CalendarDays, Percent, Scale } from 'lucide-react';
 import { FinansRaporOzeti } from '../FinansRaporOzeti';
 import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
 import { CollapsibleSectionCard } from '../claim-detail-ui';
@@ -149,20 +150,40 @@ export function FinansOzetPanel({
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className={`rounded-xl border shadow-sm p-4 text-center ${isProfit ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-              <p className="text-xs text-slate-500 mb-1">{kpis.profitLabel}</p>
+            <div className={`rounded-xl border shadow-sm p-4 ${isProfit ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${isProfit ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  <Banknote className="h-4 w-4" strokeWidth={1.75} />
+                </span>
+                <p className="text-xs text-slate-500">{kpis.profitLabel}</p>
+              </div>
               <p className={`text-xl font-bold tabular-nums ${isProfit ? 'text-green-700' : 'text-red-700'}`}>{fmtCurrency(netProfit)}</p>
             </div>
-            <div className={`rounded-xl border shadow-sm p-4 text-center ${isProfit ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-              <p className="text-xs text-slate-500 mb-1">Kâr Marjı</p>
+            <div className={`rounded-xl border shadow-sm p-4 ${isProfit ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${isProfit ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  <Percent className="h-4 w-4" strokeWidth={1.75} />
+                </span>
+                <p className="text-xs text-slate-500">Kâr Marjı</p>
+              </div>
               <p className={`text-xl font-bold tabular-nums ${isProfit ? 'text-green-700' : 'text-red-700'}`}>{Number(netMargin).toFixed(1)}%</p>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-white shadow-sm p-4 text-center">
-              <p className="text-xs text-slate-500 mb-1">Kalan Bakiye</p>
+            <div className="rounded-xl border border-slate-100 bg-white shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                  <Scale className="h-4 w-4" strokeWidth={1.75} />
+                </span>
+                <p className="text-xs text-slate-500">Kalan Bakiye</p>
+              </div>
               <p className="text-xl font-bold text-orange-600 tabular-nums">{fmtCurrency(kpis.outstanding)}</p>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-white shadow-sm p-4 text-center">
-              <p className="text-xs text-slate-500 mb-1">Son Hesaplama</p>
+            <div className="rounded-xl border border-slate-100 bg-white shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                  <CalendarDays className="h-4 w-4" strokeWidth={1.75} />
+                </span>
+                <p className="text-xs text-slate-500">Son Hesaplama</p>
+              </div>
               <p className="text-sm font-medium text-slate-700">{s?.lastCalculatedAt ? fmtDate(s.lastCalculatedAt) : '—'}</p>
             </div>
           </div>

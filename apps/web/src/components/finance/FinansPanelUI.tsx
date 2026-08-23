@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Wallet, Receipt, Hash, Scale, CalendarDays, Banknote } from 'lucide-react';
 
 type ActionConfig = {
   label: string;
@@ -95,6 +95,7 @@ export function FinansFormPanel({
   children,
   onCancel,
   onSubmit,
+  onSubmitAndNew,
   submitLabel = 'Kaydet',
   saving,
 }: {
@@ -102,6 +103,7 @@ export function FinansFormPanel({
   children: ReactNode;
   onCancel: () => void;
   onSubmit: () => void;
+  onSubmitAndNew?: () => void;
   submitLabel?: string;
   saving?: boolean;
 }) {
@@ -113,6 +115,16 @@ export function FinansFormPanel({
       <div className="p-4 space-y-3">{children}</div>
       <div className="flex justify-end gap-2 px-4 py-3 border-t border-slate-100 bg-slate-50/40">
         <FinansActionButton label="İptal" onClick={onCancel} variant="neutral" />
+        {onSubmitAndNew && (
+          <button
+            type="button"
+            onClick={onSubmitAndNew}
+            disabled={saving}
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Kaydediliyor…' : 'Kaydet ve Yeni'}
+          </button>
+        )}
         <button
           type="button"
           onClick={onSubmit}
@@ -152,6 +164,22 @@ export function FinansFieldLabel({
   );
 }
 
+const KPI_ICON: Record<string, typeof Wallet> = {
+  'Toplam Gelir': TrendingUp,
+  'Tahsil Edilen': Wallet,
+  'Kalan Bakiye': Scale,
+  'Gelen Tahsilat': TrendingUp,
+  'Giden Ödeme': TrendingDown,
+  'Kayıt Sayısı': Hash,
+  'Toplam Masraf': Receipt,
+  Kayıt: Hash,
+  'Satış (Gelir)': TrendingUp,
+  'Alış (Gider)': TrendingDown,
+  Bekleyen: CalendarDays,
+  'Fatura Sayısı': Receipt,
+  'Beklenen Kâr': Banknote,
+};
+
 export function FinansKpiStrip({
   items,
 }: {
@@ -159,24 +187,32 @@ export function FinansKpiStrip({
 }) {
   return (
     <div
-      className="grid rounded-lg overflow-hidden border border-slate-200 mb-4 bg-slate-900"
+      className="mb-4 grid overflow-hidden rounded-xl border border-slate-700/60 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 shadow-sm"
       style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
     >
-      {items.map((item, i) => (
-        <div
-          key={item.label}
-          className={`px-3 py-3 text-center ${i < items.length - 1 ? 'border-r border-slate-700/80' : ''}`}
-        >
-          <p className="text-[10px] font-medium text-slate-400 leading-none">{item.label}</p>
-          <p
-            className={`mt-1.5 text-base font-semibold tabular-nums leading-none ${
-              item.accent ?? 'text-white'
-            }`}
+      {items.map((item, i) => {
+        const Icon = KPI_ICON[item.label] ?? Wallet;
+        return (
+          <div
+            key={item.label}
+            className={`flex items-center gap-3 px-3.5 py-3.5 ${i < items.length - 1 ? 'border-r border-white/10' : ''}`}
           >
-            {item.value}
-          </p>
-        </div>
-      ))}
+            <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-slate-200 sm:inline-flex">
+              <Icon className="h-4 w-4" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0 text-left sm:text-left">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400 leading-none">{item.label}</p>
+              <p
+                className={`mt-1.5 truncate text-base font-semibold tabular-nums leading-none ${
+                  item.accent ?? 'text-white'
+                }`}
+              >
+                {item.value}
+              </p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

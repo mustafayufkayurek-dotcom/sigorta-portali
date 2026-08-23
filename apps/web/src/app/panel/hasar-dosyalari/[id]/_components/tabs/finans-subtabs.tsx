@@ -778,7 +778,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
     <div className="space-y-4">
       <FinansPanelCard
         title="Fatura Talebi"
-        subtitle="Sigorta şirketine kesilecek fatura için talep oluşturun. Evrak durumunu Evraklar → Özet sekmesinden takip edebilirsiniz."
+        subtitle="Sigorta şirketine kesilecek fatura için talep oluşturun. Onarımın bitmesi beklenmez."
       >
         <ClosureConditionsPanel
           serviceType="claim"

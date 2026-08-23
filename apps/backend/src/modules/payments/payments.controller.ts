@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -133,6 +134,16 @@ export class PaymentsController {
     await this.service.findOne(id, requestingUser, insuranceCompanyIds);
     const data = await this.service.update(id, dto, user?.id);
     return { success: true, data };
+  }
+
+  @Delete('payments/:id')
+  @RequirePermissions('payment.update')
+  @ApiOperation({ summary: 'Ödeme sil' })
+  async remove(@Param('id') id: string, @CurrentUser() user: any) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    await this.service.remove(id);
+    return { success: true };
   }
 
   @Get('claim-files/:id/payments')

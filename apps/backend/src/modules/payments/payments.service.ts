@@ -665,4 +665,8 @@ export class PaymentsService {
       this.logger.error(`syncPaymentToRevenue hatası: ${message}`);
     }
   }
+
+  async remove(id: string) {
+    await this.prisma.payment.delete({ where: { id } });
+  }
 }

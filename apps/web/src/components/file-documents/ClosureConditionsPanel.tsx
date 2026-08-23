@@ -409,7 +409,7 @@ export default function ClosureConditionsPanel(props: Props) {
 
       {showInvoiceRequest && !activeRequest && conditions && !conditions.canCreateInvoiceRequest && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-          Fatura talebi için evrak ve onarım raporu koşulları tamamlanmalıdır. Durumu Evraklar → Özet sekmesinden kontrol edebilirsiniz.
+          Fatura talebi için muvafakatname dijital onayı gerekir. Onarımın bitmesi beklenmez.
         </div>
       )}
 

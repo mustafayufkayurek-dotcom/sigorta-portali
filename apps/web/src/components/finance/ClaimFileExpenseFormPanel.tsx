@@ -689,7 +689,7 @@ export function ClaimFileExpenseFormPanel({
           disabled={saving || !formCanSave}
           className="text-xs text-slate-600 px-3 py-1.5 border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 font-semibold"
         >
-          Kaydet ve Kapat
+          Kaydet
         </button>
         <button
           type="button"
@@ -698,7 +698,7 @@ export function ClaimFileExpenseFormPanel({
           className="text-xs bg-brand-600 text-white px-4 py-1.5 rounded-xl hover:bg-brand-700 disabled:opacity-50 font-semibold"
           data-testid="claim-file-expense-kaydet"
         >
-          {saving ? 'Kaydediliyor…' : 'Kaydet'}
+          {saving ? 'Kaydediliyor…' : 'Kaydet ve Yeni'}
         </button>
       </div>
     </div>

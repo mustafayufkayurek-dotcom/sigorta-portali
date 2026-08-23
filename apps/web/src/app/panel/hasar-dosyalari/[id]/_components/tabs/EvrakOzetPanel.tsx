@@ -236,8 +236,8 @@ export function EvrakOzetPanel({
     : 'Atanan tedarikçi ile sözleşme imzalanması gerekiyor.';
 
   const kapamaDesc = conditions.canCreateInvoiceRequest
-    ? 'Evrak ve rapor koşulları tamam. Finans → Faturalar sekmesinden fatura talebi oluşturabilirsiniz.'
-    : 'Fatura talebi için onarım raporu, muvafakat formu ve tedarikçi sözleşmesi koşullarının tamamlanması gerekir.';
+    ? 'Muvafakat onaylı. Finans → Faturalar’dan fatura talebi açabilirsiniz. Onarımın bitmesi beklenmez.'
+    : 'Fatura talebi için muvafakatname dijital onayı gerekir. Onarımın bitmesi ve sözleşme beklenmez.';
 
   return (
     <div className="space-y-4">

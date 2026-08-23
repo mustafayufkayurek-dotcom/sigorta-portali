@@ -43,6 +43,13 @@ describe('hasar-flow-groups lock', () => {
         muvafakatnameDigitallyApproved: true,
         repairReportApproved: false,
       }),
+      true,
+    );
+    assert.equal(
+      canCreateHasarInvoiceRequest({
+        muvafakatnameDigitallyApproved: false,
+        repairReportApproved: true,
+      }),
       false,
     );
   });

@@ -55,12 +55,12 @@ export function vendorsMissingRepairPhotos(
   );
 }
 
-/** Fatura talebi dosya kapanışını beklemez. Sözleşme şartı yok. */
+/** Fatura talebi onarım bitişini ve sözleşmeyi beklemez. Muvafakat yeter. */
 export function canCreateHasarInvoiceRequest(input: {
   muvafakatnameDigitallyApproved: boolean;
-  repairReportApproved: boolean;
+  repairReportApproved?: boolean;
 }): boolean {
-  return Boolean(input.muvafakatnameDigitallyApproved && input.repairReportApproved);
+  return Boolean(input.muvafakatnameDigitallyApproved);
 }
 
 export const AVANS_NOTE_PREFIX = '[AVANS]';
