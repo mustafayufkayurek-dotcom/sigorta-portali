@@ -1,19 +1,19 @@
 ---
-description: Canlı v530 alındı; sıradaki paket finans görünüm
+description: Full deploy v532 alındı — 24.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v530 (23.08.2026) — alındı
+# Full deploy v532 (24.08.2026) — alındı
 
-Canlı: web + backend **v530**. Rollback: web v529 / backend v529.
+Canlı: web + backend **v532**. Rollback: web v531 / backend v531.
 
 ## Alınan paket
 
-1. Hasar operasyon planlayıcısı (Tespit / Onarım / Kapanış)
-2. Dosya finans özeti, cari ekstre, fatura kuralı (`a4e1e2d`)
+1. Dosya masrafı rapor iş grubuna bağlanır; bütçe aşımı kesilir (Bütçelenen / Ek İş).
+2. Araç kira, maaş, SGK, vergi tek dosyaya yazılmaz; ayın son günü finans ve yöneticiye hatırlatılır.
+3. Finans tutarları yazarken binlik nokta; açıklama zorunlu.
+4. Hasar ve Acil listelerinde Ödemeler / Ödeme Durumu sütunu durur; dosya sorumlusu görür, gizleyemez. Vade yazılmaz.
 
-## Sıradaki canlı paket — v531-finans-gorunum (onaylı)
+## Canlıda yok
 
-Dosya finans görünümü: tek koyu bant; kâr tekrarı yok; Gelir/Gider/Faturalar açık kart; kompakt özet tahsilat çubuğu yok.
-
-Alındıktan sonra rollback: web/backend **v530**. İK / puantaj / zimmet bu pakete karışmaz.
+İK / puantaj bu pakette yok.
