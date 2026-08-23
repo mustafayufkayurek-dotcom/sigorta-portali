@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
@@ -71,6 +70,7 @@ import {
 import {
   PanelTableColumnPicker,
   PanelTableTd,
+  PanelTableTh,
   SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
@@ -82,6 +82,9 @@ import {
   sortRowsByClientSort,
   type ClientSortState,
 } from '@/utils/panel-table-sort';
+import { VendorRowActions } from '@/components/vendors/VendorRowActions';
+import { OpsKpiSegmentBand, OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
+import { BadgeCheck, Building2, Warehouse } from 'lucide-react';
 
 import { getAccessToken } from '@/utils/auth-session';
 
@@ -744,106 +747,18 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
   );
 }
 
-// ── Satır işlemleri: Detay birincil; düzenle/sil ikincil menüde ───────────────
-function VendorRowActionsMenu({
-  isOpen,
-  onToggle,
-  onClose,
-  onEdit,
-  onDelete,
-}: {
-  isOpen: boolean;
-  onToggle: () => void;
-  onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
-
-  const updateMenuPos = useCallback(() => {
-    const el = buttonRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const menuW = 144;
-    const menuH = 82;
-    const gap = 4;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUp = spaceBelow < menuH + gap;
-    setMenuPos({
-      top: openUp ? rect.top - menuH - gap : rect.bottom + gap,
-      left: Math.min(window.innerWidth - menuW - 8, Math.max(8, rect.right - menuW)),
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setMenuPos(null);
-      return;
-    }
-    updateMenuPos();
-    window.addEventListener('scroll', updateMenuPos, true);
-    window.addEventListener('resize', updateMenuPos);
-    return () => {
-      window.removeEventListener('scroll', updateMenuPos, true);
-      window.removeEventListener('resize', updateMenuPos);
-    };
-  }, [isOpen, updateMenuPos]);
-
-  return (
-    <>
-      <div className="relative flex-shrink-0">
-        <button
-          ref={buttonRef}
-          type="button"
-          aria-label="Diğer işlemler"
-          aria-expanded={isOpen}
-          onClick={(e) => { e.stopPropagation(); onToggle(); }}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors text-lg leading-none"
-        >
-          ···
-        </button>
-      </div>
-      {isOpen && menuPos && typeof document !== 'undefined' && createPortal(
-        <>
-          <button type="button" className="fixed inset-0 z-[60] cursor-default" aria-label="Menüyü kapat" onClick={onClose} />
-          <div
-            className="fixed z-[61] min-w-[9rem] bg-white border border-slate-200 rounded-xl shadow-lg py-1"
-            style={{ top: menuPos.top, left: menuPos.left }}
-          >
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onClose(); onEdit(); }}
-              className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              Düzenle
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onClose(); onDelete(); }}
-              className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 border-t border-slate-100 transition-colors"
-            >
-              Sil…
-            </button>
-          </div>
-        </>,
-        document.body,
-      )}
-    </>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'name', label: 'Tedarikçi', defaultWidth: 200, minWidth: 140 },
-  { id: 'type', label: 'Tür / Tip', defaultWidth: 118, minWidth: 108 },
-  { id: 'contact', label: 'İletişim', defaultWidth: 180, minWidth: 120 },
-  { id: 'location', label: 'Konum', defaultWidth: 140, minWidth: 100 },
-  { id: 'jobCount', label: 'İş Sayısı', defaultWidth: 96, minWidth: 88 },
-  { id: 'lastJob', label: 'Son İş', defaultWidth: 96, minWidth: 88 },
-  { id: 'contractEnd', label: 'Sözleşme Bitiş', defaultWidth: 128, minWidth: 112 },
-  { id: 'status', label: 'Durum', defaultWidth: 96, minWidth: 88 },
-  { id: 'recordOwner', label: 'Kayıt Sahibi', defaultWidth: 140, minWidth: 108 },
+  { id: 'name', label: 'Tedarikçi', defaultWidth: 160, minWidth: 56 },
+  { id: 'type', label: 'Tür / Tip', defaultWidth: 100, minWidth: 48 },
+  { id: 'contact', label: 'İletişim', defaultWidth: 140, minWidth: 56 },
+  { id: 'location', label: 'Konum', defaultWidth: 110, minWidth: 48 },
+  { id: 'jobCount', label: 'İş Sayısı', defaultWidth: 72, minWidth: 40 },
+  { id: 'lastJob', label: 'Son İş', defaultWidth: 80, minWidth: 48 },
+  { id: 'contractEnd', label: 'Sözleşme Bitiş', defaultWidth: 100, minWidth: 48 },
+  { id: 'status', label: 'Durum', defaultWidth: 80, minWidth: 48 },
+  { id: 'recordOwner', label: 'Kayıt Sahibi', defaultWidth: 110, minWidth: 56 },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 112, minWidth: 96, pin: 'end', resizable: false },
 ];
 
 export default function VendorsPage() {
@@ -990,26 +905,12 @@ export default function VendorsPage() {
   // ── Drawer state ─────────────────────────────────────────────────────────
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerVendorId, setDrawerVendorId] = useState<string | null>(null);
-  const [rowMenuId, setRowMenuId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // ── Sözleşme uyarı state ──────────────────────────────────────────────────
   const [contractAlert, setContractAlert] = useState<{ expiring: any[]; expired: any[]; expiringCount: number; expiredCount: number } | null>(null);
-
-  // ── Toplu seçim state ─────────────────────────────────────────────────────
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  // ── Toplu işlem confirm modal state ──────────────────────────────────────
-  type BulkStatusValue = 'active' | 'passive';
-  const STATUS_LABELS: Record<BulkStatusValue, string> = { active: 'Aktif', passive: 'Pasif' };
-
-  const [bulkConfirm, setBulkConfirm] = useState<{
-    label: string;
-    onConfirm: () => Promise<void>;
-  } | null>(null);
-  const [bulkLoading, setBulkLoading] = useState(false);
 
   const sortedVendors = useMemo(
     () =>
@@ -1029,56 +930,6 @@ export default function VendorsPage() {
       }),
     [vendors, clientSort],
   );
-
-  const isAllSelected = vendors.length > 0 && vendors.every((v) => selectedIds.has(v.id));
-  const isIndeterminate = vendors.some((v) => selectedIds.has(v.id)) && !isAllSelected;
-  const selectedArray = Array.from(selectedIds);
-
-  const toggleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedIds((prev) => { const next = new Set(prev); vendors.forEach((v) => next.delete(v.id)); return next; });
-    } else {
-      setSelectedIds((prev) => { const next = new Set(prev); vendors.forEach((v) => next.add(v.id)); return next; });
-    }
-  };
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-  };
-  const clearSelection = () => setSelectedIds(new Set());
-
-  const handleBulkStatus = (status: BulkStatusValue) => {
-    const label = STATUS_LABELS[status];
-    setBulkConfirm({
-      label: `${selectedArray.length} tedarikçi "${label}" olarak işaretlenecek`,
-      onConfirm: async () => {
-        await axios.patch(`${API}/vendors/bulk-status`, { ids: selectedArray, status }, { headers: authHeader() });
-        showToast('success', `${selectedArray.length} tedarikçi güncellendi`);
-        clearSelection(); load(); loadSummary();
-      },
-    });
-  };
-
-  const handleExport = () => {
-    setBulkConfirm({
-      label: `${selectedArray.length} tedarikçi Excel dosyasına aktarılacak`,
-      onConfirm: async () => {
-        const r = await axios.post(`${API}/vendors/export`, { ids: selectedArray }, { headers: authHeader(), responseType: 'blob' });
-        const url = URL.createObjectURL(new Blob([r.data]));
-        const a = document.createElement('a');
-        a.href = url; a.download = `tedarikciler-${new Date().toISOString().slice(0, 10)}.xlsx`;
-        a.click(); URL.revokeObjectURL(url);
-        showToast('success', 'Excel dosyası indiriliyor'); clearSelection();
-      },
-    });
-  };
-
-  const runBulkConfirm = async () => {
-    if (!bulkConfirm) return;
-    setBulkLoading(true);
-    try { await bulkConfirm.onConfirm(); }
-    catch (e: any) { showToast('error', `İşlem başarısız: ${e?.response?.data?.message ?? e?.message ?? 'Bilinmeyen hata'}`); }
-    finally { setBulkLoading(false); setBulkConfirm(null); }
-  };
 
   const handleAddNewRelType = async (onSelect?: (label: string) => void) => {
     const val = newRelTypeValue.trim();
@@ -1878,7 +1729,6 @@ export default function VendorsPage() {
   };
 
   const requestDelete = (id: string, name: string) => {
-    setRowMenuId(null);
     setDeleteError(null);
     setDeleteTarget({ id, name });
   };
@@ -1983,6 +1833,20 @@ export default function VendorsPage() {
   const selectedWgFilterNames = workGroups.filter((wg) => selectedWorkGroupIds_filter.includes(wg.id));
 
   const hasActiveFilters = !!(search || typeFilter || statusFilter || entityTypeFilter || serviceRegionFilter || selectedWorkGroupIds_filter.length);
+
+  const applyKpiToplam = () => {
+    setStatusFilter('');
+    setEntityTypeFilter('');
+    setPage(1);
+  };
+  const applyKpiAktif = () => {
+    setStatusFilter((cur) => (cur === 'active' ? '' : 'active'));
+    setPage(1);
+  };
+  const applyKpiKurumsal = () => {
+    setEntityTypeFilter((cur) => (cur === 'corporate' ? '' : 'corporate'));
+    setPage(1);
+  };
 
   const clearAllFilters = () => {
     setSearchInput(''); setSearch('');
@@ -2114,46 +1978,35 @@ export default function VendorsPage() {
         </div>
       )}
 
-      {/* ── Stats ── */}
-      <div className="rounded-2xl border border-slate-200/70 bg-white px-3 py-3 shadow-card sm:px-4 sm:py-2.5">
-        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-1">
-          <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-2.5 py-2 sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-brand-600">
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium leading-none text-slate-400">Toplam</p>
-              <p className="text-base font-bold leading-tight tabular-nums text-slate-800">{summary.total}</p>
-            </div>
-          </div>
-          <div className="hidden w-px shrink-0 bg-slate-100 sm:block sm:h-7" />
-          <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-2.5 py-2 sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium leading-none text-slate-400">Aktif</p>
-              <p className="text-base font-bold leading-tight tabular-nums text-emerald-700">{summary.activeCount}</p>
-            </div>
-          </div>
-          <div className="hidden w-px shrink-0 bg-slate-100 sm:block sm:h-7" />
-          <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/50 px-2.5 py-2 sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium leading-none text-slate-400">Kurumsal</p>
-              <p className="text-base font-bold leading-tight tabular-nums text-indigo-700">{summary.corporateCount}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <OpsKpiSegmentBand testId="tedarikci-kpi-band">
+        <OpsStripKpi
+          embedded
+          label="Toplam"
+          value={summary.total}
+          color="bg-brand-600"
+          icon={Warehouse}
+          active={!statusFilter && !entityTypeFilter}
+          onClick={applyKpiToplam}
+        />
+        <OpsStripKpi
+          embedded
+          label="Aktif"
+          value={summary.activeCount}
+          color="bg-emerald-600"
+          icon={BadgeCheck}
+          active={statusFilter === 'active'}
+          onClick={applyKpiAktif}
+        />
+        <OpsStripKpi
+          embedded
+          label="Kurumsal"
+          value={summary.corporateCount}
+          color="bg-indigo-600"
+          icon={Building2}
+          active={entityTypeFilter === 'corporate'}
+          onClick={applyKpiKurumsal}
+        />
+      </OpsKpiSegmentBand>
 
       {/* ── Filters ── */}
       <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card px-3 py-2.5 mb-5">
@@ -2267,67 +2120,6 @@ export default function VendorsPage() {
         )}
       </div>
 
-      {/* ── Toplu İşlem Toolbar ── */}
-      {selectedIds.size > 0 && (
-        <div className="sticky top-4 z-30 mb-4">
-          <div className="bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200 px-5 py-3 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 mr-2">
-              <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-xs font-bold">{selectedIds.size}</div>
-              <span className="text-sm font-medium">{selectedIds.size} tedarikçi seçildi</span>
-            </div>
-            <div className="h-5 w-px bg-white/30" />
-            <div className="relative group">
-              <button type="button" className="flex items-center gap-1.5 text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors font-medium">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                Durum Değiştir
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              <div className="absolute left-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 min-w-36 hidden group-hover:block z-50">
-                {(['active', 'passive'] as const).map((val) => (
-                  <button key={val} type="button" onClick={() => handleBulkStatus(val)}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${val === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
-                    {val === 'active' ? 'Aktif' : 'Pasif'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button type="button" onClick={handleExport}
-              className="flex items-center gap-1.5 text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors font-medium">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-              Excel&apos;e Aktar
-            </button>
-            <div className="ml-auto">
-              <button type="button" onClick={clearSelection} className="text-white/70 hover:text-white text-xs underline transition-colors">Seçimi Temizle</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Toplu İşlem Onay Modalı ── */}
-      {bulkConfirm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70]">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl">&#x26A1;</div>
-              <div>
-                <h4 className="text-sm font-semibold text-slate-800 mb-1">İşlemi Onayla</h4>
-                <p className="text-xs text-slate-500">{bulkConfirm.label}. Emin misiniz?</p>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end mt-2">
-              <button type="button" onClick={() => setBulkConfirm(null)} disabled={bulkLoading}
-                className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50">İptal</button>
-              <button type="button" onClick={runBulkConfirm} disabled={bulkLoading}
-                className="px-5 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 flex items-center gap-2">
-                {bulkLoading && <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
-                Evet, Devam Et
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <DeleteConfirmDialog
         isOpen={deleteTarget !== null}
         onClose={() => { if (!deleteLoading) { setDeleteTarget(null); setDeleteError(null); } }}
@@ -2399,7 +2191,7 @@ export default function VendorsPage() {
                 key={v.id}
                 role="button"
                 tabIndex={0}
-                className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors active:bg-slate-50 ${selectedIds.has(v.id) ? 'border-indigo-300 bg-indigo-50/40' : ''}`}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors active:bg-slate-50"
                 onClick={() => {
                   setDrawerVendorId(v.id);
                   setDrawerOpen(true);
@@ -2453,20 +2245,12 @@ export default function VendorsPage() {
                     ) : null}
                   </div>
                 </div>
-                <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
-                  <Link
-                    href={`/panel/tedarikciler/${v.id}`}
-                    className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-center text-xs font-semibold text-white"
-                  >
-                    Detay
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => openEdit(v)}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700"
-                  >
-                    Düzenle
-                  </button>
+                <div className="mt-3 flex items-center justify-end border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
+                  <VendorRowActions
+                    vendorId={v.id}
+                    onEdit={() => openEdit(v)}
+                    onDelete={() => requestDelete(v.id, v.name)}
+                  />
                 </div>
               </div>
             ))}
@@ -2497,49 +2281,32 @@ export default function VendorsPage() {
             )}
           </div>
 
-          <div className="table-container hidden md:block">
+          <div className="table-container ops-queue-table hidden md:block">
           <div className="overflow-x-auto">
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <thead className="table-head-row">
                 <tr>
-                  <th className="table-th w-10">
-                    <input
-                      type="checkbox"
-                      checked={isAllSelected}
-                      ref={(el) => { if (el) el.indeterminate = isIndeterminate; }}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-slate-300 accent-brand-600 cursor-pointer"
-                    />
-                  </th>
                   <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Tedarikçi</SortablePanelTableTh>
                   <SortablePanelTableTh colId="type" sortKey="type" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tür / Tip</SortablePanelTableTh>
                   <SortablePanelTableTh colId="contact" sortKey="contact" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">İletişim</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="location" sortKey="location" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Konum</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="location" sortKey="location" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Konum</SortablePanelTableTh>
                   <SortablePanelTableTh colId="jobCount" sortKey="jobCount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">İş Sayısı</SortablePanelTableTh>
                   <SortablePanelTableTh colId="lastJob" sortKey="lastJob" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Son İş</SortablePanelTableTh>
                   <SortablePanelTableTh colId="contractEnd" sortKey="contractEnd" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Sözleşme Bitiş</SortablePanelTableTh>
                   <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Durum</SortablePanelTableTh>
                   <SortablePanelTableTh colId="recordOwner" sortKey="recordOwner" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Kayıt Sahibi</SortablePanelTableTh>
-                  <th className="table-th w-32" />
+                  <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="table-body">
                 {sortedVendors.map((v) => (
-                  <tr key={v.id} className={`table-row cursor-pointer ${selectedIds.has(v.id) ? 'bg-blue-50/60' : ''}`}
+                  <tr key={v.id} className="table-row cursor-pointer"
                     onClick={(e) => {
                       if ((e.target as HTMLElement).closest('a, button, input')) return;
                       setDrawerVendorId(v.id);
                       setDrawerOpen(true);
                     }}
                   >
-                  <td className="table-td" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(v.id)}
-                      onChange={() => toggleSelect(v.id)}
-                      className="w-4 h-4 rounded border-slate-300 accent-indigo-600 cursor-pointer"
-                    />
-                  </td>
                   <PanelTableTd colId="name" className="table-td">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${v.entityType === 'individual' ? 'bg-purple-500' : 'bg-indigo-600'}`}>
@@ -2551,7 +2318,7 @@ export default function VendorsPage() {
                       </div>
                     </div>
                   </PanelTableTd>
-                  <PanelTableTd colId="type" className="table-td-center">
+                  <PanelTableTd colId="type" align="center" className="table-td">
                     <div className="flex justify-center">
                       <span className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${v.entityType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-indigo-50 text-indigo-700'}`}>
                         {v.entityType === 'individual' ? Icon.user : Icon.building}
@@ -2570,12 +2337,14 @@ export default function VendorsPage() {
                       {!v.email && !v.phone && <span className="text-xs text-slate-300">—</span>}
                     </div>
                   </PanelTableTd>
-                  <PanelTableTd colId="location" className="table-td">
+                  <PanelTableTd colId="location" align="center" className="table-td">
                     {v.city ? (
-                      <p className="text-xs text-slate-600 flex items-center gap-1">{Icon.mapPin}{v.city}{v.district ? ` / ${v.district}` : ''}</p>
+                      <p className="text-xs text-slate-600 inline-flex items-center justify-center gap-1">
+                        {Icon.mapPin}{v.city}{v.district ? ` / ${v.district}` : ''}
+                      </p>
                     ) : <span className="text-xs text-slate-300">—</span>}
                   </PanelTableTd>
-                  <PanelTableTd colId="jobCount" className="table-td-center">
+                  <PanelTableTd colId="jobCount" align="center" className="table-td">
                     {(v._count?.costEntries ?? 0) > 0 ? (
                       <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
                         {v._count.costEntries}
@@ -2584,7 +2353,7 @@ export default function VendorsPage() {
                       <span className="text-xs text-slate-300">—</span>
                     )}
                   </PanelTableTd>
-                  <PanelTableTd colId="lastJob" className="table-td-center">
+                  <PanelTableTd colId="lastJob" align="center" className="table-td">
                     {v.lastJobDate ? (
                       <span className="text-xs text-slate-500 whitespace-nowrap" title={new Date(v.lastJobDate).toLocaleDateString('tr-TR')}>
                         {relativeTime(v.lastJobDate)}
@@ -2593,7 +2362,7 @@ export default function VendorsPage() {
                       <span className="text-xs text-slate-300">—</span>
                     )}
                   </PanelTableTd>
-                  <PanelTableTd colId="contractEnd" className="table-td-center">
+                  <PanelTableTd colId="contractEnd" align="center" className="table-td">
                     {v.contractEndDate ? (() => {
                       const days = contractDaysLeft(v.contractEndDate);
                       const display = isoToDisplayContract(v.contractEndDate);
@@ -2606,7 +2375,7 @@ export default function VendorsPage() {
                       return <span className="text-xs text-slate-600 whitespace-nowrap">{display}</span>;
                     })() : <span className="text-xs text-slate-300">—</span>}
                   </PanelTableTd>
-                  <PanelTableTd colId="status" className="table-td-center">
+                  <PanelTableTd colId="status" align="center" className="table-td">
                     <button type="button" onClick={() => handleToggleStatus(v)}
                       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${v.status === 'active' ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${v.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
@@ -2616,23 +2385,13 @@ export default function VendorsPage() {
                   <PanelTableTd colId="recordOwner" className="table-td">
                     <span className="text-xs text-slate-600">{formatVendorRecordOwner(v)}</span>
                   </PanelTableTd>
-                  <td className="table-td">
-                    <div className="flex items-center gap-1.5 justify-end">
-                      <Link
-                        href={`/panel/tedarikciler/${v.id}`}
-                        className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg transition-colors shadow-sm"
-                      >
-                        Detay
-                      </Link>
-                      <VendorRowActionsMenu
-                        isOpen={rowMenuId === v.id}
-                        onToggle={() => setRowMenuId((cur) => (cur === v.id ? null : v.id))}
-                        onClose={() => setRowMenuId(null)}
-                        onEdit={() => openEdit(v)}
-                        onDelete={() => requestDelete(v.id, v.name)}
-                      />
-                    </div>
-                  </td>
+                  <PanelTableTd colId="actions" wrap={false} align="center" className="table-td">
+                    <VendorRowActions
+                      vendorId={v.id}
+                      onEdit={() => openEdit(v)}
+                      onDelete={() => requestDelete(v.id, v.name)}
+                    />
+                  </PanelTableTd>
                 </tr>
               ))}
             </tbody>

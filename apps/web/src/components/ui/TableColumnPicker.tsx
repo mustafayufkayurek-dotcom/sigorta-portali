@@ -202,7 +202,7 @@ export function useTableColumnWidths(storageKey: string, columns: TableColumnDef
       const next = { ...defaults };
       for (const col of columns) {
         const w = parsed[col.id];
-        if (typeof w === 'number' && w >= (col.minWidth ?? 72)) {
+        if (typeof w === 'number' && w >= (col.minWidth ?? 40)) {
           next[col.id] = w;
         }
       }
@@ -215,7 +215,7 @@ export function useTableColumnWidths(storageKey: string, columns: TableColumnDef
   const setWidth = useCallback(
     (id: string, width: number) => {
       const col = columns.find((c) => c.id === id);
-      const min = col?.minWidth ?? 72;
+      const min = col?.minWidth ?? 40;
       const nextW = Math.max(min, Math.round(width));
       setWidths((prev) => {
         const next = { ...prev, [id]: nextW };
@@ -263,7 +263,7 @@ interface ResizableThProps {
 export function ResizableTh({
   colId,
   width,
-  minWidth = 72,
+  minWidth = 40,
   defaultWidth,
   fitLabel,
   fitSamples,
@@ -689,7 +689,7 @@ export function PanelTableTh({ colId, className = '', children, resizable = true
     <ResizableTh
       colId={colId}
       width={ctx.widths.getWidth(colId)}
-      minWidth={meta?.minWidth ?? 72}
+      minWidth={meta?.minWidth ?? 40}
       defaultWidth={meta?.defaultWidth ?? 140}
       fitLabel={meta?.label}
       fitSamples={fitSamples}
@@ -722,9 +722,9 @@ export function PanelTableTd({ colId, className = '', children, title, align = '
     align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
   const innerClass =
     align === 'center'
-      ? `flex min-w-0 justify-center ${wrap === true ? 'flex-wrap' : ''}`
+      ? `flex w-full min-w-0 justify-center ${wrap === true ? 'flex-wrap' : ''}`
       : align === 'right'
-        ? `flex min-w-0 justify-end ${wrap === true ? 'flex-wrap' : ''}`
+        ? `flex w-full min-w-0 justify-end ${wrap === true ? 'flex-wrap' : ''}`
         : 'min-w-0';
   const wrapClass =
     wrap === true

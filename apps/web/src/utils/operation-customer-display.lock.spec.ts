@@ -45,6 +45,16 @@ describe('hasar liste müşteri hücresi LOCK', () => {
     assert.match(page, /OpsListPageSizeSelect/);
   });
 
+  it('müşteri listesi kart kısa adı; unvan basılmaz', () => {
+    const src = readFileSync(join(specDir, 'operation-customer-display.ts'), 'utf8');
+    assert.match(src, /listedCustomerShortLabel/);
+    assert.match(src, /OPERATION_CUSTOMER_SHORT_UNSET/);
+    const musteri = readFileSync(join(specDir, '../app/panel/musteriler/page.tsx'), 'utf8');
+    assert.match(musteri, /listedCustomerShortLabel/);
+    assert.match(musteri, /OpsCustomerCell/);
+    assert.doesNotMatch(musteri, /customerDisplayName\(c\)/);
+  });
+
   it('Acil listede sayfa boyutu durur', () => {
     const ops = readFileSync(join(specDir, '../app/panel/operasyon/page.tsx'), 'utf8');
     assert.match(ops, /OpsListPageSizeSelect/);

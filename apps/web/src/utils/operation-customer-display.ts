@@ -28,6 +28,21 @@ export function customerShortNameEditHref(customerId: string): string {
   return `/panel/musteriler?edit=${encodeURIComponent(customerId)}`;
 }
 
+/** Müşteri listesi: yalnız karttaki Kısa Ad. Unvan yazılmaz, üretilmez. */
+export function listedCustomerShortLabel(customer: {
+  id?: string | null;
+  shortName?: string | null;
+}): { name: string; defined: boolean; href: string | null } {
+  const short = customer.shortName?.trim() || '';
+  const id = String(customer.id ?? '').trim();
+  if (short) return { name: short, defined: true, href: null };
+  return {
+    name: OPERATION_CUSTOMER_SHORT_UNSET,
+    defined: false,
+    href: id ? customerShortNameEditHref(id) : null,
+  };
+}
+
 /** Operasyon sütununda gösterilen iş müşteri alt tipleri — `insured` hariç. */
 const OPERATION_CUSTOMER_SUB_TYPES = new Set([
   'sigorta_sirketi',

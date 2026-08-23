@@ -15,7 +15,12 @@ Canlı: web + backend **v528**. Rollback: web v527 / backend v525. Yeni full dep
 4. Müşteri yetkili adı kilidi
 5. Müşteriler şerit (Toplam/Bireysel/Kurumsal) + ikon işlemler
 
-## Hâlâ yok
+## Son canlıdan sonra netleşen (lokal · canlıda yok)
 
-- Tedarikçiler satır ikon kabuğu
-- Tarama (Gelen Kutu / portal)
+1. Tedarikçiler satır ikonları (göz / kalem / Sil…)
+2. Tedarikçiler şerit müşteri gibi tek bant; ikon depo / onay / bina
+3. Tedarikçilerde tümünü seç yok
+4. Tedarikçiler konum ortalı; sütun daralır
+5. Müşteriler listesi karttaki Kısa Ad (unvan yok)
+6. Müşteriler şerit tek bant
+7. Müşteriler Dosya / Aktivite ortalı; sütun daralır

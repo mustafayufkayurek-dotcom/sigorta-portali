@@ -15,11 +15,16 @@ const actions = readFileSync(join(here, '../../../components/customers/CustomerR
 describe('müşteri KPI şeridi LOCK', () => {
   it('Hasar kartı ile üç iş kartı durur; Kısa Ad kartı yok', () => {
     assert.match(page, /OpsStripKpi/);
+    assert.match(page, /OpsKpiSegmentBand/);
     assert.match(page, /musteri-kpi-band/);
+    assert.match(page, /embedded/);
     assert.match(page, /label="Toplam"/);
     assert.match(page, /label="Bireysel"/);
     assert.equal((page.match(/<OpsStripKpi/g) ?? []).length, 3);
     assert.doesNotMatch(page, /MissingShortNameBanner/);
+    assert.match(page, /listedCustomerShortLabel/);
+    assert.match(page, /colId="files" align="center"/);
+    assert.match(page, /colId="activity" align="center"/);
   });
 
   it('satır işlemleri ikon kabuğudur', () => {
