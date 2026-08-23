@@ -27,7 +27,7 @@ describe('acil tedarikçi ödemesi liste LOCK', () => {
     assert.match(ops, /id: 'vendorPay'/);
     assert.match(ops, /Ödeme Durumu/);
     assert.match(ops, /ACIL_TABLE_COLUMNS/);
-    assert.match(ops, /table-cols:operasyon-acil-v16/);
+    assert.match(ops, /table-cols:operasyon-acil-v17/);
     assert.match(ops, /alwaysVisible: true/);
     assert.match(ops, /data-testid="acil-odeme-durumu-sutun"/);
     assert.match(ops, /acil-odeme-filtre/);
