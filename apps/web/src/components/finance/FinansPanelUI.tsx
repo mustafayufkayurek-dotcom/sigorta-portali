@@ -180,14 +180,35 @@ const KPI_ICON: Record<string, typeof Wallet> = {
   'Beklenen Kâr': Banknote,
 };
 
+function kpiAccentForTone(accent: string | undefined, tone: 'dark' | 'light') {
+  if (tone === 'light') {
+    if (!accent || accent === 'text-white') return 'text-slate-800';
+    return accent
+      .replace('text-emerald-400', 'text-emerald-700')
+      .replace('text-amber-400', 'text-amber-600')
+      .replace('text-blue-400', 'text-blue-700')
+      .replace('text-red-400', 'text-red-700')
+      .replace('text-slate-400', 'text-slate-500');
+  }
+  return accent ?? 'text-white';
+}
+
 export function FinansKpiStrip({
   items,
+  tone = 'dark',
 }: {
   items: { label: string; value: string; accent?: string }[];
+  /** Dosya üst özeti zaten koyu bantsa alt sekmelerde light kullanılır */
+  tone?: 'dark' | 'light';
 }) {
+  const dark = tone === 'dark';
   return (
     <div
-      className="mb-4 grid overflow-hidden rounded-xl border border-slate-700/60 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 shadow-sm"
+      className={`mb-4 grid overflow-hidden rounded-xl shadow-sm ${
+        dark
+          ? 'border border-slate-700/60 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900'
+          : 'border border-slate-200 bg-white'
+      }`}
       style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
     >
       {items.map((item, i) => {
@@ -195,17 +216,30 @@ export function FinansKpiStrip({
         return (
           <div
             key={item.label}
-            className={`flex items-center gap-3 px-3.5 py-3.5 ${i < items.length - 1 ? 'border-r border-white/10' : ''}`}
+            className={`flex items-center gap-3 px-3.5 py-3.5 ${
+              i < items.length - 1 ? (dark ? 'border-r border-white/10' : 'border-r border-slate-100') : ''
+            }`}
           >
-            <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-slate-200 sm:inline-flex">
+            <span
+              className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:inline-flex ${
+                dark ? 'bg-white/10 text-slate-200' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
               <Icon className="h-4 w-4" strokeWidth={1.75} />
             </span>
-            <div className="min-w-0 text-left sm:text-left">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400 leading-none">{item.label}</p>
+            <div className="min-w-0 text-left">
               <p
-                className={`mt-1.5 truncate text-base font-semibold tabular-nums leading-none ${
-                  item.accent ?? 'text-white'
+                className={`text-[10px] font-medium uppercase tracking-wide leading-none ${
+                  dark ? 'text-slate-400' : 'text-slate-500'
                 }`}
+              >
+                {item.label}
+              </p>
+              <p
+                className={`mt-1.5 truncate text-base font-semibold tabular-nums leading-none ${kpiAccentForTone(
+                  item.accent,
+                  tone,
+                )}`}
               >
                 {item.value}
               </p>

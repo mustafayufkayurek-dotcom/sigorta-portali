@@ -806,6 +806,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
         }}
       >
         <FinansKpiStrip
+          tone="light"
           items={[
             { label: 'Satış (Gelir)', value: fmtCurrency(salesTotal), accent: 'text-emerald-400' },
             { label: 'Alış (Gider)', value: fmtCurrency(purchaseTotal), accent: 'text-amber-400' },

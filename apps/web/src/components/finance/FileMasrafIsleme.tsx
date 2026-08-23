@@ -68,6 +68,7 @@ export function FileMasrafIsleme({
         }}
       >
         <FinansKpiStrip
+          tone="light"
           items={[
             { label: 'Toplam Masraf', value: fmt(total) },
             { label: 'Kayıt', value: String(expenses.length) },

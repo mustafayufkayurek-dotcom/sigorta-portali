@@ -1,18 +1,19 @@
 ---
-description: Full deploy v529 alındı — Mustafa evet dedi 23.08.2026
+description: Canlı v530 alındı; sıradaki paket finans görünüm
 alwaysApply: true
 ---
 
-# Full deploy v529 (23.08.2026) — alındı
+# Full deploy v530 (23.08.2026) — alındı
 
-Canlı: web + backend **v529**. Rollback: web v528 / backend v528. Yeni full deploy yok; yeni paket ayrı yazılır.
+Canlı: web + backend **v530**. Rollback: web v529 / backend v529.
 
 ## Alınan paket
 
-1. Tedarikçiler satır ikonları (göz / kalem / Sil…)
-2. Tedarikçiler şerit tek bant; ikon depo / onay / bina
-3. Tedarikçilerde tümünü seç yok
-4. Tedarikçiler konum ortalı; sütun daralır
-5. Müşteriler listesi karttaki Kısa Ad (unvan yok)
-6. Müşteriler şerit tek bant
-7. Müşteriler Dosya / Aktivite ortalı; sütun daralır
+1. Hasar operasyon planlayıcısı (Tespit / Onarım / Kapanış)
+2. Dosya finans özeti, cari ekstre, fatura kuralı (`a4e1e2d`)
+
+## Sıradaki canlı paket — v531-finans-gorunum (onaylı)
+
+Dosya finans görünümü: tek koyu bant; kâr tekrarı yok; Gelir/Gider/Faturalar açık kart; kompakt özet tahsilat çubuğu yok.
+
+Alındıktan sonra rollback: web/backend **v530**. İK / puantaj / zimmet bu pakete karışmaz.

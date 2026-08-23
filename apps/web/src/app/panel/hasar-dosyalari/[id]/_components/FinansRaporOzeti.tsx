@@ -167,7 +167,7 @@ export function FinansRaporOzeti({
         </div>
       )}
 
-      {tahsilatOrani != null && (
+      {!compact && tahsilatOrani != null && (
         <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/50">
           <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5">
             <span>Tahsilat İlerlemesi (Fiili)</span>

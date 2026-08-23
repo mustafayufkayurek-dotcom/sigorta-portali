@@ -270,6 +270,7 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
         </div>
 
         <FinansKpiStrip
+          tone="light"
           items={[
             { label: 'Toplam Gelir', value: fmtCurrency(totalGelir) },
             { label: 'Tahsil Edilen', value: fmtCurrency(totalTahsilat), accent: 'text-emerald-400' },

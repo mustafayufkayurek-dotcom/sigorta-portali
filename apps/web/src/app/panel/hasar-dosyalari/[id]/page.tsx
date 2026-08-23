@@ -1751,12 +1751,12 @@ export default function ClaimFileDetailPage() {
             );
           })()}
 
-          {canViewFinancials && activeGroup !== 'finans' && (
+          {canViewFinancials && (
             <div className="mb-4">
               <FinansRaporOzeti
                 claim={claim}
                 compact
-                onOpenFinansTab={() => setActiveGroup('finans')}
+                onOpenFinansTab={activeGroup === 'finans' ? undefined : () => setActiveGroup('finans')}
                 reportEditHref={reportEditHref}
               />
             </div>
@@ -1791,7 +1791,7 @@ export default function ClaimFileDetailPage() {
           )}
           {activeGroup === 'evraklar' && <EvraklarTab claimId={id!} claim={claim} />}
           {activeGroup === 'finans' && canViewFinancials && (
-            <FinansTab claim={claim} claimId={id!} reportEditHref={reportEditHref} />
+            <FinansTab claim={claim} claimId={id!} />
           )}
           {activeGroup === 'operasyon' && (
             <div className="space-y-3">

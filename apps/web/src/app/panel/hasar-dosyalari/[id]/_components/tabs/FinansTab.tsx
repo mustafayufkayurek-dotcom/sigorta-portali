@@ -18,11 +18,9 @@ const FINANS_SUB_TABS: { id: FinansSubTab; label: string }[] = [
 export function FinansTab({
   claim,
   claimId,
-  reportEditHref,
 }: {
   claim: any;
   claimId: string;
-  reportEditHref?: string | null;
 }) {
   const [subTab, setSubTab] = useState<FinansSubTab>('ozet');
 
@@ -51,7 +49,6 @@ export function FinansTab({
         <FinansOzetPanel
           claim={claim}
           claimId={claimId}
-          reportEditHref={reportEditHref}
         />
       )}
 
