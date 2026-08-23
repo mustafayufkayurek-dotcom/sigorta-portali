@@ -1,24 +1,16 @@
 ---
-description: Full deploy v528 alındı — Mustafa evet dedi 23.08.2026
+description: Full deploy v529 alındı — Mustafa evet dedi 23.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v528 (23.08.2026) — alındı
+# Full deploy v529 (23.08.2026) — alındı
 
-Canlı: web + backend **v528**. Rollback: web v527 / backend v525. Yeni full deploy yok; yeni paket ayrı yazılır.
+Canlı: web + backend **v529**. Rollback: web v528 / backend v528. Yeni full deploy yok; yeni paket ayrı yazılır.
 
 ## Alınan paket
 
-1. Hasar rapor / onay maili (Graph önce)
-2. Hasar Dosyaları Kısa Ad + uyarı + sayfa boyutu
-3. Acil liste aynı Kısa Ad + uyarı + sayfa boyutu
-4. Müşteri yetkili adı kilidi
-5. Müşteriler şerit (Toplam/Bireysel/Kurumsal) + ikon işlemler
-
-## Son canlıdan sonra netleşen (lokal · canlıda yok)
-
 1. Tedarikçiler satır ikonları (göz / kalem / Sil…)
-2. Tedarikçiler şerit müşteri gibi tek bant; ikon depo / onay / bina
+2. Tedarikçiler şerit tek bant; ikon depo / onay / bina
 3. Tedarikçilerde tümünü seç yok
 4. Tedarikçiler konum ortalı; sütun daralır
 5. Müşteriler listesi karttaki Kısa Ad (unvan yok)
