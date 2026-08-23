@@ -47,6 +47,7 @@ import {
   SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE,
   supplierAssignConflictMessage,
   supplierAssignConflicts,
+  vendorPaidFromOutgoingStatuses,
   type OperationPreset,
   type VerbalManualDecision,
 } from '@sigorta/shared';
@@ -635,11 +636,40 @@ export class ClaimFilesService {
     const dataWithReports = await this.attachLatestRepairReports(data);
     const enriched = await this.enrichOperationFields(dataWithReports);
     const withInspection = await this.enrichInspectionStatus(enriched);
+    const withVendorPay = await this.attachVendorPaid(withInspection);
 
     return {
-      data: withInspection,
+      data: withVendorPay,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  /** Liste Ödemeler sütunu — giden tedarikçi ödemesi; vade yok. */
+  private async attachVendorPaid<T extends { id: string }>(
+    claims: T[],
+  ): Promise<Array<T & { vendorPaid: boolean | null }>> {
+    if (claims.length === 0) {
+      return claims.map((c) => ({ ...c, vendorPaid: null }));
+    }
+    const rows = await this.prisma.payment.findMany({
+      where: {
+        claimFileId: { in: claims.map((c) => c.id) },
+        paymentType: 'outgoing',
+        payerType: 'vendor',
+        status: { in: ['pending', 'completed'] },
+      },
+      select: { claimFileId: true, status: true },
+    });
+    const byFile = new Map<string, string[]>();
+    for (const row of rows) {
+      const list = byFile.get(row.claimFileId) ?? [];
+      list.push(row.status);
+      byFile.set(row.claimFileId, list);
+    }
+    return claims.map((c) => ({
+      ...c,
+      vendorPaid: vendorPaidFromOutgoingStatuses(byFile.get(c.id) ?? []),
+    }));
   }
 
   /**
@@ -970,6 +1000,14 @@ export class ClaimFilesService {
             actualRevenue: true,
             totalRevenue: true,
             totalCollected: true,
+            extraWorkRevenue: true,
+            fileFeeRevenue: true,
+            totalVariableCost: true,
+            vendorCost: true,
+            fieldExpenseCost: true,
+            materialCost: true,
+            communicationCost: true,
+            otherVariableCost: true,
           },
         },
       },
@@ -1033,11 +1071,17 @@ export class ClaimFilesService {
       }
     }
 
-    const reports = await this.prisma.repairReport.findMany({
-      where: { claimFileId: id },
-      orderBy: { updatedAt: 'desc' },
-      select: LATEST_REPAIR_REPORT_SELECT,
-    });
+    const [reports, extraWorkCostAgg] = await Promise.all([
+      this.prisma.repairReport.findMany({
+        where: { claimFileId: id },
+        orderBy: { updatedAt: 'desc' },
+        select: LATEST_REPAIR_REPORT_SELECT,
+      }),
+      this.prisma.expense.aggregate({
+        where: { fileCaseId: id, expensePlan: 'EKSTRA_SATIS_MASRAFI' },
+        _sum: { amount: true },
+      }),
+    ]);
     const latestReport = pickPreferredRepairReport(reports);
     const newestReport = reports[0] ?? null;
     const verbalByClaim = await this.latestVerbalDecisions([id]);
@@ -1061,6 +1105,10 @@ export class ClaimFilesService {
 
     return {
       ...withInspection,
+      financialSummary: {
+        ...(withInspection.financialSummary ?? {}),
+        extraWorkCost: extraWorkCostAgg._sum.amount ?? 0,
+      },
       assignedSuppliers: (claimFile.supplierAssignments ?? []).map((s) => s.vendor),
       inboundReceivedAt: earliestInbound?.receivedAt ?? null,
       latestRepairReport: latestReport ? formatLatestRepairReport(latestReport) : null,

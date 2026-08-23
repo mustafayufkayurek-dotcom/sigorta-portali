@@ -78,6 +78,13 @@ export class ExpensesController {
     });
   }
 
+  @Get('work-group-audit')
+  async workGroupAudit(@Query('fileCaseId') fileCaseId?: string, @CurrentUser() user: any) {
+    if (!fileCaseId?.trim()) throw new BadRequestException('Dosya seçimi zorunludur');
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    return this.service.getWorkGroupExpenseAudit(fileCaseId.trim(), requestingUser, insuranceCompanyIds);
+  }
+
   @Get('budget-tracking')
   async getBudgetTracking(@Query() query: ExpenseFilterDto, @CurrentUser() user: any) {
     const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);

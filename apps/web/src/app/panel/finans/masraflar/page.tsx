@@ -32,6 +32,10 @@ import { API, authHeader } from '@/utils/api';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { getAccessToken } from '@/utils/auth-session';
 import { financeOperationNo } from '@sigorta/shared';
+import {
+  FileWorkGroupExpenseFields,
+  type FileWorkGroupAuditLine,
+} from '@/components/finance/FileWorkGroupExpenseFields';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmt = (n: number | string | null | undefined) =>
@@ -204,6 +208,8 @@ const EMPTY_FORM = {
   expensePlan: PLAN_BUTCE,
   expenseCategoryParentId: '',
   expenseCategoryId: '',
+  workGroupId: '',
+  workSubGroupName: '',
   description: '',
   amount: '',
   date: new Date().toISOString().slice(0, 10),
@@ -230,6 +236,7 @@ export default function MasraflarPage() {
   const [categoryFlat, setCategoryFlat] = useState<ExpenseCategoryFlat[]>([]);
   const [categoryChildren, setCategoryChildren] = useState<{ id: string; name: string }[]>([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
+  const [workGroups, setWorkGroups] = useState<FileWorkGroupAuditLine[]>([]);
   const [loading,  setLoading]  = useState(true);
 
   const tableColumns = usePanelTableColumns('table-cols:finans-masraflar', EXPENSE_TABLE_COLUMNS);
@@ -506,6 +513,26 @@ export default function MasraflarPage() {
     return () => { cancelled = true; };
   }, [form.fileCaseId, showForm, budgetFiles]);
 
+  useEffect(() => {
+    if (!form.fileCaseId || !showForm || form.expensePlan !== PLAN_BUTCE) {
+      setWorkGroups([]);
+      return;
+    }
+    let cancelled = false;
+    axios
+      .get(`${API}/expenses/work-group-audit`, {
+        headers: authHeader(),
+        params: { fileCaseId: form.fileCaseId },
+      })
+      .then((res) => {
+        if (!cancelled) setWorkGroups((res.data?.groups ?? res.data?.data?.groups ?? []) as FileWorkGroupAuditLine[]);
+      })
+      .catch(() => {
+        if (!cancelled) setWorkGroups([]);
+      });
+    return () => { cancelled = true; };
+  }, [form.fileCaseId, showForm, form.expensePlan]);
+
   const resetReceiptScan = () => {
     setScanInfo('');
     setReceiptPreview(null);
@@ -563,10 +590,20 @@ export default function MasraflarPage() {
 
     if (!form.fileCaseId)  return setFormError('Hasar dosyası seçimi zorunludur.');
     if (!form.expensePlan) return setFormError('Bütçe tipi seçimi zorunludur.');
-    if (!form.expenseCategoryParentId) return setFormError('Masraf grubu seçimi zorunludur.');
-    const needsSubgroup = categoryChildren.length > 0 || allSubgroups.some((s) => s.parentId === form.expenseCategoryParentId);
-    if (needsSubgroup && !form.expenseCategoryId) {
-      return setFormError('Masraf alt grubu seçimi zorunludur.');
+    const useWorkGroupPath = form.expensePlan === PLAN_BUTCE;
+    if (useWorkGroupPath) {
+      if (workGroups.length === 0) return setFormError('Raporda iş grubu yok. Masraf rapor satırından denetlenir.');
+      if (!form.workGroupId) return setFormError('İş grubu seçimi zorunludur.');
+      const selected = workGroups.find((g) => g.workGroupId === form.workGroupId);
+      if (selected && selected.jobDefinitions.length > 0 && !form.workSubGroupName.trim()) {
+        return setFormError('İş tanımı seçimi zorunludur.');
+      }
+    } else {
+      if (!form.expenseCategoryParentId) return setFormError('Masraf grubu seçimi zorunludur.');
+      const needsSubgroup = categoryChildren.length > 0 || allSubgroups.some((s) => s.parentId === form.expenseCategoryParentId);
+      if (needsSubgroup && !form.expenseCategoryId) {
+        return setFormError('Masraf alt grubu seçimi zorunludur.');
+      }
     }
     const amountNum = parseTrAmountInput(form.amount);
     if (amountNum == null || amountNum <= 0) return setFormError('Geçerli bir tutar giriniz.');
@@ -574,8 +611,8 @@ export default function MasraflarPage() {
     if (!isCompleteTrDateValue(dateIso)) return setFormError('Geçerli bir tarih giriniz (GG.AA.YYYY).');
 
     const fileOpt = files.find((f) => f.id === form.fileCaseId);
-    if (form.expensePlan === PLAN_BUTCE && !fileOpt?.hasApprovedBudget && !editId) {
-      return setFormError('Onaylı bütçesi olmayan dosyaya masraf girilemez.');
+    if (form.expensePlan === PLAN_BUTCE && !fileOpt?.hasApprovedBudget && workGroups.length === 0 && !editId) {
+      return setFormError('Onaylı bütçesi veya rapor iş grubu olmayan dosyaya masraf girilemez.');
     }
     if (form.expensePlan === PLAN_EK && !fileOpt?.hasEkBudget && !editId) {
       return setFormError('Ek iş satış bütçesi tanımlı olmayan dosyaya ek iş masrafı girilemez.');
@@ -586,7 +623,9 @@ export default function MasraflarPage() {
       const payload = {
         fileCaseId: form.fileCaseId,
         expensePlan: form.expensePlan,
-        expenseCategoryId: form.expenseCategoryId || form.expenseCategoryParentId,
+        ...(useWorkGroupPath
+          ? { workGroupId: form.workGroupId, workSubGroupName: form.workSubGroupName.trim() || undefined }
+          : { expenseCategoryId: form.expenseCategoryId || form.expenseCategoryParentId }),
         operationSubject: form.operationSubject || 'HASAR_ONARIM',
         description: form.description ? toTitleCaseTR(form.description.trim()) : undefined,
         amount:      amountNum,
@@ -697,8 +736,8 @@ export default function MasraflarPage() {
     if (!form.fileCaseId) return false;
     const f = files.find((x) => x.id === form.fileCaseId);
     if (!f) return Boolean(editId);
-    return form.expensePlan === PLAN_EK ? f.hasEkBudget : f.hasApprovedBudget;
-  }, [form.fileCaseId, form.expensePlan, files, editId]);
+    return form.expensePlan === PLAN_EK ? f.hasEkBudget : (f.hasApprovedBudget || workGroups.length > 0);
+  }, [form.fileCaseId, form.expensePlan, files, editId, workGroups.length]);
 
   const fileSelectOptions = useMemo(
     () =>
@@ -729,13 +768,23 @@ export default function MasraflarPage() {
       blockers.push(
         form.expensePlan === PLAN_EK
           ? 'Seçilen dosyada ek iş satış bütçesi yok'
-          : 'Seçilen dosyada onaylı bütçe yok',
+          : 'Seçilen dosyada onaylı bütçe veya rapor iş grubu yok',
       );
     }
-    if (!form.expenseCategoryParentId) blockers.push('Masraf grubu seçin');
-    if (needsExpenseSubgroup && !form.expenseCategoryId) blockers.push('Masraf alt grubu seçin');
+    if (form.expensePlan === PLAN_BUTCE) {
+      if (workGroups.length === 0) blockers.push('Raporda iş grubu yok');
+      if (!form.workGroupId) blockers.push('İş grubu seçin');
+      const selected = workGroups.find((g) => g.workGroupId === form.workGroupId);
+      if (selected && selected.jobDefinitions.length > 0 && !form.workSubGroupName.trim()) {
+        blockers.push('İş tanımı seçin');
+      }
+    } else {
+      if (!form.expenseCategoryParentId) blockers.push('Masraf grubu seçin');
+      if (needsExpenseSubgroup && !form.expenseCategoryId) blockers.push('Masraf alt grubu seçin');
+    }
     const amountNum = parseTrAmountInput(form.amount);
     if (amountNum == null || amountNum <= 0) blockers.push('Geçerli bir tutar girin');
+    if (!form.description.trim()) blockers.push('Açıklama yazın');
     const dateIso = normalizeTrDateValue(form.date);
     if (!isCompleteTrDateValue(dateIso)) blockers.push('Geçerli bir tarih girin (GG.AA.YYYY)');
     return blockers;
@@ -746,6 +795,10 @@ export default function MasraflarPage() {
     form.expenseCategoryId,
     form.amount,
     form.date,
+    form.description,
+    form.workGroupId,
+    form.workSubGroupName,
+    workGroups,
     formFileEligible,
     needsExpenseSubgroup,
   ]);
@@ -845,6 +898,9 @@ export default function MasraflarPage() {
   // CSS sınıfları
   const inputCls = 'w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors';
   const labelCls = 'block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1';
+  const requiredHint = (
+    <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>
+  );
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -1148,7 +1204,7 @@ export default function MasraflarPage() {
             {/* Hasar Dosyası — arama ile seçim */}
             <div className="md:col-span-2">
               <label className={labelCls}>
-                İlgili Dosya / Sigortalı <span className="text-status-danger">*</span>
+                İlgili Dosya / Sigortalı <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
               </label>
               <div className="flex gap-2">
                 <SearchableSelect
@@ -1302,49 +1358,53 @@ export default function MasraflarPage() {
               />
             </div>
 
-            {/* Bütçe Tipi — Dosya Bütçesi / Ek İşler */}
+            {/* Masraf yeri — Bütçelenen / Ek İş */}
             <div className="md:col-span-2">
-              <label className={labelCls}>
-                Bütçe Tipi <span className="text-status-danger">*</span>
+              <label className={labelCls} htmlFor="finans-masraf-plan">
+                Masraf yeri <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { value: PLAN_BUTCE, label: 'Dosya Bütçesi', sub: 'Normal bütçe kapsamındaki masraflar', icon: '📁', activeCls: 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' },
-                  { value: PLAN_EK,   label: 'Ek İşler',       sub: 'Bütçe dışı ek iş masrafları',        icon: '➕', activeCls: 'border-amber-400 bg-amber-50 dark:bg-amber-900/30' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => {
-                      setForm((f) => {
-                        const file = files.find((x) => x.id === f.fileCaseId);
-                        const fileOk = file && (opt.value === PLAN_EK ? file.hasEkBudget : file.hasApprovedBudget);
-                        return {
-                          ...f,
-                          expensePlan: opt.value,
-                          fileCaseId: fileOk ? f.fileCaseId : '',
-                        };
-                      });
-                    }}
-                    className={`text-left rounded-xl border-2 px-4 py-3 transition-all ${
-                      form.expensePlan === opt.value
-                        ? opt.activeCls
-                        : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
-                    }`}
-                  >
-                    <span className="text-xl">{opt.icon}</span>
-                    <p className={`font-semibold text-sm mt-1 ${form.expensePlan === opt.value ? 'text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}>
-                      {opt.label}
-                    </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{opt.sub}</p>
-                  </button>
-                ))}
-              </div>
+              <select
+                id="finans-masraf-plan"
+                value={form.expensePlan}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setForm((f) => {
+                    const file = files.find((x) => x.id === f.fileCaseId);
+                    const fileOk = file && (next === PLAN_EK ? file.hasEkBudget : file.hasApprovedBudget);
+                    return {
+                      ...f,
+                      expensePlan: next,
+                      fileCaseId: fileOk ? f.fileCaseId : '',
+                    };
+                  });
+                }}
+                className={inputCls}
+                data-testid="finans-masraf-plan"
+              >
+                <option value={PLAN_BUTCE}>Bütçelenen</option>
+                <option value={PLAN_EK}>Ek İş</option>
+              </select>
+              <p className="mt-1 text-[11px] text-slate-500">
+                {form.expensePlan === PLAN_EK
+                  ? 'Ek iş bütçesine yazılır; kâr ayrı görünür.'
+                  : 'Onaylı dosya bütçesine / rapor iş grubuna yazılır.'}
+              </p>
             </div>
 
             <div className="md:col-span-2">
+              {form.expensePlan === PLAN_BUTCE ? (
+                <FileWorkGroupExpenseFields
+                  groups={workGroups}
+                  workGroupId={form.workGroupId}
+                  workSubGroupName={form.workSubGroupName}
+                  onWorkGroup={(id) => setForm({ ...form, workGroupId: id, workSubGroupName: '' })}
+                  onJob={(name) => setForm({ ...form, workSubGroupName: name })}
+                  inputClassName={inputCls}
+                />
+              ) : (
+              <>
               <label className={labelCls}>
-                Masraf Grubu / Alt Grubu <span className="text-status-danger">*</span>
+                Masraf Grubu / Alt Grubu <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
               </label>
               {categoryTree.length === 0 ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-3 text-xs text-amber-800 dark:text-amber-200">
@@ -1421,11 +1481,13 @@ export default function MasraflarPage() {
                 )}
                 </>
               )}
+              </>
+              )}
             </div>
 
             {/* Açıklama */}
             <div className="md:col-span-2">
-              <label className={labelCls}>Açıklama</label>
+              <label className={labelCls}>Açıklama {requiredHint}</label>
               <input
                 className={inputCls}
                 placeholder="Masraf açıklaması (örn: Çatı kaplama malzemesi)"
@@ -1440,7 +1502,7 @@ export default function MasraflarPage() {
 
             {/* Tutar */}
             <div>
-              <label className={labelCls}>Tutar (TL) <span className="text-status-danger">*</span></label>
+              <label className={labelCls}>Tutar (TL) <span className="text-xs font-normal text-slate-400">(Zorunlu)</span></label>
               <TrAmountInput
                 className={inputCls}
                 placeholder="0"
@@ -1451,7 +1513,7 @@ export default function MasraflarPage() {
 
             {/* Tarih */}
             <div>
-              <label className={labelCls}>Tarih <span className="text-status-danger">*</span></label>
+              <label className={labelCls}>Tarih <span className="text-xs font-normal text-slate-400">(Zorunlu)</span></label>
               <TrDateInput
                 className={inputCls}
                 value={form.date}
@@ -1474,7 +1536,7 @@ export default function MasraflarPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-slate-100 dark:border-slate-700">
+          <div className="flex items-center justify-end gap-2 mt-5 pt-4 pb-4 border-t border-slate-100 dark:border-slate-700">
             <button
               type="button"
               onClick={closeExpenseForm}

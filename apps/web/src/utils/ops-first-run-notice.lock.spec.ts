@@ -81,6 +81,14 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(css, /prefers-reduced-motion: reduce/);
     assert.match(OPS_NOTICE.hasarListeSonDegisiklik.body, /yanıp söner/);
     assert.match(hasarDosya, /OPS_NOTICE\.hasarDosyaSonDegisiklik/);
+    const masrafIsleme = readFileSync(
+      join(here, '../components/finance/FileMasrafIsleme.tsx'),
+      'utf8',
+    );
+    assert.match(masrafIsleme, /OPS_NOTICE\.hasarMasrafButceEk/);
+    assert.equal(OPS_NOTICE.hasarMasrafButceEk.id, 'hasar-masraf-butce-ek-v535');
+    assert.match(OPS_NOTICE.hasarMasrafButceEk.body, /Bütçelenen/);
+    assert.match(OPS_NOTICE.hasarMasrafButceEk.body, /Ek İş/);
     assert.match(hasarRapor, /OPS_NOTICE\.hasarRaporSonDegisiklik/);
     assert.match(opsListe, /OPS_NOTICE\.acilListeSonDegisiklik/);
     assert.match(opsListe, /acil-liste-ilk-kullanim-seridi/);
@@ -92,7 +100,8 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(hasarListe, /ops-queue-table/);
     assert.match(opsListe, /ops-queue-table/);
     assert.match(acilPage, /OPS_NOTICE\.acilDosyaSonDegisiklik/);
-    assert.equal(OPS_NOTICE.hasarListeSonDegisiklik.id, 'hasar-liste-v532');
+    assert.equal(OPS_NOTICE.hasarListeSonDegisiklik.id, 'hasar-liste-v536');
+    assert.match(OPS_NOTICE.hasarListeSonDegisiklik.body, /Ödemeler/);
     assert.match(OPS_NOTICE.hasarListeSonDegisiklik.body, /ihbarı geçen ofis/);
     assert.match(OPS_NOTICE.hasarListeSonDegisiklik.body, /karttaki Kısa Ad/);
     assert.match(OPS_NOTICE.hasarListeSonDegisiklik.body, /yanıp söner/);

@@ -70,6 +70,7 @@ import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsur
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { acilVendorPayLabel, acilVendorPayTone } from '@/utils/acil-vendor-pay';
 
 
 const fmtAmount = (n: number | undefined | null) => formatTryAmount(n, { fractionDigits: 0 });
@@ -202,6 +203,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'subject', label: 'Dosya Konusu', defaultWidth: 140, minWidth: 100 },
   { id: 'status', label: 'Dosya Durumu', defaultWidth: 130, minWidth: 100 },
   { id: 'supplier', label: 'Tedarikçi', defaultWidth: 120, minWidth: 96 },
+  { id: 'vendorPay', label: 'Ödemeler', defaultWidth: 132, minWidth: 112, alwaysVisible: true },
   { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88, defaultVisible: false },
   { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88, defaultVisible: false },
   { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88, defaultVisible: false },
@@ -261,7 +263,7 @@ function ClaimFilesPageContent() {
     setLimit(readOpsListPageSize(OPS_LIST_PAGE_SIZE_KEYS.hasar, 20));
   }, []);
   /** v6: iş kuyruğu varsayılan sütun — para Sütunlar’da */
-  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v7', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v8', TABLE_COLUMNS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
 
@@ -402,6 +404,8 @@ function ClaimFilesPageContent() {
             return claim.currentStatus?.name ?? claim.currentStatus?.code ?? '';
           case 'supplier':
             return resolveClaimSupplierDisplayName(claim) ?? '';
+          case 'vendorPay':
+            return acilVendorPayLabel(claim.vendorPaid);
           case 'invoice':
             return deriveInvoiceStatus(claim.invoices ?? []);
           case 'amount':
@@ -708,6 +712,7 @@ function ClaimFilesPageContent() {
                   <PanelTableTh colId="subject" className="table-th-center">Dosya Konusu</PanelTableTh>
                   <PanelTableTh colId="status" className="table-th-center">Dosya Durumu</PanelTableTh>
                   <PanelTableTh colId="supplier" className="table-th-center">Tedarikçi</PanelTableTh>
+                  <PanelTableTh colId="vendorPay" className="table-th-center">Ödemeler</PanelTableTh>
                   <PanelTableTh colId="invoice" className="table-th-center">Fatura</PanelTableTh>
                   <PanelTableTh colId="amount" className="table-th-center">Tutar</PanelTableTh>
                   <PanelTableTh colId="reportSales" className="table-th-center">Beklenen Ciro</PanelTableTh>
@@ -919,6 +924,12 @@ function ClaimFilesPageContent() {
                       <p className="mt-0.5 truncate font-medium text-slate-700">{supplierName ?? '—'}</p>
                     </div>
                     <div>
+                      <p className="text-slate-400">Ödemeler</p>
+                      <span className={acilVendorPayTone(claim.vendorPaid)} data-testid="hasar-liste-odeme">
+                        {acilVendorPayLabel(claim.vendorPaid)}
+                      </span>
+                    </div>
+                    <div>
                       <p className="text-slate-400">Öncelik</p>
                       <span className={`mt-0.5 inline-flex ${priorityBadgeClass(priority)}`}>
                         {formatPriorityLabel(priority)}
@@ -989,6 +1000,9 @@ function ClaimFilesPageContent() {
                   <SortablePanelTableTh colId="subject" sortKey="subject" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya Konusu</SortablePanelTableTh>
                   <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya Durumu</SortablePanelTableTh>
                   <SortablePanelTableTh colId="supplier" sortKey="supplier" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tedarikçi</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="vendorPay" sortKey="vendorPay" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">
+                    <span data-testid="hasar-odeme-durumu-sutun">Ödemeler</span>
+                  </SortablePanelTableTh>
                   <SortablePanelTableTh colId="invoice" sortKey="invoice" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Fatura</SortablePanelTableTh>
                   <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tutar</SortablePanelTableTh>
                   <SortablePanelTableTh colId="reportSales" sortKey="reportSales" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Beklenen Ciro</SortablePanelTableTh>
@@ -1063,6 +1077,11 @@ function ClaimFilesPageContent() {
                       </PanelTableTd>
                       <PanelTableTd colId="supplier" className="table-td text-xs max-w-[120px]" title={supplierName ?? undefined}>
                         {supplierName ?? <span className="text-slate-300">Atanmadı</span>}
+                      </PanelTableTd>
+                      <PanelTableTd colId="vendorPay" className="table-td">
+                        <span className={acilVendorPayTone(claim.vendorPaid)} data-testid="hasar-liste-odeme">
+                          {acilVendorPayLabel(claim.vendorPaid)}
+                        </span>
                       </PanelTableTd>
                       <PanelTableTd colId="invoice" className="table-td">
                         <span className={INVOICE_STATUS_CLASSES[invStatus] ?? 'badge badge-gray'}>

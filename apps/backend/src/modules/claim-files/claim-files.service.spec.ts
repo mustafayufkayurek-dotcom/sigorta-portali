@@ -18,6 +18,18 @@ describe('ClaimFilesService', () => {
       repairReport: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+      payment: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      fileActivityLog: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      note: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      reportApprovalHistory: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     };
 
     cache = {
@@ -47,6 +59,7 @@ describe('ClaimFilesService', () => {
         }),
       );
       expect(result.data).toHaveLength(1);
+      expect(result.data[0].vendorPaid).toBeNull();
       expect(result.meta.total).toBe(1);
     });
 

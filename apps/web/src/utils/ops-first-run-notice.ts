@@ -22,16 +22,22 @@ export const OPS_NOTICE = {
       'İş bitince bu dosyanın tedarikçisine hakediş verilir. Verilme tarih ve saati kayıttadır. Finans ekranına düşer. Acil tedarikçisine vade uygulanmaz.',
   },
   hasarListeSonDegisiklik: {
-    id: 'hasar-liste-v532',
+    id: 'hasar-liste-v536',
     title: 'Bu sayfada ne değişti',
     body:
-      'Müşteri sütununda ihbarı geçen ofis üsttedir; karttaki Kısa Ad varsa o basılır, yoksa karttaki unvan. Altta sigorta soluktur. Sayfa altında kaç dosya göreceğinizi seçersiniz. 72 saat aşan satır kırmızı yanıp söner.',
+      'Ödemeler sütunu durur; gizlenemez. Tedarikçi ödemesi Ödendi, Ödenmedi veya Kayıt yok olarak görünür. Müşteri sütununda ihbarı geçen ofis üsttedir; karttaki Kısa Ad varsa o basılır, yoksa karttaki unvan. Altta sigorta soluktur. Sayfa altında kaç dosya göreceğinizi seçersiniz. 72 saat aşan satır kırmızı yanıp söner.',
   },
   hasarDosyaSonDegisiklik: {
     id: 'hasar-dosya-v534',
     title: 'Bu dosyada ne değişti',
     body:
       'Hasar Tespit’te tahmini süre ve görüşme notu yok. Randevu notu sesle yazılır. Tespitçi ve sigortalı WhatsApp zorunlu; tedarikçi görev notu ve WhatsApp aynı sayfada. Dosya Onaylandı, Raporlar’daki onayı gösterir. Dijital onay onarımın başında; mutabakat/muvafakat tek belge. Anket onarım bitişinde. Resim ve belgeler Evraklar → Tespit Ve Onarım’dadır.',
+  },
+  hasarMasrafButceEk: {
+    id: 'hasar-masraf-butce-ek-v535',
+    title: 'Masraf yeri',
+    body:
+      'Masraf eklerken Bütçelenen veya Ek İş seçin. Ek iş kârı ayrı ve toplamda görünür. Araç kirası, maaş, SGK ve vergi bu dosyaya yazılmaz; Finans’te yönetim gideri havuzuna işlenir, ayın son günü dağıtılmadıysa finans ve yöneticiye hatırlatılır.',
   },
   hasarRaporSonDegisiklik: {
     id: 'hasar-rapor-v526',

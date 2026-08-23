@@ -22,21 +22,30 @@ describe('acil tedarikçi ödemesi liste LOCK', () => {
     assert.equal(acilVendorPayMatchesQuery(true, 'ödendi'), true);
   });
 
-  it('Acil listede sütun durur; Hasar tablosuna karışmaz', () => {
+  it('Acil listede sütun durur; Hasar kuyruğunda Ödemeler ayrı durur', () => {
     const ops = readFileSync(join(here, '../app/panel/operasyon/page.tsx'), 'utf8');
     assert.match(ops, /id: 'vendorPay'/);
     assert.match(ops, /Ödeme Durumu/);
+    assert.match(ops, /Ödemeler/);
     assert.match(ops, /ACIL_TABLE_COLUMNS/);
     assert.match(ops, /table-cols:operasyon-acil-v17/);
+    assert.match(ops, /table-cols:operasyon-hasar-v12/);
     assert.match(ops, /alwaysVisible: true/);
-    assert.match(ops, /data-testid="acil-odeme-durumu-sutun"/);
+    assert.match(ops, /acil-odeme-durumu-sutun/);
+    assert.match(ops, /hasar-odeme-durumu-sutun/);
     assert.match(ops, /acil-odeme-filtre/);
     assert.match(ops, /resolveAcilListVendorPaid/);
-    assert.doesNotMatch(ops, /hasar: 'table-cols:operasyon-hasar-v12'/);
     const picker = readFileSync(join(here, '../components/ui/TableColumnPicker.tsx'), 'utf8');
     assert.match(picker, /alwaysVisible\?: boolean/);
     assert.match(picker, /c\.id === id && c\.alwaysVisible/);
     assert.match(picker, /locked = pinned \|\| Boolean\(col\.alwaysVisible\)/);
+    const hasarListe = readFileSync(join(here, '../app/panel/hasar-dosyalari/page.tsx'), 'utf8');
+    assert.match(hasarListe, /id: 'vendorPay'/);
+    assert.match(hasarListe, /Ödemeler/);
+    assert.match(hasarListe, /alwaysVisible: true/);
+    assert.match(hasarListe, /table-cols:hasar-dosyalari-v8/);
+    assert.match(hasarListe, /hasar-liste-odeme/);
+    assert.doesNotMatch(hasarListe, /dueDate/);
   });
 
   it('ödeme dosyadan sunucuya yazılır', () => {
@@ -48,8 +57,12 @@ describe('acil tedarikçi ödemesi liste LOCK', () => {
       join(here, '../../../backend/src/modules/emergency/emergency-process-events.ts'),
       'utf8',
     );
-    const svc = readFileSync(
+    const emergencySvc = readFileSync(
       join(here, '../../../backend/src/modules/emergency/emergency-cases.service.ts'),
+      'utf8',
+    );
+    const claimSvc = readFileSync(
+      join(here, '../../../backend/src/modules/claim-files/claim-files.service.ts'),
       'utf8',
     );
     const schema = readFileSync(
@@ -58,7 +71,9 @@ describe('acil tedarikçi ödemesi liste LOCK', () => {
     );
     assert.match(events, /EMERGENCY_VENDOR_PAYMENT_RECORDED/);
     assert.match(backend, /EMERGENCY_VENDOR_PAYMENT_RECORDED/);
-    assert.match(svc, /applyVendorPaid/);
+    assert.match(emergencySvc, /applyVendorPaid/);
+    assert.match(claimSvc, /attachVendorPaid/);
+    assert.match(claimSvc, /vendorPaidFromOutgoingStatuses/);
     assert.match(schema, /vendorPaid\s+Boolean\?/);
     assert.doesNotMatch(schema, /\/\*\*/);
     const finans = readFileSync(join(here, '../app/panel/acil-yardim/finans/page.tsx'), 'utf8');

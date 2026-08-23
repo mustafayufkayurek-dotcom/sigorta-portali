@@ -5,6 +5,8 @@ import axios from 'axios';
 import { FileSpreadsheet, Trash2 } from 'lucide-react';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { TrAmountInput } from '@/components/ui/TrAmountInput';
+import { parseTrAmountInput } from '@/utils/tr-amount-input';
 import { SlidePanel } from '@/components/SlidePanel';
 import { OnlineCollectionLinksPanel } from '@/components/finance/OnlineCollectionLinksPanel';
 import { canDeleteClaimFinance } from '@/components/finance/can-delete-claim-finance';
@@ -145,7 +147,8 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
 
   const saveGelir = async (andNew: boolean) => {
     if (!gelir.entryDate) { showToast('error', 'Tarih Zorunludur'); return; }
-    if (!gelir.amount || parseFloat(gelir.amount) <= 0) { showToast('error', 'Tutar Sıfırdan Büyük Olmalıdır'); return; }
+    const amountNum = parseTrAmountInput(gelir.amount);
+    if (!amountNum || amountNum <= 0) { showToast('error', 'Tutar Sıfırdan Büyük Olmalıdır'); return; }
     if (!gelir.description.trim()) { showToast('error', 'Açıklama Zorunludur'); return; }
     if (gelir.revenueType === 'extra_work' && !gelir.extraWorkItemId) {
       showToast('error', 'Ekstra İş Seçilmesi Zorunludur');
@@ -159,7 +162,7 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
           revenueType: gelir.revenueType,
           collectionSource: gelir.collectionSource,
           description: gelir.description.trim(),
-          amount: parseFloat(gelir.amount),
+          amount: amountNum,
           vatRate: parseFloat(gelir.vatRate),
           entryDate: gelir.entryDate,
           extraWorkItemId: gelir.revenueType === 'extra_work' ? gelir.extraWorkItemId : undefined,
@@ -350,7 +353,7 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
               <option value="insured">Sigortalı</option>
             </select>
             <FinansFieldLabel required>Tutar (TL)</FinansFieldLabel>
-            <input type="number" min="0" step="0.01" value={gelir.amount} onChange={(e) => setGelir({ ...gelir, amount: e.target.value })} className={finansInputClass} />
+            <TrAmountInput value={gelir.amount} onChange={(amount) => setGelir({ ...gelir, amount })} className={finansInputClass} />
             <FinansFieldLabel>KDV (%)</FinansFieldLabel>
             <input type="number" min="0" max="100" value={gelir.vatRate} onChange={(e) => setGelir({ ...gelir, vatRate: e.target.value })} className={finansInputClass} />
             {gelir.revenueType === 'extra_work' && (
@@ -376,7 +379,7 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
               className={finansInputClass}
             />
           </div>
-          <div className="flex justify-end gap-2 border-t border-slate-100 px-4 py-3">
+          <div className="flex justify-end gap-2 border-t border-slate-100 px-4 pb-8 pt-3.5">
             <button type="button" onClick={() => setDrawer(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600">İptal</button>
             <button type="button" disabled={saving} onClick={() => void saveGelir(true)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700">Kaydet ve Yeni</button>
             <button type="button" disabled={saving} onClick={() => void saveGelir(false)} className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white">{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
@@ -407,7 +410,11 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
               </div>
               <div>
                 <FinansFieldLabel required>Tutar (TRY)</FinansFieldLabel>
-                <input type="number" min="0" step="0.01" value={tahsilat.amount} onChange={(e) => setTahsilat({ ...tahsilat, amount: parseFloat(e.target.value) || 0 })} className={finansInputClass} />
+                <TrAmountInput
+                  value={tahsilat.amount ? String(tahsilat.amount) : ''}
+                  onChange={(v) => setTahsilat({ ...tahsilat, amount: parseTrAmountInput(v) ?? 0 })}
+                  className={finansInputClass}
+                />
               </div>
               <div>
                 <FinansFieldLabel>Yöntem</FinansFieldLabel>
@@ -473,7 +480,7 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
               </FinansFormSection>
             </div>
           </div>
-          <div className="flex justify-end gap-2 border-t border-slate-100 px-4 py-3">
+          <div className="flex justify-end gap-2 border-t border-slate-100 px-4 pb-8 pt-3.5">
             <button type="button" onClick={() => setDrawer(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600">İptal</button>
             <button type="button" disabled={saving} onClick={() => void saveTahsilat(true)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700">Kaydet ve Yeni</button>
             <button type="button" disabled={saving} onClick={() => void saveTahsilat(false)} className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white">{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>

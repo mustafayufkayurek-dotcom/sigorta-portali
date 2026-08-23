@@ -188,6 +188,7 @@ type UnifiedRow =
       priority?: string | null;
       reportId: string | null;
       defaultEmailTo: string | null;
+      vendorPaid: boolean | null;
     }
   | {
       kind: 'acil';
@@ -241,6 +242,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 80, defaultVisible: false },
   { id: 'subject', label: 'Dosya Konusu', defaultWidth: 200, minWidth: 120, flex: true },
   { id: 'status', label: 'Dosya Durumu', defaultWidth: 150, minWidth: 120 },
+  { id: 'vendorPay', label: 'Ödemeler', defaultWidth: 132, minWidth: 112, alwaysVisible: true },
   { id: 'invoice', label: 'Fatura', defaultWidth: 100, minWidth: 80, defaultVisible: false },
   { id: 'amount', label: 'Tutar', defaultWidth: 96, minWidth: 80, defaultVisible: false },
   { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88 },
@@ -284,10 +286,11 @@ const PAGE_SIZE = 50;
 /**
  * Sütun genişlikleri sayfa/filtre bazında ayrılır — Hasar ve Acil birbirini etkilemez.
  * v17: Hasar kuyruk kabuğu; para Sütunlar’da; Ödeme Durumu gizlenemez.
+ * v12 Hasar/all: Ödemeler sütunu dosya sorumlusuna görünür, gizlenemez.
  */
 const OPS_COLS_KEY_BY_FILTER: Record<'all' | 'hasar' | 'acil', string> = {
-  all: 'table-cols:operasyon-all-v11',
-  hasar: 'table-cols:operasyon-hasar-v11',
+  all: 'table-cols:operasyon-all-v12',
+  hasar: 'table-cols:operasyon-hasar-v12',
   acil: 'table-cols:operasyon-acil-v17',
 };
 
@@ -573,6 +576,7 @@ function OperasyonPageContent() {
       priority: claim.priority ?? null,
       reportId: claim.latestRepairReport?.id ?? null,
       defaultEmailTo: claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? null,
+      vendorPaid: claim.vendorPaid === true || claim.vendorPaid === false ? claim.vendorPaid : null,
     };
   });
 
@@ -649,7 +653,7 @@ function OperasyonPageContent() {
       case 'reportCost': return row.supplierCostTotal ?? '';
       case 'reportProfit': return row.expectedProfit ?? '';
       case 'vendorPay':
-        return row.kind === 'acil' ? acilVendorPayLabel(row.vendorPaid) : '';
+        return acilVendorPayLabel(row.vendorPaid);
       default: return '';
     }
   }
@@ -677,7 +681,7 @@ function OperasyonPageContent() {
             if (row.fileNo.toLocaleLowerCase('tr').includes(q)) return true;
             if (row.insuredName.toLocaleLowerCase('tr').includes(q)) return true;
             if ((row.subject ?? '').toLocaleLowerCase('tr').includes(q)) return true;
-            if (acilVendorPayMatchesQuery(row.kind === 'acil' ? row.vendorPaid : null, q)) return true;
+            if (acilVendorPayMatchesQuery(row.vendorPaid, q)) return true;
           }
           return false;
         })
@@ -795,7 +799,7 @@ function OperasyonPageContent() {
       if (row.expectedSales) samples.reportSales?.push(row.expectedSales);
       if (row.supplierCostTotal) samples.reportCost?.push(row.supplierCostTotal);
       if (row.expectedProfit) samples.reportProfit?.push(row.expectedProfit);
-      if (row.kind === 'acil') samples.vendorPay?.push(acilVendorPayLabel(row.vendorPaid));
+      samples.vendorPay?.push(acilVendorPayLabel(row.vendorPaid));
       samples.actions?.push('İşlemler');
     }
     return samples;
@@ -803,12 +807,12 @@ function OperasyonPageContent() {
 
   const visibleOpsColumns = useMemo(() => {
     const cols = tableColumns.prefs.orderedVisibleColumns;
-    if (filterType !== 'acil') return cols;
-    const withoutKind = cols.filter((c) => c.id !== 'kind');
+    const withoutKind = filterType === 'acil' ? cols.filter((c) => c.id !== 'kind') : cols;
+    const payCol = filterType === 'acil' ? VENDOR_PAY_COL : { ...VENDOR_PAY_COL, label: 'Ödemeler' };
     if (withoutKind.some((c) => c.id === 'vendorPay')) return withoutKind;
     const statusAt = withoutKind.findIndex((c) => c.id === 'status');
     const insertAt = statusAt >= 0 ? statusAt + 1 : withoutKind.length;
-    return [...withoutKind.slice(0, insertAt), VENDOR_PAY_COL, ...withoutKind.slice(insertAt)];
+    return [...withoutKind.slice(0, insertAt), payCol, ...withoutKind.slice(insertAt)];
   }, [filterType, tableColumns.prefs.orderedVisibleColumns]);
 
   const opsTableStyle = useMemo(() => panelTableLayoutStyle(tableColumns), [tableColumns]);
@@ -1343,11 +1347,14 @@ function OperasyonPageContent() {
                   </div>
                     </>
                   ) : null}
-                  {row.kind === 'acil' ? (
+                  {row.kind === 'acil' || row.kind === 'hasar' ? (
                     <div>
-                      <p className="text-slate-400">Ödeme Durumu</p>
+                      <p className="text-slate-400">{row.kind === 'acil' ? 'Ödeme Durumu' : 'Ödemeler'}</p>
                       <p className="mt-0.5">
-                        <span className={acilVendorPayTone(row.vendorPaid)} data-testid="acil-liste-odeme">
+                        <span
+                          className={acilVendorPayTone(row.vendorPaid)}
+                          data-testid={row.kind === 'acil' ? 'acil-liste-odeme' : 'hasar-liste-odeme'}
+                        >
                           {acilVendorPayLabel(row.vendorPaid)}
                         </span>
                       </p>
@@ -1384,7 +1391,7 @@ function OperasyonPageContent() {
                         onSort={handleColumnSort}
                       >
                         {col.id === 'vendorPay' ? (
-                          <span data-testid="acil-odeme-durumu-sutun">{col.label}</span>
+                          <span data-testid={filterType === 'acil' ? 'acil-odeme-durumu-sutun' : 'hasar-odeme-durumu-sutun'}>{col.label}</span>
                         ) : (
                           col.label
                         )}
@@ -1509,13 +1516,12 @@ function OperasyonPageContent() {
                         case 'vendorPay':
                           return (
                             <PanelTableTd key={col.id} colId="vendorPay" className={queueTdClass}>
-                              {row.kind === 'acil' ? (
-                                <span className={acilVendorPayTone(row.vendorPaid)} data-testid="acil-liste-odeme">
-                                  {acilVendorPayLabel(row.vendorPaid)}
-                                </span>
-                              ) : (
-                                <span className="text-slate-300">—</span>
-                              )}
+                              <span
+                                className={acilVendorPayTone(row.vendorPaid)}
+                                data-testid={row.kind === 'acil' ? 'acil-liste-odeme' : 'hasar-liste-odeme'}
+                              >
+                                {acilVendorPayLabel(row.vendorPaid)}
+                              </span>
                             </PanelTableTd>
                           );
                         case 'invoice':

@@ -23,6 +23,15 @@ export type FinansOzetSummary = {
   totalCollected?: number;
   estimatedRevenue?: number;
   estimatedCost?: number;
+  extraWorkRevenue?: number;
+  extraWorkCost?: number;
+  fileFeeRevenue?: number;
+  totalVariableCost?: number;
+  vendorCost?: number;
+  fieldExpenseCost?: number;
+  materialCost?: number;
+  communicationCost?: number;
+  otherVariableCost?: number;
 };
 
 export function FinansMetrikHucre({ metrik }: { metrik: FinansMetrik }) {
@@ -97,6 +106,22 @@ export function FinansRaporOzeti({
     kpis.netProfit !== 0;
 
   const karAccent = kpis.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700';
+  const hasSplit =
+    kpis.extraWorkRevenue > 0 || kpis.extraWorkCost > 0;
+  const splitMetrikleri = hasSplit
+    ? [
+        metrikFromAmount('Bütçe Kârı', kpis.budgetProfit, {
+          accent: kpis.budgetProfit >= 0 ? 'text-emerald-700' : 'text-red-700',
+        }),
+        metrikFromAmount('Ek İş Kârı', kpis.extraWorkProfit, {
+          accent: kpis.extraWorkProfit >= 0 ? 'text-amber-700' : 'text-red-700',
+        }),
+        metrikFromAmount('Toplam Kâr', kpis.netProfit, {
+          highlight: true,
+          accent: karAccent,
+        }),
+      ]
+    : [];
   const gelirLabel = kpis.actualRevenue > 0 ? 'Faturalanan Gelir' : 'Dosya Bedeli';
   const giderLabel = kpis.hasFileExpenses ? 'Fiili Gider' : 'Tedarikçi Bütçesi';
   const primaryMetrikleri = [
@@ -164,6 +189,13 @@ export function FinansRaporOzeti({
               <FinansMetrikHucre key={m.label} metrik={m} />
             ))}
           </div>
+          {splitMetrikleri.length > 0 && (
+            <div className="grid grid-cols-3 border-t border-slate-100">
+              {splitMetrikleri.map((m) => (
+                <FinansMetrikHucre key={m.label} metrik={m} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

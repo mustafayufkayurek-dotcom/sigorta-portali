@@ -220,6 +220,16 @@ export function FinansOzetPanel({
               </div>
 
               <PlBreakdownCard
+                title="Kâr"
+                accent="emerald"
+                totalLabel="Toplam Kâr"
+                totalAmount={kpis.netProfit}
+              >
+                <PlRow label="Bütçe Kârı" amount={kpis.budgetProfit} />
+                <PlRow label="Ek İş Kârı" amount={kpis.extraWorkProfit} />
+              </PlBreakdownCard>
+
+              <PlBreakdownCard
                 title="Tahsilat"
                 accent="emerald"
                 totalLabel="Toplam Tahsilat"

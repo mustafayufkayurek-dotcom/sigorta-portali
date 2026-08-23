@@ -2,16 +2,18 @@
 
 /**
  * Dosya gideri — Finans Masraf İzleme ile aynı yöntem.
- * Ekstra iş bu ekranda yoktur.
+ * Bütçelenen veya ek iş seçilir; kâr ayrı ve toplu görünür.
  */
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Trash2 } from 'lucide-react';
 import { ClaimFileExpenseFormPanel } from '@/components/finance/ClaimFileExpenseFormPanel';
 import { canDeleteClaimFinance } from '@/components/finance/can-delete-claim-finance';
-import { FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import { FinansEmptyState, FinansMetricGrid, FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { API, authHeader } from '@/utils/api';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { financeOperationNo } from '@sigorta/shared';
 
 const fmt = (n: number) => formatTryAmount(n, { fractionDigits: 0 });
@@ -55,23 +57,37 @@ export function FileMasrafIsleme({
   useEffect(() => { void load(); }, [load]);
 
   const total = expenses.reduce((s, e) => s + Number(e.amount ?? 0), 0);
+  const butceTotal = expenses.reduce(
+    (s, e) => (e.expensePlan === 'EKSTRA_SATIS_MASRAFI' ? s : s + Number(e.amount ?? 0)),
+    0,
+  );
+  const ekTotal = expenses.reduce(
+    (s, e) => (e.expensePlan === 'EKSTRA_SATIS_MASRAFI' ? s + Number(e.amount ?? 0) : s),
+    0,
+  );
 
   return (
     <>
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.hasarMasrafButceEk.id}
+        title={OPS_NOTICE.hasarMasrafButceEk.title}
+        body={OPS_NOTICE.hasarMasrafButceEk.body}
+        testId="hasar-masraf-butce-ek-seridi"
+      />
       <FinansPanelCard
         title="Masraf İşleme"
-        subtitle="Dosya bütçesi masrafları — Finans ile aynı yöntem"
+        subtitle="Bütçelenen veya ek iş — aynı yöntem"
         action={{
           label: 'Yeni Masraf Ekle',
           onClick: () => setOpen(true),
           variant: 'primary',
         }}
       >
-        <FinansKpiStrip
-          tone="light"
+        <FinansMetricGrid
           items={[
-            { label: 'Toplam Masraf', value: fmt(total) },
-            { label: 'Kayıt', value: String(expenses.length) },
+            { label: 'Bütçelenen', value: fmt(butceTotal) },
+            { label: 'Ek İş', value: fmt(ekTotal) },
+            { label: 'Toplam', value: fmt(total) },
           ]}
         />
 
@@ -91,6 +107,11 @@ export function FileMasrafIsleme({
                     {financeOperationNo('MSF', e.id, e.createdAt ?? e.date)}
                   </span>
                   {e.description || 'Masraf'}
+                  {e.expensePlan === 'EKSTRA_SATIS_MASRAFI' ? (
+                    <span className="ml-2 text-[10px] font-medium text-amber-700">Ek iş</span>
+                  ) : (
+                    <span className="ml-2 text-[10px] font-medium text-slate-400">Bütçelenen</span>
+                  )}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   <span className="font-semibold tabular-nums text-slate-800">
@@ -149,7 +170,7 @@ export function FileMasrafIsleme({
         onClose={() => setOpen(false)}
         claimFileId={claimId}
         fileLabel={fileLabel}
-        allowExtraWorkPlan={false}
+        allowExtraWorkPlan={true}
         onSaved={() => { void load(); }}
       />
     </>

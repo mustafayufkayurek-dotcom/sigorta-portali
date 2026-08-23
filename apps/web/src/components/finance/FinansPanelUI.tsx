@@ -159,7 +159,9 @@ export function FinansFieldLabel({
   return (
     <label className="block text-xs font-medium text-slate-600 mb-1">
       {children}
-      {required && <span className="text-status-danger ml-0.5">*</span>}
+      {required && (
+        <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>
+      )}
     </label>
   );
 }
@@ -172,6 +174,9 @@ const KPI_ICON: Record<string, typeof Wallet> = {
   'Giden Ödeme': TrendingDown,
   'Kayıt Sayısı': Hash,
   'Toplam Masraf': Receipt,
+  Bütçelenen: Receipt,
+  'Ek İş': Banknote,
+  Toplam: Scale,
   Kayıt: Hash,
   'Satış (Gelir)': TrendingUp,
   'Alış (Gider)': TrendingDown,
@@ -191,6 +196,36 @@ function kpiAccentForTone(accent: string | undefined, tone: 'dark' | 'light') {
       .replace('text-slate-400', 'text-slate-500');
   }
   return accent ?? 'text-white';
+}
+
+export function FinansMetricGrid({
+  items,
+}: {
+  items: { label: string; value: string; accent?: string }[];
+}) {
+  return (
+    <div className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+        {items.map((item, i) => (
+          <div
+            key={item.label}
+            className={`flex min-h-[4.75rem] flex-col items-center justify-center px-3 py-3 ${
+              i < items.length - 1 ? 'border-r border-slate-100' : ''
+            }`}
+          >
+            <p className="text-[11px] font-medium leading-none text-slate-500">{item.label}</p>
+            <p
+              className={`mt-1.5 text-base font-semibold tabular-nums tracking-tight leading-none ${
+                item.accent ?? 'text-slate-800'
+              }`}
+            >
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function FinansKpiStrip({
