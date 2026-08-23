@@ -669,11 +669,17 @@ export default function MasraflarPage() {
 
   const handleEdit = (e: Expense) => {
     setEditId(e.id);
+    const subgroup = String(e.expenseSubgroupName ?? '');
+    const [groupName, ...jobParts] = subgroup.split(' · ');
+    const matchedGroup = workGroups.find((g) => g.workGroupName === groupName.trim());
     setForm({
+      ...EMPTY_FORM,
       fileCaseId: e.fileCaseId,
       expensePlan: e.expensePlan,
       expenseCategoryParentId: e.expenseCategoryParentId,
       expenseCategoryId: e.expenseCategoryId,
+      workGroupId: matchedGroup?.workGroupId ?? '',
+      workSubGroupName: jobParts.join(' · ').trim(),
       description: e.description,
       amount: numberToTrAmountInput(e.amount),
       date: e.date?.slice(0, 10) ?? '',
