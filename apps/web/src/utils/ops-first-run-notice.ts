@@ -22,10 +22,10 @@ export const OPS_NOTICE = {
       'İş bitince bu dosyanın tedarikçisine hakediş verilir. Verilme tarih ve saati kayıttadır. Finans ekranına düşer. Acil tedarikçisine vade uygulanmaz.',
   },
   hasarListeSonDegisiklik: {
-    id: 'hasar-liste-v527',
+    id: 'hasar-liste-v532',
     title: 'Bu sayfada ne değişti',
     body:
-      '72 saat aşan satır kırmızı yanıp söner. Fazla sütun Sütunlar menüsündedir.',
+      'Müşteri sütununda ihbarı geçen ofis üsttedir; karttaki Kısa Ad varsa o basılır, yoksa karttaki unvan. Altta sigorta soluktur. Sayfa altında kaç dosya göreceğinizi seçersiniz. 72 saat aşan satır kırmızı yanıp söner.',
   },
   hasarDosyaSonDegisiklik: {
     id: 'hasar-dosya-v526',
@@ -39,11 +39,17 @@ export const OPS_NOTICE = {
     body:
       'İş grubu seçilince listenin en altında kırmızı Yeni İş Kalemi Ekle durur. Sunulmuş, onay bekleyen ve dış onaydaki raporda revizyon açılır; taslakta açılmaz. Fotoğraf ileri-geri okları resmin yanındadır.',
   },
+  musteriYetkiliAd: {
+    id: 'musteri-yetkili-ad-v533',
+    title: 'Yetkili kişi adı',
+    body:
+      'Bu kutuya yalnız kişi adı yazılır. Firma adı veya unvan parçası kaydı durdurur. Yazılım ad uydurmaz.',
+  },
   acilListeSonDegisiklik: {
-    id: 'acil-liste-v527',
+    id: 'acil-liste-v529',
     title: 'Bu sayfada ne değişti',
     body:
-      'Ödeme Durumu durur; gizlenemez. 72 saat aşan satır kırmızı yanıp söner. Ciro Sütunlar menüsündedir.',
+      'Liste Hasar kuyruğu gibidir. Ciro Sütunlar menüsündedir. Ödeme Durumu durur; gizlenemez. Sayfa altında kaç dosya göreceğinizi seçersiniz.',
   },
   acilDosyaSonDegisiklik: {
     id: 'acil-dosya-v523',

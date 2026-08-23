@@ -52,6 +52,7 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
     --exclude node_modules --exclude .next --exclude dist --exclude .DS_Store --exclude '._*' \
     --exclude '.env' --exclude '.env.local' --exclude '.env.*.local' \
     --exclude '.env.development' --exclude '.env.production' \
+    --exclude 'src/app/dev/dinlenme-tarama' --exclude 'src/app/dev/dinlenme-tarama/**' \
     "$PROJECT_DIR/apps/web/" "$REMOTE_HOST:$REMOTE_APP/apps/web/"
   run_remote "rm -f $REMOTE_APP/apps/web/.env $REMOTE_APP/apps/web/.env.local $REMOTE_APP/apps/web/.env.*.local"
 

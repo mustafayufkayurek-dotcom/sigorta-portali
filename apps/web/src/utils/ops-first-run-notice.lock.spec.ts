@@ -92,10 +92,30 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(hasarListe, /ops-queue-table/);
     assert.match(opsListe, /ops-queue-table/);
     assert.match(acilPage, /OPS_NOTICE\.acilDosyaSonDegisiklik/);
-    assert.equal(OPS_NOTICE.hasarListeSonDegisiklik.id, 'hasar-liste-v527');
+    assert.equal(OPS_NOTICE.hasarListeSonDegisiklik.id, 'hasar-liste-v532');
+    assert.match(OPS_NOTICE.hasarListeSonDegisiklik.body, /ihbarı geçen ofis/);
+    assert.match(OPS_NOTICE.hasarListeSonDegisiklik.body, /karttaki Kısa Ad/);
     assert.match(OPS_NOTICE.hasarListeSonDegisiklik.body, /yanıp söner/);
+    assert.match(hasarListe, /MissingShortNameBanner/);
+    assert.match(opsListe, /MissingShortNameBanner/);
+    assert.equal(OPS_NOTICE.acilListeSonDegisiklik.id, 'acil-liste-v529');
     assert.match(OPS_NOTICE.acilListeSonDegisiklik.body, /Ödeme Durumu/);
+    assert.match(OPS_NOTICE.acilListeSonDegisiklik.body, /Hasar kuyruğu/);
+    assert.match(opsListe, /operasyon-acil-v17/);
+    assert.match(opsListe, /queueThClass/);
+    assert.match(opsListe, /const acilList = filterType === 'acil'/);
+    assert.match(opsListe, /pagedRows\.length === 0/);
+    assert.doesNotMatch(opsListe, /Toplam Satır/);
     assert.match(OPS_NOTICE.acilDosyaSonDegisiklik.body, /Konum/);
+  });
+
+  it('Müşteri kartında yetkili adı şeridi durur', () => {
+    const musteri = readFileSync(join(here, '../app/panel/musteriler/page.tsx'), 'utf8');
+    assert.match(musteri, /OPS_NOTICE\.musteriYetkiliAd/);
+    assert.match(musteri, /musteri-yetkili-ad-ilk-kullanim-seridi/);
+    assert.equal(OPS_NOTICE.musteriYetkiliAd.id, 'musteri-yetkili-ad-v533');
+    assert.match(OPS_NOTICE.musteriYetkiliAd.body, /Yazılım ad uydurmaz/);
+    assert.doesNotMatch(musteri, /OpenAI|ChatGPT|Google Places/);
   });
 
   it('personel kılavuzu Acil tedarikçi ve dosya sorumlusu maddelerini taşır', () => {

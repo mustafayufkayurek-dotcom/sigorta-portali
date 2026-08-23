@@ -195,6 +195,13 @@
   white-space: nowrap;
 }
 
+.ops-queue-table .table-td > div.whitespace-normal,
+.ops-queue-table .table-td-center > div.whitespace-normal {
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
+}
+
 /* Kurumsal tablo — durum/kategori pill'leri hücre ortasında */
 .table-td-center .badge {
   @apply inline-flex items-center justify-center text-center;

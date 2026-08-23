@@ -16,3 +16,4 @@ export * from './supplier-assignment-guard';
 export * from './finance-operation-no';
 export * from './backup-health';
 export * from './acil-vendor-quality';
+export * from './authorized-person-name';

@@ -20,11 +20,19 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
-import { claimListFileNo, claimListInsuranceCompanyName } from '@/utils/claim-list-column-fields';
+import { claimListFileNo } from '@/utils/claim-list-column-fields';
+import { resolveHasarOperationCustomer } from '@/utils/operation-customer-display';
+import {
+  OPS_LIST_PAGE_SIZE_KEYS,
+  readOpsListPageSize,
+  type OpsListPageSize,
+} from '@/utils/ops-list-page-size';
 import { resolveClaimSupplierDisplayName } from '@/utils/claim-supplier-display';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
 import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
+import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
+import { OpsListPageSizeSelect } from '@/components/operasyon/OpsListPageSizeSelect';
 import {
   ArrowRight,
   CalendarPlus,
@@ -60,6 +68,7 @@ import {
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
 
@@ -247,7 +256,10 @@ function ClaimFilesPageContent() {
   const [noteInsuredName, setNoteInsuredName] = useState<string | undefined>(undefined);
   const [emailTarget, setEmailTarget] = useState<OperationSendEmailTarget | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const limit = 20;
+  const [limit, setLimit] = useState<OpsListPageSize>(20);
+  useEffect(() => {
+    setLimit(readOpsListPageSize(OPS_LIST_PAGE_SIZE_KEYS.hasar, 20));
+  }, []);
   /** v6: iş kuyruğu varsayılan sütun — para Sütunlar’da */
   const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v7', TABLE_COLUMNS);
 
@@ -312,7 +324,7 @@ function ClaimFilesPageContent() {
     if (repairReportStatusFilter) params.set('repairReportStatus', repairReportStatusFilter);
     else if (pendingReportFilter) params.set('repairReportStatus', 'pending_approval');
     return params.toString();
-  }, [search, statusFilter, priorityFilter, insuranceFilter, dateFrom, dateTo, page, invoiceStatusFilter, officeStaffUserId, pendingReportFilter, repairReportStatusFilter]);
+  }, [search, statusFilter, priorityFilter, insuranceFilter, dateFrom, dateTo, page, limit, invoiceStatusFilter, officeStaffUserId, pendingReportFilter, repairReportStatusFilter]);
 
   const {
     data: claimsResponse,
@@ -379,7 +391,7 @@ function ClaimFilesPageContent() {
           case 'fileNo':
             return claimListFileNo(claim) === '—' ? '' : claimListFileNo(claim);
           case 'customer':
-            return claim.insuranceCompany?.name ?? '';
+            return resolveHasarOperationCustomer(claim.customer, claim.insuranceCompany).searchText;
           case 'insured':
             return resolveHasarInsuredName(claim);
           case 'date':
@@ -490,7 +502,8 @@ function ClaimFilesPageContent() {
               </p>
             )}
             {!isFieldStaff && (
-              <div className="mt-1.5">
+              <div className="mt-1.5 space-y-2">
+                <MissingShortNameBanner />
                 <OpsFirstRunNotice
                   compact
                   noticeId={OPS_NOTICE.hasarListeSonDegisiklik.id}
@@ -848,7 +861,7 @@ function ClaimFilesPageContent() {
                   </div>
                 );
               }
-              const customerName = claimListInsuranceCompanyName(claim);
+              const customer = resolveHasarOperationCustomer(claim.customer, claim.insuranceCompany);
               const insuredName = resolveHasarInsuredName(claim);
               const revCount = pendingRevisionMap[claim.id] ?? 0;
               const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
@@ -876,7 +889,9 @@ function ClaimFilesPageContent() {
                           <span className="ops-72s-chip" title="Onay süresi 72 saati aştı">72s</span>
                         ) : null}
                       </div>
-                      <div className="mt-1 truncate text-xs font-medium text-slate-600">{customerName}</div>
+                      <div className="mt-1">
+                        <OpsCustomerCell kind="hasar" name={customer.name} typeLabel={customer.typeLabel} href={customer.customerHref} />
+                      </div>
                       {subject ? (
                         <div className="mt-0.5 truncate text-[11px] text-slate-500">{subject}</div>
                       ) : null}
@@ -986,7 +1001,7 @@ function ClaimFilesPageContent() {
               </thead>
               <tbody className="table-body">
                 {visibleClaims.map((claim: any) => {
-                  const customerName = claimListInsuranceCompanyName(claim);
+                  const customer = resolveHasarOperationCustomer(claim.customer, claim.insuranceCompany);
                   const insuredName = resolveHasarInsuredName(claim);
                   const revCount = pendingRevisionMap[claim.id] ?? 0;
                   const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
@@ -1023,12 +1038,19 @@ function ClaimFilesPageContent() {
                           ) : null}
                         </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="customer" className="table-td text-xs font-medium max-w-[160px]" title={customerName}>{customerName}</PanelTableTd>
+                      <PanelTableTd
+                        colId="customer"
+                        wrap
+                        className="table-td text-xs max-w-[160px]"
+                        title={customer.title}
+                      >
+                        <OpsCustomerCell kind="hasar" name={customer.name} typeLabel={customer.typeLabel} href={customer.customerHref} />
+                      </PanelTableTd>
                       <PanelTableTd colId="insured" className="table-td text-xs max-w-[180px]" title={insuredName}>
                         {insuredName}
                       </PanelTableTd>
                       <PanelTableTd colId="date" className="table-td text-slate-400 text-xs">{fmtDate(claim.createdAt)}</PanelTableTd>
-                      <PanelTableTd colId="subject" className="table-td text-xs max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
+                      <PanelTableTd colId="subject" align="center" className="table-td-center text-xs max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
                         {resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}
                       </PanelTableTd>
                       <PanelTableTd colId="status" align="center" className="table-td-center">
@@ -1115,15 +1137,30 @@ function ClaimFilesPageContent() {
               </tbody>
             </table>
           </div>
-          {total > limit && (
-            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/60">
-              <span className="text-xs text-slate-400">{(page - 1) * limit + 1}–{Math.min(page * limit, total)} / {total} kayıt</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/60">
+            <div className="flex flex-wrap items-center gap-3">
+              <OpsListPageSizeSelect
+                value={limit}
+                fallback={20}
+                storageKey={OPS_LIST_PAGE_SIZE_KEYS.hasar}
+                onChange={(next) => {
+                  setLimit(next);
+                  setPage(1);
+                }}
+              />
+              <span className="text-xs text-slate-400">
+                {total === 0
+                  ? '0 kayıt'
+                  : `${(page - 1) * limit + 1}–${Math.min(page * limit, total)} / ${total} kayıt`}
+              </span>
+            </div>
+            {total > limit && (
               <div className="flex gap-2">
                 <button type="button" disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="text-xs border border-slate-200 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors">← Önceki</button>
-                <button disabled={page * limit >= total} onClick={() => setPage((p) => p + 1)} className="text-xs border border-slate-200 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors">Sonraki →</button>
+                <button type="button" disabled={page * limit >= total} onClick={() => setPage((p) => p + 1)} className="text-xs border border-slate-200 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors">Sonraki →</button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
       <ExpertFileNoteModal

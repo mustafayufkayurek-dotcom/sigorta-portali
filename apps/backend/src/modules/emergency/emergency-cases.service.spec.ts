@@ -4,6 +4,12 @@ import { EmergencyCasesService } from './emergency-cases.service';
 describe('EmergencyCasesService', () => {
   let service: EmergencyCasesService;
   let prisma: any;
+  let operationalAccessGrants: {
+    isDelegationScopedRole: jest.Mock;
+    buildEmergencyDelegationScope: jest.Mock;
+    canAccessAssignedUserViaDelegation: jest.Mock;
+    resolveDelegationBanner: jest.Mock;
+  };
 
   beforeEach(() => {
     prisma = {
@@ -18,7 +24,7 @@ describe('EmergencyCasesService', () => {
       invoiceRequest: { findMany: jest.fn().mockResolvedValue([]) },
       emergencyVendorEntitlement: { findUnique: jest.fn().mockResolvedValue(null) },
     };
-    const operationalAccessGrants = {
+    operationalAccessGrants = {
       isDelegationScopedRole: jest.fn().mockReturnValue(false),
       buildEmergencyDelegationScope: jest.fn().mockResolvedValue({}),
       canAccessAssignedUserViaDelegation: jest.fn().mockResolvedValue(false),
@@ -80,6 +86,23 @@ describe('EmergencyCasesService', () => {
       expect(prisma.emergencyCase.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ customerId: 'cust-a' }),
+        }),
+      );
+    });
+  });
+
+  describe('findAll', () => {
+    it('ofis personeli kapsamını listeye uygular', async () => {
+      operationalAccessGrants.isDelegationScopedRole.mockReturnValue(true);
+      operationalAccessGrants.buildEmergencyDelegationScope.mockResolvedValue({
+        OR: [{ assignedUserId: { in: ['staff-1'] } }],
+      });
+      await service.findAll({}, { id: 'staff-1', roleCode: 'office_staff' });
+      expect(prisma.emergencyCase.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [{ assignedUserId: { in: ['staff-1'] } }],
+          }),
         }),
       );
     });

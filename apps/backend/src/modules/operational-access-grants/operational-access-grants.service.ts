@@ -142,7 +142,12 @@ export class OperationalAccessGrantsService {
   async buildEmergencyDelegationScope(userId: string, roleCode: string) {
     if (!this.isDelegationScopedRole(roleCode)) return {};
     const principalIds = await this.getPrincipalUserIdsForGrantee(userId, 'acil_yardim');
-    return { assignedUserId: { in: [userId, ...principalIds] } };
+    return {
+      OR: [
+        { assignedUserId: { in: [userId, ...principalIds] } },
+        { assignedUserId: null, createdByUserId: userId },
+      ],
+    };
   }
 
   async canAccessAssignedUserViaDelegation(

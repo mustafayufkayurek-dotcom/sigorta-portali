@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailConfig } from '@/modules/system-settings/system-settings.service';
+import { GraphMailSendService } from '@/modules/operation-inbox/graph/graph-mail-send.service';
+import type { InboundMailbox } from '@prisma/client';
 import {
   buildNotificationEmailHtml,
   buildWelcomeInviteEmailHtml,
@@ -14,11 +16,15 @@ import { WelcomeEmailData, WelcomeEmailRole } from './welcome-email.template';
 export type EmailSendResult = {
   sent: boolean;
   errorMsg?: string;
+  /** graph = Microsoft 365 Hasar/İhbar kutusu; smtp = kayıtlı SMTP */
+  via?: 'graph' | 'smtp';
 };
 
 export type EmailSendOptions = {
   text?: string;
   attachments?: nodemailer.SendMailOptions['attachments'];
+  /** Varsayılan HASAR — rapor/eksper. Acil ihbar kutusundan gitsin diye IHBAR. */
+  mailbox?: InboundMailbox;
 };
 
 @Injectable()
@@ -31,6 +37,7 @@ export class EmailService {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly welcomeEmailService: WelcomeEmailService,
+    private readonly graphMailSend: GraphMailSendService,
   ) {
     if (this.isUsableSmtpConfig(
       this.config.get<string>('SMTP_HOST'),
@@ -119,6 +126,40 @@ export class EmailService {
       data: { to, subject, status: 'queued' },
     });
 
+    const mailbox: InboundMailbox = options?.mailbox === 'IHBAR' ? 'IHBAR' : 'HASAR';
+    const graphReady = await this.graphMailSend.isOutboundReady();
+    if (graphReady) {
+      try {
+        const graphAttachments = this.toGraphAttachments(options?.attachments);
+        const attachBytes = graphAttachments.reduce((n, a) => n + a.content.length, 0);
+        const oversize = attachBytes > GraphMailSendService.INLINE_ATTACH_MAX_BYTES;
+        const htmlBody = oversize
+          ? `${html}<p style="margin-top:16px;font-size:13px;color:#475569">Rapor dosyası büyük olduğu için eklenmedi. Onay linkinden açılır.</p>`
+          : html;
+        await this.graphMailSend.sendMail(
+          mailbox,
+          [to],
+          subject,
+          htmlBody,
+          oversize ? [] : graphAttachments,
+        );
+        await this.prisma.emailLog.update({
+          where: { id: logEntry.id },
+          data: { status: 'sent', sentAt: new Date() },
+        });
+        this.logger.log(`Email gönderildi (Microsoft 365 ${mailbox}) → ${to} | ${subject}`);
+        return { sent: true, via: 'graph' };
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        await this.prisma.emailLog.update({
+          where: { id: logEntry.id },
+          data: { status: 'failed', errorMsg },
+        });
+        this.logger.error(`Email gönderilemedi (Microsoft 365) → ${to} | ${subject} | ${errorMsg}`);
+        return { sent: false, errorMsg, via: 'graph' };
+      }
+    }
+
     const transport = await this.resolveMailTransport();
     if (!transport) {
       const errorMsg = 'SMTP ayarları yapılandırılmamış. Ayarlar → Mail sekmesinden veya .env SMTP_* değişkenlerinden yapılandırın.';
@@ -131,7 +172,7 @@ export class EmailService {
     }
 
     try {
-      await transport.transporter.sendMail({
+      const info = await transport.transporter.sendMail({
         from: transport.from,
         to,
         subject,
@@ -139,12 +180,22 @@ export class EmailService {
         text: options?.text,
         attachments: options?.attachments,
       });
+      const rejected = (info.rejected ?? []).map(String).filter(Boolean);
+      if (rejected.length) {
+        const errorMsg = `SMTP alıcıyı reddetti: ${rejected.join(', ')}`;
+        await this.prisma.emailLog.update({
+          where: { id: logEntry.id },
+          data: { status: 'failed', errorMsg },
+        });
+        this.logger.error(`Email gönderilemedi → ${to} | ${subject} | ${errorMsg}`);
+        return { sent: false, errorMsg, via: 'smtp' };
+      }
       await this.prisma.emailLog.update({
         where: { id: logEntry.id },
         data: { status: 'sent', sentAt: new Date() },
       });
-      this.logger.log(`Email gönderildi → ${to} | ${subject}`);
-      return { sent: true };
+      this.logger.log(`Email gönderildi (SMTP) → ${to} | ${subject}`);
+      return { sent: true, via: 'smtp' };
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       await this.prisma.emailLog.update({
@@ -154,6 +205,25 @@ export class EmailService {
       this.logger.error(`Email gönderilemedi → ${to} | ${subject} | ${errorMsg}`);
       return { sent: false, errorMsg };
     }
+  }
+
+  private toGraphAttachments(
+    list?: nodemailer.SendMailOptions['attachments'],
+  ): Array<{ filename: string; content: Buffer; contentType?: string }> {
+    if (!list?.length) return [];
+    const out: Array<{ filename: string; content: Buffer; contentType?: string }> = [];
+    for (const item of list) {
+      if (!item || typeof item !== 'object') continue;
+      const filename = 'filename' in item && item.filename ? String(item.filename) : 'ek';
+      const raw = 'content' in item ? item.content : undefined;
+      if (!Buffer.isBuffer(raw) || raw.length === 0) continue;
+      out.push({
+        filename,
+        content: raw,
+        contentType: 'contentType' in item && item.contentType ? String(item.contentType) : undefined,
+      });
+    }
+    return out;
   }
 
   /** Hoş geldin / davet e-postası (eski basit şablon — geriye uyumluluk) */

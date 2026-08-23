@@ -658,7 +658,30 @@ export class EmergencyCasesService {
 
     const cases = await this.prisma.emergencyCase.findMany({
       where,
-      include: {
+      // Liste: konum/saat kolonları lokal DB’de yoksa tüm satır düşmesin
+      select: {
+        id: true,
+        caseNo: true,
+        fileNo: true,
+        customerId: true,
+        customerName: true,
+        customerPhone: true,
+        address: true,
+        city: true,
+        district: true,
+        issueType: true,
+        urgency: true,
+        status: true,
+        assignedVendorId: true,
+        assignedUserId: true,
+        notes: true,
+        findingsText: true,
+        fileDate: true,
+        invoicedAt: true,
+        resolvedAt: true,
+        createdByUserId: true,
+        createdAt: true,
+        updatedAt: true,
         assignedVendor: { select: { id: true, name: true, phone: true, notes: true } },
         assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         customer: {
@@ -871,7 +894,7 @@ export class EmergencyCasesService {
     `;
     const text = `Dosya ${fileNo} — olumsuz tedarikçi ${vendorName} ile 2. çalışma.`;
     await Promise.all(
-      emails.map((to) => this.emailService.sendEmail(to, subject, html, { text })),
+      emails.map((to) => this.emailService.sendEmail(to, subject, html, { text, mailbox: 'IHBAR' })),
     );
   }
 
@@ -1263,6 +1286,7 @@ export class EmergencyCasesService {
       {
         text: payload.bodyText,
         attachments: payload.attachments,
+        mailbox: 'IHBAR',
       },
     );
 

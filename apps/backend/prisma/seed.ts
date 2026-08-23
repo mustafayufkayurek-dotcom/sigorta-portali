@@ -564,6 +564,21 @@ async function main() {
         }
       }
     }
+    const officeStaff = await prisma.user.findFirst({
+      where: { status: 'active', role: { code: 'office_staff' } },
+      select: { id: true },
+    });
+    const adminUser = await prisma.user.findUnique({
+      where: { email: 'admin@meridyenassistance.com' },
+      select: { id: true },
+    });
+    const panelOwnerId = officeStaff?.id ?? adminUser?.id;
+    if (panelOwnerId) {
+      await prisma.emergencyCase.updateMany({
+        where: { caseNo: { startsWith: 'AY-DEMO-' } },
+        data: { assignedUserId: panelOwnerId },
+      });
+    }
     console.log('✅ Asistans portal demo acil yardım dosyaları hazır');
   }
 

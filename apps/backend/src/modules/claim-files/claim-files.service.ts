@@ -731,6 +731,17 @@ export class ClaimFilesService {
     const closedEmergency = this.closedEmergencyStatuses();
     const { from: todayFrom, to: todayTo } = this.istanbulDayRange();
 
+    let emergencyScope: Record<string, unknown> = {};
+    if (
+      requestingUser
+      && this.operationalAccessGrants?.isDelegationScopedRole(requestingUser.roleCode)
+    ) {
+      emergencyScope = await this.operationalAccessGrants.buildEmergencyDelegationScope(
+        requestingUser.id,
+        requestingUser.roleCode,
+      );
+    }
+
     const [
       openClaims,
       priorityUrgentClaims,
@@ -754,10 +765,10 @@ export class ClaimFilesService {
       this.countForOpsPreset('delay_risk', requestingUser),
       this.countForOpsPreset('approval_72h', requestingUser),
       this.prisma.emergencyCase.count({
-        where: { status: { notIn: [...closedEmergency] } },
+        where: { ...emergencyScope, status: { notIn: [...closedEmergency] } },
       }),
       this.prisma.emergencyCase.count({
-        where: { createdAt: { gte: todayFrom, lte: todayTo } },
+        where: { ...emergencyScope, createdAt: { gte: todayFrom, lte: todayTo } },
       }),
     ]);
 

@@ -67,13 +67,20 @@ export class ExternalApprovalsService {
       },
     });
 
-    // Rapor durumunu güncelle
+    if (dto.channel === 'email' && dto.approverEmail) {
+      try {
+        await this.sendApprovalEmail(approval.id, reportId, dto.approverEmail, token);
+      } catch (err) {
+        await this.prisma.externalApproval.delete({ where: { id: approval.id } }).catch(() => undefined);
+        throw err;
+      }
+    }
+
     await this.prisma.repairReport.update({
       where: { id: reportId },
       data: { status: 'sent_for_external_approval' },
     });
 
-    // Approval history kaydı
     await this.prisma.reportApprovalHistory.create({
       data: {
         reportId,
@@ -97,11 +104,6 @@ export class ExternalApprovalsService {
           relatedEntityId: approval.id,
         },
       });
-    }
-
-    // E-posta gönderimi
-    if (dto.channel === 'email' && dto.approverEmail) {
-      await this.sendApprovalEmail(approval.id, reportId, dto.approverEmail, token);
     }
 
     const publicUrl = this.buildPublicUrl(token);
