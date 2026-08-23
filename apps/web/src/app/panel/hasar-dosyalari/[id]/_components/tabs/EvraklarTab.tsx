@@ -5,10 +5,12 @@ import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import { SectionCard } from '../claim-detail-ui';
 import { SubTabNav } from './sub-tab-nav';
 import { EvrakOzetPanel, type EvrakSubTab } from './EvrakOzetPanel';
+import { OperasyonEvrakToplamaPanel } from '@/components/hasar-operasyon-planlayicisi/OperasyonEvrakToplamaPanel';
 import { SozlesmelerSection } from './SozlesmelerSection';
 
 const EVRAK_SUB_TABS: { id: EvrakSubTab; label: string }[] = [
   { id: 'ozet', label: 'Özet' },
+  { id: 'toplanan', label: 'Tespit Ve Onarım' },
   { id: 'sozlesmeler', label: 'Sözleşmeler & Onaylar' },
 ];
 
@@ -73,6 +75,19 @@ export function EvraklarTab({
 
       {subTab === 'ozet' && (
         <EvrakOzetPanel claimId={claimId} onNavigate={setSubTab} />
+      )}
+
+      {subTab === 'toplanan' && (
+        <OperasyonEvrakToplamaPanel
+          claimId={claimId}
+          suppliers={(claim?.supplierAssignments ?? [])
+            .map((a: { vendorId?: string; vendor?: { id?: string; name?: string; companyName?: string } }) => ({
+              id: a.vendorId || a.vendor?.id || '',
+              name: a.vendor?.name ?? a.vendor?.companyName,
+              companyName: a.vendor?.companyName,
+            }))
+            .filter((s: { id: string }) => s.id)}
+        />
       )}
 
       {subTab === 'sozlesmeler' && (

@@ -5293,6 +5293,12 @@ export default function RepairReportPage() {
     }
 
     try {
+      const flagsRes = await axios.get(`${API}/claim-operation-center/${claimId}`, { headers: authHeader() });
+      const flags = flagsRes.data?.data?.flowFlags ?? flagsRes.data?.flowFlags;
+      if (flags && flags.repairPhotosReady === false) {
+        showToast('error', 'Her tedarikçinin onarım bitiş resmi yok. Hakediş açılamaz.');
+        return;
+      }
       for (const [workGroupId, amount] of entries) {
         await handleApplySupplierGroupQuote(workGroupId, amount, { quiet: true });
       }

@@ -35,10 +35,12 @@ export function FieldInspectionPhotosPanel({
   claimId,
   entityType = 'claim_file',
   entityId,
+  readOnly = false,
 }: {
   claimId?: string;
   entityType?: string;
   entityId?: string;
+  readOnly?: boolean;
 }) {
   const resolvedId = entityId || claimId || '';
   const [docs, setDocs] = useState<PhotoDoc[]>([]);
@@ -112,7 +114,7 @@ export function FieldInspectionPhotosPanel({
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
-    if (uploading) return;
+    if (readOnly || uploading) return;
     void uploadFiles(Array.from(e.dataTransfer.files ?? []));
   };
 
@@ -134,22 +136,34 @@ export function FieldInspectionPhotosPanel({
   return (
     <div
       data-testid="saha-tespit-fotograflari"
-      onDragEnter={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!uploading) setDragOver(true);
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!uploading) setDragOver(true);
-      }}
-      onDragLeave={(e) => {
-        e.preventDefault();
-        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-        setDragOver(false);
-      }}
-      onDrop={onDropFiles}
+      onDragEnter={
+        readOnly
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!uploading) setDragOver(true);
+            }
+      }
+      onDragOver={
+        readOnly
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!uploading) setDragOver(true);
+            }
+      }
+      onDragLeave={
+        readOnly
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+              setDragOver(false);
+            }
+      }
+      onDrop={readOnly ? undefined : onDropFiles}
       className={dragOver ? 'rounded-xl ring-2 ring-brand-400 ring-offset-2' : undefined}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -161,6 +175,8 @@ export function FieldInspectionPhotosPanel({
               : `${docs.length} fotoğraf`}
         </p>
         <div className="flex flex-wrap items-center gap-2">
+          {readOnly ? null : (
+            <>
           <input
             ref={galleryInputRef}
             type="file"
@@ -201,10 +217,15 @@ export function FieldInspectionPhotosPanel({
             <ImagePlus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             {uploading ? 'Yükleniyor…' : 'Galeriden'}
           </button>
+            </>
+          )}
         </div>
       </div>
 
       {!loading && docs.length === 0 ? (
+        readOnly ? (
+          <p className="mt-2 text-xs text-slate-400">Tespit resmi yok.</p>
+        ) : (
         <div
           className={`mt-3 rounded-xl border border-dashed px-4 py-8 text-center ${
             dragOver ? 'border-brand-400 bg-brand-50/70' : 'border-slate-200 bg-slate-50/60'
@@ -216,6 +237,7 @@ export function FieldInspectionPhotosPanel({
             Kameradan, galeriden veya dosyayı buraya sürükleyip bırakarak ekleyin.
           </p>
         </div>
+        )
       ) : (
         <ul className="mt-3 flex flex-wrap gap-2">
           {docs.map((doc) => (
@@ -235,6 +257,7 @@ export function FieldInspectionPhotosPanel({
                   className="h-full w-full object-cover"
                 />
               </button>
+              {readOnly ? null : (
               <button
                 type="button"
                 onClick={() => void handleDelete(doc.id, doc.fileName)}
@@ -244,6 +267,7 @@ export function FieldInspectionPhotosPanel({
               >
                 <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
+              )}
             </li>
           ))}
         </ul>

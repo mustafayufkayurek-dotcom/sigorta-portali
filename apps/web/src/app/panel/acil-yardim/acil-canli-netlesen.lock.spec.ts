@@ -119,8 +119,10 @@ describe('acil canlı netleşen LOCK', () => {
   it('tespit fotoğrafı blob ile görünür; sürükle bırak yazılır', () => {
     assert.match(photos, /createObjectURL|AuthBlobImg/);
     assert.match(photos, /entityDocumentFileUrl|entity-documents\/\$\{id\}\/file/);
-    assert.match(photos, /onDrop=\{onDropFiles\}/);
+    assert.match(photos, /onDrop=\{readOnly \? undefined : onDropFiles\}/);
     assert.match(photos, /sürükleyip bırakarak/);
+    assert.match(acilPage, /FieldInspectionPhotosPanel entityType="emergency_case"/);
+    assert.doesNotMatch(acilPage, /FieldInspectionPhotosPanel entityType="emergency_case" entityId=\{vaka.id\} readOnly/);
     const closure = readFileSync(
       join(here, '../../../components/file-documents/ClosurePhotosPanel.tsx'),
       'utf8',

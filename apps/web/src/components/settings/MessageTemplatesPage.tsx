@@ -146,6 +146,42 @@ const DEFINITIONS: TemplateDefinition[] = [
     ],
   },
   {
+    type: 'whatsapp_hasar_onarim_sigortali',
+    tab: 'hasar',
+    recipient: 'Sigortalı',
+    processStep: 'Onarım Aşaması',
+    variables: [
+      { key: '{musteriAdi}', label: 'Sigortalı Ad', sample: 'Ahmet Yılmaz' },
+      { key: '{dosyaNo}', label: 'Dosya No', sample: 'HD-2026-0042' },
+      { key: '{randevuTarih}', label: 'Randevu Tarihi', sample: '19.07.2026' },
+      { key: '{randevuSaat}', label: 'Randevu Saati', sample: '10:30' },
+      { key: '{hasarAdresi}', label: 'Hasar Adresi', sample: 'Kadıköy / İstanbul' },
+    ],
+  },
+  {
+    type: 'whatsapp_hasar_onarim_tedarikci',
+    tab: 'hasar',
+    recipient: 'Tedarikçi',
+    processStep: 'Onarım Aşaması',
+    variables: [
+      { key: '{dosyaNo}', label: 'Dosya No', sample: 'HD-2026-0042' },
+      { key: '{isTanimi}', label: 'İş Tanımı', sample: 'Su Hasarı Onarım' },
+      { key: '{randevuTarih}', label: 'Randevu Tarihi', sample: '19.07.2026' },
+      { key: '{randevuSaat}', label: 'Randevu Saati', sample: '10:30' },
+      { key: '{hasarAdresi}', label: 'Hasar Adresi', sample: 'Kadıköy / İstanbul' },
+    ],
+  },
+  {
+    type: 'whatsapp_hasar_kapanis_anket',
+    tab: 'hasar',
+    recipient: 'Sigortalı',
+    processStep: 'Dosya Kapanış',
+    variables: [
+      { key: '{musteriAdi}', label: 'Sigortalı Ad', sample: 'Ahmet Yılmaz' },
+      { key: '{dosyaNo}', label: 'Dosya No', sample: 'HD-2026-0042' },
+    ],
+  },
+  {
     type: 'whatsapp_acil_ilk_bilgilendirme',
     tab: 'acil',
     recipient: 'Sigortalı',
@@ -232,6 +268,12 @@ const LOCAL_SEED: MessageTemplate[] = DEFINITIONS.map((definition, index) => ({
           ? 'Tespitçi Randevu Bilgilendirme'
           : definition.type === 'whatsapp_hasar_randevu_tedarikci'
             ? 'Tedarikçi Randevu Bilgilendirme'
+            : definition.type === 'whatsapp_hasar_onarim_sigortali'
+              ? 'Onarım Randevusu — Sigortalı'
+              : definition.type === 'whatsapp_hasar_onarim_tedarikci'
+                ? 'Onarım Randevusu — Tedarikçi'
+                : definition.type === 'whatsapp_hasar_kapanis_anket'
+                  ? 'Hasar Kapanış Anketi'
             : definition.type === 'whatsapp_acil_ilk_bilgilendirme'
               ? 'Sigortalıya İlk Bilgilendirme'
               : definition.type === 'whatsapp_acil_kapanis_anket'

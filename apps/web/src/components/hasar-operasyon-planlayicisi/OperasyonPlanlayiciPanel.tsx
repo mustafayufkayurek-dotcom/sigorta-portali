@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { Check, CheckCircle2, Circle, Clock3, X } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
-import { PLANNER_STEPS, type StepId, type StepStatus } from './types';
+import { PLANNER_GROUPS, PLANNER_STEPS, type StepId, type StepStatus } from './types';
 import { renderStepContent } from './steps';
 import { PlannerProvider, usePlanner } from './planner-context';
 import {
@@ -131,87 +131,77 @@ function PlanlayiciInner({
 
   return (
     <div className="relative">
-      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">Operasyon Planlama Özeti</h2>
-            <p className="text-xs text-slate-500">
-              Operasyon Durumu: {claim.completedCount} / {claim.totalCount} Tamamlandı
-            </p>
-          </div>
+      <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Operasyon Planlama Özeti
+            <span className="ml-2 text-xs font-normal text-slate-500">
+              {claim.completedCount}/{claim.totalCount} tamam
+            </span>
+          </h2>
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700"
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
           >
             Operasyon Planlayıcısı
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
-          {steps.map((s) => {
-            const active = activeStep === s.id && drawerOpen;
+        <div className="space-y-2" data-testid="hasar-planner-groups">
+          {PLANNER_GROUPS.map((g) => {
+            const gSteps = steps.filter((s) => s.group === g.id && !s.hidden);
             return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => {
-                  setActiveStep(s.id);
-                  setDrawerOpen(true);
-                }}
-                className={`rounded-xl border px-2 py-2.5 text-left transition ${statusTone(s.status, active)}`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <StatusIcon status={s.status} />
-                  <span className="text-[10px] font-semibold text-slate-500">{s.n}</span>
-                </div>
-                <p className="mt-1 line-clamp-2 text-[11px] font-semibold text-slate-800">{s.label}</p>
-                <p className="mt-0.5 text-[10px] text-slate-500">
-                  {s.status === 'done'
-                    ? 'Tamamlandı'
-                    : s.status === 'waiting'
-                      ? 'İşlem Bekliyor'
-                      : 'Bekliyor'}
+              <div key={g.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                <p className="w-[9.5rem] shrink-0 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  {g.label}
                 </p>
-              </button>
+                <div className="flex min-w-0 flex-wrap gap-1">
+                  {gSteps.map((s) => {
+                    const active = activeStep === s.id && drawerOpen;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveStep(s.id);
+                          setDrawerOpen(true);
+                        }}
+                        className={`inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-1 text-left transition ${statusTone(s.status, active)}`}
+                      >
+                        <StatusIcon status={s.status} />
+                        <span className="whitespace-nowrap text-[11px] font-semibold text-slate-800">
+                          {s.n}. {s.label}
+                        </span>
+                        <span className="hidden whitespace-nowrap text-[10px] text-slate-500 sm:inline">
+                          {stepStatusLabel(s.status, active)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-900">İlerleme Özeti</h3>
-          <ul className="mt-3 space-y-2">
-            {claim.progressLines.map((line) => (
-              <li key={line.text} className="flex items-start gap-2 text-xs text-slate-700">
-                <StatusIcon status={line.state === 'done' ? 'done' : line.state === 'waiting' ? 'waiting' : 'future'} />
-                <div>
-                  <p className="font-medium">{line.text}</p>
-                  {line.when ? <p className="text-[10px] text-slate-400">{line.when}</p> : null}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-900">Dosyada Kimler Var?</h3>
-          <ul className="mt-3 space-y-2">
+        {claim.people.length > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Dosyada</span>
             {claim.people.map((p) => (
-              <li key={`${p.role}-${p.name}`} className="flex items-center gap-2 text-xs">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600">
+              <span
+                key={`${p.role}-${p.name}`}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-700"
+              >
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[9px] font-bold text-slate-600">
                   {p.initials}
                 </span>
-                <div>
-                  <p className="font-semibold text-slate-800">{p.name}</p>
-                  <p className="text-[10px] text-slate-500">
-                    {p.role} · {p.status}
-                  </p>
-                </div>
-              </li>
+                {p.name}
+                <span className="text-slate-400">· {p.role}</span>
+              </span>
             ))}
-          </ul>
-        </div>
+          </div>
+        ) : null}
       </div>
 
       {drawerOpen ? (
@@ -250,15 +240,22 @@ function PlanlayiciInner({
                 className="flex w-[200px] shrink-0 flex-col border-r border-slate-200 bg-white py-3 pl-2 pr-1.5"
                 aria-label="Operasyon Akışı"
               >
-                <ol className="relative flex flex-col gap-0.5">
-                  {steps.map((s, idx) => {
+                {PLANNER_GROUPS.map((g) => {
+                  const gSteps = steps.filter((s) => s.group === g.id && !s.hidden);
+                  return (
+                    <div key={g.id} className="mb-2">
+                      <p className="px-1.5 pb-1 text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+                        {g.label}
+                      </p>
+                      <ol className="relative flex flex-col gap-0.5">
+                        {gSteps.map((s, idx) => {
                     const active = activeStep === s.id;
                     const done = s.status === 'done';
                     const waiting = active || s.status === 'waiting';
                     const lineDone = done && !active;
                     return (
                       <li key={s.id} className="relative">
-                        {idx < steps.length - 1 ? (
+                        {idx < gSteps.length - 1 ? (
                           <span
                             className="pointer-events-none absolute left-[18px] top-8 h-[calc(100%-8px)] w-0.5"
                             style={{
@@ -310,8 +307,11 @@ function PlanlayiciInner({
                         </button>
                       </li>
                     );
-                  })}
-                </ol>
+                        })}
+                      </ol>
+                    </div>
+                  );
+                })}
               </nav>
 
               {/* Sağ içerik */}
@@ -455,7 +455,11 @@ export function OperasyonPlanlayiciPanel({
           ? vendorRaw.slice(0, 12).map((v: any) => ({
               id: v.id,
               name: v.name ?? v.companyName ?? 'Tedarikçi',
-              serviceGroup: v.workGroups?.[0]?.name ?? 'Hizmet',
+              serviceGroup:
+                (v.workGroups ?? [])
+                  .map((w: { name?: string }) => w.name)
+                  .filter(Boolean)
+                  .join(', ') || 'Hizmet',
               place: [v.district, v.city].filter(Boolean).join(' / ') || '—',
               rating: v.rating != null ? String(v.rating) : '—',
               avail: 'Müsait' as const,

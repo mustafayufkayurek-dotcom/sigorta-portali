@@ -7,7 +7,7 @@ import {
 } from '@/utils/fileDocumentApi';
 import { ClaimManualDocumentsPanel } from '@/components/file-documents/ClaimManualDocumentsPanel';
 
-type EvrakSubTab = 'ozet' | 'sozlesmeler';
+type EvrakSubTab = 'ozet' | 'toplanan' | 'sozlesmeler';
 
 const MUVAFAKAT_STATUS: Record<string, { label: string; tone: StatusTone }> = {
   draft: { label: 'Taslak', tone: 'neutral' },

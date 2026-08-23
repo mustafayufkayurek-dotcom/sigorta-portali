@@ -248,7 +248,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(photos, /Kameradan/);
     assert.match(photos, /Galeriden/);
     assert.match(photos, /sürükleyip bırakarak/);
-    assert.match(photos, /onDrop=\{onDropFiles\}/);
+    assert.match(photos, /onDrop=\{readOnly \? undefined : onDropFiles\}/);
+    assert.match(photos, /readOnly = false/);
     assert.doesNotMatch(photos, /muvafakat/);
     assert.doesNotMatch(photos, /Yaşam Döngüsü/);
   });

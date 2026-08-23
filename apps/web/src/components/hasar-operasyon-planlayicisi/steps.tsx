@@ -36,6 +36,11 @@ import {
 } from '@/utils/whatsapp-sent-confirm-gate';
 import { isoToTrDateDisplay } from '@/utils/tr-date-input';
 import type { StepId } from './types';
+import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
+import { ClaimManualDocumentsPanel } from '@/components/file-documents/ClaimManualDocumentsPanel';
+import { VendorRepairPhotosPanel } from '@/components/field-survey/VendorRepairPhotosPanel';
+import SpeechToText from '@/components/SpeechToText';
+import { openPlannerMap, plannerMapsHref } from './planner-maps';
 import { usePlanner } from './planner-context';
 import { sendPlannerApprovalMail } from './planner-send-approval-mail';
 import { repairReportStatusLabel } from '@/utils/repair-report-status';
@@ -255,6 +260,42 @@ function StatusPill({
   );
 }
 
+function VoiceNoteField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <Field label={label}>
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <TextArea value={value} onChange={onChange} placeholder={placeholder} rows={3} />
+        </div>
+        <SpeechToText
+          size="sm"
+          onTranscript={(t) => onChange([value, t].filter(Boolean).join(' ').trim())}
+        />
+      </div>
+      <p className="mt-1 text-[10px] text-slate-500">Mikrofon metne çevirir; ses kaydı tutulmaz.</p>
+    </Field>
+  );
+}
+
+function TemplatePreview({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-2">
+      <p className="text-[10px] font-semibold text-slate-500">{title}</p>
+      <p className="mt-1 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-700">{text}</p>
+    </div>
+  );
+}
+
 /* ─── 1. Sigortalı ve Randevu ─── */
 export function StepInsuredAppointment() {
   const {
@@ -262,8 +303,6 @@ export function StepInsuredAppointment() {
     setClaim,
     canEdit,
     mode,
-    meetingNote,
-    setMeetingNote,
     apptNote,
     setApptNote,
     insuredApproved,
@@ -272,9 +311,8 @@ export function StepInsuredAppointment() {
     templatesFromSettings,
     recordWhatsAppContact,
   } = usePlanner();
-  const persistedSent = claim.stepStatuses.whatsapp === 'done';
+  const persistedSent = claim.contactWa.insured;
   const [sent, setSent] = useState(persistedSent);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const apptDateWrapRef = useRef<HTMLDivElement>(null);
   const apptTimeRef = useRef<HTMLInputElement>(null);
   const waText = buildInsuredApptMessage();
@@ -309,8 +347,12 @@ export function StepInsuredAppointment() {
           </Field>
           <Field label="Konum Bağlantısı" icon={Link2}>
             <div className="flex gap-2">
-              <Input value={claim.locationUrl} readOnly />
-              <Btn tone="secondary" className="shrink-0">
+              <Input value={plannerMapsHref(claim.locationUrl, claim.address) || 'Adresten harita açılır'} readOnly />
+              <Btn
+                tone="secondary"
+                className="shrink-0"
+                onClick={() => openPlannerMap(claim.locationUrl, claim.address)}
+              >
                 <ExternalLink className="h-3 w-3" /> Aç
               </Btn>
             </div>
@@ -365,42 +407,16 @@ export function StepInsuredAppointment() {
             )}
           </Field>
         </div>
-        <div className="mt-2">
-          <Field label="Tahmini Süre">
-            {apptEditable ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={1440}
-                  value={claim.durationMinutes}
-                  onChange={(e) =>
-                    setClaim((prev) => ({
-                      ...prev,
-                      durationMinutes: e.target.value.replace(/\D/g, '').slice(0, 4),
-                    }))
-                  }
-                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 outline-none focus:border-blue-400"
-                  aria-label="Tahmini Süre"
-                />
-                <span className="shrink-0 text-[11px] font-medium text-slate-500">Dakika</span>
-              </div>
-            ) : (
-              <Input
-                value={claim.durationMinutes ? `${claim.durationMinutes} Dakika` : ''}
-                readOnly
-              />
-            )}
-          </Field>
-        </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
-          <Btn tone="secondary">
-            <PhoneCall className="h-3 w-3" /> Ara
-          </Btn>
+          <a href={claim.insuredPhone ? `tel:${claim.insuredPhone.replace(/\s/g, '')}` : undefined}>
+            <Btn tone="secondary" disabled={!claim.insuredPhone}>
+              <PhoneCall className="h-3 w-3" /> Ara
+            </Btn>
+          </a>
           <Btn tone="secondary" onClick={focusAppointmentEditors} disabled={!apptEditable}>
             Randevuyu Düzenle
           </Btn>
-          <Btn tone="secondary">
+          <Btn tone="secondary" onClick={() => openPlannerMap(claim.locationUrl, claim.address)}>
             <MapPin className="h-3 w-3" /> Konumu Doğrula
           </Btn>
         </div>
@@ -409,15 +425,13 @@ export function StepInsuredAppointment() {
         ) : null}
       </Card>
 
-      <Card title="Notlar" icon={MessageSquareText}>
-        <Field label="Görüşme Notu *">
-          <TextArea value={meetingNote} onChange={setMeetingNote} />
-        </Field>
-        <div className="mt-2">
-          <Field label="Randevu Notu">
-            <TextArea value={apptNote} onChange={setApptNote} />
-          </Field>
-        </div>
+      <Card title="Randevu Notu" icon={MessageSquareText}>
+        <VoiceNoteField
+          label="Randevu Notu"
+          value={apptNote}
+          onChange={setApptNote}
+          placeholder="Kapı kodu, kat, ulaşım notu…"
+        />
       </Card>
 
       <Card title="Sigortalı Onayı" icon={CheckCircle2}>
@@ -439,12 +453,11 @@ export function StepInsuredAppointment() {
       <Card title="WhatsApp Randevu Bildirimi" icon={MessageCircle}>
         <p className="mb-2 text-[10px] text-slate-500">
           Şablon: Ayarlar › Mesaj Şablonları › Hasar
-          {templatesFromSettings ? ' (canlı şablon)' : ' (varsayılan — oturum/API yok)'}
+          {templatesFromSettings ? ' (canlı şablon)' : ' (varsayılan)'}
         </p>
-        <div className="flex flex-wrap gap-1.5">
-          <Btn tone="secondary" onClick={() => setPreviewOpen((v) => !v)}>
-            Mesajı Önizle
-          </Btn>
+        <TemplatePreview title="Gönderilecek şablon" text={waText} />
+        <p className="mt-2 text-[11px] font-medium text-amber-800">Sigortalıya WhatsApp gönderimi zorunlu.</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
           <WhatsAppOpenButton
             phone={claim.insuredPhone}
             message={waText}
@@ -481,11 +494,6 @@ export function StepInsuredAppointment() {
             {sent ? 'Gönderildi' : 'Gönderildi Olarak İşaretle'}
           </Btn>
         </div>
-        {previewOpen ? (
-          <p className="mt-2 rounded-lg bg-slate-50 p-2.5 text-[11px] leading-relaxed text-slate-700 whitespace-pre-wrap">
-            {waText}
-          </p>
-        ) : null}
       </Card>
     </div>
   );
@@ -499,9 +507,13 @@ export function StepInspector() {
     setAssignedInspectorId,
     buildInspectorMessage,
     templatesFromSettings,
+    inspectorNote,
+    setInspectorNote,
+    recordWhatsAppContact,
   } = usePlanner();
   const assigned = claim.inspectors.find((i) => i.id === assignedInspectorId) ?? null;
   const assignedWaMessage = buildInspectorMessage();
+  const inspectorSent = claim.contactWa.inspector;
 
   return (
     <div className="mt-3 space-y-3">
@@ -520,12 +532,12 @@ export function StepInspector() {
         <p className="mt-1 text-xs text-slate-700">
           <span className="font-semibold text-slate-500">Konum:</span>{' '}
           <a
-            href={claim.locationUrl}
+            href={plannerMapsHref(claim.locationUrl, claim.address)}
             target="_blank"
             rel="noopener noreferrer"
             className="break-all font-medium text-brand-600 hover:underline"
           >
-            {claim.locationUrl}
+            {plannerMapsHref(claim.locationUrl, claim.address) || 'Harita yok'}
           </a>
         </p>
         <p className="mt-1 text-xs text-slate-700">
@@ -546,6 +558,14 @@ export function StepInspector() {
             {assigned.region} · ★ {assigned.score} · {assigned.completedJobs} İş
           </p>
           <p className="mt-1 text-[11px] text-slate-600">{assigned.phone}</p>
+          <div className="mt-2">
+            <VoiceNoteField
+              label="Tespitçiye not"
+              value={inspectorNote}
+              onChange={setInspectorNote}
+              placeholder="Tespitçiye iletilecek not…"
+            />
+          </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Btn tone="secondary" onClick={() => setAssignedInspectorId(null)}>
               Değiştir
@@ -554,13 +574,28 @@ export function StepInspector() {
               Kaldır
             </Btn>
           </div>
-          <div className="mt-2">
+          <div className="mt-2 space-y-2">
+            <TemplatePreview title="Tespitçi WhatsApp şablonu" text={assignedWaMessage} />
+            <p className="text-[11px] font-medium text-amber-800">Tespitçiye WhatsApp gönderimi zorunlu.</p>
             <WhatsAppOpenButton
               phone={assigned.phone}
-              message={assignedWaMessage}
+              message={[assignedWaMessage, inspectorNote].filter(Boolean).join('\n\n')}
               label="Görev Ve Randevu Mesajı"
               className="w-full"
+              onOpened={() => {
+                void recordWhatsAppContact({
+                  status: 'opened',
+                  recipientType: 'adjuster',
+                  recipientName: assigned.name,
+                  phone: assigned.phone,
+                  message: [assignedWaMessage, inspectorNote].filter(Boolean).join('\n\n'),
+                  templateType: 'whatsapp_hasar_randevu_tespitci',
+                });
+              }}
             />
+            {inspectorSent ? (
+              <p className="text-[10px] text-emerald-700">WhatsApp kaydı var.</p>
+            ) : null}
           </div>
           <p className="mt-1 text-[10px] text-slate-500">
             Şablon: Ayarlar › Mesaj Şablonları › Tespitçi Randevu
@@ -646,7 +681,6 @@ export function StepInspector() {
 
 /* ─── 3. Tedarikçi Ataması ─── */
 export function StepSupplier() {
-  const [tab, setTab] = useState<'secim' | 'gorev'>('secim');
   const [sub, setSub] = useState<'kayitli' | 'alternatif'>('kayitli');
   const {
     claim,
@@ -657,6 +691,7 @@ export function StepSupplier() {
     setSupplierTasks: setTasks,
     buildVendorTaskMessage,
     templatesFromSettings,
+    recordWhatsAppContact,
   } = usePlanner();
   const [poolExtra, setPoolExtra] = useState<
     { name: string; place: string; rating: string; serviceGroup: string }[]
@@ -675,6 +710,7 @@ export function StepSupplier() {
         place: p.place,
         rating: p.rating,
         avail: 'Müsait' as const,
+        phone: undefined as string | undefined,
       }))].filter((s) => assigned.includes(s.id) || assigned.includes(s.name)),
     [assigned, poolExtra, claim.suppliers],
   );
@@ -682,36 +718,71 @@ export function StepSupplier() {
   return (
     <div className="mt-3 space-y-3">
       <p className="text-[11px] text-slate-500">
-        Hasar türüne uygun tedarikçileri seçin ve görevlerini tanımlayın. Birden fazla atama
-        yapılabilir. Tespitçi olan tedarikçi olamaz.
+        Hasar türüne uygun tedarikçileri seçin. Atanınca görev ve WhatsApp bu adımda iletilir.
+        Tespitçi olan tedarikçi olamaz.
       </p>
+      {assignedRows.length > 0 ? (
+        <Card title="Atama Özeti" icon={Wrench}>
+          <div className="space-y-3">
+            {assignedRows.map((s) => {
+              const key = s.id || s.name;
+              const task = tasks[key] ?? '';
+              const waText = buildVendorTaskMessage(s.name, task);
+              const waHit = claim.waHistory.find(
+                (h) =>
+                  String(h.recipient).toLowerCase().includes(s.name.toLowerCase()) ||
+                  /tedarikci|tedarikçi|vendor/i.test(String(h.template)),
+              );
+              return (
+                <div key={key} className="rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-2">
+                  <p className="text-xs font-semibold text-slate-900">{s.name}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-600">İş grubu: {s.serviceGroup}</p>
+                  {s.phone ? <p className="text-[11px] text-slate-600">Telefon: {s.phone}</p> : null}
+                  <div className="mt-2">
+                    <VoiceNoteField
+                      label="Görev Notu *"
+                      value={task}
+                      onChange={(v) => setTasks((t) => ({ ...t, [key]: v }))}
+                      placeholder="Bu tedarikçiye iletilecek görev notu…"
+                    />
+                  </div>
+                  <div className="mt-2">
+                    <TemplatePreview title="WhatsApp şablonu" text={waText} />
+                  </div>
+                  <div className="mt-2">
+                    <WhatsAppOpenButton
+                      phone={s.phone || ''}
+                      message={waText}
+                      label="WhatsApp Görev Mesajı"
+                      onOpened={() => {
+                        void recordWhatsAppContact({
+                          status: 'opened',
+                          recipientType: 'vendor',
+                          recipientName: s.name,
+                          phone: s.phone,
+                          message: waText,
+                          templateType: 'whatsapp_hasar_randevu_tedarikci',
+                        });
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {waHit ? `WhatsApp: ${waHit.status} · ${waHit.when}` : 'Atanınca WhatsApp bu sayfadan gönderilir.'}
+                    {templatesFromSettings ? ' · Canlı şablon' : ''}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
       {assignWarn ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
           {assignWarn}
         </p>
       ) : null}
-      <div className="flex gap-1 border-b border-slate-100">
-        {(
-          [
-            ['secim', 'Tedarikçi Seçimi'],
-            ['gorev', 'Görev Tanımı'],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={`px-2.5 py-1.5 text-[11px] font-semibold ${
-              tab === id ? 'border-b-2 border-brand-600 text-blue-700' : 'text-slate-500'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
 
-      {tab === 'secim' ? (
-        <>
+      <>
           <div className="grid grid-cols-1 gap-2">
             <Field label="Hizmet Grubu">
               <select className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs">
@@ -866,48 +937,18 @@ export function StepSupplier() {
             </div>
           )}
         </>
-      ) : (
-        <div className="space-y-2">
-          {assignedRows.length === 0 ? (
-            <p className="text-xs text-slate-500">Önce tedarikçi atayın.</p>
-          ) : (
-            assignedRows.map((s) => (
-              <Card key={s.id || s.name} title={s.name} icon={Wrench}>
-                <Field label="Görev Tanımı">
-                  <TextArea
-                    value={tasks[s.id || s.name] ?? ''}
-                    onChange={(v) => setTasks((t) => ({ ...t, [s.id || s.name]: v }))}
-                    placeholder="Yapılacak işi yazın..."
-                  />
-                </Field>
-                <p className="mt-2 text-[11px] text-slate-600">
-                  Randevu: {claim.appointmentDate} {claim.appointmentTime}
-                </p>
-                <div className="mt-2">
-                  <WhatsAppOpenButton
-                    phone="0532 000 00 00"
-                    message={buildVendorTaskMessage(
-                      s.name,
-                      tasks[s.id || s.name] ?? '',
-                    )}
-                    label="WhatsApp Görev Mesajı"
-                  />
-                  <p className="mt-1 text-[10px] text-slate-500">
-                    Şablon: Ayarlar › Mesaj Şablonları › Tedarikçi Atama
-                    {templatesFromSettings ? ' (canlı)' : ' (varsayılan)'}
-                  </p>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-      )}
     </div>
   );
 }
 
 /* ─── 4. WhatsApp Bilgilendirme ─── */
-export function StepWhatsApp() {
+export function StepWhatsApp({
+  lockSentRecipients = [],
+  purpose,
+}: {
+  lockSentRecipients?: string[];
+  purpose?: 'inspection' | 'repair';
+} = {}) {
   const {
     claim,
     waRecipientType: recipientType,
@@ -926,10 +967,28 @@ export function StepWhatsApp() {
   } = usePlanner();
   const persistedMarked = claim.stepStatuses.whatsapp === 'done';
   const [marked, setMarked] = useState(persistedMarked);
+  const currentLocked = lockSentRecipients.includes(recipientType);
 
   useEffect(() => {
     setMarked(persistedMarked);
   }, [persistedMarked]);
+
+  useEffect(() => {
+    if (!lockSentRecipients.includes(recipientType)) return;
+    const next = ['Sigortalı', 'Tespitçi', 'Tedarikçi'].find((t) => !lockSentRecipients.includes(t));
+    if (!next) return;
+    setRecipientType(next);
+    const type = templateTypeForRecipient(next);
+    setTemplateType(type);
+    setBody(applyWaTemplateForRecipient(next));
+  }, [
+    lockSentRecipients,
+    recipientType,
+    setRecipientType,
+    setTemplateType,
+    setBody,
+    applyWaTemplateForRecipient,
+  ]);
 
   const assignedInspector = claim.inspectors.find((i) => i.id === assignedInspectorId);
   const assignedSupplier = claim.suppliers.find((s) => assignedSupplierIds.includes(s.id));
@@ -968,6 +1027,7 @@ export function StepWhatsApp() {
             value={recipientType}
             onChange={(e) => {
               const next = e.target.value;
+              if (lockSentRecipients.includes(next)) return;
               setRecipientType(next);
               const type = templateTypeForRecipient(next);
               setTemplateType(type);
@@ -975,8 +1035,10 @@ export function StepWhatsApp() {
             }}
             className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs"
           >
-            {['Sigortalı', 'Tespitçi', 'Tedarikçi', 'Eksper Ofisi', 'Sigorta Şirketi'].map((t) => (
-              <option key={t}>{t}</option>
+            {['Sigortalı', 'Tespitçi', 'Tedarikçi'].map((t) => (
+              <option key={t} value={t} disabled={lockSentRecipients.includes(t)}>
+                {lockSentRecipients.includes(t) ? `${t} (gönderildi)` : t}
+              </option>
             ))}
           </select>
         </Field>
@@ -1032,7 +1094,13 @@ export function StepWhatsApp() {
             <TextArea value={body} onChange={setBody} rows={4} />
           </Field>
         </div>
+        {currentLocked ? (
+          <p className="mt-2 text-[11px] font-medium text-amber-800">
+            Bu alıcıya onarım mesajı gönderildi; yeniden seçilmez.
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-1.5">
+          {!currentLocked ? (
           <WhatsAppOpenButton
             phone={phone}
             message={body}
@@ -1041,23 +1109,27 @@ export function StepWhatsApp() {
                 status: 'opened',
                 phone,
                 message: body,
+                purpose,
               }).then((res) => {
                 if (res.ok) setMarked(true);
               });
             }}
           />
+          ) : null}
           <Btn
             tone="secondary"
             onClick={() => {
+              if (currentLocked) return;
               void recordWhatsAppContact({
                 status: 'sent',
                 phone,
                 message: body,
+                purpose,
               }).then((res) => {
                 if (res.ok) setMarked(true);
               });
             }}
-            disabled={marked}
+            disabled={marked || currentLocked}
           >
             <CheckCircle2 className="h-3 w-3" /> {marked ? 'Gönderildi' : 'Gönderildi Olarak İşaretle'}
           </Btn>
@@ -1084,93 +1156,23 @@ export function StepWhatsApp() {
   );
 }
 
-/* ─── 5. Dijital Onay ─── */
+/* ─── Dijital Onay — mutabakat / muvafakat tek belge ─── */
 export function StepDigitalApproval() {
-  const {
-    claim,
-    digitalFormType: formType,
-    setDigitalFormType: setFormType,
-  } = usePlanner();
-  const [status, setStatus] = useState<'Bekliyor' | 'Gönderildi' | 'Onaylandı'>('Bekliyor');
-  const [sentAt, setSentAt] = useState<string | null>(null);
-  const [approvedAt, setApprovedAt] = useState<string | null>(null);
-  const link = `https://onay.meridyen.local/${claim.fileNo}`;
-
+  const { claim } = usePlanner();
+  if (!claim.claimId) {
+    return <p className="mt-3 text-xs text-slate-500">Dosya bağlı değil.</p>;
+  }
   return (
     <div className="mt-3 space-y-3">
-      <Card title="Form" icon={FileText}>
-        <Field label="Form Türü">
-          <select
-            value={formType}
-            onChange={(e) => setFormType(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs"
-          >
-            {['Mutabakat', 'Muvafakat', 'Tespit Onayı'].map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
-        </Field>
-        <div className="mt-2">
-          <Field label="Sigortalı" icon={UserRound}>
-            <Input value={claim.insuredName} readOnly />
-          </Field>
-        </div>
-        <div className="mt-2 rounded-lg bg-slate-50 p-2.5 text-[11px] text-slate-600">
-          Önizleme: {formType} formu — {claim.insuredName} · {claim.fileNo}
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          <Btn
-            tone="primary"
-            onClick={() => {
-              setStatus('Gönderildi');
-              setSentAt('19.07.2026 16:05');
-            }}
-          >
-            <Send className="h-3 w-3" /> Onay Formunu Gönder
-          </Btn>
-          <Btn
-            tone="secondary"
-            onClick={() => {
-              setStatus('Gönderildi');
-              setSentAt('19.07.2026 16:20');
-            }}
-          >
-            Yeniden Gönder
-          </Btn>
-        </div>
-      </Card>
-
-      <Card title="Durum" icon={CheckCircle2}>
-        <div className="space-y-1 text-xs text-slate-700">
-          <p>
-            Onay Durumu:{' '}
-            <StatusPill
-              label={status === 'Bekliyor' ? 'Onay Bekleniyor' : status}
-              tone={status === 'Onaylandı' ? 'green' : status === 'Gönderildi' ? 'blue' : 'orange'}
-            />
-          </p>
-          <p>Gönderim Tarihi: {sentAt ?? '—'}</p>
-          <p>Onay Tarihi: {approvedAt ?? '—'}</p>
-          <p className="flex items-center gap-1 break-all">
-            <Link2 className="h-3 w-3 shrink-0" />
-            Dijital Onay Bağlantısı: {link}
-          </p>
-        </div>
-        <div className="mt-2">
-          <Btn
-            tone="secondary"
-            onClick={() => {
-              setStatus('Onaylandı');
-              setApprovedAt('19.07.2026 17:00');
-            }}
-          >
-            Onaylandı Olarak İşaretle (Lokal)
-          </Btn>
-        </div>
-        <div className="mt-2">
-          <ApiNote text="Kaydet, dosya geçmişine kapanış / onay kaydı yazar. Bağımsız Dijital Onay WhatsApp ekranı kapalıdır; Kapanış Anketi veya onay kaydı bu adımı karşılar." />
-        </div>
-      </Card>
+      <p className="text-xs text-slate-600">
+        Mutabakat ve muvafakat aynı belgedir. Sigortalı WhatsApp linkinden dijital onaylar. Ayrı sayfa yok.
+      </p>
+      {claim.flowFlags.muvafakatApproved ? (
+        <p className="text-xs font-medium text-emerald-800">Dijital onay alındı.</p>
+      ) : (
+        <p className="text-xs font-medium text-amber-800">Onay gelmeden onarım bitişi kaydedilmez.</p>
+      )}
+      <FileDocumentPanel entityType="claim_file" entityId={claim.claimId} documentKind="muvafakatname" />
     </div>
   );
 }
@@ -1482,139 +1484,99 @@ export function StepSentForApproval() {
   );
 }
 
-/* ─── 8. Onaylandı ─── */
+/* ─── Dosya Onaylandı — rapor onayının yansıması ─── */
 export function StepApproved() {
-  const {
-    claim,
-    approverType,
-    setApproverType,
-    approverName,
-    setApproverName,
-    meridyenNote: note,
-    setMeridyenNote: setNote,
-  } = usePlanner();
-  const [savedMsg, setSavedMsg] = useState<string | null>(null);
-  const needsNote = approverType === 'Meridyen personeli';
-
+  const { claim, onGoToReports } = usePlanner();
+  const approved = claim.stepStatuses.approved === 'done';
   return (
     <div className="mt-3 space-y-3">
-      <Card title="Onay Bilgileri" icon={CheckCircle2}>
-        <div className="space-y-1 text-xs text-slate-700">
-          <p className="flex items-center gap-1">
-            <CalendarDays className="h-3 w-3" /> Onaylanma Tarihi: —
-          </p>
-          <p className="flex items-center gap-1">
-            <Clock3 className="h-3 w-3" /> Onaylanma Saati: —
-          </p>
-          <p>Onay Yöntemi: —</p>
-          <p>Onaylanan Revizyon: Revizyon {claim.report.revision}</p>
-          <p>Onaylanan Tutar: {claim.report.total}</p>
-          <p className="flex items-center gap-1">
-            <FileDown className="h-3 w-3" /> Onay Belgesi: Henüz yok
-          </p>
-        </div>
-      </Card>
-
-      <Card title="Onaylayan Taraf" icon={Building2}>
-        <Field label="Onaylayan Taraf Türü">
-          <select
-            value={approverType}
-            onChange={(e) => {
-              setApproverType(e.target.value);
-              setSavedMsg(null);
-            }}
-            className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs"
-          >
-            {[
-              'Müşteri personeli',
-              'Eksper',
-              'Sigorta şirketi personeli',
-              'Meridyen personeli',
-            ].map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
-        </Field>
-      </Card>
-
-      <Card title="Onaylayan Kişi" icon={UserRound}>
-        <div className="space-y-2">
-          <Field label="Kurum" icon={Building2}>
-            <Input
-              value={
-                approverType === 'Sigorta şirketi personeli'
-                  ? claim.insurer === '—'
-                    ? 'Sigorta Şirketi Tanımlanmamış'
-                    : claim.insurer
-                  : claim.expertOfficeName || 'Eksper Ofisi Tanımlanmamış'
-              }
-              readOnly
+      <Card title="Dosya Onayı" icon={CheckCircle2}>
+        <p className="text-xs text-slate-600">
+          Onay ve red, Raporlar’daki rapor onayında işlenir. Bu ekrandan kişi seçilmez; yanlış taraf yazılamaz.
+        </p>
+        <div className="mt-2 space-y-1 text-xs text-slate-700">
+          <p>
+            Durum:{' '}
+            <StatusPill
+              label={approved ? 'Dosya onaylandı' : repairReportStatusLabel(claim.report.status)}
+              tone={approved ? 'green' : 'orange'}
             />
-          </Field>
-          <Field label="Ad Soyad *">
-            <Input value={approverName} onChange={setApproverName} />
-          </Field>
-          <Field label="Unvan">
-            <Input value="Onay Yetkilisi" />
-          </Field>
-          <Field label="Telefon" icon={Phone}>
-            <Input value="0212 000 00 00" />
-          </Field>
-          <Field label="E-posta" icon={Mail}>
-            <Input value="ali.onay@ornek.com" />
-          </Field>
-        </div>
-      </Card>
-
-      {needsNote ? (
-        <Card title="Meridyen Personeli Onayı — Açıklama Zorunlu" icon={MessageSquareText}>
-          <Field label="Açıklama">
-            <TextArea
-              value={note}
-              onChange={setNote}
-              rows={3}
-              placeholder="Örn: Eksper tarafından telefonla verilen onay, görüşme kaydına istinaden sisteme işlendi."
-            />
-          </Field>
-          <p className="mt-1 text-[10px] text-amber-700">
-            Açıklama olmadan kayıt yapılamaz. İşlemi yapan kullanıcı, tarih ve saat kaydedilir.
           </p>
-        </Card>
-      ) : null}
-
-      <div className="flex flex-wrap gap-1.5">
-        <Btn
-          tone="primary"
-          disabled={needsNote && note.trim().length < 10}
-          onClick={() => {
-            if (needsNote && note.trim().length < 10) return;
-            setSavedMsg(
-              needsNote
-                ? 'Lokal önizleme: açıklama ile kayıt UI doğrulandı — onay API bağlı değil.'
-                : 'Lokal önizleme: onay kaydı UI hazır — onay API bağlı değil.',
-            );
-          }}
-        >
-          <CheckCircle2 className="h-3 w-3" /> Onayı Kaydet
-        </Btn>
-      </div>
-      {savedMsg ? <ApiNote text={savedMsg} /> : null}
-
-      <Card title="Sonraki İşlem" icon={ArrowRight}>
-        <div className="flex flex-col gap-1.5">
-          {[
-            'Onarım Sürecine Geç',
-            'Tedarikçileri Bilgilendir',
-            'Sigortalıyı Bilgilendir',
-            'Finans İşlemini Başlat',
-            'Onay Mesajlarını Hazırla',
-          ].map((label) => (
-            <Btn key={label} tone="secondary" className="!justify-start">
-              {label}
+          <p>Rapor: {claim.report.number}</p>
+          <p>Revizyon: {claim.report.revision}</p>
+          <p>Kayıtlı taraf: {claim.report.owner || '—'}</p>
+          <p>Tutar: {claim.report.total}</p>
+        </div>
+        {onGoToReports ? (
+          <div className="mt-2">
+            <Btn tone="primary" onClick={onGoToReports}>
+              Raporlar’da Onayı Aç
             </Btn>
-          ))}
-        </div>
+          </div>
+        ) : null}
       </Card>
+    </div>
+  );
+}
+
+function StepRepairWhatsApp() {
+  const { claim } = usePlanner();
+  return (
+    <div className="mt-3 space-y-3">
+      <p className="text-xs text-slate-600">
+        Onarım planı: tarih, iş ve kim gidecek. Bir alıcıya gönderilince aynı alıcı yeniden seçilmez.
+      </p>
+      <StepWhatsApp lockSentRecipients={claim.contactWa.repairTypes} purpose="repair" />
+    </div>
+  );
+}
+
+function StepRepairComplete() {
+  const { claim, assignedSupplierIds } = usePlanner();
+  const ids = assignedSupplierIds.length ? assignedSupplierIds : claim.preAssignedSupplierIds;
+  const suppliers = claim.suppliers.filter((s) => ids.includes(s.id));
+  return (
+    <div className="mt-3 space-y-3">
+      <p className="text-xs text-slate-600">
+        Onarım bitiş resimleri bu dosyada toplanır. Anket burada alınır. Kaydet: yönetici ve finansa mail.
+      </p>
+      {claim.claimId
+        ? suppliers.map((s) => (
+            <VendorRepairPhotosPanel key={s.id} claimId={claim.claimId!} vendorId={s.id} vendorName={s.name} />
+          ))
+        : null}
+      {suppliers.length === 0 ? <p className="text-xs text-slate-500">Önce tedarikçi atayın.</p> : null}
+      {!claim.flowFlags.muvafakatApproved ? (
+        <p className="text-xs text-amber-800">Dijital onay yok — onarım bitişi kaydedilmez.</p>
+      ) : null}
+      <Card title="Kapanış Anketi" icon={MessageCircle}>
+        <p className="mb-2 text-xs text-slate-600">Anket onarım bitişinde alınır.</p>
+        <StepClosureSurvey />
+      </Card>
+    </div>
+  );
+}
+
+function StepClosureSurvey() {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-slate-600">Sigortalıya anket WhatsApp’ı Kaydet ile kayda alınır.</p>
+      <StepWhatsApp />
+    </div>
+  );
+}
+
+function StepDocsUpload() {
+  const { claim } = usePlanner();
+  if (!claim.claimId) {
+    return <p className="mt-3 text-xs text-slate-500">Dosya bağlı değil.</p>;
+  }
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="text-xs text-slate-600">
+        Manuel evrak buradan yüklenir. Yüklenen evrak ve resimler Evraklar → Tespit Ve Onarım’da birikir. Evraklar özetindeki yükleme de durur.
+      </p>
+      <ClaimManualDocumentsPanel claimId={claim.claimId} />
     </div>
   );
 }
@@ -1637,6 +1599,16 @@ export function renderStepContent(step: StepId) {
       return <StepSentForApproval />;
     case 'approved':
       return <StepApproved />;
+    case 'repair_whatsapp':
+      return <StepRepairWhatsApp />;
+    case 'muvafakat':
+      return <StepDigitalApproval />;
+    case 'repair_complete':
+      return <StepRepairComplete />;
+    case 'closure_survey':
+      return <StepClosureSurvey />;
+    case 'docs_upload':
+      return <StepDocsUpload />;
     default:
       return null;
   }

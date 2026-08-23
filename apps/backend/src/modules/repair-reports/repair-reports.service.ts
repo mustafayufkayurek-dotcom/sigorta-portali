@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { buildAppPath } from '@/common/utils/app-url';
+import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { ReportPdfService } from './pdf/report-pdf.service';
 import { ReportEmailService } from './email/report-email.service';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
@@ -957,14 +957,15 @@ export class RepairReportsService {
     });
   }
 
-  private async getApprovers(): Promise<Array<{ id: string; expoPushToken: string | null }>> {
-    // Users with admin or ops_manager role
+  private async getApprovers(): Promise<
+    Array<{ id: string; expoPushToken: string | null; email: string; firstName: string; lastName: string; phone: string | null }>
+  > {
     return this.prisma.user.findMany({
       where: {
         status: 'active',
-        role: { code: { in: ['admin', 'ops_manager', 'manager'] } },
+        role: { code: { in: ['admin', 'ops_manager', 'manager', 'ADMIN', 'OPS_MANAGER', 'MANAGER'] } },
       },
-      select: { id: true, expoPushToken: true },
+      select: { id: true, expoPushToken: true, email: true, firstName: true, lastName: true, phone: true },
     });
   }
 
@@ -973,7 +974,18 @@ export class RepairReportsService {
       where: { id: reportId },
       include: {
         createdBy: { select: { id: true, firstName: true, lastName: true } },
-        items: { select: { salesTotal: true, supplierTotal: true, lumpSumPrice: true, pricingType: true } },
+        items: {
+          select: {
+            salesTotal: true,
+            supplierTotal: true,
+            lumpSumPrice: true,
+            pricingType: true,
+            jobDescription: true,
+            workGroup: { select: { name: true } },
+          },
+        },
+        images: { take: 8, orderBy: { sortOrder: 'asc' }, select: { storageKey: true, fileName: true, mimeType: true } },
+        claimFile: { select: { fileNo: true } },
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
@@ -1011,17 +1023,84 @@ export class RepairReportsService {
 
     await this.syncClaimFromLatestReport(report.claimFileId);
 
-    // Notify approvers
+    const lineSummary = report.items
+      .slice(0, 12)
+      .map((item) => {
+        const name = item.workGroup?.name || item.jobDescription || 'Kalem';
+        const amt = item.pricingType === 'lumpsum' ? Number(item.lumpSumPrice ?? 0) : Number(item.salesTotal ?? 0);
+        return `${name}: ${Math.round(amt).toLocaleString('tr-TR')} ₺`;
+      })
+      .join(' · ');
+    const attachments: Array<{ filename: string; content: Buffer; contentType?: string }> = [];
+    for (const img of report.images ?? []) {
+      const filePath = resolveReportImageFilePath(img.storageKey);
+      if (!filePath) continue;
+      try {
+        const buf = fs.readFileSync(filePath);
+        if (buf.length > 4_000_000) continue;
+        attachments.push({
+          filename: img.fileName || 'resim.jpg',
+          content: buf,
+          contentType: img.mimeType || 'image/jpeg',
+        });
+      } catch {
+        /* yok */
+      }
+    }
+    const money = (n: number) => `${Math.round(n).toLocaleString('tr-TR')} ₺`;
+    const waLines = [
+      `Onay bekleyen rapor ${report.reportNo}`,
+      `Dosya ${report.claimFile?.fileNo ?? ''}`,
+      `Satış ${money(totalSales)} · Maliyet ${money(totalCost)} · Kâr ${money(totalSales - totalCost)}`,
+      lineSummary,
+      'Resimler mailde ve panelde.',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
     const approvers = await this.getApprovers();
     for (const approver of approvers) {
-      if (approver.id !== userId) {
-        await this.createNotification(
-          approver.id,
-          'report_approval_requested',
-          'Onay Bekleyen Rapor',
-          `${report.reportNo} numaralı rapor onayınızı bekliyor.`,
+      if (approver.id === userId) continue;
+      await this.createNotification(
+        approver.id,
+        'report_approval_requested',
+        'Onay Bekleyen Rapor',
+        `${report.reportNo} numaralı rapor onayınızı bekliyor.`,
+        reportId,
+      );
+      if (this.claimEventEmail && approver.email) {
+        void this.claimEventEmail.onManagerApprovalRequested({
+          recipientEmail: approver.email,
+          recipientName: `${approver.firstName} ${approver.lastName}`.trim(),
+          fileNo: report.claimFile?.fileNo ?? '',
+          reportNo: report.reportNo,
+          claimFileId: report.claimFileId,
           reportId,
-        );
+          lineSummary,
+          salesLabel: money(totalSales),
+          costLabel: money(totalCost),
+          profitLabel: money(totalSales - totalCost),
+          attachments,
+        });
+      }
+      const waUrl = buildWhatsAppMeUrl(approver.phone, waLines);
+      if (waUrl) {
+        await this.prisma.fileActivityLog.create({
+          data: {
+            claimFileId: report.claimFileId,
+            actorId: userId,
+            actorRole: 'office_staff',
+            action: 'WHATSAPP_STATUS_RECORDED',
+            description: `Yönetici onay WhatsApp hazırlandı · ${approver.firstName} ${approver.lastName}`.trim(),
+            metadata: {
+              kind: 'manager_approval_whatsapp',
+              purpose: 'yonetici_onay',
+              phone: approver.phone,
+              url: waUrl,
+              status: 'ready',
+            },
+          },
+        });
       }
     }
 

@@ -1831,21 +1831,21 @@ export default function ClaimFileDetailPage() {
                 </div>
               </div>
               {opsView === 'planlayici' ? (
-                <OperasyonPlanlayiciPanel
-                  claimId={id!}
-                  claimFile={claim}
-                  canEdit={canUserAssignClaim(userRoleCode, isFieldStaff) || userHasPermission('claim_file.update')}
-                  onGoToReports={() => {
-                    setActiveGroup('raporlar');
-                    router.replace(`/panel/hasar-dosyalari/${id}?grup=raporlar`, { scroll: false });
-                  }}
-                  onClaimUpdated={() => {
-                    axios
-                      .get(`${API}/claim-files/${id}`, { headers: authHeader() })
-                      .then((r) => setClaim(r.data.data))
-                      .catch(() => undefined);
-                  }}
-                />
+                  <OperasyonPlanlayiciPanel
+                    claimId={id!}
+                    claimFile={claim}
+                    canEdit={canUserAssignClaim(userRoleCode, isFieldStaff) || userHasPermission('claim_file.update')}
+                    onGoToReports={() => {
+                      setActiveGroup('raporlar');
+                      router.replace(`/panel/hasar-dosyalari/${id}?grup=raporlar`, { scroll: false });
+                    }}
+                    onClaimUpdated={() => {
+                      axios
+                        .get(`${API}/claim-files/${id}`, { headers: authHeader() })
+                        .then((r) => setClaim(r.data.data))
+                        .catch(() => undefined);
+                    }}
+                  />
               ) : (
                 <TakipTab claimId={id!} claim={claim} initialSubTab={initialOpsSub} />
               )}

@@ -318,8 +318,8 @@ export default function ClosureConditionsPanel(props: Props) {
                 />
                 <ConditionRow
                   met={conditions.vendorContractSigned}
-                  label="Tedarikçi sözleşmesi imzalı"
-                  help="Tedarikçi tarafından imzalanmış sözleşme olmalı"
+                  label="Tedarikçi sözleşmesi (zorunlu değil)"
+                  help="Fatura talebi sözleşme beklemez"
                 />
               </>
             ) : conditions ? (

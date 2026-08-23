@@ -14,7 +14,7 @@ import {
 import { buildAppPath } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
-import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -644,10 +644,10 @@ export class FileDocumentsService {
 
     return {
       ...conditions,
-      canCreateInvoiceRequest:
-        conditions.muvafakatnameDigitallyApproved &&
-        conditions.repairReportApproved &&
-        conditions.vendorContractSigned,
+      canCreateInvoiceRequest: canCreateHasarInvoiceRequest({
+        muvafakatnameDigitallyApproved: conditions.muvafakatnameDigitallyApproved,
+        repairReportApproved: conditions.repairReportApproved,
+      }),
       muvafakatnameId: muvafakatname?.id ?? null,
       muvafakatnameStatus: muvafakatname?.status ?? null,
     };

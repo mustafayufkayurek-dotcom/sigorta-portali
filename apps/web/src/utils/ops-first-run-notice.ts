@@ -28,10 +28,10 @@ export const OPS_NOTICE = {
       'Müşteri sütununda ihbarı geçen ofis üsttedir; karttaki Kısa Ad varsa o basılır, yoksa karttaki unvan. Altta sigorta soluktur. Sayfa altında kaç dosya göreceğinizi seçersiniz. 72 saat aşan satır kırmızı yanıp söner.',
   },
   hasarDosyaSonDegisiklik: {
-    id: 'hasar-dosya-v526',
+    id: 'hasar-dosya-v534',
     title: 'Bu dosyada ne değişti',
     body:
-      'Tespit resmi ve not Raporlar içindedir. Düzenle Raporlar’ı açar. Durum rozeti üst banttadır. Resimler oturumla görünür; kutu dosya adı göstermez.',
+      'Hasar Tespit’te tahmini süre ve görüşme notu yok. Randevu notu sesle yazılır. Tespitçi ve sigortalı WhatsApp zorunlu; tedarikçi görev notu ve WhatsApp aynı sayfada. Dosya Onaylandı, Raporlar’daki onayı gösterir. Dijital onay onarımın başında; mutabakat/muvafakat tek belge. Anket onarım bitişinde. Resim ve belgeler Evraklar → Tespit Ve Onarım’dadır.',
   },
   hasarRaporSonDegisiklik: {
     id: 'hasar-rapor-v526',

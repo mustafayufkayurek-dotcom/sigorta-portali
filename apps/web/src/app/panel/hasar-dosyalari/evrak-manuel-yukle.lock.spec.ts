@@ -37,9 +37,15 @@ describe('hasar manuel evrak yükleme LOCK', () => {
     assert.match(panel, /disabled=\{uploading \|\| !kind\}/);
   });
 
-  it('API tür zorunlu tutar; yedek taslak yolu yok', () => {
-    assert.match(api, /claim-file\/\$\{claimFileId\}\/manual-upload/);
-    assert.match(api, /formData\.append\('documentKind', documentKind\)/);
-    assert.match(controller, /documentKind !== 'muvafakatname' && documentKind !== 'anket_formu'/);
+  it('Operasyon toplama Evraklar altındadır, dosya Operasyon gövdesinde yükleme yok', () => {
+    const tab = readFileSync(
+      join(specDir, '[id]/_components/tabs/EvraklarTab.tsx'),
+      'utf8',
+    );
+    const page = readFileSync(join(specDir, '[id]/page.tsx'), 'utf8');
+    assert.match(tab, /id: 'toplanan'/);
+    assert.match(tab, /Tespit Ve Onarım/);
+    assert.match(tab, /OperasyonEvrakToplamaPanel/);
+    assert.doesNotMatch(page, /OperasyonEvrakToplamaPanel/);
   });
 });

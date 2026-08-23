@@ -1,0 +1,16 @@
+---
+description: İK / puantaj ve diğer sohbet işleri — canlı Hasar paketi dışında bekliyor
+alwaysApply: true
+---
+
+# Bekleyen iş (canlı paket değil)
+
+Mustafa (23.08.2026): Hasar planlayıcı canlıya giderken bunlar **hatırlatılır**, bu deploy’a karışmaz.
+
+## Ayrı duran sohbet işleri
+
+1. **İK / personel özlük** — zimmet, özlük evrak, yönetim ekranı
+2. **Puantaj** — takvim renkleri, bekleyenleri onayla, ay özeti, mesai saati denetimi
+3. Diğer sohbetlerde kalan İK/dashboard işi — Hasar dosya paketine yapıştırılmaz
+
+Canlı Hasar işi bitince Mustafa’ya sor: bu pakete geçilsin mi?

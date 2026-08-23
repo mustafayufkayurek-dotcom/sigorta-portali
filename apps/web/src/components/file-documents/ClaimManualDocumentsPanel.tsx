@@ -16,9 +16,12 @@ import {
 export function ClaimManualDocumentsPanel({
   claimId,
   onUploaded,
+  listOnly = false,
 }: {
   claimId: string;
   onUploaded?: () => void;
+  /** Operasyon toplama: yükleme yok, yalnız biriken evrak. */
+  listOnly?: boolean;
 }) {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -88,13 +91,23 @@ export function ClaimManualDocumentsPanel({
 
   return (
     <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/40">
-        <h4 className="text-sm font-semibold text-slate-800">Manuel Evrak Yükle</h4>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Yüklemeden önce evrak türünü seçin. Muvafakatname veya Anket Formu.
-        </p>
-      </div>
+      {listOnly ? (
+        <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/40">
+          <h4 className="text-sm font-semibold text-slate-800">Yüklenen Evraklar</h4>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Yükleme planlayıcıdadır. Biriken evrak Evraklar → Tespit Ve Onarım’dadır.
+          </p>
+        </div>
+      ) : (
+        <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/40">
+          <h4 className="text-sm font-semibold text-slate-800">Manuel Evrak Yükle</h4>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Yüklemeden önce evrak türünü seçin. Muvafakatname veya Anket Formu.
+          </p>
+        </div>
+      )}
 
+      {listOnly ? null : (
       <div className="px-5 py-4 space-y-3">
         <div>
           <label htmlFor="claim-manual-doc-kind" className="block text-xs font-medium text-slate-600 mb-1.5">
@@ -129,9 +142,10 @@ export function ClaimManualDocumentsPanel({
           {uploading ? 'Yükleniyor…' : 'Dosya Seç Ve Yükle'}
         </button>
       </div>
+      )}
 
-      <div className="border-t border-slate-100 px-5 py-3">
-        <p className="text-xs font-medium text-slate-500 mb-2">Yüklenen Evraklar</p>
+      <div className={listOnly ? 'px-5 py-3' : 'border-t border-slate-100 px-5 py-3'}>
+        {listOnly ? null : <p className="text-xs font-medium text-slate-500 mb-2">Yüklenen Evraklar</p>}
         {loading ? (
           <p className="text-xs text-slate-400 py-2">Yükleniyor…</p>
         ) : docs.length === 0 ? (

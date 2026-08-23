@@ -8,9 +8,11 @@ import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { RepairReportsService } from '@/modules/repair-reports/repair-reports.service';
 import {
+  resolveApproval72hCustomerEmailPayload,
   resolveCustomerReminderEmail,
   resolveCustomerReminderTitle,
 } from './approval-72h-customer-email.rule';
+import { vendorsMissingRepairPhotos } from '@sigorta/shared';
 
 const MANUAL_DECISION_MIN_REASON = 10;
 const PORTAL_ROLE_CODES = new Set([
@@ -65,9 +67,11 @@ type ContactEventInput = {
     | 'failed';
   result?: string | null;
   retryOfId?: string | null;
+  purpose?: 'inspection' | 'repair';
 };
 
 type AppointmentRecipient = 'insured' | 'adjuster' | 'vendors';
+type AppointmentNotifyPurpose = 'inspection' | 'repair';
 
 @Injectable()
 export class ClaimOperationCenterService {
@@ -122,7 +126,8 @@ export class ClaimOperationCenterService {
     const claim = await this.prisma.claimFile.findUnique({
       where: { id },
       include: {
-        customer: true,
+        customer: { include: { contacts: true } },
+        insuranceCompany: true,
         propertyAddress: true,
         claimSubject: true,
         assignedInspectorVendor: true,
@@ -293,6 +298,52 @@ export class ClaimOperationCenterService {
       })),
       activity,
       appointmentNotifications,
+      flowFlags: await this.buildFlowFlags(
+        claimFileId,
+        claim.supplierAssignments.map((s) => s.vendorId),
+      ),
+    };
+  }
+
+  private async buildFlowFlags(claimFileId: string, vendorIds: string[]) {
+    const [docs, fileDoc, claimRow, report] = await Promise.all([
+      this.prisma.entityDocument.findMany({
+        where: { entityType: 'claim_file', entityId: claimFileId },
+        select: { notes: true, mimeType: true },
+      }),
+      this.prisma.fileDocument.findFirst({
+        where: { entityType: 'claim_file', entityId: claimFileId, documentKind: 'muvafakatname' },
+        orderBy: { createdAt: 'desc' },
+        select: { digitallyApprovedAt: true, status: true },
+      }),
+      this.prisma.claimFile.findUnique({
+        where: { id: claimFileId },
+        select: { currentStatus: { select: { code: true } } },
+      }),
+      this.prisma.repairReport.findFirst({
+        where: { claimFileId, status: { in: ['approved', 'externally_approved'] } },
+        select: { id: true },
+      }),
+    ]);
+    const photoDocs = docs.filter((d) => String(d.mimeType ?? '').startsWith('image/'));
+    const missingPhotoVendorIds = vendorsMissingRepairPhotos(vendorIds, photoDocs);
+    const muvafakatApproved = Boolean(fileDoc?.digitallyApprovedAt);
+    const code = claimRow?.currentStatus?.code ?? '';
+    const repairCompleted = [
+      'repair_completed',
+      'invoice_pending',
+      'invoice_submitted',
+      'payment_pending',
+      'partially_collected',
+      'closed',
+    ].includes(code);
+    return {
+      muvafakatApproved,
+      muvafakatStatus: fileDoc?.status ?? null,
+      missingPhotoVendorIds,
+      repairPhotosReady: vendorIds.length > 0 && missingPhotoVendorIds.length === 0,
+      repairCompleted,
+      canInvoice: muvafakatApproved && Boolean(report),
     };
   }
 
@@ -383,7 +434,64 @@ export class ClaimOperationCenterService {
         },
       },
     );
+    void this.notifyInspectionPlanEmail(claim, appointment.scheduledAt, appointment.location, actor).catch(
+      () => undefined,
+    );
     return { appointment, history };
+  }
+
+  private async notifyInspectionPlanEmail(
+    claim: Awaited<ReturnType<ClaimOperationCenterService['getClaimOrThrow']>>,
+    scheduledAt: Date,
+    location: string | null,
+    actor: Actor,
+  ) {
+    const resolved = resolveApproval72hCustomerEmailPayload({
+      fileNo: claim.fileNo,
+      insuredName: claim.insuredName,
+      customer: claim.customer,
+      insuranceCompany: claim.insuranceCompany,
+      propertyAddress: claim.propertyAddress,
+    });
+    const scheduledLabel = `${scheduledAt.toLocaleDateString('tr-TR')} ${scheduledAt.toLocaleTimeString('tr-TR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+    if (!resolved.ok) {
+      await this.log(
+        claim.id,
+        actor,
+        'NOTE_ADDED',
+        `Tespit planı müşteri maili gönderilmedi: ${resolved.reason}`,
+        { kind: 'inspection_plan_email', status: 'skipped', reason: resolved.reason },
+      );
+      return;
+    }
+    const sent = await this.claimEventEmail.onInspectionPlanned({
+      recipientEmail: resolved.payload.recipientEmail,
+      recipientName: resolved.payload.recipientName,
+      fileNo: resolved.payload.fileNo,
+      customerName: resolved.payload.customerName,
+      insuredName: resolved.payload.insuredName,
+      scheduledLabel,
+      location: location?.trim() || '—',
+      claimFileId: claim.id,
+    });
+    await this.log(
+      claim.id,
+      actor,
+      'NOTE_ADDED',
+      sent.sent
+        ? `Tespit planı müşteriye mail gitti (${resolved.payload.recipientEmail}).`
+        : `Tespit planı müşteri maili gönderilemedi.`,
+      {
+        kind: 'inspection_plan_email',
+        status: sent.sent ? 'sent' : 'failed',
+        to: resolved.payload.recipientEmail,
+        purpose: 'tespit_planlama',
+        errorMsg: 'errorMsg' in sent ? sent.errorMsg : null,
+      },
+    );
   }
 
   async recordContactEvent(
@@ -451,6 +559,7 @@ export class ClaimOperationCenterService {
     claimFileId: string,
     recipients: AppointmentRecipient[],
     actor: Actor,
+    purpose: AppointmentNotifyPurpose = 'inspection',
   ) {
     const claim = await this.getClaimOrThrow(claimFileId);
     const appointment = await this.prisma.appointment.findFirst({
@@ -496,10 +605,13 @@ export class ClaimOperationCenterService {
         recipientId: claim.customerId,
         recipientName: insuredName,
         phone: claim.insuredPhone ?? claim.customer?.phone ?? null,
-        templateType: TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_INSURED,
+        templateType:
+          purpose === 'repair'
+            ? TEMPLATE_TYPES.WHATSAPP_HASAR_REPAIR_INSURED
+            : TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_INSURED,
       });
     }
-    if (recipients.includes('adjuster') && claim.assignedInspectorVendor) {
+    if (purpose !== 'repair' && recipients.includes('adjuster') && claim.assignedInspectorVendor) {
       targets.push({
         recipientType: 'adjuster',
         recipientId: claim.assignedInspectorVendor.id,
@@ -518,11 +630,15 @@ export class ClaimOperationCenterService {
           recipientId: link.vendor.id,
           recipientName: link.vendor.name,
           phone: link.vendor.authorizedPhone ?? link.vendor.phone ?? null,
-          templateType: TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_VENDOR,
+          templateType:
+            purpose === 'repair'
+              ? TEMPLATE_TYPES.WHATSAPP_HASAR_REPAIR_VENDOR
+              : TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_VENDOR,
         });
       }
     }
 
+    const groupLabel = purpose === 'repair' ? 'onarım randevusu' : 'tespit randevusu';
     const results = [];
     for (const target of targets) {
       const template = await this.templateService.getByType(target.templateType);
@@ -533,16 +649,17 @@ export class ClaimOperationCenterService {
         claimFileId,
         actor,
         'APPOINTMENT_NOTIFICATION_RECORDED',
-        `${target.recipientName} için randevu bildirimi ${url ? 'hazırlandı' : 'hazırlanamadı'}.`,
+        `${target.recipientName} için ${groupLabel} ${url ? 'hazırlandı' : 'hazırlanamadı'}.`,
         {
           appointmentId: appointment.id,
+          purpose,
           ...target,
           message,
           status,
           url,
         },
       );
-      results.push({ eventId: event.id, ...target, message, status, url });
+      results.push({ eventId: event.id, ...target, message, status, url, purpose });
     }
     return results;
   }
@@ -768,5 +885,89 @@ export class ClaimOperationCenterService {
       customerTitle,
       reason,
     };
+  }
+
+  async completeRepair(claimFileId: string, actor: Actor) {
+    const claim = await this.getClaimOrThrow(claimFileId);
+    const flags = await this.buildFlowFlags(
+      claimFileId,
+      claim.supplierAssignments.map((s) => s.vendorId),
+    );
+    if (!flags.muvafakatApproved) {
+      throw new BadRequestException('Onarım öncesi muvafakatname dijital onayı yok.');
+    }
+    if (claim.supplierAssignments.length === 0) {
+      throw new BadRequestException('Dosyada tedarikçi yok.');
+    }
+    if (!flags.repairPhotosReady) {
+      throw new BadRequestException(
+        'Her tedarikçinin onarım bitiş resmi yok. Resimler gelmeden hakediş ve bildirim açılamaz.',
+      );
+    }
+
+    const status = await this.prisma.claimStatus.findFirst({ where: { code: 'repair_completed' } });
+    if (status && claim.currentStatusId !== status.id) {
+      await this.prisma.$transaction([
+        this.prisma.claimFile.update({
+          where: { id: claimFileId },
+          data: { currentStatusId: status.id, lastActivityAt: new Date(), lastHumanActionAt: new Date() },
+        }),
+        this.prisma.claimStatusHistory.create({
+          data: {
+            claimFileId,
+            fromStatusId: claim.currentStatusId,
+            toStatusId: status.id,
+            changedByUserId: this.actorId(actor),
+            note: 'Onarım tamamlandı — yönetici ve finansa bildirildi.',
+          },
+        }),
+      ]);
+    }
+
+    const staff = await this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        role: {
+          code: {
+            in: [
+              'admin',
+              'ADMIN',
+              'manager',
+              'MANAGER',
+              'ops_manager',
+              'OPS_MANAGER',
+              'finance',
+              'FINANCE',
+              'finans',
+              'FINANS',
+              'accountant',
+              'ACCOUNTANT',
+            ],
+          },
+        },
+      },
+      select: { id: true, email: true, firstName: true, lastName: true },
+      take: 60,
+    });
+    const vendorNames = claim.supplierAssignments.map((s) => s.vendor.name).join(', ');
+    const mailResults: Array<{ to: string; sent: boolean }> = [];
+    for (const u of staff) {
+      const res = await this.claimEventEmail.onRepairCompleted({
+        recipientEmail: u.email,
+        recipientName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+        fileNo: claim.fileNo,
+        claimFileId,
+        vendorNames,
+      });
+      mailResults.push({ to: u.email, sent: !!res.sent });
+    }
+    await this.log(
+      claimFileId,
+      actor,
+      'NOTE_ADDED',
+      `Onarım bitti. Yönetici ve finansa mail (${mailResults.filter((m) => m.sent).length}/${mailResults.length}).`,
+      { kind: 'repair_completed_email', purpose: 'onarim_bitti_fatura', results: mailResults },
+    );
+    return { ok: true, mailResults, flowFlags: await this.buildFlowFlags(claimFileId, claim.supplierAssignments.map((s) => s.vendorId)) };
   }
 }
