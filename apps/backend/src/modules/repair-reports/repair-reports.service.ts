@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
+import { buildAppPath } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { ReportPdfService } from './pdf/report-pdf.service';
 import { ReportEmailService } from './email/report-email.service';
