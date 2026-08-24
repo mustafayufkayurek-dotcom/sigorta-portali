@@ -1,11 +1,11 @@
 ---
-description: Full deploy v538 alındı — 24.08.2026
+description: Full deploy v539 alındı — 24.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v538 (24.08.2026) — alındı
+# Full deploy v539 (24.08.2026) — alındı
 
-Canlı: web + backend **v538**. Rollback: web v537 / backend v537.
+Canlı: web + backend **v539**. Rollback: web v538 / backend v538.
 
 ## Alınan paket
 
@@ -17,6 +17,7 @@ Canlı: web + backend **v538**. Rollback: web v537 / backend v537.
 6. Operasyon giden maili (rapor, dış onay, CRM, gelen kutu, Acil kapanış, ayarlar testi) Microsoft 365 kutusundan gider. SMTP yeşili gitti sayılmaz. Canlı alımdan önce giden-mail kilidi zorunlu; disk 5 GB altındaysa kod kopyalanmaz.
 7. Dosya sorumlusu Acil’de Finansa Gönder deyince satış fatura talebi finans kuyruğuna düşer. Daha önce finansa gönderilip kuyruğa yazılmayanlar finans ekranı açılınca tamamlanır.
 8. Onarım raporu maliyeti m² ile çarpılmaz; satış miktar × birim fiyattır. Şişmiş maliyet, rapor açılınca düzelir.
+9. Acil Sunum özeti yazarken boşluk durur. Kilit spec + canlı smoke; bu kırılma geri gelmez.
 
 ## Canlıda yok
 

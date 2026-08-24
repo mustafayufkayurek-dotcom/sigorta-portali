@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-24",
-  "label": "v538-rapor-maliyet",
-  "description": "Full: Onarım raporu maliyeti m² ile çarpılmaz; satış miktar × birim fiyattır. Şişmiş maliyet kayıtları rapor açılınca düzelir. Rollback web v537 / backend v537.",
+  "label": "v539-acil-sunum-bosluk",
+  "description": "Full: Acil sunum özeti yazarken boşluk durur. Onarım maliyeti m² ile çarpılmaz. Rollback web v538 / backend v538.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v538-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v538-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v539-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v539-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v537-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v537-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v538-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v538-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
