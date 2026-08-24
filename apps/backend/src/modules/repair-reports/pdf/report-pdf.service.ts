@@ -292,8 +292,14 @@ export class ReportPdfService {
         ...img,
         dataUrl: img.dataUrl || reportImageToDataUrl(img.storageKey, img.mimeType),
       }));
+      const isDraft = isRepairReportPdfDraft(report.status, report.approvalHistory);
+      const usageMark = isDraft
+        ? 'Taslak'
+        : viewType === 'internal'
+          ? 'İç Kullanım'
+          : 'Dış Kullanım';
       const html = this.buildHtml({ ...report, images }, viewType);
-      return await this.htmlToPdf(html);
+      return await this.htmlToPdf(html, usageMark);
     } catch (error) {
       this.logger.error(
         `PDF motor hatası: ${(error as Error)?.message ?? error}`,
@@ -357,7 +363,7 @@ export class ReportPdfService {
     return undefined;
   }
 
-  private async htmlToPdf(html: string): Promise<Buffer> {
+  private async htmlToPdf(html: string, usageMark: string): Promise<Buffer> {
     const executablePath = this.resolveChromeExecutable();
     if (!executablePath) {
       throw new Error(
@@ -379,7 +385,8 @@ export class ReportPdfService {
         displayHeaderFooter: true,
         headerTemplate: '<div></div>',
         footerTemplate: `
-          <div style="width:100%;font-size:8px;color:#9ca3af;padding:0 15mm;display:flex;justify-content:flex-end;align-items:center;font-family:Arial,sans-serif;">
+          <div style="width:100%;font-size:8px;color:#64748b;padding:0 12mm;display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif;">
+            <span>${escHtml(usageMark)}</span>
             <span>Sayfa <span class="pageNumber"></span> / <span class="totalPages"></span></span>
           </div>`,
       });
@@ -700,50 +707,7 @@ export class ReportPdfService {
     line-height: 1.4;
   }
 
-  /* ── Watermark ── */
-  ${isDraft ? `
-  body::before {
-    content: "TASLAK";
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 110pt;
-    font-weight: 900;
-    color: rgba(59, 130, 246, 0.09);
-    z-index: 0;
-    pointer-events: none;
-    white-space: nowrap;
-    letter-spacing: 14px;
-  }` : viewType === 'internal' ? `
-  body::before {
-    content: "İÇ KULLANIM";
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 72pt;
-    font-weight: 900;
-    color: rgba(99, 102, 241, 0.06);
-    z-index: 0;
-    pointer-events: none;
-    white-space: nowrap;
-    letter-spacing: 10px;
-  }` : `
-  body::before {
-    content: "DIŞ KULLANIM";
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 72pt;
-    font-weight: 900;
-    color: rgba(16, 185, 129, 0.06);
-    z-index: 0;
-    pointer-events: none;
-    white-space: nowrap;
-    letter-spacing: 10px;
-  }`}
+  /* Kullanım işareti gövdede (fotoğraf üstünde) yok; başlık + sayfa altı. */
 
   /* ── Header ── */
   .report-header {
@@ -805,16 +769,26 @@ export class ReportPdfService {
     line-height: 1.25;
   }
 
-  .header-draft-badge {
+  .header-usage-badge {
     display: inline-block;
     margin-top: 4px;
-    background: #fef3c7;
     border-radius: 3px;
     padding: 1px 10px;
     font-size: 8pt;
     font-weight: 700;
+    letter-spacing: 0.6px;
+  }
+  .header-usage-draft {
+    background: #fef3c7;
     color: #b45309;
-    letter-spacing: 1px;
+  }
+  .header-usage-internal {
+    background: #eef2ff;
+    color: #4338ca;
+  }
+  .header-usage-external {
+    background: #ecfdf5;
+    color: #047857;
   }
 
   .header-date {
@@ -1545,7 +1519,11 @@ export class ReportPdfService {
   ${headerBrandHtml}
   <div class="header-title-block">
     <div class="header-title">Hasar Tespit Ve Onarım Raporu</div>
-    ${isDraft ? '<div class="header-draft-badge">Taslak</div>' : ''}
+    ${isDraft
+      ? '<div class="header-usage-badge header-usage-draft">Taslak</div>'
+      : viewType === 'internal'
+        ? '<div class="header-usage-badge header-usage-internal">İç Kullanım</div>'
+        : '<div class="header-usage-badge header-usage-external">Dış Kullanım</div>'}
     <div class="header-date"><span class="header-date-label">Tarih</span>${fmtDate(report.reportDate)}</div>
   </div>
   ${qrBlockHtml(qrMarkup)}
@@ -1690,7 +1668,7 @@ ${photoGalleryHtml}
 
 <!-- FOOTER -->
 <div class="report-footer">
-  <div class="footer-generated">Pdf Oluşturma: ${escHtml(fmtDateTime(generatedAt))}</div>
+  <div class="footer-generated">Pdf Oluşturma: ${escHtml(fmtDateTime(generatedAt))}<br/>${escHtml(isDraft ? 'Taslak' : viewType === 'internal' ? 'İç Kullanım' : 'Dış Kullanım')}</div>
   ${qrBlockHtml(qrMarkup)}
   <div class="footer-affiliation">Meridyen Assistance Safran Birleşik Hizmetler Yan Kuruluşudur</div>
 </div>
