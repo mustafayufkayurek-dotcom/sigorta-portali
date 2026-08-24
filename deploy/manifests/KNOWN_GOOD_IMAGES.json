@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-24",
-  "label": "v537-fatura-kuyruk",
-  "description": "Full: Finansa gönderilen acil satış fatura talepleri kuyruğa düşer. Giden mail kutu kilidi ve dış PDF durur. Rollback web v536 / backend v536.",
+  "label": "v538-rapor-maliyet",
+  "description": "Full: Onarım raporu maliyeti m² ile çarpılmaz; satış miktar × birim fiyattır. Şişmiş maliyet kayıtları rapor açılınca düzelir. Rollback web v537 / backend v537.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v537-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v537-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v538-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v538-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v536-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v536-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v537-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v537-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
