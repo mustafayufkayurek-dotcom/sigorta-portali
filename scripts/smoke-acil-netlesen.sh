@@ -9,6 +9,7 @@ node --experimental-strip-types --test \
   apps/web/src/app/panel/acil-yardim/acil-canli-netlesen.lock.spec.ts \
   apps/web/src/app/dev/acil-dosya-akis/acil-dosya-akis.lock.spec.ts \
   apps/backend/src/modules/emergency/acil-vendor-entitlement.lock.spec.ts \
+  apps/backend/src/modules/emergency/acil-finance-invoice-request.lock.spec.ts \
   apps/backend/src/modules/emergency/acil-operation-timestamps.lock.spec.ts \
   apps/backend/src/modules/file-documents/matbu-insured-view.spec.ts \
   apps/backend/src/modules/surveys/surveys-closure.lock.spec.ts \

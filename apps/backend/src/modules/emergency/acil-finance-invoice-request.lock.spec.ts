@@ -74,6 +74,8 @@ describe('acil satış fatura talebi LOCK', () => {
     assert.doesNotMatch(transfer, /insuranceCompanyId:\s*emergencyCase\.customerId/);
     const ir = read('../invoice-requests/invoice-requests.service.ts');
     assert.match(ir, /syncMissingEmergencySalesRequests/);
+    const smoke = read('../../../scripts/smoke-acil-netlesen.sh');
+    assert.match(smoke, /acil-finance-invoice-request\.lock\.spec/);
     const docs = read('../file-documents/file-documents.service.ts');
     assert.match(docs, /FATURALANDILDI/);
   });
