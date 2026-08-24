@@ -175,7 +175,11 @@ export class SurveyReportService {
         const html = buildSurveyReportHtml(reportData);
         const subject = `Meridyen Assistance – ${reportData.period} Müşteri Memnuniyet Raporu`;
 
-        await this.emailService.sendEmail(company.contactEmail, subject, html);
+        const sentMail = await this.emailService.sendEmail(company.contactEmail, subject, html);
+        if (!sentMail.sent) {
+          this.logger.error(`Rapor gönderilemedi → ${company.name}: ${sentMail.errorMsg ?? 'kutu reddi'}`);
+          continue;
+        }
         sent++;
         this.logger.log(`Rapor gönderildi → ${company.name} (${company.contactEmail})`);
       } catch (err: any) {

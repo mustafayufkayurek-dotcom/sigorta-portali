@@ -1,7 +1,7 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { departmentToMeridyenType } from '@/common/utils/file-subject-meridyen-branch';
-import * as nodemailer from 'nodemailer';
+import { EmailService } from '@/modules/notifications/email/email.service';
 
 export interface MailConfig {
   host: string;
@@ -596,7 +596,10 @@ function newMondayId(prefix: string): string {
 
 @Injectable()
 export class SystemSettingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => EmailService)) private readonly email: EmailService,
+  ) {}
 
   async get(key: string): Promise<any> {
     const setting = await this.prisma.systemSetting.findUnique({ where: { key } });
@@ -1041,75 +1044,25 @@ export class SystemSettingsService {
   async sendTestMail(to: string): Promise<{
     accepted: string[];
     rejected: string[];
-    messageId?: string;
-    response?: string;
+    via?: 'graph' | 'smtp';
   }> {
     if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
       throw new BadRequestException('Geçerli bir alıcı e-posta adresi giriniz.');
     }
 
-    const config = await this.getMailConfig();
-    if (!config || !config.host || !config.username || !config.password) {
-      throw new BadRequestException('Mail yapılandırması eksik veya henüz kaydedilmemiş.');
+    const result = await this.email.sendEmail(
+      to,
+      'Test E-postası — Sigorta Hasar Sistemi',
+      '<p>Bu bir <strong>test e-postasıdır</strong>. Gönderim Hasar kutusundan yapıldı.</p>',
+      { text: 'Bu bir test e-postasıdır. Gönderim Hasar kutusundan yapıldı.' },
+    );
+    if (!result.sent || result.via !== 'graph') {
+      throw new BadRequestException(
+        result.errorMsg
+          || 'Test e-postası Hasar kutusundan gitmedi. SMTP yeşili “gitti” sayılmaz.',
+      );
     }
-
-    const subject = 'Test E-postası — Sigorta Hasar Sistemi';
-    const logEntry = await this.prisma.emailLog.create({
-      data: { to, subject, status: 'queued' },
-    });
-
-    const secure = config.security === 'SSL';
-    const transportOptions: nodemailer.TransportOptions = {
-      host: config.host,
-      port: config.port || 587,
-      secure,
-      auth: {
-        user: config.username,
-        pass: config.password,
-      },
-    } as nodemailer.TransportOptions;
-
-    if (config.security === 'TLS') {
-      (transportOptions as any).requireTLS = true;
-    }
-
-    const transporter = nodemailer.createTransport(transportOptions);
-
-    try {
-      await transporter.verify();
-      const result = await transporter.sendMail({
-        from: `"${config.fromName || 'Sigorta Hasar Sistemi'}" <${config.fromEmail || config.username}>`,
-        to,
-        subject,
-        text: 'Bu bir test e-postasıdır. Mail yapılandırmanız başarıyla çalışmaktadır.',
-        html: '<p>Bu bir <strong>test e-postasıdır</strong>. Mail yapılandırmanız başarıyla çalışmaktadır.</p>',
-      });
-      await this.prisma.emailLog.update({
-        where: { id: logEntry.id },
-        data: {
-          status: result.rejected?.length ? 'failed' : 'sent',
-          sentAt: result.rejected?.length ? null : new Date(),
-          errorMsg: result.rejected?.length
-            ? `Reddedilen alıcılar: ${result.rejected.map(String).join(', ')}`
-            : null,
-        },
-      });
-      return {
-        accepted: (result.accepted ?? []).map(String),
-        rejected: (result.rejected ?? []).map(String),
-        messageId: result.messageId,
-        response: result.response,
-      };
-    } catch (err: any) {
-      await this.prisma.emailLog.update({
-        where: { id: logEntry.id },
-        data: {
-          status: 'failed',
-          errorMsg: err?.message ?? 'Mail gönderilemedi. SMTP bağlantısını kontrol edin.',
-        },
-      });
-      throw new BadRequestException(err?.message ?? 'Mail gönderilemedi. SMTP bağlantısını kontrol edin.');
-    }
+    return { accepted: [to], rejected: [], via: 'graph' };
   }
 
   // ── SMS Config ──────────────────────────────────────────────────────────

@@ -41,6 +41,20 @@ describe('operasyon giden mail LOCK', () => {
     assert.match(src, /isOutboundReady/);
   });
 
+  it('ayarlar test maili SMTP yeşilini gitti saymaz', () => {
+    const src = readFileSync(join(here, '../../system-settings/system-settings.service.ts'), 'utf8');
+    assert.match(src, /this\.email\.sendEmail/);
+    assert.match(src, /via !== 'graph'/);
+    assert.doesNotMatch(src, /nodemailer\.createTransport/);
+  });
+
+  it('rapor e-postası Hasar kutusu olmadan gitti sayılmaz', () => {
+    const src = readFileSync(join(here, '../../repair-reports/email/report-email.service.ts'), 'utf8');
+    assert.match(src, /via !== 'graph'/);
+    const ext = readFileSync(join(here, '../../external-approvals/external-approvals.service.ts'), 'utf8');
+    assert.match(ext, /via !== 'graph'/);
+  });
+
   it('dış onayda rapor durumu mail gittikten sonra yazılır', () => {
     const src = readFileSync(
       join(here, '../../external-approvals/external-approvals.service.ts'),

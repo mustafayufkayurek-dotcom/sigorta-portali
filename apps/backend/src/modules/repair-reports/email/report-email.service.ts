@@ -59,20 +59,22 @@ export class ReportEmailService {
       },
     );
 
-    if (!result.sent) {
+    if (!result.sent || result.via !== 'graph') {
       this.logger.warn(
-        `Rapor e-postası gönderilemedi → ${to} | ${opts.subject} | ${result.errorMsg ?? 'SMTP yok'}`,
+        `Rapor e-postası gönderilemedi → ${to} | ${opts.subject} | ${result.errorMsg ?? result.via ?? 'kutu yok'}`,
       );
-      const noSmtp = /SMTP|yapılandır/i.test(result.errorMsg ?? '');
+      const noBox = result.via !== 'graph';
       return {
         success: false,
         message:
           result.errorMsg
-          || 'PDF eki hazırlandı; e-posta gönderilemedi. Ayarlar → E-posta Bildirimleri mail kurulumunu kontrol edin.',
+          || (noBox
+            ? 'Rapor e-postası Hasar kutusundan gitmedi. SMTP yeşili “gitti” sayılmaz.'
+            : 'PDF eki hazırlandı; e-posta gönderilemedi.'),
         pdfAttached: true,
         pdfBytes: pdfBuffer.length,
         to,
-        mode: noSmtp ? 'staging-no-smtp' : 'live',
+        mode: noBox ? 'staging-no-smtp' : 'live',
       };
     }
 

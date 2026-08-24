@@ -15,6 +15,7 @@ alwaysApply: true
 2. Ek dosya adı `hasar-raporu-DIS-...pdf`. `hasar-raporu-IC-` yok.
 3. `SendEmailDto.viewType` iç PDF açmaz.
 4. Panelden PDF indirme (iç görünüm) ayrı kalır; yalnız **mail eki** kilitlidir.
+5. Rapor / dış onay / ayarlar test maili Hasar kutusundan gitmezse **gitti sayılmaz**. SMTP yeşili yetmez.
 
 ## Yasak (açık onay yoksa)
 

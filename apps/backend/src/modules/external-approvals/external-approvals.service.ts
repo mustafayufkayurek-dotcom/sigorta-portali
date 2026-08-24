@@ -626,10 +626,10 @@ export class ExternalApprovalsService {
       },
     );
 
-    if (!result.sent) {
+    if (!result.sent || result.via !== 'graph') {
       throw new BadRequestException(
         result.errorMsg
-          || 'E-posta gönderilemedi. Ayarlar → E-posta Bildirimleri mail kurulumunu kontrol edin.',
+          || 'E-posta Hasar kutusundan gitmedi. SMTP yeşili “gitti” sayılmaz.',
       );
     }
 
