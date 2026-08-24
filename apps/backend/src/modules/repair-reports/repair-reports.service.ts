@@ -17,6 +17,7 @@ import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
 import { DamageRepairTemplatesService } from '@/modules/damage-repair-templates/damage-repair-templates.service';
 import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
 import { normalizeReportImageCategory } from './report-image-category';
+import { resolveReportImageFilePath } from './report-image-paths';
 import { resolveReportCustomerMailRecipients } from './report-customer-mail-recipients';
 import {
   isExpertFirmCustomer,
