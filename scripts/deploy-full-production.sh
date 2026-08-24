@@ -11,6 +11,10 @@ source "$SCRIPT_DIR/deploy-env.sh"
 DEPLOY_TAG="${1:?Kullanım: deploy-full-production.sh ETİKET}"
 SKIP_RSYNC="${2:-}"
 
+run_remote() {
+  ssh -o BatchMode=yes "$REMOTE_HOST" "$@"
+}
+
 if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   bash "$SCRIPT_DIR/assert-deploy-source.sh"
   bash "$SCRIPT_DIR/smoke-acil-netlesen.sh"
@@ -18,6 +22,8 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   bash "$SCRIPT_DIR/smoke-hasar-rapor-revizyon.sh"
   bash "$SCRIPT_DIR/smoke-outbound-mail.sh"
   bash "$SCRIPT_DIR/smoke-resim-akis.sh"
+  echo "=== Sunucu disk (kod kopyalamadan önce) ==="
+  run_remote "FREE=\$(df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'); echo \"Disk boş: \${FREE} GB (minimum 5 GB)\"; [ \"\${FREE}\" -ge 5 ] || { echo 'HATA: Sunucuda yeterli disk yok — kod kopyalanmaz. scripts/server-disk-maintenance.sh'; exit 1; }"
 fi
 
 WEB_VERSION="$(printf '%s' "$DEPLOY_TAG" | grep -oE 'v[0-9]+' | head -1 || true)"
@@ -34,10 +40,6 @@ if printf '%s' "$API_URL" | grep -qiE 'localhost|127\.0\.0\.1'; then
   echo "HATA: NEXT_PUBLIC_API_URL localhost olamaz (canlı derleme bozulur)."
   exit 1
 fi
-
-run_remote() {
-  ssh -o BatchMode=yes "$REMOTE_HOST" "$@"
-}
 
 echo "=== Full deploy: $DEPLOY_TAG ==="
 echo "Web: $WEB_IMAGE"
