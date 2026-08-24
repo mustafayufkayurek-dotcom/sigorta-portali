@@ -17,7 +17,7 @@ import {
   allocateExternalColWidths,
   chunkPhotoRows,
 } from './report-pdf-fields';
-import { isRepairReportPdfDraft } from '@sigorta/shared';
+import { isRepairReportPdfDraft, repairItemSalesTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
 
 interface ReportItem {
   workGroup?: { name: string; id?: string } | null;
@@ -124,7 +124,11 @@ interface ReportData {
 }
 
 function itemSalesTotal(item: ReportItem): number {
-  return item.pricingType === 'lumpsum' ? (item.lumpSumPrice ?? 0) : item.salesTotal;
+  return repairItemSalesTotal(item);
+}
+
+function itemSupplierTotal(item: ReportItem): number {
+  return repairItemResolvedSupplierTotal(item);
 }
 
 function approvalActionLabel(action: string): string {
@@ -422,6 +426,10 @@ export class ReportPdfService {
 
     const subtotalColSpan = viewType === 'internal' ? 8 : 7;
     const allItems = report.items ?? [];
+    const computedSalesAmount = allItems.reduce((s, i) => s + itemSalesTotal(i), 0);
+    const computedSupplierCost = allItems.reduce((s, i) => s + itemSupplierTotal(i), 0);
+    const computedGrossProfit = computedSalesAmount - computedSupplierCost;
+    const computedGrossMarginPct = computedSalesAmount > 0 ? (computedGrossProfit / computedSalesAmount) * 100 : 0;
     const binaItems = allItems.filter((i) => (i.damageCategory ?? 'bina') === 'bina');
     const esyaItems = allItems.filter((i) => i.damageCategory === 'esya');
     const demirbasItems = allItems.filter((i) => i.damageCategory === 'demirbas');
@@ -460,7 +468,7 @@ export class ReportPdfService {
 
           if (viewType === 'internal') {
             const supplierUnitPrice = isLumpsum ? (item.lumpSumPrice ?? 0) : item.supplierUnitPrice;
-            const supplierTotal = isLumpsum ? (item.lumpSumPrice ?? 0) : item.supplierTotal;
+            const supplierTotal = itemSupplierTotal(item);
             const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
             const marginCls = marginPct < 10 ? 'margin-low' : marginPct < 20 ? 'margin-mid' : 'margin-ok';
             html += `
@@ -573,7 +581,7 @@ export class ReportPdfService {
   ${categoryTotalBands}
   <div class="repair-total-band repair-total-band-grand">
     <div class="repair-total-label">${PDF_GRAND_TOTAL_LABEL}</div>
-    <div class="repair-total-value">${fmtCurrency(report.totalSalesAmount)}</div>
+    <div class="repair-total-value">${fmtCurrency(computedSalesAmount)}</div>
   </div>
 </div>`;
 
@@ -1601,13 +1609,13 @@ ${viewType === 'external' ? externalTotalsHtml : `
     <div class="total-label">${PDF_DEMIRBAS_TOTAL_LABEL}</div>
     <div class="total-amount">${fmtCurrency(demirbasTotal)}</div>` : ''}
     <div class="grand-total-label">${PDF_GRAND_TOTAL_LABEL}</div>
-    <div class="grand-total-amount">${fmtCurrency(report.totalSalesAmount)}</div>
+    <div class="grand-total-amount">${fmtCurrency(computedSalesAmount)}</div>
     <div class="total-label" style="margin-top:8px;color:#64748b;">Toplam Maliyet</div>
-    <div class="total-amount" style="margin-top:8px;color:#64748b;">${fmtCurrency(report.totalSupplierCost)}</div>
+    <div class="total-amount" style="margin-top:8px;color:#64748b;">${fmtCurrency(computedSupplierCost)}</div>
     <div class="total-label" style="color:#64748b;">Brüt Kâr</div>
-    <div class="total-amount" style="color:${report.grossProfit >= 0 ? '#16a34a' : '#dc2626'};">${fmtCurrency(report.grossProfit)}</div>
+    <div class="total-amount" style="color:${computedGrossProfit >= 0 ? '#16a34a' : '#dc2626'};">${fmtCurrency(computedGrossProfit)}</div>
     <div class="total-label" style="color:#64748b;">Marj</div>
-    <div class="total-amount" style="color:${report.grossMarginPct >= 20 ? '#16a34a' : report.grossMarginPct >= 10 ? '#d97706' : '#dc2626'};">%${report.grossMarginPct.toFixed(1)}</div>
+    <div class="total-amount" style="color:${computedGrossMarginPct >= 20 ? '#16a34a' : computedGrossMarginPct >= 10 ? '#d97706' : '#dc2626'};">%${computedGrossMarginPct.toFixed(1)}</div>
   </div>
 </div>`}
 
@@ -1625,8 +1633,8 @@ ${report.reportType === 'multi' && (report.damageTypes?.length ?? 0) > 0 ? `
   <tbody>
     ${(report.damageTypes ?? []).map((dt) => {
       const dtItems = (report.items ?? []).filter((i) => i.damageType?.damageTypeName === dt.damageTypeName);
-      const dtSales = dtItems.reduce((s, i) => s + i.salesTotal, 0);
-      const dtSupplier = dtItems.reduce((s, i) => s + i.supplierTotal, 0);
+      const dtSales = dtItems.reduce((s, i) => s + itemSalesTotal(i), 0);
+      const dtSupplier = dtItems.reduce((s, i) => s + itemSupplierTotal(i), 0);
       const dtMargin = dtSales > 0 ? ((dtSales - dtSupplier) / dtSales) * 100 : 0;
       const mCls = dtMargin >= 20 ? 'margin-ok' : dtMargin >= 10 ? 'margin-mid' : 'margin-low';
       return `<tr>

@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
+import { repairItemSalesTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
 import { API, authHeader } from '@/utils/api';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { numberToTrAmountInput, parseTrAmountInput } from '@/utils/tr-amount-input';
@@ -32,19 +33,11 @@ type QuoteHistoryEntry = {
 };
 
 function totalSales(item: any) {
-  return Number(
-    item.pricingType === 'lumpsum'
-      ? item.lumpSumPrice
-      : item.salesTotal ?? Number(item.quantity ?? 0) * Number(item.salesUnitPrice ?? 0),
-  ) || 0;
+  return repairItemSalesTotal(item);
 }
 
 function totalSupplier(item: any) {
-  return Number(
-    item.pricingType === 'lumpsum'
-      ? item.supplierTotal ?? item.lumpSumPrice
-      : item.supplierTotal ?? Number(item.quantity ?? 0) * Number(item.supplierUnitPrice ?? 0),
-  ) || 0;
+  return repairItemResolvedSupplierTotal(item);
 }
 
 function money(value: number) {

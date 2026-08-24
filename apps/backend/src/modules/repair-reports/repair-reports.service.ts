@@ -27,6 +27,11 @@ import {
   canStartRepairReportRevisionFromStatus,
   nextRepairReportVersionNo,
   repairReportClosesOnRevise,
+  repairItemSalesTotal,
+  repairItemSupplierTotal,
+  repairItemMarginPct,
+  repairItemSupplierNeedsHeal,
+  repairItemResolvedSupplierTotal,
 } from '@sigorta/shared';
 import {
   CreateRepairReportDto,
@@ -152,6 +157,13 @@ export class RepairReportsService {
   async getReportsByClaimFile(claimFileId: string) {
     const claimFile = await this.prisma.claimFile.findUnique({ where: { id: claimFileId } });
     if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+    const reports = await this.prisma.repairReport.findMany({
+      where: { claimFileId },
+      select: { id: true },
+    });
+    for (const report of reports) {
+      await this.healInflatedSupplierTotals(report.id);
+    }
     return this.prisma.repairReport.findMany({
       where: { claimFileId },
       include: {
@@ -322,6 +334,7 @@ export class RepairReportsService {
   }
 
   async getReport(id: string) {
+    await this.healInflatedSupplierTotals(id);
     const report = await this.findReportWithInclude(id);
     if (!report) throw new NotFoundException('Rapor bulunamadı');
 
@@ -340,10 +353,10 @@ export class RepairReportsService {
     }
     const vendorName = claim?.assignedInspectorVendor?.name?.trim();
     if (!report.inspectorName?.trim() && vendorName) {
-      return { ...report, inspectorName: vendorName };
+      return this.overlayReportItemMoney({ ...report, inspectorName: vendorName });
     }
 
-    return report;
+    return this.overlayReportItemMoney(report);
   }
 
   async updateReport(id: string, dto: UpdateRepairReportDto) {
@@ -434,10 +447,23 @@ export class RepairReportsService {
       supplierTotal = lumpSumPrice;
       salesTotal = lumpSumPrice;
     } else {
-      supplierTotal = dto.quantity * dto.supplierUnitPrice;
-      salesTotal = dto.quantity * dto.salesUnitPrice;
+      const priced = {
+        pricingType,
+        lumpSumPrice,
+        quantity: dto.quantity,
+        salesUnitPrice: dto.salesUnitPrice,
+        supplierUnitPrice: dto.supplierUnitPrice,
+      };
+      supplierTotal = repairItemSupplierTotal(priced);
+      salesTotal = repairItemSalesTotal(priced);
     }
-    const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
+    const marginPct = repairItemMarginPct({
+      pricingType,
+      lumpSumPrice,
+      quantity: dto.quantity,
+      salesUnitPrice: dto.salesUnitPrice,
+      supplierUnitPrice: dto.supplierUnitPrice,
+    });
 
     const item = await this.prisma.repairReportItem.create({
       data: {
@@ -508,6 +534,8 @@ export class RepairReportsService {
       if (!subGroup) throw new NotFoundException('İş kalemi bulunamadı');
       const quantity = item.quantity || 1;
       const unitPrice = subGroup.unitPrice ? Number(subGroup.unitPrice) : 0;
+      const lineCost = quantity * unitPrice;
+      const priced = { quantity, supplierUnitPrice: lineCost, salesUnitPrice: unitPrice };
       const createdItem = await this.prisma.repairReportItem.create({
         data: {
           reportId,
@@ -517,11 +545,11 @@ export class RepairReportsService {
           description: item.note,
           quantity,
           unit: subGroup.unitType,
-          supplierUnitPrice: unitPrice,
+          supplierUnitPrice: lineCost,
           salesUnitPrice: unitPrice,
-          supplierTotal: quantity * unitPrice,
-          salesTotal: quantity * unitPrice,
-          marginPct: 0,
+          supplierTotal: repairItemSupplierTotal(priced),
+          salesTotal: repairItemSalesTotal(priced),
+          marginPct: repairItemMarginPct(priced),
           damageCategory: 'bina',
         },
         include: { workGroup: true, damageType: true },
@@ -557,10 +585,23 @@ export class RepairReportsService {
       supplierTotal = lumpSumPrice;
       salesTotal = lumpSumPrice;
     } else {
-      supplierTotal = quantity * supplierUnitPrice;
-      salesTotal = quantity * salesUnitPrice;
+      const priced = {
+        pricingType,
+        lumpSumPrice,
+        quantity,
+        salesUnitPrice,
+        supplierUnitPrice,
+      };
+      supplierTotal = repairItemSupplierTotal(priced);
+      salesTotal = repairItemSalesTotal(priced);
     }
-    const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
+    const marginPct = repairItemMarginPct({
+      pricingType,
+      lumpSumPrice,
+      quantity,
+      salesUnitPrice,
+      supplierUnitPrice,
+    });
 
     const updated = await this.prisma.repairReportItem.update({
       where: { id: itemId },
@@ -605,18 +646,66 @@ export class RepairReportsService {
     return { message: 'Sıralama güncellendi' };
   }
 
+  /** Eski maliyet = miktar × girilen rakam kayıtlarını satır maliyetine çeker. */
+  private async healInflatedSupplierTotals(reportId: string): Promise<number> {
+    const items = await this.prisma.repairReportItem.findMany({ where: { reportId } });
+    const inflated = items.filter((item) => repairItemSupplierNeedsHeal(item));
+    if (inflated.length === 0) return 0;
+    for (const item of inflated) {
+      await this.prisma.repairReportItem.update({
+        where: { id: item.id },
+        data: {
+          supplierTotal: repairItemSupplierTotal(item),
+          salesTotal: repairItemSalesTotal(item),
+          marginPct: repairItemMarginPct(item),
+        },
+      });
+    }
+    await this.recalculateTotals(reportId);
+    this.logger.warn(`Onarım raporu maliyet m² düzeltmesi: ${inflated.length} kalem (${reportId})`);
+    return inflated.length;
+  }
+
+  private overlayReportItemMoney<T extends {
+    items?: Array<{
+      pricingType?: string | null;
+      lumpSumPrice?: number | null;
+      quantity?: number | null;
+      salesUnitPrice?: number | null;
+      supplierUnitPrice?: number | null;
+      damageCategory?: string | null;
+    }>;
+  }>(report: T): T & {
+    items: T['items'];
+    totalSupplierCost: number;
+    totalSalesAmount: number;
+    grossProfit: number;
+    grossMarginPct: number;
+  } {
+    const items = (report.items ?? []).map((item) => ({
+      ...item,
+      supplierTotal: repairItemResolvedSupplierTotal(item),
+      salesTotal: repairItemSalesTotal(item),
+      marginPct: repairItemMarginPct(item),
+    }));
+    const totalSupplierCost = items.reduce((s, i) => s + i.supplierTotal, 0);
+    const totalSalesAmount = items.reduce((s, i) => s + i.salesTotal, 0);
+    const grossProfit = totalSalesAmount - totalSupplierCost;
+    const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
+    return { ...report, items, totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct };
+  }
+
   private async recalculateTotals(reportId: string) {
     const items = await this.prisma.repairReportItem.findMany({ where: { reportId } });
-    const totalSupplierCost = items.reduce((s: number, i: { supplierTotal: number }) => s + i.supplierTotal, 0);
-    const totalSalesAmount = items.reduce((s: number, i: { salesTotal: number; pricingType: string; lumpSumPrice: number | null }) =>
-      s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : i.salesTotal), 0);
+    const totalSupplierCost = items.reduce((s, i) => s + repairItemResolvedSupplierTotal(i), 0);
+    const totalSalesAmount = items.reduce((s, i) => s + repairItemSalesTotal(i), 0);
     const grossProfit = totalSalesAmount - totalSupplierCost;
     const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
 
-    const buildingDamageTotal = items.reduce((s: number, i: { damageCategory: string; salesTotal: number; pricingType: string; lumpSumPrice: number | null }) =>
-      (i.damageCategory ?? 'bina') === 'bina' ? s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : i.salesTotal) : s, 0);
-    const goodsDamageTotal = items.reduce((s: number, i: { damageCategory: string; salesTotal: number; pricingType: string; lumpSumPrice: number | null }) =>
-      (i.damageCategory ?? 'bina') === 'esya' ? s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : i.salesTotal) : s, 0);
+    const buildingDamageTotal = items.reduce((s, i) =>
+      (i.damageCategory ?? 'bina') === 'bina' ? s + repairItemSalesTotal(i) : s, 0);
+    const goodsDamageTotal = items.reduce((s, i) =>
+      (i.damageCategory ?? 'bina') === 'esya' ? s + repairItemSalesTotal(i) : s, 0);
 
     const report = await this.prisma.repairReport.update({
       where: { id: reportId },
@@ -766,16 +855,16 @@ export class RepairReportsService {
 
     const damageTypes = (report.damageTypes ?? []).map((dt: { id: string; damageTypeName: string }) => {
       const dtItems = report.items.filter((i: { damageTypeId: string | null }) => i.damageTypeId === dt.id);
-      const supplierTotal = dtItems.reduce((s: number, i: { supplierTotal: number }) => s + i.supplierTotal, 0);
-      const salesTotal = dtItems.reduce((s: number, i: { salesTotal: number }) => s + i.salesTotal, 0);
+      const supplierTotal = dtItems.reduce((s, i) => s + repairItemResolvedSupplierTotal(i), 0);
+      const salesTotal = dtItems.reduce((s, i) => s + repairItemSalesTotal(i), 0);
       const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
       return { id: dt.id, name: dt.damageTypeName, supplierTotal, salesTotal, marginPct };
     });
 
     const unassignedItems = report.items.filter((i: { damageTypeId: string | null }) => !i.damageTypeId);
     const unassigned = {
-      supplierTotal: unassignedItems.reduce((s: number, i: { supplierTotal: number }) => s + i.supplierTotal, 0),
-      salesTotal: unassignedItems.reduce((s: number, i: { salesTotal: number }) => s + i.salesTotal, 0),
+      supplierTotal: unassignedItems.reduce((s, i) => s + repairItemResolvedSupplierTotal(i), 0),
+      salesTotal: unassignedItems.reduce((s, i) => s + repairItemSalesTotal(i), 0),
     };
 
     return { damageTypes, unassigned };
@@ -785,6 +874,7 @@ export class RepairReportsService {
 
   /** PDF için minimal claimFile — migrate edilmemiş skaler kolonlara dayanmaz */
   private async getReportForPdf(reportId: string) {
+    await this.healInflatedSupplierTotals(reportId);
     const report = await this.prisma.repairReport.findUnique({
       where: { id: reportId },
       include: {
@@ -823,7 +913,7 @@ export class RepairReportsService {
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
-    return report;
+    return this.overlayReportItemMoney(report);
   }
 
   async generatePdf(reportId: string, viewType: 'internal' | 'external'): Promise<{ buffer: Buffer; report: any }> {
@@ -1014,8 +1104,8 @@ export class RepairReportsService {
     if (report.items.length === 0) {
       throw new BadRequestException('En az bir onarım kalemi eklenmeden onaya gönderilemez.');
     }
-    const totalSales = report.items.reduce((sum, item) => sum + Number(item.salesTotal ?? 0), 0);
-    const totalCost = report.items.reduce((sum, item) => sum + Number(item.supplierTotal ?? 0), 0);
+    const totalSales = report.items.reduce((sum, item) => sum + repairItemSalesTotal(item), 0);
+    const totalCost = report.items.reduce((sum, item) => sum + repairItemResolvedSupplierTotal(item), 0);
     const totalLumpSum = report.items.reduce((sum, item) => {
       if (item.pricingType === 'lumpsum') return sum + Number(item.lumpSumPrice ?? 0);
       return sum;

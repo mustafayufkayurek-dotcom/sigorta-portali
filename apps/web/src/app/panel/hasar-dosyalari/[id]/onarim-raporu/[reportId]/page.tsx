@@ -32,7 +32,7 @@ import {
 } from '@/components/damage-reports/VendorQuotePopover';
 import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision } from '@sigorta/shared';
+import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -133,20 +133,17 @@ function rowStateSortKey(row: RowState & { workGroupId?: string }, workGroups: a
 }
 
 function recomputeReportTotals(items: any[]) {
-  const totalSupplierCost = items.reduce((s, i) => s + (Number(i.supplierTotal) || 0), 0);
-  const totalSalesAmount = items.reduce((s, i) => {
-    if (i.pricingType === 'lumpsum') return s + (Number(i.lumpSumPrice) || 0);
-    return s + (Number(i.salesTotal) || 0);
-  }, 0);
+  const totalSupplierCost = items.reduce((s, i) => s + repairItemResolvedSupplierTotal(i), 0);
+  const totalSalesAmount = items.reduce((s, i) => s + repairItemSalesTotal(i), 0);
   const grossProfit = totalSalesAmount - totalSupplierCost;
   const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
   const buildingDamageTotal = items.reduce((s, i) => {
     if ((i.damageCategory ?? 'bina') !== 'bina') return s;
-    return s + (i.pricingType === 'lumpsum' ? (Number(i.lumpSumPrice) || 0) : (Number(i.salesTotal) || 0));
+    return s + repairItemSalesTotal(i);
   }, 0);
   const goodsDamageTotal = items.reduce((s, i) => {
     if (i.damageCategory !== 'esya') return s;
-    return s + (i.pricingType === 'lumpsum' ? (Number(i.lumpSumPrice) || 0) : (Number(i.salesTotal) || 0));
+    return s + repairItemSalesTotal(i);
   }, 0);
   return { totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct, buildingDamageTotal, goodsDamageTotal };
 }
@@ -184,8 +181,8 @@ function validateApprovalRequirements(report: any, findingsText: string): {
   if (items.length === 0) {
     return { ok: false, itemsError: 'En az bir onarım kalemi eklenmeden onaya gönderilemez.' };
   }
-  const totalSales = items.reduce((sum: number, item: any) => sum + (Number(item.salesTotal) || 0), 0);
-  const totalCost = items.reduce((sum: number, item: any) => sum + (Number(item.supplierTotal) || 0), 0);
+  const totalSales = items.reduce((sum: number, item: any) => sum + repairItemSalesTotal(item), 0);
+  const totalCost = items.reduce((sum: number, item: any) => sum + repairItemResolvedSupplierTotal(item), 0);
   const totalLumpSum = items.reduce((sum: number, item: any) => {
     if (item.pricingType === 'lumpsum') return sum + (Number(item.lumpSumPrice) || 0);
     return sum;
@@ -426,15 +423,8 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
     for (const item of items) {
       const wgId = item.workGroupId ?? item.workGroup?.id ?? '__unknown__';
       const prev = map.get(wgId) ?? { supplierTotal: 0, salesTotal: 0 };
-      const qty = item.quantity ?? 0;
-      const isLumpsum = item.pricingType === 'lumpsum';
-      // salesTotal/supplierTotal backend'den hesaplanmış olabilir veya olmayabilir; her iki durumu da ele al
-      const salesAmt = isLumpsum
-        ? (item.lumpSumPrice ?? 0)
-        : ((item.salesTotal != null && item.salesTotal > 0) ? item.salesTotal : qty * (item.salesUnitPrice ?? 0));
-      const supplierAmt = isLumpsum
-        ? (item.lumpSumPrice ?? 0)
-        : ((item.supplierTotal != null && item.supplierTotal > 0) ? item.supplierTotal : qty * (item.supplierUnitPrice ?? 0));
+      const salesAmt = repairItemSalesTotal(item);
+      const supplierAmt = repairItemResolvedSupplierTotal(item);
       map.set(wgId, {
         supplierTotal: prev.supplierTotal + supplierAmt,
         salesTotal: prev.salesTotal + salesAmt,
@@ -3407,8 +3397,15 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             const wgName = workGroups.find((wg: any) => wg.id === row.workGroupId)?.name ?? '';
             const rowSubGroups = resolveSubGroups(row.workGroupId);
             const subGroupsLoading = row.workGroupId ? loadingSubGroupIds.has(row.workGroupId) : false;
-            const supplierVal = parseFloat(row.supplierUnitPrice) || 0;
-            const salesVal = parseFloat(row.salesUnitPrice) || 0;
+            const rowMoney = {
+              pricingType: row.pricingType,
+              lumpSumPrice: parseFloat(row.lumpSumPrice || '0') || 0,
+              quantity: parseFloat(row.quantity || '0') || 0,
+              salesUnitPrice: parseFloat(row.salesUnitPrice || '0') || 0,
+              supplierUnitPrice: parseFloat(row.supplierUnitPrice || '0') || 0,
+            };
+            const supplierVal = repairItemSupplierTotal(rowMoney);
+            const salesVal = repairItemSalesTotal(rowMoney);
             const isLoss = viewMode === 'internal' && supplierVal > 0 && supplierVal > salesVal;
 
             return (
@@ -3582,14 +3579,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   )}
                 </td>
                 {/* Miktar — CalcInput */}
-                <td className={`${tdCls(rowIdx, 'quantity')} text-right`}>
+                <td className={`${tdCls(rowIdx, 'quantity')} text-center`}>
                   {isEditable ? (
                     <div className="w-full">
-                      <div className="flex items-center w-full">
+                      <div className="flex items-center justify-center w-full">
                         <CalcInput
                           data-cell={`${rowIdx}-quantity`}
                           shadowCalc
-                          className={`${cellCls(rowIdx, 'quantity', true)} text-right flex-1`}
+                          className={`${cellCls(rowIdx, 'quantity', true)} text-center flex-1`}
                           value={row.quantity}
                           onChange={(v) => updateRow(row._id, 'quantity', v)}
                           onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { quantity: v }), 50)}
@@ -3609,22 +3606,22 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       {(() => {
                         const entryCount = readMetrajEntries(row.metrajData).length;
                         return entryCount > 0 ? (
-                          <p className="text-[10px] text-brand-600 font-medium text-right pr-7 mt-0.5">
+                          <p className="text-[10px] text-brand-600 font-medium text-center pr-7 mt-0.5">
                             Metraj: {entryCount} mahal
                           </p>
                         ) : null;
                       })()}
                     </div>
                   ) : (
-                    <span className="px-2 text-xs text-slate-700 block py-3 text-right">{row.quantity}</span>
+                    <span className="px-2 text-xs text-slate-700 block py-3 text-center">{row.quantity}</span>
                   )}
                 </td>
                 {/* Birim */}
-                <td className={tdCls(rowIdx, 'unit')}>
+                <td className={`${tdCls(rowIdx, 'unit')} text-center`}>
                   {isEditable ? (
                     <select
                       data-cell={`${rowIdx}-unit`}
-                      className={cellCls(rowIdx, 'unit', true)}
+                      className={`${cellCls(rowIdx, 'unit', true)} text-center`}
                       value={row.unit}
                       tabIndex={getCellTabIndex(rowIdx, 'unit')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'unit' })}
@@ -3635,17 +3632,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                     </select>
                   ) : (
-                    <span className="px-2 text-xs text-slate-700 block py-3">{row.unit}</span>
+                    <span className="px-2 text-xs text-slate-700 block py-3 text-center">{row.unit}</span>
                   )}
                 </td>
                 {/* Satış Fiyatı — CalcInput (geniş + binlik ayraç) */}
-                <td className={`${tdCls(rowIdx, 'salesUnitPrice')} text-right min-w-[148px] ${isLoss ? 'bg-red-50/40' : ''}`}>
+                <td className={`${tdCls(rowIdx, 'salesUnitPrice')} text-center min-w-[148px] ${isLoss ? 'bg-red-50/40' : ''}`}>
                   {isEditable ? (
-                    <div className="relative flex items-center min-h-11">
+                    <div className="relative flex items-center justify-center min-h-11">
                       <CalcInput
                         data-cell={`${rowIdx}-salesUnitPrice`}
                         amountFormat
-                        className={`${cellCls(rowIdx, 'salesUnitPrice', true)} text-right pr-12 ${isLoss ? '!ring-2 !ring-inset !ring-status-danger !rounded-md' : ''}`}
+                        className={`${cellCls(rowIdx, 'salesUnitPrice', true)} text-center pr-12 ${isLoss ? '!ring-2 !ring-inset !ring-status-danger !rounded-md' : ''}`}
                         value={row.salesUnitPrice}
                         onChange={(v) => updateRow(row._id, 'salesUnitPrice', v)}
                         onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { salesUnitPrice: v }), 50)}
@@ -3666,7 +3663,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       </div>
                     </div>
                   ) : (
-                    <span className="px-2 text-sm text-slate-700 block py-3 text-right">{fmtCurrency(parseFloat(row.salesUnitPrice))}</span>
+                    <span className="px-2 text-sm text-slate-700 block py-3 text-center">{fmtCurrency(parseFloat(row.salesUnitPrice))}</span>
                   )}
                 </td>
                 {/* Maliyet (Tedarikçi Fiyatı, internal only) — CalcInput */}
@@ -3865,13 +3862,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 />
               </td>
               {/* Miktar — CalcInput */}
-              <td className={`${tdCls('new', 'quantity')} text-right`}>
+              <td className={`${tdCls('new', 'quantity')} text-center`}>
                 <div className="w-full">
-                  <div className="flex items-center w-full">
+                  <div className="flex items-center justify-center w-full">
                     <CalcInput
                       data-cell="new-quantity"
                       shadowCalc
-                      className={`${cellCls('new', 'quantity', true)} text-right flex-1`}
+                      className={`${cellCls('new', 'quantity', true)} text-center flex-1`}
                       value={addingRow.quantity}
                       onChange={(v) => { setAddingRow((p) => ({ ...p, quantity: v })); setAddingDirty(true); }}
                       onCommit={() => {}}
@@ -3891,7 +3888,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   {(() => {
                     const entryCount = readMetrajEntries(addingRow.metrajData).length;
                     return entryCount > 0 ? (
-                      <p className="text-[10px] text-brand-600 font-medium text-right pr-7 mt-0.5">
+                      <p className="text-[10px] text-brand-600 font-medium text-center pr-7 mt-0.5">
                         Metraj: {entryCount} mahal
                       </p>
                     ) : null;
@@ -3899,10 +3896,10 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 </div>
               </td>
               {/* Birim */}
-              <td className={tdCls('new', 'unit')}>
+              <td className={`${tdCls('new', 'unit')} text-center`}>
                 <select
                   data-cell="new-unit"
-                  className={cellCls('new', 'unit', true)}
+                  className={`${cellCls('new', 'unit', true)} text-center`}
                   value={addingRow.unit}
                   tabIndex={getCellTabIndex('new', 'unit')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'unit' })}
@@ -3914,12 +3911,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 </select>
               </td>
               {/* Satış Fiyatı — CalcInput */}
-              <td className={`${tdCls('new', 'salesUnitPrice')} text-right min-w-[148px]`}>
-                <div className="relative flex items-center min-h-11">
+              <td className={`${tdCls('new', 'salesUnitPrice')} text-center min-w-[148px]`}>
+                <div className="relative flex items-center justify-center min-h-11">
                   <CalcInput
                     data-cell="new-salesUnitPrice"
                     amountFormat
-                    className={`${cellCls('new', 'salesUnitPrice', true)} text-right pr-10`}
+                    className={`${cellCls('new', 'salesUnitPrice', true)} text-center pr-10`}
                     value={addingRow.salesUnitPrice}
                     onChange={(v) => { setAddingRow((p) => ({ ...p, salesUnitPrice: v })); setAddingDirty(true); }}
                     onCommit={() => {}}
@@ -4009,8 +4006,15 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     {/* Zarar Uyarısı */}
     {(() => {
       const lossCount = rows.filter((r) => {
-        const sup = parseFloat(r.supplierUnitPrice || '0');
-        const sal = parseFloat(r.salesUnitPrice || '0');
+        const money = {
+          pricingType: r.pricingType,
+          lumpSumPrice: parseFloat(r.lumpSumPrice || '0') || 0,
+          quantity: parseFloat(r.quantity || '0') || 0,
+          salesUnitPrice: parseFloat(r.salesUnitPrice || '0') || 0,
+          supplierUnitPrice: parseFloat(r.supplierUnitPrice || '0') || 0,
+        };
+        const sup = repairItemSupplierTotal(money);
+        const sal = repairItemSalesTotal(money);
         return sup > 0 && sup > sal;
       }).length;
       if (lossCount === 0) return null;
@@ -4126,8 +4130,7 @@ function EmergencyReportEditor({
 
   const isEditable = localReport.status === 'draft' || localReport.status === 'rejected';
 
-  const totalSupplierCost = localReport.items?.reduce((s: number, i: any) => s + (i.supplierTotal ?? 0), 0) ?? 0;
-  const totalSalesAmount = localReport.items?.reduce((s: number, i: any) => s + (i.salesTotal ?? 0), 0) ?? 0;
+  const { totalSupplierCost, totalSalesAmount } = recomputeReportTotals(localReport.items ?? []);
   const grossProfit = totalSalesAmount - totalSupplierCost;
   const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
 
@@ -5252,16 +5255,10 @@ export default function RepairReportPage() {
     );
     const unitItems = groupItems.filter((item: any) => item.pricingType !== 'lumpsum');
     if (unitItems.length === 0) return;
-    const currentTotal = unitItems.reduce((sum: number, item: any) => {
-      return sum + Number(
-        item.supplierTotal ?? Number(item.quantity ?? 0) * Number(item.supplierUnitPrice ?? 0),
-      );
-    }, 0);
+    const currentTotal = unitItems.reduce((sum: number, item: any) => sum + repairItemResolvedSupplierTotal(item), 0);
     try {
       for (const item of unitItems) {
-        const itemSupplier = Number(
-          item.supplierTotal ?? Number(item.quantity ?? 0) * Number(item.supplierUnitPrice ?? 0),
-        );
+        const itemSupplier = repairItemResolvedSupplierTotal(item);
         const share = currentTotal > 0 ? itemSupplier / currentTotal : 1 / unitItems.length;
         const newItemTotal = Math.round(quoteTotal * share * 100) / 100;
         const qty = Number(item.quantity) || 1;
@@ -5273,7 +5270,7 @@ export default function RepairReportPage() {
           quantity: qty,
           unit: item.unit,
           salesUnitPrice: Number(item.salesUnitPrice ?? 0),
-          supplierUnitPrice: Math.round((newItemTotal / qty) * 100) / 100,
+          supplierUnitPrice: newItemTotal,
           pricingType: item.pricingType,
           damageCategory: item.damageCategory,
           damageTypeId: item.damageTypeId || undefined,
@@ -6214,8 +6211,8 @@ export default function RepairReportPage() {
                 <tbody className="divide-y divide-slate-50">
                   {report.damageTypes.map((dt: any) => {
                     const dtItems = (report.items ?? []).filter((i: any) => i.damageTypeId === dt.id);
-                    const dtSales = dtItems.reduce((s: number, i: any) => s + i.salesTotal, 0);
-                    const dtSupplier = dtItems.reduce((s: number, i: any) => s + i.supplierTotal, 0);
+                    const dtSales = dtItems.reduce((s: number, i: any) => s + repairItemSalesTotal(i), 0);
+                    const dtSupplier = dtItems.reduce((s: number, i: any) => s + repairItemResolvedSupplierTotal(i), 0);
                     const dtMargin = dtSales > 0 ? ((dtSales - dtSupplier) / dtSales) * 100 : 0;
                     const mColor = dtMargin >= 20 ? 'text-green-600' : dtMargin >= 10 ? 'text-yellow-600' : 'text-red-600';
                     return (

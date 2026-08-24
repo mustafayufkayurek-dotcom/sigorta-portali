@@ -8,6 +8,7 @@ export * from './file-no-normalize';
 export * from './inbound-file-no';
 export * from './repair-report-expert';
 export * from './repair-report-revision';
+export * from './repair-report-item-totals';
 export * from './repair-report-pdf-draft';
 export * from './claim-file-stage';
 export * from './operation-status';

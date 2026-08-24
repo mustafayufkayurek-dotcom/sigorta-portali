@@ -14,6 +14,7 @@ node --experimental-strip-types --test \
   apps/web/src/utils/ops-email-default-to.lock.spec.ts \
   apps/web/src/app/panel/hasar-dosyalari/onarim-raporu-is-tanimi.lock.spec.ts \
   apps/web/src/app/panel/hasar-dosyalari/vendor-fiyat-hafizasi.lock.spec.ts \
+  packages/shared/src/repair-report-item-totals.lock.spec.ts \
   apps/web/src/components/panel/ortak-dosya-kabugu.lock.spec.ts \
   apps/web/src/utils/field-staff-claim-view.lock.spec.ts
 echo "=== Hasar rapor revizyon kilit: PASS ==="
