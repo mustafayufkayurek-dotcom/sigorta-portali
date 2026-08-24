@@ -1,19 +1,18 @@
 ---
-description: Full deploy v532 alındı — 24.08.2026
+description: Full deploy v533 alındı — 24.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v532 (24.08.2026) — alındı
+# Full deploy v533 (24.08.2026) — alındı
 
-Canlı: web + backend **v532**. Rollback: web v531 / backend v531.
+Canlı: web + backend **v533**. Rollback: web v532 / backend v532.
 
 ## Alınan paket
 
-1. Dosya masrafı rapor iş grubuna bağlanır; bütçe aşımı kesilir (Bütçelenen / Ek İş).
-2. Araç kira, maaş, SGK, vergi tek dosyaya yazılmaz; ayın son günü finans ve yöneticiye hatırlatılır.
-3. Finans tutarları yazarken binlik nokta; açıklama zorunlu.
-4. Hasar ve Acil listelerinde Ödemeler / Ödeme Durumu sütunu durur; dosya sorumlusu görür, gizleyemez. Vade yazılmaz.
+1. Acil Yardım fonksiyon vekaleti tüm kuyruğu açar; vekil ofis dosya sorumlusu gibi işler.
+2. Yeni dosya, mail aktarımı ve atama listesi vekile açıktır. Kayıtta işlemi yapan vekil durur.
+3. Hasar dosyası oluşturma/değiştirme bu vekaletle açılmaz.
 
 ## Canlıda yok
 
-İK / puantaj bu pakette yok.
+İK / puantaj bu pakette yok. Hasar rapor tipi (Konut/Bina/Eşya) bu pakette yok.
