@@ -2,6 +2,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { mergeAcilFileOwnerPermissions } from '@sigorta/shared';
 
 @Injectable()
@@ -38,7 +39,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         },
       },
     });
-    const rolePermissions = user?.role?.rolePermissions?.map((rp) => rp.permission.code) || [];
+    const rolePermissions = user?.role?.rolePermissions?.map((rp: { permission: { code: string } }) => rp.permission.code) || [];
     const now = new Date();
     const acilFunctionGrant = user?.id
       ? await this.prismaService.operationalAccessGrant.findFirst({
@@ -60,9 +61,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       roleCode: user?.role?.code || null,
       permissions: mergeAcilFileOwnerPermissions(rolePermissions, Boolean(acilFunctionGrant)),
       insuranceCompanyScopes:
-        user?.userInsuranceCompanyScopes?.map((s) => s.insuranceCompanyId) ?? [],
+        user?.userInsuranceCompanyScopes?.map((s: { insuranceCompanyId: string }) => s.insuranceCompanyId) ?? [],
       assistantCustomerScopes:
-        user?.userAssistantCustomerScopes?.map((s) => s.customerId) ?? [],
+        user?.userAssistantCustomerScopes?.map((s: { customerId: string }) => s.customerId) ?? [],
     };
   }
 }

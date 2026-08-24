@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { PrismaService } from '@/prisma/prisma.service';
 import { TokenBlacklistService } from '@/modules/auth/token-blacklist.service';
+import { extractAccessToken } from '@/common/auth/auth-cookies';
 import { mergeAcilFileOwnerPermissions } from '@sigorta/shared';
 
 @Injectable()
