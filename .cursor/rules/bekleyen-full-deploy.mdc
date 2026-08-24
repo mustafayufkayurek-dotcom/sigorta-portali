@@ -1,11 +1,11 @@
 ---
-description: Full deploy v535 alındı — 24.08.2026
+description: Full deploy v536 alındı — 24.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v535 (24.08.2026) — alındı
+# Full deploy v536 (24.08.2026) — alındı
 
-Canlı: web + backend **v535**. Rollback: web v534 / backend v534.
+Canlı: web + backend **v536**. Rollback: web v535 / backend v535.
 
 ## Alınan paket
 
@@ -14,6 +14,7 @@ Canlı: web + backend **v535**. Rollback: web v534 / backend v534.
 3. Hasar dosyası oluşturma/değiştirme bu vekaletle açılmaz.
 4. Onarım raporu PDF: TASLAK / İÇ / DIŞ işareti fotoğraf üstünde çapraz damga değil; başlık rozeti ve her sayfa altı.
 5. Onaya gönderim müşteri kartındaki e-postaya gider. Ek yalnız **dış kullanım** rapor PDF. Maliyet / bütçe PDF gitmez.
+6. Operasyon giden maili (rapor, dış onay, CRM, gelen kutu, Acil kapanış, ayarlar testi) Microsoft 365 kutusundan gider. SMTP yeşili gitti sayılmaz. Canlı alımdan önce giden-mail kilidi zorunlu; disk 5 GB altındaysa kod kopyalanmaz.
 
 ## Canlıda yok
 
