@@ -8,7 +8,7 @@ import { useApiQuery } from '@/hooks/useApi';
 import { API, authHeader } from '@/utils/api';
 import { formatCurrency } from '../../utils/formatters';
 import { unwrapApiData } from '@/utils/invoice-request-envelope';
-import type { InvoiceDashboardSummary } from '@/utils/invoiceRequestApi';
+import { asInvoiceDashboardSummary, type InvoiceDashboardSummary } from '@/utils/invoiceRequestApi';
 
 type PaymentSummary = {
   pendingOutgoing?: number;
@@ -35,7 +35,15 @@ export function FinanceQueuesStrip() {
     },
   });
 
-  const inv = unwrapApiData<InvoiceDashboardSummary | undefined>(invoiceQuery.data);
+  const inv = (() => {
+    try {
+      return invoiceQuery.data
+        ? asInvoiceDashboardSummary(invoiceQuery.data)
+        : undefined;
+    } catch {
+      return unwrapApiData<InvoiceDashboardSummary | undefined>(invoiceQuery.data);
+    }
+  })();
   const pay = paymentsQuery.data;
   const pendingTalep = inv?.counts?.pendingCount ?? 0;
   const approvedTalep = inv?.counts?.approvedCount ?? 0;

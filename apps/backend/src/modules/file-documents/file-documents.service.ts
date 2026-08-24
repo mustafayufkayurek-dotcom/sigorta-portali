@@ -668,7 +668,7 @@ export class FileDocumentsService {
 
     const conditions = {
       matbuEvrakDigitallyApproved: !!matbuEvrak?.digitallyApprovedAt,
-      caseStatusCompleted: ec?.status === 'COZULDU',
+      caseStatusCompleted: ec?.status === 'COZULDU' || ec?.status === 'FATURALANDILDI',
     };
 
     return {

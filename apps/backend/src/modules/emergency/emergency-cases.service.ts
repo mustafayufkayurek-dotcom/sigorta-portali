@@ -28,6 +28,11 @@ import {
   shouldReportAcilNegativeVendorStrike,
 } from '@sigorta/shared';
 import { VendorRecommendationService } from '@/modules/vendors/vendor-recommendation.service';
+import {
+  acilSalesInvoiceRequestBody,
+  canOpenAcilSalesInvoiceRequest,
+  invoiceRequestActorUserId,
+} from './acil-finance-invoice-request';
 import type { SendMailOptions } from 'nodemailer';
 import {
   resolveCustomerReminderEmail,
@@ -277,33 +282,29 @@ export class EmergencyCasesService {
       },
     });
     if (!emergencyCase) return;
-    if (!(emergencyCase.status === EmergencyStatus.COZULDU || emergencyCase.status === EmergencyStatus.FATURALANDILDI)) {
-      return;
-    }
-    if (emergencyCase.invoiceRequests.length > 0) return;
-
-    const closure = await this.fileDocumentsService.checkEmergencyCaseClosureConditions(caseId);
-    if (!closure.canCreateInvoiceRequest) return;
 
     const gelirEntries = emergencyCase.costEntries.filter((entry) => entry.entryType === 'gelir');
-    const totalAmount = gelirEntries.reduce((sum, entry) => sum + entry.amount, 0);
-    if (totalAmount <= 0) return;
+    const gelirTotal = gelirEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    if (
+      !canOpenAcilSalesInvoiceRequest({
+        status: emergencyCase.status,
+        existingOpenRequest: emergencyCase.invoiceRequests.length > 0,
+        gelirTotal,
+      })
+    ) {
+      return;
+    }
 
     await this.invoiceRequestsService.create(
-      {
-        serviceType: 'emergency',
+      acilSalesInvoiceRequestBody({
         emergencyCaseId: caseId,
-        insuranceCompanyId: emergencyCase.customerId ?? undefined,
-        insuranceCompanyName: emergencyCase.customerName,
-        fileNo: emergencyCase.fileNo ?? emergencyCase.caseNo,
-        totalAmount,
-        workItemsSummary: gelirEntries.map((entry) => ({
-          description: entry.description,
-          amount: entry.amount,
-        })),
-        notes: 'Acil yardım operasyon zinciri kapanış hooku ile otomatik oluşturuldu.',
-      },
-      userId,
+        caseNo: emergencyCase.caseNo,
+        fileNo: emergencyCase.fileNo,
+        customerName: emergencyCase.customerName,
+        gelirEntries,
+      }),
+      invoiceRequestActorUserId(userId, emergencyCase.createdByUserId),
+      { skipClosureCheck: true },
     );
   }
 

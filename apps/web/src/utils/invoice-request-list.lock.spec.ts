@@ -50,6 +50,8 @@ describe('invoice-request-list lock', () => {
     const controller = read('../../../backend/src/modules/invoice-requests/invoice-requests.controller.ts');
     assert.match(controller, /return \{ success: true, data \}/);
     assert.doesNotMatch(controller, /return this\.service\.findAll/);
+    const service = read('../../../backend/src/modules/invoice-requests/invoice-requests.service.ts');
+    assert.match(service, /syncMissingEmergencySalesRequests/);
   });
 
   it('ödeme API hatası fatura kuyruk kartını gizlemez', () => {
