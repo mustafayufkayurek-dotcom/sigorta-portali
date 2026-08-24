@@ -1,11 +1,11 @@
 ---
-description: Full deploy v534 alındı — 24.08.2026
+description: Full deploy v535 alındı — 24.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v534 (24.08.2026) — alındı
+# Full deploy v535 (24.08.2026) — alındı
 
-Canlı: web + backend **v534**. Rollback: web v533 / backend v533.
+Canlı: web + backend **v535**. Rollback: web v534 / backend v534.
 
 ## Alınan paket
 
@@ -13,6 +13,7 @@ Canlı: web + backend **v534**. Rollback: web v533 / backend v533.
 2. Yeni dosya, mail aktarımı ve atama listesi vekile açıktır. Kayıtta işlemi yapan vekil durur.
 3. Hasar dosyası oluşturma/değiştirme bu vekaletle açılmaz.
 4. Onarım raporu PDF: TASLAK / İÇ / DIŞ işareti fotoğraf üstünde çapraz damga değil; başlık rozeti ve her sayfa altı.
+5. Onaya gönderim müşteri kartındaki e-postaya gider. Ek yalnız **dış kullanım** rapor PDF. Maliyet / bütçe PDF gitmez.
 
 ## Canlıda yok
 
