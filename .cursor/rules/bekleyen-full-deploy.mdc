@@ -1,11 +1,11 @@
 ---
-description: Full deploy v536 alındı — 24.08.2026
+description: Full deploy v537 alındı — 24.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v536 (24.08.2026) — alındı
+# Full deploy v537 (24.08.2026) — alındı
 
-Canlı: web + backend **v536**. Rollback: web v535 / backend v535.
+Canlı: web + backend **v537**. Rollback: web v536 / backend v536.
 
 ## Alınan paket
 
@@ -15,6 +15,7 @@ Canlı: web + backend **v536**. Rollback: web v535 / backend v535.
 4. Onarım raporu PDF: TASLAK / İÇ / DIŞ işareti fotoğraf üstünde çapraz damga değil; başlık rozeti ve her sayfa altı.
 5. Onaya gönderim müşteri kartındaki e-postaya gider. Ek yalnız **dış kullanım** rapor PDF. Maliyet / bütçe PDF gitmez.
 6. Operasyon giden maili (rapor, dış onay, CRM, gelen kutu, Acil kapanış, ayarlar testi) Microsoft 365 kutusundan gider. SMTP yeşili gitti sayılmaz. Canlı alımdan önce giden-mail kilidi zorunlu; disk 5 GB altındaysa kod kopyalanmaz.
+7. Dosya sorumlusu Acil’de Finansa Gönder deyince satış fatura talebi finans kuyruğuna düşer. Daha önce finansa gönderilip kuyruğa yazılmayanlar finans ekranı açılınca tamamlanır.
 
 ## Canlıda yok
 
