@@ -17,7 +17,7 @@ import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
 import { DamageRepairTemplatesService } from '@/modules/damage-repair-templates/damage-repair-templates.service';
 import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
 import { normalizeReportImageCategory } from './report-image-category';
-import { resolveReportImageFilePath } from './report-image-paths';
+import { resolveReportCustomerMailRecipients } from './report-customer-mail-recipients';
 import {
   isExpertFirmCustomer,
   REPAIR_REPORT_INITIAL_VERSION,
@@ -841,7 +841,7 @@ export class RepairReportsService {
   async sendEmail(reportId: string, dto: SendEmailDto) {
     const report = await this.getReport(reportId);
     // PDF önce — ek yoksa sendReport FAIL eder
-    const { buffer: pdfBuffer } = await this.generatePdf(reportId, dto.viewType);
+    const { buffer: pdfBuffer } = await this.generatePdf(reportId, 'external');
     if (!pdfBuffer?.length) {
       throw new BadRequestException('PDF oluşmadı — e-posta gönderilemez');
     }
@@ -851,7 +851,7 @@ export class RepairReportsService {
       subject,
       pdfBuffer,
       reportNo: report.reportNo,
-      viewType: dto.viewType,
+      viewType: 'external',
     });
   }
 
@@ -986,7 +986,20 @@ export class RepairReportsService {
           },
         },
         images: { take: 8, orderBy: { sortOrder: 'asc' }, select: { storageKey: true, fileName: true, mimeType: true } },
-        claimFile: { select: { fileNo: true } },
+        expertOffice: { select: { email: true, companyName: true } },
+        claimFile: {
+          select: {
+            id: true,
+            fileNo: true,
+            customer: {
+              select: {
+                email: true,
+                companyName: true,
+                contacts: { select: { email: true, isPrimary: true } },
+              },
+            },
+          },
+        },
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
@@ -1008,6 +1021,35 @@ export class RepairReportsService {
     }, 0);
     if (totalSales <= 0 && totalCost <= 0 && totalLumpSum <= 0) {
       throw new BadRequestException('Maliyet veya satış tutarı girilmeden onaya gönderilemez.');
+    }
+
+    const customerRecipients = resolveReportCustomerMailRecipients({
+      customerEmail: report.claimFile?.customer?.email,
+      contacts: report.claimFile?.customer?.contacts,
+      expertOfficeEmail: report.expertOffice?.email,
+    });
+    const { buffer: customerPdf } = await this.generatePdf(reportId, 'external');
+    if (!customerPdf?.length) {
+      throw new BadRequestException('Müşteri raporu PDF oluşmadı — e-posta gönderilemez.');
+    }
+    if (customerRecipients.length === 0) {
+      throw new BadRequestException(
+        'Müşteri kartında e-posta yok. Adresi yazmadan rapor onaya gönderilemez.',
+      );
+    }
+    for (const recipient of customerRecipients) {
+      const mailed = await this.emailService.sendReport({
+        to: recipient,
+        subject: `Hasar Onarım Raporu — ${report.claimFile?.fileNo ?? report.reportNo}`,
+        pdfBuffer: customerPdf,
+        reportNo: report.reportNo,
+        viewType: 'external',
+      });
+      if (!mailed.success) {
+        throw new BadRequestException(
+          mailed.message || `Rapor e-postası gönderilemedi: ${recipient}`,
+        );
+      }
     }
 
     // Onaya gönderilmeden önce anomali analizi yap (non-blocking)
@@ -1070,7 +1112,7 @@ export class RepairReportsService {
         reportId,
       );
       if (this.claimEventEmail && approver.email) {
-        void this.claimEventEmail.onManagerApprovalRequested({
+        const managerMail = await this.claimEventEmail.onManagerApprovalRequested({
           recipientEmail: approver.email,
           recipientName: `${approver.firstName} ${approver.lastName}`.trim(),
           fileNo: report.claimFile?.fileNo ?? '',
@@ -1083,6 +1125,11 @@ export class RepairReportsService {
           profitLabel: money(totalSales - totalCost),
           attachments,
         });
+        if (!managerMail.sent) {
+          this.logger.error(
+            `Yönetici e-postası gönderilemedi: ${approver.email} | ${managerMail.errorMsg ?? ''}`,
+          );
+        }
       }
       const waUrl = buildWhatsAppMeUrl(approver.phone, waLines);
       if (waUrl) {

@@ -5069,6 +5069,13 @@ export default function RepairReportPage() {
       setShowRequestApprovalModal(false);
       setConfirmSendWithoutImages(false);
       setItemsApprovalError(null);
+      const customerMail = String(report?.claimFile?.customer?.email ?? '').trim();
+      notify(
+        'success',
+        customerMail
+          ? `Onaya alındı. Rapor PDF müşteriye gönderildi: ${customerMail}`
+          : 'Onaya alındı.',
+      );
       await load();
     } catch (e: any) { notify('error', e.response?.data?.message ?? 'Hata Oluştu'); }
     finally { setRequestingApproval(false); }
@@ -6668,10 +6675,17 @@ export default function RepairReportPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <h3 className="text-base font-bold text-slate-900 mb-1">Onaya Gönder — Son Teyit</h3>
             <p className="text-xs text-slate-500 mb-4">
-              Rapor onay sürecine alınmadan önce dosya eksperi ve gönderim bilgilerini kontrol edin.
+              Müşteri kartındaki e-postaya rapor PDF’si gider. Yöneticiye ayrıca iç onay özeti gider.
             </p>
 
             <div className="space-y-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-medium text-slate-500 mb-1">Müşteri e-posta</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {String(report?.claimFile?.customer?.email ?? '').trim() || 'Kartta e-posta yok'}
+                </p>
+              </div>
+
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-xs font-medium text-slate-500 mb-1">Dosya Eksperi</p>
                 {fileExpert.missing ? (

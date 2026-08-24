@@ -126,28 +126,36 @@ export class EmailService {
       data: { to, subject, status: 'queued' },
     });
 
+    const recipients = String(to)
+      .split(/[,;]+/)
+      .map((part) => part.trim())
+      .filter((part) => part.includes('@'));
+    if (!recipients.length) {
+      const errorMsg = 'Geçerli bir alıcı e-posta adresi yok.';
+      await this.prisma.emailLog.update({
+        where: { id: logEntry.id },
+        data: { status: 'failed', errorMsg },
+      });
+      return { sent: false, errorMsg };
+    }
+
     const mailbox: InboundMailbox = options?.mailbox === 'IHBAR' ? 'IHBAR' : 'HASAR';
     const graphReady = await this.graphMailSend.isOutboundReady();
     if (graphReady) {
       try {
         const graphAttachments = this.toGraphAttachments(options?.attachments);
-        const attachBytes = graphAttachments.reduce((n, a) => n + a.content.length, 0);
-        const oversize = attachBytes > GraphMailSendService.INLINE_ATTACH_MAX_BYTES;
-        const htmlBody = oversize
-          ? `${html}<p style="margin-top:16px;font-size:13px;color:#475569">Rapor dosyası büyük olduğu için eklenmedi. Onay linkinden açılır.</p>`
-          : html;
         await this.graphMailSend.sendMail(
           mailbox,
-          [to],
+          recipients,
           subject,
-          htmlBody,
-          oversize ? [] : graphAttachments,
+          html,
+          graphAttachments,
         );
         await this.prisma.emailLog.update({
           where: { id: logEntry.id },
           data: { status: 'sent', sentAt: new Date() },
         });
-        this.logger.log(`Email gönderildi (Microsoft 365 ${mailbox}) → ${to} | ${subject}`);
+        this.logger.log(`Email gönderildi (Microsoft 365 ${mailbox}) → ${recipients.join(', ')} | ${subject}`);
         return { sent: true, via: 'graph' };
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err);
@@ -155,7 +163,7 @@ export class EmailService {
           where: { id: logEntry.id },
           data: { status: 'failed', errorMsg },
         });
-        this.logger.error(`Email gönderilemedi (Microsoft 365) → ${to} | ${subject} | ${errorMsg}`);
+        this.logger.error(`Email gönderilemedi (Microsoft 365) → ${recipients.join(', ')} | ${subject} | ${errorMsg}`);
         return { sent: false, errorMsg, via: 'graph' };
       }
     }

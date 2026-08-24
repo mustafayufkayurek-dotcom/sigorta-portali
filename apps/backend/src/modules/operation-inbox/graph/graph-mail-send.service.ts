@@ -94,8 +94,9 @@ export class GraphMailSendService {
     this.logger.log(`Graph ${action} sent from ${mailboxAddress} for message ${graphMessageId}`);
   }
 
-  /** Graph sendMail gövdesi ~4MB; ek bunun altında kalmalı. */
+  /** Graph JSON gövdesi ~4MB; üzeri taslak + yükleme oturumu. */
   static readonly INLINE_ATTACH_MAX_BYTES = 2_500_000;
+  static readonly UPLOAD_CHUNK_BYTES = 3_276_800;
 
   async sendMail(
     mailbox: InboundMailbox,
@@ -128,58 +129,131 @@ export class GraphMailSendService {
         'Microsoft 365 kutu adresi boş. Ayarlar → Entegrasyonlar’da Hasar / İhbar kutusunu yazın.',
       );
     }
-    const encodedUser = encodeURIComponent(mailboxAddress);
-    const url = `${this.graphBase}/users/${encodedUser}/sendMail`;
+    const recipients = to.map((address) => address.trim()).filter(Boolean);
+    if (!recipients.length) {
+      throw new BadRequestException('Alıcı e-posta adresi yok.');
+    }
 
+    const encodedUser = encodeURIComponent(mailboxAddress);
     const trimmed = body.trim();
     const contentType = this.isHtml(trimmed) ? 'HTML' : 'Text';
-    const attachBytes = (attachments ?? []).reduce((n, a) => n + (a.content?.length ?? 0), 0);
-    const graphAttachments =
-      attachBytes > 0 && attachBytes <= GraphMailSendService.INLINE_ATTACH_MAX_BYTES
-        ? (attachments ?? []).map((a) => ({
-            '@odata.type': '#microsoft.graph.fileAttachment',
-            name: a.filename,
-            contentType: a.contentType || 'application/octet-stream',
-            contentBytes: a.content.toString('base64'),
-          }))
-        : undefined;
-    if (attachBytes > GraphMailSendService.INLINE_ATTACH_MAX_BYTES) {
-      this.logger.warn(
-        `Graph ek atlandı (${attachBytes} bayt). Mail kutu üzerinden gider; büyük PDF onay linkinden açılır.`,
-      );
-    }
-    const payload = {
-      message: {
-        subject: subject.trim(),
-        body: {
-          contentType,
-          content: trimmed,
-        },
-        toRecipients: to.map((address) => ({
-          emailAddress: { address: address.trim() },
-        })),
-        ...(graphAttachments?.length ? { attachments: graphAttachments } : {}),
-      },
-      saveToSentItems: true,
-    };
+    const files = attachments ?? [];
+    const attachBytes = files.reduce((n, a) => n + (a.content?.length ?? 0), 0);
+    const inlineOk = attachBytes > 0 && attachBytes <= GraphMailSendService.INLINE_ATTACH_MAX_BYTES;
+    const graphAttachments = inlineOk
+      ? files.map((a) => ({
+          '@odata.type': '#microsoft.graph.fileAttachment',
+          name: a.filename,
+          contentType: a.contentType || 'application/octet-stream',
+          contentBytes: a.content.toString('base64'),
+        }))
+      : undefined;
 
-    const res = await firstValueFrom(
-      this.http.post(url, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+    const createUrl = `${this.graphBase}/users/${encodedUser}/messages`;
+    const createRes = await firstValueFrom(
+      this.http.post(
+        createUrl,
+        {
+          subject: subject.trim(),
+          body: { contentType, content: trimmed },
+          toRecipients: recipients.map((address) => ({
+            emailAddress: { address },
+          })),
+          ...(graphAttachments?.length ? { attachments: graphAttachments } : {}),
         },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          validateStatus: () => true,
+        },
+      ),
+    );
+    if (createRes.status >= 400 || !createRes.data?.id) {
+      const err = this.buildSendError(createRes.status, createRes.data);
+      this.logger.warn(`Graph draft failed (${mailboxAddress}): ${err.message}`);
+      throw err;
+    }
+    const messageId = String(createRes.data.id);
+
+    if (files.length && !inlineOk) {
+      for (const file of files) {
+        await this.uploadLargeAttachment(encodedUser, token, messageId, file);
+      }
+    }
+
+    const sendUrl = `${this.graphBase}/users/${encodedUser}/messages/${messageId}/send`;
+    const sendRes = await firstValueFrom(
+      this.http.post(sendUrl, {}, {
+        headers: { Authorization: `Bearer ${token}` },
         validateStatus: () => true,
       }),
     );
-
-    if (res.status >= 400) {
-      const err = this.buildSendError(res.status, res.data);
+    if (sendRes.status >= 400) {
+      const err = this.buildSendError(sendRes.status, sendRes.data);
       this.logger.warn(`Graph sendMail failed (${mailboxAddress}): ${err.message}`);
       throw err;
     }
 
-    this.logger.log(`Graph sendMail sent from ${mailboxAddress} to ${to.join(', ')}`);
+    this.logger.log(`Graph sendMail sent from ${mailboxAddress} to ${recipients.join(', ')}`);
+  }
+
+  private async uploadLargeAttachment(
+    encodedUser: string,
+    token: string,
+    messageId: string,
+    file: { filename: string; content: Buffer; contentType?: string },
+  ): Promise<void> {
+    const sessionUrl = `${this.graphBase}/users/${encodedUser}/messages/${messageId}/attachments/createUploadSession`;
+    const sessionRes = await firstValueFrom(
+      this.http.post(
+        sessionUrl,
+        {
+          AttachmentItem: {
+            attachmentType: 'file',
+            name: file.filename,
+            size: file.content.length,
+            contentType: file.contentType || 'application/octet-stream',
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          validateStatus: () => true,
+        },
+      ),
+    );
+    const uploadUrl = sessionRes.data?.uploadUrl as string | undefined;
+    if (sessionRes.status >= 400 || !uploadUrl) {
+      throw this.buildSendError(sessionRes.status, sessionRes.data);
+    }
+
+    const chunk = GraphMailSendService.UPLOAD_CHUNK_BYTES;
+    let offset = 0;
+    while (offset < file.content.length) {
+      const end = Math.min(offset + chunk, file.content.length);
+      const part = file.content.subarray(offset, end);
+      const putRes = await firstValueFrom(
+        this.http.put(uploadUrl, part, {
+          headers: {
+            'Content-Length': String(part.length),
+            'Content-Range': `bytes ${offset}-${end - 1}/${file.content.length}`,
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          validateStatus: () => true,
+        }),
+      );
+      if (putRes.status >= 400) {
+        throw this.buildSendError(putRes.status, putRes.data);
+      }
+      offset = end;
+    }
   }
 
   async isOutboundReady(): Promise<boolean> {

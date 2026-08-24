@@ -37,6 +37,7 @@ import {
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
+import { resolveOpsEmailDefaultTo } from '@/utils/ops-email-default-to';
 import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
 import { OpsListPageSizeSelect } from '@/components/operasyon/OpsListPageSizeSelect';
@@ -577,7 +578,10 @@ function OperasyonPageContent() {
       updatedAt: claim.updatedAt ?? null,
       priority: claim.priority ?? null,
       reportId: claim.latestRepairReport?.id ?? null,
-      defaultEmailTo: claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? null,
+      defaultEmailTo: resolveOpsEmailDefaultTo({
+        customerEmail: claim.customer?.email,
+        insuranceEmail: claim.insuranceCompany?.contactEmail,
+      }) ?? null,
       vendorPaid: claim.vendorPaid === true || claim.vendorPaid === false ? claim.vendorPaid : null,
     };
   });

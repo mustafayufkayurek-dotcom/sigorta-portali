@@ -27,11 +27,14 @@ export class ReportEmailService {
     subject: string;
     pdfBuffer: Buffer;
     reportNo: string;
-    viewType: 'internal' | 'external';
+    viewType?: 'external';
   }): Promise<SendReportEmailResult> {
     const to = String(opts.to ?? '').trim();
     if (!to || !to.includes('@')) {
       throw new BadRequestException('Geçerli bir alıcı e-posta adresi zorunlu');
+    }
+    if (opts.viewType && opts.viewType !== 'external') {
+      throw new BadRequestException('E-posta ekinde yalnız dış kullanım raporu gider');
     }
 
     const pdfBuffer = opts.pdfBuffer;
@@ -39,7 +42,7 @@ export class ReportEmailService {
       throw new BadRequestException('PDF ek zorunlu — PDF oluşmadan e-posta gönderilemez');
     }
 
-    const filename = `hasar-raporu-${opts.viewType === 'internal' ? 'IC' : 'DIS'}-${opts.reportNo}.pdf`;
+    const filename = `hasar-raporu-DIS-${opts.reportNo}.pdf`;
     const result = await this.email.sendEmail(
       to,
       opts.subject,

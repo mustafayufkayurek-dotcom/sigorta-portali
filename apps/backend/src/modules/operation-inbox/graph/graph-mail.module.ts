@@ -9,7 +9,7 @@ import { GraphMailSendService } from './graph-mail-send.service';
 @Module({
   imports: [
     PrismaModule,
-    HttpModule.register({ timeout: 60_000, maxRedirects: 3 }),
+    HttpModule.register({ timeout: 180_000, maxRedirects: 3, maxContentLength: Infinity, maxBodyLength: Infinity }),
   ],
   providers: [GraphAuthService, GraphMailSyncService, GraphMailSendService],
   exports: [GraphAuthService, GraphMailSyncService, GraphMailSendService],

@@ -22,6 +22,12 @@ describe('operasyon giden mail LOCK', () => {
     assert.match(src, /mailbox === 'IHBAR'/);
   });
 
+  it('CRM giden maili SMTP bypass etmez', () => {
+    const crm = readFileSync(join(here, '../../crm/crm.service.ts'), 'utf8');
+    assert.match(crm, /emailService\.sendEmail/);
+    assert.doesNotMatch(crm, /nodemailer\.createTransport/);
+  });
+
   it('Graph sendMail PDF ekini taşır; büyük ek kutu gönderimini durdurmaz', () => {
     const src = readFileSync(
       join(here, '../../operation-inbox/graph/graph-mail-send.service.ts'),
@@ -30,7 +36,8 @@ describe('operasyon giden mail LOCK', () => {
     assert.match(src, /INLINE_ATTACH_MAX_BYTES/);
     assert.match(src, /fileAttachment/);
     assert.match(src, /contentBytes/);
-    assert.match(src, /saveToSentItems: true/);
+    assert.match(src, /createUploadSession/);
+    assert.match(src, /messages\/\$\{messageId\}\/send/);
     assert.match(src, /isOutboundReady/);
   });
 
