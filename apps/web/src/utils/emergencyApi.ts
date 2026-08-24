@@ -121,6 +121,7 @@ export interface EmergencyCase {
   activeDelegation?: {
     actingUser: { id: string; firstName: string; lastName: string };
     principalUser: { id: string; firstName: string; lastName: string } | null;
+    grantType?: 'person_delegation' | 'function_delegation';
     reason: string | null;
     validUntil: string | null;
   } | null;

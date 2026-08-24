@@ -460,6 +460,21 @@ export class EmergencyCasesService {
       },
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
     });
+    const delegationStamp = await this.operationalAccessGrants.getFunctionDelegationStamp(
+      userId,
+      'acil_yardim',
+    );
+    if (delegationStamp) {
+      await this.prisma.auditLog.create({
+        data: {
+          entityType: 'EmergencyCase',
+          entityId: created.id,
+          action: 'CREATE',
+          userId,
+          newValue: delegationStamp as Prisma.InputJsonValue,
+        },
+      });
+    }
     if (dto.assignedVendorId) {
       void this.reportNegativeVendorIfNeeded(created.id, dto.assignedVendorId).catch((err) =>
         this.logger.warn(`[Acil tedarikçi] Olumsuz atama raporu atlandı: ${err?.message}`),
@@ -596,6 +611,9 @@ export class EmergencyCasesService {
     }
 
     if (this.operationalAccessGrants.isDelegationScopedRole(requestingUser.roleCode)) {
+      if (await this.operationalAccessGrants.hasFunctionDelegation(requestingUser.id, 'acil_yardim')) {
+        return;
+      }
       const assignedId = emergencyCase.assignedUserId;
       if (assignedId === requestingUser.id) return;
       if (!assignedId && emergencyCase.createdByUserId === requestingUser.id) return;
@@ -1405,6 +1423,9 @@ export class EmergencyCasesService {
             newValue: sanitizeAuditValue({
               description: emergencyProcessDescription(processAction),
               reason,
+              ...(actorId
+                ? await this.operationalAccessGrants.getFunctionDelegationStamp(actorId, 'acil_yardim') ?? {}
+                : {}),
             }) as Prisma.InputJsonValue,
             userId: actorId ?? null,
             userEmail: (actor as { email?: string | null })?.email ?? null,
@@ -1508,12 +1529,17 @@ export class EmergencyCasesService {
     }
 
     const payload = sanitizeAuditValue({ description, ...metadata }) as Prisma.InputJsonValue;
+    const delegationStamp = actor.id
+      ? await this.operationalAccessGrants.getFunctionDelegationStamp(actor.id, 'acil_yardim')
+      : null;
     const created = await this.prisma.auditLog.create({
       data: {
         entityType: EMERGENCY_PROCESS_ENTITY_TYPE,
         entityId: caseId,
         action,
-        newValue: payload,
+        newValue: (delegationStamp
+          ? sanitizeAuditValue({ description, ...metadata, ...delegationStamp })
+          : payload) as Prisma.InputJsonValue,
         userId: actor.id ?? null,
         userEmail: actor.email ?? null,
       },

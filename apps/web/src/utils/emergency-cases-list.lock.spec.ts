@@ -43,6 +43,7 @@ describe('Acil liste kontrol kilidi', () => {
     assert.match(claimStats, /emergencyScope/);
     assert.match(grants, /createdByUserId: userId/);
     assert.match(grants, /assignedUserId: \{ in: \[userId/);
+    assert.match(grants, /hasFunctionDelegation\(userId, 'acil_yardim'\)\) return \{\}/);
   });
 
   it('liste yanıtı dizi / {data} / {data:{data}} okunur', () => {

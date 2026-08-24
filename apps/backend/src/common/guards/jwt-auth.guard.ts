@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { PrismaService } from '@/prisma/prisma.service';
 import { TokenBlacklistService } from '@/modules/auth/token-blacklist.service';
-import { extractAccessToken } from '@/common/auth/auth-cookies';
+import { mergeAcilFileOwnerPermissions } from '@sigorta/shared';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -69,6 +69,19 @@ export class JwtAuthGuard implements CanActivate {
         throw new UnauthorizedException('Kullanıcı bulunamadı veya aktif değil');
       }
 
+      const rolePermissions = user.role.rolePermissions.map((rp) => rp.permission.code);
+      const acilFunctionGrant = await this.prisma.operationalAccessGrant.findFirst({
+        where: {
+          granteeUserId: user.id,
+          grantType: 'function_delegation',
+          isActive: true,
+          validFrom: { lte: new Date() },
+          OR: [{ validTo: null }, { validTo: { gte: new Date() } }],
+          scopeType: { in: ['acil_yardim', 'both'] },
+        },
+        select: { id: true },
+      });
+
       request.user = {
         id: user.id,
         email: user.email,
@@ -77,7 +90,7 @@ export class JwtAuthGuard implements CanActivate {
         roleCode: user.role.code,
         roleId: user.roleId,
         branchId: user.branchId,
-        permissions: user.role.rolePermissions.map((rp) => rp.permission.code),
+        permissions: mergeAcilFileOwnerPermissions(rolePermissions, Boolean(acilFunctionGrant)),
         insuranceCompanyScopes: user.userInsuranceCompanyScopes.map(
           (s) => s.insuranceCompanyId,
         ),

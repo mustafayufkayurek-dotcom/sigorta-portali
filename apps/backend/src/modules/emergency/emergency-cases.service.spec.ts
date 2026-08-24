@@ -26,6 +26,8 @@ describe('EmergencyCasesService', () => {
     };
     operationalAccessGrants = {
       isDelegationScopedRole: jest.fn().mockReturnValue(false),
+      hasFunctionDelegation: jest.fn().mockResolvedValue(false),
+      getFunctionDelegationStamp: jest.fn().mockResolvedValue(null),
       buildEmergencyDelegationScope: jest.fn().mockResolvedValue({}),
       canAccessAssignedUserViaDelegation: jest.fn().mockResolvedValue(false),
       resolveDelegationBanner: jest.fn().mockResolvedValue(null),
@@ -103,6 +105,17 @@ describe('EmergencyCasesService', () => {
           where: expect.objectContaining({
             OR: [{ assignedUserId: { in: ['staff-1'] } }],
           }),
+        }),
+      );
+    });
+
+    it('fonksiyon vekaletinde dar liste filtresi yoksa tüm kuyruk gelir', async () => {
+      operationalAccessGrants.isDelegationScopedRole.mockReturnValue(true);
+      operationalAccessGrants.buildEmergencyDelegationScope.mockResolvedValue({});
+      await service.findAll({}, { id: 'finance-1', roleCode: 'finance' });
+      expect(prisma.emergencyCase.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {},
         }),
       );
     });

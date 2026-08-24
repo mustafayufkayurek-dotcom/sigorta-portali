@@ -186,6 +186,29 @@ export class ClaimFilesService {
     @Optional() private readonly surveys?: SurveysService,
   ) {}
 
+  private isFinanceLikeRole(roleCode: string | null | undefined): boolean {
+    const code = String(roleCode ?? '').trim().toLowerCase();
+    return code === 'finance' || code === 'finans' || code === 'accountant';
+  }
+
+  private async assertHasarFileMutationAllowed(requestingUser?: {
+    id?: string;
+    userId?: string;
+    roleCode?: string | null;
+    role?: { code?: string };
+  }) {
+    const roleCode = requestingUser?.roleCode ?? requestingUser?.role?.code;
+    if (!this.isFinanceLikeRole(roleCode)) return;
+    const userId = requestingUser?.id ?? requestingUser?.userId;
+    if (!userId || !this.operationalAccessGrants) {
+      throw new ForbiddenException('Hasar dosyasında işlem için Hasar vekaleti gerekir');
+    }
+    const allowed = await this.operationalAccessGrants.hasFunctionDelegation(userId, 'hasar');
+    if (!allowed) {
+      throw new ForbiddenException('Hasar dosyasında işlem için Hasar vekaleti gerekir');
+    }
+  }
+
   private async resolveHasarDepartmentId(): Promise<string | null> {
     const dept = await this.prisma.department.findFirst({
       where: { code: 'hasar-onarim', status: 'active' },
@@ -1300,6 +1323,7 @@ export class ClaimFilesService {
     data: any,
     requestingUser?: { id?: string; userId?: string; roleCode?: string; role?: { code?: string } },
   ) {
+    await this.assertHasarFileMutationAllowed(requestingUser);
     const { fileNo: userFileNo, propertyAddress: _pa, city: _city, district: _district, ...rest } = data;
     const fileNo = (typeof userFileNo === 'string' && userFileNo.trim()) ? userFileNo.trim() : '';
 
@@ -1585,6 +1609,7 @@ export class ClaimFilesService {
     data: any,
     requestingUser?: { id: string; roleCode?: string | null; vendorId?: string | null },
   ) {
+    await this.assertHasarFileMutationAllowed(requestingUser);
     const existing = await this.findOne(id, requestingUser);
     const existingAny = existing as {
       departmentId?: string | null;
@@ -1796,6 +1821,7 @@ export class ClaimFilesService {
     dto: any,
     requestingUser?: { id: string; roleCode?: string | null; vendorId?: string | null },
   ) {
+    await this.assertHasarFileMutationAllowed(requestingUser);
     const claimFile = await this.findOne(id, requestingUser);
 
     const updateData: any = {};
@@ -1950,6 +1976,7 @@ export class ClaimFilesService {
     userId: string,
     requestingUser?: { id: string; roleCode?: string | null; vendorId?: string | null },
   ) {
+    await this.assertHasarFileMutationAllowed(requestingUser ?? { id: userId });
     const claimFile = await this.findOne(id, requestingUser);
 
     const fromStatus = claimFile.currentStatus as any;

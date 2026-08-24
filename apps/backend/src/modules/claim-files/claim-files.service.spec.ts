@@ -176,6 +176,7 @@ describe('ClaimFilesService', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         operationalAccessGrants as any,
       );
 

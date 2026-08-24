@@ -254,8 +254,11 @@ export class ClaimFilesController {
   @Post(':id/assign')
   @RequirePermissions('claim_file.assign')
   @ApiOperation({ summary: 'Hasar dosyasına kullanıcı/şube ata' })
-  async assign(@Param('id') id: string, @Body() assignDto: any) {
-    const data = await this.claimFilesService.assign(id, assignDto);
+  async assign(@Param('id') id: string, @Body() assignDto: any, @CurrentUser() user: any) {
+    const data = await this.claimFilesService.assign(id, assignDto, {
+      id: user?.id ?? user?.userId,
+      roleCode: user?.roleCode ?? user?.role?.code,
+    });
     return { success: true, data };
   }
 
@@ -267,7 +270,10 @@ export class ClaimFilesController {
     @Body() changeStatusDto: any,
     @CurrentUser() user: any,
   ) {
-    const data = await this.claimFilesService.changeStatus(id, changeStatusDto, user.id);
+    const data = await this.claimFilesService.changeStatus(id, changeStatusDto, user.id, {
+      id: user?.id ?? user?.userId,
+      roleCode: user?.roleCode ?? user?.role?.code,
+    });
     return { success: true, data };
   }
 

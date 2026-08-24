@@ -39,3 +39,18 @@ if (!service.includes('mergeAssignableStaffWithDelegates') || !service.includes(
   fail('assignable-staff finans vekillerini birleştirmiyor');
 }
 pass('API: atanabilir personel + fonksiyon vekili birleşir');
+
+const grants = read('apps/backend/src/modules/operational-access-grants/operational-access-grants.service.ts');
+if (!grants.includes("hasFunctionDelegation(userId, 'acil_yardim')) return {}")) {
+  fail('Fonksiyon vekaleti Acil kuyruğunu açmıyor');
+}
+if (!grants.includes('getFunctionDelegationStamp')) {
+  fail('Vekaleten işlem kaydı yok');
+}
+pass('Vekalet: tüm Acil kuyruk + işlem kaydı');
+
+const jwtGuard = read('apps/backend/src/common/guards/jwt-auth.guard.ts');
+if (!jwtGuard.includes('mergeAcilFileOwnerPermissions')) {
+  fail('Vekil oturumunda dosya sorumlusu yetkisi yok');
+}
+pass('Oturum: vekile dosya sorumlusu yetkisi');

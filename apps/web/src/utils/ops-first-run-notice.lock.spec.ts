@@ -57,6 +57,7 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(acilForm, /OpsFirstRunNotice/);
     assert.match(acilForm, /OPS_NOTICE\.acilDosyaSorumlusuVekalet/);
     assert.match(acilForm, /dosya-sorumlusu-ilk-kullanim-seridi/);
+    assert.match(OPS_NOTICE.acilDosyaSorumlusuVekalet.body, /tüm Acil kuyruğunu/);
   });
 
   it('Hasar ve Acil listesinde son canlı iş şeridi durur', () => {
@@ -92,6 +93,9 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(hasarRapor, /OPS_NOTICE\.hasarRaporSonDegisiklik/);
     assert.match(opsListe, /OPS_NOTICE\.acilListeSonDegisiklik/);
     assert.match(opsListe, /acil-liste-ilk-kullanim-seridi/);
+    assert.match(opsListe, /OPS_NOTICE\.acilVekaletKuyruk/);
+    assert.match(opsListe, /acil-vekalet-kuyruk-seridi/);
+    assert.equal(OPS_NOTICE.acilVekaletKuyruk.id, 'acil-vekalet-kuyruk-v537');
     assert.match(opsListe, /OpsStripKpi/);
     assert.match(opsListe, /dense/);
     const picker = readFileSync(join(here, '../components/ui/TableColumnPicker.tsx'), 'utf8');

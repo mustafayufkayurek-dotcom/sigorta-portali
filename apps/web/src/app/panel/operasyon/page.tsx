@@ -58,6 +58,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
 import {
   BADGE_TONE_CLASS,
   OPERATION_PRESET_LABELS,
@@ -350,6 +351,7 @@ export default function OperasyonPage() {
 function OperasyonPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showFinanceExtraAccessAcil } = usePanelAccess();
   const [colsStorageKey, setColsStorageKey] = useState(() => {
     const filter = searchParams.get('filter');
     if (filter === 'acil' || filter === 'hasar' || filter === 'all') {
@@ -900,6 +902,15 @@ function OperasyonPageContent() {
                     body={OPS_NOTICE.acilListeSonDegisiklik.body}
                     testId="acil-liste-ilk-kullanim-seridi"
                   />
+                  {showFinanceExtraAccessAcil ? (
+                    <OpsFirstRunNotice
+                      compact
+                      noticeId={OPS_NOTICE.acilVekaletKuyruk.id}
+                      title={OPS_NOTICE.acilVekaletKuyruk.title}
+                      body={OPS_NOTICE.acilVekaletKuyruk.body}
+                      testId="acil-vekalet-kuyruk-seridi"
+                    />
+                  ) : null}
                 </div>
               </>
             ) : (

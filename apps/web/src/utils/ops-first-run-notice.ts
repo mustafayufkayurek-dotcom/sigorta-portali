@@ -13,7 +13,13 @@ export const OPS_NOTICE = {
     id: 'acil-dosya-sorumlusu-vekalet-v515',
     title: 'Dosya Sorumlusu',
     body:
-      'Acil Yardım vekaleti olan finans personeli de bu listede görünür. Dosyayı ona atayabilirsiniz.',
+      'Acil Yardım vekaleti olan finans personeli de bu listede görünür. Dosyayı ona atayabilirsiniz. Vekil tüm Acil kuyruğunu işler; kayıtta işlemi yapan vekil durur.',
+  },
+  acilVekaletKuyruk: {
+    id: 'acil-vekalet-kuyruk-v537',
+    title: 'Acil vekalet',
+    body:
+      'Dosya sorumlusu vekaleti ile tüm Acil kuyruğunu görürsünüz. Yeni dosya, mail aktarımı ve atama ofis sorumlusu gibidir. İşlem sizin adınıza kayda geçer.',
   },
   acilTedarikciHakedis: {
     id: 'acil-tedarikci-hakedis-v524',

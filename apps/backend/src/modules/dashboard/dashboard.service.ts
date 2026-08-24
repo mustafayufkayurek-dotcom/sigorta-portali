@@ -57,13 +57,16 @@ export class DashboardService {
     if (!scopeUserId) {
       return { claim: {}, emergency: {} };
     }
-    const [hasarPrincipalIds, acilPrincipalIds] = await Promise.all([
+    const [hasarPrincipalIds, acilPrincipalIds, hasAcilFunctionDelegation] = await Promise.all([
       this.operationalAccessGrants.getPrincipalUserIdsForGrantee(scopeUserId, 'hasar'),
       this.operationalAccessGrants.getPrincipalUserIdsForGrantee(scopeUserId, 'acil_yardim'),
+      this.operationalAccessGrants.hasFunctionDelegation(scopeUserId, 'acil_yardim'),
     ]);
     return {
       claim: { assignedOfficeUserId: { in: [scopeUserId, ...hasarPrincipalIds] } },
-      emergency: { assignedUserId: { in: [scopeUserId, ...acilPrincipalIds] } },
+      emergency: hasAcilFunctionDelegation
+        ? {}
+        : { assignedUserId: { in: [scopeUserId, ...acilPrincipalIds] } },
     };
   }
 
@@ -1456,7 +1459,9 @@ export class DashboardService {
     ];
     const emergencyScopeWhere = isOfficeStaff
       ? (await this.buildDelegationScope(userId)).emergency
-      : { assignedUserId: userId };
+      : (await this.operationalAccessGrants.hasFunctionDelegation(userId, 'acil_yardim'))
+        ? {}
+        : { assignedUserId: userId };
 
     const [files, emergencyCases] = await Promise.all([
       this.prisma.claimFile.findMany({

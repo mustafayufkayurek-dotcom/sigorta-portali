@@ -19,4 +19,5 @@ export * from './backup-health';
 export * from './acil-vendor-quality';
 export * from './hasar-flow-groups';
 export * from './file-expense-work-group-audit';
+export * from './acil-file-owner-delegation';
 export * from './authorized-person-name';

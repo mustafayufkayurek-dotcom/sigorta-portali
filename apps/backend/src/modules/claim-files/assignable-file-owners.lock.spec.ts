@@ -44,4 +44,12 @@ describe('acil dosya sorumlusu listesi LOCK', () => {
     assert.match(service, /listActiveFunctionDelegates/);
     assert.match(controller, /includeDelegates/);
   });
+
+  it('finans vekili atama listesini çekebilir', () => {
+    const jwtGuard = readFileSync(
+      join(here, '../../common/guards/jwt-auth.guard.ts'),
+      'utf8',
+    );
+    assert.match(jwtGuard, /mergeAcilFileOwnerPermissions/);
+  });
 });

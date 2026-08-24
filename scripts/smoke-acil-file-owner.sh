@@ -7,7 +7,9 @@ cd "$REPO_ROOT"
 node "$SCRIPT_DIR/lib/acil-file-owner-smoke.mjs"
 if node --experimental-strip-types -e "process.exit(0)" >/dev/null 2>&1; then
   node --experimental-strip-types --test \
-    apps/backend/src/modules/claim-files/assignable-file-owners.lock.spec.ts
+    apps/backend/src/modules/claim-files/assignable-file-owners.lock.spec.ts \
+    apps/backend/src/modules/operational-access-grants/acil-function-delegation-owner.lock.spec.ts \
+    packages/shared/src/acil-file-owner-delegation.spec.ts
 else
   echo "PASS: lock.spec atlandı (sunucu Node .ts strip yok) — kaynak kilidi yeterli"
 fi
