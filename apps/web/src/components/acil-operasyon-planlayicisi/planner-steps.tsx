@@ -610,7 +610,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             className="mt-2 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs"
             data-testid="acil-onay-metin"
           />
-          {!acilOnayMetinGovde(p.approvalText) ? (
+          {!acilOnayMetinGovde(p.approvalText).trim() ? (
             <p className="mt-1 text-[11px] text-amber-700">«Riziko adreste;» sabit kalır. Devamını yazmak zorunlu.</p>
           ) : null}
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -640,7 +640,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             ) : null}
           </div>
           <div className="mt-3 flex gap-1.5">
-            <Btn primary disabled={!acilOnayMetinGovde(p.approvalText)} onClick={() => p.onApprovalState('onaylandi')}>Onayı kaydet</Btn>
+            <Btn primary disabled={!acilOnayMetinGovde(p.approvalText).trim()} onClick={() => p.onApprovalState('onaylandi')}>Onayı kaydet</Btn>
             <Btn onClick={() => p.onApprovalState('reddedildi')}>Red</Btn>
           </div>
         </Card>

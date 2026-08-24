@@ -10,12 +10,12 @@ export type ApprovalState = 'bekliyor' | 'onaylandi' | 'reddedildi';
 export const ACIL_ONAY_METIN_ON_EK = 'Riziko adreste;';
 
 export function acilOnayMetinGovde(text: string): string {
-  return (text || '').trim().replace(/^Riziko adreste;\s*/i, '').trim();
+  return (text || '').replace(/^Riziko adreste;[ ]?/i, '');
 }
 
 export function withAcilOnayMetinOnEk(text: string): string {
   const body = acilOnayMetinGovde(text);
-  return body ? `${ACIL_ONAY_METIN_ON_EK} ${body}` : `${ACIL_ONAY_METIN_ON_EK} `;
+  return `${ACIL_ONAY_METIN_ON_EK} ${body}`;
 }
 
 export function validateOperatorStep(
@@ -38,7 +38,7 @@ export function validateOperatorStep(
     if (!s.alis.trim() || !s.satis.trim()) return 'Alış ve satış girin.';
   }
   if (step === 'onay') {
-    if (!acilOnayMetinGovde(s.approvalText)) return 'Riziko adreste açıklamasını yazın.';
+    if (!acilOnayMetinGovde(s.approvalText).trim()) return 'Riziko adreste açıklamasını yazın.';
     if (s.approvalState === 'bekliyor') return 'Onayı kaydet veya red verin.';
     if (s.digitalDocsOk === false) return 'Servis onay formu dijital onayı olmadan ilerlenemez.';
   }

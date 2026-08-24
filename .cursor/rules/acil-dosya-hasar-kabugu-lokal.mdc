@@ -26,6 +26,7 @@ alwaysApply: true
 - Acil anket: **Acil Yardım Ekibi**; yıldız anlamı; logo+başlık ortada; gönderince dosyaya ve Anket Sonuçları’na düşer; olumsuzda **dosya sorumlusu açıklaması** zorunlu.
 - Dosyada **Konum Tespiti**; tedarikçi WhatsApp’ta pin + *“Konumu sigortalıdan teyit ediniz.”* Alış/satış/kâr gitmez.
 - Dört resmi işlem saati dosyada durur: **ihbar** (mail / `fileDate`), **işe başlama** (`workStartedAt`), **hizmet verilme** (`serviceDeliveredAt`), **kapanış** (`resolvedAt`). Detay ve kapanış PDF iskeleti bunları basar.
+- Onay Talep Akışı **Sunum özeti**: yazarken boşluk durur. «Riziko adreste;» sabit; gövde her tuşta kırpılmaz.
 - Hasar hakediş / 15-30 vade yoluna dokunulmaz.
 
 ## Yasak (açık onay yoksa)
@@ -38,4 +39,6 @@ Regresyon:
 
 ```bash
 pnpm smoke:acil-netlesen
+node --experimental-strip-types --test \
+  apps/web/src/components/acil-operasyon-planlayicisi/planner-gates.lock.spec.ts
 ```

@@ -183,4 +183,22 @@ describe('acil canlı netleşen LOCK', () => {
     const beforeDrawer = acilPage.slice(0, acilPage.indexOf('approvalStep'));
     assert.doesNotMatch(beforeDrawer, /<FileDocumentPanel/);
   });
+
+  it('sunum özeti boşluğu yutmaz; kilit spec durur', () => {
+    const gates = readFileSync(
+      join(here, '../../../components/acil-operasyon-planlayicisi/planner-gates.ts'),
+      'utf8',
+    );
+    const lock = readFileSync(
+      join(here, '../../../components/acil-operasyon-planlayicisi/planner-gates.lock.spec.ts'),
+      'utf8',
+    );
+    const govdeFn = gates.slice(
+      gates.indexOf('export function acilOnayMetinGovde'),
+      gates.indexOf('export function withAcilOnayMetinOnEk'),
+    );
+    assert.doesNotMatch(govdeFn, /\.trim\(/);
+    assert.match(lock, /yazarken kelime sonu boşluğu silinmez/);
+    assert.match(lock, /kilit değişimi yapılmadı/);
+  });
 });
