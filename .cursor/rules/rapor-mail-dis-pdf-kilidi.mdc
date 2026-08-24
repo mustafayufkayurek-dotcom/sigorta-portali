@@ -30,8 +30,5 @@ alwaysApply: true
 Regresyon:
 
 ```bash
-node --experimental-strip-types --test \
-  apps/backend/src/modules/repair-reports/report-mail-external-pdf.lock.spec.ts \
-  apps/backend/src/modules/repair-reports/report-customer-mail-recipients.lock.spec.ts \
-  apps/backend/src/modules/notifications/email/outbound-mail.lock.spec.ts
+bash scripts/smoke-outbound-mail.sh
 ```

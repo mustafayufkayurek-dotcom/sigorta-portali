@@ -1307,15 +1307,20 @@ export class EmergencyCasesService {
         mailbox: 'IHBAR',
       },
     );
+    if (!result.sent || result.via !== 'graph') {
+      throw new BadRequestException(
+        result.errorMsg || 'Kapanış e-postası İhbar kutusundan gitmedi.',
+      );
+    }
 
     return {
       data: {
-        sent: result.sent,
+        sent: true,
         to: payload.to,
         recipients: payload.recipients,
         subject: payload.subject,
         attachmentNames: payload.attachmentNames,
-        errorMsg: result.errorMsg ?? null,
+        errorMsg: null,
       },
     };
   }

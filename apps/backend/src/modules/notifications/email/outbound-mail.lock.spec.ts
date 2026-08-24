@@ -55,6 +55,20 @@ describe('operasyon giden mail LOCK', () => {
     assert.match(ext, /via !== 'graph'/);
   });
 
+  it('Acil kapanış maili kutu olmadan gitti sayılmaz', () => {
+    const src = readFileSync(
+      join(here, '../../emergency/emergency-cases.service.ts'),
+      'utf8',
+    );
+    assert.match(src, /sendClosureEmail/);
+    assert.match(src, /via !== 'graph'/);
+  });
+
+  it('full deploy giden mail kilidini çalıştırır', () => {
+    const src = readFileSync(join(here, '../../../../../../scripts/deploy-full-production.sh'), 'utf8');
+    assert.match(src, /smoke-outbound-mail\.sh/);
+  });
+
   it('dış onayda rapor durumu mail gittikten sonra yazılır', () => {
     const src = readFileSync(
       join(here, '../../external-approvals/external-approvals.service.ts'),

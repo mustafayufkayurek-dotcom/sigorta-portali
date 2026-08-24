@@ -16,6 +16,7 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   bash "$SCRIPT_DIR/smoke-acil-netlesen.sh"
   bash "$SCRIPT_DIR/smoke-acil-file-owner.sh"
   bash "$SCRIPT_DIR/smoke-hasar-rapor-revizyon.sh"
+  bash "$SCRIPT_DIR/smoke-outbound-mail.sh"
   bash "$SCRIPT_DIR/smoke-resim-akis.sh"
 fi
 
