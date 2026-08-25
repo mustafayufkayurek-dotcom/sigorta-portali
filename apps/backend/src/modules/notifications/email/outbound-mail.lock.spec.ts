@@ -73,8 +73,11 @@ describe('operasyon giden mail LOCK', () => {
   });
 
   it('full deploy giden mail kilidini çalıştırır', () => {
-    const src = readFileSync(join(here, '../../../../../../scripts/deploy-full-production.sh'), 'utf8');
+    const root = join(here, '../../../../../../');
+    const src = readFileSync(join(root, 'scripts/deploy-full-production.sh'), 'utf8');
     assert.match(src, /smoke-outbound-mail\.sh/);
+    const pkg = readFileSync(join(root, 'package.json'), 'utf8');
+    assert.match(pkg, /"smoke:outbound-mail": "bash scripts\/smoke-outbound-mail\.sh"/);
   });
 
   it('dış onayda rapor durumu mail gittikten sonra yazılır', () => {

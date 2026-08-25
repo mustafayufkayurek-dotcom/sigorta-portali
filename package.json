@@ -15,6 +15,7 @@
     "smoke:acil-file-owner": "bash scripts/smoke-acil-file-owner.sh",
     "smoke:acil-netlesen": "bash scripts/smoke-acil-netlesen.sh",
     "smoke:hasar-rapor-revizyon": "bash scripts/smoke-hasar-rapor-revizyon.sh",
+    "smoke:outbound-mail": "bash scripts/smoke-outbound-mail.sh",
     "smoke:resim-akis": "bash scripts/smoke-resim-akis.sh",
     "clean": "turbo run clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
