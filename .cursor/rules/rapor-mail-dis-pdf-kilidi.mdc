@@ -16,6 +16,7 @@ alwaysApply: true
 3. `SendEmailDto.viewType` iç PDF açmaz.
 4. Panelden PDF indirme (iç görünüm) ayrı kalır; yalnız **mail eki** kilitlidir.
 5. Rapor / dış onay / ayarlar test maili Hasar kutusundan gitmezse **gitti sayılmaz**. SMTP yeşili yetmez.
+6. Gönderim Graph **sendMail**; taslak 403’ü Mail.Send yok diye yazılmaz (`giden-mail-graph-sendmail-kilidi.mdc`).
 
 ## Yasak (açık onay yoksa)
 

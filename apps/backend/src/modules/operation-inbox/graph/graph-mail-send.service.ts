@@ -139,28 +139,58 @@ export class GraphMailSendService {
     const contentType = this.isHtml(trimmed) ? 'HTML' : 'Text';
     const files = attachments ?? [];
     const attachBytes = files.reduce((n, a) => n + (a.content?.length ?? 0), 0);
-    const inlineOk = attachBytes > 0 && attachBytes <= GraphMailSendService.INLINE_ATTACH_MAX_BYTES;
-    const graphAttachments = inlineOk
-      ? files.map((a) => ({
-          '@odata.type': '#microsoft.graph.fileAttachment',
-          name: a.filename,
-          contentType: a.contentType || 'application/octet-stream',
-          contentBytes: a.content.toString('base64'),
-        }))
-      : undefined;
+    const largeAttach = files.length > 0 && attachBytes > GraphMailSendService.INLINE_ATTACH_MAX_BYTES;
+    const graphAttachments =
+      files.length > 0 && !largeAttach
+        ? files.map((a) => ({
+            '@odata.type': '#microsoft.graph.fileAttachment',
+            name: a.filename,
+            contentType: a.contentType || 'application/octet-stream',
+            contentBytes: a.content.toString('base64'),
+          }))
+        : undefined;
+
+    const messagePayload = {
+      subject: subject.trim(),
+      body: { contentType, content: trimmed },
+      toRecipients: recipients.map((address) => ({
+        emailAddress: { address },
+      })),
+      ...(graphAttachments?.length ? { attachments: graphAttachments } : {}),
+    };
+
+    // Mail.Send tek başına /sendMail ister. Taslak oluşturmak Mail.ReadWrite ister;
+    // taslak 403’ü “izin yok” diye Mail.Send ekranına düşürüyordu.
+    if (!largeAttach) {
+      const sendMailUrl = `${this.graphBase}/users/${encodedUser}/sendMail`;
+      const sendMailRes = await firstValueFrom(
+        this.http.post(
+          sendMailUrl,
+          { message: messagePayload, saveToSentItems: true },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+            validateStatus: () => true,
+          },
+        ),
+      );
+      if (sendMailRes.status >= 400) {
+        this.logGraphFailure('sendMail', mailboxAddress, sendMailRes.status, sendMailRes.data);
+        throw this.buildSendError(sendMailRes.status, sendMailRes.data);
+      }
+      this.logger.log(`Graph sendMail sent from ${mailboxAddress} to ${recipients.join(', ')}`);
+      return;
+    }
 
     const createUrl = `${this.graphBase}/users/${encodedUser}/messages`;
     const createRes = await firstValueFrom(
       this.http.post(
         createUrl,
-        {
-          subject: subject.trim(),
-          body: { contentType, content: trimmed },
-          toRecipients: recipients.map((address) => ({
-            emailAddress: { address },
-          })),
-          ...(graphAttachments?.length ? { attachments: graphAttachments } : {}),
-        },
+        messagePayload,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -173,16 +203,13 @@ export class GraphMailSendService {
       ),
     );
     if (createRes.status >= 400 || !createRes.data?.id) {
-      const err = this.buildSendError(createRes.status, createRes.data);
-      this.logger.warn(`Graph draft failed (${mailboxAddress}): ${err.message}`);
-      throw err;
+      this.logGraphFailure('draft', mailboxAddress, createRes.status, createRes.data);
+      throw this.buildSendError(createRes.status, createRes.data, 'draft');
     }
     const messageId = String(createRes.data.id);
 
-    if (files.length && !inlineOk) {
-      for (const file of files) {
-        await this.uploadLargeAttachment(encodedUser, token, messageId, file);
-      }
+    for (const file of files) {
+      await this.uploadLargeAttachment(encodedUser, token, messageId, file);
     }
 
     const sendUrl = `${this.graphBase}/users/${encodedUser}/messages/${messageId}/send`;
@@ -193,9 +220,8 @@ export class GraphMailSendService {
       }),
     );
     if (sendRes.status >= 400) {
-      const err = this.buildSendError(sendRes.status, sendRes.data);
-      this.logger.warn(`Graph sendMail failed (${mailboxAddress}): ${err.message}`);
-      throw err;
+      this.logGraphFailure('send', mailboxAddress, sendRes.status, sendRes.data);
+      throw this.buildSendError(sendRes.status, sendRes.data);
     }
 
     this.logger.log(`Graph sendMail sent from ${mailboxAddress} to ${recipients.join(', ')}`);
@@ -267,7 +293,14 @@ export class GraphMailSendService {
     return /<[a-z][\s\S]*>/i.test(text);
   }
 
-  private buildSendError(status: number, data: unknown): BadRequestException {
+  private logGraphFailure(op: string, mailboxAddress: string, status: number, data: unknown): void {
+    const graphErr = (data as { error?: { message?: string; code?: string } })?.error;
+    this.logger.warn(
+      `Graph ${op} failed (${mailboxAddress}) HTTP ${status} ${graphErr?.code ?? ''} ${graphErr?.message ?? ''}`.trim(),
+    );
+  }
+
+  private buildSendError(status: number, data: unknown, kind: 'send' | 'draft' = 'send'): BadRequestException {
     const graphErr = (data as { error?: { message?: string; code?: string } })?.error;
     const code = graphErr?.code?.toLowerCase() ?? '';
     const msg = graphErr?.message ?? '';
@@ -280,8 +313,13 @@ export class GraphMailSendService {
       || combined.includes('accessdenied')
       || combined.includes('insufficient')
     ) {
+      if (kind === 'draft') {
+        return new BadRequestException(
+          'Büyük ek için kutuya taslak yazılamadı. Azure’da Mail.ReadWrite (Uygulama) ve yönetici onayı gerekir.',
+        );
+      }
       return new BadRequestException(
-        'E-posta gönderme izni yok. Azure AD uygulama kaydına Mail.Send (Uygulama) iznini ekleyin, yönetici onayını (Admin Consent) verin ve birkaç dakika bekleyin. Ayarlar → Entegrasyonlar → Microsoft 365.',
+        'Microsoft Hasar kutusundan göndermeyi reddetti. Azure’da Mail.Send onayı duruyor; Exchange’te bu uygulamanın hasar kutusuna gönderim izni kapalı olabilir.',
       );
     }
     if (status === 404) {

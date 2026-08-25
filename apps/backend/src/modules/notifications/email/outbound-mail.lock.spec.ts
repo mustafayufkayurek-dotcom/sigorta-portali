@@ -37,8 +37,16 @@ describe('operasyon giden mail LOCK', () => {
     assert.match(src, /fileAttachment/);
     assert.match(src, /contentBytes/);
     assert.match(src, /createUploadSession/);
+    assert.match(src, /users\/\$\{encodedUser\}\/sendMail/);
     assert.match(src, /messages\/\$\{messageId\}\/send/);
     assert.match(src, /isOutboundReady/);
+    assert.match(src, /Mail\.Send tek başına/);
+    assert.match(src, /if \(!largeAttach\)/);
+    assert.match(src, /sendMailUrl/);
+    assert.doesNotMatch(
+      src,
+      /E-posta gönderme izni yok\. Azure AD uygulama kaydına Mail\.Send/,
+    );
   });
 
   it('ayarlar test maili SMTP yeşilini gitti saymaz', () => {
