@@ -17,4 +17,7 @@ node --experimental-strip-types --test \
   packages/shared/src/repair-report-item-totals.lock.spec.ts \
   apps/web/src/components/panel/ortak-dosya-kabugu.lock.spec.ts \
   apps/web/src/utils/field-staff-claim-view.lock.spec.ts
+node --experimental-strip-types --test \
+  apps/web/src/components/file-documents/dijital-onay-whatsapp.lock.spec.ts \
+  apps/backend/src/modules/file-documents/dijital-onay-whatsapp.lock.spec.ts
 echo "=== Hasar rapor revizyon kilit: PASS ==="

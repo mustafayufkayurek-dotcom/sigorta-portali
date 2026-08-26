@@ -24,6 +24,11 @@ describe('Hasar dijital onay WhatsApp kilidi', () => {
     assert.match(panel, /function insuredPhoneOf/);
     assert.match(panel, /doc\.whatsappPhone \|\| fallback \|\| doc\.suggestedPhone/);
     assert.match(steps, /defaultPhone=\{claim\.insuredPhone\}/);
+    const evrak = readFileSync(
+      join(here, '../../app/panel/hasar-dosyalari/[id]/_components/tabs/EvraklarTab.tsx'),
+      'utf8',
+    );
+    assert.match(evrak, /defaultPhone=\{claim\?\.insuredPhone/);
     assert.match(service, /resolveInsuredPhone/);
     assert.match(service, /insuredPhone \|\| cf\?\.customer\?\.phone/);
     assert.match(api, /suggestedPhone/);
