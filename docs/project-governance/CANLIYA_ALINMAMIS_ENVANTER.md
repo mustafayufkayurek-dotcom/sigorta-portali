@@ -6,7 +6,7 @@
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
-**Sıradaki canlı paket (Mustafa · 26.08.2026, henüz alınmadı):** Hasar dijital onay WhatsApp — telefon hazır gelir, gönderim sohbeti açar (v541). İK / puantaj bu alıma karışmaz.
+**Sıradaki canlı paket (Mustafa · 26.08.2026, henüz alınmadı):** v541 — Hasar dijital onay WhatsApp; Hasar/Acil ürün durum dili (eski adlar düşer); liste Sıra sütunu; Test Notları kalkar. İşlemsizlik süresi bu pakette yok. İK / puantaj karışmaz.
 
 ---
 
@@ -29,7 +29,10 @@ Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertele
 | B3 | **D255 Sahip ekranları CRUD standardı** | ARCHIV | Tek tip şablon henüz kapanmadı |
 | B4 | **Personel / demirbaş pod tam entegrasyonu** | agreement-hr dalga | İK zimmet — v541’den **sonra**. Bu alıma karışmaz. |
 | B5 | **CRM tam kapsam** | Kurtarma Paketi 1 | Route var; "kısmen geri kazanıldı" — derinlik eksik olabilir |
-| B6 | **Hasar dijital onay WhatsApp** | Mustafa 26.08.2026 | **Sıradaki canlı paket (v541).** Kod + kilit hazır. Sunucu kopyası bekliyor. |
+| B6 | **Hasar dijital onay WhatsApp** | Mustafa 26.08.2026 | **Sıradaki canlı paket (v541)** parçası. Kod + kilit hazır. Sunucu kopyası bekliyor. |
+| B7 | **Hasar / Acil ürün durum dili** | Mustafa 26.08.2026 | v541. Eski adlar (Eksper Atandı, Bütçe…) düşer. Dosya İptal Edildi. Acil: Hizmet Verildi, tespit yok. |
+| B8 | **Liste Sıra sütunu** | Mustafa 26.08.2026 | v541. Hasar ve Acil birikim listesinin son sütunu. |
+| B9 | **Test Notları kaldırıldı** | Mustafa 26.08.2026 | v541. Menü, Ayarlar ve yetkiden kalktı; eski adres panele gider. |
 
 ---
 

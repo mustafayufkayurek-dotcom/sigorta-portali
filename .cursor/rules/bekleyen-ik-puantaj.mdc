@@ -7,7 +7,12 @@ alwaysApply: true
 
 ## Sıradaki alım (henüz sunucuda yok)
 
-**Hasar dijital onay WhatsApp** — sigortalı telefon hazır, gönderim WhatsApp açar. v541. İK karışmaz.
+**v541** — İK karışmaz. İşlemsizlik süresi bu pakette yok (zaten canlıda 30 dk).
+
+1. Hasar dijital onay WhatsApp — sigortalı telefon hazır, gönderim WhatsApp açar
+2. Hasar / Acil ürün durum dili — eski adlar düşer; Dosya İptal Edildi; Acil’de Hizmet Verildi
+3. Hasar ve Acil listesinde Sıra sütunu
+4. Test Notları tüm ekranlardan kalktı
 
 ## Sonra
 

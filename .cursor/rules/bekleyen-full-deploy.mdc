@@ -26,7 +26,12 @@ Canlı: web + backend **v540**. Rollback: web v539 / backend v539.
 
 ## Sıradaki canlı paket (26.08.2026 — henüz alınmadı)
 
-**Hasar dijital onay WhatsApp (v541 adayı):** Sigortalı telefonu kutuda hazır gelir. Gönder deyince WhatsApp açılır. Kilit + smoke kapıda. İK bu alıma karışmaz. Alım: Mac’te `bash scripts/deploy-full-production.sh v541-dijital-onay-whatsapp` veya sunucu anahtarı bu ortama eklenince.
+**v541 adayı** — İK / puantaj / işlemsizlik süresi bu alıma karışmaz. Alım: Mac’te `bash scripts/deploy-full-production.sh v541-dijital-onay-whatsapp` veya sunucu anahtarı bu ortama eklenince.
+
+1. **Hasar dijital onay WhatsApp:** Sigortalı telefonu kutuda hazır gelir. Gönder deyince WhatsApp açılır.
+2. **Hasar / Acil durum dili:** Eski adlar (Eksper Atandı, Bütçe Hazırlanıyor vb.) düşer. Hasar iptali **Dosya İptal Edildi**. Acil’de tespit aşaması yok; **Hizmet Verildi**.
+3. **Liste sıra numarası:** Hasar ve Acil birikim listesinin son sütunu **Sıra**.
+4. **Test Notları:** Tüm ekranlardan kalktı. Eski adres panele yönlendirilir.
 
 ## Sonra (karışmaz)
 
