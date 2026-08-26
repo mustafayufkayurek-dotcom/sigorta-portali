@@ -99,7 +99,7 @@ describe('ürün dili aşama filtresi LOCK', () => {
       ACIL_PRODUCT_STAGE_FILTERS.map((s) => `${s.sequenceNo}. ${s.label}`),
       [
         '1. Yeni İhbar',
-        '2. Hizmet verildi',
+        '2. Hizmet Verildi',
         '3. Dosya Kapatıldı',
         '4. Finansa Aktarıldı',
       ],
@@ -109,7 +109,7 @@ describe('ürün dili aşama filtresi LOCK', () => {
       false,
     );
     assert.equal(EMERGENCY_STATUS_PRODUCT_LABELS.ATANDI, 'Yeni İhbar');
-    assert.equal(EMERGENCY_STATUS_PRODUCT_LABELS.SAHADA, 'Hizmet verildi');
+    assert.equal(EMERGENCY_STATUS_PRODUCT_LABELS.SAHADA, 'Hizmet Verildi');
     const hasarLabels = HASAR_PRODUCT_STAGE_FILTERS.map((s) => s.label).join(' ');
     for (const forbidden of FORBIDDEN_STAFF_CLAIM_STATUS_LABELS) {
       assert.equal(hasarLabels.includes(forbidden), false, forbidden);

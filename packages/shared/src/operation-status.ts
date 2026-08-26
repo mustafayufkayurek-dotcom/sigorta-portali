@@ -41,7 +41,7 @@ export type OperationStageMeta = {
 /**
  * Ürün durum sözlüğü (tek kaynak):
  * Yeni→Yeni İhbar · Atandı→Tespit Aşamasında · Sahada→Onarım Aşamasında ·
- * Acil: Atandı Yeni İhbar’da kalır; Sahada→Hizmet verildi.
+ * Acil: Atandı Yeni İhbar’da kalır; Sahada→Hizmet Verildi.
  * Rapor Yazım Aşamasında · Onay Bekliyor · 72 Saat+→Onay Talep Et ·
  * Finansa Aktarıldı · Çözüldü→Dosya Kapatıldı
  */
@@ -136,7 +136,7 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
 export const EMERGENCY_STATUS_PRODUCT_LABELS: Record<string, string> = {
   GELEN: 'Yeni İhbar',
   ATANDI: 'Yeni İhbar',
-  SAHADA: 'Hizmet verildi',
+  SAHADA: 'Hizmet Verildi',
   COZULDU: 'Dosya Kapatıldı',
   FATURALANDILDI: 'Finansa Aktarıldı',
 };
@@ -353,10 +353,10 @@ export const HASAR_PRODUCT_STAGE_FILTERS: readonly ProductStageFilter[] = [
   { id: 'iptal', sequenceNo: 8, label: 'Dosya İptal Edildi', codes: ['cancelled'] },
 ];
 
-/** Acil kuyruk — tespit yok; Onarım Aşamasında yerine Hizmet verildi. */
+/** Acil kuyruk — tespit yok; Onarım Aşamasında yerine Hizmet Verildi. */
 export const ACIL_PRODUCT_STAGE_FILTERS: readonly ProductStageFilter[] = [
   { id: 'ihbar', sequenceNo: 1, label: 'Yeni İhbar', codes: ['GELEN', 'ATANDI'] },
-  { id: 'hizmet', sequenceNo: 2, label: 'Hizmet verildi', codes: ['SAHADA'] },
+  { id: 'hizmet', sequenceNo: 2, label: 'Hizmet Verildi', codes: ['SAHADA'] },
   { id: 'kapandi', sequenceNo: 3, label: 'Dosya Kapatıldı', codes: ['COZULDU'] },
   { id: 'finans', sequenceNo: 4, label: 'Finansa Aktarıldı', codes: ['FATURALANDILDI'] },
 ];

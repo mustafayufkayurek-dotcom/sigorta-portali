@@ -45,9 +45,9 @@ describe('operation-status mapping', () => {
     ).toBe('Onay Talep Et');
   });
 
-  it('acil ATANDI Yeni İhbar’da kalır; SAHADA Hizmet verildi; COZULDU Dosya Kapatıldı', () => {
+  it('acil ATANDI Yeni İhbar’da kalır; SAHADA Hizmet Verildi; COZULDU Dosya Kapatıldı', () => {
     expect(emergencyStatusProductLabel('ATANDI')).toBe('Yeni İhbar');
-    expect(emergencyStatusProductLabel('SAHADA')).toBe('Hizmet verildi');
+    expect(emergencyStatusProductLabel('SAHADA')).toBe('Hizmet Verildi');
     expect(emergencyStatusProductLabel('COZULDU')).toBe('Dosya Kapatıldı');
   });
 

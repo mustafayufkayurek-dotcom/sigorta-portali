@@ -717,7 +717,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
                 if (e.target.checked) p.onServiceComplete?.(true);
               }}
             />
-            Hizmet verildi
+            Hizmet Verildi
           </label>
           <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
             {p.serviceDone
