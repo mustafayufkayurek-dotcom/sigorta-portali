@@ -56,7 +56,7 @@ export default function AyarlarPage() {
 
         <div className="grid gap-6">
           {SETTINGS_NAV_GROUPS.map((group) => {
-            const hubItems = group.links.filter((item) => !item.requiresTestNotesAccess || showTestNotes);
+            const hubItems = group.links;
             if (hubItems.length === 0) return null;
             return (
               <section key={group.title} className="space-y-4">

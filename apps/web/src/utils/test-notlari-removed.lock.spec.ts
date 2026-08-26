@@ -25,6 +25,10 @@ describe('Test Notları ekranı kaldırıldı LOCK', () => {
     assert.doesNotMatch(nav, /Test Notları/);
     assert.doesNotMatch(nav, /test-notlari-gorev-takip/);
 
+    const ayarlarHub = readRel('app/panel/ayarlar/page.tsx');
+    assert.doesNotMatch(ayarlarHub, /requiresTestNotesAccess/);
+    assert.doesNotMatch(ayarlarHub, /showTestNotes/);
+
     const screens = readRel('utils/screen-permissions.ts');
     const defaults = readRel('utils/screen-permissions-defaults.ts');
     assert.doesNotMatch(screens, /test_notes_admin/);
