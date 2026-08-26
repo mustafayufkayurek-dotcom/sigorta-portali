@@ -20,6 +20,10 @@ Canlı: web + backend **v540**. Rollback: web v539 / backend v539.
 9. Acil Sunum özeti yazarken boşluk durur. Kilit spec + canlı smoke; bu kırılma geri gelmez.
 10. Onaya Gönder / rapor maili Graph **sendMail** gider. Taslak açılmaz. Azure’da Mail.Send dururken “Mail.Send ekleyin” yazılmaz.
 
-## Canlıda yok
+## Canlıda yok (v540)
 
 İK / puantaj bu pakette yok. Hasar rapor tipi (Konut/Bina/Eşya) bu pakette yok.
+
+## Sıradaki canlı paket (26.08.2026 — henüz alınmadı)
+
+**İK personel özlük:** Personel Ekle + zimmet aynı kayıtta. Puantaj bu pakete karışmaz. Alım yalnız Mustafa «canlıya al» deyince.

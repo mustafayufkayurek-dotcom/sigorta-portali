@@ -34,6 +34,10 @@ import {
 } from './hr-work-hours.helper';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
+import {
+  belongsOnHrPersonnelRoster,
+  HR_ROSTER_ROLE_CODES,
+} from '@sigorta/shared';
 
 type AuthUser = {
   id?: string;
@@ -263,13 +267,19 @@ export class HrService {
     }
   }
 
-  async listEmployeeProfiles(user: AuthUser) {
-    this.assertCanSupervise(user);
-    const year = new Date().getFullYear();
+  private async listRosterEmployeeProfiles(year: number) {
     const profiles = await this.prisma.hrEmployeeProfile.findMany({
-      where: { status: 'active' },
+      where: { status: 'active', personnelNo: { not: null } },
       include: {
-        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: { select: { id: true, code: true, name: true } },
+          },
+        },
         department: { select: { id: true, name: true } },
         leaveBalances: {
           where: { leaveType: HR_LEAVE_TYPE.ANNUAL, year },
@@ -278,6 +288,21 @@ export class HrService {
       },
       orderBy: [{ user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
     });
+    return profiles.filter((p) =>
+      Boolean(p.personnelNo?.trim())
+      && belongsOnHrPersonnelRoster({
+        firstName: p.user.firstName,
+        lastName: p.user.lastName,
+        email: p.user.email,
+        roleCode: p.user.role?.code,
+      }),
+    );
+  }
+
+  async listEmployeeProfiles(user: AuthUser) {
+    this.assertCanSupervise(user);
+    const year = new Date().getFullYear();
+    const profiles = await this.listRosterEmployeeProfiles(year);
 
     return profiles.map((p) => {
       const entitlement = annualLeaveEntitlementDays(p.hireDate);
@@ -308,31 +333,15 @@ export class HrService {
   async listUsersWithoutProfile(user: AuthUser) {
     this.assertCanSupervise(user);
     const linked = await this.prisma.hrEmployeeProfile.findMany({
+      where: { personnelNo: { not: null } },
       select: { userId: true },
     });
     const linkedIds = linked.map((l) => l.userId);
-    return this.prisma.user.findMany({
+    const users = await this.prisma.user.findMany({
       where: {
         id: { notIn: linkedIds.length ? linkedIds : ['__none__'] },
         status: 'active',
-        role: {
-          code: {
-            in: [
-              'admin',
-              'ADMIN',
-              'manager',
-              'MANAGER',
-              'office_staff',
-              'OFFICE_STAFF',
-              'field_staff',
-              'FIELD_STAFF',
-              'finance',
-              'FINANCE',
-              'accountant',
-              'ACCOUNTANT',
-            ],
-          },
-        },
+        role: { code: { in: [...HR_ROSTER_ROLE_CODES] } },
       },
       select: {
         id: true,
@@ -344,6 +353,14 @@ export class HrService {
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       take: 200,
     });
+    return users.filter((u) =>
+      belongsOnHrPersonnelRoster({
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u.email,
+        roleCode: u.role?.code,
+      }),
+    );
   }
 
   /** Ay sonu toplu rapor — dönem içinde onaylı izinler (izin formu eki için). */
@@ -373,7 +390,7 @@ export class HrService {
   async listActiveEmployeeProfilesForPeriod(user: AuthUser) {
     this.assertCanSupervise(user);
     return this.prisma.hrEmployeeProfile.findMany({
-      where: { status: 'active' },
+      where: { personnelNo: { not: null }, status: 'active' },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, email: true } },
         department: { select: { id: true, name: true } },
@@ -476,23 +493,7 @@ export class HrService {
     });
 
     const [profiles, mySummary] = await Promise.all([
-      this.prisma.hrEmployeeProfile.findMany({
-        where: { status: 'active' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              role: { select: { name: true } },
-            },
-          },
-          department: { select: { id: true, name: true } },
-          leaveBalances: { where: { leaveType: HR_LEAVE_TYPE.ANNUAL, year: targetDate.getUTCFullYear() }, take: 1 },
-        },
-        orderBy: [{ user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
-      }),
+      this.listRosterEmployeeProfiles(targetDate.getUTCFullYear()),
       this.getSummary(user),
     ]);
 

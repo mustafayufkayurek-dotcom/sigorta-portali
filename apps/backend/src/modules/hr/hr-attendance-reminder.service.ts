@@ -4,6 +4,7 @@ import { PlatformModulesService, PLATFORM_MODULE_CODES } from '@/modules/platfor
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { HrService } from './hr.service';
+import { belongsOnHrPersonnelRoster } from '@sigorta/shared';
 
 type AuthUser = {
   id?: string;
@@ -123,12 +124,30 @@ export class HrAttendanceReminderService {
     let financeSent = 0;
 
     const profiles = await this.prisma.hrEmployeeProfile.findMany({
-      where: { status: 'active' },
-      select: { userId: true },
+      where: { status: 'active', personnelNo: { not: null } },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: { select: { code: true } },
+          },
+        },
+      },
     });
+    const rosterProfiles = profiles.filter((p) =>
+      belongsOnHrPersonnelRoster({
+        firstName: p.user.firstName,
+        lastName: p.user.lastName,
+        email: p.user.email,
+        roleCode: p.user.role?.code,
+      }),
+    );
 
     for (const period of periods) {
-      for (const profile of profiles) {
+      for (const profile of rosterProfiles) {
         const personal = await this.getPersonalMonthClose({ id: profile.userId }, period.year, period.month);
         if (!personal.needsAttention) continue;
 
@@ -274,15 +293,33 @@ export class HrAttendanceReminderService {
 
   private async aggregateMonthClose(year: number, month: number): Promise<MonthCloseAggregate & { needsAttention: boolean }> {
     const profiles = await this.prisma.hrEmployeeProfile.findMany({
-      where: { status: 'active' },
-      select: { userId: true },
+      where: { status: 'active', personnelNo: { not: null } },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: { select: { code: true } },
+          },
+        },
+      },
     });
+    const rosterProfiles = profiles.filter((p) =>
+      belongsOnHrPersonnelRoster({
+        firstName: p.user.firstName,
+        lastName: p.user.lastName,
+        email: p.user.email,
+        roleCode: p.user.role?.code,
+      }),
+    );
 
     let pendingDailyConfirmEmployees = 0;
     let missingMonthlyConfirm = 0;
     let missingLock = 0;
 
-    for (const profile of profiles) {
+    for (const profile of rosterProfiles) {
       try {
         const attendance = await this.hrService.listAttendance({ id: profile.userId }, year, month);
         if (attendance.summary.pendingConfirmationDays > 0) pendingDailyConfirmEmployees += 1;
@@ -302,7 +339,7 @@ export class HrAttendanceReminderService {
     );
 
     return {
-      totalEmployees: profiles.length,
+      totalEmployees: rosterProfiles.length,
       pendingDailyConfirmEmployees,
       missingMonthlyConfirm,
       missingLock,

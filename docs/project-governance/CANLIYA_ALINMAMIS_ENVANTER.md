@@ -1,10 +1,12 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
-**Tarih:** 28 Haziran 2026  
-**Referans canlı sürüm:** Web v29 + Backend v27  
+**Tarih:** 28 Haziran 2026 (güncelleme 26.08.2026)  
+**Referans canlı sürüm:** Web + backend **v540** (Haziran satırları tarihsel)  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir. Ayarlar oturumu (#1–#18 + v26–v29) **canlıda ve kapalı**.
+
+**Sıradaki canlı paket (Mustafa · 26.08.2026, henüz alınmadı):** İK personel özlük — Personel Ekle + zimmet aynı kayıtta. Puantaj yok. Alım yalnız «canlıya al» ile.
 
 ---
 
@@ -25,7 +27,7 @@ Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertele
 | B1 | **D276 Finans UX olgunlaştırması** | ARCHIV envanter | Finans rotaları var; D276'daki özel UX ayrı paket |
 | B2 | **D278 MinIO canlıya alma** | ARCHIV | Hazır denmiş, deploy yok |
 | B3 | **D255 Sahip ekranları CRUD standardı** | ARCHIV | Tek tip şablon henüz kapanmadı |
-| B4 | **Personel / demirbaş pod tam entegrasyonu** | agreement-hr dalga | Migration iskelet var, UI bağlantısı sonra |
+| B4 | **Personel / demirbaş pod tam entegrasyonu** | agreement-hr dalga | **26.08.2026:** sıradaki canlı paket adayı — Personel Ekle + zimmet aynı kayıtta. Henüz deploy yok. Puantaj ayrı. |
 | B5 | **CRM tam kapsam** | Kurtarma Paketi 1 | Route var; "kısmen geri kazanıldı" — derinlik eksik olabilir |
 
 ---
@@ -47,8 +49,9 @@ Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertele
 2. Resmi kabul klasörü (screenshot)
 3. B paketlerinden hangisinin hâlâ geçerli olduğuna Mustafa kararı
 
-**Dalga 4 — İlk canlı aday (tek paket, web-only tercih):**
-- B1 Finans UX **veya** B3 Sahip CRUD — ikisi birden değil
+**Dalga 4 — İlk canlı aday (tek paket):**
+- **26.08.2026 sırası:** B4 İK personel + zimmet (puantaj yok)
+- Eski not (Haziran): B1 Finans UX **veya** B3 Sahip CRUD — ikisi birden değil
 - Protokol: pre-deploy-safety → rsync → build → smoke → Mustafa PASS
 
 ---

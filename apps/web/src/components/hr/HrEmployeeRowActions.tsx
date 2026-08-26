@@ -8,6 +8,7 @@ import {
   Mail,
   MessageCircle,
   MoreVertical,
+  Package,
 } from 'lucide-react';
 
 export type HrEmployeeRowActionsProps = {
@@ -19,6 +20,7 @@ export type HrEmployeeRowActionsProps = {
   canOpenAttendance?: boolean;
   onOpenDossier: () => void;
   onOpenDocuments: () => void;
+  onOpenAssets?: () => void;
   onEdit?: () => void;
   onOpenAttendance?: () => void;
 };
@@ -42,6 +44,7 @@ export function HrEmployeeRowActions({
   canOpenAttendance = false,
   onOpenDossier,
   onOpenDocuments,
+  onOpenAssets,
   onEdit,
   onOpenAttendance,
 }: HrEmployeeRowActionsProps) {
@@ -144,7 +147,13 @@ export function HrEmployeeRowActions({
                   onOpenAttendance?.();
                 })
               : null}
-            {!canEdit && !canOpenAttendance ? (
+            {onOpenAssets
+              ? menuItem('Zimmet', () => {
+                  setOpen(false);
+                  onOpenAssets();
+                })
+              : null}
+            {!canEdit && !canOpenAttendance && !onOpenAssets ? (
               <p className="px-3 py-2 text-content-tertiary">Başka işlem yok</p>
             ) : null}
           </div>,
@@ -177,6 +186,17 @@ export function HrEmployeeRowActions({
       >
         <FileText className="h-3.5 w-3.5" aria-hidden />
       </button>
+      {onOpenAssets ? (
+        <button
+          type="button"
+          title="Zimmet"
+          aria-label="Zimmet"
+          className={iconBtnClass}
+          onClick={onOpenAssets}
+        >
+          <Package className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      ) : null}
       {mailHref ? (
         <a
           href={mailHref}

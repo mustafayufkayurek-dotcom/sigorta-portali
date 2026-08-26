@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApiQuery, useApiMutation } from '@/hooks/useApi';
 import { usePanelRoleCode } from '@/hooks/usePanelRole';
@@ -16,6 +16,10 @@ import { AttendanceMonthCloseBanner } from '@/components/hr/AttendanceMonthClose
 import { AttendanceSignatureModal } from '@/components/hr/AttendanceSignatureModal';
 import { AttendanceDayEndBanner } from '@/components/hr/AttendanceDayEndBanner';
 import { AdminAttendanceSupervisionPanel } from '@/components/hr/AdminAttendanceSupervisionPanel';
+import {
+  HrEmployeeDossierDrawer,
+  type RosterEmployee,
+} from '@/components/hr/HrEmployeeDossierDrawer';
 import { WorkHoursPreviewNote } from '@/components/hr/WorkHoursPreviewNote';
 import { PuantajProcessGuide } from '@/components/hr/PuantajProcessGuide';
 import { PerformanceManagementPanel } from '@/components/hr/PerformanceManagementPanel';
@@ -262,6 +266,7 @@ function minutesToHours(minutes: number | null | undefined) {
 export default function PersonelOzlukPage() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const roleCode = usePanelRoleCode();
   const canApproveByRole =
@@ -287,10 +292,20 @@ export default function PersonelOzlukPage() {
   const [bulkConfirmLoading, setBulkConfirmLoading] = useState(false);
   const [signatureModal, setSignatureModal] = useState<'month' | 'lock' | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [zimmetRightOpen, setZimmetRightOpen] = useState(false);
   const [expandedLeaveId, setExpandedLeaveId] = useState<string | null>(null);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
+    if (searchParams.get('dosya')) {
+      setZimmetRightOpen(false);
+    } else if (
+      searchParams.get('zimmet') === '1' ||
+      searchParams.get('sekme') === 'zimmet' ||
+      tab === 'assets'
+    ) {
+      setZimmetRightOpen(true);
+    }
     if (tab === 'supervision') {
       setActiveTab('summary');
       setPageSection('hr');
@@ -300,7 +315,6 @@ export default function PersonelOzlukPage() {
       tab === 'leave-approvals' ||
       tab === 'summary' ||
       tab === 'documents' ||
-      tab === 'assets' ||
       tab === 'performance'
     ) {
       setActiveTab(tab);
@@ -310,7 +324,7 @@ export default function PersonelOzlukPage() {
     const m = Number(searchParams.get('month'));
     if (y >= 2000 && y <= 2100) setYear(y);
     if (m >= 1 && m <= 12) setMonth(m);
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   const { data: summaryRaw, isLoading: summaryLoading, isError: summaryError } = useApiQuery<HrSummary>(
     ['hr-summary'],
@@ -876,9 +890,15 @@ export default function PersonelOzlukPage() {
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => {
+                  if (tab.key === 'assets') {
+                    setZimmetRightOpen(true);
+                    return;
+                  }
+                  setActiveTab(tab.key);
+                }}
                 className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === tab.key
+                  activeTab === tab.key || (tab.key === 'assets' && zimmetRightOpen)
                     ? 'border-brand-600 text-brand-600'
                     : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-200'
                 }`}
@@ -918,6 +938,16 @@ export default function PersonelOzlukPage() {
                     preview={designPreview}
                     canAddEmployee={designPreview || isAdminRole || roleCode === 'manager'}
                     canManageDocuments={canManagePersonnelDocuments || designPreview}
+                    initialDossierId={searchParams.get('dosya')}
+                    initialDossierTab={
+                      searchParams.get('sekme') === 'assets'
+                        ? 'assets'
+                        : searchParams.get('sekme') === 'documents'
+                          ? 'documents'
+                          : 'summary'
+                    }
+                    zimmetPageOpen={zimmetRightOpen}
+                    onZimmetPageClose={() => setZimmetRightOpen(false)}
                     onOpenEmployeeAttendance={(employee) => {
                       if (designPreview) return;
                       setSelectedEmployeeId(employee.id);
@@ -996,17 +1026,15 @@ export default function PersonelOzlukPage() {
                       </div>
                     )}
                   </div>
+                  {summary?.profile?.id ? (
+                    <HrAssignedAssetsPanel
+                      preview={designPreview}
+                      canAdd={false}
+                      employeeProfileId={summary.profile.id}
+                      employeeName={selfDisplayName}
+                    />
+                  ) : null}
                 </>
-              )}
-              {canSupervise && (
-                <HrAssignedAssetsPanel
-                  preview={designPreview}
-                  canAdd={!designPreview}
-                  onOpenEmployee={(profileId) => {
-                    setSelectedEmployeeId(profileId);
-                    setActiveTab('documents');
-                  }}
-                />
               )}
             </div>
           )}
@@ -1101,25 +1129,6 @@ export default function PersonelOzlukPage() {
                   )}
                 </>
               )}
-            </div>
-          )}
-
-          {activeTab === 'assets' && (
-            <div className="space-y-4">
-              <HrAssignedAssetsPanel
-                preview={designPreview}
-                employeeProfileId={canSupervise ? undefined : summary?.profile?.id}
-                employeeName={
-                  canSupervise
-                    ? undefined
-                    : selfDisplayName
-                }
-                canAdd={canSupervise && !designPreview}
-                onOpenEmployee={(profileId) => {
-                  setSelectedEmployeeId(profileId);
-                  setActiveTab('documents');
-                }}
-              />
             </div>
           )}
 
@@ -1517,6 +1526,29 @@ export default function PersonelOzlukPage() {
           )}
         </div>
       </div>
+
+      {!canSupervise && zimmetRightOpen ? (
+        <HrEmployeeDossierDrawer
+          open
+          zimmetPage
+          employee={
+            summary?.profile?.id
+              ? ({
+                  id: summary.profile.id,
+                  fullName: selfDisplayName,
+                  department: summary.profile.department?.name ?? '—',
+                  roleLabel: 'Personel',
+                  remainingLeaveDays: summary.leaveBalance?.remainingDays ?? 0,
+                  attendanceStatus: 'ok',
+                  attendanceLabel: '—',
+                } satisfies RosterEmployee)
+              : null
+          }
+          preview={designPreview}
+          canManageDocuments={false}
+          onClose={() => setZimmetRightOpen(false)}
+        />
+      ) : null}
 
       <AttendanceSignatureModal
         open={signatureModal !== null}

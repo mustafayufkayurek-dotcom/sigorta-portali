@@ -17,7 +17,6 @@ import {
   DAY_END_SUPERVISION_PREVIEW,
   type DayEndSupervisionPreview,
 } from './attendance-day-end.preview';
-import { PersonelEklePanel } from './PersonelEklePanel';
 import {
   dayEndToRosterPartial,
   HrEmployeeDossierDrawer,
@@ -25,6 +24,7 @@ import {
   type RosterEmployee,
 } from './HrEmployeeDossierDrawer';
 import { HrEmployeeRowActions } from './HrEmployeeRowActions';
+import type { AssignedAssetPreview } from './HrAssignedAssetsPanel';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
@@ -97,7 +97,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'izinKalan', label: 'Kalan', defaultWidth: 72, minWidth: 64 },
   { id: 'bugunDevam', label: 'Bugün Devam', defaultWidth: 130, minWidth: 110 },
   { id: 'evrak', label: 'Evrak', defaultWidth: 80, minWidth: 64 },
-  { id: 'zimmet', label: 'Zimmet', defaultWidth: 72, minWidth: 64, defaultVisible: false },
+  { id: 'zimmet', label: 'Zimmet', defaultWidth: 168, minWidth: 120 },
   {
     id: 'actions',
     label: 'İşlemler',
@@ -168,7 +168,7 @@ function rosterSortValue(row: RosterEmployee, key: string): string | number | nu
     case 'evrak':
       return row.documentsLabel ?? '';
     case 'zimmet':
-      return row.assetsCount ?? -1;
+      return row.assetsLabel ?? row.assetsCount ?? '';
     default:
       return '';
   }
@@ -258,10 +258,26 @@ type Props = {
   preview?: boolean;
   canAddEmployee?: boolean;
   canManageDocuments?: boolean;
+  initialDossierId?: string | null;
+  initialDossierTab?: DossierTab;
+  zimmetPageOpen?: boolean;
+  onZimmetPageClose?: () => void;
   onOpenEmployeeAttendance?: (employee: { id: string; fullName: string }) => void;
   /** Personel adına tıklanınca izin / işlem arşivi */
   onOpenEmployeeArchive?: (employee: { id: string; fullName: string }) => void;
 };
+
+function zimmetHomepageLabel(assets: AssignedAssetPreview[], employeeId: string): {
+  assetsCount: number;
+  assetsLabel: string;
+} {
+  const mine = assets.filter((a) => a.employeeProfileId === employeeId);
+  if (mine.length === 0) return { assetsCount: 0, assetsLabel: 'Yok' };
+  if (mine.length === 1) {
+    return { assetsCount: 1, assetsLabel: mine[0].name || `${mine[0].brand} ${mine[0].model}`.trim() };
+  }
+  return { assetsCount: mine.length, assetsLabel: `${mine.length} kalem` };
+}
 
 /**
  * Kadro Özeti — izleme penceresi + personel listesi + özlük paneli.
@@ -270,13 +286,18 @@ export function AdminAttendanceSupervisionPanel({
   preview = false,
   canAddEmployee = true,
   canManageDocuments = true,
+  initialDossierId = null,
+  initialDossierTab = 'summary',
+  zimmetPageOpen = false,
+  onZimmetPageClose,
   onOpenEmployeeAttendance,
   onOpenEmployeeArchive,
 }: Props) {
   const { showToast } = useToast();
-  const tableColumns = usePanelTableColumns('table-cols:hr-kadro-ozeti-v5', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:hr-kadro-ozeti-v6', TABLE_COLUMNS);
   const [realData, setRealData] = useState<DayEndSupervisionPreview | null>(null);
   const [apiEmployees, setApiEmployees] = useState<EmployeeApiRow[]>([]);
+  const [apiAssets, setApiAssets] = useState<AssignedAssetPreview[]>([]);
   const [loading, setLoading] = useState(!preview);
   const [loadError, setLoadError] = useState(false);
   const [mailSending, setMailSending] = useState(false);
@@ -289,14 +310,29 @@ export function AdminAttendanceSupervisionPanel({
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [dossierId, setDossierId] = useState<string | null>(null);
   const [dossierTab, setDossierTab] = useState<DossierTab>('summary');
+  const [zimmetRequired, setZimmetRequired] = useState(false);
+  const [pendingEmployee, setPendingEmployee] = useState<RosterEmployee | null>(null);
   const [rosterVersion, setRosterVersion] = useState(0);
 
   const openDossier = (id: string, tab: DossierTab = 'summary') => {
+    setAddOpen(false);
+    setEditUserId(null);
     setDossierTab(tab);
     setDossierId(id);
   };
 
   const reload = () => setRosterVersion((v) => v + 1);
+
+  useEffect(() => {
+    if (!zimmetPageOpen) return;
+    setAddOpen(false);
+    setDossierId(null);
+  }, [zimmetPageOpen]);
+
+  useEffect(() => {
+    if (!initialDossierId || zimmetPageOpen) return;
+    openDossier(initialDossierId, initialDossierTab);
+  }, [initialDossierId, initialDossierTab, zimmetPageOpen]);
 
   useEffect(() => {
     if (preview) return;
@@ -306,11 +342,13 @@ export function AdminAttendanceSupervisionPanel({
     Promise.all([
       apiClient.get<DayEndSupervisionPreview>('hr/attendance/day-end-summary'),
       apiClient.get<EmployeeApiRow[]>('hr/employees'),
+      apiClient.get<AssignedAssetPreview[]>('hr/assets'),
     ])
-      .then(([dayEnd, emp]) => {
+      .then(([dayEnd, emp, assets]) => {
         if (!alive) return;
         setRealData(dayEnd);
         setApiEmployees(Array.isArray(emp) ? emp : []);
+        setApiAssets(Array.isArray(assets) ? assets : []);
       })
       .catch(() => {
         if (!alive) return;
@@ -357,6 +395,7 @@ export function AdminAttendanceSupervisionPanel({
           documentsLabel: idx % 3 === 0 ? 'Eksik' : 'Tamam',
           missingDocsCount: idx % 3 === 0 ? 2 + (idx % 2) : 0,
           assetsCount: idx % 2 === 0 ? 2 : 1,
+          assetsLabel: idx % 2 === 0 ? '2 kalem' : 'Cep Telefonu',
         };
       });
     }
@@ -394,7 +433,7 @@ export function AdminAttendanceSupervisionPanel({
             usedLeaveDays: row.leaveBalance?.usedDays ?? 0,
             pendingLeaveDays: row.leaveBalance?.pendingDays ?? 0,
             documentsLabel: '—',
-            assetsCount: null,
+            ...zimmetHomepageLabel(apiAssets, row.id),
           };
         }
         return {
@@ -423,7 +462,7 @@ export function AdminAttendanceSupervisionPanel({
           attendanceStatus: 'ok' as const,
           attendanceLabel: '—',
           documentsLabel: '—',
-          assetsCount: null,
+          ...zimmetHomepageLabel(apiAssets, row.id),
         };
       });
     }
@@ -432,9 +471,9 @@ export function AdminAttendanceSupervisionPanel({
       ...dayEndToRosterPartial(e),
       hireDateLabel: '—',
       documentsLabel: '—',
-      assetsCount: null,
+      ...zimmetHomepageLabel(apiAssets, e.id),
     }));
-  }, [apiEmployees, data, preview]);
+  }, [apiEmployees, apiAssets, data, preview]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('tr-TR');
@@ -456,6 +495,12 @@ export function AdminAttendanceSupervisionPanel({
   );
 
   const selected = roster.find((e) => e.id === dossierId) ?? null;
+
+  useEffect(() => {
+    if (selected && pendingEmployee && selected.id === pendingEmployee.id) {
+      setPendingEmployee(null);
+    }
+  }, [selected, pendingEmployee]);
 
   const leaveProxyHint = useMemo(() => {
     const onLeave = roster.filter((e) => e.attendanceStatus === 'on_leave');
@@ -561,12 +606,9 @@ export function AdminAttendanceSupervisionPanel({
   };
 
   const openAdd = () => {
+    setDossierId(null);
     setEditUserId(null);
-    setAddOpen(true);
-  };
-
-  const openEdit = (userId?: string) => {
-    setEditUserId(userId ?? null);
+    setZimmetRequired(false);
     setAddOpen(true);
   };
 
@@ -664,8 +706,16 @@ export function AdminAttendanceSupervisionPanel({
         );
       case 'zimmet':
         return (
-          <PanelTableTd colId="zimmet" align="right" className="px-4 py-3 tabular-nums text-content-secondary">
-            {row.assetsCount == null ? '—' : row.assetsCount}
+          <PanelTableTd colId="zimmet" className="px-4 py-3 text-content-secondary">
+            <button
+              type="button"
+              className={`truncate text-left text-sm ${
+                row.assetsCount ? 'text-content-primary hover:text-brand-700' : 'text-content-tertiary hover:text-brand-700'
+              }`}
+              onClick={() => openDossier(row.id, 'assets')}
+            >
+              {row.assetsLabel ?? (row.assetsCount == null ? '—' : String(row.assetsCount))}
+            </button>
           </PanelTableTd>
         );
       case 'actions':
@@ -689,9 +739,15 @@ export function AdminAttendanceSupervisionPanel({
               canOpenAttendance={Boolean(onOpenEmployeeAttendance)}
               onOpenDossier={() => openDossier(row.id, 'summary')}
               onOpenDocuments={() => openDossier(row.id, 'documents')}
+              onOpenAssets={() => openDossier(row.id, 'assets')}
               onEdit={
                 canAddEmployee && row.userId
-                  ? () => openEdit(row.userId!)
+                  ? () => {
+                      setAddOpen(false);
+                      setEditUserId(row.userId!);
+                      setDossierTab('summary');
+                      setDossierId(row.id);
+                    }
                   : undefined
               }
               onOpenAttendance={
@@ -903,32 +959,37 @@ export function AdminAttendanceSupervisionPanel({
         />
       ) : null}
 
-      <PersonelEklePanel
-        open={addOpen}
-        onClose={() => {
-          setAddOpen(false);
-          setEditUserId(null);
-        }}
-        preview={preview}
-        initialUserId={editUserId}
-        onSaved={(saved) => {
-          reload();
-          if (!saved.keepOpen) {
-            openDossier(saved.profileId, 'summary');
-          }
-          showToast('success', `${saved.fullName} özlük kartı kaydedildi`);
-        }}
-      />
-
       <HrEmployeeDossierDrawer
-        open={Boolean(dossierId && selected)}
-        employee={selected}
+        open={
+          addOpen ||
+          zimmetPageOpen ||
+          Boolean(dossierId && (selected || pendingEmployee))
+        }
+        createMode={addOpen}
+        zimmetPage={zimmetPageOpen && !addOpen && !dossierId}
+        employee={selected ?? pendingEmployee}
         preview={preview}
         canManageDocuments={canManageDocuments}
+        canAddEmployee={canAddEmployee}
+        editUserId={editUserId}
+        zimmetRequired={zimmetRequired}
         initialTab={dossierTab}
-        onClose={() => setDossierId(null)}
+        onClose={() => {
+          setAddOpen(false);
+          setDossierId(null);
+          setEditUserId(null);
+          setZimmetRequired(false);
+          setPendingEmployee(null);
+          onZimmetPageClose?.();
+        }}
+        onCreateSaved={(saved) => {
+          reload();
+          if (!saved.keepOpen) setAddOpen(false);
+        }}
+        onZimmetSaved={() => setZimmetRequired(false)}
         onOpenFullAttendance={(emp) => {
           setDossierId(null);
+          setAddOpen(false);
           onOpenEmployeeAttendance?.({ id: emp.id, fullName: emp.fullName });
         }}
       />

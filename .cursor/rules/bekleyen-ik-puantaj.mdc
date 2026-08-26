@@ -1,16 +1,18 @@
 ---
-description: İK / puantaj ve diğer sohbet işleri — canlı Hasar paketi dışında bekliyor
+description: İK personel+zimmet sıradaki canlı paket; puantaj ayrı
 alwaysApply: true
 ---
 
-# Bekleyen iş (canlı paket değil)
+# İK — sıradaki canlı paket (26.08.2026)
 
-Mustafa (23.08.2026): Hasar planlayıcı canlıya giderken bunlar **hatırlatılır**, bu deploy’a karışmaz.
+Mustafa (26.08.2026): **Personel Ekle + aynı kayıtta zimmet** bir sonraki canlı pakete alındı. Henüz sunucuya gitmedi. Hasar/Acil v540 paketine karışmaz.
 
-## Ayrı duran sohbet işleri
+## Sıradaki canlı paket (aday)
 
-1. **İK / personel özlük** — zimmet, özlük evrak, yönetim ekranı
-2. **Puantaj** — takvim renkleri, bekleyenleri onayla, ay özeti, mesai saati denetimi
-3. Diğer sohbetlerde kalan İK/dashboard işi — Hasar dosya paketine yapıştırılmaz
+1. **İK / personel özlük** — kadro, Personel Ekle, zimmet aynı kayıtta, özlük dosyası
+2. Deploy yalnız Mustafa «canlıya al» deyince; kirli ağaç / WIP rsync yok
 
-Canlı Hasar işi bitince Mustafa’ya sor: bu pakete geçilsin mi?
+## Hâlâ ayrı (bu pakete yapıştırılmaz)
+
+1. **Puantaj** — takvim renkleri, bekleyenleri onayla, ay özeti, mesai saati denetimi
+2. Diğer sohbetlerde kalan dashboard işi — Hasar dosya paketine yapıştırılmaz
