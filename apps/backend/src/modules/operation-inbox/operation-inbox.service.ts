@@ -35,7 +35,7 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
-import { isExpertFirmCustomer, resolveInsuredPhoneForInbox } from '@sigorta/shared';
+import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -648,7 +648,7 @@ export class OperationInboxService {
     const insuredName = this.resolveInsuredName(dto.insuredName, extracted, message.fromName, message.fromAddress);
     const insuredPhone = dto.insuredPhone?.trim() || extracted.phone?.trim() || undefined;
     const fileNo = await this.resolveUniqueFileNo(
-      dto.fileNo?.trim() || extracted.fileNo,
+      this.requireInboundFileNo(message, extracted, dto.fileNo, dto.policyNo),
       () => this.generateClaimFileNo(),
     );
     const insuranceCompanyId = await this.resolveInsuranceCompanyId(
@@ -671,14 +671,15 @@ export class OperationInboxService {
       dto.claimNo?.trim()
       || extracted.claimNo?.trim()
       || fileNo;
-    const propertyAddressText =
+    const propertyAddressText = stripInboundAddressPollution(
       dto.insuredAddress?.trim()
       || extracted.address?.trim()
       || (await this.routingService.resolveAddressFromExistingFiles(
         policyNo !== 'Belirtilmedi' ? policyNo : extracted.policyNo,
         fileNo,
       ))
-      || undefined;
+      || '',
+    ) || undefined;
     const { city, district } = await resolveCityDistrictFromAddress(
       this.prisma,
       propertyAddressText,
@@ -819,22 +820,25 @@ export class OperationInboxService {
 
     const extracted = this.enrichExtracted(message, this.parseExtracted(message.aiExtractedJson));
     const fileNo = await this.resolveUniqueFileNo(
-      dto.fileNo?.trim() || extracted.fileNo,
+      this.requireInboundFileNo(message, extracted, dto.fileNo, dto.policyNo),
       () => this.generateEmergencyFileNo(),
     );
     const customerName =
       this.resolveInsuredName(dto.insuredName, extracted, message.fromName, message.fromAddress)
       || 'Belirtilmemiş';
     const customerPhone = dto.insuredPhone?.trim() || extracted.phone?.trim() || undefined;
-    let address = dto.insuredAddress?.trim() || extracted.address?.trim() || '';
+    let address = stripInboundAddressPollution(
+      dto.insuredAddress?.trim() || extracted.address?.trim() || '',
+    );
     if (!address || address === 'Belirtilmemiş') {
       const inferred = await this.routingService.resolveAddressFromExistingFiles(
         dto.policyNo?.trim() || extracted.policyNo,
         dto.fileNo?.trim() || extracted.fileNo,
       );
-      if (inferred?.trim()) address = inferred.trim();
+      if (inferred?.trim()) address = stripInboundAddressPollution(inferred.trim());
     }
     if (!address) address = 'Belirtilmemiş';
+    const { city, district } = await resolveCityDistrictFromAddress(this.prisma, address);
     const issueType = (() => {
       const canonical = sanitizeInboundLossType(
         dto.lossType?.trim() || extracted.lossType,
@@ -879,6 +883,8 @@ export class OperationInboxService {
         customerId: assistantCustomerId,
         fileNo,
         address,
+        city: city ?? undefined,
+        district: district ?? undefined,
         issueType,
         urgency,
         fileDate: (message.receivedAt ?? new Date()).toISOString(),
@@ -1142,17 +1148,52 @@ export class OperationInboxService {
         bodyText: bodyTextForPhone,
       }) ?? null;
     const address = heuristic.address?.trim() || extracted.address?.trim() || null;
+    const resolvedFileNo = resolveInboundFileNo({
+      bodyFileNo: extracted.fileNo?.trim() || heuristic.fileNo,
+      insurer: heuristic.insurer,
+      subject: message.subject,
+      policyNo: extracted.policyNo?.trim() || heuristic.policyNo,
+      extraText: [message.bodyText, message.bodyPreview].filter(Boolean).join('\n'),
+    });
     return {
       ...extracted,
       customerName: extracted.customerName?.trim() || heuristic.customerName || null,
       phone,
       policyNo: extracted.policyNo?.trim() || heuristic.policyNo || null,
-      fileNo: extracted.fileNo?.trim() || heuristic.fileNo || null,
+      fileNo: resolvedFileNo.fileNo,
       claimNo: extracted.claimNo?.trim() || heuristic.claimNo || null,
       address,
       lossType: extracted.lossType?.trim() || heuristic.lossType || null,
       fileSubject: extracted.fileSubject?.trim() || heuristic.fileSubject || null,
     };
+  }
+
+  private requireInboundFileNo(
+    message: InboundMessage,
+    extracted: AiExtractedFields,
+    dtoFileNo?: string,
+    dtoPolicyNo?: string,
+  ): string | undefined {
+    const heuristic = extractHeuristicFields(message);
+    const resolved = resolveInboundFileNo({
+      bodyFileNo: dtoFileNo?.trim() || extracted.fileNo,
+      insurer: heuristic.insurer,
+      subject: message.subject,
+      policyNo: dtoPolicyNo?.trim() || extracted.policyNo,
+      extraText: [message.bodyText, message.bodyPreview].filter(Boolean).join('\n'),
+    });
+    const preferred = resolved.fileNo?.trim() || undefined;
+    if (preferred && isInsuranceBrandFileNo(preferred, heuristic.insurer)) {
+      throw new BadRequestException(INBOUND_FILE_NO_BRAND_WARNING);
+    }
+    const policyNo = dtoPolicyNo?.trim() || extracted.policyNo;
+    if (preferred && isSameInboundNumber(preferred, policyNo)) {
+      throw new BadRequestException(INBOUND_FILE_NO_POLICY_WARNING);
+    }
+    if (resolved.bodyRejected && !preferred) {
+      throw new BadRequestException(resolved.warning || INBOUND_FILE_NO_BRAND_WARNING);
+    }
+    return preferred;
   }
 
   private resolveInsuredName(

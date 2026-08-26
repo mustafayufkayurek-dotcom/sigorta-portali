@@ -1,0 +1,34 @@
+---
+description: Hasar raporu — iş grubu altında iş tanımı ekleme kaybolmasın
+alwaysApply: true
+---
+
+# Hasar Raporu İş Tanımı Kilidi
+
+**Kaynak (Mustafa · 17.08.2026):** Canlıda rapor yazarken iş grubu altına iş tanımı ekleme kaybolmuştu. Kullanıcı her sabah bozulan bitmiş iş görüyordu.
+
+**Temel cümle:** Taslak/red onarım raporunda iş grubu seçildikten sonra **yeni iş tanımı eklenebilir.** Bu yok sayılamaz.
+
+## Zorunlu
+
+1. `onarim-raporu/[reportId]/page.tsx` içinde `WorkDefinitionSelector`.
+2. Görünür ekleme: açılır listenin en altında kırmızı **+ Yeni İş Kalemi Ekle**. Satırda **+** düğmesi yok.
+3. Kayıt: `POST /work-groups/:id/sub-groups` (`createSubGroup`). Hata sessiz yutulmaz.
+4. İş grubu yokken: `Önce İş Grubu seçin` kırmızı — tanım kutusu kilitli kalır, özellik silinmiş sayılmaz.
+
+## Yasak (açık onay yoksa)
+
+- `WorkDefinitionSelector` veya listedeki **Yeni İş Kalemi Ekle** satırını kaldırmak
+- Yalnız ayarlar ekranından eklemeye zorlamak
+- `catch { /* ignore */ }` ile kayıt hatasını gizlemek
+
+## Durdurma
+
+Bu akışı “sadeleştirme” diye kaldırmak → **dur, Mustafa onayı iste**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+  apps/web/src/app/panel/hasar-dosyalari/onarim-raporu-is-tanimi.lock.spec.ts
+```

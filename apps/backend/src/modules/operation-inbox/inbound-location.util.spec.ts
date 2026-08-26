@@ -44,4 +44,26 @@ describe('matchCityDistrictFromAddressText', () => {
     );
     expect(result).toEqual({ city: null, district: null });
   });
+
+  it('Afyon kısa adını Afyonkarahisar olarak çözer', () => {
+    const afyonProvinces = [{ id: '03', name: 'Afyonkarahisar' }, ...provinces];
+    const result = matchCityDistrictFromAddressText(
+      'Sandıklı / Afyon',
+      afyonProvinces,
+      new Map([['03', [{ name: 'Sandıklı' }, { name: 'Dinar' }]]]),
+      [{ name: 'Sandıklı', province: { name: 'Afyonkarahisar' } }],
+    );
+    expect(result).toEqual({ city: 'Afyonkarahisar', district: 'Sandıklı' });
+  });
+
+  it('ASCII Usak adresinden Uşak / Merkez çıkarır', () => {
+    const usakProvinces = [{ id: '64', name: 'Uşak' }, ...provinces];
+    const result = matchCityDistrictFromAddressText(
+      'Fatih 2.Ulucan No : 10 Daire : 1 Merkez - Türkiye - Usak',
+      usakProvinces,
+      new Map([['64', [{ name: 'Banaz' }, { name: 'Merkez' }, { name: 'Eşme' }]]]),
+      [{ name: 'Merkez', province: { name: 'Uşak' } }],
+    );
+    expect(result).toEqual({ city: 'Uşak', district: 'Merkez' });
+  });
 });

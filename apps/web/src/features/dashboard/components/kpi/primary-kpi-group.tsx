@@ -63,7 +63,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
           <>
             {opsFailed && (
               <div className="col-span-full rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200">
-                Operasyon özeti yüklenemedi; diğer kartlar güncel.
+                Operasyon Özeti Yüklenemedi; Diğer Kartlar Güncel.
               </div>
             )}
             <KpiCard

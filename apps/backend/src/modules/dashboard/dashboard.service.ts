@@ -7,6 +7,11 @@ import { DashboardFiltersDto } from './dto/dashboard-filters.dto';
 import { CacheService } from '@/cache/cache.service';
 import { OperationalAccessGrantsService } from '@/modules/operational-access-grants/operational-access-grants.service';
 import {
+  isOfficeStaffDashboardRole,
+  normalizeDashboardRoleCode,
+  pendingActionOwnerAliases,
+} from './dashboard-role';
+import {
   DASHBOARD_APPROVAL_DELAYS_TTL_SEC,
   DASHBOARD_CRITICAL_ALERTS_TTL_SEC,
   DASHBOARD_DAILY_FLOW_TTL_SEC,
@@ -52,13 +57,16 @@ export class DashboardService {
     if (!scopeUserId) {
       return { claim: {}, emergency: {} };
     }
-    const [hasarPrincipalIds, acilPrincipalIds] = await Promise.all([
+    const [hasarPrincipalIds, acilPrincipalIds, hasAcilFunctionDelegation] = await Promise.all([
       this.operationalAccessGrants.getPrincipalUserIdsForGrantee(scopeUserId, 'hasar'),
       this.operationalAccessGrants.getPrincipalUserIdsForGrantee(scopeUserId, 'acil_yardim'),
+      this.operationalAccessGrants.hasFunctionDelegation(scopeUserId, 'acil_yardim'),
     ]);
     return {
       claim: { assignedOfficeUserId: { in: [scopeUserId, ...hasarPrincipalIds] } },
-      emergency: { assignedUserId: { in: [scopeUserId, ...acilPrincipalIds] } },
+      emergency: hasAcilFunctionDelegation
+        ? {}
+        : { assignedUserId: { in: [scopeUserId, ...acilPrincipalIds] } },
     };
   }
 
@@ -1430,14 +1438,15 @@ export class DashboardService {
     const userId = user?.id;
     if (!userId) return { items: [], total: 0 };
 
-    const roleCode = (user?.role?.code ?? user?.roleCode ?? '').toLowerCase();
-    const isOfficeStaff = roleCode === 'office_staff';
+    const roleCode = normalizeDashboardRoleCode(user);
+    const isOfficeStaff = isOfficeStaffDashboardRole(roleCode);
+    const ownerAliases = pendingActionOwnerAliases(roleCode);
 
     const where: Record<string, unknown> = {
       currentStatus: { isClosedState: false },
       OR: [
         { currentResponsibleUserId: userId },
-        { pendingActionOwner: roleCode },
+        { pendingActionOwner: { in: ownerAliases } },
       ],
     };
     if (isOfficeStaff) {
@@ -1450,7 +1459,9 @@ export class DashboardService {
     ];
     const emergencyScopeWhere = isOfficeStaff
       ? (await this.buildDelegationScope(userId)).emergency
-      : { assignedUserId: userId };
+      : (await this.operationalAccessGrants.hasFunctionDelegation(userId, 'acil_yardim'))
+        ? {}
+        : { assignedUserId: userId };
 
     const [files, emergencyCases] = await Promise.all([
       this.prisma.claimFile.findMany({
@@ -1650,7 +1661,7 @@ export class DashboardService {
       orderBy: { changedAt: 'desc' },
       take,
       include: {
-        claimFile: { select: { fileNo: true } },
+        claimFile: { select: { id: true, fileNo: true } },
         toStatus: { select: { name: true } },
         changedByUser: { select: { id: true, firstName: true, lastName: true } },
       },
@@ -1658,7 +1669,9 @@ export class DashboardService {
 
     return {
       items: history.map((h) => ({
-        id: h.id, fileNo: (h as any).claimFile?.fileNo ?? null,
+        id: h.id,
+        claimFileId: h.claimFileId ?? (h as any).claimFile?.id ?? null,
+        fileNo: (h as any).claimFile?.fileNo ?? null,
         action: 'status_change',
         description: `${(h as any).toStatus?.name ?? 'Bilinmeyen'} aşamasına geçirildi`,
         userId: (h as any).changedByUser?.id ?? null,

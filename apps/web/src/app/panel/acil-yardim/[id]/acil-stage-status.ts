@@ -76,6 +76,7 @@ export function resolveAcilStageFlags(input: AcilStageEngineInput): Record<AcilS
     ise_baslama:
       Boolean(flow.workStartPrepared)
       || Boolean(flow.serviceCompleted)
+      || status === 'SAHADA'
       || closed
       || finance,
     hizmet_tamamlandi: Boolean(flow.serviceCompleted) || closed || finance,
@@ -108,16 +109,12 @@ export function resolveAcilStageStatuses(
   return computeAcilStageStatuses(resolveAcilStageFlags(input));
 }
 
-/** Güncel işlem işaretçisi (0–7) — başlık metni için; renk SSOT ayrı. */
+/** Güncel işlem işaretçisi (0–7) — ilk bekleyen aşama; erken adım atlanmaz. */
 export function deriveAcilStageIndex(input: AcilStageEngineInput): number {
-  if (input.status === 'FATURALANDILDI' || input.flow.financeTransferred) return 7;
-  if (input.status === 'COZULDU' || input.flow.fileClosed) return 6;
-  if (input.flow.serviceCompleted || input.status === 'SAHADA') return 5;
-  if (input.flow.customerApproved && input.flow.workStartPrepared) return 4;
-  if (input.flow.approvalRequested) return 3;
-  if (input.flow.costConfirmed || input.hasAlis) return 2;
-  if (input.hasVendor || input.status === 'ATANDI') return 1;
-  return 0;
+  const statuses = resolveAcilStageStatuses(input);
+  const waitingIdx = ACIL_STAGE_ORDER.findIndex((key) => statuses[key] === 'waiting');
+  if (waitingIdx >= 0) return waitingIdx;
+  return ACIL_STAGE_ORDER.length - 1;
 }
 
 export type AcilOpsCompletion = {

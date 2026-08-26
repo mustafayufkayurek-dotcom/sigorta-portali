@@ -14,6 +14,11 @@ import { formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
 import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType } from '@/utils/customer-form-helpers';
 import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
 import {
+  readAnaMusteriHaberlesme,
+  writeAnaMusteriHaberlesme,
+  type AnaMusteriHaberlesme,
+} from '@/utils/acil-ana-musteri-haberlesme';
+import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
@@ -292,9 +297,35 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
 function YetkiliIletisimTab({ customer }: { customer: any }) {
   const contacts: any[] = customer.contacts || [];
   const contactInfos: any[] = customer.contactInfos || [];
+  const [notify, setNotify] = useState<AnaMusteriHaberlesme>(() => readAnaMusteriHaberlesme(customer.id));
 
   return (
     <div className="space-y-4">
+      {customer.entityType === 'corporate' || customer.serviceType === 'ACIL_YARDIM' ? (
+        <SectionCard title="Acil haberleşme" subtitle="Ana müşteri için WhatsApp / e-posta. Sigortalı her dosyada WhatsApp.">
+          <fieldset className="space-y-2" data-testid="musteri-acil-haberlesme">
+            {([
+              { id: 'whatsapp' as const, label: 'WhatsApp' },
+              { id: 'email' as const, label: 'E-posta' },
+              { id: 'both' as const, label: 'WhatsApp ve e-posta' },
+            ]).map((opt) => (
+              <label key={opt.id} className="flex items-center gap-2 text-sm text-slate-800">
+                <input
+                  type="radio"
+                  name="musteri-acil-haberlesme"
+                  checked={notify === opt.id}
+                  onChange={() => {
+                    setNotify(opt.id);
+                    writeAnaMusteriHaberlesme(customer.id, opt.id);
+                  }}
+                />
+                {opt.label}
+              </label>
+            ))}
+          </fieldset>
+          <p className="mt-2 text-[11px] text-slate-500">Bu müşterinin sonraki Acil dosyalarında Onay ve Kapanış bu tercihe göre açılır.</p>
+        </SectionCard>
+      ) : null}
       <SectionCard title="Yetkili Kişiler" subtitle={`${contacts.length} kişi kayıtlı`}>
         {contacts.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-4">Yetkili Kişi Eklenmemiş.</p>

@@ -52,6 +52,8 @@ type PlannerDraft = {
   setMeetingNote: (v: string) => void;
   apptNote: string;
   setApptNote: (v: string) => void;
+  inspectorNote: string;
+  setInspectorNote: (v: string) => void;
   insuredApproved: boolean;
   setInsuredApproved: (v: boolean) => void;
   assignedInspectorId: string | null;
@@ -98,6 +100,7 @@ type PlannerDraft = {
     phone?: string;
     message?: string;
     templateType?: string;
+    purpose?: 'inspection' | 'repair';
   }) => Promise<SaveStepResult>;
   saving: boolean;
   onGoToReports: (() => void) | null;
@@ -131,6 +134,7 @@ export function PlannerProvider({
     mode === 'preview' ? 'Sigortalı sabah saatini tercih etti.' : '',
   );
   const [apptNote, setApptNote] = useState(mode === 'preview' ? 'Kapı kodu: 4521' : '');
+  const [inspectorNote, setInspectorNote] = useState('');
   const [insuredApproved, setInsuredApproved] = useState(claim.insuredApproval);
   const [assignedInspectorId, setAssignedInspectorId] = useState<string | null>(
     mode === 'preview' ? 'i1' : null,
@@ -142,7 +146,7 @@ export function PlannerProvider({
     HASAR_WA_TEMPLATE_TYPES.insuredAppointment,
   );
   const [waBody, setWaBody] = useState('');
-  const [digitalFormType, setDigitalFormType] = useState('Mutabakat');
+  const [digitalFormType, setDigitalFormType] = useState('Mutabakat / Muvafakat');
   const [approvalAuthority, setApprovalAuthorityState] = useState(PLANNER_DEFAULT_APPROVAL_AUTHORITY);
   const [emailTo, setEmailTo] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
@@ -297,6 +301,7 @@ export function PlannerProvider({
       phone?: string;
       message?: string;
       templateType?: string;
+      purpose?: 'inspection' | 'repair';
     }): Promise<SaveStepResult> => {
       if (mode === 'preview' || !claimId) {
         return { ok: true, message: 'Önizleme — WhatsApp kaydı yazılmaz.' };
@@ -332,6 +337,7 @@ export function PlannerProvider({
             message: input?.message ?? waBody,
             status: input?.status ?? 'opened',
             result: input?.status === 'sent' ? 'WhatsApp gönderildi' : 'WhatsApp açıldı',
+            purpose: input?.purpose,
           },
           { headers: authHeader() },
         );
@@ -381,6 +387,7 @@ export function PlannerProvider({
       const checks = getMandatoryChecks(step, claim, {
         meetingNote,
         apptNote,
+        inspectorNote,
         insuredApproved,
         assignedInspectorId,
         assignedSupplierIds,
@@ -404,6 +411,7 @@ export function PlannerProvider({
       claim,
       meetingNote,
       apptNote,
+      inspectorNote,
       insuredApproved,
       assignedInspectorId,
       assignedSupplierIds,
@@ -472,7 +480,7 @@ export function PlannerProvider({
                 estimatedDurationMinutes: claim.durationMinutes
                   ? Number(claim.durationMinutes)
                   : null,
-                notes: [meetingNote, apptNote].filter(Boolean).join(' · ') || null,
+                notes: apptNote.trim() || null,
               },
               { headers: authHeader() },
             );
@@ -493,7 +501,7 @@ export function PlannerProvider({
             } else {
               await axios.post(
                 `${API}/claim-files/${claimId}/assign-inspector-vendor`,
-                { vendorId: assignedInspectorId, note: meetingNote || undefined },
+                { vendorId: assignedInspectorId, note: inspectorNote || undefined },
                 { headers: authHeader() },
               );
             }
@@ -563,17 +571,11 @@ export function PlannerProvider({
             };
           }
           case 'digital_approval': {
-            await axios.post(
-              `${API}/claim-operation-center/${claimId}/digital-approval`,
-              {
-                formType: digitalFormType,
-                status: 'approved',
-                insuredName: claim.insuredName,
-              },
-              { headers: authHeader() },
-            );
             await refreshClaim();
-            return { ok: true, message: 'Kapanış / onay kaydı yazıldı.' };
+            return {
+              ok: true,
+              message: 'Dijital onay sigortalının belgeden onayından gelir. Bu ekrandan onay yazılmaz.',
+            };
           }
           case 'report_writing':
             return {
@@ -593,6 +595,48 @@ export function PlannerProvider({
               message:
                 'Onay kaydı bu ekrandan yazılmaz. Rapor onay akışı mevcut Raporlar sekmesindedir.',
             };
+          case 'repair_whatsapp': {
+            await refreshClaim();
+            return {
+              ok: true,
+              message: 'Onarım planı bu sayfadaki WhatsApp gönderiminden kayda alınır. Gönderilen alıcı yeniden seçilmez.',
+            };
+          }
+          case 'muvafakat':
+            if (!claim.flowFlags.muvafakatApproved) {
+              return { ok: false, message: 'Sigortalı muvafakatnameyi dijital onaylamadan bu adım bitmez.' };
+            }
+            await refreshClaim();
+            return { ok: true, message: 'Muvafakatname dijital onayı alındı.' };
+          case 'repair_complete': {
+            await axios.post(
+              `${API}/claim-operation-center/${claimId}/complete-repair`,
+              {},
+              { headers: authHeader() },
+            );
+            await refreshClaim();
+            return { ok: true, message: 'Onarım bitti. Yönetici ve finansa mail gitti. Fatura için dosya kapanmaz.' };
+          }
+          case 'closure_survey': {
+            await axios.post(
+              `${API}/claim-operation-center/${claimId}/contact-events`,
+              {
+                channel: 'whatsapp',
+                recipientType: 'insured',
+                recipientName: claim.insuredName,
+                phone: claim.insuredPhone,
+                templateType: 'whatsapp_hasar_kapanis_anket',
+                message: waBody || 'Kapanış anketi',
+                status: 'ready',
+              },
+              { headers: authHeader() },
+            );
+            await refreshClaim();
+            return { ok: true, message: 'Kapanış anketi WhatsApp kaydı yazıldı.' };
+          }
+          case 'docs_upload':
+            await refreshClaim();
+            return { ok: true, message: 'Evraklar → Tespit Ve Onarım’da birikir.' };
           default:
             return { ok: false, message: 'Bu adım için kayıt tanımlı değil.' };
         }
@@ -617,6 +661,7 @@ export function PlannerProvider({
       claim,
       meetingNote,
       apptNote,
+      inspectorNote,
       assignedInspectorId,
       assignedSupplierIds,
       supplierTasks,
@@ -639,6 +684,8 @@ export function PlannerProvider({
     setMeetingNote,
     apptNote,
     setApptNote,
+    inspectorNote,
+    setInspectorNote,
     insuredApproved,
     setInsuredApproved,
     assignedInspectorId,

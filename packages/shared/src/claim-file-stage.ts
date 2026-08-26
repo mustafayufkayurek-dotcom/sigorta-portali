@@ -12,16 +12,16 @@ export type ClaimFileStageId = (typeof CLAIM_FILE_STAGE_SLOTS)[number]['id'];
 
 export type ClaimFileStageTone = 'completed' | 'active' | 'future';
 
-/** Rapor onaya gönderildi / onay bekliyor */
+/** Rapor onaya gönderildi / onay bekliyor (iç veya dış) */
 const REPORT_AWAITING = new Set([
   'submitted',
   'pending_approval',
+  'sent_for_external_approval',
 ]);
 
 /** İç veya dış onay tamam */
 const REPORT_APPROVED = new Set([
   'approved',
-  'sent_for_external_approval',
   'externally_approved',
 ]);
 

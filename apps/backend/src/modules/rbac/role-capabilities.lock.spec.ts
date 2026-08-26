@@ -50,6 +50,8 @@ describe('role-capabilities LOCK', () => {
   it('FINANS guard + seed vendor.delete içerir', () => {
     const guard = readRel('common/guards/permissions.guard.ts');
     assert.match(guard, /FINANS:[\s\S]*vendor\.delete/);
+    assert.match(guard, /FINANS:[\s\S]*dashboard\.view/);
+    assert.match(guard, /ACCOUNTANT:[\s\S]*dashboard\.view/);
 
     const seed = readFileSync(
       join(__dirname, '../../../prisma/seed.ts'),

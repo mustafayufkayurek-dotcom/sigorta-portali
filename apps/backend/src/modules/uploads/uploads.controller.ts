@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Query, Body, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UploadsService } from './uploads.service';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
@@ -23,6 +24,15 @@ export class UploadsController {
   async complete(@Body() dto: any, @CurrentUser() user: any) {
     const data = await this.uploadsService.completeUpload(dto, user.id);
     return { success: true, data };
+  }
+
+  @Get('file')
+  @ApiOperation({ summary: 'Depolanan dosyayı oturumla akıt (302 yok)' })
+  async streamFile(@Query('storageKey') storageKey: string, @Res() res: Response) {
+    const { buffer, mimeType } = await this.uploadsService.getFileBuffer(storageKey);
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.send(buffer);
   }
 
   @Get('signed-url')

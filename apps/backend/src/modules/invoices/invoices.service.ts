@@ -195,7 +195,15 @@ export class InvoicesService {
     }
 
     await this.financialSummary.recalculate(claimFileId);
-    return this.financialSummary.getByClaimFile(claimFileId);
+    const summary = await this.financialSummary.getByClaimFile(claimFileId);
+    const extraAgg = await this.prisma.expense.aggregate({
+      where: { fileCaseId: claimFileId, expensePlan: 'EKSTRA_SATIS_MASRAFI' },
+      _sum: { amount: true },
+    });
+    return {
+      ...(summary ?? {}),
+      extraWorkCost: extraAgg._sum.amount ?? 0,
+    };
   }
 
   private async triggerLogoInvoiceSync(invoiceId: string, invoiceType: string): Promise<void> {

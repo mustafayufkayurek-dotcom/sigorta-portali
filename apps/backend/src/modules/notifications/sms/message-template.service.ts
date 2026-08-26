@@ -11,6 +11,9 @@ export const TEMPLATE_TYPES = {
   WHATSAPP_HASAR_APPOINTMENT_INSURED: 'whatsapp_hasar_randevu_sigortali',
   WHATSAPP_HASAR_APPOINTMENT_ADJUSTER: 'whatsapp_hasar_randevu_tespitci',
   WHATSAPP_HASAR_APPOINTMENT_VENDOR: 'whatsapp_hasar_randevu_tedarikci',
+  WHATSAPP_HASAR_REPAIR_INSURED: 'whatsapp_hasar_onarim_sigortali',
+  WHATSAPP_HASAR_REPAIR_VENDOR: 'whatsapp_hasar_onarim_tedarikci',
+  WHATSAPP_HASAR_CLOSURE_SURVEY: 'whatsapp_hasar_kapanis_anket',
   WHATSAPP_ACIL_INITIAL_INFORMATION: 'whatsapp_acil_ilk_bilgilendirme',
   WHATSAPP_ACIL_CLOSURE_SURVEY: 'whatsapp_acil_kapanis_anket',
 } as const;
@@ -22,6 +25,9 @@ const TEMPLATE_NAMES: Record<string, string> = {
   [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_INSURED]: 'Sigortalı Randevu Bilgilendirme',
   [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_ADJUSTER]: 'Tespitçi Randevu Bilgilendirme',
   [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_VENDOR]: 'Tedarikçi Randevu Bilgilendirme',
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_REPAIR_INSURED]: 'Onarım Randevusu — Sigortalı',
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_REPAIR_VENDOR]: 'Onarım Randevusu — Tedarikçi',
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_CLOSURE_SURVEY]: 'Hasar Kapanış Anketi',
   [TEMPLATE_TYPES.WHATSAPP_ACIL_INITIAL_INFORMATION]: 'Sigortalıya İlk Bilgilendirme',
   [TEMPLATE_TYPES.WHATSAPP_ACIL_CLOSURE_SURVEY]: 'Kapanış / Anket Mesajı',
 };
@@ -38,6 +44,15 @@ const DEFAULT_HASAR_APPOINTMENT_ADJUSTER_TEMPLATE =
 const DEFAULT_HASAR_APPOINTMENT_VENDOR_TEMPLATE =
   '{dosyaNo} numaralı dosya için hizmet randevusu: {randevuTarih} {randevuSaat}. İş: {isTanimi}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
 
+const DEFAULT_HASAR_REPAIR_INSURED_TEMPLATE =
+  'Sayın {musteriAdi}, {dosyaNo} numaralı dosyanız için onarım randevunuz {randevuTarih} günü saat {randevuSaat} olarak planlanmıştır. Adres: {hasarAdresi}.';
+
+const DEFAULT_HASAR_REPAIR_VENDOR_TEMPLATE =
+  '{dosyaNo} numaralı dosya için onarım randevusu: {randevuTarih} {randevuSaat}. İş: {isTanimi}. Adres: {hasarAdresi}.';
+
+const DEFAULT_HASAR_CLOSURE_SURVEY_TEMPLATE =
+  'Değerli {musteriAdi}, {dosyaNo} numaralı hasar dosyanız kapanışa hazırdır. Deneyiminizi değerlendirmenizi rica ederiz.';
+
 const DEFAULT_ACIL_INITIAL_INFORMATION_TEMPLATE =
   'Değerli Sigortalımız,\n\nAcil Yardım dosyanız (Dosya No: {Dosya No}) tarafımıza ulaşmış olup, dosya sorumlumuz {Dosya Sorumlusu} en kısa sürede sizinle irtibata geçecektir.\n\nDosya Konusu: {Dosya Konusu}\nDosya Sorumlusu Tlf: {Dosya Sorumlusu Telefon}\n\nSaygılarımızla,\nMeridyen Assistance';
 
@@ -51,6 +66,9 @@ const DEFAULT_TEMPLATES: Record<string, string> = {
   [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_INSURED]: DEFAULT_HASAR_APPOINTMENT_INSURED_TEMPLATE,
   [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_ADJUSTER]: DEFAULT_HASAR_APPOINTMENT_ADJUSTER_TEMPLATE,
   [TEMPLATE_TYPES.WHATSAPP_HASAR_APPOINTMENT_VENDOR]: DEFAULT_HASAR_APPOINTMENT_VENDOR_TEMPLATE,
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_REPAIR_INSURED]: DEFAULT_HASAR_REPAIR_INSURED_TEMPLATE,
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_REPAIR_VENDOR]: DEFAULT_HASAR_REPAIR_VENDOR_TEMPLATE,
+  [TEMPLATE_TYPES.WHATSAPP_HASAR_CLOSURE_SURVEY]: DEFAULT_HASAR_CLOSURE_SURVEY_TEMPLATE,
   [TEMPLATE_TYPES.WHATSAPP_ACIL_INITIAL_INFORMATION]: DEFAULT_ACIL_INITIAL_INFORMATION_TEMPLATE,
   [TEMPLATE_TYPES.WHATSAPP_ACIL_CLOSURE_SURVEY]: DEFAULT_ACIL_CLOSURE_SURVEY_TEMPLATE,
 };

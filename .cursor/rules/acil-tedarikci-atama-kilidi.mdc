@@ -1,0 +1,46 @@
+---
+description: Acil Yardım tedarikçi önerisi — il/ilçe + skor; boşsa alternatif; havuz kaydı
+alwaysApply: true
+---
+
+# Acil Tedarikçi Atama Kilidi
+
+**Kaynak (Mustafa · 18.08.2026):** Kocaeli dosyasında ulusal A harfi kesiti öneri diye çıkıyordu. Aynı gün: Acil’de Hasar gibi memnuniyet + maliyet önerisi; bölgede yoksa harici alternatif arama; olumlu memnuniyet sonrası havuz kaydı tavsiyesi.
+
+**Temel cümle:** Acil öneri = o dosyanın **il + ilçe** kapsamındaki `acil` / `her_ikisi` **kayıtlı havuz**, **memnuniyet + maliyet skoru**. Bölgede aday yoksa **Alternatif Öneriler**. Olumsuz değerlendirmede uyarı; 2. çalışmada yöneticiye e-posta. Dosyaya özel atama havuza girmez.
+
+## Zorunlu
+
+1. **Dosya Sorumlusu kalır** (`office_staff`).
+2. Liste **il + ilçe** (+ `serviceAreas`). Kocaeli dosyasına Muğla düşmez. Kayıtlı aday uzmanlık süzgeciyle düşmez (`keepAllAreaCandidates`).
+3. Sıra Hasar ile aynı **compositeScore** (kalite, maliyet hafızası, müdahale, tamamlama). Ulusal A→Z kesiti yok.
+4. UI: skorlu **ilk 3 açık önerilir**; aynı listedeki diğer kayıtlılar **kapalı/açılır**. Bölgede aday yoksa kayıtlı liste boş + **Alternatif Öneriler** (UI’da Google / API yazılmaz).
+5. «Yalnızca bu dosyada kullanım» kaydı öneri havuzuna girmez. Havuza eklenince sonraki dosyada önerilir.
+6. Hizmet bitince dosyaya özel tedarikçi için **Tedarikçi Kaydı** tavsiyesi.
+7. UI başlığı: **Önerilen Tedarikçiler**.
+8. Hasar `recommendForClaimFile` yolu **dokunulmaz** (acil `allowNationalFallback: false` hasara sızmaz).
+9. Memnuniyet &lt; 3 veya geçmişli düşük maliyet skoru → uyarı: alternatif arayın. Buna rağmen atama 2. kez ise **admin** e-posta.
+10. Personel bu davranışı Acil dosyada **bir kez** görür (`OpsFirstRunNotice` / `tedarikci-ilk-kullanim-seridi`). Kılavuz tek başına yetmez.
+
+## Yasak (açık onay yoksa)
+
+- Acil listesini ulusal havuzdan `limit=5` A harfi ile kesmek
+- Bölge boşken `buildSupplierFallbackWhere` ile tüm Türkiye’yi öneri kartına basmak
+- Acil skorunu hasar path’ine, hasar ulusal fallback’ini acile taşımak
+- Kullanıcıya Google / Places / API etiketi
+
+## Durdurma
+
+Ulusal A kesiti veya Google etiketinin operasyon ekranına yazılması → **dur, Mustafa onayı iste**.
+
+Regresyon:
+
+```bash
+pnpm smoke:acil-supplier
+# smoke-route-gate içinde A2b olarak da çalışır
+node --experimental-strip-types --test \
+  apps/web/src/utils/acil-supplier-assignment.lock.spec.ts \
+  apps/web/src/utils/ops-first-run-notice.lock.spec.ts \
+  apps/backend/src/modules/vendors/acil-supplier-recommendation.lock.spec.ts \
+  packages/shared/src/acil-vendor-quality.lock.spec.ts
+```

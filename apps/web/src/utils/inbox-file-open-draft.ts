@@ -7,8 +7,10 @@ import {
   mapInboundCategoryKnown,
   mapInboundLossTypeToMeridyen,
   sanitizeInboundPhone,
+  stripInboundAddressPollution,
 } from '@sigorta/shared';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { resolveInboundFileNo } from '@sigorta/shared';
 
 export interface InboxMailFields {
   insuredName?: string | null;
@@ -31,6 +33,7 @@ export interface InboxFileOpenDraft {
   aiSummary?: string;
   insurer?: string;
   fileNo: string;
+  fileNoWarning?: string;
   claimNo: string;
   policyNo: string;
   lossType: string;
@@ -75,6 +78,11 @@ function mergeField(...values: Array<string | null | undefined>): string {
   return '';
 }
 
+function cleanAddressField(raw?: string | null): string {
+  const stripped = stripInboundAddressPollution(raw);
+  return stripped ? toTitleCaseTR(stripped) : '';
+}
+
 /** Müşteri dili → Meridyen dosya konusu (Cam Kırığı → Cam Kırılması). */
 function lockMeridyenLossLabel(raw?: string | null): string {
   const t = raw?.trim();
@@ -103,12 +111,19 @@ export function buildInboxFileOpenDraft(
   const insuredNameRaw = mergeField(mf?.insuredName, routing?.insuredName, parsed.customerName);
   const insuredPhoneRaw = mergePhoneField(parsed.phone, mf?.insuredPhone, routing?.insuredPhone);
   const fileNoRaw = mergeField(mf?.fileNo, parsed.fileNo);
-  const claimNoRaw = mergeField(mf?.claimNo, parsed.policyNo, parsed.claimNo);
+  const claimNoRaw = mergeField(mf?.claimNo, parsed.claimNo);
   const policyNoRaw = mergeField(mf?.policyNo, parsed.policyNo);
   const addressRaw = mergeField(parsed.address, mf?.insuredAddress);
   const fileSubjectRaw = mergeField(mf?.fileSubject, parsed.fileSubject);
   const lossTypeRaw = mergeField(mf?.lossType, parsed.category);
   const insurerRaw = mergeField(mf?.insurer, parsed.insurer);
+  const resolvedFileNo = resolveInboundFileNo({
+    bodyFileNo: fileNoRaw,
+    insurer: insurerRaw,
+    subject: message.subject,
+    policyNo: policyNoRaw,
+    extraText: [message.bodyText, message.bodyPreview, parsed.fileNo].filter(Boolean).join('\n'),
+  });
 
   const draft: InboxFileOpenDraft = {
     subject: message.subject.trim(),
@@ -118,14 +133,15 @@ export function buildInboxFileOpenDraft(
     senderEmail: message.fromAddress.trim().toLowerCase(),
     aiSummary: message.aiSummary?.trim() || undefined,
     insurer: insurerRaw ? toTitleCaseTR(insurerRaw) : undefined,
-    fileNo: fileNoRaw,
+    fileNo: resolvedFileNo.fileNo ?? '',
+    fileNoWarning: parsed.fileNoWarning ?? resolvedFileNo.warning ?? undefined,
     claimNo: claimNoRaw,
     policyNo: policyNoRaw,
     lossType: lockMeridyenLossLabel(lossTypeRaw),
     fileSubject: lockMeridyenLossLabel(fileSubjectRaw),
     insuredName: insuredNameRaw ? toTitleCaseTR(insuredNameRaw) : '',
     insuredPhone: insuredPhoneRaw,
-    insuredAddress: addressRaw ? toTitleCaseTR(addressRaw) : '',
+    insuredAddress: cleanAddressField(addressRaw),
     description: parsed.description?.trim() || undefined,
     manualFallback: options?.manualFallback,
   };
@@ -147,6 +163,17 @@ export function applyMailFieldsToDraft(
   draft: InboxFileOpenDraft,
   fields: InboxMailFields,
 ): InboxFileOpenDraft {
+  const insurer = fields.insurer?.trim()
+    ? toTitleCaseTR(fields.insurer.trim())
+    : draft.insurer;
+  const policyNo = fields.policyNo?.trim() || draft.policyNo;
+  const resolvedFileNo = resolveInboundFileNo({
+    bodyFileNo: fields.fileNo?.trim() || draft.fileNo,
+    insurer,
+    subject: draft.subject,
+    policyNo,
+    extraText: draft.fileNo,
+  });
   return {
     ...draft,
     insuredName: fields.insuredName?.trim()
@@ -154,10 +181,11 @@ export function applyMailFieldsToDraft(
       : draft.insuredName,
     insuredPhone: sanitizeInboundPhone(fields.insuredPhone?.trim()) || draft.insuredPhone,
     insuredAddress: fields.insuredAddress?.trim()
-      ? toTitleCaseTR(fields.insuredAddress.trim())
+      ? cleanAddressField(fields.insuredAddress)
       : draft.insuredAddress,
-    fileNo: fields.fileNo?.trim() || draft.fileNo,
-    policyNo: fields.policyNo?.trim() || draft.policyNo,
+    fileNo: resolvedFileNo.fileNo ?? '',
+    fileNoWarning: resolvedFileNo.warning ?? draft.fileNoWarning,
+    policyNo,
     claimNo: fields.claimNo?.trim() || draft.claimNo,
     lossType: fields.lossType?.trim()
       ? lockMeridyenLossLabel(fields.lossType.trim())
@@ -165,9 +193,7 @@ export function applyMailFieldsToDraft(
     fileSubject: fields.fileSubject?.trim()
       ? lockMeridyenLossLabel(fields.fileSubject.trim())
       : draft.fileSubject,
-    insurer: fields.insurer?.trim()
-      ? toTitleCaseTR(fields.insurer.trim())
-      : draft.insurer,
+    insurer,
     manualFallback: false,
   };
 }

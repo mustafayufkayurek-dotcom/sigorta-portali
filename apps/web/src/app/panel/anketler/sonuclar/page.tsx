@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { listSurveyCampaigns, type SurveyCampaign } from '@/utils/surveyApi';
+import { SURVEY_MONTH_END_CUSTOMER_NOTICE } from '@/utils/survey-form';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { KpiCards } from './_components/KpiCards';
 import { ManagerSummaryCard } from './_components/ManagerSummaryCard';
@@ -197,6 +198,13 @@ export default function AnketSonuclariPage() {
             Yeni Anket
           </button>
         </div>
+      </div>
+
+      <div
+        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+        data-testid="anket-ay-sonu-uyari"
+      >
+        {SURVEY_MONTH_END_CUSTOMER_NOTICE}
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">

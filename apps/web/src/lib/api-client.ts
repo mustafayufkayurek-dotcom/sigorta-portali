@@ -19,7 +19,9 @@ export class ApiError extends Error {
 }
 
 export function getBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== 'undefined') return '/api/v1';
+  return 'http://127.0.0.1:3000/api/v1';
 }
 
 type QueryParams = Record<string, string | number | boolean | null | undefined>;

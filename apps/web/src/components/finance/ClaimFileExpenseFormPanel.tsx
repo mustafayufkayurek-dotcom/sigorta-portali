@@ -18,6 +18,10 @@ import { parseTrAmountInput, numberToTrAmountInput } from '@/utils/tr-amount-inp
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { financeOperationNo } from '@sigorta/shared';
+import {
+  FileWorkGroupExpenseFields,
+  type FileWorkGroupAuditLine,
+} from '@/components/finance/FileWorkGroupExpenseFields';
 
 const PLAN_BUTCE = 'BUTCELENEN';
 const PLAN_EK = 'EKSTRA_SATIS_MASRAFI';
@@ -32,6 +36,9 @@ type FileEligibility = {
 };
 
 const labelCls = 'block text-xs font-medium text-slate-600 mb-1';
+const requiredHint = (
+  <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>
+);
 const inputCls =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600/30 focus:border-brand-600';
 
@@ -43,7 +50,7 @@ export type ClaimFileExpenseFormPanelProps = {
   onSaved?: () => void;
   /** true: kendi SlidePanel’i yok — üst panel sekmesi içinde kullanılır */
   embedded?: boolean;
-  /** Dosya özelinde ekstra iş masrafı yok; yalnız Finans merkezinde açılır */
+  /** Dosya özelinde ekstra iş masrafı da seçilir */
   allowExtraWorkPlan?: boolean;
 };
 
@@ -60,6 +67,9 @@ export function ClaimFileExpenseFormPanel({
   const [lastSavedOpNo, setLastSavedOpNo] = useState<string | null>(null);
   const [expenseCategoryParentId, setExpenseCategoryParentId] = useState('');
   const [expenseCategoryId, setExpenseCategoryId] = useState('');
+  const [workGroupId, setWorkGroupId] = useState('');
+  const [workSubGroupName, setWorkSubGroupName] = useState('');
+  const [workGroups, setWorkGroups] = useState<FileWorkGroupAuditLine[]>([]);
   const [description, setDescription] = useState('');
   const [documentNo, setDocumentNo] = useState('');
   const [amount, setAmount] = useState('');
@@ -94,6 +104,8 @@ export function ClaimFileExpenseFormPanel({
     setExpensePlan(PLAN_BUTCE);
     setExpenseCategoryParentId('');
     setExpenseCategoryId('');
+    setWorkGroupId('');
+    setWorkSubGroupName('');
     setDescription('');
     setDocumentNo('');
     setAmount('');
@@ -114,10 +126,14 @@ export function ClaimFileExpenseFormPanel({
     setMetaError('');
     (async () => {
       try {
-        const [treeRes, flatRes, trackRes] = await Promise.all([
+        const [treeRes, flatRes, trackRes, auditRes] = await Promise.all([
           axios.get(`${API}/expense-categories`, { headers: authHeader() }),
           axios.get(`${API}/expense-categories/flat`, { headers: authHeader() }),
           axios.get(`${API}/expenses/budget-tracking`, {
+            headers: authHeader(),
+            params: { fileCaseId: claimFileId },
+          }),
+          axios.get(`${API}/expenses/work-group-audit`, {
             headers: authHeader(),
             params: { fileCaseId: claimFileId },
           }),
@@ -125,6 +141,7 @@ export function ClaimFileExpenseFormPanel({
         if (cancelled) return;
         setCategoryTree((treeRes.data?.data ?? []) as CategoryGroup[]);
         setCategoryFlat((flatRes.data?.data ?? []) as CategoryFlat[]);
+        setWorkGroups((auditRes.data?.groups ?? auditRes.data?.data?.groups ?? []) as FileWorkGroupAuditLine[]);
         // Finans Masraf İzleme ile aynı şekil: { files, summary }
         const trackFiles = (trackRes.data?.files ?? trackRes.data?.data?.files ?? []) as Array<Record<string, unknown>>;
         const row = trackFiles.find((f) => String(f['fileCaseId'] ?? f['id'] ?? '') === claimFileId)
@@ -154,6 +171,7 @@ export function ClaimFileExpenseFormPanel({
         if (!cancelled) {
           setCategoryTree([]);
           setCategoryFlat([]);
+          setWorkGroups([]);
           setEligibility({ hasApprovedBudget: false, hasEkBudget: false });
           setBudgetHint(null);
           const msg = axios.isAxiosError(err)
@@ -230,10 +248,12 @@ export function ClaimFileExpenseFormPanel({
     categoryChildren.length > 0
     || allSubgroups.some((s) => s.parentId === expenseCategoryParentId);
 
+  const useWorkGroupPath = expensePlan === PLAN_BUTCE;
+
   const planEligible =
     expensePlan === PLAN_EK
       ? Boolean(eligibility?.hasEkBudget)
-      : Boolean(eligibility?.hasApprovedBudget);
+      : Boolean(eligibility?.hasApprovedBudget) || workGroups.length > 0;
 
   const masrafAmounts = useMemo(() => {
     const gross = parseTrAmountInput(amount) ?? 0;
@@ -251,12 +271,25 @@ export function ClaimFileExpenseFormPanel({
       blockers.push(
         expensePlan === PLAN_EK
           ? 'Bu dosyada ek iş bütçesi yok'
-          : 'Bu dosyada onaylı bütçe yok',
+          : 'Bu dosyada onaylı bütçe veya rapor iş grubu yok',
       );
     }
-    if (!expenseCategoryParentId) blockers.push('Masraf grubu seçin');
-    if (needsSubgroup && !expenseCategoryId) blockers.push('Masraf alt grubu seçin');
+    if (useWorkGroupPath) {
+      if (workGroups.length === 0) blockers.push('Raporda iş grubu yok');
+      if (!workGroupId) blockers.push('İş grubu seçin');
+      const selected = workGroups.find((g) => g.workGroupId === workGroupId);
+      if (selected && selected.jobDefinitions.length > 0 && !workSubGroupName.trim()) {
+        blockers.push('İş tanımı seçin');
+      }
+      if (selected && masrafAmounts.gross > 0 && masrafAmounts.gross - selected.remaining > 0.009) {
+        blockers.push('İş grubu bütçesini aşıyor');
+      }
+    } else {
+      if (!expenseCategoryParentId) blockers.push('Masraf grubu seçin');
+      if (needsSubgroup && !expenseCategoryId) blockers.push('Masraf alt grubu seçin');
+    }
     if (masrafAmounts.gross <= 0) blockers.push('Geçerli tutar girin');
+    if (!description.trim()) blockers.push('Açıklama yazın');
     if (!isCompleteTrDateValue(normalizeTrDateValue(date))) blockers.push('Geçerli tarih girin (GG.AA.YYYY)');
     return blockers;
   }, [
@@ -267,6 +300,11 @@ export function ClaimFileExpenseFormPanel({
     expenseCategoryId,
     masrafAmounts.gross,
     date,
+    description,
+    useWorkGroupPath,
+    workGroups,
+    workGroupId,
+    workSubGroupName,
   ]);
 
   const formCanSave = formSaveBlockers.length === 0;
@@ -335,6 +373,7 @@ export function ClaimFileExpenseFormPanel({
 
     const descParts: string[] = [];
     if (documentNo.trim()) descParts.push(`Belge No: ${documentNo.trim()}`);
+    if (workSubGroupName.trim()) descParts.push(`İş tanımı: ${workSubGroupName.trim()}`);
     if (description.trim()) descParts.push(toTitleCaseTR(description.trim()));
 
     setSaving(true);
@@ -344,7 +383,9 @@ export function ClaimFileExpenseFormPanel({
         {
           fileCaseId: claimFileId,
           expensePlan: allowExtraWorkPlan ? expensePlan : PLAN_BUTCE,
-          expenseCategoryId: expenseCategoryId || expenseCategoryParentId,
+          ...(useWorkGroupPath
+            ? { workGroupId, workSubGroupName: workSubGroupName.trim() || undefined }
+            : { expenseCategoryId: expenseCategoryId || expenseCategoryParentId }),
           operationSubject: 'HASAR_ONARIM',
           description: descParts.length ? descParts.join(' · ') : undefined,
           amount: masrafAmounts.gross,
@@ -510,46 +551,47 @@ export function ClaimFileExpenseFormPanel({
 
         {allowExtraWorkPlan ? (
           <div>
-            <label className={labelCls}>
-              Bütçe Tipi <span className="text-status-danger">*</span>
+            <label className={labelCls} htmlFor="claim-file-expense-plan">
+              Masraf yeri {requiredHint}
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: PLAN_BUTCE, label: 'Dosya Bütçesi', activeCls: 'border-brand-600 bg-brand-50' },
-                { value: PLAN_EK, label: 'Ek İşler', activeCls: 'border-status-warning bg-amber-50' },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setExpensePlan(opt.value)}
-                  className={`text-left rounded-lg border-2 px-3 py-2 transition-all ${
-                    expensePlan === opt.value ? opt.activeCls : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <p className={`font-semibold text-xs ${expensePlan === opt.value ? 'text-slate-900' : 'text-slate-600'}`}>
-                    {opt.label}
-                  </p>
-                </button>
-              ))}
-            </div>
+            <select
+              id="claim-file-expense-plan"
+              value={expensePlan}
+              onChange={(e) => setExpensePlan(e.target.value)}
+              className={inputCls}
+              data-testid="claim-file-expense-plan"
+            >
+              <option value={PLAN_BUTCE}>Bütçelenen</option>
+              <option value={PLAN_EK}>Ek İş</option>
+            </select>
           </div>
         ) : (
           <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-            <span className="text-[11px] text-slate-500 shrink-0">Bütçe Tipi</span>
-            <span className="text-sm font-medium text-slate-800">Dosya Bütçesi</span>
+            <span className="text-[11px] text-slate-500 shrink-0">Masraf yeri</span>
+            <span className="text-sm font-medium text-slate-800">Bütçelenen</span>
           </div>
         )}
 
         <div>
           <label className={labelCls}>
-            Tarih <span className="text-status-danger">*</span>
+            Tarih {requiredHint}
           </label>
           <TrDateInput className={inputCls} value={date} onChange={setDate} />
         </div>
 
+        {useWorkGroupPath ? (
+          <FileWorkGroupExpenseFields
+            groups={workGroups}
+            workGroupId={workGroupId}
+            workSubGroupName={workSubGroupName}
+            onWorkGroup={setWorkGroupId}
+            onJob={setWorkSubGroupName}
+            inputClassName={inputCls}
+          />
+        ) : (
         <div>
           <label className={labelCls}>
-            Masraf Grubu / Alt Grubu <span className="text-status-danger">*</span>
+            Masraf Grubu / Alt Grubu {requiredHint}
           </label>
           {metaLoading ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
@@ -601,6 +643,7 @@ export function ClaimFileExpenseFormPanel({
             />
           </div>
         </div>
+        )}
 
         <div>
           <label className={labelCls}>Belge No</label>
@@ -615,7 +658,7 @@ export function ClaimFileExpenseFormPanel({
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className={labelCls}>
-              KDV Dahil Toplam <span className="text-status-danger">*</span>
+              KDV Dahil Toplam {requiredHint}
             </label>
             <TrAmountInput className={inputCls} placeholder="0" value={amount} onChange={setAmount} />
           </div>
@@ -647,7 +690,7 @@ export function ClaimFileExpenseFormPanel({
         </div>
 
         <div>
-          <label className={labelCls}>Açıklama</label>
+          <label className={labelCls}>Açıklama {requiredHint}</label>
           <input
             className={inputCls}
             placeholder="Masraf açıklaması"
@@ -675,7 +718,7 @@ export function ClaimFileExpenseFormPanel({
         )}
       </div>
 
-      <div className="shrink-0 flex items-center justify-end gap-1.5 border-t border-slate-100 bg-white px-3 py-2 sm:px-4">
+      <div className="shrink-0 flex items-center justify-end gap-2 border-t border-slate-100 bg-white px-4 pb-8 pt-3.5 sm:px-5">
         <button
           type="button"
           onClick={onClose}
@@ -689,7 +732,7 @@ export function ClaimFileExpenseFormPanel({
           disabled={saving || !formCanSave}
           className="text-xs text-slate-600 px-3 py-1.5 border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 font-semibold"
         >
-          Kaydet ve Kapat
+          Kaydet
         </button>
         <button
           type="button"
@@ -698,7 +741,7 @@ export function ClaimFileExpenseFormPanel({
           className="text-xs bg-brand-600 text-white px-4 py-1.5 rounded-xl hover:bg-brand-700 disabled:opacity-50 font-semibold"
           data-testid="claim-file-expense-kaydet"
         >
-          {saving ? 'Kaydediliyor…' : 'Kaydet'}
+          {saving ? 'Kaydediliyor…' : 'Kaydet ve Yeni'}
         </button>
       </div>
     </div>

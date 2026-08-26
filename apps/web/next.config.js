@@ -1,3 +1,4 @@
+const path = require('path');
 const { withSentryConfig } = require('@sentry/nextjs');
 
 /** @type {import('next').NextConfig} */
@@ -5,6 +6,16 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   transpilePackages: ['@sigorta/shared'],
+  webpack: (config) => {
+    // Canlı derlemede dist kullanılır (OOM olmasın). Lokalde kaynak — eski paket düşmesin.
+    if (process.env.NODE_ENV !== 'production') {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@sigorta/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
+      };
+    }
+    return config;
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -35,3 +35,26 @@ export async function resolveDamageReasonOptions(
 
   return [];
 }
+
+export async function fetchInboxFileSubjectNames(
+  kind: 'claim' | 'emergency',
+): Promise<string[]> {
+  const code = kind === 'emergency' ? 'acil-yardim' : 'hasar-onarim';
+  try {
+    const departments = await apiGet<DeptRow[]>(`${API}/departments`);
+    const dept = departments.find((d) => d.code === code);
+    if (dept) {
+      const rows = await fetchActiveFileSubjects(dept.id);
+      if (rows.length > 0) return rows.map((r) => r.name);
+    }
+  } catch {
+    /* katalog yoksa claim-subjects */
+  }
+  try {
+    const category = kind === 'emergency' ? 'acil_yardim' : 'hasar';
+    const rows = await apiGet<Array<{ name: string }>>(`${API}/claim-subjects/active?category=${category}`);
+    return (rows ?? []).map((r) => r.name).filter(Boolean);
+  } catch {
+    return [];
+  }
+}

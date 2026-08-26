@@ -12,9 +12,9 @@ import {
   FolderInput,
   FolderOpen,
   Hourglass,
-  type LucideIcon,
 } from 'lucide-react';
-import { getCases, EmergencyCase } from '@/utils/emergencyApi';
+import { EmergencyCase } from '@/utils/emergencyApi';
+import { asList } from '@/utils/emergency-list-unwrap';
 import { apiClient } from '@/lib/api-client';
 import {
   PanelTableColumnPicker,
@@ -31,21 +31,35 @@ import { fmtDate } from '@/utils/date-helpers';
 import { resolveClaimDosyaKonusu, toTitleCaseTR } from '@/utils/text-helpers';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import {
-  OPERATION_CUSTOMER_UNDEFINED,
   resolveHasarOperationCustomer,
   resolveOperationCustomer,
 } from '@/utils/operation-customer-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
+import { resolveOpsEmailDefaultTo } from '@/utils/ops-email-default-to';
+import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
+import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
+import { OpsListPageSizeSelect } from '@/components/operasyon/OpsListPageSizeSelect';
 import { DoubleDeleteConfirm } from '@/components/operasyon/DoubleDeleteConfirm';
 import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import {
+  OPS_LIST_PAGE_SIZE_KEYS,
+  readOpsListPageSize,
+  type OpsListPageSize,
+} from '@/utils/ops-list-page-size';
+import { acilVendorPayLabel, acilVendorPayMatchesFilter, acilVendorPayMatchesQuery, acilVendorPayTone, type AcilVendorPayFilter } from '@/utils/acil-vendor-pay';
+import { readAcilLocalFlow } from '@/app/panel/acil-yardim/[id]/acil-workflow';
 import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
 import { SlidePanel } from '@/components/SlidePanel';
 import { EmergencyCaseNewForm } from '@/components/emergency/EmergencyCaseNewForm';
 import { SearchInput } from '@/components/ui/SearchInput';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
 import {
   BADGE_TONE_CLASS,
   OPERATION_PRESET_LABELS,
@@ -156,6 +170,7 @@ type UnifiedRow =
       customerTypeLabel: string | null;
       customerTitle: string;
       customerSearch: string;
+      customerHref: string | null;
       insuredName: string;
       date: string;
       subject: string;
@@ -175,6 +190,7 @@ type UnifiedRow =
       priority?: string | null;
       reportId: string | null;
       defaultEmailTo: string | null;
+      vendorPaid: boolean | null;
     }
   | {
       kind: 'acil';
@@ -184,6 +200,7 @@ type UnifiedRow =
       customerTypeLabel: string | null;
       customerTitle: string;
       customerSearch: string;
+      customerHref: string | null;
       insuredName: string;
       date: string;
       subject: string;
@@ -201,53 +218,12 @@ type UnifiedRow =
       delayRisk: boolean;
       reportId: string | null;
       defaultEmailTo: string | null;
+      vendorPaid: boolean | null;
     };
 
-function OpsStripKpi({
-  label,
-  value,
-  color,
-  icon: Icon,
-  onClick,
-  active,
-}: {
-  label: string;
-  value: string | number;
-  color: string;
-  icon: LucideIcon;
-  onClick?: () => void;
-  active?: boolean;
-}) {
-  /** Operasyon KPI — yatay kart; ikon solda, rakam ve başlık sağda; eşit yükseklik */
-  const body = (
-    <div
-      className={`group flex h-[102px] w-full min-w-0 flex-row items-center gap-3 overflow-hidden rounded-xl border bg-white px-2.5 py-2.5 shadow-md transition ${
-        active
-          ? 'border-blue-400 ring-2 ring-blue-200 shadow-blue-100'
-          : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50 hover:shadow-lg'
-      }`}
-      data-testid="ops-kpi-card"
-      data-kpi-label={label}
-    >
-      <span className={`inline-flex w-fit shrink-0 rounded-lg p-2 shadow-sm ${color}`}>
-        <Icon className="h-5 w-5 text-white" strokeWidth={2.25} aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1 text-left">
-        <span className="block text-xl font-bold leading-none tabular-nums text-slate-950">{value}</span>
-        <span className="mt-1.5 block text-[10px] font-semibold leading-snug text-slate-600 [overflow-wrap:anywhere]">
-          {label}
-        </span>
-      </span>
-    </div>
-  );
-  if (onClick) {
-    return (
-      <button type="button" onClick={onClick} className="block w-full min-w-0 text-left" data-testid={`ops-kpi-${label}`}>
-        {body}
-      </button>
-    );
-  }
-  return body;
+function resolveAcilListVendorPaid(c: EmergencyCase): boolean | null {
+  if (c.vendorPaid === true || c.vendorPaid === false) return c.vendorPaid;
+  return readAcilLocalFlow(c.id).vendorPaid;
 }
 
 function resolveClaimDisplayDate(claim: {
@@ -268,6 +244,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 80, defaultVisible: false },
   { id: 'subject', label: 'Dosya Konusu', defaultWidth: 200, minWidth: 120, flex: true },
   { id: 'status', label: 'Dosya Durumu', defaultWidth: 150, minWidth: 120 },
+  { id: 'vendorPay', label: 'Ödemeler', defaultWidth: 132, minWidth: 112, alwaysVisible: true },
   { id: 'invoice', label: 'Fatura', defaultWidth: 100, minWidth: 80, defaultVisible: false },
   { id: 'amount', label: 'Tutar', defaultWidth: 96, minWidth: 80, defaultVisible: false },
   { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88 },
@@ -276,16 +253,47 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
 ];
 
+/** Acil kuyruk — Hasar listesi ölçüleri; para Sütunlar’da; Ödeme Durumu durur. */
+const ACIL_QUEUE_COLUMNS: TableColumnDef[] = [
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 88 },
+  { id: 'customer', label: 'Müşteri', defaultWidth: 160, minWidth: 100 },
+  { id: 'insured', label: 'Sigortalı', defaultWidth: 140, minWidth: 100 },
+  { id: 'assignee', label: 'Kimde', defaultWidth: 120, minWidth: 88 },
+  { id: 'date', label: 'Tarih', defaultWidth: 100, minWidth: 88 },
+  { id: 'subject', label: 'Dosya Konusu', defaultWidth: 140, minWidth: 100, flex: true },
+  { id: 'status', label: 'Dosya Durumu', defaultWidth: 130, minWidth: 100 },
+];
+
+const VENDOR_PAY_COL: TableColumnDef = {
+  id: 'vendorPay',
+  label: 'Ödeme Durumu',
+  defaultWidth: 132,
+  minWidth: 112,
+  alwaysVisible: true,
+};
+
+const ACIL_TABLE_COLUMNS: TableColumnDef[] = [
+  ...ACIL_QUEUE_COLUMNS,
+  VENDOR_PAY_COL,
+  { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88, defaultVisible: false },
+  { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88, defaultVisible: false },
+  { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88, defaultVisible: false },
+  { id: 'reportCost', label: 'Tedarikçi Maliyet Toplamı', defaultWidth: 140, minWidth: 110, defaultVisible: false },
+  { id: 'reportProfit', label: 'Beklenen Kar', defaultWidth: 110, minWidth: 88, defaultVisible: false },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
+];
+
 const PAGE_SIZE = 50;
 
 /**
  * Sütun genişlikleri sayfa/filtre bazında ayrılır — Hasar ve Acil birbirini etkilemez.
- * v11: Gecikme Süresi kalktı; filterType başına ayrı anahtar.
+ * v17: Hasar kuyruk kabuğu; para Sütunlar’da; Ödeme Durumu gizlenemez.
+ * v12 Hasar/all: Ödemeler sütunu dosya sorumlusuna görünür, gizlenemez.
  */
 const OPS_COLS_KEY_BY_FILTER: Record<'all' | 'hasar' | 'acil', string> = {
-  all: 'table-cols:operasyon-all-v11',
-  hasar: 'table-cols:operasyon-hasar-v11',
-  acil: 'table-cols:operasyon-acil-v11',
+  all: 'table-cols:operasyon-all-v12',
+  hasar: 'table-cols:operasyon-hasar-v12',
+  acil: 'table-cols:operasyon-acil-v17',
 };
 
 function resolveOpsColumnsStorageKey(filterType: 'all' | 'hasar' | 'acil' = 'all'): string {
@@ -313,6 +321,10 @@ const COL_DIVIDER =
 
 type OpsStats = {
   open: number;
+  openClaims?: number;
+  openedTodayClaims?: number;
+  openEmergency?: number;
+  openedTodayEmergency?: number;
   urgent: number;
   openedToday: number;
   approvalPending: number;
@@ -340,8 +352,14 @@ export default function OperasyonPage() {
 function OperasyonPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [colsStorageKey, setColsStorageKey] = useState(OPS_COLS_KEY_BY_FILTER.all);
-  const tableColumns = usePanelTableColumns(colsStorageKey, TABLE_COLUMNS);
+  const { showFinanceExtraAccessAcil } = usePanelAccess();
+  const [colsStorageKey, setColsStorageKey] = useState(() => {
+    const filter = searchParams.get('filter');
+    if (filter === 'acil' || filter === 'hasar' || filter === 'all') {
+      return OPS_COLS_KEY_BY_FILTER[filter];
+    }
+    return OPS_COLS_KEY_BY_FILTER.all;
+  });
 
   const [dosyaKonusuCatalog, setDosyaKonusuCatalog] = useState<string[]>([]);
 
@@ -350,19 +368,27 @@ function OperasyonPageContent() {
   const [claimsLoading, setClaimsLoading] = useState(true);
   const [claimsError, setClaimsError] = useState('');
   const [page, setPage] = useState(1);
+  const [acilPageSize, setAcilPageSize] = useState<OpsListPageSize>(50);
   const [sort, setSort] = useState('createdAt:desc');
   const [clientSort, setClientSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
   const [customerQuery, setCustomerQuery] = useState('');
 
   const [cases, setCases] = useState<EmergencyCase[]>([]);
   const [casesLoading, setCasesLoading] = useState(true);
+  const [casesError, setCasesError] = useState('');
 
   const [opsStats, setOpsStats] = useState<OpsStats | null>(null);
   const [emailTarget, setEmailTarget] = useState<OperationSendEmailTarget | null>(null);
 
-  const [filterType, setFilterType] = useState<'all' | 'hasar' | 'acil'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'hasar' | 'acil'>(() => {
+    const filter = searchParams.get('filter');
+    return filter === 'acil' || filter === 'hasar' || filter === 'all' ? filter : 'all';
+  });
   const [filterInvoice, setFilterInvoice] = useState('');
+  const [filterVendorPay, setFilterVendorPay] = useState<AcilVendorPayFilter>('');
   const [opsPreset, setOpsPreset] = useState<OperationPreset | ''>('');
+  const tableColumnDefs = filterType === 'acil' ? ACIL_TABLE_COLUMNS : TABLE_COLUMNS;
+  const tableColumns = usePanelTableColumns(colsStorageKey, tableColumnDefs);
 
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'hasar' | 'acil'; id: string; fileNo: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -372,6 +398,10 @@ function OperasyonPageContent() {
   const [showNewAcilPanel, setShowNewAcilPanel] = useState(false);
   const [acilFormSession, setAcilFormSession] = useState(0);
   const [acilCreatedNotice, setAcilCreatedNotice] = useState('');
+
+  useEffect(() => {
+    setAcilPageSize(readOpsListPageSize(OPS_LIST_PAGE_SIZE_KEYS.acil, 50));
+  }, []);
 
   useEffect(() => {
     const filter = searchParams.get('filter');
@@ -401,6 +431,14 @@ function OperasyonPageContent() {
     setColsStorageKey(resolveOpsColumnsStorageKey(filterType));
   }, [filterType]);
 
+  useEffect(() => {
+    const previous = document.title;
+    document.title = filterType === 'acil' ? 'Acil Yardım Dosyaları' : 'Dosya Özeti';
+    return () => {
+      document.title = previous;
+    };
+  }, [filterType]);
+
   const patchClaimInsuredName = useCallback((claimId: string, insuredName: string) => {
     setClaims((prev) => prev.map((claim) => (
       claim.id === claimId ? { ...claim, insuredName } : claim
@@ -408,8 +446,8 @@ function OperasyonPageContent() {
   }, []);
 
   const loadClaims = useCallback(async () => {
-    // "Acil Dosya" KPI = acil yardım stoku; hasar listesi karışmasın
-    if (opsPreset === 'urgent') {
+    // Acil listesi / "Acil Dosya" KPI = acil yardım stoku; hasar API hatası kırmızı şerit basmasın
+    if (opsPreset === 'urgent' || filterType === 'acil') {
       setClaims([]);
       setClaimsTotal(0);
       setClaimsLoading(false);
@@ -434,7 +472,7 @@ function OperasyonPageContent() {
     } finally {
       setClaimsLoading(false);
     }
-  }, [page, sort, opsPreset, filterInvoice]);
+  }, [page, sort, opsPreset, filterInvoice, filterType]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -444,8 +482,9 @@ function OperasyonPageContent() {
   }, []);
 
   const loadCases = useCallback(async () => {
-    // Hasar-only KPI filtrelerinde acil listesi gerekmez
+    const acilList = filterType === 'acil';
     const needsAcil =
+      acilList ||
       !opsPreset ||
       opsPreset === 'open' ||
       opsPreset === 'urgent' ||
@@ -456,12 +495,16 @@ function OperasyonPageContent() {
       return;
     }
     setCasesLoading(true);
+    setCasesError('');
     try {
-      const res = await getCases();
-      setCases(res.data.slice(0, PAGE_SIZE * 3));
-    } catch { /* ignore */ }
+      const raw = await apiClient.get<unknown>('/emergency/cases');
+      setCases(asList<EmergencyCase>(raw));
+    } catch {
+      setCases([]);
+      setCasesError('Acil dosyalar yüklenemedi');
+    }
     finally { setCasesLoading(false); }
-  }, [opsPreset]);
+  }, [filterType, opsPreset]);
 
   useEffect(() => {
     loadClaims();
@@ -483,7 +526,7 @@ function OperasyonPageContent() {
 
   useEffect(() => {
     setPage(1);
-  }, [opsPreset, filterInvoice, filterType]);
+  }, [opsPreset, filterInvoice, filterType, acilPageSize, customerQuery, filterVendorPay]);
 
   const hasarRows: UnifiedRow[] = claims.map((claim) => {
     const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
@@ -502,6 +545,7 @@ function OperasyonPageContent() {
       customerTypeLabel: customer.typeLabel,
       customerTitle: customer.title,
       customerSearch: customer.searchText,
+      customerHref: customer.customerHref,
       insuredName: resolveHasarInsuredName(claim),
       date: resolveClaimDisplayDate(claim),
       subject,
@@ -534,7 +578,11 @@ function OperasyonPageContent() {
       updatedAt: claim.updatedAt ?? null,
       priority: claim.priority ?? null,
       reportId: claim.latestRepairReport?.id ?? null,
-      defaultEmailTo: claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? null,
+      defaultEmailTo: resolveOpsEmailDefaultTo({
+        customerEmail: claim.customer?.email,
+        insuranceEmail: claim.insuranceCompany?.contactEmail,
+      }) ?? null,
+      vendorPaid: claim.vendorPaid === true || claim.vendorPaid === false ? claim.vendorPaid : null,
     };
   });
 
@@ -567,6 +615,7 @@ function OperasyonPageContent() {
       customerTypeLabel: customer.typeLabel,
       customerTitle: customer.title,
       customerSearch: customer.searchText,
+      customerHref: customer.customerHref,
       insuredName: c.customerName ? toTitleCaseTR(c.customerName) : '—',
       date: c.createdAt,
       subject: resolveClaimDosyaKonusu({ lossType: c.issueType }, dosyaKonusuCatalog),
@@ -583,11 +632,14 @@ function OperasyonPageContent() {
         c.netKar != null ? formatTryAmount(Number(c.netKar), { fractionDigits: 0 }) : null,
       expectedProfitNegative: c.netKar != null ? Number(c.netKar) < 0 : false,
       delayHours: null,
-      assigneeName: '—',
+      assigneeName: c.assignedUser
+        ? `${c.assignedUser.firstName ?? ''} ${c.assignedUser.lastName ?? ''}`.trim() || '—'
+        : '—',
       approval72hExceeded: false,
       delayRisk: false,
       reportId: null,
       defaultEmailTo: null,
+      vendorPaid: resolveAcilListVendorPaid(c),
     };
   });
 
@@ -606,6 +658,8 @@ function OperasyonPageContent() {
       case 'reportSales': return row.expectedSales ?? '';
       case 'reportCost': return row.supplierCostTotal ?? '';
       case 'reportProfit': return row.expectedProfit ?? '';
+      case 'vendorPay':
+        return acilVendorPayLabel(row.vendorPaid);
       default: return '';
     }
   }
@@ -633,10 +687,16 @@ function OperasyonPageContent() {
             if (row.fileNo.toLocaleLowerCase('tr').includes(q)) return true;
             if (row.insuredName.toLocaleLowerCase('tr').includes(q)) return true;
             if ((row.subject ?? '').toLocaleLowerCase('tr').includes(q)) return true;
+            if (acilVendorPayMatchesQuery(row.vendorPaid, q)) return true;
           }
           return false;
         })
       : [...merged];
+    if (filterType === 'acil' && filterVendorPay) {
+      rows = rows.filter(
+        (row) => row.kind === 'acil' && acilVendorPayMatchesFilter(row.vendorPaid, filterVendorPay),
+      );
+    }
     if (clientSort) {
       const { key, dir } = clientSort;
       const mul = dir === 'asc' ? 1 : -1;
@@ -697,17 +757,28 @@ function OperasyonPageContent() {
   const missingInsuredHasar = hasarRows.filter((row) => row.insuredName === '—');
   /** Sidebar → Acil Yardım Dosyaları: Hasar listesi kabuğuna hizalı sade üst alan */
   const isAcilListMode = filterType === 'acil';
-  const isLoading =
-    (opsPreset !== 'urgent' && claimsLoading) ||
-    (
+  const queueThClass = isAcilListMode ? 'table-th-center' : `table-th !py-2 text-xs ${COL_DIVIDER}`;
+  const queueTdClass = isAcilListMode ? 'table-td' : `table-td !py-2 text-xs ${COL_DIVIDER}`;
+  const queueTdCenterClass = isAcilListMode ? 'table-td-center' : `table-td !py-2 text-xs ${COL_DIVIDER}`;
+  const isLoading = isAcilListMode
+    ? casesLoading
+    : (
+      (opsPreset !== 'urgent' && claimsLoading) ||
       (
-        opsPreset === 'urgent' ||
-        opsPreset === 'open' ||
-        opsPreset === 'opened_today' ||
-        (!opsPreset && filterType !== 'hasar')
-      ) && casesLoading
+        (
+          opsPreset === 'urgent' ||
+          opsPreset === 'open' ||
+          opsPreset === 'opened_today' ||
+          (!opsPreset && filterType !== 'hasar')
+        ) && casesLoading
+      )
     );
-  const totalPages = Math.max(1, Math.ceil(claimsTotal / PAGE_SIZE));
+  const totalPages = isAcilListMode
+    ? Math.max(1, Math.ceil(filteredRows.length / acilPageSize))
+    : Math.max(1, Math.ceil(claimsTotal / PAGE_SIZE));
+  const pagedRows = isAcilListMode
+    ? filteredRows.slice((page - 1) * acilPageSize, page * acilPageSize)
+    : filteredRows;
 
   const togglePreset = (preset: OperationPreset) => {
     setOpsPreset((prev) => (prev === preset ? '' : preset));
@@ -718,7 +789,7 @@ function OperasyonPageContent() {
 
   const columnFitSamples = useMemo(() => {
     const samples: Record<string, string[]> = {};
-    for (const col of TABLE_COLUMNS) samples[col.id] = [col.label];
+    for (const col of tableColumnDefs) samples[col.id] = [col.label];
     for (const row of filteredRows) {
       samples.kind?.push(row.kind === 'hasar' ? 'Hasar' : 'Acil');
       samples.fileNo?.push(row.fileNo);
@@ -734,10 +805,23 @@ function OperasyonPageContent() {
       if (row.expectedSales) samples.reportSales?.push(row.expectedSales);
       if (row.supplierCostTotal) samples.reportCost?.push(row.supplierCostTotal);
       if (row.expectedProfit) samples.reportProfit?.push(row.expectedProfit);
+      samples.vendorPay?.push(acilVendorPayLabel(row.vendorPaid));
       samples.actions?.push('İşlemler');
     }
     return samples;
-  }, [filteredRows]);
+  }, [filteredRows, tableColumnDefs]);
+
+  const visibleOpsColumns = useMemo(() => {
+    const cols = tableColumns.prefs.orderedVisibleColumns;
+    const withoutKind = filterType === 'acil' ? cols.filter((c) => c.id !== 'kind') : cols;
+    const payCol = filterType === 'acil' ? VENDOR_PAY_COL : { ...VENDOR_PAY_COL, label: 'Ödemeler' };
+    if (withoutKind.some((c) => c.id === 'vendorPay')) return withoutKind;
+    const statusAt = withoutKind.findIndex((c) => c.id === 'status');
+    const insertAt = statusAt >= 0 ? statusAt + 1 : withoutKind.length;
+    return [...withoutKind.slice(0, insertAt), payCol, ...withoutKind.slice(insertAt)];
+  }, [filterType, tableColumns.prefs.orderedVisibleColumns]);
+
+  const opsTableStyle = useMemo(() => panelTableLayoutStyle(tableColumns), [tableColumns]);
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
@@ -771,14 +855,14 @@ function OperasyonPageContent() {
 
   return (
     <TableColumnsProvider value={tableColumns}>
-    <div className={isAcilListMode ? 'space-y-5' : 'space-y-6'}>
+    <div className={isAcilListMode ? 'space-y-3' : 'space-y-6'}>
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
         <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
         {isAcilListMode ? (
           <span className="text-slate-600 font-medium">Acil Yardım Dosyaları</span>
         ) : (
-          <span className="text-slate-600 font-medium">Operasyon</span>
+          <span className="text-slate-600 font-medium">Dosya Özeti</span>
         )}
       </nav>
 
@@ -813,10 +897,29 @@ function OperasyonPageContent() {
                     ) : null}
                   </p>
                 )}
+                <div className="mt-1.5 space-y-2">
+                  <MissingShortNameBanner />
+                  <OpsFirstRunNotice
+                    compact
+                    noticeId={OPS_NOTICE.acilListeSonDegisiklik.id}
+                    title={OPS_NOTICE.acilListeSonDegisiklik.title}
+                    body={OPS_NOTICE.acilListeSonDegisiklik.body}
+                    testId="acil-liste-ilk-kullanim-seridi"
+                  />
+                  {showFinanceExtraAccessAcil ? (
+                    <OpsFirstRunNotice
+                      compact
+                      noticeId={OPS_NOTICE.acilVekaletKuyruk.id}
+                      title={OPS_NOTICE.acilVekaletKuyruk.title}
+                      body={OPS_NOTICE.acilVekaletKuyruk.body}
+                      testId="acil-vekalet-kuyruk-seridi"
+                    />
+                  ) : null}
+                </div>
               </>
             ) : (
               <>
-                <h1 className="page-title">Operasyon</h1>
+                <h2 className="page-title">Dosya Özeti</h2>
                 <p className="page-subtitle">Dosyaya girmeden: durum, kimde, risk ve gecikme süresi</p>
               </>
             )}
@@ -858,13 +961,31 @@ function OperasyonPageContent() {
         </div>
       </div>
 
-      {/* Operasyon KPI — Acil listesinde Hasar gibi sade kabuk; KPI gizlenir */}
-      {!isAcilListMode && (
+      {/* Dosya Özeti KPI — Acil listesinde yalnız acil sayıları */}
+      {isAcilListMode ? (
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" data-testid="ops-kpi-band-acil">
+        <OpsStripKpi
+          dense
+          label="Açık Dosya"
+          value={opsStats?.openEmergency ?? opsStats?.urgent ?? '—'}
+          color="bg-brand-600"
+          icon={FolderOpen}
+        />
+        <OpsStripKpi
+          dense
+          label="Bugün Açılan"
+          value={opsStats?.openedTodayEmergency ?? '—'}
+          color="bg-emerald-600"
+          icon={CalendarPlus}
+        />
+      </div>
+      ) : (
       <div
-        className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8"
         data-testid="ops-kpi-band"
       >
         <OpsStripKpi
+          dense
           label="Açık Dosya"
           value={opsStats?.open ?? '—'}
           color="bg-brand-600"
@@ -873,6 +994,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('open')}
         />
         <OpsStripKpi
+          dense
           label="Onay Bekleyen"
           value={opsStats?.approvalPending ?? '—'}
           color="bg-status-warning"
@@ -881,6 +1003,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('approval_pending')}
         />
         <OpsStripKpi
+          dense
           label="Rapor Yazılıyor"
           value={opsStats?.reportWriting ?? '—'}
           color="bg-orange-500"
@@ -889,6 +1012,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('report_writing')}
         />
         <OpsStripKpi
+          dense
           label="Rapor Onayı"
           value={opsStats?.reportApproval ?? '—'}
           color="bg-amber-600"
@@ -897,6 +1021,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('report_approval')}
         />
         <OpsStripKpi
+          dense
           label="Finansa Aktarılacak"
           value={opsStats?.financeTransfer ?? '—'}
           color="bg-violet-600"
@@ -905,6 +1030,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('finance_transfer')}
         />
         <OpsStripKpi
+          dense
           label="72 Saat + Risk"
           value={opsStats?.delayRisk ?? opsStats?.approval72h ?? '—'}
           color="bg-red-600"
@@ -913,6 +1039,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('delay_risk')}
         />
         <OpsStripKpi
+          dense
           label="Bugün Açılan"
           value={opsStats?.openedToday ?? '—'}
           color="bg-emerald-600"
@@ -921,6 +1048,7 @@ function OperasyonPageContent() {
           onClick={() => togglePreset('opened_today')}
         />
         <OpsStripKpi
+          dense
           label="Acil Dosya"
           value={opsStats?.urgent ?? '—'}
           color="bg-orange-600"
@@ -947,6 +1075,14 @@ function OperasyonPageContent() {
       )}
 
       {claimsError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{claimsError}</div>}
+      {isAcilListMode && casesError && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          <span className="text-sm">{casesError}</span>
+          <button type="button" className="text-sm font-medium hover:underline" onClick={() => void loadCases()}>
+            Tekrar Dene
+          </button>
+        </div>
+      )}
       {deleteError && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{deleteError}</div>}
       {!isAcilListMode && missingInsuredHasar.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -960,7 +1096,7 @@ function OperasyonPageContent() {
       )}
 
       {isAcilListMode && (
-        <div className="filter-bar">
+        <div className="filter-bar !mb-3 !py-2.5">
           <div className="panel-filter-bar">
             <div className="panel-filter-search-wrap">
               <SearchInput
@@ -986,6 +1122,18 @@ function OperasyonPageContent() {
             </select>
             <select
               className="panel-filter-control"
+              value={filterVendorPay}
+              onChange={(e) => setFilterVendorPay(e.target.value as AcilVendorPayFilter)}
+              data-testid="acil-odeme-filtre"
+              title="Tedarikçi ödemesi"
+            >
+              <option value="">Tüm ödemeler</option>
+              <option value="paid">Ödendi</option>
+              <option value="unpaid">Ödenmedi</option>
+              <option value="none">Kayıt yok</option>
+            </select>
+            <select
+              className="panel-filter-control"
               value={sort}
               onChange={(e) => setSort(e.target.value)}
               title="Sıralama"
@@ -995,12 +1143,13 @@ function OperasyonPageContent() {
               <option value="updatedAt:desc">Son Güncelleme</option>
               <option value="fileNo:asc">Dosya No A-Z</option>
             </select>
-            {customerQuery.trim() || filterInvoice ? (
+            {customerQuery.trim() || filterInvoice || filterVendorPay ? (
               <button
                 type="button"
                 onClick={() => {
                   setCustomerQuery('');
                   setFilterInvoice('');
+                  setFilterVendorPay('');
                 }}
                 className="text-xs text-slate-500 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-xl hover:border-red-200 transition-colors whitespace-nowrap"
               >
@@ -1016,7 +1165,7 @@ function OperasyonPageContent() {
         </div>
       )}
 
-      <div className="table-container">
+      <div className={`table-container${isAcilListMode ? ' ops-queue-table' : ''}`}>
         {!isAcilListMode && (
         <div className="flex flex-col gap-2 px-4 py-2.5 border-b border-slate-100">
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -1114,50 +1263,17 @@ function OperasyonPageContent() {
           <div className="py-16 text-center text-sm text-slate-400">
             <div className="space-y-3 animate-pulse">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-12 rounded-lg bg-slate-200" />)}</div>
           </div>
-        ) : filteredRows.length === 0 ? (
-          isAcilListMode ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
-              </div>
-              <p className="text-sm font-semibold text-slate-600">
-                {customerQuery.trim() || filterInvoice
-                  ? 'Filtrelere Uyan Dosya Bulunamadı'
-                  : 'Henüz Acil Yardım Dosyası Yok'}
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                {customerQuery.trim() || filterInvoice
-                  ? 'Farklı filtreler deneyin veya filtreleri temizleyin.'
-                  : 'İlk dosyanızı oluşturun!'}
-              </p>
-              {customerQuery.trim() || filterInvoice ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomerQuery('');
-                    setFilterInvoice('');
-                  }}
-                  className="btn-secondary mt-4"
-                >
-                  Filtreleri Temizle
-                </button>
-              ) : (
-                <Link href="/panel/operasyon?filter=acil&yeni=1" className="btn-primary mt-4 inline-flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                  Yeni Dosya Oluştur
-                </Link>
-              )}
-            </div>
-          ) : (
+        ) : !isAcilListMode && filteredRows.length === 0 ? (
             <div className="py-16 text-center text-sm text-slate-400">Henüz kayıt bulunamadı.</div>
-          )
         ) : (
           <>
           {/* Mobil / tablet kart — masaüstü tablo lg+ */}
           <div className="grid gap-3 p-3 lg:hidden">
-            {filteredRows.map((row) => (
+            {pagedRows.length === 0 ? (
+              <p className="py-8 text-center text-sm text-slate-400">
+                {casesError ? 'Liste alınamadı.' : 'Kayıt yok.'}
+              </p>
+            ) : pagedRows.map((row) => (
               <button
                 key={`${row.kind}-${row.id}`}
                 type="button"
@@ -1178,18 +1294,30 @@ function OperasyonPageContent() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {row.kind === 'hasar' ? (
-                        <span className="badge badge-blue">Hasar</span>
-                      ) : (
-                        <span className="badge badge-orange">Acil</span>
-                      )}
-                      {row.approval72hExceeded ? (
-                        <span className="badge badge-red">72s</span>
+                    {!isAcilListMode ? (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {row.kind === 'hasar' ? (
+                          <span className="badge badge-blue">Hasar</span>
+                        ) : (
+                          <span className="badge badge-orange">Acil</span>
+                        )}
+                        {row.approval72hExceeded ? (
+                          <span className="ops-72s-chip">72s</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <div className={`flex flex-wrap items-center gap-1.5 ${isAcilListMode ? '' : 'mt-1.5'}`}>
+                      <div className="break-all font-mono text-sm font-bold text-slate-900">{row.fileNo}</div>
+                      {isAcilListMode && row.approval72hExceeded ? (
+                        <span className="ops-72s-chip">72s</span>
                       ) : null}
                     </div>
-                    <div className="mt-1.5 font-mono text-sm font-bold text-slate-900">{row.fileNo}</div>
-                    <div className="mt-0.5 truncate text-xs font-medium text-slate-600">{row.customerName}</div>
+                    <div className="mt-1">
+                      <OpsCustomerCell kind={row.kind} name={row.customerName} typeLabel={row.customerTypeLabel} href={row.customerHref} />
+                    </div>
+                    {isAcilListMode && row.subject ? (
+                      <div className="mt-0.5 truncate text-[11px] text-slate-500">{row.subject}</div>
+                    ) : null}
                   </div>
                   {row.kind === 'hasar' ? (
                     <span className={row.statusTone}>{row.statusLabel}</span>
@@ -1210,10 +1338,14 @@ function OperasyonPageContent() {
                     <p className="text-slate-400">Sorumlu</p>
                     <p className="mt-0.5 truncate font-medium text-slate-700">{row.assigneeName || '—'}</p>
                   </div>
-                  <div>
-                    <p className="text-slate-400">Konu</p>
-                    <p className="mt-0.5 truncate font-medium text-slate-700">{row.subject || '—'}</p>
-                  </div>
+                  {!isAcilListMode ? (
+                    <div>
+                      <p className="text-slate-400">Konu</p>
+                      <p className="mt-0.5 truncate font-medium text-slate-700">{row.subject || '—'}</p>
+                    </div>
+                  ) : null}
+                  {!isAcilListMode ? (
+                    <>
                   <div>
                     <p className="text-slate-400">Beklenen Ciro</p>
                     <p className="mt-0.5 font-semibold text-slate-700">{row.expectedSales ?? '—'}</p>
@@ -1228,22 +1360,37 @@ function OperasyonPageContent() {
                       {row.expectedProfit ?? '—'}
                     </p>
                   </div>
+                    </>
+                  ) : null}
+                  {row.kind === 'acil' || row.kind === 'hasar' ? (
+                    <div>
+                      <p className="text-slate-400">{row.kind === 'acil' ? 'Ödeme Durumu' : 'Ödemeler'}</p>
+                      <p className="mt-0.5">
+                        <span
+                          className={acilVendorPayTone(row.vendorPaid)}
+                          data-testid={row.kind === 'acil' ? 'acil-liste-odeme' : 'hasar-liste-odeme'}
+                        >
+                          {acilVendorPayLabel(row.vendorPaid)}
+                        </span>
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </button>
             ))}
           </div>
           <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full text-xs" style={panelTableLayoutStyle(tableColumns)}>
+            <table className={`w-full ${isAcilListMode ? 'text-sm' : 'text-xs'}`} style={opsTableStyle}>
               <PanelTableColGroup />
               <thead className="table-head-row">
                 <tr>
-                  {tableColumns.prefs.orderedVisibleColumns.map((col) =>
+                  {visibleOpsColumns.map((col) =>
                     col.id === 'actions' ? (
                       <PanelTableTh
                         key={col.id}
                         colId={col.id}
-                        className={`table-th !py-2 text-xs ${COL_DIVIDER}`}
-                        fitSamples={columnFitSamples[col.id]}
+                        className={queueThClass}
+                        fitSamples={isAcilListMode ? undefined : columnFitSamples[col.id]}
                       >
                         {col.label}
                       </PanelTableTh>
@@ -1251,23 +1398,37 @@ function OperasyonPageContent() {
                       <SortablePanelTableTh
                         key={col.id}
                         colId={col.id}
-                        className={`table-th !py-2 text-xs ${COL_DIVIDER}`}
-                        fitSamples={columnFitSamples[col.id]}
+                        className={queueThClass}
+                        fitSamples={isAcilListMode ? undefined : columnFitSamples[col.id]}
                         sortKey={col.id}
                         activeSortKey={activeSortKey}
                         sortDir={sortDir}
                         onSort={handleColumnSort}
                       >
-                        {col.label}
+                        {col.id === 'vendorPay' ? (
+                          <span data-testid={filterType === 'acil' ? 'acil-odeme-durumu-sutun' : 'hasar-odeme-durumu-sutun'}>{col.label}</span>
+                        ) : (
+                          col.label
+                        )}
                       </SortablePanelTableTh>
                     ),
                   )}
                 </tr>
               </thead>
               <tbody className="table-body">
-                {filteredRows.map((row) => (
+                {pagedRows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={Math.max(visibleOpsColumns.length, 1)}
+                      className="px-5 py-10 text-center text-sm text-slate-400"
+                    >
+                      {casesError ? 'Liste alınamadı.' : 'Kayıt yok.'}
+                    </td>
+                  </tr>
+                ) : pagedRows.map((row) => (
                   <tr
                     key={`${row.kind}-${row.id}`}
+                    title={row.approval72hExceeded ? 'Onay süresi 72 saati aştı' : undefined}
                     className={`table-row cursor-pointer ${
                       row.approval72hExceeded
                         ? 'ops-row-approval-72h'
@@ -1283,11 +1444,11 @@ function OperasyonPageContent() {
                       )
                     }
                   >
-                    {tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                    {visibleOpsColumns.map((col) => {
                       switch (col.id) {
                         case 'kind':
                           return (
-                            <PanelTableTd key={col.id} colId="kind" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="kind" className={queueTdClass}>
                               {row.kind === 'hasar' ? (
                                 <span className="badge badge-blue">Hasar</span>
                               ) : (
@@ -1300,11 +1461,11 @@ function OperasyonPageContent() {
                           );
                         case 'fileNo':
                           return (
-                            <PanelTableTd key={col.id} colId="fileNo" className={`table-td !py-2 font-mono text-xs font-normal text-slate-800 whitespace-nowrap ${COL_DIVIDER}`}>
-                              <span className={`inline-flex items-center gap-1 ${clientSort?.key === 'fileNo' ? 'font-semibold text-slate-950' : ''}`}>
+                            <PanelTableTd key={col.id} colId="fileNo" className={`${queueTdClass} font-mono text-xs ${isAcilListMode ? 'font-semibold text-slate-900' : 'font-normal text-slate-800'}`}>
+                              <span className={`inline-flex flex-wrap items-center gap-1 ${clientSort?.key === 'fileNo' ? 'font-semibold text-slate-950' : ''}`}>
                                 {row.fileNo}
                                 {row.approval72hExceeded && (
-                                  <span className="badge badge-red" title="72 saat onay aşıldı">72s</span>
+                                  <span className="ops-72s-chip" title="72 saat onay aşıldı">72s</span>
                                 )}
                               </span>
                             </PanelTableTd>
@@ -1314,36 +1475,16 @@ function OperasyonPageContent() {
                             <PanelTableTd
                               key={col.id}
                               colId="customer"
-                              className={`table-td !py-2 text-xs ${COL_DIVIDER}`}
+                              wrap
+                              className={queueTdClass}
                               title={row.customerTitle}
                             >
-                              <div className="min-w-0 text-left" data-testid="ops-customer-cell" data-kind={row.kind}>
-                                <div
-                                  className={`truncate ${
-                                    row.customerName === OPERATION_CUSTOMER_UNDEFINED
-                                      ? 'text-slate-500'
-                                      : 'font-medium text-slate-800'
-                                  }`}
-                                  title={row.customerName}
-                                >
-                                  {row.customerName}
-                                </div>
-                                {row.customerTypeLabel ? (
-                                  <div
-                                    className={`mt-0.5 truncate text-[10px] font-medium ${
-                                      row.kind === 'hasar' ? 'text-slate-500' : 'text-slate-400'
-                                    }`}
-                                    title={row.customerTypeLabel}
-                                  >
-                                    {row.customerTypeLabel}
-                                  </div>
-                                ) : null}
-                              </div>
+                              <OpsCustomerCell kind={row.kind} name={row.customerName} typeLabel={row.customerTypeLabel} href={row.customerHref} />
                             </PanelTableTd>
                           );
                         case 'insured':
                           return (
-                            <PanelTableTd key={col.id} colId="insured" className={`table-td !py-2 text-xs whitespace-nowrap font-medium text-slate-700 ${COL_DIVIDER}`} title={row.insuredName}>
+                            <PanelTableTd key={col.id} colId="insured" className={`${queueTdClass} font-medium text-slate-700`} title={row.insuredName}>
                               {row.kind === 'hasar' ? (
                                 <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                                   <InsuredNameInlineEdit
@@ -1361,25 +1502,25 @@ function OperasyonPageContent() {
                           );
                         case 'assignee':
                           return (
-                            <PanelTableTd key={col.id} colId="assignee" className={`table-td !py-2 text-xs whitespace-nowrap text-slate-600 ${COL_DIVIDER}`} title={row.assigneeName}>
+                            <PanelTableTd key={col.id} colId="assignee" className={`${queueTdClass} text-slate-600`} title={row.assigneeName}>
                               {row.assigneeName || '—'}
                             </PanelTableTd>
                           );
                         case 'date':
                           return (
-                            <PanelTableTd key={col.id} colId="date" className={`table-td !py-2 text-xs text-slate-400 whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="date" className={`${queueTdClass} text-slate-400`}>
                               {fmtDate(row.date)}
                             </PanelTableTd>
                           );
                         case 'subject':
                           return (
-                            <PanelTableTd key={col.id} colId="subject" className={`table-td !py-2 text-xs text-slate-500 whitespace-nowrap ${COL_DIVIDER}`} title={row.subject}>
+                            <PanelTableTd key={col.id} colId="subject" className={queueTdClass} title={row.subject}>
                               {row.subject}
                             </PanelTableTd>
                           );
                         case 'status':
                           return (
-                            <PanelTableTd key={col.id} colId="status" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="status" align="center" className={queueTdCenterClass}>
                               {row.kind === 'hasar' ? (
                                 <span className={row.statusTone}>{row.statusLabel}</span>
                               ) : (
@@ -1387,9 +1528,20 @@ function OperasyonPageContent() {
                               )}
                             </PanelTableTd>
                           );
+                        case 'vendorPay':
+                          return (
+                            <PanelTableTd key={col.id} colId="vendorPay" className={queueTdClass}>
+                              <span
+                                className={acilVendorPayTone(row.vendorPaid)}
+                                data-testid={row.kind === 'acil' ? 'acil-liste-odeme' : 'hasar-liste-odeme'}
+                              >
+                                {acilVendorPayLabel(row.vendorPaid)}
+                              </span>
+                            </PanelTableTd>
+                          );
                         case 'invoice':
                           return (
-                            <PanelTableTd key={col.id} colId="invoice" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="invoice" className={queueTdClass}>
                               <span className={INVOICE_STATUS_COLORS[row.invoiceStatus]}>
                                 {INVOICE_STATUS_LABELS[row.invoiceStatus]}
                               </span>
@@ -1397,19 +1549,19 @@ function OperasyonPageContent() {
                           );
                         case 'amount':
                           return (
-                            <PanelTableTd key={col.id} colId="amount" className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="amount" className={`${queueTdClass} font-semibold tabular-nums`}>
                               {row.amount ?? <span className="text-slate-300">—</span>}
                             </PanelTableTd>
                           );
                         case 'reportSales':
                           return (
-                            <PanelTableTd key={col.id} colId="reportSales" className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums text-slate-800 ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="reportSales" className={`${queueTdClass} font-semibold tabular-nums text-slate-800`}>
                               {row.expectedSales ?? <span className="text-slate-300">—</span>}
                             </PanelTableTd>
                           );
                         case 'reportCost':
                           return (
-                            <PanelTableTd key={col.id} colId="reportCost" className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums text-slate-800 ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="reportCost" className={`${queueTdClass} font-semibold tabular-nums text-slate-800`}>
                               {row.supplierCostTotal ?? <span className="text-slate-300">—</span>}
                             </PanelTableTd>
                           );
@@ -1418,7 +1570,7 @@ function OperasyonPageContent() {
                             <PanelTableTd
                               key={col.id}
                               colId="reportProfit"
-                              className={`table-td !py-2 text-xs whitespace-nowrap font-semibold tabular-nums ${COL_DIVIDER} ${
+                              className={`${queueTdClass} font-semibold tabular-nums ${
                                 row.expectedProfitNegative ? 'text-status-danger' : 'text-slate-800'
                               }`}
                             >
@@ -1427,7 +1579,7 @@ function OperasyonPageContent() {
                           );
                         case 'actions':
                           return (
-                            <PanelTableTd key={col.id} colId="actions" className={`table-td !py-2 text-xs whitespace-nowrap ${COL_DIVIDER}`}>
+                            <PanelTableTd key={col.id} colId="actions" wrap={false} className={isAcilListMode ? 'table-td-center' : queueTdClass}>
                               <OperationRowActions
                                 kind={row.kind}
                                 id={row.id}
@@ -1464,17 +1616,30 @@ function OperasyonPageContent() {
           </>
         )}
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2">
-          <span>
-            {isAcilListMode
-              ? `${filteredRows.length} dosya`
-              : (
-                <>
-                  {filteredRows.length} satır &bull; Hasar toplam {claimsTotal}
-                  {!opsPreset && filterType !== 'hasar' ? ` · Acil ${cases.length}` : ''}
-                  {opsPreset ? ` · Filtre: ${OPERATION_PRESET_LABELS[opsPreset]}` : ''}
-                </>
-              )}
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            {isAcilListMode ? (
+              <OpsListPageSizeSelect
+                value={acilPageSize}
+                fallback={50}
+                storageKey={OPS_LIST_PAGE_SIZE_KEYS.acil}
+                onChange={(next) => {
+                  setAcilPageSize(next);
+                  setPage(1);
+                }}
+              />
+            ) : null}
+            <span>
+              {isAcilListMode
+                ? `${filteredRows.length} dosya`
+                : (
+                  <>
+                    {filteredRows.length} satır &bull; Hasar toplam {claimsTotal}
+                    {!opsPreset && filterType !== 'hasar' ? ` · Acil ${cases.length}` : ''}
+                    {opsPreset ? ` · Filtre: ${OPERATION_PRESET_LABELS[opsPreset]}` : ''}
+                  </>
+                )}
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"

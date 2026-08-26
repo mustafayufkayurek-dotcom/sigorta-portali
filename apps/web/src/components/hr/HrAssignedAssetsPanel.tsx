@@ -118,7 +118,14 @@ type Props = {
   employeeProfileId?: string;
   employeeName?: string;
   canAdd?: boolean;
+  /** Tam sayfa zimmet listesi. Ekleme sağ çekmecede. */
+  layout?: 'embed' | 'page';
+  /** Personel seçerek zimmet — sağ zimmet sayfasında */
+  pickEmployee?: boolean;
+  /** Personel kaydı sonrası zimmet zorunlu; form kapatılamaz. */
+  required?: boolean;
   onOpenEmployee?: (employeeProfileId: string, employeeName: string) => void;
+  onRequiredSaved?: () => void;
 };
 
 /**
@@ -130,7 +137,10 @@ export function HrAssignedAssetsPanel({
   employeeProfileId,
   employeeName,
   canAdd = true,
+  pickEmployee = false,
+  required = false,
   onOpenEmployee,
+  onRequiredSaved,
 }: Props) {
   const { showToast } = useToast();
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -161,12 +171,23 @@ export function HrAssignedAssetsPanel({
   const employeesQuery = useApiQuery<EmployeeOption[]>(
     ['hr-employees-list-assets'],
     'hr/employees',
-    { enabled: !preview && canAdd && !employeeProfileId },
+    { enabled: !preview && canAdd && pickEmployee },
   );
 
   const liveRows = Array.isArray(assetsQuery.data) ? assetsQuery.data : [];
   const rows = preview ? previewRows : liveRows;
   const employeeOptions = Array.isArray(employeesQuery.data) ? employeesQuery.data : [];
+
+  useEffect(() => {
+    if (!canAdd) return;
+    if (required || pickEmployee) {
+      setFormOpen(true);
+      setForm((prev) => ({
+        ...prev,
+        employeeProfileId: employeeProfileId || prev.employeeProfileId,
+      }));
+    }
+  }, [canAdd, required, pickEmployee, employeeProfileId]);
 
   useEffect(() => {
     if (preview) return;
@@ -255,6 +276,7 @@ export function HrAssignedAssetsPanel({
       setPreviewRows((prev) => [next, ...prev]);
       setFormOpen(false);
       setSavedNote(`${next.name} · ${next.serialNo} zimmetlendi (önizleme).`);
+      onRequiredSaved?.();
       return;
     }
 
@@ -270,6 +292,7 @@ export function HrAssignedAssetsPanel({
       setFormOpen(false);
       setSavedNote(`${brand} ${model} zimmetlendi.`);
       showToast('success', 'Zimmet Kaydedildi');
+      onRequiredSaved?.();
       await assetsQuery.refetch();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Zimmet kaydedilemedi';
@@ -279,6 +302,63 @@ export function HrAssignedAssetsPanel({
       setSaving(false);
     }
   };
+
+  const assetFormFields = (
+    <>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-content-tertiary">Kategori *</label>
+        <select
+          className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm"
+          value={form.category}
+          onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+        >
+          {categoryOptions.map((opt) => (
+            <option key={opt.code} value={opt.code}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-content-tertiary">Marka *</label>
+          <input
+            className="w-full rounded-xl border border-border px-3 py-2.5 text-sm"
+            placeholder="Örn. Apple"
+            value={form.brand}
+            onChange={(e) => setForm((p) => ({ ...p, brand: e.target.value }))}
+            onBlur={(e) => setForm((p) => ({ ...p, brand: toTitleCaseTR(e.target.value.trim()) }))}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-content-tertiary">Model *</label>
+          <input
+            className="w-full rounded-xl border border-border px-3 py-2.5 text-sm"
+            placeholder="Örn. Iphone 15 Pro"
+            value={form.model}
+            onChange={(e) => setForm((p) => ({ ...p, model: e.target.value }))}
+            onBlur={(e) => setForm((p) => ({ ...p, model: toTitleCaseTR(e.target.value.trim()) }))}
+          />
+        </div>
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-content-tertiary">Seri No *</label>
+        <input
+          className="w-full rounded-xl border border-border px-3 py-2.5 font-mono text-sm"
+          placeholder="Örn. F2LX9K8M3Q"
+          value={form.serialNo}
+          onChange={(e) => setForm((p) => ({ ...p, serialNo: e.target.value }))}
+        />
+      </div>
+      {formError ? <p className="text-xs text-status-danger">{formError}</p> : null}
+      <button
+        type="button"
+        onClick={() => void handleSave()}
+        disabled={saving}
+        className="w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+      >
+        {saving ? 'Kaydediliyor…' : 'Zimmeti Kaydet'}
+      </button>
+    </>
+  );
 
   return (
     <div className="space-y-4">
@@ -290,12 +370,14 @@ export function HrAssignedAssetsPanel({
             </div>
             <div>
               <h3 className="text-base font-semibold text-content-primary">
-                {employeeProfileId || employeeName ? 'Zimmetli Demirbaşlar' : 'Zimmet'}
+                {employeeProfileId || employeeName || !canAdd ? 'Zimmetli Demirbaşlar' : 'Zimmet'}
               </h3>
               <p className="mt-0.5 max-w-xl text-xs text-content-tertiary">
                 {employeeName
                   ? `${employeeName} Adına Zimmetlenen Demirbaşlar`
-                  : 'Admin Ve Finans — Tüm Personelin Zimmetli Demirbaşları'}
+                  : canAdd
+                    ? 'Personel zimmeti bu sayfadan kaydedilir'
+                    : 'Size zimmetlenen demirbaşlar'}
               </p>
             </div>
           </div>
@@ -305,7 +387,7 @@ export function HrAssignedAssetsPanel({
                 Tasarım Önizleme
               </span>
             ) : null}
-            {canAdd ? (
+            {canAdd && (employeeProfileId || pickEmployee) ? (
               <button
                 type="button"
                 onClick={() => openForm()}
@@ -318,7 +400,7 @@ export function HrAssignedAssetsPanel({
           </div>
         </div>
 
-        {!employeeProfileId && !employeeName ? (
+        {canAdd && !employeeProfileId && !employeeName ? (
           <div className="grid grid-cols-2 gap-3 bg-slate-50/50 p-4 sm:grid-cols-4 sm:p-5">
             {(
               [
@@ -521,13 +603,15 @@ export function HrAssignedAssetsPanel({
                               Özlük
                             </button>
                           ) : null}
-                          {canAdd ? (
+                          {onOpenEmployee && asset.employeeProfileId ? (
                             <button
                               type="button"
-                              title="Zimmet Ekle"
-                              aria-label="Zimmet Ekle"
+                              title="Personel Dosyasında Ekle"
+                              aria-label="Personel Dosyasında Ekle"
                               className="inline-flex h-8 items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
-                              onClick={() => openForm(asset.employeeProfileId ?? undefined)}
+                              onClick={() =>
+                                onOpenEmployee(asset.employeeProfileId!, asset.employeeName)
+                              }
                             >
                               <Plus className="h-3.5 w-3.5" aria-hidden />
                               Ekle
@@ -547,111 +631,52 @@ export function HrAssignedAssetsPanel({
         </div>
       )}
 
-      {formOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-content-primary">Zimmet Ekle</h3>
+      {formOpen && canAdd && (employeeProfileId || pickEmployee) ? (
+        <div className="space-y-3 rounded-2xl border border-border bg-white p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-content-primary">Zimmet Ekle</p>
+              <p className="mt-0.5 text-xs text-content-tertiary">
+                {required
+                  ? 'Personel zimmeti zorunludur. Kategori, marka, model ve seri no birlikte doldurulur.'
+                  : 'Personel adına demirbaş zimmetleyin. Marka, model ve seri no zorunludur.'}
+              </p>
+            </div>
+            {!required ? (
               <button
                 type="button"
                 onClick={() => setFormOpen(false)}
-                className="text-content-tertiary hover:text-content-secondary"
+                className="rounded-xl border border-border p-2 text-content-secondary hover:bg-slate-50"
                 aria-label="Kapat"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
-            </div>
-            <p className="text-xs text-content-secondary">
-              Personel adına demirbaş zimmetleyin. Marka, model ve seri no zorunludur.
-            </p>
-
-            {!employeeProfileId && (
-              <div>
-                <label className="block text-xs font-medium text-content-tertiary mb-1">Personel</label>
-                <select
-                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-white"
-                  value={form.employeeProfileId}
-                  onChange={(e) => setForm((p) => ({ ...p, employeeProfileId: e.target.value }))}
-                >
-                  <option value="">Personel seçin</option>
-                  {employeeOptions.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.user.firstName} {e.user.lastName}
-                      {e.department ? ` · ${e.department.name}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
+            ) : null}
+          </div>
+          {pickEmployee && !employeeProfileId ? (
             <div>
-              <label className="block text-xs font-medium text-content-tertiary mb-1">Kategori</label>
+              <label className="mb-1 block text-xs font-medium text-content-tertiary">
+                Personel *
+              </label>
               <select
-                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-white"
-                value={form.category}
-                onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm"
+                value={form.employeeProfileId}
+                onChange={(e) => setForm((p) => ({ ...p, employeeProfileId: e.target.value }))}
+                aria-label="Zimmet personel"
               >
-                {categoryOptions.map((opt) => (
-                  <option key={opt.code} value={opt.code}>{opt.label}</option>
+                <option value="">Personel seçin</option>
+                {employeeOptions.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.user.firstName} {e.user.lastName}
+                    {e.department ? ` · ${e.department.name}` : ''}
+                  </option>
                 ))}
               </select>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-content-tertiary mb-1">Marka</label>
-                <input
-                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm"
-                  placeholder="Örn. Apple"
-                  value={form.brand}
-                  onChange={(e) => setForm((p) => ({ ...p, brand: e.target.value }))}
-                  onBlur={(e) => setForm((p) => ({ ...p, brand: toTitleCaseTR(e.target.value.trim()) }))}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-content-tertiary mb-1">Model</label>
-                <input
-                  className="w-full border border-border rounded-xl px-3 py-2.5 text-sm"
-                  placeholder="Örn. Iphone 15 Pro"
-                  value={form.model}
-                  onChange={(e) => setForm((p) => ({ ...p, model: e.target.value }))}
-                  onBlur={(e) => setForm((p) => ({ ...p, model: toTitleCaseTR(e.target.value.trim()) }))}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-content-tertiary mb-1">Seri No</label>
-              <input
-                className="w-full border border-border rounded-xl px-3 py-2.5 text-sm font-mono"
-                placeholder="Örn. F2LX9K8M3Q"
-                value={form.serialNo}
-                onChange={(e) => setForm((p) => ({ ...p, serialNo: e.target.value }))}
-              />
-            </div>
-
-            {formError && <p className="text-xs text-status-danger">{formError}</p>}
-
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setFormOpen(false)}
-                className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-content-secondary hover:bg-surface-muted"
-              >
-                İptal
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSave()}
-                disabled={saving}
-                className="rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
-              >
-                {saving ? 'Kaydediliyor…' : 'Kaydet'}
-              </button>
-            </div>
-          </div>
+          ) : null}
+          {assetFormFields}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

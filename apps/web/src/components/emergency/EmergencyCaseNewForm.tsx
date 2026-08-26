@@ -26,6 +26,8 @@ import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { createInFlightGuard } from '@/utils/in-flight-guard';
 import SpeechToText from '@/components/SpeechToText';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
 const URGENCY_OPTIONS: { value: EmergencyUrgency; label: string; color: string }[] = [
   { value: 'DUSUK', label: 'Düşük', color: 'bg-slate-100 text-slate-700 border-slate-200' },
@@ -272,7 +274,7 @@ export function EmergencyCaseNewForm({
       const usersRes = await axios
         .get(`${API}/claim-files/assignable-staff`, {
           headers: authHeader(),
-          params: { role: 'office_staff' },
+          params: { role: 'office_staff', includeDelegates: 'acil_yardim' },
         })
         .catch(() => ({ data: { data: [] } }));
       setUsers((usersRes.data?.data ?? []) as PanelUser[]);
@@ -899,6 +901,13 @@ export function EmergencyCaseNewForm({
           )}
         </div>
         <div>
+          <OpsFirstRunNotice
+            noticeId={OPS_NOTICE.acilDosyaSorumlusuVekalet.id}
+            title={OPS_NOTICE.acilDosyaSorumlusuVekalet.title}
+            body={OPS_NOTICE.acilDosyaSorumlusuVekalet.body}
+            testId="dosya-sorumlusu-ilk-kullanim-seridi"
+            className="mb-2"
+          />
           <label className={label}>
             Dosya Sorumlusu <span className="text-status-danger">*</span>
           </label>

@@ -25,6 +25,7 @@ const CATEGORY_ALIASES: Record<string, string> = {
   'KONUT HASAR': 'Konut Hasar',
   'KONUT': 'Konut',
   TESISAT: 'Tesisat',
+  'SIHHI TESISAT': 'Sıhhi Tesisat',
   'KAPI KILIT': 'Kapı/Kilit Arızası',
   'KAPI/KILIT': 'Kapı/Kilit Arızası',
   ELEKTRIK: 'Elektrik Arızası',
@@ -46,6 +47,7 @@ const LOSS_TYPE_ALIASES: Record<string, string> = {
   'cam kırık': 'Cam Kırılması',
   'cam kirigi hasari': 'Cam Kırılması',
   'cam kırığı hasarı': 'Cam Kırılması',
+  'sihhi tesisat': 'Sıhhi Tesisat',
   'vam kirilmasi': 'Cam Kırılması',
   'vam kırılması': 'Cam Kırılması',
   'vam kirilmas': 'Cam Kırılması',
@@ -103,7 +105,10 @@ export function mapInboundCategoryKnown(raw?: string | null): string | undefined
   const upper = collapsed.toLocaleUpperCase('tr-TR');
   if (CATEGORY_ALIASES[upper]) return CATEGORY_ALIASES[upper];
   if (upper.includes('KONUT') && upper.includes('CAM')) return 'Konut Cam';
-  if (upper.includes('TESISAT')) return 'Tesisat';
+  if (upper.includes('SIHH') && (upper.includes('TESISAT') || upper.includes('TESİSAT'))) {
+    return 'Sıhhi Tesisat';
+  }
+  if (upper.includes('TESISAT') || upper.includes('TESİSAT')) return 'Tesisat';
   return undefined;
 }
 
@@ -112,6 +117,29 @@ export function mapInboundCategoryToMeridyen(raw?: string | null): string | unde
   const known = mapInboundCategoryKnown(raw);
   if (known) return known;
   return toInboundTitleCaseTR(collapseKey(raw));
+}
+
+/** Katalogdaki dosya konusu ile mail/alias metnini hizalar (Tesisat → Sıhhi Tesisat). */
+export function matchCatalogFileSubject(raw: string, catalog: string[]): string {
+  const t = raw.trim();
+  if (!t) return '';
+  if (catalog.length === 0) return t;
+  const fold = (s: string) => s.toLocaleLowerCase('tr-TR');
+  const foldedRaw = fold(t);
+  const exact = catalog.find((c) => fold(c) === foldedRaw);
+  if (exact) return exact;
+  if (foldedRaw === 'tesisat') {
+    const sihhi = catalog.find((c) => {
+      const f = fold(c);
+      return f.includes('sıhhi') && f.includes('tesisat');
+    });
+    if (sihhi) return sihhi;
+  }
+  const contains = catalog.find((c) => {
+    const f = fold(c);
+    return foldedRaw.length >= 4 && f.includes(foldedRaw);
+  });
+  return contains ?? t;
 }
 
 /** Serbest metin ihbar notu mu (canonical konu değil) */

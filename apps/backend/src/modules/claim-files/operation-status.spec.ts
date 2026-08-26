@@ -59,6 +59,15 @@ describe('operation-status mapping', () => {
     expect(stage.nextAction).toBe('Onay Talep Et');
   });
 
+  it('dış onay bekleyen rapor Onarım Aşamasında değil, Onay Bekliyor', () => {
+    const stage = deriveOperationStage({
+      claimStatusCode: 'pre_review',
+      reportStatus: 'sent_for_external_approval',
+    });
+    expect(stage.id).toBe('onay_bekliyor');
+    expect(stage.label).toBe('Onay Bekliyor');
+  });
+
   it('report rejected → Reddedildi (Rapor Yazılıyor değil)', () => {
     const stage = deriveOperationStage({
       claimStatusCode: 'budget_preparing',

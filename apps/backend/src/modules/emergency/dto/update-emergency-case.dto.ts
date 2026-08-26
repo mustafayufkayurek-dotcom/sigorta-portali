@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsBoolean, IsNumber } from 'class-validator';
 import { EmergencyUrgency } from '@prisma/client';
 
 export class UpdateEmergencyCaseDto {
@@ -53,4 +53,16 @@ export class UpdateEmergencyCaseDto {
   @IsString()
   @IsOptional()
   findingsText?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  vendorPaid?: boolean;
+
+  @IsNumber()
+  @IsOptional()
+  latitude?: number | null;
+
+  @IsNumber()
+  @IsOptional()
+  longitude?: number | null;
 }

@@ -16,6 +16,32 @@ export function formatTryAmount(
   })} TL`;
 }
 
+export function parseTrAmount(raw: string | number | null | undefined): number | null {
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+  if (raw == null) return null;
+  const t = String(raw).trim().replace(/\s/g, '').replace(/TL\.?$/i, '');
+  if (!t) return null;
+  const normalized = t.includes(',')
+    ? t.replace(/\./g, '').replace(',', '.')
+    : t.replace(/\./g, '');
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Alış-satış kârı ve yüzde (alışa göre). */
+export function calcAlisSatisKar(alisRaw: string, satisRaw: string): {
+  alis: number;
+  satis: number;
+  kar: number;
+  pct: number;
+} | null {
+  const alis = parseTrAmount(alisRaw);
+  const satis = parseTrAmount(satisRaw);
+  if (alis == null || satis == null || alis === 0) return null;
+  const kar = satis - alis;
+  return { alis, satis, kar, pct: (kar / alis) * 100 };
+}
+
 /** Kısa özet (KPI / sparkline): `1,2M TL` · `45K TL` */
 export function formatTryAmountCompact(amount: number | null | undefined): string {
   if (amount == null || !Number.isFinite(Number(amount))) return '—';

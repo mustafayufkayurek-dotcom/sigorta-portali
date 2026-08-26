@@ -135,3 +135,37 @@ export function resolveFileExpertDisplay(source: RepairReportExpertSource | null
   if (name) return { name, missing: false };
   return { name: 'Atanmamış', missing: true };
 }
+
+/**
+ * Hasar dosya üst bantı.
+ * Eksper ofisi yalnız müşteri eksper firmasıysa yazılır.
+ * İhbar sigorta şirketinden gelince eksper ofisi aranmaz.
+ */
+export function buildHasarHeaderBandParts(input: {
+  customer?: Parameters<typeof isExpertFirmCustomer>[0];
+  insuranceCompany?: { name?: string | null } | null;
+  fileNo: string;
+  konu?: string | null;
+}): string[] {
+  const parts: string[] = [];
+  const insurance = String(input.insuranceCompany?.name ?? '').trim();
+  const customerName = customerDisplayName(input.customer);
+  const customerOk = Boolean(customerName);
+
+  if (isExpertFirmCustomer(input.customer) && customerOk) {
+    parts.push(customerName);
+  }
+  if (insurance && !parts.some((p) => namesMatch(p, insurance))) {
+    parts.push(insurance);
+  } else if (!isExpertFirmCustomer(input.customer) && customerOk && !parts.some((p) => namesMatch(p, customerName))) {
+    parts.push(customerName);
+  }
+
+  const fileNo = String(input.fileNo ?? '').trim();
+  if (fileNo) parts.push(fileNo);
+
+  const konu = String(input.konu ?? '').trim();
+  if (konu && konu !== '—') parts.push(konu);
+
+  return parts;
+}

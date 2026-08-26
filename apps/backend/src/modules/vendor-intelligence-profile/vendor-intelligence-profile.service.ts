@@ -107,7 +107,7 @@ export class VendorIntelligenceProfileService {
     return this.recommendation.recommendForClaimFile(fileId, limit);
   }
 
-  async recommendForEmergencyCase(caseId: string, limit = 3): Promise<VendorRecommendationItem[]> {
+  async recommendForEmergencyCase(caseId: string, limit = 20): Promise<VendorRecommendationItem[]> {
     return this.recommendation.recommendForEmergencyCase(caseId, limit);
   }
 

@@ -222,14 +222,12 @@ export function useManagementDashboardData(
     staleTime: 60_000,
   });
 
-  const loading =
-    opsQuery.isLoading ||
-    slaQuery.isLoading ||
-    ownershipQuery.isLoading ||
-    userPerfQuery.isLoading ||
-    surveysQuery.isLoading ||
-    financeQuery.isLoading ||
-    (plEnabled && (plQuery.isLoading || prevPlQuery.isLoading));
+  const kpiLoading =
+    opsQuery.isLoading
+    || financeQuery.isLoading
+    || (plEnabled && plQuery.isLoading);
+
+  const loading = kpiLoading;
 
   const kpis = useMemo((): MgmtKpiItem[] => {
     const pl = plEnabled ? plQuery.data : undefined;
@@ -411,7 +409,9 @@ export function useManagementDashboardData(
   ]);
 
   const summary = useMemo((): MgmtSummaryCell[] => {
-    const negative = countNegativeFeedbackLast7Days(surveysQuery.data ?? []);
+    const negative = surveysQuery.isError
+      ? null
+      : countNegativeFeedbackLast7Days(surveysQuery.data ?? []);
     const topStaff = (userPerfQuery.data?.users ?? [])[0];
     const bottlenecksCritical =
       (ownershipQuery.data?.items ?? []).filter((i) => (i.criticalFiles ?? 0) > 0).length;
@@ -424,11 +424,12 @@ export function useManagementDashboardData(
       {
         id: 'week',
         title: 'Son 7 Gün',
-        primary:
-          negative > 0
+        primary: surveysQuery.isError
+          ? 'Anket Verisi Alınamadı'
+          : negative && negative > 0
             ? `${formatNumber(negative)} Olumsuz Geri Bildirim Alındı`
             : 'Olumsuz Geri Bildirim Yok',
-        tone: negative > 0 ? 'alert' : 'positive',
+        tone: surveysQuery.isError ? 'warning' : negative && negative > 0 ? 'alert' : 'positive',
         detailHref: '/panel/anketler/sonuclar',
       },
       {
@@ -475,7 +476,7 @@ export function useManagementDashboardData(
         detailHref: '/panel/sahiplik#personel-verimlilik',
       },
     ];
-  }, [surveysQuery.data, userPerfQuery.data, ownershipQuery.data, financeQuery.data]);
+  }, [surveysQuery.data, surveysQuery.isError, userPerfQuery.data, ownershipQuery.data, financeQuery.data]);
 
   const staffRows = useMemo((): StaffProductivityRow[] => {
     const users = userPerfQuery.data?.users ?? [];

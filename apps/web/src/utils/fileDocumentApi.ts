@@ -11,7 +11,19 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type FileDocumentKind = 'muvafakatname' | 'matbu_evrak';
+export type FileDocumentKind = 'muvafakatname' | 'matbu_evrak' | 'anket_formu';
+
+export const CLAIM_MANUAL_DOCUMENT_KINDS = [
+  { id: 'muvafakatname' as const, label: 'Muvafakatname' },
+  { id: 'anket_formu' as const, label: 'Anket Formu' },
+];
+
+export type ClaimManualDocumentKind = (typeof CLAIM_MANUAL_DOCUMENT_KINDS)[number]['id'];
+
+export function claimManualDocumentLabel(kind?: string | null) {
+  return CLAIM_MANUAL_DOCUMENT_KINDS.find((k) => k.id === kind)?.label ?? 'Evrak';
+}
+
 export type FileDocumentStatus =
   | 'draft'
   | 'sent'
@@ -30,6 +42,8 @@ export interface FileDocument {
   publicTokenExpiresAt?: string | null;
   whatsappSentAt?: string | null;
   whatsappPhone?: string | null;
+  /** Dosyadaki sigortalı / müşteri telefonu — gönderim kutusuna hazır gelir */
+  suggestedPhone?: string | null;
   viewedAt?: string | null;
   digitallyApprovedAt?: string | null;
   approvedFullName?: string | null;
@@ -85,12 +99,12 @@ export function getFileDocument(id: string): Promise<FileDocument> {
 export function sendWhatsapp(
   id: string,
   phone: string,
-): Promise<{ waUrl: string; link: string }> {
+): Promise<{ waUrl: string; link: string; message?: string; phone?: string }> {
   return authFetch(`${API}/file-documents/${id}/whatsapp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone }),
-  }).then((r) => handleResponse<{ waUrl: string; link: string }>(r));
+  }).then((r) => handleResponse<{ waUrl: string; link: string; message?: string; phone?: string }>(r));
 }
 
 export function uploadPhysicalDocument(
@@ -103,6 +117,26 @@ export function uploadPhysicalDocument(
     method: 'POST',
     body: formData,
   }).then((r) => handleResponse<FileDocument>(r));
+}
+
+export function uploadClaimManualDocument(
+  claimFileId: string,
+  documentKind: ClaimManualDocumentKind,
+  file: File,
+): Promise<FileDocument> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('documentKind', documentKind);
+  return authFetch(`${API}/file-documents/claim-file/${claimFileId}/manual-upload`, {
+    method: 'POST',
+    body: formData,
+  }).then((r) => handleResponse<FileDocument>(r));
+}
+
+export function getFileDocumentPhysicalUrl(id: string): Promise<{ url: string; fileName: string }> {
+  return authFetch(`${API}/file-documents/${id}/physical-file`).then((r) =>
+    handleResponse<{ url: string; fileName: string }>(r),
+  );
 }
 
 export function getClaimClosureConditions(

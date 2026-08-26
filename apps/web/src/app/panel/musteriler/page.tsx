@@ -53,9 +53,15 @@ import { ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicila
 import { readStoredPanelUser, userOperationArea } from '@/utils/panel-access';
 import { usePanelRoleCode } from '@/hooks/usePanelRole';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { OpsKpiSegmentBand, OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
+import { CustomerRowActions } from '@/components/customers/CustomerRowActions';
+import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
+import { Building2, UserRound, Users } from 'lucide-react';
+import { listedCustomerShortLabel } from '@/utils/operation-customer-display';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
+  PanelTableTh,
   SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
@@ -70,6 +76,12 @@ import {
 } from '@/utils/panel-table-sort';
 import { API, authHeader, ensureSessionBeforeMutation, getToken } from '@/utils/api';
 import { CardNotesEditor } from '@/components/card-notes/CardNotesEditor';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import {
+  AUTHORIZED_PERSON_DIRTY_MESSAGE,
+  isDirtyAuthorizedPersonName,
+} from '@sigorta/shared';
 import {
   emptyCardNoteEntries,
   serializeCardNotes,
@@ -704,13 +716,14 @@ const SUB_TYPE_FILTER_CHIPS: { value: string; label: string }[] = [
 ];
 
 const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'name', label: 'Ad Soyad', defaultWidth: 220, minWidth: 160 },
-  { id: 'phone', label: 'Telefon', defaultWidth: 160, minWidth: 130 },
-  { id: 'type', label: 'Tip', defaultWidth: 108, minWidth: 100 },
-  { id: 'service', label: 'Hizmet', defaultWidth: 90, minWidth: 70 },
-  { id: 'files', label: 'Dosya', defaultWidth: 72, minWidth: 56 },
-  { id: 'activity', label: 'Aktivite', defaultWidth: 110, minWidth: 90 },
-  { id: 'status', label: 'Durum', defaultWidth: 90, minWidth: 76 },
+  { id: 'name', label: 'Kısa Ad', defaultWidth: 140, minWidth: 56 },
+  { id: 'phone', label: 'Telefon', defaultWidth: 140, minWidth: 56 },
+  { id: 'type', label: 'Tip', defaultWidth: 88, minWidth: 48 },
+  { id: 'service', label: 'Hizmet', defaultWidth: 80, minWidth: 48 },
+  { id: 'files', label: 'Dosya', defaultWidth: 64, minWidth: 40 },
+  { id: 'activity', label: 'Aktivite', defaultWidth: 88, minWidth: 48 },
+  { id: 'status', label: 'Durum', defaultWidth: 80, minWidth: 48 },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 112, minWidth: 96, pin: 'end', resizable: false },
 ];
 
 export default function MusterilerPage() {
@@ -722,7 +735,10 @@ export default function MusterilerPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState(() => searchParams.get('customerType') ?? '');
+  const [shortNameMissingOnly, setShortNameMissingOnly] = useState(
+    () => searchParams.get('shortName') === 'eksik',
+  );
   const [subTypeFilter, setSubTypeFilter] = useState(() => searchParams.get('subType') ?? '');
   const [cityFilter, setCityFilter] = useState('');
   const [searchInput, setSearchInput] = useState(() => searchParams.get('search') ?? '');
@@ -1222,8 +1238,6 @@ export default function MusterilerPage() {
     await handleTaxNoDuplicateCheck(s);
   };
 
-  const missingShortNameFilter = searchParams.get('shortName') === 'eksik';
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -1234,7 +1248,7 @@ export default function MusterilerPage() {
       if (cityFilter) params.set('city', cityFilter);
       if (statusFilter) params.set('status', statusFilter);
       if (sourceFilter) params.set('source', sourceFilter);
-      if (missingShortNameFilter) params.set('missingShortName', '1');
+      if (shortNameMissingOnly) params.set('missingShortName', '1');
       selectedTags.forEach((tag) => params.append('tags', tag));
       const r = await axios.get(`${API}/customers?${params}`, { headers: authHeader() });
       const rows: any[] = r.data.data || [];
@@ -1249,7 +1263,7 @@ export default function MusterilerPage() {
       console.error(e);
       showToast('error', 'Müşteri listesi yüklenemedi. Mevcut kayıtlar korundu — tekrar deneyin.');
     } finally { setLoading(false); }
-  }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, page, missingShortNameFilter]); // eslint-disable-line
+  }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, page, shortNameMissingOnly]); // eslint-disable-line
 
   const refreshTypeSummary = useCallback(async () => {
     try {
@@ -1287,10 +1301,11 @@ export default function MusterilerPage() {
     if (statusFilter) p.set('status', statusFilter);
     if (sourceFilter) p.set('source', sourceFilter);
     if (selectedTags.length) p.set('tags', selectedTags.join(','));
+    if (shortNameMissingOnly) p.set('shortName', 'eksik');
     if (page > 1) p.set('page', String(page));
     const qs = p.toString();
     router.replace(qs ? `?${qs}` : '?', { scroll: false });
-  }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, page]); // eslint-disable-line
+  }, [search, typeFilter, subTypeFilter, cityFilter, statusFilter, sourceFilter, selectedTags, page, shortNameMissingOnly]); // eslint-disable-line
 
   // Tag dropdown outside click
   useEffect(() => {
@@ -1607,6 +1622,27 @@ export default function MusterilerPage() {
         errors.subType = 'Alt tip seçimi zorunludur';
         missingLabels.push('Alt Tip');
       }
+      const yetkiliDirty =
+        isDirtyAuthorizedPersonName({
+          firstName: form.contactFirstName,
+          lastName: form.contactLastName,
+          companyName: form.companyName,
+          shortName: form.shortName,
+        }) ||
+        contacts.some(
+          (c) =>
+            Boolean(c.firstName.trim() || c.lastName.trim()) &&
+            isDirtyAuthorizedPersonName({
+              firstName: c.firstName,
+              lastName: c.lastName,
+              companyName: form.companyName,
+              shortName: form.shortName,
+            }),
+        );
+      if (yetkiliDirty) {
+        errors.contactFirstName = AUTHORIZED_PERSON_DIRTY_MESSAGE;
+        missingLabels.push('Yetkili Kişi');
+      }
     }
 
     if (form.phone) {
@@ -1782,16 +1818,30 @@ export default function MusterilerPage() {
         } catch { /* aşağıdaki genel hataya düş */ }
       }
       showToast('error', `Kayıt Başarısız: ${msg}`);
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+      void refreshTypeSummary();
+    }
   };
 
   const hasActiveFilters = !!(
     search || typeFilter || subTypeFilter || cityFilter
     || (statusFilter && statusFilter !== DEFAULT_STATUS_FILTER)
-    || sourceFilter || selectedTags.length
+    || sourceFilter || selectedTags.length || shortNameMissingOnly
   );
 
-  // Finans istatistikleri henüz API'den gelmiyor; widget kaldırıldı
+  const summaryTotal = typeSummary.individual + typeSummary.corporate;
+
+  const applyKpiToplam = () => {
+    setTypeFilter('');
+    setShortNameMissingOnly(false);
+    setPage(1);
+  };
+  const applyKpiType = (next: 'individual' | 'corporate') => {
+    setShortNameMissingOnly(false);
+    setTypeFilter((cur) => (cur === next ? '' : next));
+    setPage(1);
+  };
 
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const displayedCustomers = useMemo(
@@ -1799,7 +1849,7 @@ export default function MusterilerPage() {
       sortRowsByClientSort(customers, clientSort, (c, key) => {
         switch (key) {
           case 'name':
-            return customerDisplayName(c);
+            return listedCustomerShortLabel(c).name;
           case 'phone':
             return c.phone ?? c.mobilePhone ?? '';
           case 'type':
@@ -1823,6 +1873,7 @@ export default function MusterilerPage() {
     setSearchInput(''); setSearch('');
     setTypeFilter(''); setSubTypeFilter(''); setCityFilter('');
     setStatusFilter(DEFAULT_STATUS_FILTER); setSourceFilter(''); setSelectedTags([]);
+    setShortNameMissingOnly(false);
     setPage(1);
   };
 
@@ -1899,50 +1950,35 @@ export default function MusterilerPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card px-4 py-2.5 overflow-x-auto">
-        <div className="flex items-center gap-1 min-w-max">
-          {/* Toplam */}
-          <div className="flex items-center gap-2 px-3 py-1.5">
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Toplam</p>
-              <p className="text-base font-bold text-slate-800 leading-tight tabular-nums">{total}</p>
-            </div>
-          </div>
-          <div className="w-px h-7 bg-slate-100 flex-shrink-0" />
-          {/* Bireysel */}
-          <div className="flex items-center gap-2 px-3 py-1.5">
-            <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 flex-shrink-0">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Bireysel</p>
-              <p className="text-base font-bold text-purple-700 leading-tight tabular-nums">{typeSummary.individual}</p>
-            </div>
-          </div>
-          <div className="w-px h-7 bg-slate-100 flex-shrink-0" />
-          {/* Kurumsal */}
-          <div className="flex items-center gap-2 px-3 py-1.5">
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-[10px] font-medium text-slate-400 tracking-wide leading-none">Kurumsal</p>
-              <p className="text-base font-bold text-emerald-700 leading-tight tabular-nums">{typeSummary.corporate}</p>
-            </div>
-          </div>
-          {/* Finans istatistikleri: gerçek API verisi geldikten sonra eklenecek */}
-
-        </div>
-      </div>
+      <OpsKpiSegmentBand testId="musteri-kpi-band">
+        <OpsStripKpi
+          embedded
+          label="Toplam"
+          value={summaryTotal}
+          color="bg-brand-600"
+          icon={Users}
+          active={!typeFilter && !shortNameMissingOnly}
+          onClick={applyKpiToplam}
+        />
+        <OpsStripKpi
+          embedded
+          label="Bireysel"
+          value={typeSummary.individual}
+          color="bg-violet-600"
+          icon={UserRound}
+          active={typeFilter === 'individual' && !shortNameMissingOnly}
+          onClick={() => applyKpiType('individual')}
+        />
+        <OpsStripKpi
+          embedded
+          label="Kurumsal"
+          value={typeSummary.corporate}
+          color="bg-emerald-600"
+          icon={Building2}
+          active={typeFilter === 'corporate' && !shortNameMissingOnly}
+          onClick={() => applyKpiType('corporate')}
+        />
+      </OpsKpiSegmentBand>
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11px] font-semibold text-slate-500">Alt Tip:</span>
@@ -1988,7 +2024,12 @@ export default function MusterilerPage() {
           <select
             className="panel-filter-control"
             value={typeFilter}
-            onChange={(e) => { setTypeFilter(e.target.value); setSubTypeFilter(''); setPage(1); }}
+            onChange={(e) => {
+              setTypeFilter(e.target.value);
+              setSubTypeFilter('');
+              setShortNameMissingOnly(false);
+              setPage(1);
+            }}
           >
             <option value="">Tüm Tipler</option>
             <option value="individual">Bireysel</option>
@@ -2078,6 +2119,9 @@ export default function MusterilerPage() {
             <span className="text-xs text-slate-400 mr-0.5">Aktif filtreler:</span>
             {search && <FilterChip label={`Arama: "${search}"`} onRemove={() => setSearchInput('')} />}
             {typeFilter && <FilterChip label={`Tip: ${typeLabel[typeFilter] ?? typeFilter}`} onRemove={() => { setTypeFilter(''); setPage(1); }} />}
+            {shortNameMissingOnly && (
+              <FilterChip label="Kısa Ad eksik" onRemove={() => { setShortNameMissingOnly(false); setPage(1); }} />
+            )}
             {subTypeFilter && <FilterChip label={`Alt Tip: ${visibleCustomerSubTypes.find((t) => t.value === subTypeFilter)?.label ?? subTypeFilter}`} onRemove={() => { setSubTypeFilter(''); setPage(1); }} />}
             {cityFilter && <FilterChip label={`Bölge: ${cityFilter}`} onRemove={() => { setCityFilter(''); setPage(1); }} />}
             {statusFilter && statusFilter !== DEFAULT_STATUS_FILTER && (
@@ -2281,8 +2325,7 @@ export default function MusterilerPage() {
           </div>
         </div>
       ) : (
-        <div className="table-container">
-          {/* Kayıt / Sayfa bilgisi */}
+        <div className="table-container ops-queue-table">
           <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
             <span className="text-xs text-slate-500 font-medium">
               {total} kayıt{hasActiveFilters && <span className="ml-1 text-slate-400 font-normal">(filtre uygulandı)</span>}
@@ -2293,7 +2336,8 @@ export default function MusterilerPage() {
           {/* Mobil / tablet kart */}
           <div className="grid gap-3 p-3 lg:hidden">
             {displayedCustomers.map((c) => {
-              const name = customerDisplayName(c);
+              const listed = listedCustomerShortLabel(c);
+              const name = listed.name;
               const subTypeDef = customerSubTypes.find((t) => t.value === c.subType);
               const subTypeLabel = subTypeDef?.label ?? null;
               const isOverdue = c.followUpDate && c.status === 'active' && new Date(c.followUpDate) < new Date(new Date().setHours(0, 0, 0, 0));
@@ -2320,13 +2364,12 @@ export default function MusterilerPage() {
                 >
                   <div className="flex items-start gap-3">
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white ${c.customerType === 'individual' ? 'bg-purple-500' : 'bg-emerald-600'}`}>
-                      {(name || '?').charAt(0).toUpperCase()}
+                      {(listed.defined ? listed.name : '?').charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-900">{name || '—'}</p>
-                          {c.city ? <p className="mt-0.5 truncate text-xs text-slate-500">{c.city}</p> : null}
+                          <OpsCustomerCell name={listed.name} typeLabel={c.city ?? null} href={listed.href} />
                         </div>
                         <span className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border ${STATUS_COLOR[c.status] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                           {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara Liste' : 'Arşiv'}
@@ -2362,20 +2405,13 @@ export default function MusterilerPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
-                    <Link
-                      href={`/panel/musteriler/${c.id}`}
-                      className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-xs font-semibold text-white"
-                    >
-                      Detay
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => void openCustomerForEditById(c.id)}
-                      className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700"
-                    >
-                      Düzenle
-                    </button>
+                  <div className="mt-3 flex items-center justify-end border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
+                    <CustomerRowActions
+                      customerId={c.id}
+                      canArchive={c.status !== 'passive'}
+                      onEdit={() => void openCustomerForEditById(c.id)}
+                      onArchive={() => handleArchiveCustomer(c.id, name || '—')}
+                    />
                   </div>
                 </div>
               );
@@ -2395,19 +2431,20 @@ export default function MusterilerPage() {
                       className="w-3.5 h-3.5 rounded border-slate-300 accent-emerald-600 cursor-pointer"
                     />
                   </th>
-                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Ad Soyad</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Kısa Ad</SortablePanelTableTh>
                   <SortablePanelTableTh colId="phone" sortKey="phone" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Telefon</SortablePanelTableTh>
                   <SortablePanelTableTh colId="type" sortKey="type" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Tip</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="service" sortKey="service" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Hizmet</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="service" sortKey="service" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Hizmet</SortablePanelTableTh>
                   <SortablePanelTableTh colId="files" sortKey="files" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Dosya</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="activity" sortKey="activity" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Aktivite</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Durum</SortablePanelTableTh>
-                  <th className="table-th text-right">İşlem</th>
+                  <SortablePanelTableTh colId="activity" sortKey="activity" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Aktivite</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Durum</SortablePanelTableTh>
+                  <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="table-body">
                 {displayedCustomers.map((c) => {
-                  const name = customerDisplayName(c);
+                  const listed = listedCustomerShortLabel(c);
+                  const name = listed.name;
                   const subTypeDef = customerSubTypes.find((t) => t.value === c.subType);
                   const subTypeLabel = subTypeDef?.label ?? null;
                   const isOverdue = c.followUpDate && c.status === 'active' && new Date(c.followUpDate) < new Date(new Date().setHours(0, 0, 0, 0));
@@ -2437,11 +2474,17 @@ export default function MusterilerPage() {
                       <PanelTableTd colId="name" className="table-td">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className={`w-7 h-7 rounded-md flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${c.customerType === 'individual' ? 'bg-purple-500' : 'bg-emerald-600'}`}>
-                            {(name || '?').charAt(0).toUpperCase()}
+                            {(listed.defined ? listed.name : '?').charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <Link href={`/panel/musteriler/${c.id}`} className="text-xs font-semibold text-slate-800 hover:text-emerald-600 transition-colors truncate block">{name || '—'}</Link>
-                            {c.city && <p className="text-[11px] text-slate-400 leading-tight truncate">{c.city}</p>}
+                            {listed.defined ? (
+                              <Link href={`/panel/musteriler/${c.id}`} className="text-xs font-semibold text-slate-800 hover:text-emerald-600 transition-colors truncate block">
+                                {listed.name}
+                              </Link>
+                            ) : (
+                              <OpsCustomerCell name={listed.name} typeLabel={null} href={listed.href} />
+                            )}
+                            {c.city ? <p className="text-[11px] text-slate-400 leading-tight truncate">{c.city}</p> : null}
                           </div>
                         </div>
                       </PanelTableTd>
@@ -2473,7 +2516,7 @@ export default function MusterilerPage() {
                         </div>
                       </PanelTableTd>
                       {/* Hizmet Türü */}
-                      <PanelTableTd colId="service" className="table-td">
+                      <PanelTableTd colId="service" align="center" className="table-td">
                         {c.serviceType ? (
                           <span className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full border ${
                             isHasarCustomerServiceType(c.serviceType)
@@ -2487,13 +2530,13 @@ export default function MusterilerPage() {
                         )}
                       </PanelTableTd>
                       {/* Dosya Sayısı */}
-                      <PanelTableTd colId="files" className="table-td text-right">
+                      <PanelTableTd colId="files" align="center" className="table-td-center">
                         <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
                           {c._count?.claimFiles ?? 0}
                         </span>
                       </PanelTableTd>
                       {/* Aktivite */}
-                      <PanelTableTd colId="activity" className="table-td">
+                      <PanelTableTd colId="activity" align="center" className="table-td-center">
                         {isOverdue ? (
                           <div>
                             <span className="text-[11px] font-semibold text-status-danger">{overdueDays}g gecikme</span>
@@ -2512,31 +2555,14 @@ export default function MusterilerPage() {
                           {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara Liste' : 'Arşiv'}
                         </span>
                       </PanelTableTd>
-                      {/* Operasyon */}
-                      <td className="table-td text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
-                          {c.status !== 'passive' && (
-                            <button
-                              type="button"
-                              onClick={() => handleArchiveCustomer(c.id, name || '—')}
-                              className="text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg transition-colors font-medium"
-                            >
-                              Arşivle
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => void openCustomerForEditById(c.id)}
-                            className="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded-lg transition-colors font-medium"
-                          >
-                            Düzenle
-                          </button>
-                          <Link href={`/panel/musteriler/${c.id}`}
-                            className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg transition-colors font-medium">
-                            Detay
-                          </Link>
-                        </div>
-                      </td>
+                      <PanelTableTd colId="actions" wrap={false} className="table-td-center">
+                        <CustomerRowActions
+                          customerId={c.id}
+                          canArchive={c.status !== 'passive'}
+                          onEdit={() => void openCustomerForEditById(c.id)}
+                          onArchive={() => handleArchiveCustomer(c.id, name || '—')}
+                        />
+                      </PanelTableTd>
                     </tr>
                   );
                 })}
@@ -2664,6 +2690,13 @@ export default function MusterilerPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <OpsFirstRunNotice
+                noticeId={OPS_NOTICE.musteriYetkiliAd.id}
+                title={OPS_NOTICE.musteriYetkiliAd.title}
+                body={OPS_NOTICE.musteriYetkiliAd.body}
+                testId="musteri-yetkili-ad-ilk-kullanim-seridi"
+                className="mb-4"
+              />
               {activeSection === 0 && (
                 <div>
                   <SectionDivider emoji="👤" title="Önce Müşteri Tipi" />
@@ -2867,15 +2900,49 @@ export default function MusterilerPage() {
                         </FormField>
                         <div className="col-span-1 sm:col-span-2">
                           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
-                            <FormField label="Yetkili Kişi Adı">
-                              <input className={inp} placeholder="Ad" value={form.contactFirstName}
-                                onChange={(e) => setForm((p) => ({ ...p, contactFirstName: e.target.value }))}
-                                onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, contactFirstName: v })); }} />
+                            <FormField label="Yetkili Kişi Adı" error={fieldErrors.contactFirstName}>
+                              <input className={fieldErrors.contactFirstName ? inpError : inp} placeholder="Ad" value={form.contactFirstName}
+                                onChange={(e) => {
+                                  setForm((p) => ({ ...p, contactFirstName: e.target.value }));
+                                  setFieldErrors((prev) => { const n = { ...prev }; delete n.contactFirstName; return n; });
+                                }}
+                                onBlur={(e) => {
+                                  const v = toTitleCaseTR(e.target.value.trim());
+                                  if (v) setForm((p) => ({ ...p, contactFirstName: v }));
+                                  const first = v || form.contactFirstName;
+                                  if (
+                                    isDirtyAuthorizedPersonName({
+                                      firstName: first,
+                                      lastName: form.contactLastName,
+                                      companyName: form.companyName,
+                                      shortName: form.shortName,
+                                    })
+                                  ) {
+                                    setFieldErrors((prev) => ({ ...prev, contactFirstName: AUTHORIZED_PERSON_DIRTY_MESSAGE }));
+                                  }
+                                }} />
                             </FormField>
-                            <FormField label="Yetkili Kişi Soyadı">
-                              <input className={inp} placeholder="Soyad" value={form.contactLastName}
-                                onChange={(e) => setForm((p) => ({ ...p, contactLastName: e.target.value }))}
-                                onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, contactLastName: v })); }} />
+                            <FormField label="Yetkili Kişi Soyadı" error={fieldErrors.contactFirstName}>
+                              <input className={fieldErrors.contactFirstName ? inpError : inp} placeholder="Soyad" value={form.contactLastName}
+                                onChange={(e) => {
+                                  setForm((p) => ({ ...p, contactLastName: e.target.value }));
+                                  setFieldErrors((prev) => { const n = { ...prev }; delete n.contactFirstName; return n; });
+                                }}
+                                onBlur={(e) => {
+                                  const v = toTitleCaseTR(e.target.value.trim());
+                                  if (v) setForm((p) => ({ ...p, contactLastName: v }));
+                                  const last = v || form.contactLastName;
+                                  if (
+                                    isDirtyAuthorizedPersonName({
+                                      firstName: form.contactFirstName,
+                                      lastName: last,
+                                      companyName: form.companyName,
+                                      shortName: form.shortName,
+                                    })
+                                  ) {
+                                    setFieldErrors((prev) => ({ ...prev, contactFirstName: AUTHORIZED_PERSON_DIRTY_MESSAGE }));
+                                  }
+                                }} />
                             </FormField>
                           </div>
                         </div>

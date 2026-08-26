@@ -14,7 +14,21 @@ Canlı `94.138.216.18` / `sigorta-postgres` **hedef değildir**.
 
 ---
 
-## Önkoşul (tatbikat günü T0 öncesi)
+## Ön Koşullar
+
+Tatbikat **T0’dan önce** hepsi hazır olmadan başlatılmaz (FAZ D: B2/kasa yokken restore’a geçilmedi).
+
+- [ ] DR VPS hazır (production IP değil, ayrı makine)
+- [ ] Docker hazır (`docker` + Compose v2)
+- [ ] GitHub erişimi hazır (tag `production-v505-2026-08-17`)
+- [ ] B2 erişimi hazır (`B2_ACCESS_RECOVERY_CHECKLIST.md` yeşil; yalnız okuma)
+- [ ] Secret Vault erişimi hazır (`SECRET_VAULT_SETUP_CHECKLIST.md` çekirdek satırlar `☑`)
+
+Biri eksikse tatbikat **iptal**; süre “uygulama RTO” sayılmaz.
+
+---
+
+## Önkoşul (tatbikat günü T0 öncesi — ayrıntı)
 
 | # | Koşul | Yoksa |
 |---|--------|--------|

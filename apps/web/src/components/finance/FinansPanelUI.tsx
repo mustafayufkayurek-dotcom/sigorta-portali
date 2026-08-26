@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Wallet, Receipt, Hash, Scale, CalendarDays, Banknote } from 'lucide-react';
 
 type ActionConfig = {
   label: string;
@@ -95,6 +95,7 @@ export function FinansFormPanel({
   children,
   onCancel,
   onSubmit,
+  onSubmitAndNew,
   submitLabel = 'Kaydet',
   saving,
 }: {
@@ -102,6 +103,7 @@ export function FinansFormPanel({
   children: ReactNode;
   onCancel: () => void;
   onSubmit: () => void;
+  onSubmitAndNew?: () => void;
   submitLabel?: string;
   saving?: boolean;
 }) {
@@ -113,6 +115,16 @@ export function FinansFormPanel({
       <div className="p-4 space-y-3">{children}</div>
       <div className="flex justify-end gap-2 px-4 py-3 border-t border-slate-100 bg-slate-50/40">
         <FinansActionButton label="İptal" onClick={onCancel} variant="neutral" />
+        {onSubmitAndNew && (
+          <button
+            type="button"
+            onClick={onSubmitAndNew}
+            disabled={saving}
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Kaydediliyor…' : 'Kaydet ve Yeni'}
+          </button>
+        )}
         <button
           type="button"
           onClick={onSubmit}
@@ -147,36 +159,129 @@ export function FinansFieldLabel({
   return (
     <label className="block text-xs font-medium text-slate-600 mb-1">
       {children}
-      {required && <span className="text-status-danger ml-0.5">*</span>}
+      {required && (
+        <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>
+      )}
     </label>
   );
 }
 
-export function FinansKpiStrip({
+const KPI_ICON: Record<string, typeof Wallet> = {
+  'Toplam Gelir': TrendingUp,
+  'Tahsil Edilen': Wallet,
+  'Kalan Bakiye': Scale,
+  'Gelen Tahsilat': TrendingUp,
+  'Giden Ödeme': TrendingDown,
+  'Kayıt Sayısı': Hash,
+  'Toplam Masraf': Receipt,
+  Bütçelenen: Receipt,
+  'Ek İş': Banknote,
+  Toplam: Scale,
+  Kayıt: Hash,
+  'Satış (Gelir)': TrendingUp,
+  'Alış (Gider)': TrendingDown,
+  Bekleyen: CalendarDays,
+  'Fatura Sayısı': Receipt,
+  'Beklenen Kâr': Banknote,
+};
+
+function kpiAccentForTone(accent: string | undefined, tone: 'dark' | 'light') {
+  if (tone === 'light') {
+    if (!accent || accent === 'text-white') return 'text-slate-800';
+    return accent
+      .replace('text-emerald-400', 'text-emerald-700')
+      .replace('text-amber-400', 'text-amber-600')
+      .replace('text-blue-400', 'text-blue-700')
+      .replace('text-red-400', 'text-red-700')
+      .replace('text-slate-400', 'text-slate-500');
+  }
+  return accent ?? 'text-white';
+}
+
+export function FinansMetricGrid({
   items,
 }: {
   items: { label: string; value: string; accent?: string }[];
 }) {
   return (
-    <div
-      className="grid rounded-lg overflow-hidden border border-slate-200 mb-4 bg-slate-900"
-      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
-    >
-      {items.map((item, i) => (
-        <div
-          key={item.label}
-          className={`px-3 py-3 text-center ${i < items.length - 1 ? 'border-r border-slate-700/80' : ''}`}
-        >
-          <p className="text-[10px] font-medium text-slate-400 leading-none">{item.label}</p>
-          <p
-            className={`mt-1.5 text-base font-semibold tabular-nums leading-none ${
-              item.accent ?? 'text-white'
+    <div className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+        {items.map((item, i) => (
+          <div
+            key={item.label}
+            className={`flex min-h-[4.75rem] flex-col items-center justify-center px-3 py-3 ${
+              i < items.length - 1 ? 'border-r border-slate-100' : ''
             }`}
           >
-            {item.value}
-          </p>
-        </div>
-      ))}
+            <p className="text-[11px] font-medium leading-none text-slate-500">{item.label}</p>
+            <p
+              className={`mt-1.5 text-base font-semibold tabular-nums tracking-tight leading-none ${
+                item.accent ?? 'text-slate-800'
+              }`}
+            >
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function FinansKpiStrip({
+  items,
+  tone = 'dark',
+}: {
+  items: { label: string; value: string; accent?: string }[];
+  /** Dosya üst özeti zaten koyu bantsa alt sekmelerde light kullanılır */
+  tone?: 'dark' | 'light';
+}) {
+  const dark = tone === 'dark';
+  return (
+    <div
+      className={`mb-4 grid overflow-hidden rounded-xl shadow-sm ${
+        dark
+          ? 'border border-slate-700/60 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900'
+          : 'border border-slate-200 bg-white'
+      }`}
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+    >
+      {items.map((item, i) => {
+        const Icon = KPI_ICON[item.label] ?? Wallet;
+        return (
+          <div
+            key={item.label}
+            className={`flex items-center gap-3 px-3.5 py-3.5 ${
+              i < items.length - 1 ? (dark ? 'border-r border-white/10' : 'border-r border-slate-100') : ''
+            }`}
+          >
+            <span
+              className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:inline-flex ${
+                dark ? 'bg-white/10 text-slate-200' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              <Icon className="h-4 w-4" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0 text-left">
+              <p
+                className={`text-[10px] font-medium uppercase tracking-wide leading-none ${
+                  dark ? 'text-slate-400' : 'text-slate-500'
+                }`}
+              >
+                {item.label}
+              </p>
+              <p
+                className={`mt-1.5 truncate text-base font-semibold tabular-nums leading-none ${kpiAccentForTone(
+                  item.accent,
+                  tone,
+                )}`}
+              >
+                {item.value}
+              </p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

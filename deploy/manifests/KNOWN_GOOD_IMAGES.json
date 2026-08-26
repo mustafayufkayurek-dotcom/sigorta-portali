@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-17",
-  "label": "v505-yedek-sagligi-restore",
-  "description": "Web v505 / backend v501. Yedek Sağlığı Genel Durum + restoreTest + 5dk polling. Migration yok. Backup dump/cron saatleri değişmedi. Rollback web v504 / backend v500.",
+  "updatedAt": "2026-08-25",
+  "label": "v540-mail-sendmail",
+  "description": "Full: Onaya Gönder Graph sendMail gider; taslak 403 Mail.Send diye yalan söylemez. Rollback web v539 / backend v539.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v501-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v505-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v540-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v540-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v504-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v500-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v539-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v539-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -29,6 +29,7 @@
     "/panel/pazartesi-toplantisi",
     "/panel/sahiplik",
     "/panel/anketler/sonuclar",
+    "/panel/acil-yardim",
     "/panel/eksper-portal",
     "/panel/sigorta-portal",
     "/panel/sigorta-portal/canli-izle",

@@ -17,6 +17,7 @@ export const EMERGENCY_PROCESS_ACTIONS = [
   'EMERGENCY_SERVICE_COMPLETED',
   'EMERGENCY_PRICE_CHANGED',
   'EMERGENCY_MESSAGE_RECORDED',
+  'EMERGENCY_VENDOR_PAYMENT_RECORDED',
 ] as const;
 
 export type EmergencyProcessAction = (typeof EMERGENCY_PROCESS_ACTIONS)[number];
@@ -48,6 +49,7 @@ export const EMERGENCY_PROCESS_ACTION_LABELS: Record<EmergencyProcessAction, str
   EMERGENCY_SERVICE_COMPLETED: 'Hizmet tamamlandı',
   EMERGENCY_PRICE_CHANGED: 'Fiyat değişti',
   EMERGENCY_MESSAGE_RECORDED: 'Mesaj kaydedildi',
+  EMERGENCY_VENDOR_PAYMENT_RECORDED: 'Tedarikçi ödemesi kaydedildi',
 };
 
 export function isEmergencyProcessAction(value: string): value is EmergencyProcessAction {
@@ -68,6 +70,10 @@ export function emergencyProcessDescription(
   if (action === 'EMERGENCY_MESSAGE_RECORDED') {
     const text = String(metadata?.text ?? '').trim();
     if (text) return text.slice(0, 160);
+  }
+  if (action === 'EMERGENCY_VENDOR_PAYMENT_RECORDED') {
+    if (metadata?.paid === true) return 'Tedarikçi ödemesi: ödendi';
+    if (metadata?.paid === false) return 'Tedarikçi ödemesi: ödenmedi';
   }
   return EMERGENCY_PROCESS_ACTION_LABELS[action];
 }

@@ -24,7 +24,7 @@ function apiMessage(err: unknown): string {
 
 /**
  * Planlayıcı Onaya Gönder — gerçek mail.
- * Önce dış onay (PDF + onay linki). Durum uygun değilse yalnız rapor PDF e-postası.
+ * Dış onay (PDF + onay linki). Taslak PDF yedek yolu yok — onaya gitmiş rapor Taslak basılmaz.
  */
 export async function sendPlannerApprovalMail(
   input: PlannerApprovalMailInput,
@@ -52,27 +52,6 @@ export async function sendPlannerApprovalMail(
     );
     return { ok: true, message: `E-posta ve onay talebi gönderildi → ${to}` };
   } catch (approvalErr) {
-    try {
-      const mailRes = await axios.post(
-        `${API}/repair-reports/${input.reportId}/send-email`,
-        { to, subject: input.subject.trim() || undefined, viewType: 'external' },
-        { headers },
-      );
-      const data = mailRes.data?.data ?? mailRes.data;
-      if (!data?.success) {
-        return {
-          ok: false,
-          message:
-            data?.message
-            || apiMessage(approvalErr),
-        };
-      }
-      return {
-        ok: true,
-        message: `E-posta gönderildi → ${to}. ${apiMessage(approvalErr)}`,
-      };
-    } catch (mailErr) {
-      return { ok: false, message: apiMessage(mailErr) };
-    }
+    return { ok: false, message: apiMessage(approvalErr) };
   }
 }

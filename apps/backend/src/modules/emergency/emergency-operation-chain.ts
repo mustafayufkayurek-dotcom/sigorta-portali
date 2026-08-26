@@ -52,6 +52,7 @@ export interface EmergencyOperationChain {
     vendorStatementRequiresClaimFile: boolean;
     paymentRequiresClaimFile: boolean;
   };
+  vendorEntitlementGrantedAt: string | null;
   steps: EmergencyOperationStep[];
 }
 
@@ -94,6 +95,7 @@ export function buildEmergencyOperationChain(input: {
   /** Dosya oluşturma tarihi — tarihsel kural için */
   createdAt?: string | Date | null;
   fileDate?: string | Date | null;
+  vendorEntitlementGrantedAt?: string | Date | null;
 }): EmergencyOperationChain {
   const isHistorical = isHistoricalEmergencyFile(input.createdAt, input.fileDate);
   const vendorAssigned = Boolean(input.assignedVendorName);
@@ -103,10 +105,7 @@ export function buildEmergencyOperationChain(input: {
   const fieldStarted = input.status === 'SAHADA' || input.status === 'COZULDU' || input.status === 'FATURALANDILDI';
   const closed = input.status === 'COZULDU' || input.status === 'FATURALANDILDI';
   const financeTransferred = input.invoiceRequestCount > 0 || input.invoiceDraftCount > 0 || input.status === 'FATURALANDILDI';
-  const invoiceApproved =
-    input.latestInvoiceRequestStatus === 'approved'
-    || input.latestInvoiceRequestStatus === 'invoiced'
-    || input.latestInvoiceDraftStatus === 'approved';
+  const entitlementGranted = Boolean(input.vendorEntitlementGrantedAt);
 
   const blockerReasons: string[] = [];
   if (!isHistorical) {
@@ -117,14 +116,24 @@ export function buildEmergencyOperationChain(input: {
   }
 
   const financeTransferReady = input.canCreateInvoiceRequest && salePriceCreated;
-  const vendorStatementReady = financeTransferred && invoiceApproved && vendorCostCaptured;
-  const paymentReady = vendorStatementReady;
+  const vendorStatementReady = entitlementGranted;
+  const paymentReady = false;
 
-  // Sahte şema blokerleri yalnızca yeni dönem dosyalarında
-  if (!isHistorical && vendorStatementReady) {
-    blockerReasons.push('Hakediş oluşturma mevcut şemada claimFile bağı istiyor');
-    blockerReasons.push('Ödeme ve cari işleme mevcut şemada claimFile bağı istiyor');
-  }
+  const grantedAtDate =
+    input.vendorEntitlementGrantedAt instanceof Date
+      ? input.vendorEntitlementGrantedAt
+      : input.vendorEntitlementGrantedAt
+        ? new Date(input.vendorEntitlementGrantedAt)
+        : null;
+  const grantedNote = grantedAtDate && !Number.isNaN(grantedAtDate.getTime())
+    ? `Hakediş verildi · ${grantedAtDate.toLocaleString('tr-TR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })} · Vade yok`
+    : null;
 
   const steps: EmergencyOperationStep[] = [
     {
@@ -190,32 +199,27 @@ export function buildEmergencyOperationChain(input: {
       label: 'Hakediş',
       state: isHistorical
         ? 'pending'
-        : vendorStatementReady
-          ? 'blocked'
-          : financeTransferred
+        : entitlementGranted
+          ? 'done'
+          : closed && vendorAssigned && vendorCostCaptured
             ? 'current'
             : 'pending',
       note: isHistorical
         ? 'Tarihsel dosya — hakediş zorunlu değil'
-        : vendorStatementReady
-          ? 'Mevcut hasar hakediş servisi claimFileId istiyor'
-          : 'Finans onayı sonrası değerlendirilecek',
+        : grantedNote
+          ?? (closed && vendorAssigned
+            ? 'İş bitiminde verilir · Vade yok'
+            : 'Dosya kapanınca bu dosyanın tedarikçisine verilir · Vade yok'),
     },
     {
       key: 'odeme',
       label: 'Ödeme ve Cari',
-      state: isHistorical
-        ? 'pending'
-        : paymentReady
-          ? 'blocked'
-          : vendorStatementReady
-            ? 'current'
-            : 'pending',
+      state: isHistorical ? 'pending' : entitlementGranted ? 'current' : 'pending',
       note: isHistorical
         ? 'Tarihsel dosya — cari zorunlu değil'
-        : paymentReady
-          ? 'Mevcut ödeme/cari zinciri claimFileId istiyor'
-          : 'Hakediş bağı kurulunca otomatik ilerleyecek',
+        : entitlementGranted
+          ? 'Finans kuyruğunda · Vade yok'
+          : 'Hakediş sonrası finans personeline düşer · Vade yok',
     },
   ];
 
@@ -265,9 +269,12 @@ export function buildEmergencyOperationChain(input: {
       latestInvoiceDraftStatus: input.latestInvoiceDraftStatus,
     },
     constraints: {
-      vendorStatementRequiresClaimFile: !isHistorical,
+      vendorStatementRequiresClaimFile: false,
       paymentRequiresClaimFile: !isHistorical,
     },
+    vendorEntitlementGrantedAt: grantedAtDate && !Number.isNaN(grantedAtDate.getTime())
+      ? grantedAtDate.toISOString()
+      : null,
     steps,
   };
 }

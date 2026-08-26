@@ -1,0 +1,26 @@
+---
+description: Operasyon ekranlarında enterprise tasarım ve Hasar departmanı referansı
+alwaysApply: true
+---
+
+# Enterprise UI — Hasar Referansı
+
+Mustafa’nın ekran/tasarım taleplerinde varsayılan kalite seviyesi **enterprise** olmalıdır.
+
+## Zorunlu
+
+1. Yeni veya revize edilen operasyon ekranında görsel referans, canlı/onaylı Hasar departmanı ekranıdır:
+   `/panel/hasar-dosyalari/[id]`.
+2. Aynı bilgi iki yerde tekrarlanmaz. Üst bantta duran müşteri, konu ve durum alt özet satırına yeniden yazılmaz.
+3. Üst bant: kısa ünvan, dosya numarası, konu, akışa göre değişen durum rozeti ve gerçek süreç göstergesi.
+4. Dosya Bilgileri: kapalı, sade özet; Detay/Gizle ile açılır. Telefon aranabilir; ikincil bilgiler Detay içinde kalır.
+5. Renkler dekoratif değil, duruma göre anlamlı davranır. Hizalama, boşluk, tipografi ve mobil görünüm Hasar kabuğuyla tutarlı olur.
+6. Departmanın kendi iş kuralları korunur; Hasar alanları Acil’e, Acil alanları Hasar’a taşınmaz.
+7. Değişiklik önce gerçek lokal panel sayfasında gösterilir. `/dev` maketi, canlıya alma veya deploy ancak Mustafa açıkça isterse yapılır.
+
+## Yasak
+
+- “Enterprise” adı altında yeni ve ilgisiz bir tasarım dili uydurmak
+- Aynı müşteri/durum bilgisini üst bant ve alt satırda tekrarlamak
+- Sahte personel, müşteri, durum veya süreç verisi göstermek
+- Onaylı Hasar referansını estetik amaçla bozmak

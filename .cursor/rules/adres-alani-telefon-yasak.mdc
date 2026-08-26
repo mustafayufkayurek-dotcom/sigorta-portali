@@ -1,0 +1,27 @@
+---
+description: Adres alanına telefon yazılmaz; Tel/GSM sokaktan kesilir
+alwaysApply: true
+---
+
+# Adres Alanına Telefon Yazılmaz
+
+**Temel cümle:** Telefon, adres satırında durmaz. `Tel : 05…` mail kuyruğu sokaktan kesilir. Gösterim **Sigortalı Telefon** alanındadır.
+
+## Zorunlu
+
+1. `stripInboundAddressPollution` ve `formatEmergencyFileAddress` / `formatHasarAdresi` telefondan arındırır.
+2. Hasar ve Acil dosya üst bant adresi bu formatter’ı kullanır.
+3. Önizleme uydurma `/dev` sayfası değil; doğrulama **lokal panel dosya sayfası** (`/panel/hasar-dosyalari/[id]`, `/panel/acil-yardim/[id]`).
+
+## Yasak
+
+- Adres string’ine telefon bırakmak
+- «İl (x) · İlçe (y)» etiketi (sonda yalnız ilçe adı · il adı)
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+  apps/web/src/utils/emergency-file-address.lock.spec.ts \
+  packages/shared/src/inbound-form-fields.lock.spec.ts
+```

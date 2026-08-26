@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { FinansRaporOzeti } from '../FinansRaporOzeti';
+import { CalendarDays, Percent, Scale } from 'lucide-react';
 import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
 import { CollapsibleSectionCard } from '../claim-detail-ui';
 import { useToast } from '@/contexts/ToastContext';
@@ -85,11 +85,9 @@ function PlBreakdownCard({
 export function FinansOzetPanel({
   claim,
   claimId,
-  reportEditHref,
 }: {
   claim: any;
   claimId: string;
-  reportEditHref?: string | null;
 }) {
   const { showToast } = useToast();
   const [summary, setSummary] = useState<any>(null);
@@ -128,17 +126,10 @@ export function FinansOzetPanel({
     summary: s,
   });
   const isProfit = kpis.netProfit >= 0;
-  const netProfit = kpis.netProfit;
   const netMargin = kpis.netMarginPct;
 
   return (
     <div className="space-y-4">
-      <FinansRaporOzeti
-        claim={claim}
-        summary={loading ? null : s}
-        reportEditHref={reportEditHref}
-      />
-
       {loading ? (
         <div className="py-8 text-center text-slate-400 text-sm">Özet hesaplanıyor...</div>
       ) : !s && kpis.planRevenue <= 0 && kpis.planCost <= 0 ? (
@@ -148,22 +139,33 @@ export function FinansOzetPanel({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className={`rounded-xl border shadow-sm p-4 text-center ${isProfit ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-              <p className="text-xs text-slate-500 mb-1">{kpis.profitLabel}</p>
-              <p className={`text-xl font-bold tabular-nums ${isProfit ? 'text-green-700' : 'text-red-700'}`}>{fmtCurrency(netProfit)}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className={`flex min-h-[6.5rem] flex-col rounded-xl border shadow-sm p-4 ${isProfit ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${isProfit ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  <Percent className="h-4 w-4" strokeWidth={1.75} />
+                </span>
+                <p className="text-xs text-slate-500">Kâr Marjı</p>
+              </div>
+              <p className={`mt-auto pt-3 text-center text-xl font-bold tabular-nums ${isProfit ? 'text-green-700' : 'text-red-700'}`}>{Number(netMargin).toFixed(1)}%</p>
             </div>
-            <div className={`rounded-xl border shadow-sm p-4 text-center ${isProfit ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-              <p className="text-xs text-slate-500 mb-1">Kâr Marjı</p>
-              <p className={`text-xl font-bold tabular-nums ${isProfit ? 'text-green-700' : 'text-red-700'}`}>{Number(netMargin).toFixed(1)}%</p>
+            <div className="flex min-h-[6.5rem] flex-col rounded-xl border border-slate-100 bg-white shadow-sm p-4">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                  <Scale className="h-4 w-4" strokeWidth={1.75} />
+                </span>
+                <p className="text-xs text-slate-500">Kalan Bakiye</p>
+              </div>
+              <p className="mt-auto pt-3 text-center text-xl font-bold text-orange-600 tabular-nums">{fmtCurrency(kpis.outstanding)}</p>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-white shadow-sm p-4 text-center">
-              <p className="text-xs text-slate-500 mb-1">Kalan Bakiye</p>
-              <p className="text-xl font-bold text-orange-600 tabular-nums">{fmtCurrency(kpis.outstanding)}</p>
-            </div>
-            <div className="rounded-xl border border-slate-100 bg-white shadow-sm p-4 text-center">
-              <p className="text-xs text-slate-500 mb-1">Son Hesaplama</p>
-              <p className="text-sm font-medium text-slate-700">{s?.lastCalculatedAt ? fmtDate(s.lastCalculatedAt) : '—'}</p>
+            <div className="flex min-h-[6.5rem] flex-col rounded-xl border border-slate-100 bg-white shadow-sm p-4">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                  <CalendarDays className="h-4 w-4" strokeWidth={1.75} />
+                </span>
+                <p className="text-xs text-slate-500">Son Hesaplama</p>
+              </div>
+              <p className="mt-auto pt-3 text-center text-sm font-medium text-slate-700">{s?.lastCalculatedAt ? fmtDate(s.lastCalculatedAt) : '—'}</p>
             </div>
           </div>
 
@@ -216,6 +218,16 @@ export function FinansOzetPanel({
                   <PlRow label="Sabit Gider Payı" amount={s.overheadShare ?? 0} />
                 </PlBreakdownCard>
               </div>
+
+              <PlBreakdownCard
+                title="Kâr"
+                accent="emerald"
+                totalLabel="Toplam Kâr"
+                totalAmount={kpis.netProfit}
+              >
+                <PlRow label="Bütçe Kârı" amount={kpis.budgetProfit} />
+                <PlRow label="Ek İş Kârı" amount={kpis.extraWorkProfit} />
+              </PlBreakdownCard>
 
               <PlBreakdownCard
                 title="Tahsilat"

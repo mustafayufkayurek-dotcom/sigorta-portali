@@ -30,7 +30,10 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 # Ensure standalone output
 WORKDIR /app/apps/web
+# .env.local laptop API adresini derlemeye gömer; ARG/ENV kazansın
+RUN rm -f .env .env.local .env.development.local .env.production.local
 RUN rm -rf .next
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN pnpm run build
 
 # ─── Stage 4: Production image ────────────────────────────────────────────────

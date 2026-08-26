@@ -1,0 +1,29 @@
+---
+description: Full deploy v540 alındı — 25.08.2026
+alwaysApply: true
+---
+
+# Full deploy v540 (25.08.2026) — alındı
+
+Canlı: web + backend **v540**. Rollback: web v539 / backend v539.
+
+## Alınan paket
+
+1. Acil Yardım fonksiyon vekaleti tüm kuyruğu açar; vekil ofis dosya sorumlusu gibi işler.
+2. Yeni dosya, mail aktarımı ve atama listesi vekile açıktır. Kayıtta işlemi yapan vekil durur.
+3. Hasar dosyası oluşturma/değiştirme bu vekaletle açılmaz.
+4. Onarım raporu PDF: TASLAK / İÇ / DIŞ işareti fotoğraf üstünde çapraz damga değil; başlık rozeti ve her sayfa altı.
+5. Onaya gönderim müşteri kartındaki e-postaya gider. Ek yalnız **dış kullanım** rapor PDF. Maliyet / bütçe PDF gitmez.
+6. Operasyon giden maili (rapor, dış onay, CRM, gelen kutu, Acil kapanış, ayarlar testi) Microsoft 365 kutusundan gider. SMTP yeşili gitti sayılmaz. Canlı alımdan önce giden-mail kilidi zorunlu; disk 5 GB altındaysa kod kopyalanmaz.
+7. Dosya sorumlusu Acil’de Finansa Gönder deyince satış fatura talebi finans kuyruğuna düşer. Daha önce finansa gönderilip kuyruğa yazılmayanlar finans ekranı açılınca tamamlanır.
+8. Onarım raporu maliyeti m² ile çarpılmaz; satış miktar × birim fiyattır. Şişmiş maliyet, rapor açılınca düzelir.
+9. Acil Sunum özeti yazarken boşluk durur. Kilit spec + canlı smoke; bu kırılma geri gelmez.
+10. Onaya Gönder / rapor maili Graph **sendMail** gider. Taslak açılmaz. Azure’da Mail.Send dururken “Mail.Send ekleyin” yazılmaz.
+
+## Canlıda yok (v540)
+
+İK / puantaj bu pakette yok. Hasar rapor tipi (Konut/Bina/Eşya) bu pakette yok.
+
+## Sıradaki canlı paket (26.08.2026 — henüz alınmadı)
+
+**İK personel özlük:** Personel Ekle + zimmet aynı kayıtta. Puantaj bu pakete karışmaz. Alım yalnız Mustafa «canlıya al» deyince.

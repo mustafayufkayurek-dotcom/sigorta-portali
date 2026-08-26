@@ -15,6 +15,12 @@ import { extractReceiptFieldsFromImage } from './receipt-scan.util';
 import { resolveExpenseCategoryFields } from './expense-category-resolver.util';
 import { isOverheadCategoryCode } from '../finance/overhead.constants';
 import {
+  canPostWorkGroupExpense,
+  expenseMatchesWorkGroup,
+  remainingWorkGroupBudget,
+  workGroupExpenseOverLimitMessage,
+} from '@sigorta/shared';
+import {
   assertClaimFileAccess,
   buildClaimFileRelationScope,
   RequestUser,
@@ -211,6 +217,184 @@ export class ExpensesService {
     return Number(agg._sum.totalAmount ?? 0);
   }
 
+  async getWorkGroupExpenseAudit(
+    fileCaseId: string,
+    requestingUser?: RequestUser,
+    insuranceCompanyIds?: string[],
+  ) {
+    const file = await this.prisma.claimFile.findUnique({
+      where: { id: fileCaseId },
+      select: {
+        id: true,
+        fileNo: true,
+        insuranceCompanyId: true,
+        assignedFieldUserId: true,
+        closedAt: true,
+      },
+    });
+    if (!file) throw new NotFoundException('Hasar dosyası bulunamadı');
+    assertClaimFileAccess(file, requestingUser, insuranceCompanyIds);
+
+    const report = await this.prisma.repairReport.findFirst({
+      where: { claimFileId: fileCaseId },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        reportNo: true,
+        items: {
+          select: {
+            jobDescription: true,
+            supplierTotal: true,
+            workGroupId: true,
+            workGroup: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    const approved = await this.prisma.budgetVersion.findFirst({
+      where: { claimFileId: fileCaseId, status: 'approved' },
+      orderBy: { versionNo: 'desc' },
+      include: { items: { select: { category: true, totalAmount: true } } },
+    });
+    const budget =
+      approved
+      ?? (await this.prisma.budgetVersion.findFirst({
+        where: { claimFileId: fileCaseId, status: { in: ['submitted', 'draft', 'revision'] } },
+        orderBy: { versionNo: 'desc' },
+        include: { items: { select: { category: true, totalAmount: true } } },
+      }));
+
+    const expenses = await this.prisma.expense.findMany({
+      where: {
+        fileCaseId,
+        expensePlan: 'BUTCELENEN',
+        approvalStatus: { not: 'REJECTED' },
+      },
+      select: { amount: true, expenseSubgroup: true },
+    });
+
+    const byGroup = new Map<
+      string,
+      {
+        workGroupId: string;
+        workGroupName: string;
+        reportSupplierTotal: number;
+        budgeted: number;
+        jobNames: Set<string>;
+      }
+    >();
+
+    for (const item of report?.items ?? []) {
+      const id = item.workGroupId;
+      const name = item.workGroup?.name ?? 'İş Grubu';
+      const cur = byGroup.get(id) ?? {
+        workGroupId: id,
+        workGroupName: name,
+        reportSupplierTotal: 0,
+        budgeted: 0,
+        jobNames: new Set<string>(),
+      };
+      cur.reportSupplierTotal += Number(item.supplierTotal ?? 0);
+      const job = String(item.jobDescription ?? '').trim();
+      if (job) cur.jobNames.add(job);
+      byGroup.set(id, cur);
+    }
+
+    for (const item of budget?.items ?? []) {
+      const cat = String(item.category ?? '').trim();
+      if (!cat) continue;
+      const match = [...byGroup.values()].find((g) => expenseMatchesWorkGroup(cat, g.workGroupName));
+      if (match) {
+        match.budgeted += Number(item.totalAmount ?? 0);
+        continue;
+      }
+      const wg = await this.prisma.workGroup.findFirst({
+        where: { name: { equals: cat, mode: 'insensitive' } },
+        select: { id: true, name: true },
+      });
+      if (!wg) continue;
+      const cur = byGroup.get(wg.id) ?? {
+        workGroupId: wg.id,
+        workGroupName: wg.name,
+        reportSupplierTotal: 0,
+        budgeted: 0,
+        jobNames: new Set<string>(),
+      };
+      cur.budgeted += Number(item.totalAmount ?? 0);
+      byGroup.set(wg.id, cur);
+    }
+
+    const subRows = byGroup.size
+      ? await this.prisma.workSubGroup.findMany({
+          where: {
+            workGroupId: { in: [...byGroup.keys()] },
+            status: 'active',
+          },
+          select: { workGroupId: true, name: true },
+          orderBy: { sortOrder: 'asc' },
+        })
+      : [];
+
+    const groups = [...byGroup.values()].map((g) => {
+      const budgeted = g.budgeted > 0 ? g.budgeted : g.reportSupplierTotal;
+      const spent = expenses
+        .filter((e) => expenseMatchesWorkGroup(e.expenseSubgroup, g.workGroupName))
+        .reduce((s, e) => s + Number(e.amount ?? 0), 0);
+      const remaining = remainingWorkGroupBudget(budgeted, spent);
+      const jobs = [
+        ...g.jobNames,
+        ...subRows.filter((s) => s.workGroupId === g.workGroupId).map((s) => s.name),
+      ];
+      const jobDefinitions = [...new Set(jobs.map((n) => n.trim()).filter(Boolean))];
+      return {
+        workGroupId: g.workGroupId,
+        workGroupName: g.workGroupName,
+        budgeted,
+        spent,
+        remaining,
+        source: g.budgeted > 0 ? 'butce' : 'rapor_alis',
+        jobDefinitions,
+      };
+    });
+
+    return {
+      fileCaseId,
+      fileNo: file.fileNo,
+      reportNo: report?.reportNo ?? null,
+      budgetVersionNo: budget?.versionNo ?? null,
+      groups,
+    };
+  }
+
+  private async assertWorkGroupExpenseBudget(params: {
+    fileCaseId: string;
+    workGroupId: string;
+    amount: number;
+    excludeExpenseId?: string;
+  }) {
+    const audit = await this.getWorkGroupExpenseAudit(params.fileCaseId);
+    const line = audit.groups.find((g) => g.workGroupId === params.workGroupId);
+    if (!line) {
+      throw new BadRequestException(
+        'Bu iş grubu dosyanın onarım raporunda veya bütçesinde yok. Masraf işlenemez.',
+      );
+    }
+    let spent = line.spent;
+    if (params.excludeExpenseId) {
+      const prev = await this.prisma.expense.findUnique({
+        where: { id: params.excludeExpenseId },
+        select: { amount: true },
+      });
+      spent = remainingWorkGroupBudget(spent, Number(prev?.amount ?? 0));
+    }
+    if (!canPostWorkGroupExpense({ budgeted: line.budgeted, spent, incoming: params.amount })) {
+      throw new BadRequestException(
+        workGroupExpenseOverLimitMessage(line.workGroupName, remainingWorkGroupBudget(line.budgeted, spent)),
+      );
+    }
+  }
+
   /** Masraf girişi yalnızca tanımlı ve onaylı bütçe / ek iş satışı olan dosyalarda */
   private async assertFileEligibleForExpense(fileCaseId: string, expensePlan?: string | null) {
     const file = await this.prisma.claimFile.findUnique({
@@ -242,9 +426,25 @@ export class ExpensesService {
 
     const { limit } = this.resolveApprovedBudgetLimit(file);
     if (limit <= 0) {
-      throw new BadRequestException(
-        `${file.fileNo} dosyasında onaylı bütçe yok. Masraf girişi için önce hasar dosyasında bütçe oluşturup onaylatın.`,
-      );
+      const [submitted, reportSum] = await Promise.all([
+        this.prisma.budgetVersion.findFirst({
+          where: {
+            claimFileId: fileCaseId,
+            status: { in: ['submitted', 'approved'] },
+            totalAmount: { gt: 0 },
+          },
+          select: { id: true },
+        }),
+        this.prisma.repairReportItem.aggregate({
+          where: { report: { claimFileId: fileCaseId } },
+          _sum: { supplierTotal: true },
+        }),
+      ]);
+      if (!submitted && !(Number(reportSum._sum.supplierTotal ?? 0) > 0)) {
+        throw new BadRequestException(
+          `${file.fileNo} dosyasında onaylı bütçe veya rapor iş grubu yok. Masraf girişi için önce onarım raporuna iş grubu ekleyin.`,
+        );
+      }
     }
   }
 
@@ -462,6 +662,18 @@ export class ExpensesService {
     if (!dto.date || dto.amount == null) {
       throw new BadRequestException('Tarih ve tutar zorunludur');
     }
+    if (dto.workGroupId && dto.fileCaseId) {
+      const wg = await this.prisma.workGroup.findUnique({
+        where: { id: dto.workGroupId },
+        select: { id: true, name: true },
+      });
+      if (!wg) throw new BadRequestException('İş grubu bulunamadı');
+      dto.expenseGroup = 'ONARIM_GIDERLERI';
+      dto.expenseSubgroup = dto.workSubGroupName?.trim()
+        ? `${wg.name} · ${dto.workSubGroupName.trim()}`
+        : wg.name;
+      dto.expenseCategoryId = undefined;
+    }
     const groupFields = await this.resolveGroupFields(dto);
     const isManagementPool = groupFields.expenseGroup === 'YONETIM_GIDERLERI';
 
@@ -486,6 +698,24 @@ export class ExpensesService {
         throw new BadRequestException('Masraf girişi için hasar dosyası seçimi zorunludur.');
       }
       await this.assertFileEligibleForExpense(dto.fileCaseId, dto.expensePlan);
+      const plan = dto.expensePlan ?? 'BUTCELENEN';
+      if (plan === 'BUTCELENEN') {
+        const audit = await this.getWorkGroupExpenseAudit(dto.fileCaseId);
+        if (audit.groups.length > 0) {
+          if (!dto.workGroupId) {
+            throw new BadRequestException('Rapordaki iş grubunu seçin. Masraf bu satırdan denetlenir.');
+          }
+          const line = audit.groups.find((g) => g.workGroupId === dto.workGroupId);
+          if (line && line.jobDefinitions.length > 0 && !String(dto.workSubGroupName ?? '').trim()) {
+            throw new BadRequestException('İş tanımı seçimi zorunludur.');
+          }
+          await this.assertWorkGroupExpenseBudget({
+            fileCaseId: dto.fileCaseId,
+            workGroupId: dto.workGroupId,
+            amount: dto.amount,
+          });
+        }
+      }
     }
 
     const date = new Date(dto.date);

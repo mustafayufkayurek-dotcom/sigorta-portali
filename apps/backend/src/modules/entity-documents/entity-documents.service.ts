@@ -187,7 +187,7 @@ export class EntityDocumentsService {
     }
 
     try {
-      const isImage = this.imageOptimizer.isImage(file.mimetype);
+      const isImage = this.imageOptimizer.isImage(file.mimetype, file.originalname);
       const uuid = randomUUID();
 
       let storageKey: string;
@@ -275,6 +275,26 @@ export class EntityDocumentsService {
 
     const url = await this.storage.getSignedUrl(doc.storageKey, expiresIn);
     return { url, fileName: doc.fileName, mimeType: doc.mimeType };
+  }
+
+  /** Tarayıcıya bayt akıt — 302 imzalı URL yok (MinIO + Authorization kırılması). */
+  async getFileBuffer(
+    id: string,
+    user?: any,
+    insuranceCompanyIds?: string[],
+    preferThumb = false,
+  ): Promise<{ buffer: Buffer; fileName: string; mimeType: string }> {
+    const doc = await this.prisma.entityDocument.findUnique({ where: { id } });
+    if (!doc) throw new NotFoundException('Evrak bulunamadı');
+    await this.assertEntityAccess(doc.entityType, doc.entityId, user, insuranceCompanyIds);
+
+    const useThumb = preferThumb && Boolean(doc.thumbnailKey);
+    const key = useThumb ? doc.thumbnailKey! : doc.storageKey;
+    const buffer = await this.storage.download(key);
+    const mimeType = useThumb
+      ? 'image/webp'
+      : doc.mimeType || 'application/octet-stream';
+    return { buffer, fileName: doc.fileName, mimeType };
   }
 
   async getThumbnailSignedUrl(

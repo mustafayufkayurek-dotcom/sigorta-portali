@@ -1,0 +1,35 @@
+---
+description: Giden rapor maili ekinde yalnız dış PDF — maliyet/bütçe yok
+alwaysApply: true
+---
+
+# Rapor Maili — Dış PDF Kilidi
+
+**Kaynak (Mustafa · 24.08.2026):** Sezgi’ye giden mailde ek dış rapor PDF olmalı. Maliyet ve bütçeli iç PDF gitmez.
+
+**Temel cümle:** E-posta eki = **dış kullanım** onarım raporu. İç kullanım / maliyet / kâr PDF’si eklenmez.
+
+## Zorunlu
+
+1. `sendReport`, `send-email`, onaya gönderim ve dış onay aynı kuralı kullanır: `generatePdf(..., 'external')` veya `pdfService.generate(..., 'external')`.
+2. Ek dosya adı `hasar-raporu-DIS-...pdf`. `hasar-raporu-IC-` yok.
+3. `SendEmailDto.viewType` iç PDF açmaz.
+4. Panelden PDF indirme (iç görünüm) ayrı kalır; yalnız **mail eki** kilitlidir.
+5. Rapor / dış onay / ayarlar test maili Hasar kutusundan gitmezse **gitti sayılmaz**. SMTP yeşili yetmez.
+6. Gönderim Graph **sendMail**; taslak 403’ü Mail.Send yok diye yazılmaz (`giden-mail-graph-sendmail-kilidi.mdc`).
+
+## Yasak (açık onay yoksa)
+
+- Mail ekinde `viewType: 'internal'`
+- Maliyet / kâr sütunlu PDF’yi müşteri veya eksper kutusuna basmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+İç PDF eklenirse → dur, aynı gün geri koy.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-outbound-mail.sh
+```

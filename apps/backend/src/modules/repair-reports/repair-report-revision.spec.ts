@@ -2,8 +2,10 @@ import {
   REPAIR_REPORT_INITIAL_VERSION,
   REPAIR_REPORT_MAX_VERSION,
   canCreateRepairReportRevision,
+  canStartRepairReportRevisionFromStatus,
   isRepairReportRevision,
   nextRepairReportVersionNo,
+  repairReportClosesOnRevise,
 } from '@sigorta/shared';
 
 describe('repair-report-revision', () => {
@@ -25,5 +27,14 @@ describe('repair-report-revision', () => {
     expect(isRepairReportRevision(0)).toBe(false);
     expect(isRepairReportRevision(1)).toBe(true);
     expect(isRepairReportRevision(undefined)).toBe(false);
+  });
+
+  it('dış onay bekleyen ve sunulmuş rapordan revizyon açılır', () => {
+    expect(canStartRepairReportRevisionFromStatus('sent_for_external_approval')).toBe(true);
+    expect(canStartRepairReportRevisionFromStatus('submitted')).toBe(true);
+    expect(canStartRepairReportRevisionFromStatus('approved')).toBe(true);
+    expect(canStartRepairReportRevisionFromStatus('draft')).toBe(false);
+    expect(repairReportClosesOnRevise('sent_for_external_approval')).toBe(true);
+    expect(repairReportClosesOnRevise('approved')).toBe(false);
   });
 });

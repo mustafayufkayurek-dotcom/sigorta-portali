@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { CalendarPlus, UserPlus, X } from 'lucide-react';
+import { CalendarPlus, Package, UserPlus, X } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -11,6 +11,7 @@ import {
   normalizeTrDateValue,
   isoToTrDateDisplay,
 } from '@/utils/tr-date-input';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 
 const BLOOD_TYPES = [
   '0 Rh-',
@@ -71,6 +72,8 @@ type Props = {
   /** Güncelleme için kullanıcıyı önceden seç */
   initialUserId?: string | null;
   onSaved?: (row: PersonelEkleSaved) => void;
+  /** Personel sağ dosyasının içinde — ikinci çekmece açılmaz */
+  embedded?: boolean;
 };
 
 const PREVIEW_ROLES: RoleOption[] = [
@@ -100,6 +103,7 @@ export function PersonelEklePanel({
   preview = false,
   initialUserId = null,
   onSaved,
+  embedded = false,
 }: Props) {
   const { showToast } = useToast();
   const [candidates, setCandidates] = useState<CandidateUser[]>(
@@ -116,6 +120,10 @@ export function PersonelEklePanel({
   const [personalGsm, setPersonalGsm] = useState('');
   const [companyGsm, setCompanyGsm] = useState('');
   const [bloodType, setBloodType] = useState('');
+  const [zimmetCategory, setZimmetCategory] = useState('phone');
+  const [zimmetBrand, setZimmetBrand] = useState('');
+  const [zimmetModel, setZimmetModel] = useState('');
+  const [zimmetSerial, setZimmetSerial] = useState('');
   const [saving, setSaving] = useState(false);
   const [userSearch, setUserSearch] = useState('');
 
@@ -147,6 +155,10 @@ export function PersonelEklePanel({
     setCompanyGsm('');
     setBloodType('');
     setHireDate('');
+    setZimmetCategory('phone');
+    setZimmetBrand('');
+    setZimmetModel('');
+    setZimmetSerial('');
   };
 
   const applyUserDefaultRole = (
@@ -298,10 +310,23 @@ export function PersonelEklePanel({
       return;
     }
 
+    const zimmetBrandTrim = toTitleCaseTR(zimmetBrand.trim());
+    const zimmetModelTrim = toTitleCaseTR(zimmetModel.trim());
+    const zimmetSerialTrim = zimmetSerial.trim().toUpperCase();
+    if (!isUpdate) {
+      if (!zimmetBrandTrim || !zimmetModelTrim || !zimmetSerialTrim) {
+        showToast('warning', 'Zimmet zorunludur — marka, model ve seri no girin');
+        return;
+      }
+    }
+
     const fullName = resolveName();
 
     if (preview) {
-      showToast('success', 'Önizleme — Personel Kartı Kaydedildi');
+      showToast(
+        'success',
+        isUpdate ? 'Önizleme — Personel Kartı Kaydedildi' : 'Önizleme — Personel Ve Zimmet Kaydedildi',
+      );
       onSaved?.({
         profileId: 'p1',
         userId,
@@ -314,7 +339,7 @@ export function PersonelEklePanel({
         setRoleId('');
         return;
       }
-      onClose();
+      if (!embedded) onClose();
       return;
     }
 
@@ -333,7 +358,16 @@ export function PersonelEklePanel({
         companyGsm: companyGsm.trim(),
         bloodType,
       });
-      showToast('success', 'Personel Kartı Kaydedildi');
+      if (!isUpdate) {
+        await apiClient.post('hr/assets', {
+          employeeProfileId: data.profile.id,
+          category: zimmetCategory,
+          brand: zimmetBrandTrim,
+          model: zimmetModelTrim,
+          serialNumber: zimmetSerialTrim,
+        });
+      }
+      showToast('success', isUpdate ? 'Personel Kartı Kaydedildi' : 'Personel Ve Zimmet Kaydedildi');
       onSaved?.({
         profileId: data.profile.id,
         userId,
@@ -362,7 +396,7 @@ export function PersonelEklePanel({
       resetContactFields();
       setUserId('');
       setRoleId('');
-      onClose();
+      if (!embedded) onClose();
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Kayıt Başarısız');
     } finally {
@@ -375,39 +409,7 @@ export function PersonelEklePanel({
   const fieldClass =
     'w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm';
 
-  return (
-    <>
-      <button
-        type="button"
-        aria-label="Kapat"
-        className="fixed inset-0 z-40 bg-slate-900/30"
-        onClick={onClose}
-      />
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l border-border bg-white shadow-xl">
-        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50">
-              <UserPlus className="h-5 w-5 text-brand-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-content-primary">
-                {isUpdate ? 'Personel Kartını Güncelle' : 'Personel Ekle'}
-              </p>
-              <p className="mt-0.5 text-xs text-content-tertiary">
-                Operasyonel özlük kartı
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-border p-2 text-content-secondary hover:bg-slate-50"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+  const formBody = (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-content-tertiary">
@@ -607,10 +609,79 @@ export function PersonelEklePanel({
               )}
             </div>
 
-          </div>
-        </div>
+            {!isUpdate ? (
+              <div className="sm:col-span-2 mt-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <Package className="h-4 w-4 text-brand-600" aria-hidden />
+                  <p className="text-sm font-semibold text-content-primary">Zimmet *</p>
+                </div>
+                <p className="mb-3 text-xs text-content-tertiary">
+                  Bu kayıtla birlikte zimmetlenir. Marka, model ve seri no zorunludur.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-content-tertiary">
+                      Kategori *
+                    </label>
+                    <select
+                      className={fieldClass}
+                      value={zimmetCategory}
+                      onChange={(e) => setZimmetCategory(e.target.value)}
+                      aria-label="Zimmet kategorisi"
+                    >
+                      <option value="phone">Cep Telefonu</option>
+                      <option value="laptop">Dizüstü</option>
+                      <option value="tablet">Tablet</option>
+                      <option value="other">Diğer</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-content-tertiary">
+                      Seri No *
+                    </label>
+                    <input
+                      className={`${fieldClass} font-mono`}
+                      value={zimmetSerial}
+                      onChange={(e) => setZimmetSerial(e.target.value)}
+                      placeholder="Örn. F2LX9K8M3Q"
+                      aria-label="Zimmet seri no"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-content-tertiary">
+                      Marka *
+                    </label>
+                    <input
+                      className={fieldClass}
+                      value={zimmetBrand}
+                      onChange={(e) => setZimmetBrand(e.target.value)}
+                      onBlur={(e) => setZimmetBrand(toTitleCaseTR(e.target.value.trim()))}
+                      placeholder="Örn. Apple"
+                      aria-label="Zimmet marka"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-content-tertiary">
+                      Model *
+                    </label>
+                    <input
+                      className={fieldClass}
+                      value={zimmetModel}
+                      onChange={(e) => setZimmetModel(e.target.value)}
+                      onBlur={(e) => setZimmetModel(toTitleCaseTR(e.target.value.trim()))}
+                      placeholder="Örn. Iphone 15 Pro"
+                      aria-label="Zimmet model"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
-        <div className="border-t border-border px-5 py-4">
+          </div>
+  );
+
+  const formFooter = (
+        <div className={`border-t border-border ${embedded ? 'px-0 pt-4' : 'px-5 py-4'}`}>
           {isUpdate ? (
             <button
               type="button"
@@ -641,6 +712,48 @@ export function PersonelEklePanel({
             </div>
           )}
         </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="space-y-4">
+        {formBody}
+        {formFooter}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Kapat"
+        className="fixed inset-0 z-40 bg-slate-900/30"
+        onClick={onClose}
+      />
+      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l border-border bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50">
+              <UserPlus className="h-5 w-5 text-brand-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-content-primary">
+                {isUpdate ? 'Personel Kartını Güncelle' : 'Personel Ekle'}
+              </p>
+              <p className="mt-0.5 text-xs text-content-tertiary">Operasyonel özlük kartı</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-border p-2 text-content-secondary hover:bg-slate-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4">{formBody}</div>
+        {formFooter}
       </aside>
     </>
   );

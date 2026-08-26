@@ -39,6 +39,11 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-sm text-slate-600 mb-6">
               Sayfa yüklenirken sorun oluştu. Lütfen tekrar deneyin. Sorun sürerse sayfayı yenileyin.
             </p>
+            {this.state.error?.message ? (
+              <p className="mb-6 break-words text-xs text-slate-500" data-testid="panel-hata-ayrinti">
+                {this.state.error.message}
+              </p>
+            ) : null}
             <button
               type="button"
               onClick={() => this.setState({ hasError: false, error: null })}

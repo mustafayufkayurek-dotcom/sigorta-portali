@@ -358,7 +358,7 @@
       <span class="brand-logo"><img src="./meridyen-logo-original.png" alt="Meridyen Asistans" /></span>
       <div class="doc-title-small">Meridyen Hasar Yönetim Platformu Kullanım Kılavuzu</div>
     </div>
-    <div class="doc-meta">Versiyon 2.1 &nbsp;|&nbsp; Temmuz 2026</div>
+    <div class="doc-meta">Versiyon 2.2 &nbsp;|&nbsp; Ağustos 2026</div>
   </div>
   <div class="content">
     <div class="section-title"><span class="num">i</span> İçindekiler</div>
@@ -484,7 +484,7 @@
 
     <div id="dosya-merkezi" class="highlight-box" style="margin-top:14px;">
       <div class="label">Dosya Merkezi — Ofis Personeli</div>
-      <p>Ofis personeli giriş yaptığında ana ekran <strong>Dosya Merkezi</strong> olarak görünür. Sol menüden <strong>Operasyon</strong>, <strong>Müşteriler</strong>, <strong>Tedarikçiler</strong> ve yetkiniz varsa <strong>Acil Yardım</strong> modüllerine erişirsiniz. Günlük işe <strong>Operasyon</strong> ekranından başlayın; bekleyen dosyalar ve revizyon talepleri burada listelenir.</p>
+      <p>Ofis personeli giriş yaptığında ana ekran <strong>Dosya Merkezi</strong> olarak görünür. Sol menüden <strong>Operasyon</strong>, <strong>Müşteriler</strong>, <strong>Tedarikçiler</strong> ve yetkiniz varsa <strong>Acil Yardım</strong> modüllerine erişirsiniz. Günlük işe <strong>Operasyon</strong> ekranından başlayın; bekleyen dosyalar ve revizyon talepleri burada listelenir. Acil dosyada tedarikçi önerisi ve dosya sorumlusu seçimi için <a href="#acil-yardim">Bölüm 4</a>’e bakın.</p>
     </div>
 
     <div id="saha-personeli" class="highlight-box" style="margin-top:14px;">
@@ -621,9 +621,19 @@
     <div class="doc-meta">Bölüm 4</div>
   </div>
   <div class="content">
-    <div class="section-title"><span class="num">4</span> Acil Yardım Dosyaları</div>
+    <div class="section-title" id="acil-yardim"><span class="num">4</span> Acil Yardım Dosyaları</div>
 
     <p>Acil yardım dosyaları <strong>Acil Yardım</strong> modülünden yönetilir. Bu modül, hasar dosyalarından ayrı bir akışa sahiptir.</p>
+
+    <div class="highlight-box">
+      <div class="label">Önemli — Tedarikçi Önerisi</div>
+      <p>Dosya detayında <strong>Önerilen Tedarikçiler</strong> önce bu il ve ilçedeki kayıtlı tedarikçileri gösterir. Memnuniyet veya maliyet olumsuzsa yazılım uyarır; alternatif bakın. Aynı olumsuz tedarikçiyle 2. kez çalışılırsa yöneticiye e-posta gider. İlk açılışta kısa bir bilgi şeridi çıkar; <strong>Anladım</strong> deyince kaybolur.</p>
+    </div>
+
+    <div class="highlight-box">
+      <div class="label">Önemli — Tedarikçi Hakedişi</div>
+      <p>İş bitiminde bu dosyanın tedarikçisine hakediş verilir. Verilme tarih ve saati kayıttadır; finans ekranına düşer. Acil tedarikçisine vade uygulanmaz.</p>
+    </div>
 
     <div class="feature-grid">
       <div class="feature-card">
@@ -649,14 +659,14 @@
         <div class="step-num">1</div>
         <div class="step-body">
           <strong>Yeni Acil Yardım Dosyası Oluşturun</strong>
-          <p>Acil Yardım listesinden yeni kayıt açın; müşteri ve hizmet bilgilerini girin.</p>
+          <p>Acil Yardım listesinden yeni kayıt açın; müşteri ve hizmet bilgilerini girin. <strong>Dosya Sorumlusu</strong> zorunludur. Acil Yardım vekaleti olan finans personeli de bu listede görünür.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-body">
           <strong>Atama ve Saha Takibi</strong>
-          <p>İlgili saha personeline atama yapın; durumu Gelen → Atandı → Sahada → Çözüldü akışında güncelleyin.</p>
+          <p>Önerilen Tedarikçiler’den kayıtlı tedarikçiyi atayın; gerekirse Alternatif Öneriler’e bakın. Durumu Gelen → Atandı → Sahada → Çözüldü akışında güncelleyin.</p>
         </div>
       </div>
       <div class="step">
@@ -755,7 +765,7 @@
     <div class="feature-grid">
       <div class="feature-card">
         <h4>Dosya Sorumlusu</h4>
-        <p>Ofis personeli ataması. Bölge ve iş yüküne göre önerilen personel listesinden veya manuel seçimle atanır.</p>
+        <p>Ofis personeli ataması. Acil yeni dosyada da seçilir; Acil Yardım vekaleti olan finans personeli listede görünür.</p>
       </div>
       <div class="feature-card">
         <h4>Saha Tespitçisi</h4>
@@ -763,7 +773,7 @@
       </div>
       <div class="feature-card">
         <h4>Tedarikçi</h4>
-        <p>Dosya kapsamında hizmet verecek tedarikçi firması seçilir ve atama notu ile kaydedilir.</p>
+        <p>Hasar’da atama notu ile kaydedilir. Acil’de öneri önce dosyanın il ve ilçesindeki kayıtlı tedarikçilerdendir.</p>
       </div>
     </div>
 
@@ -855,6 +865,10 @@
 
     <div class="info-box">
       Finans modüllerine erişim rol bazlıdır. Fatura talebi oluşturmak için dosyada gerekli evrak koşullarının tamamlanmış olması gerekir; durumu dosya detayında Evraklar → Özet sekmesinden kontrol edebilirsiniz.
+    </div>
+
+    <div class="info-box">
+      Size <strong>Acil Yardım</strong> vekaleti verildiyse yeni Acil dosyada Dosya Sorumlusu listesinde görünürsünüz; dosya size atanabilir.
     </div>
 
     <div class="info-box">

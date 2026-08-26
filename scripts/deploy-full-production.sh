@@ -11,6 +11,22 @@ source "$SCRIPT_DIR/deploy-env.sh"
 DEPLOY_TAG="${1:?Kullanım: deploy-full-production.sh ETİKET}"
 SKIP_RSYNC="${2:-}"
 
+run_remote() {
+  ssh -o BatchMode=yes "$REMOTE_HOST" "$@"
+}
+
+if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
+  bash "$SCRIPT_DIR/assert-deploy-source.sh"
+  bash "$SCRIPT_DIR/smoke-acil-netlesen.sh"
+  bash "$SCRIPT_DIR/smoke-acil-file-owner.sh"
+  bash "$SCRIPT_DIR/smoke-hasar-rapor-revizyon.sh"
+  bash "$SCRIPT_DIR/smoke-hasar-dijital-onay.sh"
+  bash "$SCRIPT_DIR/smoke-outbound-mail.sh"
+  bash "$SCRIPT_DIR/smoke-resim-akis.sh"
+  echo "=== Sunucu disk (kod kopyalamadan önce) ==="
+  run_remote "FREE=\$(df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'); echo \"Disk boş: \${FREE} GB (minimum 5 GB)\"; [ \"\${FREE}\" -ge 5 ] || { echo 'HATA: Sunucuda yeterli disk yok — kod kopyalanmaz. scripts/server-disk-maintenance.sh'; exit 1; }"
+fi
+
 WEB_VERSION="$(printf '%s' "$DEPLOY_TAG" | grep -oE 'v[0-9]+' | head -1 || true)"
 if [ -z "$WEB_VERSION" ]; then
   echo "HATA: ETİKET içinde sürüm olmalı (ör. v128-multi-district)"
@@ -21,10 +37,10 @@ BACKEND_VERSION="${BACKEND_VERSION:-$WEB_VERSION}"
 WEB_IMAGE="sigorta-web:dalga2-agreement-hr-01-${WEB_VERSION}-amd64"
 BACKEND_IMAGE="app-backend:dalga2-agreement-hr-01-${BACKEND_VERSION}-amd64"
 API_URL="${NEXT_PUBLIC_API_URL:-https://app.meridyen-tr.com/api/v1}"
-
-run_remote() {
-  ssh -o BatchMode=yes "$REMOTE_HOST" "$@"
-}
+if printf '%s' "$API_URL" | grep -qiE 'localhost|127\.0\.0\.1'; then
+  echo "HATA: NEXT_PUBLIC_API_URL localhost olamaz (canlı derleme bozulur)."
+  exit 1
+fi
 
 echo "=== Full deploy: $DEPLOY_TAG ==="
 echo "Web: $WEB_IMAGE"
@@ -33,7 +49,11 @@ echo "Backend: $BACKEND_IMAGE"
 if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   rsync -avz --delete \
     --exclude node_modules --exclude .next --exclude dist --exclude .DS_Store --exclude '._*' \
+    --exclude '.env' --exclude '.env.local' --exclude '.env.*.local' \
+    --exclude '.env.development' --exclude '.env.production' \
+    --exclude 'src/app/dev/dinlenme-tarama' --exclude 'src/app/dev/dinlenme-tarama/**' \
     "$PROJECT_DIR/apps/web/" "$REMOTE_HOST:$REMOTE_APP/apps/web/"
+  run_remote "rm -f $REMOTE_APP/apps/web/.env $REMOTE_APP/apps/web/.env.local $REMOTE_APP/apps/web/.env.*.local"
 
   # ZORUNLU: uploads asla --delete ile sync edilmez (rapor fotoğraf kaybı — 2026-08 olayı)
   rsync -avz --delete \
@@ -50,6 +70,7 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   rsync -avz \
     "$PROJECT_DIR/Dockerfile.backend" \
     "$PROJECT_DIR/Dockerfile.web" \
+    "$PROJECT_DIR/.dockerignore" \
     "$PROJECT_DIR/docker-compose.prod.yml" \
     "$PROJECT_DIR/package.json" \
     "$PROJECT_DIR/pnpm-workspace.yaml" \
@@ -88,7 +109,7 @@ docker stop sigorta-backend sigorta-web 2>/dev/null || true
 docker rm sigorta-backend sigorta-web 2>/dev/null || true
 bash scripts/restart-web-production.sh
 docker compose -p $COMPOSE_PROJECT_NAME --env-file .env.production -f docker-compose.prod.yml -f docker-compose.override.yml up -d --no-deps backend
-sleep 30
+sleep 70
 docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health
 echo '=== prisma migrate deploy ==='
 docker exec sigorta-backend sh -c 'cd /app/apps/backend && npx prisma migrate deploy' || {

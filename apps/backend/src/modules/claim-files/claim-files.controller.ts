@@ -94,8 +94,17 @@ export class ClaimFilesController {
   @Get('assignable-staff')
   @RequirePermissions('claim_file.assign')
   @ApiOperation({ summary: 'Hasar dosyası ataması için seçilebilir personel listesi' })
-  async getAssignableStaff(@Query('role') role?: 'office_staff' | 'field_staff') {
-    const data = await this.claimFilesService.getAssignableStaff(role ?? 'office_staff');
+  async getAssignableStaff(
+    @Query('role') role?: 'office_staff' | 'field_staff',
+    @Query('includeDelegates') includeDelegates?: 'acil_yardim' | 'hasar' | 'both',
+  ) {
+    const scope =
+      includeDelegates === 'acil_yardim'
+      || includeDelegates === 'hasar'
+      || includeDelegates === 'both'
+        ? includeDelegates
+        : undefined;
+    const data = await this.claimFilesService.getAssignableStaff(role ?? 'office_staff', scope);
     return { success: true, data };
   }
 
@@ -245,8 +254,11 @@ export class ClaimFilesController {
   @Post(':id/assign')
   @RequirePermissions('claim_file.assign')
   @ApiOperation({ summary: 'Hasar dosyasına kullanıcı/şube ata' })
-  async assign(@Param('id') id: string, @Body() assignDto: any) {
-    const data = await this.claimFilesService.assign(id, assignDto);
+  async assign(@Param('id') id: string, @Body() assignDto: any, @CurrentUser() user: any) {
+    const data = await this.claimFilesService.assign(id, assignDto, {
+      id: user?.id ?? user?.userId,
+      roleCode: user?.roleCode ?? user?.role?.code,
+    });
     return { success: true, data };
   }
 
@@ -258,7 +270,10 @@ export class ClaimFilesController {
     @Body() changeStatusDto: any,
     @CurrentUser() user: any,
   ) {
-    const data = await this.claimFilesService.changeStatus(id, changeStatusDto, user.id);
+    const data = await this.claimFilesService.changeStatus(id, changeStatusDto, user.id, {
+      id: user?.id ?? user?.userId,
+      roleCode: user?.roleCode ?? user?.role?.code,
+    });
     return { success: true, data };
   }
 

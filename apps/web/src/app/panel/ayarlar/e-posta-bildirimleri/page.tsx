@@ -188,13 +188,7 @@ export default function EPostaBildirimleriPage() {
         { to: testEmail },
         { headers: authHeader() },
       );
-      const detail = res.data?.data;
-      const accepted = Array.isArray(detail?.accepted) ? detail.accepted.join(', ') : '';
-      const rejected = Array.isArray(detail?.rejected) ? detail.rejected.join(', ') : '';
-      const response = detail?.response ? ` SMTP cevabı: ${detail.response}` : '';
-      const deliveryNote = accepted ? ` Kabul edilen alıcı: ${accepted}.` : '';
-      const rejectionNote = rejected ? ` Reddedilen alıcı: ${rejected}.` : '';
-      setTestSuccess(`${res.data?.message ?? 'Test e-postası SMTP sunucusuna iletildi.'}${deliveryNote}${rejectionNote}${response}`);
+      setTestSuccess(res.data?.message ?? 'Test e-postası Hasar kutusundan gönderildi.');
     } catch (e: any) {
       setTestError(e.response?.data?.message ?? 'Test e-postası gönderilemedi.');
     } finally {

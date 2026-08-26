@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { ImagePlus, Trash2, X } from 'lucide-react';
+import { ImagePlus, Trash2 } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
 import { reportCaughtError } from '@/utils/report-caught-error';
+import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
+import { entityDocumentFileUrl } from '@/utils/protected-image';
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 
 type PhotoDoc = {
   id: string;
@@ -28,21 +31,37 @@ function isInspectionPhoto(doc: PhotoDoc) {
 }
 
 /** Saha — ortak tespit fotoğrafları (ofis evrak yaşam döngüsü yok) */
-export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
+export function FieldInspectionPhotosPanel({
+  claimId,
+  entityType = 'claim_file',
+  entityId,
+  readOnly = false,
+}: {
+  claimId?: string;
+  entityType?: string;
+  entityId?: string;
+  readOnly?: boolean;
+}) {
+  const resolvedId = entityId || claimId || '';
   const [docs, setDocs] = useState<PhotoDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
+    if (!resolvedId) {
+      setDocs([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const r = await axios.get(`${API}/entity-documents`, {
         headers: authHeader(),
-        params: { entityType: 'claim_file', entityId: claimId },
+        params: { entityType, entityId: resolvedId },
       });
       const rows = ((r.data?.data ?? []) as PhotoDoc[]).filter(isInspectionPhoto);
       setDocs(rows);
@@ -52,47 +71,17 @@ export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [claimId]);
+  }, [entityType, resolvedId]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const missing = docs.filter((d) => !thumbUrls[d.id]).slice(0, 12);
-    if (missing.length === 0) return;
-    void (async () => {
-      const next: Record<string, string> = {};
-      await Promise.all(
-        missing.map(async (doc) => {
-          try {
-            const r = await axios.get(`${API}/entity-documents/${doc.id}/signed-url`, {
-              headers: authHeader(),
-            });
-            const url = r.data?.data?.url as string | undefined;
-            if (url) next[doc.id] = url;
-          } catch {
-            /* önizleme yoksa atla */
-          }
-        }),
-      );
-      if (!cancelled && Object.keys(next).length > 0) {
-        setThumbUrls((prev) => ({ ...prev, ...next }));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [docs, thumbUrls]);
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (files.length === 0) return;
+  const uploadFiles = async (files: File[]) => {
+    if (!resolvedId || files.length === 0) return;
     setUploading(true);
     try {
       for (const file of files) {
-        // Mobilde type bazen boş gelir — uzantı ile kabul et
         const looksImage =
           isImageMime(file.type) ||
           !file.type ||
@@ -100,61 +89,94 @@ export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
         if (!looksImage) continue;
         const fd = new FormData();
         fd.append('file', file);
-        fd.append('entityType', 'claim_file');
-        fd.append('entityId', claimId);
+        fd.append('entityType', entityType);
+        fd.append('entityId', resolvedId);
         fd.append('notes', 'Tespit Fotoğrafı');
         await axios.post(`${API}/entity-documents`, fd, {
           headers: authHeader(),
         });
       }
-      setThumbUrls({});
       await load();
     } catch (err) {
       reportCaughtError(err, 'Fotoğraf yüklenemedi.');
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    await uploadFiles(files);
+  };
+
+  const onDropFiles = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    if (readOnly || uploading) return;
+    void uploadFiles(Array.from(e.dataTransfer.files ?? []));
   };
 
   const handleDelete = async (docId: string, fileName: string) => {
     if (!confirm(`"${fileName}" silinsin mi?`)) return;
     try {
       await axios.delete(`${API}/entity-documents/${docId}`, { headers: authHeader() });
-      setThumbUrls((prev) => {
-        const copy = { ...prev };
-        delete copy[docId];
-        return copy;
-      });
       await load();
     } catch (err) {
       reportCaughtError(err, 'Fotoğraf silinemedi.');
     }
   };
 
-  const openPreview = async (docId: string) => {
-    if (thumbUrls[docId]) {
-      setPreviewUrl(thumbUrls[docId]);
-      return;
-    }
-    try {
-      const r = await axios.get(`${API}/entity-documents/${docId}/signed-url`, {
-        headers: authHeader(),
-      });
-      const url = r.data?.data?.url as string | undefined;
-      if (url) setPreviewUrl(url);
-    } catch (err) {
-      reportCaughtError(err, 'Önizleme açılamadı.');
-    }
+  const openPreview = (docId: string) => {
+    const idx = docs.findIndex((d) => d.id === docId);
+    if (idx >= 0) setPreviewIndex(idx);
   };
 
   return (
-    <div data-testid="saha-tespit-fotograflari">
+    <div
+      data-testid="saha-tespit-fotograflari"
+      onDragEnter={
+        readOnly
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!uploading) setDragOver(true);
+            }
+      }
+      onDragOver={
+        readOnly
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!uploading) setDragOver(true);
+            }
+      }
+      onDragLeave={
+        readOnly
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+              setDragOver(false);
+            }
+      }
+      onDrop={readOnly ? undefined : onDropFiles}
+      className={dragOver ? 'rounded-xl ring-2 ring-brand-400 ring-offset-2' : undefined}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">
-          {loading ? 'Yükleniyor…' : docs.length === 0 ? 'Henüz tespit fotoğrafı yok. Çekimden sonra burada görünür.' : `${docs.length} fotoğraf`}
+          {loading
+            ? 'Yükleniyor…'
+            : docs.length === 0
+              ? 'Henüz tespit fotoğrafı yok.'
+              : `${docs.length} fotoğraf`}
         </p>
         <div className="flex flex-wrap items-center gap-2">
+          {readOnly ? null : (
+            <>
           <input
             ref={galleryInputRef}
             type="file"
@@ -195,41 +217,47 @@ export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
             <ImagePlus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             {uploading ? 'Yükleniyor…' : 'Galeriden'}
           </button>
+            </>
+          )}
         </div>
       </div>
 
       {!loading && docs.length === 0 ? (
-        <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center">
+        readOnly ? (
+          <p className="mt-2 text-xs text-slate-400">Tespit resmi yok.</p>
+        ) : (
+        <div
+          className={`mt-3 rounded-xl border border-dashed px-4 py-8 text-center ${
+            dragOver ? 'border-brand-400 bg-brand-50/70' : 'border-slate-200 bg-slate-50/60'
+          }`}
+        >
           <ImagePlus className="mx-auto h-8 w-8 text-slate-300" strokeWidth={1.5} aria-hidden />
           <p className="mt-2 text-sm font-medium text-slate-600">Tespit Fotoğrafı Ekleyin</p>
-          <p className="mt-1 text-xs text-slate-400">Henüz tespit fotoğrafı yok. Çekimden sonra burada görünür.</p>
+          <p className="mt-1 text-xs text-slate-400" data-testid="saha-tespit-surukle-birak">
+            Kameradan, galeriden veya dosyayı buraya sürükleyip bırakarak ekleyin.
+          </p>
         </div>
+        )
       ) : (
-        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+        <ul className="mt-3 flex flex-wrap gap-2">
           {docs.map((doc) => (
             <li
               key={doc.id}
-              className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+              className="group relative h-36 w-36 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
             >
               <button
                 type="button"
-                onClick={() => void openPreview(doc.id)}
-                className="block aspect-square w-full"
+                onClick={() => openPreview(doc.id)}
+                className="block h-full w-full"
                 title={doc.fileName}
               >
-                {thumbUrls[doc.id] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={thumbUrls[doc.id]}
-                    alt={doc.fileName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-full items-center justify-center px-2 text-center text-[10px] font-medium text-slate-500">
-                    {doc.fileName}
-                  </span>
-                )}
+                <AuthBlobImg
+                  url={entityDocumentFileUrl(doc.id, 'thumb')}
+                  alt={doc.fileName}
+                  className="h-full w-full object-cover"
+                />
               </button>
+              {readOnly ? null : (
               <button
                 type="button"
                 onClick={() => void handleDelete(doc.id, doc.fileName)}
@@ -239,35 +267,20 @@ export function FieldInspectionPhotosPanel({ claimId }: { claimId: string }) {
               >
                 <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
+              )}
             </li>
           ))}
         </ul>
       )}
 
-      {previewUrl ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setPreviewUrl(null)}
-        >
-          <div className="relative max-h-[90vh] max-w-3xl" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => setPreviewUrl(null)}
-              className="absolute -right-2 -top-2 rounded-full bg-white p-1 shadow"
-              aria-label="Kapat"
-            >
-              <X className="h-4 w-4 text-slate-700" />
-            </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="Tespit Fotoğrafı"
-              className="max-h-[85vh] max-w-full rounded-xl object-contain"
-            />
-          </div>
-        </div>
+      {previewIndex !== null && docs[previewIndex] ? (
+        <PhotoLightbox
+          srcs={docs.map((d) => entityDocumentFileUrl(d.id, 'full'))}
+          index={previewIndex}
+          onIndex={setPreviewIndex}
+          onClose={() => setPreviewIndex(null)}
+          alt={docs[previewIndex]?.fileName ?? 'Tespit Fotoğrafı'}
+        />
       ) : null}
     </div>
   );

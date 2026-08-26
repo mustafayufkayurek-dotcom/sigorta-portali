@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { resolveFileFinanceKpis } from '@sigorta/shared';
+import { Wallet } from 'lucide-react';
 import {
   repairReportStatusLabel,
 } from '@/utils/repair-report-status';
@@ -22,12 +23,21 @@ export type FinansOzetSummary = {
   totalCollected?: number;
   estimatedRevenue?: number;
   estimatedCost?: number;
+  extraWorkRevenue?: number;
+  extraWorkCost?: number;
+  fileFeeRevenue?: number;
+  totalVariableCost?: number;
+  vendorCost?: number;
+  fieldExpenseCost?: number;
+  materialCost?: number;
+  communicationCost?: number;
+  otherVariableCost?: number;
 };
 
 export function FinansMetrikHucre({ metrik }: { metrik: FinansMetrik }) {
   return (
     <div
-      className={`px-3 py-3 text-center border-b border-r border-slate-100 last:border-r-0 ${
+      className={`flex min-h-[4.75rem] flex-col items-center justify-center px-3 py-3 border-b border-r border-slate-100 last:border-r-0 ${
         metrik.highlight ? 'bg-slate-50/80' : 'bg-white'
       }`}
     >
@@ -96,6 +106,22 @@ export function FinansRaporOzeti({
     kpis.netProfit !== 0;
 
   const karAccent = kpis.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700';
+  const hasSplit =
+    kpis.extraWorkRevenue > 0 || kpis.extraWorkCost > 0;
+  const splitMetrikleri = hasSplit
+    ? [
+        metrikFromAmount('Bütçe Kârı', kpis.budgetProfit, {
+          accent: kpis.budgetProfit >= 0 ? 'text-emerald-700' : 'text-red-700',
+        }),
+        metrikFromAmount('Ek İş Kârı', kpis.extraWorkProfit, {
+          accent: kpis.extraWorkProfit >= 0 ? 'text-amber-700' : 'text-red-700',
+        }),
+        metrikFromAmount('Toplam Kâr', kpis.netProfit, {
+          highlight: true,
+          accent: karAccent,
+        }),
+      ]
+    : [];
   const gelirLabel = kpis.actualRevenue > 0 ? 'Faturalanan Gelir' : 'Dosya Bedeli';
   const giderLabel = kpis.hasFileExpenses ? 'Fiili Gider' : 'Tedarikçi Bütçesi';
   const primaryMetrikleri = [
@@ -111,12 +137,17 @@ export function FinansRaporOzeti({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className={`flex items-center justify-between gap-3 px-5 py-3 ${compact ? 'bg-slate-800 py-2.5' : 'bg-slate-800'}`}>
-        <div>
+      <div className={`flex items-center justify-between gap-3 px-5 py-3 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 ${compact ? 'py-2.5' : ''}`}>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-slate-100">
+            <Wallet className="h-4 w-4" strokeWidth={1.75} />
+          </span>
+          <div>
           <p className="text-[11px] font-medium text-slate-400 leading-none">Finans Özeti</p>
           <p className={`font-medium text-slate-100 mt-1 ${compact ? 'text-xs' : 'text-sm'}`}>
             {rapor ? `${rapor.reportNo} · ${repairReportStatusLabel(rapor.status)}` : 'Dosya Mali Durumu'}
           </p>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           {tahsilatOrani != null && (
@@ -153,22 +184,22 @@ export function FinansRaporOzeti({
         </div>
       ) : (
         <div>
-          {!compact && (
-            <div className="px-5 py-1.5 bg-slate-50 border-b border-slate-100">
-              <p className="text-[10px] font-medium text-slate-500">
-                {kpis.profitLabel}
-              </p>
-            </div>
-          )}
           <div className="grid grid-cols-3">
             {primaryMetrikleri.map((m) => (
               <FinansMetrikHucre key={m.label} metrik={m} />
             ))}
           </div>
+          {splitMetrikleri.length > 0 && (
+            <div className="grid grid-cols-3 border-t border-slate-100">
+              {splitMetrikleri.map((m) => (
+                <FinansMetrikHucre key={m.label} metrik={m} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {tahsilatOrani != null && (
+      {!compact && tahsilatOrani != null && (
         <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50/50">
           <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5">
             <span>Tahsilat İlerlemesi (Fiili)</span>

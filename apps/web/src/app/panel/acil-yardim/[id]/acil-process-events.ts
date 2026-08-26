@@ -34,6 +34,8 @@ type AcilLocalFlow = {
   vendorProcess: VendorProcessKey | null;
   priceChangeLog: { at: string; field: 'alis' | 'satis'; oldValue: number | null; newValue: number }[];
   messageLog: { at: string; kind: MessageLogKind; text: string }[];
+  vendorPaid?: boolean | null;
+  customerNotifyChannel?: 'whatsapp' | 'email' | 'both';
 };
 
 export const ACIL_PROCESS_ACTIONS = [
@@ -48,6 +50,7 @@ export const ACIL_PROCESS_ACTIONS = [
   'EMERGENCY_SERVICE_COMPLETED',
   'EMERGENCY_PRICE_CHANGED',
   'EMERGENCY_MESSAGE_RECORDED',
+  'EMERGENCY_VENDOR_PAYMENT_RECORDED',
 ] as const;
 
 export type AcilProcessAction = (typeof ACIL_PROCESS_ACTIONS)[number];
@@ -173,6 +176,16 @@ export function diffAcilProcessEvents(
       metadata: { kind: entry.kind, text: entry.text, at: entry.at },
     });
   }
+  if (
+    prev.vendorPaid !== next.vendorPaid
+    && (next.vendorPaid === true || next.vendorPaid === false)
+  ) {
+    events.push({
+      action: 'EMERGENCY_VENDOR_PAYMENT_RECORDED',
+      description: next.vendorPaid ? 'Tedarikçi ödemesi: ödendi' : 'Tedarikçi ödemesi: ödenmedi',
+      metadata: { paid: next.vendorPaid },
+    });
+  }
   return events;
 }
 
@@ -210,6 +223,10 @@ export function mergeAcilFlowWithServerEvents(
     }
     if (event.action === 'EMERGENCY_WORK_START_READY') merged.workStartPrepared = true;
     if (event.action === 'EMERGENCY_SERVICE_COMPLETED') merged.serviceCompleted = true;
+    if (event.action === 'EMERGENCY_VENDOR_PAYMENT_RECORDED') {
+      if (event.metadata?.paid === true) merged.vendorPaid = true;
+      else if (event.metadata?.paid === false) merged.vendorPaid = false;
+    }
     const vendorKey = vendorProcessFromAction(event.action);
     if (vendorKey) vendorFromServer = vendorKey;
 
@@ -281,3 +298,35 @@ export function mergeAcilFlowWithServerEvents(
 
   return merged;
 }
+
+/** Sunucudaki resmi saatler local bayrakları ezer (true yönünde). */
+export function applyAcilCaseTimestamps(
+  local: AcilLocalFlow,
+  stamps: {
+    workStartedAt?: string | null;
+    serviceDeliveredAt?: string | null;
+    resolvedAt?: string | null;
+    vendorPaid?: boolean | null;
+    operationTimestamps?: {
+      workStartedAt: string | null;
+      serviceDeliveredAt: string | null;
+      closedAt: string | null;
+    } | null;
+  },
+): AcilLocalFlow {
+  const work = stamps.operationTimestamps?.workStartedAt ?? stamps.workStartedAt;
+  const service = stamps.operationTimestamps?.serviceDeliveredAt ?? stamps.serviceDeliveredAt;
+  const closed = stamps.operationTimestamps?.closedAt ?? stamps.resolvedAt;
+  const paid =
+    stamps.vendorPaid === true || stamps.vendorPaid === false
+      ? stamps.vendorPaid
+      : local.vendorPaid ?? null;
+  return {
+    ...local,
+    workStartPrepared: local.workStartPrepared || Boolean(work),
+    serviceCompleted: local.serviceCompleted || Boolean(service),
+    fileClosed: local.fileClosed || Boolean(closed),
+    vendorPaid: paid,
+  };
+}
+

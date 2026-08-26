@@ -1,0 +1,44 @@
+---
+description: Acil dosya Hasar kabuğu — canlı alındı; önizleme durur; geriye dönmez
+alwaysApply: true
+---
+
+# Acil Dosya Hasar Kabuğu (canlı kilit)
+
+**Kaynak (Mustafa · 21.08.2026):** Acil dosya Hasar gibi. Önizleme tutuldu; netleşen iş canlıya alındı. Geriye dönmez.
+
+**Canlı:** `/panel/acil-yardim/[id]` · finans `/panel/acil-yardim/finans#tedarikci-hakedis`  
+**Önizleme (yalnız development):** `http://localhost:3001/dev/acil-dosya-akis` — production’da kapalı.
+
+## Tutulan (bozulmaz)
+
+- Adres satırında telefon yok; telefon aranabilir.
+- Alış/satış kutusunda TL; binlik nokta; kâr/zarar yüzde.
+- Tespit fotoğrafları / notları ve kapanış resimleri **Operasyonu Başlat** çekmecesinde (sayfa gövdesinde değil).
+- **Operasyon özeti** 5 adım kare (ikon + sonuç satırı) + **Sıradaki iş**; altta tekrarlayan süreç/durum listesi yok. Üstteki 8’li daire şeridi yok. Hasar’daki “İlerleme Özeti / Dosyada Kimler Var?” kopyası değildir.
+- Sıra: **İhbar → Tedarikçi Ve Maliyet → Onay Talep Akışı (servis formu dijital onay + sigortalı haber) → Kapanış (anket kapandıktan sonra tercihli) → Ödeme Ve Finans**. Operasyon dijital onaylı servis formu olmadan ilerlemez. Kapat ile finansa gönder ayrıdır.
+- Tespit fotoğrafları / notları ve kapanış resimleri **Operasyonu Başlat** çekmecesinde, kapanış adımında (sayfa gövdesinde değil).
+- Tek **Operasyonu Başlat**; durum şeridi / 3 kolon / tekrarlayan aç düğmeleri yok (iş çekmecede).
+- Hasar tipi sekme şeridi yok; Dosya Bütçesi formu ana sayfada yok.
+- İş bitiminde dosya tedarikçisine hakediş; tarih-saat kayıtlı; finans ekranına düşer; **vade yok**.
+- Operasyon Acil listesinde **Ödeme Durumu** durur; personel gizleyemez.
+- Servis onayında yalnız *“Bu onay formunda hizmet bedeli yer almaz.”* Sigortalı onaylamadan kaçamaz (uyarı, yapışık Onayla, “Onay gerekli”).
+- Acil anket: **Acil Yardım Ekibi**; yıldız anlamı; logo+başlık ortada; gönderince dosyaya ve Anket Sonuçları’na düşer; olumsuzda **dosya sorumlusu açıklaması** zorunlu.
+- Dosyada **Konum Tespiti**; tedarikçi WhatsApp’ta pin + *“Konumu sigortalıdan teyit ediniz.”* Alış/satış/kâr gitmez.
+- Dört resmi işlem saati dosyada durur: **ihbar** (mail / `fileDate`), **işe başlama** (`workStartedAt`), **hizmet verilme** (`serviceDeliveredAt`), **kapanış** (`resolvedAt`). Detay ve kapanış PDF iskeleti bunları basar.
+- Onay Talep Akışı **Sunum özeti**: yazarken boşluk durur. «Riziko adreste;» sabit; gövde her tuşta kırpılmaz.
+- Hasar hakediş / 15-30 vade yoluna dokunulmaz.
+
+## Yasak (açık onay yoksa)
+
+- Bu akışı “sadeleştirme” diye kaldırmak
+- Google / Places / API etiketi
+- Hasar `recommendForClaimFile` yoluna dokunmak
+
+Regresyon:
+
+```bash
+pnpm smoke:acil-netlesen
+node --experimental-strip-types --test \
+  apps/web/src/components/acil-operasyon-planlayicisi/planner-gates.lock.spec.ts
+```

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '@/prisma/prisma.module';
+import { NotificationsModule } from '@/modules/notifications/notifications.module';
 import {
   ExtraWorkItemController,
   ClaimFileRevenueController,
@@ -11,9 +12,10 @@ import { ClaimFileRevenueService } from './claim-file-revenue.service';
 import { MonthlyOverheadService } from './monthly-overhead.service';
 import { FinancialSummaryService } from './financial-summary.service';
 import { VatReportService } from './vat-report.service';
+import { OverheadMonthEndScheduler } from './overhead-month-end.scheduler';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, NotificationsModule],
   controllers: [
     ExtraWorkItemController,
     ClaimFileRevenueController,
@@ -26,6 +28,7 @@ import { VatReportService } from './vat-report.service';
     MonthlyOverheadService,
     FinancialSummaryService,
     VatReportService,
+    OverheadMonthEndScheduler,
   ],
   exports: [
     ExtraWorkItemService,

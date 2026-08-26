@@ -1,0 +1,18 @@
+---
+description: İK personel+zimmet sıradaki canlı paket; puantaj ayrı
+alwaysApply: true
+---
+
+# İK — sıradaki canlı paket (26.08.2026)
+
+Mustafa (26.08.2026): **Personel Ekle + aynı kayıtta zimmet** bir sonraki canlı pakete alındı. Henüz sunucuya gitmedi. Hasar/Acil v540 paketine karışmaz.
+
+## Sıradaki canlı paket (aday)
+
+1. **İK / personel özlük** — kadro, Personel Ekle, zimmet aynı kayıtta, özlük dosyası
+2. Deploy yalnız Mustafa «canlıya al» deyince; kirli ağaç / WIP rsync yok
+
+## Hâlâ ayrı (bu pakete yapıştırılmaz)
+
+1. **Puantaj** — takvim renkleri, bekleyenleri onayla, ay özeti, mesai saati denetimi
+2. Diğer sohbetlerde kalan dashboard işi — Hasar dosya paketine yapıştırılmaz

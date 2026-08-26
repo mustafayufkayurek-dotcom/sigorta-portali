@@ -1,0 +1,34 @@
+---
+description: Hasar dijital onay WhatsApp — sigortalı telefon + gerçek gönderim
+alwaysApply: true
+---
+
+# Hasar Dijital Onay WhatsApp Kilidi
+
+**Kaynak (Mustafa · 26.08.2026):** Personel dijital onayda link oluşturuyor, gönderim olmuyordu. Sigortalı numarası kutuya hazır gelmiyordu. Bitmiş iş yine bozulmuştu.
+
+**Temel cümle:** Hasar dijital onayda **sigortalı telefonu kutuda durur.** Gönder deyince **WhatsApp açılır.** Kutu kapanıp iş bitmiş sayılmaz.
+
+## Zorunlu
+
+1. `FileDocumentPanel` WhatsApp kutusu: telefon `whatsappPhone` yoksa dosya sigortalı / müşteri numarası (`suggestedPhone` / `defaultPhone`).
+2. Gönderim `openWhatsAppChat` — yalnız link kaydı + kutu kapatma yok.
+3. Backend `resolveInsuredPhone` + `sendWhatsapp` mesaj ve telefon döner.
+4. Planlayıcı dijital onay: `defaultPhone={claim.insuredPhone}`.
+
+## Yasak (açık onay yoksa)
+
+- `onSent` ile kutuyu kapatıp WhatsApp’ı atlamak
+- «Link Oluştur» deyip sohbet açmamak
+- Sigortalı telefonunu boş bırakıp personeli yazmaya zorlamak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Kutu yine kapanır veya numara boş gelirse → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-hasar-dijital-onay.sh
+```

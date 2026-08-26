@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException, ForbiddenException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmergencyStatus, Prisma } from '@prisma/client';
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
@@ -20,7 +20,19 @@ import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { StorageService } from '@/modules/storage/storage.service';
-import { resolveInsuredPhoneForInbox, resolveEmergencyOperationLabel } from '@sigorta/shared';
+import { htmlDocumentToPdf } from '@/common/utils/html-document-to-pdf';
+import {
+  resolveInsuredPhoneForInbox,
+  resolveEmergencyOperationLabel,
+  isAcilVendorQualityWarning,
+  shouldReportAcilNegativeVendorStrike,
+} from '@sigorta/shared';
+import { VendorRecommendationService } from '@/modules/vendors/vendor-recommendation.service';
+import {
+  acilSalesInvoiceRequestBody,
+  canOpenAcilSalesInvoiceRequest,
+  invoiceRequestActorUserId,
+} from './acil-finance-invoice-request';
 import type { SendMailOptions } from 'nodemailer';
 import {
   resolveCustomerReminderEmail,
@@ -36,6 +48,13 @@ import {
   type EmergencyProcessAction,
 } from './emergency-process-events';
 import { RecordEmergencyProcessEventDto } from './dto/record-emergency-process-event.dto';
+import { SurveysService } from '@/modules/surveys/surveys.service';
+import { EmergencyFinanceService } from './emergency-finance.service';
+import { buildAcilClosureReportPdf } from './acil-closure-report-pdf';
+import {
+  buildAcilOperationTimestamps,
+  nextAcilOperationStamps,
+} from './acil-operation-timestamps';
 
 const MANUAL_DECISION_MIN_REASON = 10;
 const PORTAL_ROLE_CODES = new Set([
@@ -69,30 +88,58 @@ export class EmergencyCasesService {
     private readonly fileDocumentsService: FileDocumentsService,
     private readonly invoiceRequestsService: InvoiceRequestsService,
     private readonly vendorProfile: VendorIntelligenceProfileService,
+    private readonly vendorRecommendation: VendorRecommendationService,
     private readonly emailService: EmailService,
     private readonly claimEventEmail: ClaimEventEmailService,
     private readonly storage: StorageService,
+    @Optional() private readonly surveys?: SurveysService,
+    @Optional() private readonly emergencyFinance?: EmergencyFinanceService,
   ) {}
 
-  /** EPIC-04: Kapanışta tedarikçi hakediş entegrasyon noktası (onay sonrası VendorStatements bağlanacak). */
-  private async onEmergencyCaseClosed(caseId: string, userId: string): Promise<void> {
+  /** Dosya kapanınca ana müşteriye kapanış maili (alış/kâr yok). */
+  private async sendClosureEmailOnClose(caseId: string): Promise<{
+    sent: boolean;
+    to: string | null;
+    error: string | null;
+  }> {
+    try {
+      const res = await this.sendClosureEmail(caseId);
+      return {
+        sent: Boolean(res.data.sent),
+        to: res.data.to ?? null,
+        error: res.data.errorMsg ?? null,
+      };
+    } catch (err: any) {
+      const error = err?.message ?? 'Kapanış maili gönderilemedi';
+      this.logger.warn(`[Kapanış maili] Otomatik gönderim atlandı: ${error}`);
+      return { sent: false, to: null, error };
+    }
+  }
+
+  private async onEmergencyCaseClosed(caseId: string, userId: string): Promise<{
+    autoClosureEmail: { sent: boolean; to: string | null; error: string | null };
+  }> {
+    const autoClosureEmail = await this.sendClosureEmailOnClose(caseId);
     const emergencyCase = await this.prisma.emergencyCase.findUnique({
       where: { id: caseId },
       select: { id: true, caseNo: true, assignedVendorId: true },
     });
     if (!emergencyCase?.assignedVendorId) {
-      this.logger.debug(`[EPIC-04] Kapanış hakediş atlandı — tedarikçi yok: ${caseId}`);
-      return;
+      this.logger.debug(`[Acil hakediş] Atlandı — tedarikçi yok: ${caseId}`);
+      return { autoClosureEmail };
     }
-    this.logger.log(
-      `[EPIC-04] Kapanış hakediş entegrasyonu bekliyor — case=${emergencyCase.caseNo} vendor=${emergencyCase.assignedVendorId}`,
-    );
+    if (this.emergencyFinance) {
+      await this.emergencyFinance.grantVendorEntitlement(caseId, userId).catch((err) =>
+        this.logger.warn(`[Acil hakediş] Verilemedi: ${err?.message}`),
+      );
+    }
     await this.ensureFinanceTransfer(caseId, userId).catch((err) =>
       this.logger.warn(`[EPIC-04] Otomatik finans aktarımı atlandı: ${err?.message}`),
     );
     await this.vendorProfile.onFileCompleted({ type: 'emergency_case', id: caseId }).catch((err) =>
       this.logger.warn(`[VendorIntelligenceProfile] Acil kapanış hook: ${err?.message}`),
     );
+    return { autoClosureEmail };
   }
 
   /** EPIC-04: Finansa aktarım entegrasyon noktası (onay sonrası finance modülü bağlanacak). */
@@ -107,6 +154,11 @@ export class EmergencyCasesService {
     await this.ensureFinanceTransfer(caseId, userId).catch((err) =>
       this.logger.warn(`[EPIC-04] Fatura talebi senkronu atlandı: ${err?.message}`),
     );
+    if (this.emergencyFinance) {
+      await this.emergencyFinance.grantVendorEntitlement(caseId, userId).catch((err) =>
+        this.logger.warn(`[Acil hakediş] Finans aktarımında: ${err?.message}`),
+      );
+    }
   }
 
   private computeOverdueLevel(
@@ -230,38 +282,34 @@ export class EmergencyCasesService {
       },
     });
     if (!emergencyCase) return;
-    if (!(emergencyCase.status === EmergencyStatus.COZULDU || emergencyCase.status === EmergencyStatus.FATURALANDILDI)) {
-      return;
-    }
-    if (emergencyCase.invoiceRequests.length > 0) return;
-
-    const closure = await this.fileDocumentsService.checkEmergencyCaseClosureConditions(caseId);
-    if (!closure.canCreateInvoiceRequest) return;
 
     const gelirEntries = emergencyCase.costEntries.filter((entry) => entry.entryType === 'gelir');
-    const totalAmount = gelirEntries.reduce((sum, entry) => sum + entry.amount, 0);
-    if (totalAmount <= 0) return;
+    const gelirTotal = gelirEntries.reduce((sum, entry) => sum + entry.amount, 0);
+    if (
+      !canOpenAcilSalesInvoiceRequest({
+        status: emergencyCase.status,
+        existingOpenRequest: emergencyCase.invoiceRequests.length > 0,
+        gelirTotal,
+      })
+    ) {
+      return;
+    }
 
     await this.invoiceRequestsService.create(
-      {
-        serviceType: 'emergency',
+      acilSalesInvoiceRequestBody({
         emergencyCaseId: caseId,
-        insuranceCompanyId: emergencyCase.customerId ?? undefined,
-        insuranceCompanyName: emergencyCase.customerName,
-        fileNo: emergencyCase.fileNo ?? emergencyCase.caseNo,
-        totalAmount,
-        workItemsSummary: gelirEntries.map((entry) => ({
-          description: entry.description,
-          amount: entry.amount,
-        })),
-        notes: 'Acil yardım operasyon zinciri kapanış hooku ile otomatik oluşturuldu.',
-      },
-      userId,
+        caseNo: emergencyCase.caseNo,
+        fileNo: emergencyCase.fileNo,
+        customerName: emergencyCase.customerName,
+        gelirEntries,
+      }),
+      invoiceRequestActorUserId(userId, emergencyCase.createdByUserId),
+      { skipClosureCheck: true },
     );
   }
 
   private async buildOperationChain(caseId: string) {
-    const [emergencyCase, inboundMessages, documents, invoiceRequests, closure] = await Promise.all([
+    const [emergencyCase, inboundMessages, documents, invoiceRequests, closure, entitlement] = await Promise.all([
       this.prisma.emergencyCase.findUnique({
         where: { id: caseId },
         include: {
@@ -296,6 +344,10 @@ export class EmergencyCasesService {
         orderBy: { createdAt: 'desc' },
       }),
       this.fileDocumentsService.checkEmergencyCaseClosureConditions(caseId),
+      this.prisma.emergencyVendorEntitlement.findUnique({
+        where: { caseId },
+        select: { grantedAt: true },
+      }).catch(() => null),
     ]);
 
     if (!emergencyCase) {
@@ -334,6 +386,7 @@ export class EmergencyCasesService {
       canCreateInvoiceRequest: closure.canCreateInvoiceRequest,
       createdAt: emergencyCase.createdAt,
       fileDate: emergencyCase.fileDate,
+      vendorEntitlementGrantedAt: entitlement?.grantedAt ?? null,
     });
   }
 
@@ -408,6 +461,26 @@ export class EmergencyCasesService {
       },
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
     });
+    const delegationStamp = await this.operationalAccessGrants.getFunctionDelegationStamp(
+      userId,
+      'acil_yardim',
+    );
+    if (delegationStamp) {
+      await this.prisma.auditLog.create({
+        data: {
+          entityType: 'EmergencyCase',
+          entityId: created.id,
+          action: 'CREATE',
+          userId,
+          newValue: delegationStamp as Prisma.InputJsonValue,
+        },
+      });
+    }
+    if (dto.assignedVendorId) {
+      void this.reportNegativeVendorIfNeeded(created.id, dto.assignedVendorId).catch((err) =>
+        this.logger.warn(`[Acil tedarikçi] Olumsuz atama raporu atlandı: ${err?.message}`),
+      );
+    }
     return { data: this.enrichCase(created) };
   }
 
@@ -539,6 +612,9 @@ export class EmergencyCasesService {
     }
 
     if (this.operationalAccessGrants.isDelegationScopedRole(requestingUser.roleCode)) {
+      if (await this.operationalAccessGrants.hasFunctionDelegation(requestingUser.id, 'acil_yardim')) {
+        return;
+      }
       const assignedId = emergencyCase.assignedUserId;
       if (assignedId === requestingUser.id) return;
       if (!assignedId && emergencyCase.createdByUserId === requestingUser.id) return;
@@ -601,8 +677,31 @@ export class EmergencyCasesService {
 
     const cases = await this.prisma.emergencyCase.findMany({
       where,
-      include: {
-        assignedVendor: { select: { id: true, name: true, phone: true } },
+      // Liste: konum/saat kolonları lokal DB’de yoksa tüm satır düşmesin
+      select: {
+        id: true,
+        caseNo: true,
+        fileNo: true,
+        customerId: true,
+        customerName: true,
+        customerPhone: true,
+        address: true,
+        city: true,
+        district: true,
+        issueType: true,
+        urgency: true,
+        status: true,
+        assignedVendorId: true,
+        assignedUserId: true,
+        notes: true,
+        findingsText: true,
+        fileDate: true,
+        invoicedAt: true,
+        resolvedAt: true,
+        createdByUserId: true,
+        createdAt: true,
+        updatedAt: true,
+        assignedVendor: { select: { id: true, name: true, phone: true, notes: true } },
         assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         customer: {
           select: {
@@ -638,7 +737,7 @@ export class EmergencyCasesService {
     const c = await this.prisma.emergencyCase.findUnique({
       where: { id },
       include: {
-        assignedVendor: { select: { id: true, name: true, phone: true } },
+        assignedVendor: { select: { id: true, name: true, phone: true, notes: true } },
         assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         customer: {
@@ -651,6 +750,7 @@ export class EmergencyCasesService {
             lastName: true,
             entityType: true,
             subType: true,
+            email: true,
             phone: true,
           },
         },
@@ -693,6 +793,12 @@ export class EmergencyCasesService {
         c.customer?.phone,
       )) ?? c.customerPhone;
     const { createdBy: _createdBy, ...caseWithoutCreatedBy } = c;
+    const operationTimestamps = buildAcilOperationTimestamps({
+      notifiedAt: operationChain.inbox.lastReceivedAt ?? c.fileDate,
+      workStartedAt: c.workStartedAt,
+      serviceDeliveredAt: c.serviceDeliveredAt,
+      closedAt: c.resolvedAt,
+    });
     return {
       data: {
         ...this.enrichCase({
@@ -703,12 +809,13 @@ export class EmergencyCasesService {
         }),
         activeDelegation,
         operationChain,
+        operationTimestamps,
       },
     };
   }
 
   async update(id: string, dto: UpdateEmergencyCaseDto) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
 
     // fileNo benzersizlik kontrolü (dolu ise, kendi ID'si hariç)
     if (dto.fileNo !== undefined && dto.fileNo?.trim()) {
@@ -734,25 +841,113 @@ export class EmergencyCasesService {
         ...(dto.assignedUserId !== undefined && { assignedUserId: dto.assignedUserId }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
         ...(dto.findingsText !== undefined && { findingsText: dto.findingsText }),
+        ...(dto.vendorPaid !== undefined && { vendorPaid: dto.vendorPaid }),
+        ...(dto.latitude !== undefined && { latitude: dto.latitude }),
+        ...(dto.longitude !== undefined && { longitude: dto.longitude }),
       },
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
     });
+    const nextVendorId = dto.assignedVendorId;
+    const prevVendorId = existing.data?.assignedVendorId ?? null;
+    if (nextVendorId && nextVendorId !== prevVendorId) {
+      void this.reportNegativeVendorIfNeeded(id, nextVendorId).catch((err) =>
+        this.logger.warn(`[Acil tedarikçi] Olumsuz atama raporu atlandı: ${err?.message}`),
+      );
+    }
     return { data: this.enrichCase(updated) };
   }
 
+  /**
+   * Olumsuz memnuniyet/maliyet ile 2. Acil çalışma → yöneticiye e-posta.
+   * Atamayı bloklamaz; SMTP yoksa yalnızca log.
+   */
+  private async reportNegativeVendorIfNeeded(caseId: string, vendorId: string): Promise<void> {
+    const [priorOtherAssignments, metrics, recs, vendor, emergencyCase, admins] = await Promise.all([
+      this.prisma.emergencyCase.count({
+        where: { assignedVendorId: vendorId, NOT: { id: caseId } },
+      }),
+      this.vendorRecommendation.getOperationMetrics(vendorId, 'acil'),
+      this.vendorRecommendation.recommendForEmergencyCase(caseId, 40).catch(() => []),
+      this.prisma.vendor.findUnique({ where: { id: vendorId }, select: { name: true } }),
+      this.prisma.emergencyCase.findUnique({
+        where: { id: caseId },
+        select: { caseNo: true, fileNo: true, customerName: true, city: true, district: true },
+      }),
+      this.prisma.user.findMany({
+        where: {
+          status: 'active',
+          role: { code: { in: ['admin', 'ADMIN'] } },
+        },
+        select: { email: true },
+        take: 20,
+      }),
+    ]);
+
+    const rec = recs.find((item) => item.id === vendorId);
+    const qualityWarning = rec?.qualityWarning
+      ?? isAcilVendorQualityWarning({
+        avgServiceScore: metrics.avgServiceScore,
+        compositeScore: rec?.compositeScore ?? null,
+        completedFileCount: metrics.completedFileCount,
+      });
+    if (!qualityWarning) return;
+    if (!shouldReportAcilNegativeVendorStrike(priorOtherAssignments)) return;
+
+    const emails = [...new Set(admins.map((u) => u.email).filter((e): e is string => Boolean(e?.trim())))];
+    if (emails.length === 0) {
+      this.logger.warn('[Acil tedarikçi] Olumsuz 2. atama — yönetici e-postası yok');
+      return;
+    }
+
+    const fileNo = emergencyCase?.fileNo || emergencyCase?.caseNo || caseId;
+    const vendorName = vendor?.name ?? vendorId;
+    const location = [emergencyCase?.district, emergencyCase?.city].filter(Boolean).join(' / ') || '—';
+    const subject = `Acil Yardım — Olumsuz Tedarikçi 2. Çalışma (${fileNo})`;
+    const html = `
+      <p>Dosya sorumlusu, memnuniyet veya maliyet değerlendirmesi olumsuz olan bir tedarikçiyle ikinci kez çalıştı.</p>
+      <p><strong>Dosya:</strong> ${fileNo}<br/>
+      <strong>Müşteri:</strong> ${emergencyCase?.customerName ?? '—'}<br/>
+      <strong>Bölge:</strong> ${location}<br/>
+      <strong>Tedarikçi:</strong> ${vendorName}<br/>
+      <strong>Önceki Acil atama sayısı:</strong> ${priorOtherAssignments}</p>
+    `;
+    const text = `Dosya ${fileNo} — olumsuz tedarikçi ${vendorName} ile 2. çalışma.`;
+    await Promise.all(
+      emails.map((to) => this.emailService.sendEmail(to, subject, html, { text, mailbox: 'IHBAR' })),
+    );
+  }
+
   async updateStatus(id: string, dto: UpdateEmergencyStatusDto, userId = 'system') {
+    const current = await this.prisma.emergencyCase.findUnique({
+      where: { id },
+      select: { workStartedAt: true, serviceDeliveredAt: true },
+    });
     await this.findOne(id);
+    const now = new Date();
     const data: any = { status: dto.status };
-    if (dto.status === EmergencyStatus.COZULDU) data.resolvedAt = new Date();
-    if (dto.status === EmergencyStatus.FATURALANDILDI) data.invoicedAt = new Date();
+    if (dto.status === EmergencyStatus.SAHADA && !current?.workStartedAt) {
+      data.workStartedAt = now;
+    }
+    if (dto.status === EmergencyStatus.COZULDU) {
+      data.resolvedAt = now;
+      if (!current?.serviceDeliveredAt) data.serviceDeliveredAt = now;
+      if (!current?.workStartedAt) data.workStartedAt = now;
+    }
+    if (dto.status === EmergencyStatus.FATURALANDILDI) data.invoicedAt = now;
     const updated = await this.prisma.emergencyCase.update({
       where: { id },
       data,
       include: { assignedVendor: true, assignedUser: true, costEntries: true },
     });
+    let autoClosureEmail: { sent: boolean; to: string | null; error: string | null } | undefined;
     if (dto.status === EmergencyStatus.COZULDU) {
-      await this.onEmergencyCaseClosed(id, userId).catch((err) =>
-        this.logger.warn(`[EPIC-04] Kapanış hook hatası: ${err?.message}`),
+      const closed = await this.onEmergencyCaseClosed(id, userId).catch((err) => {
+        this.logger.warn(`[EPIC-04] Kapanış hook hatası: ${err?.message}`);
+        return null;
+      });
+      autoClosureEmail = closed?.autoClosureEmail;
+      void this.surveys?.ensureCampaignForEmergencyCase(id).catch((err: unknown) =>
+        this.logger.warn(`[Survey] Acil kapanış kampanyası: ${(err as Error)?.message}`),
       );
     }
     if (dto.status === EmergencyStatus.FATURALANDILDI) {
@@ -760,7 +955,7 @@ export class EmergencyCasesService {
         this.logger.warn(`[EPIC-04] Finans aktarım hook hatası: ${err?.message}`),
       );
     }
-    return { data: this.enrichCase(updated) };
+    return { data: { ...this.enrichCase(updated), autoClosureEmail } };
   }
 
   async remove(id: string) {
@@ -904,6 +1099,17 @@ export class EmergencyCasesService {
         ? `${saleAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`
         : '—';
     const closedAt = (emergencyCase.resolvedAt || new Date()).toLocaleString('tr-TR');
+    const inboundAt = inbound[0]?.receivedAt
+      ? inbound[0].receivedAt.toLocaleString('tr-TR')
+      : emergencyCase.fileDate
+        ? emergencyCase.fileDate.toLocaleString('tr-TR')
+        : '—';
+    const workStartedAt = emergencyCase.workStartedAt
+      ? emergencyCase.workStartedAt.toLocaleString('tr-TR')
+      : '—';
+    const serviceDeliveredAt = emergencyCase.serviceDeliveredAt
+      ? emergencyCase.serviceDeliveredAt.toLocaleString('tr-TR')
+      : '—';
     const summary = (emergencyCase.notes || '').trim().slice(0, 160) || 'Hizmet tamamlandı';
     const subject = `Dosya Kapanışı – ${fileNo}`;
     const bodyText = [
@@ -915,11 +1121,14 @@ export class EmergencyCasesService {
       `Sigortalı: ${insured}`,
       `Sigortalı Telefon: ${insuredPhone}`,
       `Dosya Konusu: ${emergencyCase.issueType}`,
-      `Tamamlanma: ${summary}`,
+      `İhbar Tarihi: ${inboundAt}`,
+      `İşe Başlama: ${workStartedAt}`,
+      `Hizmet Verilme: ${serviceDeliveredAt}`,
+      `Operasyon / Tamamlanma: ${summary}`,
       `Onaylı Hizmet Bedeli: ${saleLabel}`,
       `Kapanış Tarihi: ${closedAt}`,
       '',
-      'Ekler: onaylı fotoğraflar ve kapanış belgeleri (varsa).',
+      'Ekler: kapanış raporu PDF, onaylı fotoğraflar ve belgeler (varsa).',
       '',
       'Saygılarımızla,',
       'Meridyen Assistance',
@@ -939,6 +1148,22 @@ export class EmergencyCasesService {
 
     const attachments: NonNullable<SendMailOptions['attachments']> = [];
     const attachmentNames: string[] = [];
+    const reportFile = `kapanis-raporu-${String(fileNo).replace(/[^\w.-]+/g, '_')}.pdf`;
+    attachments.push({
+      filename: reportFile,
+      content: buildAcilClosureReportPdf({
+        fileNo,
+        insured,
+        subject: String(emergencyCase.issueType || ''),
+        ihbarAt: inboundAt,
+        workStartedAt,
+        serviceDeliveredAt,
+        closedAt,
+        summary,
+      }),
+      contentType: 'application/pdf',
+    });
+    attachmentNames.push(reportFile);
 
     for (const doc of docs) {
       const kindLabel = doc.documentKind === 'matbu_evrak' ? 'Matbu-Evrak' : 'Belge';
@@ -956,7 +1181,25 @@ export class EmergencyCasesService {
           this.logger.warn(`Kapanış eki indirilemedi (${doc.id}): ${err?.message}`);
         }
       } else if (doc.renderedContent) {
-        const filename = `${kindLabel}-${fileNo}.html`;
+        const isMatbu = doc.documentKind === 'matbu_evrak';
+        const pdfName = `${isMatbu ? 'Servis-Onay-Formu' : 'Belge'}-${fileNo}.pdf`;
+        if (isMatbu) {
+          try {
+            const pdf = await htmlDocumentToPdf(doc.renderedContent);
+            if (pdf) {
+              attachments.push({
+                filename: pdfName,
+                content: pdf,
+                contentType: 'application/pdf',
+              });
+              attachmentNames.push(pdfName);
+              continue;
+            }
+          } catch (err: any) {
+            this.logger.warn(`Servis onay PDF üretilemedi (${doc.id}): ${err?.message}`);
+          }
+        }
+        const filename = `${isMatbu ? 'Servis-Onay-Formu' : 'Belge'}-${fileNo}.html`;
         attachments.push({
           filename,
           content: Buffer.from(doc.renderedContent, 'utf8'),
@@ -1062,17 +1305,23 @@ export class EmergencyCasesService {
       {
         text: payload.bodyText,
         attachments: payload.attachments,
+        mailbox: 'IHBAR',
       },
     );
+    if (!result.sent || result.via !== 'graph') {
+      throw new BadRequestException(
+        result.errorMsg || 'Kapanış e-postası İhbar kutusundan gitmedi.',
+      );
+    }
 
     return {
       data: {
-        sent: result.sent,
+        sent: true,
         to: payload.to,
         recipients: payload.recipients,
         subject: payload.subject,
         attachmentNames: payload.attachmentNames,
-        errorMsg: result.errorMsg ?? null,
+        errorMsg: null,
       },
     };
   }
@@ -1180,6 +1429,9 @@ export class EmergencyCasesService {
             newValue: sanitizeAuditValue({
               description: emergencyProcessDescription(processAction),
               reason,
+              ...(actorId
+                ? await this.operationalAccessGrants.getFunctionDelegationStamp(actorId, 'acil_yardim') ?? {}
+                : {}),
             }) as Prisma.InputJsonValue,
             userId: actorId ?? null,
             userEmail: (actor as { email?: string | null })?.email ?? null,
@@ -1277,21 +1529,56 @@ export class EmergencyCasesService {
     }));
     if (isEmergencyProcessDuplicate({ action, incomingMetadata: metadata, existing })) {
       const latest = existingRows[0];
+      await this.applyOperationStamps(caseId, action);
+      await this.applyVendorPaid(caseId, action, metadata);
       return { data: this.mapProcessEvent(latest), duplicate: true };
     }
 
     const payload = sanitizeAuditValue({ description, ...metadata }) as Prisma.InputJsonValue;
+    const delegationStamp = actor.id
+      ? await this.operationalAccessGrants.getFunctionDelegationStamp(actor.id, 'acil_yardim')
+      : null;
     const created = await this.prisma.auditLog.create({
       data: {
         entityType: EMERGENCY_PROCESS_ENTITY_TYPE,
         entityId: caseId,
         action,
-        newValue: payload,
+        newValue: (delegationStamp
+          ? sanitizeAuditValue({ description, ...metadata, ...delegationStamp })
+          : payload) as Prisma.InputJsonValue,
         userId: actor.id ?? null,
         userEmail: actor.email ?? null,
       },
     });
+    await this.applyOperationStamps(caseId, action);
+    await this.applyVendorPaid(caseId, action, metadata);
     return { data: this.mapProcessEvent(created), duplicate: false };
+  }
+
+  private async applyOperationStamps(caseId: string, action: string) {
+    const current = await this.prisma.emergencyCase.findUnique({
+      where: { id: caseId },
+      select: { workStartedAt: true, serviceDeliveredAt: true },
+    });
+    const patch = nextAcilOperationStamps(action, current ?? {});
+    if (!patch.workStartedAt && !patch.serviceDeliveredAt) return;
+    await this.prisma.emergencyCase.update({
+      where: { id: caseId },
+      data: patch,
+    });
+  }
+
+  private async applyVendorPaid(
+    caseId: string,
+    action: string,
+    metadata: Record<string, unknown>,
+  ) {
+    if (action !== 'EMERGENCY_VENDOR_PAYMENT_RECORDED') return;
+    if (metadata.paid !== true && metadata.paid !== false) return;
+    await this.prisma.emergencyCase.update({
+      where: { id: caseId },
+      data: { vendorPaid: metadata.paid },
+    });
   }
 
   private mapProcessEvent(row: {

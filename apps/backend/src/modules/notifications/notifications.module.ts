@@ -13,9 +13,10 @@ import { WelcomeEmailService } from './email/welcome-email.service';
 import { ClaimEventEmailService } from './email/claim-event-email.service';
 import { EmailPreferencesController } from './email/email-preferences.controller';
 import { EmailPreferencesService } from './email/email-preferences.service';
+import { GraphMailModule } from '@/modules/operation-inbox/graph/graph-mail.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule],
+  imports: [PrismaModule, ConfigModule, GraphMailModule],
   providers: [
     NotificationsService,
     SmsService,

@@ -12,6 +12,9 @@ export const HASAR_WA_TEMPLATE_TYPES = {
   inspectorAppointment: 'whatsapp_hasar_randevu_tespitci',
   vendorAppointment: 'whatsapp_hasar_randevu_tedarikci',
   vendorAssignment: 'whatsapp_vendor_assignment',
+  repairInsured: 'whatsapp_hasar_onarim_sigortali',
+  repairVendor: 'whatsapp_hasar_onarim_tedarikci',
+  closureSurvey: 'whatsapp_hasar_kapanis_anket',
 } as const;
 
 export type HasarWaTemplateType =
@@ -45,6 +48,21 @@ const DEFAULTS: Record<string, { name: string; content: string }> = {
     name: 'Tedarikçi Atama WhatsApp Şablonu',
     content:
       'Meridyen Assistance — Tedarikçi Ataması\nDosya No: {dosyaNo}\nSigortalı: {musteriAdi}\nİş: {isTanimi}\nKonum: {hasarAdresi}\n\nLütfen dosyayı panelden kontrol ediniz.',
+  },
+  [HASAR_WA_TEMPLATE_TYPES.repairInsured]: {
+    name: 'Onarım Randevusu — Sigortalı',
+    content:
+      'Sayın {musteriAdi}, {dosyaNo} numaralı dosyanız için onarım randevunuz {randevuTarih} günü saat {randevuSaat} olarak planlanmıştır. Adres: {hasarAdresi}.',
+  },
+  [HASAR_WA_TEMPLATE_TYPES.repairVendor]: {
+    name: 'Onarım Randevusu — Tedarikçi',
+    content:
+      '{dosyaNo} numaralı dosya için onarım randevusu: {randevuTarih} {randevuSaat}. İş: {isTanimi}. Adres: {hasarAdresi}.',
+  },
+  [HASAR_WA_TEMPLATE_TYPES.closureSurvey]: {
+    name: 'Hasar Kapanış Anketi',
+    content:
+      'Değerli {musteriAdi}, {dosyaNo} numaralı hasar dosyanız kapanışa hazırdır. Deneyiminizi değerlendirmenizi rica ederiz.',
   },
 };
 

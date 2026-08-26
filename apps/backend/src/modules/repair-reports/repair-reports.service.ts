@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { buildAppPath } from '@/common/utils/app-url';
+import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { ReportPdfService } from './pdf/report-pdf.service';
 import { ReportEmailService } from './email/report-email.service';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
@@ -17,12 +18,20 @@ import { DamageRepairTemplatesService } from '@/modules/damage-repair-templates/
 import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
 import { normalizeReportImageCategory } from './report-image-category';
 import { resolveReportImageFilePath } from './report-image-paths';
+import { resolveReportCustomerMailRecipients } from './report-customer-mail-recipients';
 import {
   isExpertFirmCustomer,
   REPAIR_REPORT_INITIAL_VERSION,
   REPAIR_REPORT_MAX_REVISION_MESSAGE,
   canCreateRepairReportRevision,
+  canStartRepairReportRevisionFromStatus,
   nextRepairReportVersionNo,
+  repairReportClosesOnRevise,
+  repairItemSalesTotal,
+  repairItemSupplierTotal,
+  repairItemMarginPct,
+  repairItemSupplierNeedsHeal,
+  repairItemResolvedSupplierTotal,
 } from '@sigorta/shared';
 import {
   CreateRepairReportDto,
@@ -148,6 +157,13 @@ export class RepairReportsService {
   async getReportsByClaimFile(claimFileId: string) {
     const claimFile = await this.prisma.claimFile.findUnique({ where: { id: claimFileId } });
     if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+    const reports = await this.prisma.repairReport.findMany({
+      where: { claimFileId },
+      select: { id: true },
+    });
+    for (const report of reports) {
+      await this.healInflatedSupplierTotals(report.id);
+    }
     return this.prisma.repairReport.findMany({
       where: { claimFileId },
       include: {
@@ -318,6 +334,7 @@ export class RepairReportsService {
   }
 
   async getReport(id: string) {
+    await this.healInflatedSupplierTotals(id);
     const report = await this.findReportWithInclude(id);
     if (!report) throw new NotFoundException('Rapor bulunamadı');
 
@@ -336,10 +353,10 @@ export class RepairReportsService {
     }
     const vendorName = claim?.assignedInspectorVendor?.name?.trim();
     if (!report.inspectorName?.trim() && vendorName) {
-      return { ...report, inspectorName: vendorName };
+      return this.overlayReportItemMoney({ ...report, inspectorName: vendorName });
     }
 
-    return report;
+    return this.overlayReportItemMoney(report);
   }
 
   async updateReport(id: string, dto: UpdateRepairReportDto) {
@@ -430,10 +447,23 @@ export class RepairReportsService {
       supplierTotal = lumpSumPrice;
       salesTotal = lumpSumPrice;
     } else {
-      supplierTotal = dto.quantity * dto.supplierUnitPrice;
-      salesTotal = dto.quantity * dto.salesUnitPrice;
+      const priced = {
+        pricingType,
+        lumpSumPrice,
+        quantity: dto.quantity,
+        salesUnitPrice: dto.salesUnitPrice,
+        supplierUnitPrice: dto.supplierUnitPrice,
+      };
+      supplierTotal = repairItemSupplierTotal(priced);
+      salesTotal = repairItemSalesTotal(priced);
     }
-    const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
+    const marginPct = repairItemMarginPct({
+      pricingType,
+      lumpSumPrice,
+      quantity: dto.quantity,
+      salesUnitPrice: dto.salesUnitPrice,
+      supplierUnitPrice: dto.supplierUnitPrice,
+    });
 
     const item = await this.prisma.repairReportItem.create({
       data: {
@@ -504,6 +534,8 @@ export class RepairReportsService {
       if (!subGroup) throw new NotFoundException('İş kalemi bulunamadı');
       const quantity = item.quantity || 1;
       const unitPrice = subGroup.unitPrice ? Number(subGroup.unitPrice) : 0;
+      const lineCost = quantity * unitPrice;
+      const priced = { quantity, supplierUnitPrice: lineCost, salesUnitPrice: unitPrice };
       const createdItem = await this.prisma.repairReportItem.create({
         data: {
           reportId,
@@ -513,11 +545,11 @@ export class RepairReportsService {
           description: item.note,
           quantity,
           unit: subGroup.unitType,
-          supplierUnitPrice: unitPrice,
+          supplierUnitPrice: lineCost,
           salesUnitPrice: unitPrice,
-          supplierTotal: quantity * unitPrice,
-          salesTotal: quantity * unitPrice,
-          marginPct: 0,
+          supplierTotal: repairItemSupplierTotal(priced),
+          salesTotal: repairItemSalesTotal(priced),
+          marginPct: repairItemMarginPct(priced),
           damageCategory: 'bina',
         },
         include: { workGroup: true, damageType: true },
@@ -553,10 +585,23 @@ export class RepairReportsService {
       supplierTotal = lumpSumPrice;
       salesTotal = lumpSumPrice;
     } else {
-      supplierTotal = quantity * supplierUnitPrice;
-      salesTotal = quantity * salesUnitPrice;
+      const priced = {
+        pricingType,
+        lumpSumPrice,
+        quantity,
+        salesUnitPrice,
+        supplierUnitPrice,
+      };
+      supplierTotal = repairItemSupplierTotal(priced);
+      salesTotal = repairItemSalesTotal(priced);
     }
-    const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
+    const marginPct = repairItemMarginPct({
+      pricingType,
+      lumpSumPrice,
+      quantity,
+      salesUnitPrice,
+      supplierUnitPrice,
+    });
 
     const updated = await this.prisma.repairReportItem.update({
       where: { id: itemId },
@@ -601,18 +646,66 @@ export class RepairReportsService {
     return { message: 'Sıralama güncellendi' };
   }
 
+  /** Eski maliyet = miktar × girilen rakam kayıtlarını satır maliyetine çeker. */
+  private async healInflatedSupplierTotals(reportId: string): Promise<number> {
+    const items = await this.prisma.repairReportItem.findMany({ where: { reportId } });
+    const inflated = items.filter((item) => repairItemSupplierNeedsHeal(item));
+    if (inflated.length === 0) return 0;
+    for (const item of inflated) {
+      await this.prisma.repairReportItem.update({
+        where: { id: item.id },
+        data: {
+          supplierTotal: repairItemSupplierTotal(item),
+          salesTotal: repairItemSalesTotal(item),
+          marginPct: repairItemMarginPct(item),
+        },
+      });
+    }
+    await this.recalculateTotals(reportId);
+    this.logger.warn(`Onarım raporu maliyet m² düzeltmesi: ${inflated.length} kalem (${reportId})`);
+    return inflated.length;
+  }
+
+  private overlayReportItemMoney<T extends {
+    items?: Array<{
+      pricingType?: string | null;
+      lumpSumPrice?: number | null;
+      quantity?: number | null;
+      salesUnitPrice?: number | null;
+      supplierUnitPrice?: number | null;
+      damageCategory?: string | null;
+    }>;
+  }>(report: T): T & {
+    items: T['items'];
+    totalSupplierCost: number;
+    totalSalesAmount: number;
+    grossProfit: number;
+    grossMarginPct: number;
+  } {
+    const items = (report.items ?? []).map((item) => ({
+      ...item,
+      supplierTotal: repairItemResolvedSupplierTotal(item),
+      salesTotal: repairItemSalesTotal(item),
+      marginPct: repairItemMarginPct(item),
+    }));
+    const totalSupplierCost = items.reduce((s, i) => s + i.supplierTotal, 0);
+    const totalSalesAmount = items.reduce((s, i) => s + i.salesTotal, 0);
+    const grossProfit = totalSalesAmount - totalSupplierCost;
+    const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
+    return { ...report, items, totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct };
+  }
+
   private async recalculateTotals(reportId: string) {
     const items = await this.prisma.repairReportItem.findMany({ where: { reportId } });
-    const totalSupplierCost = items.reduce((s: number, i: { supplierTotal: number }) => s + i.supplierTotal, 0);
-    const totalSalesAmount = items.reduce((s: number, i: { salesTotal: number; pricingType: string; lumpSumPrice: number | null }) =>
-      s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : i.salesTotal), 0);
+    const totalSupplierCost = items.reduce((s, i) => s + repairItemResolvedSupplierTotal(i), 0);
+    const totalSalesAmount = items.reduce((s, i) => s + repairItemSalesTotal(i), 0);
     const grossProfit = totalSalesAmount - totalSupplierCost;
     const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
 
-    const buildingDamageTotal = items.reduce((s: number, i: { damageCategory: string; salesTotal: number; pricingType: string; lumpSumPrice: number | null }) =>
-      (i.damageCategory ?? 'bina') === 'bina' ? s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : i.salesTotal) : s, 0);
-    const goodsDamageTotal = items.reduce((s: number, i: { damageCategory: string; salesTotal: number; pricingType: string; lumpSumPrice: number | null }) =>
-      (i.damageCategory ?? 'bina') === 'esya' ? s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : i.salesTotal) : s, 0);
+    const buildingDamageTotal = items.reduce((s, i) =>
+      (i.damageCategory ?? 'bina') === 'bina' ? s + repairItemSalesTotal(i) : s, 0);
+    const goodsDamageTotal = items.reduce((s, i) =>
+      (i.damageCategory ?? 'bina') === 'esya' ? s + repairItemSalesTotal(i) : s, 0);
 
     const report = await this.prisma.repairReport.update({
       where: { id: reportId },
@@ -762,16 +855,16 @@ export class RepairReportsService {
 
     const damageTypes = (report.damageTypes ?? []).map((dt: { id: string; damageTypeName: string }) => {
       const dtItems = report.items.filter((i: { damageTypeId: string | null }) => i.damageTypeId === dt.id);
-      const supplierTotal = dtItems.reduce((s: number, i: { supplierTotal: number }) => s + i.supplierTotal, 0);
-      const salesTotal = dtItems.reduce((s: number, i: { salesTotal: number }) => s + i.salesTotal, 0);
+      const supplierTotal = dtItems.reduce((s, i) => s + repairItemResolvedSupplierTotal(i), 0);
+      const salesTotal = dtItems.reduce((s, i) => s + repairItemSalesTotal(i), 0);
       const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
       return { id: dt.id, name: dt.damageTypeName, supplierTotal, salesTotal, marginPct };
     });
 
     const unassignedItems = report.items.filter((i: { damageTypeId: string | null }) => !i.damageTypeId);
     const unassigned = {
-      supplierTotal: unassignedItems.reduce((s: number, i: { supplierTotal: number }) => s + i.supplierTotal, 0),
-      salesTotal: unassignedItems.reduce((s: number, i: { salesTotal: number }) => s + i.salesTotal, 0),
+      supplierTotal: unassignedItems.reduce((s, i) => s + repairItemResolvedSupplierTotal(i), 0),
+      salesTotal: unassignedItems.reduce((s, i) => s + repairItemSalesTotal(i), 0),
     };
 
     return { damageTypes, unassigned };
@@ -781,6 +874,7 @@ export class RepairReportsService {
 
   /** PDF için minimal claimFile — migrate edilmemiş skaler kolonlara dayanmaz */
   private async getReportForPdf(reportId: string) {
+    await this.healInflatedSupplierTotals(reportId);
     const report = await this.prisma.repairReport.findUnique({
       where: { id: reportId },
       include: {
@@ -819,7 +913,7 @@ export class RepairReportsService {
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
-    return report;
+    return this.overlayReportItemMoney(report);
   }
 
   async generatePdf(reportId: string, viewType: 'internal' | 'external'): Promise<{ buffer: Buffer; report: any }> {
@@ -838,7 +932,7 @@ export class RepairReportsService {
   async sendEmail(reportId: string, dto: SendEmailDto) {
     const report = await this.getReport(reportId);
     // PDF önce — ek yoksa sendReport FAIL eder
-    const { buffer: pdfBuffer } = await this.generatePdf(reportId, dto.viewType);
+    const { buffer: pdfBuffer } = await this.generatePdf(reportId, 'external');
     if (!pdfBuffer?.length) {
       throw new BadRequestException('PDF oluşmadı — e-posta gönderilemez');
     }
@@ -848,7 +942,7 @@ export class RepairReportsService {
       subject,
       pdfBuffer,
       reportNo: report.reportNo,
-      viewType: dto.viewType,
+      viewType: 'external',
     });
   }
 
@@ -955,14 +1049,15 @@ export class RepairReportsService {
     });
   }
 
-  private async getApprovers(): Promise<Array<{ id: string; expoPushToken: string | null }>> {
-    // Users with admin or ops_manager role
+  private async getApprovers(): Promise<
+    Array<{ id: string; expoPushToken: string | null; email: string; firstName: string; lastName: string; phone: string | null }>
+  > {
     return this.prisma.user.findMany({
       where: {
         status: 'active',
-        role: { code: { in: ['admin', 'ops_manager', 'manager'] } },
+        role: { code: { in: ['admin', 'ops_manager', 'manager', 'ADMIN', 'OPS_MANAGER', 'MANAGER'] } },
       },
-      select: { id: true, expoPushToken: true },
+      select: { id: true, expoPushToken: true, email: true, firstName: true, lastName: true, phone: true },
     });
   }
 
@@ -971,7 +1066,31 @@ export class RepairReportsService {
       where: { id: reportId },
       include: {
         createdBy: { select: { id: true, firstName: true, lastName: true } },
-        items: { select: { salesTotal: true, supplierTotal: true, lumpSumPrice: true, pricingType: true } },
+        items: {
+          select: {
+            salesTotal: true,
+            supplierTotal: true,
+            lumpSumPrice: true,
+            pricingType: true,
+            jobDescription: true,
+            workGroup: { select: { name: true } },
+          },
+        },
+        images: { take: 8, orderBy: { sortOrder: 'asc' }, select: { storageKey: true, fileName: true, mimeType: true } },
+        expertOffice: { select: { email: true, companyName: true } },
+        claimFile: {
+          select: {
+            id: true,
+            fileNo: true,
+            customer: {
+              select: {
+                email: true,
+                companyName: true,
+                contacts: { select: { email: true, isPrimary: true } },
+              },
+            },
+          },
+        },
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
@@ -985,14 +1104,43 @@ export class RepairReportsService {
     if (report.items.length === 0) {
       throw new BadRequestException('En az bir onarım kalemi eklenmeden onaya gönderilemez.');
     }
-    const totalSales = report.items.reduce((sum, item) => sum + Number(item.salesTotal ?? 0), 0);
-    const totalCost = report.items.reduce((sum, item) => sum + Number(item.supplierTotal ?? 0), 0);
+    const totalSales = report.items.reduce((sum, item) => sum + repairItemSalesTotal(item), 0);
+    const totalCost = report.items.reduce((sum, item) => sum + repairItemResolvedSupplierTotal(item), 0);
     const totalLumpSum = report.items.reduce((sum, item) => {
       if (item.pricingType === 'lumpsum') return sum + Number(item.lumpSumPrice ?? 0);
       return sum;
     }, 0);
     if (totalSales <= 0 && totalCost <= 0 && totalLumpSum <= 0) {
       throw new BadRequestException('Maliyet veya satış tutarı girilmeden onaya gönderilemez.');
+    }
+
+    const customerRecipients = resolveReportCustomerMailRecipients({
+      customerEmail: report.claimFile?.customer?.email,
+      contacts: report.claimFile?.customer?.contacts,
+      expertOfficeEmail: report.expertOffice?.email,
+    });
+    const { buffer: customerPdf } = await this.generatePdf(reportId, 'external');
+    if (!customerPdf?.length) {
+      throw new BadRequestException('Müşteri raporu PDF oluşmadı — e-posta gönderilemez.');
+    }
+    if (customerRecipients.length === 0) {
+      throw new BadRequestException(
+        'Müşteri kartında e-posta yok. Adresi yazmadan rapor onaya gönderilemez.',
+      );
+    }
+    for (const recipient of customerRecipients) {
+      const mailed = await this.emailService.sendReport({
+        to: recipient,
+        subject: `Hasar Onarım Raporu — ${report.claimFile?.fileNo ?? report.reportNo}`,
+        pdfBuffer: customerPdf,
+        reportNo: report.reportNo,
+        viewType: 'external',
+      });
+      if (!mailed.success) {
+        throw new BadRequestException(
+          mailed.message || `Rapor e-postası gönderilemedi: ${recipient}`,
+        );
+      }
     }
 
     // Onaya gönderilmeden önce anomali analizi yap (non-blocking)
@@ -1009,17 +1157,89 @@ export class RepairReportsService {
 
     await this.syncClaimFromLatestReport(report.claimFileId);
 
-    // Notify approvers
+    const lineSummary = report.items
+      .slice(0, 12)
+      .map((item) => {
+        const name = item.workGroup?.name || item.jobDescription || 'Kalem';
+        const amt = item.pricingType === 'lumpsum' ? Number(item.lumpSumPrice ?? 0) : Number(item.salesTotal ?? 0);
+        return `${name}: ${Math.round(amt).toLocaleString('tr-TR')} ₺`;
+      })
+      .join(' · ');
+    const attachments: Array<{ filename: string; content: Buffer; contentType?: string }> = [];
+    for (const img of report.images ?? []) {
+      const filePath = resolveReportImageFilePath(img.storageKey);
+      if (!filePath) continue;
+      try {
+        const buf = fs.readFileSync(filePath);
+        if (buf.length > 4_000_000) continue;
+        attachments.push({
+          filename: img.fileName || 'resim.jpg',
+          content: buf,
+          contentType: img.mimeType || 'image/jpeg',
+        });
+      } catch {
+        /* yok */
+      }
+    }
+    const money = (n: number) => `${Math.round(n).toLocaleString('tr-TR')} ₺`;
+    const waLines = [
+      `Onay bekleyen rapor ${report.reportNo}`,
+      `Dosya ${report.claimFile?.fileNo ?? ''}`,
+      `Satış ${money(totalSales)} · Maliyet ${money(totalCost)} · Kâr ${money(totalSales - totalCost)}`,
+      lineSummary,
+      'Resimler mailde ve panelde.',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
     const approvers = await this.getApprovers();
     for (const approver of approvers) {
-      if (approver.id !== userId) {
-        await this.createNotification(
-          approver.id,
-          'report_approval_requested',
-          'Onay Bekleyen Rapor',
-          `${report.reportNo} numaralı rapor onayınızı bekliyor.`,
+      if (approver.id === userId) continue;
+      await this.createNotification(
+        approver.id,
+        'report_approval_requested',
+        'Onay Bekleyen Rapor',
+        `${report.reportNo} numaralı rapor onayınızı bekliyor.`,
+        reportId,
+      );
+      if (this.claimEventEmail && approver.email) {
+        const managerMail = await this.claimEventEmail.onManagerApprovalRequested({
+          recipientEmail: approver.email,
+          recipientName: `${approver.firstName} ${approver.lastName}`.trim(),
+          fileNo: report.claimFile?.fileNo ?? '',
+          reportNo: report.reportNo,
+          claimFileId: report.claimFileId,
           reportId,
-        );
+          lineSummary,
+          salesLabel: money(totalSales),
+          costLabel: money(totalCost),
+          profitLabel: money(totalSales - totalCost),
+          attachments,
+        });
+        if (!managerMail.sent) {
+          this.logger.error(
+            `Yönetici e-postası gönderilemedi: ${approver.email} | ${managerMail.errorMsg ?? ''}`,
+          );
+        }
+      }
+      const waUrl = buildWhatsAppMeUrl(approver.phone, waLines);
+      if (waUrl) {
+        await this.prisma.fileActivityLog.create({
+          data: {
+            claimFileId: report.claimFileId,
+            actorId: userId,
+            actorRole: 'office_staff',
+            action: 'WHATSAPP_STATUS_RECORDED',
+            description: `Yönetici onay WhatsApp hazırlandı · ${approver.firstName} ${approver.lastName}`.trim(),
+            metadata: {
+              kind: 'manager_approval_whatsapp',
+              purpose: 'yonetici_onay',
+              phone: approver.phone,
+              url: waUrl,
+              status: 'ready',
+            },
+          },
+        });
       }
     }
 
@@ -1230,14 +1450,7 @@ export class RepairReportsService {
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
-    const allowedStatuses = new Set([
-      'approved',
-      'externally_approved',
-      'externally_rejected',
-      // Onay beklerken de Revizyona Başla ile taslak açılabilir
-      'pending_approval',
-    ]);
-    if (!allowedStatuses.has(report.status)) {
+    if (!canStartRepairReportRevisionFromStatus(report.status)) {
       throw new BadRequestException('Bu rapor durumunda revizyon başlatılamaz');
     }
 
@@ -1381,7 +1594,7 @@ export class RepairReportsService {
       });
 
       // Onay bekleyen kaynaktan revizyon: eski bekleyen kaydı kapat, tek aktif taslak kalsın
-      if (report.status === 'pending_approval') {
+      if (repairReportClosesOnRevise(report.status)) {
         await tx.repairReport.update({
           where: { id: report.id },
           data: { status: 'rejected' },
@@ -1393,6 +1606,10 @@ export class RepairReportsService {
             action: 'rejected',
             reason: options?.reasonNote?.trim() || 'Revizyon başlatıldı — yeni taslak açıldı',
           },
+        });
+        await tx.externalApproval.updateMany({
+          where: { reportId: report.id, status: 'pending' },
+          data: { status: 'expired' },
         });
       }
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { StorageService } from '@/modules/storage/storage.service';
 import { randomUUID } from 'crypto';
@@ -73,5 +73,20 @@ export class UploadsService {
    */
   async getSignedUrl(storageKey: string, expiresIn = 900): Promise<string> {
     return this.storage.getSignedUrl(storageKey, expiresIn);
+  }
+
+  async getFileBuffer(storageKey: string): Promise<{ buffer: Buffer; mimeType: string }> {
+    if (!storageKey?.trim()) {
+      throw new BadRequestException('storageKey zorunlu');
+    }
+    const buffer = await this.storage.download(storageKey);
+    const lower = storageKey.toLowerCase();
+    let mimeType = 'application/octet-stream';
+    if (lower.endsWith('.webp')) mimeType = 'image/webp';
+    else if (lower.endsWith('.png')) mimeType = 'image/png';
+    else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) mimeType = 'image/jpeg';
+    else if (lower.endsWith('.gif')) mimeType = 'image/gif';
+    else if (lower.endsWith('.pdf')) mimeType = 'application/pdf';
+    return { buffer, mimeType };
   }
 }

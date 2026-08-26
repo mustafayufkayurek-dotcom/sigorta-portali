@@ -9,11 +9,14 @@ import {
   portalStatusLabel,
 } from '@/utils/portal-file-flow-labels';
 import { getAccessToken } from '@/utils/auth-session';
+import { getReportImageStreamUrl } from '@/utils/upload-url';
+import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
+import { uploadsFileUrl } from '@/utils/protected-image';
 import { reportImageCategoryLabel } from '@/utils/quick-repair-damage-types';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
-const UPLOADS_ORIGIN = API.replace(/\/api\/v1$/, '');
 
 function authHeader() {
   const token = getAccessToken();
@@ -64,7 +67,7 @@ export default function PortalProcessTimeline({
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [responsibleRole, setResponsibleRole] = useState<string | null>(null);
   const [photos, setPhotos] = useState<GalleryItem[]>([]);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -145,7 +148,7 @@ export default function PortalProcessTimeline({
               if (!img.storageKey) continue;
               gallery.push({
                 id: img.id,
-                url: `${UPLOADS_ORIGIN}/uploads/report-images/${encodeURIComponent(img.storageKey)}`,
+                url: getReportImageStreamUrl(img.id),
                 label: img.caption || reportImageCategoryLabel(img.category) || img.fileName || 'Rapor Görseli',
               });
             }
@@ -160,26 +163,11 @@ export default function PortalProcessTimeline({
         const mime = doc.fileAsset?.mimeType ?? '';
         const storageKey = doc.fileAsset?.storageKey;
         if (!storageKey || !mime.startsWith('image/')) continue;
-        try {
-          const signed = await axios.get(
-            `${API}/uploads/signed-url?storageKey=${encodeURIComponent(storageKey)}`,
-            { headers: authHeader() },
-          );
-          const url = signed.data?.data?.url ?? signed.data?.url;
-          if (url) {
-            gallery.push({
-              id: doc.id,
-              url,
-              label: doc.fileAsset?.fileName ?? doc.documentType ?? 'Dosya Görseli',
-            });
-          }
-        } catch {
-          gallery.push({
-            id: doc.id,
-            url: `${UPLOADS_ORIGIN}/uploads/${encodeURIComponent(storageKey)}`,
-            label: doc.fileAsset?.fileName ?? 'Dosya Görseli',
-          });
-        }
+        gallery.push({
+          id: doc.id,
+          url: uploadsFileUrl(storageKey),
+          label: doc.fileAsset?.fileName ?? doc.documentType ?? 'Dosya Görseli',
+        });
       }
 
       setPhotos(gallery);
@@ -268,17 +256,17 @@ export default function PortalProcessTimeline({
           <p className="text-sm text-slate-400 text-center py-6">Henüz yüklenmiş görsel yok</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {photos.map((photo) => (
+            {photos.map((photo, idx) => (
               <button
                 key={photo.id}
                 type="button"
-                onClick={() => setPreviewUrl(photo.url)}
+                onClick={() => setPreviewIndex(idx)}
                 className="group relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square"
               >
-                <img
-                  src={photo.url}
+                <AuthBlobImg
+                  url={photo.url}
                   alt={photo.label}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform"
                 />
                 <span className="absolute inset-x-0 bottom-0 bg-black/50 text-white text-[10px] px-2 py-1 truncate">
                   {photo.label}
@@ -322,21 +310,15 @@ export default function PortalProcessTimeline({
         )}
       </div>
 
-      {previewUrl && (
-        <div
-          className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setPreviewUrl(null)}
-          onKeyDown={(e) => e.key === 'Escape' && setPreviewUrl(null)}
-          role="presentation"
-        >
-          <img
-            src={previewUrl}
-            alt="Önizleme"
-            className="max-w-full max-h-[90vh] rounded-lg shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {previewIndex !== null && photos[previewIndex] ? (
+        <PhotoLightbox
+          srcs={photos.map((p) => p.url)}
+          index={previewIndex}
+          onIndex={setPreviewIndex}
+          onClose={() => setPreviewIndex(null)}
+          alt={photos[previewIndex]?.label ?? 'Önizleme'}
+        />
+      ) : null}
     </div>
   );
 }
