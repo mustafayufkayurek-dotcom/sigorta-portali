@@ -60,7 +60,7 @@ describe('hasar liste müşteri hücresi LOCK', () => {
     assert.match(ops, /OpsListPageSizeSelect/);
     assert.match(ops, /OPS_LIST_PAGE_SIZE_KEYS\.acil/);
     assert.match(ops, /pagedRows/);
-    assert.match(ops, /operasyon-acil-v17/);
+    assert.match(ops, /operasyon-acil-v18/);
     assert.doesNotMatch(ops, /Toplam Satır/);
     assert.equal(parseOpsListPageSize('100', 50), 100);
   });

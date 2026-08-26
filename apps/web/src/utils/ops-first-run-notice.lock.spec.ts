@@ -114,7 +114,7 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.equal(OPS_NOTICE.acilListeSonDegisiklik.id, 'acil-liste-v529');
     assert.match(OPS_NOTICE.acilListeSonDegisiklik.body, /Ödeme Durumu/);
     assert.match(OPS_NOTICE.acilListeSonDegisiklik.body, /Hasar kuyruğu/);
-    assert.match(opsListe, /operasyon-acil-v17/);
+    assert.match(opsListe, /operasyon-acil-v18/);
     assert.match(opsListe, /queueThClass/);
     assert.match(opsListe, /const acilList = filterType === 'acil'/);
     assert.match(opsListe, /pagedRows\.length === 0/);

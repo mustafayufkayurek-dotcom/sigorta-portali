@@ -27,6 +27,7 @@ import {
   readOpsListPageSize,
   type OpsListPageSize,
 } from '@/utils/ops-list-page-size';
+import { opsListRowNumber } from '@/utils/ops-list-sira';
 import { resolveClaimSupplierDisplayName } from '@/utils/claim-supplier-display';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
@@ -213,6 +214,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80, defaultVisible: false },
   { id: 'revision', label: 'Revizyon', defaultWidth: 120, minWidth: 96, defaultVisible: false },
   { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
+  { id: 'sira', label: 'Sıra', defaultWidth: 56, minWidth: 48, alwaysVisible: true, pin: 'end', resizable: false },
 ];
 
 export default function ClaimFilesPage() {
@@ -264,7 +266,7 @@ function ClaimFilesPageContent() {
     setLimit(readOpsListPageSize(OPS_LIST_PAGE_SIZE_KEYS.hasar, 20));
   }, []);
   /** v6: iş kuyruğu varsayılan sütun — para Sütunlar’da */
-  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v8', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v9', TABLE_COLUMNS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
 
@@ -722,6 +724,7 @@ function ClaimFilesPageContent() {
                   <PanelTableTh colId="priority" className="table-th-center">Öncelik</PanelTableTh>
                   <PanelTableTh colId="revision" className="table-th-center">Revizyon</PanelTableTh>
                   <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
+                  <PanelTableTh colId="sira" className="table-th-center">Sıra</PanelTableTh>
                 </tr>
               </thead>
               <tbody>
@@ -777,7 +780,7 @@ function ClaimFilesPageContent() {
       ) : (
         <div className="table-container ops-queue-table">
           <div className={`grid gap-3 p-3 ${isFieldStaff ? '' : 'lg:hidden'}`}>
-            {visibleClaims.map((claim: any) => {
+            {visibleClaims.map((claim: any, rowIdx: number) => {
               if (isFieldStaff) {
                 const insuredName = fieldStaffInsuredName(claim);
                 const phone = fieldStaffPhone(claim);
@@ -958,6 +961,10 @@ function ClaimFilesPageContent() {
                       <p className="text-slate-400">Beklenen Kar</p>
                       <p className="mt-0.5 font-semibold text-slate-700">{rapor ? fmtAmount(rapor.grossProfit) : '—'}</p>
                     </div>
+                    <div>
+                      <p className="text-slate-400">Sıra</p>
+                      <p className="mt-0.5 font-semibold tabular-nums text-slate-700">{opsListRowNumber(page, limit, rowIdx)}</p>
+                    </div>
                   </div>
                   <div className="mt-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                     <OperationRowActions
@@ -1018,10 +1025,11 @@ function ClaimFilesPageContent() {
                   <SortablePanelTableTh colId="priority" sortKey="priority" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Öncelik</SortablePanelTableTh>
                   <SortablePanelTableTh colId="revision" sortKey="revision" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Revizyon</SortablePanelTableTh>
                   <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
+                  <PanelTableTh colId="sira" className="table-th-center">Sıra</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="table-body">
-                {visibleClaims.map((claim: any) => {
+                {visibleClaims.map((claim: any, rowIdx: number) => {
                   const customer = resolveHasarOperationCustomer(claim.customer, claim.insuranceCompany);
                   const insuredName = resolveHasarInsuredName(claim);
                   const revCount = pendingRevisionMap[claim.id] ?? 0;
@@ -1162,6 +1170,9 @@ function ClaimFilesPageContent() {
                             }
                           />
                         </div>
+                      </PanelTableTd>
+                      <PanelTableTd colId="sira" align="center" className="table-td-center tabular-nums font-semibold text-slate-700">
+                        {opsListRowNumber(page, limit, rowIdx)}
                       </PanelTableTd>
                     </tr>
                   );

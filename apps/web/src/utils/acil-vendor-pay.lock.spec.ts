@@ -28,8 +28,8 @@ describe('acil tedarikçi ödemesi liste LOCK', () => {
     assert.match(ops, /Ödeme Durumu/);
     assert.match(ops, /Ödemeler/);
     assert.match(ops, /ACIL_TABLE_COLUMNS/);
-    assert.match(ops, /table-cols:operasyon-acil-v17/);
-    assert.match(ops, /table-cols:operasyon-hasar-v12/);
+    assert.match(ops, /table-cols:operasyon-acil-v18/);
+    assert.match(ops, /table-cols:operasyon-hasar-v13/);
     assert.match(ops, /alwaysVisible: true/);
     assert.match(ops, /acil-odeme-durumu-sutun/);
     assert.match(ops, /hasar-odeme-durumu-sutun/);
@@ -43,7 +43,7 @@ describe('acil tedarikçi ödemesi liste LOCK', () => {
     assert.match(hasarListe, /id: 'vendorPay'/);
     assert.match(hasarListe, /Ödemeler/);
     assert.match(hasarListe, /alwaysVisible: true/);
-    assert.match(hasarListe, /table-cols:hasar-dosyalari-v8/);
+    assert.match(hasarListe, /table-cols:hasar-dosyalari-v9/);
     assert.match(hasarListe, /hasar-liste-odeme/);
     assert.doesNotMatch(hasarListe, /dueDate/);
   });
