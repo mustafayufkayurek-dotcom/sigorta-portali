@@ -20,6 +20,14 @@ Canlı: web + backend **v540**. Rollback: web v539 / backend v539.
 9. Acil Sunum özeti yazarken boşluk durur. Kilit spec + canlı smoke; bu kırılma geri gelmez.
 10. Onaya Gönder / rapor maili Graph **sendMail** gider. Taslak açılmaz. Azure’da Mail.Send dururken “Mail.Send ekleyin” yazılmaz.
 
-## Canlıda yok
+## Canlıda yok (v540)
 
 İK / puantaj bu pakette yok. Hasar rapor tipi (Konut/Bina/Eşya) bu pakette yok.
+
+## Sıradaki canlı paket (26.08.2026 — henüz alınmadı)
+
+**Hasar dijital onay WhatsApp (v541 adayı):** Sigortalı telefonu kutuda hazır gelir. Gönder deyince WhatsApp açılır. Kilit + smoke kapıda. İK bu alıma karışmaz. Alım: Mac’te `bash scripts/deploy-full-production.sh v541-dijital-onay-whatsapp` veya sunucu anahtarı bu ortama eklenince.
+
+## Sonra (karışmaz)
+
+**İK personel özlük:** Personel Ekle + zimmet aynı kayıtta. Puantaj ayrı.
