@@ -21,6 +21,7 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   bash "$SCRIPT_DIR/assert-deploy-source.sh"
   bash "$SCRIPT_DIR/smoke-acil-netlesen.sh"
   bash "$SCRIPT_DIR/smoke-hasar-rapor-revizyon.sh"
+  bash "$SCRIPT_DIR/smoke-hasar-dijital-onay.sh"
   bash "$SCRIPT_DIR/smoke-resim-akis.sh"
 fi
 
