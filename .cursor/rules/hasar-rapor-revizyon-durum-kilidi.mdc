@@ -15,6 +15,7 @@ alwaysApply: true
 2. API ve `onarim-raporu/[reportId]/page.tsx` aynı kuralı kullanır; menü yalnız o zaman `handleRevise`.
 3. Sunulmuş / bekleyen / dış onayda revizyon eski raporu kapatır (`repairReportClosesOnRevise`); **onaylı kapanmaz**.
 4. `WorkDefinitionSelector` ve iş tanımı ekleme bu işle dokunulmaz.
+5. Dış onay gönderim DTO’su (`SendExternalApprovalDto`) validator’lıdır. `forbidNonWhitelisted` «approverType should not exist» üretmez. Revize rapor yeniden e-posta/WhatsApp ile gider.
 
 ## Yasak (açık onay yoksa)
 

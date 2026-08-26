@@ -43,6 +43,7 @@ export class ExternalApprovalsService {
       'sent_for_external_approval',
       'submitted',
       'pending_approval',
+      'rejected',
     ];
     if (!allowedStatuses.includes(report.status)) {
       throw new BadRequestException('Yalnızca yazılmış / onay sürecindeki raporlar dış onaya gönderilebilir');
