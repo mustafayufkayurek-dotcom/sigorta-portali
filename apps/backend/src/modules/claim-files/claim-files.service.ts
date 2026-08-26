@@ -38,6 +38,7 @@ import { resolveDepartmentFileSubjectByLabel } from '@/common/helpers/dosya-konu
 import {
   APPROVAL_WAITING_REPORT_STATUSES,
   claimStatusProductLabel,
+  overlayClaimStatusProductName,
   CLOSED_CLAIM_STATUS_CODES,
   FINANCE_TRANSFER_STATUS_CODES,
   deriveOperationStage,
@@ -1141,8 +1142,18 @@ export class ClaimFilesService {
 
     const [withInspection] = await this.enrichInspectionStatus([claimFile]);
 
+    const overlayHistory = (withInspection.statusHistory ?? []).map((h) => ({
+      ...h,
+      fromStatus: h.fromStatus ? overlayClaimStatusProductName(h.fromStatus) : h.fromStatus,
+      toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus) : h.toStatus,
+    }));
+
     return {
       ...withInspection,
+      currentStatus: withInspection.currentStatus
+        ? overlayClaimStatusProductName(withInspection.currentStatus)
+        : withInspection.currentStatus,
+      statusHistory: overlayHistory,
       financialSummary: {
         ...(withInspection.financialSummary ?? {}),
         extraWorkCost: extraWorkCostAgg._sum.amount ?? 0,
@@ -2123,7 +2134,11 @@ export class ClaimFilesService {
       orderBy: { changedAt: 'asc' },
     });
 
-    return history;
+    return history.map((h) => ({
+      ...h,
+      fromStatus: h.fromStatus ? overlayClaimStatusProductName(h.fromStatus) : h.fromStatus,
+      toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus) : h.toStatus,
+    }));
   }
 
   async suggestAssigneesByRegion(

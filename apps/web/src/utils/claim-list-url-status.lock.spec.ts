@@ -33,5 +33,12 @@ describe('claim-list-url-status lock', () => {
     assert.match(ops, /ACIL_PRODUCT_STAGE_FILTERS/);
     assert.match(ops, /acil-asama-filtre/);
     assert.match(ops, /EMERGENCY_STATUS_PRODUCT_LABELS/);
+    const detail = readFileSync(join(here, '../app/panel/hasar-dosyalari/[id]/page.tsx'), 'utf8');
+    assert.match(detail, /staffVisibleClaimStatusName/);
+    const claimStatus = readFileSync(
+      join(here, '../../../backend/src/modules/claim-status/claim-status.service.ts'),
+      'utf8',
+    );
+    assert.match(claimStatus, /overlayClaimStatusProductName/);
   });
 });

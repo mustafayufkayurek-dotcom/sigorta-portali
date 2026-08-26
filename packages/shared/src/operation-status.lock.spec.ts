@@ -12,9 +12,11 @@ import {
   FORBIDDEN_STAFF_CLAIM_STATUS_LABELS,
   HASAR_PRODUCT_STAGE_FILTERS,
   OPERATION_STAGES,
+  claimStatusProductLabel,
   deriveOperationStage,
   hasarListStatusQuery,
   isApprovalWaitingReport,
+  staffVisibleClaimStatusName,
 } from './operation-status.ts';
 
 describe('dış onay = Onay Bekliyor LOCK', () => {
@@ -118,6 +120,10 @@ describe('ürün dili aşama filtresi LOCK', () => {
     assert.equal(OPERATION_STAGES.rapor_yaziliyor.label, 'Rapor Yazım Aşamasında');
     assert.equal(deriveOperationStage({ claimStatusCode: 'adjuster_assigned' }).label, 'Tespit Aşamasında');
     assert.equal(deriveOperationStage({ claimStatusCode: 'budget_preparing' }).label, 'Rapor Yazım Aşamasında');
+    assert.equal(staffVisibleClaimStatusName('adjuster_assigned', 'Eksper Atandı'), 'Tespit Aşamasında');
+    assert.equal(staffVisibleClaimStatusName('budget_preparing', 'Bütçe Hazırlanıyor'), 'Rapor Yazım Aşamasında');
+    assert.equal(staffVisibleClaimStatusName('cancelled', 'İptal'), 'Dosya İptal Edildi');
+    assert.equal(claimStatusProductLabel('adjuster_assigned'), 'Tespit Aşamasında');
     assert.deepEqual(hasarListStatusQuery('__stage__tespit'), {
       statusCode: 'pre_review,adjuster_assigned',
     });

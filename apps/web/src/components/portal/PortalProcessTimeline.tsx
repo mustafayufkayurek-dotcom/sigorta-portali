@@ -109,7 +109,9 @@ export default function PortalProcessTimeline({
           kind: 'transition',
           date: h.changedAt,
           title: portalStatusLabel(h.toStatus?.code, h.toStatus?.name),
-          subtitle: h.fromStatus?.name ? `${h.fromStatus.name} aşamasından geçildi` : undefined,
+          subtitle: h.fromStatus
+            ? `${portalStatusLabel(h.fromStatus.code, h.fromStatus.name)} aşamasından geçildi`
+            : undefined,
           actorName: h.changedByUser
             ? `${h.changedByUser.firstName} ${h.changedByUser.lastName}`.trim()
             : undefined,

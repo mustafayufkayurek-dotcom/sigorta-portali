@@ -16,7 +16,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Tags,
-  TestTube2,
   UserCog,
   Users,
 } from 'lucide-react';
@@ -26,8 +25,6 @@ export interface SettingsNavLink {
   href: string;
   icon: LucideIcon;
   description?: string;
-  /** Hub kartında yalnızca yetkili kullanıcıya göster */
-  requiresTestNotesAccess?: boolean;
 }
 
 export interface SettingsNavGroup {
@@ -53,7 +50,6 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
       { title: 'Yetkilendirme', href: '/panel/ayarlar/yetkilendirme', icon: KeyRound, description: 'Kimlerin hangi işlemleri yapabileceğini yönetin.' },
       { title: 'Roller', href: '/panel/ayarlar/roller', icon: ShieldCheck, description: 'Rol adları ve kullanıcı sayıları.' },
       { title: 'Alan Zorunlulukları', href: '/panel/ayarlar/alan-zorunluluklari', icon: SlidersHorizontal, description: 'Form alanı zorunluluk ve görünürlük.' },
-      { title: 'Test Notları / Görev Takip', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2, description: 'Canlı geri bildirim ve görev takibi.', requiresTestNotesAccess: true },
     ],
   },
   {

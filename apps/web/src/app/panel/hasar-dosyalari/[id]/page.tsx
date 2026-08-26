@@ -60,7 +60,7 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, isExpertFirmCustomer } from '@sigorta/shared';
+import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, isExpertFirmCustomer, staffVisibleClaimStatusName } from '@sigorta/shared';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
@@ -1538,7 +1538,7 @@ function GenelTab({
                 <div>
                   <span className="text-slate-500">{new Date(h.changedAt).toLocaleString('tr-TR')}</span>
                   {' · '}
-                  <span className="font-medium">{h.fromStatus?.name ?? '—'} → {h.toStatus?.name}</span>
+                  <span className="font-medium">{staffVisibleClaimStatusName(h.fromStatus?.code, h.fromStatus?.name)} → {staffVisibleClaimStatusName(h.toStatus?.code, h.toStatus?.name)}</span>
                   {' · '}
                   <span className="text-slate-500">{h.changedByUser?.firstName} {h.changedByUser?.lastName}</span>
                   {h.note && <p className="text-slate-400 text-xs mt-0.5">{h.note}</p>}

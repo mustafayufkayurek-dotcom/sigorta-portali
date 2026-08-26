@@ -81,7 +81,6 @@ import {
   Settings,
   ShieldCheck,
   Users,
-  TestTube2,
   Zap,
 } from 'lucide-react';
 
@@ -149,7 +148,6 @@ const SCREEN_TO_PATH: Record<string, string> = {
   harita:            '/panel/harita',
   personel_yonetimi: '/panel/personel-ozluk',
   personel_ozluk: '/panel/personel-ozluk',
-  test_notes_admin: '/panel/ayarlar/test-notlari-gorev-takip',
 };
 
 const LOCKED_MAIN_NAV_PATHS = new Set([
@@ -366,7 +364,6 @@ function getPanelMainLinks({
             },
             { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Yetkilendirme', href: '/panel/ayarlar/yetkilendirme', icon: KeyRound },
-            { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
       : isFieldStaff
         ? [
@@ -407,7 +404,6 @@ function getPanelMainLinks({
               children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
             },
             { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList },
-            { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2 },
           ]
       : [
           { title: 'Dashboard', href: '/panel', icon: MonitorCheck },
@@ -434,7 +430,6 @@ function getPanelMainLinks({
             groupStart: true,
             children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
           },
-          { title: 'Test Notları', href: '/panel/ayarlar/test-notlari-gorev-takip', icon: TestTube2, groupStart: true },
           { title: 'Ayarlar', href: '/panel/ayarlar', icon: Settings },
         ];
 }

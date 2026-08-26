@@ -12,7 +12,6 @@ export const ALL_SCREEN_CODES = [
   'harita',
   'personel_yonetimi',
   'personel_ozluk',
-  'test_notes_admin',
 ] as const;
 
 export type ScreenCode = (typeof ALL_SCREEN_CODES)[number];
@@ -31,5 +30,4 @@ export const SCREEN_LABELS: Record<string, string> = {
   harita: 'Harita',
   personel_yonetimi: 'Personel (Performans)',
   personel_ozluk: 'Personel',
-  test_notes_admin: 'Test Notları ve Görev Takip',
 };

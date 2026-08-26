@@ -390,8 +390,29 @@ export function findHasarProductStageByClaimCode(code: string | null | undefined
   return HASAR_PRODUCT_STAGE_FILTERS.find((s) => s.codes.includes(needle)) ?? null;
 }
 
+/** Personel ekranı: kod varsa ürün aşaması; yasak eski ad düşmez. */
+export function staffVisibleClaimStatusName(
+  code?: string | null,
+  fallbackName?: string | null,
+): string {
+  const claim = String(code ?? '').trim().toLowerCase();
+  const stageId = CLAIM_CODE_TO_STAGE[claim];
+  if (stageId) return OPERATION_STAGES[stageId].label;
+  const fallback = String(fallbackName ?? '').trim();
+  for (const forbidden of FORBIDDEN_STAFF_CLAIM_STATUS_LABELS) {
+    if (fallback === forbidden) return deriveOperationStage({ claimStatusCode: claim }).label;
+  }
+  return fallback || '—';
+}
+
+export function overlayClaimStatusProductName<T extends { code?: string | null; name?: string | null }>(
+  row: T,
+): T {
+  return { ...row, name: staffVisibleClaimStatusName(row.code, row.name) };
+}
+
 export function claimStatusProductLabel(code: string | null | undefined): string {
-  return deriveOperationStage({ claimStatusCode: code }).label;
+  return staffVisibleClaimStatusName(code, null);
 }
 
 export const CLOSED_CLAIM_STATUS_CODES = ['closed', 'cancelled', 'completed'] as const;

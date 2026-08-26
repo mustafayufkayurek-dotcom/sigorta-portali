@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { overlayClaimStatusProductName } from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateClaimStatusDto } from './dto/create-claim-status.dto';
 import { UpdateClaimStatusDto } from './dto/update-claim-status.dto';
@@ -12,7 +13,7 @@ export class ClaimStatusService {
       orderBy: [{ sequenceNo: 'asc' }, { name: 'asc' }],
     });
 
-    return { data };
+    return { data: data.map((row) => overlayClaimStatusProductName(row)) };
   }
 
   async findOne(id: string) {
@@ -24,7 +25,7 @@ export class ClaimStatusService {
       throw new NotFoundException('Hasar durumu bulunamadı');
     }
 
-    return claimStatus;
+    return overlayClaimStatusProductName(claimStatus);
   }
 
   async create(dto: CreateClaimStatusDto) {

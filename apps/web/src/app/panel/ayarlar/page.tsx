@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { SETTINGS_NAV_GROUPS } from '@/config/settings-nav';
 import { getSettingsSaveMessage } from '@/utils/settings-save-redirect';
-import { canAccessTestNotesHub } from '@/utils/settings-definition-nav';
 import { SettingsBreadcrumbs } from '@/components/settings/SettingsBreadcrumbs';
 import { SettingsHubSearch } from '@/components/settings/SettingsHubSearch';
 
@@ -14,15 +13,8 @@ export default function AyarlarPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
-  const [showTestNotes, setShowTestNotes] = useState(false);
 
-  const hubLinks = SETTINGS_NAV_GROUPS.flatMap((group) =>
-    group.links.filter((item) => !item.requiresTestNotesAccess || showTestNotes),
-  );
-
-  useEffect(() => {
-    setShowTestNotes(canAccessTestNotesHub());
-  }, []);
+  const hubLinks = SETTINGS_NAV_GROUPS.flatMap((group) => group.links);
 
   useEffect(() => {
     const kayit = searchParams.get('kayit');

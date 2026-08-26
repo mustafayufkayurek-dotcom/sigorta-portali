@@ -3,6 +3,7 @@
 import { API, authHeader } from '@/utils/api';
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
+import { staffVisibleClaimStatusName } from '@sigorta/shared';
 
 
 
@@ -73,7 +74,7 @@ export function CurrentStageCard({ data }: { data: CurrentStageData }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: data.status.color }} />
-          <h3 className="text-lg font-semibold text-slate-800">{data.status.name}</h3>
+          <h3 className="text-lg font-semibold text-slate-800">{staffVisibleClaimStatusName(data.status.code, data.status.name)}</h3>
         </div>
         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${sla.color}`}>
           <span className={`w-2 h-2 rounded-full ${sla.dot}`} />
@@ -179,13 +180,13 @@ function TimelineEvent({ entry, isLast }: { entry: TimelineEntry; isLast: boolea
               {entry.data.fromStatus && (
                 <>
                   <span className="inline-block px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: entry.data.fromStatus.color + '20', color: entry.data.fromStatus.color }}>
-                    {entry.data.fromStatus.name}
+                    {staffVisibleClaimStatusName(entry.data.fromStatus.code, entry.data.fromStatus.name)}
                   </span>
                   <span className="text-slate-400">→</span>
                 </>
               )}
               <span className="inline-block px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: entry.data.toStatus.color + '20', color: entry.data.toStatus.color }}>
-                {entry.data.toStatus.name}
+                {staffVisibleClaimStatusName(entry.data.toStatus.code, entry.data.toStatus.name)}
               </span>
             </div>
             <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">

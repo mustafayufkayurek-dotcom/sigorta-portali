@@ -441,7 +441,7 @@ export function deriveExpertFileStageLabel(detail: ExpertSafeDetail): string {
 
   if (code === 'test_status') return rawName;
   if (code === 'closed' || /kapat/.test(name)) return 'Tamamlandı';
-  if (code === 'cancelled' || /iptal/.test(name)) return 'İptal Edildi';
+  if (code === 'cancelled' || /iptal/.test(name)) return 'Dosya İptal Edildi';
   if (['new', 'pre_review', 'adjuster_assigned', 'site_visit_planned'].includes(code)) {
     return 'Tespit Aşamasında';
   }
