@@ -383,29 +383,52 @@ export class FileDocumentsService {
     throw new BadRequestException('Geçersiz entityType');
   }
 
+  /** Dijital onay WhatsApp — dosyadaki sigortalı / müşteri telefonu */
+  async resolveInsuredPhone(entityType: string, entityId: string): Promise<string> {
+    if (entityType === 'claim_file') {
+      const cf = await this.prisma.claimFile.findUnique({
+        where: { id: entityId },
+        select: { insuredPhone: true, customer: { select: { phone: true } } },
+      });
+      return (cf?.insuredPhone || cf?.customer?.phone || '').trim();
+    }
+    if (entityType === 'emergency_case') {
+      const ec = await this.prisma.emergencyCase.findUnique({
+        where: { id: entityId },
+        select: { customerPhone: true },
+      });
+      return (ec?.customerPhone || '').trim();
+    }
+    return '';
+  }
+
   // ── Liste & Detay ─────────────────────────────────────────────────────────
 
   async findByEntity(entityType: string, entityId: string) {
-    return this.prisma.fileDocument.findMany({
-      where: { entityType, entityId },
-      select: {
-        id: true,
-        documentKind: true,
-        status: true,
-        publicToken: true,
-        publicTokenExpiresAt: true,
-        whatsappSentAt: true,
-        whatsappPhone: true,
-        viewedAt: true,
-        digitallyApprovedAt: true,
-        approvedFullName: true,
-        physicalUploadKey: true,
-        physicalUploadedAt: true,
-        createdAt: true,
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [docs, suggestedPhone] = await Promise.all([
+      this.prisma.fileDocument.findMany({
+        where: { entityType, entityId },
+        select: {
+          id: true,
+          documentKind: true,
+          status: true,
+          publicToken: true,
+          publicTokenExpiresAt: true,
+          whatsappSentAt: true,
+          whatsappPhone: true,
+          viewedAt: true,
+          digitallyApprovedAt: true,
+          approvedFullName: true,
+          physicalUploadKey: true,
+          physicalUploadedAt: true,
+          createdAt: true,
+          createdBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.resolveInsuredPhone(entityType, entityId),
+    ]);
+    return docs.map((d) => ({ ...d, suggestedPhone }));
   }
 
   async findOne(id: string) {
@@ -425,6 +448,13 @@ export class FileDocumentsService {
     const doc = await this.findOne(id);
     if (!doc.publicToken) throw new BadRequestException('Public token bulunamadı');
 
+    const phone =
+      (dto.phone ?? '').trim() ||
+      (await this.resolveInsuredPhone(doc.entityType, doc.entityId));
+    if (!phone) {
+      throw new BadRequestException('Sigortalı telefon numarası bulunamadı');
+    }
+
     const link = buildAppPath(this.config, `/evrak/${doc.publicToken}`);
 
     const kindLabel =
@@ -434,7 +464,7 @@ export class FileDocumentsService {
       doc.documentKind === 'matbu_evrak'
         ? `Meridyen Assistance Servis Onay Formu. Yazıcı gerekmez. Aşağıdaki linki telefondan açıp Onayla’ya basın:\n\n${link}\n\nMeridyen Assistance`
         : `Meridyen Assistance tarafından düzenlenen ${kindLabel} belgesini aşağıdaki linkten inceleyebilir ve onaylayabilirsiniz:\n\n${link}\n\nMeridyen Assistance`;
-    const waUrl = buildWhatsAppMeUrl(dto.phone, message);
+    const waUrl = buildWhatsAppMeUrl(phone, message);
     if (!waUrl) {
       throw new BadRequestException('Geçerli bir WhatsApp telefon numarası giriniz');
     }
@@ -443,12 +473,12 @@ export class FileDocumentsService {
       where: { id },
       data: {
         whatsappSentAt: new Date(),
-        whatsappPhone: dto.phone,
+        whatsappPhone: phone,
         status: doc.status === 'draft' ? 'sent' : doc.status,
       },
     });
 
-    return { waUrl, link };
+    return { waUrl, link, message, phone };
   }
 
   // ── Fiziki Yükleme ────────────────────────────────────────────────────────

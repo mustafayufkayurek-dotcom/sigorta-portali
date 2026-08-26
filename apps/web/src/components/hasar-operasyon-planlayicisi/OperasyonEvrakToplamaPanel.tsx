@@ -9,9 +9,11 @@ import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 export function OperasyonEvrakToplamaPanel({
   claimId,
   suppliers,
+  insuredPhone,
 }: {
   claimId: string;
   suppliers: Array<{ id: string; name?: string | null; companyName?: string | null }>;
+  insuredPhone?: string | null;
 }) {
   return (
     <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -50,7 +52,12 @@ export function OperasyonEvrakToplamaPanel({
         <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           Dijital onay belgesi
         </h4>
-        <FileDocumentPanel entityType="claim_file" entityId={claimId} documentKind="muvafakatname" />
+        <FileDocumentPanel
+          entityType="claim_file"
+          entityId={claimId}
+          documentKind="muvafakatname"
+          defaultPhone={insuredPhone}
+        />
       </section>
       <section>
         <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">

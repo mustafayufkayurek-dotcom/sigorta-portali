@@ -1171,7 +1171,12 @@ export function StepDigitalApproval() {
       ) : (
         <p className="text-xs font-medium text-amber-800">Onay gelmeden onarım bitişi kaydedilmez.</p>
       )}
-      <FileDocumentPanel entityType="claim_file" entityId={claim.claimId} documentKind="muvafakatname" />
+      <FileDocumentPanel
+        entityType="claim_file"
+        entityId={claim.claimId}
+        documentKind="muvafakatname"
+        defaultPhone={claim.insuredPhone}
+      />
     </div>
   );
 }

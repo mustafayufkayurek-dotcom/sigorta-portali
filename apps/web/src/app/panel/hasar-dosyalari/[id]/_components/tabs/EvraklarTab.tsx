@@ -39,6 +39,7 @@ function SozlesmelerOnaylarPanel({
           entityType="claim_file"
           entityId={claimId}
           documentKind="muvafakatname"
+          defaultPhone={claim?.insuredPhone ?? claim?.customer?.phone}
         />
       </SectionCard>
 
@@ -80,6 +81,7 @@ export function EvraklarTab({
       {subTab === 'toplanan' && (
         <OperasyonEvrakToplamaPanel
           claimId={claimId}
+          insuredPhone={claim?.insuredPhone ?? claim?.customer?.phone}
           suppliers={(claim?.supplierAssignments ?? [])
             .map((a: { vendorId?: string; vendor?: { id?: string; name?: string; companyName?: string } }) => ({
               id: a.vendorId || a.vendor?.id || '',
