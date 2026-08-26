@@ -2,14 +2,11 @@ import { BadRequestException } from '@nestjs/common';
 import { ReportEmailService } from './report-email.service';
 
 describe('ReportEmailService PDF attach chain', () => {
-  const config = {
-    get: (key: string) => {
-      if (key === 'SMTP_HOST') return undefined;
-      return undefined;
-    },
+  const email = {
+    sendEmail: jest.fn().mockResolvedValue({ sent: false, via: 'none', errorMsg: 'kutu yok' }),
   };
 
-  const service = new ReportEmailService(config as any);
+  const service = new ReportEmailService(email as any);
 
   it('rejects empty PDF — never send without attachment', async () => {
     await expect(
@@ -49,5 +46,9 @@ describe('ReportEmailService PDF attach chain', () => {
     expect(result.mode).toBe('staging-no-smtp');
     expect(result.success).toBe(false);
     expect(result.to).toBe('sigorta@example.com');
+    expect(email.sendEmail).toHaveBeenCalled();
+    const html = email.sendEmail.mock.calls[0][2] as string;
+    expect(html).toContain('Rapor Bildirimi');
+    expect(html).toContain('#0F766E');
   });
 });

@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { EmailService } from '@/modules/notifications/email/email.service';
+import {
+  buildReportDispatchEmailHtml,
+  buildReportDispatchEmailText,
+} from './report-dispatch-email.template';
 
 export type SendReportEmailResult = {
   success: boolean;
@@ -27,6 +31,9 @@ export class ReportEmailService {
     subject: string;
     pdfBuffer: Buffer;
     reportNo: string;
+    fileNo?: string | null;
+    actionUrl?: string | null;
+    portalUrl?: string | null;
     viewType?: 'external';
   }): Promise<SendReportEmailResult> {
     const to = String(opts.to ?? '').trim();
@@ -43,12 +50,22 @@ export class ReportEmailService {
     }
 
     const filename = `hasar-raporu-DIS-${opts.reportNo}.pdf`;
+    const html = buildReportDispatchEmailHtml({
+      reportNo: opts.reportNo,
+      fileNo: opts.fileNo,
+      actionUrl: opts.actionUrl,
+      portalUrl: opts.portalUrl,
+    });
     const result = await this.email.sendEmail(
       to,
       opts.subject,
-      `<p>Hasar Onarım Raporu (${opts.reportNo}) ektedir.</p>`,
+      html,
       {
-        text: `Hasar Onarım Raporu (${opts.reportNo}) ektedir.`,
+        text: buildReportDispatchEmailText({
+          reportNo: opts.reportNo,
+          fileNo: opts.fileNo,
+          actionUrl: opts.actionUrl,
+        }),
         attachments: [
           {
             filename,
