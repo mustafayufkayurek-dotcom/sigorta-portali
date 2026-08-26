@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { buildAppPath } from '@/common/utils/app-url';
+import { buildAppPath, resolveAppUrl } from '@/common/utils/app-url';
+import { buildPanelUrl, panelHasarDosyasiPath } from '@/common/utils/panel-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { ReportPdfService } from './pdf/report-pdf.service';
 import { ReportEmailService } from './email/report-email.service';
@@ -937,11 +938,16 @@ export class RepairReportsService {
       throw new BadRequestException('PDF oluşmadı — e-posta gönderilemez');
     }
     const subject = dto.subject ?? `Hasar Onarım Raporu — ${report.reportNo}`;
+    const appUrl = resolveAppUrl(this.config);
+    const claimFileId = report.claimFileId ?? report.claimFile?.id;
     return this.emailService.sendReport({
       to: dto.to,
       subject,
       pdfBuffer,
       reportNo: report.reportNo,
+      fileNo: report.claimFile?.fileNo,
+      actionUrl: claimFileId ? buildPanelUrl(appUrl, panelHasarDosyasiPath(claimFileId)) : undefined,
+      portalUrl: appUrl,
       viewType: 'external',
     });
   }
@@ -1128,12 +1134,17 @@ export class RepairReportsService {
         'Müşteri kartında e-posta yok. Adresi yazmadan rapor onaya gönderilemez.',
       );
     }
+    const appUrl = resolveAppUrl(this.config);
+    const claimFileId = report.claimFileId ?? report.claimFile?.id;
     for (const recipient of customerRecipients) {
       const mailed = await this.emailService.sendReport({
         to: recipient,
         subject: `Hasar Onarım Raporu — ${report.claimFile?.fileNo ?? report.reportNo}`,
         pdfBuffer: customerPdf,
         reportNo: report.reportNo,
+        fileNo: report.claimFile?.fileNo,
+        actionUrl: claimFileId ? buildPanelUrl(appUrl, panelHasarDosyasiPath(claimFileId)) : undefined,
+        portalUrl: appUrl,
         viewType: 'external',
       });
       if (!mailed.success) {
