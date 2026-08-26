@@ -2318,6 +2318,7 @@ export default function AcilDosyaDetayPage() {
               entityType="emergency_case"
               entityId={vaka.id}
               documentKind="matbu_evrak"
+              defaultPhone={insuredPhoneLabel(vaka) === '—' ? '' : insuredPhoneLabel(vaka)}
             />
           </div>
         )}
@@ -2738,6 +2739,7 @@ export default function AcilDosyaDetayPage() {
                 entityType="emergency_case"
                 entityId={vaka.id}
                 documentKind="matbu_evrak"
+                defaultPhone={insuredPhoneLabel(vaka) === '—' ? '' : insuredPhoneLabel(vaka)}
               />
               <div className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2 max-h-36 overflow-auto">
                 <InboundEmailCorrespondencePanel emergencyCaseId={vaka.id} compact />

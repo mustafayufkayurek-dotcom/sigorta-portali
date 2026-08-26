@@ -42,6 +42,8 @@ export interface FileDocument {
   publicTokenExpiresAt?: string | null;
   whatsappSentAt?: string | null;
   whatsappPhone?: string | null;
+  /** Dosyadaki sigortalı / müşteri telefonu — gönderim kutusuna hazır gelir */
+  suggestedPhone?: string | null;
   viewedAt?: string | null;
   digitallyApprovedAt?: string | null;
   approvedFullName?: string | null;
@@ -97,12 +99,12 @@ export function getFileDocument(id: string): Promise<FileDocument> {
 export function sendWhatsapp(
   id: string,
   phone: string,
-): Promise<{ waUrl: string; link: string }> {
+): Promise<{ waUrl: string; link: string; message?: string; phone?: string }> {
   return authFetch(`${API}/file-documents/${id}/whatsapp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone }),
-  }).then((r) => handleResponse<{ waUrl: string; link: string }>(r));
+  }).then((r) => handleResponse<{ waUrl: string; link: string; message?: string; phone?: string }>(r));
 }
 
 export function uploadPhysicalDocument(
