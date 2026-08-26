@@ -41,7 +41,7 @@ export type OperationStageMeta = {
 /**
  * Ürün durum sözlüğü (tek kaynak):
  * Yeni→Yeni İhbar · Atandı→Tespit Aşamasında · Sahada→Onarım Aşamasında ·
- * Rapor Yazılıyor · Onay Bekliyor · 72 Saat+→Onay Talep Et ·
+ * Rapor Yazım Aşamasında · Onay Bekliyor · 72 Saat+→Onay Talep Et ·
  * Finansa Aktarıldı · Çözüldü→Dosya Kapatıldı
  */
 export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
@@ -55,7 +55,7 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
     id: 'on_inceleme',
     label: 'Tespit Aşamasında',
     tone: 'blue',
-    nextAction: 'Eksper / tespitçi ataması',
+    nextAction: 'Dosya sorumlusu incelemesi ve tespitçi ataması',
   },
   eksper_atandi: {
     id: 'eksper_atandi',
@@ -77,7 +77,7 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
   },
   rapor_yaziliyor: {
     id: 'rapor_yaziliyor',
-    label: 'Rapor Yazılıyor',
+    label: 'Rapor Yazım Aşamasında',
     tone: 'orange',
     nextAction: 'Raporu onaya gönder',
   },
@@ -230,7 +230,7 @@ export function deriveOperationStageId(input: DeriveOperationStageInput): Operat
   if (claim === 'cancelled') return 'iptal';
   if (claim === 'closed' || claim === 'completed') return 'dosya_kapandi';
 
-  // Red, claim budget_preparing olsa bile «Rapor Yazılıyor»a düşmez
+  // Red, claim budget_preparing olsa bile «Rapor Yazım Aşamasında»ya düşmez
   if (REPORT_REJECTED.has(report)) return 'rapor_reddedildi';
   if (REPORT_AWAITING.has(report)) return 'onay_bekliyor';
   if (REPORT_APPROVED.has(report) && !['repair_planning', 'repair_in_progress', 'repair_completed', 'invoice_pending', 'invoice_submitted', 'payment_pending', 'partially_collected'].includes(claim)) {
@@ -311,7 +311,7 @@ export type OperationPreset =
 export const OPERATION_PRESET_LABELS: Record<OperationPreset, string> = {
   approval_pending: 'Onay Bekleyen',
   approval_72h: '72s Geçen',
-  report_writing: 'Rapor Yazılıyor',
+  report_writing: 'Rapor Yazım Aşamasında',
   report_approval: 'Rapor Onay',
   finance_transfer: 'Finansa Aktarılacak',
   delay_risk: 'Gecikme Riski',
@@ -320,6 +320,79 @@ export const OPERATION_PRESET_LABELS: Record<OperationPreset, string> = {
   urgent: 'Acil',
   open: 'Açık',
 };
+
+/** Personel ekranında yasak — eski bütçe / eksper dili. Kodlar kalır, etiket basılmaz. */
+export const FORBIDDEN_STAFF_CLAIM_STATUS_LABELS = [
+  'Eksper Atandı',
+  'Ön İnceleme',
+  'Saha Ziyareti Planlandı',
+  'Saha Ziyareti Tamamlandı',
+  'Bütçe Hazırlanıyor',
+  'Bütçe Sunuldu',
+  'Bütçe Revize Talep Edildi',
+  'Bütçe Onaylandı',
+] as const;
+
+export type ProductStageFilter = {
+  id: string;
+  sequenceNo: number;
+  label: string;
+  codes: readonly string[];
+};
+
+/** Hasar kuyruk filtresi — tek ürün dili, sıra numaralı. */
+export const HASAR_PRODUCT_STAGE_FILTERS: readonly ProductStageFilter[] = [
+  { id: 'ihbar', sequenceNo: 1, label: 'Yeni İhbar', codes: ['new'] },
+  { id: 'tespit', sequenceNo: 2, label: 'Tespit Aşamasında', codes: ['pre_review', 'adjuster_assigned'] },
+  { id: 'rapor_yazim', sequenceNo: 3, label: 'Rapor Yazım Aşamasında', codes: ['budget_preparing', 'budget_revision_requested'] },
+  { id: 'onay_bekliyor', sequenceNo: 4, label: 'Onay Bekliyor', codes: ['budget_submitted'] },
+  { id: 'onarim', sequenceNo: 5, label: 'Onarım Aşamasında', codes: ['site_visit_planned', 'site_visit_done', 'budget_approved', 'repair_planning', 'repair_in_progress'] },
+  { id: 'finans', sequenceNo: 6, label: 'Finansa Aktarıldı', codes: ['repair_completed', 'invoice_pending', 'invoice_submitted', 'payment_pending', 'partially_collected'] },
+  { id: 'kapandi', sequenceNo: 7, label: 'Dosya Kapatıldı', codes: ['closed', 'completed'] },
+  { id: 'iptal', sequenceNo: 8, label: 'İptal', codes: ['cancelled'] },
+];
+
+/** Acil kuyruk — aynı ürün dili, kendi kodları. */
+export const ACIL_PRODUCT_STAGE_FILTERS: readonly ProductStageFilter[] = [
+  { id: 'ihbar', sequenceNo: 1, label: 'Yeni İhbar', codes: ['GELEN'] },
+  { id: 'tespit', sequenceNo: 2, label: 'Tespit Aşamasında', codes: ['ATANDI'] },
+  { id: 'onarim', sequenceNo: 3, label: 'Onarım Aşamasında', codes: ['SAHADA'] },
+  { id: 'kapandi', sequenceNo: 4, label: 'Dosya Kapatıldı', codes: ['COZULDU'] },
+  { id: 'finans', sequenceNo: 5, label: 'Finansa Aktarıldı', codes: ['FATURALANDILDI'] },
+];
+
+export const CLAIM_LIST_PRODUCT_STAGE_PREFIX = '__stage__';
+
+export function hasarProductStageFilterValue(stageId: string): string {
+  return `${CLAIM_LIST_PRODUCT_STAGE_PREFIX}${stageId}`;
+}
+
+export function parseHasarProductStageFilter(value: string): ProductStageFilter | null {
+  const raw = String(value ?? '').trim();
+  if (!raw.startsWith(CLAIM_LIST_PRODUCT_STAGE_PREFIX)) return null;
+  const id = raw.slice(CLAIM_LIST_PRODUCT_STAGE_PREFIX.length);
+  return HASAR_PRODUCT_STAGE_FILTERS.find((s) => s.id === id) ?? null;
+}
+
+export function hasarListStatusQuery(statusFilter: string): { statusCode?: string; slaExceeded?: boolean } {
+  const raw = String(statusFilter ?? '').trim();
+  if (raw === '__sla_exceeded__') return { slaExceeded: true };
+  if (raw === '__open__') return { statusCode: 'open' };
+  if (raw === '__closed__') return { statusCode: 'closed' };
+  const stage = parseHasarProductStageFilter(raw);
+  if (stage) return { statusCode: stage.codes.join(',') };
+  return {};
+}
+
+export function findHasarProductStageByClaimCode(code: string | null | undefined): ProductStageFilter | null {
+  const needle = String(code ?? '').trim().toLowerCase();
+  if (!needle) return null;
+  return HASAR_PRODUCT_STAGE_FILTERS.find((s) => s.codes.includes(needle)) ?? null;
+}
+
+export function claimStatusProductLabel(code: string | null | undefined): string {
+  return deriveOperationStage({ claimStatusCode: code }).label;
+}
 
 export const CLOSED_CLAIM_STATUS_CODES = ['closed', 'cancelled', 'completed'] as const;
 

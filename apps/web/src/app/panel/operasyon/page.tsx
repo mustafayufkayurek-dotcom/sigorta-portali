@@ -62,6 +62,7 @@ import { MissingShortNameBanner } from '@/components/customers/MissingShortNameB
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import {
+  ACIL_PRODUCT_STAGE_FILTERS,
   BADGE_TONE_CLASS,
   OPERATION_PRESET_LABELS,
   deriveOperationStage,
@@ -389,6 +390,7 @@ function OperasyonPageContent() {
   });
   const [filterInvoice, setFilterInvoice] = useState('');
   const [filterVendorPay, setFilterVendorPay] = useState<AcilVendorPayFilter>('');
+  const [filterAcilStage, setFilterAcilStage] = useState('');
   const [opsPreset, setOpsPreset] = useState<OperationPreset | ''>('');
   const tableColumnDefs = filterType === 'acil' ? ACIL_TABLE_COLUMNS : TABLE_COLUMNS;
   const tableColumns = usePanelTableColumns(colsStorageKey, tableColumnDefs);
@@ -529,7 +531,7 @@ function OperasyonPageContent() {
 
   useEffect(() => {
     setPage(1);
-  }, [opsPreset, filterInvoice, filterType, acilPageSize, customerQuery, filterVendorPay]);
+  }, [opsPreset, filterInvoice, filterType, acilPageSize, customerQuery, filterVendorPay, filterAcilStage]);
 
   const hasarRows: UnifiedRow[] = claims.map((claim) => {
     const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
@@ -699,6 +701,13 @@ function OperasyonPageContent() {
       rows = rows.filter(
         (row) => row.kind === 'acil' && acilVendorPayMatchesFilter(row.vendorPaid, filterVendorPay),
       );
+    }
+    if (filterType === 'acil' && filterAcilStage) {
+      const stage = ACIL_PRODUCT_STAGE_FILTERS.find((s) => s.id === filterAcilStage);
+      const codes = new Set((stage?.codes ?? []).map((c) => c.toUpperCase()));
+      if (codes.size) {
+        rows = rows.filter((row) => row.kind === 'acil' && codes.has(String(row.statusCode ?? '').toUpperCase()));
+      }
     }
     if (clientSort) {
       const { key, dir } = clientSort;
@@ -1021,7 +1030,7 @@ function OperasyonPageContent() {
         />
         <OpsStripKpi
           dense
-          label="Rapor Yazılıyor"
+          label="Rapor Yazım Aşamasında"
           value={opsStats?.reportWriting ?? '—'}
           color="bg-orange-500"
           icon={FileEdit}
@@ -1125,6 +1134,19 @@ function OperasyonPageContent() {
             </div>
             <select
               className="panel-filter-control"
+              value={filterAcilStage}
+              onChange={(e) => setFilterAcilStage(e.target.value)}
+              data-testid="acil-asama-filtre"
+            >
+              <option value="">Tüm Durumlar</option>
+              {ACIL_PRODUCT_STAGE_FILTERS.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.sequenceNo}. {stage.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="panel-filter-control"
               value={filterInvoice}
               onChange={(e) => setFilterInvoice(e.target.value)}
             >
@@ -1160,13 +1182,14 @@ function OperasyonPageContent() {
               <option value="updatedAt:desc">Son Güncelleme</option>
               <option value="fileNo:asc">Dosya No A-Z</option>
             </select>
-            {customerQuery.trim() || filterInvoice || filterVendorPay ? (
+            {customerQuery.trim() || filterInvoice || filterVendorPay || filterAcilStage ? (
               <button
                 type="button"
                 onClick={() => {
                   setCustomerQuery('');
                   setFilterInvoice('');
                   setFilterVendorPay('');
+                  setFilterAcilStage('');
                 }}
                 className="text-xs text-slate-500 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-xl hover:border-red-200 transition-colors whitespace-nowrap"
               >

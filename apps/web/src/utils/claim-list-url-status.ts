@@ -2,15 +2,25 @@
  * Hasar listesi URL `?status=` çözümlemesi.
  * `open` / `closed` tek bir durum adına fuzzy eşleşmez — aksi halde
  * «Onarım Devam Ediyor» gibi isimler dizi boşaltır (saha ekranı regresyonu).
+ * Personel filtresi ürün aşamasıdır; bütçe / eksper adları basılmaz.
  */
 
-export type ClaimListUrlStatusKind = 'none' | 'open' | 'closed' | 'sla_exceeded' | 'statusId';
+import {
+  CLAIM_LIST_PRODUCT_STAGE_PREFIX,
+  findHasarProductStageByClaimCode,
+  hasarListStatusQuery,
+  hasarProductStageFilterValue,
+  parseHasarProductStageFilter,
+} from '@sigorta/shared';
+
+export type ClaimListUrlStatusKind = 'none' | 'open' | 'closed' | 'sla_exceeded' | 'productStage' | 'statusId';
 
 export type ClaimListUrlStatus =
   | { kind: 'none' }
   | { kind: 'open' }
   | { kind: 'closed' }
   | { kind: 'sla_exceeded' }
+  | { kind: 'productStage'; stageId: string }
   | { kind: 'statusId'; statusId: string };
 
 type StatusRow = { id: string; code?: string | null; name?: string | null };
@@ -19,14 +29,38 @@ export function resolveClaimListUrlStatus(
   urlStatus: string | null | undefined,
   claimStatuses: StatusRow[] = [],
 ): ClaimListUrlStatus {
-  const raw = String(urlStatus ?? '').trim().toLowerCase();
+  const raw = String(urlStatus ?? '').trim();
   if (!raw) return { kind: 'none' };
-  if (raw === 'open') return { kind: 'open' };
-  if (raw === 'closed') return { kind: 'closed' };
-  if (raw === 'sla_exceeded') return { kind: 'sla_exceeded' };
+  const lower = raw.toLowerCase();
+  if (lower === 'open') return { kind: 'open' };
+  if (lower === 'closed') return { kind: 'closed' };
+  if (lower === 'sla_exceeded') return { kind: 'sla_exceeded' };
 
-  const exact = claimStatuses.find((s) => String(s.code ?? '').trim().toLowerCase() === raw);
-  if (exact) return { kind: 'statusId', statusId: exact.id };
+  const fromPrefix = parseHasarProductStageFilter(raw);
+  if (fromPrefix) return { kind: 'productStage', stageId: fromPrefix.id };
+
+  const byStageId = parseHasarProductStageFilter(hasarProductStageFilterValue(lower));
+  if (byStageId && lower === byStageId.id) {
+    return { kind: 'productStage', stageId: byStageId.id };
+  }
+
+  const byClaimCode = findHasarProductStageByClaimCode(lower);
+  if (byClaimCode) return { kind: 'productStage', stageId: byClaimCode.id };
+
+  const exact = claimStatuses.find((s) => String(s.code ?? '').trim().toLowerCase() === lower);
+  if (exact) {
+    const stage = findHasarProductStageByClaimCode(exact.code);
+    if (stage) return { kind: 'productStage', stageId: stage.id };
+    return { kind: 'statusId', statusId: exact.id };
+  }
+
+  const byId = claimStatuses.find((s) => s.id === raw);
+  if (byId) {
+    const stage = findHasarProductStageByClaimCode(byId.code);
+    if (stage) return { kind: 'productStage', stageId: stage.id };
+    return { kind: 'statusId', statusId: byId.id };
+  }
+
   return { kind: 'none' };
 }
 
@@ -47,6 +81,8 @@ export function claimListStatusFilterFromUrl(
       return CLAIM_LIST_CLOSED_FILTER;
     case 'sla_exceeded':
       return CLAIM_LIST_SLA_FILTER;
+    case 'productStage':
+      return hasarProductStageFilterValue(resolved.stageId);
     case 'statusId':
       return resolved.statusId;
     default:
@@ -59,17 +95,15 @@ export function appendClaimListStatusParams(
   statusFilter: string,
 ): void {
   if (!statusFilter) return;
-  if (statusFilter === CLAIM_LIST_SLA_FILTER) {
+  const q = hasarListStatusQuery(statusFilter);
+  if (q.slaExceeded) {
     params.set('slaExceeded', 'true');
     return;
   }
-  if (statusFilter === CLAIM_LIST_OPEN_FILTER) {
-    params.set('statusCode', 'open');
+  if (q.statusCode) {
+    params.set('statusCode', q.statusCode);
     return;
   }
-  if (statusFilter === CLAIM_LIST_CLOSED_FILTER) {
-    params.set('statusCode', 'closed');
-    return;
-  }
+  if (statusFilter.startsWith(CLAIM_LIST_PRODUCT_STAGE_PREFIX)) return;
   params.set('statusId', statusFilter);
 }

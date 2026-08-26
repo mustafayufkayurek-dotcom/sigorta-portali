@@ -37,6 +37,7 @@ import {
 import { resolveDepartmentFileSubjectByLabel } from '@/common/helpers/dosya-konusu.helper';
 import {
   APPROVAL_WAITING_REPORT_STATUSES,
+  claimStatusProductLabel,
   CLOSED_CLAIM_STATUS_CODES,
   FINANCE_TRANSFER_STATUS_CODES,
   deriveOperationStage,
@@ -296,9 +297,13 @@ export class ClaimFilesService {
   }
 
   async findStatuses() {
-    return this.prisma.claimStatus.findMany({
+    const rows = await this.prisma.claimStatus.findMany({
       orderBy: { sequenceNo: 'asc' },
     });
+    return rows.map((row) => ({
+      ...row,
+      name: claimStatusProductLabel(row.code),
+    }));
   }
 
   /**
@@ -505,14 +510,21 @@ export class ClaimFilesService {
       baseWhere.repairReports = { some: { status: params.repairReportStatus } };
     }
 
-    const statusCode = String(params?.statusCode ?? '').trim().toLowerCase();
-    if (statusCode === 'open') {
+    const statusCode = String(params?.statusCode ?? '').trim();
+    const statusCodeLower = statusCode.toLowerCase();
+    if (statusCodeLower === 'open') {
       // Kapalı olmayan tüm operasyon durumları (pre_review vb.) — tek koda fuzzy bağlanmaz
       baseWhere.currentStatus = { isClosedState: false };
-    } else if (statusCode === 'closed') {
+    } else if (statusCodeLower === 'closed') {
       baseWhere.currentStatus = { isClosedState: true };
+    } else if (statusCode.includes(',')) {
+      const codes = statusCode
+        .split(',')
+        .map((c) => c.trim().toLowerCase())
+        .filter(Boolean);
+      if (codes.length) baseWhere.currentStatus = { code: { in: codes } };
     } else if (statusCode) {
-      baseWhere.currentStatus = { code: statusCode };
+      baseWhere.currentStatus = { code: statusCodeLower };
     }
 
     if (params?.dateFrom || params?.dateTo) {
@@ -905,6 +917,9 @@ export class ClaimFilesService {
 
       return {
         ...claim,
+        currentStatus: claim.currentStatus
+          ? { ...claim.currentStatus, name: stage.label }
+          : claim.currentStatus,
         operationStage: stage,
         // 72s aşımı Dosya Durumu etiketini bozmaz; aksiyon nextAction’da kalır, satırda pulse ile görünür.
         operationStatusLabel: stage.label,

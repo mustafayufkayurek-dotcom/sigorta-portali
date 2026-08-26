@@ -7,9 +7,13 @@ import { describe, it } from 'node:test';
 import { deriveClaimFileStageIndex } from './claim-file-stage.ts';
 import {
   APPROVAL_WAITING_REPORT_STATUSES,
+  ACIL_PRODUCT_STAGE_FILTERS,
   EMERGENCY_STATUS_PRODUCT_LABELS,
+  FORBIDDEN_STAFF_CLAIM_STATUS_LABELS,
+  HASAR_PRODUCT_STAGE_FILTERS,
   OPERATION_STAGES,
   deriveOperationStage,
+  hasarListStatusQuery,
   isApprovalWaitingReport,
 } from './operation-status.ts';
 
@@ -73,5 +77,45 @@ describe('rapor onaylandı ≠ liste «Onaylanan Dosyalar» LOCK', () => {
       Object.values(EMERGENCY_STATUS_PRODUCT_LABELS).includes('Bütçe Onaylandı'),
       false,
     );
+  });
+});
+
+describe('ürün dili aşama filtresi LOCK', () => {
+  it('Hasar ve Acil sıra numaralı ürün aşamaları; eksper/bütçe yok', () => {
+    assert.deepEqual(
+      HASAR_PRODUCT_STAGE_FILTERS.map((s) => `${s.sequenceNo}. ${s.label}`),
+      [
+        '1. Yeni İhbar',
+        '2. Tespit Aşamasında',
+        '3. Rapor Yazım Aşamasında',
+        '4. Onay Bekliyor',
+        '5. Onarım Aşamasında',
+        '6. Finansa Aktarıldı',
+        '7. Dosya Kapatıldı',
+        '8. İptal',
+      ],
+    );
+    assert.deepEqual(
+      ACIL_PRODUCT_STAGE_FILTERS.map((s) => `${s.sequenceNo}. ${s.label}`),
+      [
+        '1. Yeni İhbar',
+        '2. Tespit Aşamasında',
+        '3. Onarım Aşamasında',
+        '4. Dosya Kapatıldı',
+        '5. Finansa Aktarıldı',
+      ],
+    );
+    const hasarLabels = HASAR_PRODUCT_STAGE_FILTERS.map((s) => s.label).join(' ');
+    for (const forbidden of FORBIDDEN_STAFF_CLAIM_STATUS_LABELS) {
+      assert.equal(hasarLabels.includes(forbidden), false, forbidden);
+    }
+    assert.equal(OPERATION_STAGES.eksper_atandi.label, 'Tespit Aşamasında');
+    assert.equal(OPERATION_STAGES.rapor_yaziliyor.label, 'Rapor Yazım Aşamasında');
+    assert.equal(deriveOperationStage({ claimStatusCode: 'adjuster_assigned' }).label, 'Tespit Aşamasında');
+    assert.equal(deriveOperationStage({ claimStatusCode: 'budget_preparing' }).label, 'Rapor Yazım Aşamasında');
+    assert.deepEqual(hasarListStatusQuery('__stage__tespit'), {
+      statusCode: 'pre_review,adjuster_assigned',
+    });
+    assert.deepEqual(hasarListStatusQuery('__open__'), { statusCode: 'open' });
   });
 });

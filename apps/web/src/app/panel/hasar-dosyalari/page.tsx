@@ -49,7 +49,7 @@ import { fmtDate } from '@/utils/date-helpers';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
-import { resolveOperationStatusLabel } from '@sigorta/shared';
+import { resolveOperationStatusLabel, HASAR_PRODUCT_STAGE_FILTERS, hasarProductStageFilterValue } from '@sigorta/shared';
 import {
   cycleClientSort,
   sortRowsByClientSort,
@@ -580,7 +580,7 @@ function ClaimFilesPageContent() {
           />
           <OpsStripKpi
             dense
-            label="Rapor Yazılıyor"
+            label="Rapor Yazım Aşamasında"
             value={opsStats?.reportWriting ?? '—'}
             color="bg-orange-500"
             icon={FileEdit}
@@ -641,7 +641,11 @@ function ClaimFilesPageContent() {
             <option value="__open__">Açık Dosyalar</option>
             <option value="__closed__">Kapalı Dosyalar</option>
             {!isFieldStaff && <option value="__sla_exceeded__">SLA Aşanlar</option>}
-            {!isFieldStaff && claimStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {!isFieldStaff && HASAR_PRODUCT_STAGE_FILTERS.map((stage) => (
+              <option key={stage.id} value={hasarProductStageFilterValue(stage.id)}>
+                {stage.sequenceNo}. {stage.label}
+              </option>
+            ))}
           </select>
           {!isFieldStaff && (
             <>
