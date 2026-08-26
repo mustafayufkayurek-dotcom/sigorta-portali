@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-25",
-  "label": "v540-mail-sendmail",
-  "description": "Full: Onaya Gönder Graph sendMail gider; taslak 403 Mail.Send diye yalan söylemez. Rollback web v539 / backend v539.",
+  "updatedAt": "2026-08-26",
+  "label": "v541-dijital-onay-whatsapp",
+  "description": "Full: Hasar dijital onay WhatsApp; durum dili; liste sıra; Test Notları kalktı. Giden mail dış PDF ve sendMail durur. Rollback web v540 / backend v540.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v540-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v540-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v541-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v541-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v539-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v539-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v540-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v540-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

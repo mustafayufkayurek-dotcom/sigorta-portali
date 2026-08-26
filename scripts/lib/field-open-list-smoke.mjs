@@ -48,7 +48,7 @@ if (!nav.includes("'/panel/hasar-dosyalari?status=open'")) {
 pass('Dashboard Açık Dosyalar linki status=open (beklenen sözleşme)');
 
 const util = read('apps/web/src/utils/claim-list-url-status.ts');
-if (!util.includes("raw === 'open'") || !util.includes("params.set('statusCode', 'open')")) {
+if (!util.includes("lower === 'open'") || !util.includes('hasarListStatusQuery')) {
   fail('claim-list-url-status open → statusCode=open üretmiyor');
 }
 if (util.includes("'devam'") || util.includes('in_progress')) {
