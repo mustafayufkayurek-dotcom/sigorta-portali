@@ -64,6 +64,7 @@ import { usePanelAccess } from '@/hooks/usePanelAccess';
 import {
   ACIL_PRODUCT_STAGE_FILTERS,
   BADGE_TONE_CLASS,
+  EMERGENCY_STATUS_PRODUCT_LABELS,
   OPERATION_PRESET_LABELS,
   deriveOperationStage,
   resolveEmergencyOperationLabel,
@@ -103,13 +104,7 @@ function deriveInvoiceStatus(invoices: { status: string; invoiceType: string }[]
   return 'draft';
 }
 
-const EMERGENCY_STATUS_LABELS: Record<string, string> = {
-  GELEN: 'Yeni İhbar',
-  ATANDI: 'Tespit Aşamasında',
-  SAHADA: 'Onarım Aşamasında',
-  COZULDU: 'Dosya Kapatıldı',
-  FATURALANDILDI: 'Finansa Aktarıldı',
-};
+const EMERGENCY_STATUS_LABELS: Record<string, string> = { ...EMERGENCY_STATUS_PRODUCT_LABELS };
 
 /** Acil operasyon akışına göre Dosya Durumu sinyali (renk + nokta). */
 const EMERGENCY_STATUS_CLASSES: Record<string, string> = {

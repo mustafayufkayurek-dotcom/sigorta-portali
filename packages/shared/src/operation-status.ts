@@ -41,6 +41,7 @@ export type OperationStageMeta = {
 /**
  * Ürün durum sözlüğü (tek kaynak):
  * Yeni→Yeni İhbar · Atandı→Tespit Aşamasında · Sahada→Onarım Aşamasında ·
+ * Acil: Atandı Yeni İhbar’da kalır; Sahada→Hizmet verildi.
  * Rapor Yazım Aşamasında · Onay Bekliyor · 72 Saat+→Onay Talep Et ·
  * Finansa Aktarıldı · Çözüldü→Dosya Kapatıldı
  */
@@ -125,17 +126,17 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
   },
   iptal: {
     id: 'iptal',
-    label: 'İptal',
+    label: 'Dosya İptal Edildi',
     tone: 'red',
     nextAction: '—',
   },
 };
 
-/** Acil yardım durumları — aynı ürün sözlüğü */
+/** Acil yardım — tespit aşaması yok; sahada hizmet verildi. */
 export const EMERGENCY_STATUS_PRODUCT_LABELS: Record<string, string> = {
   GELEN: 'Yeni İhbar',
-  ATANDI: 'Tespit Aşamasında',
-  SAHADA: 'Onarım Aşamasında',
+  ATANDI: 'Yeni İhbar',
+  SAHADA: 'Hizmet verildi',
   COZULDU: 'Dosya Kapatıldı',
   FATURALANDILDI: 'Finansa Aktarıldı',
 };
@@ -349,16 +350,15 @@ export const HASAR_PRODUCT_STAGE_FILTERS: readonly ProductStageFilter[] = [
   { id: 'onarim', sequenceNo: 5, label: 'Onarım Aşamasında', codes: ['site_visit_planned', 'site_visit_done', 'budget_approved', 'repair_planning', 'repair_in_progress'] },
   { id: 'finans', sequenceNo: 6, label: 'Finansa Aktarıldı', codes: ['repair_completed', 'invoice_pending', 'invoice_submitted', 'payment_pending', 'partially_collected'] },
   { id: 'kapandi', sequenceNo: 7, label: 'Dosya Kapatıldı', codes: ['closed', 'completed'] },
-  { id: 'iptal', sequenceNo: 8, label: 'İptal', codes: ['cancelled'] },
+  { id: 'iptal', sequenceNo: 8, label: 'Dosya İptal Edildi', codes: ['cancelled'] },
 ];
 
-/** Acil kuyruk — aynı ürün dili, kendi kodları. */
+/** Acil kuyruk — tespit yok; Onarım Aşamasında yerine Hizmet verildi. */
 export const ACIL_PRODUCT_STAGE_FILTERS: readonly ProductStageFilter[] = [
-  { id: 'ihbar', sequenceNo: 1, label: 'Yeni İhbar', codes: ['GELEN'] },
-  { id: 'tespit', sequenceNo: 2, label: 'Tespit Aşamasında', codes: ['ATANDI'] },
-  { id: 'onarim', sequenceNo: 3, label: 'Onarım Aşamasında', codes: ['SAHADA'] },
-  { id: 'kapandi', sequenceNo: 4, label: 'Dosya Kapatıldı', codes: ['COZULDU'] },
-  { id: 'finans', sequenceNo: 5, label: 'Finansa Aktarıldı', codes: ['FATURALANDILDI'] },
+  { id: 'ihbar', sequenceNo: 1, label: 'Yeni İhbar', codes: ['GELEN', 'ATANDI'] },
+  { id: 'hizmet', sequenceNo: 2, label: 'Hizmet verildi', codes: ['SAHADA'] },
+  { id: 'kapandi', sequenceNo: 3, label: 'Dosya Kapatıldı', codes: ['COZULDU'] },
+  { id: 'finans', sequenceNo: 4, label: 'Finansa Aktarıldı', codes: ['FATURALANDILDI'] },
 ];
 
 export const CLAIM_LIST_PRODUCT_STAGE_PREFIX = '__stage__';

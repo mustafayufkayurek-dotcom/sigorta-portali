@@ -32,5 +32,6 @@ describe('claim-list-url-status lock', () => {
     const ops = readFileSync(join(here, '../app/panel/operasyon/page.tsx'), 'utf8');
     assert.match(ops, /ACIL_PRODUCT_STAGE_FILTERS/);
     assert.match(ops, /acil-asama-filtre/);
+    assert.match(ops, /EMERGENCY_STATUS_PRODUCT_LABELS/);
   });
 });

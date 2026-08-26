@@ -92,24 +92,29 @@ describe('ürün dili aşama filtresi LOCK', () => {
         '5. Onarım Aşamasında',
         '6. Finansa Aktarıldı',
         '7. Dosya Kapatıldı',
-        '8. İptal',
+        '8. Dosya İptal Edildi',
       ],
     );
     assert.deepEqual(
       ACIL_PRODUCT_STAGE_FILTERS.map((s) => `${s.sequenceNo}. ${s.label}`),
       [
         '1. Yeni İhbar',
-        '2. Tespit Aşamasında',
-        '3. Onarım Aşamasında',
-        '4. Dosya Kapatıldı',
-        '5. Finansa Aktarıldı',
+        '2. Hizmet verildi',
+        '3. Dosya Kapatıldı',
+        '4. Finansa Aktarıldı',
       ],
     );
+    assert.equal(
+      ACIL_PRODUCT_STAGE_FILTERS.some((s) => s.label === 'Tespit Aşamasında'),
+      false,
+    );
+    assert.equal(EMERGENCY_STATUS_PRODUCT_LABELS.ATANDI, 'Yeni İhbar');
+    assert.equal(EMERGENCY_STATUS_PRODUCT_LABELS.SAHADA, 'Hizmet verildi');
     const hasarLabels = HASAR_PRODUCT_STAGE_FILTERS.map((s) => s.label).join(' ');
     for (const forbidden of FORBIDDEN_STAFF_CLAIM_STATUS_LABELS) {
       assert.equal(hasarLabels.includes(forbidden), false, forbidden);
     }
-    assert.equal(OPERATION_STAGES.eksper_atandi.label, 'Tespit Aşamasında');
+    assert.equal(deriveOperationStage({ claimStatusCode: 'cancelled' }).label, 'Dosya İptal Edildi');
     assert.equal(OPERATION_STAGES.rapor_yaziliyor.label, 'Rapor Yazım Aşamasında');
     assert.equal(deriveOperationStage({ claimStatusCode: 'adjuster_assigned' }).label, 'Tespit Aşamasında');
     assert.equal(deriveOperationStage({ claimStatusCode: 'budget_preparing' }).label, 'Rapor Yazım Aşamasında');

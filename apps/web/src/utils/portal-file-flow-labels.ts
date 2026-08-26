@@ -29,7 +29,7 @@ export const PORTAL_STATUS_LABELS: Record<string, string> = {
   payment_pending: 'Finansa Aktarıldı',
   partially_collected: 'Finansa Aktarıldı',
   closed: 'Dosya Kapatıldı',
-  cancelled: 'İptal',
+  cancelled: 'Dosya İptal Edildi',
   completed: 'Dosya Kapatıldı',
   SUPPLIER_ASSIGNED: 'Onarım Tespitçisi Atandı',
   APPOINTMENT_SCHEDULED: 'Site Randevusu Alındı',
@@ -69,7 +69,7 @@ export function portalStatusLabel(code: string | undefined, fallbackName?: strin
   if (/revizyon/.test(name)) return 'Rapor Yazım Aşamasında';
   if (/rapor yaz|budget.?prepar/.test(name)) return 'Rapor Yazım Aşamasında';
   if (/kapat|tamam|closed|completed/.test(name)) return 'Dosya Kapatıldı';
-  if (/iptal|cancel/.test(name)) return 'İptal Edildi';
+  if (/iptal|cancel/.test(name)) return 'Dosya İptal Edildi';
   return fallbackName ?? code ?? '—';
 }
 

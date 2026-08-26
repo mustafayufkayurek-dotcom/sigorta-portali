@@ -320,7 +320,7 @@ async function main() {
     { code: 'payment_pending', name: 'Finansa Aktarıldı', sequenceNo: 15, color: '#F59E0B', isClosedState: false },
     { code: 'partially_collected', name: 'Finansa Aktarıldı', sequenceNo: 16, color: '#FBBF24', isClosedState: false },
     { code: 'closed', name: 'Dosya Kapatıldı', sequenceNo: 17, color: '#059669', isClosedState: true },
-    { code: 'cancelled', name: 'İptal', sequenceNo: 18, color: '#6B7280', isClosedState: true },
+    { code: 'cancelled', name: 'Dosya İptal Edildi', sequenceNo: 18, color: '#6B7280', isClosedState: true },
   ];
 
   await Promise.all(
