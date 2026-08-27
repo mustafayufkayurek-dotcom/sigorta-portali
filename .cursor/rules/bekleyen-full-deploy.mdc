@@ -1,32 +1,24 @@
 ---
-description: Full deploy v541 alındı — 26.08.2026
+description: Full deploy v542 alındı — 27.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v541 (26.08.2026) — alındı
+# Full deploy v542 (27.08.2026) — alındı
 
-Canlı: web + backend **v541**. Rollback: web v540 / backend v540.
+Canlı: web + backend **v542**. Rollback: web v541 / backend v541.
 
-## Alınan paket (v541)
+## Alınan paket (v542)
 
-1. Hasar dijital onay: sigortalı telefonu kutuda hazır gelir. Gönder deyince WhatsApp açılır.
-2. Hasar / Acil durum dili sade. Hasar iptali **Dosya İptal Edildi**. Acil’de **Hizmet Verildi**.
-3. Hasar ve Acil listesinin son sütunu **Sıra**.
-4. Test Notları tüm ekranlardan kalktı. Eski adres panele gider.
-5. Revize rapor dış onaya gider.
+1. Onarım raporu teslim maili: referans kart, teal palet. Ek yalnız dış PDF.
+2. Acil dijital onay 28.08.2026 18:00’e kadar zorunlu değil. 18:01’de talimatsız açılır. Hasar onayı dokunulmaz.
 
-## v540 durur (bozulmaz)
+## v541 durur (bozulmaz)
 
-Onaya gönderim müşteri e-postası; ek yalnız dış PDF. Graph sendMail. Sunum boşluğu. Maliyet m² çarpılmaz. Acil vekalet. Resim oturumla gelir.
+Hasar dijital onay WhatsApp. Durum dili ve Sıra. Test Notları yok. Revize rapor dış onaya gider.
 
 ## Canlıda yok
 
 İK / puantaj. Hasar rapor tipi (Konut/Bina/Eşya).
-
-## Sıradaki canlı paket (v542 — henüz alınmadı)
-
-1. Onarım raporu teslim maili: referans kart, teal palet; ek dış PDF.
-2. Acil dijital onay 28.08.2026 18:00’e kadar zorunlu değil; 18:01’de talimatsız açılır. Hasar onayı dokunulmaz.
 
 ## Sonra (karışmaz)
 

@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-08-26",
-  "label": "v541-dijital-onay-whatsapp",
-  "description": "Full: Hasar dijital onay WhatsApp; durum dili; liste sıra; Test Notları kalktı. Giden mail dış PDF ve sendMail durur. Rollback web v540 / backend v540.",
+  "updatedAt": "2026-08-27",
+  "label": "v542-rapor-mail-acil-onay",
+  "description": "Full: Onarım raporu teslim maili teal kart; Acil dijital onay 28.08.2026 18:01’e kadar kapalı. v541 WhatsApp/durum dili durur. Rollback web v541 / backend v541.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v541-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v541-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v542-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v542-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v540-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v540-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v541-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v541-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
