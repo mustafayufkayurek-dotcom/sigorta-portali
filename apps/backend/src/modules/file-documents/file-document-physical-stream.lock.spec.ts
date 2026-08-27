@@ -16,6 +16,7 @@ describe('file-document physical stream LOCK', () => {
     const svc = readFileSync(join(here, 'file-documents.service.ts'), 'utf8');
     assert.match(ctl, /@Get\(':id\/physical-file'\)/);
     assert.match(ctl, /getPhysicalFileBuffer/);
+    assert.match(ctl, /@Get\(':id\/view'\)/);
     assert.match(ctl, /res\.send\(buffer\)/);
     assert.doesNotMatch(ctl, /res\.redirect\(302/);
     assert.match(svc, /storage\.download/);

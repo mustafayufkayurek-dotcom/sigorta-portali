@@ -1,12 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Download, Eye, X } from 'lucide-react';
+import { Download, Eye, Printer, X } from 'lucide-react';
 import { ExpertOperationHistory } from '@/components/eksper-portal/ExpertOperationHistory';
 import { fmtDate } from '@/utils/date-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
-import { getFileDocuments, type FileDocument } from '@/utils/fileDocumentApi';
+import {
+  claimManualDocumentLabel,
+  getFileDocuments,
+  openFileDocumentView,
+  type FileDocument,
+} from '@/utils/fileDocumentApi';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = API_BASE.endsWith('/api/v1') ? API_BASE : `${API_BASE}/api/v1`;
@@ -173,16 +178,20 @@ type DocItem = {
   createdAt?: string;
   fileAsset?: { storageKey?: string };
   storageKey?: string;
+  fileDocumentId?: string;
+  canPreview?: boolean;
 };
 
 function mapFileDocument(row: FileDocument): DocItem {
-  const kindLabel = row.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Matbu Evrak';
+  const kindLabel = claimManualDocumentLabel(row);
   return {
     id: `fd-${row.id}`,
+    fileDocumentId: row.id,
     fileName: row.approvedFullName ? `${kindLabel} — ${row.approvedFullName}` : kindLabel,
     documentType: kindLabel,
     createdAt: row.createdAt,
     storageKey: row.physicalUploadKey ?? undefined,
+    canPreview: row.canPreview !== false,
   };
 }
 
@@ -314,6 +323,14 @@ export function ExpertFileDocumentsModal({
   };
 
   const openAsset = async (doc: DocItem, download: boolean) => {
+    if (doc.fileDocumentId) {
+      try {
+        await openFileDocumentView(doc.fileDocumentId, { print: download });
+      } catch {
+        setError('Belge açılamadı.');
+      }
+      return;
+    }
     const storageKey = doc.fileAsset?.storageKey ?? doc.storageKey;
     if (!storageKey) {
       setError('Bu belgenin dosya bağlantısı bulunamadı.');
@@ -414,15 +431,27 @@ export function ExpertFileDocumentsModal({
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </button>
-                        <button
-                          type="button"
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
-                          title="İndir"
-                          aria-label="İndir"
-                          onClick={() => void openAsset(d, true)}
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                        </button>
+                        {d.fileDocumentId ? (
+                          <button
+                            type="button"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
+                            title="Yazdır"
+                            aria-label="Yazdır"
+                            onClick={() => void openAsset(d, true)}
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
+                            title="İndir"
+                            aria-label="İndir"
+                            onClick={() => void openAsset(d, true)}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

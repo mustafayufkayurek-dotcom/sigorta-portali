@@ -37,8 +37,9 @@ export class FileDocumentsController {
   findByEntity(
     @Param('entityType') entityType: string,
     @Param('entityId') entityId: string,
+    @Request() req: any,
   ) {
-    return this.service.findByEntity(entityType, entityId);
+    return this.service.findByEntity(entityType, entityId, req.user);
   }
 
   @Get('claim-file/:claimFileId/closure-conditions')
@@ -76,8 +77,17 @@ export class FileDocumentsController {
   }
 
   @Get(':id/physical-file')
-  async physicalFile(@Param('id') id: string, @Res() res: Response) {
-    const { buffer, fileName, mimeType } = await this.service.getPhysicalFileBuffer(id);
+  async physicalFile(@Param('id') id: string, @Request() req: any, @Res() res: Response) {
+    const { buffer, fileName, mimeType } = await this.service.getPhysicalFileBuffer(id, req.user);
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.send(buffer);
+  }
+
+  @Get(':id/view')
+  async view(@Param('id') id: string, @Request() req: any, @Res() res: Response) {
+    const { buffer, fileName, mimeType } = await this.service.getStaffViewBuffer(id, req.user);
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
     res.setHeader('Cache-Control', 'private, max-age=300');

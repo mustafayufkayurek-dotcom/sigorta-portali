@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Eye, Loader2 } from 'lucide-react';
+import { Eye, Loader2, Printer } from 'lucide-react';
 import { SlidePanel } from '@/components/SlidePanel';
 import { fmtDate, fmtDateTime } from '@/utils/date-helpers';
 import { formatClaimSubjectLabel, toTitleCaseTR } from '@/utils/text-helpers';
@@ -9,6 +9,8 @@ import { getAccessToken } from '@/utils/auth-session';
 import {
   getClaimClosureConditions,
   getFileDocuments,
+  openFileDocumentView,
+  claimManualDocumentLabel,
   type ClaimClosureConditions,
   type FileDocument,
 } from '@/utils/fileDocumentApi';
@@ -246,6 +248,10 @@ export function ExpertFileDetailDrawer({
   canUploadDocuments = false,
 }: ExpertFileDetailDrawerProps) {
   const isAssistance = audience === 'assistance';
+  const isInsurance = audience === 'insurance';
+  const tabItems = isInsurance
+    ? TABS.map((t) => (t.id === 'belgeler' ? { ...t, label: 'Evraklar' } : t))
+    : TABS;
   const [tab, setTab] = useState<TabId>(normalizeTab(initialTab));
   const [detail, setDetail] = useState<ExpertSafeDetail | null>(null);
   const [notes, setNotes] = useState<NoteRow[]>([]);
@@ -744,7 +750,7 @@ export function ExpertFileDetailDrawer({
         </div>
 
         <div className="flex shrink-0 gap-0.5 border-b border-slate-100 px-3 pt-1.5">
-          {TABS.map((t) => (
+          {tabItems.map((t) => (
             <button
               key={t.id}
               type="button"
@@ -1007,12 +1013,19 @@ export function ExpertFileDetailDrawer({
                     Muvafakat / Dijital Onay Kayıtları
                   </p>
                   <ul className="mt-2 space-y-1.5">
-                    {fileDocs.map((fd) => (
+                    {fileDocs.map((fd) => {
+                      const canOpen =
+                        fd.canPreview ||
+                        Boolean(fd.physicalUploadKey) ||
+                        fd.documentKind === 'muvafakatname' ||
+                        fd.documentKind === 'matbu_evrak';
+                      return (
                       <li key={fd.id} className="flex items-center justify-between gap-2 text-xs">
                         <span className="font-medium text-slate-800">
-                          {fd.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Evrak'}
+                          {claimManualDocumentLabel(fd)}
                         </span>
-                        <span className="text-slate-500">
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-slate-500">
                           {{
                             draft: 'Taslak',
                             sent: 'Gönderildi',
@@ -1020,9 +1033,33 @@ export function ExpertFileDetailDrawer({
                             digitally_approved: 'Dijital Onaylı',
                             physically_uploaded: 'Yüklendi',
                           }[fd.status] ?? fd.status.replace(/_/g, ' ')}
+                          </span>
+                          {canOpen ? (
+                            <>
+                              <button
+                                type="button"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
+                                title="Görüntüle"
+                                aria-label="Görüntüle"
+                                onClick={() => void openFileDocumentView(fd.id)}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
+                                title="Yazdır"
+                                aria-label="Yazdır"
+                                onClick={() => void openFileDocumentView(fd.id, { print: true })}
+                              >
+                                <Printer className="h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          ) : null}
                         </span>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 </div>
               ) : null}

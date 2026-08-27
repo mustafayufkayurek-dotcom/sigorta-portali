@@ -1,0 +1,35 @@
+---
+description: Sigorta şirketi poliçeyi uzaktan izler; muvafakat evrakta
+alwaysApply: true
+---
+
+# Sigorta Şirketi Uzaktan İzleme Kilidi
+
+**Kaynak (Mustafa · 27.08.2026):** Poliçeyi asıl düzenleyen sigorta şirketi Meridyen’i uzaktan izler. Dosyalar yalnız eksperden alınmaz. Şirket ekspere «Meridyen ile çalış, sistem çalışıyor» dedirtir.
+
+**Temel cümle:** Sigorta portalında ilgili dosyanın **Evraklar** sekmesinde muvafakat **görülür ve yazdırılır.** İlerleyiş gibi bu da izlemenin parçasıdır.
+
+## Zorunlu
+
+1. Sigorta kullanıcısı kendi şirketinin dosyasındaki `file-documents` kaydını listeler (`GET .../entity/claim_file/:id`).
+2. Muvafakat (dijital HTML veya fiziki kopya) `GET file-documents/:id/view` ile oturumda açılır; yazdırma aynı yoldan. MinIO 302 yok.
+3. Çekmece sekmesi sigortada **Evraklar**; Görüntüle + Yazdır durur.
+4. Liste etiketi `claimManualDocumentLabel` — «Matbu Evrak» diye muvafakat gizlenmez.
+5. Sigorta kullanıcısına public WhatsApp tokeni dönülmez.
+
+## Yasak (açık onay yoksa)
+
+- Muvafakati yalnız Hasar iç ekranında bırakıp sigorta portalından kesmek
+- Sigorta izlemesini «eksper zaten görür» diye kapatmak
+
+## Durdurma
+
+Sigorta evrakta muvafakat yok veya yazdırılamıyorsa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+  apps/web/src/app/panel/sigorta-portal/sigorta-evrak-muvafakat.lock.spec.ts \
+  apps/backend/src/modules/file-documents/file-document-insurance-view.lock.spec.ts
+```

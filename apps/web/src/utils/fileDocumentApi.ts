@@ -35,6 +35,9 @@ export function claimManualDocumentLabel(doc: {
   documentTypeName?: string | null;
 }) {
   if (doc.documentTypeName?.trim()) return doc.documentTypeName.trim();
+  if (doc.documentKind === 'muvafakatname') return 'Muvafakatname';
+  if (doc.documentKind === 'matbu_evrak') return 'Servis Onay Formu';
+  if (doc.documentKind === 'anket_formu') return 'Anket Formu';
   return 'Evrak';
 }
 
@@ -64,6 +67,7 @@ export interface FileDocument {
   approvedFullName?: string | null;
   physicalUploadKey?: string | null;
   physicalUploadedAt?: string | null;
+  canPreview?: boolean;
   createdAt: string;
   createdBy?: { id: string; firstName: string; lastName: string };
 }
@@ -149,8 +153,8 @@ export function uploadClaimManualDocument(
 }
 
 /** Oturumla bayt; imzalı MinIO adresi tarayıcıya gitmez. */
-export async function openFileDocumentPhysical(id: string): Promise<void> {
-  const res = await authFetch(`${API}/file-documents/${id}/physical-file`, {
+async function openFileDocumentBlob(path: string, print = false): Promise<void> {
+  const res = await authFetch(`${API}${path}`, {
     redirect: 'manual',
   });
   if (res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) {
@@ -163,7 +167,28 @@ export async function openFileDocumentPhysical(id: string): Promise<void> {
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
-  window.open(url, '_blank', 'noopener,noreferrer');
+  const w = window.open(url, '_blank', 'noopener,noreferrer');
+  if (print && w) {
+    const runPrint = () => {
+      try {
+        w.focus();
+        w.print();
+      } catch {
+        /* tarayıcı yazdırmayı kesti */
+      }
+    };
+    w.addEventListener('load', runPrint);
+    window.setTimeout(runPrint, 500);
+  }
+}
+
+export async function openFileDocumentPhysical(id: string): Promise<void> {
+  await openFileDocumentBlob(`/file-documents/${id}/physical-file`);
+}
+
+/** Dijital muvafakat HTML veya fiziki evrak — sigorta izleme / yazdırma */
+export async function openFileDocumentView(id: string, opts?: { print?: boolean }): Promise<void> {
+  await openFileDocumentBlob(`/file-documents/${id}/view`, Boolean(opts?.print));
 }
 
 export function getClaimClosureConditions(

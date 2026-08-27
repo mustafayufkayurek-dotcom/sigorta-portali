@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -29,6 +30,11 @@ import {
   isClaimInsuredCatalogDocumentType,
   isDocumentTypeId,
 } from '@/modules/document-types/document-type-scope';
+import {
+  assertClaimFileAccess,
+  isInsuranceCompanyUser,
+  normalizeRequestUser,
+} from '@/common/helpers/claim-file-scope.helper';
 
 /** Müşteriye dönük matbu — iç fiyat / kâr etiketleri sızmaz */
 const INTERNAL_COST_DESC_RE =
@@ -409,7 +415,30 @@ export class FileDocumentsService {
 
   // ── Liste & Detay ─────────────────────────────────────────────────────────
 
-  async findByEntity(entityType: string, entityId: string) {
+  private async assertViewerAccess(
+    entityType: string,
+    entityId: string,
+    user?: { roleCode?: string; role?: { code?: string }; insuranceCompanyScopes?: string[] },
+  ) {
+    const normalized = normalizeRequestUser(user);
+    if (!normalized || !isInsuranceCompanyUser(normalized.roleCode)) return;
+    if (entityType !== 'claim_file') {
+      throw new ForbiddenException('Bu evraka erişim izniniz bulunmamaktadır');
+    }
+    const cf = await this.prisma.claimFile.findUnique({
+      where: { id: entityId },
+      select: { insuranceCompanyId: true },
+    });
+    if (!cf) throw new NotFoundException('Hasar dosyası bulunamadı');
+    assertClaimFileAccess(cf, normalized, user?.insuranceCompanyScopes ?? []);
+  }
+
+  async findByEntity(
+    entityType: string,
+    entityId: string,
+    user?: { roleCode?: string; role?: { code?: string }; insuranceCompanyScopes?: string[] },
+  ) {
+    await this.assertViewerAccess(entityType, entityId, user);
     const [docs, suggestedPhone] = await Promise.all([
       this.prisma.fileDocument.findMany({
         where: { entityType, entityId },
@@ -426,6 +455,7 @@ export class FileDocumentsService {
           approvedFullName: true,
           physicalUploadKey: true,
           physicalUploadedAt: true,
+          renderedContent: true,
           createdAt: true,
           createdBy: { select: { id: true, firstName: true, lastName: true } },
         },
@@ -442,11 +472,20 @@ export class FileDocumentsService {
             select: { id: true, name: true },
           });
     const catalogName = new Map(catalogRows.map((r) => [r.id, r.name]));
-    return docs.map((d) => ({
-      ...d,
-      suggestedPhone,
-      documentTypeName: catalogName.get(d.documentKind) ?? null,
-    }));
+    const hidePublicToken = Boolean(
+      user && isInsuranceCompanyUser(normalizeRequestUser(user)?.roleCode ?? ''),
+    );
+    return docs.map((d) => {
+      const { renderedContent, publicToken, publicTokenExpiresAt, ...rest } = d;
+      return {
+        ...rest,
+        publicToken: hidePublicToken ? null : publicToken,
+        publicTokenExpiresAt: hidePublicToken ? null : publicTokenExpiresAt,
+        suggestedPhone: hidePublicToken ? '' : suggestedPhone,
+        documentTypeName: catalogName.get(d.documentKind) ?? null,
+        canPreview: Boolean(d.physicalUploadKey || renderedContent),
+      };
+    });
   }
 
   async findOne(id: string) {
@@ -571,12 +610,16 @@ export class FileDocumentsService {
     return this.uploadPhysical(doc.id, result.key, uploadedByUserId);
   }
 
-  async getPhysicalFileBuffer(id: string): Promise<{
+  async getPhysicalFileBuffer(
+    id: string,
+    user?: { roleCode?: string; role?: { code?: string }; insuranceCompanyScopes?: string[] },
+  ): Promise<{
     buffer: Buffer;
     fileName: string;
     mimeType: string;
   }> {
     const doc = await this.findOne(id);
+    await this.assertViewerAccess(doc.entityType, doc.entityId, user);
     if (!doc.physicalUploadKey) {
       throw new NotFoundException('Yüklenmiş evrak dosyası yok');
     }
@@ -595,6 +638,36 @@ export class FileDocumentsService {
               ? 'image/gif'
               : 'application/octet-stream';
     return { buffer, fileName, mimeType };
+  }
+
+  /** Oturumla görüntü / yazdır: fiziki bayt veya dijital HTML (muvafakat). MinIO 302 yok. */
+  async getStaffViewBuffer(
+    id: string,
+    user?: { roleCode?: string; role?: { code?: string }; insuranceCompanyScopes?: string[] },
+  ): Promise<{
+    buffer: Buffer;
+    fileName: string;
+    mimeType: string;
+  }> {
+    const doc = await this.findOne(id);
+    await this.assertViewerAccess(doc.entityType, doc.entityId, user);
+    if (doc.physicalUploadKey) {
+      return this.getPhysicalFileBuffer(id, user);
+    }
+    if (doc.renderedContent?.trim()) {
+      const html =
+        doc.documentKind === 'matbu_evrak'
+          ? toInsuredFacingMatbuHtml(doc.renderedContent)
+          : doc.renderedContent;
+      const fileName =
+        doc.documentKind === 'muvafakatname' ? 'muvafakatname.html' : 'evrak.html';
+      return {
+        buffer: Buffer.from(html, 'utf8'),
+        fileName,
+        mimeType: 'text/html; charset=utf-8',
+      };
+    }
+    throw new NotFoundException('Görüntülenecek evrak yok');
   }
 
   // ── Public Token — Görüntüleme ────────────────────────────────────────────
