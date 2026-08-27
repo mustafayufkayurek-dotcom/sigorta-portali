@@ -21,6 +21,11 @@
 
 ## Son deploy kronolojisi
 
+### v544 — Full (27 Ağustos 2026) — Evrak MinIO / sekmeler / DOC / işlem ikonları
+
+- Fiziki evrak oturumla bayt; müşteri sekmeleri; DOC kodu; Ayarlar kalem/sil
+- Rollback web+backend **v543**. İK yok.
+
 ### v346 — Web-only (13 Temmuz 2026) — Dashboard Dosya Sorumlusu Merkezi Faz 4 (D0)
 
 - Başlık **Dosya Sorumlusu Merkezi** + Dosya Sorumlusu rozeti

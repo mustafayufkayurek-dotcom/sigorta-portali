@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-27",
-  "label": "v543-tanimlar-katalog",
-  "description": "Full: Operasyon sözlükleri admin kaydından; Hasar planlayıcı Boyacı maketi yok. İK yok. Rollback web v542 / backend v542.",
+  "label": "v544-evrak-minio-sekme",
+  "description": "Full: Fiziki evrak oturumla; Evrak Türleri müşteri sekmeleri, DOC kodu, Ayarlar işlem ikonları. İK yok. Rollback web v543 / backend v543.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v543-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v543-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v544-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v544-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v542-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v542-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v543-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v543-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -22,6 +22,7 @@
     "/panel/raporlar",
     "/panel/carilerim",
     "/panel/ayarlar/tanimlar",
+    "/panel/ayarlar/evrak-turleri",
     "/panel/ayarlar/yetkilendirme",
     "/panel/operasyon",
     "/panel/operasyon/gelen-kutusu",

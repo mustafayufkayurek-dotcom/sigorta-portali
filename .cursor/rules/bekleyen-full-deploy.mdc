@@ -1,16 +1,21 @@
 ---
-description: Full deploy v543 alındı — 27.08.2026
+description: Full deploy v544 alındı — 27.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v543 (27.08.2026) — alındı
+# Full deploy v544 (27.08.2026) — alındı
 
-Canlı: web + backend **v543**. Rollback: web v542 / backend v542.
+Canlı: web + backend **v544**. Rollback: web v543 / backend v543.
 
-## Alınan paket (v543)
+## Alınan paket (v544)
 
-1. Operasyon sözlükleri Ayarlar kaydından; kod yedek listesi ezmez (evrak türü, dosya konusu, müşteri tipi, tespit alanı, tedarikçi türü, müşteri kaynağı, saha hizmet kolu).
-2. Hasar planlayıcı tedarikçi adımında Boyacı / Kadıköy maketi ve sahte havuz kaydı yok.
+1. Hasar fiziki evrak oturumla açılır; MinIO adresi tarayıcıya düşmez.
+2. Evrak Türleri müşteri tipi sekmeleri durur; yeni tür kodu DOC-NNNNN.
+3. İşlemler Ayarlar kalem/sil ikonu; boş kapsamda tablo kalkmaz.
+
+## v543 durur (bozulmaz)
+
+Operasyon sözlükleri Ayarlar kaydından. Hasar planlayıcı Boyacı maketi yok.
 
 ## v542 durur (bozulmaz)
 
