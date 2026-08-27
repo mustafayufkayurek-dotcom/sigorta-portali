@@ -21,6 +21,11 @@
 
 ## Son deploy kronolojisi
 
+### v545 — Full (27 Ağustos 2026) — Sigorta muvafakat izleme
+
+- Sigorta portalı kendi dosyasında muvafakat görüntüle / yazdır
+- Rollback web+backend **v544**. İK yok.
+
 ### v544 — Full (27 Ağustos 2026) — Evrak MinIO / sekmeler / DOC / işlem ikonları
 
 - Fiziki evrak oturumla bayt; müşteri sekmeleri; DOC kodu; Ayarlar kalem/sil

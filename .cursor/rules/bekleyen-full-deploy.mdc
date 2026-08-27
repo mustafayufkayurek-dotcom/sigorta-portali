@@ -1,29 +1,27 @@
 ---
-description: Full deploy v544 alındı — 27.08.2026
+description: Full deploy v545 alındı — 27.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v544 (27.08.2026) — alındı
+# Full deploy v545 (27.08.2026) — alındı
 
-Canlı: web + backend **v544**. Rollback: web v543 / backend v543.
+Canlı: web + backend **v545**. Rollback: web v544 / backend v544.
 
-## Alınan paket (v544)
+## Alınan paket (v545)
 
-1. Hasar fiziki evrak oturumla açılır; MinIO adresi tarayıcıya düşmez.
-2. Evrak Türleri müşteri tipi sekmeleri durur; yeni tür kodu DOC-NNNNN.
-3. İşlemler Ayarlar kalem/sil ikonu; boş kapsamda tablo kalkmaz.
+1. Sigorta şirketi yalnız **kendi** dosyasında muvafakati Evraklar’da görür ve yazdırır.
+
+## v544 durur (bozulmaz)
+
+Fiziki evrak oturumla. Evrak Türleri sekmeleri, DOC kodu, Ayarlar işlem ikonları.
 
 ## v543 durur (bozulmaz)
 
 Operasyon sözlükleri Ayarlar kaydından. Hasar planlayıcı Boyacı maketi yok.
 
-## v542 durur (bozulmaz)
-
-Onarım raporu teslim maili teal kart, dış PDF. Acil dijital onay 28.08.2026 18:01’e kadar kapalı. Hasar WhatsApp / durum dili / Sıra.
-
 ## Canlıda yok
 
-İK izin/zimmet seçenekleri bu pakette yok. İK / puantaj. Hasar rapor tipi (Konut/Bina/Eşya).
+İK izin/zimmet. İK / puantaj. Hasar rapor tipi (Konut/Bina/Eşya).
 
 ## Sonra (karışmaz)
 
