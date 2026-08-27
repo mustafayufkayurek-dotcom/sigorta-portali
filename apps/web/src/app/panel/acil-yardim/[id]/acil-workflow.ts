@@ -5,6 +5,7 @@
 
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { parseAnaMusteriHaberlesme, type AnaMusteriHaberlesme } from '@/utils/acil-ana-musteri-haberlesme';
+import { isAcilDigitalApprovalRequired } from '@sigorta/shared';
 
 export {
   computeAcilStageStatuses,
@@ -612,7 +613,9 @@ export function evaluateOperationStartGate(input: {
   if (!input.hasVendor) missing.push('Tedarikçi');
   if (!input.saleReady) missing.push(CLOSE_FINANCE_CHECK_LABELS.salePrice);
   if (!input.customerApproved) missing.push('Müşteri Onayı');
-  if (!input.digitalApproval) missing.push(CLOSE_FINANCE_CHECK_LABELS.digitalApproval);
+  if (isAcilDigitalApprovalRequired() && !input.digitalApproval) {
+    missing.push(CLOSE_FINANCE_CHECK_LABELS.digitalApproval);
+  }
   return { ready: missing.length === 0, missingLabels: missing };
 }
 

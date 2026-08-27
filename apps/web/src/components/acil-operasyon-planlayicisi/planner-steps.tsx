@@ -7,6 +7,7 @@
 import { useState, type ReactNode } from 'react';
 import { Phone, TrendingDown, TrendingUp, UserRound, Wallet, Mail } from 'lucide-react';
 import { calcAlisSatisKar, formatTryAmount, parseTrAmount } from '@/utils/format-try-amount';
+import { isAcilDigitalApprovalRequired } from '@sigorta/shared';
 import { WhatsAppIcon } from '@/components/ui/PhoneContactActions';
 import type { VendorRecommendation } from '@/utils/emergencyApi';
 import type { AcilStageKey } from '@/app/panel/acil-yardim/[id]/acil-workflow';
@@ -646,12 +647,16 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
         </Card>
         <Card title="Servis onay formu">
           <p className="text-[11px] text-slate-500" data-testid="acil-onay-dijital-evrak">
-            Acil’de muvafakatname yok. Dijital onay bu forma alınır. Vazgeçilmez.
+            {isAcilDigitalApprovalRequired()
+              ? 'Acil’de muvafakatname yok. Dijital onay bu forma alınır. Vazgeçilmez.'
+              : '28.08.2026 18:01’e kadar dijital onay zorunlu değil. Form durur; işlem kesilmez.'}
           </p>
           {p.digitalDocsOk ? (
             <p className="mt-2 text-xs font-semibold text-emerald-700">Dijital onay tamam.</p>
-          ) : (
+          ) : isAcilDigitalApprovalRequired() ? (
             <p className="mt-2 text-xs font-semibold text-amber-800">Servis onay formu bekleniyor.</p>
+          ) : (
+            <p className="mt-2 text-xs font-semibold text-slate-600">Zorunluluk 18:01’de geri gelir.</p>
           )}
         </Card>
         <Card title="Sigortalı bilgilendirme">

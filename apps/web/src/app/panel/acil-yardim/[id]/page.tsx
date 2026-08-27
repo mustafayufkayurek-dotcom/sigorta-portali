@@ -8,7 +8,7 @@ import {
   History,
   Wallet,
 } from 'lucide-react';
-import { resolveEmergencyOperationLabel } from '@sigorta/shared';
+import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
 import { PANEL_CARD_BASE, PanelSectionTitle } from '@/components/panel/PanelCard';
@@ -1457,12 +1457,17 @@ export default function AcilDosyaDetayPage() {
       return;
     }
     if (!flow.customerApproved) {
-      setActionFlash('Önce müşteri onayı ve dijital evrak.');
+      setActionFlash(
+        acilDigitalApprovalGateOk(false)
+          ? 'Önce müşteri onayı.'
+          : 'Önce müşteri onayı ve dijital evrak.',
+      );
       return;
     }
     const docsNow = vaka.operationChain?.documents;
-    const digitalOk =
-      (docsNow?.digitallyApprovedCount ?? 0) > 0 || Boolean(docsNow?.hasApprovedMatbuEvrak);
+    const digitalOk = acilDigitalApprovalGateOk(
+      (docsNow?.digitallyApprovedCount ?? 0) > 0 || Boolean(docsNow?.hasApprovedMatbuEvrak),
+    );
     const opGate = evaluateOperationStartGate({
       hasVendor: Boolean(vaka.assignedVendorId),
       saleReady: parsePriceInput(satisFiyati) > 0 || costSummary.totalGelir > 0,
@@ -1824,8 +1829,9 @@ export default function AcilDosyaDetayPage() {
   };
   const stageIdx = deriveAcilStageIndex(stageEngineInput);
   const chainDocs = vaka.operationChain?.documents;
-  const digitalDocsOk =
-    (chainDocs?.digitallyApprovedCount ?? 0) > 0 || Boolean(chainDocs?.hasApprovedMatbuEvrak);
+  const digitalDocsOk = acilDigitalApprovalGateOk(
+    (chainDocs?.digitallyApprovedCount ?? 0) > 0 || Boolean(chainDocs?.hasApprovedMatbuEvrak),
+  );
   const vendorCostDone = (costSummary.totalGider > 0 || flow.costConfirmed || parsePriceInput(alisFiyati) > 0)
     && (parsePriceInput(satisFiyati) > 0 || costSummary.totalGelir > 0);
   const operatorStepStatuses: Record<OperatorStepKey, AcilPlannerStepStatus> = {

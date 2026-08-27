@@ -14,7 +14,7 @@ import {
 import { buildAppPath } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
-import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest } from '@sigorta/shared';
+import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isAcilDigitalApprovalRequired } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -701,9 +701,12 @@ export class FileDocumentsService {
       caseStatusCompleted: ec?.status === 'COZULDU' || ec?.status === 'FATURALANDILDI',
     };
 
+    const digitalOk =
+      conditions.matbuEvrakDigitallyApproved || !isAcilDigitalApprovalRequired();
+
     return {
       ...conditions,
-      canCreateInvoiceRequest: Object.values(conditions).every(Boolean),
+      canCreateInvoiceRequest: digitalOk && conditions.caseStatusCompleted,
       matbuEvrakId: matbuEvrak?.id ?? null,
       matbuEvrakStatus: matbuEvrak?.status ?? null,
     };

@@ -9,6 +9,7 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { FileDocumentsService } from '../file-documents/file-documents.service';
 import { SurveysService } from '@/modules/surveys/surveys.service';
+import { isAcilDigitalApprovalRequired } from '@sigorta/shared';
 import {
   CreateInvoiceRequestDto,
   UpdateInvoiceRequestStatusDto,
@@ -75,7 +76,7 @@ export class InvoiceRequestsService {
       );
       if (!conds.canCreateInvoiceRequest) {
         const missing: string[] = [];
-        if (!conds.matbuEvrakDigitallyApproved)
+        if (!conds.matbuEvrakDigitallyApproved && isAcilDigitalApprovalRequired())
           missing.push('Matbu evrak dijital onayı');
         if (!conds.caseStatusCompleted) missing.push('Dosya kapanmamış veya finansa gönderilmemiş');
         throw new BadRequestException(

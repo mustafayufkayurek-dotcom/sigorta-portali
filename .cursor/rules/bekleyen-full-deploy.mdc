@@ -23,6 +23,11 @@ Onaya gönderim müşteri e-postası; ek yalnız dış PDF. Graph sendMail. Sunu
 
 İK / puantaj. Hasar rapor tipi (Konut/Bina/Eşya).
 
+## Sıradaki canlı paket (v542 — henüz alınmadı)
+
+1. Onarım raporu teslim maili: referans kart, teal palet; ek dış PDF.
+2. Acil dijital onay 28.08.2026 18:00’e kadar zorunlu değil; 18:01’de talimatsız açılır. Hasar onayı dokunulmaz.
+
 ## Sonra (karışmaz)
 
 **İK personel özlük:** Personel Ekle + zimmet aynı kayıtta. Puantaj ayrı.

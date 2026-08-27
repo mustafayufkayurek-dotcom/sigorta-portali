@@ -1,3 +1,10 @@
+/** 28.08.2026 18:01 TR — packages/shared acil-digital-approval-pause ile aynı. */
+const ACIL_DIGITAL_APPROVAL_RESUME_MS = Date.parse('2026-08-28T18:01:00+03:00');
+
+function isAcilDigitalApprovalRequiredNow(): boolean {
+  return Date.now() >= ACIL_DIGITAL_APPROVAL_RESUME_MS;
+}
+
 export type OperatorStepKey =
   | 'ihbar'
   | 'tedarikci_maliyet'
@@ -40,7 +47,9 @@ export function validateOperatorStep(
   if (step === 'onay') {
     if (!acilOnayMetinGovde(s.approvalText).trim()) return 'Riziko adreste açıklamasını yazın.';
     if (s.approvalState === 'bekliyor') return 'Onayı kaydet veya red verin.';
-    if (s.digitalDocsOk === false) return 'Servis onay formu dijital onayı olmadan ilerlenemez.';
+    if (isAcilDigitalApprovalRequiredNow() && s.digitalDocsOk === false) {
+      return 'Servis onay formu dijital onayı olmadan ilerlenemez.';
+    }
   }
   if (step === 'kapanis') {
     if (s.approvalState !== 'onaylandi') return 'Önce onay talep akışı tamamlansın.';

@@ -172,6 +172,7 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /closingStep/);
     assert.match(workflow, /const closeReady = requiredOps.photos;/);
     assert.match(workflow, /evaluateOperationStartGate/);
+    assert.match(workflow, /isAcilDigitalApprovalRequired/);
     assert.doesNotMatch(workflow, /surveyDone &&/);
     assert.match(backend, /buildAcilClosureReportPdf/);
     assert.match(backend, /ihbarAt:/);
