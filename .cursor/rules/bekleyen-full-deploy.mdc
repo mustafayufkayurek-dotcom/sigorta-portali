@@ -1,24 +1,24 @@
 ---
-description: Full deploy v542 alındı — 27.08.2026
+description: Full deploy v543 alındı — 27.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v542 (27.08.2026) — alındı
+# Full deploy v543 (27.08.2026) — alındı
 
-Canlı: web + backend **v542**. Rollback: web v541 / backend v541.
+Canlı: web + backend **v543**. Rollback: web v542 / backend v542.
 
-## Alınan paket (v542)
+## Alınan paket (v543)
 
-1. Onarım raporu teslim maili: referans kart, teal palet. Ek yalnız dış PDF.
-2. Acil dijital onay 28.08.2026 18:00’e kadar zorunlu değil. 18:01’de talimatsız açılır. Hasar onayı dokunulmaz.
+1. Operasyon sözlükleri Ayarlar kaydından; kod yedek listesi ezmez (evrak türü, dosya konusu, müşteri tipi, tespit alanı, tedarikçi türü, müşteri kaynağı, saha hizmet kolu).
+2. Hasar planlayıcı tedarikçi adımında Boyacı / Kadıköy maketi ve sahte havuz kaydı yok.
 
-## v541 durur (bozulmaz)
+## v542 durur (bozulmaz)
 
-Hasar dijital onay WhatsApp. Durum dili ve Sıra. Test Notları yok. Revize rapor dış onaya gider.
+Onarım raporu teslim maili teal kart, dış PDF. Acil dijital onay 28.08.2026 18:01’e kadar kapalı. Hasar WhatsApp / durum dili / Sıra.
 
 ## Canlıda yok
 
-İK / puantaj. Hasar rapor tipi (Konut/Bina/Eşya).
+İK izin/zimmet seçenekleri bu pakette yok. İK / puantaj. Hasar rapor tipi (Konut/Bina/Eşya).
 
 ## Sonra (karışmaz)
 
