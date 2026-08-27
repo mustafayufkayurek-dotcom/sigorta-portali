@@ -9,7 +9,9 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { FileValidationPipe } from '@/common/pipes/file-validation.pipe';
@@ -74,8 +76,12 @@ export class FileDocumentsController {
   }
 
   @Get(':id/physical-file')
-  async physicalFile(@Param('id') id: string) {
-    return this.service.getPhysicalFileUrl(id);
+  async physicalFile(@Param('id') id: string, @Res() res: Response) {
+    const { buffer, fileName, mimeType } = await this.service.getPhysicalFileBuffer(id);
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.send(buffer);
   }
 
   @Get(':id')

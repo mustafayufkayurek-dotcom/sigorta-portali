@@ -57,9 +57,11 @@ const CORPORATE_ONLY_SUB_TYPES = new Set([
   'eksper_firmasi',
 ]);
 
-/** Prod kaydındaki müşteri tipleri — kod etiket ezmez, listeye ekleme yapmaz */
+/** Kayıt varsa o durur. Boşsa sekme yapısı kaybolmasın diye varsayılan tipler. */
 export function mergeCustomerSubTypes(stored: CustomerSubTypeDef[]): CustomerSubTypeDef[] {
-  return stored.filter((row) => row?.value && row.value !== 'eksper');
+  const clean = stored.filter((row) => row?.value && row.value !== 'eksper');
+  if (clean.length === 0) return DEFAULT_CUSTOMER_SUB_TYPES.filter((t) => t.value !== 'eksper');
+  return clean;
 }
 
 export function customerSubTypesForPicker(

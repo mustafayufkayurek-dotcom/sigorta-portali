@@ -134,14 +134,26 @@ export class DocumentTypesService {
     return documentType;
   }
 
+  private async nextDocumentCode(): Promise<string> {
+    const rows = await this.prisma.documentType.findMany({ select: { code: true } });
+    let max = 0;
+    for (const row of rows) {
+      const m = /^DOC-(\d+)$/i.exec(row.code.trim());
+      if (m) max = Math.max(max, Number(m[1]));
+    }
+    return `DOC-${String(max + 1).padStart(5, '0')}`;
+  }
+
   async create(dto: CreateDocumentTypeDto) {
     const entityScope = (dto.entityScope ?? 'vendor') as DocumentEntityScope;
     const serviceBranchTypes = parseServiceBranchTypes(dto.serviceBranchTypes);
     const customerSubTypes = parseStringList(dto.customerSubTypes);
     this.validateScopePayload({ entityScope, serviceBranchTypes, customerSubTypes });
 
+    const code = await this.nextDocumentCode();
+
     const existing = await this.prisma.documentType.findUnique({
-      where: { code: dto.code },
+      where: { code },
     });
 
     if (existing) {
@@ -162,7 +174,7 @@ export class DocumentTypesService {
 
     return this.prisma.documentType.create({
       data: {
-        code: dto.code,
+        code,
         name: dto.name,
         description: dto.description,
         isRequired: dto.isRequired ?? false,

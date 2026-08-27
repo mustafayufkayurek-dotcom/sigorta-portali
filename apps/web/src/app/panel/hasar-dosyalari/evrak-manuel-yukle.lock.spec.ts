@@ -38,8 +38,14 @@ describe('hasar manuel evrak yükleme LOCK', () => {
     assert.doesNotMatch(panel, /CLAIM_MANUAL_DOCUMENT_KINDS/);
     assert.doesNotMatch(panel, /Muvafakatname veya Anket Formu/);
     assert.match(api, /documentTypeId/);
+    assert.match(api, /openFileDocumentPhysical/);
+    assert.match(api, /redirect: 'manual'/);
+    assert.doesNotMatch(api, /getFileDocumentPhysicalUrl/);
     assert.match(controller, /documentTypeId/);
+    assert.match(controller, /res\.send\(buffer\)/);
     assert.doesNotMatch(controller, /Muvafakatname veya Anket Formu/);
+    assert.match(panel, /openFileDocumentPhysical/);
+    assert.doesNotMatch(panel, /window\.open\(url/);
   });
 
   it('Operasyon toplama Evraklar altındadır, dosya Operasyon gövdesinde yükleme yok', () => {

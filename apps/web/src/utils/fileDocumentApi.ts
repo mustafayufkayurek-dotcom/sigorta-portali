@@ -148,10 +148,22 @@ export function uploadClaimManualDocument(
   }).then((r) => handleResponse<FileDocument>(r));
 }
 
-export function getFileDocumentPhysicalUrl(id: string): Promise<{ url: string; fileName: string }> {
-  return authFetch(`${API}/file-documents/${id}/physical-file`).then((r) =>
-    handleResponse<{ url: string; fileName: string }>(r),
-  );
+/** Oturumla bayt; imzalı MinIO adresi tarayıcıya gitmez. */
+export async function openFileDocumentPhysical(id: string): Promise<void> {
+  const res = await authFetch(`${API}/file-documents/${id}/physical-file`, {
+    redirect: 'manual',
+  });
+  if (res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) {
+    throw new Error('Evrak açılamadı');
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = Array.isArray(err?.message) ? err.message.join(', ') : (err?.message ?? `HTTP ${res.status}`);
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 export function getClaimClosureConditions(

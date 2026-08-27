@@ -571,14 +571,30 @@ export class FileDocumentsService {
     return this.uploadPhysical(doc.id, result.key, uploadedByUserId);
   }
 
-  async getPhysicalFileUrl(id: string): Promise<{ url: string; fileName: string }> {
+  async getPhysicalFileBuffer(id: string): Promise<{
+    buffer: Buffer;
+    fileName: string;
+    mimeType: string;
+  }> {
     const doc = await this.findOne(id);
     if (!doc.physicalUploadKey) {
       throw new NotFoundException('Yüklenmiş evrak dosyası yok');
     }
-    const url = await this.storage.getSignedUrl(doc.physicalUploadKey, 900);
+    const buffer = await this.storage.download(doc.physicalUploadKey);
     const fileName = doc.physicalUploadKey.split('/').pop() || 'evrak';
-    return { url, fileName };
+    const lower = fileName.toLowerCase();
+    const mimeType = lower.endsWith('.pdf')
+      ? 'application/pdf'
+      : lower.endsWith('.png')
+        ? 'image/png'
+        : /\.jpe?g$/.test(lower)
+          ? 'image/jpeg'
+          : lower.endsWith('.webp')
+            ? 'image/webp'
+            : lower.endsWith('.gif')
+              ? 'image/gif'
+              : 'application/octet-stream';
+    return { buffer, fileName, mimeType };
   }
 
   // ── Public Token — Görüntüleme ────────────────────────────────────────────

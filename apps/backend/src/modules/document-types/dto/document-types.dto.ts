@@ -1,9 +1,9 @@
-import { IsString, IsOptional, IsBoolean, IsInt, IsNotEmpty, IsArray, IsUUID, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsInt, IsArray, IsUUID, IsIn } from 'class-validator';
 
 export class CreateDocumentTypeDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  code!: string;
+  code?: string;
 
   @IsString()
   @IsNotEmpty()

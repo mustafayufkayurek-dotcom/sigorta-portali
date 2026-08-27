@@ -120,8 +120,19 @@ export interface CustomerSubType {
   color: 'orange' | 'green' | 'purple' | 'blue' | 'gray'; // badge rengi
 }
 
+const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubType[] = [
+  { value: 'sigorta_sirketi', label: 'Sigorta Şirketi', forType: 'corporate', color: 'blue' },
+  { value: 'broker_firmasi', label: 'Broker Firması', forType: 'corporate', color: 'gray' },
+  { value: 'asistan_firmasi', label: 'Asistan Firması', forType: 'corporate', color: 'orange' },
+  { value: 'eksper_firmasi', label: 'Eksper Firması', forType: 'corporate', color: 'purple' },
+  { value: 'insured', label: 'Sigortalı', forType: 'both', color: 'orange' },
+  { value: 'private_customer', label: 'Özel Müşteri', forType: 'individual', color: 'green' },
+];
+
 function mergeCustomerSubTypes(stored: CustomerSubType[]): CustomerSubType[] {
-  return stored.filter((row) => row?.value && row.value !== 'eksper');
+  const clean = stored.filter((row) => row?.value && row.value !== 'eksper');
+  if (clean.length === 0) return DEFAULT_CUSTOMER_SUB_TYPES;
+  return clean;
 }
 
 export interface FieldInspectionBranch {
@@ -760,8 +771,7 @@ export class SystemSettingsService {
   async getCustomerSubTypes(): Promise<CustomerSubType[]> {
     const value = await this.get('customer_sub_types');
     const stored = value as CustomerSubType[] | null | undefined;
-    if (!stored?.length) return [];
-    return mergeCustomerSubTypes(stored);
+    return mergeCustomerSubTypes(stored ?? []);
   }
 
   async setCustomerSubTypes(values: CustomerSubType[]): Promise<CustomerSubType[]> {

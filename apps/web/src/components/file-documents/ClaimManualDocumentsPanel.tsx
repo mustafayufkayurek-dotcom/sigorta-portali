@@ -6,7 +6,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
 import {
   claimManualDocumentLabel,
-  getFileDocumentPhysicalUrl,
+  openFileDocumentPhysical,
   getFileDocuments,
   listClaimInsuredDocumentTypes,
   uploadClaimManualDocument,
@@ -84,8 +84,7 @@ export function ClaimManualDocumentsPanel({
 
   const handleOpen = async (id: string) => {
     try {
-      const { url } = await getFileDocumentPhysicalUrl(id);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      await openFileDocumentPhysical(id);
     } catch (err: unknown) {
       showToast('error', getApiErrorMessage(err, 'Evrak açılamadı'));
     }

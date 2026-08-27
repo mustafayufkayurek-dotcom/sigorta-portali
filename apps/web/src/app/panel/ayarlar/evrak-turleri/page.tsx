@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { SETTINGS_API as API, formatSettingsApiError, settingsAuthHeader as authHeader } from '@/utils/settings-api';
-import { suggestAutoCode, applyNameWithAutoCode, blurNameWithAutoCode } from '@/utils/auto-code';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
@@ -176,8 +175,9 @@ export default function EvrakTurleriPage() {
         setCustomerTab((prev) => prev || rows[0]?.value || '');
       })
       .catch(() => {
-        setCustomerTypeCatalog([]);
-        setCustomerTab('');
+        const rows = mergeCustomerSubTypes([]);
+        setCustomerTypeCatalog(rows);
+        setCustomerTab((prev) => prev || rows[0]?.value || '');
       });
   }, []);
 
@@ -317,7 +317,7 @@ export default function EvrakTurleriPage() {
   };
 
   const handleNameChange = (name: string) => {
-    setForm((p) => applyNameWithAutoCode(p, name, !!editing, 'EVRAK'));
+    setForm((p) => ({ ...p, name }));
   };
 
   const toggleBranch = (id: ServiceBranchTypeKey) => {
@@ -352,8 +352,6 @@ export default function EvrakTurleriPage() {
     if (form.entityScope === 'customer' && form.customerSubTypes.length === 0) {
       setError('En az bir müşteri tipi seçin'); return;
     }
-    const code = (editing ? form.code : suggestAutoCode('EVRAK', name)).trim();
-    if (!code) { setError('Kod üretilemedi'); return; }
 
     setSaving(true);
     setError('');
@@ -370,7 +368,6 @@ export default function EvrakTurleriPage() {
           ...scopePayload,
         }
       : {
-          code,
           name,
           description: form.description.trim() ? normalizeFormFreeText(form.description) : undefined,
           isRequired: form.isRequired,
@@ -654,7 +651,10 @@ export default function EvrakTurleriPage() {
                 value={form.name}
                 autoComplete="off"
                 onChange={(e) => handleNameChange(e.target.value)}
-                onBlur={() => setForm((p) => blurNameWithAutoCode(p, !!editing, 'EVRAK'))}
+                onBlur={(e) => {
+                  const v = normalizeFormFreeText(e.target.value);
+                  if (v !== form.name) setForm((p) => ({ ...p, name: v }));
+                }}
               />
             </div>
             {editing && (
