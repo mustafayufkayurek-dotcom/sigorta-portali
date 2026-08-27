@@ -29,7 +29,6 @@ Bu akışı “sadeleştirme” diye kaldırmak veya listeyi tekrar koda gömmek
 Regresyon:
 
 ```bash
-node --experimental-strip-types --test \
-  apps/web/src/app/panel/hasar-dosyalari/evrak-manuel-yukle.lock.spec.ts
+bash scripts/smoke-evrak-v544.sh
 bash scripts/smoke-hasar-dijital-onay.sh
 ```

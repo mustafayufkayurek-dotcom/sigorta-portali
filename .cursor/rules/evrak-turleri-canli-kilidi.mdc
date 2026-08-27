@@ -1,0 +1,34 @@
+---
+description: Evrak türü sekmeleri, DOC kodu, fiziki dosya, İşlemler ikonu
+alwaysApply: true
+---
+
+# Evrak Türleri Ve Fiziki Dosya Kilidi
+
+**Kaynak (Mustafa · 27.08.2026):** v543 sonrası dosya MinIO adresine düştü; müşteri sekmeleri boş kaldı; tür kodu `EVRAK_` slug oldu. Ayarlar İşlemler yazı link olunca amatör göründü.
+
+**Temel cümle:** Hasar evrakı **oturumla bayt** açılır. Evrak Türleri **müşteri tipi sekmeleri** durur. Kod **DOC-NNNNN**. İşlemler **Ayarlar kalem/sil ikonu**.
+
+## Zorunlu
+
+1. `GET file-documents/:id/physical-file` `res.send(buffer)` — `res.redirect(302)` yok. UI `openFileDocumentPhysical` + `redirect: 'manual'`.
+2. GET boşken müşteri tipi sekmeleri varsayılan katalogdan durur (`mergeCustomerSubTypes` / backend aynı).
+3. `create` kodu `nextDocumentCode()` — istemci `EVRAK_` slug göndermez. DTO’da `IsNotEmpty` import durur.
+4. Evrak Türleri satır işlemi `SettingsTableActions` + `EditButton` + `DeleteButton`. Yazı «Düzelt» yok. Boş kapsamda tablo kalkmaz.
+
+## Yasak (açık onay yoksa)
+
+- Fiziki dosyayı imzalı MinIO URL / `img src` / 302 ile açmak
+- Müşteri sekmelerini silip tek yığın listeye dönmek
+- Ad’dan slug kod üretmek
+- İşlem sütununu yazı link yapmak veya boş ekranda panoyu göstermek
+
+## Durdurma
+
+Dosya yine açılmaz, sekme kaybolur veya işlemler yazı olursa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-evrak-v544.sh
+```

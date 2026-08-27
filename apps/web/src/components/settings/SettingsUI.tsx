@@ -210,13 +210,16 @@ export function SettingsTableTd({
   children,
   className = '',
   title,
+  colSpan,
 }: {
   children?: React.ReactNode;
   className?: string;
   title?: string;
+  colSpan?: number;
 }) {
   return (
     <td
+      colSpan={colSpan}
       className={`px-3 py-3.5 text-sm text-slate-700 dark:text-slate-300 sm:px-5 ${className}`}
       title={title}
     >

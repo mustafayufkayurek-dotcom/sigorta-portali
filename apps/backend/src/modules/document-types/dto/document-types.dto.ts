@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsInt, IsArray, IsUUID, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsInt, IsArray, IsUUID, IsIn, IsNotEmpty } from 'class-validator';
 
 export class CreateDocumentTypeDto {
   @IsOptional()

@@ -21,5 +21,7 @@ describe('document type sequential code LOCK', () => {
     assert.ok(create.length > 0);
     assert.match(create, /const code = await this\.nextDocumentCode/);
     assert.doesNotMatch(create, /dto\.code/);
+    const dto = readFileSync(join(here, 'dto/document-types.dto.ts'), 'utf8');
+    assert.match(dto, /IsNotEmpty/);
   });
 });

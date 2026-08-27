@@ -23,4 +23,14 @@ describe('evrak türleri müşteri sekme LOCK', () => {
     assert.doesNotMatch(page, /suggestAutoCode\('EVRAK'/);
     assert.doesNotMatch(page, /applyNameWithAutoCode/);
   });
+
+  it('boş kapsamdа tablo durur; işlemler Ayarlar ikon kalıbı', () => {
+    assert.match(page, /İşlemler/);
+    assert.match(page, /SettingsTableActions/);
+    assert.match(page, /<EditButton onClick=\{\(\) => openEdit\(dt\)\} \/>/);
+    assert.match(page, /<DeleteButton onClick=\{\(\) => setDeleteTarget\(dt\)\} \/>/);
+    assert.doesNotMatch(page, />\s*Düzelt\s*</);
+    assert.match(page, /Bu kapsamda henüz evrak türü yok/);
+    assert.match(page, /toggleStatus/);
+  });
 });

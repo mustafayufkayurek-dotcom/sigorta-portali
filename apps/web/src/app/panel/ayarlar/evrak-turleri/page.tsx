@@ -8,8 +8,6 @@ import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definit
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { DepartmentDefinitionToolbar } from '@/components/settings/DepartmentTabSelector';
 import {
-  EditButton,
-  DeleteButton,
   StatusBadge,
   SettingsTable,
   SettingsTableHead,
@@ -20,6 +18,8 @@ import {
   SettingsTableActions,
   SettingsRowIndexTh,
   SettingsRowIndexTd,
+  EditButton,
+  DeleteButton,
   inputCls,
   labelCls,
 } from '@/components/settings/SettingsUI';
@@ -389,6 +389,17 @@ export default function EvrakTurleriPage() {
     }
   };
 
+  const toggleStatus = async (dt: DocumentType) => {
+    const next = dt.status === 'active' ? 'inactive' : 'active';
+    try {
+      await axios.put(`${API}/document-types/${dt.id}`, { status: next }, { headers: authHeader() });
+      await fetchTypes();
+      await refreshCounts();
+    } catch (e: unknown) {
+      showToast('error', formatSettingsApiError(e, 'Durum güncellenemedi'));
+    }
+  };
+
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -477,15 +488,7 @@ export default function EvrakTurleriPage() {
                 </p>
               </div>
 
-              <SettingsTable
-                loading={loading}
-                empty={filteredTypes.length === 0}
-                emptyText={
-                  search.trim()
-                    ? 'Arama sonucu bulunamadı.'
-                    : 'Bu kapsam için henüz evrak türü tanımlanmamış.'
-                }
-              >
+              <SettingsTable loading={loading}>
                 <SettingsTableHead>
                   <SettingsRowIndexTh />
                   <SettingsTableTh>Ad</SettingsTableTh>
@@ -494,9 +497,29 @@ export default function EvrakTurleriPage() {
                   <SettingsTableTh className="text-center">Zorunlu</SettingsTableTh>
                   <SettingsTableTh className="text-center">Evrak Sayısı</SettingsTableTh>
                   <SettingsTableTh className="text-center">Durum</SettingsTableTh>
-                  <SettingsTableTh />
+                  <SettingsTableTh className="text-center">İşlemler</SettingsTableTh>
                 </SettingsTableHead>
                 <SettingsTableBody>
+                  {filteredTypes.length === 0 ? (
+                    <SettingsTableRow>
+                      <SettingsTableTd colSpan={8} className="py-10 text-center">
+                        <p className="text-sm text-slate-600">
+                          {search.trim()
+                            ? 'Arama sonucu bulunamadı.'
+                            : 'Bu kapsamda henüz evrak türü yok. Tanım buradan eklenir; düzeltme ve işlem satırda durur.'}
+                        </p>
+                        {search.trim() ? null : (
+                          <button
+                            type="button"
+                            onClick={openCreate}
+                            className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                          >
+                            Evrak Türü Ekle
+                          </button>
+                        )}
+                      </SettingsTableTd>
+                    </SettingsTableRow>
+                  ) : null}
                   {filteredTypes.map((dt, index) => {
                     const docCount =
                       (dt._count?.vendorDocuments ?? 0) + (dt._count?.entityDocuments ?? 0);
@@ -540,7 +563,14 @@ export default function EvrakTurleriPage() {
                         </SettingsTableTd>
                         <SettingsTableTd className="text-center text-slate-600">{docCount}</SettingsTableTd>
                         <SettingsTableTd className="text-center">
-                          <StatusBadge active={dt.status === 'active'} />
+                          <button
+                            type="button"
+                            onClick={() => void toggleStatus(dt)}
+                            title="Aktif / pasif"
+                            className="inline-flex"
+                          >
+                            <StatusBadge active={dt.status === 'active'} />
+                          </button>
                         </SettingsTableTd>
                         <SettingsTableActions>
                           <EditButton onClick={() => openEdit(dt)} />
