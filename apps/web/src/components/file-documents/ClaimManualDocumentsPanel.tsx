@@ -1,15 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
 import {
-  CLAIM_MANUAL_DOCUMENT_KINDS,
   claimManualDocumentLabel,
   getFileDocumentPhysicalUrl,
   getFileDocuments,
+  listClaimInsuredDocumentTypes,
   uploadClaimManualDocument,
-  type ClaimManualDocumentKind,
+  type CatalogDocumentType,
   type FileDocument,
 } from '@/utils/fileDocumentApi';
 
@@ -25,7 +26,8 @@ export function ClaimManualDocumentsPanel({
 }) {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [kind, setKind] = useState<ClaimManualDocumentKind | ''>('');
+  const [kind, setKind] = useState('');
+  const [catalog, setCatalog] = useState<CatalogDocumentType[]>([]);
   const [uploading, setUploading] = useState(false);
   const [docs, setDocs] = useState<FileDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,14 +35,12 @@ export function ClaimManualDocumentsPanel({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await getFileDocuments('claim_file', claimId);
-      setDocs(
-        rows.filter(
-          (d) =>
-            (d.documentKind === 'muvafakatname' || d.documentKind === 'anket_formu')
-            && !!d.physicalUploadKey,
-        ),
-      );
+      const [rows, types] = await Promise.all([
+        getFileDocuments('claim_file', claimId),
+        listClaimInsuredDocumentTypes(),
+      ]);
+      setCatalog(types);
+      setDocs(rows.filter((d) => d.documentKind !== 'matbu_evrak' && !!d.physicalUploadKey));
     } catch (e: unknown) {
       showToast('error', e instanceof Error ? e.message : 'Evraklar yüklenemedi');
     } finally {
@@ -49,6 +49,8 @@ export function ClaimManualDocumentsPanel({
   }, [claimId, showToast]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const selectedName = catalog.find((row) => row.id === kind)?.name ?? 'Evrak';
 
   const handlePick = () => {
     if (!kind) {
@@ -69,7 +71,7 @@ export function ClaimManualDocumentsPanel({
     setUploading(true);
     try {
       await uploadClaimManualDocument(claimId, kind, file);
-      showToast('success', `${claimManualDocumentLabel(kind)} yüklendi.`);
+      showToast('success', `${selectedName} yüklendi.`);
       setKind('');
       await load();
       onUploaded?.();
@@ -102,7 +104,7 @@ export function ClaimManualDocumentsPanel({
         <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/40">
           <h4 className="text-sm font-semibold text-slate-800">Manuel Evrak Yükle</h4>
           <p className="text-xs text-slate-500 mt-0.5">
-            Yüklemeden önce evrak türünü seçin. Muvafakatname veya Anket Formu.
+            Yüklemeden önce evrak türünü seçin. Türler Ayarlar → Evrak Türleri (Müşteri · Sigortalı).
           </p>
         </div>
       )}
@@ -116,14 +118,24 @@ export function ClaimManualDocumentsPanel({
           <select
             id="claim-manual-doc-kind"
             value={kind}
-            onChange={(e) => setKind(e.target.value as ClaimManualDocumentKind | '')}
-            className="w-full max-w-sm rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600"
+            onChange={(e) => setKind(e.target.value)}
+            disabled={catalog.length === 0}
+            className="w-full max-w-sm rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600 disabled:bg-slate-50"
           >
             <option value="">Seçiniz</option>
-            {CLAIM_MANUAL_DOCUMENT_KINDS.map((row) => (
-              <option key={row.id} value={row.id}>{row.label}</option>
+            {catalog.map((row) => (
+              <option key={row.id} value={row.id}>{row.name}</option>
             ))}
           </select>
+          {catalog.length === 0 ? (
+            <p className="mt-1.5 text-xs text-slate-500">
+              Bu kapsamda tür yok.{' '}
+              <Link href="/panel/ayarlar/evrak-turleri" className="font-semibold text-brand-700 underline">
+                Evrak Türleri
+              </Link>
+              ’nde Müşteri · Sigortalı tanımı ekleyin.
+            </p>
+          ) : null}
         </div>
 
         <input
@@ -156,7 +168,7 @@ export function ClaimManualDocumentsPanel({
               <li key={d.id} className="flex items-center justify-between gap-3 py-2">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-800 truncate">
-                    {claimManualDocumentLabel(d.documentKind)}
+                    {claimManualDocumentLabel(d)}
                   </p>
                   <p className="text-xs text-slate-400">
                     {d.physicalUploadedAt

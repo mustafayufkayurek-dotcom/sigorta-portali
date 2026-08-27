@@ -1107,10 +1107,9 @@ export default function VendorsPage() {
     try {
       const r = await axios.get(`${API}/system-settings/vendor-types`, { headers: authHeader() });
       const list: string[] = r.data.data || [];
-      const withOther = list.some((t) => isVendorTypeOther(t)) ? list : [...list, 'Diğer'];
-      setVendorTypes(withOther);
+      setVendorTypes(list);
     } catch {
-      setVendorTypes(['Taşeron', 'Malzeme Tedarikçisi', 'Lojistik', 'Ekipman', 'Diğer']);
+      setVendorTypes([]);
     }
   }, []);
 

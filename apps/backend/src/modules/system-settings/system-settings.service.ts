@@ -29,8 +29,6 @@ const DEFAULT_CUSTOMER_FIELDS = [
   { key: 'email', label: 'E-posta', required: false, visible: true },
 ];
 
-const DEFAULT_VENDOR_TYPES = ['Taşeron', 'Malzeme Tedarikçisi', 'Lojistik', 'Ekipman', 'Diğer'];
-
 const DEFAULT_LOCATION_FIELDS = {
   code: { required: true },
   name: { required: true },
@@ -56,13 +54,6 @@ const DEFAULT_WORK_SUB_GROUP_FIELDS = {
 };
 
 const DEFAULT_UNIT_OPTIONS = ['m²', 'adet', 'metre', 'saat', 'kg', 'ton'];
-
-const DEFAULT_CUSTOMER_SOURCES = [
-  'Sigorta Şirketi Yönlendirmesi',
-  'Referans',
-  'Web',
-  'Tekrar Gelen Müşteri',
-];
 
 export interface RelationshipType {
   label: string;
@@ -122,36 +113,6 @@ export interface IhbarKonulari {
   acil: string[];
 }
 
-const DEFAULT_IHBAR_KONULARI: IhbarKonulari = {
-  hasar: [
-    'Konut Yangın',
-    'Endüstriyel Yangın',
-    'Dahili Su',
-    'Hırsızlık',
-    'Cam Kırılması',
-    'Doğal Afet',
-    'Sel',
-    'Fırtına',
-    'Deprem',
-    'Makine Kırılması',
-    'Elektronik Cihaz',
-    'Diğer',
-  ],
-  acil: [
-    'Su Baskını',
-    'Çatı Hasarı',
-    'Cam Kırılması',
-    'Kapı/Kilit Arızası',
-    'Elektrik Arızası',
-    'Doğalgaz Arızası',
-    'Yangın Hasarı',
-    'Hırsızlık/Güvenlik',
-    'Boru Patlaması',
-    'Asansör Arızası',
-    'Diğer',
-  ],
-};
-
 export interface CustomerSubType {
   value: string;   // slug / API değeri (örn. 'insured')
   label: string;   // görünen isim (örn. 'Sigortalı')
@@ -159,27 +120,8 @@ export interface CustomerSubType {
   color: 'orange' | 'green' | 'purple' | 'blue' | 'gray'; // badge rengi
 }
 
-const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubType[] = [
-  { value: 'sigorta_sirketi',  label: 'Sigorta Şirketi',  forType: 'corporate',  color: 'blue'   },
-  { value: 'broker_firmasi',   label: 'Broker Firması',   forType: 'corporate',  color: 'gray'   },
-  { value: 'asistan_firmasi',  label: 'Asistan Firması',  forType: 'corporate',  color: 'orange' },
-  { value: 'eksper_firmasi',   label: 'Eksper Firması',   forType: 'corporate',  color: 'purple' },
-  { value: 'insured',          label: 'Sigortalı',        forType: 'both',       color: 'orange' },
-  { value: 'private_customer', label: 'Özel Müşteri',     forType: 'individual', color: 'green'  },
-];
-
 function mergeCustomerSubTypes(stored: CustomerSubType[]): CustomerSubType[] {
-  const byValue = new Map(stored.map((row) => [row.value, { ...row }]));
-  for (const def of DEFAULT_CUSTOMER_SUB_TYPES) {
-    const existing = byValue.get(def.value);
-    if (!existing) {
-      byValue.set(def.value, { ...def });
-    } else {
-      byValue.set(def.value, { ...existing, label: def.label, forType: def.forType, color: def.color });
-    }
-  }
-  byValue.delete('eksper');
-  return DEFAULT_CUSTOMER_SUB_TYPES.map((def) => byValue.get(def.value)).filter(Boolean) as CustomerSubType[];
+  return stored.filter((row) => row?.value && row.value !== 'eksper');
 }
 
 export interface FieldInspectionBranch {
@@ -198,27 +140,12 @@ export interface ExpertInsuranceLinksConfig {
   links: ExpertInsuranceLink[];
 }
 
-const DEFAULT_SAHA_TESPIT_KOLLARI: FieldInspectionBranch[] = [
-  { id: 'tespit-hasar', name: 'Hasar Tespiti', isActive: true, sortOrder: 10 },
-  { id: 'tespit-kesif', name: 'Saha Keşfi', isActive: true, sortOrder: 20 },
-  { id: 'tespit-ozel', name: 'Özel Talep Tespiti', isActive: true, sortOrder: 30 },
-  { id: 'tespit-on', name: 'Ön İnceleme', isActive: true, sortOrder: 40 },
-];
-
 export interface TespitAlaniEntry {
   id: string;
   name: string;
   isActive: boolean;
   sortOrder: number;
 }
-
-const DEFAULT_TESPIT_ALANLARI: TespitAlaniEntry[] = [
-  { id: 'tespit-alan-sigortali-konut', name: 'Sigortalı Konut', isActive: true, sortOrder: 10 },
-  { id: 'tespit-alan-ortak', name: 'Ortak Alan', isActive: true, sortOrder: 20 },
-  { id: 'tespit-alan-depo', name: 'Depo', isActive: true, sortOrder: 30 },
-  { id: 'tespit-alan-dukkkan', name: 'Dükkan', isActive: true, sortOrder: 40 },
-  { id: 'tespit-alan-ofis', name: 'Ofis', isActive: true, sortOrder: 50 },
-];
 
 export interface FieldRequirementsConfig {
   customerSubTypeRequired: boolean;
@@ -634,7 +561,7 @@ export class SystemSettingsService {
 
   async getVendorTypes(): Promise<string[]> {
     const value = await this.get('vendor_types');
-    return (value as string[]) ?? DEFAULT_VENDOR_TYPES;
+    return (value as string[]) ?? [];
   }
 
   async setVendorTypes(types: string[]): Promise<string[]> {
@@ -718,7 +645,7 @@ export class SystemSettingsService {
 
   async getCustomerSources(): Promise<string[]> {
     const value = await this.get('customer_sources');
-    return (value as string[]) ?? DEFAULT_CUSTOMER_SOURCES;
+    return (value as string[]) ?? [];
   }
 
   async setCustomerSources(values: string[]): Promise<string[]> {
@@ -833,7 +760,7 @@ export class SystemSettingsService {
   async getCustomerSubTypes(): Promise<CustomerSubType[]> {
     const value = await this.get('customer_sub_types');
     const stored = value as CustomerSubType[] | null | undefined;
-    if (!stored?.length) return DEFAULT_CUSTOMER_SUB_TYPES;
+    if (!stored?.length) return [];
     return mergeCustomerSubTypes(stored);
   }
 
@@ -853,7 +780,7 @@ export class SystemSettingsService {
     });
 
     if (subjects.length === 0) {
-      return DEFAULT_IHBAR_KONULARI;
+      return { hasar: [], acil: [] };
     }
 
     const hasar: string[] = [];
@@ -873,8 +800,8 @@ export class SystemSettingsService {
     }
 
     return {
-      hasar: hasar.length > 0 ? hasar : DEFAULT_IHBAR_KONULARI.hasar,
-      acil: acil.length > 0 ? acil : DEFAULT_IHBAR_KONULARI.acil,
+      hasar,
+      acil,
     };
   }
 
@@ -1138,7 +1065,7 @@ export class SystemSettingsService {
 
   async getSahaTespitKollari(): Promise<FieldInspectionBranch[]> {
     const value = await this.get('saha_tespit_kollari');
-    const list = (value as FieldInspectionBranch[] | null) ?? DEFAULT_SAHA_TESPIT_KOLLARI;
+    const list = (value as FieldInspectionBranch[] | null) ?? [];
     return [...list].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'tr'));
   }
 
@@ -1149,7 +1076,7 @@ export class SystemSettingsService {
 
   async getTespitAlanlari(): Promise<TespitAlaniEntry[]> {
     const value = await this.get('tespit_alanlari');
-    const list = (value as TespitAlaniEntry[] | null) ?? DEFAULT_TESPIT_ALANLARI;
+    const list = (value as TespitAlaniEntry[] | null) ?? [];
     return [...list]
       .filter((e) => e.isActive !== false)
       .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'tr'));
@@ -1175,7 +1102,7 @@ export class SystemSettingsService {
       throw new BadRequestException('Tespit alanı adı zorunludur.');
     }
     const value = await this.get('tespit_alanlari');
-    const list: TespitAlaniEntry[] = [...((value as TespitAlaniEntry[] | null) ?? DEFAULT_TESPIT_ALANLARI)];
+    const list: TespitAlaniEntry[] = [...((value as TespitAlaniEntry[] | null) ?? [])];
     const normalized = trimmed.replace(/\s+/g, ' ');
     const existing = list.find(
       (e) => e.name.localeCompare(normalized, 'tr', { sensitivity: 'base' }) === 0,

@@ -26,10 +26,7 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import {
-  CUSTOMER_DOCUMENT_SUB_TYPES,
   VENDOR_SERVICE_TABS,
-  customerScopeBadgeLabel,
-  customerSubTypeScopeLabel,
   deriveServiceBranchTypes,
   documentEntityScopeLabel,
   documentTypeScopeBadges,
@@ -42,6 +39,7 @@ import {
 } from '@/utils/document-type-scope';
 import { normalizeSearchTR } from '@/utils/text-helpers';
 import { useToast } from '@/contexts/ToastContext';
+import { mergeCustomerSubTypes, type CustomerSubTypeDef } from '@/utils/customer-form-helpers';
 
 
 type DocumentType = {
@@ -139,7 +137,8 @@ export default function EvrakTurleriPage() {
   const { showToast } = useToast();
   const [scopeMode, setScopeMode] = useState<DocumentEntityScope>('vendor');
   const [vendorTab, setVendorTab] = useState<ServiceBranchTypeKey>('hasar');
-  const [customerTab, setCustomerTab] = useState('insured');
+  const [customerTab, setCustomerTab] = useState('');
+  const [customerTypeCatalog, setCustomerTypeCatalog] = useState<CustomerSubTypeDef[]>([]);
   const [types, setTypes] = useState<DocumentType[]>([]);
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
@@ -155,7 +154,7 @@ export default function EvrakTurleriPage() {
 
   const customerTabs = useMemo(
     () =>
-      CUSTOMER_DOCUMENT_SUB_TYPES.map((t) => ({
+      customerTypeCatalog.map((t) => ({
         id: t.value,
         label: t.label,
         color:
@@ -165,8 +164,22 @@ export default function EvrakTurleriPage() {
                 : t.color === 'purple' ? '#A855F7'
                   : '#64748B',
       })),
-    [],
+    [customerTypeCatalog],
   );
+
+  useEffect(() => {
+    axios
+      .get(`${API}/system-settings/customer-sub-types`, { headers: authHeader() })
+      .then((res) => {
+        const rows = mergeCustomerSubTypes(res.data?.data ?? []);
+        setCustomerTypeCatalog(rows);
+        setCustomerTab((prev) => prev || rows[0]?.value || '');
+      })
+      .catch(() => {
+        setCustomerTypeCatalog([]);
+        setCustomerTab('');
+      });
+  }, []);
 
   useEffect(() => {
     axios
@@ -214,6 +227,10 @@ export default function EvrakTurleriPage() {
   const fetchTypes = useCallback(async () => {
     setLoading(true);
     try {
+      if (scopeMode === 'customer' && !customerTab) {
+        setTypes([]);
+        return;
+      }
       const params =
         scopeMode === 'vendor'
           ? { entityScope: 'vendor', serviceBranchType: vendorTab }
@@ -252,7 +269,7 @@ export default function EvrakTurleriPage() {
   const activeTabLabel =
     scopeMode === 'vendor'
       ? `${documentEntityScopeLabel('vendor')} · ${serviceBranchTypeLabel(vendorTab)}`
-      : `${documentEntityScopeLabel('customer')} · ${customerSubTypeScopeLabel(customerTab)}`;
+      : `${documentEntityScopeLabel('customer')} · ${customerTypeCatalog.find((t) => t.value === customerTab)?.label ?? customerTab}`;
 
   const vendorFilterTabs = useMemo(
     () =>
@@ -486,7 +503,15 @@ export default function EvrakTurleriPage() {
                   {filteredTypes.map((dt, index) => {
                     const docCount =
                       (dt._count?.vendorDocuments ?? 0) + (dt._count?.entityDocuments ?? 0);
-                    const badges = scopeBadges(dt, deptCodeById);
+                    const badges =
+                      (dt.entityScope ?? 'vendor') === 'customer'
+                        ? (parseStringList(dt.customerSubTypes).length
+                            ? parseStringList(dt.customerSubTypes).map(
+                                (v) =>
+                                  `${documentEntityScopeLabel('customer')} · ${customerTypeCatalog.find((t) => t.value === v)?.label ?? v}`,
+                              )
+                            : [`${documentEntityScopeLabel('customer')} · Tüm Müşteri Tipleri`])
+                        : scopeBadges(dt, deptCodeById);
                     return (
                       <SettingsTableRow key={dt.id}>
                         <SettingsRowIndexTd index={index} />
@@ -592,14 +617,14 @@ export default function EvrakTurleriPage() {
                   ))}
                 </div>
                 <p className="text-xs text-slate-500 mt-1.5">
-                  Örn: Muvafakatname → Hasar Onarım; Acil müdahale tutanağı → Acil Yardım
+                  Türü ilgili hizmete bağlayın. Listede yoksa önce Tanımlar’dan ekleyin.
                 </p>
               </div>
             ) : (
               <div>
                 <label className={labelCls}>Müşteri Tipi Kapsamı *</label>
                 <div className="grid grid-cols-2 gap-2 mt-1.5">
-                  {CUSTOMER_DOCUMENT_SUB_TYPES.map((t) => (
+                  {customerTypeCatalog.map((t) => (
                     <label
                       key={t.value}
                       className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm ${
@@ -614,7 +639,7 @@ export default function EvrakTurleriPage() {
                         checked={form.customerSubTypes.includes(t.value)}
                         onChange={() => toggleCustomerSub(t.value)}
                       />
-                      {customerScopeBadgeLabel(t.value)}
+                      {t.label}
                     </label>
                   ))}
                 </div>

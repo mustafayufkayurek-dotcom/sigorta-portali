@@ -692,26 +692,12 @@ export function StepSupplier() {
     templatesFromSettings,
     recordWhatsAppContact,
   } = usePlanner();
-  const [poolExtra, setPoolExtra] = useState<
-    { name: string; place: string; rating: string; serviceGroup: string }[]
-  >([]);
-  const [pendingAlt, setPendingAlt] = useState<string | null>(null);
-  const [serviceGroupDraft, setServiceGroupDraft] = useState('Boyacı');
   const [assignWarn, setAssignWarn] = useState('');
   const inspectorVendorId = assignedInspectorId || claim.preAssignedInspectorId || null;
 
   const assignedRows = useMemo(
-    () =>
-      [...claim.suppliers, ...poolExtra.map((p, i) => ({
-        id: `g${i}`,
-        name: p.name,
-        serviceGroup: p.serviceGroup,
-        place: p.place,
-        rating: p.rating,
-        avail: 'Müsait' as const,
-        phone: undefined as string | undefined,
-      }))].filter((s) => assigned.includes(s.id) || assigned.includes(s.name)),
-    [assigned, poolExtra, claim.suppliers],
+    () => claim.suppliers.filter((s) => assigned.includes(s.id)),
+    [assigned, claim.suppliers],
   );
 
   return (
@@ -783,18 +769,6 @@ export function StepSupplier() {
 
       <>
           <div className="grid grid-cols-1 gap-2">
-            <Field label="Hizmet Grubu">
-              <select className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs">
-                <option>Boyacı</option>
-                <option>Sıhhi Tesisat</option>
-              </select>
-            </Field>
-            <Field label="Bölge">
-              <select className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs">
-                <option>Kadıköy</option>
-                <option>Üsküdar</option>
-              </select>
-            </Field>
             <Field label="Randevu Tarih Ve Saati" icon={CalendarDays}>
               <Input value={`${claim.appointmentDate} - ${claim.appointmentTime}`} readOnly />
             </Field>
@@ -883,56 +857,31 @@ export function StepSupplier() {
             </div>
           ) : (
             <div className="space-y-2">
-              <ApiNote text="Harici öneriler doğrudan dosyaya atanamaz. Sıra: Bul → Tedarikçi Havuzuna Kaydet → Hizmet Grubu Tanımla → Dosyaya Ata." />
-              {claim.alternativeSuppliers.map((g) => (
-                <div
-                  key={g.name}
-                  className="rounded-xl border border-dashed border-slate-300 px-3 py-2.5"
-                >
-                  <p className="text-xs font-semibold text-slate-900">{g.name}</p>
-                  <p className="text-[10px] text-slate-500">
-                    {g.place} · ★ {g.rating}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Btn tone="secondary" onClick={() => setPendingAlt(g.name)}>
-                      Havuzuna Kaydet
-                    </Btn>
+              <ApiNote text="Harici isimler doğrudan dosyaya atanamaz. Önce Tedarikçiler’den kayıt açılır; sonra bu adımda Önerilen Tedarikçiler listesinde çıkar." />
+              {claim.alternativeSuppliers.length === 0 ? (
+                <p className="text-[11px] text-slate-500">
+                  Bölgede kayıtlı aday yoksa tedarikçi kaydı{' '}
+                  <a href="/panel/tedarikciler" className="font-semibold text-slate-800 underline">
+                    Tedarikçiler
+                  </a>{' '}
+                  ekranından yapılır.
+                </p>
+              ) : (
+                claim.alternativeSuppliers.map((g) => (
+                  <div
+                    key={g.name}
+                    className="rounded-xl border border-dashed border-slate-300 px-3 py-2.5"
+                  >
+                    <p className="text-xs font-semibold text-slate-900">{g.name}</p>
+                    <p className="text-[10px] text-slate-500">
+                      {g.place} · ★ {g.rating}
+                    </p>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      Bu satır havuza yazılmaz. Atamak için önce tedarikçi kaydı gerekir.
+                    </p>
                   </div>
-                  {pendingAlt === g.name ? (
-                    <div className="mt-2 space-y-2 rounded-lg bg-slate-50 p-2">
-                      <Field label="Hizmet Grubu Tanımla">
-                        <select
-                          value={serviceGroupDraft}
-                          onChange={(e) => setServiceGroupDraft(e.target.value)}
-                          className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs"
-                        >
-                          <option>Boyacı</option>
-                          <option>Sıhhi Tesisat</option>
-                        </select>
-                      </Field>
-                      <Btn
-                        tone="primary"
-                        onClick={() => {
-                          setPoolExtra((p) => [
-                            ...p,
-                            {
-                              name: g.name,
-                              place: g.place,
-                              rating: g.rating,
-                              serviceGroup: serviceGroupDraft,
-                            },
-                          ]);
-                          setAssigned((a) => [...a, g.name]);
-                          setPendingAlt(null);
-                          setSub('kayitli');
-                        }}
-                      >
-                        Dosyaya Ata
-                      </Btn>
-                    </div>
-                  ) : null}
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
         </>

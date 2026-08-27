@@ -24,6 +24,11 @@ import { MUVAFAKATNAME_TEMPLATE } from './muvafakatname.template';
 import { escHtml, escHtmlRecord } from '@/common/utils/html-escape';
 import { StorageService } from '@/modules/storage/storage.service';
 import { toInsuredFacingMatbuHtml } from './matbu-insured-view';
+import {
+  allowsClaimManualPhysicalKind,
+  isClaimInsuredCatalogDocumentType,
+  isDocumentTypeId,
+} from '@/modules/document-types/document-type-scope';
 
 /** Müşteriye dönük matbu — iç fiyat / kâr etiketleri sızmaz */
 const INTERNAL_COST_DESC_RE =
@@ -428,7 +433,20 @@ export class FileDocumentsService {
       }),
       this.resolveInsuredPhone(entityType, entityId),
     ]);
-    return docs.map((d) => ({ ...d, suggestedPhone }));
+    const catalogIds = [...new Set(docs.map((d) => d.documentKind).filter(isDocumentTypeId))];
+    const catalogRows =
+      catalogIds.length === 0
+        ? []
+        : await this.prisma.documentType.findMany({
+            where: { id: { in: catalogIds } },
+            select: { id: true, name: true },
+          });
+    const catalogName = new Map(catalogRows.map((r) => [r.id, r.name]));
+    return docs.map((d) => ({
+      ...d,
+      suggestedPhone,
+      documentTypeName: catalogName.get(d.documentKind) ?? null,
+    }));
   }
 
   async findOne(id: string) {
@@ -485,7 +503,7 @@ export class FileDocumentsService {
 
   async uploadPhysical(id: string, storageKey: string, uploadedByUserId: string) {
     const doc = await this.findOne(id);
-    if (doc.documentKind !== 'muvafakatname' && doc.documentKind !== 'anket_formu') {
+    if (!allowsClaimManualPhysicalKind(doc.documentKind)) {
       throw new BadRequestException('Bu evrak türüne fiziki yükleme yapılamaz');
     }
     return this.prisma.fileDocument.update({
@@ -499,10 +517,10 @@ export class FileDocumentsService {
     });
   }
 
-  /** Dosya Sorumlusu — tür seçerek imzalı / doldurulmuş evrak yükler */
+  /** Dosya Sorumlusu — tür Tanımlar → Evrak Türleri (Müşteri · Sigortalı) */
   async uploadManualForClaim(
     claimFileId: string,
-    documentKind: 'muvafakatname' | 'anket_formu',
+    documentTypeId: string,
     file: Express.Multer.File,
     uploadedByUserId: string,
   ) {
@@ -515,30 +533,33 @@ export class FileDocumentsService {
       throw new BadRequestException('Dosya seçilmedi veya okunamadı');
     }
 
+    const catalog = await this.prisma.documentType.findUnique({
+      where: { id: documentTypeId },
+    });
+    if (!catalog || !isClaimInsuredCatalogDocumentType(catalog)) {
+      throw new BadRequestException(
+        'Bu evrak türü Tanımlar Merkezi’nde Müşteri · Sigortalı kapsamında tanımlı değil.',
+      );
+    }
+
+    const documentKind = catalog.id;
     let doc = await this.prisma.fileDocument.findFirst({
       where: { entityType: 'claim_file', entityId: claimFileId, documentKind },
       orderBy: { createdAt: 'desc' },
     });
 
     if (!doc) {
-      if (documentKind === 'muvafakatname') {
-        doc = await this.create(
-          { entityType: 'claim_file', entityId: claimFileId, documentKind: 'muvafakatname' },
-          uploadedByUserId,
-        );
-      } else {
-        doc = await this.prisma.fileDocument.create({
-          data: {
-            entityType: 'claim_file',
-            entityId: claimFileId,
-            documentKind: 'anket_formu',
-            status: 'draft',
-            renderedContent: '<p>Manuel yüklenen anket formu.</p>',
-            claimFileId,
-            createdByUserId: uploadedByUserId,
-          },
-        });
-      }
+      doc = await this.prisma.fileDocument.create({
+        data: {
+          entityType: 'claim_file',
+          entityId: claimFileId,
+          documentKind,
+          status: 'draft',
+          renderedContent: `<p>Manuel yüklenen evrak: ${catalog.name}</p>`,
+          claimFileId,
+          createdByUserId: uploadedByUserId,
+        },
+      });
     }
 
     const safeName = (file.originalname || 'evrak').replace(/[^\w.\-ğüşıöçĞÜŞİÖÇ ]+/g, '_');

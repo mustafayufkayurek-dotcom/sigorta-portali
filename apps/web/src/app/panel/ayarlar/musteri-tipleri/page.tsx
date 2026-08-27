@@ -22,7 +22,6 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import {
-  DEFAULT_CUSTOMER_SUB_TYPES,
   subTypeActiveClass,
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
@@ -84,10 +83,10 @@ export default function MusteriTipleriPage() {
     try {
       const res = await axios.get(`${API}/system-settings/customer-sub-types`, { headers: authHeader() });
       const list: CustomerSubTypeDef[] = res.data?.data ?? [];
-      setRows(Array.isArray(list) && list.length ? list : DEFAULT_CUSTOMER_SUB_TYPES);
+      setRows(Array.isArray(list) ? list : []);
     } catch (e: unknown) {
       setError(formatSettingsApiError(e));
-      setRows(DEFAULT_CUSTOMER_SUB_TYPES);
+      setRows([]);
     } finally {
       setLoading(false);
     }

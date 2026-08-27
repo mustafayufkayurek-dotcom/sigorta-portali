@@ -36,20 +36,6 @@ const URGENCY_OPTIONS: { value: EmergencyUrgency; label: string; color: string }
   { value: 'KRITIK', label: 'Kritik', color: 'bg-red-50 text-red-700 border-red-200' },
 ];
 
-const FALLBACK_ISSUE_TYPES = [
-  'Su Baskını',
-  'Çatı Hasarı',
-  'Cam Kırılması',
-  'Kapı/Kilit Arızası',
-  'Elektrik Arızası',
-  'Doğalgaz Arızası',
-  'Yangın Hasarı',
-  'Hırsızlık/Güvenlik',
-  'Boru Patlaması',
-  'Asansör Arızası',
-  'Diğer',
-];
-
 function maskPhoneTR(rawDigits: string): string {
   const d = rawDigits.replace(/\D/g, '').slice(0, 11);
   if (d.length === 0) return '';
@@ -248,14 +234,14 @@ export function EmergencyCaseNewForm({
       const subjectsRes = await axios
         .get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() })
         .catch((err) => {
-          reportCaughtError(err, 'Acil konular yüklenemedi. Varsayılan liste kullanılıyor.', {
+          reportCaughtError(err, 'Acil konular yüklenemedi. Lütfen sayfayı yenileyin.', {
             toastType: 'warning',
           });
           return null;
         });
       const subjectData = subjectsRes?.data?.data;
       const acil = Array.isArray(subjectData?.acil) ? subjectData.acil : [];
-      const normalized = (acil.length > 0 ? acil : FALLBACK_ISSUE_TYPES)
+      const normalized = acil
         .map((s: string) => {
           const raw = String(s).trim();
           return mapInboundLossTypeToMeridyen(raw) ?? toTitleCaseTR(raw);
@@ -279,8 +265,8 @@ export function EmergencyCaseNewForm({
         .catch(() => ({ data: { data: [] } }));
       setUsers((usersRes.data?.data ?? []) as PanelUser[]);
     } catch (e) {
-      reportCaughtError(e, 'Form seçenekleri yüklenemedi. Varsayılan konular kullanılıyor.');
-      setIssueTypes(FALLBACK_ISSUE_TYPES);
+      reportCaughtError(e, 'Form seçenekleri yüklenemedi. Konu listesi boş kaldı.');
+      setIssueTypes([]);
       setSubjectsLoadFailed(true);
     } finally {
       setLookupsLoading(false);

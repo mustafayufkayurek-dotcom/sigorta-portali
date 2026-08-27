@@ -1,12 +1,12 @@
 /**
- * Kilit: Hasar Evraklar — tür seçerek manuel Muvafakatname / Anket Formu yükleme.
+ * Kilit: Hasar Evraklar — tür seçerek manuel yükleme; tür Tanımlar’dan.
  * Çalıştır: node --experimental-strip-types --test apps/web/src/app/panel/hasar-dosyalari/evrak-manuel-yukle.lock.spec.ts
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath } from 'url';
 
 const specDir = dirname(fileURLToPath(import.meta.url));
 const webSrc = join(specDir, '../../..');
@@ -30,11 +30,16 @@ describe('hasar manuel evrak yükleme LOCK', () => {
     assert.match(panel, /Manuel Evrak Yükle/);
   });
 
-  it('yüklemeden önce Muvafakatname veya Anket Formu seçilir', () => {
-    assert.match(panel, /Muvafakatname/);
-    assert.match(panel, /Anket Formu/);
+  it('tür Tanımlar Evrak Türleri’nden gelir; kodda Muvafakatname/Anket listesi yok', () => {
+    assert.match(panel, /listClaimInsuredDocumentTypes/);
     assert.match(panel, /Önce evrak türünü seçin/);
     assert.match(panel, /disabled=\{uploading \|\| !kind\}/);
+    assert.match(panel, /evrak-turleri/);
+    assert.doesNotMatch(panel, /CLAIM_MANUAL_DOCUMENT_KINDS/);
+    assert.doesNotMatch(panel, /Muvafakatname veya Anket Formu/);
+    assert.match(api, /documentTypeId/);
+    assert.match(controller, /documentTypeId/);
+    assert.doesNotMatch(controller, /Muvafakatname veya Anket Formu/);
   });
 
   it('Operasyon toplama Evraklar altındadır, dosya Operasyon gövdesinde yükleme yok', () => {

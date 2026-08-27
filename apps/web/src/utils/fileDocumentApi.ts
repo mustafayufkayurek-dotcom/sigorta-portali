@@ -11,17 +11,31 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type FileDocumentKind = 'muvafakatname' | 'matbu_evrak' | 'anket_formu';
+export type FileDocumentKind = 'muvafakatname' | 'matbu_evrak' | 'anket_formu' | string;
 
-export const CLAIM_MANUAL_DOCUMENT_KINDS = [
-  { id: 'muvafakatname' as const, label: 'Muvafakatname' },
-  { id: 'anket_formu' as const, label: 'Anket Formu' },
-];
+export type CatalogDocumentType = { id: string; name: string };
 
-export type ClaimManualDocumentKind = (typeof CLAIM_MANUAL_DOCUMENT_KINDS)[number]['id'];
+export function listClaimInsuredDocumentTypes(): Promise<CatalogDocumentType[]> {
+  const q = new URLSearchParams({
+    status: 'active',
+    entityScope: 'customer',
+    customerSubType: 'insured',
+  });
+  return authFetch(`${API}/document-types?${q.toString()}`)
+    .then((r) => handleResponse<{ data?: Array<{ id: string; name: string }> }>(r))
+    .then((body) =>
+      (body.data ?? [])
+        .map((row) => ({ id: row.id, name: row.name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'tr')),
+    );
+}
 
-export function claimManualDocumentLabel(kind?: string | null) {
-  return CLAIM_MANUAL_DOCUMENT_KINDS.find((k) => k.id === kind)?.label ?? 'Evrak';
+export function claimManualDocumentLabel(doc: {
+  documentKind?: string | null;
+  documentTypeName?: string | null;
+}) {
+  if (doc.documentTypeName?.trim()) return doc.documentTypeName.trim();
+  return 'Evrak';
 }
 
 export type FileDocumentStatus =
@@ -43,6 +57,7 @@ export interface FileDocument {
   whatsappSentAt?: string | null;
   whatsappPhone?: string | null;
   /** Dosyadaki sigortalı / müşteri telefonu — gönderim kutusuna hazır gelir */
+  documentTypeName?: string | null;
   suggestedPhone?: string | null;
   viewedAt?: string | null;
   digitallyApprovedAt?: string | null;
@@ -121,12 +136,12 @@ export function uploadPhysicalDocument(
 
 export function uploadClaimManualDocument(
   claimFileId: string,
-  documentKind: ClaimManualDocumentKind,
+  documentTypeId: string,
   file: File,
 ): Promise<FileDocument> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('documentKind', documentKind);
+  formData.append('documentTypeId', documentTypeId);
   return authFetch(`${API}/file-documents/claim-file/${claimFileId}/manual-upload`, {
     method: 'POST',
     body: formData,

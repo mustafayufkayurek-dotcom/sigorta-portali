@@ -16,12 +16,25 @@ export class ClaimSubjectsService {
   }
 
   async findActive(category?: string) {
-    const where: any = { isActive: true };
-    if (category) where.category = category;
-    return this.prisma.claimSubject.findMany({
-      where,
-      orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }],
+    const isAcil = category === 'acil_yardim' || category === 'acil';
+    const deptCode = isAcil ? 'acil-yardim' : 'hasar-onarim';
+    const dept = await this.prisma.department.findFirst({
+      where: { code: deptCode },
+      select: { id: true },
     });
+    if (!dept) return [];
+    const rows = await this.prisma.departmentFileSubject.findMany({
+      where: { departmentId: dept.id, status: 'active' },
+      orderBy: { sortOrder: 'asc' },
+    });
+    return rows.map((s) => ({
+      id: s.id,
+      code: s.code,
+      name: s.name,
+      category: isAcil ? 'acil_yardim' : 'hasar',
+      isActive: true,
+      sortOrder: s.sortOrder,
+    }));
   }
 
   async findOne(id: string) {

@@ -26,7 +26,6 @@ import {
   CUSTOMER_FORM_SECTIONS,
   CUSTOMER_RELATION_SECTION_TITLE,
   CUSTOMER_RELATION_SECTION_HINT,
-  DEFAULT_CUSTOMER_SUB_TYPES,
   customerSubTypeHint,
   filterCustomerSubTypesForPanelUser,
   mergeCustomerSubTypes,
@@ -1334,13 +1333,13 @@ export default function MusterilerPage() {
   const loadCustomerSources = useCallback(() => {
     axios.get(`${API}/system-settings/customer-sources`, { headers: authHeader() })
       .then((r) => setCustomerSources(r.data.data ?? []))
-      .catch(() => setCustomerSources(['Sigorta Şirketi Yönlendirmesi', 'Referans', 'Web', 'Tekrar Gelen Müşteri']));
+      .catch(() => setCustomerSources([]));
   }, []);
 
   const loadCustomerSubTypes = useCallback(() => {
     axios.get(`${API}/system-settings/customer-sub-types`, { headers: authHeader() })
       .then((r) => setCustomerSubTypes(mergeCustomerSubTypes(r.data.data ?? [])))
-      .catch(() => setCustomerSubTypes(DEFAULT_CUSTOMER_SUB_TYPES));
+      .catch(() => setCustomerSubTypes([]));
   }, []);
 
   const openCustomerForEditById = useCallback(async (customerId: string) => {

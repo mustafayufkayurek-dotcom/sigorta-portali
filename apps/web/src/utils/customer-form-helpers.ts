@@ -57,19 +57,9 @@ const CORPORATE_ONLY_SUB_TYPES = new Set([
   'eksper_firmasi',
 ]);
 
-/** Prod'daki eski system_settings listesine eksik tipleri ekler, forType günceller */
+/** Prod kaydındaki müşteri tipleri — kod etiket ezmez, listeye ekleme yapmaz */
 export function mergeCustomerSubTypes(stored: CustomerSubTypeDef[]): CustomerSubTypeDef[] {
-  const byValue = new Map(stored.map((row) => [row.value, { ...row }]));
-  for (const def of DEFAULT_CUSTOMER_SUB_TYPES) {
-    const existing = byValue.get(def.value);
-    if (!existing) {
-      byValue.set(def.value, { ...def });
-    } else {
-      byValue.set(def.value, { ...existing, label: def.label, forType: def.forType, color: def.color });
-    }
-  }
-  byValue.delete('eksper');
-  return DEFAULT_CUSTOMER_SUB_TYPES.map((def) => byValue.get(def.value)).filter(Boolean) as CustomerSubTypeDef[];
+  return stored.filter((row) => row?.value && row.value !== 'eksper');
 }
 
 export function customerSubTypesForPicker(

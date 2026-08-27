@@ -1,30 +1,30 @@
 ---
-description: Hasar Evraklar — tür seçerek manuel Muvafakatname / Anket Formu yükleme kaybolmasın
+description: Hasar Evraklar — tür seçerek manuel yükleme; tür Tanımlar’dan
 alwaysApply: true
 ---
 
 # Hasar Manuel Evrak Yükleme Kilidi
 
-**Kaynak (Mustafa · 17.08.2026):** Dosya Sorumlusu Evraklar’dan imzalı muvafakatname ve anket formunu yükleyemiyordu; tür seçimi yoktu.
+**Kaynak (Mustafa · 17.08.2026 / 27.08.2026):** Tür seçimi durur. Liste koda gömülmez; Ayarlar → Evrak Türleri (Müşteri · Sigortalı).
 
-**Temel cümle:** Hasar dosyası Evraklar → Özet’te **Manuel Evrak Yükle** durur. Yüklemeden önce tür seçilir: **Muvafakatname** veya **Anket Formu**.
+**Temel cümle:** Hasar dosyası Evraklar → Özet’te **Manuel Evrak Yükle** durur. Yüklemeden önce tür seçilir. Türler **Tanımlar Merkezi** kayıtlarıdır.
 
 ## Zorunlu
 
 1. `EvrakOzetPanel` içinde `ClaimManualDocumentsPanel`.
 2. Tür seçilmeden dosya seçimi açılmaz (`Önce evrak türünü seçin`).
-3. Kayıt: `POST /file-documents/claim-file/:id/manual-upload` (`documentKind` + dosya).
+3. Liste `GET /document-types` (müşteri · Sigortalı). Kayıt: `POST /file-documents/claim-file/:id/manual-upload` (`documentTypeId` + dosya).
 4. Dijital WhatsApp muvafakat akışı (`FileDocumentPanel` / Sözleşmeler & Onaylar) ayrı kalır; kaldırılmaz. Gönderim `hasar-dijital-onay-whatsapp-kilidi.mdc` ile kilitli.
 
 ## Yasak (açık onay yoksa)
 
 - Tür seçimini kaldırmak veya “Dosya Seç”i türsüz yüklemeye bağlamak
+- Muvafakatname / Anket Formu’nu koda gömülü seçenek olarak basmak
 - Paneli Özet’ten silip yalnız Ayarlar / gizli sekmeye taşımak
-- Türü zorunlu tutmayan `send-email` tarzı yedek yola düşmek
 
 ## Durdurma
 
-Bu akışı “sadeleştirme” diye kaldırmak → **dur, Mustafa onayı iste**.
+Bu akışı “sadeleştirme” diye kaldırmak veya listeyi tekrar koda gömmek → **dur, Mustafa onayı iste**.
 
 Regresyon:
 

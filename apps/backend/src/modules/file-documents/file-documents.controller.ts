@@ -53,16 +53,16 @@ export class FileDocumentsController {
   )
   async uploadManual(
     @Param('claimFileId') claimFileId: string,
-    @Body('documentKind') documentKind: string,
+    @Body('documentTypeId') documentTypeId: string,
     @UploadedFile(new FileValidationPipe()) file: Express.Multer.File,
     @Request() req: any,
   ) {
-    if (documentKind !== 'muvafakatname' && documentKind !== 'anket_formu') {
-      throw new BadRequestException('Evrak türü seçin: Muvafakatname veya Anket Formu');
+    if (!documentTypeId?.trim()) {
+      throw new BadRequestException('Önce evrak türünü seçin.');
     }
     return this.service.uploadManualForClaim(
       claimFileId,
-      documentKind,
+      documentTypeId.trim(),
       file,
       req.user.id,
     );

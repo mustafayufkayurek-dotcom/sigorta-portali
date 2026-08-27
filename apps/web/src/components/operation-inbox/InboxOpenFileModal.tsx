@@ -8,10 +8,13 @@ import { matchCatalogFileSubject } from '@sigorta/shared';
 import { isInsuranceBrandFileNo } from '@/utils/claim-list-column-fields';
 import {
   CUSTOMER_TYPE_OPTIONS,
-  DEFAULT_CUSTOMER_SUB_TYPES,
   customerSubTypesForPicker,
+  mergeCustomerSubTypes,
+  type CustomerSubTypeDef,
   type CustomerType,
 } from '@/utils/customer-form-helpers';
+import { API, authHeader } from '@/utils/api';
+import axios from 'axios';
 
 interface InsuranceCompany {
   id: string;
@@ -147,7 +150,14 @@ function NewCustomerTypeFields({
   onSubTypeChange: (v: string) => void;
   disabled?: boolean;
 }) {
-  const subOptions = customerSubTypesForPicker(DEFAULT_CUSTOMER_SUB_TYPES, entityType);
+  const [catalog, setCatalog] = useState<CustomerSubTypeDef[]>([]);
+  useEffect(() => {
+    axios
+      .get(`${API}/system-settings/customer-sub-types`, { headers: authHeader() })
+      .then((r) => setCatalog(mergeCustomerSubTypes(r.data?.data ?? [])))
+      .catch(() => setCatalog([]));
+  }, []);
+  const subOptions = customerSubTypesForPicker(catalog, entityType);
 
   return (
     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -161,10 +171,10 @@ function NewCustomerTypeFields({
           onChange={(e) => {
             const next = e.target.value as CustomerType;
             onEntityTypeChange(next);
-            const nextSubs = customerSubTypesForPicker(DEFAULT_CUSTOMER_SUB_TYPES, next);
+            const nextSubs = customerSubTypesForPicker(catalog, next);
             const keep = nextSubs.some((s) => s.value === subType);
             if (!keep) {
-              onSubTypeChange(next === 'individual' ? 'insured' : (nextSubs[0]?.value ?? ''));
+              onSubTypeChange(nextSubs[0]?.value ?? '');
             }
           }}
           disabled={disabled}

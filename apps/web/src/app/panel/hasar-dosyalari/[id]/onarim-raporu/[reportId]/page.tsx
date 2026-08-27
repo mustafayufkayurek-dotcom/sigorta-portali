@@ -97,14 +97,6 @@ function isValidLocationFormat(value: string): boolean {
   return trimmed.includes(' - ') || formatLocationLabel(trimmed).formatted.includes(' - ');
 }
 
-const DEFAULT_DETECTION_SCOPES = [
-  'Sigortalı Konut',
-  'Ortak Alan',
-  'Depo',
-  'Dükkan',
-  'Ofis',
-] as const;
-
 function formatDetectionScopeLabel(value: string): string {
   const trimmed = normalizeLocationLabel(value);
   return trimmed ? toTitleCaseTR(trimmed) : trimmed;
@@ -2540,7 +2532,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   }, [addingRow]);
 
   // locationList + tespit alanları (sistem tanımları + rapor içi)
-  const [detectionScopeList, setDetectionScopeList] = useState<string[]>([...DEFAULT_DETECTION_SCOPES]);
+  const [catalogDetectionScopes, setCatalogDetectionScopes] = useState<string[]>([]);
+  const [detectionScopeList, setDetectionScopeList] = useState<string[]>([]);
 
   useEffect(() => {
     axios
@@ -2548,11 +2541,9 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       .then((res) => {
         const entries = (res.data?.data ?? res.data ?? []) as { name?: string }[];
         const names = entries.map((e) => formatDetectionScopeLabel(e.name ?? '')).filter(Boolean);
-        if (names.length > 0) {
-          setDetectionScopeList((prev) => Array.from(new Set([...names, ...prev])));
-        }
+        setCatalogDetectionScopes(names);
       })
-      .catch(() => { /* varsayılan liste */ });
+      .catch(() => setCatalogDetectionScopes([]));
   }, []);
 
   useEffect(() => {
@@ -2563,12 +2554,9 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         .map((l: string) => normalizeLocationLabel(l)),
     )) as string[];
     setLocationList(locs);
-    const scopes = Array.from(new Set([
-      ...DEFAULT_DETECTION_SCOPES,
-      ...items.map((i: any) => readMetrajDetectionScope(i.metrajData)).filter(Boolean),
-    ])) as string[];
-    setDetectionScopeList(scopes);
-  }, [items]);
+    const fromItems = items.map((i: any) => readMetrajDetectionScope(i.metrajData)).filter(Boolean);
+    setDetectionScopeList(Array.from(new Set([...catalogDetectionScopes, ...fromItems])));
+  }, [items, catalogDetectionScopes]);
 
   const addLocationIfNew = (loc: string) => {
     const normalized = validateAndFormatLocation(loc);

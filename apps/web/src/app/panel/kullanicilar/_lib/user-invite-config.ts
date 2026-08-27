@@ -189,41 +189,6 @@ const CLAIM_SUBJECT_LIKE_SERVICE_BRANCHES = new Set([
   'Terör',
 ]);
 
-const FALLBACK_OPERATIONAL_SERVICE_BRANCHES: Record<'hasar' | 'acil_yardim', string[]> = {
-  hasar: [
-    'Boyacı',
-    'Sıvacı',
-    'Alçıpan',
-    'Seramik',
-    'Parke',
-    'Mermerci',
-    'Marangoz / Mobilyacı',
-    'Camcı',
-    'Elektrikçi',
-    'Tesisatçı',
-  ],
-  acil_yardim: [
-    'Çilingir',
-    'Elektrikçi',
-    'Tesisatçı',
-    'Camcı',
-    'Kombi / Klima',
-    'Beyaz Eşya',
-    'Çatı Ustası',
-    'Haşere İlaçlama',
-  ],
-};
-
-function fallbackFieldOperationBranches(type: 'hasar' | 'acil_yardim'): FieldOperationServiceBranch[] {
-  return FALLBACK_OPERATIONAL_SERVICE_BRANCHES[type].map((name, index) => ({
-    id: `fallback-${type}-${index}`,
-    name,
-    type,
-    isActive: true,
-    sortOrder: index,
-  }));
-}
-
 export function sanitizeFieldOperationServiceBranches(
   branches: FieldOperationServiceBranch[],
   type: 'hasar' | 'acil_yardim',
@@ -233,7 +198,7 @@ export function sanitizeFieldOperationServiceBranches(
     .filter((branch) => branch.isActive !== false)
     .filter((branch) => !CLAIM_SUBJECT_LIKE_SERVICE_BRANCHES.has(branch.name));
 
-  return clean.length >= 3 ? clean : fallbackFieldOperationBranches(type);
+  return clean;
 }
 
 export function fieldOperationBranchOptions(

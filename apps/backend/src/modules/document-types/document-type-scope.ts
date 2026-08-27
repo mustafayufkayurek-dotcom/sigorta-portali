@@ -1,6 +1,33 @@
 export type DocumentEntityScope = 'vendor' | 'customer';
 export type ServiceBranchTypeKey = 'hasar' | 'acil_yardim';
 
+/** Hasar dosyası manuel evrak — Müşteri · Sigortalı kapsamı */
+export const CLAIM_FILE_INSURED_SUB_TYPE = 'insured';
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isDocumentTypeId(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
+export function isClaimInsuredCatalogDocumentType(doc: {
+  status?: string;
+  entityScope?: string;
+  customerSubTypes?: unknown;
+}): boolean {
+  if (doc.status && doc.status !== 'active') return false;
+  if ((doc.entityScope ?? 'vendor') !== 'customer') return false;
+  return matchesCustomerSubType(doc, CLAIM_FILE_INSURED_SUB_TYPE);
+}
+
+/** Dijital süreç kind’ları fiziki katalog kaydı değildir (matbu / süreç). */
+export function allowsClaimManualPhysicalKind(documentKind: string): boolean {
+  if (documentKind === 'matbu_evrak') return false;
+  if (documentKind === 'muvafakatname' || documentKind === 'anket_formu') return true;
+  return UUID_RE.test(documentKind);
+}
+
 const DEPT_CODE_TO_BRANCH: Record<string, ServiceBranchTypeKey> = {
   'hasar-onarim': 'hasar',
   sovtaj: 'hasar',
