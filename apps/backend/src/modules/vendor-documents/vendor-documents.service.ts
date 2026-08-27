@@ -51,7 +51,7 @@ export class VendorDocumentsService {
     if (!docType) throw new NotFoundException('Evrak türü bulunamadı');
 
     try {
-      const isImage = this.imageOptimizer.isImage(file.mimetype);
+      const isImage = this.imageOptimizer.isImage(file.mimetype, file.originalname);
       const uuid = randomUUID();
 
       let storageKey: string;
@@ -118,6 +118,19 @@ export class VendorDocumentsService {
 
     const url = await this.storage.getSignedUrl(doc.storageKey, expiresIn);
     return { url, fileName: doc.fileName, mimeType: doc.mimeType };
+  }
+
+  async getFileBuffer(
+    id: string,
+    preferThumb = false,
+  ): Promise<{ buffer: Buffer; fileName: string; mimeType: string }> {
+    const doc = await this.prisma.vendorDocument.findFirst({ where: { id, status: 'active' } });
+    if (!doc) throw new NotFoundException('Evrak bulunamadı');
+    const useThumb = preferThumb && Boolean(doc.thumbnailKey);
+    const key = useThumb ? doc.thumbnailKey! : doc.storageKey;
+    const buffer = await this.storage.download(key);
+    const mimeType = useThumb ? 'image/webp' : doc.mimeType || 'application/octet-stream';
+    return { buffer, fileName: doc.fileName, mimeType };
   }
 
   async getThumbnailSignedUrl(id: string, expiresIn = 900): Promise<{ url: string }> {

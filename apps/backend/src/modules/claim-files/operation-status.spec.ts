@@ -45,8 +45,9 @@ describe('operation-status mapping', () => {
     ).toBe('Onay Talep Et');
   });
 
-  it('acil ATANDI → Tespit Aşamasında; COZULDU → Dosya Kapatıldı', () => {
-    expect(emergencyStatusProductLabel('ATANDI')).toBe('Tespit Aşamasında');
+  it('acil ATANDI Yeni İhbar’da kalır; SAHADA Hizmet Verildi; COZULDU Dosya Kapatıldı', () => {
+    expect(emergencyStatusProductLabel('ATANDI')).toBe('Yeni İhbar');
+    expect(emergencyStatusProductLabel('SAHADA')).toBe('Hizmet Verildi');
     expect(emergencyStatusProductLabel('COZULDU')).toBe('Dosya Kapatıldı');
   });
 
@@ -57,6 +58,15 @@ describe('operation-status mapping', () => {
     });
     expect(stage.label).toBe('Onay Bekliyor');
     expect(stage.nextAction).toBe('Onay Talep Et');
+  });
+
+  it('dış onay bekleyen rapor Onarım Aşamasında değil, Onay Bekliyor', () => {
+    const stage = deriveOperationStage({
+      claimStatusCode: 'pre_review',
+      reportStatus: 'sent_for_external_approval',
+    });
+    expect(stage.id).toBe('onay_bekliyor');
+    expect(stage.label).toBe('Onay Bekliyor');
   });
 
   it('report rejected → Reddedildi (Rapor Yazılıyor değil)', () => {

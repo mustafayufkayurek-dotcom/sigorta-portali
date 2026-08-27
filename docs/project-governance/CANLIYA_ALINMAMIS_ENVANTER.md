@@ -1,10 +1,12 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
-**Tarih:** 28 Haziran 2026  
-**Referans canlı sürüm:** Web v29 + Backend v27  
+**Tarih:** 28 Haziran 2026 (güncelleme 26.08.2026)  
+**Referans canlı sürüm:** Web + backend **v540**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
-Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir. Ayarlar oturumu (#1–#18 + v26–v29) **canlıda ve kapalı**.
+Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
+
+**Sıradaki canlı paket (Mustafa · 26.08.2026, henüz alınmadı):** v541 — Hasar dijital onay WhatsApp; Hasar/Acil ürün durum dili; liste Sıra; Test Notları kalkar; Acil dijital onay 28.08.2026 18:00’e kadar kapalı, 18:01’de açılır. İşlemsizlik bu pakette yok. İK / puantaj karışmaz.
 
 ---
 
@@ -25,8 +27,13 @@ Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertele
 | B1 | **D276 Finans UX olgunlaştırması** | ARCHIV envanter | Finans rotaları var; D276'daki özel UX ayrı paket |
 | B2 | **D278 MinIO canlıya alma** | ARCHIV | Hazır denmiş, deploy yok |
 | B3 | **D255 Sahip ekranları CRUD standardı** | ARCHIV | Tek tip şablon henüz kapanmadı |
-| B4 | **Personel / demirbaş pod tam entegrasyonu** | agreement-hr dalga | Migration iskelet var, UI bağlantısı sonra |
+| B4 | **Personel / demirbaş pod tam entegrasyonu** | agreement-hr dalga | İK zimmet — v541’den **sonra**. Bu alıma karışmaz. |
 | B5 | **CRM tam kapsam** | Kurtarma Paketi 1 | Route var; "kısmen geri kazanıldı" — derinlik eksik olabilir |
+| B6 | **Hasar dijital onay WhatsApp** | Mustafa 26.08.2026 | **Sıradaki canlı paket (v541)** parçası. Kod + kilit hazır. Sunucu kopyası bekliyor. |
+| B7 | **Hasar / Acil ürün durum dili** | Mustafa 26.08.2026 | v541. Eski adlar (Eksper Atandı, Bütçe…) düşer. Dosya İptal Edildi. Acil: Hizmet Verildi, tespit yok. |
+| B8 | **Liste Sıra sütunu** | Mustafa 26.08.2026 | v541. Hasar ve Acil birikim listesinin son sütunu. |
+| B9 | **Test Notları kaldırıldı** | Mustafa 26.08.2026 | v541. Menü, Ayarlar ve yetkiden kalktı; eski adres panele gider. |
+| B10 | **Acil dijital onay geçici durdurma** | Mustafa 27.08.2026 | v541. 28.08.2026 18:00’e kadar zorunlu değil; 18:01’de talimatsız açılır. Hasar dokunulmaz. |
 
 ---
 

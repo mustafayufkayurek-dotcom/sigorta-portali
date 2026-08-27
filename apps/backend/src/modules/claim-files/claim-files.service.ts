@@ -15,6 +15,7 @@ import { CacheService } from '@/cache/cache.service';
 import { ClaimResponsibilitiesService } from '@/modules/claim-responsibilities/claim-responsibilities.service';
 import { OperationalAccessGrantsService } from '@/modules/operational-access-grants/operational-access-grants.service';
 import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
+import { SurveysService } from '@/modules/surveys/surveys.service';
 import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
@@ -27,6 +28,7 @@ import {
   normalizeLocationLabel,
   resolveProvinceDistrictIds,
 } from './vendor-area-match.util';
+import { mergeAssignableStaffWithDelegates } from './assignable-file-owners';
 import { resolveCityDistrictFromAddress } from '@/modules/operation-inbox/inbound-location.util';
 import {
   resolveClaimSubjectIdByLabel,
@@ -35,6 +37,8 @@ import {
 import { resolveDepartmentFileSubjectByLabel } from '@/common/helpers/dosya-konusu.helper';
 import {
   APPROVAL_WAITING_REPORT_STATUSES,
+  claimStatusProductLabel,
+  overlayClaimStatusProductName,
   CLOSED_CLAIM_STATUS_CODES,
   FINANCE_TRANSFER_STATUS_CODES,
   deriveOperationStage,
@@ -45,6 +49,7 @@ import {
   SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE,
   supplierAssignConflictMessage,
   supplierAssignConflicts,
+  vendorPaidFromOutgoingStatuses,
   type OperationPreset,
   type VerbalManualDecision,
 } from '@sigorta/shared';
@@ -180,7 +185,31 @@ export class ClaimFilesService {
     @Optional() private readonly claimResponsibilities?: ClaimResponsibilitiesService,
     @Optional() private readonly operationalAccessGrants?: OperationalAccessGrantsService,
     @Optional() private readonly vendorProfile?: VendorIntelligenceProfileService,
+    @Optional() private readonly surveys?: SurveysService,
   ) {}
+
+  private isFinanceLikeRole(roleCode: string | null | undefined): boolean {
+    const code = String(roleCode ?? '').trim().toLowerCase();
+    return code === 'finance' || code === 'finans' || code === 'accountant';
+  }
+
+  private async assertHasarFileMutationAllowed(requestingUser?: {
+    id?: string;
+    userId?: string;
+    roleCode?: string | null;
+    role?: { code?: string };
+  }) {
+    const roleCode = requestingUser?.roleCode ?? requestingUser?.role?.code;
+    if (!this.isFinanceLikeRole(roleCode)) return;
+    const userId = requestingUser?.id ?? requestingUser?.userId;
+    if (!userId || !this.operationalAccessGrants) {
+      throw new ForbiddenException('Hasar dosyasında işlem için Hasar vekaleti gerekir');
+    }
+    const allowed = await this.operationalAccessGrants.hasFunctionDelegation(userId, 'hasar');
+    if (!allowed) {
+      throw new ForbiddenException('Hasar dosyasında işlem için Hasar vekaleti gerekir');
+    }
+  }
 
   private async resolveHasarDepartmentId(): Promise<string | null> {
     const dept = await this.prisma.department.findFirst({
@@ -269,9 +298,13 @@ export class ClaimFilesService {
   }
 
   async findStatuses() {
-    return this.prisma.claimStatus.findMany({
+    const rows = await this.prisma.claimStatus.findMany({
       orderBy: { sequenceNo: 'asc' },
     });
+    return rows.map((row) => ({
+      ...row,
+      name: claimStatusProductLabel(row.code),
+    }));
   }
 
   /**
@@ -478,14 +511,21 @@ export class ClaimFilesService {
       baseWhere.repairReports = { some: { status: params.repairReportStatus } };
     }
 
-    const statusCode = String(params?.statusCode ?? '').trim().toLowerCase();
-    if (statusCode === 'open') {
+    const statusCode = String(params?.statusCode ?? '').trim();
+    const statusCodeLower = statusCode.toLowerCase();
+    if (statusCodeLower === 'open') {
       // Kapalı olmayan tüm operasyon durumları (pre_review vb.) — tek koda fuzzy bağlanmaz
       baseWhere.currentStatus = { isClosedState: false };
-    } else if (statusCode === 'closed') {
+    } else if (statusCodeLower === 'closed') {
       baseWhere.currentStatus = { isClosedState: true };
+    } else if (statusCode.includes(',')) {
+      const codes = statusCode
+        .split(',')
+        .map((c) => c.trim().toLowerCase())
+        .filter(Boolean);
+      if (codes.length) baseWhere.currentStatus = { code: { in: codes } };
     } else if (statusCode) {
-      baseWhere.currentStatus = { code: statusCode };
+      baseWhere.currentStatus = { code: statusCodeLower };
     }
 
     if (params?.dateFrom || params?.dateTo) {
@@ -632,11 +672,40 @@ export class ClaimFilesService {
     const dataWithReports = await this.attachLatestRepairReports(data);
     const enriched = await this.enrichOperationFields(dataWithReports);
     const withInspection = await this.enrichInspectionStatus(enriched);
+    const withVendorPay = await this.attachVendorPaid(withInspection);
 
     return {
-      data: withInspection,
+      data: withVendorPay,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  /** Liste Ödemeler sütunu — giden tedarikçi ödemesi; vade yok. */
+  private async attachVendorPaid<T extends { id: string }>(
+    claims: T[],
+  ): Promise<Array<T & { vendorPaid: boolean | null }>> {
+    if (claims.length === 0) {
+      return claims.map((c) => ({ ...c, vendorPaid: null }));
+    }
+    const rows = await this.prisma.payment.findMany({
+      where: {
+        claimFileId: { in: claims.map((c) => c.id) },
+        paymentType: 'outgoing',
+        payerType: 'vendor',
+        status: { in: ['pending', 'completed'] },
+      },
+      select: { claimFileId: true, status: true },
+    });
+    const byFile = new Map<string, string[]>();
+    for (const row of rows) {
+      const list = byFile.get(row.claimFileId) ?? [];
+      list.push(row.status);
+      byFile.set(row.claimFileId, list);
+    }
+    return claims.map((c) => ({
+      ...c,
+      vendorPaid: vendorPaidFromOutgoingStatuses(byFile.get(c.id) ?? []),
+    }));
   }
 
   /**
@@ -728,6 +797,17 @@ export class ClaimFilesService {
     const closedEmergency = this.closedEmergencyStatuses();
     const { from: todayFrom, to: todayTo } = this.istanbulDayRange();
 
+    let emergencyScope: Record<string, unknown> = {};
+    if (
+      requestingUser
+      && this.operationalAccessGrants?.isDelegationScopedRole(requestingUser.roleCode)
+    ) {
+      emergencyScope = await this.operationalAccessGrants.buildEmergencyDelegationScope(
+        requestingUser.id,
+        requestingUser.roleCode,
+      );
+    }
+
     const [
       openClaims,
       priorityUrgentClaims,
@@ -751,14 +831,16 @@ export class ClaimFilesService {
       this.countForOpsPreset('delay_risk', requestingUser),
       this.countForOpsPreset('approval_72h', requestingUser),
       this.prisma.emergencyCase.count({
-        where: { status: { notIn: [...closedEmergency] } },
+        where: { ...emergencyScope, status: { notIn: [...closedEmergency] } },
       }),
       this.prisma.emergencyCase.count({
-        where: { createdAt: { gte: todayFrom, lte: todayTo } },
+        where: { ...emergencyScope, createdAt: { gte: todayFrom, lte: todayTo } },
       }),
     ]);
 
     return {
+      openClaims,
+      openedTodayClaims,
       /** Açık hasar + açık acil */
       open: openClaims + openEmergency,
       /**
@@ -836,6 +918,9 @@ export class ClaimFilesService {
 
       return {
         ...claim,
+        currentStatus: claim.currentStatus
+          ? { ...claim.currentStatus, name: stage.label }
+          : claim.currentStatus,
         operationStage: stage,
         // 72s aşımı Dosya Durumu etiketini bozmaz; aksiyon nextAction’da kalır, satırda pulse ile görünür.
         operationStatusLabel: stage.label,
@@ -954,6 +1039,14 @@ export class ClaimFilesService {
             actualRevenue: true,
             totalRevenue: true,
             totalCollected: true,
+            extraWorkRevenue: true,
+            fileFeeRevenue: true,
+            totalVariableCost: true,
+            vendorCost: true,
+            fieldExpenseCost: true,
+            materialCost: true,
+            communicationCost: true,
+            otherVariableCost: true,
           },
         },
       },
@@ -1017,11 +1110,17 @@ export class ClaimFilesService {
       }
     }
 
-    const reports = await this.prisma.repairReport.findMany({
-      where: { claimFileId: id },
-      orderBy: { updatedAt: 'desc' },
-      select: LATEST_REPAIR_REPORT_SELECT,
-    });
+    const [reports, extraWorkCostAgg] = await Promise.all([
+      this.prisma.repairReport.findMany({
+        where: { claimFileId: id },
+        orderBy: { updatedAt: 'desc' },
+        select: LATEST_REPAIR_REPORT_SELECT,
+      }),
+      this.prisma.expense.aggregate({
+        where: { fileCaseId: id, expensePlan: 'EKSTRA_SATIS_MASRAFI' },
+        _sum: { amount: true },
+      }),
+    ]);
     const latestReport = pickPreferredRepairReport(reports);
     const newestReport = reports[0] ?? null;
     const verbalByClaim = await this.latestVerbalDecisions([id]);
@@ -1043,8 +1142,22 @@ export class ClaimFilesService {
 
     const [withInspection] = await this.enrichInspectionStatus([claimFile]);
 
+    const overlayHistory = (withInspection.statusHistory ?? []).map((h) => ({
+      ...h,
+      fromStatus: h.fromStatus ? overlayClaimStatusProductName(h.fromStatus) : h.fromStatus,
+      toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus) : h.toStatus,
+    }));
+
     return {
       ...withInspection,
+      currentStatus: withInspection.currentStatus
+        ? overlayClaimStatusProductName(withInspection.currentStatus)
+        : withInspection.currentStatus,
+      statusHistory: overlayHistory,
+      financialSummary: {
+        ...(withInspection.financialSummary ?? {}),
+        extraWorkCost: extraWorkCostAgg._sum.amount ?? 0,
+      },
       assignedSuppliers: (claimFile.supplierAssignments ?? []).map((s) => s.vendor),
       inboundReceivedAt: earliestInbound?.receivedAt ?? null,
       latestRepairReport: latestReport ? formatLatestRepairReport(latestReport) : null,
@@ -1236,6 +1349,7 @@ export class ClaimFilesService {
     data: any,
     requestingUser?: { id?: string; userId?: string; roleCode?: string; role?: { code?: string } },
   ) {
+    await this.assertHasarFileMutationAllowed(requestingUser);
     const { fileNo: userFileNo, propertyAddress: _pa, city: _city, district: _district, ...rest } = data;
     const fileNo = (typeof userFileNo === 'string' && userFileNo.trim()) ? userFileNo.trim() : '';
 
@@ -1521,6 +1635,7 @@ export class ClaimFilesService {
     data: any,
     requestingUser?: { id: string; roleCode?: string | null; vendorId?: string | null },
   ) {
+    await this.assertHasarFileMutationAllowed(requestingUser);
     const existing = await this.findOne(id, requestingUser);
     const existingAny = existing as {
       departmentId?: string | null;
@@ -1732,6 +1847,7 @@ export class ClaimFilesService {
     dto: any,
     requestingUser?: { id: string; roleCode?: string | null; vendorId?: string | null },
   ) {
+    await this.assertHasarFileMutationAllowed(requestingUser);
     const claimFile = await this.findOne(id, requestingUser);
 
     const updateData: any = {};
@@ -1886,6 +2002,7 @@ export class ClaimFilesService {
     userId: string,
     requestingUser?: { id: string; roleCode?: string | null; vendorId?: string | null },
   ) {
+    await this.assertHasarFileMutationAllowed(requestingUser ?? { id: userId });
     const claimFile = await this.findOne(id, requestingUser);
 
     const fromStatus = claimFile.currentStatus as any;
@@ -1991,6 +2108,11 @@ export class ClaimFilesService {
       void this.vendorProfile?.onFileCompleted({ type: 'claim_file', id }).catch((err) =>
         this.logger.warn(`[VendorIntelligenceProfile] Kapanış hook: ${err?.message}`),
       );
+
+      // Anket zorunlu değil; kapanışta kampanya oluşur, WhatsApp linki gönderilmez.
+      void this.surveys?.ensureCampaignForClaimFile(id).catch((err) =>
+        this.logger.warn(`[Survey] Kapanış kampanyası: ${err?.message}`),
+      );
     }
 
     return updated;
@@ -2012,7 +2134,11 @@ export class ClaimFilesService {
       orderBy: { changedAt: 'asc' },
     });
 
-    return history;
+    return history.map((h) => ({
+      ...h,
+      fromStatus: h.fromStatus ? overlayClaimStatusProductName(h.fromStatus) : h.fromStatus,
+      toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus) : h.toStatus,
+    }));
   }
 
   async suggestAssigneesByRegion(
@@ -2182,13 +2308,16 @@ export class ClaimFilesService {
       }));
   }
 
-  async getAssignableStaff(role: 'office_staff' | 'field_staff' = 'office_staff') {
+  async getAssignableStaff(
+    role: 'office_staff' | 'field_staff' = 'office_staff',
+    includeDelegates?: 'acil_yardim' | 'hasar' | 'both',
+  ) {
     const roleCodes =
       role === 'field_staff'
         ? ['field_staff', 'FIELD_STAFF']
         : ['office_staff', 'OFFICE_STAFF'];
 
-    return this.prisma.user.findMany({
+    const staff = await this.prisma.user.findMany({
       where: {
         status: { notIn: ['inactive', 'INACTIVE', 'archived', 'ARCHIVED'] },
         role: { code: { in: roleCodes } },
@@ -2204,6 +2333,33 @@ export class ClaimFilesService {
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
       take: 200,
     });
+
+    if (role === 'field_staff' || !includeDelegates || !this.operationalAccessGrants) {
+      return staff;
+    }
+
+    const delegates = await this.operationalAccessGrants.listActiveFunctionDelegates(includeDelegates);
+    const extraIds = delegates
+      .map((d) => d.id)
+      .filter((id) => !staff.some((s) => s.id === id));
+    if (extraIds.length === 0) return staff;
+
+    const extra = await this.prisma.user.findMany({
+      where: {
+        id: { in: extraIds },
+        status: { notIn: ['inactive', 'INACTIVE', 'archived', 'ARCHIVED'] },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        role: { select: { id: true, name: true, code: true } },
+      },
+    });
+
+    return mergeAssignableStaffWithDelegates(staff, extra);
   }
 
   async suggestResponsible(claimFileId: string, role: 'office_staff' | 'field_staff' = 'office_staff') {
@@ -3034,6 +3190,11 @@ export class ClaimFilesService {
     });
 
     this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
+
+    void this.surveys?.ensureCampaignForClaimFile(fileId).catch((err) =>
+      this.logger.warn(`[Survey] Kapanış kampanyası: ${err?.message}`),
+    );
+
     return updated;
   }
 

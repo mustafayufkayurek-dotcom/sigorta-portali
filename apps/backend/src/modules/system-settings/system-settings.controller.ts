@@ -104,9 +104,7 @@ export class SystemSettingsController {
     const data = await this.service.sendTestMail(body.to);
     return {
       success: true,
-      message: data.rejected.length > 0
-        ? `Test e-postası SMTP sunucusuna iletildi ancak bazı alıcılar reddedildi.`
-        : `Test e-postası SMTP sunucusu tarafından kabul edildi: ${body.to}`,
+      message: `Test e-postası Hasar kutusundan gönderildi: ${body.to}`,
       data,
     };
   }

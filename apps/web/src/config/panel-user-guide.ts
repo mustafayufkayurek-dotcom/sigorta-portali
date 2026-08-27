@@ -2,7 +2,7 @@
  * Rol bazlı panel kullanım kılavuzları.
  * HTML kılavuz güncellendiğinde GUIDE_CONTENT_VERSION artırılmalıdır.
  */
-export const GUIDE_CONTENT_VERSION = '2026-08-04';
+export const GUIDE_CONTENT_VERSION = '2026-08-18';
 
 export type PanelGuideEntry = {
   href: string;
@@ -44,7 +44,7 @@ const GUIDE_BY_ROLE: Record<string, PanelGuideEntry> = {
   field_staff: {
     href: `${PERSONEL_HTML}#saha-personeli`,
     title: 'Saha Personeli Kılavuzu',
-    subtitle: 'Atanan hasar dosyaları, görevler ve talepler',
+    subtitle: 'Atanan Dosyalar ve Tamamlanan Tespitler',
   },
   finance: {
     href: `${PERSONEL_HTML}#finans-modulleri`,

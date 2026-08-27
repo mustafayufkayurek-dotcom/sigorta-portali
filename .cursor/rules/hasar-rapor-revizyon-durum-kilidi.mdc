@@ -1,0 +1,34 @@
+---
+description: Hasar onarım raporu — dış onay / sunulmuş durumda da revizyon açılır
+alwaysApply: true
+---
+
+# Hasar Raporu Revizyon Durumu Kilidi
+
+**Kaynak (Mustafa · 22.08.2026):** Dış onaya gitmiş raporda «Bu rapor durumunda revizyon başlatılamaz» kesiyordu; menü her raporda görünüyordu.
+
+**Temel cümle:** Onarım raporunda **sunulmuş, onay bekleyen, dış onaya gönderilmiş** ve onaylı/red durumlarında revizyon açılır. Taslakta açılmaz.
+
+## Zorunlu
+
+1. Kural `packages/shared/src/repair-report-revision.ts` içinde (`canStartRepairReportRevisionFromStatus`).
+2. API ve `onarim-raporu/[reportId]/page.tsx` aynı kuralı kullanır; menü yalnız o zaman `handleRevise`.
+3. Sunulmuş / bekleyen / dış onayda revizyon eski raporu kapatır (`repairReportClosesOnRevise`); **onaylı kapanmaz**.
+4. `WorkDefinitionSelector` ve iş tanımı ekleme bu işle dokunulmaz.
+5. Dış onay gönderim DTO’su (`SendExternalApprovalDto`) validator’lıdır. `forbidNonWhitelisted` «approverType should not exist» üretmez. Revize rapor yeniden e-posta/WhatsApp ile gider.
+
+## Yasak (açık onay yoksa)
+
+- Revizyonu yalnız `approved` ile sınırlamak
+- Menüyü her durumda açıp API’yi dar tutmak
+- İş tanımı eklemeyi bu düzeltmeyle kaldırmak
+
+## Durdurma
+
+Bu akışı “sadeleştirme” diye kaldırmak → **dur, Mustafa onayı iste**.
+
+Regresyon:
+
+```bash
+pnpm smoke:hasar-rapor-revizyon
+```

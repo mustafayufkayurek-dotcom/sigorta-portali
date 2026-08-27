@@ -1,0 +1,35 @@
+---
+description: Canlı operasyon değişikliği personelde iş ekranında bir kez; bitmiş iş sessizce kaybolmaz
+alwaysApply: true
+---
+
+# Canlı Özellik — Personel Ve Bozulmama Kilidi
+
+**Kaynak (Mustafa · 18.08.2026):** Kılavuz yetmez. Personel soru sormasın. Canlıya alınan iş geri dönmesin.
+
+**Temel cümle:** Yeni davranış, işi yapanın **o ekranında bir kez** anlatılır. Anlatım kalkarsa veya bitmiş akış sessizce kaybolursa iş bitmiş sayılmaz.
+
+## Zorunlu
+
+1. Personelin günlük işini değiştiren canlı özellik: `OpsFirstRunNotice` (iş ekranı, «Anladım», localStorage). Yeni menü / eğitim sayfası / slayt yok.
+2. Metin operasyon dili; Google / API / motor adı yok (`urun-gorunmez-teknoloji.mdc`).
+3. Aynı özellik `*.lock.spec.ts` + ilgili smoke ile kilitlenir. Şerit de kilitte durur (`ops-first-run-notice.lock.spec.ts`).
+4. Bitmiş canlı akış «sadeleştirme» diye kaldırılmaz. Kırılırsa aynı gün geri konur (`ai-governance.mdc`, `kaynak-gercekligi-kilidi.mdc`).
+
+## Yasak (açık onay yoksa)
+
+- Yalnız kılavuz PDF/HTML ile personeli bilgilendim demek
+- Dashboard’a genel duyuru merkezi / yeni ayar ekranı
+- Kilitli şeridi veya kilit spec’i silmek
+
+## Durdurma
+
+İş ekranı şeridi olmadan canlı operasyon davranışı veya kilitli akışın kaybolması → **dur, Mustafa onayı iste**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test apps/web/src/utils/ops-first-run-notice.lock.spec.ts
+pnpm smoke:acil-supplier
+pnpm smoke:acil-file-owner
+```

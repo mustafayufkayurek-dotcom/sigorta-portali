@@ -45,10 +45,9 @@ export const PREVIEW = {
     { state: 'done' as const, text: 'Tespitçi ataması yapıldı', when: '19.07.2026 11:05', step: 'inspector' as const },
     { state: 'waiting' as const, text: 'Tedarikçi ataması bekleniyor', when: null, step: 'supplier' as const },
     { state: 'future' as const, text: 'WhatsApp bilgilendirme bekleniyor', when: null, step: 'whatsapp' as const },
+    { state: 'future' as const, text: 'Dosya onayı bekleniyor', when: null, step: 'approved' as const },
     { state: 'future' as const, text: 'Dijital onay bekleniyor', when: null, step: 'digital_approval' as const },
-    { state: 'future' as const, text: 'Rapor yazım aşamasında', when: null, step: 'report_writing' as const },
-    { state: 'future' as const, text: 'Onaya gönderilecek', when: null, step: 'sent_for_approval' as const },
-    { state: 'future' as const, text: 'Onay bekleniyor', when: null, step: 'approved' as const },
+    { state: 'future' as const, text: 'Onarım planlama bekleniyor', when: null, step: 'repair_whatsapp' as const },
   ],
   risks: [
     { tone: 'critical' as const, text: 'Tedarikçi ataması 2 saattir bekliyor.', step: 'supplier' as const },

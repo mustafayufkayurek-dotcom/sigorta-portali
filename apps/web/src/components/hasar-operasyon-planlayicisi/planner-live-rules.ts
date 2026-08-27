@@ -3,7 +3,7 @@
  * Renk/etiket bu bayraklardan türetilir; JSX içinde sabit status yok.
  */
 
-import type { StepId, StepStatus } from './types';
+import { isPlannerStepOnScreen, type StepId, type StepStatus } from './types';
 
 export type PlannerActivityItem = {
   action?: string | null;
@@ -19,10 +19,15 @@ const STEP_ORDER: StepId[] = [
   'inspector',
   'supplier',
   'whatsapp',
-  'digital_approval',
   'report_writing',
   'sent_for_approval',
   'approved',
+  'digital_approval',
+  'muvafakat',
+  'repair_whatsapp',
+  'repair_complete',
+  'closure_survey',
+  'docs_upload',
 ];
 
 function metaOf(item: PlannerActivityItem): Record<string, unknown> {
@@ -33,11 +38,30 @@ function isFailedStatus(status: string): boolean {
   return status === 'failed' || status === 'error';
 }
 
-/** WhatsApp bilgilendirme tamam — contact-events / randevu bildirimi kaydı. */
+export function hasRepairWhatsappSent(activity: PlannerActivityItem[] = []): boolean {
+  return activity.some((item) => {
+    const meta = metaOf(item);
+    if (String(meta.purpose ?? '') === 'repair' && !isFailedStatus(String(meta.status ?? ''))) {
+      return true;
+    }
+    return /onarım randevusu/i.test(String(item.description ?? ''));
+  });
+}
+
+export function hasClosureSurveyWa(activity: PlannerActivityItem[] = []): boolean {
+  return activity.some((item) => {
+    const meta = metaOf(item);
+    const template = String(meta.templateType ?? meta.template ?? '').toLowerCase();
+    return /kapanis_anket|kapanış anket|hasar_kapanis/.test(template + String(item.description ?? ''));
+  });
+}
 export function hasWhatsappSent(activity: PlannerActivityItem[] = []): boolean {
   return activity.some((item) => {
+    const meta = metaOf(item);
+    if (String(meta.purpose ?? '') === 'repair') return false;
+    if (String(meta.kind ?? '') === 'manager_approval_whatsapp') return false;
     const action = String(item.action ?? '');
-    const status = String(metaOf(item).status ?? '').toLowerCase();
+    const status = String(meta.status ?? '').toLowerCase();
     if (isFailedStatus(status)) return false;
     if (action === 'WHATSAPP_STATUS_RECORDED') return true;
     if (action === 'APPOINTMENT_NOTIFICATION_RECORDED') {
@@ -45,6 +69,49 @@ export function hasWhatsappSent(activity: PlannerActivityItem[] = []): boolean {
     }
     return /whatsapp mesajı kaydedildi/i.test(String(item.description ?? ''));
   });
+}
+
+export type PlannerWaRecipientKind = 'insured' | 'adjuster' | 'vendor';
+
+function recipientKindOf(meta: Record<string, unknown>): PlannerWaRecipientKind | null {
+  const t = String(meta.recipientType ?? '').toLowerCase();
+  if (t === 'insured' || t === 'sigortalı' || t === 'sigortali') return 'insured';
+  if (t === 'adjuster' || t === 'inspector' || t === 'tespitçi' || t === 'tespitci') return 'adjuster';
+  if (t === 'vendor' || t === 'tedarikçi' || t === 'tedarikci') return 'vendor';
+  return null;
+}
+
+export function hasWaForKind(
+  activity: PlannerActivityItem[] = [],
+  kind: PlannerWaRecipientKind,
+  purpose?: 'inspection' | 'repair',
+): boolean {
+  return activity.some((item) => {
+    const meta = metaOf(item);
+    const status = String(meta.status ?? '').toLowerCase();
+    if (isFailedStatus(status)) return false;
+    const p = String(meta.purpose ?? '');
+    if (purpose === 'repair') {
+      if (p !== 'repair' && !/onarim|onarım/.test(String(meta.templateType ?? meta.template ?? ''))) {
+        return false;
+      }
+    } else if (p === 'repair') {
+      return false;
+    }
+    const action = String(item.action ?? '');
+    const okAction =
+      action === 'WHATSAPP_STATUS_RECORDED' || action === 'APPOINTMENT_NOTIFICATION_RECORDED';
+    if (!okAction && !/whatsapp/i.test(String(item.description ?? ''))) return false;
+    return recipientKindOf(meta) === kind;
+  });
+}
+
+export function repairWaSentLabels(activity: PlannerActivityItem[] = []): string[] {
+  const labels: string[] = [];
+  if (hasWaForKind(activity, 'insured', 'repair')) labels.push('Sigortalı');
+  if (hasWaForKind(activity, 'adjuster', 'repair')) labels.push('Tespitçi');
+  if (hasWaForKind(activity, 'vendor', 'repair')) labels.push('Tedarikçi');
+  return labels;
 }
 
 function hasClosureSurveyActivity(activity: PlannerActivityItem[] = []): boolean {
@@ -94,6 +161,11 @@ export type PlannerStepFlags = {
   hasReport?: boolean;
   hasSentForApproval?: boolean;
   hasApproved?: boolean;
+  hasRepairWhatsapp?: boolean;
+  hasMuvafakat?: boolean;
+  hasRepairComplete?: boolean;
+  hasClosureSurvey?: boolean;
+  hasDocsUpload?: boolean;
 };
 
 export function computePlannerStepStatuses(
@@ -108,13 +180,24 @@ export function computePlannerStepStatuses(
     report_writing: Boolean(flags.hasReport),
     sent_for_approval: Boolean(flags.hasSentForApproval),
     approved: Boolean(flags.hasApproved),
+    repair_whatsapp: Boolean(flags.hasRepairWhatsapp),
+    muvafakat: Boolean(flags.hasMuvafakat),
+    repair_complete: Boolean(flags.hasRepairComplete),
+    closure_survey: Boolean(flags.hasClosureSurvey),
+    docs_upload: Boolean(flags.hasDocsUpload),
   };
   const result = {} as Record<StepId, StepStatus>;
   let waitingPlaced = false;
   for (const id of STEP_ORDER) {
     if (done[id]) {
       result[id] = 'done';
-    } else if (!waitingPlaced) {
+      continue;
+    }
+    if (!isPlannerStepOnScreen(id)) {
+      result[id] = 'future';
+      continue;
+    }
+    if (!waitingPlaced) {
       result[id] = 'waiting';
       waitingPlaced = true;
     } else {
@@ -129,21 +212,31 @@ export function plannerProgressText(step: StepId, status: StepStatus): string {
     insured_appointment: 'Randevu bekleniyor',
     inspector: 'Tespitçi ataması bekleniyor',
     supplier: 'Tedarikçi ataması bekleniyor',
-    whatsapp: 'WhatsApp bilgilendirme bekleniyor',
-    digital_approval: 'Kapanış / onay bekleniyor',
+    whatsapp: 'Tespit WhatsApp bekleniyor',
+    digital_approval: 'Dijital onay bekleniyor',
     report_writing: 'Rapor yazım aşamasında',
     sent_for_approval: 'Onaya gönderilecek',
-    approved: 'Onay bekleniyor',
+    approved: 'Dosya onayı bekleniyor',
+    repair_whatsapp: 'Onarım planlama bekleniyor',
+    muvafakat: 'Muvafakatname bekleniyor',
+    repair_complete: 'Onarım bitişi bekleniyor',
+    closure_survey: 'Kapanış anketi bekleniyor',
+    docs_upload: 'Evrak yükleme bekleniyor',
   };
   const done: Record<StepId, string> = {
     insured_appointment: 'Randevu oluşturuldu',
     inspector: 'Tespitçi ataması yapıldı',
     supplier: 'Tedarikçi ataması yapıldı',
-    whatsapp: 'WhatsApp bilgilendirme tamamlandı',
-    digital_approval: 'Kapanış / onay tamamlandı',
+    whatsapp: 'Tespit WhatsApp tamamlandı',
+    digital_approval: 'Dijital onay tamamlandı',
     report_writing: 'Rapor yazımı tamamlandı',
     sent_for_approval: 'Onaya gönderildi',
-    approved: 'Onaylandı',
+    approved: 'Dosya onaylandı',
+    repair_whatsapp: 'Onarım planlama tamamlandı',
+    muvafakat: 'Muvafakatname alındı',
+    repair_complete: 'Onarım bitiş — finansa bildirildi',
+    closure_survey: 'Kapanış anketi gönderildi',
+    docs_upload: 'Evrak yüklendi',
   };
   if (status === 'done') return done[step];
   return waiting[step];

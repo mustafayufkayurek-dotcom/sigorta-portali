@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { overlayClaimStatusProductName } from '@sigorta/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -38,7 +39,11 @@ export class TimelineService {
       ...history.map((h: any) => ({
         type: 'transition' as const,
         date: h.changedAt,
-        data: h,
+        data: {
+          ...h,
+          fromStatus: h.fromStatus ? overlayClaimStatusProductName(h.fromStatus) : h.fromStatus,
+          toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus) : h.toStatus,
+        },
       })),
       ...waitings.map((w: any) => ({
         type: 'waiting' as const,
@@ -96,7 +101,7 @@ export class TimelineService {
     });
 
     return {
-      status: claimFile.currentStatus,
+      status: overlayClaimStatusProductName(claimFile.currentStatus),
       enteredAt,
       elapsedMinutes,
       maxMinutes,

@@ -4,6 +4,7 @@ import {
   buildVendorServiceAreaWhere,
   isUnresolvedLocationLabel,
   normalizeLocationLabel,
+  resolveProvinceDistrictIds,
 } from './vendor-area-match.util';
 
 describe('vendor-area-match.util', () => {
@@ -47,6 +48,46 @@ describe('vendor-area-match.util', () => {
           purpose: 'supplier',
         }),
       ).toEqual({ status: 'active' });
+    });
+
+    it('il id yokken Afyon hizmet bölgesi ve şehir adıyla eşler', () => {
+      const where = buildVendorNearbyWhere({
+        provinceId: null,
+        districtId: null,
+        city: 'Afyon',
+        purpose: 'supplier',
+      });
+      expect(where.status).toBe('active');
+      expect(where.OR).toEqual(
+        expect.arrayContaining([
+          { city: { equals: 'Afyon', mode: 'insensitive' } },
+          { city: { equals: 'Afyonkarahisar', mode: 'insensitive' } },
+          {
+            serviceAreas: {
+              some: { province: { name: { equals: 'Afyonkarahisar', mode: 'insensitive' } } },
+            },
+          },
+        ]),
+      );
+    });
+
+    it('il id yokken ilçe adı (Kartepe) hizmet bölgesinden bulunur', () => {
+      const where = buildVendorNearbyWhere({
+        provinceId: null,
+        districtId: null,
+        city: 'Kartepe',
+        purpose: 'supplier',
+      });
+      expect(where.OR).toEqual(
+        expect.arrayContaining([
+          { district: { equals: 'Kartepe', mode: 'insensitive' } },
+          {
+            serviceAreas: {
+              some: { district: { name: { equals: 'Kartepe', mode: 'insensitive' } } },
+            },
+          },
+        ]),
+      );
     });
 
     it('il bilindiğinde hizmet bölgesi ve il/ilçe metin eşleşmesini açar', () => {
@@ -133,6 +174,60 @@ describe('vendor-area-match.util', () => {
 
     it('kategori yoksa yalnızca aktif durumu ister', () => {
       expect(buildSupplierFallbackWhere(null)).toEqual({ status: 'active' });
+    });
+  });
+
+  describe('resolveProvinceDistrictIds', () => {
+    const provinces = [
+      { id: 'p-afyon', name: 'Afyonkarahisar' },
+      { id: 'p-kocaeli', name: 'Kocaeli' },
+      { id: 'p-kutahya', name: 'Kütahya' },
+    ];
+    const districts = [
+      { id: 'd-kartepe', name: 'Kartepe', provinceId: 'p-kocaeli', province: { name: 'Kocaeli' } },
+      { id: 'd-sandikli', name: 'Sandıklı', provinceId: 'p-afyon', province: { name: 'Afyonkarahisar' } },
+      { id: 'd-merkez', name: 'Kütahya Merkez', provinceId: 'p-kutahya', province: { name: 'Kütahya' } },
+    ];
+    const prisma = {
+      province: {
+        findMany: jest.fn(async () => provinces),
+        findFirst: jest.fn(),
+      },
+      district: {
+        findMany: jest.fn(async (args?: { where?: { provinceId?: string } }) => {
+          const provinceId = args?.where?.provinceId;
+          if (provinceId) return districts.filter((row) => row.provinceId === provinceId);
+          return districts;
+        }),
+        findFirst: jest.fn(),
+      },
+    };
+
+    it('Afyon kısa adını Afyonkarahisar iline çevirir', async () => {
+      await expect(resolveProvinceDistrictIds(prisma, 'Afyon', 'Sandıklı')).resolves.toEqual({
+        provinceId: 'p-afyon',
+        districtId: 'd-sandikli',
+        provinceName: 'Afyonkarahisar',
+        districtName: 'Sandıklı',
+      });
+    });
+
+    it('Kartepe ilçe adından Kocaeli ilini bulur', async () => {
+      await expect(resolveProvinceDistrictIds(prisma, 'Kartepe', null)).resolves.toEqual({
+        provinceId: 'p-kocaeli',
+        districtId: 'd-kartepe',
+        provinceName: 'Kocaeli',
+        districtName: 'Kartepe',
+      });
+    });
+
+    it('Kutahya ASCII yazımını Kütahya olarak çözer', async () => {
+      await expect(resolveProvinceDistrictIds(prisma, 'Kutahya', null)).resolves.toEqual({
+        provinceId: 'p-kutahya',
+        districtId: null,
+        provinceName: 'Kütahya',
+        districtName: null,
+      });
     });
   });
 });

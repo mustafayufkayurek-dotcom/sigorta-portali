@@ -22,14 +22,14 @@ describe('claim-file-stage', () => {
     expect(deriveClaimFileStageIndex({})).toBeNull();
   });
 
-  it('pending_approval → Onay Bekliyor (0)', () => {
+  it('pending_approval / dış onay bekliyor → Onay Bekliyor (0)', () => {
     expect(deriveClaimFileStageIndex({ reportStatus: 'pending_approval' })).toBe(0);
     expect(deriveClaimFileStageIndex({ reportStatus: 'submitted' })).toBe(0);
+    expect(deriveClaimFileStageIndex({ reportStatus: 'sent_for_external_approval' })).toBe(0);
   });
 
-  it('approved / dış onay akışı → Onaylandı (1)', () => {
+  it('approved / dış onay tamam → Onaylandı (1)', () => {
     expect(deriveClaimFileStageIndex({ reportStatus: 'approved' })).toBe(1);
-    expect(deriveClaimFileStageIndex({ reportStatus: 'sent_for_external_approval' })).toBe(1);
     expect(deriveClaimFileStageIndex({ reportStatus: 'externally_approved' })).toBe(1);
   });
 

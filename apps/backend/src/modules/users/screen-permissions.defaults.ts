@@ -12,7 +12,6 @@ export const ALL_SCREEN_CODES = [
   'harita',
   'personel_yonetimi',
   'personel_ozluk',
-  'test_notes_admin',
 ] as const;
 
 export type ScreenCode = (typeof ALL_SCREEN_CODES)[number];
@@ -31,7 +30,6 @@ export const SCREEN_LABELS: Record<string, string> = {
   harita:            'Harita',
   personel_yonetimi: 'Personel Yönetimi',
   personel_ozluk: 'Personel Özlük',
-  test_notes_admin: 'Test Notları ve Görev Takip',
 };
 
 export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
@@ -39,7 +37,6 @@ export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
     'hasar_dosyalari', 'acil_yardim', 'finans', 'operasyon',
     'musteriler', 'tedarikciler', 'raporlar', 'ayarlar', 'kullanicilar',
     'guvenlik', 'harita', 'personel_yonetimi', 'personel_ozluk',
-    'test_notes_admin',
   ],
   manager: [
     'hasar_dosyalari', 'acil_yardim', 'finans', 'operasyon',
@@ -48,24 +45,23 @@ export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
   office_staff: [
     'hasar_dosyalari', 'musteriler', 'tedarikciler',
     'operasyon', 'acil_yardim', 'harita', 'personel_ozluk',
-    'test_notes_admin',
   ],
   field_staff: [
     'hasar_dosyalari', 'operasyon', 'personel_ozluk',
   ],
   accountant: [
-    'finans', 'raporlar', 'personel_ozluk', 'test_notes_admin',
+    'finans', 'raporlar', 'personel_ozluk',
   ],
   finance: [
     'finans', 'raporlar', 'operasyon',
     'musteriler', 'tedarikciler', 'hasar_dosyalari', 'personel_ozluk',
-    'test_notes_admin',
   ],
   expert: [],
   insurance_company_user: [],
 };
 
 export function getDefaultScreensForRole(roleCode: string): string[] {
-  const code = roleCode.toLowerCase();
-  return ROLE_DEFAULT_SCREENS[code] ?? [];
+  const code = String(roleCode ?? '').trim().toLowerCase();
+  const aliased = code === 'finans' ? 'finance' : code;
+  return ROLE_DEFAULT_SCREENS[aliased] ?? [];
 }

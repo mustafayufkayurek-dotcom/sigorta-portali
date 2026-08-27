@@ -409,4 +409,112 @@ export class ClaimEventEmailService {
 
     return { sentCount: results.filter((x) => x.sent).length, results };
   }
+
+  /** Tespit planı — müşteriye (eksper / broker / sigorta kartı). Tercih kapısı yok. */
+  async onInspectionPlanned(params: {
+    recipientEmail: string;
+    recipientName?: string | null;
+    fileNo: string;
+    customerName: string;
+    insuredName: string;
+    scheduledLabel: string;
+    location: string;
+    claimFileId: string;
+  }) {
+    const to = params.recipientEmail?.trim();
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      return { sent: false as const, errorMsg: 'Müşteri e-postası yok veya geçersiz' };
+    }
+    return this.email.sendTemplateEmail(
+      to,
+      `Tespit planlandı: ${params.fileNo}`,
+      {
+        title: 'Tespit Planlaması',
+        preheader: `${params.fileNo} için tespit randevusu netleşti.`,
+        greeting: params.recipientName ? `Sayın ${params.recipientName},` : undefined,
+        bodyNote: 'Sigortalı ve saha tarafına randevu WhatsApp ile iletilir. Bu mail müşteri kaydınadır.',
+        rows: [
+          { label: 'Dosya No', value: params.fileNo },
+          { label: 'Müşteri', value: params.customerName },
+          { label: 'Sigortalı', value: params.insuredName },
+          { label: 'Randevu', value: params.scheduledLabel },
+          { label: 'Adres', value: params.location },
+        ],
+        actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
+        actionLabel: 'Dosyayı Görüntüle',
+      },
+    );
+  }
+
+  /** Yönetici onayı — özet + resim ekleri. */
+  async onManagerApprovalRequested(params: {
+    recipientEmail: string;
+    recipientName?: string | null;
+    fileNo: string;
+    reportNo: string;
+    claimFileId: string;
+    reportId: string;
+    lineSummary: string;
+    salesLabel: string;
+    costLabel: string;
+    profitLabel: string;
+    attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>;
+  }) {
+    const to = params.recipientEmail?.trim();
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      return { sent: false as const, errorMsg: 'Yönetici e-postası yok' };
+    }
+    const html = buildNotificationEmailHtml({
+      title: 'Rapor onayınızı bekliyor',
+      preheader: `${params.reportNo} onay kuyruğunda.`,
+      greeting: params.recipientName ? `Sayın ${params.recipientName},` : undefined,
+      bodyNote: 'Özet aşağıda. Resimler ekte; yoksa panelden bakın.',
+      rows: [
+        { label: 'Dosya No', value: params.fileNo },
+        { label: 'Rapor No', value: params.reportNo },
+        { label: 'Satış', value: params.salesLabel },
+        { label: 'Maliyet', value: params.costLabel },
+        { label: 'Kâr', value: params.profitLabel },
+        { label: 'İş kalemleri', value: params.lineSummary || '—' },
+      ],
+      actionUrl: buildPanelUrl(this.appUrl, panelOnarimRaporuPath(params.claimFileId, params.reportId)),
+      actionLabel: 'Raporu Aç',
+    });
+    return this.email.sendEmail(to, `Onay bekleyen rapor: ${params.reportNo}`, html, {
+      attachments: params.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
+    });
+  }
+
+  /** Onarım bitti — yönetici ve finans. Dosya kapanışı beklenmez. */
+  async onRepairCompleted(params: {
+    recipientEmail: string;
+    recipientName?: string | null;
+    fileNo: string;
+    claimFileId: string;
+    vendorNames: string;
+  }) {
+    const to = params.recipientEmail?.trim();
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      return { sent: false as const, errorMsg: 'Alıcı e-postası yok' };
+    }
+    return this.email.sendTemplateEmail(to, `Onarım bitti — fatura düzenlenebilir: ${params.fileNo}`, {
+      title: 'Onarım Tamamlandı',
+      badgeLabel: 'Fatura',
+      preheader: `${params.fileNo} onarımı bitti. Dosya kapanmadan fatura kesilebilir.`,
+      greeting: params.recipientName ? `Sayın ${params.recipientName},` : undefined,
+      bodyNote: 'Dosyanın kapanması beklenmez. Fatura talebi finans kuyruğuna düşebilir.',
+      rows: [
+        { label: 'Dosya No', value: params.fileNo },
+        { label: 'Tedarikçiler', value: params.vendorNames || '—' },
+      ],
+      actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
+      actionLabel: 'Dosyayı Aç',
+      nextStepTitle: 'Sıradaki iş',
+      nextStepText: 'Finans faturayı düzenler. Hakediş ayrı onaylanır.',
+    });
+  }
 }

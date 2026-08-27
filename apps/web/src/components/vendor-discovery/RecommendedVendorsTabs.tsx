@@ -1,15 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Building2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Building2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { VendorRecommendation } from '@/utils/emergencyApi';
-import { getEmergencyVendors, type VendorOption } from '@/utils/emergencyApi';
+import { resolveRegionProximity } from '@/utils/vendor-region-proximity';
 import { AlternativeVendorServicePanel } from './AlternativeVendorServicePanel';
 import { VendorCandidateCard } from './VendorCandidateCard';
 
 export type VendorTabId = 'kayitli' | 'alternatif';
 
-const TOP_N = 5;
+/** Bölge havuzu üst sınırı (API ile aynı) */
+const TOP_N = 20;
+/** Memnuniyet + maliyet skoruna göre açık önerilen adet */
+const TOP_FEATURED = 3;
+const QUALITY_WARN_TEXT =
+  'Memnuniyet veya maliyet değerlendirmesi olumsuz. Alternatif tedarikçi arayın.';
 
 function formatScore(score: number | null | undefined): string {
   if (score == null || !Number.isFinite(score)) return '—';
@@ -21,20 +26,18 @@ function formatCost(cost: number | null | undefined): string {
   return `${Number(cost).toLocaleString('tr-TR')} TL`;
 }
 
-function formatDistance(v: VendorRecommendation): string {
-  const label = v.distanceLabel?.trim();
-  if (label) return label;
-  if (v.distanceKm != null && Number.isFinite(v.distanceKm)) {
-    return `${(Math.round(v.distanceKm * 10) / 10).toLocaleString('tr-TR')} km`;
-  }
-  return '—';
-}
-
-function formatLastWorkedAt(iso: string | null | undefined): string {
+function formatLastWorkedAgo(iso: string | null | undefined): string {
   if (!iso?.trim()) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('tr-TR');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const then = new Date(d);
+  then.setHours(0, 0, 0, 0);
+  const days = Math.round((today.getTime() - then.getTime()) / 86_400_000);
+  if (days < 0) return '—';
+  if (days === 0) return 'Bugün';
+  return `${days} Gün Önce`;
 }
 
 function formatCompletedCount(count: number | null | undefined): string {
@@ -46,10 +49,9 @@ function formatCompletedCount(count: number | null | undefined): string {
 function rationaleMetrics(v: VendorRecommendation): Array<{ label: string; value: string }> {
   return [
     { label: 'Hizmet Kalitesi', value: formatScore(v.avgServiceScore) },
-    { label: 'Bölgeye Uzaklık', value: formatDistance(v) },
     { label: 'Ortalama Maliyet', value: formatCost(v.avgCost) },
     { label: 'Tamamlanan Dosya Sayısı', value: formatCompletedCount(v.completedFileCount) },
-    { label: 'Son Çalışma Tarihi', value: formatLastWorkedAt(v.lastWorkedAt) },
+    { label: 'Son Çalışma', value: formatLastWorkedAgo(v.lastWorkedAt) },
   ];
 }
 
@@ -82,11 +84,76 @@ type Props = {
     name: string;
     phone?: string | null;
   }) => void | Promise<void>;
+  /** false: çekmecede kart boyu küçülmesin (faaliyet ikonları görünsün) */
+  fillHeight?: boolean;
 };
+
+function formatSuggestionPercent(v: VendorRecommendation): string {
+  const raw = v.compositeScore;
+  if (raw == null || !Number.isFinite(raw)) return '—';
+  const pct = raw <= 1 ? Math.round(raw * 100) : Math.round(raw);
+  return `%${Math.max(0, Math.min(100, pct))}`;
+}
+
+function VendorCardRow({
+  v,
+  fileCity,
+  fileDistrict,
+  fileServiceType,
+  featured,
+  assignedVendorId,
+  assignLoading,
+  onAssign,
+}: {
+  v: VendorRecommendation;
+  fileCity?: string;
+  fileDistrict?: string;
+  fileServiceType?: string;
+  featured: boolean;
+  assignedVendorId?: string | null;
+  assignLoading: boolean;
+  onAssign: (vendorId: string) => void | Promise<void>;
+}) {
+  const selected = assignedVendorId === v.id;
+  const regionProximity = resolveRegionProximity({
+    fileCity,
+    fileDistrict,
+    vendorCity: v.city,
+    vendorDistrict: v.district,
+  });
+
+  return (
+    <VendorCandidateCard
+      name={v.name}
+      phone={v.phone}
+      address={locationLine(v) || null}
+      serviceBranches={v.serviceBranches}
+      serviceTypeHint={fileServiceType}
+      serviceAreaLabels={v.serviceAreaLabels?.length ? v.serviceAreaLabels : undefined}
+      metrics={rationaleMetrics(v)}
+      regionProximity={regionProximity}
+      systemSuggestion={featured}
+      systemSuggestionPercent={featured ? formatSuggestionPercent(v) : null}
+      selected={selected}
+      warningText={v.qualityWarning ? QUALITY_WARN_TEXT : null}
+      testId="tedarikci-oneri"
+      primaryAction={
+        selected
+          ? undefined
+          : {
+              label: 'Dosyaya Ata',
+              onClick: () => void onAssign(v.id),
+              disabled: assignLoading || Boolean(assignedVendorId),
+              testId: 'tedarikci-ata',
+            }
+      }
+    />
+  );
+}
 
 /**
  * Önerilen Tedarikçiler — karar destek sekmeleri.
- * Sekme 1: Kayıtlı Tedarikçiler (varsayılan)
+ * Sekme 1: Kayıtlı Tedarikçiler (varsayılan) — üstte skorlu ilk 3; diğerleri kapalı/açılır
  * Sekme 2: Alternatif Öneriler — yalnızca sekmeden
  */
 export function RecommendedVendorsTabs({
@@ -105,23 +172,26 @@ export function RecommendedVendorsTabs({
   category = 'acil',
   onAlternativeAssigned,
   onSavedToPool,
+  fillHeight = true,
 }: Props) {
   const ranked = useMemo(() => {
     const list = [...vendors];
-    const acilAlpha =
-      category === 'acil' || category === 'acil_yardim' || category === 'emergency';
-    // Acil: alfabetik tercih. Hasar / diğer: rank veya compositeScore.
     list.sort((a, b) => {
-      if (acilAlpha) return a.name.localeCompare(b.name, 'tr');
       if (a.rank != null && b.rank != null) return a.rank - b.rank;
       const ca = a.compositeScore ?? a.avgServiceScore ?? 0;
       const cb = b.compositeScore ?? b.avgServiceScore ?? 0;
       return cb - ca;
     });
     return list.slice(0, TOP_N);
-  }, [vendors, category]);
+  }, [vendors]);
+
+  const featured = useMemo(() => ranked.slice(0, TOP_FEATURED), [ranked]);
+  const rest = useMemo(() => ranked.slice(TOP_FEATURED), [ranked]);
+
+  const hasQualityWarning = ranked.some((v) => v.qualityWarning);
 
   const [tab, setTab] = useState<VendorTabId>('kayitli');
+  const [restOpen, setRestOpen] = useState(false);
 
   useEffect(() => {
     if (preferAlternatif) {
@@ -129,9 +199,15 @@ export function RecommendedVendorsTabs({
     }
   }, [preferAlternatif]);
 
+  useEffect(() => {
+    setRestOpen(false);
+  }, [vendors]);
+
   return (
     <div
-      className="bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 flex flex-col gap-1.5 min-w-0 h-full min-h-0"
+      className={`bg-white rounded-xl border border-slate-100 shadow-sm p-2.5 flex flex-col gap-1.5 min-w-0 ${
+        fillHeight ? 'h-full min-h-0' : ''
+      }`}
       data-testid="tedarikci-onerileri"
     >
       <div className="flex items-center justify-between gap-2 shrink-0">
@@ -187,53 +263,103 @@ export function RecommendedVendorsTabs({
 
       {tab === 'kayitli' ? (
         <div
-          className="flex-1 flex flex-col min-h-0"
+          className={fillHeight ? 'flex-1 flex flex-col min-h-0' : 'flex flex-col'}
           data-testid="sekme-kayitli-icerik"
           role="tabpanel"
         >
           {loading ? (
             <p className="text-xs text-slate-400 py-1 text-center">Öneriler yükleniyor...</p>
           ) : ranked.length > 0 ? (
-            <ul className="space-y-2">
-              {ranked.map((v, index) => {
-                const selected = assignedVendorId === v.id;
-                return (
-                  <VendorCandidateCard
+            <>
+              {hasQualityWarning ? (
+                <p
+                  className="mb-2 text-[11px] font-medium text-status-warning leading-snug"
+                  data-testid="tedarikci-olumsuz-uyari"
+                  role="status"
+                >
+                  Kayıtlı tedarikçilerde olumsuz değerlendirme var. Alternatif tedarikçi aramanız gerekir.
+                </p>
+              ) : null}
+              <p className="mb-1.5 text-[11px] font-semibold text-slate-600" data-testid="tedarikci-oneri-baslik">
+                Önerilen ({featured.length})
+              </p>
+              <ul className="space-y-2" data-testid="tedarikci-oneri-acik-liste">
+                {featured.map((v) => (
+                  <VendorCardRow
                     key={v.id}
-                    name={v.name}
-                    phone={v.phone}
-                    address={locationLine(v) || null}
-                    metrics={rationaleMetrics(v)}
-                    systemSuggestion={index === 0}
-                    selected={selected}
-                    testId="tedarikci-oneri"
-                    primaryAction={
-                      selected
-                        ? undefined
-                        : {
-                            label: 'Dosyaya Ata',
-                            onClick: () => void onAssign(v.id),
-                            disabled: assignLoading || Boolean(assignedVendorId),
-                            testId: 'tedarikci-ata',
-                          }
-                    }
+                    v={v}
+                    fileCity={city}
+                    fileDistrict={district}
+                    fileServiceType={serviceType}
+                    featured
+                    assignedVendorId={assignedVendorId}
+                    assignLoading={assignLoading}
+                    onAssign={onAssign}
                   />
-                );
-              })}
-            </ul>
+                ))}
+              </ul>
+              {rest.length > 0 ? (
+                <div className="mt-2 border-t border-slate-100 pt-2" data-testid="tedarikci-diger-kutu">
+                  <button
+                    type="button"
+                    onClick={() => setRestOpen((o) => !o)}
+                    className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
+                    aria-expanded={restOpen}
+                    data-testid="tedarikci-diger-ac-kapa"
+                  >
+                    <span>Diğer Kayıtlı Tedarikçiler ({rest.length})</span>
+                    {restOpen ? (
+                      <ChevronUp className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                    )}
+                  </button>
+                  {restOpen ? (
+                    <ul className="mt-2 space-y-2" data-testid="tedarikci-diger-liste">
+                      {rest.map((v) => (
+                        <VendorCardRow
+                          key={v.id}
+                          v={v}
+                          fileCity={city}
+                          fileDistrict={district}
+                          fileServiceType={serviceType}
+                          featured={false}
+                          assignedVendorId={assignedVendorId}
+                          assignLoading={assignLoading}
+                          onAssign={onAssign}
+                        />
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
           ) : (
-            <RegisteredVendorPoolPicker
-              assignedVendorId={assignedVendorId}
-              assignLoading={assignLoading}
-              onAssign={onAssign}
-              city={city}
-              district={district}
-            />
+            <div
+              className="flex flex-col gap-2 min-h-0"
+              data-testid="tedarikci-bolge-bos"
+              role="status"
+            >
+              <p className="text-xs font-semibold text-slate-700 text-center leading-snug">
+                Bu İl Ve İlçede Kayıtlı Tedarikçi Yok
+              </p>
+              <p className="text-[11px] text-slate-500 text-center leading-snug">
+                Alternatif önerilere bakın. Yeni kayıt sonraki dosyalarda önerilir.
+              </p>
+              <button
+                type="button"
+                onClick={() => setTab('alternatif')}
+                className="mx-auto rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                data-testid="tedarikci-alternatife-gec"
+              >
+                Alternatif Önerilere Bak
+              </button>
+            </div>
           )}
         </div>
       ) : (
         <div
-          className="flex-1 flex flex-col min-h-0"
+          className={fillHeight ? 'flex-1 flex flex-col min-h-0' : 'flex flex-col'}
           data-testid="sekme-alternatif-icerik"
           role="tabpanel"
         >
@@ -249,117 +375,6 @@ export function RecommendedVendorsTabs({
             onSavedToPool={onSavedToPool}
           />
         </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Öneri motoru boş dönse bile kayıtlı acil havuzundan seçim — operasyon kilidi olmasın.
- */
-function RegisteredVendorPoolPicker({
-  assignedVendorId,
-  assignLoading,
-  onAssign,
-  city,
-  district,
-}: {
-  assignedVendorId?: string | null;
-  assignLoading: boolean;
-  onAssign: (vendorId: string) => void | Promise<void>;
-  city?: string;
-  district?: string;
-}) {
-  const [search, setSearch] = useState('');
-  const [options, setOptions] = useState<VendorOption[]>([]);
-  const [poolLoading, setPoolLoading] = useState(true);
-
-  const load = useCallback(async (q: string) => {
-    setPoolLoading(true);
-    try {
-      const res = await getEmergencyVendors(q.trim() || undefined, { city, district });
-      setOptions(res.data ?? []);
-    } catch {
-      setOptions([]);
-    } finally {
-      setPoolLoading(false);
-    }
-  }, [city, district]);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      void load(search);
-    }, 250);
-    return () => window.clearTimeout(t);
-  }, [search, load]);
-
-  return (
-    <div
-      className="flex flex-col gap-2 min-h-0"
-      data-testid="tedarikci-havuz-bos"
-      role="status"
-    >
-      <p className="text-xs font-semibold text-slate-700 text-center leading-snug">
-        Bu Bölgede Acil Yardım Önerisi Yok — Kayıtlı Havuzdan Seçin
-      </p>
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Tedarikçi Ara"
-        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        data-testid="tedarikci-havuz-ara"
-        aria-label="Kayıtlı tedarikçi ara"
-      />
-      {poolLoading ? (
-        <p className="text-xs text-slate-400 py-1 text-center">Havuz yükleniyor...</p>
-      ) : options.length === 0 ? (
-        <div className="py-2 px-1 space-y-1.5 text-center">
-          <p className="text-xs text-slate-500 leading-snug">
-            Kayıtlı Acil Yardım Tedarikçisi Bulunamadı
-          </p>
-          <a
-            href="/panel/tedarikciler"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex text-xs font-semibold text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline"
-          >
-            Tedarikçiler Sayfasından Ekleyin
-          </a>
-        </div>
-      ) : (
-        <ul className="space-y-1.5 max-h-48 overflow-y-auto">
-          {options.slice(0, 12).map((v) => {
-            const selected = assignedVendorId === v.id;
-            return (
-              <li
-                key={v.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2"
-                data-testid="tedarikci-havuz-satir"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-slate-800 truncate">{v.name}</p>
-                  {v.phone ? (
-                    <p className="text-[11px] text-slate-500 truncate">{v.phone}</p>
-                  ) : null}
-                </div>
-                {selected ? (
-                  <span className="shrink-0 text-[11px] font-medium text-emerald-700">Seçili</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void onAssign(v.id)}
-                    disabled={assignLoading || Boolean(assignedVendorId)}
-                    className="shrink-0 rounded-md bg-brand-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    data-testid="tedarikci-ata"
-                  >
-                    Dosyaya Ata
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
       )}
     </div>
   );

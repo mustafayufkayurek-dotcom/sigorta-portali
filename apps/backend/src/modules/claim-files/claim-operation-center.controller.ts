@@ -64,6 +64,7 @@ export class ClaimOperationCenterController {
       status: 'called' | 'ready' | 'opened' | 'sent' | 'failed';
       result?: string | null;
       retryOfId?: string | null;
+      purpose?: 'inspection' | 'repair';
     },
     @CurrentUser() user: any,
   ) {
@@ -78,7 +79,7 @@ export class ClaimOperationCenterController {
   @ApiOperation({ summary: 'Seçilen alıcılar için randevu bildirimlerini hazırla' })
   async prepareAppointmentNotifications(
     @Param('claimFileId') claimFileId: string,
-    @Body() body: { recipients: Array<'insured' | 'adjuster' | 'vendors'> },
+    @Body() body: { recipients: Array<'insured' | 'adjuster' | 'vendors'>; purpose?: 'inspection' | 'repair' },
     @CurrentUser() user: any,
   ) {
     return {
@@ -87,6 +88,7 @@ export class ClaimOperationCenterController {
         claimFileId,
         body.recipients ?? [],
         user,
+        body.purpose === 'repair' ? 'repair' : 'inspection',
       ),
     };
   }
@@ -151,5 +153,12 @@ export class ClaimOperationCenterController {
       success: true,
       data: await this.service.recordManualDecision(claimFileId, body, user),
     };
+  }
+
+  @Post(':claimFileId/complete-repair')
+  @RequirePermissions('claim_file.update')
+  @ApiOperation({ summary: 'Onarım bitti — yönetici ve finansa mail; fatura kapanış beklemez' })
+  async completeRepair(@Param('claimFileId') claimFileId: string, @CurrentUser() user: any) {
+    return { success: true, data: await this.service.completeRepair(claimFileId, user) };
   }
 }

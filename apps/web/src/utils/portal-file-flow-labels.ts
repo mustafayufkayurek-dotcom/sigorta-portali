@@ -17,10 +17,10 @@ export const PORTAL_STATUS_LABELS: Record<string, string> = {
   adjuster_assigned: 'Tespit Aşamasında',
   site_visit_planned: 'Onarım Aşamasında',
   site_visit_done: 'Onarım Aşamasında',
-  budget_preparing: 'Rapor Yazılıyor',
-  budget_submitted: 'Onay Bekleniyor',
-  budget_revision_requested: 'Revizyon Bekleniyor',
-  budget_approved: 'Onaylandı',
+  budget_preparing: 'Rapor Yazım Aşamasında',
+  budget_submitted: 'Onay Bekliyor',
+  budget_revision_requested: 'Rapor Yazım Aşamasında',
+  budget_approved: 'Onarım Aşamasında',
   repair_planning: 'Onarım Aşamasında',
   repair_in_progress: 'Onarım Aşamasında',
   repair_completed: 'Finansa Aktarıldı',
@@ -29,7 +29,7 @@ export const PORTAL_STATUS_LABELS: Record<string, string> = {
   payment_pending: 'Finansa Aktarıldı',
   partially_collected: 'Finansa Aktarıldı',
   closed: 'Dosya Kapatıldı',
-  cancelled: 'İptal Edildi',
+  cancelled: 'Dosya İptal Edildi',
   completed: 'Dosya Kapatıldı',
   SUPPLIER_ASSIGNED: 'Onarım Tespitçisi Atandı',
   APPOINTMENT_SCHEDULED: 'Site Randevusu Alındı',
@@ -44,7 +44,7 @@ export const PORTAL_NEXT_STEP_HINTS: Record<string, string> = {
   site_visit_planned: 'Saha ziyareti ve tespit bekleniyor.',
   site_visit_done: 'Rapor yazım aşamasına geçiliyor.',
   budget_preparing: 'Onarım raporu hazırlanıyor.',
-  budget_submitted: 'Bütçe onayı bekleniyor.',
+  budget_submitted: 'Rapor onayı bekleniyor.',
   budget_revision_requested: 'Revize rapor bekleniyor.',
   budget_approved: 'Onarım planlaması bekleniyor.',
   repair_planning: 'Onarım başlangıcı bekleniyor.',
@@ -65,11 +65,11 @@ export const PORTAL_NEXT_STEP_HINTS: Record<string, string> = {
 export function portalStatusLabel(code: string | undefined, fallbackName?: string): string {
   if (code && PORTAL_STATUS_LABELS[code]) return PORTAL_STATUS_LABELS[code];
   const name = (fallbackName ?? '').toLocaleLowerCase('tr-TR');
-  if (/bütçe sun|butce sun|budget.?submit|onay bek/.test(name)) return 'Onay Bekleniyor';
-  if (/revizyon/.test(name)) return 'Revizyon Bekleniyor';
-  if (/rapor yaz|budget.?prepar/.test(name)) return 'Rapor Yazılıyor';
+  if (/bütçe sun|butce sun|budget.?submit|onay bek/.test(name)) return 'Onay Bekliyor';
+  if (/revizyon/.test(name)) return 'Rapor Yazım Aşamasında';
+  if (/rapor yaz|budget.?prepar/.test(name)) return 'Rapor Yazım Aşamasında';
   if (/kapat|tamam|closed|completed/.test(name)) return 'Dosya Kapatıldı';
-  if (/iptal|cancel/.test(name)) return 'İptal Edildi';
+  if (/iptal|cancel/.test(name)) return 'Dosya İptal Edildi';
   return fallbackName ?? code ?? '—';
 }
 

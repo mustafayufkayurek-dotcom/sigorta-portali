@@ -48,7 +48,7 @@ describe('ClaimOperationCenterService', () => {
       getByType: jest.fn(),
       interpolate: jest.fn(),
     };
-    const claimEventEmail: any = { onManualDecision: jest.fn() };
+    const claimEventEmail: any = { onManualDecision: jest.fn(), onInspectionPlanned: jest.fn() };
     const repairReports: any = {
       approveReport: jest.fn(),
       rejectReport: jest.fn(),

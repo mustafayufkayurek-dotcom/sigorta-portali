@@ -316,7 +316,7 @@ export function AdminOperationsCriticalRow({ staggerIndex = 0 }: AdminOperations
               ) : (
                 <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                   {activityItems.map((item, idx) => {
-                    const href = claimNavHref({ fileNo: item.fileNo });
+                    const href = claimNavHref({ id: item.claimFileId, fileNo: item.fileNo });
                     const title = `${item.fileNo} — ${formatActivityAction(item.action)}`;
                     const body = (
                       <>

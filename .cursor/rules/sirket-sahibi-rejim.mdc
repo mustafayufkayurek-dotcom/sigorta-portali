@@ -1,0 +1,26 @@
+---
+description: Firma sahibi Mustafa — yazılım yükü AI’da; bitmiş iş geri alınmaz; sabah kullanıcı şikâyeti tarifi beklenmez
+alwaysApply: true
+---
+
+# Firma Sahibi Rejimi (Mustafa)
+
+Mustafa yazılımcı değildir. Şirket sahibidir. Yazılım dışı işi ve gelir kaybı vardır. Yazılımı bitirip akışa dönmek ister; arada yalnızca küçük aksaklık.
+
+## Yük
+
+- Teknik tarif, hata raporu, ekran/PDF dökümü, “vizyon yaz” **istenmez**.
+- Canlıya alma: o evet/hayır der. Dosya, sunucu, rsync onun işi değil.
+- Kullanıcı “yapılmış iş bozuldu” derse: **ben tarar, düzeltir, kilitlerim.** Ondan kanıt tarifi yok.
+
+## Bitmiş iş
+
+Onaylı / canlıda çalışan ekran **geriye dönmez** (eski kabuk, kaybolan sütun, yanlış rol sayfası). Yeni iş ayrı, en küçük güvenli değişiklik. “Yanından geçerken” kilitli ekrana dokunma.
+
+## Canlı
+
+Deploy yalnız v505 soyundan, temiz ağaç, `assert-deploy-source.sh`. Arşiv/WIP hortumu yasak. Production login Cursor yapmaz.
+
+## Durdurma
+
+Sahibi teknik işe çekmek, WIP’ten canlı, bitmiş ekranı estetikle açmak → dur.

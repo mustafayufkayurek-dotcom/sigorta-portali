@@ -1,0 +1,25 @@
+---
+description: Lokal gösterim tek panel sayfasında; yeni /dev veya selfie sayfası yok
+alwaysApply: true
+---
+
+# Lokal gösterim — tek sayfa
+
+Mustafa (23.08.2026): Her iş için yeni lokal sayfa üretilmez. Arka tarafta duran panel sayfası güncellenir; iş orada gösterilir.
+
+## Zorunlu
+
+1. Operasyon işi: `http://localhost:3001/panel/operasyon?filter=acil` (Acil) veya ilgili canlı panel yolu.
+2. Hasar işi: `/panel/hasar-dosyalari` veya dosya içi `[id]`.
+3. Doğrulama bu adreste. Yeni `/dev/...` maketi, ikinci önizleme, “selfie” sayfası yok.
+4. Örnek satır gerçek lokal kayıttır (seed `AY-DEMO-*` veya o listedeki dosya). Sahte personel uydurma yok.
+
+## Yasak
+
+- Her talepte yeni lokal sayfa açmak
+- `/dev` maketi ile Hasar/Acil liste veya dosya yerine koymak
+- Boş klasörle “tasarım bu” demek
+
+## Durdurma
+
+Yeni `/dev` sayfası veya ikinci lokal kabuk → dur, mevcut panel sayfasını güncelle.

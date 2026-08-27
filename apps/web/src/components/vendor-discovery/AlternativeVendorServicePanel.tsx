@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { ACIL_FILE_ONLY_VENDOR_NOTE, ACIL_POOL_VENDOR_NOTE } from '@/utils/acil-vendor-pool';
 import { VendorCandidateCard } from './VendorCandidateCard';
 
 export type AlternativeVendorCandidate = {
@@ -200,8 +201,8 @@ export function AlternativeVendorServicePanel({
         category,
         notes:
           pending.mode === 'assign_file'
-            ? 'Yalnızca bu dosyada kullanım.'
-            : 'Meridyen Tedarikçi Havuzuna eklendi.',
+            ? ACIL_FILE_ONLY_VENDOR_NOTE
+            : ACIL_POOL_VENDOR_NOTE,
       };
       const r = await axios.post(`${API}/vendors`, body, { headers: authHeader() });
       const vendor = r.data.data as { id: string; name: string; phone?: string | null };
@@ -294,6 +295,10 @@ export function AlternativeVendorServicePanel({
                 phone={c.phone}
                 phoneEmptyLabel="Telefon Bilgisi Bulunamadı"
                 address={addressLine || null}
+                serviceBranches={c.serviceTypes}
+                serviceAreaLabels={[c.district, c.city].filter(
+                  (x): x is string => Boolean(x),
+                )}
                 rating={c.rating}
                 reviewCount={c.reviewCount}
                 systemSuggestion={index === 0}

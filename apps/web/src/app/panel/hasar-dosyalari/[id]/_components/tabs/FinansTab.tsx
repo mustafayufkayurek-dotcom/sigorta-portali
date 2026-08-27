@@ -2,12 +2,9 @@
 
 import { useState } from 'react';
 import { FinansOzetPanel } from './FinansOzetPanel';
-import {
-  FaturalarTab,
-  GelirlerTab,
-  TahsilatlarTab,
-} from './finans-subtabs';
+import { FaturalarTab } from './finans-subtabs';
 import { FileMasrafIsleme } from '@/components/finance/FileMasrafIsleme';
+import { ClaimFileGelirTahsilatPanel } from '@/components/finance/ClaimFileGelirTahsilatPanel';
 
 type FinansSubTab = 'ozet' | 'gelir-tahsilat' | 'gider-butce' | 'faturalar';
 
@@ -21,11 +18,9 @@ const FINANS_SUB_TABS: { id: FinansSubTab; label: string }[] = [
 export function FinansTab({
   claim,
   claimId,
-  reportEditHref,
 }: {
   claim: any;
   claimId: string;
-  reportEditHref?: string | null;
 }) {
   const [subTab, setSubTab] = useState<FinansSubTab>('ozet');
 
@@ -54,15 +49,11 @@ export function FinansTab({
         <FinansOzetPanel
           claim={claim}
           claimId={claimId}
-          reportEditHref={reportEditHref}
         />
       )}
 
       {subTab === 'gelir-tahsilat' && (
-        <div className="space-y-6">
-          <GelirlerTab claimId={claimId} />
-          <TahsilatlarTab claimId={claimId} />
-        </div>
+        <ClaimFileGelirTahsilatPanel claimId={claimId} />
       )}
 
       {subTab === 'gider-butce' && (

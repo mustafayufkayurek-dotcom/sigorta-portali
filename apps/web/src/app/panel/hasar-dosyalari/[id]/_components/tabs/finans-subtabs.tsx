@@ -23,6 +23,7 @@ import SpeechToText from '@/components/SpeechToText';
 import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
 import { VendorSuggestPanel } from '../VendorSuggestPanel';
 import { fetchVendorQuoteComparison } from '@/utils/vendor-intelligence-profile';
+import { withAvansNote } from '@sigorta/shared';
 import { financeOperationNo } from '@sigorta/shared';
 
 export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: string }) {
@@ -777,7 +778,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
     <div className="space-y-4">
       <FinansPanelCard
         title="Fatura Talebi"
-        subtitle="Sigorta şirketine kesilecek fatura için talep oluşturun. Evrak durumunu Evraklar → Özet sekmesinden takip edebilirsiniz."
+        subtitle="Sigorta şirketine kesilecek fatura için talep oluşturun. Onarımın bitmesi beklenmez."
       >
         <ClosureConditionsPanel
           serviceType="claim"
@@ -790,6 +791,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
           showClosureChecklist={false}
           showInvoiceRequest
           showSurvey
+          fileClosed={Boolean(claim?.currentStatus?.isClosedState || claim?.closedAt)}
         />
       </FinansPanelCard>
 
@@ -804,6 +806,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
         }}
       >
         <FinansKpiStrip
+          tone="light"
           items={[
             { label: 'Satış (Gelir)', value: fmtCurrency(salesTotal), accent: 'text-emerald-400' },
             { label: 'Alış (Gider)', value: fmtCurrency(purchaseTotal), accent: 'text-amber-400' },
@@ -1045,6 +1048,10 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
     try {
       const payload = { ...form, claimFileId: claimId };
       if (payload.payerType !== 'vendor') delete payload.payerId;
+      if (payload.isAvans) {
+        payload.note = withAvansNote(payload.note);
+      }
+      delete payload.isAvans;
       const res = await axios.post(`${API}/payments`, payload, { headers: authHeader() });
       const paymentId = res.data?.data?.id;
       if (paymentId && receiptFile && form.paymentType === 'outgoing' && form.payerType === 'vendor') {
@@ -1255,6 +1262,16 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
                     placeholder="Kısa açıklama"
                   />
                 </div>
+                {form.paymentType === 'outgoing' && form.payerType === 'vendor' && (
+                  <label className="sm:col-span-2 flex items-center gap-2 text-xs text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.isAvans)}
+                      onChange={(e) => setForm({ ...form, isAvans: e.target.checked })}
+                    />
+                    Bu dosya için avans (onarım bitmeden)
+                  </label>
+                )}
                 {form.paymentType === 'outgoing' && form.payerType === 'vendor' && (
                   <div className="sm:col-span-2">
                     <FinansFieldLabel>Ödeme Dekontu</FinansFieldLabel>

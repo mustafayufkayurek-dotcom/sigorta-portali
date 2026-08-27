@@ -24,7 +24,8 @@ export function renderDigitalApprovalQrBlock(publicUrl: string): string {
   return `<div class="dijital-onay-qr" data-testid="matbu-dijital-onay-qr">
   <div class="dijital-onay-qr-code">${sized}</div>
   <div class="dijital-onay-qr-label">Dijital Onay</div>
-  <div class="dijital-onay-qr-hint">Onay için karekodu okutun veya link</div>
+  <a class="dijital-onay-link" href="${url.replace(/"/g, '&quot;')}">Telefondan onayla</a>
+  <div class="dijital-onay-qr-hint">Yazıcı gerekmez. WhatsApp’taki linki açıp Onayla’ya basın.</div>
 </div>`;
 }
 
@@ -34,10 +35,11 @@ export const DOCUMENT_QR_STYLES = `
     .dijital-onay-qr-code { display: inline-block; padding: 4px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; }
     .dijital-onay-qr-code svg { width: 88px; height: 88px; }
     .dijital-onay-qr-label { margin-top: 6px; font-size: 11px; font-weight: 700; color: #1a4080; letter-spacing: 0.01em; }
-    .dijital-onay-qr-hint { font-size: 9px; color: #64748b; margin-top: 1px; }
+    .dijital-onay-link { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 700; color: #1a4080; text-decoration: underline; }
+    .dijital-onay-qr-hint { font-size: 9px; color: #64748b; margin-top: 4px; max-width: 140px; margin-left: auto; margin-right: auto; line-height: 1.35; }
     .doc-header-with-qr { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 2px solid #1a4080; padding-bottom: 14px; margin-bottom: 18px; }
-    .doc-header-with-qr .doc-header-main { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex: 1; min-width: 0; }
-    .doc-header-with-qr .doc-header-logo img { height: 64px; width: auto; max-width: 220px; object-fit: contain; display: block; }
+    .doc-header-with-qr .doc-header-main { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; }
+    .doc-header-with-qr .doc-header-logo img { height: 96px; width: auto; max-width: 320px; object-fit: contain; display: block; }
     .doc-header-with-qr .doc-header-meta { text-align: right; font-size: 10px; color: #64748b; line-height: 1.5; }
     .doc-header-with-qr .doc-header-meta strong { display: block; font-size: 13px; color: #1a4080; margin-bottom: 2px; }
 `;

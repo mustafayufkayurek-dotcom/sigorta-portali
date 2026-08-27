@@ -53,6 +53,15 @@ export class CreateExpenseDto {
   @IsString()
   fileCaseId?: string;
 
+  /** Rapordaki iş grubu — bütçe denetimi bu satır üzerinden */
+  @IsOptional()
+  @IsString()
+  workGroupId?: string;
+
+  @IsOptional()
+  @IsString()
+  workSubGroupName?: string;
+
   @IsOptional()
   @IsString()
   receiptImageUrl?: string;
@@ -109,6 +118,14 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsString()
   fileCaseId?: string;
+
+  @IsOptional()
+  @IsString()
+  workGroupId?: string;
+
+  @IsOptional()
+  @IsString()
+  workSubGroupName?: string;
 
   @IsOptional()
   @IsString()

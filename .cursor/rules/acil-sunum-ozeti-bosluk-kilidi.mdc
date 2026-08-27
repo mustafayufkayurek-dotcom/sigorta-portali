@@ -1,0 +1,34 @@
+---
+description: Acil Sunum Özeti boşluk kilidi — yazarken space silinmez
+alwaysApply: true
+---
+
+# Acil Sunum Özeti Boşluk Kilidi
+
+**Kaynak (Mustafa · 24.08.2026):** Operasyonu Başlat → Onay Talep Akışı → Sunum özeti. Boşluk yazılmıyordu; «kilit değişimi yapılmadı» tek kelime oluyordu.
+
+**Temel cümle:** Sunum özeti yazılırken **boşluk durur.** Her tuşta metin kırpılmaz.
+
+## Zorunlu
+
+1. `withAcilOnayMetinOnEk` gövdeyi `trim` etmez. Kelime sonu boşluğu kaybolmaz.
+2. `acilOnayMetinGovde` yalnız «Riziko adreste;» önekini ayırır; gövdeyi kırpmaz.
+3. Boş kontrol yalnız doğrulamada `.trim()` ile yapılır.
+4. Kutu `planner-steps.tsx` içinde `acil-onay-metin`; `onChange` `withAcilOnayMetinOnEk` kullanır.
+
+## Yasak (açık onay yoksa)
+
+- `acilOnayMetinGovde` veya `withAcilOnayMetinOnEk` içinde gövdeyi `trim` etmek
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Boşluk yine yutulursa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+  apps/web/src/components/acil-operasyon-planlayicisi/planner-gates.lock.spec.ts
+pnpm smoke:acil-netlesen
+```

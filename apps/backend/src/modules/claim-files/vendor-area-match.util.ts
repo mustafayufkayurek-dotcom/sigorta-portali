@@ -1,4 +1,10 @@
 import { Prisma } from '@prisma/client';
+import {
+  locationNameVariants,
+  matchNamedLocation,
+  provinceSearchNames,
+  splitCombinedLocation,
+} from '../../common/helpers/turkey-location-normalize';
 
 export type VendorNearbyPurpose = 'supplier' | 'inspector';
 
@@ -24,32 +30,78 @@ export function normalizeLocationLabel(value?: string | null): string | null {
 }
 
 export async function resolveProvinceDistrictIds(
-  prisma: { province: { findFirst: (...args: any[]) => any }; district: { findFirst: (...args: any[]) => any } },
+  prisma: {
+    province: { findFirst: (...args: any[]) => any; findMany: (...args: any[]) => any };
+    district: { findFirst: (...args: any[]) => any; findMany: (...args: any[]) => any };
+  },
   city?: string | null,
   district?: string | null,
-): Promise<{ provinceId: string | null; districtId: string | null }> {
+): Promise<{
+  provinceId: string | null;
+  districtId: string | null;
+  provinceName: string | null;
+  districtName: string | null;
+}> {
+  const empty = { provinceId: null, districtId: null, provinceName: null, districtName: null };
   const cityNorm = normalizeLocationLabel(city);
-  if (!cityNorm) return { provinceId: null, districtId: null };
-  const province = await prisma.province.findFirst({
-    where: { name: { equals: cityNorm, mode: 'insensitive' } },
-    select: { id: true },
-  });
-  if (!province) return { provinceId: null, districtId: null };
+  if (!cityNorm) return empty;
 
-  const districtNorm = normalizeLocationLabel(district);
-  let districtId: string | null = null;
-  if (districtNorm) {
-    const districtRecord = await prisma.district.findFirst({
-      where: {
-        provinceId: province.id,
-        name: { equals: districtNorm, mode: 'insensitive' },
-      },
-      select: { id: true },
+  const provinces: Array<{ id: string; name: string }> = await prisma.province.findMany({
+    select: { id: true, name: true },
+  });
+  const split = splitCombinedLocation(cityNorm, provinces.map((row) => row.name));
+  const districtNorm = normalizeLocationLabel(district) ?? normalizeLocationLabel(split.district);
+  let province = matchNamedLocation(split.city, provinces);
+
+  if (!province) {
+    const districts: Array<{
+      id: string;
+      name: string;
+      provinceId: string;
+      province?: { name: string } | null;
+    }> = await prisma.district.findMany({
+      select: { id: true, name: true, provinceId: true, province: { select: { name: true } } },
     });
-    districtId = districtRecord?.id ?? null;
+    const districtHits = districts.filter(
+      (row) => matchNamedLocation(split.city, [{ name: row.name }]) != null,
+    );
+    const uniqueProvinceIds = [...new Set(districtHits.map((row) => row.provinceId))];
+    if (uniqueProvinceIds.length === 1) {
+      const hit = districtHits[0];
+      const parent = provinces.find((row) => row.id === hit.provinceId) ?? null;
+      return {
+        provinceId: hit.provinceId,
+        districtId: matchNamedLocation(districtNorm ?? split.city, districtHits)?.id ?? hit.id,
+        provinceName: parent?.name ?? hit.province?.name ?? null,
+        districtName: matchNamedLocation(districtNorm ?? split.city, districtHits)?.name ?? hit.name,
+      };
+    }
+    return empty;
   }
 
-  return { provinceId: province.id, districtId };
+  let districtId: string | null = null;
+  let districtName: string | null = null;
+  if (districtNorm) {
+    const districtRows: Array<{ id: string; name: string }> = await prisma.district.findMany({
+      where: { provinceId: province.id },
+      select: { id: true, name: true },
+    });
+    const included = districtRows.filter((row) =>
+      row.name.toLocaleLowerCase('tr-TR').includes(districtNorm.toLocaleLowerCase('tr-TR')),
+    );
+    const districtRecord =
+      matchNamedLocation(districtNorm, districtRows)
+      ?? (included.length === 1 ? included[0] : null);
+    districtId = districtRecord?.id ?? null;
+    districtName = districtRecord?.name ?? null;
+  }
+
+  return {
+    provinceId: province.id,
+    districtId,
+    provinceName: province.name,
+    districtName,
+  };
 }
 
 export function buildVendorServiceAreaWhere(
@@ -81,14 +133,25 @@ export function buildVendorNearbyWhere(params: {
     base.canActAsInspector = true;
   }
 
-  // Bölge çözülemedi: aktif (ve amaç filtreli) tüm tedarikçiler — operasyon atayabilsin
+  // Bölge id çözülemedi: il/ilçe metni + hizmet bölgesi adı (Afyon, Kartepe). Ulusal kesit değil.
   if (!params.provinceId) {
     if (city) {
+      const cityNames = locationNameVariants(city);
+      const districtNames = locationNameVariants(districtName);
+      const nameEquals = (value: string) => ({ equals: value, mode: 'insensitive' as const });
       base.OR = [
-        { city: { equals: city, mode: 'insensitive' } },
-        ...(districtName
-          ? [{ district: { equals: districtName, mode: 'insensitive' as const } }]
-          : []),
+        ...cityNames.map((name) => ({ city: nameEquals(name) })),
+        ...cityNames.map((name) => ({ district: nameEquals(name) })),
+        ...cityNames.map((name) => ({
+          serviceAreas: { some: { province: { name: nameEquals(name) } } },
+        })),
+        ...cityNames.map((name) => ({
+          serviceAreas: { some: { district: { name: nameEquals(name) } } },
+        })),
+        ...districtNames.map((name) => ({ district: nameEquals(name) })),
+        ...districtNames.map((name) => ({
+          serviceAreas: { some: { district: { name: nameEquals(name) } } },
+        })),
       ];
     }
     return base;
@@ -99,7 +162,9 @@ export function buildVendorNearbyWhere(params: {
 
   if (city) {
     // Aynı il yeterli; ilçe zorunlu değil — uzak/seyrek ilçelerde (örn. Başkale) havuzu kilitleme.
-    locationOr.push({ city: { equals: city, mode: 'insensitive' } });
+    for (const name of provinceSearchNames(city)) {
+      locationOr.push({ city: { equals: name, mode: 'insensitive' } });
+    }
     if (districtName) {
       locationOr.push({ district: { equals: districtName, mode: 'insensitive' } });
     }

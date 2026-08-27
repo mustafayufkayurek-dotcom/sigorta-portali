@@ -7,6 +7,10 @@ export interface VendorRecommendationItem {
   phone: string | null;
   city: string | null;
   district: string | null;
+  /** Acil hizmet kolları (serviceBranches). */
+  serviceBranches?: string[];
+  /** Hizmet verdiği il / ilçe etiketleri. */
+  serviceAreaLabels?: string[];
   avgServiceScore: number | null;
   avgCost: number | null;
   /** Ortalama müdahale süresi (saat). */
@@ -25,6 +29,8 @@ export interface VendorRecommendationItem {
   originalServiceType?: string | null;
   /** Operasyon Grubu ile uzmanlık örtüşmesi (0–1). */
   expertiseMatchScore?: number | null;
+  /** Acil: memnuniyet/maliyet olumsuz — alternatif arayın uyarısı. */
+  qualityWarning?: boolean;
 }
 
 export interface VendorRecommendQuery {
@@ -36,10 +42,15 @@ export interface VendorRecommendQuery {
   category?: string;
   limit?: number;
   /**
-   * score = hasar/varsayılan (compositeScore)
-   * name = Acil Yardım (A→Z, tr) — hasar skor yoluna sızmaz
+   * score = varsayılan (compositeScore: memnuniyet + maliyet hafızası)
+   * name = alfabetik (yalnız özel çağrı; Acil varsayılanı score)
    */
   sortBy?: 'score' | 'name';
+  /**
+   * false = yalnız il/ilçe havuzu. Ulusal kesit öneri diye gösterilmez.
+   * Acil zorunlu false. Hasar varsayılan true (bölge boşsa kategori havuzu).
+   */
+  allowNationalFallback?: boolean;
   /** Karar motorundan gelen Operasyon Grubu (opsiyonel; serviceType resolve edilir). */
   operationGroup?: string | null;
   /** Dosya / sorgu orijinal metni (UI doğrulama). */
@@ -47,6 +58,8 @@ export interface VendorRecommendQuery {
   /** Standart hizmet türü (UI doğrulama). */
   canonicalLabel?: string | null;
   expertiseHints?: string[];
+  /** Acil: uzmanlık süzgeci il/ilçe kayıtlı adayı düşürmez. */
+  keepAllAreaCandidates?: boolean;
 }
 
 export interface VendorOperationMetrics {

@@ -8,6 +8,7 @@ import { getCases, type EmergencyCase } from '@/utils/emergencyApi';
 import { API, authHeader } from '@/utils/api';
 import { getAccessToken } from '@/utils/auth-session';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { emergencyStatusProductLabel } from '@sigorta/shared';
 
 const PLAN_EK = 'EKSTRA_SATIS_MASRAFI';
 
@@ -45,11 +46,11 @@ const URGENCY_LABEL: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  GELEN: 'Yeni İhbar',
-  ATANDI: 'Tespit Aşamasında',
-  SAHADA: 'Onarım Aşamasında',
-  COZULDU: 'Dosya Kapatıldı',
-  FATURALANDILDI: 'Finansa Aktarıldı',
+  GELEN: emergencyStatusProductLabel('GELEN'),
+  ATANDI: emergencyStatusProductLabel('ATANDI'),
+  SAHADA: emergencyStatusProductLabel('SAHADA'),
+  COZULDU: emergencyStatusProductLabel('COZULDU'),
+  FATURALANDILDI: emergencyStatusProductLabel('FATURALANDILDI'),
 };
 
 function budgetHint(file: ExpensePickerHasarFile, expensePlan: string) {

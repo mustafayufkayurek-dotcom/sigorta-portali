@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { SlidePanel } from '@/components/SlidePanel';
 import type { SurveyCampaign } from '@/utils/surveyApi';
+import { SURVEY_Q6_LABEL, surveyStarQuestionsForCampaign } from '@/utils/survey-form';
 import {
   averageScore,
   campaignDisplayName,
@@ -20,14 +21,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'yanitlar', label: 'Yanıtlar' },
   { id: 'yorumlar', label: 'Yorumlar' },
 ];
-
-const QUESTION_LABELS = [
-  'Genel Memnuniyet',
-  'İletişim Kalitesi',
-  'Hız / Süreç',
-  'Çözüm Kalitesi',
-  'Personel Yaklaşımı',
-] as const;
 
 export function SurveyDetailDrawer({
   open,
@@ -83,12 +76,12 @@ export function SurveyDetailDrawer({
               <Row label="Ortalama Puan" value={avg == null ? '—' : `${formatTrNumber(avg, 2)} / 5`} />
               <Row label="NPS" value="—" hint="NPS sorusu tanımlı değil" />
               <Row
-                label="Tavsiye"
+                label={SURVEY_Q6_LABEL}
                 value={
                   response
                     ? response.q6Recommend
-                      ? 'Evet'
-                      : 'Hayır'
+                      ? 'Memnunum'
+                      : 'Memnun Değilim'
                     : '—'
                 }
               />
@@ -98,21 +91,27 @@ export function SurveyDetailDrawer({
           {tab === 'sorular' ? (
             response ? (
               <ul className="space-y-3">
-                {[
-                  { label: QUESTION_LABELS[0], value: response.q1Rating },
-                  { label: QUESTION_LABELS[1], value: response.q2Rating },
-                  { label: QUESTION_LABELS[2], value: response.q3Rating },
-                  { label: QUESTION_LABELS[3], value: response.q4Rating },
-                  { label: QUESTION_LABELS[4], value: response.q5Rating },
-                ].map((item) => (
+                {surveyStarQuestionsForCampaign(campaign).map((q) => {
+                  const value =
+                    q.key === 'q1'
+                      ? response.q1Rating
+                      : q.key === 'q2'
+                        ? response.q2Rating
+                        : q.key === 'q3'
+                          ? response.q3Rating
+                          : q.key === 'q4'
+                            ? response.q4Rating
+                            : response.q5Rating;
+                  return (
                   <li
-                    key={item.label}
+                    key={q.key}
                     className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2"
                   >
-                    <span className="text-slate-700">{item.label}</span>
-                    <span className="font-semibold text-slate-900">{item.value} / 5</span>
+                    <span className="text-slate-700">{q.label}</span>
+                    <span className="font-semibold text-slate-900">{value} / 5</span>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             ) : (
               <p className="text-slate-400">Yanıt bulunamadı</p>

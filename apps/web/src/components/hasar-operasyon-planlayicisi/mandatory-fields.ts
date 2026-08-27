@@ -17,6 +17,7 @@ export function getMandatoryChecks(
   ctx: {
     meetingNote: string;
     apptNote: string;
+    inspectorNote: string;
     insuredApproved: boolean;
     assignedInspectorId: string | null;
     assignedSupplierIds: string[];
@@ -42,12 +43,7 @@ export function getMandatoryChecks(
         { key: 'address', label: 'Adres', ok: Boolean(claim.address.trim()) && claim.address !== '—' },
         { key: 'appt_date', label: 'Randevu Tarihi', ok: Boolean(claim.appointmentDate.trim()) },
         { key: 'appt_time', label: 'Randevu Saati', ok: Boolean(claim.appointmentTime.trim()) },
-        { key: 'duration', label: 'Tahmini Süre', ok: Boolean(claim.durationMinutes.trim()) },
-        {
-          key: 'meeting_note',
-          label: 'Görüşme Notu',
-          ok: ctx.meetingNote.trim().length >= 3,
-        },
+        { key: 'insured_wa', label: 'Sigortalı WhatsApp gönderimi', ok: claim.contactWa.insured },
       ];
     case 'inspector':
       return [
@@ -59,6 +55,16 @@ export function getMandatoryChecks(
           label: 'Atanan Tespitçi',
           ok: Boolean(ctx.assignedInspectorId),
         },
+        {
+          key: 'inspector_note',
+          label: 'Tespitçi notu',
+          ok: ctx.inspectorNote.trim().length >= 3,
+        },
+        {
+          key: 'inspector_wa',
+          label: 'Tespitçi WhatsApp gönderimi',
+          ok: claim.contactWa.inspector,
+        },
       ];
     case 'supplier':
       return [
@@ -69,10 +75,15 @@ export function getMandatoryChecks(
         },
         {
           key: 'tasks',
-          label: 'Atanan Her Tedarikçi İçin Görev Tanımı',
+          label: 'Atanan her tedarikçi için görev notu',
           ok:
             ctx.assignedSupplierIds.length > 0 &&
             ctx.assignedSupplierIds.every((id) => (ctx.supplierTasks[id] ?? '').trim().length >= 3),
+        },
+        {
+          key: 'supplier_wa',
+          label: 'Tedarikçi WhatsApp gönderimi',
+          ok: claim.contactWa.vendor,
         },
       ];
     case 'whatsapp':
@@ -82,10 +93,24 @@ export function getMandatoryChecks(
         { key: 'template', label: 'Şablon (Ayarlar › Mesaj Şablonları)', ok: Boolean(ctx.waTemplateType.trim()) },
         { key: 'body', label: 'Mesaj İçeriği', ok: ctx.waBody.trim().length >= 5 },
       ];
+    case 'repair_whatsapp':
+      return [
+        { key: 'suppliers', label: 'Tedarikçi ataması', ok: ctx.assignedSupplierIds.length > 0 },
+        { key: 'approved', label: 'Müşteri raporu onayı', ok: claim.stepStatuses.approved === 'done' },
+      ];
+    case 'muvafakat':
+      return [
+        { key: 'muvafakat', label: 'Muvafakatname dijital onayı', ok: claim.flowFlags.muvafakatApproved },
+      ];
+    case 'closure_survey':
+      return [{ key: 'phone', label: 'Sigortalı telefon', ok: Boolean(claim.insuredPhone.trim()) }];
     case 'digital_approval':
       return [
-        { key: 'form_type', label: 'Form Türü', ok: Boolean(ctx.digitalFormType.trim()) },
-        { key: 'insured', label: 'Sigortalı', ok: Boolean(claim.insuredName.trim()) && claim.insuredName !== '—' },
+        {
+          key: 'muvafakat',
+          label: 'Dijital onay (mutabakat / muvafakat)',
+          ok: claim.flowFlags.muvafakatApproved,
+        },
       ];
     case 'report_writing': {
       const r = claim.report.readyChecks;
@@ -104,17 +129,22 @@ export function getMandatoryChecks(
         { key: 'subject', label: 'E-posta Konusu', ok: ctx.emailSubject.trim().length >= 3 },
       ];
     case 'approved': {
-      const needsNote = ctx.approverType === 'Meridyen personeli';
       return [
-        { key: 'approver_type', label: 'Onaylayan Taraf Türü', ok: Boolean(ctx.approverType.trim()) },
-        { key: 'approver_name', label: 'Onaylayan Ad Soyad', ok: ctx.approverName.trim().length >= 3 },
+        { key: 'report_ready', label: 'Rapor hazır', ok: claim.report.readyChecks.reportComplete },
         {
-          key: 'meridyen_note',
-          label: 'Meridyen Personeli Açıklaması',
-          ok: !needsNote || ctx.meridyenNote.trim().length >= 10,
+          key: 'file_approved',
+          label: 'Dosya raporu onaylı',
+          ok: claim.stepStatuses.approved === 'done',
         },
       ];
     }
+    case 'repair_complete':
+      return [
+        { key: 'muvafakat', label: 'Dijital onay', ok: claim.flowFlags.muvafakatApproved },
+        { key: 'photos', label: 'Her tedarikçi onarım resmi', ok: claim.flowFlags.repairPhotosReady },
+      ];
+    case 'docs_upload':
+      return [{ key: 'claim', label: 'Dosya', ok: Boolean(claim.claimId) }];
     default:
       return [];
   }

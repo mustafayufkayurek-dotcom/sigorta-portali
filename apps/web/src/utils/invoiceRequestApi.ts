@@ -1,4 +1,11 @@
 import { authFetch, API } from './api';
+import {
+  asInvoiceRequestList as parseInvoiceRequestList,
+  unwrapApiData,
+} from './invoice-request-envelope';
+
+export { unwrapApiData, faturaListTabHref, resolveFaturaListTab } from './invoice-request-envelope';
+export type { FaturaListTab } from './invoice-request-envelope';
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -7,6 +14,26 @@ async function handleResponse<T>(res: Response): Promise<T> {
     throw new Error(`${res.status}: ${msg}`);
   }
   return res.json();
+}
+
+export function asInvoiceRequestList(raw: unknown): InvoiceRequest[] {
+  return parseInvoiceRequestList(raw) as InvoiceRequest[];
+}
+
+export function asInvoiceRequest(raw: unknown): InvoiceRequest {
+  const body = unwrapApiData<unknown>(raw);
+  if (body && typeof body === 'object' && !Array.isArray(body) && typeof (body as InvoiceRequest).id === 'string') {
+    return body as InvoiceRequest;
+  }
+  throw new Error('Fatura talebi yanıtı okunamadı.');
+}
+
+export function asInvoiceDashboardSummary(raw: unknown): InvoiceDashboardSummary {
+  const body = unwrapApiData<unknown>(raw);
+  if (body && typeof body === 'object' && !Array.isArray(body) && 'counts' in (body as object)) {
+    return body as InvoiceDashboardSummary;
+  }
+  throw new Error('Fatura talebi özeti okunamadı.');
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -76,7 +103,7 @@ export function createInvoiceRequest(body: {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  }).then((r) => handleResponse<InvoiceRequest>(r));
+  }).then((r) => handleResponse<unknown>(r).then(asInvoiceRequest));
 }
 
 export function getInvoiceRequests(
@@ -86,19 +113,22 @@ export function getInvoiceRequests(
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (serviceType) params.set('serviceType', serviceType);
-  return authFetch(`${API}/invoice-requests?${params}`).then((r) =>
-    handleResponse<InvoiceRequest[]>(r),
+  const qs = params.toString();
+  return authFetch(`${API}/invoice-requests${qs ? `?${qs}` : ''}`).then((r) =>
+    handleResponse<unknown>(r).then(asInvoiceRequestList),
   );
 }
 
 export function getInvoiceDashboard(): Promise<InvoiceDashboardSummary> {
   return authFetch(`${API}/invoice-requests/dashboard`).then((r) =>
-    handleResponse<InvoiceDashboardSummary>(r),
+    handleResponse<unknown>(r).then(asInvoiceDashboardSummary),
   );
 }
 
 export function getInvoiceRequest(id: string): Promise<InvoiceRequest> {
-  return authFetch(`${API}/invoice-requests/${id}`).then((r) => handleResponse<InvoiceRequest>(r));
+  return authFetch(`${API}/invoice-requests/${id}`).then((r) =>
+    handleResponse<unknown>(r).then(asInvoiceRequest),
+  );
 }
 
 export function updateInvoiceRequestStatus(
@@ -110,14 +140,14 @@ export function updateInvoiceRequestStatus(
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status, ...extras }),
-  }).then((r) => handleResponse<InvoiceRequest>(r));
+  }).then((r) => handleResponse<unknown>(r).then(asInvoiceRequest));
 }
 
 export function getInvoiceRequestsByClaimFile(
   claimFileId: string,
 ): Promise<InvoiceRequest[]> {
   return authFetch(`${API}/invoice-requests/claim-file/${claimFileId}`).then((r) =>
-    handleResponse<InvoiceRequest[]>(r),
+    handleResponse<unknown>(r).then(asInvoiceRequestList),
   );
 }
 
@@ -125,6 +155,6 @@ export function getInvoiceRequestsByEmergencyCase(
   emergencyCaseId: string,
 ): Promise<InvoiceRequest[]> {
   return authFetch(`${API}/invoice-requests/emergency-case/${emergencyCaseId}`).then((r) =>
-    handleResponse<InvoiceRequest[]>(r),
+    handleResponse<unknown>(r).then(asInvoiceRequestList),
   );
 }

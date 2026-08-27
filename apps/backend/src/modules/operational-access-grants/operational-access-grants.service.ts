@@ -11,8 +11,15 @@ const USER_SELECT = { id: true, firstName: true, lastName: true, email: true };
 export type DelegationBanner = {
   actingUser: { id: string; firstName: string; lastName: string };
   principalUser: { id: string; firstName: string; lastName: string } | null;
+  grantType: 'person_delegation' | 'function_delegation';
   reason: string | null;
   validUntil: string | null;
+};
+
+export type FunctionDelegationStamp = {
+  viaFunctionDelegation: true;
+  scopeType: string;
+  grantId: string;
 };
 
 export type OperationalAccessGrantSummary = {
@@ -88,34 +95,79 @@ export class OperationalAccessGrantsService {
     return grants.some((g) => this.scopeMatches(g.scopeType, scopeType));
   }
 
+  async getFunctionDelegationStamp(
+    userId: string,
+    scopeType: OperationalScopeType,
+  ): Promise<FunctionDelegationStamp | null> {
+    const grants = await this.prisma.operationalAccessGrant.findMany({
+      where: {
+        granteeUserId: userId,
+        grantType: 'function_delegation',
+        ...this.activeGrantWhere(),
+      },
+      select: { id: true, scopeType: true },
+      orderBy: { validFrom: 'desc' },
+    });
+    const grant = grants.find((g) => this.scopeMatches(g.scopeType, scopeType));
+    if (!grant) return null;
+    return {
+      viaFunctionDelegation: true,
+      scopeType: grant.scopeType,
+      grantId: grant.id,
+    };
+  }
+
   async resolveDelegationBanner(
     viewingUserId: string,
     assignedUserId: string | null | undefined,
     scopeType: OperationalScopeType,
   ): Promise<DelegationBanner | null> {
-    if (!assignedUserId || viewingUserId === assignedUserId) return null;
+    if (assignedUserId && viewingUserId !== assignedUserId) {
+      const grant = await this.prisma.operationalAccessGrant.findFirst({
+        where: {
+          granteeUserId: viewingUserId,
+          grantType: 'person_delegation',
+          principalUserId: assignedUserId,
+          ...this.activeGrantWhere(),
+        },
+        include: {
+          granteeUser: { select: USER_SELECT },
+          principalUser: { select: USER_SELECT },
+        },
+        orderBy: { validFrom: 'desc' },
+      });
 
-    const grant = await this.prisma.operationalAccessGrant.findFirst({
+      if (grant && this.scopeMatches(grant.scopeType, scopeType)) {
+        return {
+          actingUser: grant.granteeUser,
+          principalUser: grant.principalUser,
+          grantType: 'person_delegation',
+          reason: grant.reason,
+          validUntil: grant.validTo ? grant.validTo.toISOString() : null,
+        };
+      }
+    }
+
+    const functionGrants = await this.prisma.operationalAccessGrant.findMany({
       where: {
         granteeUserId: viewingUserId,
-        grantType: 'person_delegation',
-        principalUserId: assignedUserId,
+        grantType: 'function_delegation',
         ...this.activeGrantWhere(),
       },
       include: {
         granteeUser: { select: USER_SELECT },
-        principalUser: { select: USER_SELECT },
       },
       orderBy: { validFrom: 'desc' },
     });
-
-    if (!grant || !this.scopeMatches(grant.scopeType, scopeType)) return null;
+    const functionGrant = functionGrants.find((g) => this.scopeMatches(g.scopeType, scopeType));
+    if (!functionGrant) return null;
 
     return {
-      actingUser: grant.granteeUser,
-      principalUser: grant.principalUser,
-      reason: grant.reason,
-      validUntil: grant.validTo ? grant.validTo.toISOString() : null,
+      actingUser: functionGrant.granteeUser,
+      principalUser: null,
+      grantType: 'function_delegation',
+      reason: functionGrant.reason,
+      validUntil: functionGrant.validTo ? functionGrant.validTo.toISOString() : null,
     };
   }
 
@@ -141,8 +193,14 @@ export class OperationalAccessGrantsService {
 
   async buildEmergencyDelegationScope(userId: string, roleCode: string) {
     if (!this.isDelegationScopedRole(roleCode)) return {};
+    if (await this.hasFunctionDelegation(userId, 'acil_yardim')) return {};
     const principalIds = await this.getPrincipalUserIdsForGrantee(userId, 'acil_yardim');
-    return { assignedUserId: { in: [userId, ...principalIds] } };
+    return {
+      OR: [
+        { assignedUserId: { in: [userId, ...principalIds] } },
+        { assignedUserId: null, createdByUserId: userId },
+      ],
+    };
   }
 
   async canAccessAssignedUserViaDelegation(
@@ -150,6 +208,7 @@ export class OperationalAccessGrantsService {
     assignedUserId: string | null | undefined,
     scopeType: OperationalScopeType,
   ): Promise<boolean> {
+    if (await this.hasFunctionDelegation(viewingUserId, scopeType)) return true;
     if (!assignedUserId || viewingUserId === assignedUserId) return false;
     const principalIds = await this.getPrincipalUserIdsForGrantee(viewingUserId, scopeType);
     return principalIds.includes(assignedUserId);

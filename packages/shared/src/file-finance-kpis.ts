@@ -40,6 +40,7 @@ export type FileFinanceKpiSource = {
     grossMarginPct?: number | null;
     outstandingBalance?: number | null;
     totalCollected?: number | null;
+    extraWorkCost?: number | null;
   } | null;
 };
 
@@ -55,7 +56,6 @@ export const FILE_PROFIT_STAGE_LABEL: Record<FileProfitStage, string> = {
 const REPORT_APPROVED = new Set([
   'approved',
   'externally_approved',
-  'sent_for_external_approval',
 ]);
 
 export function isRepairReportApproved(status?: string | null): boolean {
@@ -67,6 +67,9 @@ export type FileFinanceKpis = {
   planCost: number;
   planProfit: number;
   extraWorkRevenue: number;
+  extraWorkCost: number;
+  extraWorkProfit: number;
+  budgetProfit: number;
   actualRevenue: number;
   actualCost: number;
   displayRevenue: number;
@@ -126,6 +129,8 @@ export function resolveFileProfitStage(input: {
 
 export function resolveFileFinanceKpis(source: FileFinanceKpiSource): FileFinanceKpis {
   const extraWorkRevenue = num(source.summary?.extraWorkRevenue);
+  const extraWorkCost = num(source.summary?.extraWorkCost);
+  const extraWorkProfit = extraWorkRevenue - extraWorkCost;
   const baseRevenue = num(
     source.report?.totalSalesAmount ??
       source.summary?.fileFeeRevenue ??
@@ -160,6 +165,9 @@ export function resolveFileFinanceKpis(source: FileFinanceKpiSource): FileFinanc
     planCost,
     planProfit,
     extraWorkRevenue,
+    extraWorkCost,
+    extraWorkProfit,
+    budgetProfit: shown.profit - extraWorkProfit,
     actualRevenue,
     actualCost,
     displayRevenue: shown.displayRevenue,

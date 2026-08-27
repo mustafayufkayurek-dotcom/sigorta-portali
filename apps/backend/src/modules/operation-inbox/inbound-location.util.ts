@@ -1,19 +1,29 @@
 /** Adres metninden il / ilçe çıkarımı (province adı yoksa ilçe üzerinden). */
 
+import { provinceSearchNames } from '../../common/helpers/turkey-location-normalize';
+import { stripInboundAddressPollution } from '@sigorta/shared';
+
 type ProvinceRow = { id: string; name: string };
 type DistrictRow = { name: string; province: { name: string } };
-
-function normalizeTr(value: string): string {
-  return value.trim().toLocaleLowerCase('tr-TR');
-}
 
 /** Kısa / belirsiz ilçe adlarında yanlış pozitif önle (ör. "Of"). */
 const MIN_PLACE_LEN = 3;
 
+function foldPlaceChars(value: string): string {
+  return value
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c');
+}
+
 function includesPlaceName(haystack: string, place: string): boolean {
-  const p = normalizeTr(place);
+  const p = foldPlaceChars(place).trim();
   if (p.length < MIN_PLACE_LEN) return false;
-  const text = normalizeTr(haystack);
+  const text = foldPlaceChars(haystack);
   let from = 0;
   while (from <= text.length) {
     const idx = text.indexOf(p, from);
@@ -34,13 +44,14 @@ export function matchCityDistrictFromAddressText(
   districtsByProvinceId: Map<string, { name: string }[]>,
   allDistricts: DistrictRow[],
 ): { city: string | null; district: string | null } {
-  const text = address.trim();
+  const text = stripInboundAddressPollution(address).trim();
   if (!text) return { city: null, district: null };
 
   const sortedProvinces = [...provinces].sort((a, b) => b.name.length - a.name.length);
   let matchedProvince: ProvinceRow | null = null;
   for (const p of sortedProvinces) {
-    if (includesPlaceName(text, p.name)) {
+    const labels = provinceSearchNames(p.name).sort((a, b) => b.length - a.length);
+    if (labels.some((label) => includesPlaceName(text, label))) {
       matchedProvince = p;
       break;
     }

@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { ImagePlus, Trash2, X } from 'lucide-react';
+import { ImagePlus, Trash2 } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
+import { entityDocumentFileUrl } from '@/utils/protected-image';
+import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 
 type ClosurePhotoDoc = {
   id: string;
@@ -34,7 +37,8 @@ export default function ClosurePhotosPanel({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const onCountRef = useRef(onPhotoCountChange);
   onCountRef.current = onPhotoCountChange;
@@ -65,8 +69,7 @@ export default function ClosurePhotosPanel({
     void load();
   }, [load]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
+  const uploadFiles = async (files: File[]) => {
     if (files.length === 0 || readonly) return;
     setUploading(true);
     setError(null);
@@ -90,8 +93,21 @@ export default function ClosurePhotosPanel({
       setError(getApiErrorMessage(err, 'Dosya yüklenemedi. Lütfen kısa süre sonra tekrar deneyin.'));
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    await uploadFiles(files);
+  };
+
+  const onDropFiles = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    if (readonly || uploading) return;
+    void uploadFiles(Array.from(e.dataTransfer.files ?? []));
   };
 
   const handleDelete = async (docId: string, fileName: string) => {
@@ -106,16 +122,9 @@ export default function ClosurePhotosPanel({
     }
   };
 
-  const openPreview = async (docId: string) => {
-    try {
-      const r = await axios.get(`${API}/entity-documents/${docId}/signed-url`, {
-        headers: authHeader(),
-      });
-      const url = r.data?.data?.url as string | undefined;
-      if (url) setPreviewUrl(url);
-    } catch {
-      setError('Önizleme açılamadı');
-    }
+  const openPreview = (docId: string) => {
+    const idx = docs.findIndex((d) => d.id === docId);
+    if (idx >= 0) setPreviewIndex(idx);
   };
 
   const done = docs.length > 0;
@@ -126,9 +135,25 @@ export default function ClosurePhotosPanel({
         done
           ? 'border-emerald-200 bg-emerald-50/50'
           : 'border-amber-200 bg-amber-50/40'
-      }`}
+      } ${dragOver && !readonly ? 'ring-2 ring-brand-400' : ''}`}
       data-testid="dosya-kapanis-resimleri"
       data-photo-count={docs.length}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!readonly && !uploading) setDragOver(true);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!readonly && !uploading) setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setDragOver(false);
+      }}
+      onDrop={onDropFiles}
     >
       <div className="flex flex-wrap items-center justify-between gap-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -157,6 +182,14 @@ export default function ClosurePhotosPanel({
 
       <p className="text-[10px] text-slate-500 leading-snug">
         Kapanış öncesi saha / hizmet fotoğraflarını buraya yükleyin. Belgeler sekmesinden ayrıdır.
+        {!readonly ? (
+          <>
+            {' '}
+            <span data-testid="dosya-kapanis-surukle-birak">
+              Resim yükle ile veya dosyayı bu alana sürükleyip bırakarak ekleyin.
+            </span>
+          </>
+        ) : null}
       </p>
 
       {!readonly && (
@@ -191,25 +224,29 @@ export default function ClosurePhotosPanel({
       )}
 
       {!loading && docs.length > 0 && (
-        <ul className="grid grid-cols-2 sm:grid-cols-3 gap-1" data-testid="dosya-kapanis-resimleri-liste">
+        <ul className="flex flex-wrap gap-1.5" data-testid="dosya-kapanis-resimleri-liste">
           {docs.map((doc) => (
             <li
               key={doc.id}
-              className="flex items-center gap-1 rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px]"
+              className="group relative h-36 w-36 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white"
             >
               <button
                 type="button"
-                onClick={() => void openPreview(doc.id)}
-                className="min-w-0 flex-1 truncate text-left font-medium text-slate-700 hover:text-blue-700"
+                onClick={() => openPreview(doc.id)}
+                className="block h-full w-full"
                 title={doc.fileName}
               >
-                {doc.fileName}
+                <AuthBlobImg
+                  url={entityDocumentFileUrl(doc.id, 'thumb')}
+                  alt={doc.fileName}
+                  className="h-full w-full object-cover"
+                />
               </button>
               {!readonly && (
                 <button
                   type="button"
                   onClick={() => void handleDelete(doc.id, doc.fileName)}
-                  className="shrink-0 rounded p-0.5 text-slate-400 hover:text-red-600"
+                  className="absolute right-1 top-1 rounded bg-white/90 p-0.5 text-slate-400 opacity-0 shadow-sm ring-1 ring-slate-200 group-hover:opacity-100 hover:text-red-600"
                   title="Sil"
                   aria-label="Sil"
                 >
@@ -221,34 +258,15 @@ export default function ClosurePhotosPanel({
         </ul>
       )}
 
-      {previewUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setPreviewUrl(null)}
-        >
-          <div
-            className="relative max-h-[90vh] max-w-3xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setPreviewUrl(null)}
-              className="absolute -right-2 -top-2 rounded-full bg-white p-1 shadow"
-              aria-label="Kapat"
-            >
-              <X className="h-4 w-4 text-slate-700" />
-            </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="Dosya Kapanış Resmi"
-              className="max-h-[85vh] max-w-full rounded-lg object-contain"
-            />
-          </div>
-        </div>
-      )}
+      {previewIndex !== null && docs[previewIndex] ? (
+        <PhotoLightbox
+          srcs={docs.map((d) => entityDocumentFileUrl(d.id, 'full'))}
+          index={previewIndex}
+          onIndex={setPreviewIndex}
+          onClose={() => setPreviewIndex(null)}
+          alt={docs[previewIndex]?.fileName ?? 'Dosya Kapanış Resmi'}
+        />
+      ) : null}
     </div>
   );
 }

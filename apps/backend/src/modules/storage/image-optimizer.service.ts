@@ -14,14 +14,27 @@ export interface ThumbnailOptions {
   quality?: number;
 }
 
-const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/tiff'];
+const IMAGE_MIME_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/bmp',
+  'image/tiff',
+  'image/heic',
+  'image/heif',
+];
+const IMAGE_NAME = /\.(jpe?g|png|gif|webp|heic|heif|bmp|tiff?)$/i;
 
 @Injectable()
 export class ImageOptimizerService {
   private readonly logger = new Logger(ImageOptimizerService.name);
 
-  isImage(mimeType: string): boolean {
-    return IMAGE_MIME_TYPES.includes(mimeType.toLowerCase());
+  isImage(mimeType: string, fileName?: string): boolean {
+    if (mimeType && IMAGE_MIME_TYPES.includes(mimeType.toLowerCase())) return true;
+    if (fileName && IMAGE_NAME.test(fileName)) return true;
+    return false;
   }
 
   /**

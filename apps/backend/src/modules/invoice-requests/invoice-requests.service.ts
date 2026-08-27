@@ -9,6 +9,7 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { FileDocumentsService } from '../file-documents/file-documents.service';
 import { SurveysService } from '@/modules/surveys/surveys.service';
+import { isAcilDigitalApprovalRequired } from '@sigorta/shared';
 import {
   CreateInvoiceRequestDto,
   UpdateInvoiceRequestStatusDto,
@@ -24,6 +25,11 @@ import {
   isTelegramInvoiceRequestNotifyEnabled,
   sendMeridyenTelegramOpsMessage,
 } from '@/modules/claim-files/telegram-ops-notify';
+import {
+  acilSalesInvoiceRequestBody,
+  canOpenAcilSalesInvoiceRequest,
+  invoiceRequestActorUserId,
+} from '../emergency/acil-finance-invoice-request';
 
 @Injectable()
 export class InvoiceRequestsService {
@@ -58,10 +64,8 @@ export class InvoiceRequestsService {
         const missing: string[] = [];
         if (!conds.muvafakatnameDigitallyApproved)
           missing.push('Muvafakatname dijital onayı');
-        if (!conds.repairReportApproved) missing.push('Onaylı onarım raporu');
-        if (!conds.vendorContractSigned) missing.push('İmzalı tedarikçi sözleşmesi');
         throw new BadRequestException(
-          `Kapama koşulları tamamlanmamış: ${missing.join(', ')}`,
+          `Fatura talebi için: ${missing.join(', ')}. Onarımın bitmesi beklenmez.`,
         );
       }
     }
@@ -72,9 +76,9 @@ export class InvoiceRequestsService {
       );
       if (!conds.canCreateInvoiceRequest) {
         const missing: string[] = [];
-        if (!conds.matbuEvrakDigitallyApproved)
+        if (!conds.matbuEvrakDigitallyApproved && isAcilDigitalApprovalRequired())
           missing.push('Matbu evrak dijital onayı');
-        if (!conds.caseStatusCompleted) missing.push('Dosya durumu tamamlanmamış');
+        if (!conds.caseStatusCompleted) missing.push('Dosya kapanmamış veya finansa gönderilmemiş');
         throw new BadRequestException(
           `Kapama koşulları tamamlanmamış: ${missing.join(', ')}`,
         );
@@ -84,8 +88,14 @@ export class InvoiceRequestsService {
 
   // ── Oluşturma ─────────────────────────────────────────────────────────────
 
-  async create(dto: CreateInvoiceRequestDto, createdByUserId: string) {
-    await this.verifyClosureConditions(dto);
+  async create(
+    dto: CreateInvoiceRequestDto,
+    createdByUserId: string,
+    options?: { skipClosureCheck?: boolean; notify?: boolean },
+  ) {
+    if (!options?.skipClosureCheck) {
+      await this.verifyClosureConditions(dto);
+    }
 
     // Mükerrer talep kontrolü
     const existing = await this.prisma.invoiceRequest.findFirst({
@@ -132,12 +142,13 @@ export class InvoiceRequestsService {
       },
     });
 
-    // Admin + finans — Telegram / panel; create akışını bozmaz
-    await this.notifyFinanceInvoiceRequest(created).catch((err) =>
-      this.logger.warn(
-        `Fatura talebi bildirimi atlandı (${created.requestNo}): ${err instanceof Error ? err.message : err}`,
-      ),
-    );
+    if (options?.notify !== false) {
+      await this.notifyFinanceInvoiceRequest(created).catch((err) =>
+        this.logger.warn(
+          `Fatura talebi bildirimi atlandı (${created.requestNo}): ${err instanceof Error ? err.message : err}`,
+        ),
+      );
+    }
 
     return created;
   }
@@ -200,7 +211,18 @@ export class InvoiceRequestsService {
       where: {
         status: 'active',
         role: {
-          code: { in: ['admin', 'ADMIN', 'finance', 'finans', 'FINANS', 'accountant', 'ACCOUNTANT'] },
+          code: {
+            in: [
+              'admin',
+              'ADMIN',
+              'finance',
+              'FINANCE',
+              'finans',
+              'FINANS',
+              'accountant',
+              'ACCOUNTANT',
+            ],
+          },
         },
       },
       select: { id: true, role: { select: { code: true } } },
@@ -242,6 +264,7 @@ export class InvoiceRequestsService {
   // ── Liste (finans dashboard için) ─────────────────────────────────────────
 
   async findAll(status?: string, serviceType?: string) {
+    await this.syncMissingEmergencySalesRequests();
     return this.prisma.invoiceRequest.findMany({
       where: {
         ...(status ? { status } : {}),
@@ -334,9 +357,68 @@ export class InvoiceRequestsService {
     return result;
   }
 
+  /** Finansa gönderilmiş acil dosyalarda yazılmamış satış taleplerini tamamlar. */
+  async syncMissingEmergencySalesRequests(): Promise<number> {
+    const cases = await this.prisma.emergencyCase.findMany({
+      where: {
+        status: { in: ['COZULDU', 'FATURALANDILDI'] },
+        invoiceRequests: { none: { status: { in: ['pending', 'approved', 'invoiced'] } } },
+      },
+      select: {
+        id: true,
+        caseNo: true,
+        fileNo: true,
+        customerName: true,
+        createdByUserId: true,
+        assignedUserId: true,
+        status: true,
+        costEntries: { select: { entryType: true, description: true, amount: true } },
+      },
+      take: 400,
+    });
+
+    let created = 0;
+    for (const emergencyCase of cases) {
+      const gelirEntries = emergencyCase.costEntries.filter((entry) => entry.entryType === 'gelir');
+      const gelirTotal = gelirEntries.reduce((sum, entry) => sum + entry.amount, 0);
+      if (
+        !canOpenAcilSalesInvoiceRequest({
+          status: emergencyCase.status,
+          existingOpenRequest: false,
+          gelirTotal,
+        })
+      ) {
+        continue;
+      }
+      try {
+        await this.create(
+          acilSalesInvoiceRequestBody({
+            emergencyCaseId: emergencyCase.id,
+            caseNo: emergencyCase.caseNo,
+            fileNo: emergencyCase.fileNo,
+            customerName: emergencyCase.customerName,
+            gelirEntries,
+          }),
+          invoiceRequestActorUserId(
+            emergencyCase.assignedUserId,
+            emergencyCase.createdByUserId,
+          ),
+          { skipClosureCheck: true, notify: false },
+        );
+        created += 1;
+      } catch (err) {
+        this.logger.warn(
+          `Acil fatura talebi tamamlanamadı (${emergencyCase.caseNo}): ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+    return created;
+  }
+
   // ── Finans dashboard özeti ────────────────────────────────────────────────
 
   async getDashboardSummary() {
+    await this.syncMissingEmergencySalesRequests();
     const [pendingCount, approvedCount, invoicedCount, cancelledCount] =
       await Promise.all([
         this.prisma.invoiceRequest.count({ where: { status: 'pending' } }),

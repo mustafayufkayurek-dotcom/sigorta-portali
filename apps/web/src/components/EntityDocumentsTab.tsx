@@ -1,6 +1,6 @@
 'use client';
 
-import { API, authHeader, getToken } from '@/utils/api';
+import { API, authHeader } from '@/utils/api';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
@@ -10,6 +10,12 @@ import {
 } from '@/utils/document-type-scope';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
+import {
+  entityDocumentFileUrl,
+  fetchAuthImageBlob,
+  vendorDocumentFileUrl,
+} from '@/utils/protected-image';
 
 const DwgDxfViewerModal = dynamic(
   () => import('./DwgDxfViewerModal').then((m) => m.DwgDxfViewerModal),
@@ -41,6 +47,34 @@ function isPdf(mimeType: string) { return mimeType === 'application/pdf'; }
 function isCAD(ext: string) {
   const e = ext.replace('.', '').toLowerCase();
   return e === 'dwg' || e === 'dxf';
+}
+
+function AuthPdfFrame({ url, title }: { url: string; title: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    void fetchAuthImageBlob(url).then((blob) => {
+      if (cancelled || !blob) return;
+      objectUrl = URL.createObjectURL(blob);
+      setSrc(objectUrl);
+    });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [url]);
+  if (!src) {
+    return <p className="p-8 text-center text-sm text-gray-400">Yükleniyor...</p>;
+  }
+  return (
+    <iframe
+      src={src}
+      className="w-full h-full"
+      style={{ minHeight: '62vh' }}
+      title={title}
+    />
+  );
 }
 
 // ── SVG Icon Components ────────────────────────────────────────────────────────
@@ -178,8 +212,8 @@ export function EntityDocumentsTab({
 
   // Preview state
   const [previewDoc, setPreviewDoc] = useState<Doc | null>(null);
-  // CAD viewer state
   const [cadViewerDoc, setCadViewerDoc] = useState<Doc | null>(null);
+  const [cadFileUrl, setCadFileUrl] = useState<string | null>(null);
 
   const listUrl = mode === 'vendor'
     ? `${API}/vendors/${entityId}/documents`
@@ -189,13 +223,12 @@ export function EntityDocumentsTab({
     ? `${API}/vendors/${entityId}/documents`
     : `${API}/entity-documents`;
 
-  const downloadUrl = (docId: string) => mode === 'vendor'
-    ? `${API}/vendor-documents/${docId}/download`
-    : `${API}/entity-documents/${docId}/download`;
-
   const deleteUrl = (docId: string) => mode === 'vendor'
     ? `${API}/vendor-documents/${docId}`
     : `${API}/entity-documents/${docId}`;
+
+  const streamUrl = (docId: string, variant: 'thumb' | 'full' = 'full') =>
+    mode === 'vendor' ? vendorDocumentFileUrl(docId, variant) : entityDocumentFileUrl(docId, variant);
 
   const loadDocuments = useCallback(async () => {
     setLoading(true);
@@ -270,18 +303,29 @@ export function EntityDocumentsTab({
     }
   };
 
-  const handleDownload = (docId: string, fileName: string) => {
+  const handleDownload = async (docId: string, fileName: string) => {
+    const blob = await fetchAuthImageBlob(streamUrl(docId, 'full'));
+    if (!blob) {
+      showToast('error', 'İndirilemedi');
+      return;
+    }
+    const href = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = downloadUrl(docId);
-    a.setAttribute('target', '_blank');
+    a.href = href;
     a.setAttribute('download', fileName);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    URL.revokeObjectURL(href);
   };
 
-  const handlePrint = (doc: Doc) => {
-    const url = downloadUrl(doc.id);
+  const handlePrint = async (doc: Doc) => {
+    const blob = await fetchAuthImageBlob(streamUrl(doc.id, 'full'));
+    if (!blob) {
+      showToast('error', 'Yazdırma açılamadı');
+      return;
+    }
+    const url = URL.createObjectURL(blob);
     const printWindow = window.open(url, '_blank');
     if (printWindow) {
       printWindow.onload = () => {
@@ -291,9 +335,23 @@ export function EntityDocumentsTab({
     }
   };
 
-  const getPreviewUrl = (docId: string) => {
-    const token = getToken();
-    return `${downloadUrl(docId)}?token=${token}`;
+  const openCad = async (doc: Doc) => {
+    try {
+      const signedPath =
+        mode === 'vendor'
+          ? `${API}/vendor-documents/${doc.id}/signed-url`
+          : `${API}/entity-documents/${doc.id}/signed-url`;
+      const r = await axios.get(signedPath, { headers: authHeader() });
+      const url = r.data?.data?.url as string | undefined;
+      if (!url) {
+        showToast('error', 'CAD açılamadı');
+        return;
+      }
+      setCadFileUrl(url);
+      setCadViewerDoc(doc);
+    } catch (err: unknown) {
+      showToast('error', getApiErrorMessage(err, 'CAD açılamadı'));
+    }
   };
 
   return (
@@ -434,7 +492,7 @@ export function EntityDocumentsTab({
                     )}
                     {canViewCAD && (
                       <ActionBtn
-                        onClick={() => setCadViewerDoc(doc)}
+                        onClick={() => void openCad(doc)}
                         title="CAD Görüntüle"
                         variant="indigo"
                       >
@@ -529,20 +587,13 @@ export function EntityDocumentsTab({
             {/* Modal Body */}
             <div className="flex-1 overflow-hidden min-h-0 bg-gray-50">
               {isPdf(previewDoc.mimeType) ? (
-                <iframe
-                  src={getPreviewUrl(previewDoc.id)}
-                  className="w-full h-full"
-                  style={{ minHeight: '62vh' }}
-                  title={previewDoc.fileName}
-                />
+                <AuthPdfFrame url={streamUrl(previewDoc.id, 'full')} title={previewDoc.fileName} />
               ) : isImage(previewDoc.mimeType) ? (
                 <div className="flex items-center justify-center h-full overflow-auto p-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={getPreviewUrl(previewDoc.id)}
+                  <AuthBlobImg
+                    url={streamUrl(previewDoc.id, 'full')}
                     alt={previewDoc.fileName}
                     className="max-w-full max-h-full object-contain rounded-xl shadow-md"
-                    style={{ maxHeight: 'calc(92vh - 100px)' }}
                   />
                 </div>
               ) : (
@@ -571,11 +622,14 @@ export function EntityDocumentsTab({
         </div>
       )}
       {/* CAD Viewer Modal (DWG/DXF) */}
-      {cadViewerDoc && (
+      {cadViewerDoc && cadFileUrl && (
         <DwgDxfViewerModal
           doc={cadViewerDoc}
-          fileUrl={getPreviewUrl(cadViewerDoc.id)}
-          onClose={() => setCadViewerDoc(null)}
+          fileUrl={cadFileUrl}
+          onClose={() => {
+            setCadViewerDoc(null);
+            setCadFileUrl(null);
+          }}
           onDownload={() => handleDownload(cadViewerDoc.id, cadViewerDoc.fileName)}
         />
       )}

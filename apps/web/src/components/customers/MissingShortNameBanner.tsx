@@ -43,7 +43,7 @@ export function MissingShortNameBanner() {
 
   return (
     <div
-      className="rounded-xl border border-status-warning/40 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+      className="rounded-xl border-2 border-amber-500 bg-amber-50 px-4 py-3.5 text-sm text-amber-950 shadow-sm"
       data-testid="missing-short-name-banner"
       role="status"
     >
@@ -51,12 +51,12 @@ export function MissingShortNameBanner() {
         <div className="min-w-0 flex items-start gap-2.5">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-warning" aria-hidden />
           <div className="min-w-0">
-            <p className="font-semibold">
+            <p className="text-base font-bold">
               {summary.count} Müşteri Kartında Kısa Ad Eksik
             </p>
             <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
-              Listelerde uzun unvanlar sayfayı uzatıyor. Eksik Kısa Ad tanımlarını tamamlayın;
-              tüm kartlar tamamlanınca bu uyarı kalkar.
+              Listelerde Kısa Ad gerekir. «Kısa Ad Tanımlanmamış» yazısına tıklayınca müşteri kartı açılır;
+              Kısa Ad’ı orada girin. Tüm kartlar dolunca bu uyarı kalkar.
               {sampleNames ? ` Örnek: ${sampleNames}${summary.count > 3 ? '…' : ''}` : ''}
             </p>
           </div>

@@ -732,6 +732,7 @@ export function OnarimRaporuTab({ claimId }: { claimId: string }) {
 
   return (
     <div className="space-y-4">
+      <div id="raporlar-onarim" className="scroll-mt-16">
       <FinansPanelCard
         title="Onarım Raporları"
         subtitle="Orijinal, revize edilmiş ve onaylanmış rapor sürümleri — revizyon geçmişi her rapor kartında"
@@ -771,7 +772,7 @@ export function OnarimRaporuTab({ claimId }: { claimId: string }) {
                 description="Farklı bir durum filtresi seçin veya yeni rapor oluşturun."
               />
             ) : (
-              <div className="space-y-3">
+              <div className="max-h-[min(32rem,55vh)] space-y-3 overflow-y-auto pr-1">
                 {filteredChains.map((chain) => (
                   <ReportChainRow key={chain.rootId} chain={chain} claimId={claimId} />
                 ))}
@@ -792,8 +793,11 @@ export function OnarimRaporuTab({ claimId }: { claimId: string }) {
           </div>
         )}
       </FinansPanelCard>
+      </div>
 
+      <div id="raporlar-revizyon" className="scroll-mt-16">
       <RevizyonTalepleriPanel claimId={claimId} />
+      </div>
 
       {showWizard && (
         <YeniRaporWizard claimId={claimId} onCreated={handleCreated} onClose={() => setShowWizard(false)} />

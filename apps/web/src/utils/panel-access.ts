@@ -102,6 +102,23 @@ export function userOperationArea(user: PanelUserLike | null | undefined): Opera
   return operationAreaFromDepartmentCodes(codes);
 }
 
+/**
+ * Acil finans sayfası (`/panel/acil-yardim/finans`) ve «Finans sayfasını aç».
+ * Dosya sorumlusu menüsünde bu sayfa yoktur; ödeme kaydı dosyadan görülür.
+ * Açık: admin, veya Acil Yardım dosya sorumluluğuna vekalet eden finans personeli.
+ */
+export function canOpenAcilFinancePage(
+  roleCode: string,
+  operationalAccessGrants?: OperationalAccessGrantSummary[] | null,
+): boolean {
+  const role = String(roleCode ?? '').trim().toLowerCase();
+  if (role === 'admin') return true;
+  if (isFinanceRole(role) && hasActiveFunctionDelegation(operationalAccessGrants, 'acil_yardim')) {
+    return true;
+  }
+  return false;
+}
+
 /** Hasar-only saha/ofis personeli acil yardım modülünü görmemeli */
 export function canAccessAcilYardim(
   roleCode: string,
@@ -119,16 +136,22 @@ export function canAccessAcilYardim(
   return false;
 }
 
+function stripPathQueryHash(pathname: string): string {
+  return String(pathname ?? '').split(/[?#]/)[0];
+}
+
 function isAcilYardimDetailPath(pathname: string): boolean {
-  if (!pathname.startsWith('/panel/acil-yardim/')) return false;
-  if (pathname === '/panel/acil-yardim/finans' || pathname.startsWith('/panel/acil-yardim/finans/')) {
+  const path = stripPathQueryHash(pathname);
+  if (!path.startsWith('/panel/acil-yardim/')) return false;
+  if (path === '/panel/acil-yardim/finans' || path.startsWith('/panel/acil-yardim/finans/')) {
     return false;
   }
   return true;
 }
 
 function isAcilYardimFinansPath(pathname: string): boolean {
-  return pathname === '/panel/acil-yardim/finans' || pathname.startsWith('/panel/acil-yardim/finans/');
+  const path = stripPathQueryHash(pathname);
+  return path === '/panel/acil-yardim/finans' || path.startsWith('/panel/acil-yardim/finans/');
 }
 
 /** Hasar departmanlı ofis personeli: operasyon / gelen kutusu akışı için sınırlı acil erişim */
@@ -155,12 +178,12 @@ export function canAccessAcilYardimRoute(
   operationalAccessGrants?: OperationalAccessGrantSummary[] | null,
   allowedScreens?: string[] | null,
 ): boolean {
-  if (canAccessAcilYardim(roleCode, operationArea, operationalAccessGrants)) {
-    return true;
+  if (isAcilYardimFinansPath(pathname)) {
+    return canOpenAcilFinancePage(roleCode, operationalAccessGrants);
   }
 
-  if (isAcilYardimFinansPath(pathname)) {
-    return false;
+  if (canAccessAcilYardim(roleCode, operationArea, operationalAccessGrants)) {
+    return true;
   }
 
   if (pathname === '/panel/acil-yardim' || isAcilYardimDetailPath(pathname)) {

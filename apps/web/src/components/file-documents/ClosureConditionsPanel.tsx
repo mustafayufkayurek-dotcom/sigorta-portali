@@ -15,10 +15,19 @@ import {
 } from '@/utils/invoiceRequestApi';
 import {
   SurveyCampaign,
-  getSurveyByInvoiceRequest,
+  getSurveyByClaimFile,
+  getSurveyByEmergencyCase,
   sendSurveyLink,
-  createAndSendSurvey,
+  createAndSendSurveyForClaim,
+  createAndSendSurveyForEmergency,
+  saveSurveyOwnerExplanation,
 } from '@/utils/surveyApi';
+import {
+  surveyOwnerExplanationMissing,
+  surveyResponseIsNegative,
+  SURVEY_OWNER_EXPLANATION_MESSAGE,
+  surveyStarQuestionsForCampaign,
+} from '@/utils/survey-form';
 import { formatTryAmount } from '@/utils/format-try-amount';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -28,8 +37,10 @@ interface SharedProps {
   showClosureChecklist?: boolean;
   /** Fatura talebi oluşturma ve durum takibi */
   showInvoiceRequest?: boolean;
-  /** Müşteri memnuniyet anketi (fatura kesildikten sonra) */
+  /** Müşteri memnuniyet anketi (dosya kapanışında; zorunlu değil) */
   showSurvey?: boolean;
+  /** Dosya kapalıysa anket bloğu fatura kesilmeden de görünür */
+  fileClosed?: boolean;
 }
 
 interface ClaimProps extends SharedProps {
@@ -117,6 +128,7 @@ export default function ClosureConditionsPanel(props: Props) {
     showClosureChecklist = true,
     showInvoiceRequest = true,
     showSurvey = true,
+    fileClosed = false,
   } = props;
 
   const [conditions, setConditions] = useState<
@@ -133,6 +145,8 @@ export default function ClosureConditionsPanel(props: Props) {
   const [sendingSurvey, setSendingSurvey] = useState(false);
   const [surveyDeepLink, setSurveyDeepLink] = useState<string | null>(null);
   const [surveyError, setSurveyError] = useState('');
+  const [ownerNote, setOwnerNote] = useState('');
+  const [savingOwnerNote, setSavingOwnerNote] = useState(false);
 
   const loadConditions = async () => {
     if (!showClosureChecklist && !showInvoiceRequest) return null;
@@ -160,30 +174,37 @@ export default function ClosureConditionsPanel(props: Props) {
           ? await getInvoiceRequestsByClaimFile(entityId)
           : await getInvoiceRequestsByEmergencyCase(entityId);
       setExistingRequests(reqs);
-
-      const invoicedReq = reqs.find((r) => r.status === 'invoiced');
-      if (showSurvey && invoicedReq) {
-        getSurveyByInvoiceRequest(invoicedReq.id)
-          .then((s) => setSurvey(s))
-          .catch(() => setSurvey(null));
-      } else {
-        setSurvey(null);
-      }
       return reqs;
     } catch (e: unknown) {
       if (showInvoiceRequest) {
         setError(e instanceof Error ? e.message : 'Fatura talepleri yüklenemedi');
       }
       setExistingRequests([]);
-      setSurvey(null);
       return [];
+    }
+  };
+
+  const loadSurvey = async () => {
+    if (!showSurvey) {
+      setSurvey(null);
+      return;
+    }
+    try {
+      const s =
+        serviceType === 'claim'
+          ? await getSurveyByClaimFile(entityId)
+          : await getSurveyByEmergencyCase(entityId);
+      setSurvey(s);
+      setOwnerNote(s?.ownerExplanation ?? '');
+    } catch {
+      setSurvey(null);
     }
   };
 
   const load = async () => {
     setLoadingConds(true);
     setError('');
-    await Promise.all([loadConditions(), loadRequests()]);
+    await Promise.all([loadConditions(), loadRequests(), loadSurvey()]);
     setLoadingConds(false);
   };
 
@@ -220,15 +241,16 @@ export default function ClosureConditionsPanel(props: Props) {
   };
 
   const handleSendSurvey = async () => {
-    if (!invoicedRequest) return;
     setSendingSurvey(true);
     setSurveyError('');
     try {
       let result: { deepLink: string; campaign: SurveyCampaign };
       if (survey) {
         result = await sendSurveyLink(survey.id);
+      } else if (serviceType === 'claim') {
+        result = await createAndSendSurveyForClaim(entityId);
       } else {
-        result = await createAndSendSurvey(invoicedRequest.id);
+        result = await createAndSendSurveyForEmergency(entityId);
       }
       setSurveyDeepLink(result.deepLink);
       setSurvey(result.campaign);
@@ -236,6 +258,21 @@ export default function ClosureConditionsPanel(props: Props) {
       setSurveyError(e.message ?? 'Anket gönderilemedi');
     } finally {
       setSendingSurvey(false);
+    }
+  };
+
+  const handleSaveOwnerExplanation = async () => {
+    if (!survey) return;
+    setSavingOwnerNote(true);
+    setSurveyError('');
+    try {
+      const updated = await saveSurveyOwnerExplanation(survey.id, ownerNote);
+      setSurvey(updated);
+      setOwnerNote(updated.ownerExplanation ?? ownerNote);
+    } catch (e: unknown) {
+      setSurveyError(e instanceof Error ? e.message : SURVEY_OWNER_EXPLANATION_MESSAGE);
+    } finally {
+      setSavingOwnerNote(false);
     }
   };
 
@@ -281,16 +318,16 @@ export default function ClosureConditionsPanel(props: Props) {
                 />
                 <ConditionRow
                   met={conditions.vendorContractSigned}
-                  label="Tedarikçi sözleşmesi imzalı"
-                  help="Tedarikçi tarafından imzalanmış sözleşme olmalı"
+                  label="Tedarikçi sözleşmesi (zorunlu değil)"
+                  help="Fatura talebi sözleşme beklemez"
                 />
               </>
             ) : conditions ? (
               <>
                 <ConditionRow
                   met={(conditions as EmergencyClosureConditions).matbuEvrakDigitallyApproved}
-                  label="Matbu evrak dijital onayı"
-                  help="Matbu evrak WhatsApp ile gönderilmeli ve onaylanmalı"
+                  label="Servis Onay Formu dijital onayı"
+                  help="Servis onay formu WhatsApp ile gönderilmeli ve onaylanmalı"
                 />
                 <ConditionRow
                   met={(conditions as EmergencyClosureConditions).caseStatusCompleted}
@@ -372,11 +409,11 @@ export default function ClosureConditionsPanel(props: Props) {
 
       {showInvoiceRequest && !activeRequest && conditions && !conditions.canCreateInvoiceRequest && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-          Fatura talebi için evrak ve onarım raporu koşulları tamamlanmalıdır. Durumu Evraklar → Özet sekmesinden kontrol edebilirsiniz.
+          Fatura talebi için muvafakatname dijital onayı gerekir. Onarımın bitmesi beklenmez.
         </div>
       )}
 
-      {showSurvey && invoicedRequest && (
+      {showSurvey && (fileClosed || invoicedRequest || survey) && (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-800">Müşteri Memnuniyet Anketi</h3>
@@ -402,22 +439,63 @@ export default function ClosureConditionsPanel(props: Props) {
             {/* Anket yanıtı var ise özet göster */}
             {survey?.status === 'completed' && survey.response && (
               <div className="grid grid-cols-5 gap-2">
-                {[survey.response.q1Rating, survey.response.q2Rating, survey.response.q3Rating, survey.response.q4Rating, survey.response.q5Rating].map((r, i) => (
-                  <div key={i} className="text-center bg-slate-50 rounded-lg py-2">
-                    <p className="text-xs text-slate-500 mb-0.5">S{i + 1}</p>
-                    <p className="text-sm font-bold text-status-warning">{'★'.repeat(r)}{'☆'.repeat(5 - r)}</p>
-                  </div>
-                ))}
+                {surveyStarQuestionsForCampaign(survey).map((q, i) => {
+                  const r = [
+                    survey.response!.q1Rating,
+                    survey.response!.q2Rating,
+                    survey.response!.q3Rating,
+                    survey.response!.q4Rating,
+                    survey.response!.q5Rating,
+                  ][i];
+                  return (
+                    <div key={q.key} className="text-center bg-slate-50 rounded-lg py-2 px-1">
+                      <p className="text-[10px] leading-tight text-slate-500 mb-0.5 line-clamp-2" title={q.label}>
+                        {q.label}
+                      </p>
+                      <p className="text-sm font-bold text-status-warning">{'★'.repeat(r)}{'☆'.repeat(5 - r)}</p>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {survey?.status === 'completed' && survey.response?.q6Recommend !== undefined && (
               <p className="text-xs text-slate-600">
-                Tavsiye: <strong className={survey.response.q6Recommend ? 'text-green-600' : 'text-status-danger'}>{survey.response.q6Recommend ? 'Evet' : 'Hayır'}</strong>
+                Memnuniyet: <strong className={survey.response.q6Recommend ? 'text-green-600' : 'text-status-danger'}>{survey.response.q6Recommend ? 'Memnunum' : 'Memnun Değilim'}</strong>
               </p>
             )}
             {survey?.status === 'completed' && survey.response?.q7Comment && (
               <p className="text-xs text-slate-500 italic">"{survey.response.q7Comment}"</p>
             )}
+
+            {survey?.status === 'completed' && surveyResponseIsNegative(survey.response) ? (
+              <div
+                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 space-y-2"
+                data-testid="anket-sorumlu-aciklama"
+              >
+                <p className="text-xs font-medium text-rose-800">{SURVEY_OWNER_EXPLANATION_MESSAGE}</p>
+                {survey.ownerExplanation && !surveyOwnerExplanationMissing(survey.response, survey.ownerExplanation) ? (
+                  <p className="text-xs text-slate-700 whitespace-pre-wrap">{survey.ownerExplanation}</p>
+                ) : (
+                  <>
+                    <textarea
+                      value={ownerNote}
+                      onChange={(e) => setOwnerNote(e.target.value)}
+                      rows={3}
+                      placeholder="Olumsuz sonucun nedenini ve yapılan işlemi yazın"
+                      className="w-full rounded-lg border border-rose-200 px-3 py-2 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveOwnerExplanation}
+                      disabled={savingOwnerNote || !ownerNote.trim()}
+                      className="w-full rounded-lg bg-rose-700 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                    >
+                      {savingOwnerNote ? 'Kaydediliyor…' : 'Açıklamayı Kaydet'}
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : null}
 
             {/* Deep link göster */}
             {surveyDeepLink && (
@@ -477,6 +555,11 @@ export default function ClosureConditionsPanel(props: Props) {
                   </>
                 )}
               </button>
+            )}
+            {survey?.status !== 'completed' && !survey?.whatsappSentAt && (
+              <p className="text-xs text-slate-500">
+                Anket zorunlu değildir. Link sigortalıya WhatsApp ile açılır; yanıt kamu anket sayfasından geri gelir.
+              </p>
             )}
           </div>
         </div>

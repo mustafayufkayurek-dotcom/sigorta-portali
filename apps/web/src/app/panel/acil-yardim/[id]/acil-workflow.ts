@@ -4,6 +4,8 @@
  */
 
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
+import { parseAnaMusteriHaberlesme, type AnaMusteriHaberlesme } from '@/utils/acil-ana-musteri-haberlesme';
+import { isAcilDigitalApprovalRequired } from '@sigorta/shared';
 
 export {
   computeAcilStageStatuses,
@@ -106,6 +108,10 @@ export type AcilLocalFlow = {
   vendorProcess: VendorProcessKey | null;
   /** Alış/satış değişiklik günlüğü */
   priceChangeLog: PriceChangeLogEntry[];
+  /** Tedarikçi ödemesi yapıldı? null = seçilmedi */
+  vendorPaid: boolean | null;
+  /** Ana müşteri haberleşme: WhatsApp / e-posta / ikisi */
+  customerNotifyChannel: AnaMusteriHaberlesme;
   /** WhatsApp / mesaj geçmişi (tür ayrımı) */
   messageLog: MessageLogEntry[];
 };
@@ -129,6 +135,8 @@ export function emptyAcilLocalFlow(): AcilLocalFlow {
     history: [],
     vendorProcess: null,
     priceChangeLog: [],
+    vendorPaid: null,
+    customerNotifyChannel: 'both',
     messageLog: [],
   };
 }
@@ -146,6 +154,8 @@ export function readAcilLocalFlow(caseId: string): AcilLocalFlow {
       priceChangeLog: parsed.priceChangeLog ?? [],
       messageLog: parsed.messageLog ?? [],
       vendorProcess: parsed.vendorProcess ?? null,
+      vendorPaid: parsed.vendorPaid === true ? true : parsed.vendorPaid === false ? false : null,
+      customerNotifyChannel: parseAnaMusteriHaberlesme(parsed.customerNotifyChannel),
     };
   } catch {
     return emptyAcilLocalFlow();
@@ -265,6 +275,8 @@ export function validateVendorMessageGuard(input: {
   return errors.length ? { ok: false, errors } : { ok: true };
 }
 
+export const VENDOR_LOCATION_CONFIRM_LINE = 'Konumu sigortalıdan teyit ediniz.';
+
 export function buildVendorWhatsAppText(input: {
   fileNo: string;
   issueType: string;
@@ -274,9 +286,14 @@ export function buildVendorWhatsAppText(input: {
   city?: string | null;
   district?: string | null;
   notes?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }): string {
   const fullAddress = [input.address, input.district, input.city].filter(Boolean).join(', ');
-  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}`;
+  const mapsUrl =
+    input.latitude != null && input.longitude != null
+      ? `https://maps.google.com/?q=${input.latitude},${input.longitude}`
+      : `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}`;
   const shortNote = (input.notes || '').trim().slice(0, 160) || 'Acil yardım talebi';
   return [
     `Meridyen Acil Yardım`,
@@ -287,6 +304,8 @@ export function buildVendorWhatsAppText(input: {
     `Adres: ${fullAddress || '—'}`,
     `Konum: ${mapsUrl}`,
     `Açıklama: ${shortNote}`,
+    '',
+    VENDOR_LOCATION_CONFIRM_LINE,
   ].join('\n');
 }
 
@@ -560,12 +579,11 @@ export type CloseFinanceInboxSnapshot = {
 export type CloseFinanceCheckKey =
   | 'digitalApproval'
   | 'insuredInitialNotify'
-  | 'insuredClosureSurvey'
   | 'photos'
   | 'documents'
   | 'closureEmail';
 
-export const CLOSE_FINANCE_CHECK_LABELS: Record<CloseFinanceCheckKey | 'salePrice', string> = {
+export const CLOSE_FINANCE_CHECK_LABELS: Record<CloseFinanceCheckKey | 'salePrice' | 'insuredClosureSurvey', string> = {
   digitalApproval: 'Dijital Onay',
   insuredInitialNotify: 'Sigortalıya İlk Bilgilendirme',
   insuredClosureSurvey: 'Kapanış / Anket Mesajı',
@@ -583,14 +601,31 @@ export type CloseFinanceCheckItem = {
 };
 
 /**
- * Dosyayı Kapat Ve Finansa Gönder kapısı.
- * Tüm zorunlu maddeler + satış bedeli tamam olmadan buton aktif olmaz.
- * Ayrı «yalnızca finansa gönder» yolu yoktur; tek CTA kapatır sonra finansa alır.
+ * Operasyon kapısı: tedarikçi + bedel + müşteri onayı + dijital evrak.
+ */
+export function evaluateOperationStartGate(input: {
+  hasVendor: boolean;
+  saleReady: boolean;
+  customerApproved: boolean;
+  digitalApproval: boolean;
+}): { ready: boolean; missingLabels: string[] } {
+  const missing: string[] = [];
+  if (!input.hasVendor) missing.push('Tedarikçi');
+  if (!input.saleReady) missing.push(CLOSE_FINANCE_CHECK_LABELS.salePrice);
+  if (!input.customerApproved) missing.push('Müşteri Onayı');
+  if (isAcilDigitalApprovalRequired() && !input.digitalApproval) {
+    missing.push(CLOSE_FINANCE_CHECK_LABELS.digitalApproval);
+  }
+  return { ready: missing.length === 0, missingLabels: missing };
+}
+
+/**
+ * Kapanış kapısı: resim. Ana müşteri kapanış maili dosya kapanınca otomatik gider.
+ * Anket kapandıktan sonra tercihli. Dijital evrak operasyon kapısındadır.
  */
 export function evaluateCloseFinanceGate(input: {
   docs?: CloseFinanceDocsSnapshot | null;
   inbox?: CloseFinanceInboxSnapshot | null;
-  /** Dosya Kapanış Resimleri (entity-documents, image) — UI yükleme alanı */
   uploadedPhotoCount?: number;
   flow: Pick<
     AcilLocalFlow,
@@ -598,10 +633,14 @@ export function evaluateCloseFinanceGate(input: {
     | 'insuredInitialWhatsAppSent'
     | 'insuredClosureSurveyWhatsAppSent'
     | 'messageLog'
+    | 'customerNotifyChannel'
+    | 'fileClosed'
   >;
   saleReady: boolean;
+  customerNotifyChannel?: AnaMusteriHaberlesme;
 }): {
   requiredOps: Record<CloseFinanceCheckKey, boolean>;
+  surveyDone: boolean;
   items: CloseFinanceCheckItem[];
   missingLabels: string[];
   requiredOpsComplete: boolean;
@@ -613,15 +652,24 @@ export function evaluateCloseFinanceGate(input: {
   const hasInitialNotify =
     input.flow.insuredInitialWhatsAppSent
     || log.some((m) => m.kind === 'insured_initial');
-  const hasClosureSurvey =
-    input.flow.insuredClosureSurveyWhatsAppSent
+  const surveyDone =
+    Boolean(input.flow.insuredClosureSurveyWhatsAppSent)
     || log.some((m) => m.kind === 'insured_closure');
+  const pref = parseAnaMusteriHaberlesme(
+    input.customerNotifyChannel ?? input.flow.customerNotifyChannel,
+  );
+  const customerWaDone = log.some((m) => m.kind === 'customer');
+  const customerNotifyDone =
+    pref === 'whatsapp'
+      ? customerWaDone
+      : pref === 'email'
+        ? Boolean(input.flow.closureEmailSent)
+        : Boolean(input.flow.closureEmailSent) || customerWaDone;
 
   const requiredOps: Record<CloseFinanceCheckKey, boolean> = {
     digitalApproval:
       (docs?.digitallyApprovedCount ?? 0) > 0 || Boolean(docs?.hasApprovedMatbuEvrak),
     insuredInitialNotify: hasInitialNotify,
-    insuredClosureSurvey: hasClosureSurvey,
     photos:
       (inbox?.attachmentCount ?? 0) > 0
       || (input.uploadedPhotoCount ?? 0) > 0,
@@ -632,51 +680,28 @@ export function evaluateCloseFinanceGate(input: {
 
   const items: CloseFinanceCheckItem[] = [
     {
-      key: 'digitalApproval',
-      label: CLOSE_FINANCE_CHECK_LABELS.digitalApproval,
-      done: requiredOps.digitalApproval,
-    },
-    {
-      key: 'insuredInitialNotify',
-      label: CLOSE_FINANCE_CHECK_LABELS.insuredInitialNotify,
-      done: requiredOps.insuredInitialNotify,
-      hint: 'Manuel: dosya sorumlusu sigortalıya ilk bilgilendirme WhatsApp mesajını gönderir.',
-    },
-    {
-      key: 'insuredClosureSurvey',
-      label: CLOSE_FINANCE_CHECK_LABELS.insuredClosureSurvey,
-      done: requiredOps.insuredClosureSurvey,
-      hint: 'Manuel: kapanış öncesi anket / değerlendirme WhatsApp mesajını gönderir.',
-    },
-    {
       key: 'photos',
       label: CLOSE_FINANCE_CHECK_LABELS.photos,
       done: requiredOps.photos,
-      hint: 'Dosya Kapanış Resimleri yükleyin veya gelen kutuda ek olsun. WhatsApp medyası otomatik aktarılmaz.',
-    },
-    {
-      key: 'documents',
-      label: CLOSE_FINANCE_CHECK_LABELS.documents,
-      done: requiredOps.documents,
+      hint: 'Tedarikçiden gelen resimler kapanış adımına işlenir.',
     },
     {
       key: 'closureEmail',
-      label: CLOSE_FINANCE_CHECK_LABELS.closureEmail,
-      done: requiredOps.closureEmail,
+      label: 'Kapanış maili (dosya kapanınca otomatik)',
+      done: customerNotifyDone || Boolean(input.flow.fileClosed) || Boolean(input.flow.closureEmailSent),
+      hint: 'Ana müşteriye kapanış maili dosya kapanınca gider. WhatsApp tercihe bağlı ek yoldur.',
     },
   ];
 
-  const missingLabels = [
-    ...items.filter((i) => !i.done).map((i) => i.label),
-    ...(!input.saleReady ? [CLOSE_FINANCE_CHECK_LABELS.salePrice] : []),
-  ];
+  const missingLabels = items.filter((i) => !i.done).map((i) => i.label);
 
-  const requiredOpsComplete = Object.values(requiredOps).every(Boolean);
+  const closeReady = requiredOps.photos;
   return {
     requiredOps,
+    surveyDone,
     items,
     missingLabels,
-    requiredOpsComplete,
-    closeReady: requiredOpsComplete && input.saleReady,
+    requiredOpsComplete: closeReady,
+    closeReady,
   };
 }

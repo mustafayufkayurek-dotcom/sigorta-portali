@@ -239,8 +239,9 @@ export class SendEmailDto {
   @IsString()
   subject?: string;
 
-  @IsIn(['internal', 'external'])
-  viewType!: 'internal' | 'external';
+  @IsOptional()
+  @IsIn(['external'])
+  viewType?: 'external';
 }
 
 export class QuickRepairItemDto {

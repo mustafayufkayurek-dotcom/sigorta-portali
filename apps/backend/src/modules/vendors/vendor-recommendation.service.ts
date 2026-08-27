@@ -13,6 +13,7 @@ import {
   vendorExpertiseMatchesHints,
   vendorExpertiseOverlapScore,
 } from '@/modules/vendor-intelligence-profile/terminology-memory.helper';
+import { isAcilVendorQualityWarning } from '@sigorta/shared';
 import type {
   VendorOperationMetrics,
   VendorRecommendationItem,
@@ -44,6 +45,9 @@ export class VendorRecommendationService {
     expertise: 0.12,
   } as const;
 
+  /** Alternatif aramadan «yalnız bu dosya» kaydı — havuz önerisine girmez. */
+  static readonly FILE_ONLY_VENDOR_NOTE = 'Yalnızca bu dosyada kullanım.';
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly costMemory: VendorCostMemoryService,
@@ -57,9 +61,12 @@ export class VendorRecommendationService {
 
   async recommend(query: VendorRecommendQuery): Promise<VendorRecommendationItem[]> {
     const sortByName = query.sortBy === 'name';
-    const limit = sortByName
-      ? Math.min(Math.max(query.limit ?? 20, 1), 80)
-      : Math.min(Math.max(query.limit ?? 3, 1), 10);
+    const keepArea = Boolean(query.keepAllAreaCandidates);
+    const limit = keepArea
+      ? Math.min(Math.max(query.limit ?? 20, 1), 40)
+      : sortByName
+        ? Math.min(Math.max(query.limit ?? 80, 1), 80)
+        : Math.min(Math.max(query.limit ?? 3, 1), 10);
 
     const terminology = query.serviceType?.trim()
       ? await resolveTerminology(this.prisma, query.serviceType)
@@ -160,6 +167,13 @@ export class VendorRecommendationService {
         phone: vendor.phone,
         city: vendor.city,
         district: vendor.district,
+        serviceBranches: [...new Set([
+          ...(vendor.serviceBranches ?? []),
+          ...(vendor.workGroupNames ?? []),
+        ])],
+        serviceAreaLabels: vendor.serviceAreaLabels?.length
+          ? vendor.serviceAreaLabels
+          : [vendor.district, vendor.city].filter((x): x is string => Boolean(x)),
         avgServiceScore: metrics.avgServiceScore,
         avgCost: metrics.avgCost,
         avgResponseTime: metrics.avgResponseTimeHours,
@@ -177,6 +191,13 @@ export class VendorRecommendationService {
         canonicalLabel,
         originalServiceType,
         expertiseMatchScore: Math.round(expertiseMatchScore * 100) / 100,
+        qualityWarning: (query.category === 'acil' || query.keepAllAreaCandidates)
+          ? isAcilVendorQualityWarning({
+              avgServiceScore: metrics.avgServiceScore,
+              compositeScore: Math.max(0, Math.min(100, compositeScore)),
+              completedFileCount: metrics.completedFileCount,
+            })
+          : false,
       };
     });
 
@@ -232,9 +253,18 @@ export class VendorRecommendationService {
     });
   }
 
-  async recommendForEmergencyCase(caseId: string, limit = 3): Promise<VendorRecommendationItem[]> {
+  async recommendForEmergencyCase(caseId: string, limit = 20): Promise<VendorRecommendationItem[]> {
     const emergencyCase = await this.prisma.emergencyCase.findUnique({ where: { id: caseId } });
     if (!emergencyCase) throw new NotFoundException('Acil dosya bulunamadı.');
+
+    let city = normalizeLocationLabel(emergencyCase.city);
+    let district = normalizeLocationLabel(emergencyCase.district);
+    const addressLine = emergencyCase.address?.trim() || '';
+    if ((!city || !district) && addressLine) {
+      const parsed = await resolveCityDistrictFromAddress(this.prisma, addressLine);
+      if (!city && parsed.city) city = parsed.city;
+      if (!district && parsed.district) district = parsed.district;
+    }
 
     const terminology = await resolveTerminology(this.prisma, emergencyCase.issueType);
     const serviceType =
@@ -242,17 +272,19 @@ export class VendorRecommendationService {
       ?? terminology.canonicalLabel
       ?? emergencyCase.issueType;
 
-    // Acil: il/ilçe havuzu + alfabetik tercih (hasar compositeScore yoluna dokunulmaz)
+    // Acil: il/ilçe kayıtlı havuzun tamamı skorlanır. Uzmanlık süzgeci adayı düşürmez.
     return this.recommend({
-      city: normalizeLocationLabel(emergencyCase.city) ?? undefined,
-      district: normalizeLocationLabel(emergencyCase.district) ?? undefined,
+      city: city ?? undefined,
+      district: district ?? undefined,
       serviceType,
       operationGroup: terminology.operationGroup,
       canonicalLabel: terminology.canonicalLabel,
       originalServiceType: terminology.originalText || emergencyCase.issueType || null,
-      expertiseHints: [],
+      expertiseHints: terminology.expertiseHints ?? [],
       category: 'acil',
-      sortBy: 'name',
+      sortBy: 'score',
+      allowNationalFallback: false,
+      keepAllAreaCandidates: true,
       limit,
     });
   }
@@ -312,8 +344,12 @@ export class VendorRecommendationService {
   }
 
   private async findAreaCandidates(query: VendorRecommendQuery & { expertiseHints?: string[] }) {
-    const city = normalizeLocationLabel(query.city);
-    const districtName = normalizeLocationLabel(query.district);
+    let city = normalizeLocationLabel(query.city);
+    let districtName = normalizeLocationLabel(query.district);
+    const skipNational = query.allowNationalFallback === false;
+    if (skipNational && !city && !query.provinceId) {
+      return [];
+    }
 
     let provinceId = query.provinceId ?? null;
     let districtId: string | null = null;
@@ -321,11 +357,15 @@ export class VendorRecommendationService {
       const resolved = await resolveProvinceDistrictIds(this.prisma, city, districtName);
       provinceId = resolved.provinceId;
       districtId = resolved.districtId;
+      // Resmi il adı — "Afyon" kaydı "Afyonkarahisar" hizmet bölgesiyle eşleşsin.
+      if (resolved.provinceName) city = resolved.provinceName;
+      if (!districtName && resolved.districtName) districtName = resolved.districtName;
     }
 
     const where = buildVendorNearbyWhere({
       provinceId,
-      districtId,
+      // Acil: ildeki kayıtlı havuzun tamamı; ilçe satırı tedarikçiyi düşürmez.
+      districtId: query.keepAllAreaCandidates ? null : districtId,
       city,
       districtName,
       purpose: 'supplier',
@@ -338,6 +378,10 @@ export class VendorRecommendationService {
     if (query.workGroupId) {
       where.vendorWorkGroups = { some: { workGroupId: query.workGroupId } };
     }
+    where.NOT = [
+      ...(Array.isArray(where.NOT) ? where.NOT : where.NOT ? [where.NOT] : []),
+      { notes: { contains: VendorRecommendationService.FILE_ONLY_VENDOR_NOTE } },
+    ];
 
     const vendorSelect = {
       id: true,
@@ -352,6 +396,13 @@ export class VendorRecommendationService {
           workGroup: { select: { code: true, name: true } },
         },
       },
+      serviceAreas: {
+        select: {
+          districtId: true,
+          province: { select: { name: true } },
+          district: { select: { name: true } },
+        },
+      },
     } as const;
 
     let rows = await this.prisma.vendor.findMany({
@@ -361,8 +412,10 @@ export class VendorRecommendationService {
       orderBy: { name: 'asc' },
     });
 
-    // Bölgede aday yoksa operasyonu kilitleme — yalnızca aynı kategori havuzu (acil ≠ hasar)
-    if (rows.length === 0 && categoryFilter) {
+    const allowNational = query.allowNationalFallback !== false;
+
+    // Bölgede aday yoksa — Hasar: aynı kategori ulusal havuz. Acil: boş (alternatif arama UI).
+    if (rows.length === 0 && categoryFilter && allowNational) {
       const fallbackWhere = buildSupplierFallbackWhere(categoryFilter);
       if (query.workGroupId) {
         fallbackWhere.vendorWorkGroups = { some: { workGroupId: query.workGroupId } };
@@ -397,6 +450,11 @@ export class VendorRecommendationService {
       const branches = Array.isArray(v.serviceBranches)
         ? (v.serviceBranches as unknown[]).map((b) => String(b))
         : [];
+      const serviceAreaLabels = (v.serviceAreas ?? []).map((sa) => (
+        sa.districtId && sa.district?.name
+          ? `${sa.province?.name ?? ''} / ${sa.district.name}`
+          : `${sa.province?.name ?? ''} (Tümü)`
+      ).trim()).filter(Boolean);
       return {
         id: v.id,
         name: v.name,
@@ -405,13 +463,14 @@ export class VendorRecommendationService {
         district: v.district,
         category: v.category,
         serviceBranches: branches,
+        serviceAreaLabels,
         workGroupNames: v.vendorWorkGroups.map((wg) => wg.workGroup.name),
         workGroupCodes: v.vendorWorkGroups.map((wg) => wg.workGroup.code),
       };
     });
 
     const hints = query.expertiseHints ?? [];
-    if (!hints.length) return mapped;
+    if (!hints.length || query.keepAllAreaCandidates) return mapped;
 
     // Aynı Operasyon Grubu — uzmanlık eşleşen adaylar; eşleşme yoksa alan adaylarına düş.
     const inGroup = mapped.filter((v) =>
@@ -576,6 +635,55 @@ export class VendorRecommendationService {
     for (const row of cancelledClaims) {
       const cur = map.get(row.vendorId)!;
       cur.cancelledCaseCount = row._count.id;
+    }
+
+    const isAcil = this.resolveCategoryFilter(category)?.includes('acil') ?? false;
+    if (isAcil) {
+      const [emergencyCompleted, emergencyActive, emergencyCost] = await Promise.all([
+        this.prisma.emergencyCase.groupBy({
+          by: ['assignedVendorId'],
+          where: {
+            assignedVendorId: { in: vendorIds },
+            status: { in: ['COZULDU', 'FATURALANDILDI'] },
+          },
+          _count: { id: true },
+        }),
+        this.prisma.emergencyCase.groupBy({
+          by: ['assignedVendorId'],
+          where: {
+            assignedVendorId: { in: vendorIds },
+            status: { in: ['GELEN', 'ATANDI', 'SAHADA'] },
+          },
+          _count: { id: true },
+        }),
+        this.prisma.emergencyCostEntry.groupBy({
+          by: ['vendorId'],
+          where: { vendorId: { in: vendorIds }, isOverhead: false },
+          _avg: { amount: true },
+        }),
+      ]);
+      for (const id of vendorIds) {
+        const cur = map.get(id);
+        if (!cur) continue;
+        cur.completedFileCount = 0;
+        cur.activeFileCount = 0;
+        cur.avgCost = null;
+      }
+      for (const row of emergencyCompleted) {
+        if (!row.assignedVendorId) continue;
+        const cur = map.get(row.assignedVendorId);
+        if (cur) cur.completedFileCount = row._count.id;
+      }
+      for (const row of emergencyActive) {
+        if (!row.assignedVendorId) continue;
+        const cur = map.get(row.assignedVendorId);
+        if (cur) cur.activeFileCount = row._count.id;
+      }
+      for (const row of emergencyCost) {
+        if (!row.vendorId) continue;
+        const cur = map.get(row.vendorId);
+        if (cur) cur.avgCost = row._avg.amount;
+      }
     }
 
     for (const id of vendorIds) {

@@ -8,6 +8,7 @@ import {
   REPORT_IMAGE_CATEGORY_LABELS,
 } from '@/utils/quick-repair-damage-types';
 import { formatReportImageFrameLabel } from '@/utils/report-image-frame-label';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getReportImageStreamUrl, getReportImageUrl } from '@/utils/upload-url';
 
 type ReportImage = {
@@ -38,6 +39,11 @@ type ReportImageGalleryProps = {
 };
 
 type LoadStatus = 'loading' | 'ready' | 'missing';
+
+function wrapReadyIndex(index: number, dir: -1 | 1, total: number) {
+  if (total < 1) return 0;
+  return (index + dir + total) % total;
+}
 
 const STREAM_RETRY_DELAYS_MS = [0, 400, 1200];
 
@@ -204,7 +210,7 @@ function PendingUploadThumb() {
 }
 
 export default function ReportImageGallery({
-  images,
+  images = [],
   pendingUploads = [],
   isEditable = false,
   fileNo,
@@ -239,8 +245,14 @@ export default function ReportImageGallery({
     if (activeReadyIdx === null) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeLightbox();
-      if (e.key === 'ArrowRight') setActiveReadyIdx((i) => (i === null ? null : Math.min(i + 1, readyImages.length - 1)));
-      if (e.key === 'ArrowLeft') setActiveReadyIdx((i) => (i === null ? null : Math.max(i - 1, 0)));
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setActiveReadyIdx((i) => (i === null ? null : wrapReadyIndex(i, 1, readyImages.length)));
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setActiveReadyIdx((i) => (i === null ? null : wrapReadyIndex(i, -1, readyImages.length)));
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -357,32 +369,42 @@ export default function ReportImageGallery({
           aria-modal
         >
           <div
-            className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center"
+            className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <LightboxImage image={active} fileNo={fileNo} />
+            <div className="flex w-full items-center justify-center gap-3">
+              {readyImages.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveReadyIdx((i) => wrapReadyIndex(i ?? 0, -1, readyImages.length))}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg hover:bg-slate-100"
+                  aria-label="Önceki"
+                  data-testid="rapor-foto-onceki"
+                >
+                  <ChevronLeft className="h-6 w-6" strokeWidth={1.75} />
+                </button>
+              ) : null}
+              <div className="flex min-w-0 flex-1 items-center justify-center">
+                <LightboxImage image={active} fileNo={fileNo} />
+              </div>
+              {readyImages.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveReadyIdx((i) => wrapReadyIndex(i ?? 0, 1, readyImages.length))}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg hover:bg-slate-100"
+                  aria-label="Sonraki"
+                  data-testid="rapor-foto-sonraki"
+                >
+                  <ChevronRight className="h-6 w-6" strokeWidth={1.75} />
+                </button>
+              ) : null}
+            </div>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                disabled={activeReadyIdx <= 0}
-                onClick={() => setActiveReadyIdx((i) => Math.max((i ?? 0) - 1, 0))}
-                className="rounded-lg bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 disabled:opacity-40"
-              >
-                ← Önceki
-              </button>
               <span className="text-xs text-slate-300 tabular-nums">
                 {activeReadyIdx + 1} / {readyImages.length}
                 {' · '}
                 {formatReportImageFrameLabel(fileNo, active.category)}
               </span>
-              <button
-                type="button"
-                disabled={activeReadyIdx >= readyImages.length - 1}
-                onClick={() => setActiveReadyIdx((i) => Math.min((i ?? 0) + 1, readyImages.length - 1))}
-                className="rounded-lg bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 disabled:opacity-40"
-              >
-                Sonraki →
-              </button>
               {isEditable && onAnnotate && (
                 <button
                   type="button"

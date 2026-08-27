@@ -303,24 +303,24 @@ async function main() {
 
   // Create claim statuses
   const statuses = [
-    { code: 'new', name: 'Yeni', sequenceNo: 1, color: '#3B82F6', isClosedState: false },
-    { code: 'pre_review', name: 'Ön İnceleme', sequenceNo: 2, color: '#8B5CF6', isClosedState: false },
-    { code: 'adjuster_assigned', name: 'Eksper Atandı', sequenceNo: 3, color: '#EC4899', isClosedState: false },
-    { code: 'site_visit_planned', name: 'Saha Ziyareti Planlandı', sequenceNo: 4, color: '#F59E0B', isClosedState: false },
-    { code: 'site_visit_done', name: 'Saha Ziyareti Tamamlandı', sequenceNo: 5, color: '#10B981', isClosedState: false },
-    { code: 'budget_preparing', name: 'Bütçe Hazırlanıyor', sequenceNo: 6, color: '#6366F1', isClosedState: false },
-    { code: 'budget_submitted', name: 'Bütçe Sunuldu', sequenceNo: 7, color: '#8B5CF6', isClosedState: false },
-    { code: 'budget_revision_requested', name: 'Bütçe Revize Talep Edildi', sequenceNo: 8, color: '#EF4444', isClosedState: false },
-    { code: 'budget_approved', name: 'Bütçe Onaylandı', sequenceNo: 9, color: '#10B981', isClosedState: false },
-    { code: 'repair_planning', name: 'Onarım Planlanıyor', sequenceNo: 10, color: '#F59E0B', isClosedState: false },
-    { code: 'repair_in_progress', name: 'Onarım Devam Ediyor', sequenceNo: 11, color: '#3B82F6', isClosedState: false },
-    { code: 'repair_completed', name: 'Onarım Tamamlandı', sequenceNo: 12, color: '#10B981', isClosedState: false },
-    { code: 'invoice_pending', name: 'Fatura Bekleniyor', sequenceNo: 13, color: '#F59E0B', isClosedState: false },
-    { code: 'invoice_submitted', name: 'Fatura Sunuldu', sequenceNo: 14, color: '#8B5CF6', isClosedState: false },
-    { code: 'payment_pending', name: 'Ödeme Bekleniyor', sequenceNo: 15, color: '#F59E0B', isClosedState: false },
-    { code: 'partially_collected', name: 'Kısmi Tahsilat', sequenceNo: 16, color: '#FBBF24', isClosedState: false },
-    { code: 'closed', name: 'Kapatıldı', sequenceNo: 17, color: '#059669', isClosedState: true },
-    { code: 'cancelled', name: 'İptal Edildi', sequenceNo: 18, color: '#6B7280', isClosedState: true },
+    { code: 'new', name: 'Yeni İhbar', sequenceNo: 1, color: '#3B82F6', isClosedState: false },
+    { code: 'pre_review', name: 'Tespit Aşamasında', sequenceNo: 2, color: '#8B5CF6', isClosedState: false },
+    { code: 'adjuster_assigned', name: 'Tespit Aşamasında', sequenceNo: 3, color: '#EC4899', isClosedState: false },
+    { code: 'site_visit_planned', name: 'Onarım Aşamasında', sequenceNo: 4, color: '#F59E0B', isClosedState: false },
+    { code: 'site_visit_done', name: 'Onarım Aşamasında', sequenceNo: 5, color: '#10B981', isClosedState: false },
+    { code: 'budget_preparing', name: 'Rapor Yazım Aşamasında', sequenceNo: 6, color: '#6366F1', isClosedState: false },
+    { code: 'budget_submitted', name: 'Onay Bekliyor', sequenceNo: 7, color: '#8B5CF6', isClosedState: false },
+    { code: 'budget_revision_requested', name: 'Rapor Yazım Aşamasında', sequenceNo: 8, color: '#EF4444', isClosedState: false },
+    { code: 'budget_approved', name: 'Onarım Aşamasında', sequenceNo: 9, color: '#10B981', isClosedState: false },
+    { code: 'repair_planning', name: 'Onarım Aşamasında', sequenceNo: 10, color: '#F59E0B', isClosedState: false },
+    { code: 'repair_in_progress', name: 'Onarım Aşamasında', sequenceNo: 11, color: '#3B82F6', isClosedState: false },
+    { code: 'repair_completed', name: 'Finansa Aktarıldı', sequenceNo: 12, color: '#10B981', isClosedState: false },
+    { code: 'invoice_pending', name: 'Finansa Aktarıldı', sequenceNo: 13, color: '#F59E0B', isClosedState: false },
+    { code: 'invoice_submitted', name: 'Finansa Aktarıldı', sequenceNo: 14, color: '#8B5CF6', isClosedState: false },
+    { code: 'payment_pending', name: 'Finansa Aktarıldı', sequenceNo: 15, color: '#F59E0B', isClosedState: false },
+    { code: 'partially_collected', name: 'Finansa Aktarıldı', sequenceNo: 16, color: '#FBBF24', isClosedState: false },
+    { code: 'closed', name: 'Dosya Kapatıldı', sequenceNo: 17, color: '#059669', isClosedState: true },
+    { code: 'cancelled', name: 'Dosya İptal Edildi', sequenceNo: 18, color: '#6B7280', isClosedState: true },
   ];
 
   await Promise.all(
@@ -430,6 +430,7 @@ async function main() {
       entityType: 'corporate',
       subType: 'asistan_firmasi',
       companyName: firm.companyName,
+      shortName: 'Remed',
       fullName: firm.companyName,
       serviceType: 'acil_yardim',
       status: 'active',
@@ -504,11 +505,11 @@ async function main() {
 
     // Yerel demo: asistans portalında görünsün diye Remed kapsamlı acil yardım dosyaları
     const demoCases = [
-      { caseNo: 'AY-DEMO-GELEN-01', fileNo: 'AY-DEMO-001', status: 'GELEN' as const, city: 'İstanbul', district: 'Kadıköy', issueType: 'Kapı/Kilit Arızası', address: 'Kadıköy, İstanbul', gelir: 0 },
-      { caseNo: 'AY-DEMO-SAHA-01', fileNo: 'AY-DEMO-002', status: 'ATANDI' as const, city: 'Ankara', district: 'Çankaya', issueType: 'Elektrik Arızası', address: 'Çankaya, Ankara', gelir: 0 },
-      { caseNo: 'AY-DEMO-SAHA-02', fileNo: 'AY-DEMO-003', status: 'SAHADA' as const, city: 'İzmir', district: 'Bornova', issueType: 'Su Baskını', address: 'Bornova, İzmir', gelir: 0 },
-      { caseNo: 'AY-DEMO-ONAY-01', fileNo: 'AY-DEMO-004', status: 'SAHADA' as const, city: 'Bursa', district: 'Nilüfer', issueType: 'Cam Kırılması', address: 'Nilüfer, Bursa', gelir: 1850 },
-      { caseNo: 'AY-DEMO-OK-01', fileNo: 'AY-DEMO-005', status: 'COZULDU' as const, city: 'Antalya', district: 'Muratpaşa', issueType: 'Asansör Arızası', address: 'Muratpaşa, Antalya', gelir: 3200 },
+      { caseNo: 'AY-DEMO-GELEN-01', fileNo: 'AY-DEMO-001', status: 'GELEN' as const, city: 'İstanbul', district: 'Kadıköy', issueType: 'Kapı/Kilit Arızası', address: 'Caferağa Mah. Moda Cad. No: 18 Daire: 4', insuredName: 'Ali Kaya', phone: '05321110001', gelir: 0 },
+      { caseNo: 'AY-DEMO-SAHA-01', fileNo: 'AY-DEMO-002', status: 'ATANDI' as const, city: 'Ankara', district: 'Çankaya', issueType: 'Elektrik Arızası', address: 'Kızılay Mah. Atatürk Blv. No: 91 Daire: 8', insuredName: 'Elif Yıldız', phone: '05321110002', gelir: 0 },
+      { caseNo: 'AY-DEMO-SAHA-02', fileNo: 'AY-DEMO-003', status: 'SAHADA' as const, city: 'İzmir', district: 'Bornova', issueType: 'Su Baskını', address: 'Erzene Mah. Ankara Cad. No: 12 Daire: 3', insuredName: 'Hasan Çelik', phone: '05321110003', gelir: 0 },
+      { caseNo: 'AY-DEMO-ONAY-01', fileNo: 'AY-DEMO-004', status: 'SAHADA' as const, city: 'Bursa', district: 'Nilüfer', issueType: 'Cam Kırılması', address: 'Özlüce Mah. Ata Cad. No: 7 Daire: 11', insuredName: 'Ayşe Koç', phone: '05321110004', gelir: 1850 },
+      { caseNo: 'AY-DEMO-OK-01', fileNo: 'AY-DEMO-005', status: 'COZULDU' as const, city: 'Antalya', district: 'Muratpaşa', issueType: 'Asansör Arızası', address: 'Şirinyalı Mh. Lara Cad. No: 42 Daire: 7', insuredName: 'Mehmet Demir', phone: '05321110005', gelir: 3200 },
     ];
     for (const d of demoCases) {
       const existing = await prisma.emergencyCase.findFirst({ where: { caseNo: d.caseNo } });
@@ -517,7 +518,8 @@ async function main() {
             where: { id: existing.id },
             data: {
               customerId: demoAssistantFirm.id,
-              customerName: demoAssistantFirm.companyName || demoAssistantFirm.fullName || 'Asistans Firması',
+              customerName: d.insuredName,
+              customerPhone: d.phone,
               status: d.status,
               city: d.city,
               district: d.district,
@@ -532,7 +534,8 @@ async function main() {
               caseNo: d.caseNo,
               fileNo: d.fileNo,
               customerId: demoAssistantFirm.id,
-              customerName: demoAssistantFirm.companyName || demoAssistantFirm.fullName || 'Asistans Firması',
+              customerName: d.insuredName,
+              customerPhone: d.phone,
               address: d.address,
               city: d.city,
               district: d.district,
@@ -560,6 +563,21 @@ async function main() {
           });
         }
       }
+    }
+    const officeStaff = await prisma.user.findFirst({
+      where: { status: 'active', role: { code: 'office_staff' } },
+      select: { id: true },
+    });
+    const adminUser = await prisma.user.findUnique({
+      where: { email: 'admin@meridyenassistance.com' },
+      select: { id: true },
+    });
+    const panelOwnerId = officeStaff?.id ?? adminUser?.id;
+    if (panelOwnerId) {
+      await prisma.emergencyCase.updateMany({
+        where: { caseNo: { startsWith: 'AY-DEMO-' } },
+        data: { assignedUserId: panelOwnerId },
+      });
     }
     console.log('✅ Asistans portal demo acil yardım dosyaları hazır');
   }
@@ -1143,7 +1161,9 @@ async function main() {
     { code: 'hirsizlik-guvenlik', name: 'Hırsızlık/Güvenlik', category: 'acil_yardim', sortOrder: 8 },
     { code: 'boru-patlamasi', name: 'Boru Patlaması', category: 'acil_yardim', sortOrder: 9 },
     { code: 'asansor-arizasi', name: 'Asansör Arızası', category: 'acil_yardim', sortOrder: 10 },
-    { code: 'diger-acil', name: 'Diğer', category: 'acil_yardim', sortOrder: 11 },
+    { code: 'tesisat', name: 'Tesisat', category: 'acil_yardim', sortOrder: 11 },
+    { code: 'sihhi-tesisat', name: 'Sıhhi Tesisat', category: 'acil_yardim', sortOrder: 12 },
+    { code: 'diger-acil', name: 'Diğer', category: 'acil_yardim', sortOrder: 13 },
   ];
 
   for (const cs of claimSubjects) {

@@ -15,5 +15,5 @@ export class CreateTimelineNoteDto {
 
   @IsOptional()
   @IsString()
-  noteType?: string; // general | operations | finance | adjuster | field
+  noteType?: string; // general | operations | finance | adjuster | field | field_correction
 }

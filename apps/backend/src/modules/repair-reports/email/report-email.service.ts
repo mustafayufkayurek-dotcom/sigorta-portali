@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { EmailService } from '@/modules/notifications/email/email.service';
+import {
+  buildReportDispatchEmailHtml,
+  buildReportDispatchEmailText,
+} from './report-dispatch-email.template';
 
 export type SendReportEmailResult = {
   success: boolean;
@@ -27,11 +31,17 @@ export class ReportEmailService {
     subject: string;
     pdfBuffer: Buffer;
     reportNo: string;
-    viewType: 'internal' | 'external';
+    fileNo?: string | null;
+    actionUrl?: string | null;
+    portalUrl?: string | null;
+    viewType?: 'external';
   }): Promise<SendReportEmailResult> {
     const to = String(opts.to ?? '').trim();
     if (!to || !to.includes('@')) {
       throw new BadRequestException('Geçerli bir alıcı e-posta adresi zorunlu');
+    }
+    if (opts.viewType && opts.viewType !== 'external') {
+      throw new BadRequestException('E-posta ekinde yalnız dış kullanım raporu gider');
     }
 
     const pdfBuffer = opts.pdfBuffer;
@@ -39,13 +49,23 @@ export class ReportEmailService {
       throw new BadRequestException('PDF ek zorunlu — PDF oluşmadan e-posta gönderilemez');
     }
 
-    const filename = `hasar-raporu-${opts.viewType === 'internal' ? 'IC' : 'DIS'}-${opts.reportNo}.pdf`;
+    const filename = `hasar-raporu-DIS-${opts.reportNo}.pdf`;
+    const html = buildReportDispatchEmailHtml({
+      reportNo: opts.reportNo,
+      fileNo: opts.fileNo,
+      actionUrl: opts.actionUrl,
+      portalUrl: opts.portalUrl,
+    });
     const result = await this.email.sendEmail(
       to,
       opts.subject,
-      `<p>Hasar Onarım Raporu (${opts.reportNo}) ektedir.</p>`,
+      html,
       {
-        text: `Hasar Onarım Raporu (${opts.reportNo}) ektedir.`,
+        text: buildReportDispatchEmailText({
+          reportNo: opts.reportNo,
+          fileNo: opts.fileNo,
+          actionUrl: opts.actionUrl,
+        }),
         attachments: [
           {
             filename,
@@ -56,20 +76,22 @@ export class ReportEmailService {
       },
     );
 
-    if (!result.sent) {
+    if (!result.sent || result.via !== 'graph') {
       this.logger.warn(
-        `Rapor e-postası gönderilemedi → ${to} | ${opts.subject} | ${result.errorMsg ?? 'SMTP yok'}`,
+        `Rapor e-postası gönderilemedi → ${to} | ${opts.subject} | ${result.errorMsg ?? result.via ?? 'kutu yok'}`,
       );
-      const noSmtp = /SMTP|yapılandır/i.test(result.errorMsg ?? '');
+      const noBox = result.via !== 'graph';
       return {
         success: false,
         message:
           result.errorMsg
-          || 'PDF eki hazırlandı; e-posta gönderilemedi. Ayarlar → E-posta Bildirimleri mail kurulumunu kontrol edin.',
+          || (noBox
+            ? 'Rapor e-postası Hasar kutusundan gitmedi. SMTP yeşili “gitti” sayılmaz.'
+            : 'PDF eki hazırlandı; e-posta gönderilemedi.'),
         pdfAttached: true,
         pdfBytes: pdfBuffer.length,
         to,
-        mode: noSmtp ? 'staging-no-smtp' : 'live',
+        mode: noBox ? 'staging-no-smtp' : 'live',
       };
     }
 

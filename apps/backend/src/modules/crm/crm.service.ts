@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import * as nodemailer from 'nodemailer';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
+import { EmailService } from '@/modules/notifications/email/email.service';
 
 type RelationshipKind = 'customer' | 'adjuster' | 'vendor';
 type CrmVisibility = 'everyone' | 'responsible' | 'managers';
@@ -30,6 +30,7 @@ export class CrmService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly systemSettings: SystemSettingsService,
+    private readonly emailService: EmailService,
   ) {}
 
   async getSummaries(relationships: Array<{ kind: string; id: string }>, user?: any) {
@@ -277,12 +278,6 @@ export class CrmService {
     const visibility = this.normalizeVisibility(body?.visibility ?? 'everyone');
     const responsibleUserId = this.optionalText(body?.responsibleUserId) ?? user.id;
     const responsibleName = this.optionalText(body?.responsibleName) ?? this.userName(user);
-    const mailConfig = await this.systemSettings.getMailConfig();
-
-    if (!mailConfig?.host || !mailConfig.username || !mailConfig.password) {
-      throw new BadRequestException('Mail yapilandirmasi eksik veya henuz kaydedilmemis');
-    }
-
     const corporateSignature =
       typeof (this.systemSettings as any).getCorporateEmailSignature === 'function'
         ? await (this.systemSettings as any).getCorporateEmailSignature()
@@ -298,75 +293,28 @@ export class CrmService {
       '',
       corporateSignature.legalText,
     ].filter(Boolean).join('\n');
-    const logEntry = await this.prisma.emailLog.create({
-      data: { to, subject, status: 'queued' },
-    });
 
-    const transportOptions: nodemailer.TransportOptions = {
-      host: mailConfig.host,
-      port: mailConfig.port || 587,
-      secure: mailConfig.security === 'SSL',
-      auth: {
-        user: mailConfig.username,
-        pass: mailConfig.password,
-      },
-    } as nodemailer.TransportOptions;
-
-    if (mailConfig.security === 'TLS') {
-      (transportOptions as any).requireTLS = true;
+    const sent = await this.emailService.sendEmail(to, subject, html, { text });
+    if (!sent.sent) {
+      throw new BadRequestException(sent.errorMsg || 'E-posta gönderilemedi');
     }
 
-    const transporter = nodemailer.createTransport(transportOptions);
-    try {
-      const result = await transporter.sendMail({
-        from: `"${mailConfig.fromName || 'Meridyen Assistance'}" <${mailConfig.fromEmail || mailConfig.username}>`,
-        to,
-        subject,
-        text,
-        html,
-      });
-      const rejected = (result.rejected ?? []).map(String);
-      await this.prisma.emailLog.update({
-        where: { id: logEntry.id },
-        data: {
-          status: rejected.length ? 'failed' : 'sent',
-          sentAt: rejected.length ? null : new Date(),
-          errorMsg: rejected.length ? `Reddedilen alicilar: ${rejected.join(', ')}` : null,
-        },
-      });
-
-      if (rejected.length) {
-        throw new BadRequestException('E-posta SMTP tarafinda reddedildi');
-      }
-
-      const payload = {
-        eventId: randomUUID(),
-        kind,
-        id,
-        to,
-        subject,
-        message,
-        visibility,
-        ownerUserId: user.id,
-        ownerName: this.userName(user),
-        responsibleUserId,
-        responsibleName,
-        emailLogId: logEntry.id,
-        sentAt: new Date().toISOString(),
-      };
-      const created = await this.writeLog(entityKey, 'crm.email.sent', payload, user);
-      return { success: true, data: this.toEvent(created) };
-    } catch (err: any) {
-      await this.prisma.emailLog.update({
-        where: { id: logEntry.id },
-        data: {
-          status: 'failed',
-          errorMsg: err?.message ?? 'E-posta gonderilemedi',
-        },
-      }).catch(() => null);
-      if (err instanceof BadRequestException) throw err;
-      throw new BadRequestException(err?.message ?? 'E-posta gonderilemedi');
-    }
+    const payload = {
+      eventId: randomUUID(),
+      kind,
+      id,
+      to,
+      subject,
+      message,
+      visibility,
+      ownerUserId: user.id,
+      ownerName: this.userName(user),
+      responsibleUserId,
+      responsibleName,
+      sentAt: new Date().toISOString(),
+    };
+    const created = await this.writeLog(entityKey, 'crm.email.sent', payload, user);
+    return { success: true, data: this.toEvent(created) };
   }
 
   private async assertRelationship(kind: string, id: string) {

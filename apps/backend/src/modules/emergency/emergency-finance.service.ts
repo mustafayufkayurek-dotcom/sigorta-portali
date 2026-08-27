@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateInvoiceDraftDto } from './dto/create-invoice-draft.dto';
+import { acilHakedisDueDate, pickAcilHakedisAmount } from './acil-vendor-entitlement';
 
 @Injectable()
 export class EmergencyFinanceService {
@@ -12,6 +13,7 @@ export class EmergencyFinanceService {
     customerId?: string;
     search?: string;
     invoiceStatus?: string; // 'invoiced' | 'pending' | 'overdue'
+    vendorPaid?: string; // 'paid' | 'unpaid' | 'none'
   }) {
     const where: any = {};
     if (filters.customerId) where.customerId = filters.customerId;
@@ -21,6 +23,9 @@ export class EmergencyFinanceService {
         { caseNo: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
+    if (filters.vendorPaid === 'paid') where.vendorPaid = true;
+    if (filters.vendorPaid === 'unpaid') where.vendorPaid = false;
+    if (filters.vendorPaid === 'none') where.vendorPaid = null;
     if (filters.year && filters.month) {
       const start = new Date(filters.year, filters.month - 1, 1);
       const end = new Date(filters.year, filters.month, 1);
@@ -68,6 +73,7 @@ export class EmergencyFinanceService {
         overdueLevel,
         invoiceDraft,
         isFaturalandildi,
+        vendorPaid: c.vendorPaid ?? null,
       };
     });
 
@@ -207,6 +213,76 @@ export class EmergencyFinanceService {
         faturalandirilan,
         bekleyen: totalCases - faturalandirilan,
       },
+    };
+  }
+
+  /**
+   * İş bitiminde dosya tedarikçisine hakediş. Vade yok. Hasar statement yoluna girmez.
+   */
+  async grantVendorEntitlement(caseId: string, userId: string) {
+    const emergencyCase = await this.prisma.emergencyCase.findUnique({
+      where: { id: caseId },
+      include: { costEntries: true, vendorEntitlement: true },
+    });
+    if (!emergencyCase) throw new NotFoundException('Acil yardım dosyası bulunamadı');
+    if (emergencyCase.status !== 'COZULDU' && emergencyCase.status !== 'FATURALANDILDI') {
+      throw new BadRequestException('Hakediş için önce iş bitimi / dosya kapanışı gerekir.');
+    }
+    if (!emergencyCase.assignedVendorId) {
+      throw new BadRequestException('Hakediş için dosyaya tedarikçi atanmış olmalı.');
+    }
+    if (emergencyCase.vendorEntitlement) {
+      return { data: emergencyCase.vendorEntitlement, dueDate: acilHakedisDueDate() };
+    }
+    const amount = pickAcilHakedisAmount(emergencyCase.costEntries, emergencyCase.assignedVendorId);
+    if (!(amount > 0)) {
+      throw new BadRequestException('Hakediş tutarı için alış / gider kaydı gerekir.');
+    }
+    const granted = await this.prisma.emergencyVendorEntitlement.create({
+      data: {
+        caseId,
+        vendorId: emergencyCase.assignedVendorId,
+        amount,
+        grantedAt: new Date(),
+        grantedByUserId: userId === 'system' ? emergencyCase.createdByUserId : userId,
+      },
+    });
+    return { data: granted, dueDate: acilHakedisDueDate() };
+  }
+
+  async listVendorEntitlements() {
+    const rows = await this.prisma.emergencyVendorEntitlement.findMany({
+      orderBy: { grantedAt: 'desc' },
+      include: {
+        vendor: { select: { id: true, name: true } },
+        case: {
+          select: {
+            id: true,
+            caseNo: true,
+            fileNo: true,
+            customerName: true,
+            issueType: true,
+            vendorPaid: true,
+          },
+        },
+        grantedBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    return {
+      data: rows.map((row) => ({
+        id: row.id,
+        caseId: row.caseId,
+        caseNo: row.case.fileNo || row.case.caseNo,
+        customerName: row.case.customerName,
+        issueType: row.case.issueType,
+        vendorPaid: row.case.vendorPaid ?? null,
+        vendorId: row.vendorId,
+        vendorName: row.vendor.name,
+        amount: row.amount,
+        grantedAt: row.grantedAt,
+        grantedByName: `${row.grantedBy.firstName} ${row.grantedBy.lastName}`.trim(),
+        dueDate: acilHakedisDueDate(),
+      })),
     };
   }
 }

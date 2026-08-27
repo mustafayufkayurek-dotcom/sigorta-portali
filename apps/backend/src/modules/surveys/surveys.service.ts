@@ -11,6 +11,15 @@ import { ConfigService } from '@nestjs/config';
 import { buildAppPath } from '@/common/utils/app-url';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { SubmitSurveyDto } from './dto/submit-survey.dto';
+import {
+  surveyDissatisfiedCommentMissing,
+  SURVEY_DISSATISFIED_COMMENT_MESSAGE,
+  surveyOwnerExplanationMissing,
+  SURVEY_OWNER_EXPLANATION_MESSAGE,
+  surveyResponseIsNegative,
+} from './survey-submit.rule';
+
+const SENT_OR_DONE = ['sent', 'completed'] as const;
 
 @Injectable()
 export class SurveysService {
@@ -22,11 +31,76 @@ export class SurveysService {
     private readonly config: ConfigService,
   ) {}
 
-  // ── Kampanya oluştur ───────────────────────────────────────────────────────
+  private tokenExpiry(): Date {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 90);
+    return expiresAt;
+  }
+
+  private customerDisplayName(customer?: {
+    fullName?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null): string | null {
+    if (!customer) return null;
+    const full = customer.fullName?.trim();
+    if (full) return full;
+    const parts = `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim();
+    return parts || null;
+  }
+
+  private async applyPhoneIfProvided(
+    campaign: { id: string; insuredPhone: string | null },
+    insuredPhone?: string,
+  ) {
+    const phone = insuredPhone?.trim();
+    if (!phone || phone === campaign.insuredPhone) return campaign;
+    return this.prisma.surveyCampaign.update({
+      where: { id: campaign.id },
+      data: { insuredPhone: phone },
+    });
+  }
+
+  // ── Kampanya oluştur (fatura veya dosya kapanışı; gönderim yok) ───────────
 
   async createCampaign(dto: CreateCampaignDto) {
+    const invoiceRequestId = dto.invoiceRequestId?.trim() || undefined;
+    const claimFileId = dto.claimFileId?.trim() || undefined;
+    const emergencyCaseId = dto.emergencyCaseId?.trim() || undefined;
+
+    if (!invoiceRequestId && !claimFileId && !emergencyCaseId) {
+      throw new BadRequestException(
+        'Fatura Talebi, Hasar Dosyası Veya Acil Yardım Dosyası Gerekli',
+      );
+    }
+
+    if (invoiceRequestId) {
+      return this.createFromInvoiceRequest(invoiceRequestId, dto.insuredPhone);
+    }
+    if (claimFileId) {
+      return this.createFromClaimFile(claimFileId, dto.insuredPhone);
+    }
+    return this.createFromEmergencyCase(emergencyCaseId!, dto.insuredPhone);
+  }
+
+  async ensureCampaignForClaimFile(claimFileId: string) {
+    return this.createFromClaimFile(claimFileId);
+  }
+
+  async ensureCampaignForEmergencyCase(emergencyCaseId: string) {
+    return this.createFromEmergencyCase(emergencyCaseId);
+  }
+
+  private async createFromInvoiceRequest(invoiceRequestId: string, insuredPhone?: string) {
+    const existingByInvoice = await this.prisma.surveyCampaign.findUnique({
+      where: { invoiceRequestId },
+    });
+    if (existingByInvoice) {
+      return this.applyPhoneIfProvided(existingByInvoice, insuredPhone);
+    }
+
     const ir = await this.prisma.invoiceRequest.findUnique({
-      where: { id: dto.invoiceRequestId },
+      where: { id: invoiceRequestId },
       include: {
         claimFile: {
           include: {
@@ -40,23 +114,50 @@ export class SurveysService {
 
     if (!ir) throw new NotFoundException('Fatura talebi bulunamadı');
 
-    // Mükerrer kampanya kontrolü
-    const existing = await this.prisma.surveyCampaign.findUnique({
-      where: { invoiceRequestId: dto.invoiceRequestId },
-    });
-    if (existing) return existing;
+    if (ir.claimFileId) {
+      const existingFile = await this.prisma.surveyCampaign.findFirst({
+        where: { claimFileId: ir.claimFileId },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (existingFile) {
+        if (!existingFile.invoiceRequestId) {
+          const attached = await this.prisma.surveyCampaign.update({
+            where: { id: existingFile.id },
+            data: {
+              invoiceRequestId: ir.id,
+              ...(insuredPhone?.trim() ? { insuredPhone: insuredPhone.trim() } : {}),
+            },
+          });
+          return attached;
+        }
+        return this.applyPhoneIfProvided(existingFile, insuredPhone);
+      }
+    }
+
+    if (ir.emergencyCaseId) {
+      const existingCase = await this.prisma.surveyCampaign.findFirst({
+        where: { emergencyCaseId: ir.emergencyCaseId },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (existingCase) {
+        if (!existingCase.invoiceRequestId) {
+          return this.prisma.surveyCampaign.update({
+            where: { id: existingCase.id },
+            data: {
+              invoiceRequestId: ir.id,
+              ...(insuredPhone?.trim() ? { insuredPhone: insuredPhone.trim() } : {}),
+            },
+          });
+        }
+        return this.applyPhoneIfProvided(existingCase, insuredPhone);
+      }
+    }
 
     const customer = ir.claimFile?.customer;
-    const insuredName = customer
-      ? (customer.fullName ?? `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim())
-      : null;
-    const insuredPhone = dto.insuredPhone ?? customer?.phone ?? null;
-
+    const insuredName = this.customerDisplayName(customer);
+    const phone = insuredPhone ?? customer?.phone ?? null;
     const insuranceCompanyId =
       ir.insuranceCompanyId ?? ir.claimFile?.insuranceCompany?.id ?? null;
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 90);
 
     const campaign = await this.prisma.surveyCampaign.create({
       data: {
@@ -65,14 +166,83 @@ export class SurveysService {
         invoiceRequestId: ir.id,
         insuranceCompanyId,
         insuredName,
-        insuredPhone,
+        insuredPhone: phone,
         publicToken: randomUUID(),
-        tokenExpiresAt: expiresAt,
+        tokenExpiresAt: this.tokenExpiry(),
         status: 'pending',
       },
     });
 
     this.logger.log(`Anket kampanyası oluşturuldu → ${campaign.id} (IR: ${ir.id})`);
+    return campaign;
+  }
+
+  private async createFromClaimFile(claimFileId: string, insuredPhone?: string) {
+    const existing = await this.prisma.surveyCampaign.findFirst({
+      where: { claimFileId },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing) {
+      return this.applyPhoneIfProvided(existing, insuredPhone);
+    }
+
+    const file = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      include: {
+        customer: { select: { fullName: true, firstName: true, lastName: true, phone: true } },
+      },
+    });
+    if (!file) throw new NotFoundException('Dosya bulunamadı');
+
+    const insuredName =
+      file.insuredName?.trim() || this.customerDisplayName(file.customer);
+    const phone =
+      insuredPhone?.trim() || file.insuredPhone || file.customer?.phone || null;
+
+    const campaign = await this.prisma.surveyCampaign.create({
+      data: {
+        claimFileId: file.id,
+        insuranceCompanyId: file.insuranceCompanyId,
+        insuredName,
+        insuredPhone: phone,
+        publicToken: randomUUID(),
+        tokenExpiresAt: this.tokenExpiry(),
+        status: 'pending',
+      },
+    });
+
+    this.logger.log(`Anket kampanyası oluşturuldu → ${campaign.id} (dosya: ${file.fileNo})`);
+    return campaign;
+  }
+
+  private async createFromEmergencyCase(emergencyCaseId: string, insuredPhone?: string) {
+    const existing = await this.prisma.surveyCampaign.findFirst({
+      where: { emergencyCaseId },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing) {
+      return this.applyPhoneIfProvided(existing, insuredPhone);
+    }
+
+    const emergencyCase = await this.prisma.emergencyCase.findUnique({
+      where: { id: emergencyCaseId },
+    });
+    if (!emergencyCase) throw new NotFoundException('Acil yardım dosyası bulunamadı');
+
+    const campaign = await this.prisma.surveyCampaign.create({
+      data: {
+        emergencyCaseId: emergencyCase.id,
+        insuredName: emergencyCase.customerName?.trim() || null,
+        insuredPhone: insuredPhone?.trim() || emergencyCase.customerPhone || null,
+        publicToken: randomUUID(),
+        tokenExpiresAt: this.tokenExpiry(),
+        status: 'pending',
+      },
+    });
+
+    this.logger.log(
+      `Anket kampanyası oluşturuldu → ${campaign.id} (acil: ${emergencyCase.caseNo})`,
+    );
     return campaign;
   }
 
@@ -138,6 +308,7 @@ export class SurveysService {
       insuredName: campaign.insuredName,
       status: campaign.status,
       tokenExpiresAt: campaign.tokenExpiresAt,
+      channel: campaign.emergencyCaseId ? 'acil' : 'hasar',
     };
   }
 
@@ -158,6 +329,10 @@ export class SurveysService {
       throw new BadRequestException('Bu anket zaten yanıtlanmış');
     }
 
+    if (surveyDissatisfiedCommentMissing(dto.q6Recommend, dto.q7Comment)) {
+      throw new BadRequestException(SURVEY_DISSATISFIED_COMMENT_MESSAGE);
+    }
+
     await this.prisma.$transaction([
       this.prisma.surveyResponse.create({
         data: {
@@ -168,7 +343,7 @@ export class SurveysService {
           q4Rating: dto.q4Rating,
           q5Rating: dto.q5Rating,
           q6Recommend: dto.q6Recommend,
-          q7Comment: dto.q7Comment ?? null,
+          q7Comment: dto.q7Comment?.trim() || null,
           ipAddress: ipAddress ?? null,
         },
       }),
@@ -191,6 +366,8 @@ export class SurveysService {
         response: true,
         insuranceCompany: { select: { name: true } },
         invoiceRequest: { select: { requestNo: true, fileNo: true } },
+        claimFile: { select: { fileNo: true, id: true } },
+        emergencyCase: { select: { caseNo: true, fileNo: true, id: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -206,6 +383,7 @@ export class SurveysService {
         insuranceCompany: { select: { name: true } },
         invoiceRequest: { select: { requestNo: true, fileNo: true } },
         claimFile: { select: { fileNo: true, id: true } },
+        emergencyCase: { select: { caseNo: true, fileNo: true, id: true } },
       },
     });
     if (!c) throw new NotFoundException('Kampanya bulunamadı');
@@ -218,6 +396,72 @@ export class SurveysService {
     return this.prisma.surveyCampaign.findUnique({
       where: { invoiceRequestId },
       include: { response: true },
+    });
+  }
+
+  async findByClaimFile(claimFileId: string) {
+    return this.prisma.surveyCampaign.findFirst({
+      where: { claimFileId },
+      include: { response: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findByEmergencyCase(emergencyCaseId: string) {
+    return this.prisma.surveyCampaign.findFirst({
+      where: { emergencyCaseId },
+      include: { response: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async saveOwnerExplanation(id: string, ownerExplanation: string) {
+    const campaign = await this.prisma.surveyCampaign.findUnique({
+      where: { id },
+      include: { response: true },
+    });
+    if (!campaign) throw new NotFoundException('Kampanya bulunamadı');
+    if (campaign.status !== 'completed' || !campaign.response) {
+      throw new BadRequestException('Açıklama yalnız tamamlanmış anket için yazılır');
+    }
+    if (!surveyResponseIsNegative(campaign.response)) {
+      throw new BadRequestException('Bu ankette dosya sorumlusu açıklaması gerekmez');
+    }
+    const text = ownerExplanation.trim();
+    if (surveyOwnerExplanationMissing(campaign.response, text)) {
+      throw new BadRequestException(SURVEY_OWNER_EXPLANATION_MESSAGE);
+    }
+    return this.prisma.surveyCampaign.update({
+      where: { id },
+      data: { ownerExplanation: text, ownerExplanationAt: new Date() },
+      include: { response: true },
+    });
+  }
+
+  /** Dosya sorumlusuna atanan, kapanmış ve anket linki gönderilmemiş dosyalar. */
+  async listClosureUnsent(userId: string) {
+    if (!userId) return [];
+
+    return this.prisma.claimFile.findMany({
+      where: {
+        assignedOfficeUserId: userId,
+        closedAt: { not: null },
+        currentStatus: { isClosedState: true },
+        surveyCampaigns: {
+          none: {
+            OR: [{ whatsappSentAt: { not: null } }, { status: { in: [...SENT_OR_DONE] } }],
+          },
+        },
+      },
+      select: {
+        id: true,
+        fileNo: true,
+        closedAt: true,
+        insuredName: true,
+        customer: { select: { fullName: true } },
+      },
+      orderBy: { closedAt: 'desc' },
+      take: 50,
     });
   }
 }

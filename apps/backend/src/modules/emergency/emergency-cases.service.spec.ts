@@ -4,6 +4,12 @@ import { EmergencyCasesService } from './emergency-cases.service';
 describe('EmergencyCasesService', () => {
   let service: EmergencyCasesService;
   let prisma: any;
+  let operationalAccessGrants: {
+    isDelegationScopedRole: jest.Mock;
+    buildEmergencyDelegationScope: jest.Mock;
+    canAccessAssignedUserViaDelegation: jest.Mock;
+    resolveDelegationBanner: jest.Mock;
+  };
 
   beforeEach(() => {
     prisma = {
@@ -16,9 +22,12 @@ describe('EmergencyCasesService', () => {
       inboundMessage: { findMany: jest.fn().mockResolvedValue([]) },
       fileDocument: { findMany: jest.fn().mockResolvedValue([]) },
       invoiceRequest: { findMany: jest.fn().mockResolvedValue([]) },
+      emergencyVendorEntitlement: { findUnique: jest.fn().mockResolvedValue(null) },
     };
-    const operationalAccessGrants = {
+    operationalAccessGrants = {
       isDelegationScopedRole: jest.fn().mockReturnValue(false),
+      hasFunctionDelegation: jest.fn().mockResolvedValue(false),
+      getFunctionDelegationStamp: jest.fn().mockResolvedValue(null),
       buildEmergencyDelegationScope: jest.fn().mockResolvedValue({}),
       canAccessAssignedUserViaDelegation: jest.fn().mockResolvedValue(false),
       resolveDelegationBanner: jest.fn().mockResolvedValue(null),
@@ -34,8 +43,20 @@ describe('EmergencyCasesService', () => {
     const vendorProfile = {
       onFileCompleted: jest.fn().mockResolvedValue(undefined),
     };
+    const vendorRecommendation = {
+      getOperationMetrics: jest.fn().mockResolvedValue({
+        avgServiceScore: null,
+        avgCost: null,
+        avgResponseTimeHours: null,
+        completedFileCount: 0,
+      }),
+      recommendForEmergencyCase: jest.fn().mockResolvedValue([]),
+    };
     const emailService = {
       sendEmail: jest.fn().mockResolvedValue({ sent: true }),
+    };
+    const claimEventEmail = {
+      onManualDecision: jest.fn(),
     };
     const storage = {
       download: jest.fn().mockResolvedValue(Buffer.from('x')),
@@ -46,7 +67,9 @@ describe('EmergencyCasesService', () => {
       fileDocumentsService as any,
       invoiceRequestsService as any,
       vendorProfile as any,
+      vendorRecommendation as any,
       emailService as any,
+      claimEventEmail as any,
       storage as any,
     );
   });
@@ -65,6 +88,34 @@ describe('EmergencyCasesService', () => {
       expect(prisma.emergencyCase.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ customerId: 'cust-a' }),
+        }),
+      );
+    });
+  });
+
+  describe('findAll', () => {
+    it('ofis personeli kapsamını listeye uygular', async () => {
+      operationalAccessGrants.isDelegationScopedRole.mockReturnValue(true);
+      operationalAccessGrants.buildEmergencyDelegationScope.mockResolvedValue({
+        OR: [{ assignedUserId: { in: ['staff-1'] } }],
+      });
+      await service.findAll({}, { id: 'staff-1', roleCode: 'office_staff' });
+      expect(prisma.emergencyCase.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [{ assignedUserId: { in: ['staff-1'] } }],
+          }),
+        }),
+      );
+    });
+
+    it('fonksiyon vekaletinde dar liste filtresi yoksa tüm kuyruk gelir', async () => {
+      operationalAccessGrants.isDelegationScopedRole.mockReturnValue(true);
+      operationalAccessGrants.buildEmergencyDelegationScope.mockResolvedValue({});
+      await service.findAll({}, { id: 'finance-1', roleCode: 'finance' });
+      expect(prisma.emergencyCase.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {},
         }),
       );
     });

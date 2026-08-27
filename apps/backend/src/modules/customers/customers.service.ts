@@ -5,7 +5,12 @@ import { SystemSettingsService } from '@/modules/system-settings/system-settings
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
 import { isInsuranceCompanyUser, RequestUser } from '@/common/helpers/claim-file-scope.helper';
 import { applyTitleCase } from '@/common/utils/text-helpers';
+import {
+  AUTHORIZED_PERSON_DIRTY_MESSAGE,
+  isDirtyAuthorizedPersonName,
+} from '@sigorta/shared';
 import * as ExcelJS from 'exceljs';
+import { classifyAuthorizedPersonNamesWithAi } from './authorized-person-ai.util';
 
 type CustomerNameFields = {
   entityType?: string | null;
@@ -60,6 +65,55 @@ export class CustomersService {
       throw new BadRequestException('Kısa Ad zorunludur.');
     }
     data.shortName = short;
+  }
+
+  private collectAuthorizedPersonSamples(data: Record<string, unknown>, contacts?: any[]) {
+    const samples: { firstName: string; lastName: string; combined: string }[] = [];
+    const first = String(data.contactFirstName ?? '').trim();
+    const last = String(data.contactLastName ?? '').trim();
+    if (first || last) {
+      samples.push({ firstName: first, lastName: last, combined: `${first} ${last}`.trim() });
+    } else {
+      const legacy = String(data.authorizedPerson ?? '').trim();
+      if (legacy) samples.push({ firstName: '', lastName: '', combined: legacy });
+    }
+    for (const c of contacts ?? []) {
+      const cf = String(c?.firstName ?? '').trim();
+      const cl = String(c?.lastName ?? '').trim();
+      const name = String(c?.name ?? '').trim() || `${cf} ${cl}`.trim();
+      if (!name) continue;
+      samples.push({ firstName: cf, lastName: cl, combined: name });
+    }
+    return samples;
+  }
+
+  private async assertAuthorizedPersonClean(data: Record<string, unknown>, contacts?: any[]) {
+    const samples = this.collectAuthorizedPersonSamples(data, contacts);
+    if (!samples.length) return;
+    const companyName = String(data.companyName ?? '');
+    const shortName = String(data.shortName ?? '');
+    for (const sample of samples) {
+      if (
+        isDirtyAuthorizedPersonName({
+          firstName: sample.firstName,
+          lastName: sample.lastName,
+          combined: sample.combined,
+          companyName,
+          shortName,
+        })
+      ) {
+        throw new BadRequestException(AUTHORIZED_PERSON_DIRTY_MESSAGE);
+      }
+    }
+    const ai = await classifyAuthorizedPersonNamesWithAi({
+      companyName,
+      shortName,
+      names: samples,
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+    if (ai.dirtyIndexes.length > 0) {
+      throw new BadRequestException(AUTHORIZED_PERSON_DIRTY_MESSAGE);
+    }
   }
 
   /** Dosya Sorumlusu uyarı bandı — Kısa Ad eksik aktif müşteriler */
@@ -395,6 +449,7 @@ export class CustomersService {
 
     // Title Case — isim alanları
     applyTitleCase(rest, ['firstName', 'lastName', 'companyName', 'shortName', 'contactFirstName', 'contactLastName']);
+    await this.assertAuthorizedPersonClean(rest, contacts);
 
     // fullName compute
     if (rest.entityType === 'individual' && rest.firstName && rest.lastName && !rest.fullName) {
@@ -469,6 +524,7 @@ export class CustomersService {
 
     // Title Case — isim alanları
     applyTitleCase(rest, ['firstName', 'lastName', 'companyName', 'shortName', 'contactFirstName', 'contactLastName']);
+    await this.assertAuthorizedPersonClean(rest, contacts);
 
     if (rest.entityType === 'individual' && rest.firstName && rest.lastName && !rest.fullName) {
       rest.fullName = `${rest.firstName} ${rest.lastName}`.trim();

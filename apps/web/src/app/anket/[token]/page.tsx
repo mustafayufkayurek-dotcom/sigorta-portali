@@ -2,6 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { toTitleCaseTR } from '@/utils/text-helpers';
+import { BrandLogo } from '@/components/brand/BrandLogo';
+import {
+  SURVEY_Q6_LABEL,
+  SURVEY_Q7_LABEL,
+  SURVEY_DISSATISFIED_COMMENT_MESSAGE,
+  SURVEY_STAR_SCALE,
+  surveyDissatisfiedCommentMissing,
+  surveyStarQuestionsForChannel,
+  type SurveyChannel,
+} from '@/utils/survey-form';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -11,6 +22,7 @@ type SurveyMeta = {
   insuredName: string | null;
   status: string;
   tokenExpiresAt: string | null;
+  channel?: SurveyChannel;
 };
 
 type Ratings = {
@@ -20,29 +32,6 @@ type Ratings = {
   q4: number;
   q5: number;
 };
-
-const QUESTIONS = [
-  {
-    key: 'q1' as keyof Ratings,
-    label: 'Telefonda Size Yardımcı Olan Personelimizin Hizmet Kalitesi',
-  },
-  {
-    key: 'q2' as keyof Ratings,
-    label: 'Hasar Onarım Ekibinin Randevu ve İş Programı Zamanlaması',
-  },
-  {
-    key: 'q3' as keyof Ratings,
-    label: 'Hasar Onarım Ekibinin Davranışları',
-  },
-  {
-    key: 'q4' as keyof Ratings,
-    label: 'Hasar Onarım Ekibinin Dış Görünümü',
-  },
-  {
-    key: 'q5' as keyof Ratings,
-    label: 'Hasar Onarım Ekibinin İş Kalitesi',
-  },
-];
 
 function StarRating({
   value,
@@ -54,33 +43,53 @@ function StarRating({
   disabled?: boolean;
 }) {
   const [hovered, setHovered] = useState(0);
+  const shown = hovered || value;
   return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((star) => {
-        const filled = star <= (hovered || value);
-        return (
-          <button
-            key={star}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(star)}
-            onMouseEnter={() => !disabled && setHovered(star)}
-            onMouseLeave={() => !disabled && setHovered(0)}
-            className="focus:outline-none disabled:cursor-default"
+    <div className="flex flex-col items-center">
+      <p
+        className="flex flex-wrap justify-center gap-x-2.5 gap-y-1 text-[11px] leading-snug"
+        data-testid="anket-yildiz-olcek"
+      >
+        {SURVEY_STAR_SCALE.map((star) => (
+          <span
+            key={star.value}
+            className={`transition-colors ${
+              star.value === shown ? 'font-semibold text-amber-500' : 'text-slate-500'
+            }`}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              className={`w-9 h-9 transition-colors ${
-                filled ? 'text-amber-400' : 'text-slate-200'
-              }`}
-              fill="currentColor"
+            {star.value} {star.label}
+          </span>
+        ))}
+      </p>
+      <div className="mt-3 flex justify-center gap-1">
+        {SURVEY_STAR_SCALE.map((star) => {
+          const filled = star.value <= shown;
+          return (
+            <button
+              key={star.value}
+              type="button"
+              disabled={disabled}
+              title={`${star.value}: ${star.label}`}
+              aria-label={`${star.value} yıldız, ${star.label}`}
+              onClick={() => onChange(star.value)}
+              onMouseEnter={() => !disabled && setHovered(star.value)}
+              onMouseLeave={() => !disabled && setHovered(0)}
+              className="focus:outline-none disabled:cursor-default"
             >
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-            </svg>
-          </button>
-        );
-      })}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                className={`h-9 w-9 transition-colors ${
+                  filled ? 'text-amber-400' : 'text-slate-200'
+                }`}
+                fill="currentColor"
+              >
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -102,6 +111,17 @@ export default function AnketPage() {
 
   useEffect(() => {
     if (!token) return;
+    if (process.env.NODE_ENV !== 'production' && token === 'ornek') {
+      setMeta({
+        id: 'ornek',
+        insuredName: 'Mehmet Demir',
+        status: 'active',
+        tokenExpiresAt: null,
+        channel: 'acil',
+      });
+      setLoading(false);
+      return;
+    }
     fetch(`${API}/public/surveys/${token}`)
       .then(async (r) => {
         const json = await r.json();
@@ -123,9 +143,19 @@ export default function AnketPage() {
       setSubmitError('Lütfen genel memnuniyet sorusunu yanıtlayın');
       return;
     }
+    if (surveyDissatisfiedCommentMissing(recommend, comment)) {
+      setSubmitError(SURVEY_DISSATISFIED_COMMENT_MESSAGE);
+      return;
+    }
 
     setSubmitting(true);
     setSubmitError('');
+
+    if (process.env.NODE_ENV !== 'production' && token === 'ornek') {
+      setSubmitted(true);
+      setSubmitting(false);
+      return;
+    }
 
     try {
       const r = await fetch(`${API}/public/surveys/${token}/submit`, {
@@ -180,11 +210,17 @@ export default function AnketPage() {
 
   if (!meta) return null;
 
+  const channel: SurveyChannel = meta.channel === 'acil' ? 'acil' : 'hasar';
+  const starQuestions = surveyStarQuestionsForChannel(channel);
+
   // Teşekkür ekranı
   if (submitted) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-10 max-w-md w-full text-center">
+          <div className="mb-5 flex justify-center">
+            <BrandLogo alt="Meridyen Assistance" variant="card" />
+          </div>
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-9 h-9 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -200,9 +236,6 @@ export default function AnketPage() {
             Değerli geri bildiriminiz için teşekkür ederiz. Hizmet kalitemizi
             geliştirmek için yanıtlarınızı dikkate alıyoruz.
           </p>
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <p className="text-xs text-slate-400">Meridyen Assistance</p>
-          </div>
         </div>
       </div>
     );
@@ -212,21 +245,16 @@ export default function AnketPage() {
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500">Meridyen Assistance</p>
-            <p className="text-sm font-bold text-slate-800">Kalite Kontrol Anket Formu</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-slate-400">Yaklaşık 1 Dakika</p>
-            <p className="text-xs text-brand-600 font-medium">6 Soru</p>
-          </div>
+        <div className="mx-auto flex max-w-xl flex-col items-center px-4 py-4 text-center">
+          <BrandLogo alt="Meridyen Assistance" variant="card" />
+          <p className="mt-3 text-sm font-bold text-slate-800">Kalite Kontrol Anket Formu</p>
+          <p className="mt-0.5 text-xs text-slate-400">Yaklaşık 1 Dakika · 6 Soru</p>
         </div>
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-4">
         {/* Karşılama */}
-        <div className="bg-brand-50 border border-brand-100 rounded-xl px-5 py-4 space-y-2">
+        <div className="bg-brand-50 border border-brand-100 rounded-xl px-5 py-4 space-y-2 text-left">
           {meta.insuredName ? (
             <p className="text-sm text-brand-900">
               Değerli Sigortalımız <strong>{meta.insuredName}</strong>,
@@ -235,8 +263,9 @@ export default function AnketPage() {
             <p className="text-sm text-brand-900">Değerli Sigortalımız,</p>
           )}
           <p className="text-sm text-brand-800 leading-relaxed">
-            Hasar dosyanız kapsamında konut / işyerinizdeki onarım ve restorasyon çalışmaları tamamlanmıştır.
-            Bu form; mahalin eksiksiz teslim alındığını ve memnuniyetinizi değerlendirmek amacıyla hazırlanmıştır.
+            {channel === 'acil'
+              ? 'Acil yardım hizmetiniz tamamlanmıştır. Bu form memnuniyetinizi değerlendirmek amacıyla hazırlanmıştır.'
+              : 'Hasar dosyanız kapsamında konut / işyerinizdeki onarım ve restorasyon çalışmaları tamamlanmıştır. Bu form; mahalin eksiksiz teslim alındığını ve memnuniyetinizi değerlendirmek amacıyla hazırlanmıştır.'}
           </p>
           <p className="text-xs text-brand-700">
             Görüş ve önerilerinize önem veriyoruz. Teşekkür ederiz.
@@ -245,26 +274,28 @@ export default function AnketPage() {
 
         {/* Yıldız soruları */}
         <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 shadow-sm overflow-hidden">
-          {QUESTIONS.map((q, idx) => (
-            <div key={q.key} className="px-5 py-5">
-              <p className="text-sm font-medium text-slate-700 mb-3">
+          {starQuestions.map((q, idx) => (
+            <div key={q.key} className="px-5 py-5 text-left">
+              <p className="text-sm font-medium text-slate-700">
                 <span className="text-brand-500 font-semibold">{idx + 1}.</span>{' '}
                 {q.label}
               </p>
-              <StarRating
-                value={ratings[q.key]}
-                onChange={(v) => setRatings((prev) => ({ ...prev, [q.key]: v }))}
-                disabled={submitting}
-              />
+              <div className="mt-3">
+                <StarRating
+                  value={ratings[q.key]}
+                  onChange={(v) => setRatings((prev) => ({ ...prev, [q.key]: v }))}
+                  disabled={submitting}
+                />
+              </div>
             </div>
           ))}
         </div>
 
         {/* Soru 6: Genel memnuniyet */}
-        <div className="bg-white border border-slate-200 rounded-2xl px-5 py-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl px-5 py-5 shadow-sm text-left">
           <p className="text-sm font-medium text-slate-700 mb-4">
             <span className="text-brand-500 font-semibold">6.</span>{' '}
-            Genel Olarak Memnuniyet Derecesi
+            {SURVEY_Q6_LABEL}
           </p>
           <div className="flex gap-3">
             <button
@@ -295,16 +326,33 @@ export default function AnketPage() {
         </div>
 
         {/* Teşekkür, şikayet, öneri */}
-        <div className="bg-white border border-slate-200 rounded-2xl px-5 py-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl px-5 py-5 shadow-sm text-left">
           <p className="text-sm font-medium text-slate-700 mb-3">
-            Teşekkür, Şikayet ve Önerileriniz{' '}
-            <span className="text-slate-400 font-normal">(Opsiyonel)</span>
+            {SURVEY_Q7_LABEL}{' '}
+            {recommend === false ? (
+              <span className="text-red-600 font-semibold">*</span>
+            ) : (
+              <span className="text-slate-400 font-normal">(Opsiyonel)</span>
+            )}
           </p>
+          {recommend === false && (
+            <p className="text-xs text-amber-800 mb-2">
+              Memnun Değilim Cevabında Açıklama Zorunludur
+            </p>
+          )}
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
+            onBlur={(e) => {
+              const v = toTitleCaseTR(e.target.value.trim());
+              setComment(v);
+            }}
             disabled={submitting}
-            placeholder="Görüş veya önerinizi buraya yazabilirsiniz…"
+            placeholder={
+              recommend === false
+                ? 'Lütfen Memnun Değilim Nedeninizi Yazın…'
+                : 'Görüş Veya Önerinizi Buraya Yazabilirsiniz…'
+            }
             rows={3}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-400 placeholder:text-slate-300"
           />

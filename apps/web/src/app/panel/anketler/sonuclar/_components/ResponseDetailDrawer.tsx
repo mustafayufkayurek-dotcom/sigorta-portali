@@ -3,20 +3,13 @@
 import { Star } from 'lucide-react';
 import { SlidePanel } from '@/components/SlidePanel';
 import type { SurveyCampaign } from '@/utils/surveyApi';
+import { SURVEY_Q6_LABEL, SURVEY_Q7_LABEL, surveyStarQuestionsForCampaign } from '@/utils/survey-form';
 import {
   averageScore,
   campaignDisplayName,
   formatTrDateTime,
   formatTrNumber,
 } from '../_lib/survey-results-adapters';
-
-const QUESTION_LABELS = [
-  'Genel Memnuniyet',
-  'İletişim Kalitesi',
-  'Hız / Süreç',
-  'Çözüm Kalitesi',
-  'Personel Yaklaşımı',
-] as const;
 
 export function ResponseDetailDrawer({
   open,
@@ -59,8 +52,8 @@ export function ResponseDetailDrawer({
               </dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Tavsiye</dt>
-              <dd className="text-slate-800">{response.q6Recommend ? 'Evet' : 'Hayır'}</dd>
+              <dt className="text-slate-500">{SURVEY_Q6_LABEL}</dt>
+              <dd className="text-slate-800">{response.q6Recommend ? 'Memnunum' : 'Memnun Değilim'}</dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-slate-500">NPS</dt>
@@ -71,28 +64,43 @@ export function ResponseDetailDrawer({
           </dl>
 
           <ul className="space-y-2">
-            {[
-              { label: QUESTION_LABELS[0], value: response.q1Rating },
-              { label: QUESTION_LABELS[1], value: response.q2Rating },
-              { label: QUESTION_LABELS[2], value: response.q3Rating },
-              { label: QUESTION_LABELS[3], value: response.q4Rating },
-              { label: QUESTION_LABELS[4], value: response.q5Rating },
-            ].map((item) => (
+            {surveyStarQuestionsForCampaign(campaign).map((q) => {
+              const value =
+                q.key === 'q1'
+                  ? response.q1Rating
+                  : q.key === 'q2'
+                    ? response.q2Rating
+                    : q.key === 'q3'
+                      ? response.q3Rating
+                      : q.key === 'q4'
+                        ? response.q4Rating
+                        : response.q5Rating;
+              return (
               <li
-                key={item.label}
+                key={q.key}
                 className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2"
               >
-                <span className="text-slate-700">{item.label}</span>
-                <span className="font-semibold text-slate-900">{item.value} / 5</span>
+                <span className="text-slate-700">{q.label}</span>
+                <span className="font-semibold text-slate-900">{value} / 5</span>
               </li>
-            ))}
+              );
+            })}
           </ul>
 
           {response.q7Comment?.trim() ? (
             <div>
-              <p className="mb-1 text-xs font-medium text-slate-500">Yorum</p>
+              <p className="mb-1 text-xs font-medium text-slate-500">{SURVEY_Q7_LABEL}</p>
               <p className="rounded-lg border border-slate-100 bg-white px-3 py-2 text-slate-700 whitespace-pre-wrap">
                 {response.q7Comment}
+              </p>
+            </div>
+          ) : null}
+
+          {campaign.ownerExplanation?.trim() ? (
+            <div>
+              <p className="mb-1 text-xs font-medium text-slate-500">Dosya sorumlusu açıklaması</p>
+              <p className="rounded-lg border border-slate-100 bg-white px-3 py-2 text-slate-700 whitespace-pre-wrap">
+                {campaign.ownerExplanation}
               </p>
             </div>
           ) : null}

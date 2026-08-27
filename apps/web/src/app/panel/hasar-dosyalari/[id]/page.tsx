@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   repairReportStatusBadge,
   repairReportStatusLabel,
@@ -12,25 +13,31 @@ import {
 import { FinansRaporOzeti } from './_components/FinansRaporOzeti';
 import { FinansTab } from './_components/tabs/FinansTab';
 import { OnarimRaporuTab } from './_components/tabs/OnarimRaporuTab';
+import { RaporlarTespitBlok } from './_components/tabs/RaporlarTespitBlok';
 import { EvraklarTab } from './_components/tabs/EvraklarTab';
 import { IletisimGunluguPanel } from './_components/tabs/IletisimGunluguPanel';
 import { TakipTab } from './_components/tabs/TakipTab';
 import { OperasyonPlanlayiciPanel } from '@/components/hasar-operasyon-planlayicisi/OperasyonPlanlayiciPanel';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
-import { DosyaBilgileriDetay, resolveDosyaEksperi, resolveIhbarTarihi } from './_components/DosyaBilgileriDetay';
+import { DosyaBilgileriDetay, resolveIhbarTarihi } from './_components/DosyaBilgileriDetay';
 import { FinansOzetErisimPanel } from './_components/FinansOzetErisimPanel';
 import {
   collectOfficeAssignees,
   FinVisConfig,
   resolveFinVisConfig,
 } from './_components/financial-visibility-config';
-import { resolveClaimIhbarKonusu, toTitleCaseTR, formatHasarAdresi } from '@/utils/text-helpers';
-import { SmartMeasureList } from '@/components/smart-measures/SmartMeasureList';
+import { toTitleCaseTR, resolveClaimIhbarKonusu } from '@/utils/text-helpers';
+import { claimListFileNo } from '@/utils/claim-list-column-fields';
+import { ClaimSurveyUnsentBanner } from '@/components/survey/ClaimSurveyUnsentBanner';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import { buildClaimAssignmentWhatsAppMessage } from '@/utils/claim-whatsapp-message';
 import { ClaimFileHeaderStatusCluster } from '@/components/damage-reports/ClaimFileHeaderStatusCluster';
+import { PanelPillTabs } from '@/components/panel/PanelPillTabs';
 import {
+  FIELD_STAFF_ASSIGNMENTS_HREF,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
   FIELD_STAFF_HIDDEN_CLAIM_TABS,
   fieldStaffAddress,
   fieldStaffDirectionsUrl,
@@ -38,6 +45,7 @@ import {
   fieldStaffInspectionStatus,
   fieldStaffInsuredName,
   fieldStaffPhone,
+  notifyFieldStaffClaimsChanged,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 import { FieldContactHistory } from '@/components/field-survey/FieldContactHistory';
@@ -52,10 +60,11 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import { resolveOperationStatusLabel, INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE } from '@sigorta/shared';
+import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, isExpertFirmCustomer, staffVisibleClaimStatusName } from '@sigorta/shared';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
-
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
   if (!roleCode) return null;
@@ -74,6 +83,39 @@ function getCurrentUserRole(): string | null {
     }
     return null;
   } catch { return null; }
+}
+
+function buildHasarHeaderBandParts(input: {
+  customer?: {
+    companyName?: string | null;
+    fullName?: string | null;
+    type?: string | null;
+    entityType?: string | null;
+    subType?: string | null;
+  } | null;
+  insuranceCompany?: { name?: string | null } | null;
+  fileNo: string;
+  konu?: string | null;
+}): string[] {
+  const parts: string[] = [];
+  const customerName = (input.customer?.companyName ?? input.customer?.fullName ?? '').trim();
+  const insuranceName = input.insuranceCompany?.name?.trim() ?? '';
+  const sameName = (a: string, b: string) =>
+    a.toLocaleLowerCase('tr') === b.toLocaleLowerCase('tr');
+
+  if (customerName && isExpertFirmCustomer(input.customer)) parts.push(customerName);
+  if (insuranceName && !parts.some((part) => sameName(part, insuranceName))) {
+    parts.push(insuranceName);
+  } else if (
+    customerName
+    && !isExpertFirmCustomer(input.customer)
+    && !parts.some((part) => sameName(part, customerName))
+  ) {
+    parts.push(customerName);
+  }
+  if (input.fileNo.trim()) parts.push(input.fileNo.trim());
+  if (input.konu?.trim() && input.konu !== '—') parts.push(input.konu.trim());
+  return parts;
 }
 
 function userHasPermission(code: string): boolean {
@@ -203,6 +245,7 @@ function FieldStaffVisitCard({
   onClaimUpdated?: (patch: Partial<any>) => void;
 }) {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [marking, setMarking] = useState(false);
   const [contactRefreshKey, setContactRefreshKey] = useState(0);
   const insuredLine = fieldStaffInsuredName(claim);
@@ -236,6 +279,11 @@ function FieldStaffVisitCard({
         statusChangedAt: nowIso,
       });
       showToast('success', 'Tespit Yapıldı Olarak İşaretlendi');
+      notifyFieldStaffClaimsChanged();
+      void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
+      void queryClient.invalidateQueries({ queryKey: ['office-inspection-reminder'] });
     } catch (err) {
       reportCaughtError(err, getApiErrorMessage(err, 'Tespit işaretlenemedi.'));
     } finally {
@@ -268,6 +316,11 @@ function FieldStaffVisitCard({
         closedAt: res.data?.data?.closedAt ?? new Date().toISOString(),
       });
       showToast('success', 'Dosya Kapatıldı');
+      notifyFieldStaffClaimsChanged();
+      void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
+      void queryClient.invalidateQueries({ queryKey: ['office-inspection-reminder'] });
     } catch (err) {
       reportCaughtError(
         err,
@@ -295,7 +348,7 @@ function FieldStaffVisitCard({
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold tracking-wide text-brand-700">Saha Tespit</p>
             <h2 className="mt-0.5 break-all font-mono text-lg font-bold leading-snug text-slate-950">
-              {claim.fileNo ?? '—'}
+              {claimListFileNo(claim)}
             </h2>
           </div>
           <span
@@ -373,6 +426,12 @@ function FieldStaffVisitCard({
             <p className="rounded-xl border border-status-success/30 bg-status-success/10 px-3.5 py-2.5 text-center text-sm font-semibold text-status-success">
               Tespit Tamamlandı
             </p>
+            <Link
+              href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}
+              className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+            </Link>
             {!claim?.currentStatus?.isClosedState && !claim?.closedAt ? (
               <button
                 type="button"
@@ -398,7 +457,6 @@ function DosyaSayfaUstu({
   onBack,
   reportEditHref,
   onClaimUpdated,
-  focusSigortali = false,
   openEdit = false,
   isFieldStaff = false,
 }: {
@@ -410,14 +468,8 @@ function DosyaSayfaUstu({
   openEdit?: boolean;
   isFieldStaff?: boolean;
 }) {
-  const ihbarChip = resolveClaimIhbarKonusu(claim);
-  const insuredLine = fieldStaffInsuredName(claim);
-  const insuredPhone = fieldStaffPhone(claim);
   const latestReport = claim.latestRepairReport;
-  const dosyaEksperi = resolveDosyaEksperi(claim, null);
-  const sigortaSirketi = claim.insuranceCompany?.name?.trim();
 
-  // Saha: yalnız sigortalı · iletişim · adres · tespit durumu — sekme yok, ziyaret kartı
   if (isFieldStaff) {
     return (
       <FieldStaffVisitCard
@@ -428,59 +480,27 @@ function DosyaSayfaUstu({
     );
   }
 
+  const headerBand = buildHasarHeaderBandParts({
+    customer: claim.customer,
+    insuranceCompany: claim.insuranceCompany,
+    fileNo: claimListFileNo(claim),
+    konu: resolveClaimIhbarKonusu(claim),
+  }).join(' - ');
   return (
     <div className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-4 sm:gap-y-2">
-        <button type="button" onClick={onBack} className="mt-0.5 shrink-0 text-sm text-slate-400 hover:text-slate-700">
+      <div className="flex items-center px-4 pt-2.5">
+        <button type="button" onClick={onBack} className="shrink-0 text-sm text-slate-400 hover:text-slate-700">
           ← Geri
         </button>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h2 className="break-all text-lg font-bold leading-snug text-slate-900">{claim.fileNo}</h2>
-            {sigortaSirketi && (
-              <span className="text-xs text-slate-500">
-                Sigorta Şirketi: <span className="font-semibold text-slate-700">{sigortaSirketi}</span>
-              </span>
-            )}
-            <span className="text-xs text-slate-500">
-              Eksper: <span className={`font-semibold ${dosyaEksperi === 'Atanmamış' ? 'text-amber-700' : 'text-slate-700'}`}>{dosyaEksperi}</span>
-            </span>
-            {(claim.operationStatusLabel || claim.currentStatus?.code || claim.currentStatus?.name) && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                <span className="w-2 h-2 rounded-full" style={{ background: claim.currentStatus?.color ?? '#6B7280' }} />
-                {claim.operationStatusLabel
-                  ?? resolveOperationStatusLabel({
-                    claimStatusCode: claim.currentStatus?.code,
-                    reportStatus: claim.newestRepairReportStatus ?? latestReport?.status,
-                    approval72hExceeded: Boolean(claim.approval72hExceeded),
-                  })}
-              </span>
-            )}
-          </div>
-          {insuredLine !== '—' && (
-            <p className="mt-1 text-sm font-medium text-slate-700">
-              <span className="block sm:inline">{insuredLine}</span>
-              {insuredPhone && (
-                <>
-                  <span className="mx-1.5 hidden text-slate-300 sm:inline">·</span>
-                  <a href={`tel:${insuredPhone.replace(/\s/g, '')}`} className="mt-0.5 block tabular-nums text-slate-600 hover:text-brand-700 hover:underline sm:mt-0 sm:inline">
-                    {insuredPhone}
-                  </a>
-                </>
-              )}
-            </p>
-          )}
-          {insuredLine === '—' && insuredPhone && (
-            <p className="mt-1 text-sm font-medium text-slate-700">
-              <a href={`tel:${insuredPhone.replace(/\s/g, '')}`} className="tabular-nums text-slate-600 hover:text-brand-700 hover:underline">
-                {insuredPhone}
-              </a>
-            </p>
-          )}
-          {ihbarChip !== '—' && <p className="mt-0.5 text-xs text-slate-500">{ihbarChip}</p>}
-        </div>
-        <div className="w-full min-w-0 sm:ml-auto sm:w-auto sm:max-w-[min(100%,16rem)]">
+      </div>
+
+      <div className="mx-4 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-blue-100/80 bg-blue-50/60 px-3 py-2">
+        <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-blue-900">
+          {headerBand}
+        </p>
+        <div className="w-full min-w-0 sm:w-auto sm:max-w-[min(100%,16rem)] sm:ml-auto">
           <ClaimFileHeaderStatusCluster
+            showTitle={false}
             statusBadge={
               latestReport ? (
                 <span className={`inline-flex shrink-0 items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${repairReportStatusBadge(latestReport.status)}`}>
@@ -504,49 +524,10 @@ function DosyaSayfaUstu({
         </div>
       </div>
 
-      {claim.customer && (
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-blue-100/80 bg-blue-50/60 px-4 py-2.5">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-xs font-bold text-white">
-              {(claim.customer.fullName ?? claim.customer.companyName ?? '?').charAt(0).toUpperCase()}
-            </span>
-            <div className="min-w-0">
-              <p className="mb-0.5 text-[10px] leading-none text-blue-500">Müşteri</p>
-              {claim.customer.id ? (
-                <Link href={`/panel/musteriler/${claim.customer.id}`} className="block truncate text-sm font-semibold text-blue-900 hover:underline">
-                  {claim.customer.fullName ?? claim.customer.companyName ?? '—'}
-                </Link>
-              ) : (
-                <p className="truncate text-sm font-semibold text-blue-900">{claim.customer.fullName ?? claim.customer.companyName ?? '—'}</p>
-              )}
-            </div>
-          </div>
-          {claim.customer.phone && (
-            <div>
-              <p className="mb-0.5 text-[10px] leading-none text-blue-500">Telefon</p>
-              <a href={`tel:${claim.customer.phone}`} className="text-sm font-medium text-blue-800 hover:underline">{claim.customer.phone}</a>
-            </div>
-          )}
-          {claim.customer.email && (
-            <div className="min-w-0">
-              <p className="mb-0.5 text-[10px] leading-none text-blue-500">E-Posta</p>
-              <a href={`mailto:${claim.customer.email}`} className="block truncate text-sm font-medium text-blue-800 hover:underline">{claim.customer.email}</a>
-            </div>
-          )}
-        </div>
-      )}
-
-      {claim.propertyAddress && (
-        <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-2 text-xs text-slate-600">
-          <span className="shrink-0 text-slate-400">Hasar Adresi</span>
-          <span className="font-medium">{formatHasarAdresi(claim.propertyAddress)}</span>
-        </div>
-      )}
-
       <DosyaBilgileriDetay
         claim={claim}
         onClaimUpdated={onClaimUpdated}
-        initialOpen={focusSigortali || openEdit || !!claim.latestRepairReport?.id}
+        initialOpen={openEdit}
         initialEditOpen={openEdit}
         repairReportId={claim.latestRepairReport?.id}
       />
@@ -1557,7 +1538,7 @@ function GenelTab({
                 <div>
                   <span className="text-slate-500">{new Date(h.changedAt).toLocaleString('tr-TR')}</span>
                   {' · '}
-                  <span className="font-medium">{h.fromStatus?.name ?? '—'} → {h.toStatus?.name}</span>
+                  <span className="font-medium">{staffVisibleClaimStatusName(h.fromStatus?.code, h.fromStatus?.name)} → {staffVisibleClaimStatusName(h.toStatus?.code, h.toStatus?.name)}</span>
                   {' · '}
                   <span className="text-slate-500">{h.changedByUser?.firstName} {h.changedByUser?.lastName}</span>
                   {h.note && <p className="text-slate-400 text-xs mt-0.5">{h.note}</p>}
@@ -1582,9 +1563,10 @@ export default function ClaimFileDetailPage() {
   const aksiyonParam = searchParams.get('aksiyon');
   const grupParam = searchParams.get('grup');
   const altParam = searchParams.get('alt');
+  const modeParam = searchParams.get('mode');
   /** Operasyon → Onay Talep Et (72s): doğrudan raporlar grubuna */
   const initialGroup: GroupTab =
-    aksiyonParam === 'onay-talep'
+    aksiyonParam === 'onay-talep' || modeParam === 'edit'
       ? 'raporlar'
       : openEdit || focusSigortali
         ? 'genel-bilgiler'
@@ -1628,14 +1610,14 @@ export default function ClaimFileDetailPage() {
   }, [isFieldStaff, activeGroup]);
 
   useEffect(() => {
-    if (!isFieldStaff || loading || !claim) return;
+    if (loading || !claim) return;
     if (sahaSection !== 'foto' && sahaSection !== 'not') return;
     const targetId = sahaSection === 'not' ? 'saha-not' : 'saha-foto';
     const t = window.setTimeout(() => {
       document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 120);
     return () => window.clearTimeout(t);
-  }, [isFieldStaff, loading, claim, sahaSection]);
+  }, [loading, claim, sahaSection]);
 
   useEffect(() => {
     if (!id) return;
@@ -1672,6 +1654,10 @@ export default function ClaimFileDetailPage() {
       <DosyaSayfaUstu
         claim={claim}
         onBack={() => {
+          if (isFieldStaff) {
+            router.push(FIELD_STAFF_ASSIGNMENTS_HREF);
+            return;
+          }
           if (typeof window !== 'undefined' && window.history.length > 1) {
             router.back();
           } else {
@@ -1685,9 +1671,28 @@ export default function ClaimFileDetailPage() {
         isFieldStaff={isFieldStaff}
       />
 
+      {!isFieldStaff && (
+        <div className="mb-4">
+          <OpsFirstRunNotice
+            noticeId={OPS_NOTICE.hasarDosyaSonDegisiklik.id}
+            title={OPS_NOTICE.hasarDosyaSonDegisiklik.title}
+            body={OPS_NOTICE.hasarDosyaSonDegisiklik.body}
+            testId="hasar-dosya-ilk-kullanim-seridi"
+          />
+        </div>
+      )}
+
+      {!isFieldStaff && (
+        <ClaimSurveyUnsentBanner
+          claimFileId={claim.id}
+          assignedOfficeUserId={claim.assignedOfficeUserId ?? claim.assignedOfficeUser?.id}
+          fileClosed={Boolean(claim.currentStatus?.isClosedState || claim.closedAt)}
+        />
+      )}
+
       {/* Saha: ziyaret + foto + not — ofis evrak yaşam döngüsü yok */}
       {isFieldStaff && (
-        <div className="space-y-4">
+        <div className="grid gap-4 lg:grid-cols-2">
           <section
             id="saha-foto"
             className="scroll-mt-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5"
@@ -1713,45 +1718,61 @@ export default function ClaimFileDetailPage() {
 
       {!isFieldStaff && (
         <>
-          {canViewFinancials && activeGroup !== 'finans' && (
+          {(() => {
+            const inspection = fieldStaffInspectionStatus(claim);
+            return (
+              <section
+                className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white px-4 py-3 shadow-sm ring-1 ring-slate-900/[0.03] sm:px-5"
+                data-testid="ofis-saha-tespit"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <h3 className="text-sm font-semibold text-slate-950">Saha Tespit</h3>
+                    <span
+                      className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
+                    >
+                      {inspection.label}
+                    </span>
+                    {inspection.done ? (
+                      <p className="text-[11px] text-slate-500">Tespit: {inspection.doneAtLabel}</p>
+                    ) : (
+                      <p className="text-[11px] text-slate-500">Saha tespiti bekleniyor</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveGroup('raporlar')}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Raporlar’da tespit resmi ve not
+                  </button>
+                </div>
+              </section>
+            );
+          })()}
+
+          {canViewFinancials && (
             <div className="mb-4">
               <FinansRaporOzeti
                 claim={claim}
                 compact
-                onOpenFinansTab={() => setActiveGroup('finans')}
+                onOpenFinansTab={activeGroup === 'finans' ? undefined : () => setActiveGroup('finans')}
                 reportEditHref={reportEditHref}
               />
             </div>
           )}
 
-          <div className="sticky top-0 z-20 -mx-1 px-1 py-2 mb-4 bg-[#f8fafc]/95 backdrop-blur-sm">
-            <div className="flex w-fit flex-wrap gap-1 rounded-xl bg-slate-100 p-1 shadow-sm">
-              {GROUP_TABS.filter((tab) => {
+          <div className="sticky top-0 z-20 -mx-1 mb-4 bg-[#f8fafc]/95 px-1 backdrop-blur-sm">
+            <PanelPillTabs
+              tabs={GROUP_TABS.filter((tab) => {
                 if (tab.id === 'finans' && !canViewFinancials) return false;
                 return true;
-              }).map((tab) => {
-                const Icon = tab.Icon;
-                const active = activeGroup === tab.id;
-                return (
-                  <button
-                    type="button"
-                    key={tab.id}
-                    onClick={() => setActiveGroup(tab.id)}
-                    className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                      active
-                        ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    <Icon
-                      className={`h-3.5 w-3.5 ${active ? 'text-slate-700' : 'text-slate-400'}`}
-                      strokeWidth={1.75}
-                    />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
+              }).map((tab) => ({ id: tab.id, label: tab.label, icon: tab.Icon }))}
+              activeId={activeGroup}
+              onSelect={(tabId) => setActiveGroup(tabId as typeof activeGroup)}
+              testId="hasar-grup-sekmeler"
+              tabTestId={(tabId) => `hasar-grup-${tabId}`}
+            />
           </div>
 
           {activeGroup === 'genel-bilgiler' && (
@@ -1764,14 +1785,13 @@ export default function ClaimFileDetailPage() {
           )}
           {activeGroup === 'raporlar' && (
             <div className="space-y-3">
-              {/* SMART_TAKEOFF_UI_OFF: Metraj Koşumu paneli ürün kararıyla gizlendi (hata riski). */}
-              <SmartMeasureList claimFileId={id!} showEmpty />
+              <RaporlarTespitBlok claimId={id!} />
               <OnarimRaporuTab claimId={id!} />
             </div>
           )}
           {activeGroup === 'evraklar' && <EvraklarTab claimId={id!} claim={claim} />}
           {activeGroup === 'finans' && canViewFinancials && (
-            <FinansTab claim={claim} claimId={id!} reportEditHref={reportEditHref} />
+            <FinansTab claim={claim} claimId={id!} />
           )}
           {activeGroup === 'operasyon' && (
             <div className="space-y-3">
@@ -1811,21 +1831,21 @@ export default function ClaimFileDetailPage() {
                 </div>
               </div>
               {opsView === 'planlayici' ? (
-                <OperasyonPlanlayiciPanel
-                  claimId={id!}
-                  claimFile={claim}
-                  canEdit={canUserAssignClaim(userRoleCode, isFieldStaff) || userHasPermission('claim_file.update')}
-                  onGoToReports={() => {
-                    setActiveGroup('raporlar');
-                    router.replace(`/panel/hasar-dosyalari/${id}?grup=raporlar`, { scroll: false });
-                  }}
-                  onClaimUpdated={() => {
-                    axios
-                      .get(`${API}/claim-files/${id}`, { headers: authHeader() })
-                      .then((r) => setClaim(r.data.data))
-                      .catch(() => undefined);
-                  }}
-                />
+                  <OperasyonPlanlayiciPanel
+                    claimId={id!}
+                    claimFile={claim}
+                    canEdit={canUserAssignClaim(userRoleCode, isFieldStaff) || userHasPermission('claim_file.update')}
+                    onGoToReports={() => {
+                      setActiveGroup('raporlar');
+                      router.replace(`/panel/hasar-dosyalari/${id}?grup=raporlar`, { scroll: false });
+                    }}
+                    onClaimUpdated={() => {
+                      axios
+                        .get(`${API}/claim-files/${id}`, { headers: authHeader() })
+                        .then((r) => setClaim(r.data.data))
+                        .catch(() => undefined);
+                    }}
+                  />
               ) : (
                 <TakipTab claimId={id!} claim={claim} initialSubTab={initialOpsSub} />
               )}

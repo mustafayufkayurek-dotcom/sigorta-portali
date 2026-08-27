@@ -17,6 +17,7 @@ import {
   allocateExternalColWidths,
   chunkPhotoRows,
 } from './report-pdf-fields';
+import { isRepairReportPdfDraft, repairItemSalesTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
 
 interface ReportItem {
   workGroup?: { name: string; id?: string } | null;
@@ -123,7 +124,11 @@ interface ReportData {
 }
 
 function itemSalesTotal(item: ReportItem): number {
-  return item.pricingType === 'lumpsum' ? (item.lumpSumPrice ?? 0) : item.salesTotal;
+  return repairItemSalesTotal(item);
+}
+
+function itemSupplierTotal(item: ReportItem): number {
+  return repairItemResolvedSupplierTotal(item);
 }
 
 function approvalActionLabel(action: string): string {
@@ -291,8 +296,14 @@ export class ReportPdfService {
         ...img,
         dataUrl: img.dataUrl || reportImageToDataUrl(img.storageKey, img.mimeType),
       }));
+      const isDraft = isRepairReportPdfDraft(report.status, report.approvalHistory);
+      const usageMark = isDraft
+        ? 'Taslak'
+        : viewType === 'internal'
+          ? 'İç Kullanım'
+          : 'Dış Kullanım';
       const html = this.buildHtml({ ...report, images }, viewType);
-      return await this.htmlToPdf(html);
+      return await this.htmlToPdf(html, usageMark);
     } catch (error) {
       this.logger.error(
         `PDF motor hatası: ${(error as Error)?.message ?? error}`,
@@ -356,7 +367,7 @@ export class ReportPdfService {
     return undefined;
   }
 
-  private async htmlToPdf(html: string): Promise<Buffer> {
+  private async htmlToPdf(html: string, usageMark: string): Promise<Buffer> {
     const executablePath = this.resolveChromeExecutable();
     if (!executablePath) {
       throw new Error(
@@ -378,7 +389,8 @@ export class ReportPdfService {
         displayHeaderFooter: true,
         headerTemplate: '<div></div>',
         footerTemplate: `
-          <div style="width:100%;font-size:8px;color:#9ca3af;padding:0 15mm;display:flex;justify-content:flex-end;align-items:center;font-family:Arial,sans-serif;">
+          <div style="width:100%;font-size:8px;color:#64748b;padding:0 12mm;display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif;">
+            <span>${escHtml(usageMark)}</span>
             <span>Sayfa <span class="pageNumber"></span> / <span class="totalPages"></span></span>
           </div>`,
       });
@@ -392,7 +404,7 @@ export class ReportPdfService {
     // Dynamic base URL — falls back to APP_BASE_URL then APP_URL
     const appUrl = resolveAppUrl(this.config);
 
-    const isDraft = report.status === 'draft' || !report.status;
+    const isDraft = isRepairReportPdfDraft(report.status, report.approvalHistory);
     const identity = mapRepairReportPdfIdentity(report);
     const dash = (v: string) => (v ? escHtml(v) : '—');
 
@@ -414,6 +426,10 @@ export class ReportPdfService {
 
     const subtotalColSpan = viewType === 'internal' ? 8 : 7;
     const allItems = report.items ?? [];
+    const computedSalesAmount = allItems.reduce((s, i) => s + itemSalesTotal(i), 0);
+    const computedSupplierCost = allItems.reduce((s, i) => s + itemSupplierTotal(i), 0);
+    const computedGrossProfit = computedSalesAmount - computedSupplierCost;
+    const computedGrossMarginPct = computedSalesAmount > 0 ? (computedGrossProfit / computedSalesAmount) * 100 : 0;
     const binaItems = allItems.filter((i) => (i.damageCategory ?? 'bina') === 'bina');
     const esyaItems = allItems.filter((i) => i.damageCategory === 'esya');
     const demirbasItems = allItems.filter((i) => i.damageCategory === 'demirbas');
@@ -452,7 +468,7 @@ export class ReportPdfService {
 
           if (viewType === 'internal') {
             const supplierUnitPrice = isLumpsum ? (item.lumpSumPrice ?? 0) : item.supplierUnitPrice;
-            const supplierTotal = isLumpsum ? (item.lumpSumPrice ?? 0) : item.supplierTotal;
+            const supplierTotal = itemSupplierTotal(item);
             const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
             const marginCls = marginPct < 10 ? 'margin-low' : marginPct < 20 ? 'margin-mid' : 'margin-ok';
             html += `
@@ -565,7 +581,7 @@ export class ReportPdfService {
   ${categoryTotalBands}
   <div class="repair-total-band repair-total-band-grand">
     <div class="repair-total-label">${PDF_GRAND_TOTAL_LABEL}</div>
-    <div class="repair-total-value">${fmtCurrency(report.totalSalesAmount)}</div>
+    <div class="repair-total-value">${fmtCurrency(computedSalesAmount)}</div>
   </div>
 </div>`;
 
@@ -699,50 +715,7 @@ export class ReportPdfService {
     line-height: 1.4;
   }
 
-  /* ── Watermark ── */
-  ${isDraft ? `
-  body::before {
-    content: "TASLAK";
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 110pt;
-    font-weight: 900;
-    color: rgba(59, 130, 246, 0.09);
-    z-index: 0;
-    pointer-events: none;
-    white-space: nowrap;
-    letter-spacing: 14px;
-  }` : viewType === 'internal' ? `
-  body::before {
-    content: "İÇ KULLANIM";
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 72pt;
-    font-weight: 900;
-    color: rgba(99, 102, 241, 0.06);
-    z-index: 0;
-    pointer-events: none;
-    white-space: nowrap;
-    letter-spacing: 10px;
-  }` : `
-  body::before {
-    content: "DIŞ KULLANIM";
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 72pt;
-    font-weight: 900;
-    color: rgba(16, 185, 129, 0.06);
-    z-index: 0;
-    pointer-events: none;
-    white-space: nowrap;
-    letter-spacing: 10px;
-  }`}
+  /* Kullanım işareti gövdede (fotoğraf üstünde) yok; başlık + sayfa altı. */
 
   /* ── Header ── */
   .report-header {
@@ -804,16 +777,26 @@ export class ReportPdfService {
     line-height: 1.25;
   }
 
-  .header-draft-badge {
+  .header-usage-badge {
     display: inline-block;
     margin-top: 4px;
-    background: #fef3c7;
     border-radius: 3px;
     padding: 1px 10px;
     font-size: 8pt;
     font-weight: 700;
+    letter-spacing: 0.6px;
+  }
+  .header-usage-draft {
+    background: #fef3c7;
     color: #b45309;
-    letter-spacing: 1px;
+  }
+  .header-usage-internal {
+    background: #eef2ff;
+    color: #4338ca;
+  }
+  .header-usage-external {
+    background: #ecfdf5;
+    color: #047857;
   }
 
   .header-date {
@@ -1544,7 +1527,11 @@ export class ReportPdfService {
   ${headerBrandHtml}
   <div class="header-title-block">
     <div class="header-title">Hasar Tespit Ve Onarım Raporu</div>
-    ${isDraft ? '<div class="header-draft-badge">Taslak</div>' : ''}
+    ${isDraft
+      ? '<div class="header-usage-badge header-usage-draft">Taslak</div>'
+      : viewType === 'internal'
+        ? '<div class="header-usage-badge header-usage-internal">İç Kullanım</div>'
+        : '<div class="header-usage-badge header-usage-external">Dış Kullanım</div>'}
     <div class="header-date"><span class="header-date-label">Tarih</span>${fmtDate(report.reportDate)}</div>
   </div>
   ${qrBlockHtml(qrMarkup)}
@@ -1622,13 +1609,13 @@ ${viewType === 'external' ? externalTotalsHtml : `
     <div class="total-label">${PDF_DEMIRBAS_TOTAL_LABEL}</div>
     <div class="total-amount">${fmtCurrency(demirbasTotal)}</div>` : ''}
     <div class="grand-total-label">${PDF_GRAND_TOTAL_LABEL}</div>
-    <div class="grand-total-amount">${fmtCurrency(report.totalSalesAmount)}</div>
+    <div class="grand-total-amount">${fmtCurrency(computedSalesAmount)}</div>
     <div class="total-label" style="margin-top:8px;color:#64748b;">Toplam Maliyet</div>
-    <div class="total-amount" style="margin-top:8px;color:#64748b;">${fmtCurrency(report.totalSupplierCost)}</div>
+    <div class="total-amount" style="margin-top:8px;color:#64748b;">${fmtCurrency(computedSupplierCost)}</div>
     <div class="total-label" style="color:#64748b;">Brüt Kâr</div>
-    <div class="total-amount" style="color:${report.grossProfit >= 0 ? '#16a34a' : '#dc2626'};">${fmtCurrency(report.grossProfit)}</div>
+    <div class="total-amount" style="color:${computedGrossProfit >= 0 ? '#16a34a' : '#dc2626'};">${fmtCurrency(computedGrossProfit)}</div>
     <div class="total-label" style="color:#64748b;">Marj</div>
-    <div class="total-amount" style="color:${report.grossMarginPct >= 20 ? '#16a34a' : report.grossMarginPct >= 10 ? '#d97706' : '#dc2626'};">%${report.grossMarginPct.toFixed(1)}</div>
+    <div class="total-amount" style="color:${computedGrossMarginPct >= 20 ? '#16a34a' : computedGrossMarginPct >= 10 ? '#d97706' : '#dc2626'};">%${computedGrossMarginPct.toFixed(1)}</div>
   </div>
 </div>`}
 
@@ -1646,8 +1633,8 @@ ${report.reportType === 'multi' && (report.damageTypes?.length ?? 0) > 0 ? `
   <tbody>
     ${(report.damageTypes ?? []).map((dt) => {
       const dtItems = (report.items ?? []).filter((i) => i.damageType?.damageTypeName === dt.damageTypeName);
-      const dtSales = dtItems.reduce((s, i) => s + i.salesTotal, 0);
-      const dtSupplier = dtItems.reduce((s, i) => s + i.supplierTotal, 0);
+      const dtSales = dtItems.reduce((s, i) => s + itemSalesTotal(i), 0);
+      const dtSupplier = dtItems.reduce((s, i) => s + itemSupplierTotal(i), 0);
       const dtMargin = dtSales > 0 ? ((dtSales - dtSupplier) / dtSales) * 100 : 0;
       const mCls = dtMargin >= 20 ? 'margin-ok' : dtMargin >= 10 ? 'margin-mid' : 'margin-low';
       return `<tr>
@@ -1689,7 +1676,7 @@ ${photoGalleryHtml}
 
 <!-- FOOTER -->
 <div class="report-footer">
-  <div class="footer-generated">Pdf Oluşturma: ${escHtml(fmtDateTime(generatedAt))}</div>
+  <div class="footer-generated">Pdf Oluşturma: ${escHtml(fmtDateTime(generatedAt))}<br/>${escHtml(isDraft ? 'Taslak' : viewType === 'internal' ? 'İç Kullanım' : 'Dış Kullanım')}</div>
   ${qrBlockHtml(qrMarkup)}
   <div class="footer-affiliation">Meridyen Assistance Safran Birleşik Hizmetler Yan Kuruluşudur</div>
 </div>

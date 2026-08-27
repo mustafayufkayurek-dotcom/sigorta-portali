@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { WhatsAppIcon } from '@/components/ui/PhoneContactActions';
+import { openWhatsAppChat } from '@/utils/date-helpers';
 import {
   FileDocument,
   FileDocumentKind,
@@ -37,30 +39,44 @@ interface Props {
   entityType: 'claim_file' | 'emergency_case';
   entityId: string;
   documentKind: FileDocumentKind;
+  /** Sigortalı / müşteri telefonu — kutu boş gelmez */
+  defaultPhone?: string | null;
   onConditionsMet?: () => void;
   readonly?: boolean;
 }
 
+function insuredPhoneOf(doc: FileDocument, fallback?: string | null) {
+  return (doc.whatsappPhone || fallback || doc.suggestedPhone || '').trim();
+}
+
 function WhatsAppModal({
   doc,
+  defaultPhone,
   onClose,
   onSent,
 }: {
   doc: FileDocument;
+  defaultPhone?: string | null;
   onClose: () => void;
   onSent: () => void;
 }) {
-  const [phone, setPhone] = useState(doc.whatsappPhone ?? '');
+  const [phone, setPhone] = useState(() => insuredPhoneOf(doc, defaultPhone));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [waUrl, setWaUrl] = useState('');
+  const [sentMessage, setSentMessage] = useState('');
 
   const handleSend = async () => {
-    if (!phone.trim()) return;
+    if (!phone.trim()) {
+      setError('Sigortalı telefon numarası yok. Dosya bilgilerinden kontrol edin.');
+      return;
+    }
     setLoading(true);
+    setError('');
     try {
       const res = await sendWhatsapp(doc.id, phone.trim());
-      setWaUrl(res.waUrl);
+      const msg = res.message ?? '';
+      setSentMessage(msg);
+      openWhatsAppChat(res.phone || phone.trim(), msg);
       onSent();
     } catch (e: any) {
       setError(e.message ?? 'WhatsApp gönderimi başarısız');
@@ -79,22 +95,21 @@ function WhatsAppModal({
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          placeholder="+90 5XX XXX XX XX"
+          placeholder="Sigortalı telefonu"
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
           autoFocus
         />
         {error && <p className="text-status-danger text-xs mb-2">{error}</p>}
-        {waUrl ? (
+        {sentMessage ? (
           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-            <p className="text-green-700 text-sm font-medium mb-2">Link oluşturuldu!</p>
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <p className="text-green-700 text-sm font-medium mb-2">WhatsApp açıldı. Mesaj gitmediyse tekrar basın.</p>
+            <button
+              type="button"
+              onClick={() => openWhatsAppChat(phone.trim(), sentMessage)}
               className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >
               WhatsApp&apos;ta Aç
-            </a>
+            </button>
           </div>
         ) : null}
         <div className="flex gap-3">
@@ -104,13 +119,13 @@ function WhatsAppModal({
           >
             Kapat
           </button>
-          {!waUrl && (
+          {!sentMessage && (
             <button
               onClick={handleSend}
               disabled={!phone.trim() || loading}
               className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
             >
-              {loading ? 'Gönderiliyor…' : 'Link Oluştur'}
+              {loading ? 'Gönderiliyor…' : "WhatsApp'ta Gönder"}
             </button>
           )}
         </div>
@@ -123,6 +138,7 @@ export default function FileDocumentPanel({
   entityType,
   entityId,
   documentKind,
+  defaultPhone,
   onConditionsMet,
   readonly = false,
 }: Props) {
@@ -167,7 +183,12 @@ export default function FileDocumentPanel({
     }
   };
 
-  const kindLabel = documentKind === 'muvafakatname' ? 'Mutabakat / Muvafakat Formu' : 'Matbu Evrak';
+  const kindLabel =
+    documentKind === 'muvafakatname'
+      ? 'Mutabakat / Muvafakat Formu'
+      : entityType === 'emergency_case'
+        ? 'Servis Onay Formu'
+        : 'Matbu Evrak';
   const previewToken = activeDoc?.publicToken;
 
   if (loading) {
@@ -229,6 +250,7 @@ export default function FileDocumentPanel({
                   onClick={() => setWaModal(activeDoc)}
                   className="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
                 >
+                  <WhatsAppIcon className="h-3.5 w-3.5" />
                   WhatsApp
                 </button>
               )}
@@ -241,7 +263,7 @@ export default function FileDocumentPanel({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    Önizle
+                    Müşteri nasıl görür
                   </a>
                   <a
                     href={`/evrak/${previewToken}?print=1`}
@@ -261,8 +283,9 @@ export default function FileDocumentPanel({
       {waModal && (
         <WhatsAppModal
           doc={waModal}
+          defaultPhone={defaultPhone}
           onClose={() => setWaModal(null)}
-          onSent={() => { setWaModal(null); load(); }}
+          onSent={() => { load(); }}
         />
       )}
     </div>

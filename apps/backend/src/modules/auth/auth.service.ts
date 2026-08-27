@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { normalizeEmailAddress } from '@/common/utils/normalize-email';
 import { buildAppPath } from '@/common/utils/app-url';
-import { AuthTokens, RegisterDto } from '@sigorta/shared';
+import { AuthTokens, RegisterDto, mergeAcilFileOwnerPermissions } from '@sigorta/shared';
 import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 
@@ -408,6 +408,10 @@ export class AuthService {
     }
 
     const operationalAccessGrants = await this.operationalAccessGrants.getGrantSummaryForUser(userId);
+    const hasAcilFunctionDelegation = await this.operationalAccessGrants.hasFunctionDelegation(
+      userId,
+      'acil_yardim',
+    );
 
     return {
       id: user.id,
@@ -423,7 +427,10 @@ export class AuthService {
         name: user.role.name,
       },
       branch: user.branch,
-      permissions: user.role.rolePermissions.map((rp) => rp.permission.code),
+      permissions: mergeAcilFileOwnerPermissions(
+        user.role.rolePermissions.map((rp) => rp.permission.code),
+        hasAcilFunctionDelegation,
+      ),
       insuranceCompanyScopes: user.userInsuranceCompanyScopes.map((s) => ({
         id: s.insuranceCompany.id,
         code: s.insuranceCompany.code,

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { useToast } from '@/contexts/ToastContext';
+import { sendPlannerApprovalMail } from '@/components/hasar-operasyon-planlayicisi/planner-send-approval-mail';
 
 export type OperationSendEmailTarget = {
   claimId: string;
@@ -26,13 +27,12 @@ type Props = {
 };
 
 /**
- * Operasyon → E-posta Gönder: PDF üret → ekle → gönder.
- * PDF yok / oluşmazsa FAIL (toast). SMTP yoksa PARTIAL (pdfAttached kanıtı).
+ * Operasyon / Hasar listesi → E-posta: dış onay (PDF + onay linki).
+ * Rapor onay bekliyor durumuna geçer. Taslak PDF yedek yolu yok.
  */
 export function OperationSendEmailModal({ target, onClose }: Props) {
   const { showToast } = useToast();
   const [to, setTo] = useState('');
-  const [viewType, setViewType] = useState<'external' | 'internal'>('external');
   const [subject, setSubject] = useState('');
   const [templateId, setTemplateId] = useState('');
   const [templates, setTemplates] = useState<EmailTemplateOpt[]>([]);
@@ -42,7 +42,6 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
     if (!target) return;
     setTo(target.defaultTo ?? '');
     setSubject(`Hasar Onarım Raporu — ${target.fileNo}`);
-    setViewType('external');
     setTemplateId('');
   }, [target]);
 
@@ -69,7 +68,7 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
 
   const noteHref = `/panel/hasar-dosyalari/${target.claimId}?grup=operasyon&alt=iletisim`;
   const pdfAttachLabel = target.reportId
-    ? `Onarım Raporu PDF — ${target.fileNo}`
+    ? `Onay Talebi PDF — ${target.fileNo}`
     : 'PDF eki yok (rapor bulunamadı)';
 
   const applyTemplate = (id: string) => {
@@ -93,37 +92,19 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
     }
     setBusy(true);
     try {
-      const res = await axios.post(
-        `${API}/repair-reports/${target.reportId}/send-email`,
-        { to: recipient, subject: subject.trim() || undefined, viewType },
-        { headers: authHeader() },
-      );
-      const data = res.data?.data ?? res.data;
-      const pdfAttached = Boolean(data?.pdfAttached);
-      const mode = data?.mode as string | undefined;
-      const message = data?.message ?? '';
-
-      if (!pdfAttached) {
-        showToast('error', 'PDF eki oluşmadan gönderim engellendi.');
-        return;
-      }
-
-      if (data?.success) {
-        showToast('success', `E-posta PDF eki ile gönderildi → ${recipient}`);
+      const result = await sendPlannerApprovalMail({
+        reportId: target.reportId,
+        to: recipient,
+        subject: subject.trim() || `Onay Talebi: ${target.fileNo}`,
+        approverType: 'expert',
+        approverName: target.fileNo,
+      });
+      if (result.ok) {
+        showToast('success', result.message);
         onClose();
         return;
       }
-
-      if (mode === 'staging-no-smtp') {
-        showToast(
-          'warning',
-          `PARTIAL: PDF eki hazır (${data?.pdfBytes ?? '?'} B) · SMTP yok · Alıcı: ${recipient}`,
-        );
-        onClose();
-        return;
-      }
-
-      showToast('error', message || 'E-posta gönderilemedi');
+      showToast('error', result.message);
     } catch (e: unknown) {
       const msg = axios.isAxiosError(e)
         ? e.response?.data?.message ?? e.message
@@ -144,7 +125,7 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
         </h3>
         <p className="mt-1 text-xs text-slate-500">
           Dosya <span className="font-mono font-semibold text-slate-700">{target.fileNo}</span>
-          {' · '}PDF oluşturulup eke eklenir (PDF’siz gönderim yok).
+          {' · '}Onay talebi gider; rapor onay bekliyor olur.
         </p>
 
         {!target.reportId && (
@@ -210,20 +191,6 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">PDF Görünümü</label>
-            <select
-              value={viewType}
-              onChange={(e) => setViewType(e.target.value as 'external' | 'internal')}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white"
-              disabled={busy}
-              data-testid="ops-email-pdf-view"
-            >
-              <option value="external">Müşteri PDF Görünümü</option>
-              <option value="internal">İç PDF Görünümü</option>
-            </select>
-          </div>
-
           <div className="flex items-center justify-between gap-2 pt-0.5">
             <span className="text-xs font-medium text-slate-600">Not</span>
             <Link
@@ -253,7 +220,7 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
             className="flex-1 rounded-xl bg-brand-600 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
             data-testid="ops-email-submit"
           >
-            {busy ? 'PDF + Gönderiliyor…' : 'PDF Oluştur ve Gönder'}
+            {busy ? 'Onaya Gönderiliyor…' : 'Onaya Gönder'}
           </button>
         </div>
       </div>

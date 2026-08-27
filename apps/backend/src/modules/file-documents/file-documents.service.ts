@@ -14,7 +14,7 @@ import {
 import { buildAppPath } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
-import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isAcilDigitalApprovalRequired } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -22,6 +22,8 @@ import {
 } from './dto/file-documents.dto';
 import { MUVAFAKATNAME_TEMPLATE } from './muvafakatname.template';
 import { escHtml, escHtmlRecord } from '@/common/utils/html-escape';
+import { StorageService } from '@/modules/storage/storage.service';
+import { toInsuredFacingMatbuHtml } from './matbu-insured-view';
 
 /** Müşteriye dönük matbu — iç fiyat / kâr etiketleri sızmaz */
 const INTERNAL_COST_DESC_RE =
@@ -62,7 +64,7 @@ const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>Hizmet Onay Formu — {{case_no}}</title>
+  <title>Servis Onay Formu — {{case_no}}</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 0; background: white; }
@@ -83,6 +85,7 @@ ${DOCUMENT_QR_STYLES}
     .tutar-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
     .tutar-box .label { font-size: 12px; color: #1e40af; font-weight: 600; }
     .tutar-box .value { font-size: 16px; font-weight: bold; color: #1e3a8a; }
+    .tutar-uyari { background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #92400e; line-height: 1.5; }
     .signature-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
     .sig-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 14px; }
     .sig-box h4 { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #374151; margin: 0 0 6px; }
@@ -98,17 +101,14 @@ ${DOCUMENT_QR_STYLES}
   <div class="doc-header-with-qr">
     <div class="doc-header-main">
       <div class="doc-header-logo">
-        <img src="{{logo_url}}" alt="Meridyen Assistance" />
-      </div>
-      <div class="doc-header-meta">
-        <strong>{{sirket_ad}}</strong>
+        <img src="{{logo_url}}" alt="Meridyen" />
       </div>
     </div>
     {{dijital_onay_qr}}
   </div>
 
-  <h1>Hizmet Onay Formu</h1>
-  <p class="form-subtitle">Meridyen Assistance — Acil Yardım Hizmetleri</p>
+  <h1>Servis Onay Formu</h1>
+  <p class="form-subtitle">Acil Yardım Hizmetleri</p>
 
   <div class="header-right">
     <strong>{{case_no}}</strong>
@@ -147,9 +147,8 @@ ${DOCUMENT_QR_STYLES}
   <!-- Onay Metni -->
   <div class="consent-text">
     Ben, aşağıda imzası bulunan <strong>{{musteri_ad}}</strong>, Meridyen Assistance tarafından yukarıda
-    belirtilen adreste gerçekleştirilen hizmetin eksiksiz ve kabul edilebilir kalitede tamamlandığını,
-    açıklanan toplam bedeli onayladığımı beyan ederim. Bu formun imzalanması ile söz konusu hizmet
-    bedelinin sigorta şirketine veya ilgili taraflara fatura edilmesine muvafakat etmiş sayılırım.
+    belirtilen adreste gerçekleştirilen hizmeti ve açıklanan toplam bedeli onayladığımı beyan ederim.
+    Dijital onay, bu dosya için hizmetin kabulü niteliğindedir.
   </div>
 
   <!-- İmza Alanları -->
@@ -181,6 +180,7 @@ export class FileDocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly storage: StorageService,
   ) {}
 
   private renderTemplate(template: string, placeholders: Record<string, string>): string {
@@ -383,29 +383,52 @@ export class FileDocumentsService {
     throw new BadRequestException('Geçersiz entityType');
   }
 
+  /** Dijital onay WhatsApp — dosyadaki sigortalı / müşteri telefonu */
+  async resolveInsuredPhone(entityType: string, entityId: string): Promise<string> {
+    if (entityType === 'claim_file') {
+      const cf = await this.prisma.claimFile.findUnique({
+        where: { id: entityId },
+        select: { insuredPhone: true, customer: { select: { phone: true } } },
+      });
+      return (cf?.insuredPhone || cf?.customer?.phone || '').trim();
+    }
+    if (entityType === 'emergency_case') {
+      const ec = await this.prisma.emergencyCase.findUnique({
+        where: { id: entityId },
+        select: { customerPhone: true },
+      });
+      return (ec?.customerPhone || '').trim();
+    }
+    return '';
+  }
+
   // ── Liste & Detay ─────────────────────────────────────────────────────────
 
   async findByEntity(entityType: string, entityId: string) {
-    return this.prisma.fileDocument.findMany({
-      where: { entityType, entityId },
-      select: {
-        id: true,
-        documentKind: true,
-        status: true,
-        publicToken: true,
-        publicTokenExpiresAt: true,
-        whatsappSentAt: true,
-        whatsappPhone: true,
-        viewedAt: true,
-        digitallyApprovedAt: true,
-        approvedFullName: true,
-        physicalUploadKey: true,
-        physicalUploadedAt: true,
-        createdAt: true,
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [docs, suggestedPhone] = await Promise.all([
+      this.prisma.fileDocument.findMany({
+        where: { entityType, entityId },
+        select: {
+          id: true,
+          documentKind: true,
+          status: true,
+          publicToken: true,
+          publicTokenExpiresAt: true,
+          whatsappSentAt: true,
+          whatsappPhone: true,
+          viewedAt: true,
+          digitallyApprovedAt: true,
+          approvedFullName: true,
+          physicalUploadKey: true,
+          physicalUploadedAt: true,
+          createdAt: true,
+          createdBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.resolveInsuredPhone(entityType, entityId),
+    ]);
+    return docs.map((d) => ({ ...d, suggestedPhone }));
   }
 
   async findOne(id: string) {
@@ -425,14 +448,23 @@ export class FileDocumentsService {
     const doc = await this.findOne(id);
     if (!doc.publicToken) throw new BadRequestException('Public token bulunamadı');
 
+    const phone =
+      (dto.phone ?? '').trim() ||
+      (await this.resolveInsuredPhone(doc.entityType, doc.entityId));
+    if (!phone) {
+      throw new BadRequestException('Sigortalı telefon numarası bulunamadı');
+    }
+
     const link = buildAppPath(this.config, `/evrak/${doc.publicToken}`);
 
     const kindLabel =
-      doc.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Matbu Evrak';
+      doc.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Servis Onay Formu';
 
     const message =
-      `Meridyen Assistance tarafından düzenlenen ${kindLabel} belgesini aşağıdaki linkten inceleyebilir ve onaylayabilirsiniz:\n\n${link}\n\nMeridyen Assistance`;
-    const waUrl = buildWhatsAppMeUrl(dto.phone, message);
+      doc.documentKind === 'matbu_evrak'
+        ? `Meridyen Assistance Servis Onay Formu. Yazıcı gerekmez. Aşağıdaki linki telefondan açıp Onayla’ya basın:\n\n${link}\n\nMeridyen Assistance`
+        : `Meridyen Assistance tarafından düzenlenen ${kindLabel} belgesini aşağıdaki linkten inceleyebilir ve onaylayabilirsiniz:\n\n${link}\n\nMeridyen Assistance`;
+    const waUrl = buildWhatsAppMeUrl(phone, message);
     if (!waUrl) {
       throw new BadRequestException('Geçerli bir WhatsApp telefon numarası giriniz');
     }
@@ -441,20 +473,20 @@ export class FileDocumentsService {
       where: { id },
       data: {
         whatsappSentAt: new Date(),
-        whatsappPhone: dto.phone,
+        whatsappPhone: phone,
         status: doc.status === 'draft' ? 'sent' : doc.status,
       },
     });
 
-    return { waUrl, link };
+    return { waUrl, link, message, phone };
   }
 
   // ── Fiziki Yükleme ────────────────────────────────────────────────────────
 
   async uploadPhysical(id: string, storageKey: string, uploadedByUserId: string) {
     const doc = await this.findOne(id);
-    if (doc.documentKind !== 'muvafakatname') {
-      throw new BadRequestException('Fiziki yükleme yalnızca muvafakatname için gereklidir');
+    if (doc.documentKind !== 'muvafakatname' && doc.documentKind !== 'anket_formu') {
+      throw new BadRequestException('Bu evrak türüne fiziki yükleme yapılamaz');
     }
     return this.prisma.fileDocument.update({
       where: { id },
@@ -465,6 +497,67 @@ export class FileDocumentsService {
         status: 'physically_uploaded',
       },
     });
+  }
+
+  /** Dosya Sorumlusu — tür seçerek imzalı / doldurulmuş evrak yükler */
+  async uploadManualForClaim(
+    claimFileId: string,
+    documentKind: 'muvafakatname' | 'anket_formu',
+    file: Express.Multer.File,
+    uploadedByUserId: string,
+  ) {
+    const cf = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      select: { id: true },
+    });
+    if (!cf) throw new NotFoundException('Hasar dosyası bulunamadı');
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Dosya seçilmedi veya okunamadı');
+    }
+
+    let doc = await this.prisma.fileDocument.findFirst({
+      where: { entityType: 'claim_file', entityId: claimFileId, documentKind },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!doc) {
+      if (documentKind === 'muvafakatname') {
+        doc = await this.create(
+          { entityType: 'claim_file', entityId: claimFileId, documentKind: 'muvafakatname' },
+          uploadedByUserId,
+        );
+      } else {
+        doc = await this.prisma.fileDocument.create({
+          data: {
+            entityType: 'claim_file',
+            entityId: claimFileId,
+            documentKind: 'anket_formu',
+            status: 'draft',
+            renderedContent: '<p>Manuel yüklenen anket formu.</p>',
+            claimFileId,
+            createdByUserId: uploadedByUserId,
+          },
+        });
+      }
+    }
+
+    const safeName = (file.originalname || 'evrak').replace(/[^\w.\-ğüşıöçĞÜŞİÖÇ ]+/g, '_');
+    const result = await this.storage.upload(
+      file.buffer,
+      `file-documents/${doc.id}/${safeName}`,
+      file.mimetype,
+    );
+    return this.uploadPhysical(doc.id, result.key, uploadedByUserId);
+  }
+
+  async getPhysicalFileUrl(id: string): Promise<{ url: string; fileName: string }> {
+    const doc = await this.findOne(id);
+    if (!doc.physicalUploadKey) {
+      throw new NotFoundException('Yüklenmiş evrak dosyası yok');
+    }
+    const url = await this.storage.getSignedUrl(doc.physicalUploadKey, 900);
+    const fileName = doc.physicalUploadKey.split('/').pop() || 'evrak';
+    return { url, fileName };
   }
 
   // ── Public Token — Görüntüleme ────────────────────────────────────────────
@@ -484,6 +577,12 @@ export class FileDocumentsService {
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
     if (doc.publicTokenExpiresAt && doc.publicTokenExpiresAt < new Date()) {
       throw new BadRequestException('Bu evrak linkinin süresi dolmuştur');
+    }
+    if (doc.documentKind === 'matbu_evrak' && doc.renderedContent) {
+      return {
+        ...doc,
+        renderedContent: toInsuredFacingMatbuHtml(doc.renderedContent),
+      };
     }
     return doc;
   }
@@ -575,10 +674,10 @@ export class FileDocumentsService {
 
     return {
       ...conditions,
-      canCreateInvoiceRequest:
-        conditions.muvafakatnameDigitallyApproved &&
-        conditions.repairReportApproved &&
-        conditions.vendorContractSigned,
+      canCreateInvoiceRequest: canCreateHasarInvoiceRequest({
+        muvafakatnameDigitallyApproved: conditions.muvafakatnameDigitallyApproved,
+        repairReportApproved: conditions.repairReportApproved,
+      }),
       muvafakatnameId: muvafakatname?.id ?? null,
       muvafakatnameStatus: muvafakatname?.status ?? null,
     };
@@ -599,12 +698,15 @@ export class FileDocumentsService {
 
     const conditions = {
       matbuEvrakDigitallyApproved: !!matbuEvrak?.digitallyApprovedAt,
-      caseStatusCompleted: ec?.status === 'COZULDU',
+      caseStatusCompleted: ec?.status === 'COZULDU' || ec?.status === 'FATURALANDILDI',
     };
+
+    const digitalOk =
+      conditions.matbuEvrakDigitallyApproved || !isAcilDigitalApprovalRequired();
 
     return {
       ...conditions,
-      canCreateInvoiceRequest: Object.values(conditions).every(Boolean),
+      canCreateInvoiceRequest: digitalOk && conditions.caseStatusCompleted,
       matbuEvrakId: matbuEvrak?.id ?? null,
       matbuEvrakStatus: matbuEvrak?.status ?? null,
     };

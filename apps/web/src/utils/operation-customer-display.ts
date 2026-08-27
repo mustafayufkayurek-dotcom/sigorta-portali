@@ -1,6 +1,4 @@
-import { isExpertFirmCustomer } from '@sigorta/shared';
 import {
-  customerDisplayName,
   customerSubTypeLabel,
   resolveCustomerType,
 } from '@/utils/customer-form-helpers';
@@ -23,6 +21,27 @@ export type OperationInsuranceSource = {
 } | null | undefined;
 
 export const OPERATION_CUSTOMER_UNDEFINED = 'Müşteri Tanımlanmamış';
+/** Kart var, Kısa Ad boş — müşteri yok demek değildir. */
+export const OPERATION_CUSTOMER_SHORT_UNSET = 'Kısa Ad Tanımlanmamış';
+
+export function customerShortNameEditHref(customerId: string): string {
+  return `/panel/musteriler?edit=${encodeURIComponent(customerId)}`;
+}
+
+/** Müşteri listesi: yalnız karttaki Kısa Ad. Unvan yazılmaz, üretilmez. */
+export function listedCustomerShortLabel(customer: {
+  id?: string | null;
+  shortName?: string | null;
+}): { name: string; defined: boolean; href: string | null } {
+  const short = customer.shortName?.trim() || '';
+  const id = String(customer.id ?? '').trim();
+  if (short) return { name: short, defined: true, href: null };
+  return {
+    name: OPERATION_CUSTOMER_SHORT_UNSET,
+    defined: false,
+    href: id ? customerShortNameEditHref(id) : null,
+  };
+}
 
 /** Operasyon sütununda gösterilen iş müşteri alt tipleri — `insured` hariç. */
 const OPERATION_CUSTOMER_SUB_TYPES = new Set([
@@ -46,7 +65,6 @@ export function isOperationBusinessCustomer(
   if (sub === 'insured') return false;
   if (OPERATION_CUSTOMER_SUB_TYPES.has(sub)) return true;
 
-  // Alt tip yok: yalnızca şirket adı olan kurumsal kayıt kabul
   if (!sub) {
     const entity = resolveCustomerType(customer);
     return entity === 'corporate' && Boolean(customer.companyName?.trim());
@@ -68,9 +86,16 @@ export function resolveOperationCustomerTypeLabel(
   return null;
 }
 
+/** Liste hücresi: yalnız karttaki Kısa Ad / kısa ünvan. Unvan kırpılmaz, üretilmez. */
+export function recordedCustomerShortName(customer: OperationCustomerSource): string | null {
+  if (!customer || !isOperationBusinessCustomer(customer)) return null;
+  const short = customer.shortName?.trim();
+  return short || null;
+}
+
 /**
- * Operasyon listesi müşteri hücresi (Acil ve genel).
- * Yalnızca iş müşterisi (`customer` ilişkisi); sigortalı adı / dosya no gösterilmez.
+ * Operasyon / Acil listesi müşteri hücresi.
+ * Yalnız karttaki Kısa Ad. Tam unvan basılmaz.
  */
 export function resolveOperationCustomer(customer: OperationCustomerSource): {
   name: string;
@@ -78,6 +103,7 @@ export function resolveOperationCustomer(customer: OperationCustomerSource): {
   title: string;
   searchText: string;
   defined: boolean;
+  customerHref: string | null;
 } {
   if (!isOperationBusinessCustomer(customer)) {
     return {
@@ -86,27 +112,28 @@ export function resolveOperationCustomer(customer: OperationCustomerSource): {
       title: OPERATION_CUSTOMER_UNDEFINED,
       searchText: OPERATION_CUSTOMER_UNDEFINED.toLocaleLowerCase('tr'),
       defined: false,
+      customerHref: null,
     };
   }
 
-  const rawName = customerDisplayName(customer!);
-  const name = rawName === '—' ? OPERATION_CUSTOMER_UNDEFINED : rawName;
-  const typeLabel = name === OPERATION_CUSTOMER_UNDEFINED
-    ? null
-    : resolveOperationCustomerTypeLabel(customer);
-  const defined = name !== OPERATION_CUSTOMER_UNDEFINED;
-  const title = typeLabel ? `${name} / ${typeLabel}` : name;
-  const searchText = [name, typeLabel].filter(Boolean).join(' ').toLocaleLowerCase('tr');
+  const short = recordedCustomerShortName(customer);
+  const typeLabel = resolveOperationCustomerTypeLabel(customer);
+  const id = String(customer?.id ?? '').trim();
+  const customerHref = !short && id ? customerShortNameEditHref(id) : null;
+  const name = short ?? OPERATION_CUSTOMER_SHORT_UNSET;
+  const defined = Boolean(short);
+  const title = [name, typeLabel].filter(Boolean).join(' / ');
+  const searchText = [name, customer?.companyName, typeLabel]
+    .filter(Boolean)
+    .join(' ')
+    .toLocaleLowerCase('tr');
 
-  return { name, typeLabel, title, searchText, defined };
+  return { name, typeLabel, title, searchText, defined, customerHref };
 }
 
 /**
- * Hasar satırı müşteri hücresi — yalnızca kurum adları, tip etiketi yok:
- * 1) Eksper ofisi (`claim.customer` / expert firm)
- * 2) Sigorta şirketi (`claim.insuranceCompany`)
- * Eksik taraf hiç gösterilmez (boş satır / placeholder yok).
- * İkisi de yoksa tek satır «Müşteri Tanımlanmamış». Tahmin yok.
+ * Hasar satırı: üstte karttaki Kısa Ad; altta dosya sigortası.
+ * Kısa Ad yoksa tam unvan yazılmaz; «Kısa Ad Tanımlanmamış» karta gider.
  */
 export function resolveHasarOperationCustomer(
   customer: OperationCustomerSource,
@@ -117,36 +144,46 @@ export function resolveHasarOperationCustomer(
   title: string;
   searchText: string;
   defined: boolean;
+  customerHref: string | null;
 } {
-  const expertRaw = isExpertFirmCustomer(customer)
-    ? customerDisplayName(customer!).trim()
-    : '';
-  const expertName = expertRaw && expertRaw !== '—' ? expertRaw : null;
+  const ownerShort = recordedCustomerShortName(customer);
+  const insuranceName = String(insuranceCompany?.name ?? '').trim() || null;
+  const hasBusinessCustomer = isOperationBusinessCustomer(customer);
+  const id = String(customer?.id ?? '').trim();
 
-  const insuranceRaw = String(insuranceCompany?.name ?? '').trim();
-  const insuranceName = insuranceRaw || null;
-
-  if (!expertName && !insuranceName) {
+  if (!hasBusinessCustomer) {
     return {
       name: OPERATION_CUSTOMER_UNDEFINED,
-      typeLabel: null,
-      title: OPERATION_CUSTOMER_UNDEFINED,
-      searchText: OPERATION_CUSTOMER_UNDEFINED.toLocaleLowerCase('tr'),
+      typeLabel: insuranceName,
+      title: insuranceName
+        ? `${OPERATION_CUSTOMER_UNDEFINED} / ${insuranceName}`
+        : OPERATION_CUSTOMER_UNDEFINED,
+      searchText: [OPERATION_CUSTOMER_UNDEFINED, insuranceName]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('tr'),
       defined: false,
+      customerHref: null,
     };
   }
 
-  // Tek taraf varsa tek satır; ikisi varsa eksper üstte, sigorta altta.
-  const line1 = expertName ?? insuranceName!;
-  const line2 = expertName && insuranceName ? insuranceName : null;
-  const title = line2 ? `${line1} / ${line2}` : line1;
-  const searchText = [line1, line2].filter(Boolean).join(' ').toLocaleLowerCase('tr');
+  const line1 = ownerShort ?? OPERATION_CUSTOMER_SHORT_UNSET;
+  const line2 =
+    insuranceName && ownerShort !== insuranceName
+      ? insuranceName
+      : null;
+  const title = [line1, line2].filter(Boolean).join(' / ');
+  const searchText = [line1, customer?.companyName, line2]
+    .filter(Boolean)
+    .join(' ')
+    .toLocaleLowerCase('tr');
 
   return {
     name: line1,
     typeLabel: line2,
     title,
     searchText,
-    defined: true,
+    defined: Boolean(ownerShort),
+    customerHref: ownerShort || !id ? null : customerShortNameEditHref(id),
   };
 }

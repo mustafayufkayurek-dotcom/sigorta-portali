@@ -1,0 +1,32 @@
+---
+description: Giden mail Graph /sendMail — taslak 403 Mail.Send diye yalan söylemez
+alwaysApply: true
+---
+
+# Giden Mail — Graph sendMail Kilidi
+
+**Kaynak (Mustafa · 25.08.2026):** Azure’da Mail.Send (Uygulama) + yönetici onayı duruyordu. Onaya Gönder yine “Mail.Send ekleyin” diyordu. Personel üç gün mahcup kaldı.
+
+**Temel cümle:** Rapor / onaya gönderim **taslak açmaz**. Microsoft Graph `users/.../sendMail` gider. Mail.Send yeter. Taslak yolu Mail.ReadWrite ister; 403’ü “izin yok, Mail.Send ekleyin” diye yazmak yasak.
+
+## Zorunlu
+
+1. Normal ek (`INLINE_ATTACH_MAX_BYTES` altı, onarım PDF) `POST .../users/{kutu}/sendMail`.
+2. Taslak (`POST .../messages` + `/send`) yalnız büyük ek için.
+3. Yanlış teşhis metni yok: `E-posta gönderme izni yok. Azure AD uygulama kaydına Mail.Send`.
+4. `smoke-outbound-mail.sh` bu kilidi çalıştırır.
+
+## Yasak (açık onay yoksa)
+
+- Onaya gönderimi tekrar önce taslak yazmaya çevirmek
+- 403’ü her seferinde “Mail.Send ekleyin” diye basmak
+
+## Durdurma
+
+Aynı kırmızı “Mail.Send ekleyin” personel ekranına dönerse → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-outbound-mail.sh
+```

@@ -55,13 +55,22 @@ export function FinanceExtraAccessSection({ staggerIndex = 3 }: { staggerIndex?:
             Ana göreviniz finans. Acil yardım ek yetkisi ile erişim.
           </p>
         </div>
-        <Link
-          href="/panel/operasyon?filter=acil"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700"
-        >
-          Acil Yardım Dosyalarına Git
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/panel/acil-yardim/finans#tedarikci-hakedis"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700"
+          >
+            Acil hakediş kuyruğu
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/panel/operasyon?filter=acil"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-medium text-violet-800 transition-colors hover:bg-violet-50"
+          >
+            Acil Yardım Dosyalarına Git
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">

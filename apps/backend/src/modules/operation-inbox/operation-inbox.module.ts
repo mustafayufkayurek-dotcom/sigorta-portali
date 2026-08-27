@@ -23,9 +23,7 @@ import {
 } from './operation-inbox.constants';
 import { InboundIngestProcessor } from './processors/inbound-ingest.processor';
 import { InboundClassifyProcessor } from './processors/inbound-classify.processor';
-import { GraphAuthService } from './graph/graph-auth.service';
-import { GraphMailSyncService } from './graph/graph-mail-sync.service';
-import { GraphMailSendService } from './graph/graph-mail-send.service';
+import { GraphMailModule } from './graph/graph-mail.module';
 import { GraphSubscriptionService } from './graph/graph-subscription.service';
 import { OperationInboxScheduler } from './operation-inbox.scheduler';
 
@@ -35,6 +33,7 @@ import { OperationInboxScheduler } from './operation-inbox.scheduler';
     forwardRef(() => SystemSettingsModule),
     StorageModule,
     NotificationsModule,
+    GraphMailModule,
     ClaimFilesModule,
     ClaimResponsibilitiesModule,
     forwardRef(() => CustomersModule),
@@ -53,14 +52,11 @@ import { OperationInboxScheduler } from './operation-inbox.scheduler';
     InboundFileMatcherService,
     InboundRoutingService,
     OperationInboxNotificationService,
-    GraphAuthService,
-    GraphMailSyncService,
-    GraphMailSendService,
     GraphSubscriptionService,
     InboundIngestProcessor,
     InboundClassifyProcessor,
     OperationInboxScheduler,
   ],
-  exports: [OperationInboxService, GraphAuthService, GraphSubscriptionService],
+  exports: [OperationInboxService, GraphMailModule, GraphSubscriptionService],
 })
 export class OperationInboxModule {}

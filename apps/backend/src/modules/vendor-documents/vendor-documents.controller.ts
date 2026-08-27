@@ -5,6 +5,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   Res,
   UseGuards,
   UseInterceptors,
@@ -48,14 +49,28 @@ export class VendorDocumentsController {
     return this.service.create(vendorId, file, documentTypeId, user.id, customLabel);
   }
 
-  // Signed URL ile güvenli indirme
+  @Get('vendor-documents/:id/file')
+  @RequirePermissions('vendor.view', 'document.view')
+  async streamFile(
+    @Param('id') id: string,
+    @Query('variant') variant: string | undefined,
+    @Res() res: Response,
+  ) {
+    const { buffer, fileName, mimeType } = await this.service.getFileBuffer(id, variant === 'thumb');
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.send(buffer);
+  }
+
   @Get('vendor-documents/:id/download')
   @RequirePermissions('vendor.view', 'document.view')
   async download(@Param('id') id: string, @Res() res: Response) {
-    const { url, fileName, mimeType } = await this.service.getSignedUrl(id, 900);
+    const { buffer, fileName, mimeType } = await this.service.getFileBuffer(id, false);
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
-    return res.redirect(302, url);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.send(buffer);
   }
 
   // Signed URL döndür (frontend için)

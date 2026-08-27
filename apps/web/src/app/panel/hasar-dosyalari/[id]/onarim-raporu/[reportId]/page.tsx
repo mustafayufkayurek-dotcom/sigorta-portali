@@ -2,6 +2,8 @@
 
 import { API, authHeader, authAxios, ensureSessionBeforeMutation } from '@/utils/api';
 import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { createPortal } from 'react-dom';
+import { Check, X } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { toTitleCaseTR, formatDisplayLabel, resolveClaimIhbarKonusu, formatHasarAdresi } from '@/utils/text-helpers';
@@ -20,14 +22,17 @@ import type { ManualDecisionAction } from '@/components/operasyon/ManualDecision
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import VendorQuoteModal, { readVendorPriceMemory, writeVendorPriceMemory } from '@/components/damage-reports/VendorQuoteModal';
 import {
   parseVendorQuoteData,
   buildVendorQuoteMetrajData,
   type VendorQuoteData,
 } from '@/components/damage-reports/VendorQuotePopover';
+import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_VERSION, REPAIR_REPORT_MAX_REVISION_MESSAGE, canCreateRepairReportRevision, isRepairReportRevision } from '@sigorta/shared';
+import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -118,8 +123,8 @@ function readMetrajDetectionScope(metrajData: unknown): string {
   return typeof scope === 'string' ? normalizeLocationLabel(scope) : '';
 }
 
-function sortReportItems(items: any[]): any[] {
-  return [...items].sort((a, b) => rowSortKey(a).localeCompare(rowSortKey(b), 'tr'));
+function sortReportItems(items: any[] | null | undefined): any[] {
+  return [...(Array.isArray(items) ? items : [])].sort((a, b) => rowSortKey(a).localeCompare(rowSortKey(b), 'tr'));
 }
 
 function rowStateSortKey(row: RowState & { workGroupId?: string }, workGroups: any[]): string {
@@ -128,20 +133,17 @@ function rowStateSortKey(row: RowState & { workGroupId?: string }, workGroups: a
 }
 
 function recomputeReportTotals(items: any[]) {
-  const totalSupplierCost = items.reduce((s, i) => s + (Number(i.supplierTotal) || 0), 0);
-  const totalSalesAmount = items.reduce((s, i) => {
-    if (i.pricingType === 'lumpsum') return s + (Number(i.lumpSumPrice) || 0);
-    return s + (Number(i.salesTotal) || 0);
-  }, 0);
+  const totalSupplierCost = items.reduce((s, i) => s + repairItemResolvedSupplierTotal(i), 0);
+  const totalSalesAmount = items.reduce((s, i) => s + repairItemSalesTotal(i), 0);
   const grossProfit = totalSalesAmount - totalSupplierCost;
   const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
   const buildingDamageTotal = items.reduce((s, i) => {
     if ((i.damageCategory ?? 'bina') !== 'bina') return s;
-    return s + (i.pricingType === 'lumpsum' ? (Number(i.lumpSumPrice) || 0) : (Number(i.salesTotal) || 0));
+    return s + repairItemSalesTotal(i);
   }, 0);
   const goodsDamageTotal = items.reduce((s, i) => {
     if (i.damageCategory !== 'esya') return s;
-    return s + (i.pricingType === 'lumpsum' ? (Number(i.lumpSumPrice) || 0) : (Number(i.salesTotal) || 0));
+    return s + repairItemSalesTotal(i);
   }, 0);
   return { totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct, buildingDamageTotal, goodsDamageTotal };
 }
@@ -179,8 +181,8 @@ function validateApprovalRequirements(report: any, findingsText: string): {
   if (items.length === 0) {
     return { ok: false, itemsError: 'En az bir onarım kalemi eklenmeden onaya gönderilemez.' };
   }
-  const totalSales = items.reduce((sum: number, item: any) => sum + (Number(item.salesTotal) || 0), 0);
-  const totalCost = items.reduce((sum: number, item: any) => sum + (Number(item.supplierTotal) || 0), 0);
+  const totalSales = items.reduce((sum: number, item: any) => sum + repairItemSalesTotal(item), 0);
+  const totalCost = items.reduce((sum: number, item: any) => sum + repairItemResolvedSupplierTotal(item), 0);
   const totalLumpSum = items.reduce((sum: number, item: any) => {
     if (item.pricingType === 'lumpsum') return sum + (Number(item.lumpSumPrice) || 0);
     return sum;
@@ -287,12 +289,12 @@ function IconChevronDown({ className = 'w-3.5 h-3.5' }: { className?: string }) 
 
 function SectionCard({ title, children, action, id }: { title: string; children: React.ReactNode; action?: React.ReactNode; id?: string }) {
   return (
-    <div id={id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-slate-100 pb-2">
+    <div id={id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-slate-50 px-5 py-3 border-b border-slate-100">
         <h4 className="shrink-0 text-sm font-semibold text-slate-700">{title}</h4>
         {action}
       </div>
-      {children}
+      <div className="p-5">{children}</div>
     </div>
   );
 }
@@ -421,15 +423,8 @@ function WorkGroupProfitSummary({ items, workGroups }: { items: any[]; workGroup
     for (const item of items) {
       const wgId = item.workGroupId ?? item.workGroup?.id ?? '__unknown__';
       const prev = map.get(wgId) ?? { supplierTotal: 0, salesTotal: 0 };
-      const qty = item.quantity ?? 0;
-      const isLumpsum = item.pricingType === 'lumpsum';
-      // salesTotal/supplierTotal backend'den hesaplanmış olabilir veya olmayabilir; her iki durumu da ele al
-      const salesAmt = isLumpsum
-        ? (item.lumpSumPrice ?? 0)
-        : ((item.salesTotal != null && item.salesTotal > 0) ? item.salesTotal : qty * (item.salesUnitPrice ?? 0));
-      const supplierAmt = isLumpsum
-        ? (item.lumpSumPrice ?? 0)
-        : ((item.supplierTotal != null && item.supplierTotal > 0) ? item.supplierTotal : qty * (item.supplierUnitPrice ?? 0));
+      const salesAmt = repairItemSalesTotal(item);
+      const supplierAmt = repairItemResolvedSupplierTotal(item);
       map.set(wgId, {
         supplierTotal: prev.supplierTotal + supplierAmt,
         salesTotal: prev.salesTotal + salesAmt,
@@ -1528,6 +1523,15 @@ function MetrajHesaplamaModal({
   );
 }
 
+function sameWorkLabel(a: string, b: string): boolean {
+  return a.trim().toLocaleLowerCase('tr') === b.trim().toLocaleLowerCase('tr');
+}
+
+function findExistingSubGroup(subGroups: any[], name: string): any | undefined {
+  const needle = normalizeLocationLabel(name);
+  return subGroups.find((s: any) => sameWorkLabel(String(s.name ?? s.id ?? ''), needle));
+}
+
 // ─── İş Tanımı Seçici (inline yeni ekleme destekli) ──────────────────────────
 function WorkDefinitionSelector({
   value,
@@ -1535,6 +1539,7 @@ function WorkDefinitionSelector({
   workGroupId,
   onSelect,
   onAddNew,
+  onNotify,
   className,
   'data-cell': dataCell,
   tabIndex,
@@ -1547,6 +1552,7 @@ function WorkDefinitionSelector({
   workGroupId: string;
   onSelect: (v: string, unit?: string) => void;
   onAddNew: (name: string, workGroupId: string) => Promise<any>;
+  onNotify?: (type: 'error' | 'warning' | 'success', message: string) => void;
   className?: string;
   'data-cell'?: string;
   tabIndex?: number;
@@ -1566,16 +1572,61 @@ function WorkDefinitionSelector({
   const commit = async () => {
     const trimmed = normalizeLocationLabel(newVal);
     if (!trimmed || !workGroupId) { setAddingNew(false); setNewVal(''); return; }
+    const existing = findExistingSubGroup(subGroups, trimmed);
+    if (existing) {
+      onNotify?.('warning', 'Bu iş tanımı zaten tanımlı. Yeni kayıt açılmaz; listeden seçildi.');
+      onSelect(normalizeLocationLabel(existing.name ?? trimmed), existing.unitType ?? existing.defaultUnit);
+      setAddingNew(false);
+      setNewVal('');
+      return;
+    }
     setSaving(true);
     try {
       const result = await onAddNew(trimmed, workGroupId);
       onSelect(normalizeLocationLabel(result?.name ?? trimmed), result?.unitType ?? result?.defaultUnit);
-    } catch { /* ignore */ } finally {
+      onNotify?.('success', 'İş tanımı eklendi.');
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+      const msg = Array.isArray(data) ? data[0] : (data || 'İş tanımı eklenemedi.');
+      onNotify?.('error', msg);
+      return;
+    } finally {
       setSaving(false);
-      setAddingNew(false);
-      setNewVal('');
     }
+    setAddingNew(false);
+    setNewVal('');
   };
+
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 220 });
+
+  const placeMenu = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setMenuPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 220) });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    placeMenu();
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onScroll = () => placeMenu();
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [open]);
 
   if (addingNew) {
     return (
@@ -1599,30 +1650,66 @@ function WorkDefinitionSelector({
     );
   }
 
+  const selectedLabel = value ? formatDisplayLabel(value) : '— İş Tanımı Seç —';
+
   return (
-    <select
-      data-cell={dataCell}
-      className={className}
-      value={value}
-      tabIndex={tabIndex}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      onKeyDown={onKeyDown}
-      onChange={(e) => {
-        if (e.target.value === '__add_new__') {
-          setAddingNew(true);
-        } else {
-          const sg = subGroups.find((s: any) => (s.name ?? s.id) === e.target.value);
-          onSelect(normalizeLocationLabel(e.target.value), sg?.unitType ?? sg?.defaultUnit);
-        }
-      }}
-    >
-      <option value="">— İş Tanımı Seç —</option>
-      {subGroups.map((sg: any) => (
-        <option key={sg.id} value={sg.name ?? sg.id}>{formatDisplayLabel(sg.name)}</option>
-      ))}
-      <option value="__add_new__">+ Yeni İş Tanımı Ekle</option>
-    </select>
+    <div ref={wrapRef} className="relative min-w-0 w-full">
+      <button
+        type="button"
+        data-cell={dataCell}
+        className={`${className ?? ''} min-w-0 w-full text-left truncate`}
+        tabIndex={tabIndex}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === ' ') {
+            e.preventDefault();
+            setOpen(true);
+          }
+          if (e.key === 'Escape') setOpen(false);
+          onKeyDown?.(e);
+        }}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {selectedLabel}
+      </button>
+      {open && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed z-[90] max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-white py-0.5 shadow-lg"
+          style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width }}
+        >
+          <button
+            type="button"
+            className="block w-full px-2 py-1.5 text-left text-xs text-slate-400 hover:bg-slate-50"
+            onClick={() => { onSelect(''); setOpen(false); }}
+          >
+            — İş Tanımı Seç —
+          </button>
+          {subGroups.map((sg: any) => (
+            <button
+              type="button"
+              key={sg.id}
+              className={`block w-full px-2 py-1.5 text-left text-xs hover:bg-slate-50 ${(sg.name ?? sg.id) === value ? 'bg-slate-50 font-medium' : 'text-slate-800'}`}
+              onClick={() => {
+                onSelect(normalizeLocationLabel(sg.name ?? sg.id), sg?.unitType ?? sg?.defaultUnit);
+                setOpen(false);
+              }}
+            >
+              {formatDisplayLabel(sg.name)}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="block w-full border-t border-red-100 px-2 py-1.5 text-left text-xs font-semibold text-status-danger hover:bg-red-50"
+            onClick={() => { setOpen(false); setAddingNew(true); }}
+          >
+            + Yeni İş Kalemi Ekle
+          </button>
+        </div>,
+        document.body,
+      )}
+    </div>
   );
 }
 
@@ -1786,6 +1873,13 @@ function WorkGroupSelector({
   const commit = async () => {
     const trimmed = toTitleCaseTR(newVal.trim());
     if (!trimmed) { setAddingNew(false); setNewVal(''); return; }
+    const existing = workGroups.find((w: any) => sameWorkLabel(String(w.name ?? ''), trimmed));
+    if (existing) {
+      onSelect(existing.id);
+      setAddingNew(false);
+      setNewVal('');
+      return;
+    }
     setSaving(true);
     try {
       const result = await onAddNew(trimmed);
@@ -2014,6 +2108,10 @@ function looksLikeCalcFormula(raw: string): boolean {
   return /[+\-*/()]/.test(raw) && !/^-?\d+([.,]\d+)?$/.test(raw.trim());
 }
 
+function formulaForEval(raw: string): string {
+  return raw.replace(/,/g, '.');
+}
+
 function CalcInput({
   value,
   onChange,
@@ -2021,6 +2119,7 @@ function CalcInput({
   className,
   placeholder,
   amountFormat,
+  shadowCalc,
   'data-cell': dataCell,
   tabIndex,
   onFocus,
@@ -2033,6 +2132,8 @@ function CalcInput({
   placeholder?: string;
   /** Satış/maliyet: yazarken binlik nokta (15.600) göster */
   amountFormat?: boolean;
+  /** Miktar: 2+ yazınca hücre altında gölge satırda hesap */
+  shadowCalc?: boolean;
   'data-cell'?: string;
   tabIndex?: number;
   onFocus?: () => void;
@@ -2040,7 +2141,12 @@ function CalcInput({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const [shadowOpen, setShadowOpen] = useState(false);
+  const [formula, setFormula] = useState('');
+  const [shadowPos, setShadowPos] = useState({ top: 0, left: 0, width: 240 });
   const inputRef = useRef<HTMLInputElement>(null);
+  const shadowRef = useRef<HTMLInputElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const committingRef = useRef(false);
   const isFormula = looksLikeCalcFormula(value);
 
@@ -2050,6 +2156,29 @@ function CalcInput({
     if (!amountFormat || looksLikeCalcFormula(base)) return base;
     const n = parseFloat(base);
     return Number.isFinite(n) ? numberToTrAmountInput(n) : base;
+  };
+
+  const placeShadow = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setShadowPos({
+      top: r.bottom + 4,
+      left: r.left,
+      width: Math.max(r.width + 88, 320),
+    });
+  };
+
+  const openShadow = (initial: string) => {
+    setFormula(initial);
+    setShadowOpen(true);
+    setDraft(toAmountDraft(value));
+    placeShadow();
+    requestAnimationFrame(() => {
+      shadowRef.current?.focus();
+      const el = shadowRef.current;
+      if (el) el.setSelectionRange(initial.length, initial.length);
+    });
   };
 
   const handleFocus = () => {
@@ -2072,7 +2201,7 @@ function CalcInput({
     if (committingRef.current) return;
     committingRef.current = true;
     setEditing(false);
-    const evaluated = evaluateExpression(raw);
+    const evaluated = evaluateExpression(formulaForEval(raw));
     let final: string;
     if (evaluated !== null) {
       final = String(evaluated);
@@ -2089,12 +2218,29 @@ function CalcInput({
     });
   };
 
+  const commitShadow = () => {
+    const evaluated = evaluateExpression(formulaForEval(formula));
+    if (evaluated === null) return false;
+    setShadowOpen(false);
+    setFormula('');
+    commit(String(evaluated));
+    return true;
+  };
+
+  const closeShadow = () => {
+    setShadowOpen(false);
+    setFormula('');
+    setEditing(false);
+    setDraft(toAmountDraft(value));
+  };
+
   const handleBlur = () => {
-    if (committingRef.current || !editing) return;
+    if (committingRef.current || !editing || shadowOpen) return;
     commit(draft);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (shadowOpen) return;
     if (e.key === 'Enter' || e.key === 'Tab') {
       commit(draft);
       if (onKeyDown) {
@@ -2109,6 +2255,17 @@ function CalcInput({
     onKeyDown?.(e);
   };
 
+  useEffect(() => {
+    if (!shadowOpen) return;
+    const onScroll = () => placeShadow();
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [shadowOpen]);
+
   const idleDisplay =
     amountFormat && value && !looksLikeCalcFormula(value)
       ? (() => {
@@ -2116,11 +2273,12 @@ function CalcInput({
           return Number.isFinite(n) ? numberToTrAmountInput(n) : value;
         })()
       : value;
-  const displayValue = editing ? draft : idleDisplay;
+  const displayValue = editing && !shadowOpen ? draft : idleDisplay;
+  const shadowPreview = evaluateExpression(formulaForEval(formula));
 
   return (
-    <div className="relative flex items-center w-full min-h-11">
-      {isFormula && !editing && (
+    <div ref={wrapRef} className="relative flex items-center w-full min-h-11">
+      {isFormula && !editing && !shadowOpen && (
         <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] font-bold text-indigo-400 bg-indigo-50 rounded px-0.5 leading-none select-none">fx</span>
       )}
       <input
@@ -2136,6 +2294,10 @@ function CalcInput({
         onBlur={handleBlur}
         onChange={(e) => {
           const next = e.target.value;
+          if (shadowCalc && looksLikeCalcFormula(next)) {
+            openShadow(next);
+            return;
+          }
           if (amountFormat && !looksLikeCalcFormula(next) && !/[+\-*/()]/.test(next)) {
             setDraft(formatTrAmountInput(next));
           } else {
@@ -2144,6 +2306,61 @@ function CalcInput({
         }}
         onKeyDown={handleKeyDown}
       />
+      {shadowOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed z-[80] rounded-md border border-slate-200 bg-white px-2 py-1.5 shadow-lg"
+          style={{ top: shadowPos.top, left: shadowPos.left, width: shadowPos.width }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold text-slate-400 shrink-0">fx</span>
+            <input
+              ref={shadowRef}
+              type="text"
+              className="min-w-0 flex-1 rounded border border-slate-200 px-1.5 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-brand-400"
+              value={formula}
+              aria-label="Miktar hesabı"
+              onChange={(e) => setFormula(e.target.value)}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (!commitShadow()) return;
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  closeShadow();
+                }
+              }}
+              onBlur={() => {
+                if (!commitShadow()) closeShadow();
+              }}
+            />
+            <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-700">
+              {shadowPreview !== null ? `= ${shadowPreview}` : '= …'}
+            </span>
+            <button
+              type="button"
+              title="Onayla"
+              aria-label="Onayla"
+              disabled={shadowPreview === null}
+              onClick={() => { void commitShadow(); }}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-40"
+            >
+              <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              title="İptal"
+              aria-label="İptal"
+              onClick={closeShadow}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-status-danger"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
@@ -2502,7 +2719,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
   // Inline yeni iş tanımı ekleme
   const createSubGroup = async (name: string, workGroupId: string): Promise<{ name: string; unitType?: string; defaultUnit?: string }> => {
-    const code = `${name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}_${Date.now()}`;
+    const code = `IS_TANIM_${Date.now()}`;
     const res = await axios.post(
       `${API}/work-groups/${workGroupId}/sub-groups`,
       { code, name: toTitleCaseTR(name.trim()), unitType: 'm²', sortOrder: 0 },
@@ -3180,8 +3397,15 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             const wgName = workGroups.find((wg: any) => wg.id === row.workGroupId)?.name ?? '';
             const rowSubGroups = resolveSubGroups(row.workGroupId);
             const subGroupsLoading = row.workGroupId ? loadingSubGroupIds.has(row.workGroupId) : false;
-            const supplierVal = parseFloat(row.supplierUnitPrice) || 0;
-            const salesVal = parseFloat(row.salesUnitPrice) || 0;
+            const rowMoney = {
+              pricingType: row.pricingType,
+              lumpSumPrice: parseFloat(row.lumpSumPrice || '0') || 0,
+              quantity: parseFloat(row.quantity || '0') || 0,
+              salesUnitPrice: parseFloat(row.salesUnitPrice || '0') || 0,
+              supplierUnitPrice: parseFloat(row.supplierUnitPrice || '0') || 0,
+            };
+            const supplierVal = repairItemSupplierTotal(rowMoney);
+            const salesVal = repairItemSalesTotal(rowMoney);
             const isLoss = viewMode === 'internal' && supplierVal > 0 && supplierVal > salesVal;
 
             return (
@@ -3311,11 +3535,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                           }));
                         }}
                         onAddNew={createSubGroup}
+                        onNotify={onNotify}
                         onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'jobDescription', row._id)}
                       />
                       )
                     ) : (
-                      <span className="px-2 text-xs text-slate-400 block py-3">Önce İş Grubu seçin</span>
+                      <span className="px-2 text-xs font-medium text-status-danger block py-3">Önce İş Grubu seçin</span>
                     )
                   ) : (
                     <span className="px-2 text-xs font-medium text-slate-800 block py-3">{row.jobDescription ? formatDisplayLabel(row.jobDescription) : '—'}</span>
@@ -3354,13 +3579,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   )}
                 </td>
                 {/* Miktar — CalcInput */}
-                <td className={`${tdCls(rowIdx, 'quantity')} text-right`}>
+                <td className={`${tdCls(rowIdx, 'quantity')} text-center`}>
                   {isEditable ? (
                     <div className="w-full">
-                      <div className="flex items-center w-full">
+                      <div className="flex items-center justify-center w-full">
                         <CalcInput
                           data-cell={`${rowIdx}-quantity`}
-                          className={`${cellCls(rowIdx, 'quantity', true)} text-right flex-1`}
+                          shadowCalc
+                          className={`${cellCls(rowIdx, 'quantity', true)} text-center flex-1`}
                           value={row.quantity}
                           onChange={(v) => updateRow(row._id, 'quantity', v)}
                           onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { quantity: v }), 50)}
@@ -3380,22 +3606,22 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       {(() => {
                         const entryCount = readMetrajEntries(row.metrajData).length;
                         return entryCount > 0 ? (
-                          <p className="text-[10px] text-brand-600 font-medium text-right pr-7 mt-0.5">
+                          <p className="text-[10px] text-brand-600 font-medium text-center pr-7 mt-0.5">
                             Metraj: {entryCount} mahal
                           </p>
                         ) : null;
                       })()}
                     </div>
                   ) : (
-                    <span className="px-2 text-xs text-slate-700 block py-3 text-right">{row.quantity}</span>
+                    <span className="px-2 text-xs text-slate-700 block py-3 text-center">{row.quantity}</span>
                   )}
                 </td>
                 {/* Birim */}
-                <td className={tdCls(rowIdx, 'unit')}>
+                <td className={`${tdCls(rowIdx, 'unit')} text-center`}>
                   {isEditable ? (
                     <select
                       data-cell={`${rowIdx}-unit`}
-                      className={cellCls(rowIdx, 'unit', true)}
+                      className={`${cellCls(rowIdx, 'unit', true)} text-center`}
                       value={row.unit}
                       tabIndex={getCellTabIndex(rowIdx, 'unit')}
                       onFocus={() => setActiveCell({ rowIdx, col: 'unit' })}
@@ -3406,17 +3632,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                     </select>
                   ) : (
-                    <span className="px-2 text-xs text-slate-700 block py-3">{row.unit}</span>
+                    <span className="px-2 text-xs text-slate-700 block py-3 text-center">{row.unit}</span>
                   )}
                 </td>
                 {/* Satış Fiyatı — CalcInput (geniş + binlik ayraç) */}
-                <td className={`${tdCls(rowIdx, 'salesUnitPrice')} text-right min-w-[148px] ${isLoss ? 'bg-red-50/40' : ''}`}>
+                <td className={`${tdCls(rowIdx, 'salesUnitPrice')} text-center min-w-[148px] ${isLoss ? 'bg-red-50/40' : ''}`}>
                   {isEditable ? (
-                    <div className="relative flex items-center min-h-11">
+                    <div className="relative flex items-center justify-center min-h-11">
                       <CalcInput
                         data-cell={`${rowIdx}-salesUnitPrice`}
                         amountFormat
-                        className={`${cellCls(rowIdx, 'salesUnitPrice', true)} text-right pr-12 ${isLoss ? '!ring-2 !ring-inset !ring-status-danger !rounded-md' : ''}`}
+                        className={`${cellCls(rowIdx, 'salesUnitPrice', true)} text-center pr-12 ${isLoss ? '!ring-2 !ring-inset !ring-status-danger !rounded-md' : ''}`}
                         value={row.salesUnitPrice}
                         onChange={(v) => updateRow(row._id, 'salesUnitPrice', v)}
                         onCommit={(v) => setTimeout(() => tryAutoSaveRow(row._id, { salesUnitPrice: v }), 50)}
@@ -3437,7 +3663,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       </div>
                     </div>
                   ) : (
-                    <span className="px-2 text-sm text-slate-700 block py-3 text-right">{fmtCurrency(parseFloat(row.salesUnitPrice))}</span>
+                    <span className="px-2 text-sm text-slate-700 block py-3 text-center">{fmtCurrency(parseFloat(row.salesUnitPrice))}</span>
                   )}
                 </td>
                 {/* Maliyet (Tedarikçi Fiyatı, internal only) — CalcInput */}
@@ -3598,7 +3824,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               {/* İş Tanımı — sub-group varsa dropdown + inline yeni ekleme */}
               <td className={tdCls('new', 'jobDescription')}>
                 {!addingRow.workGroupId ? (
-                  <span className="px-2 text-xs text-slate-400 block py-3">Önce İş Grubu seçin</span>
+                  <span className="px-2 text-xs font-medium text-status-danger block py-3">Önce İş Grubu seçin</span>
                 ) : loadingSubGroupIds.has(addingRow.workGroupId) ? (
                   <span className="px-2 text-xs text-slate-400 block py-3">Yükleniyor...</span>
                 ) : (
@@ -3616,6 +3842,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       setAddingDirty(true);
                     }}
                     onAddNew={createSubGroup}
+                    onNotify={onNotify}
                     onKeyDown={(e) => handleCellKeyDown(e, 'new', 'jobDescription')}
                   />
                 )}
@@ -3635,12 +3862,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 />
               </td>
               {/* Miktar — CalcInput */}
-              <td className={`${tdCls('new', 'quantity')} text-right`}>
+              <td className={`${tdCls('new', 'quantity')} text-center`}>
                 <div className="w-full">
-                  <div className="flex items-center w-full">
+                  <div className="flex items-center justify-center w-full">
                     <CalcInput
                       data-cell="new-quantity"
-                      className={`${cellCls('new', 'quantity', true)} text-right flex-1`}
+                      shadowCalc
+                      className={`${cellCls('new', 'quantity', true)} text-center flex-1`}
                       value={addingRow.quantity}
                       onChange={(v) => { setAddingRow((p) => ({ ...p, quantity: v })); setAddingDirty(true); }}
                       onCommit={() => {}}
@@ -3660,7 +3888,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   {(() => {
                     const entryCount = readMetrajEntries(addingRow.metrajData).length;
                     return entryCount > 0 ? (
-                      <p className="text-[10px] text-brand-600 font-medium text-right pr-7 mt-0.5">
+                      <p className="text-[10px] text-brand-600 font-medium text-center pr-7 mt-0.5">
                         Metraj: {entryCount} mahal
                       </p>
                     ) : null;
@@ -3668,10 +3896,10 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 </div>
               </td>
               {/* Birim */}
-              <td className={tdCls('new', 'unit')}>
+              <td className={`${tdCls('new', 'unit')} text-center`}>
                 <select
                   data-cell="new-unit"
-                  className={cellCls('new', 'unit', true)}
+                  className={`${cellCls('new', 'unit', true)} text-center`}
                   value={addingRow.unit}
                   tabIndex={getCellTabIndex('new', 'unit')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'unit' })}
@@ -3683,12 +3911,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 </select>
               </td>
               {/* Satış Fiyatı — CalcInput */}
-              <td className={`${tdCls('new', 'salesUnitPrice')} text-right min-w-[148px]`}>
-                <div className="relative flex items-center min-h-11">
+              <td className={`${tdCls('new', 'salesUnitPrice')} text-center min-w-[148px]`}>
+                <div className="relative flex items-center justify-center min-h-11">
                   <CalcInput
                     data-cell="new-salesUnitPrice"
                     amountFormat
-                    className={`${cellCls('new', 'salesUnitPrice', true)} text-right pr-10`}
+                    className={`${cellCls('new', 'salesUnitPrice', true)} text-center pr-10`}
                     value={addingRow.salesUnitPrice}
                     onChange={(v) => { setAddingRow((p) => ({ ...p, salesUnitPrice: v })); setAddingDirty(true); }}
                     onCommit={() => {}}
@@ -3778,8 +4006,15 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     {/* Zarar Uyarısı */}
     {(() => {
       const lossCount = rows.filter((r) => {
-        const sup = parseFloat(r.supplierUnitPrice || '0');
-        const sal = parseFloat(r.salesUnitPrice || '0');
+        const money = {
+          pricingType: r.pricingType,
+          lumpSumPrice: parseFloat(r.lumpSumPrice || '0') || 0,
+          quantity: parseFloat(r.quantity || '0') || 0,
+          salesUnitPrice: parseFloat(r.salesUnitPrice || '0') || 0,
+          supplierUnitPrice: parseFloat(r.supplierUnitPrice || '0') || 0,
+        };
+        const sup = repairItemSupplierTotal(money);
+        const sal = repairItemSalesTotal(money);
         return sup > 0 && sup > sal;
       }).length;
       if (lossCount === 0) return null;
@@ -3895,8 +4130,7 @@ function EmergencyReportEditor({
 
   const isEditable = localReport.status === 'draft' || localReport.status === 'rejected';
 
-  const totalSupplierCost = localReport.items?.reduce((s: number, i: any) => s + (i.supplierTotal ?? 0), 0) ?? 0;
-  const totalSalesAmount = localReport.items?.reduce((s: number, i: any) => s + (i.salesTotal ?? 0), 0) ?? 0;
+  const { totalSupplierCost, totalSalesAmount } = recomputeReportTotals(localReport.items ?? []);
   const grossProfit = totalSalesAmount - totalSupplierCost;
   const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
 
@@ -4038,8 +4272,8 @@ function EmergencyReportEditor({
           </div>
         </div>
         <Badge
-          text={report.status === 'draft' ? 'Taslak' : 'Sunuldu'}
-          color={report.status === 'draft' ? 'bg-slate-100 text-slate-600' : 'bg-blue-100 text-blue-700'}
+          text={repairReportStatusLabel(report.status)}
+          color={repairReportStatusBadge(report.status)}
         />
         <div className="ml-auto flex items-center gap-2 flex-wrap">
           {/* Müşteri Görünümü / Tam Görünüm toggle */}
@@ -4224,8 +4458,8 @@ function EmergencyReportEditor({
           <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
             <p className="text-xs font-medium text-slate-500 mb-2">Rapor Durumu</p>
             <Badge
-              text={report.status === 'draft' ? 'Taslak' : 'Sunuldu'}
-              color={report.status === 'draft' ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700'}
+              text={repairReportStatusLabel(report.status)}
+              color={repairReportStatusBadge(report.status)}
             />
             {isEditable && (
               <button type="button" onClick={handleSubmitReport} className="w-full mt-3 bg-emerald-600 text-white py-2 rounded-lg text-xs hover:bg-emerald-700">
@@ -4702,6 +4936,10 @@ export default function RepairReportPage() {
   }, [report?.departmentId, report?.claimFile?.lossType, report?.claimFile?.claimSubjectId]);
 
   const handleRevise = () => {
+    if (!canStartRepairReportRevisionFromStatus(report?.status)) {
+      notify('error', 'Bu rapor durumunda revizyon başlatılamaz');
+      return;
+    }
     if (!canCreateRepairReportRevision(report?.versionNo ?? 0)) {
       notify('error', REPAIR_REPORT_MAX_REVISION_MESSAGE);
       return;
@@ -4710,8 +4948,8 @@ export default function RepairReportPage() {
   };
 
   const confirmRevise = async (payload: ReviseReportPayload) => {
-    if (!canCreateRepairReportRevision(report?.versionNo ?? 0)) {
-      notify('error', REPAIR_REPORT_MAX_REVISION_MESSAGE);
+    if (!canStartRepairReportRevisionFromStatus(report?.status)) {
+      notify('error', 'Bu rapor durumunda revizyon başlatılamaz');
       return;
     }
     setRevising(true);
@@ -4834,6 +5072,13 @@ export default function RepairReportPage() {
       setShowRequestApprovalModal(false);
       setConfirmSendWithoutImages(false);
       setItemsApprovalError(null);
+      const customerMail = String(report?.claimFile?.customer?.email ?? '').trim();
+      notify(
+        'success',
+        customerMail
+          ? `Onaya alındı. Rapor PDF müşteriye gönderildi: ${customerMail}`
+          : 'Onaya alındı.',
+      );
       await load();
     } catch (e: any) { notify('error', e.response?.data?.message ?? 'Hata Oluştu'); }
     finally { setRequestingApproval(false); }
@@ -5010,16 +5255,10 @@ export default function RepairReportPage() {
     );
     const unitItems = groupItems.filter((item: any) => item.pricingType !== 'lumpsum');
     if (unitItems.length === 0) return;
-    const currentTotal = unitItems.reduce((sum: number, item: any) => {
-      return sum + Number(
-        item.supplierTotal ?? Number(item.quantity ?? 0) * Number(item.supplierUnitPrice ?? 0),
-      );
-    }, 0);
+    const currentTotal = unitItems.reduce((sum: number, item: any) => sum + repairItemResolvedSupplierTotal(item), 0);
     try {
       for (const item of unitItems) {
-        const itemSupplier = Number(
-          item.supplierTotal ?? Number(item.quantity ?? 0) * Number(item.supplierUnitPrice ?? 0),
-        );
+        const itemSupplier = repairItemResolvedSupplierTotal(item);
         const share = currentTotal > 0 ? itemSupplier / currentTotal : 1 / unitItems.length;
         const newItemTotal = Math.round(quoteTotal * share * 100) / 100;
         const qty = Number(item.quantity) || 1;
@@ -5031,7 +5270,7 @@ export default function RepairReportPage() {
           quantity: qty,
           unit: item.unit,
           salesUnitPrice: Number(item.salesUnitPrice ?? 0),
-          supplierUnitPrice: Math.round((newItemTotal / qty) * 100) / 100,
+          supplierUnitPrice: newItemTotal,
           pricingType: item.pricingType,
           damageCategory: item.damageCategory,
           damageTypeId: item.damageTypeId || undefined,
@@ -5058,6 +5297,12 @@ export default function RepairReportPage() {
     }
 
     try {
+      const flagsRes = await axios.get(`${API}/claim-operation-center/${claimId}`, { headers: authHeader() });
+      const flags = flagsRes.data?.data?.flowFlags ?? flagsRes.data?.flowFlags;
+      if (flags && flags.repairPhotosReady === false) {
+        showToast('error', 'Her tedarikçinin onarım bitiş resmi yok. Hakediş açılamaz.');
+        return;
+      }
       for (const [workGroupId, amount] of entries) {
         await handleApplySupplierGroupQuote(workGroupId, amount, { quiet: true });
       }
@@ -5370,6 +5615,10 @@ export default function RepairReportPage() {
 
   // Acil Yardım raporu ise ayrı editörü kullan
   const isEditable = (report.status === 'draft' || report.status === 'rejected') && !isFieldStaff;
+  const canReviseThisReport =
+    !isFieldStaff
+    && canStartRepairReportRevisionFromStatus(report.status)
+    && canCreateRepairReportRevision(report.versionNo ?? 0);
   const showExternalChannelButton = ['approved', 'sent_for_external_approval', 'externally_rejected'].includes(report.status);
   const canEditFieldSurvey = (() => {
     if (typeof window === 'undefined') return false;
@@ -5401,20 +5650,12 @@ export default function RepairReportPage() {
       {report.reportType === 'multi' && isEditable && (
         <button type="button" onClick={() => setShowDamageTypeModal(true)} className="text-xs bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-brand-700">+ Hasar Nedeni</button>
       )}
-      {report.status === 'approved' && (
+      {canReviseThisReport && (
         <button type="button"
           onClick={handleRevise}
-          disabled={!canCreateRepairReportRevision(report.versionNo ?? 0)}
-          title={
-            canCreateRepairReportRevision(report.versionNo ?? 0)
-              ? undefined
-              : REPAIR_REPORT_MAX_REVISION_MESSAGE
-          }
-          className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-purple-600"
+          className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
         >
-          {canCreateRepairReportRevision(report.versionNo ?? 0)
-            ? 'Revize Et'
-            : `Revize Et (Max v${REPAIR_REPORT_MAX_VERSION})`}
+          Revize Et
         </button>
       )}
       {(report.status === 'draft' || report.status === 'rejected') && (
@@ -5520,8 +5761,9 @@ export default function RepairReportPage() {
           tryNavigate(() => router.push(claimPath), 'leave');
         }} className="text-slate-400 hover:text-slate-700 text-sm shrink-0 mt-1">← Geri</button>
         <div className="min-w-0 flex-1 basis-[12rem]">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h2 className="text-lg font-bold text-slate-900">{report.claimFile?.fileNo ?? '—'}</h2>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">{claimListFileNo(report.claimFile)}</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             {report.claimFile?.insuranceCompany?.name && (
               <span className="text-xs text-slate-500">
                 Sigorta Şirketi: <span className="font-semibold text-slate-700">{report.claimFile.insuranceCompany.name}</span>
@@ -5552,6 +5794,7 @@ export default function RepairReportPage() {
           <p className="text-xs text-slate-400 mt-0.5">
             {fmtDateTime(report.reportDate ?? report.createdAt)}
           </p>
+          </div>
         </div>
         <div className="ml-auto flex min-w-0 max-w-full flex-col items-end gap-2">
           <ClaimFileHeaderStatusCluster
@@ -5575,8 +5818,8 @@ export default function RepairReportPage() {
                 fileNo={report.claimFile?.fileNo}
                 reportId={reportId as string}
                 showManualDecision
-                onStartRevision={handleRevise}
-                startRevisionDisabled={!canCreateRepairReportRevision(report.versionNo ?? 0)}
+                onStartRevision={canReviseThisReport ? handleRevise : undefined}
+                startRevisionDisabled={!canReviseThisReport}
                 onManualDecision={async (action: ManualDecisionAction, reason: string) => {
                   if (action === 'revise') return;
                   try {
@@ -5612,6 +5855,13 @@ export default function RepairReportPage() {
           )}
         </div>
       </div>
+
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.hasarRaporSonDegisiklik.id}
+        title={OPS_NOTICE.hasarRaporSonDegisiklik.title}
+        body={OPS_NOTICE.hasarRaporSonDegisiklik.body}
+        testId="hasar-rapor-ilk-kullanim-seridi"
+      />
 
       {/* Onay durumu özeti */}
       {(latestSubmission || latestApprovalDecision) && report.status !== 'draft' && (
@@ -5668,8 +5918,8 @@ export default function RepairReportPage() {
       )}
 
       {/* Dosya Bilgileri — Gizle/Göster; gizliyken aksiyonlar Dosya Akışı altında */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-        <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${dosyaBilgiOpen ? 'mb-4 border-b border-slate-100 pb-2' : ''}`}>
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-slate-50 px-5 py-3 ${dosyaBilgiOpen ? 'border-b border-slate-100' : ''}`}>
           <div className="flex items-center gap-3 min-w-0">
             <h4 className="shrink-0 text-sm font-semibold text-slate-700">Dosya Bilgileri</h4>
             <button
@@ -5687,7 +5937,7 @@ export default function RepairReportPage() {
           )}
         </div>
         {dosyaBilgiOpen && (
-          <>
+          <div className="p-5">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
                 { label: 'Sigorta Şirketi', value: report.claimFile?.insuranceCompany?.name },
@@ -5732,7 +5982,7 @@ export default function RepairReportPage() {
                 )}
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
@@ -5961,8 +6211,8 @@ export default function RepairReportPage() {
                 <tbody className="divide-y divide-slate-50">
                   {report.damageTypes.map((dt: any) => {
                     const dtItems = (report.items ?? []).filter((i: any) => i.damageTypeId === dt.id);
-                    const dtSales = dtItems.reduce((s: number, i: any) => s + i.salesTotal, 0);
-                    const dtSupplier = dtItems.reduce((s: number, i: any) => s + i.supplierTotal, 0);
+                    const dtSales = dtItems.reduce((s: number, i: any) => s + repairItemSalesTotal(i), 0);
+                    const dtSupplier = dtItems.reduce((s: number, i: any) => s + repairItemResolvedSupplierTotal(i), 0);
                     const dtMargin = dtSales > 0 ? ((dtSales - dtSupplier) / dtSales) * 100 : 0;
                     const mColor = dtMargin >= 20 ? 'text-green-600' : dtMargin >= 10 ? 'text-yellow-600' : 'text-red-600';
                     return (
@@ -6184,22 +6434,8 @@ export default function RepairReportPage() {
               </>
             )}
 
-            {/* Onaylanmış: Revize Et */}
-            {!isEditable && report.status === 'approved' && (
-              <button
-                type="button"
-                onClick={handleRevise}
-                className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 transition-colors"
-              >
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                </svg>
-                Revize Et
-              </button>
-            )}
-
-            {/* Externally approved: Revize Et */}
-            {!isEditable && report.status === 'externally_approved' && (
+            {/* Kilitli rapor: Revize Et (onaylı, dış onay bekleyen, sunulmuş) */}
+            {!isEditable && canReviseThisReport && (
               <button
                 type="button"
                 onClick={handleRevise}
@@ -6436,10 +6672,17 @@ export default function RepairReportPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <h3 className="text-base font-bold text-slate-900 mb-1">Onaya Gönder — Son Teyit</h3>
             <p className="text-xs text-slate-500 mb-4">
-              Rapor onay sürecine alınmadan önce dosya eksperi ve gönderim bilgilerini kontrol edin.
+              Müşteri kartındaki e-postaya rapor PDF’si gider. Yöneticiye ayrıca iç onay özeti gider.
             </p>
 
             <div className="space-y-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-medium text-slate-500 mb-1">Müşteri e-posta</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {String(report?.claimFile?.customer?.email ?? '').trim() || 'Kartta e-posta yok'}
+                </p>
+              </div>
+
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-xs font-medium text-slate-500 mb-1">Dosya Eksperi</p>
                 {fileExpert.missing ? (

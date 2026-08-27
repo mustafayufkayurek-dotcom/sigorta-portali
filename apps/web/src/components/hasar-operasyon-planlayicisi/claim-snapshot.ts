@@ -4,14 +4,18 @@
  */
 
 import type { StepId, StepStatus } from './types';
-import { PLANNER_STEPS } from './types';
+import { PLANNER_STEPS, PLANNER_VISIBLE_STEPS } from './types';
 import { PREVIEW } from './preview-data';
+import { plannerMapsHref } from './planner-maps';
 import {
   computePlannerStepStatuses,
   formatLiveReportFinance,
-  hasDigitalApprovalApproved,
+  hasWaForKind,
   hasWhatsappSent,
+  hasRepairWhatsappSent,
+  hasClosureSurveyWa,
   plannerProgressText,
+  repairWaSentLabels,
   reportPipelineFlags,
   resolvePlannerReadyChecks,
   type PlannerActivityItem,
@@ -49,6 +53,13 @@ export type PlannerProgressLine = {
   text: string;
   when: string | null;
   step: StepId;
+};
+
+export type PlannerContactWa = {
+  insured: boolean;
+  inspector: boolean;
+  vendor: boolean;
+  repairTypes: string[];
 };
 
 export type PlannerClaimSnapshot = {
@@ -126,6 +137,7 @@ export type PlannerClaimSnapshot = {
     template: string;
     status: string;
   }>;
+  contactWa: PlannerContactWa;
   completedCount: number;
   totalCount: number;
   completionPct: number;
@@ -133,6 +145,13 @@ export type PlannerClaimSnapshot = {
   stepStatuses: Record<StepId, StepStatus>;
   preAssignedInspectorId: string | null;
   preAssignedSupplierIds: string[];
+  flowFlags: {
+    muvafakatApproved: boolean;
+    repairCompleted: boolean;
+    repairPhotosReady: boolean;
+    missingPhotoVendorIds: string[];
+    canInvoice: boolean;
+  };
 };
 
 function fmtDateTime(iso: string | null | undefined): { date: string; time: string; at: string } {
@@ -195,6 +214,7 @@ export function previewSnapshot(): PlannerClaimSnapshot {
     report: PREVIEW.report,
     revisions: PREVIEW.revisions,
     waHistory: PREVIEW.waHistory,
+    contactWa: { insured: false, inspector: false, vendor: false, repairTypes: [] },
     completedCount: PREVIEW.completedCount,
     totalCount: PREVIEW.totalCount,
     completionPct: PREVIEW.completionPct,
@@ -202,6 +222,13 @@ export function previewSnapshot(): PlannerClaimSnapshot {
     stepStatuses,
     preAssignedInspectorId: 'i1',
     preAssignedSupplierIds: [],
+    flowFlags: {
+      muvafakatApproved: false,
+      repairCompleted: false,
+      repairPhotosReady: false,
+      missingPhotoVendorIds: [],
+      canInvoice: false,
+    },
   };
 }
 
@@ -250,6 +277,13 @@ type OperationCenterPayload = {
     metadata?: Record<string, unknown> | null;
     actor?: { firstName: string; lastName: string } | null;
   }>;
+  flowFlags?: {
+    muvafakatApproved?: boolean;
+    repairCompleted?: boolean;
+    repairPhotosReady?: boolean;
+    missingPhotoVendorIds?: string[];
+    canInvoice?: boolean;
+  };
 };
 
 type ClaimFileLite = {
@@ -339,13 +373,18 @@ export function mapLiveSnapshot(
   );
   const hasSupplier = op.assignedSuppliers.length > 0;
   const activity = (op.activity ?? []) as PlannerActivityItem[];
+  const flags = op.flowFlags ?? {};
   const hasWhatsapp = hasWhatsappSent(activity);
-  const hasDigitalApproval = hasDigitalApprovalApproved(activity);
+  const hasDigitalApproval = Boolean(flags.muvafakatApproved);
   const pipeline = reportPipelineFlags(
     claimFile?.latestRepairReport?.status,
     claimFile?.latestRepairReport?.reportNo,
   );
-
+  const hasDocsUpload = activity.some((item) => {
+    const action = String(item.action ?? '');
+    const desc = String(item.description ?? '');
+    return /MANUAL_DOCUMENT|DOCUMENT_UPLOADED|FILE_DOCUMENT/i.test(action) || /manuel evrak|evrak yüklendi/i.test(desc);
+  });
   const stepStatuses = computePlannerStepStatuses({
     hasAppointment: hasAppt,
     hasInspector,
@@ -355,14 +394,26 @@ export function mapLiveSnapshot(
     hasReport: pipeline.hasReport,
     hasSentForApproval: pipeline.hasSentForApproval,
     hasApproved: pipeline.hasApproved,
+    hasRepairWhatsapp: hasRepairWhatsappSent(activity),
+    hasMuvafakat: Boolean(flags.muvafakatApproved),
+    hasRepairComplete: Boolean(flags.repairCompleted),
+    hasClosureSurvey: hasClosureSurveyWa(activity),
+    hasDocsUpload,
   });
 
-  const completedCount = Object.values(stepStatuses).filter((s) => s === 'done').length;
+  const completedCount = PLANNER_VISIBLE_STEPS.filter((s) => stepStatuses[s.id] === 'done').length;
+  const totalCount = PLANNER_VISIBLE_STEPS.length;
 
   const suppliersFromAssigned: PlannerSupplier[] = op.assignedSuppliers.map((s) => ({
     id: s.id,
     name: s.name ?? s.companyName ?? 'Tedarikçi',
-    serviceGroup: s.workGroups?.[0]?.name ?? op.claim.serviceGroup ?? 'Hizmet',
+    serviceGroup:
+      (s.workGroups ?? [])
+        .map((w) => w.name)
+        .filter(Boolean)
+        .join(', ') ||
+      op.claim.serviceGroup ||
+      'Hizmet',
     place: [s.district, s.city].filter(Boolean).join(' / ') || '—',
     rating: '—',
     avail: 'Müsait' as const,
@@ -443,11 +494,11 @@ export function mapLiveSnapshot(
       'insured_appointment',
       'inspector',
       'supplier',
-      'whatsapp',
-      'digital_approval',
-      'report_writing',
-      'sent_for_approval',
       'approved',
+      'digital_approval',
+      'repair_whatsapp',
+      'repair_complete',
+      'docs_upload',
     ] as const
   ).map((step) => ({
     state: stepStatuses[step],
@@ -514,8 +565,11 @@ export function mapLiveSnapshot(
     durationMinutes: op.mainAppointment?.estimatedDurationMinutes
       ? String(op.mainAppointment.estimatedDurationMinutes)
       : '',
-    locationUrl: op.mainAppointment?.locationUrl ?? op.claim.locationUrl ?? '',
     address: op.mainAppointment?.location ?? op.claim.address ?? '—',
+    locationUrl: plannerMapsHref(
+      op.mainAppointment?.locationUrl ?? op.claim.locationUrl,
+      op.mainAppointment?.location ?? op.claim.address,
+    ),
     district: op.claim.district ?? '',
     owner: ownerName || '—',
     insuredApproval: false,
@@ -556,9 +610,15 @@ export function mapLiveSnapshot(
     report,
     revisions: PREVIEW.revisions,
     waHistory,
+    contactWa: {
+      insured: hasWaForKind(activity, 'insured'),
+      inspector: hasWaForKind(activity, 'adjuster'),
+      vendor: hasWaForKind(activity, 'vendor'),
+      repairTypes: repairWaSentLabels(activity),
+    },
     completedCount,
-    totalCount: 8,
-    completionPct: Math.round((completedCount / 8) * 100),
+    totalCount,
+    completionPct: totalCount ? Math.round((completedCount / totalCount) * 100) : 0,
     eta: '—',
     stepStatuses,
     preAssignedInspectorId:
@@ -567,5 +627,12 @@ export function mapLiveSnapshot(
       claimFile?.assignedFieldUser?.id ??
       null,
     preAssignedSupplierIds: op.assignedSuppliers.map((s) => s.id),
+    flowFlags: {
+      muvafakatApproved: Boolean(flags.muvafakatApproved),
+      repairCompleted: Boolean(flags.repairCompleted),
+      repairPhotosReady: Boolean(flags.repairPhotosReady),
+      missingPhotoVendorIds: flags.missingPhotoVendorIds ?? [],
+      canInvoice: Boolean(flags.canInvoice),
+    },
   };
 }

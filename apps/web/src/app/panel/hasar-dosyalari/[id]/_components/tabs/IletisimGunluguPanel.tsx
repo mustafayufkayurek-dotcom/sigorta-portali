@@ -21,7 +21,8 @@ type NoteType =
   | 'operations'
   | 'finance'
   | 'adjuster'
-  | 'field';
+  | 'field'
+  | 'field_correction';
 
 type FilterKey = 'all' | 'manager_instruction' | 'general';
 
@@ -34,6 +35,7 @@ const NOTE_TYPE_LABELS: Record<string, string> = {
   finance: 'Finans',
   adjuster: 'Eksper',
   field: 'Saha',
+  field_correction: 'Saha',
 };
 
 const COMPOSER_NOTE_TYPES: { value: 'manager_instruction' | 'general'; label: string }[] = [
@@ -62,8 +64,10 @@ function authorName(author?: { firstName?: string; lastName?: string }) {
   return name || 'Bilinmeyen';
 }
 
-function NoteFeedItem({ note }: { note: NoteRecord }) {
+function NoteFeedItem({ note, collapseBody = false }: { note: NoteRecord; collapseBody?: boolean }) {
+  const [open, setOpen] = useState(!collapseBody);
   const isTalimat = note.noteType === 'manager_instruction';
+  const isCorrection = note.noteType === 'field_correction';
   const label = NOTE_TYPE_LABELS[note.noteType] ?? note.noteType;
 
   if (isTalimat) {
@@ -92,23 +96,41 @@ function NoteFeedItem({ note }: { note: NoteRecord }) {
   return (
     <div
       className={`rounded-xl border p-4 ${
-        isGeneral ? 'border-blue-100 bg-white' : 'border-slate-100 bg-white'
+        isCorrection
+          ? 'border-sky-100 bg-sky-50/70'
+          : isGeneral
+            ? 'border-blue-100 bg-white'
+            : 'border-slate-100 bg-white'
       }`}
     >
       <div className="mb-2 flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span
             className={`rounded px-2 py-0.5 text-xs font-medium ${
-              isGeneral ? 'bg-blue-50 text-brand-600' : 'bg-slate-100 text-slate-600'
+              isCorrection
+                ? 'bg-sky-100 text-sky-800'
+                : isGeneral
+                  ? 'bg-blue-50 text-brand-600'
+                  : 'bg-slate-100 text-slate-600'
             }`}
           >
             {label}
           </span>
           <span className="text-xs font-medium text-slate-600">{authorName(note.author)}</span>
+          {collapseBody ? (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              className="text-xs font-medium text-brand-600 hover:text-brand-700"
+              data-testid="tespit-notu-duzenle"
+            >
+              {open ? 'Gizle' : 'Düzenle'}
+            </button>
+          ) : null}
         </div>
         <span className="shrink-0 text-xs text-slate-400">{formatTimestamp(note.createdAt)}</span>
       </div>
-      <p className="whitespace-pre-wrap text-sm text-slate-700">{note.content}</p>
+      {open ? <p className="whitespace-pre-wrap text-sm text-slate-700">{note.content}</p> : null}
     </div>
   );
 }
@@ -129,6 +151,7 @@ export function IletisimGunluguPanel({
   const [noteType, setNoteType] = useState<'manager_instruction' | 'general'>('general');
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<FilterKey>('all');
+  const [composerOpen, setComposerOpen] = useState(!isField);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -173,7 +196,6 @@ export function IletisimGunluguPanel({
     setSaving(true);
     try {
       if (isField) {
-        // Saha: note.create izni olmayabilir — dosya notu uç noktası
         await authAxios({
           method: 'POST',
           url: `${API}/claim-files/${claimId}/notes`,
@@ -187,6 +209,7 @@ export function IletisimGunluguPanel({
         });
       }
       setContent('');
+      if (isField) setComposerOpen(false);
       showToast('success', 'Kayıt eklendi');
       load();
     } catch (e: unknown) {
@@ -201,81 +224,106 @@ export function IletisimGunluguPanel({
     }
   };
 
-  const emptyTitle = isField
-    ? 'Henüz Tespit Notu Yok'
-    : filter === 'all'
+  const emptyTitle =
+    filter === 'all'
       ? 'Henüz Kayıt Yok'
       : filter === 'manager_instruction'
         ? 'Talimat Bulunamadı'
         : 'Dosya Notu Bulunamadı';
 
-  const emptyDescription = isField
-    ? 'Sahada gördüğünüz durumu buraya yazabilirsiniz.'
-    : filter === 'all'
+  const emptyDescription =
+    filter === 'all'
       ? 'Yukarıdaki formu kullanarak talimat veya dosya notu ekleyebilirsiniz.'
       : 'Bu filtreye uygun kayıt yok. Farklı bir filtre seçin veya yeni kayıt ekleyin.';
 
-  return (
-    <div className="space-y-4" data-testid={isField ? 'saha-tespit-notlari' : undefined}>
-      <FinansPanelCard
-        title={isField ? 'Tespit Notu Ekle' : 'Kayıt Ekle'}
-        subtitle={isField ? 'Ofis ile ortak görünür' : 'Talimat veya dosya notu'}
-      >
-        <div className={`grid grid-cols-1 items-start gap-3 ${isField ? '' : 'md:grid-cols-2'}`}>
-          {!isField ? (
-            <div>
-              <FinansFieldLabel>Kayıt Türü</FinansFieldLabel>
-              <select
-                className={finansInputClass}
-                value={noteType}
-                onChange={(e) =>
-                  setNoteType(e.target.value as 'manager_instruction' | 'general')
-                }
-              >
-                {COMPOSER_NOTE_TYPES.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
-          <div className={isField ? '' : undefined}>
-            <FinansFieldLabel required>İçerik</FinansFieldLabel>
-            <div className="relative">
-              <textarea
-                className={`${finansInputClass} resize-none pr-14`}
-                rows={3}
-                placeholder={isField ? 'Tespit notu yazın...' : 'Talimat veya not yazın...'}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                onBlur={() => {
-                  const v = toTitleCaseTR(content.trim());
-                  if (v !== content.trim()) setContent(v);
-                }}
-              />
-              <div className="absolute bottom-2 right-2">
-                <SpeechToText
-                  size="sm"
-                  onTranscript={(text) =>
-                    setContent((prev) => (prev ? `${prev} ${text}` : text))
-                  }
-                />
-              </div>
-            </div>
-          </div>
-          <div className={`flex justify-end ${isField ? '' : 'md:col-span-2'}`}>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || !content.trim()}
-              className="inline-flex items-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
-            >
-              {saving ? 'Kaydediliyor…' : 'Kaydet'}
-            </button>
+  const fieldComposer = isField && !composerOpen ? (
+    <button
+      type="button"
+      onClick={() => setComposerOpen(true)}
+      className="text-sm font-medium text-brand-600 hover:text-brand-700"
+      data-testid="tespit-notu-duzenle"
+    >
+      Düzenle
+    </button>
+  ) : (
+    <div className={`grid grid-cols-1 items-start gap-3 ${isField ? '' : 'md:grid-cols-2'}`}>
+      {!isField ? (
+        <div>
+          <FinansFieldLabel>Kayıt Türü</FinansFieldLabel>
+          <select
+            className={finansInputClass}
+            value={noteType}
+            onChange={(e) =>
+              setNoteType(e.target.value as 'manager_instruction' | 'general')
+            }
+          >
+            {COMPOSER_NOTE_TYPES.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+      <div className={isField ? '' : undefined}>
+        <FinansFieldLabel required>İçerik</FinansFieldLabel>
+        <div className="relative">
+          <textarea
+            className={`${finansInputClass} resize-none pr-14`}
+            rows={3}
+            placeholder={isField ? 'Tespit notu yazın...' : 'Talimat veya not yazın...'}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onBlur={() => {
+              const v = toTitleCaseTR(content.trim());
+              if (v !== content.trim()) setContent(v);
+            }}
+          />
+          <div className="absolute bottom-2 right-2">
+            <SpeechToText
+              size="sm"
+              onTranscript={(text) =>
+                setContent((prev) => (prev ? `${prev} ${text}` : text))
+              }
+            />
           </div>
         </div>
+      </div>
+      <div className={`flex flex-wrap items-center justify-end gap-3 ${isField ? '' : 'md:col-span-2'}`}>
+        {isField ? (
+          <button
+            type="button"
+            onClick={() => setComposerOpen(false)}
+            className="mr-auto text-sm font-medium text-brand-600 hover:text-brand-700"
+            data-testid="tespit-notu-duzenle"
+          >
+            Gizle
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || !content.trim()}
+          className="inline-flex items-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+        >
+          {saving ? 'Kaydediliyor…' : 'Kaydet'}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4" data-testid={isField ? 'saha-tespit-notlari' : undefined}>
+      {isField ? (
+        <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-3">{fieldComposer}</div>
+      ) : (
+      <FinansPanelCard
+        title="Kayıt Ekle"
+        subtitle="Talimat veya dosya notu"
+      >
+        {fieldComposer}
       </FinansPanelCard>
+      )}
 
       {!isField ? (
         <div className="flex flex-wrap gap-2">
@@ -292,13 +340,13 @@ export function IletisimGunluguPanel({
       ) : null}
 
       {loading ? (
-        <div className="py-8 text-center text-sm text-slate-400">Yükleniyor…</div>
+        <div className="py-2 text-sm text-slate-400">Yükleniyor…</div>
       ) : filteredNotes.length === 0 ? (
-        <FinansEmptyState title={emptyTitle} description={emptyDescription} />
+        isField ? null : <FinansEmptyState title={emptyTitle} description={emptyDescription} />
       ) : (
         <div className="space-y-3">
           {filteredNotes.map((note) => (
-            <NoteFeedItem key={note.id} note={note} />
+            <NoteFeedItem key={note.id} note={note} collapseBody={isField} />
           ))}
         </div>
       )}

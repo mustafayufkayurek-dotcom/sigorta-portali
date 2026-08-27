@@ -5,6 +5,8 @@ import {
   AllocateOverheadDto,
 } from './dto/create-monthly-overhead.dto';
 import { FinancialSummaryService } from './financial-summary.service';
+import { EmailService } from '@/modules/notifications/email/email.service';
+import { buildAppPath } from '@/common/utils/app-url';
 import { isOverheadCategoryCode, toGrossAmount, toNetAmount } from './overhead.constants';
 import {
   allocationTargetKey,
@@ -13,6 +15,20 @@ import {
   loadActiveAllocationTargets,
   monthPeriodBounds,
 } from './overhead-allocation.helper';
+import {
+  isLastDayOfMonthIstanbul,
+  isOverheadPoolProcessed,
+  istanbulDateParts,
+} from './overhead-month-end.helper';
+
+const FINANCE_ADMIN_ROLE_CODES = [
+  'admin',
+  'super_admin',
+  'manager',
+  'finance',
+  'finans',
+  'accountant',
+];
 
 const ALLOWED_ENTRY_SOURCES = new Set(['expense_pool', 'logo_erp']);
 
@@ -34,6 +50,7 @@ export class MonthlyOverheadService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly summaryService: FinancialSummaryService,
+    private readonly email: EmailService,
   ) {}
 
   async createEntry(dto: CreateMonthlyOverheadEntryDto, userId: string) {
@@ -515,6 +532,103 @@ export class MonthlyOverheadService {
       entryCount: overheadEntries.length,
       poolExpenseCount: poolAgg._count ?? 0,
     };
+  }
+
+  /**
+   * Ayın son günü: havuz gideri işlenmediyse finans ve yöneticiye panel + e-posta.
+   * Araç kirası / maaş tek dosyaya yazılmaz; havuz + dağıtım gerekir.
+   */
+  async sendLastDayPoolReminders(now = new Date()): Promise<{
+    sent: number;
+    emailed: number;
+    skipped?: string;
+  }> {
+    if (!isLastDayOfMonthIstanbul(now)) {
+      return { sent: 0, emailed: 0, skipped: 'not_last_day' };
+    }
+
+    const { year, month } = istanbulDateParts(now);
+    const status = await this.getPeriodAllocationStatus(year, month);
+    if (isOverheadPoolProcessed(status)) {
+      return { sent: 0, emailed: 0, skipped: 'processed' };
+    }
+
+    const periodLabel = formatPeriodLabel(year, month);
+    const periodKey = `${year}-${String(month).padStart(2, '0')}`;
+    const title = `Yönetim gideri havuzu — ${periodLabel}`;
+    const body =
+      `${periodLabel} ayı kapanıyor. Araç kirası, maaş, SGK ve vergiler tek dosyaya yazılmaz. `
+      + 'Finans → Sabit Giderler’de bu ayın havuzunu işleyip açık dosyalara dağıtın.';
+    const actionUrl = buildAppPath(process.env, `/panel/finans/sabit-giderler?year=${year}&month=${month}`);
+
+    const recipients = await this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        role: { code: { in: FINANCE_ADMIN_ROLE_CODES } },
+      },
+      select: { id: true, email: true },
+    });
+    if (recipients.length === 0) {
+      return { sent: 0, emailed: 0, skipped: 'no_recipients' };
+    }
+
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+
+    let sent = 0;
+    let emailed = 0;
+    for (const user of recipients) {
+      const existing = await this.prisma.notification.findFirst({
+        where: {
+          userId: user.id,
+          type: 'overhead_month_end',
+          relatedEntityId: periodKey,
+          createdAt: { gte: todayStart },
+        },
+        select: { id: true },
+      });
+      if (!existing) {
+        await this.prisma.notification.create({
+          data: {
+            userId: user.id,
+            type: 'overhead_month_end',
+            title,
+            body,
+            channel: 'in_app',
+            status: 'unread',
+            relatedEntityType: 'monthly_overhead',
+            relatedEntityId: periodKey,
+          },
+        });
+        sent += 1;
+      }
+
+      if (user.email) {
+        const mail = await this.email.sendTemplateEmail(user.email, title, {
+          title,
+          badgeLabel: 'Ay sonu',
+          greeting: 'Merhaba',
+          summaryTitle: 'Havuz henüz işlenmedi',
+          bodyNote: body,
+          nextStepTitle: 'Ne yapılacak',
+          nextStepText:
+            'Yönetim giderlerini havuza kaydedin, ardından aynı ay için dosyalara dağıtın.',
+          actionUrl,
+          actionLabel: 'Sabit Giderler',
+          rows: [
+            { label: 'Dönem', value: periodLabel },
+            { label: 'Havuz kayıt', value: String(status.poolExpenseCount) },
+            { label: 'Dağıtım', value: status.allocationComplete ? 'Tamam' : 'Bekliyor' },
+          ],
+        });
+        if (mail.sent) emailed += 1;
+      }
+    }
+
+    this.logger.log(
+      `Ay sonu havuz hatırlatması: ${periodLabel} — panel=${sent}, e-posta=${emailed}`,
+    );
+    return { sent, emailed };
   }
 
   private async loadOverheadEntries(year: number, month: number) {

@@ -1,5 +1,3 @@
-import { canAccessTestNotesFromStorage } from '@/utils/test-notes-access';
-
 /** Tanım CRUD sayfalarının standart geri linki */
 export const TANIMLAR_BACK_HREF = '/panel/ayarlar/tanimlar';
 export const TANIMLAR_BACK_TEXT = '← Tanımlar Merkezi';
@@ -28,7 +26,3 @@ export const DEFINITION_SETTINGS_PAGES = [
   '/panel/ayarlar/musteri-gruplari/asistans-firmalar',
   '/panel/ayarlar/musteri-gruplari/eksper-sigorta-iliskileri',
 ] as const;
-
-export function canAccessTestNotesHub(): boolean {
-  return canAccessTestNotesFromStorage();
-}

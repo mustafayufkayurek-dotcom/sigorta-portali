@@ -37,7 +37,7 @@ export function ActivityFeedWidget({ onNavigate, staggerIndex = 0 }: ActivityFee
       ) : (
         <div className="space-y-2">
           {items.slice(0, 10).map((item, idx) => {
-            const href = claimNavHref({ fileNo: item.fileNo });
+            const href = claimNavHref({ id: item.claimFileId, fileNo: item.fileNo });
             const body = (
               <>
                 <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />

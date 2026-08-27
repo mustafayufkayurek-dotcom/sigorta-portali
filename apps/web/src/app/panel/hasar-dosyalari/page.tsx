@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ClaimNewForm } from '@/components/claim-files/ClaimNewForm';
 import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
@@ -20,15 +21,35 @@ import {
 } from '@/components/ui/TableColumnPicker';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { claimListFileNo } from '@/utils/claim-list-column-fields';
+import { resolveHasarOperationCustomer } from '@/utils/operation-customer-display';
+import {
+  OPS_LIST_PAGE_SIZE_KEYS,
+  readOpsListPageSize,
+  type OpsListPageSize,
+} from '@/utils/ops-list-page-size';
+import { opsListRowNumber } from '@/utils/ops-list-sira';
 import { resolveClaimSupplierDisplayName } from '@/utils/claim-supplier-display';
-import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
+import { resolveOpsEmailDefaultTo } from '@/utils/ops-email-default-to';
+import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
+import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
+import { OpsListPageSizeSelect } from '@/components/operasyon/OpsListPageSizeSelect';
+import {
+  ArrowRight,
+  CalendarPlus,
+  Camera,
+  ClipboardCheck,
+  FileEdit,
+  FolderOpen,
+  Hourglass,
+  StickyNote,
+} from 'lucide-react';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
-import { resolveOperationStatusLabel } from '@sigorta/shared';
+import { resolveOperationStatusLabel, HASAR_PRODUCT_STAGE_FILTERS, hasarProductStageFilterValue } from '@sigorta/shared';
 import {
   cycleClientSort,
   sortRowsByClientSort,
@@ -44,8 +65,14 @@ import {
   fieldStaffInspectionStatus,
   fieldStaffInsuredName,
   fieldStaffPhone,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
+  FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { acilVendorPayLabel, acilVendorPayTone } from '@/utils/acil-vendor-pay';
 
 
 const fmtAmount = (n: number | undefined | null) => formatTryAmount(n, { fractionDigits: 0 });
@@ -128,12 +155,13 @@ function ClaimStatusBadge({ status, reportStatus, approval72hExceeded, operation
     })
     || portalStatusLabel(code, status.name);
   const cls = STATUS_CODE_BADGE[code];
+  const pill = 'inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-medium text-center';
   if (cls) {
-    return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
+    return <span className={`${pill} ${cls}`}>{label}</span>;
   }
   const style = status.color ? { backgroundColor: `${status.color}22`, color: status.color } : undefined;
   return (
-    <span className={style ? 'inline-block rounded-full px-2.5 py-0.5 text-xs font-medium' : 'badge badge-blue'} style={style}>
+    <span className={style ? pill : `badge badge-blue ${pill}`} style={style}>
       {label || 'N/A'}
     </span>
   );
@@ -162,6 +190,13 @@ function getUserScope() {
   } catch { return { officeStaffUserId: null, isFieldStaff: false }; }
 }
 
+function fieldStaffClaimHref(id: string, section?: 'foto' | 'not'): string {
+  const base = `/panel/hasar-dosyalari/${encodeURIComponent(id)}`;
+  if (section === 'foto') return `${base}?saha=foto`;
+  if (section === 'not') return `${base}?saha=not`;
+  return base;
+}
+
 const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'fileNo', label: 'Dosya No', defaultWidth: 120, minWidth: 88 },
   { id: 'customer', label: 'Müşteri', defaultWidth: 160, minWidth: 100 },
@@ -170,14 +205,16 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'subject', label: 'Dosya Konusu', defaultWidth: 140, minWidth: 100 },
   { id: 'status', label: 'Dosya Durumu', defaultWidth: 130, minWidth: 100 },
   { id: 'supplier', label: 'Tedarikçi', defaultWidth: 120, minWidth: 96 },
-  { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88 },
-  { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
-  { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88 },
-  { id: 'reportCost', label: 'Tedarikçi Maliyet Toplamı', defaultWidth: 140, minWidth: 110 },
-  { id: 'reportProfit', label: 'Beklenen Kar', defaultWidth: 110, minWidth: 88 },
-  { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80 },
-  { id: 'revision', label: 'Revizyon', defaultWidth: 120, minWidth: 96 },
+  { id: 'vendorPay', label: 'Ödemeler', defaultWidth: 132, minWidth: 112, alwaysVisible: true },
+  { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88, defaultVisible: false },
+  { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88, defaultVisible: false },
+  { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88, defaultVisible: false },
+  { id: 'reportCost', label: 'Tedarikçi Maliyet Toplamı', defaultWidth: 140, minWidth: 110, defaultVisible: false },
+  { id: 'reportProfit', label: 'Beklenen Kar', defaultWidth: 110, minWidth: 88, defaultVisible: false },
+  { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80, defaultVisible: false },
+  { id: 'revision', label: 'Revizyon', defaultWidth: 120, minWidth: 96, defaultVisible: false },
   { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
+  { id: 'sira', label: 'Sıra', defaultWidth: 56, minWidth: 48, alwaysVisible: true, pin: 'end', resizable: false },
 ];
 
 export default function ClaimFilesPage() {
@@ -224,11 +261,12 @@ function ClaimFilesPageContent() {
   const [noteInsuredName, setNoteInsuredName] = useState<string | undefined>(undefined);
   const [emailTarget, setEmailTarget] = useState<OperationSendEmailTarget | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  /** Saha: tespit durumu istemci filtresi (tümü / yapıldı / yapılmadı) */
-  const [inspectionFilter, setInspectionFilter] = useState<'all' | 'done' | 'pending'>('all');
-  const limit = 20;
-  /** v5: Hasar listesi sütun tercihleri — Operasyon/Acil ile paylaşılmaz */
-  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v5', TABLE_COLUMNS);
+  const [limit, setLimit] = useState<OpsListPageSize>(20);
+  useEffect(() => {
+    setLimit(readOpsListPageSize(OPS_LIST_PAGE_SIZE_KEYS.hasar, 20));
+  }, []);
+  /** v6: iş kuyruğu varsayılan sütun — para Sütunlar’da */
+  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v9', TABLE_COLUMNS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
 
@@ -291,7 +329,7 @@ function ClaimFilesPageContent() {
     if (repairReportStatusFilter) params.set('repairReportStatus', repairReportStatusFilter);
     else if (pendingReportFilter) params.set('repairReportStatus', 'pending_approval');
     return params.toString();
-  }, [search, statusFilter, priorityFilter, insuranceFilter, dateFrom, dateTo, page, invoiceStatusFilter, officeStaffUserId, pendingReportFilter, repairReportStatusFilter]);
+  }, [search, statusFilter, priorityFilter, insuranceFilter, dateFrom, dateTo, page, limit, invoiceStatusFilter, officeStaffUserId, pendingReportFilter, repairReportStatusFilter]);
 
   const {
     data: claimsResponse,
@@ -314,6 +352,18 @@ function ClaimFilesPageContent() {
     [claims],
   );
 
+  const { data: opsStats } = useApiQuery<{
+    openClaims?: number;
+    openedTodayClaims?: number;
+    approvalPending?: number;
+    reportWriting?: number;
+    reportApproval?: number;
+  }>(
+    ['claim-files-operation-stats'],
+    '/claim-files/operation-stats',
+    { enabled: !isFieldStaff },
+  );
+
   // --- TanStack Query: Pending Revisions ---
   const { data: revisionsResponse } = useApiQuery<unknown>(
     ['revision-requests-pending'],
@@ -329,19 +379,16 @@ function ClaimFilesPageContent() {
   }, [revisionsData]);
 
   // Derived
-  const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter || pendingReportFilter || repairReportStatusFilter || (isFieldStaff && inspectionFilter !== 'all'));
+  const hasFilters = !!(search || statusFilter || priorityFilter || insuranceFilter || dateFrom || dateTo || invoiceStatusFilter || pendingRevisionFilter || pendingReportFilter || repairReportStatusFilter);
   const filteredClaims = useMemo(() => {
     let rows = pendingRevisionFilter
       ? claims.filter((c: any) => (pendingRevisionMap[c.id] ?? 0) > 0)
       : claims;
-    if (isFieldStaff && inspectionFilter !== 'all') {
-      rows = rows.filter((c: any) => {
-        const done = fieldStaffInspectionStatus(c).done;
-        return inspectionFilter === 'done' ? done : !done;
-      });
+    if (isFieldStaff) {
+      rows = rows.filter((c: any) => !fieldStaffInspectionStatus(c).done);
     }
     return rows;
-  }, [claims, pendingRevisionFilter, pendingRevisionMap, isFieldStaff, inspectionFilter]);
+  }, [claims, pendingRevisionFilter, pendingRevisionMap, isFieldStaff]);
   const visibleClaims = useMemo(
     () =>
       sortRowsByClientSort(filteredClaims, clientSort, (claim: any, key) => {
@@ -349,7 +396,7 @@ function ClaimFilesPageContent() {
           case 'fileNo':
             return claimListFileNo(claim) === '—' ? '' : claimListFileNo(claim);
           case 'customer':
-            return claim.insuranceCompany?.name ?? '';
+            return resolveHasarOperationCustomer(claim.customer, claim.insuranceCompany).searchText;
           case 'insured':
             return resolveHasarInsuredName(claim);
           case 'date':
@@ -360,6 +407,8 @@ function ClaimFilesPageContent() {
             return claim.currentStatus?.name ?? claim.currentStatus?.code ?? '';
           case 'supplier':
             return resolveClaimSupplierDisplayName(claim) ?? '';
+          case 'vendorPay':
+            return acilVendorPayLabel(claim.vendorPaid);
           case 'invoice':
             return deriveInvoiceStatus(claim.invoices ?? []);
           case 'amount':
@@ -384,7 +433,7 @@ function ClaimFilesPageContent() {
   const clearFilters = () => {
     setSearch(''); setStatusFilter(''); setPriorityFilter('');
     setInsuranceFilter(''); setDateFrom(''); setDateTo('');
-    setInvoiceStatusFilter(''); setInspectionFilter('all'); setPage(1);
+    setInvoiceStatusFilter(''); setPage(1);
     setPendingRevisionFilter(false);
     setPendingReportFilter(false);
     setRepairReportStatusFilter('');
@@ -406,12 +455,14 @@ function ClaimFilesPageContent() {
 
   return (
     <TableColumnsProvider value={tableColumns}>
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
+        <a href="/panel" className="hover:text-brand-600 transition-colors">
+          {isFieldStaff ? 'Saha Merkezi' : 'Dashboard'}
+        </a>
         <span>/</span>
-        <span className="text-slate-600 font-medium">Hasar Dosyaları</span>
+        <span className="text-slate-600 font-medium">{isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}</span>
       </nav>
 
       {/* Header */}
@@ -432,17 +483,42 @@ function ClaimFilesPageContent() {
             </svg>
           </div>
           <div>
-            <h2 className="page-title">Hasar Dosyaları</h2>
+            <h2 className="page-title">{isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}</h2>
             {!loading && (
               <p className="page-subtitle">
-                {total} dosya bulundu
-                {urlStatusCode === 'open' && <span className="ml-2 text-orange-500 font-semibold">· Açık Dosyalar</span>}
-                {urlStatusCode === 'closed' && <span className="ml-2 text-status-success font-semibold">· Kapalı Dosyalar</span>}
+                {isFieldStaff
+                  ? (
+                    <>
+                      {visibleClaims.length} atanan iş.{' '}
+                      <Link
+                        href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}
+                        className="font-semibold text-brand-700 hover:text-brand-800"
+                      >
+                        {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+                      </Link>
+                      {' '}sayfasına gider.
+                    </>
+                  )
+                  : `${total} dosya bulundu`}
+                {!isFieldStaff && urlStatusCode === 'open' && <span className="ml-2 text-orange-500 font-semibold">· Açık Dosyalar</span>}
+                {!isFieldStaff && urlStatusCode === 'closed' && <span className="ml-2 text-status-success font-semibold">· Kapalı Dosyalar</span>}
                 {urlStatusCode === 'sla_exceeded' && <span className="ml-2 text-status-danger font-semibold">· SLA Aşanlar</span>}
                 {search && <span className="ml-2 text-blue-500 font-semibold">· Arama: {search}</span>}
                 {invoiceStatusFilter === 'overdue' && <span className="ml-2 text-status-danger font-semibold">· Gecikmiş fatura</span>}
                 {invoiceStatusFilter === 'pending' && <span className="ml-2 text-status-warning font-semibold">· Bekleyen tahsilat</span>}
               </p>
+            )}
+            {!isFieldStaff && (
+              <div className="mt-1.5 space-y-2">
+                <MissingShortNameBanner />
+                <OpsFirstRunNotice
+                  compact
+                  noticeId={OPS_NOTICE.hasarListeSonDegisiklik.id}
+                  title={OPS_NOTICE.hasarListeSonDegisiklik.title}
+                  body={OPS_NOTICE.hasarListeSonDegisiklik.body}
+                  testId="hasar-liste-ilk-kullanim-seridi"
+                />
+              </div>
             )}
           </div>
         </div>
@@ -484,6 +560,50 @@ function ClaimFilesPageContent() {
         </div>
       </div>
 
+      {!isFieldStaff && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" data-testid="hasar-kpi-band">
+          <OpsStripKpi
+            dense
+            label="Açık Dosya"
+            value={opsStats?.openClaims ?? '—'}
+            color="bg-brand-600"
+            icon={FolderOpen}
+            active={statusFilter === '__open__'}
+            onClick={() => { setStatusFilter((s) => (s === '__open__' ? '' : '__open__')); setPage(1); }}
+          />
+          <OpsStripKpi
+            dense
+            label="Onay Bekleyen"
+            value={opsStats?.approvalPending ?? '—'}
+            color="bg-status-warning"
+            icon={Hourglass}
+          />
+          <OpsStripKpi
+            dense
+            label="Rapor Yazım Aşamasında"
+            value={opsStats?.reportWriting ?? '—'}
+            color="bg-orange-500"
+            icon={FileEdit}
+          />
+          <OpsStripKpi
+            dense
+            label="Rapor Onayı"
+            value={opsStats?.reportApproval ?? '—'}
+            color="bg-amber-600"
+            icon={ClipboardCheck}
+            active={pendingReportFilter}
+            onClick={() => { setPendingReportFilter((v) => !v); setPage(1); }}
+          />
+          <OpsStripKpi
+            dense
+            label="Bugün Açılan"
+            value={opsStats?.openedTodayClaims ?? '—'}
+            color="bg-emerald-600"
+            icon={CalendarPlus}
+          />
+        </div>
+      )}
+
       <SlidePanel
         open={showNewPanel}
         onClose={() => setShowNewPanel(false)}
@@ -500,11 +620,11 @@ function ClaimFilesPageContent() {
       </SlidePanel>
 
       {/* Filter Bar — saha: yalnız arama + açık/kapalı */}
-      <div className="filter-bar">
+      <div className="filter-bar !mb-3 !py-2.5">
         <div className="panel-filter-bar">
-          <div className="panel-filter-search-wrap">
+          <div className={isFieldStaff ? 'relative min-w-[13rem] w-full sm:w-[17rem] sm:flex-none' : 'panel-filter-search-wrap'}>
             <SearchInput
-              placeholder={isFieldStaff ? 'Sigortalı Ara...' : 'Dosya No, Sigortalı...'}
+              placeholder={isFieldStaff ? 'Dosya No, Sigortalı Ara...' : 'Dosya No, Sigortalı...'}
               value={search}
               onChange={(val) => { setSearch(val); setPage(1); }}
               onClear={() => { setSearch(''); setPage(1); }}
@@ -521,23 +641,12 @@ function ClaimFilesPageContent() {
             <option value="__open__">Açık Dosyalar</option>
             <option value="__closed__">Kapalı Dosyalar</option>
             {!isFieldStaff && <option value="__sla_exceeded__">SLA Aşanlar</option>}
-            {!isFieldStaff && claimStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {!isFieldStaff && HASAR_PRODUCT_STAGE_FILTERS.map((stage) => (
+              <option key={stage.id} value={hasarProductStageFilterValue(stage.id)}>
+                {stage.sequenceNo}. {stage.label}
+              </option>
+            ))}
           </select>
-          {isFieldStaff && (
-            <select
-              className="panel-filter-control"
-              value={inspectionFilter}
-              onChange={(e) => {
-                setInspectionFilter(e.target.value as 'all' | 'done' | 'pending');
-                setPage(1);
-              }}
-              data-testid="saha-tespit-filtre"
-            >
-              <option value="all">Tüm Tespitler</option>
-              <option value="done">Tespit Yapıldı</option>
-              <option value="pending">Tespit Yapılmadı</option>
-            </select>
-          )}
           {!isFieldStaff && (
             <>
               <select className="panel-filter-control" value={invoiceStatusFilter} onChange={(e) => { setInvoiceStatusFilter(e.target.value); setPage(1); }}>
@@ -610,6 +719,7 @@ function ClaimFilesPageContent() {
                   <PanelTableTh colId="subject" className="table-th-center">Dosya Konusu</PanelTableTh>
                   <PanelTableTh colId="status" className="table-th-center">Dosya Durumu</PanelTableTh>
                   <PanelTableTh colId="supplier" className="table-th-center">Tedarikçi</PanelTableTh>
+                  <PanelTableTh colId="vendorPay" className="table-th-center">Ödemeler</PanelTableTh>
                   <PanelTableTh colId="invoice" className="table-th-center">Fatura</PanelTableTh>
                   <PanelTableTh colId="amount" className="table-th-center">Tutar</PanelTableTh>
                   <PanelTableTh colId="reportSales" className="table-th-center">Beklenen Ciro</PanelTableTh>
@@ -618,6 +728,7 @@ function ClaimFilesPageContent() {
                   <PanelTableTh colId="priority" className="table-th-center">Öncelik</PanelTableTh>
                   <PanelTableTh colId="revision" className="table-th-center">Revizyon</PanelTableTh>
                   <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
+                  <PanelTableTh colId="sira" className="table-th-center">Sıra</PanelTableTh>
                 </tr>
               </thead>
               <tbody>
@@ -643,13 +754,25 @@ function ClaimFilesPageContent() {
               </svg>
             </div>
             <p className="text-sm font-semibold text-slate-600">
-              {hasFilters ? 'Filtrelere Uyan Dosya Bulunamadı' : 'Henüz Hasar Dosyası Yok'}
+              {hasFilters
+                ? 'Filtrelere Uyan Dosya Bulunamadı'
+                : isFieldStaff
+                  ? 'Atanan İş Yok'
+                  : 'Henüz Hasar Dosyası Yok'}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              {hasFilters ? 'Farklı filtreler deneyin veya filtreleri temizleyin.' : 'İlk dosyanızı oluşturun!'}
+              {hasFilters
+                ? 'Farklı filtreler deneyin veya filtreleri temizleyin.'
+                : isFieldStaff
+                  ? 'Tespiti biten işler Tamamlanan Tespitler sayfasındadır.'
+                  : 'İlk dosyanızı oluşturun!'}
             </p>
             {hasFilters ? (
               <button type="button" onClick={clearFilters} className="btn-secondary mt-4">Filtreleri Temizle</button>
+            ) : isFieldStaff ? (
+              <Link href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF} className="btn-secondary mt-4">
+                {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+              </Link>
             ) : !isFieldStaff ? (
               <button type="button" onClick={openNewPanel} className="btn-primary mt-4">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -659,58 +782,99 @@ function ClaimFilesPageContent() {
           </div>
         </div>
       ) : (
-        <div className="table-container">
+        <div className="table-container ops-queue-table">
           <div className={`grid gap-3 p-3 ${isFieldStaff ? '' : 'lg:hidden'}`}>
-            {visibleClaims.map((claim: any) => {
+            {visibleClaims.map((claim: any, rowIdx: number) => {
               if (isFieldStaff) {
                 const insuredName = fieldStaffInsuredName(claim);
                 const phone = fieldStaffPhone(claim);
                 const address = fieldStaffAddress(claim);
                 const inspection = fieldStaffInspectionStatus(claim);
+                const cityLine = [claim.propertyAddress?.city, claim.propertyAddress?.district]
+                  .filter(Boolean)
+                  .join(' / ');
+                const subject =
+                  claim.claimSubject?.name ||
+                  claim.lossType ||
+                  claim.productBranch ||
+                  'Hasar Dosyası';
                 return (
                   <div
                     key={claim.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        router.push(`/panel/hasar-dosyalari/${claim.id}`);
-                      }
-                    }}
-                    className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+                    className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-900/[0.03]"
                     data-testid="saha-dosya-karti"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-base font-semibold text-slate-900">{insuredName}</p>
-                      <span
-                        className={`shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
-                        data-testid="saha-tespit-rozet"
-                      >
-                        {inspection.label}
-                      </span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-gradient-to-r from-brand-50/70 via-white to-white px-3.5 py-2.5 sm:px-4">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-sm font-bold text-slate-950">
+                          {claim.fileNo ?? '—'}
+                        </span>
+                        <span
+                          className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold ${fieldStaffInspectionBadgeClass(inspection.done)}`}
+                          data-testid="saha-tespit-rozet"
+                        >
+                          {inspection.label}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                      <FieldInsuredContactActions
-                        claim={{
-                          id: claim.id,
-                          fileNo: claim.fileNo,
-                          insuredName: claim.insuredName ?? insuredName,
-                          propertyAddress: claim.propertyAddress,
-                        }}
-                        phone={phone}
-                      />
+                    <div className="flex flex-col gap-3 p-3.5 sm:p-4 lg:flex-row lg:items-stretch lg:justify-between">
+                      <div className="min-w-0 flex-[1.4] space-y-2.5">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                            <p className="text-[11px] font-medium text-slate-500">Sigortalı</p>
+                            <p className="mt-0.5 text-sm font-semibold text-slate-950">
+                              {insuredName !== '—' ? insuredName : '—'}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                            <p className="text-[11px] font-medium text-slate-500">Konu / Yer</p>
+                            <p className="mt-0.5 text-sm font-semibold text-slate-900">{subject}</p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">{cityLine || address || '—'}</p>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-brand-100 bg-brand-50/25 px-3 py-2.5">
+                          <p className="text-[11px] font-medium text-slate-500">İletişim</p>
+                          <div className="mt-1.5">
+                            <FieldInsuredContactActions
+                              claim={{
+                                id: claim.id,
+                                fileNo: claim.fileNo,
+                                insuredName: claim.insuredName ?? insuredName,
+                                propertyAddress: claim.propertyAddress,
+                              }}
+                              phone={phone}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex w-full shrink-0 flex-col justify-center gap-1.5 border-t border-slate-100 pt-3 lg:w-[11.5rem] lg:border-l lg:border-t-0 lg:pl-3.5 lg:pt-0">
+                        <Link
+                          href={fieldStaffClaimHref(claim.id, 'foto')}
+                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:border-brand-300 hover:bg-brand-50"
+                        >
+                          <Camera className="h-3.5 w-3.5" strokeWidth={2} />
+                          Tespit Fotoğrafları
+                        </Link>
+                        <Link
+                          href={fieldStaffClaimHref(claim.id, 'not')}
+                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:border-brand-300 hover:bg-brand-50"
+                        >
+                          <StickyNote className="h-3.5 w-3.5" strokeWidth={2} />
+                          Tespit Notları
+                        </Link>
+                        <Link
+                          href={fieldStaffClaimHref(claim.id)}
+                          className="inline-flex w-full items-center justify-center gap-1 rounded-xl bg-brand-600 px-3 py-2.5 text-xs font-semibold text-white hover:bg-brand-700"
+                        >
+                          Dosyaya Git
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
                     </div>
-                    <p className="mt-2 text-xs leading-relaxed text-slate-600">{address}</p>
-                    <p className="mt-2 text-[11px] text-slate-500">
-                      Tespit Tarih Saati:{' '}
-                      <span className="font-medium text-slate-700">{inspection.doneAtLabel}</span>
-                    </p>
                   </div>
                 );
               }
-              const customerName = claim.insuranceCompany?.name ?? '—';
+              const customer = resolveHasarOperationCustomer(claim.customer, claim.insuranceCompany);
               const insuredName = resolveHasarInsuredName(claim);
               const revCount = pendingRevisionMap[claim.id] ?? 0;
               const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
@@ -732,18 +896,27 @@ function ClaimFilesPageContent() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="break-all font-mono text-sm font-bold text-slate-900">{claimListFileNo(claim)}</div>
-                      <div className="mt-1 truncate text-xs font-medium text-slate-600">{customerName}</div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="break-all font-mono text-sm font-bold text-slate-900">{claimListFileNo(claim)}</div>
+                        {claim.approval72hExceeded ? (
+                          <span className="ops-72s-chip" title="Onay süresi 72 saati aştı">72s</span>
+                        ) : null}
+                      </div>
+                      <div className="mt-1">
+                        <OpsCustomerCell kind="hasar" name={customer.name} typeLabel={customer.typeLabel} href={customer.customerHref} />
+                      </div>
                       {subject ? (
                         <div className="mt-0.5 truncate text-[11px] text-slate-500">{subject}</div>
                       ) : null}
                     </div>
-                    <ClaimStatusBadge
-                      status={claim.currentStatus}
-                      reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
-                      approval72hExceeded={Boolean(claim.approval72hExceeded)}
-                      operationStatusLabel={claim.operationStatusLabel}
-                    />
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <ClaimStatusBadge
+                        status={claim.currentStatus}
+                        reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
+                        approval72hExceeded={Boolean(claim.approval72hExceeded)}
+                        operationStatusLabel={claim.operationStatusLabel}
+                      />
+                    </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div>
@@ -757,6 +930,12 @@ function ClaimFilesPageContent() {
                     <div>
                       <p className="text-slate-400">Tedarikçi</p>
                       <p className="mt-0.5 truncate font-medium text-slate-700">{supplierName ?? '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Ödemeler</p>
+                      <span className={acilVendorPayTone(claim.vendorPaid)} data-testid="hasar-liste-odeme">
+                        {acilVendorPayLabel(claim.vendorPaid)}
+                      </span>
                     </div>
                     <div>
                       <p className="text-slate-400">Öncelik</p>
@@ -786,6 +965,10 @@ function ClaimFilesPageContent() {
                       <p className="text-slate-400">Beklenen Kar</p>
                       <p className="mt-0.5 font-semibold text-slate-700">{rapor ? fmtAmount(rapor.grossProfit) : '—'}</p>
                     </div>
+                    <div>
+                      <p className="text-slate-400">Sıra</p>
+                      <p className="mt-0.5 font-semibold tabular-nums text-slate-700">{opsListRowNumber(page, limit, rowIdx)}</p>
+                    </div>
                   </div>
                   <div className="mt-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                     <OperationRowActions
@@ -793,7 +976,10 @@ function ClaimFilesPageContent() {
                       id={claim.id}
                       fileNo={claimListFileNo(claim)}
                       reportId={rapor?.id ?? null}
-                      defaultEmailTo={claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? null}
+                      defaultEmailTo={resolveOpsEmailDefaultTo({
+                        customerEmail: claim.customer?.email,
+                        insuranceEmail: claim.insuranceCompany?.contactEmail,
+                      }) ?? null}
                       onAddNote={() => {
                         setNoteFileId(claim.id);
                         setNoteFileNo(claimListFileNo(claim) === '—' ? undefined : claimListFileNo(claim));
@@ -804,7 +990,10 @@ function ClaimFilesPageContent() {
                           claimId: claim.id,
                           fileNo: claim.fileNo ?? claim.claimNo ?? '—',
                           reportId: rapor?.id ?? null,
-                          defaultTo: claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? undefined,
+                          defaultTo: resolveOpsEmailDefaultTo({
+                        customerEmail: claim.customer?.email,
+                        insuranceEmail: claim.insuranceCompany?.contactEmail,
+                      }) ?? undefined,
                         })
                       }
                     />
@@ -829,6 +1018,9 @@ function ClaimFilesPageContent() {
                   <SortablePanelTableTh colId="subject" sortKey="subject" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya Konusu</SortablePanelTableTh>
                   <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya Durumu</SortablePanelTableTh>
                   <SortablePanelTableTh colId="supplier" sortKey="supplier" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tedarikçi</SortablePanelTableTh>
+                  <SortablePanelTableTh colId="vendorPay" sortKey="vendorPay" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">
+                    <span data-testid="hasar-odeme-durumu-sutun">Ödemeler</span>
+                  </SortablePanelTableTh>
                   <SortablePanelTableTh colId="invoice" sortKey="invoice" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Fatura</SortablePanelTableTh>
                   <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tutar</SortablePanelTableTh>
                   <SortablePanelTableTh colId="reportSales" sortKey="reportSales" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Beklenen Ciro</SortablePanelTableTh>
@@ -837,11 +1029,12 @@ function ClaimFilesPageContent() {
                   <SortablePanelTableTh colId="priority" sortKey="priority" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Öncelik</SortablePanelTableTh>
                   <SortablePanelTableTh colId="revision" sortKey="revision" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Revizyon</SortablePanelTableTh>
                   <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
+                  <PanelTableTh colId="sira" className="table-th-center">Sıra</PanelTableTh>
                 </tr>
               </thead>
               <tbody className="table-body">
-                {visibleClaims.map((claim: any) => {
-                  const customerName = claim.insuranceCompany?.name ?? '—';
+                {visibleClaims.map((claim: any, rowIdx: number) => {
+                  const customer = resolveHasarOperationCustomer(claim.customer, claim.insuranceCompany);
                   const insuredName = resolveHasarInsuredName(claim);
                   const revCount = pendingRevisionMap[claim.id] ?? 0;
                   const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
@@ -851,72 +1044,94 @@ function ClaimFilesPageContent() {
                   const rowAccent = claim.approval72hExceeded
                     ? 'ops-row-approval-72h'
                     : revCount > 0
-                      ? 'border-l-4 border-amber-300'
+                      ? 'border-l-4 border-amber-400 bg-amber-50'
                       : rapor?.status === 'pending_approval'
-                        ? 'border-l-4 border-orange-400'
+                        ? 'border-l-4 border-orange-500 bg-orange-50'
                         : '';
+                  const rowTitle = claim.approval72hExceeded
+                    ? 'Onay süresi 72 saati aştı'
+                    : revCount > 0
+                      ? `${revCount} revizyon bekliyor`
+                      : rapor?.status === 'pending_approval'
+                        ? 'Rapor onay bekliyor'
+                        : undefined;
 
                   return (
                     <tr
                       key={claim.id}
                       className={`table-row cursor-pointer ${rowAccent}`}
+                      title={rowTitle}
                       onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}?mode=edit`)}
                     >
-                      <PanelTableTd colId="fileNo" className="table-td font-mono text-xs font-semibold text-slate-900 whitespace-nowrap">{claimListFileNo(claim)}</PanelTableTd>
-                      <PanelTableTd colId="customer" className="table-td text-xs font-medium whitespace-nowrap max-w-[160px]" title={customerName}>{customerName}</PanelTableTd>
-                      <PanelTableTd colId="insured" className="table-td text-xs whitespace-nowrap max-w-[180px]">
-                        <InsuredNameInlineEdit
-                          claimId={claim.id}
-                          displayName={insuredName}
-                          onSaved={() => { void refetch(); }}
-                          compact
-                        />
+                      <PanelTableTd colId="fileNo" className="table-td font-mono text-xs font-semibold text-slate-900">
+                        <span className="inline-flex flex-wrap items-center gap-1">
+                          {claimListFileNo(claim)}
+                          {claim.approval72hExceeded ? (
+                            <span className="ops-72s-chip" title="Onay süresi 72 saati aştı">72s</span>
+                          ) : null}
+                        </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="date" className="table-td text-slate-400 text-xs whitespace-nowrap">{fmtDate(claim.createdAt)}</PanelTableTd>
-                      <PanelTableTd colId="subject" className="table-td text-xs whitespace-nowrap max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
+                      <PanelTableTd
+                        colId="customer"
+                        wrap
+                        className="table-td text-xs max-w-[160px]"
+                        title={customer.title}
+                      >
+                        <OpsCustomerCell kind="hasar" name={customer.name} typeLabel={customer.typeLabel} href={customer.customerHref} />
+                      </PanelTableTd>
+                      <PanelTableTd colId="insured" className="table-td text-xs max-w-[180px]" title={insuredName}>
+                        {insuredName}
+                      </PanelTableTd>
+                      <PanelTableTd colId="date" className="table-td text-slate-400 text-xs">{fmtDate(claim.createdAt)}</PanelTableTd>
+                      <PanelTableTd colId="subject" align="center" className="table-td-center text-xs max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
                         {resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}
                       </PanelTableTd>
-                      <PanelTableTd colId="status" className="table-td whitespace-nowrap">
+                      <PanelTableTd colId="status" align="center" className="table-td-center">
                         <ClaimStatusBadge
-                      status={claim.currentStatus}
-                      reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
-                      approval72hExceeded={Boolean(claim.approval72hExceeded)}
-                      operationStatusLabel={claim.operationStatusLabel}
-                    />
+                          status={claim.currentStatus}
+                          reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
+                          approval72hExceeded={Boolean(claim.approval72hExceeded)}
+                          operationStatusLabel={claim.operationStatusLabel}
+                        />
                       </PanelTableTd>
-                      <PanelTableTd colId="supplier" className="table-td text-xs whitespace-nowrap max-w-[120px]" title={supplierName ?? undefined}>
+                      <PanelTableTd colId="supplier" className="table-td text-xs max-w-[120px]" title={supplierName ?? undefined}>
                         {supplierName ?? <span className="text-slate-300">Atanmadı</span>}
                       </PanelTableTd>
-                      <PanelTableTd colId="invoice" className="table-td whitespace-nowrap">
+                      <PanelTableTd colId="vendorPay" className="table-td">
+                        <span className={acilVendorPayTone(claim.vendorPaid)} data-testid="hasar-liste-odeme">
+                          {acilVendorPayLabel(claim.vendorPaid)}
+                        </span>
+                      </PanelTableTd>
+                      <PanelTableTd colId="invoice" className="table-td">
                         <span className={INVOICE_STATUS_CLASSES[invStatus] ?? 'badge badge-gray'}>
                           {INVOICE_STATUS_LABELS[invStatus] ?? invStatus}
                         </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="amount" className="table-td text-xs whitespace-nowrap font-semibold">
+                      <PanelTableTd colId="amount" className="table-td text-xs font-semibold">
                         {fmtAmount(totalAmount)}
                       </PanelTableTd>
-                      <PanelTableTd colId="reportSales" className="table-td text-xs whitespace-nowrap font-semibold text-slate-800">
+                      <PanelTableTd colId="reportSales" className="table-td text-xs font-semibold text-slate-800">
                         {rapor ? fmtAmount(rapor.totalSalesAmount) : '—'}
                       </PanelTableTd>
-                      <PanelTableTd colId="reportCost" className="table-td text-xs whitespace-nowrap font-semibold text-slate-800">
+                      <PanelTableTd colId="reportCost" className="table-td text-xs font-semibold text-slate-800">
                         {rapor ? fmtAmount(rapor.totalSupplierCost) : '—'}
                       </PanelTableTd>
                       <PanelTableTd
                         colId="reportProfit"
-                        className={`table-td text-xs whitespace-nowrap font-semibold ${
+                        className={`table-td text-xs font-semibold ${
                           rapor && Number(rapor.grossProfit) < 0 ? 'text-status-danger' : 'text-slate-800'
                         }`}
                       >
                         {rapor ? fmtAmount(rapor.grossProfit) : '—'}
                       </PanelTableTd>
-                      <PanelTableTd colId="priority" className="table-td whitespace-nowrap">
+                      <PanelTableTd colId="priority" className="table-td">
                         {claim.priority && (
                           <span className={priorityBadgeClass(claim.priority)}>
                             {formatPriorityLabel(claim.priority)}
                           </span>
                         )}
                       </PanelTableTd>
-                      <PanelTableTd colId="revision" className="table-td whitespace-nowrap">
+                      <PanelTableTd colId="revision" className="table-td">
                         {revCount > 0 ? (
                           <span className="badge badge-amber">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
@@ -926,7 +1141,7 @@ function ClaimFilesPageContent() {
                           <span className="text-slate-300 text-xs">—</span>
                         )}
                       </PanelTableTd>
-                      <PanelTableTd colId="actions" className="table-td-center whitespace-nowrap">
+                      <PanelTableTd colId="actions" wrap={false} className="table-td-center">
                         <div
                           className="inline-flex"
                           onClick={(e) => e.stopPropagation()}
@@ -937,7 +1152,10 @@ function ClaimFilesPageContent() {
                             id={claim.id}
                             fileNo={claimListFileNo(claim)}
                             reportId={rapor?.id ?? null}
-                            defaultEmailTo={claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? null}
+                            defaultEmailTo={resolveOpsEmailDefaultTo({
+                        customerEmail: claim.customer?.email,
+                        insuranceEmail: claim.insuranceCompany?.contactEmail,
+                      }) ?? null}
                             onAddNote={() => {
                               setNoteFileId(claim.id);
                               setNoteFileNo(claimListFileNo(claim) === '—' ? undefined : claimListFileNo(claim));
@@ -948,11 +1166,17 @@ function ClaimFilesPageContent() {
                                 claimId: claim.id,
                                 fileNo: claim.fileNo ?? claim.claimNo ?? '—',
                                 reportId: rapor?.id ?? null,
-                                defaultTo: claim.insuranceCompany?.contactEmail ?? claim.customer?.email ?? undefined,
+                                defaultTo: resolveOpsEmailDefaultTo({
+                        customerEmail: claim.customer?.email,
+                        insuranceEmail: claim.insuranceCompany?.contactEmail,
+                      }) ?? undefined,
                               })
                             }
                           />
                         </div>
+                      </PanelTableTd>
+                      <PanelTableTd colId="sira" align="center" className="table-td-center tabular-nums font-semibold text-slate-700">
+                        {opsListRowNumber(page, limit, rowIdx)}
                       </PanelTableTd>
                     </tr>
                   );
@@ -960,15 +1184,30 @@ function ClaimFilesPageContent() {
               </tbody>
             </table>
           </div>
-          {total > limit && (
-            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/60">
-              <span className="text-xs text-slate-400">{(page - 1) * limit + 1}–{Math.min(page * limit, total)} / {total} kayıt</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/60">
+            <div className="flex flex-wrap items-center gap-3">
+              <OpsListPageSizeSelect
+                value={limit}
+                fallback={20}
+                storageKey={OPS_LIST_PAGE_SIZE_KEYS.hasar}
+                onChange={(next) => {
+                  setLimit(next);
+                  setPage(1);
+                }}
+              />
+              <span className="text-xs text-slate-400">
+                {total === 0
+                  ? '0 kayıt'
+                  : `${(page - 1) * limit + 1}–${Math.min(page * limit, total)} / ${total} kayıt`}
+              </span>
+            </div>
+            {total > limit && (
               <div className="flex gap-2">
                 <button type="button" disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="text-xs border border-slate-200 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors">← Önceki</button>
-                <button disabled={page * limit >= total} onClick={() => setPage((p) => p + 1)} className="text-xs border border-slate-200 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors">Sonraki →</button>
+                <button type="button" disabled={page * limit >= total} onClick={() => setPage((p) => p + 1)} className="text-xs border border-slate-200 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-slate-50 transition-colors">Sonraki →</button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
       <ExpertFileNoteModal

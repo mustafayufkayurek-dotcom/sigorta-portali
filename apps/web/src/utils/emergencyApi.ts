@@ -1,4 +1,6 @@
 import { apiClient } from '@/lib/api-client';
+import { ACIL_POOL_VENDOR_NOTE } from '@/utils/acil-vendor-pool';
+import { asList } from '@/utils/emergency-list-unwrap';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,6 +52,7 @@ export interface EmergencyOperationChain {
     vendorStatementRequiresClaimFile: boolean;
     paymentRequiresClaimFile: boolean;
   };
+  vendorEntitlementGrantedAt?: string | null;
   steps: EmergencyOperationStep[];
 }
 
@@ -63,27 +66,39 @@ export interface EmergencyCase {
   address: string;
   city?: string | null;
   district?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   issueType: string;
   urgency: EmergencyUrgency;
   status: EmergencyStatus;
   fileDate: string;
+  workStartedAt?: string | null;
+  serviceDeliveredAt?: string | null;
+  resolvedAt?: string | null;
+  invoicedAt?: string | null;
   assignedVendorId?: string | null;
   assignedUserId?: string | null;
   notes?: string | null;
   findingsText?: string | null;
-  resolvedAt?: string | null;
-  invoicedAt?: string | null;
+  vendorPaid?: boolean | null;
   createdByUserId: string;
   createdAt: string;
   updatedAt: string;
+  operationTimestamps?: {
+    notifiedAt: string | null;
+    workStartedAt: string | null;
+    serviceDeliveredAt: string | null;
+    closedAt: string | null;
+  };
   // computed
   overdueLevel: OverdueLevel;
   totalGelir: number;
   totalGider: number;
   netKar: number;
   operationStatusLabel?: string | null;
+  autoClosureEmail?: { sent: boolean; to: string | null; error: string | null };
   // relations
-  assignedVendor?: { id: string; name: string; phone?: string | null } | null;
+  assignedVendor?: { id: string; name: string; phone?: string | null; notes?: string | null } | null;
   assignedUser?: {
     id: string;
     firstName: string;
@@ -95,15 +110,18 @@ export interface EmergencyCase {
     id: string;
     fullName?: string | null;
     companyName?: string | null;
+    shortName?: string | null;
     firstName?: string | null;
     lastName?: string | null;
     entityType?: string | null;
     subType?: string | null;
     phone?: string | null;
+    email?: string | null;
   } | null;
   activeDelegation?: {
     actingUser: { id: string; firstName: string; lastName: string };
     principalUser: { id: string; firstName: string; lastName: string } | null;
+    grantType?: 'person_delegation' | 'function_delegation';
     reason: string | null;
     validUntil: string | null;
   } | null;
@@ -167,6 +185,7 @@ export interface FinanceRow {
   overdueLevel: OverdueLevel;
   invoiceDraft?: Partial<EmergencyInvoiceDraft> | null;
   isFaturalandildi: boolean;
+  vendorPaid?: boolean | null;
 }
 
 export interface MonthlySummary {
@@ -178,20 +197,6 @@ export interface MonthlySummary {
   bekleyen: number;
   totalGider: number;
   netKar: number;
-}
-
-function asList<T>(value: unknown): T[] {
-  if (Array.isArray(value)) return value as T[];
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    if (Array.isArray(record.items)) return record.items as T[];
-    if (Array.isArray(record.data)) return record.data as T[];
-    if (record.data && typeof record.data === 'object') {
-      const data = record.data as Record<string, unknown>;
-      if (Array.isArray(data.items)) return data.items as T[];
-    }
-  }
-  return [];
 }
 
 function asEntity<T>(value: unknown): T {
@@ -392,11 +397,31 @@ export async function getFinanceList(params?: {
   customerId?: string;
   search?: string;
   invoiceStatus?: string;
+  vendorPaid?: string;
 }): Promise<{ data: FinanceRow[]; summary: { totalCases: number; totalGelir: number; totalGider: number; netKar: number } }> {
   return apiClient.get<{ data: FinanceRow[]; summary: { totalCases: number; totalGelir: number; totalGider: number; netKar: number } }>(
     '/emergency/finance/list',
     params,
   );
+}
+
+export type AcilVendorEntitlementRow = {
+  id: string;
+  caseId: string;
+  caseNo: string;
+  customerName: string;
+  issueType: string;
+  vendorId: string;
+  vendorName: string;
+  amount: number;
+  grantedAt: string;
+  grantedByName: string;
+  dueDate: null;
+  vendorPaid?: boolean | null;
+};
+
+export async function getAcilVendorEntitlements(): Promise<{ data: AcilVendorEntitlementRow[] }> {
+  return apiClient.get<{ data: AcilVendorEntitlementRow[] }>('/emergency/finance/vendor-entitlements');
 }
 
 export async function getMonthlySummary(
@@ -439,9 +464,11 @@ export interface VendorOption {
   name: string;
   phone?: string | null;
   category?: string | null;
+  city?: string | null;
+  district?: string | null;
 }
 
-export async function getRecommendedVendors(caseId: string, limit = 3): Promise<{ data: VendorRecommendation[] }> {
+export async function getRecommendedVendors(caseId: string, limit = 20): Promise<{ data: VendorRecommendation[] }> {
   const data = await apiClient.get<unknown>(`/emergency/cases/${caseId}/vendors/recommended`, { limit });
   return { data: asList<VendorRecommendation>(data) };
 }
@@ -452,6 +479,8 @@ export interface VendorRecommendation {
   phone?: string | null;
   city?: string | null;
   district?: string | null;
+  serviceBranches?: string[];
+  serviceAreaLabels?: string[];
   avgServiceScore: number | null;
   avgCost: number | null;
   avgResponseTime: number | null;
@@ -464,6 +493,8 @@ export interface VendorRecommendation {
   distanceLabel?: string | null;
   /** Son çalışma tarihi (ISO) — API varsa gösterilir */
   lastWorkedAt?: string | null;
+  /** Memnuniyet veya maliyet olumsuz */
+  qualityWarning?: boolean;
 }
 
 export async function getEmergencyVendors(
@@ -500,4 +531,10 @@ export async function createVendorQuick(body: {
 }): Promise<{ data: VendorOption }> {
   const data = await apiClient.post<unknown>('/vendors', body);
   return { data: asEntity<VendorOption>(data) };
+}
+
+export async function promoteVendorToPool(vendorId: string): Promise<void> {
+  await apiClient.patch(`/vendors/${vendorId}`, {
+    notes: ACIL_POOL_VENDOR_NOTE,
+  });
 }
