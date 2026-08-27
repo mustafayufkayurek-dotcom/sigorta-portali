@@ -32,6 +32,7 @@ Canlı: web + backend **v540**. Rollback: web v539 / backend v539.
 2. **Hasar / Acil durum dili:** Eski adlar (Eksper Atandı, Bütçe Hazırlanıyor vb.) düşer. Hasar iptali **Dosya İptal Edildi**. Acil’de tespit aşaması yok; **Hizmet Verildi**.
 3. **Liste sıra numarası:** Hasar ve Acil birikim listesinin son sütunu **Sıra**.
 4. **Test Notları:** Tüm ekranlardan kalktı. Eski adres panele yönlendirilir.
+5. **Acil dijital onay geçici durdurma:** 28.08.2026 18:00’e kadar servis formu zorunluluğu kapalı. 18:01’de talimatsız geri açılır. Hasar onayı dokunulmaz.
 
 ## Sonra (karışmaz)
 

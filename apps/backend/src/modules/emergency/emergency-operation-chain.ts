@@ -1,3 +1,5 @@
+import { isAcilDigitalApprovalRequired } from '@sigorta/shared';
+
 export type OperationStepState = 'done' | 'current' | 'pending' | 'blocked';
 
 export interface EmergencyOperationStep {
@@ -107,11 +109,14 @@ export function buildEmergencyOperationChain(input: {
   const financeTransferred = input.invoiceRequestCount > 0 || input.invoiceDraftCount > 0 || input.status === 'FATURALANDILDI';
   const entitlementGranted = Boolean(input.vendorEntitlementGrantedAt);
 
+  const digitalRequired = isAcilDigitalApprovalRequired();
+  const digitalOk = !digitalRequired || input.hasApprovedMatbuEvrak;
+
   const blockerReasons: string[] = [];
   if (!isHistorical) {
     if (!vendorAssigned) blockerReasons.push('Tedarikçi ataması yapılmadı');
     if (!salePriceCreated) blockerReasons.push('Satış fiyatı için gelir kaydı girilmedi');
-    if (!input.hasApprovedMatbuEvrak) blockerReasons.push('Matbu evrak dijital onayı eksik');
+    if (!digitalOk) blockerReasons.push('Matbu evrak dijital onayı eksik');
     if (!closed) blockerReasons.push('Dosya kapanışı tamamlanmadı');
   }
 
@@ -159,10 +164,12 @@ export function buildEmergencyOperationChain(input: {
     {
       key: 'onay',
       label: 'Onay ve Evrak',
-      state: input.hasApprovedMatbuEvrak ? 'done' : salePriceCreated ? 'current' : 'pending',
+      state: digitalOk ? 'done' : salePriceCreated ? 'current' : 'pending',
       note: isHistorical
         ? (input.hasApprovedMatbuEvrak ? 'Matbu evrak dijital onaylı' : 'Tarihsel dosya — onay zorunlu değil')
-        : (input.hasApprovedMatbuEvrak ? 'Matbu evrak dijital onaylı' : 'Matbu evrak onayı bekleniyor'),
+        : !digitalRequired
+          ? (input.hasApprovedMatbuEvrak ? 'Matbu evrak dijital onaylı' : '28.08.2026 18:01’e kadar onay zorunlu değil')
+          : (input.hasApprovedMatbuEvrak ? 'Matbu evrak dijital onaylı' : 'Matbu evrak onayı bekleniyor'),
     },
     {
       key: 'saha',
