@@ -105,15 +105,17 @@ export function hakedisDurumEtiket(input: {
   const odeme = String(input.odemeDurumu ?? '').toLowerCase();
   if (odeme === 'completed') return 'Ödendi';
   if (status === 'DRAFT') return 'Taslak';
-  if (odeme === 'pending') return 'Onaylandı';
+  if (odeme === 'pending') return 'Ödeme Bekliyor';
   if (status === 'APPROVED') return 'Onaylandı';
-  if (status === 'SENT') return 'Kontrol';
+  if (status === 'SENT' || status === 'PARTIALLY_APPROVED') return 'Onay Bekliyor';
+  if (status === 'DISPUTED') return 'İtirazlı';
+  if (status === 'CLOSED') return 'Tamamlandı';
   if (!status) return '—';
   return status;
 }
 
 export type HakedisAkisAdim = {
-  id: 'taslak' | 'kontrol' | 'onay' | 'odeme';
+  id: 'taslak' | 'kontrol' | 'onay' | 'odeme' | 'tamamlandi';
   label: string;
   durum: 'tamam' | 'aktif' | 'bekler';
   tarih?: string | null;
@@ -125,6 +127,7 @@ export function personLabel(user?: { firstName?: string | null; lastName?: strin
   return t || null;
 }
 
+/** Domain durumları: DRAFT→Taslak, SENT→Kontrol, APPROVED→Onay, pending payment→Ödeme, completed→Tamamlandı */
 export function buildHakedisAkis(input: {
   status?: string | null;
   createdAt?: string | null;
@@ -140,9 +143,10 @@ export function buildHakedisAkis(input: {
   const olusturan = personLabel(input.createdBy);
   const taslakTamam = Boolean(input.createdAt);
   const kontrolTamam = Boolean(input.sentAt || input.autoApprovedAt || status === 'APPROVED' || odeme);
-  const onayTamam = Boolean(input.autoApprovedAt || status === 'APPROVED' || odeme === 'completed');
+  const onayTamam = Boolean(input.autoApprovedAt || status === 'APPROVED' || odeme === 'completed' || odeme === 'pending');
   const odemeTamam = odeme === 'completed';
   const odemeAktif = odeme === 'pending' || (onayTamam && !odemeTamam && Boolean(input.vade || input.odemeTarihi));
+  const tamamlandi = odemeTamam;
   return [
     {
       id: 'taslak',
@@ -172,7 +176,50 @@ export function buildHakedisAkis(input: {
       tarih: odemeTamam ? input.odemeTarihi : input.vade,
       kisi: null,
     },
+    {
+      id: 'tamamlandi',
+      label: 'Tamamlandı',
+      durum: tamamlandi ? 'tamam' : odemeTamam ? 'aktif' : 'bekler',
+      tarih: tamamlandi ? input.odemeTarihi : null,
+      kisi: null,
+    },
   ];
+}
+
+/** Dönem etiketi — periodStart/End varsa ay adı, yoksa oluşturulma ayı */
+export function hakedisDonemEtiket(input: {
+  periodStart?: string | Date | null;
+  periodEnd?: string | Date | null;
+  createdAt?: string | Date | null;
+}): string {
+  const raw = input.periodStart ?? input.periodEnd ?? input.createdAt;
+  if (!raw) return '—';
+  const d = raw instanceof Date ? raw : new Date(raw);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+}
+
+export function hakedisKesintiNet(input: {
+  totalAmount?: number | null;
+  notes?: string | null;
+  items?: Array<{ totalAmount?: number | null; vatRate?: number | null }>;
+}): { hakedisTutari: number; kesintiler: number; netTutar: number } {
+  const kirilim = hakedisTutarKirilim(input);
+  const kesintiler = roundTry(parseAvansMahsupFromNote(input.notes));
+  const hakedisTutari = kirilim.toplam;
+  return {
+    hakedisTutari,
+    kesintiler,
+    netTutar: roundTry(Math.max(0, hakedisTutari - kesintiler)),
+  };
+}
+
+export function hakedisGerceklesmeOrani(
+  sozlesme: number | null | undefined,
+  toplamHakedis: number | null | undefined,
+): number | null {
+  if (sozlesme == null || sozlesme <= 0 || toplamHakedis == null) return null;
+  return Math.round(((toplamHakedis / sozlesme) * 1000)) / 10;
 }
 
 export type OdemePlanOzet = {
@@ -180,6 +227,9 @@ export type OdemePlanOzet = {
   odenen: number;
   bekleyen: number;
   kalan: number | null;
+  planlanan: number;
+  buAy: number;
+  yaklasan: number;
   satirlar: OdemePlanSatir[];
 };
 
@@ -346,6 +396,19 @@ export function buildAvansMahsupIslemleri(input: {
     .filter((row) => row.tutar > 0);
 }
 
+function extractHakedisNo(raw?: string | null): string | undefined {
+  const text = String(raw ?? '');
+  const m = text.match(/\b(H-\d+|EKS-[\w-]+|VS-[\w-]+)\b/i);
+  return m?.[1];
+}
+
+function sameMonth(iso?: string | null, ref = new Date()): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
+}
+
 export function buildOdemePlani(input: {
   onayliHakedis?: number | null;
   payments: Array<{
@@ -358,7 +421,9 @@ export function buildOdemePlani(input: {
     referenceNo?: string | null;
     method?: string | null;
   }>;
+  now?: Date;
 }): OdemePlanOzet {
+  const now = input.now ?? new Date();
   const hakedisOdemeleri = input.payments.filter((row) =>
     !isAvansPayment(row) && !isHakedisMahsupPayment(row),
   );
@@ -370,28 +435,52 @@ export function buildOdemePlani(input: {
     .reduce((s, row) => s + Number(row.amount ?? 0), 0));
   const onaylanan = input.onayliHakedis != null ? roundTry(input.onayliHakedis) : null;
   const kalan = onaylanan == null ? null : roundTry(Math.max(0, onaylanan - odenen - bekleyen));
+  const planlanan = roundTry(hakedisOdemeleri
+    .filter((row) => row.status === 'pending')
+    .reduce((s, row) => s + Number(row.amount ?? 0), 0));
+  const buAy = roundTry(hakedisOdemeleri
+    .filter((row) => row.status === 'pending' && (sameMonth(row.dueDate, now) || sameMonth(row.paymentDate, now)))
+    .reduce((s, row) => s + Number(row.amount ?? 0), 0));
+  const yaklasanRows = hakedisOdemeleri
+    .filter((row) => row.status === 'pending')
+    .sort((a, b) => {
+      const da = new Date(a.dueDate ?? a.paymentDate ?? 0).getTime();
+      const db = new Date(b.dueDate ?? b.paymentDate ?? 0).getTime();
+      return da - db;
+    });
+  const yaklasan = roundTry(Number(yaklasanRows[0]?.amount ?? 0));
+
+  const mapDurum = (status?: string) => {
+    if (status === 'completed') return 'Ödendi';
+    if (status === 'pending') return 'Planlandı';
+    return status ?? '—';
+  };
+
   return {
     onaylanan,
     odenen,
     bekleyen,
     kalan,
+    planlanan,
+    buAy,
+    yaklasan,
     satirlar: [
       ...hakedisOdemeleri.map((row) => ({
         id: row.id,
-        tarih: row.paymentDate,
+        tarih: row.dueDate ?? row.paymentDate,
         vade: row.dueDate,
         tutar: roundTry(Number(row.amount ?? 0)),
-        durum: row.status === 'completed' ? 'Ödendi' : row.status === 'pending' ? 'Bekliyor' : (row.status ?? '—'),
-        baglanti: row.referenceNo ?? undefined,
+        durum: mapDurum(row.status),
+        baglanti: extractHakedisNo(row.referenceNo) ?? extractHakedisNo(row.note) ?? row.referenceNo ?? undefined,
         tip: 'hakedis' as const,
         tipLabel: 'Hakediş',
       })),
       ...input.payments.filter((row) => isAvansPayment(row)).map((row) => ({
         id: row.id,
-        tarih: row.paymentDate,
+        tarih: row.dueDate ?? row.paymentDate,
         vade: row.dueDate,
         tutar: roundTry(Number(row.amount ?? 0)),
-        durum: row.status === 'completed' ? 'Ödendi' : row.status === 'pending' ? 'Bekliyor' : (row.status ?? '—'),
+        durum: mapDurum(row.status),
         baglanti: row.referenceNo ?? undefined,
         tip: 'avans' as const,
         tipLabel: 'Avans',

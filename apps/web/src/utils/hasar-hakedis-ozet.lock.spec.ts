@@ -9,7 +9,10 @@ import {
   buildHasarHakedisOzet,
   buildOdemePlani,
   classifyHakedisBelge,
+  hakedisDonemEtiket,
   hakedisDurumEtiket,
+  hakedisGerceklesmeOrani,
+  hakedisKesintiNet,
   hakedisTutarKirilim,
   parseAvansMahsupFromNote,
   resolveHasarAvansLimit,
@@ -84,7 +87,23 @@ describe('hasar hakediş özet LOCK', () => {
       vade: '2026-08-30',
     });
     assert.equal(akis[0]?.durum, 'tamam');
+    assert.equal(akis[3]?.id, 'odeme');
     assert.equal(akis[3]?.durum, 'aktif');
+    assert.equal(akis[4]?.id, 'tamamlandi');
+    assert.equal(akis[4]?.durum, 'bekler');
+  });
+
+  it('dönem, kesinti ve gerçekleşme oranı hesaplanır', () => {
+    assert.match(hakedisDonemEtiket({ createdAt: '2026-08-18' }), /Ağustos 2026/);
+    const tutar = hakedisKesintiNet({
+      totalAmount: 285000,
+      notes: 'Hasar hakediş · avans mahsup 15.000',
+      items: [{ totalAmount: 285000, vatRate: 0 }],
+    });
+    assert.equal(tutar.hakedisTutari, 285000);
+    assert.equal(tutar.kesintiler, 15000);
+    assert.equal(tutar.netTutar, 270000);
+    assert.equal(hakedisGerceklesmeOrani(2450000, 1280000), 52.2);
   });
 
   it('avans ve ödeme planı mevcut kayıtlardan gelir', () => {
@@ -113,12 +132,15 @@ describe('hasar hakediş özet LOCK', () => {
     assert.match(panel, /Avans İşlemleri/);
     assert.match(panel, /Hakediş İşlemleri/);
     assert.match(panel, /Ödeme Planı/);
-    assert.match(panel, /Dosyadan önerilen/);
-    assert.match(panel, /Hakedişe özel belgeler/);
+    assert.match(panel, /Dosyadan Önerilen/);
+    assert.match(panel, /Hakedişe Özel Belgeler/);
     assert.match(panel, /Hakediş Yönetimi/);
-    assert.match(panel, /\+ Yeni Hakediş/);
+    assert.match(panel, /Hakediş Oluştur/);
     assert.match(panel, /Finansa Aktar/);
     assert.match(panel, /tahsilatlar\?queue=payable/);
+    assert.match(panel, /Açıklama/);
+    assert.doesNotMatch(panel, /Avans nedeni/);
     assert.doesNotMatch(panel, /CommercialPricingDrawer/);
+    assert.doesNotMatch(panel, /\$\{fmt\([^)]+\)\} TL/);
   });
 });
