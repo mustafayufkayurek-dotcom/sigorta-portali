@@ -25,7 +25,10 @@ import {
   classifyHakedisBelge,
   HAKEDIS_KAYNAK_ETIKET,
   HASAR_AVANS_LIMIT_ORAN,
+  hakedisDonemEtiket,
   hakedisDurumEtiket,
+  hakedisGerceklesmeOrani,
+  hakedisKesintiNet,
   hakedisTutarKirilim,
   personLabel,
   resolveHasarAvansLimit,
@@ -43,7 +46,11 @@ import {
 import { numberToTrAmountInput, parseTrAmountInput } from '@/utils/tr-amount-input';
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
 
-const fmt = (n: number) => formatTryAmount(n, { fractionDigits: 0 });
+/** Para birimi tek yerde — `₺ 250.000` (TL soneki yok; çift TL engellenir) */
+const fmt = (n: number) => {
+  const raw = formatTryAmount(n, { fractionDigits: 0 }).replace(/\s*TL\.?$/i, '').trim();
+  return `₺ ${raw}`;
+};
 
 type DrawerTab = 'hakedis' | 'avans' | 'odeme';
 
@@ -53,6 +60,8 @@ type StatementRow = {
   status?: string;
   totalAmount?: number;
   notes?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
   createdAt?: string;
   sentAt?: string | null;
   autoApprovedAt?: string | null;
@@ -129,19 +138,83 @@ function axiosErrorMessage(e: unknown, fallback: string) {
 }
 
 function durumClass(label: string) {
-  if (label === 'Ödendi' || label === 'Onaylandı') return 'bg-emerald-50 text-emerald-800 border-emerald-100';
-  if (label === 'Taslak' || label === 'Bekliyor' || label === 'Kontrol') return 'bg-amber-50 text-amber-800 border-amber-100';
+  if (label === 'Ödendi' || label === 'Onaylandı' || label === 'Tamamlandı') {
+    return 'bg-emerald-50 text-emerald-800 border-emerald-100';
+  }
+  if (label === 'Planlandı' || label === 'Onay Bekliyor' || label === 'Ödeme Bekliyor') {
+    return 'bg-blue-50 text-blue-800 border-blue-100';
+  }
+  if (label === 'Taslak' || label === 'Bekliyor' || label === 'Kontrol') {
+    return 'bg-amber-50 text-amber-800 border-amber-100';
+  }
   return 'bg-slate-50 text-slate-600 border-slate-200';
 }
 
-function KpiKart({ label, value }: { label: string; value: number | null }) {
+function FinanceSummaryCard({
+  label,
+  value,
+  hint,
+  emphasize,
+}: {
+  label: string;
+  value: number | null;
+  hint?: string;
+  emphasize?: boolean;
+}) {
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3.5">
       <p className="text-[11px] font-medium text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold tabular-nums text-slate-900">
-        {value == null ? 'Eksik' : `${fmt(value)} TL`}
+      <p className={`mt-2 tabular-nums tracking-tight text-slate-900 ${emphasize ? 'text-xl font-semibold' : 'text-lg font-semibold'}`}>
+        {value == null ? '—' : fmt(value)}
       </p>
+      {hint ? <p className="mt-1.5 text-[11px] leading-snug text-slate-400">{hint}</p> : null}
     </div>
+  );
+}
+
+function ProgressMini({ pct }: { pct: number | null }) {
+  if (pct == null) return null;
+  const clamped = Math.max(0, Math.min(100, pct));
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5" data-testid="hakedis-gerceklesme">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[11px] font-medium text-slate-500">Hakediş Gerçekleşme</p>
+        <p className="text-sm font-semibold tabular-nums text-slate-900">
+          %{clamped.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+        </p>
+      </div>
+      <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${clamped}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function StatusStepper({
+  steps,
+}: {
+  steps: Array<{ id: string; label: string; durum: 'tamam' | 'aktif' | 'bekler' }>;
+}) {
+  return (
+    <ol className="flex flex-wrap items-center gap-1.5 sm:gap-2" data-testid="hakedis-durum-stepper">
+      {steps.map((adim, idx) => {
+        const mark = adim.durum === 'tamam' ? '✓' : adim.durum === 'aktif' ? '●' : '○';
+        const tone = adim.durum === 'tamam'
+          ? 'text-emerald-700'
+          : adim.durum === 'aktif'
+            ? 'text-blue-700'
+            : 'text-slate-400';
+        return (
+          <li key={adim.id} className="flex items-center gap-1.5 text-[11px] font-medium">
+            {idx > 0 ? <span className="text-slate-300" aria-hidden>→</span> : null}
+            <span className={tone}>
+              <span className="mr-1" aria-hidden>{mark}</span>
+              {adim.label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -181,7 +254,7 @@ export function HasarFileHakedisPanel({
   const [catalog, setCatalog] = useState<CatalogDocumentType[]>([]);
   const [ozelTur, setOzelTur] = useState('');
   const [avansDraft, setAvansDraft] = useState('');
-  const [avansNeden, setAvansNeden] = useState('Onarım bitmeden');
+  const [avansAciklama, setAvansAciklama] = useState('');
   const [savingAvans, setSavingAvans] = useState(false);
   const [composing, setComposing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -236,7 +309,7 @@ export function HasarFileHakedisPanel({
     setSaving(false);
     setOpenGroupKey(null);
     setAvansDraft('');
-    setAvansNeden('Onarım bitmeden');
+    setAvansAciklama('');
     setTalepDraft('');
     setAciklama('');
     setTab('hakedis');
@@ -379,6 +452,15 @@ export function HasarFileHakedisPanel({
     ...buildAvansMahsupIslemleri({ payments, statements: hakedis }),
   ];
   const odemePlani = buildOdemePlani({ onayliHakedis: onayliToplam, payments });
+  const odenenHakedis = odemePlani.odenen;
+  const kalanHakedis = sozlesme != null
+    ? Math.round((sozlesme - onayliToplam) * 100) / 100
+    : kpiKalan;
+  const gerceklesmePct = hakedisGerceklesmeOrani(sozlesme, onayliToplam);
+  const sonAvans = avansRows
+    .slice()
+    .sort((a, b) => new Date(b.paymentDate ?? 0).getTime() - new Date(a.paymentDate ?? 0).getTime())[0];
+  const avansIslemSayisi = avansRows.filter((r) => r.status === 'pending' || r.status === 'completed').length;
   const onerilenBelgeler = belgeler.filter((doc) => classifyHakedisBelge(doc) === 'onerilen');
   const ozelBelgeler = belgeler.filter((doc) => ozelIds.includes(doc.id) || classifyHakedisBelge(doc) === 'ozel');
 
@@ -395,13 +477,18 @@ export function HasarFileHakedisPanel({
       showToast('error', 'Önce dosyaya tedarikçi atayın.');
       return;
     }
+    const aciklamaTrim = avansAciklama.trim();
+    if (!aciklamaTrim) {
+      showToast('error', 'Açıklama zorunludur.');
+      return;
+    }
     const amount = parseTrAmountInput(avansDraft) ?? 0;
     if (amount <= 0) {
       showToast('error', 'Avans tutarı girin.');
       return;
     }
     if (kalanAvansHakki != null && amount > kalanAvansHakki + 0.009) {
-      showToast('error', `Kullanılabilir avans hakkı ${fmt(kalanAvansHakki)} TL.`);
+      showToast('error', `Kullanılabilir avans hakkı ${fmt(kalanAvansHakki)}.`);
       return;
     }
     setSavingAvans(true);
@@ -418,12 +505,13 @@ export function HasarFileHakedisPanel({
           currency: 'TRY',
           paymentDate: new Date().toISOString().slice(0, 10),
           referenceNo: AVANS_REF_PREFIX,
-          note: withAvansNote(avansNeden.trim() || 'Onarım bitmeden'),
+          note: withAvansNote(aciklamaTrim),
         },
         { headers: authHeader() },
       );
       showToast('success', 'Avans kaydedildi.');
       setAvansDraft('');
+      setAvansAciklama('');
       void load();
     } catch (e) {
       showToast('error', axiosErrorMessage(e, 'Avans kaydedilemedi.'));
@@ -585,14 +673,6 @@ export function HasarFileHakedisPanel({
                 </div>
               </div>
 
-              <div data-testid="hasar-hakedis-bakiye" className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <KpiKart label="Sözleşme / Bütçe" value={sozlesme} />
-                <KpiKart label="Toplam Avans" value={avansHesap.avansToplam} />
-                <KpiKart label="Toplam Hakediş" value={onayliToplam} />
-                <KpiKart label="Kalan Bakiye" value={kpiKalan} />
-              </div>
-              <p className="mt-2 text-[11px] text-slate-400">{HAKEDIS_KAYNAK_ETIKET[sozlesmeKaynak]}</p>
-
               <div className="mt-3" data-testid="hasar-hakedis-sekme">
                 <PanelPillTabs
                   tabs={[
@@ -601,7 +681,14 @@ export function HasarFileHakedisPanel({
                     { id: 'odeme', label: 'Ödeme Planı' },
                   ]}
                   activeId={tab}
-                  onSelect={setTab}
+                  onSelect={(id: DrawerTab) => {
+                    setTab(id);
+                    if (id !== 'hakedis') {
+                      setComposing(false);
+                      setSelectedId(null);
+                      setDetail(null);
+                    }
+                  }}
                 />
               </div>
             </header>
@@ -611,8 +698,16 @@ export function HasarFileHakedisPanel({
                 <p className="py-10 text-center text-sm text-slate-400">Yükleniyor…</p>
               ) : tab === 'hakedis' ? (
                 <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4" data-testid="hakedis-ozet-kartlar">
+                    <FinanceSummaryCard label="Sözleşme Tutarı" value={sozlesme} hint={HAKEDIS_KAYNAK_ETIKET[sozlesmeKaynak]} emphasize />
+                    <FinanceSummaryCard label="Toplam Hakediş" value={onayliToplam} emphasize />
+                    <FinanceSummaryCard label="Ödenen" value={odenenHakedis} emphasize />
+                    <FinanceSummaryCard label="Kalan Hakediş" value={kalanHakedis} emphasize />
+                  </div>
+                  <ProgressMini pct={gerceklesmePct} />
+
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-semibold text-slate-800">Hakedişler</p>
+                    <p className="text-xs font-semibold text-slate-800">Hakediş Listesi</p>
                     <button
                       type="button"
                       onClick={() => {
@@ -622,7 +717,7 @@ export function HasarFileHakedisPanel({
                       }}
                       className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                     >
-                      + Yeni Hakediş
+                      Hakediş Oluştur
                     </button>
                   </div>
 
@@ -634,32 +729,32 @@ export function HasarFileHakedisPanel({
                         <thead className="bg-slate-50 text-[11px] font-medium text-slate-500">
                           <tr>
                             <th className="px-3 py-2">Hakediş No</th>
-                            <th className="px-3 py-2">Tarih</th>
-                            <th className="px-3 py-2">Tutar (KDV Hariç)</th>
-                            <th className="px-3 py-2">KDV</th>
-                            <th className="px-3 py-2">Toplam</th>
+                            <th className="px-3 py-2">Dönem</th>
+                            <th className="px-3 py-2">Hakediş Tutarı</th>
+                            <th className="px-3 py-2">Kesintiler</th>
+                            <th className="px-3 py-2">Net Tutar</th>
                             <th className="px-3 py-2">Durum</th>
                             <th className="px-3 py-2">İşlem</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {hakedis.map((row) => {
-                            const kirilim = hakedisTutarKirilim(row);
+                            const tutar = hakedisKesintiNet(row);
                             const odeme = statementOdeme(row);
                             const durum = hakedisDurumEtiket({ status: row.status, odemeDurumu: odeme?.status });
                             return (
                               <tr key={row.id} className={selectedId === row.id ? 'bg-blue-50/50' : ''}>
                                 <td className="px-3 py-2.5 font-medium text-slate-800">{row.statementNo ?? '—'}</td>
-                                <td className="px-3 py-2.5 text-slate-600">{fmtDate(row.createdAt)}</td>
-                                <td className="px-3 py-2.5 tabular-nums">{fmt(kirilim.net)} TL</td>
-                                <td className="px-3 py-2.5 tabular-nums">{fmt(kirilim.kdv)} TL</td>
-                                <td className="px-3 py-2.5 tabular-nums font-semibold">{fmt(kirilim.toplam)} TL</td>
+                                <td className="px-3 py-2.5 text-slate-600">{hakedisDonemEtiket(row)}</td>
+                                <td className="px-3 py-2.5 tabular-nums">{fmt(tutar.hakedisTutari)}</td>
+                                <td className="px-3 py-2.5 tabular-nums text-slate-600">{fmt(tutar.kesintiler)}</td>
+                                <td className="px-3 py-2.5 tabular-nums font-semibold">{fmt(tutar.netTutar)}</td>
                                 <td className="px-3 py-2.5">
                                   <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] ${durumClass(durum)}`}>{durum}</span>
                                 </td>
                                 <td className="px-3 py-2.5">
                                   <button type="button" className="text-xs font-semibold text-blue-700" onClick={() => void openDetail(row.id)}>
-                                    Aç
+                                    Detay
                                   </button>
                                 </td>
                               </tr>
@@ -672,15 +767,14 @@ export function HasarFileHakedisPanel({
 
                   {aktifDetay && !composing ? (
                     <div className="space-y-3 rounded-xl border border-slate-200 p-4">
-                      <p className="text-xs font-semibold text-slate-800">{aktifDetay.statementNo ?? 'Hakediş detayı'}</p>
+                      <p className="text-xs font-semibold text-slate-800">{aktifDetay.statementNo ?? 'Hakediş Detayı'}</p>
+                      <StatusStepper steps={detayAkis} />
                       <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-                        <div><p className="text-[11px] text-slate-500">Tarih</p><p>{fmtDate(aktifDetay.createdAt)}</p></div>
-                        <div><p className="text-[11px] text-slate-500">Hakediş tutarı</p><p className="tabular-nums">{detayKirilim ? `${fmt(detayKirilim.net)} TL` : 'Eksik'}</p></div>
-                        <div><p className="text-[11px] text-slate-500">KDV</p><p className="tabular-nums">{detayKirilim ? `${fmt(detayKirilim.kdv)} TL` : 'Eksik'}</p></div>
-                        <div><p className="text-[11px] text-slate-500">Toplam</p><p className="tabular-nums font-semibold">{detayKirilim ? `${fmt(detayKirilim.toplam)} TL` : 'Eksik'}</p></div>
+                        <div><p className="text-[11px] text-slate-500">Dönem</p><p>{hakedisDonemEtiket(aktifDetay)}</p></div>
+                        <div><p className="text-[11px] text-slate-500">Hakediş Tutarı</p><p className="tabular-nums">{detayKirilim ? fmt(detayKirilim.toplam) : '—'}</p></div>
+                        <div><p className="text-[11px] text-slate-500">Kesintiler</p><p className="tabular-nums">{fmt(hakedisKesintiNet(aktifDetay).kesintiler)}</p></div>
+                        <div><p className="text-[11px] text-slate-500">Net Tutar</p><p className="tabular-nums font-semibold">{fmt(hakedisKesintiNet(aktifDetay).netTutar)}</p></div>
                         <div><p className="text-[11px] text-slate-500">Oluşturan</p><p>{personLabel(aktifDetay.createdBy) ?? '—'}</p></div>
-                        <div><p className="text-[11px] text-slate-500">Onaylayan</p><p>{aktifDetay.autoApprovedAt ? 'Otomatik' : '—'}</p></div>
-                        <div><p className="text-[11px] text-slate-500">Onay tarihi</p><p>{fmtDate(aktifDetay.autoApprovedAt)}</p></div>
                         <div>
                           <p className="text-[11px] text-slate-500">Durum</p>
                           <p>{hakedisDurumEtiket({ status: aktifDetay.status, odemeDurumu: detayOdeme?.status })}</p>
@@ -696,42 +790,39 @@ export function HasarFileHakedisPanel({
                         <p className="text-[11px] text-slate-500">Belgeler</p>
                         <p className="text-xs text-slate-500">Dosyadan önerilen evrak aşağıda durur. Hakediş kaydına ayrı belge bağı yoktur.</p>
                       </div>
-                      <div className="flex gap-2">
-                        {detayAkis.map((adim) => (
-                          <div key={adim.id} className="min-w-0 flex-1">
-                            <div className={`h-1.5 rounded-full ${
-                              adim.durum === 'tamam' ? 'bg-emerald-500' : adim.durum === 'aktif' ? 'bg-blue-600' : 'bg-slate-200'
-                            }`} />
-                            <p className="mt-2 text-[11px] font-semibold text-slate-700">{adim.label}</p>
-                            <p className="text-[11px] text-slate-500">{fmtDate(adim.tarih)}</p>
-                            {adim.kisi ? <p className="text-[11px] text-slate-400">{adim.kisi}</p> : null}
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   ) : null}
 
                   {composing ? (
                     <div className="space-y-4 rounded-xl border border-slate-200 p-4">
-                      <p className="text-xs font-semibold text-slate-800">Yeni hakediş</p>
-                      <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                        <div className="rounded-lg bg-slate-50 px-3 py-2">
-                          <p className="text-slate-500">Sözleşme / Bütçe</p>
-                          <p className="mt-1 font-semibold tabular-nums">{sozlesme == null ? 'Eksik' : `${fmt(sozlesme)} TL`}</p>
+                      <p className="text-xs font-semibold text-slate-800">Hakediş Oluştur</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                        <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+                          <p className="text-slate-500">Sözleşme</p>
+                          <p className="mt-1 font-semibold tabular-nums">{sozlesme == null ? '—' : fmt(sozlesme)}</p>
                         </div>
-                        <div className="rounded-lg bg-slate-50 px-3 py-2">
-                          <p className="text-slate-500">Önceki hakediş</p>
-                          <p className="mt-1 font-semibold tabular-nums">{fmt(onayliToplam)} TL</p>
+                        <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+                          <p className="text-slate-500">Önceki Hakediş</p>
+                          <p className="mt-1 font-semibold tabular-nums">{fmt(onayliToplam)}</p>
                         </div>
-                        <div className="rounded-lg bg-slate-50 px-3 py-2">
-                          <p className="text-slate-500">Mahsup edilecek avans</p>
-                          <p className="mt-1 font-semibold tabular-nums">{fmt(avansHesap.usableAvans)} TL</p>
+                        <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+                          <p className="text-slate-500">Bu Hakediş</p>
+                          <p className="mt-1 font-semibold tabular-nums">{fmt(talepBrut)}</p>
                         </div>
-                        <div className="rounded-lg bg-slate-50 px-3 py-2">
-                          <p className="text-slate-500">Ödenecek net</p>
-                          <p className="mt-1 font-semibold tabular-nums">{fmt(ozet.netOdenecek)} TL</p>
+                        <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+                          <p className="text-slate-500">Toplam Hakediş</p>
+                          <p className="mt-1 font-semibold tabular-nums">{fmt(onayliToplam + talepBrut)}</p>
+                        </div>
+                        <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+                          <p className="text-slate-500">Kalan</p>
+                          <p className="mt-1 font-semibold tabular-nums">
+                            {sozlesme == null ? '—' : fmt(Math.round((sozlesme - onayliToplam - talepBrut) * 100) / 100)}
+                          </p>
                         </div>
                       </div>
+                      <p className="text-[11px] text-slate-400">
+                        Tedarikçi, dosya ve sözleşme bakiyesi otomatik. Mahsup edilecek avans: {fmt(avansHesap.usableAvans)} · Ödenecek net: {fmt(ozet.netOdenecek)}
+                      </p>
                       {ozet.eksikler.map((text) => (
                         <p key={text} className="text-xs text-slate-500">{text}</p>
                       ))}
@@ -742,7 +833,7 @@ export function HasarFileHakedisPanel({
                       <div data-testid="hasar-hakedis-is-grubu" className="overflow-hidden rounded-xl border border-slate-200">
                         {lines.length === 0 ? (
                           <div className="px-3.5 py-3">
-                            <p className="text-[11px] font-medium text-slate-500">Önerilen tutar</p>
+                            <p className="text-[11px] font-medium text-slate-500">Önerilen Tutar</p>
                             <p className="mt-1 text-[11px] text-slate-400">{HAKEDIS_KAYNAK_ETIKET[onerilenKaynak]}</p>
                             {tutarDuzenle || onerilen == null ? (
                               <TrAmountInput
@@ -753,7 +844,7 @@ export function HasarFileHakedisPanel({
                               />
                             ) : (
                               <div className="mt-2 flex items-center justify-between">
-                                <p className="text-sm font-semibold tabular-nums">{fmt(onerilen)} TL</p>
+                                <p className="text-sm font-semibold tabular-nums">{fmt(onerilen)}</p>
                                 <button type="button" className="text-xs font-semibold text-blue-700" onClick={() => setTutarDuzenle(true)}>
                                   Düzelt
                                 </button>
@@ -772,7 +863,7 @@ export function HasarFileHakedisPanel({
                                 >
                                   <ChevronRight className={`h-4 w-4 shrink-0 text-slate-400 ${open ? 'rotate-90' : ''}`} />
                                   <span className="min-w-0 flex-1 text-sm font-medium text-slate-800">{line.label}</span>
-                                  <span className="text-sm font-semibold tabular-nums">{fmt(parseTrAmountInput(line.amount) ?? 0)} TL</span>
+                                  <span className="text-sm font-semibold tabular-nums">{fmt(parseTrAmountInput(line.amount) ?? 0)}</span>
                                 </button>
                                 {open ? (
                                   <div className="space-y-1.5 border-t border-slate-100 bg-slate-50/70 px-3.5 py-2.5">
@@ -781,7 +872,7 @@ export function HasarFileHakedisPanel({
                                     ) : line.details.map((item, idx) => (
                                       <div key={item.id ?? idx} className="flex justify-between gap-3 text-[13px] text-slate-600">
                                         <span>{item.jobDescription}</span>
-                                        <span className="tabular-nums">{fmt(item.amount)} TL</span>
+                                        <span className="tabular-nums">{fmt(item.amount)}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -803,7 +894,7 @@ export function HasarFileHakedisPanel({
                       </label>
 
                       <div>
-                        <p className="text-xs font-semibold text-slate-800">Dosyadan önerilen belgeler</p>
+                        <p className="text-xs font-semibold text-slate-800">Dosyadan Önerilen Belgeler</p>
                         {onerilenBelgeler.length === 0 ? (
                           <p className="mt-2 text-xs text-slate-500">Dosyada önerilecek evrak yok.</p>
                         ) : (
@@ -833,7 +924,7 @@ export function HasarFileHakedisPanel({
                       </div>
 
                       <div>
-                        <p className="text-xs font-semibold text-slate-800">Hakedişe özel belgeler</p>
+                        <p className="text-xs font-semibold text-slate-800">Hakedişe Özel Belgeler</p>
                         <p className="mt-1 text-[11px] text-slate-400">Dosyaya kaydedilir. Ayrı hakediş belgesi modeli yok.</p>
                         <div className="mt-2 flex gap-2">
                           <select
@@ -841,7 +932,7 @@ export function HasarFileHakedisPanel({
                             onChange={(e) => setOzelTur(e.target.value)}
                             className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-2 text-sm"
                           >
-                            <option value="">Tür seçin</option>
+                            <option value="">Tür Seçin</option>
                             {catalog.map((row) => (
                               <option key={row.id} value={row.id}>{row.name}</option>
                             ))}
@@ -879,17 +970,22 @@ export function HasarFileHakedisPanel({
                 </div>
               ) : tab === 'avans' ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <KpiKart label="Sözleşme / Bütçe" value={sozlesme} />
-                    <KpiKart label="Toplam Avans" value={avansHesap.avansToplam} />
-                    <KpiKart label="Kullanılan Avans" value={avansHesap.alreadyMahsup} />
-                    <KpiKart label="Kalan Avans Hakkı" value={kalanAvansHakki} />
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3" data-testid="avans-ozet-kartlar">
+                    <FinanceSummaryCard
+                      label="Toplam Avans"
+                      value={avansHesap.avansToplam}
+                      emphasize
+                      hint={`${avansIslemSayisi} işlem${sonAvans?.paymentDate ? ` · Son işlem ${fmtDate(sonAvans.paymentDate)}` : ''}`}
+                    />
+                    <FinanceSummaryCard label="Kullanılan Avans" value={avansHesap.alreadyMahsup} emphasize />
+                    <FinanceSummaryCard
+                      label="Kalan Avans Hakkı"
+                      value={kalanAvansHakki}
+                      emphasize
+                      hint={avansLimit == null ? 'Sözleşme tutarı gerekli' : `Limit %${Math.round(HASAR_AVANS_LIMIT_ORAN * 100)} · Maks. ${fmt(avansLimit)}`}
+                    />
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-600">
-                    <p>Avans limiti: %{Math.round(HASAR_AVANS_LIMIT_ORAN * 100)}</p>
-                    <p className="mt-1">Maksimum avans: {avansLimit == null ? 'Eksik' : `${fmt(avansLimit)} TL`}</p>
-                    <p className="mt-1">Kullanılabilir avans hakkı hesaplanır; tutarı siz yazmazsınız.</p>
-                  </div>
+
                   {avansIslem.length === 0 ? (
                     <p className="text-sm text-slate-500">Avans işlemi yok.</p>
                   ) : (
@@ -897,34 +993,41 @@ export function HasarFileHakedisPanel({
                       {avansIslem.map((row) => (
                         <li key={row.id} className="flex items-center justify-between gap-3 px-3.5 py-3 text-sm">
                           <span>
-                            {row.tipLabel} · {fmtDate(row.tarih)} · {row.durum}
-                            <span className="mt-0.5 block text-[11px] text-slate-400">{HAKEDIS_KAYNAK_ETIKET[row.kaynak]}</span>
+                            <span className="font-medium text-slate-800">{row.tipLabel}</span>
+                            <span className="mt-0.5 block text-[11px] text-slate-400">
+                              {fmtDate(row.tarih)} · {row.durum}
+                            </span>
                           </span>
-                          <span className="font-semibold tabular-nums">{fmt(row.tutar)} TL</span>
+                          <span className="font-semibold tabular-nums">{fmt(row.tutar)}</span>
                         </li>
                       ))}
                     </ul>
                   )}
-                  <div className="space-y-2 rounded-xl border border-slate-200 p-3">
-                    <p className="text-xs font-semibold text-slate-800">Yeni avans</p>
-                    <label className="block text-[11px] text-slate-500">
-                      Avans nedeni
-                      <select
-                        value={avansNeden}
-                        onChange={(e) => setAvansNeden(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-800"
-                      >
-                        <option>Onarım bitmeden</option>
-                        <option>Malzeme</option>
-                        <option>Saha işi</option>
-                      </select>
+
+                  <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs font-semibold text-slate-800">Yeni Avans</p>
+                    <label className="block">
+                      <span className="text-[11px] font-medium text-slate-500">
+                        Açıklama <span className="text-red-500">*</span>
+                      </span>
+                      <textarea
+                        value={avansAciklama}
+                        onChange={(e) => setAvansAciklama(e.target.value)}
+                        rows={2}
+                        required
+                        placeholder="Avans açıklamasını yazın"
+                        className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </label>
-                    <TrAmountInput
-                      value={avansDraft}
-                      placeholder="Avans tutarı"
-                      onChange={setAvansDraft}
-                      className="w-full rounded-lg border border-slate-200 py-2 pr-10 text-right text-sm outline-none"
-                    />
+                    <label className="block">
+                      <span className="text-[11px] font-medium text-slate-500">Tutar</span>
+                      <TrAmountInput
+                        value={avansDraft}
+                        placeholder="0"
+                        onChange={setAvansDraft}
+                        className="mt-1.5 w-full rounded-lg border border-slate-200 py-2 pr-10 text-right text-sm outline-none"
+                      />
+                    </label>
                     <button
                       type="button"
                       disabled={savingAvans || !vendor?.id}
@@ -937,6 +1040,13 @@ export function HasarFileHakedisPanel({
                 </div>
               ) : (
                 <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4" data-testid="odeme-plani-ozet-kartlar">
+                    <FinanceSummaryCard label="Planlanan Ödeme" value={odemePlani.planlanan} emphasize />
+                    <FinanceSummaryCard label="Bu Ay" value={odemePlani.buAy} emphasize />
+                    <FinanceSummaryCard label="Ödenen" value={odemePlani.odenen} emphasize />
+                    <FinanceSummaryCard label="Yaklaşan" value={odemePlani.yaklasan || null} emphasize />
+                  </div>
+
                   {odemePlani.satirlar.length === 0 ? (
                     <p className="text-sm text-slate-500">Ödeme planı henüz yok. Finansa Aktar ile oluşur.</p>
                   ) : (
@@ -944,23 +1054,33 @@ export function HasarFileHakedisPanel({
                       <table className="min-w-full text-left text-[12px]">
                         <thead className="bg-slate-50 text-[11px] font-medium text-slate-500">
                           <tr>
-                            <th className="px-3 py-2">Tür</th>
-                            <th className="px-3 py-2">Vade tarihi</th>
-                            <th className="px-3 py-2">Ödenecek tutar</th>
-                            <th className="px-3 py-2">Ödeme durumu</th>
-                            <th className="px-3 py-2">Ödeme tarihi</th>
+                            <th className="px-3 py-2">Tarih</th>
+                            <th className="px-3 py-2">Hakediş</th>
+                            <th className="px-3 py-2">Tutar</th>
+                            <th className="px-3 py-2">Ödeme Durumu</th>
+                            <th className="px-3 py-2">İşlem</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {odemePlani.satirlar.map((row) => (
                             <tr key={row.id}>
-                              <td className="px-3 py-2.5">{row.tipLabel ?? (row.tip === 'avans' ? 'Avans' : 'Hakediş')}</td>
-                              <td className="px-3 py-2.5">{fmtDate(row.vade)}</td>
-                              <td className="px-3 py-2.5 tabular-nums font-semibold">{fmt(row.tutar)} TL</td>
+                              <td className="px-3 py-2.5 text-slate-600">{fmtDate(row.tarih ?? row.vade)}</td>
+                              <td className="px-3 py-2.5 font-medium text-slate-800">
+                                {row.baglanti || (row.tipLabel ?? (row.tip === 'avans' ? 'Avans' : 'Hakediş'))}
+                              </td>
+                              <td className="px-3 py-2.5 tabular-nums font-semibold">{fmt(row.tutar)}</td>
                               <td className="px-3 py-2.5">
                                 <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] ${durumClass(row.durum)}`}>{row.durum}</span>
                               </td>
-                              <td className="px-3 py-2.5">{fmtDate(row.tarih)}</td>
+                              <td className="px-3 py-2.5">
+                                <button
+                                  type="button"
+                                  className="text-xs font-semibold text-blue-700"
+                                  onClick={() => router.push('/panel/finans/tahsilatlar?queue=payable')}
+                                >
+                                  Detay
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -973,11 +1093,11 @@ export function HasarFileHakedisPanel({
 
             <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-100 px-5 py-3">
               <div>
-                <p className="text-[11px] text-slate-500">Ödenecek net</p>
+                <p className="text-[11px] text-slate-500">Ödenecek Net</p>
                 <p className="text-base font-semibold tabular-nums">
                   {composing
-                    ? `${fmt(ozet.netOdenecek)} TL`
-                    : kpiKalan == null ? 'Eksik' : `${fmt(kpiKalan)} TL`}
+                    ? fmt(ozet.netOdenecek)
+                    : kalanHakedis == null ? '—' : fmt(kalanHakedis)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
