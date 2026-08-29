@@ -163,7 +163,7 @@ function FinanceSummaryCard({
 }) {
   return (
     <div className="min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[11px] font-medium text-slate-500">{label}</p>
       <p className={`mt-2 tabular-nums tracking-tight text-slate-900 ${emphasize ? 'text-xl font-semibold' : 'text-lg font-semibold'}`}>
         {value == null ? '—' : fmt(value)}
       </p>
@@ -178,7 +178,7 @@ function ProgressMini({ pct }: { pct: number | null }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5" data-testid="hakedis-gerceklesme">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Hakediş Gerçekleşme</p>
+        <p className="text-[11px] font-medium text-slate-500">Hakediş Gerçekleşme</p>
         <p className="text-sm font-semibold tabular-nums text-slate-900">
           %{clamped.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
         </p>
