@@ -10,7 +10,8 @@ import {
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@/prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
-import { CreateStatementDto, CreateStatementItemDto } from './dto/create-statement.dto';
+import { hakedisMahsupReference, netHakedisAfterAvans, resolveHasarAvansHesap, scaleAmountsToNet } from '@sigorta/shared';
+import { CreateStatementDto, CreateStatementItemDto, GrantHasarHakedisDto } from './dto/create-statement.dto';
 import { buildAppPath } from '@/common/utils/app-url';
 
 const STATEMENT_DEADLINE_DAYS = 14;
@@ -155,6 +156,120 @@ export class VendorStatementsService {
     });
 
     await this.auditLog('vendor_payment_statement', stmt.id, 'CREATE', null, stmt, userId);
+    return stmt;
+  }
+
+  /** Hasar dosyasında tedarikçiye hakediş verilir — dosya bütçesi / satış paneli değildir. */
+  async grantHasarHakedis(dto: GrantHasarHakedisDto, userId: string) {
+    const items = (dto.items ?? []).filter((item) => Number(item.totalAmount) > 0);
+    if (items.length === 0) {
+      throw new BadRequestException('Hakediş tutarı girin.');
+    }
+
+    const [vendor, claimFile] = await Promise.all([
+      this.prisma.vendor.findUnique({ where: { id: dto.vendorId } }),
+      this.prisma.claimFile.findUnique({
+        where: { id: dto.claimFileId },
+        select: { id: true, fileNo: true },
+      }),
+    ]);
+    if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
+    if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+    if (vendor.paymentDueDays !== 15 && vendor.paymentDueDays !== 30) {
+      throw new BadRequestException(
+        `${vendor.name} kartında hakediş ödeme vadesi (15 veya 30 gün) seçili değil.`,
+      );
+    }
+
+    const [payRows, priorStmts] = await Promise.all([
+      this.prisma.payment.findMany({
+        where: {
+          claimFileId: dto.claimFileId,
+          paymentType: 'outgoing',
+          payerType: 'vendor',
+        },
+        select: { amount: true, note: true, status: true, referenceNo: true, method: true },
+      }),
+      this.prisma.vendorPaymentStatement.findMany({
+        where: { vendorId: dto.vendorId, items: { some: { claimFileId: dto.claimFileId } } },
+        select: { id: true, notes: true },
+      }),
+    ]);
+    const avansHesap = resolveHasarAvansHesap({ payments: payRows, statements: priorStmts });
+
+    const gross = items.reduce((sum, item) => sum + Number(item.totalAmount), 0);
+    const net = netHakedisAfterAvans(gross, avansHesap.usableAvans);
+    if (net <= 0) {
+      throw new BadRequestException('Ödenmiş avans hakedişi kapattı. Yeni hakediş yok.');
+    }
+    const scaled = scaleAmountsToNet(items.map((item) => Number(item.totalAmount)), net);
+    const netItems = items.map((item, idx) => ({
+      ...item,
+      totalAmount: scaled[idx] ?? 0,
+    })).filter((item) => Number(item.totalAmount) > 0);
+    if (netItems.length === 0) {
+      throw new BadRequestException('Ödenmiş avans hakedişi kapattı. Yeni hakediş yok.');
+    }
+
+    const now = new Date();
+    const statementNo = await this.generateStatementNo();
+    const totalAmount = netItems.reduce((sum, item) => sum + Number(item.totalAmount), 0);
+    const thisMahsup = Math.round((gross - net) * 100) / 100;
+    const mahsupNote = thisMahsup > 0
+      ? `Hasar hakediş — ${claimFile.fileNo} · avans mahsup ${thisMahsup}`
+      : `Hasar hakediş — ${claimFile.fileNo}`;
+
+    const stmt = await this.prisma.vendorPaymentStatement.create({
+      data: {
+        vendorId: dto.vendorId,
+        statementNo,
+        periodStart: now,
+        periodEnd: now,
+        totalAmount,
+        notes: mahsupNote,
+        createdByUserId: userId,
+        status: 'APPROVED',
+        autoApprovedAt: now,
+        items: {
+          create: netItems.map((item, idx) => ({
+            claimFileId: dto.claimFileId,
+            repairReportItemId: item.repairReportItemId ?? null,
+            workGroupId: item.workGroupId ?? null,
+            lineDescription: item.lineDescription,
+            quantity: item.quantity ?? 1,
+            unit: item.unit ?? 'Kalem',
+            unitPrice: Number(item.totalAmount),
+            totalAmount: Number(item.totalAmount),
+            vatRate: 0,
+            sortOrder: idx,
+            approvalStatus: 'AUTO_APPROVED',
+            approvedAt: now,
+          })),
+        },
+      },
+    });
+
+    if (thisMahsup > 0) {
+      await this.prisma.payment.create({
+        data: {
+          claimFileId: dto.claimFileId,
+          paymentType: 'outgoing',
+          paymentDate: now,
+          amount: thisMahsup,
+          currency: 'TRY',
+          method: 'offset',
+          payerType: 'vendor',
+          payerId: dto.vendorId,
+          referenceNo: hakedisMahsupReference(statementNo),
+          status: 'completed',
+          note: `Hakediş mahsup — ${statementNo}`,
+          createdByUserId: userId,
+        },
+      });
+    }
+    await this.paymentsService.syncPendingPaymentsForStatement(stmt.id);
+    await this.syncApprovedStatementToCostEntries(stmt.id);
+    await this.auditLog('vendor_payment_statement', stmt.id, 'GRANT_HAKEDIS', null, stmt, userId);
     return stmt;
   }
 

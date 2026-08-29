@@ -98,6 +98,11 @@ describe('acil canlı netleşen LOCK', () => {
   it('finans personeli hakediş listesini görür; vade yok', () => {
     assert.match(finans, /tedarikci-hakedis/);
     assert.match(finans, /getAcilVendorEntitlements/);
+    const emergencyApi = readFileSync(
+      join(here, '../../../utils/emergencyApi.ts'),
+      'utf8',
+    );
+    assert.match(emergencyApi, /asList<AcilVendorEntitlementRow>/);
     assert.match(finans, /Vade uygulanmaz|Vade/);
     assert.match(grant, /acilHakedisDueDate/);
     assert.match(financeSvc, /emergencyVendorEntitlement/);
@@ -106,6 +111,13 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(finans, /acil-finans-odeme-filtre/);
     assert.match(finans, /Tedarikçi Ödemesi/);
     assert.match(finans, /alwaysVisible: true/);
+    const payments = readFileSync(
+      join(here, '../../../../../../apps/backend/src/modules/payments/payments.service.ts'),
+      'utf8',
+    );
+    assert.match(payments, /listAcilFinanceQueueRows/);
+    assert.match(payments, /acilHakedisDueDate|toAcilFinanceQueueRow/);
+    assert.match(grant, /toAcilFinanceQueueRow/);
     assert.match(
       readFileSync(join(here, '../../../../../../apps/backend/src/modules/emergency/emergency-cases.service.ts'), 'utf8'),
       /htmlDocumentToPdf/,

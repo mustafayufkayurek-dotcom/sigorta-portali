@@ -18,6 +18,8 @@ import {
 import { CriticalAlertsWidget } from '@/features/dashboard/components/alerts';
 import { ActivityFeedWidget } from '@/features/dashboard/components/activity';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
 export default function FinansDashboard() {
   const router = useRouter();
@@ -73,6 +75,12 @@ export default function FinansDashboard() {
       <FinanceKpiGroup year={year} month={month} staggerIndex={0} />
 
       <FinanceQueuesStrip />
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.finansTedarikciKuyruk.id}
+        title={OPS_NOTICE.finansTedarikciKuyruk.title}
+        body={OPS_NOTICE.finansTedarikciKuyruk.body}
+        testId="finans-odeme-kuyruk-ilk-kullanim-seridi"
+      />
 
       <FinanceFlowStrip year={year} month={month} />
 

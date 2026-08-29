@@ -734,35 +734,47 @@ export class EmergencyCasesService {
     insuranceCompanyIds?: string[],
     assistantCustomerIds?: string[],
   ) {
-    const c = await this.prisma.emergencyCase.findUnique({
-      where: { id },
-      include: {
-        assignedVendor: { select: { id: true, name: true, phone: true, notes: true } },
-        assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
-        createdBy: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
-        customer: {
-          select: {
-            id: true,
-            shortName: true,
-            fullName: true,
-            companyName: true,
-            firstName: true,
-            lastName: true,
-            entityType: true,
-            subType: true,
-            email: true,
-            phone: true,
-          },
+    const caseInclude = {
+      assignedVendor: { select: { id: true, name: true, phone: true, notes: true } },
+      assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
+      createdBy: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
+      customer: {
+        select: {
+          id: true,
+          shortName: true,
+          fullName: true,
+          companyName: true,
+          firstName: true,
+          lastName: true,
+          entityType: true,
+          subType: true,
+          email: true,
+          phone: true,
         },
-        costEntries: { orderBy: { entryDate: 'asc' } },
-        invoiceItems: { include: { draft: true } },
       },
-    });
+      costEntries: { orderBy: { entryDate: 'asc' } as const },
+      invoiceItems: { include: { draft: true } },
+    };
+    const key = String(id ?? '').trim();
+    let c =
+      (await this.prisma.emergencyCase.findUnique({
+        where: { id: key },
+        include: caseInclude,
+      })) ??
+      (await this.prisma.emergencyCase.findUnique({
+        where: { caseNo: key },
+        include: caseInclude,
+      })) ??
+      (await this.prisma.emergencyCase.findFirst({
+        where: { fileNo: key },
+        include: caseInclude,
+      }));
     if (!c) throw new NotFoundException('Acil vaka bulunamadı');
+    const caseId = c.id;
     await this.assertCaseAccess(c, requestingUser, insuranceCompanyIds, assistantCustomerIds);
 
     const resolvedAssigneeId = await this.ensureAssignedUser(
-      id,
+      caseId,
       c.assignedUserId,
       c.createdByUserId,
     );
@@ -785,10 +797,10 @@ export class EmergencyCasesService {
         )
       : null;
 
-    const operationChain = await this.buildOperationChain(id);
+    const operationChain = await this.buildOperationChain(caseId);
     const customerPhone =
       (await this.ensureCustomerPhoneFromInbound(
-        id,
+        caseId,
         c.customerPhone,
         c.customer?.phone,
       )) ?? c.customerPhone;

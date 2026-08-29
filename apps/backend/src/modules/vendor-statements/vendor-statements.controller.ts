@@ -17,6 +17,7 @@ import {
   UpdateStatementDto,
   CreateStatementItemDto,
   ResolveDisputeDto,
+  GrantHasarHakedisDto,
 } from './dto/create-statement.dto';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
@@ -83,6 +84,13 @@ export class VendorStatementsController {
   @ApiOperation({ summary: 'Yeni ekstre oluştur' })
   create(@Body() dto: CreateStatementDto, @CurrentUser() user: any) {
     return this.service.create(dto, user.id);
+  }
+
+  @Post('grant-hakedis')
+  @RequirePermissions('vendor_statement.create', 'payment.create', 'claim_file.update')
+  @ApiOperation({ summary: 'Hasar dosyasında tedarikçiye hakediş ver' })
+  grantHakedis(@Body() dto: GrantHasarHakedisDto, @CurrentUser() user: any) {
+    return this.service.grantHasarHakedis(dto, user.id);
   }
 
   @Patch(':id')

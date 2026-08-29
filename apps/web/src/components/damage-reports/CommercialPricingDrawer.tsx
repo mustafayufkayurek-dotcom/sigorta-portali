@@ -7,6 +7,7 @@
  * Hakediş aktarımı: dosya bütçesi API + tedarikçi vade (15/30).
  */
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
 import { repairItemSalesTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
@@ -150,6 +151,9 @@ export function CommercialPricingDrawer({
   canEdit,
   reportId,
   claimFileId,
+  panelTitle = 'Bütçe & Satınalma',
+  transferLabel = 'Onayla ve Hakedişe Aktar',
+  testId,
   onApplyCommercialRevision,
   onApplySupplierGroupQuote,
   onApproveAndTransferToHakedis,
@@ -161,6 +165,9 @@ export function CommercialPricingDrawer({
   canEdit: boolean;
   reportId: string;
   claimFileId?: string;
+  panelTitle?: string;
+  transferLabel?: string;
+  testId?: string;
   onApplyCommercialRevision: (rates: Record<string, number>) => Promise<void>;
   onApplySupplierGroupQuote: (workGroupId: string, quoteTotal: number) => Promise<void>;
   onApproveAndTransferToHakedis: (quotes: Record<string, number>) => Promise<void>;
@@ -369,16 +376,22 @@ export function CommercialPricingDrawer({
     setShowAddQuote(false);
   };
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
   const visibleHistory = showAllHistory ? history : history.slice(0, 4);
 
-  return (
-    <div className="fixed inset-0 z-[70] flex justify-end" role="dialog" aria-modal="true" aria-label="Bütçe ve Satınalma">
-      <button type="button" onClick={onClose} aria-label="Paneli kapat" className="absolute inset-0 bg-slate-950/30" />
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex justify-end"
+      role="dialog"
+      aria-modal="true"
+      aria-label={panelTitle}
+      data-testid={testId}
+    >
+      <button type="button" onClick={onClose} aria-label="Paneli kapat" className="absolute inset-0 bg-slate-950/40" />
       <section className="relative flex h-full w-full max-w-[480px] flex-col bg-white shadow-2xl border-l border-slate-200">
         <header className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3.5">
-          <h2 className="text-base font-bold text-slate-900">Bütçe & Satınalma</h2>
+          <h2 className="text-base font-bold text-slate-900">{panelTitle}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -758,7 +771,7 @@ export function CommercialPricingDrawer({
                 className="rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
                 title={vendorDueMissing ? 'Önce tedarikçi kartında 15 veya 30 gün vade seçin' : undefined}
               >
-                {saving ? 'Aktarılıyor…' : 'Onayla ve Hakedişe Aktar'}
+                {saving ? 'Veriliyor…' : transferLabel}
               </button>
             </div>
           </footer>
@@ -784,6 +797,7 @@ export function CommercialPricingDrawer({
           </footer>
         )}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

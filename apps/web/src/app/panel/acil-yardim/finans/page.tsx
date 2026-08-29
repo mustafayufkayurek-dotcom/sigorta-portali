@@ -110,7 +110,7 @@ function FinansPageInner() {
       const [listRes, monthRes, entitlementRes] = await Promise.all([
         getFinanceList({ month, year, search: filterSearch || undefined, invoiceStatus: invoiceStatus || undefined, vendorPaid: vendorPaidFilter || undefined }),
         getMonthlySummary(year, month),
-        getAcilVendorEntitlements().catch(() => ({ data: [] as AcilVendorEntitlementRow[] })),
+        getAcilVendorEntitlements(),
       ]);
       setRows(listRes.data);
       setListSummary(listRes.summary);

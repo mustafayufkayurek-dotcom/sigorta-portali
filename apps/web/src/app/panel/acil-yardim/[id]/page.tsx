@@ -477,7 +477,8 @@ const EMPTY_COST_FORM = { description: '', amount: '', entryDate: new Date().toI
 export default function AcilDosyaDetayPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params?.id as string;
+  const rawId = params?.id;
+  const id = (Array.isArray(rawId) ? rawId[0] : rawId) ?? '';
   const roleCode = usePanelRoleCode();
   const { showAcilFinancePage } = usePanelAccess();
   const canSeeOpsCost = canSeeAcilOpsCostFields(roleCode);
@@ -614,6 +615,11 @@ export default function AcilDosyaDetayPage() {
   }, [id]);
 
   const load = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      setVaka(null);
+      return;
+    }
     setLoading(true);
     try {
       const caseRes = await getCase(id);

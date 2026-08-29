@@ -262,20 +262,32 @@ export class EmergencyFinanceService {
             fileNo: true,
             customerName: true,
             issueType: true,
-            vendorPaid: true,
           },
         },
         grantedBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+    const paidByCase = new Map<string, boolean | null>();
+    try {
+      const ids = rows.map((row) => row.caseId);
+      if (ids.length) {
+        const raw = await this.prisma.$queryRawUnsafe<Array<{ id: string; vendor_paid: boolean | null }>>(
+          `SELECT id, vendor_paid FROM emergency_cases WHERE id = ANY($1::text[])`,
+          ids,
+        );
+        for (const row of raw) paidByCase.set(row.id, row.vendor_paid ?? null);
+      }
+    } catch {
+      /* kolon yoksa kayıt yok */
+    }
     return {
       data: rows.map((row) => ({
         id: row.id,
         caseId: row.caseId,
-        caseNo: row.case.fileNo || row.case.caseNo,
+        caseNo: row.case.caseNo || row.case.fileNo,
         customerName: row.case.customerName,
         issueType: row.case.issueType,
-        vendorPaid: row.case.vendorPaid ?? null,
+        vendorPaid: paidByCase.get(row.caseId) ?? null,
         vendorId: row.vendorId,
         vendorName: row.vendor.name,
         amount: row.amount,

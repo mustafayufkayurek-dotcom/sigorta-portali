@@ -202,8 +202,16 @@ export interface MonthlySummary {
 function asEntity<T>(value: unknown): T {
   if (value && typeof value === 'object') {
     const record = value as Record<string, unknown>;
-    if ('data' in record && record.data && typeof record.data === 'object') {
-      return record.data as T;
+    if (typeof record.id === 'string' && record.id) {
+      return record as T;
+    }
+    if (
+      'data' in record
+      && record.data
+      && typeof record.data === 'object'
+      && !Array.isArray(record.data)
+    ) {
+      return asEntity<T>(record.data);
     }
   }
   return value as T;
@@ -225,7 +233,7 @@ export async function getCases(params?: {
 }
 
 export async function getCase(id: string): Promise<{ data: EmergencyCase }> {
-  const data = await apiClient.get<unknown>(`/emergency/cases/${id}`);
+  const data = await apiClient.get<unknown>(`/emergency/cases/${encodeURIComponent(id)}`);
   return { data: asEntity<EmergencyCase>(data) };
 }
 
@@ -421,7 +429,8 @@ export type AcilVendorEntitlementRow = {
 };
 
 export async function getAcilVendorEntitlements(): Promise<{ data: AcilVendorEntitlementRow[] }> {
-  return apiClient.get<{ data: AcilVendorEntitlementRow[] }>('/emergency/finance/vendor-entitlements');
+  const raw = await apiClient.get<unknown>('/emergency/finance/vendor-entitlements');
+  return { data: asList<AcilVendorEntitlementRow>(raw) };
 }
 
 export async function getMonthlySummary(

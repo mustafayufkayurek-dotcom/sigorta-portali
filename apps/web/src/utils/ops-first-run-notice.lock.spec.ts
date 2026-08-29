@@ -53,6 +53,17 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(notice, /border-blue-100 bg-blue-50\/60/);
   });
 
+  it('Finans ödeme kuyruğu şeridi durur', () => {
+    const tahsilat = readFileSync(join(here, '../app/panel/finans/tahsilatlar/page.tsx'), 'utf8');
+    const finansHome = readFileSync(join(here, '../app/panel/finans/page.tsx'), 'utf8');
+    assert.match(tahsilat, /finans-odeme-kuyruk-ilk-kullanim-seridi/);
+    assert.match(finansHome, /finans-odeme-kuyruk-ilk-kullanim-seridi/);
+    assert.equal(OPS_NOTICE.finansTedarikciKuyruk.id, 'finans-tedarikci-kuyruk-v546');
+    assert.match(tahsilat, /emergencyCaseId/);
+    assert.match(tahsilat, /acil_hakedis/);
+    assert.match(tahsilat, /Vade yok/);
+  });
+
   it('Acil yeni dosyada vekalet şeridi durur', () => {
     assert.match(acilForm, /OpsFirstRunNotice/);
     assert.match(acilForm, /OPS_NOTICE\.acilDosyaSorumlusuVekalet/);
@@ -87,6 +98,24 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
       'utf8',
     );
     assert.match(masrafIsleme, /OPS_NOTICE\.hasarMasrafButceEk/);
+    assert.match(masrafIsleme, /supplierCostHint/);
+    assert.match(masrafIsleme, /hasar-hakedis-gider-seridi/);
+    const hakedisPanel = readFileSync(
+      join(here, '../components/finance/HasarFileHakedisPanel.tsx'),
+      'utf8',
+    );
+    assert.match(hakedisPanel, /Hakediş Ver/);
+    assert.match(hakedisPanel, /hasar-hakedis-ver-panel/);
+    assert.match(hakedisPanel, /buildHasarHakedisGrantLines/);
+    assert.match(hakedisPanel, /netHakedisAfterAvans/);
+    assert.doesNotMatch(hakedisPanel, /CommercialPricingDrawer/);
+    assert.match(hakedisPanel, /hasar-gider-hakedis/);
+    assert.match(hakedisPanel, /Gider/);
+    assert.equal(OPS_NOTICE.hasarHakedisGider.id, 'hasar-hakedis-gider-v549');
+    assert.match(OPS_NOTICE.hasarHakedisGider.body, /Finansa Aktar/);
+    assert.match(OPS_NOTICE.hasarHakedisGider.body, /ödeme kuyruğu/);
+    assert.match(hakedisPanel, /Finansa Aktar/);
+    assert.match(hakedisPanel, /tahsilatlar\?queue=payable/);
     assert.equal(OPS_NOTICE.hasarMasrafButceEk.id, 'hasar-masraf-butce-ek-v535');
     assert.match(OPS_NOTICE.hasarMasrafButceEk.body, /Bütçelenen/);
     assert.match(OPS_NOTICE.hasarMasrafButceEk.body, /Ek İş/);

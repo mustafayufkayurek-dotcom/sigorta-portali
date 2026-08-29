@@ -13,9 +13,15 @@ import * as path from 'path';
 import {
   assertClaimFileAccess,
   buildClaimFileRelationScope,
+  isInsuranceCompanyUser,
   mergeWhereAnd,
   RequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
+import { AVANS_REF_PREFIX, isAvansPayment } from '@sigorta/shared';
+import {
+  parseAcilEntitlementQueueId,
+  toAcilFinanceQueueRow,
+} from '../emergency/acil-vendor-entitlement';
 
 /** Varsayılan vade — tedarikçi kartında seçim yoksa (geçici geri uyumluluk) */
 export const VENDOR_HAKEDIS_DUE_DAYS_DEFAULT = 30;
@@ -162,6 +168,73 @@ export class PaymentsService {
     };
   }
 
+  private shouldMergeAcilQueue(
+    params: PaymentListParams,
+    requestingUser?: RequestUser,
+  ): boolean {
+    if (requestingUser && isInsuranceCompanyUser(requestingUser.roleCode)) return false;
+    if (params.claimFileId) return false;
+    if (params.dueOverdue === 'true') return false;
+    if (params.queue === 'collection') return false;
+    if (params.method && params.method !== 'eft') return false;
+    return true;
+  }
+
+  /** Acil hakediş satırları — Hasar 15/30 vade yoluna girmez. */
+  private async listAcilFinanceQueueRows(params: PaymentListParams) {
+    const rows = await this.prisma.emergencyVendorEntitlement.findMany({
+      orderBy: { grantedAt: 'desc' },
+      include: {
+        vendor: { select: { id: true, name: true } },
+        case: {
+          select: {
+            id: true,
+            caseNo: true,
+            fileNo: true,
+            assignedUserId: true,
+          },
+        },
+      },
+    });
+    const q = params.search?.trim().toLowerCase();
+    const paidByCase = await this.acilVendorPaidByCaseIds(rows.map((row) => row.caseId));
+    return rows
+      .filter((row) => {
+        if (params.responsibleUserId && row.case.assignedUserId !== params.responsibleUserId) {
+          return false;
+        }
+        if (!q) return true;
+        const hay = `${row.case.fileNo ?? ''} ${row.case.caseNo} ${row.vendor.name}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .map((row) =>
+        toAcilFinanceQueueRow({
+          id: row.id,
+          caseId: row.caseId,
+          caseNo: row.case.caseNo || row.case.fileNo || '',
+          vendorName: row.vendor.name,
+          amount: row.amount,
+          grantedAt: row.grantedAt,
+          vendorPaid: paidByCase.get(row.caseId) ?? null,
+        }),
+      );
+  }
+
+  private async acilVendorPaidByCaseIds(ids: string[]): Promise<Map<string, boolean | null>> {
+    const map = new Map<string, boolean | null>();
+    if (!ids.length) return map;
+    try {
+      const raw = await this.prisma.$queryRawUnsafe<Array<{ id: string; vendor_paid: boolean | null }>>(
+        `SELECT id, vendor_paid FROM emergency_cases WHERE id = ANY($1::text[])`,
+        ids,
+      );
+      for (const row of raw) map.set(row.id, row.vendor_paid ?? null);
+    } catch (err) {
+      this.logger.warn(`Acil ödeme durumu okunamadı: ${(err as Error).message}`);
+    }
+    return map;
+  }
+
   private async enrichWithVendorNames<T extends { payerType: string; payerId: string | null }>(rows: T[]) {
     const vendorIds = [...new Set(rows.filter((r) => r.payerType === 'vendor' && r.payerId).map((r) => r.payerId!))];
     if (!vendorIds.length) return rows.map((r) => ({ ...r, vendorName: null as string | null }));
@@ -221,11 +294,37 @@ export class PaymentsService {
     ]);
 
     const data = await this.enrichWithVendorNames(rawData);
+    let merged = data as Array<Record<string, unknown>>;
+    let mergedTotal = total;
+    const mergedSummary = { ...summary };
+
+    if (this.shouldMergeAcilQueue(params, requestingUser)) {
+      try {
+        const acilRows = await this.listAcilFinanceQueueRows(params);
+        const pendingAcil = acilRows.filter((r) => r.status === 'pending');
+        const completedAcil = acilRows.filter((r) => r.status === 'completed');
+        mergedSummary.pendingOutgoing += pendingAcil.reduce((s, r) => s + r.amount, 0);
+        mergedSummary.pendingOutgoingCount += pendingAcil.length;
+        const showPending =
+          !params.queue || params.queue === 'all' || params.queue === 'payable';
+        const showCompleted = !params.queue || params.queue === 'all' || params.queue === 'completed';
+        const extra = [
+          ...(showPending ? pendingAcil : []),
+          ...(showCompleted ? completedAcil : []),
+        ];
+        mergedTotal += extra.length;
+        if (page === 1) {
+          merged = [...extra, ...merged];
+        }
+      } catch (err) {
+        this.logger.warn(`Acil hakediş kuyruğu birleştirilemedi: ${(err as Error).message}`);
+      }
+    }
 
     return {
-      data,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-      summary,
+      data: merged,
+      meta: { total: mergedTotal, page, limit, totalPages: Math.ceil(mergedTotal / limit) },
+      summary: mergedSummary,
     };
   }
 
@@ -313,6 +412,13 @@ export class PaymentsService {
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
   ) {
+    const acilEntitlementId = parseAcilEntitlementQueueId(id);
+    if (acilEntitlementId) {
+      const rows = await this.listAcilFinanceQueueRows({});
+      const row = rows.find((r) => parseAcilEntitlementQueueId(r.id) === acilEntitlementId);
+      if (!row) throw new NotFoundException('Ödeme bulunamadı');
+      return row;
+    }
     const payment = await this.prisma.payment.findUnique({
       where: { id },
       include: {
@@ -355,6 +461,12 @@ export class PaymentsService {
       if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
     }
 
+    const isAvans =
+      dto.paymentType === 'outgoing'
+      && dto.payerType === 'vendor'
+      && isAvansPayment({ note: dto.note, referenceNo: dto.referenceNo });
+    const status = isAvans ? 'pending' : (dto.status ?? 'completed');
+
     const payment = await this.prisma.payment.create({
       data: {
         claimFileId: dto.claimFileId,
@@ -366,8 +478,8 @@ export class PaymentsService {
         payerType: dto.payerType,
         payerId: dto.payerId ?? null,
         invoiceId: dto.invoiceId ?? null,
-        referenceNo: dto.referenceNo ?? null,
-        status: dto.status ?? 'completed',
+        referenceNo: isAvans ? (dto.referenceNo || AVANS_REF_PREFIX) : (dto.referenceNo ?? null),
+        status,
         bankAccountId: dto.bankAccountId ?? null,
         note: dto.note ?? null,
         createdByUserId: userId,
@@ -567,7 +679,28 @@ export class PaymentsService {
   }
 
   async update(id: string, dto: UpdatePaymentDto, userId?: string) {
-    const payment = await this.findOne(id);
+    const acilEntitlementId = parseAcilEntitlementQueueId(id);
+    if (acilEntitlementId) {
+      if (dto.status !== 'completed') {
+        throw new BadRequestException('Acil hakediş yalnız ödendi olarak işaretlenir.');
+      }
+      const row = await this.prisma.emergencyVendorEntitlement.findUnique({
+        where: { id: acilEntitlementId },
+        select: { caseId: true },
+      });
+      if (!row) throw new NotFoundException('Ödeme bulunamadı');
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE emergency_cases SET vendor_paid = true WHERE id = $1`,
+        row.caseId,
+      );
+      const next = (await this.listAcilFinanceQueueRows({})).find(
+        (r) => parseAcilEntitlementQueueId(r.id) === acilEntitlementId,
+      );
+      if (!next) throw new NotFoundException('Ödeme bulunamadı');
+      return next;
+    }
+    const payment = await this.prisma.payment.findUnique({ where: { id } });
+    if (!payment) throw new NotFoundException('Ödeme bulunamadı');
     const wasPending = payment.status === 'pending';
     const updated = await this.prisma.payment.update({
       where: { id },

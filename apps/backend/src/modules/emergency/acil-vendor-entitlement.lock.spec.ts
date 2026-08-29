@@ -11,6 +11,7 @@ import {
   acilHakedisDueDate,
   acilHakedisFinanceNote,
   pickAcilHakedisAmount,
+  toAcilFinanceQueueRow,
 } from './acil-vendor-entitlement.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,21 @@ describe('acil vendor entitlement LOCK', () => {
     assert.match(acilHakedisFinanceNote(new Date('2026-08-21T14:40:00+03:00')), /Vade yok/);
   });
 
+  it('finans kuyruk satırında vade yok', () => {
+    const row = toAcilFinanceQueueRow({
+      id: 'e1',
+      caseId: 'c1',
+      caseNo: 'AY-DEMO-OK-01',
+      vendorName: 'Tedarikçi',
+      amount: 950,
+      grantedAt: new Date('2026-08-21T14:40:00+03:00'),
+      vendorPaid: false,
+    });
+    assert.equal(row.dueDate, null);
+    assert.equal(row.queueSource, 'acil_hakedis');
+    assert.match(row.note, /Vade yok/);
+  });
+
   it('Hasar statement / paymentDueDays yoluna bağlanmaz', () => {
     const svc = readFileSync(join(here, 'emergency-finance.service.ts'), 'utf8');
     assert.match(svc, /emergencyVendorEntitlement/);
@@ -43,5 +59,8 @@ describe('acil vendor entitlement LOCK', () => {
     const chain = readFileSync(join(here, 'emergency-operation-chain.ts'), 'utf8');
     assert.match(chain, /vendorEntitlementGrantedAt/);
     assert.match(chain, /Vade yok/);
+    const payments = readFileSync(join(here, '../payments/payments.service.ts'), 'utf8');
+    assert.match(payments, /isAvansPayment/);
+    assert.match(payments, /toAcilFinanceQueueRow/);
   });
 });
