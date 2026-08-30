@@ -7,8 +7,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Trash2 } from 'lucide-react';
+import { FinanceRowActions, printFinanceSlip } from '@/components/finance/FinanceRowActions';
 import { ClaimFileExpenseFormPanel } from '@/components/finance/ClaimFileExpenseFormPanel';
 import { canDeleteClaimFinance } from '@/components/finance/can-delete-claim-finance';
+import { HasarFileHakedisPanel } from '@/components/finance/HasarFileHakedisPanel';
 import { FinansEmptyState, FinansMetricGrid, FinansPanelCard } from '@/components/finance/FinansPanelUI';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { API, authHeader } from '@/utils/api';
@@ -21,34 +23,29 @@ const fmt = (n: number) => formatTryAmount(n, { fractionDigits: 0 });
 export function FileMasrafIsleme({
   claimId,
   fileLabel,
+  reportId,
+  supplierCostHint,
 }: {
   claimId: string;
   fileLabel?: string;
+  reportId?: string | null;
+  supplierCostHint?: number | null;
 }) {
   const [open, setOpen] = useState(false);
   const [expenses, setExpenses] = useState<any[]>([]);
-  const [hakedis, setHakedis] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const canDelete = canDeleteClaimFinance();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [res, hak] = await Promise.allSettled([
-        axios.get(`${API}/expenses`, {
-          headers: authHeader(),
-          params: { fileCaseId: claimId, limit: 200 },
-        }),
-        axios.get(`${API}/vendor-statements`, {
-          headers: authHeader(),
-          params: { claimFileId: claimId, limit: 50 },
-        }),
-      ]);
-      setExpenses(res.status === 'fulfilled' ? (res.value.data?.data ?? res.value.data ?? []) : []);
-      setHakedis(hak.status === 'fulfilled' ? (hak.value.data?.data ?? hak.value.data ?? []) : []);
+      const res = await axios.get(`${API}/expenses`, {
+        headers: authHeader(),
+        params: { fileCaseId: claimId, limit: 200 },
+      });
+      setExpenses(res.data?.data ?? res.data ?? []);
     } catch {
       setExpenses([]);
-      setHakedis([]);
     } finally {
       setLoading(false);
     }
@@ -67,7 +64,14 @@ export function FileMasrafIsleme({
   );
 
   return (
-    <>
+    <div className="space-y-4">
+      <HasarFileHakedisPanel claimId={claimId} reportId={reportId} supplierCostHint={supplierCostHint} />
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.hasarHakedisGider.id}
+        title={OPS_NOTICE.hasarHakedisGider.title}
+        body={OPS_NOTICE.hasarHakedisGider.body}
+        testId="hasar-hakedis-gider-seridi"
+      />
       <OpsFirstRunNotice
         noticeId={OPS_NOTICE.hasarMasrafButceEk.id}
         title={OPS_NOTICE.hasarMasrafButceEk.title}
@@ -117,6 +121,15 @@ export function FileMasrafIsleme({
                   <span className="font-semibold tabular-nums text-slate-800">
                     {fmt(Number(e.amount ?? 0))}
                   </span>
+                  <FinanceRowActions
+                    onPrint={() => printFinanceSlip({
+                      title: 'Masraf',
+                      fileNo: fileLabel,
+                      date: e.date ?? e.createdAt,
+                      amount: Number(e.amount ?? 0),
+                      note: e.description,
+                    })}
+                  />
                   {canDelete && (
                     <button
                       type="button"
@@ -142,29 +155,6 @@ export function FileMasrafIsleme({
         )}
       </FinansPanelCard>
 
-      <FinansPanelCard
-        title="Tedarikçi Hakedişleri"
-        subtitle="Onarım raporundan hakedişe aktarılan ekstreler burada durur"
-      >
-        {hakedis.length === 0 ? (
-          <FinansEmptyState
-            title="Bu dosyada hakediş yok"
-            description="Onarım raporunda Onayla ve Hakedişe Aktar ile hazırlanır. Liste burada görünür."
-          />
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {hakedis.map((s: any) => (
-              <li key={s.id} className="flex justify-between gap-2 py-2.5 text-sm">
-                <span className="text-slate-700">
-                  {s.statementNo} · {s.vendor?.name ?? 'Tedarikçi'}
-                </span>
-                <span className="text-xs font-medium text-slate-500">{s.status}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </FinansPanelCard>
-
       <ClaimFileExpenseFormPanel
         open={open}
         onClose={() => setOpen(false)}
@@ -173,6 +163,6 @@ export function FileMasrafIsleme({
         allowExtraWorkPlan={true}
         onSaved={() => { void load(); }}
       />
-    </>
+    </div>
   );
 }

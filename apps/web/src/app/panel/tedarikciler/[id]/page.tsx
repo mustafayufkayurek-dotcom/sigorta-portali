@@ -3,7 +3,10 @@
 import { API, authHeader } from '@/utils/api';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
+import { formatTryAmount } from '@/utils/format-try-amount';
+import { tedarikciMaliyetOzetiSatirlari } from '@/utils/tedarikci-maliyet-ozet';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -799,10 +802,13 @@ function OverviewMetricCard({
   hint?: string;
 }) {
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2">
-      <p className="text-[11px] font-medium text-slate-500 leading-tight">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold text-slate-900 tabular-nums">{value}</p>
-      {hint ? <p className="mt-0.5 text-[11px] text-slate-400 leading-tight">{hint}</p> : null}
+    <div
+      data-testid="karar-ozeti-kart"
+      className="flex flex-col items-center justify-center rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2 text-center"
+    >
+      <p className="w-full text-center text-[11px] font-medium leading-tight text-slate-500">{label}</p>
+      <p className="mt-0.5 w-full text-center text-sm font-semibold tabular-nums text-slate-900">{value}</p>
+      {hint ? <p className="mt-0.5 w-full text-center text-[11px] leading-tight text-slate-400">{hint}</p> : null}
     </div>
   );
 }
@@ -935,7 +941,8 @@ function GenelBakisTab({
     return haystack.includes(historyQuery.trim().toLocaleLowerCase('tr-TR'));
   });
 
-  const highlightedCost = (overview?.costSummary || []).slice(0, 6);
+  const maliyetOzet = tedarikciMaliyetOzetiSatirlari((overview?.costSummary || []).slice(0, 6));
+  const highlightedCost = maliyetOzet.rows;
   const operation = overview?.operationSummary;
   const quality = overview?.qualitySummary;
   const whatsappHistory = (overview?.whatsappHistory || []).slice(0, 5);
@@ -943,7 +950,7 @@ function GenelBakisTab({
   const decisionSummary = [
     operation?.successRate != null ? `Başarılı tamamlama oranı ${fmtPercent(operation.successRate)}` : null,
     operation?.avgResponseTimeHours != null ? `ortalama müdahale ${fmtHours(operation.avgResponseTimeHours)}` : null,
-    highlightedCost[0]?.serviceType ? `en yoğun hizmet ${highlightedCost[0].serviceType}` : null,
+    !maliyetOzet.ornek && highlightedCost[0]?.serviceType ? `en yoğun hizmet ${highlightedCost[0].serviceType}` : null,
     quality?.recommendRate != null ? `yeniden tercih oranı ${fmtPercent(quality.recommendRate)}` : null,
   ].filter(Boolean).join(', ');
 
@@ -987,7 +994,16 @@ function GenelBakisTab({
                     : 'Henüz Tanımlı Değil'
               }
             />
-            <InfoRow label="Hizmet Türleri" value={serviceTypes.length ? serviceTypes.map((s) => toTitleCaseTR(s)).join(', ') : 'Henüz Tanımlı Değil'} />
+            <InfoRow
+              label="Hizmet Türleri"
+              value={serviceTypes.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {serviceTypes.map((item) => (
+                    <Badge key={item} variant="indigo">{toTitleCaseTR(item)}</Badge>
+                  ))}
+                </div>
+              ) : 'Henüz Tanımlı Değil'}
+            />
           </div>
         </SectionCard>
 
@@ -1016,37 +1032,36 @@ function GenelBakisTab({
       <VendorBankConfirmationCard vendor={vendor} onUpdate={onVendorUpdate} />
 
       <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.1fr_0.9fr]">
-        <SectionCard title="Maliyet Özeti">
-          {highlightedCost.length === 0 ? (
-            <p className="py-4 text-center text-sm text-slate-400">Henüz maliyet geçmişi oluşmadı.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
-                    <th className="pb-2 pr-3 font-medium">Hizmet</th>
-                    <th className="pb-2 pr-3 font-medium">Min</th>
-                    <th className="pb-2 pr-3 font-medium">Ort.</th>
-                    <th className="pb-2 pr-3 font-medium">Maks</th>
-                    <th className="pb-2 pr-3 font-medium">Son</th>
-                    <th className="pb-2 font-medium">Adet</th>
+        <SectionCard title="Maliyet Özeti" subtitle={maliyetOzet.ornek ? 'Örnek görünüm — dosyada maliyet oluşunca gerçek rakam gelir' : undefined}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
+                  <th className="pb-2 pr-3 font-medium">Hizmet</th>
+                  <th className="pb-2 pr-3 text-right font-medium">Min</th>
+                  <th className="pb-2 pr-3 text-right font-medium">Ort.</th>
+                  <th className="pb-2 pr-3 text-right font-medium">Maks</th>
+                  <th className="pb-2 pr-3 text-right font-medium">Son</th>
+                  <th className="pb-2 text-right font-medium">Adet</th>
+                </tr>
+              </thead>
+              <tbody>
+                {highlightedCost.map((row: any) => (
+                  <tr key={row.serviceType} className="border-b border-slate-50 last:border-0">
+                    <td className="py-1.5 pr-3 font-medium text-slate-800">
+                      {toTitleCaseTR(String(row.serviceType ?? ''))}
+                      {maliyetOzet.ornek ? <span className="ml-1.5 text-[10px] font-medium text-slate-400">Örnek</span> : null}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums text-slate-600">{formatTryAmount(row.minCost, { fractionDigits: 0 })}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums text-slate-600">{formatTryAmount(row.avgCost, { fractionDigits: 0 })}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums text-slate-600">{formatTryAmount(row.maxCost, { fractionDigits: 0 })}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums text-slate-900">{formatTryAmount(row.lastCost, { fractionDigits: 0 })}</td>
+                    <td className="py-1.5 text-right text-slate-500">{row.count}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {highlightedCost.map((row: any) => (
-                    <tr key={row.serviceType} className="border-b border-slate-50 last:border-0">
-                      <td className="py-1.5 pr-3 font-medium text-slate-800">{toTitleCaseTR(String(row.serviceType ?? ''))}</td>
-                      <td className="py-1.5 pr-3 text-slate-600">{fmtCurrency(row.minCost)}</td>
-                      <td className="py-1.5 pr-3 text-slate-600">{fmtCurrency(row.avgCost)}</td>
-                      <td className="py-1.5 pr-3 text-slate-600">{fmtCurrency(row.maxCost)}</td>
-                      <td className="py-1.5 pr-3 text-slate-900">{fmtCurrency(row.lastCost)}</td>
-                      <td className="py-1.5 text-slate-500">{row.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </SectionCard>
 
         <SectionCard title="Hizmet Kalitesi">
@@ -1064,30 +1079,6 @@ function GenelBakisTab({
           </div>
         </SectionCard>
       </div>
-
-      <SectionCard title="Hizmet Kapsamı">
-        <div className="grid grid-cols-1 gap-2 lg:grid-cols-[1.2fr_0.8fr]">
-          <div>
-            {coverageAreas.length === 0 ? (
-              <p className="text-sm text-slate-400">Henüz hizmet bölgesi tanımlı değil.</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                {coverageAreas.map((area: any, index: number) => (
-                  <div key={`${area.provinceId}-${area.districtId ?? 'all'}-${index}`} className="rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-1.5">
-                    <p className="text-sm font-semibold text-slate-800">{area.province?.name ?? 'İl'}</p>
-                    <p className="text-[11px] text-slate-500">{area.district?.name ?? 'Tüm İlçeler'}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-wrap content-start gap-1.5">
-            {serviceTypes.length ? serviceTypes.map((item) => (
-              <Badge key={item} variant="indigo">{toTitleCaseTR(item)}</Badge>
-            )) : <span className="text-sm text-slate-400">Henüz tanımlı değil.</span>}
-          </div>
-        </div>
-      </SectionCard>
 
       <SectionCard title="Dosya Geçmişi">
         <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1441,6 +1432,13 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
 export default function VendorDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromFile = searchParams.get('fromFile');
+  const fileNo = searchParams.get('fileNo');
+  const returnTo = searchParams.get('returnTo');
+  const fileHref = returnTo || (fromFile
+    ? `/panel/hasar-dosyalari/${fromFile}?grup=finans&alt=gider-butce`
+    : null);
   const [vendor, setVendor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<VendorTab>('profil');
@@ -1481,13 +1479,25 @@ export default function VendorDetailPage() {
   return (
     <div>
       {/* ── Back ── */}
-      <button type="button" onClick={() => router.push('/panel/tedarikciler')}
-        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-3 transition-colors">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Tedarikçiler
-      </button>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => router.push(fileHref || '/panel/tedarikciler')}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:underline"
+        >
+          <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+          {fileHref ? (fileNo ? `Dosyaya Dön · ${fileNo}` : 'Dosyaya Dön') : 'Tedarikçiler'}
+        </button>
+        {fileHref ? (
+          <button
+            type="button"
+            onClick={() => router.push('/panel/tedarikciler')}
+            className="text-sm text-slate-500 hover:text-slate-700"
+          >
+            Tedarikçiler
+          </button>
+        ) : null}
+      </div>
 
       {/* ── Header Card ── */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3">

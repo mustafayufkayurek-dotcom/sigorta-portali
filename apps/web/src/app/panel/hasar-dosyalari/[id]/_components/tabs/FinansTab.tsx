@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { FinansOzetPanel } from './FinansOzetPanel';
 import { FaturalarTab } from './finans-subtabs';
 import { FileMasrafIsleme } from '@/components/finance/FileMasrafIsleme';
@@ -15,6 +16,13 @@ const FINANS_SUB_TABS: { id: FinansSubTab; label: string }[] = [
   { id: 'faturalar', label: 'Faturalar' },
 ];
 
+function finansAltTab(alt: string | null): FinansSubTab {
+  if (alt === 'gider-butce' || alt === 'gider') return 'gider-butce';
+  if (alt === 'gelir-tahsilat' || alt === 'gelir') return 'gelir-tahsilat';
+  if (alt === 'faturalar') return 'faturalar';
+  return 'ozet';
+}
+
 export function FinansTab({
   claim,
   claimId,
@@ -22,7 +30,8 @@ export function FinansTab({
   claim: any;
   claimId: string;
 }) {
-  const [subTab, setSubTab] = useState<FinansSubTab>('ozet');
+  const searchParams = useSearchParams();
+  const [subTab, setSubTab] = useState<FinansSubTab>(() => finansAltTab(searchParams.get('alt')));
 
   return (
     <div className="space-y-4">
@@ -60,6 +69,13 @@ export function FinansTab({
         <FileMasrafIsleme
           claimId={claimId}
           fileLabel={claim?.fileNo ?? claim?.claimNo}
+          reportId={claim?.latestRepairReport?.id}
+          supplierCostHint={
+            Number(claim?.latestRepairReport?.totalSupplierCost)
+            || Number(claim?.financialSummary?.estimatedCost)
+            || Number(claim?.estimatedCostAmount)
+            || null
+          }
         />
       )}
 

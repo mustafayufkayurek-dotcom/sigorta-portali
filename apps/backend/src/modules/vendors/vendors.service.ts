@@ -708,7 +708,7 @@ export class VendorsService {
       grouped.set(key, list);
     }
 
-    return Array.from(grouped.entries())
+    const fromMemory = Array.from(grouped.entries())
       .map(([serviceType, rows]) => {
         const sorted = [...rows].sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime());
         const costs = rows
@@ -728,6 +728,77 @@ export class VendorsService {
         };
       })
       .filter((row): row is NonNullable<typeof row> => row != null)
+      .sort((a, b) => b.count - a.count || a.serviceType.localeCompare(b.serviceType, 'tr'));
+    if (fromMemory.length > 0) return fromMemory;
+
+    const [payments, vendor] = await Promise.all([
+      this.prisma.payment.findMany({
+        where: {
+          payerType: 'vendor',
+          payerId: id,
+          paymentType: 'outgoing',
+          status: { not: 'cancelled' },
+        },
+        select: {
+          amount: true,
+          paymentDate: true,
+          createdAt: true,
+          vendorStatementItem: {
+            select: {
+              lineDescription: true,
+              workGroup: { select: { name: true } },
+            },
+          },
+        },
+        take: 200,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.vendor.findUnique({
+        where: { id },
+        select: {
+          serviceBranches: true,
+          vendorWorkGroups: { select: { workGroup: { select: { name: true } } } },
+        },
+      }),
+    ]);
+
+    const branches = Array.isArray(vendor?.serviceBranches)
+      ? (vendor.serviceBranches as string[]).filter(Boolean)
+      : [];
+    const fallback = vendor?.vendorWorkGroups?.find((row) => row.workGroup?.name)?.workGroup?.name
+      || branches[0]
+      || 'Hakediş';
+
+    const byType = new Map<string, Array<{ amount: number; at: Date }>>();
+    for (const row of payments) {
+      const amount = Number(row.amount ?? 0);
+      if (!(amount > 0)) continue;
+      const label = String(
+        row.vendorStatementItem?.lineDescription
+        || row.vendorStatementItem?.workGroup?.name
+        || fallback,
+      ).trim() || fallback;
+      const list = byType.get(label) ?? [];
+      list.push({ amount, at: row.paymentDate ?? row.createdAt });
+      byType.set(label, list);
+    }
+
+    return Array.from(byType.entries())
+      .map(([serviceType, rows]) => {
+        const sorted = [...rows].sort((a, b) => b.at.getTime() - a.at.getTime());
+        const costs = rows.map((item) => item.amount);
+        const avg = Math.round(costs.reduce((sum, value) => sum + value, 0) / costs.length);
+        return {
+          serviceType,
+          operationGroup: serviceType,
+          count: costs.length,
+          minCost: Math.min(...costs),
+          avgCost: avg,
+          maxCost: Math.max(...costs),
+          lastCost: sorted[0]?.amount ?? null,
+          lastDate: sorted[0]?.at?.toISOString() ?? null,
+        };
+      })
       .sort((a, b) => b.count - a.count || a.serviceType.localeCompare(b.serviceType, 'tr'));
   }
 

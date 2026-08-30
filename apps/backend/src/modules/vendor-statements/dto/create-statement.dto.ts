@@ -99,6 +99,55 @@ export class CreateStatementDto {
   items?: CreateStatementItemDto[];
 }
 
+export class GrantHasarHakedisItemDto {
+  @ApiProperty()
+  @IsString()
+  lineDescription!: string;
+
+  @ApiProperty()
+  @IsNumber()
+  @Min(0.01)
+  @Type(() => Number)
+  totalAmount!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  workGroupId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  repairReportItemId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  quantity?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  unit?: string;
+}
+
+export class GrantHasarHakedisDto {
+  @ApiProperty()
+  @IsString()
+  claimFileId!: string;
+
+  @ApiProperty()
+  @IsString()
+  vendorId!: string;
+
+  @ApiProperty({ type: [GrantHasarHakedisItemDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GrantHasarHakedisItemDto)
+  items!: GrantHasarHakedisItemDto[];
+}
+
 export class UpdateStatementDto {
   @ApiPropertyOptional()
   @IsOptional()

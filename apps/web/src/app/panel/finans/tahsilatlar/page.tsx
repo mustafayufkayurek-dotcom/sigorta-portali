@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { FinanceRowActions, printFinanceSlip, vendorEkstreHref } from '@/components/finance/FinanceRowActions';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { getAccessToken } from '@/utils/auth-session';
@@ -17,12 +18,15 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import {
   cycleClientSort,
   sortRowsByClientSort,
   type ClientSortState,
 } from '@/utils/panel-table-sort';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import { isOfficeStaffRole, usePanelRoleCode } from '@/hooks/usePanelRole';
 
 const PAYMENT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'paymentDate', label: 'Tarih / Vade', defaultWidth: 112, minWidth: 96 },
@@ -90,6 +94,9 @@ export default function TahsilatlarPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const [queue, setQueue] = useState<QueueTab>((searchParams.get('queue') as QueueTab) || 'all');
+  const roleCode = usePanelRoleCode();
+  const isFileOwner = isOfficeStaffRole(roleCode);
+  const claimFileId = searchParams.get('claimFileId') ?? '';
   const [myFilesOnly, setMyFilesOnly] = useState(false);
   const [filters, setFilters] = useState({ method: '', page: 1, limit: 20 });
   const [summary, setSummary] = useState<Summary>({
@@ -137,7 +144,8 @@ export default function TahsilatlarPage() {
     }
     if (filters.method) params.method = filters.method;
     if (search.trim()) params.search = search.trim();
-    if (myFilesOnly) {
+    if (claimFileId) params.claimFileId = claimFileId;
+    if (isFileOwner || myFilesOnly) {
       const uid = getCurrentUserId();
       if (uid) params.responsibleUserId = uid;
     }
@@ -166,7 +174,7 @@ export default function TahsilatlarPage() {
         setTotal(0);
       })
       .finally(() => setLoading(false));
-  }, [filters, search, queue, myFilesOnly, router]);
+  }, [filters, search, queue, myFilesOnly, claimFileId, isFileOwner, router]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -201,12 +209,21 @@ export default function TahsilatlarPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
-      <FinansSubpageBreadcrumb current="Tahsilatlar" />
+      <FinansSubpageBreadcrumb
+        current="Tahsilatlar"
+        backHref={claimFileId ? `/panel/hasar-dosyalari/${claimFileId}?grup=finans&alt=gider-butce` : undefined}
+      />
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.finansTedarikciKuyruk.id}
+        title={OPS_NOTICE.finansTedarikciKuyruk.title}
+        body={OPS_NOTICE.finansTedarikciKuyruk.body}
+        testId="finans-odeme-kuyruk-ilk-kullanim-seridi"
+      />
 
       <div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tahsilatlar ve Ödemeler</h2>
         <p className="text-sm text-slate-400 dark:text-slate-500">
-          Dosya sorumlusu tahsilat ve tedarikçi ödemelerini buradan takip eder; işlemler dosya ekranından başlatılır.
+          Dosya sorumlusunun verdiği tahsilat, avans ve tedarikçi hakedişi burada durur.
         </p>
       </div>
 
@@ -240,15 +257,19 @@ export default function TahsilatlarPage() {
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={myFilesOnly}
-            onChange={(e) => { setMyFilesOnly(e.target.checked); setFilters((f) => ({ ...f, page: 1 })); }}
-            className="rounded border-slate-300"
-          />
-          Yalnızca benim dosyalarım
-        </label>
+        {isFileOwner ? (
+          <p className="text-xs text-slate-500">Dosya Sorumlusu — yalnızca kendi dosyalarının tedarikçi ödemeleri</p>
+        ) : (
+          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={myFilesOnly}
+              onChange={(e) => { setMyFilesOnly(e.target.checked); setFilters((f) => ({ ...f, page: 1 })); }}
+              className="rounded border-slate-300"
+            />
+            Yalnızca benim dosyalarım
+          </label>
+        )}
       </div>
 
       {/* Filtreler */}
@@ -302,7 +323,7 @@ export default function TahsilatlarPage() {
                     <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tutar</SortablePanelTableTh>
                     <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Durum</SortablePanelTableTh>
                     <SortablePanelTableTh colId="note" sortKey="note" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Not</SortablePanelTableTh>
-                    <th className="px-4 py-3 text-center">İşlem</th>
+                    <th className="px-4 py-3 text-center">İşlemler</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
@@ -312,14 +333,20 @@ export default function TahsilatlarPage() {
                       <tr key={p.id} className={`hover:bg-blue-50/30 dark:hover:bg-slate-700/40 ${idx % 2 ? 'bg-slate-50/30 dark:bg-slate-800/60' : ''}`}>
                         <PanelTableTd colId="paymentDate" className="px-4 py-3 text-xs">
                           <div className="text-slate-700 dark:text-slate-200">{fmtDate(p.paymentDate)}</div>
-                          {p.dueDate && p.status === 'pending' && (
+                          {p.queueSource === 'acil_hakedis' ? (
+                            <div className="text-[10px] mt-0.5 font-medium text-slate-500">Vade yok</div>
+                          ) : p.dueDate && p.status === 'pending' ? (
                             <div className={`text-[10px] mt-0.5 ${isOverdue ? 'text-red-600 font-semibold' : 'text-slate-400'}`}>
                               Vade: {fmtDate(p.dueDate)}
                             </div>
-                          )}
+                          ) : null}
                         </PanelTableTd>
                         <PanelTableTd colId="fileCase" className="px-4 py-3">
-                          {p.claimFileId ? (
+                          {p.emergencyCaseId ? (
+                            <a href={`/panel/acil-yardim/${p.emergencyCaseId}`} className="text-brand-600 dark:text-blue-400 hover:underline font-mono text-xs">
+                              {p.claimFile?.fileNo ?? '—'}
+                            </a>
+                          ) : p.claimFileId ? (
                             <a href={`/panel/hasar-dosyalari/${p.claimFileId}`} className="text-brand-600 dark:text-blue-400 hover:underline font-mono text-xs">
                               {p.claimFile?.fileNo ?? '—'}
                             </a>
@@ -350,13 +377,38 @@ export default function TahsilatlarPage() {
                             {p.status === 'completed' ? 'Tamamlandı' : p.status === 'pending' ? 'Bekliyor' : 'İptal'}
                           </span>
                         </PanelTableTd>
-                        <PanelTableTd colId="note" className="px-4 py-3 text-xs text-slate-500 max-w-[200px] truncate" title={p.note}>{p.note ?? '—'}</PanelTableTd>
+                        <PanelTableTd colId="note" className="px-4 py-3 text-xs text-slate-500 max-w-[200px] truncate" title={p.note}>
+                          {p.queueSource === 'acil_hakedis' ? (
+                            <span className="mr-1 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">Acil hakediş</span>
+                          ) : null}
+                          {String(p.note ?? '').toUpperCase().includes('[AVANS]') ? (
+                            <span className="mr-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">Avans</span>
+                          ) : null}
+                          {p.note ?? '—'}
+                        </PanelTableTd>
                         <td className="px-4 py-3">
-                          {p.status === 'pending' && p.paymentType === 'outgoing' && (
-                            <button type="button" onClick={() => markPaid(p.id)} className="text-xs text-emerald-600 hover:underline whitespace-nowrap">
-                              Ödendi işaretle
-                            </button>
-                          )}
+                          <FinanceRowActions
+                            onPrint={() => printFinanceSlip({
+                              title: p.paymentType === 'incoming' ? 'Tahsilat' : 'Ödeme',
+                              fileNo: p.claimFile?.fileNo,
+                              party: p.vendorName,
+                              date: fmtDate(p.paymentDate ?? p.dueDate),
+                              amount: Number(p.amount ?? 0),
+                              status: p.status === 'completed' ? 'Tamamlandı' : p.status === 'pending' ? 'Bekliyor' : 'İptal',
+                              note: p.note,
+                            })}
+                            ekstreHref={p.payerType === 'vendor'
+                              ? vendorEkstreHref({
+                                vendorId: p.payerId,
+                                statementId: p.vendorStatementItem?.statement?.id,
+                                fromFile: claimFileId || p.claimFileId,
+                                fileNo: p.claimFile?.fileNo,
+                              })
+                              : null}
+                            onMarkPaid={!isFileOwner && p.status === 'pending' && p.paymentType === 'outgoing'
+                              ? () => void markPaid(p.id)
+                              : undefined}
+                          />
                         </td>
                       </tr>
                     );

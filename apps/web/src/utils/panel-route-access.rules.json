@@ -12,6 +12,7 @@
   { "path": "/panel/tedarikciler", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "FINANS", "MANAGER"] },
   { "path": "/panel/crm", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "FINANS", "MANAGER"] },
   { "path": "/panel/eksper-crm", "roles": ["admin", "ADMIN", "office_staff", "OFFICE_STAFF", "FINANS", "MANAGER"] },
+  { "path": "/panel/finans/tahsilatlar", "roles": ["admin", "ADMIN", "accountant", "ACCOUNTANT", "FINANS", "finance", "MANAGER", "office_staff", "OFFICE_STAFF"] },
   { "path": "/panel/finans", "roles": ["admin", "ADMIN", "accountant", "ACCOUNTANT", "FINANS", "finance", "MANAGER"] },
   { "path": "/panel/masraflar", "roles": ["admin", "ADMIN", "accountant", "ACCOUNTANT", "FINANS", "finance", "MANAGER"] },
   { "path": "/panel/raporlar", "roles": ["admin", "ADMIN", "accountant", "ACCOUNTANT", "FINANS", "finance", "MANAGER"] },

@@ -13,6 +13,7 @@ type TrAmountInputProps = {
   placeholder?: string;
   id?: string;
   disabled?: boolean;
+  autoFocus?: boolean;
   prefix?: string;
   prefixClassName?: string;
 };
@@ -25,6 +26,7 @@ export function TrAmountInput({
   placeholder = '0',
   id,
   disabled,
+  autoFocus,
   prefix = '',
   prefixClassName = 'absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm pointer-events-none',
 }: TrAmountInputProps) {
@@ -42,6 +44,7 @@ export function TrAmountInput({
         inputMode="decimal"
         id={id}
         disabled={disabled}
+        autoFocus={autoFocus}
         placeholder={placeholder}
         className={`${className}${prefix ? ' pl-7' : ''}${prefix ? '' : ' pr-10'}`}
         value={display}

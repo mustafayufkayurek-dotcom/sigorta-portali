@@ -25,7 +25,13 @@ export const OPS_NOTICE = {
     id: 'acil-tedarikci-hakedis-v524',
     title: 'Tedarikçi Hakedişi',
     body:
-      'İş bitince bu dosyanın tedarikçisine hakediş verilir. Verilme tarih ve saati kayıttadır. Finans ekranına düşer. Acil tedarikçisine vade uygulanmaz.',
+      'İş bitince bu dosyanın tedarikçisine hakediş verilir. Verilme tarih ve saati kayıttadır. Finans ödeme kuyruğuna düşer. Acil tedarikçisine vade uygulanmaz.',
+  },
+  finansTedarikciKuyruk: {
+    id: 'finans-tedarikci-kuyruk-v546',
+    title: 'Ödeme Kuyruğu',
+    body:
+      'Dosya sorumlusunun verdiği tedarikçi hakedişi ve avans burada durur. Acil hakedişte vade yoktur. Hasar hakedişinde 15 veya 30 gün vade durur.',
   },
   hasarListeSonDegisiklik: {
     id: 'hasar-liste-v536',
@@ -44,6 +50,12 @@ export const OPS_NOTICE = {
     title: 'Masraf yeri',
     body:
       'Masraf eklerken Bütçelenen veya Ek İş seçin. Ek iş kârı ayrı ve toplamda görünür. Araç kirası, maaş, SGK ve vergi bu dosyaya yazılmaz; Finans’te yönetim gideri havuzuna işlenir, ayın son günü dağıtılmadıysa finans ve yöneticiye hatırlatılır.',
+  },
+  hasarHakedisGider: {
+    id: 'hasar-hakedis-gider-v549',
+    title: 'Tedarikçi hakedişi',
+    body:
+      'Hakediş Yönetimi dosya, bütçe, önceki hakediş ve avanstan hesaplar. Yeni hakedişte Finansa Aktar ödeme kuyruğuna düşer. Aynı evrakı yeniden yüklemezsiniz.',
   },
   hasarRaporSonDegisiklik: {
     id: 'hasar-rapor-v526',

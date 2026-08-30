@@ -3,7 +3,8 @@
 import { API, authHeader } from '@/utils/api';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
@@ -33,6 +34,13 @@ const ITEM_STATUS: Record<string, { label: string; color: string }> = {
 export default function VendorStatementDetailPage() {
   const { id: vendorId, stmtId } = useParams<{ id: string; stmtId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromFile = searchParams.get('fromFile');
+  const fileNo = searchParams.get('fileNo');
+  const returnTo = searchParams.get('returnTo');
+  const fileHref = returnTo || (fromFile
+    ? `/panel/hasar-dosyalari/${fromFile}?grup=finans&alt=gider-butce`
+    : null);
   const { showToast } = useToast();
   const [statement, setStatement] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -74,8 +82,8 @@ export default function VendorStatementDetailPage() {
     return (
       <div className="text-center py-16">
         <p className="text-slate-500 mb-4">Ekstre bulunamadı.</p>
-        <Link href={`/panel/tedarikciler/${vendorId}`} className="text-sm text-brand-600 hover:underline">
-          Tedarikçiye dön
+        <Link href={fileHref || `/panel/tedarikciler/${vendorId}`} className="text-sm text-brand-600 hover:underline">
+          {fileHref ? (fileNo ? `Dosyaya Dön · ${fileNo}` : 'Dosyaya Dön') : 'Tedarikçiye dön'}
         </Link>
       </div>
     );
@@ -89,13 +97,11 @@ export default function VendorStatementDetailPage() {
     <div>
       <button
         type="button"
-        onClick={() => router.push(`/panel/tedarikciler/${vendorId}`)}
-        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-5 transition-colors"
+        onClick={() => router.push(fileHref || `/panel/tedarikciler/${vendorId}`)}
+        className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:underline"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Tedarikçi — Ödemeler / Ekstre
+        <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+        {fileHref ? (fileNo ? `Dosyaya Dön · ${fileNo}` : 'Dosyaya Dön') : 'Tedarikçi — Ödemeler / Ekstre'}
       </button>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-5">

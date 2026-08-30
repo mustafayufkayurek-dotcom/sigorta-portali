@@ -8,6 +8,7 @@ type ActionConfig = {
   onClick: () => void;
   variant?: 'primary' | 'success' | 'neutral';
   active?: boolean;
+  showPlus?: boolean;
 };
 
 const actionVariants = {
@@ -31,6 +32,7 @@ export function FinansActionButton({
   variant = 'primary',
   active = false,
   disabled,
+  showPlus = true,
 }: ActionConfig & { disabled?: boolean }) {
   const styles = actionVariants[variant][active ? 'active' : 'idle'];
   return (
@@ -40,7 +42,7 @@ export function FinansActionButton({
       disabled={disabled}
       className={`inline-flex items-center gap-1.5 shrink-0 rounded-lg px-3.5 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${styles}`}
     >
-      {!active && variant !== 'neutral' && <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />}
+      {showPlus && !active && variant !== 'neutral' && <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />}
       {label}
     </button>
   );
