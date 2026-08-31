@@ -21,6 +21,12 @@
 
 ## Son deploy kronolojisi
 
+### v547 — Web-only (31 Ağustos 2026) — Hasar avans tedarikçi seçimi
+
+- Avans Talebi: tedarikçiler bütçe / ödenen avans / kalan ile listelenir; Avans Ver ile seçilir
+- Açıklamaya «İş Grubu Yok» yazılmaz
+- Rollback web **v546** / backend **v546**. İK yok.
+
 ### v546 — Full (31 Ağustos 2026) — Hasar tedarikçi hakedişi
 
 - Gider & Bütçe: Hakediş Ver, ödeme tablosu (tedarikçi, iş grubu, dosya, tarihler)

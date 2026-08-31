@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-08-31",
-  "label": "v546-hasar-hakedis",
-  "description": "Full: Hasar Gider & Bütçe tedarikçi hakedişi ve ödeme tablosu. Tahsilatlar dosya sorumlusuna açık. İK yok. Rollback web v545 / backend v545.",
+  "label": "v547-hasar-avans-tedarikci",
+  "description": "Web-only: Hasar avansta tedarikçi bütçeyle seçilir; açıklamaya İş Grubu Yok yazılmaz. Backend v546. İK yok. Rollback web v546 / backend v546.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v546-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v546-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v547-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v545-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v545-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v546-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v546-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

@@ -1,15 +1,20 @@
 ---
-description: Full deploy v546 alındı — 31.08.2026
+description: Web-only deploy v547 alındı — 31.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v546 (31.08.2026) — alındı
+# Web-only deploy v547 (31.08.2026) — alındı
 
-Canlı: web + backend **v546**. Rollback: web v545 / backend v545.
+Canlı: web **v547** · backend **v546**. Rollback: web v546 / backend v546.
 
-## Alınan paket (v546)
+## Alınan paket (v547 web)
 
-1. Hasar Gider & Bütçe tedarikçi hakedişi, ödeme tablosu, tahsilatlar (dosya sorumlusu).
+1. Hasar Avans: tedarikçi bütçeyle listelenir, seçilir, kalan düşülür.
+2. Avans açıklamasına «İş Grubu Yok» yazılmaz.
+
+## v546 durur (bozulmaz)
+
+Hasar Gider & Bütçe tedarikçi hakedişi, ödeme tablosu, tahsilatlar (dosya sorumlusu). Backend v546.
 
 ## v545 durur (bozulmaz)
 
