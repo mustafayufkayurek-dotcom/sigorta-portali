@@ -42,7 +42,6 @@ import {
   buildHakedisAkis,
   buildHasarHakedisOzet,
   HAKEDIS_KAYNAK_ETIKET,
-  HASAR_AVANS_LIMIT_ORAN,
   hakedisDurumEtiket,
   hakedisKesintiNet,
   hakedisTutarKirilim,
@@ -50,7 +49,7 @@ import {
   type HakedisKaynak,
 } from '@/utils/hasar-hakedis-ozet';
 import { numberToTrAmountInput, parseTrAmountInput } from '@/utils/tr-amount-input';
-import { isCompleteTrDateValue, normalizeTrDateValue } from '@/utils/tr-date-input';
+import { normalizeTrDateValue } from '@/utils/tr-date-input';
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 
@@ -149,12 +148,12 @@ type StatementRow = {
     lineDescription?: string | null;
     workGroupId?: string | null;
     workGroup?: { name?: string | null } | null;
+    totalAmount?: number | null;
+    vatRate?: number | null;
   }>;
 };
 
-type StatementDetail = StatementRow & {
-  items?: Array<{ totalAmount?: number; vatRate?: number; lineDescription?: string }>;
-};
+type StatementDetail = StatementRow;
 
 type VendorCtx = {
   id: string;
@@ -720,15 +719,15 @@ export function HasarFileHakedisPanel({
   }>>([]);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [filter, setFilter] = useState<DrawerTab>('avans');
+  const [, setFilter] = useState<DrawerTab>('avans');
   const [composer, setComposer] = useState<Composer>('none');
-  const [opening, setOpening] = useState(false);
+  const [, setOpening] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lines, setLines] = useState<GrantLine[]>([]);
-  const [openGroupKey, setOpenGroupKey] = useState<string | null>(null);
-  const [talepDraft, setTalepDraft] = useState('');
-  const [tutarDuzenle, setTutarDuzenle] = useState(false);
-  const [aciklama, setAciklama] = useState('');
+  const [, setOpenGroupKey] = useState<string | null>(null);
+  const [, setTalepDraft] = useState('');
+  const [, setTutarDuzenle] = useState(false);
+  const [, setAciklama] = useState('');
   const [sozlesme, setSozlesme] = useState<number | null>(null);
   const [sozlesmeKaynak, setSozlesmeKaynak] = useState<HakedisKaynak>('teklif');
   const [onerilen, setOnerilen] = useState<number | null>(null);
@@ -1103,7 +1102,7 @@ export function HasarFileHakedisPanel({
     )
     : 0;
   const onayliToplam = hakedis.reduce((s, row) => s + Number(row.totalAmount ?? 0), 0);
-  const ozet = buildHasarHakedisOzet({
+  buildHasarHakedisOzet({
     sozlesmeTutari: sozlesme,
     sozlesmeKaynak,
     onayliHakedisToplam: onayliToplam,
