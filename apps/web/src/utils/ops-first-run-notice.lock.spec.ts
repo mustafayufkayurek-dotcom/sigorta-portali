@@ -107,7 +107,7 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(hakedisPanel, /Hakediş Ver/);
     assert.match(hakedisPanel, /hasar-hakedis-ver-panel/);
     assert.match(hakedisPanel, /buildHasarHakedisGrantLines/);
-    assert.match(hakedisPanel, /netHakedisAfterAvans/);
+    assert.match(hakedisPanel, /hasarHakedisKalan/);
     assert.doesNotMatch(hakedisPanel, /CommercialPricingDrawer/);
     assert.match(hakedisPanel, /hasar-gider-hakedis/);
     assert.match(hakedisPanel, /Gider/);

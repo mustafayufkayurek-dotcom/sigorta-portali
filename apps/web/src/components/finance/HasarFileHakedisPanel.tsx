@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { ArrowLeft, Banknote, Check, Receipt, Wallet, X } from 'lucide-react';
-import { AVANS_REF_PREFIX, isAvansPayment, isHakedisMahsupPayment, netHakedisAfterAvans, resolveHasarAvansHesap, withAvansNote } from '@sigorta/shared';
+import { AVANS_REF_PREFIX, isAvansPayment, isHakedisMahsupPayment, resolveHasarAvansHesap, withAvansNote } from '@sigorta/shared';
 import { FinanceRowActions, printFinanceSlip, vendorEkstreHref } from '@/components/finance/FinanceRowActions';
 import { FinansPanelCard } from '@/components/finance/FinansPanelUI';
 import {
