@@ -172,6 +172,15 @@ export function workGroupJobsLabel(name?: string | null): string {
   return `${t} İşleri`;
 }
 
+/** Avans açıklamasına «İş Grubu Yok» yazılmaz. Gerçek iş grubu durur. */
+export function avansAciklamaMetni(workGroupLabel?: string | null): string {
+  const t = String(workGroupLabel ?? '').trim();
+  if (!t) return '';
+  if (t === DOSYA_ODEME_IS_GRUBU_YOK) return '';
+  if (t.toLocaleLowerCase('tr-TR') === 'iş grubu yok') return '';
+  return t;
+}
+
 /** Tedarikçi maliyeti iş grubu bazında; kalem detayı rapordan. */
 export function buildHasarHakedisGrantLines(source: {
   reportItems?: ReportItem[] | null;

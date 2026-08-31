@@ -24,6 +24,7 @@ import { API, authHeader } from '@/utils/api';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { fmtDate } from '@/utils/date-helpers';
 import {
+  avansAciklamaMetni,
   buildHasarHakedisGrantLines,
   buildHasarHakedisSecimSatirlari,
   DOSYA_ODEME_IS_GRUBU_YOK,
@@ -469,6 +470,10 @@ function HakedisTedarikciKartlari({
   saving,
   sendingKey,
   onGonder,
+  aksiyonEtiket = 'Finansa Aktar',
+  pasifEtiket = 'Hakediş verildi',
+  savingEtiket = 'Aktarılıyor…',
+  testId,
 }: {
   rows: HasarHakedisSecimSatiri[];
   emptySuppliers: boolean;
@@ -478,6 +483,10 @@ function HakedisTedarikciKartlari({
   saving: boolean;
   sendingKey: string | null;
   onGonder: (row: HasarHakedisSecimSatiri) => void;
+  aksiyonEtiket?: string;
+  pasifEtiket?: string;
+  savingEtiket?: string;
+  testId?: string;
 }) {
   if (emptySuppliers) {
     return <p className="text-[12px] font-normal text-slate-500">Dosyada görevli tedarikçi yok.</p>;
@@ -486,7 +495,7 @@ function HakedisTedarikciKartlari({
     return <p className="text-[12px] font-normal text-slate-500">Bu dosyada iş grubu bütçesi yok.</p>;
   }
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-2" data-testid={testId}>
       {rows.map((row) => {
         const avans = avansOf(row.vendorId);
         const kalan = hasarHakedisKalan(row.amount, avans, verilenOf(row.vendorId));
@@ -512,7 +521,7 @@ function HakedisTedarikciKartlari({
               <StatementLine label="Kalan Hakediş" value={kalan} strong />
             </div>
             {isPasif ? (
-              <p className="mt-2 text-[12px] font-medium text-slate-500">Hakediş verildi</p>
+              <p className="mt-2 text-[12px] font-medium text-slate-500">{pasifEtiket}</p>
             ) : (
               <div className="mt-3 flex justify-end">
                 <button
@@ -521,7 +530,7 @@ function HakedisTedarikciKartlari({
                   onClick={() => onGonder(row)}
                   className="rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-blue-700 disabled:opacity-40"
                 >
-                  {saving && sendingKey === row.key ? 'Aktarılıyor…' : 'Finansa Aktar'}
+                  {saving && sendingKey === row.key ? savingEtiket : aksiyonEtiket}
                 </button>
               </div>
             )}
@@ -743,6 +752,7 @@ export function HasarFileHakedisPanel({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<StatementDetail | null>(null);
   const [secilenHakedisKey, setSecilenHakedisKey] = useState<string | null>(null);
+  const [secilenAvansKey, setSecilenAvansKey] = useState<string | null>(null);
 
   const dueDays = vendor?.paymentDueDays === 15 || vendor?.paymentDueDays === 30
     ? vendor.paymentDueDays
@@ -935,6 +945,7 @@ export function HasarFileHakedisPanel({
     setAvansAciklama('');
     setAvansTarih(todayIso());
     setOpenGroupKey(null);
+    setSecilenAvansKey(null);
   };
 
   const closePanel = () => {
@@ -956,6 +967,7 @@ export function HasarFileHakedisPanel({
     setDetail(null);
     setTutarDuzenle(false);
     setSecilenHakedisKey(null);
+    setSecilenAvansKey(null);
   };
 
   const goToPayments = () => {
@@ -1037,6 +1049,7 @@ export function HasarFileHakedisPanel({
     return Array.from(ids);
   }, [hakedis, payments]);
   const secilenSatir = secimSatirlari.find((row) => row.key === secilenHakedisKey) ?? null;
+  const secilenAvansSatir = hakedisSayfaSatirlari.find((row) => row.key === secilenAvansKey) ?? null;
 
   const satirPasif = (row: HasarHakedisSecimSatiri) => isHasarHakedisSatiriPasif({
     vendorId: row.vendorId,
@@ -1064,6 +1077,21 @@ export function HasarFileHakedisPanel({
     setSelectedId(null);
     setDetail(null);
     setAciklama(row.workGroupLabel);
+  };
+
+  const selectAvansSatiri = (row: HasarHakedisSecimSatiri) => {
+    const supplier = suppliers.find((item) => item.id === row.vendorId);
+    setVendor({
+      id: row.vendorId,
+      name: row.vendorName,
+      paymentDueDays: row.paymentDueDays ?? supplier?.paymentDueDays ?? null,
+      workGroups: supplier?.workGroups,
+    });
+    setSecilenAvansKey(row.key);
+    setAvansDraft('');
+    setAvansAciklama(avansAciklamaMetni(row.workGroupLabel));
+    setSelectedId(null);
+    setDetail(null);
   };
 
   const vendorAvans = (vendorId: string) => {
@@ -1124,9 +1152,31 @@ export function HasarFileHakedisPanel({
     ? Math.round((sozlesme - kullanilanTutar) * 100) / 100
     : null;
   const avansTutarDraft = parseTrAmountInput(avansDraft) ?? 0;
+  const avansSatirKalan = secilenAvansSatir
+    ? hasarHakedisKalan(
+      secilenAvansSatir.amount,
+      vendorAvans(secilenAvansSatir.vendorId),
+      vendorVerilenHakedis(secilenAvansSatir.vendorId),
+    )
+    : null;
+  const avansSatirKalanSonra = secilenAvansSatir
+    ? hasarHakedisKalan(
+      secilenAvansSatir.amount,
+      vendorAvans(secilenAvansSatir.vendorId) + avansTutarDraft,
+      vendorVerilenHakedis(secilenAvansSatir.vendorId),
+    )
+    : null;
+  const stripSozlesme = composer === 'avans' && secilenAvansSatir ? secilenAvansSatir.amount : sozlesme;
+  const stripKullanilan = composer === 'avans' && secilenAvansSatir
+    ? vendorAvans(secilenAvansSatir.vendorId) + vendorVerilenHakedis(secilenAvansSatir.vendorId) + avansTutarDraft
+    : kullanilanTutar;
+  const stripKalan = composer === 'avans' && secilenAvansSatir
+    ? avansSatirKalanSonra
+    : kalanTutar;
   const avansLimitAsim = kalanAvansHakki != null && avansTutarDraft > kalanAvansHakki + 0.009;
-  const avansButceAsim = sozlesme != null && avansTutarDraft > 0
-    && (kullanilanTutar + avansTutarDraft) > sozlesme + 0.009;
+  const avansButceAsim = (avansSatirKalan != null && avansTutarDraft > avansSatirKalan + 0.009)
+    || (sozlesme != null && avansTutarDraft > 0
+      && (kullanilanTutar + avansTutarDraft) > sozlesme + 0.009);
   const hakedisButceAsim = sozlesme != null && talepBrut > 0
     && (onayliToplam + talepBrut) > sozlesme + 0.009;
   const sozlesmeHazir = sozlesmeCevap === 'var'
@@ -1232,8 +1282,21 @@ export function HasarFileHakedisPanel({
   }, [payments, tedarikciHareketleri, expenses, suppliers, vendor?.name, lines, hakedis, claimId, fileNo]);
 
   const submitAvans = async () => {
-    if (!vendor?.id) {
-      showToast('error', 'Önce dosyaya tedarikçi atayın.');
+    const satir = secilenAvansSatir;
+    if (!satir) {
+      showToast('error', 'Avans verilecek tedarikçiyi seçin.');
+      return;
+    }
+    if (isOrnekHakedisSatiri(satir)) {
+      showToast('error', 'Örnek tedarikçi finansa gönderilmez.');
+      return;
+    }
+    if (!satir.vendorId) {
+      showToast('error', 'Avans verilecek tedarikçiyi seçin.');
+      return;
+    }
+    if (avansSatirKalan != null && avansSatirKalan <= 0) {
+      showToast('error', 'Bu tedarikçide kalan yok.');
       return;
     }
     if (!sozlesmeCevap) {
@@ -1244,7 +1307,7 @@ export function HasarFileHakedisPanel({
       showToast('error', 'Sözleşme yoksa açıklayınız.');
       return;
     }
-    const aciklamaTrim = avansAciklama.trim();
+    const aciklamaTrim = avansAciklamaMetni(avansAciklama);
     if (!aciklamaTrim) {
       showToast('error', 'Açıklama zorunludur.');
       return;
@@ -1257,6 +1320,10 @@ export function HasarFileHakedisPanel({
     const talepTarihi = normalizeTrDateValue(avansTarih);
     if (!talepTarihi) {
       showToast('error', 'Avans talep tarihi girin.');
+      return;
+    }
+    if (avansSatirKalan != null && amount > avansSatirKalan + 0.009) {
+      showToast('error', 'Bu tutar kalan hakedişi aşıyor. Avans onaylanmaz.');
       return;
     }
     if (sozlesme != null && (kullanilanTutar + amount) > sozlesme + 0.009) {
@@ -1275,7 +1342,7 @@ export function HasarFileHakedisPanel({
           claimFileId: claimId,
           paymentType: 'outgoing',
           payerType: 'vendor',
-          payerId: vendor.id,
+          payerId: satir.vendorId,
           method: 'eft',
           amount,
           currency: 'TRY',
@@ -1409,8 +1476,14 @@ export function HasarFileHakedisPanel({
                     <button
                       type="button"
                       onClick={() => {
+                        if (composer === 'avans' && secilenAvansKey) {
+                          setSecilenAvansKey(null);
+                          setAvansDraft('');
+                          return;
+                        }
                         setComposer('none');
                         setSecilenHakedisKey(null);
+                        setSecilenAvansKey(null);
                       }}
                       className="mt-1.5 inline-flex items-center gap-1 text-[12px] font-medium text-blue-700 hover:underline"
                     >
@@ -1419,14 +1492,24 @@ export function HasarFileHakedisPanel({
                     </button>
                   ) : null}
                   <p className="mt-1.5 truncate text-[13px] font-normal text-slate-600">
-                    {vendor?.name || 'Tedarikçi atanmamış'}
+                    {composer === 'avans' && !secilenAvansSatir
+                      ? 'Tedarikçi seçin'
+                      : (secilenAvansSatir?.vendorName
+                        || secilenSatir?.vendorName
+                        || vendor?.name
+                        || 'Tedarikçi atanmamış')}
                     {fileNo ? ` · ${fileNo}` : ''}
                   </p>
-                  {dueDays ? (
+                  {(secilenAvansSatir?.paymentDueDays === 15 || secilenAvansSatir?.paymentDueDays === 30
+                    || secilenSatir?.paymentDueDays === 15 || secilenSatir?.paymentDueDays === 30
+                    || dueDays) ? (
                     <span className="mt-2 inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-800">
-                      {dueDays} gün vade
+                      {secilenAvansSatir?.paymentDueDays
+                        || secilenSatir?.paymentDueDays
+                        || dueDays}{' '}
+                      gün vade
                     </span>
-                  ) : (
+                  ) : composer === 'avans' && !secilenAvansSatir ? null : (
                     <p className="mt-2 text-[11px] font-normal text-amber-800">Tedarikçi kartında 15 veya 30 gün vade gerekir.</p>
                   )}
                 </div>
@@ -1450,7 +1533,7 @@ export function HasarFileHakedisPanel({
               </div>
 
               <div className="mt-3">
-                <BudgetStrip sozlesme={sozlesme} kullanilan={kullanilanTutar} kalan={kalanTutar} />
+                <BudgetStrip sozlesme={stripSozlesme} kullanilan={stripKullanilan} kalan={stripKalan} />
               </div>
             </header>
 
@@ -1485,6 +1568,7 @@ export function HasarFileHakedisPanel({
                               setSelectedId(null);
                               setDetail(null);
                               if (secim.id !== 'hakedis') setSecilenHakedisKey(null);
+                              setSecilenAvansKey(null);
                             }}
                             className="flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left hover:border-blue-600 hover:bg-blue-50"
                           >
@@ -1501,77 +1585,125 @@ export function HasarFileHakedisPanel({
 
                 {composer === 'avans' ? (
                   <div id="yeni-avans" className="space-y-3">
-                    <div className="rounded-xl border border-slate-200 px-3 py-3">
-                      <p className="text-[13px] font-medium text-slate-800">Yeni Avans Talebi</p>
-                      <div className="mt-3 grid grid-cols-2 gap-3">
-                        <label className="block">
-                          <span className="text-[11px] font-medium text-slate-500">
-                            Talep tarihi <span className="text-red-500">*</span>
-                          </span>
-                          <TrDateInput
-                            value={avansTarih}
-                            onChange={setAvansTarih}
-                            aria-label="Avans talep tarihi"
-                            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[13px] font-normal outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        </label>
-                        <label className="block">
-                          <span className="text-[11px] font-medium text-slate-500">
-                            Tutar <span className="text-red-500">*</span>
-                          </span>
-                          <TrAmountInput
-                            id="hasar-avans-tutar"
-                            autoFocus
-                            value={avansDraft}
-                            placeholder="0"
-                            onChange={setAvansDraft}
-                            className="mt-1 w-full rounded-lg border border-slate-200 bg-white py-1.5 pr-9 text-right text-[13px] font-medium tabular-nums outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        </label>
-                      </div>
-                      <label className="mt-3 block">
-                        <span className="text-[11px] font-medium text-slate-500">
-                          Açıklama <span className="text-red-500">*</span>
-                        </span>
-                        <textarea
-                          value={avansAciklama}
-                          onChange={(e) => setAvansAciklama(e.target.value)}
-                          rows={3}
-                          required
-                          placeholder="Avans talebinin nedenini açıklayın"
-                          className="mt-1 min-h-[72px] w-full resize-none rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[13px] font-normal outline-none focus:ring-1 focus:ring-blue-500"
+                    {!secilenAvansSatir ? (
+                      <div data-testid="hasar-avans-tedarikci" className="space-y-2">
+                        <p className="text-[13px] font-medium text-slate-800">Avans verilecek tedarikçiyi seçin</p>
+                        <HakedisTedarikciKartlari
+                          rows={hakedisSayfaSatirlari}
+                          emptySuppliers={suppliers.length === 0 && hakedisSayfaSatirlari.length === 0}
+                          pasif={(row) => hasarHakedisKalan(
+                            row.amount,
+                            vendorAvans(row.vendorId),
+                            vendorVerilenHakedis(row.vendorId),
+                          ) <= 0}
+                          avansOf={vendorAvans}
+                          verilenOf={vendorVerilenHakedis}
+                          saving={false}
+                          sendingKey={null}
+                          onGonder={selectAvansSatiri}
+                          aksiyonEtiket="Avans Ver"
+                          pasifEtiket="Kalan yok"
+                          testId="hasar-avans-tedarikci-listesi"
                         />
-                      </label>
-                      {avansButceAsim ? (
-                        <p className="mt-1.5 text-[12px] font-normal text-red-700">Bu tutar bütçeyi aşıyor.</p>
-                      ) : avansLimitAsim ? (
-                        <p className="mt-1.5 text-[12px] font-normal text-red-700">Avans limiti aşıyor.</p>
-                      ) : null}
-                      <div className="mt-3 flex justify-end">
-                        <button
-                          type="button"
-                          disabled={savingAvans}
-                          onClick={() => void submitAvans()}
-                          className="rounded-lg bg-blue-600 px-3 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-40"
-                        >
-                          {savingAvans ? 'Gönderiliyor…' : 'Finans Onayına Gönder'}
-                        </button>
                       </div>
-                    </div>
-                    <SozlesmeSoru
-                      cevap={sozlesmeCevap}
-                      yokNeden={sozlesmeYokNeden}
-                      kayitlar={dosyaSozlesmeleri}
-                      yukleniyor={sozlesmeYukleniyor}
-                      vendorName={vendor?.name}
-                      onVar={() => void cagirDosyaSozlesmesi()}
-                      onYok={() => {
-                        setSozlesmeCevap('yok');
-                        setDosyaSozlesmeleri([]);
-                      }}
-                      onYokNeden={setSozlesmeYokNeden}
-                      onPdfHata={(e) => showToast('error', axiosErrorMessage(e, 'Sözleşme açılamadı.'))}
-                    />
+                    ) : (
+                      <>
+                        <div className="rounded-xl border border-slate-200 px-3 py-3">
+                          <p className="text-[11px] font-medium text-slate-500">Seçilen tedarikçi</p>
+                          <p className="mt-0.5 text-[13px] font-medium text-slate-800">{secilenAvansSatir.vendorName}</p>
+                          <p className="mt-2 text-[11px] font-medium text-slate-500">İş Grubu</p>
+                          <p className={`mt-0.5 text-[13px] font-medium ${
+                            secilenAvansSatir.workGroupLabel === 'İş Grubu Yok' ? 'text-red-700' : 'text-slate-800'
+                          }`}>{secilenAvansSatir.workGroupLabel}</p>
+                          <div className="mt-2 space-y-0.5 text-slate-600">
+                            <StatementLine label="Bütçe" value={secilenAvansSatir.amount} />
+                            <StatementLine label="Ödenen Avans" value={vendorAvans(secilenAvansSatir.vendorId)} />
+                            <StatementLine
+                              label="Bu Avans"
+                              value={avansTutarDraft}
+                            />
+                            <StatementLine
+                              label="Kalan Hakediş"
+                              value={avansSatirKalanSonra ?? 0}
+                              strong
+                            />
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 px-3 py-3">
+                          <p className="text-[13px] font-medium text-slate-800">Yeni Avans Talebi</p>
+                          <div className="mt-3 grid grid-cols-2 gap-3">
+                            <label className="block">
+                              <span className="text-[11px] font-medium text-slate-500">
+                                Talep tarihi <span className="text-red-500">*</span>
+                              </span>
+                              <TrDateInput
+                                value={avansTarih}
+                                onChange={setAvansTarih}
+                                aria-label="Avans talep tarihi"
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[13px] font-normal outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-[11px] font-medium text-slate-500">
+                                Tutar <span className="text-red-500">*</span>
+                              </span>
+                              <TrAmountInput
+                                id="hasar-avans-tutar"
+                                autoFocus
+                                value={avansDraft}
+                                placeholder="0"
+                                onChange={setAvansDraft}
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white py-1.5 pr-9 text-right text-[13px] font-medium tabular-nums outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </label>
+                          </div>
+                          <label className="mt-3 block">
+                            <span className="text-[11px] font-medium text-slate-500">
+                              Açıklama <span className="text-red-500">*</span>
+                            </span>
+                            <textarea
+                              value={avansAciklama === DOSYA_ODEME_IS_GRUBU_YOK ? '' : avansAciklama}
+                              onChange={(e) => setAvansAciklama(
+                                e.target.value.trim() === DOSYA_ODEME_IS_GRUBU_YOK ? '' : e.target.value,
+                              )}
+                              rows={3}
+                              required
+                              placeholder="Avans talebinin nedenini açıklayın"
+                              className="mt-1 min-h-[72px] w-full resize-none rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[13px] font-normal outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </label>
+                          {avansButceAsim ? (
+                            <p className="mt-1.5 text-[12px] font-normal text-red-700">Bu tutar bütçeyi aşıyor.</p>
+                          ) : avansLimitAsim ? (
+                            <p className="mt-1.5 text-[12px] font-normal text-red-700">Avans limiti aşıyor.</p>
+                          ) : null}
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              type="button"
+                              disabled={savingAvans}
+                              onClick={() => void submitAvans()}
+                              className="rounded-lg bg-blue-600 px-3 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+                            >
+                              {savingAvans ? 'Gönderiliyor…' : 'Finans Onayına Gönder'}
+                            </button>
+                          </div>
+                        </div>
+                        <SozlesmeSoru
+                          cevap={sozlesmeCevap}
+                          yokNeden={sozlesmeYokNeden}
+                          kayitlar={dosyaSozlesmeleri}
+                          yukleniyor={sozlesmeYukleniyor}
+                          vendorName={secilenAvansSatir.vendorName}
+                          onVar={() => void cagirDosyaSozlesmesi()}
+                          onYok={() => {
+                            setSozlesmeCevap('yok');
+                            setDosyaSozlesmeleri([]);
+                          }}
+                          onYokNeden={setSozlesmeYokNeden}
+                          onPdfHata={(e) => showToast('error', axiosErrorMessage(e, 'Sözleşme açılamadı.'))}
+                        />
+                      </>
+                    )}
                   </div>
                 ) : null}
 

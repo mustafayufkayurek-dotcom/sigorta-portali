@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
-import { buildHasarHakedisGrantLines, buildHasarHakedisSecimSatirlari, DOSYA_ODEME_IS_GRUBU_YOK, DOSYA_ODEME_TEDARIKCI_YOK, dosyaOdemeIsGrubu, dosyaOdemeTedarikciAdi, gercekTedarikciIsGruplari, hasarHakedisKalan, isHasarHakedisSatiriPasif, isOrnekHakedisSatiri, ORNEK_HAKEDIS_TEDARIKCILERI, ornekHakedisAvans, workGroupJobsLabel } from './hasar-hakedis-grant.ts';
+import { buildHasarHakedisGrantLines, buildHasarHakedisSecimSatirlari, DOSYA_ODEME_IS_GRUBU_YOK, DOSYA_ODEME_TEDARIKCI_YOK, avansAciklamaMetni, dosyaOdemeIsGrubu, dosyaOdemeTedarikciAdi, gercekTedarikciIsGruplari, hasarHakedisKalan, isHasarHakedisSatiriPasif, isOrnekHakedisSatiri, ORNEK_HAKEDIS_TEDARIKCILERI, ornekHakedisAvans, workGroupJobsLabel } from './hasar-hakedis-grant.ts';
 import { netHakedisAfterAvans } from '../../../../packages/shared/src/hasar-flow-groups.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -217,6 +217,13 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.equal(isOrnekHakedisSatiri(ORNEK_HAKEDIS_TEDARIKCILERI[0]!), true);
   });
 
+  it('avans açıklamasına İş Grubu Yok yazılmaz', () => {
+    assert.equal(avansAciklamaMetni('İş Grubu Yok'), '');
+    assert.equal(avansAciklamaMetni('iş grubu yok'), '');
+    assert.equal(avansAciklamaMetni(''), '');
+    assert.equal(avansAciklamaMetni('Alçıpan İşleri'), 'Alçıpan İşleri');
+  });
+
   it('panel fiş, TL, Finansa Aktar ve ödeme kuyruğunu taşır', () => {
     const panel = readFileSync(join(here, '../components/finance/HasarFileHakedisPanel.tsx'), 'utf8');
     assert.match(panel, /buildHasarHakedisGrantLines/);
@@ -230,6 +237,11 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.match(panel, /hasar-hakedis-bakiye/);
     assert.match(panel, /Kalan Bakiye/);
     assert.match(panel, /Finansa Aktar/);
+    assert.match(panel, /Avans Ver/);
+    assert.match(panel, /hasar-avans-tedarikci/);
+    assert.match(panel, /payerId: satir.vendorId/);
+    assert.match(panel, /avansAciklamaMetni/);
+    assert.doesNotMatch(panel, /setAvansAciklama\(row\.workGroupLabel\)/);
     assert.match(panel, /ArrowLeft/);
     assert.match(panel, />\s*Geri\s*</);
     assert.match(panel, /FinanceRowActions/);

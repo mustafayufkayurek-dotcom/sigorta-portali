@@ -169,6 +169,13 @@ describe('hasar hakediş özet LOCK', () => {
     assert.match(panel, /Bu tutar bütçeyi aşıyor/);
     assert.doesNotMatch(panel, /Kalan avans hakkı/);
     assert.match(panel, /Avans talebinin nedenini açıklayın/);
+    assert.match(panel, /avansAciklamaMetni/);
+    assert.doesNotMatch(panel, /setAvansAciklama\(row\.workGroupLabel\)/);
+    assert.match(panel, /Avans Ver/);
+    assert.match(panel, /hasar-avans-tedarikci/);
+    assert.match(panel, /Avans verilecek tedarikçiyi seçin/);
+    assert.match(panel, /Tedarikçi seçin/);
+    assert.match(panel, /Bu Avans/);
     assert.match(panel, /Verilen avans/);
     assert.match(panel, /Kalan Bakiye/);
     assert.match(panel, /max-w-\[460px\]/);
