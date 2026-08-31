@@ -1,15 +1,19 @@
 ---
-description: Full deploy v545 alındı — 27.08.2026
+description: Full deploy v546 alındı — 31.08.2026
 alwaysApply: true
 ---
 
-# Full deploy v545 (27.08.2026) — alındı
+# Full deploy v546 (31.08.2026) — alındı
 
-Canlı: web + backend **v545**. Rollback: web v544 / backend v544.
+Canlı: web + backend **v546**. Rollback: web v545 / backend v545.
 
-## Alınan paket (v545)
+## Alınan paket (v546)
 
-1. Sigorta şirketi yalnız **kendi** dosyasında muvafakati Evraklar’da görür ve yazdırır.
+1. Hasar Gider & Bütçe tedarikçi hakedişi, ödeme tablosu, tahsilatlar (dosya sorumlusu).
+
+## v545 durur (bozulmaz)
+
+Sigorta şirketi yalnız **kendi** dosyasında muvafakati Evraklar’da görür ve yazdırır.
 
 ## v544 durur (bozulmaz)
 

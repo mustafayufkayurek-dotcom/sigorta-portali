@@ -21,6 +21,12 @@
 
 ## Son deploy kronolojisi
 
+### v546 — Full (31 Ağustos 2026) — Hasar tedarikçi hakedişi
+
+- Gider & Bütçe: Hakediş Ver, ödeme tablosu (tedarikçi, iş grubu, dosya, tarihler)
+- Tahsilatlar dosya sorumlusuna açık; tedarikçi kartından dosyaya dönüş
+- Rollback web+backend **v545**. İK yok.
+
 ### v545 — Full (27 Ağustos 2026) — Sigorta muvafakat izleme
 
 - Sigorta portalı kendi dosyasında muvafakat görüntüle / yazdır
