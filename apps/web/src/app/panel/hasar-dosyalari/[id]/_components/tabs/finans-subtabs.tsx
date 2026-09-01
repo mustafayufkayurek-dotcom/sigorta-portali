@@ -669,6 +669,8 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
   );
 }
 
+type InvoiceCounterpartyType = 'insurance_company' | 'insured' | 'vendor' | 'customer';
+
 const INVOICE_TYPE_LABEL: Record<string, string> = { sales: 'Satış', purchase: 'Alış' };
 const INVOICE_STATUS_LABEL: Record<string, string> = {
   draft: 'Taslak', sent: 'Gönderildi', paid: 'Ödendi', partial: 'Kısmi', cancelled: 'İptal', overdue: 'Vadesi Geçti',
@@ -687,7 +689,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
   const invoiceDefaultType = defaultInvoiceCounterpartyType(claim?.collectionParty);
   const [form, setForm] = useState({
     invoiceType: 'sales',
-    counterpartyType: invoiceDefaultType,
+    counterpartyType: invoiceDefaultType as InvoiceCounterpartyType,
     currency: 'TRY',
     subtotalAmount: '',
     vatRate: '20',
@@ -887,7 +889,10 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
                   <FinansFieldLabel>Karşı Taraf Tipi</FinansFieldLabel>
                   <select
                     value={form.counterpartyType}
-                    onChange={(e) => setForm({ ...form, counterpartyType: e.target.value })}
+                    onChange={(e) => setForm({
+                      ...form,
+                      counterpartyType: e.target.value as InvoiceCounterpartyType,
+                    })}
                     className={finansInputClass}
                   >
                     <option value="insurance_company">Sigorta Şirketi</option>

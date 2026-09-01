@@ -73,10 +73,12 @@ const emptyGelir = (claim?: {
   extraWorkItemId: '',
 });
 
+type PaymentPayerType = 'insurance_company' | 'insured' | 'vendor' | 'customer';
+
 const emptyTahsilat = (collectionParty?: string | null) => ({
   paymentType: 'incoming' as string,
   method: 'eft',
-  payerType: defaultPaymentPayerType(collectionParty),
+  payerType: defaultPaymentPayerType(collectionParty) as PaymentPayerType,
   payerId: '',
   amount: 0,
   currency: 'TRY',
@@ -607,7 +609,7 @@ export function ClaimFileGelirTahsilatPanel({
               <FinansFormSection title="Karşı Taraf">
                 <div>
                   <FinansFieldLabel>Karşı Taraf</FinansFieldLabel>
-                  <select value={tahsilat.payerType} onChange={(e) => setTahsilat({ ...tahsilat, payerType: e.target.value, payerId: '' })} className={finansInputClass}>
+                  <select value={tahsilat.payerType} onChange={(e) => setTahsilat({ ...tahsilat, payerType: e.target.value as PaymentPayerType, payerId: '' })} className={finansInputClass}>
                     <option value="insurance_company">Sigorta Şirketi</option>
                     <option value="insured">Sigortalı</option>
                     <option value="vendor">Tedarikçi</option>
