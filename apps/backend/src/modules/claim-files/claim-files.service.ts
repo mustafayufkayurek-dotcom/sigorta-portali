@@ -701,6 +701,7 @@ export class ClaimFilesService {
     });
     const byFile = new Map<string, string[]>();
     for (const row of rows) {
+      if (!row.claimFileId) continue;
       const list = byFile.get(row.claimFileId) ?? [];
       list.push(row.status);
       byFile.set(row.claimFileId, list);
