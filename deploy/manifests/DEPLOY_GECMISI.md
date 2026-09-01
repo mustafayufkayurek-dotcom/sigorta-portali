@@ -8,7 +8,26 @@
 
 ---
 
-## Canlı durum (1 Eylül 2026 — v548)
+## Canlı durum (1 Eylül 2026 — v549)
+
+| Servis | Sürüm | Durum |
+|--------|-------|--------|
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v549-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v549-amd64` | deploy sırası |
+| **Rollback** | Web **v548** / Backend **v548** | manifest `rollbackImages` |
+| **Etiket** | `v549-hasar-uc-dosya-sozlesme` | |
+
+---
+
+## Son deploy kronolojisi
+
+### v549 — Full (1 Eylül 2026) — Üç dosyada sözleşme muafiyeti
+
+- Adalet Vakfı, Serap Richard, İlknur Yılmaz: tedarikçi sözleşmesi yüklenmez
+- Diğer dosyada sözleşme sorusu durur
+- Rollback web+backend **v548**. İK yok.
+
+### v548 — Full (1 Eylül 2026) — Hasar tahsilat tarafı ve gelir
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|

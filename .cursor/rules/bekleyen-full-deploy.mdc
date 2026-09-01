@@ -1,17 +1,19 @@
 ---
-description: Full deploy v548 alındı — 01.09.2026
+description: Full deploy v549 alındı — 01.09.2026
 alwaysApply: true
 ---
 
-# Full deploy v548 (01.09.2026) — alındı
+# Full deploy v549 (01.09.2026) — alındı
 
-Canlı: web **v548** · backend **v548**. Rollback: web v547 / backend v546.
+Canlı: web **v549** · backend **v549**. Rollback: web v548 / backend v548.
 
-## Alınan paket (v548 full)
+## Alınan paket (v549 full)
 
-1. Satış faturası kime: Operasyonu Başlat → Dosya Onaylandı. Finans tekrar sormaz.
-2. Yeni Gelir: Faturalı (%20 KDV) / Faturasız (KDV yok). Kaynak dosyadan.
-3. Avans açıklaması kutu içinde; iş grubu adı yazılmaz.
+Geriye dönük üç dosyada tedarikçi sözleşmesi yüklenmez: Adalet Vakfı, Serap Richard, İlknur Yılmaz. Diğer dosyada soru durur.
+
+## v548 durur (bozulmaz)
+
+Satış faturası kime Dosya Onaylandı adımında. Yeni Gelir Faturalı/Faturasız. Avans açıklaması kutu içinde.
 
 ## v547 durur (bozulmaz)
 
@@ -20,14 +22,6 @@ Hasar Avans: tedarikçi bütçeyle seçilir. Açıklamaya «İş Grubu Yok» yaz
 ## v546 durur (bozulmaz)
 
 Hasar Gider & Bütçe tedarikçi hakedişi, ödeme tablosu, tahsilatlar (dosya sorumlusu).
-
-## v545 durur (bozulmaz)
-
-Sigorta şirketi yalnız **kendi** dosyasında muvafakati Evraklar’da görür ve yazdırır.
-
-## v544 durur (bozulmaz)
-
-Fiziki evrak oturumla. Evrak Türleri sekmeleri, DOC kodu, Ayarlar işlem ikonları.
 
 ## Canlıda yok
 

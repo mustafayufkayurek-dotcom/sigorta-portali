@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-01",
-  "label": "v548-hasar-tahsilat-gelir",
-  "description": "Full: Hasar satış faturası kime Dosya Onaylandı adımında; gelir faturalı/faturasız; avans açıklaması kutu içinde. İK yok. Rollback web v547 / backend v546.",
+  "label": "v549-hasar-uc-dosya-sozlesme",
+  "description": "Full: Geriye dönük üç dosyada tedarikçi sözleşmesi yüklenmez (Adalet Vakfı, Serap Richard, İlknur Yılmaz). Diğer dosyada soru durur. v548 tahsilat/gelir durur. İK yok. Rollback web v548 / backend v548.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v548-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v548-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v549-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v549-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v547-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v546-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v548-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v548-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
