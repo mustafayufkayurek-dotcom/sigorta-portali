@@ -1,13 +1,17 @@
 ---
-description: Full deploy v552 alındı — 01.09.2026
+description: Full deploy v553 alındı — 01.09.2026
 alwaysApply: true
 ---
 
-# Full deploy v552 (01.09.2026) — alındı
+# Full deploy v553 (01.09.2026) — alındı
 
-Canlı: web **v552** · backend **v552**. Rollback: web v551 / backend v551.
+Canlı: web **v553** · backend **v553**. Rollback: web v552 / backend v552.
 
-## Alınan paket (v552 full)
+## Alınan paket (v553 full)
+
+Acil: ödenmeyen hakediş finans **Ödenecekler** kuyruğunda durur. Finansa gittikten sonra **Ödendi** işlemini finans personeli yapar; işlemi yapan kaydolur. Vade yok.
+
+## v552 durur (bozulmaz)
 
 Saha **Tespiti Sonlandır**; ofis dosyasını kapatmaz. Aynı tedarikçinin her iş grubu ayrı hakediş. Kısmi kayıt Kısa Ad’ı silmez; boş kısa ad karttaki isimden doldurulur.
 

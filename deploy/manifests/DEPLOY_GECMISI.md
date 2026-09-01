@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (1 Eylül 2026 — v552)
+## Canlı durum (1 Eylül 2026 — v553)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v552-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v552-amd64` | deploy sırası |
-| **Rollback** | Web **v551** / Backend **v551** | manifest `rollbackImages` |
-| **Etiket** | `v552-saha-hakedis-kisa-ad` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v553-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v553-amd64` | deploy sırası |
+| **Rollback** | Web **v552** / Backend **v552** | manifest `rollbackImages` |
+| **Etiket** | `v553-acil-hakedis-odeme` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v553 — Full (1 Eylül 2026) — Acil hakediş Ödenecekler; Ödendi finansındır
+
+- İş bitince tedarikçiye ödenecek tutar görünür
+- Ödenmeyen hakediş finans **Ödenecekler** kuyruğunda durur
+- Finansa gittikten sonra **Ödendi** işlemini finans personeli yapar; dosya sorumlusu finans tarafında işlem yapamaz
+- İşlemi yapan adıyla kaydolur. Vade yok
+- v552 saha/hakediş/kısa ad durur. Rollback web+backend **v552**. İK yok.
 
 ### v552 — Full (1 Eylül 2026) — Saha sonlandırır; iş grubu hakedişi; kısa ad
 
