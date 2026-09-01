@@ -48,8 +48,12 @@ done < <(manifest_collect_protected_images)
 log "=== Korunan image doğrulama ==="
 manifest_verify_protected_images "$LOG_TAG" || true
 
-# Docker build cache (24 saatten eski)
-docker builder prune -af --filter 'until=24h' 2>/dev/null || docker builder prune -af 2>/dev/null || true
+# Docker build cache: önce 24 saatten eski. 5 GB hâlâ yoksa bugünün cache'i de gider (image tag'leri durur).
+docker builder prune -af --filter 'until=24h' 2>/dev/null || true
+if [ "$(free_gb)" -lt "${MIN_FREE_GB}" ]; then
+  log "Boş alan yetersiz — bugünün build cache'i de temizlenir (çalışan image durur)"
+  docker builder prune -af 2>/dev/null || true
+fi
 
 # Yalnızca dangling image'lar — bilinen iyi/rollback tag'leri korunur
 # ASLA: docker image prune -af  (rollback image kaybına yol açar — v221 olayı)
