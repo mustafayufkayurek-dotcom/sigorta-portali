@@ -29,19 +29,6 @@
 
 ### v548 — Full (1 Eylül 2026) — Hasar tahsilat tarafı ve gelir
 
-| Servis | Sürüm | Durum |
-|--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v548-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v548-amd64` | deploy sırası |
-| **Rollback** | Web **v547** / Backend **v546** | manifest `rollbackImages` |
-| **Etiket** | `v548-hasar-tahsilat-gelir` | |
-
----
-
-## Son deploy kronolojisi
-
-### v548 — Full (1 Eylül 2026) — Hasar tahsilat tarafı ve gelir
-
 - Satış faturası kime Dosya Onaylandı adımında sorulur; Finansa talep et ile kilitlenir
 - Yeni Gelir: Faturalı / Faturasız; faturasızda KDV yok
 - Avans açıklaması kutu içinde; iş grubu adı yazılmaz
