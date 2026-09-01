@@ -106,6 +106,9 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(finans, /acil-finans-odeme-filtre/);
     assert.match(finans, /Tedarikçi Ödemesi/);
     assert.match(finans, /alwaysVisible: true/);
+    assert.match(finans, /acil-finans-odenecekler/);
+    assert.match(finans, /tahsilatlar\?queue=payable/);
+    assert.match(finans, /Ödendi işlemini finans personeli yapar/);
     assert.match(
       readFileSync(join(here, '../../../../../../apps/backend/src/modules/emergency/emergency-cases.service.ts'), 'utf8'),
       /htmlDocumentToPdf/,
@@ -157,6 +160,9 @@ describe('acil canlı netleşen LOCK', () => {
     const keys = [...steps.matchAll(/key: '([^']+)'/g)].map((m) => m[1]);
     assert.deepEqual(keys, ['ihbar', 'tedarikci_maliyet', 'onay', 'kapanis', 'finans']);
     assert.match(steps, /acil-odeme-evet-hayir/);
+    assert.match(steps, /acil-tedarikci-odeme-dokum/);
+    assert.match(steps, /acil-odenecekler-kuyruk/);
+    assert.match(steps, /acil-odeme-islem-yapan/);
     assert.match(steps, /acil-finans-kdv/);
     assert.match(acilPage, /alisVatMode: displayAlisVat/);
     assert.match(acilPage, /satisVatMode: displaySatisVat/);

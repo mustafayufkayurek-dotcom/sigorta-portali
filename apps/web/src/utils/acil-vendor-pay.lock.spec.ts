@@ -79,5 +79,22 @@ describe('acil tedarikçi ödemesi liste LOCK', () => {
     const finans = readFileSync(join(here, '../app/panel/acil-yardim/finans/page.tsx'), 'utf8');
     assert.match(finans, /Tedarikçi Ödemesi/);
     assert.match(finans, /acil-finans-odeme-filtre/);
+    assert.match(finans, /acil-finans-odenecekler/);
+    const payments = readFileSync(
+      join(here, '../../../backend/src/modules/payments/payments.service.ts'),
+      'utf8',
+    );
+    assert.match(payments, /queueSource: row.emergencyCaseId \? 'acil_hakedis'/);
+    assert.match(payments, /emergencyCaseId/);
+    assert.match(payments, /vendorPaid: true/);
+    assert.match(payments, /recordAcilHakedisPaidBy/);
+    const tahsilat = readFileSync(join(here, '../app/panel/finans/tahsilatlar/page.tsx'), 'utf8');
+    assert.match(tahsilat, /onMarkPaid=\{!isFileOwner/);
+    const paymentsCtrl = readFileSync(
+      join(here, '../../../backend/src/modules/payments/payments.controller.ts'),
+      'utf8',
+    );
+    assert.match(paymentsCtrl, /office_staff/);
+    assert.match(paymentsCtrl, /Ödendi işlemini finans personeli yapar/);
   });
 });

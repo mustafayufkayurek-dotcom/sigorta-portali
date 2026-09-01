@@ -55,6 +55,16 @@ export interface EmergencyOperationChain {
     paymentRequiresClaimFile: boolean;
   };
   vendorEntitlementGrantedAt: string | null;
+  vendorPaidByName: string | null;
+  vendorPaidAt: string | null;
+  vendorPayment: {
+    id: string;
+    amount: number;
+    status: 'pending' | 'completed' | string;
+    paymentDate: string | null;
+    recordedByName?: string | null;
+    recordedAt?: string | null;
+  } | null;
   steps: EmergencyOperationStep[];
 }
 
@@ -98,6 +108,17 @@ export function buildEmergencyOperationChain(input: {
   createdAt?: string | Date | null;
   fileDate?: string | Date | null;
   vendorEntitlementGrantedAt?: string | Date | null;
+  vendorPaid?: boolean | null;
+  vendorPaidByName?: string | null;
+  vendorPaidAt?: Date | string | null;
+  vendorPayment?: {
+    id: string;
+    amount: number;
+    status: string;
+    paymentDate: Date | string | null;
+    recordedByName?: string | null;
+    recordedAt?: Date | string | null;
+  } | null;
 }): EmergencyOperationChain {
   const isHistorical = isHistoricalEmergencyFile(input.createdAt, input.fileDate);
   const vendorAssigned = Boolean(input.assignedVendorName);
@@ -122,7 +143,8 @@ export function buildEmergencyOperationChain(input: {
 
   const financeTransferReady = input.canCreateInvoiceRequest && salePriceCreated;
   const vendorStatementReady = entitlementGranted;
-  const paymentReady = false;
+  const paid = input.vendorPaid === true || input.vendorPayment?.status === 'completed';
+  const paymentReady = entitlementGranted && !paid;
 
   const grantedAtDate =
     input.vendorEntitlementGrantedAt instanceof Date
@@ -221,12 +243,16 @@ export function buildEmergencyOperationChain(input: {
     {
       key: 'odeme',
       label: 'Ödeme ve Cari',
-      state: isHistorical ? 'pending' : entitlementGranted ? 'current' : 'pending',
+      state: isHistorical ? 'pending' : paid ? 'done' : entitlementGranted ? 'current' : 'pending',
       note: isHistorical
         ? 'Tarihsel dosya — cari zorunlu değil'
-        : entitlementGranted
-          ? 'Finans kuyruğunda · Vade yok'
-          : 'Hakediş sonrası finans personeline düşer · Vade yok',
+        : paid
+          ? (input.vendorPayment?.recordedByName
+            ? `Ödendi · ${input.vendorPayment.recordedByName}`
+            : 'Ödendi')
+          : entitlementGranted
+            ? 'Ödenecekler kuyruğunda · Ödendi işlemini finans personeli yapar · Vade yok'
+            : 'Hakediş sonrası finans personeline düşer · Vade yok',
     },
   ];
 
@@ -277,10 +303,32 @@ export function buildEmergencyOperationChain(input: {
     },
     constraints: {
       vendorStatementRequiresClaimFile: false,
-      paymentRequiresClaimFile: !isHistorical,
+      paymentRequiresClaimFile: false,
     },
     vendorEntitlementGrantedAt: grantedAtDate && !Number.isNaN(grantedAtDate.getTime())
       ? grantedAtDate.toISOString()
+      : null,
+    vendorPaidByName: input.vendorPaidByName
+      ?? input.vendorPayment?.recordedByName
+      ?? null,
+    vendorPaidAt: input.vendorPaidAt
+      ? new Date(input.vendorPaidAt).toISOString()
+      : input.vendorPayment?.recordedAt
+        ? new Date(input.vendorPayment.recordedAt).toISOString()
+        : null,
+    vendorPayment: input.vendorPayment
+      ? {
+          id: input.vendorPayment.id,
+          amount: input.vendorPayment.amount,
+          status: input.vendorPayment.status,
+          paymentDate: input.vendorPayment.paymentDate
+            ? new Date(input.vendorPayment.paymentDate).toISOString()
+            : null,
+          recordedByName: input.vendorPayment.recordedByName ?? null,
+          recordedAt: input.vendorPayment.recordedAt
+            ? new Date(input.vendorPayment.recordedAt).toISOString()
+            : null,
+        }
       : null,
     steps,
   };

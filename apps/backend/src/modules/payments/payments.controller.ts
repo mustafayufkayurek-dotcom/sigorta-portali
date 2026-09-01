@@ -10,6 +10,7 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -131,6 +132,10 @@ export class PaymentsController {
   @ApiOperation({ summary: 'Ödeme güncelle' })
   async update(@Param('id') id: string, @Body() dto: UpdatePaymentDto, @CurrentUser() user: any) {
     const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    const role = String(requestingUser?.roleCode ?? '').toLowerCase().replace(/-/g, '_');
+    if (role === 'office_staff' && dto.status === 'completed') {
+      throw new ForbiddenException('Ödendi işlemini finans personeli yapar.');
+    }
     await this.service.findOne(id, requestingUser, insuranceCompanyIds);
     const data = await this.service.update(id, dto, user?.id);
     return { success: true, data };

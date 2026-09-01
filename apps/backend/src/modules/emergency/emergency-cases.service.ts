@@ -50,6 +50,7 @@ import {
 import { RecordEmergencyProcessEventDto } from './dto/record-emergency-process-event.dto';
 import { SurveysService } from '@/modules/surveys/surveys.service';
 import { EmergencyFinanceService } from './emergency-finance.service';
+import { acilHakedisActorName, acilHakedisPaidDescription } from './acil-vendor-entitlement';
 import { buildAcilClosureReportPdf } from './acil-closure-report-pdf';
 import {
   buildAcilOperationTimestamps,
@@ -309,11 +310,12 @@ export class EmergencyCasesService {
   }
 
   private async buildOperationChain(caseId: string) {
-    const [emergencyCase, inboundMessages, documents, invoiceRequests, closure, entitlement] = await Promise.all([
+    const [emergencyCase, inboundMessages, documents, invoiceRequests, closure, entitlement, vendorPayment] = await Promise.all([
       this.prisma.emergencyCase.findUnique({
         where: { id: caseId },
         include: {
           assignedVendor: { select: { name: true } },
+          vendorPaidBy: { select: { firstName: true, lastName: true } },
           costEntries: true,
           invoiceItems: {
             include: { draft: { select: { status: true } } },
@@ -347,6 +349,10 @@ export class EmergencyCasesService {
       this.prisma.emergencyVendorEntitlement.findUnique({
         where: { caseId },
         select: { grantedAt: true },
+      }).catch(() => null),
+      this.prisma.payment.findUnique({
+        where: { emergencyCaseId: caseId },
+        select: { id: true, amount: true, status: true, paymentDate: true },
       }).catch(() => null),
     ]);
 
@@ -387,6 +393,19 @@ export class EmergencyCasesService {
       createdAt: emergencyCase.createdAt,
       fileDate: emergencyCase.fileDate,
       vendorEntitlementGrantedAt: entitlement?.grantedAt ?? null,
+      vendorPaid: emergencyCase.vendorPaid ?? null,
+      vendorPaidByName: acilHakedisActorName(emergencyCase.vendorPaidBy),
+      vendorPaidAt: emergencyCase.vendorPaidAt,
+      vendorPayment: vendorPayment
+        ? {
+            id: vendorPayment.id,
+            amount: vendorPayment.amount,
+            status: vendorPayment.status,
+            paymentDate: vendorPayment.paymentDate,
+            recordedByName: acilHakedisActorName(emergencyCase.vendorPaidBy),
+            recordedAt: emergencyCase.vendorPaidAt,
+          }
+        : null,
     });
   }
 
@@ -1510,8 +1529,40 @@ export class EmergencyCasesService {
       throw new BadRequestException('Geçersiz acil süreç olayı');
     }
     const action: EmergencyProcessAction = dto.action;
-    const metadata = (dto.metadata && typeof dto.metadata === 'object') ? dto.metadata : {};
-    const description = (dto.description ?? '').trim() || emergencyProcessDescription(action, metadata);
+    let metadata: Record<string, unknown> =
+      dto.metadata && typeof dto.metadata === 'object' ? { ...dto.metadata } : {};
+    if (action === 'EMERGENCY_VENDOR_PAYMENT_RECORDED') {
+      const currentCase = await this.prisma.emergencyCase.findUnique({
+        where: { id: caseId },
+        select: { status: true },
+      });
+      if (currentCase?.status === 'FATURALANDILDI') {
+        throw new BadRequestException(
+          'Finansa aktarıldıktan sonra ödendi işlemini finans personeli yapar.',
+        );
+      }
+      const actorUser = actor.id
+        ? await this.prisma.user.findUnique({
+            where: { id: actor.id },
+            select: { firstName: true, lastName: true },
+          })
+        : null;
+      const recordedByName = acilHakedisActorName(actorUser);
+      metadata = {
+        ...metadata,
+        recordedByUserId: actor.id ?? null,
+        recordedByName,
+        source: metadata.source === 'finance_queue' ? 'finance_queue' : 'file',
+      };
+    }
+    const description = (dto.description ?? '').trim()
+      || (action === 'EMERGENCY_VENDOR_PAYMENT_RECORDED'
+        ? acilHakedisPaidDescription({
+            paid: metadata.paid === true,
+            actorName: typeof metadata.recordedByName === 'string' ? metadata.recordedByName : '',
+            source: typeof metadata.source === 'string' ? metadata.source : null,
+          })
+        : emergencyProcessDescription(action, metadata));
 
     const existingRows = await this.prisma.auditLog.findMany({
       where: {
@@ -1530,7 +1581,7 @@ export class EmergencyCasesService {
     if (isEmergencyProcessDuplicate({ action, incomingMetadata: metadata, existing })) {
       const latest = existingRows[0];
       await this.applyOperationStamps(caseId, action);
-      await this.applyVendorPaid(caseId, action, metadata);
+      await this.applyVendorPaid(caseId, action, metadata, actor.id);
       return { data: this.mapProcessEvent(latest), duplicate: true };
     }
 
@@ -1551,7 +1602,7 @@ export class EmergencyCasesService {
       },
     });
     await this.applyOperationStamps(caseId, action);
-    await this.applyVendorPaid(caseId, action, metadata);
+    await this.applyVendorPaid(caseId, action, metadata, actor.id);
     return { data: this.mapProcessEvent(created), duplicate: false };
   }
 
@@ -1572,12 +1623,47 @@ export class EmergencyCasesService {
     caseId: string,
     action: string,
     metadata: Record<string, unknown>,
+    actorUserId?: string | null,
   ) {
     if (action !== 'EMERGENCY_VENDOR_PAYMENT_RECORDED') return;
     if (metadata.paid !== true && metadata.paid !== false) return;
-    await this.prisma.emergencyCase.update({
+    const current = await this.prisma.emergencyCase.findUnique({
       where: { id: caseId },
-      data: { vendorPaid: metadata.paid },
+      select: { vendorPaidByUserId: true, vendorPaidAt: true },
+    });
+    const now = new Date();
+    if (metadata.paid === true) {
+      await this.prisma.emergencyCase.update({
+        where: { id: caseId },
+        data: {
+          vendorPaid: true,
+          vendorPaidByUserId: current?.vendorPaidByUserId ?? actorUserId ?? null,
+          vendorPaidAt: current?.vendorPaidAt ?? now,
+        },
+      });
+    } else {
+      await this.prisma.emergencyCase.update({
+        where: { id: caseId },
+        data: {
+          vendorPaid: false,
+          vendorPaidByUserId: null,
+          vendorPaidAt: null,
+        },
+      });
+    }
+    const pay = await this.prisma.payment.findUnique({
+      where: { emergencyCaseId: caseId },
+    });
+    if (!pay) return;
+    const nextStatus = metadata.paid === true ? 'completed' : 'pending';
+    if (pay.status === nextStatus) return;
+    await this.prisma.payment.update({
+      where: { id: pay.id },
+      data: {
+        status: nextStatus,
+        dueDate: null,
+        ...(nextStatus === 'completed' ? { paymentDate: now } : {}),
+      },
     });
   }
 

@@ -53,6 +53,16 @@ export interface EmergencyOperationChain {
     paymentRequiresClaimFile: boolean;
   };
   vendorEntitlementGrantedAt?: string | null;
+  vendorPaidByName?: string | null;
+  vendorPaidAt?: string | null;
+  vendorPayment?: {
+    id: string;
+    amount: number;
+    status: string;
+    paymentDate: string | null;
+    recordedByName?: string | null;
+    recordedAt?: string | null;
+  } | null;
   steps: EmergencyOperationStep[];
 }
 
@@ -418,6 +428,8 @@ export type AcilVendorEntitlementRow = {
   grantedByName: string;
   dueDate: null;
   vendorPaid?: boolean | null;
+  vendorPaidByName?: string | null;
+  vendorPaidAt?: string | null;
 };
 
 export async function getAcilVendorEntitlements(): Promise<{ data: AcilVendorEntitlementRow[] }> {

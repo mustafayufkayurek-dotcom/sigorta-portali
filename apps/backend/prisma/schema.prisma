@@ -168,6 +168,7 @@ model User {
   // Acil Yardım
   emergencyCasesCreated      EmergencyCase[]           @relation("EmergencyCreatedBy")
   emergencyCasesAssigned     EmergencyCase[]           @relation("EmergencyAssignedUser")
+  emergencyCasesVendorPaid   EmergencyCase[]           @relation("EmergencyVendorPaidBy")
   emergencyCostEntries       EmergencyCostEntry[]      @relation("EmergencyCostCreatedBy")
   emergencyInvoicesCreated   EmergencyInvoiceDraft[]   @relation("EmergencyInvoiceCreatedBy")
   emergencyVendorEntitlementsGranted EmergencyVendorEntitlement[] @relation("EmergencyEntitlementGrantedBy")
@@ -1581,7 +1582,8 @@ model Invoice {
 
 model Payment {
   id              String   @id @default(uuid())
-  claimFileId     String   @map("claim_file_id")
+  claimFileId     String?  @map("claim_file_id")
+  emergencyCaseId String?  @unique @map("emergency_case_id")
   paymentType     String   @map("payment_type")    // incoming | outgoing
   paymentDate     DateTime @map("payment_date")
   dueDate         DateTime? @map("due_date")
@@ -1608,7 +1610,8 @@ model Payment {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  claimFile   ClaimFile    @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  claimFile      ClaimFile?      @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  emergencyCase  EmergencyCase?  @relation(fields: [emergencyCaseId], references: [id], onDelete: Cascade)
   invoice     Invoice?     @relation(fields: [invoiceId], references: [id])
   bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
   createdBy   User         @relation("CreatedPayments", fields: [createdByUserId], references: [id])
@@ -2812,6 +2815,8 @@ model EmergencyCase {
   resolvedAt          DateTime? @map("resolved_at")
   /// Tedarikçi ödemesi: true ödendi, false ödenmedi, null henüz kayıt yok
   vendorPaid          Boolean?  @map("vendor_paid")
+  vendorPaidByUserId  String?   @map("vendor_paid_by_user_id")
+  vendorPaidAt        DateTime? @map("vendor_paid_at")
   invoicedAt          DateTime? @map("invoiced_at")
   createdByUserId  String           @map("created_by_user_id")
   createdAt        DateTime         @default(now()) @map("created_at")
@@ -2821,6 +2826,7 @@ model EmergencyCase {
   assignedVendor Vendor?    @relation("EmergencyVendor", fields: [assignedVendorId], references: [id])
   assignedUser   User?      @relation("EmergencyAssignedUser", fields: [assignedUserId], references: [id])
   createdBy      User       @relation("EmergencyCreatedBy", fields: [createdByUserId], references: [id])
+  vendorPaidBy   User?      @relation("EmergencyVendorPaidBy", fields: [vendorPaidByUserId], references: [id])
   costEntries         EmergencyCostEntry[]
   invoiceItems        EmergencyInvoiceItem[]
   overheadAllocations OverheadAllocation[]
@@ -2829,6 +2835,7 @@ model EmergencyCase {
   invoiceRequests InvoiceRequest[]
   inboundMessages InboundMessage[]
   vendorEntitlement EmergencyVendorEntitlement?
+  payment           Payment?
   surveyCampaigns SurveyCampaign[]
 
   @@index([status])

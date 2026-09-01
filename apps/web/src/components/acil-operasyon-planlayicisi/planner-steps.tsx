@@ -105,6 +105,16 @@ export type PlannerStepBodyProps = {
   photos: Array<{ url: string; label: string; at: string }>;
   digitalDocsOk?: boolean;
   vendorPaid?: boolean | null;
+  vendorOdeme?: {
+    id: string;
+    amount: number;
+    status: string;
+    paymentDate: string | null;
+    recordedByName?: string | null;
+    recordedAt?: string | null;
+  } | null;
+  vendorPaidByName?: string | null;
+  vendorPaidAt?: string | null;
   satisNetLabel?: string;
   alisVatMode?: VatMode;
   satisVatMode?: VatMode;
@@ -254,15 +264,18 @@ function AmountField({
 
 function VendorPayConfirm(p: PlannerStepBodyProps) {
   const [draft, setDraft] = useState<boolean | null>(null);
-  const locked = Boolean(p.financeSent);
+  const locked = Boolean(p.financeSent) || p.vendorPaid === true;
   const shown = draft ?? p.vendorPaid ?? null;
   const needsConfirm = draft !== null && draft !== p.vendorPaid;
   const vendorName = p.assignedVendor?.name || 'Atanan tedarikçi';
   const alisLabel = p.alis.trim() || '—';
+  const paidBy = (p.vendorPaidByName || p.vendorOdeme?.recordedByName || '').trim();
+  const paidAt = p.vendorPaidAt || p.vendorOdeme?.recordedAt;
   return (
     <Card title="Tedarikçi ödemesi">
       <p className="text-[11px] text-slate-500">
-        Bu kayıt finansa gider. Yanlış seçim ödeme yapılmış veya yapılmamış görünür. Seçimden sonra onay şarttır.
+        Ödendi veya ödenmedi kaydı bu dosyada, finansa göndermeden önce sizin işinizdir.
+        Finansa gittikten sonra Ödendi işlemini finans personeli yapar. İşlemi yapan adıyla kaydolur.
       </p>
       <div className="mt-2 flex gap-2" data-testid="acil-odeme-evet-hayir">
         <Btn
@@ -287,8 +300,8 @@ function VendorPayConfirm(p: PlannerStepBodyProps) {
           </p>
           <p className="mt-1 text-[11px] text-amber-800">
             {draft
-              ? 'Hakediş ödendi olarak kaydedilecek. Emin misiniz?'
-              : 'Hakediş ödenmedi olarak kaydedilecek. Emin misiniz?'}
+              ? 'Tedarikçiye ödeme yapıldı olarak kaydedilecek. Adınız işlem kaydında durur. Emin misiniz?'
+              : 'Ödenmedi kaydı finans Ödenecekler kuyruğuna düşer. Finansa gittikten sonra Ödendi işlemini finans personeli yapar. Emin misiniz?'}
           </p>
           <div className="mt-2 flex gap-1.5">
             <Btn
@@ -305,13 +318,17 @@ function VendorPayConfirm(p: PlannerStepBodyProps) {
           </div>
         </div>
       ) : (
-        <p className="mt-2 text-xs text-slate-700">
+        <p className="mt-2 text-xs text-slate-700" data-testid="acil-odeme-islem-yapan">
           {p.vendorPaid === true
-            ? 'Kayıt: ödendi.'
+            ? `Kayıt: ödendi${paidBy ? ` · ${paidBy}` : ''}${paidAt ? ` · ${new Date(paidAt).toLocaleString('tr-TR')}` : ''}.`
             : p.vendorPaid === false
               ? 'Kayıt: ödenmedi.'
               : 'Henüz onaylı kayıt yok.'}
-          {locked ? ' Finansa aktarıldı; değiştirilemez.' : ''}
+          {p.financeSent
+            ? ' Finansa aktarıldı; ödendi işlemini finans personeli yapar.'
+            : p.vendorPaid === true
+              ? ' Değiştirilemez.'
+              : ''}
         </p>
       )}
     </Card>
@@ -804,11 +821,24 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             <p className="text-[10px] text-slate-400">Dosya konusu</p>
             <p className="font-semibold text-slate-800">{p.file.subject || '—'}</p>
           </div>
-          <div>
+          <div data-testid="acil-tedarikci-odeme-dokum">
             <p className="text-[10px] text-slate-400">Hakediş ödeme</p>
             <p className="font-semibold text-slate-800">
               {p.vendorPaid === true ? 'Ödendi' : p.vendorPaid === false ? 'Ödenmedi' : 'Kayıt yok'}
+              {p.vendorOdeme
+                ? ` · ${Number(p.vendorOdeme.amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`
+                : ''}
             </p>
+            {p.vendorPaid === true && (p.vendorPaidByName || p.vendorOdeme?.recordedByName) ? (
+              <p className="mt-0.5 text-[11px] text-slate-600" data-testid="acil-odeme-dokum-yapan">
+                {p.vendorPaidByName || p.vendorOdeme?.recordedByName}
+                {p.vendorPaidAt || p.vendorOdeme?.recordedAt
+                  ? ` · ${new Date(String(p.vendorPaidAt || p.vendorOdeme?.recordedAt)).toLocaleString('tr-TR')}`
+                  : ''}
+              </p>
+            ) : p.financeSent && p.vendorPaid === false ? (
+              <p className="mt-0.5 text-[11px] text-slate-600">Ödendi işlemini finans personeli yapar.</p>
+            ) : null}
           </div>
           <div>
             <p className="text-[10px] text-slate-400">Aktarım saati</p>
@@ -843,9 +873,14 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             <p className="text-xs font-semibold text-emerald-700">Aktarım kaydedildi.</p>
           )}
           {p.canOpenFinancePage ? (
-            <Btn href="/panel/acil-yardim/finans#tedarikci-hakedis" testId="acil-finans-sayfasini-ac">
-              Finans sayfasını aç
-            </Btn>
+            <>
+              <Btn href="/panel/acil-yardim/finans#tedarikci-hakedis" testId="acil-finans-sayfasini-ac">
+                Finans sayfasını aç
+              </Btn>
+              <Btn href="/panel/finans/tahsilatlar?queue=payable" testId="acil-odenecekler-kuyruk">
+                Ödenecekler
+              </Btn>
+            </>
           ) : null}
         </div>
         {!p.fileClosed ? (

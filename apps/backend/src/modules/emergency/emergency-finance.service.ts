@@ -1,7 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateInvoiceDraftDto } from './dto/create-invoice-draft.dto';
-import { acilHakedisDueDate, pickAcilHakedisAmount } from './acil-vendor-entitlement';
+import {
+  acilHakedisActorName,
+  acilHakedisDueDate,
+  acilHakedisFinanceNote,
+  acilHakedisOutgoingStatus,
+  acilHakedisPaymentRef,
+  pickAcilHakedisAmount,
+} from './acil-vendor-entitlement';
 
 @Injectable()
 export class EmergencyFinanceService {
@@ -231,23 +238,107 @@ export class EmergencyFinanceService {
     if (!emergencyCase.assignedVendorId) {
       throw new BadRequestException('Hakediş için dosyaya tedarikçi atanmış olmalı.');
     }
+    const actorId = userId === 'system' ? emergencyCase.createdByUserId : userId;
     if (emergencyCase.vendorEntitlement) {
+      if (emergencyCase.vendorPaid !== true && emergencyCase.vendorPaid !== false) {
+        await this.prisma.emergencyCase.update({
+          where: { id: caseId },
+          data: { vendorPaid: false },
+        });
+      }
+      await this.ensureAcilHakedisOutgoingPayment({
+        caseId,
+        vendorId: emergencyCase.assignedVendorId,
+        amount: emergencyCase.vendorEntitlement.amount,
+        grantedAt: emergencyCase.vendorEntitlement.grantedAt,
+        grantedByUserId: emergencyCase.vendorEntitlement.grantedByUserId,
+        vendorPaid: emergencyCase.vendorPaid,
+      });
       return { data: emergencyCase.vendorEntitlement, dueDate: acilHakedisDueDate() };
     }
     const amount = pickAcilHakedisAmount(emergencyCase.costEntries, emergencyCase.assignedVendorId);
     if (!(amount > 0)) {
       throw new BadRequestException('Hakediş tutarı için alış / gider kaydı gerekir.');
     }
+    const grantedAt = new Date();
     const granted = await this.prisma.emergencyVendorEntitlement.create({
       data: {
         caseId,
         vendorId: emergencyCase.assignedVendorId,
         amount,
-        grantedAt: new Date(),
-        grantedByUserId: userId === 'system' ? emergencyCase.createdByUserId : userId,
+        grantedAt,
+        grantedByUserId: actorId,
       },
     });
+    if (emergencyCase.vendorPaid !== true && emergencyCase.vendorPaid !== false) {
+      await this.prisma.emergencyCase.update({
+        where: { id: caseId },
+        data: { vendorPaid: false },
+      });
+    }
+    await this.ensureAcilHakedisOutgoingPayment({
+      caseId,
+      vendorId: emergencyCase.assignedVendorId,
+      amount,
+      grantedAt,
+      grantedByUserId: actorId,
+      vendorPaid: emergencyCase.vendorPaid === true,
+    });
     return { data: granted, dueDate: acilHakedisDueDate() };
+  }
+
+  /** Finans ödenecekler kuyruğu — Hasar statement yok; vade yok. */
+  private async ensureAcilHakedisOutgoingPayment(input: {
+    caseId: string;
+    vendorId: string;
+    amount: number;
+    grantedAt: Date;
+    grantedByUserId: string;
+    vendorPaid: boolean | null;
+  }) {
+    const existing = await this.prisma.payment.findUnique({
+      where: { emergencyCaseId: input.caseId },
+    });
+    const status = acilHakedisOutgoingStatus(input.vendorPaid);
+    if (existing) {
+      if (existing.status === 'completed' && status === 'pending') {
+        if (input.vendorPaid !== true) {
+          await this.prisma.emergencyCase.update({
+            where: { id: input.caseId },
+            data: { vendorPaid: true },
+          });
+        }
+        return existing;
+      }
+      if (existing.status === status && existing.amount === input.amount) return existing;
+      return this.prisma.payment.update({
+        where: { id: existing.id },
+        data: {
+          amount: input.amount,
+          status,
+          dueDate: null,
+          note: acilHakedisFinanceNote(input.grantedAt),
+        },
+      });
+    }
+    return this.prisma.payment.create({
+      data: {
+        claimFileId: null,
+        emergencyCaseId: input.caseId,
+        paymentType: 'outgoing',
+        paymentDate: input.grantedAt,
+        dueDate: null,
+        amount: input.amount,
+        currency: 'TRY',
+        method: 'eft',
+        payerType: 'vendor',
+        payerId: input.vendorId,
+        status,
+        referenceNo: acilHakedisPaymentRef(input.caseId),
+        note: acilHakedisFinanceNote(input.grantedAt),
+        createdByUserId: input.grantedByUserId,
+      },
+    });
   }
 
   async listVendorEntitlements() {
@@ -263,6 +354,8 @@ export class EmergencyFinanceService {
             customerName: true,
             issueType: true,
             vendorPaid: true,
+            vendorPaidAt: true,
+            vendorPaidBy: { select: { firstName: true, lastName: true } },
           },
         },
         grantedBy: { select: { id: true, firstName: true, lastName: true } },
@@ -276,6 +369,8 @@ export class EmergencyFinanceService {
         customerName: row.case.customerName,
         issueType: row.case.issueType,
         vendorPaid: row.case.vendorPaid ?? null,
+        vendorPaidByName: acilHakedisActorName(row.case.vendorPaidBy),
+        vendorPaidAt: row.case.vendorPaidAt,
         vendorId: row.vendorId,
         vendorName: row.vendor.name,
         amount: row.amount,

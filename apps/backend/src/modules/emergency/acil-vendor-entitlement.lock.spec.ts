@@ -8,8 +8,12 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+  acilHakedisActorName,
   acilHakedisDueDate,
   acilHakedisFinanceNote,
+  acilHakedisOutgoingStatus,
+  acilHakedisPaidDescription,
+  acilHakedisPaymentRef,
   pickAcilHakedisAmount,
 } from './acil-vendor-entitlement.ts';
 
@@ -38,10 +42,54 @@ describe('acil vendor entitlement LOCK', () => {
   it('Hasar statement / paymentDueDays yoluna bağlanmaz', () => {
     const svc = readFileSync(join(here, 'emergency-finance.service.ts'), 'utf8');
     assert.match(svc, /emergencyVendorEntitlement/);
+    assert.match(svc, /ensureAcilHakedisOutgoingPayment/);
+    assert.match(svc, /acilHakedisPaymentRef/);
     assert.doesNotMatch(svc, /paymentDueDays/);
     assert.doesNotMatch(svc, /VendorPaymentStatement/);
     const chain = readFileSync(join(here, 'emergency-operation-chain.ts'), 'utf8');
     assert.match(chain, /vendorEntitlementGrantedAt/);
     assert.match(chain, /Vade yok/);
+    assert.match(chain, /paymentRequiresClaimFile: false/);
+    assert.match(chain, /Ödenecekler kuyruğunda/);
+    const payments = readFileSync(join(here, '../payments/payments.service.ts'), 'utf8');
+    assert.match(payments, /acil_hakedis/);
+    assert.match(payments, /emergencyCaseId/);
+    assert.match(payments, /vendorPaid: true/);
+    const schema = readFileSync(join(here, '../../../prisma/schema.prisma'), 'utf8');
+    assert.match(schema, /emergencyCaseId String\?  @unique/);
+    assert.match(schema, /claimFileId     String\?/);
+    assert.match(schema, /vendorPaidByUserId/);
+    assert.match(schema, /EmergencyVendorPaidBy/);
+  });
+
+  it('Ödendi damgası kuyrukta tamamlanır; aksi halde bekler', () => {
+    assert.equal(acilHakedisPaymentRef('case-1'), 'ACIL-HAKEDIS:case-1');
+    assert.equal(acilHakedisOutgoingStatus(true), 'completed');
+    assert.equal(acilHakedisOutgoingStatus(false), 'pending');
+    assert.equal(acilHakedisOutgoingStatus(null), 'pending');
+  });
+
+  it('işlemi yapan adıyla yazılır', () => {
+    assert.equal(acilHakedisActorName({ firstName: 'Ayşe', lastName: 'Kaya' }), 'Ayşe Kaya');
+    assert.match(
+      acilHakedisPaidDescription({ paid: true, actorName: 'Ayşe Kaya', source: 'file' }),
+      /ödendi · Ayşe Kaya \(dosya\)/,
+    );
+    assert.match(
+      acilHakedisPaidDescription({ paid: true, actorName: 'Mehmet Demir', source: 'finance_queue' }),
+      /ödendi · Mehmet Demir \(ödemeler\)/,
+    );
+    const payments = readFileSync(join(here, '../payments/payments.service.ts'), 'utf8');
+    assert.match(payments, /recordAcilHakedisPaidBy/);
+    assert.match(payments, /finance_queue/);
+    const cases = readFileSync(join(here, 'emergency-cases.service.ts'), 'utf8');
+    assert.match(cases, /vendorPaidByUserId/);
+    assert.match(cases, /Finansa aktarıldıktan sonra ödendi işlemini finans personeli yapar/);
+    const steps = readFileSync(
+      join(here, '../../../../web/src/components/acil-operasyon-planlayicisi/planner-steps.tsx'),
+      'utf8',
+    );
+    assert.match(steps, /acil-odeme-islem-yapan/);
+    assert.match(steps, /Finansa aktarıldı; ödendi işlemini finans personeli yapar/);
   });
 });

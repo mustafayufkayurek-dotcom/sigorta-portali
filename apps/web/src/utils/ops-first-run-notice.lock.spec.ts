@@ -48,8 +48,9 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
   it('Acil hakediş şeridi durur', () => {
     assert.match(acilPage, /OPS_NOTICE\.acilTedarikciHakedis/);
     assert.match(acilPage, /acil-hakedis-ilk-kullanim-seridi/);
-    assert.equal(OPS_NOTICE.acilTedarikciHakedis.id, 'acil-tedarikci-hakedis-v524');
+    assert.equal(OPS_NOTICE.acilTedarikciHakedis.id, 'acil-tedarikci-hakedis-v555');
     assert.match(OPS_NOTICE.acilTedarikciHakedis.body, /vade uygulanmaz/i);
+    assert.match(OPS_NOTICE.acilTedarikciHakedis.body, /Finans tarafında işlem yapamazsınız/);
     assert.match(notice, /border-blue-100 bg-blue-50\/60/);
   });
 
@@ -58,7 +59,8 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     const finansHome = readFileSync(join(here, '../app/panel/finans/page.tsx'), 'utf8');
     assert.match(tahsilat, /finans-odeme-kuyruk-ilk-kullanim-seridi/);
     assert.match(finansHome, /finans-odeme-kuyruk-ilk-kullanim-seridi/);
-    assert.equal(OPS_NOTICE.finansTedarikciKuyruk.id, 'finans-tedarikci-kuyruk-v546');
+    assert.equal(OPS_NOTICE.finansTedarikciKuyruk.id, 'finans-tedarikci-kuyruk-v555');
+    assert.match(OPS_NOTICE.finansTedarikciKuyruk.body, /finans tarafında işlem yapamaz/);
     assert.match(tahsilat, /emergencyCaseId/);
     assert.match(tahsilat, /acil_hakedis/);
     assert.match(tahsilat, /Vade yok/);

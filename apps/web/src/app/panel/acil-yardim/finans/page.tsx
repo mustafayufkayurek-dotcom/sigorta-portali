@@ -221,7 +221,15 @@ function FinansPageInner() {
           <h2 className="text-sm font-semibold text-slate-900">Tedarikçi Hakedişleri</h2>
           <p className="text-xs text-slate-500">
             İş bitiminde dosya tedarikçisine verilir. Verilme tarih ve saati kayıttadır. Vade uygulanmaz.
+            Ödenmedi olanlar Ödemeler → Ödenecekler kuyruğundadır. Ödendi işlemini finans personeli yapar.
           </p>
+          <Link
+            href="/panel/finans/tahsilatlar?queue=payable"
+            className="mt-2 inline-block text-xs font-semibold text-brand-700 hover:underline"
+            data-testid="acil-finans-odenecekler"
+          >
+            Ödenecekler kuyruğunu aç
+          </Link>
         </div>
         {shownEntitlements.length === 0 ? (
           <p className="text-sm text-slate-500">Henüz hakediş yok.</p>
@@ -262,6 +270,9 @@ function FinansPageInner() {
                       <span className={acilVendorPayTone(row.vendorPaid)} data-testid="acil-finans-hakedis-odeme">
                         {acilVendorPayLabel(row.vendorPaid)}
                       </span>
+                      {row.vendorPaid === true && row.vendorPaidByName ? (
+                        <p className="mt-0.5 text-[11px] text-slate-500">{row.vendorPaidByName}</p>
+                      ) : null}
                     </td>
                     <td className="py-2 text-slate-500">Yok</td>
                   </tr>

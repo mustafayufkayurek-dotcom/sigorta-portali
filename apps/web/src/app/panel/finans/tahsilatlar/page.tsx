@@ -347,9 +347,9 @@ export default function TahsilatlarPage() {
                           ) : null}
                         </PanelTableTd>
                         <PanelTableTd colId="fileCase" className="px-4 py-3">
-                          {p.emergencyCaseId ? (
-                            <a href={`/panel/acil-yardim/${p.emergencyCaseId}`} className="text-brand-600 dark:text-blue-400 hover:underline font-mono text-xs">
-                              {p.claimFile?.fileNo ?? '—'}
+                          {p.emergencyCaseId || p.emergencyCase?.id ? (
+                            <a href={`/panel/acil-yardim/${p.emergencyCaseId || p.emergencyCase.id}`} className="text-brand-600 dark:text-blue-400 hover:underline font-mono text-xs">
+                              {p.emergencyCase?.fileNo || p.emergencyCase?.caseNo || p.claimFile?.fileNo || '—'}
                             </a>
                           ) : p.claimFileId ? (
                             <a href={`/panel/hasar-dosyalari/${p.claimFileId}`} className="text-brand-600 dark:text-blue-400 hover:underline font-mono text-xs">
@@ -390,6 +390,11 @@ export default function TahsilatlarPage() {
                           }`}>
                             {p.status === 'completed' ? 'Tamamlandı' : p.status === 'pending' ? 'Bekliyor' : 'İptal'}
                           </span>
+                          {p.queueSource === 'acil_hakedis' && p.status === 'completed' && (p.emergencyCase?.vendorPaidBy?.firstName || p.emergencyCase?.vendorPaidBy?.lastName) ? (
+                            <div className="mt-0.5 text-[10px] text-slate-500">
+                              {[p.emergencyCase.vendorPaidBy.firstName, p.emergencyCase.vendorPaidBy.lastName].filter(Boolean).join(' ')}
+                            </div>
+                          ) : null}
                         </PanelTableTd>
                         <PanelTableTd colId="note" className="px-4 py-3 text-xs text-slate-500 max-w-[200px] truncate" title={p.note}>
                           {p.queueSource === 'acil_hakedis' ? (
@@ -404,7 +409,7 @@ export default function TahsilatlarPage() {
                           <FinanceRowActions
                             onPrint={() => printFinanceSlip({
                               title: p.paymentType === 'incoming' ? 'Tahsilat' : 'Ödeme',
-                              fileNo: p.claimFile?.fileNo,
+                              fileNo: p.emergencyCase?.fileNo || p.emergencyCase?.caseNo || p.claimFile?.fileNo,
                               party: p.vendorName,
                               date: fmtDate(p.paymentDate ?? p.dueDate),
                               amount: Number(p.amount ?? 0),

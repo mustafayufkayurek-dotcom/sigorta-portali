@@ -18,6 +18,37 @@ export function acilHakedisDueDate(_vendorPaymentDueDays?: number | null): null 
   return null;
 }
 
+export const ACIL_HAKEDIS_PAYMENT_REF_PREFIX = 'ACIL-HAKEDIS:';
+
+export function acilHakedisPaymentRef(caseId: string): string {
+  return `${ACIL_HAKEDIS_PAYMENT_REF_PREFIX}${caseId}`;
+}
+
+/** Ödendi damgası kuyrukta tamamlanır; aksi halde finans ödeyecek (bekler). */
+export function acilHakedisOutgoingStatus(
+  vendorPaid: boolean | null | undefined,
+): 'pending' | 'completed' {
+  return vendorPaid === true ? 'completed' : 'pending';
+}
+
+export function acilHakedisActorName(
+  user?: { firstName?: string | null; lastName?: string | null } | null,
+): string {
+  return [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+}
+
+export function acilHakedisPaidDescription(input: {
+  paid: boolean;
+  actorName?: string | null;
+  source?: 'file' | 'finance_queue' | string | null;
+}): string {
+  const base = input.paid ? 'Tedarikçi ödemesi: ödendi' : 'Tedarikçi ödemesi: ödenmedi';
+  const name = (input.actorName ?? '').trim();
+  const sourceLabel = input.source === 'finance_queue' ? 'ödemeler' : input.source === 'file' ? 'dosya' : '';
+  const who = [name, sourceLabel ? `(${sourceLabel})` : ''].filter(Boolean).join(' ');
+  return who ? `${base} · ${who}` : base;
+}
+
 export function acilHakedisFinanceNote(grantedAt: Date): string {
   const at = grantedAt.toLocaleString('tr-TR', {
     day: '2-digit',

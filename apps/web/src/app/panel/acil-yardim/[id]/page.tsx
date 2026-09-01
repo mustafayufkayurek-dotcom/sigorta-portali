@@ -2432,6 +2432,9 @@ export default function AcilDosyaDetayPage() {
           fileClosed: fileAlreadyClosed,
           digitalDocsOk,
           vendorPaid: flow.vendorPaid,
+          vendorOdeme: vaka.operationChain?.vendorPayment ?? null,
+          vendorPaidByName: vaka.operationChain?.vendorPaidByName ?? vaka.operationChain?.vendorPayment?.recordedByName ?? null,
+          vendorPaidAt: vaka.operationChain?.vendorPaidAt ?? vaka.operationChain?.vendorPayment?.recordedAt ?? null,
           alisVatMode: displayAlisVat,
           satisVatMode: displaySatisVat,
           satisNetLabel: Number.isFinite(draftSatisNet)
@@ -2474,10 +2477,10 @@ export default function AcilDosyaDetayPage() {
           onCloseFile: () => { void handleCloseFile(); },
           onFinance: () => { void handleSendToFinance(); },
           onVendorPaid: (v) => {
-            persistFlow(appendFlowHistory(
+            void persistFlow(appendFlowHistory(
               { ...flow, vendorPaid: v },
               v ? 'Tedarikçi hakediş: ödendi (onaylı kayıt)' : 'Tedarikçi hakediş: ödenmedi (onaylı kayıt)',
-            ));
+            )).then(() => load());
           },
           onInsuredNotify: () => requestInsuredWhatsAppSend('initial'),
           onClosureSurvey: () => requestInsuredWhatsAppSend('closure_survey'),

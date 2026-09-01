@@ -28,16 +28,16 @@ export const OPS_NOTICE = {
       'Dosya sorumlusu vekaleti ile tüm Acil kuyruğunu görürsünüz. Yeni dosya, mail aktarımı ve atama ofis sorumlusu gibidir. İşlem sizin adınıza kayda geçer.',
   },
   acilTedarikciHakedis: {
-    id: 'acil-tedarikci-hakedis-v524',
+    id: 'acil-tedarikci-hakedis-v555',
     title: 'Tedarikçi Hakedişi',
     body:
-      'İş bitince bu dosyanın tedarikçisine hakediş verilir. Verilme tarih ve saati kayıttadır. Finans ödeme kuyruğuna düşer. Acil tedarikçisine vade uygulanmaz.',
+      'İş bitince bu dosyanın tedarikçisine hakediş verilir. Ödendi veya ödenmedi kaydı finansa göndermeden önce bu dosyada sizin işinizdir. Finansa gittikten sonra Ödendi işlemini finans personeli yapar. Finans tarafında işlem yapamazsınız. İşlemi yapan adıyla kaydolur. Vade uygulanmaz.',
   },
   finansTedarikciKuyruk: {
-    id: 'finans-tedarikci-kuyruk-v546',
+    id: 'finans-tedarikci-kuyruk-v555',
     title: 'Ödeme Kuyruğu',
     body:
-      'Dosya sorumlusunun verdiği tedarikçi hakedişi ve avans burada durur. Acil hakedişte vade yoktur. Hasar hakedişinde 15 veya 30 gün vade durur.',
+      'Hasar hakediş ve avans burada durur. Acil’de Ödendi işlemini finans personeli yapar; dosya sorumlusu finans tarafında işlem yapamaz, yalnız kendi dosyasında finansa göndermeden önce kayıt düşer. İşlemi yapan kaydolur. Acil’de vade yoktur. Hasar’da 15 veya 30 gün vade durur.',
   },
   hasarListeSonDegisiklik: {
     id: 'hasar-liste-v536',

@@ -17,6 +17,12 @@ import {
   RequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
 import { AVANS_REF_PREFIX, coerceIncomingPayerType, isAvansPayment, isInsuredCollectionParty } from '@sigorta/shared';
+import {
+  acilHakedisActorName,
+  acilHakedisPaidDescription,
+} from '@/modules/emergency/acil-vendor-entitlement';
+import { EMERGENCY_PROCESS_ENTITY_TYPE } from '@/modules/emergency/emergency-process-events';
+import { sanitizeAuditValue } from '@/modules/audit-logs/audit-log.sanitizer';
 
 /** Varsayılan vade — tedarikçi kartında seçim yoksa (geçici geri uyumluluk) */
 export const VENDOR_HAKEDIS_DUE_DAYS_DEFAULT = 30;
@@ -87,13 +93,23 @@ export class PaymentsService {
     const officeOwnerId = role === 'office_staff' ? requestingUser?.id : undefined;
     const responsibleId = officeOwnerId || params.responsibleUserId;
     if (responsibleId) {
-      where.claimFile = {
-        OR: [
-          { assignedOfficeUserId: responsibleId },
-          { currentResponsibleUserId: responsibleId },
-          { assignedFieldUserId: responsibleId },
-        ],
-      };
+      where.AND = [
+        ...((Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []) as Prisma.PaymentWhereInput[]),
+        {
+          OR: [
+            {
+              claimFile: {
+                OR: [
+                  { assignedOfficeUserId: responsibleId },
+                  { currentResponsibleUserId: responsibleId },
+                  { assignedFieldUserId: responsibleId },
+                ],
+              },
+            },
+            { emergencyCase: { assignedUserId: responsibleId } },
+          ],
+        },
+      ];
     }
 
     if (params.search?.trim()) {
@@ -102,6 +118,8 @@ export class PaymentsService {
         { note: { contains: q, mode: 'insensitive' } },
         { referenceNo: { contains: q, mode: 'insensitive' } },
         { claimFile: { fileNo: { contains: q, mode: 'insensitive' } } },
+        { emergencyCase: { fileNo: { contains: q, mode: 'insensitive' } } },
+        { emergencyCase: { caseNo: { contains: q, mode: 'insensitive' } } },
       ];
     }
 
@@ -211,6 +229,17 @@ export class PaymentsService {
               assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
             },
           },
+          emergencyCase: {
+            select: {
+              id: true,
+              caseNo: true,
+              fileNo: true,
+              customerName: true,
+              assignedUserId: true,
+              vendorPaidAt: true,
+              vendorPaidBy: { select: { firstName: true, lastName: true } },
+            },
+          },
           invoice: { select: { id: true, invoiceNo: true } },
           bankAccount: { select: { id: true, bankName: true, iban: true } },
           createdBy: { select: { id: true, firstName: true, lastName: true } },
@@ -231,7 +260,10 @@ export class PaymentsService {
     const data = await this.enrichWithVendorNames(rawData);
 
     return {
-      data,
+      data: data.map((row) => ({
+        ...row,
+        queueSource: row.emergencyCaseId ? 'acil_hakedis' : null,
+      })),
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
       summary,
     };
@@ -441,9 +473,10 @@ export class PaymentsService {
     }
 
     const ext = path.extname(file.originalname) || '';
+    const folderId = payment.claimFileId ?? payment.emergencyCaseId ?? paymentId;
     const storageKey = this.storage.buildKey(
       'payments',
-      payment.claimFileId,
+      folderId,
       `${randomUUID()}${ext}`,
     );
     await this.storage.upload(file.buffer, storageKey, file.mimetype);
@@ -635,14 +668,65 @@ export class PaymentsService {
       await this.updateInvoicePaymentStatus(payment.invoiceId);
     }
 
-    await this.financialSummary.recalculate(payment.claimFileId);
+    if (payment.claimFileId) {
+      await this.financialSummary.recalculate(payment.claimFileId);
+    }
     await this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
 
     if (dto.status === 'completed' && wasPending) {
       this.triggerLogoPaymentSync(updated.id, updated.paymentType).catch(() => {});
+      if (payment.emergencyCaseId) {
+        await this.recordAcilHakedisPaidBy(payment.emergencyCaseId, userId);
+      }
     }
 
     return updated;
+  }
+
+  /** Acil kuyruk Ödendi — dosyada da damga ve işlemi yapan kaydı. Hasar satırına girmez. */
+  private async recordAcilHakedisPaidBy(caseId: string, userId?: string | null) {
+    const [current, actor] = await Promise.all([
+      this.prisma.emergencyCase.findUnique({
+        where: { id: caseId },
+        select: { vendorPaidByUserId: true, vendorPaidAt: true },
+      }),
+      userId
+        ? this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { firstName: true, lastName: true },
+          })
+        : Promise.resolve(null),
+    ]);
+    const now = new Date();
+    const recordedByName = acilHakedisActorName(actor);
+    await this.prisma.emergencyCase.update({
+      where: { id: caseId },
+      data: {
+        vendorPaid: true,
+        vendorPaidByUserId: current?.vendorPaidByUserId ?? userId ?? null,
+        vendorPaidAt: current?.vendorPaidAt ?? now,
+      },
+    });
+    const description = acilHakedisPaidDescription({
+      paid: true,
+      actorName: recordedByName,
+      source: 'finance_queue',
+    });
+    await this.prisma.auditLog.create({
+      data: {
+        entityType: EMERGENCY_PROCESS_ENTITY_TYPE,
+        entityId: caseId,
+        action: 'EMERGENCY_VENDOR_PAYMENT_RECORDED',
+        newValue: sanitizeAuditValue({
+          description,
+          paid: true,
+          recordedByUserId: userId ?? null,
+          recordedByName,
+          source: 'finance_queue',
+        }) as Prisma.InputJsonValue,
+        userId: userId ?? null,
+      },
+    });
   }
 
   private async triggerLogoPaymentSync(paymentId: string, paymentType: string): Promise<void> {

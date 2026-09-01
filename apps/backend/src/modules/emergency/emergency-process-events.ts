@@ -3,6 +3,8 @@
  * Yeni tablo / status / workflow yok. FileActivityLog claimFileId ister; acil dosya ayrı modeldir.
  */
 
+import { acilHakedisPaidDescription } from './acil-vendor-entitlement';
+
 export const EMERGENCY_PROCESS_ENTITY_TYPE = 'emergency_case';
 
 export const EMERGENCY_PROCESS_ACTIONS = [
@@ -72,8 +74,13 @@ export function emergencyProcessDescription(
     if (text) return text.slice(0, 160);
   }
   if (action === 'EMERGENCY_VENDOR_PAYMENT_RECORDED') {
-    if (metadata?.paid === true) return 'Tedarikçi ödemesi: ödendi';
-    if (metadata?.paid === false) return 'Tedarikçi ödemesi: ödenmedi';
+    if (metadata?.paid === true || metadata?.paid === false) {
+      return acilHakedisPaidDescription({
+        paid: metadata.paid === true,
+        actorName: typeof metadata.recordedByName === 'string' ? metadata.recordedByName : '',
+        source: typeof metadata.source === 'string' ? metadata.source : null,
+      });
+    }
   }
   return EMERGENCY_PROCESS_ACTION_LABELS[action];
 }
