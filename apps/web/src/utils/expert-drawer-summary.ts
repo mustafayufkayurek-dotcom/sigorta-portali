@@ -285,7 +285,8 @@ export function maskPersonName(p?: { firstName?: string | null; lastName?: strin
 
 export type ExpertApprovalStatus =
   | 'Onay Bekleniyor'
-  | 'Revizyon Bekleniyor'
+  | 'Revizyon Talep Edildi'
+  | 'Reddedildi'
   | 'Onaylandı'
   | 'Henüz Gönderilmedi';
 
@@ -333,7 +334,7 @@ export function deriveExpertApprovalStatus(detail: ExpertSafeDetail): {
 
   if (/revision|revizyon/.test(rs) || code === 'budget_revision_requested' || /revizyon/.test(name)) {
     return {
-      status: 'Revizyon Bekleniyor',
+      status: 'Revizyon Talep Edildi',
       date: null,
       waitingApproval: false,
       revisionRequested: true,
@@ -357,6 +358,15 @@ export function deriveExpertApprovalStatus(detail: ExpertSafeDetail): {
     return {
       status: 'Onaylandı',
       date: report?.updatedAt ?? detail.statusChangedAt ?? null,
+      waitingApproval: false,
+      revisionRequested: false,
+    };
+  }
+
+  if (/rejected|redded/.test(rs) || /reddedildi/.test(name)) {
+    return {
+      status: 'Reddedildi',
+      date: null,
       waitingApproval: false,
       revisionRequested: false,
     };
@@ -414,6 +424,9 @@ export function deriveExpertRepairStatus(detail: ExpertSafeDetail): ExpertRepair
  * bu sade kelimeleri (tespit/rapor/onay/tamam) zaten tanıyacak şekilde yazılmıştır.
  */
 export function deriveExpertFileStageLabel(detail: ExpertSafeDetail): string {
+  const fromFile = (detail.operationStatusLabel ?? '').trim();
+  if (fromFile) return fromFile;
+
   const code = statusCodeKey(detail);
   const name = statusNameKey(detail);
   const rawName = detail.currentStatus?.name ?? '—';
@@ -425,7 +438,7 @@ export function deriveExpertFileStageLabel(detail: ExpertSafeDetail): string {
     code === 'budget_revision_requested' ||
     /revizyon/.test(name)
   ) {
-    return 'Revizyon Bekleniyor';
+    return 'Revizyon Talep Edildi';
   }
   if (
     /pending_approval|sent_for_external|pending|submitted|gönderildi|gonderildi/.test(reportStatus) ||
@@ -433,6 +446,9 @@ export function deriveExpertFileStageLabel(detail: ExpertSafeDetail): string {
     /onay bek/.test(name)
   ) {
     return 'Onay Bekleniyor';
+  }
+  if (/rejected|redded/.test(reportStatus) || /reddedildi/.test(name)) {
+    return 'Reddedildi';
   }
   if (/approved|onayland/.test(reportStatus) || code === 'budget_approved' || /onayland/.test(name)) {
     // Onaylandıktan sonra onarım aşamasına bak
@@ -449,7 +465,7 @@ export function deriveExpertFileStageLabel(detail: ExpertSafeDetail): string {
     return 'Rapor Yazım Aşamasında';
   }
   if (code === 'budget_submitted') return 'Onay Bekleniyor';
-  if (code === 'budget_revision_requested') return 'Revizyon Bekleniyor';
+  if (code === 'budget_revision_requested') return 'Revizyon Talep Edildi';
   if (['budget_approved', 'repair_planning', 'repair_in_progress'].includes(code)) {
     return 'Onarım Sürecinde';
   }
@@ -530,7 +546,7 @@ export function expertOperationEventTitle(input: {
   if (/ATTACHMENT_ADDED|foto|görsel|gorsel|photo|image/.test(blob)) return 'Fotoğraf Yüklendi';
   if (/dijital.?onay|digitally_approved|DIGITAL_APPROVAL/.test(blob)) return 'Dijital Onay Alındı';
   if (/muvafakat|MUVAFAKAT/.test(blob)) return 'Muvafakatname Yüklendi';
-  if (/budget_revision_requested|REVISION_REQUESTED|revizyon.?isten/.test(blob)) return 'Revizyon İstendi';
+  if (/budget_revision_requested|REVISION_REQUESTED|revizyon.?isten|revizyon.?talep/.test(blob)) return 'Revizyon Talep Edildi';
   if (/revision.?tamam|REVISION_COMPLETED|revize.?rapor.?gönder|revize.?rapor.?gonder/.test(blob)) {
     return 'Revizyon Tamamlandı';
   }

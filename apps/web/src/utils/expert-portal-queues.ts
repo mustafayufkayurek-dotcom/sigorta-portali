@@ -1,7 +1,7 @@
 /**
  * Eksper kuyruk sınıflandırması — portal durum etiketleriyle uyumlu.
  *
- * onay       = Onay / Revizyon Bekleniyor
+ * onay       = Onay / Revizyon Talep Edildi
  * rapor      = Rapor Yazılıyor / Rapor Bekleyen
  * onaylanan  = Onaylandı (onarım aşaması değil)
  * other      = Dosyalarım özeti (onarım / tespit / açık vb.)

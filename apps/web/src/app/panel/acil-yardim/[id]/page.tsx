@@ -446,6 +446,7 @@ function ihbarTarihiKisa(d: string | null | undefined): string {
 /** Durum rengi ortak sözlükten gelir; Hasar ile aynı renk davranışı. */
 function acilDurumBadgeClass(label: string, stageIdx: number): string {
   if (label === 'Reddedildi') return FILE_STATUS_TONE.red;
+  if (label === 'Revizyon Talep Edildi') return FILE_STATUS_TONE.amber;
   if (stageIdx >= 6) return FILE_STATUS_TONE.green;
   if (stageIdx >= 3) return FILE_STATUS_TONE.amber;
   if (stageIdx >= 1) return FILE_STATUS_TONE.blue;
@@ -1908,9 +1909,11 @@ export default function AcilDosyaDetayPage() {
     notes: vaka.notes,
   });
   const fileRejected = decisionLabel === 'Reddedildi' || vaka.operationStatusLabel === 'Reddedildi';
-  const guncelDurum = fileRejected
-    ? 'Reddedildi'
-    : (ACIL_STAGES[stageIdx]?.label ?? statusLabel(vaka.status));
+  const lastOp = (vaka.operationStatusLabel ?? '').trim() || decisionLabel;
+  const guncelDurum =
+    lastOp === 'Reddedildi' || lastOp === 'Revizyon Talep Edildi'
+      ? lastOp
+      : (ACIL_STAGES[stageIdx]?.label ?? statusLabel(vaka.status));
 
   const showCostDetect = Boolean(vaka.assignedVendorId) && flow.detectedCostTl != null && !flow.costConfirmed;
   const showApprovalDetect = flow.approvalDetected && !flow.customerApproved;

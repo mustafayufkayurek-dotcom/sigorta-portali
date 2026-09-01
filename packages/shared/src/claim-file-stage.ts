@@ -31,6 +31,9 @@ const CLAIM_REPAIR_IN_PROGRESS = new Set([
   'repair_in_progress',
 ]);
 
+/** Rapor reddedildi / dış red — kapalı dosyada onarım bitmiş sayılmaz */
+const REPORT_REJECTED = new Set(['rejected', 'externally_rejected']);
+
 /** Onarım bitti veya sonrası (claim status) */
 const CLAIM_REPAIR_DONE = new Set([
   'repair_completed',
@@ -60,7 +63,8 @@ export function deriveClaimFileStageIndex(input: ClaimFileStageInput): number | 
   const claimStatus = (input.claimStatusCode ?? '').trim().toLowerCase();
   const hasSuppliers = Boolean(input.hasSuppliersAssigned);
 
-  if (CLAIM_REPAIR_DONE.has(claimStatus)) return 4;
+  if (REPORT_REJECTED.has(reportStatus)) return null;
+  if (CLAIM_REPAIR_DONE.has(claimStatus) && !REPORT_REJECTED.has(reportStatus)) return 4;
   if (CLAIM_REPAIR_IN_PROGRESS.has(claimStatus)) return 3;
   if (hasSuppliers) return 2;
   if (REPORT_APPROVED.has(reportStatus)) return 1;

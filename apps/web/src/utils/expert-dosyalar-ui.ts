@@ -67,6 +67,8 @@ export function expertStatusBadgeClass(statusName?: string | null): string {
   const s = (statusName ?? '').toLocaleLowerCase('tr-TR');
   const base =
     'inline-flex h-[23px] max-w-[10rem] items-center justify-start self-start truncate rounded-full px-2.5 text-left text-[11.5px] font-semibold leading-none';
+  if (/redded/.test(s)) return `${base} bg-rose-100 text-rose-800`;
+  if (/revizyon/.test(s)) return `${base} bg-amber-100 text-amber-800`;
   if (/hazır|hazir/.test(s)) return `${base} bg-sky-100 text-sky-800`;
   if (/tamam|kapandı|kapan|bitti|sonuç/.test(s)) return `${base} bg-[#E4F3EA] text-[#166B3F]`;
   if (/onay/.test(s)) return `${base} bg-[#F1E9FC] text-[#7C3AED]`;

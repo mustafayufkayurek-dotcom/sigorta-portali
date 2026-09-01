@@ -19,7 +19,7 @@ export const PORTAL_STATUS_LABELS: Record<string, string> = {
   site_visit_done: 'Onarım Aşamasında',
   budget_preparing: 'Rapor Yazım Aşamasında',
   budget_submitted: 'Onay Bekliyor',
-  budget_revision_requested: 'Rapor Yazım Aşamasında',
+  budget_revision_requested: 'Revizyon Talep Edildi',
   budget_approved: 'Onarım Aşamasında',
   repair_planning: 'Onarım Aşamasında',
   repair_in_progress: 'Onarım Aşamasında',
@@ -63,10 +63,14 @@ export const PORTAL_NEXT_STEP_HINTS: Record<string, string> = {
 };
 
 export function portalStatusLabel(code: string | undefined, fallbackName?: string): string {
+  const overlay = String(fallbackName ?? '').trim();
+  if (overlay === 'Reddedildi' || overlay === 'Revizyon Talep Edildi') return overlay;
+  if (code === 'budget_revision_requested') return 'Revizyon Talep Edildi';
   if (code && PORTAL_STATUS_LABELS[code]) return PORTAL_STATUS_LABELS[code];
-  const name = (fallbackName ?? '').toLocaleLowerCase('tr-TR');
+  const name = overlay.toLocaleLowerCase('tr-TR');
   if (/bütçe sun|butce sun|budget.?submit|onay bek/.test(name)) return 'Onay Bekliyor';
-  if (/revizyon/.test(name)) return 'Rapor Yazım Aşamasında';
+  if (/revizyon/.test(name)) return 'Revizyon Talep Edildi';
+  if (/redded/.test(name)) return 'Reddedildi';
   if (/rapor yaz|budget.?prepar/.test(name)) return 'Rapor Yazım Aşamasında';
   if (/kapat|tamam|closed|completed/.test(name)) return 'Dosya Kapatıldı';
   if (/iptal|cancel/.test(name)) return 'Dosya İptal Edildi';

@@ -17,6 +17,7 @@ import {
   hasarListStatusQuery,
   isApprovalWaitingReport,
   staffVisibleClaimStatusName,
+  resolveEmergencyOperationLabel,
 } from './operation-status.ts';
 
 describe('dış onay = Onay Bekliyor LOCK', () => {
@@ -90,11 +91,12 @@ describe('ürün dili aşama filtresi LOCK', () => {
         '1. Yeni İhbar',
         '2. Tespit Aşamasında',
         '3. Rapor Yazım Aşamasında',
-        '4. Onay Bekliyor',
-        '5. Onarım Aşamasında',
-        '6. Finansa Aktarıldı',
-        '7. Dosya Kapatıldı',
-        '8. Dosya İptal Edildi',
+        '4. Revizyon Talep Edildi',
+        '5. Onay Bekliyor',
+        '6. Onarım Aşamasında',
+        '7. Finansa Aktarıldı',
+        '8. Dosya Kapatıldı',
+        '9. Dosya İptal Edildi',
       ],
     );
     assert.deepEqual(
@@ -128,5 +130,82 @@ describe('ürün dili aşama filtresi LOCK', () => {
       statusCode: 'pre_review,adjuster_assigned',
     });
     assert.deepEqual(hasarListStatusQuery('__open__'), { statusCode: 'open' });
+    assert.equal(deriveOperationStage({ claimStatusCode: 'budget_revision_requested' }).label, 'Revizyon Talep Edildi');
+    assert.equal(staffVisibleClaimStatusName('budget_revision_requested', 'Bütçe Revize Talep Edildi'), 'Revizyon Talep Edildi');
+  });
+});
+
+describe('son işlem kapanışı ezmez LOCK', () => {
+  it('reddedilen rapor kapalı dosyada da Reddedildi kalır', () => {
+    const stage = deriveOperationStage({
+      claimStatusCode: 'closed',
+      reportStatus: 'rejected',
+    });
+    assert.equal(stage.id, 'rapor_reddedildi');
+    assert.equal(stage.label, 'Reddedildi');
+  });
+
+  it('dış red kapalı dosyada da Reddedildi kalır', () => {
+    assert.equal(
+      deriveOperationStage({
+        claimStatusCode: 'closed',
+        reportStatus: 'externally_rejected',
+      }).label,
+      'Reddedildi',
+    );
+  });
+
+  it('revizyon talebi Rapor Yazım Aşamasında yazılmaz', () => {
+    assert.equal(
+      deriveOperationStage({
+        claimStatusCode: 'budget_revision_requested',
+        reportStatus: 'draft',
+      }).label,
+      'Revizyon Talep Edildi',
+    );
+    assert.equal(
+      deriveOperationStage({
+        claimStatusCode: 'budget_preparing',
+        reportStatus: 'draft',
+        verbalDecision: 'revise',
+      }).label,
+      'Revizyon Talep Edildi',
+    );
+  });
+
+  it('onaya giden revize rapor Onay Bekliyor olur', () => {
+    assert.equal(
+      deriveOperationStage({
+        claimStatusCode: 'budget_revision_requested',
+        reportStatus: 'pending_approval',
+        verbalDecision: 'revise',
+      }).label,
+      'Onay Bekliyor',
+    );
+  });
+
+  it('onaylı rapor sonrası kapanış Dosya Kapatıldı kalır', () => {
+    assert.equal(
+      deriveOperationStage({
+        claimStatusCode: 'closed',
+        reportStatus: 'approved',
+      }).label,
+      'Dosya Kapatıldı',
+    );
+  });
+
+  it('acil kapanış red/revizyonun üstüne yazılmaz', () => {
+    assert.equal(
+      resolveEmergencyOperationLabel({ status: 'COZULDU', notes: '[Manuel Red · gerekçe]' }),
+      'Reddedildi',
+    );
+    assert.equal(
+      resolveEmergencyOperationLabel({ status: 'COZULDU', notes: '[Manuel Revizyon · gerekçe]' }),
+      'Revizyon Talep Edildi',
+    );
+    assert.equal(
+      resolveEmergencyOperationLabel({ status: 'COZULDU' }),
+      'Dosya Kapatıldı',
+    );
   });
 });

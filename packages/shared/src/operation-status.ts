@@ -21,6 +21,7 @@ export const OPERATION_STAGE_ORDER = [
   'rapor_yaziliyor',
   'onay_bekliyor',
   'rapor_reddedildi',
+  'revizyon_talep_edildi',
   'onaylandi',
   'onarim',
   'fatura',
@@ -93,6 +94,12 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
     label: 'Reddedildi',
     tone: 'red',
     nextAction: 'Revizyona başla veya yeniden onaya gönder',
+  },
+  revizyon_talep_edildi: {
+    id: 'revizyon_talep_edildi',
+    label: 'Revizyon Talep Edildi',
+    tone: 'orange',
+    nextAction: 'Revize raporu yazın',
   },
   onaylandi: {
     id: 'onaylandi',
@@ -171,17 +178,22 @@ export function isEmergencyManuallyRejected(input: {
   return parseLatestVerbalManualDecision(input.notes) === 'reject';
 }
 
-/** Acil liste/detay Dosya Durumu — red, Yeni İhbar’da kalmaz. */
+export function isEmergencyManuallyRevised(input: {
+  notes?: string | null;
+  verbalDecision?: VerbalManualDecision | null;
+}): boolean {
+  if (input.verbalDecision === 'revise') return true;
+  return parseLatestVerbalManualDecision(input.notes) === 'revise';
+}
+
+/** Acil liste/detay Dosya Durumu — son işlem kapanışın üstüne yazılmaz. */
 export function resolveEmergencyOperationLabel(input: {
   status?: string | null;
   notes?: string | null;
   verbalDecision?: VerbalManualDecision | null;
 }): string {
-  const status = String(input.status ?? '').trim().toUpperCase();
-  if (status === 'COZULDU' || status === 'FATURALANDILDI') {
-    return emergencyStatusProductLabel(status);
-  }
   if (isEmergencyManuallyRejected(input)) return 'Reddedildi';
+  if (isEmergencyManuallyRevised(input)) return 'Revizyon Talep Edildi';
   return emergencyStatusProductLabel(input.status);
 }
 
@@ -194,7 +206,7 @@ const CLAIM_CODE_TO_STAGE: Record<string, OperationStageId> = {
   site_visit_done: 'saha_tamamlandi',
   budget_preparing: 'rapor_yaziliyor',
   budget_submitted: 'onay_bekliyor',
-  budget_revision_requested: 'rapor_yaziliyor',
+  budget_revision_requested: 'revizyon_talep_edildi',
   budget_approved: 'onaylandi',
   repair_planning: 'onarim',
   repair_in_progress: 'onarim',
@@ -229,16 +241,30 @@ export function deriveOperationStageId(input: DeriveOperationStageInput): Operat
   const report = String(input.reportStatus ?? '').trim().toLowerCase();
 
   if (claim === 'cancelled') return 'iptal';
+
+  // Son işlem (red / revizyon) kapanış kodunun altında kalmaz.
+  if (REPORT_REJECTED.has(report)) return 'rapor_reddedildi';
+  if (
+    input.verbalDecision === 'reject' &&
+    !REPORT_WRITING.has(report) &&
+    !REPORT_AWAITING.has(report) &&
+    !REPORT_APPROVED.has(report)
+  ) {
+    return 'rapor_reddedildi';
+  }
+
+  if (REPORT_AWAITING.has(report)) return 'onay_bekliyor';
+  if (
+    (input.verbalDecision === 'revise' || claim === 'budget_revision_requested') &&
+    !REPORT_APPROVED.has(report)
+  ) {
+    return 'revizyon_talep_edildi';
+  }
+
   if (claim === 'closed' || claim === 'completed') return 'dosya_kapandi';
 
-  // Red, claim budget_preparing olsa bile «Rapor Yazım Aşamasında»ya düşmez
-  if (REPORT_REJECTED.has(report)) return 'rapor_reddedildi';
-  if (REPORT_AWAITING.has(report)) return 'onay_bekliyor';
   if (REPORT_APPROVED.has(report) && !['repair_planning', 'repair_in_progress', 'repair_completed', 'invoice_pending', 'invoice_submitted', 'payment_pending', 'partially_collected'].includes(claim)) {
     return 'onaylandi';
-  }
-  if (input.verbalDecision === 'reject' && !REPORT_WRITING.has(report) && !REPORT_AWAITING.has(report) && !REPORT_APPROVED.has(report)) {
-    return 'rapor_reddedildi';
   }
   if (REPORT_WRITING.has(report) || claim === 'budget_preparing') return 'rapor_yaziliyor';
 
@@ -345,12 +371,13 @@ export type ProductStageFilter = {
 export const HASAR_PRODUCT_STAGE_FILTERS: readonly ProductStageFilter[] = [
   { id: 'ihbar', sequenceNo: 1, label: 'Yeni İhbar', codes: ['new'] },
   { id: 'tespit', sequenceNo: 2, label: 'Tespit Aşamasında', codes: ['pre_review', 'adjuster_assigned'] },
-  { id: 'rapor_yazim', sequenceNo: 3, label: 'Rapor Yazım Aşamasında', codes: ['budget_preparing', 'budget_revision_requested'] },
-  { id: 'onay_bekliyor', sequenceNo: 4, label: 'Onay Bekliyor', codes: ['budget_submitted'] },
-  { id: 'onarim', sequenceNo: 5, label: 'Onarım Aşamasında', codes: ['site_visit_planned', 'site_visit_done', 'budget_approved', 'repair_planning', 'repair_in_progress'] },
-  { id: 'finans', sequenceNo: 6, label: 'Finansa Aktarıldı', codes: ['repair_completed', 'invoice_pending', 'invoice_submitted', 'payment_pending', 'partially_collected'] },
-  { id: 'kapandi', sequenceNo: 7, label: 'Dosya Kapatıldı', codes: ['closed', 'completed'] },
-  { id: 'iptal', sequenceNo: 8, label: 'Dosya İptal Edildi', codes: ['cancelled'] },
+  { id: 'rapor_yazim', sequenceNo: 3, label: 'Rapor Yazım Aşamasında', codes: ['budget_preparing'] },
+  { id: 'revizyon', sequenceNo: 4, label: 'Revizyon Talep Edildi', codes: ['budget_revision_requested'] },
+  { id: 'onay_bekliyor', sequenceNo: 5, label: 'Onay Bekliyor', codes: ['budget_submitted'] },
+  { id: 'onarim', sequenceNo: 6, label: 'Onarım Aşamasında', codes: ['site_visit_planned', 'site_visit_done', 'budget_approved', 'repair_planning', 'repair_in_progress'] },
+  { id: 'finans', sequenceNo: 7, label: 'Finansa Aktarıldı', codes: ['repair_completed', 'invoice_pending', 'invoice_submitted', 'payment_pending', 'partially_collected'] },
+  { id: 'kapandi', sequenceNo: 8, label: 'Dosya Kapatıldı', codes: ['closed', 'completed'] },
+  { id: 'iptal', sequenceNo: 9, label: 'Dosya İptal Edildi', codes: ['cancelled'] },
 ];
 
 /** Acil kuyruk — tespit yok; Onarım Aşamasında yerine Hizmet Verildi. */

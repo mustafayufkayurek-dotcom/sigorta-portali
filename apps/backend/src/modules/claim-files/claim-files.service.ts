@@ -1151,10 +1151,16 @@ export class ClaimFilesService {
       toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus) : h.toStatus,
     }));
 
+    const operationStatusLabel = resolveOperationStatusLabel({
+      claimStatusCode: claimFile.currentStatus?.code ?? null,
+      reportStatus: newestReport?.status ?? null,
+      verbalDecision,
+    });
+
     return {
       ...withInspection,
       currentStatus: withInspection.currentStatus
-        ? overlayClaimStatusProductName(withInspection.currentStatus)
+        ? { ...overlayClaimStatusProductName(withInspection.currentStatus), name: operationStatusLabel }
         : withInspection.currentStatus,
       statusHistory: overlayHistory,
       financialSummary: {
@@ -1165,11 +1171,7 @@ export class ClaimFilesService {
       inboundReceivedAt: earliestInbound?.receivedAt ?? null,
       latestRepairReport: latestReport ? formatLatestRepairReport(latestReport) : null,
       newestRepairReportStatus: newestReport?.status ?? null,
-      operationStatusLabel: resolveOperationStatusLabel({
-        claimStatusCode: claimFile.currentStatus?.code ?? null,
-        reportStatus: newestReport?.status ?? null,
-        verbalDecision,
-      }),
+      operationStatusLabel,
       activeDelegation,
       financialVisibilityConfig: resolveFinancialVisibilityConfig(claimFile),
       canViewFinancials: requestingUser

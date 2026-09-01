@@ -17,6 +17,21 @@ describe('operation-status mapping', () => {
     expect(deriveOperationStage({ claimStatusCode: 'closed' }).label).toBe('Dosya Kapatıldı');
   });
 
+  it('closed + rejected report → Reddedildi', () => {
+    expect(
+      deriveOperationStage({
+        claimStatusCode: 'closed',
+        reportStatus: 'rejected',
+      }).label,
+    ).toBe('Reddedildi');
+  });
+
+  it('budget_revision_requested → Revizyon Talep Edildi', () => {
+    expect(
+      deriveOperationStage({ claimStatusCode: 'budget_revision_requested' }).label,
+    ).toBe('Revizyon Talep Edildi');
+  });
+
   it('maps adjuster_assigned → Tespit Aşamasında', () => {
     expect(deriveOperationStage({ claimStatusCode: 'adjuster_assigned' }).label).toBe('Tespit Aşamasında');
   });

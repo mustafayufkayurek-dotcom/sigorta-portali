@@ -717,6 +717,7 @@ export function ExpertFileDetailDrawer({
   const approvalToneClass = (status?: string) => {
     if (!status) return 'text-slate-700';
     if (/revizyon/i.test(status)) return 'text-amber-700';
+    if (/redded/i.test(status)) return 'text-rose-700';
     if (/bekleniyor/i.test(status)) return 'text-violet-700';
     if (/onaylandı|onaylandi/i.test(status)) return 'text-emerald-700';
     return 'text-slate-700';
@@ -827,7 +828,7 @@ export function ExpertFileDetailDrawer({
                     label="Revizyon İstendi mi"
                     value={
                       <span className={presenceClass(op?.revisionRequested ? 'pending' : 'ok')}>
-                        {op?.revisionRequested ? '✕ Evet — Revizyon Bekleniyor' : '✓ Hayır'}
+                        {op?.revisionRequested ? '✕ Evet — Revizyon Talep Edildi' : '✓ Hayır'}
                       </span>
                     }
                   />

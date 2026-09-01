@@ -59,6 +59,15 @@ describe('claim-file-stage', () => {
     expect(deriveClaimFileStageIndex({ claimStatusCode: 'closed' })).toBe(4);
   });
 
+  it('reddedilmiş rapor kapalı dosyada Onarım Tamamlandı olmaz', () => {
+    expect(
+      deriveClaimFileStageIndex({
+        claimStatusCode: 'closed',
+        reportStatus: 'rejected',
+      }),
+    ).toBeNull();
+  });
+
   it('tone: tamamlanan pasif, aktif belirgin, gelecek soluk', () => {
     expect(claimFileStageTone(0, 2)).toBe('completed');
     expect(claimFileStageTone(2, 2)).toBe('active');

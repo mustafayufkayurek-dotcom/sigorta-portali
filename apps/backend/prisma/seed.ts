@@ -310,7 +310,7 @@ async function main() {
     { code: 'site_visit_done', name: 'Onarım Aşamasında', sequenceNo: 5, color: '#10B981', isClosedState: false },
     { code: 'budget_preparing', name: 'Rapor Yazım Aşamasında', sequenceNo: 6, color: '#6366F1', isClosedState: false },
     { code: 'budget_submitted', name: 'Onay Bekliyor', sequenceNo: 7, color: '#8B5CF6', isClosedState: false },
-    { code: 'budget_revision_requested', name: 'Rapor Yazım Aşamasında', sequenceNo: 8, color: '#EF4444', isClosedState: false },
+    { code: 'budget_revision_requested', name: 'Revizyon Talep Edildi', sequenceNo: 8, color: '#EF4444', isClosedState: false },
     { code: 'budget_approved', name: 'Onarım Aşamasında', sequenceNo: 9, color: '#10B981', isClosedState: false },
     { code: 'repair_planning', name: 'Onarım Aşamasında', sequenceNo: 10, color: '#F59E0B', isClosedState: false },
     { code: 'repair_in_progress', name: 'Onarım Aşamasında', sequenceNo: 11, color: '#3B82F6', isClosedState: false },

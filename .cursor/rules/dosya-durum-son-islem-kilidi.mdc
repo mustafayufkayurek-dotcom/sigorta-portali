@@ -1,0 +1,34 @@
+---
+description: Dosya durumu son işlemi gösterir; kapanış reddi/revizyonu ezmez
+alwaysApply: true
+---
+
+# Dosya Durumu — Son İşlem
+
+**Kaynak (Mustafa · 01.09.2026):** Reddedilen dosyaların çoğu «Dosya Kapatıldı» görünüyordu. Revizyon «Rapor Yazım Aşamasında» yazıyordu.
+
+**Temel cümle:** Dosya hangi aşamadaysa ilgili kullanıcı onu görür. Kapanış kodu reddi veya revizyonu gizlemez.
+
+## Zorunlu
+
+1. `deriveOperationStageId`: red / revizyon, `closed` kontrolünden önce.
+2. Red → **Reddedildi**. Revizyon → **Revizyon Talep Edildi**. Gerçek kapanış (onaylı iş bitmiş) → **Dosya Kapatıldı**.
+3. Hasar liste, dosya, operasyon, Acil, sigorta, eksper aynı etiket.
+4. `portalStatusLabel('closed', 'Reddedildi')` → Reddedildi.
+
+## Yasak (açık onay yoksa)
+
+- Kapalı kodu reddin üstüne «Dosya Kapatıldı» basmak
+- `budget_revision_requested` için «Rapor Yazım Aşamasında»
+
+## Durdurma
+
+Red yine kapatıldı görünürse → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/operation-status.lock.spec.ts \
+ apps/web/src/utils/portal-file-flow-labels.lock.spec.ts
+```
