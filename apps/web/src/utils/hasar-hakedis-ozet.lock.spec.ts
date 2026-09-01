@@ -201,6 +201,8 @@ describe('hasar hakediş özet LOCK', () => {
     assert.match(tahsilat, /Avans uyarısı/);
     assert.match(tahsilat, /isAvansYariUstuNote/);
     assert.match(tahsilat, /HASAR_AVANS_YARI_USTU_ETIKET/);
+    assert.match(tahsilat, /from '@\/hooks\/usePanelRole'/);
+    assert.match(tahsilat, /usePanelRoleCode/);
   });
 
   it('avans geçmişi mahsubu sırayla böler', () => {

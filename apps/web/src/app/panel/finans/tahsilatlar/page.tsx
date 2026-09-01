@@ -27,6 +27,7 @@ import {
 } from '@/utils/panel-table-sort';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { HASAR_AVANS_YARI_USTU_ETIKET, isAvansYariUstuNote } from '@sigorta/shared';
+import { isOfficeStaffRole, usePanelRoleCode } from '@/hooks/usePanelRole';
 
 const PAYMENT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'paymentDate', label: 'Tarih / Vade', defaultWidth: 112, minWidth: 96 },
