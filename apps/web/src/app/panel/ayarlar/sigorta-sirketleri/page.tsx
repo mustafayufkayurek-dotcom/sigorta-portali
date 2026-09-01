@@ -54,6 +54,7 @@ type MainTab = 'sigorta' | 'asistans';
 type AssistanceFirm = {
   id: string;
   companyName: string | null;
+  shortName?: string | null;
   taxNumber: string | null;
   email: string | null;
   phone: string | null;
