@@ -1908,7 +1908,6 @@ export default function AcilDosyaDetayPage() {
     status: vaka.status,
     notes: vaka.notes,
   });
-  const fileRejected = decisionLabel === 'Reddedildi' || vaka.operationStatusLabel === 'Reddedildi';
   const lastOp = (vaka.operationStatusLabel ?? '').trim() || decisionLabel;
   const guncelDurum =
     lastOp === 'Reddedildi' || lastOp === 'Revizyon Talep Edildi'
