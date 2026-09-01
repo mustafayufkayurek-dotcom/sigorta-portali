@@ -45,6 +45,16 @@ describe('onarım raporu maliyet m² LOCK', () => {
     assert.equal(repairItemSupplierTotal(item), 12000);
   });
 
+  it('götürü kalemde kayıtlı tedarikçi fiyatı satıştan ayrı durur', () => {
+    const item = {
+      pricingType: 'lumpsum',
+      lumpSumPrice: 12000,
+      supplierTotal: 15000,
+    };
+    assert.equal(repairItemSalesTotal(item), 12000);
+    assert.equal(repairItemResolvedSupplierTotal(item), 15000);
+  });
+
   it('kâr satış eksi girilen maliyettir', () => {
     const pct = repairItemMarginPct({
       quantity: 100,
@@ -61,6 +71,8 @@ describe('onarım raporu maliyet m² LOCK', () => {
     assert.match(pdfSrc, /itemSupplierTotal\(item\)/);
     assert.match(service, /healInflatedSupplierTotals/);
     assert.match(service, /repairItemSupplierNeedsHeal/);
+    assert.match(service, /supplierOnly/);
+    assert.match(service, /dto.supplierTotal/);
   });
 
   it('satış toplamı miktar × birim fiyattır', () => {

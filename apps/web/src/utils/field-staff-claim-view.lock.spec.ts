@@ -29,6 +29,10 @@ describe('field-staff-claim-view lock', () => {
     assert.match(util, /fieldStaffAssignedListSplit/);
     assert.match(util, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
     assert.match(util, /FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL/);
+    assert.match(util, /FIELD_STAFF_END_INSPECTION_LABEL/);
+    assert.match(util, /Tespiti Sonlandır/);
+    assert.match(util, /Dosya dosya sorumlusuna iletilir/);
+    assert.match(util, /SITE_VISIT_DONE/);
     assert.match(util, /FIELD_STAFF_ASSIGNMENTS_HREF/);
     assert.match(util, /FIELD_STAFF_ASSIGNMENTS_LABEL/);
     assert.match(util, /FIELD_STAFF_CLAIMS_CHANGED_EVENT/);
@@ -172,7 +176,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(detail, /FieldContactHistory/);
     assert.match(detail, /FieldInspectionPhotosPanel/);
     assert.match(detail, /Yol Tarifi/);
-    assert.match(detail, /Tespit Yapıldı Olarak İşaretle/);
+    assert.match(detail, /FIELD_STAFF_END_INSPECTION_LABEL/);
+    assert.match(detail, /saha-tespit-sonlandir-seridi/);
     assert.match(detail, /\/inspection/);
     assert.match(detail, /Tespit Fotoğrafları/);
     assert.match(detail, /Tespit Notları/);
@@ -230,7 +235,7 @@ describe('field-staff-claim-view lock', () => {
     assert.match(onarimTab, /max-h-\[min\(32rem,55vh\)\]/);
     const reportPage = read('../app/panel/hasar-dosyalari/[id]/onarim-raporu/[reportId]/page.tsx');
     assert.match(reportPage, /bg-slate-50 px-5 py-3/);
-    assert.doesNotMatch(officeBlock, /Tespit Yapıldı Olarak İşaretle/);
+    assert.doesNotMatch(officeBlock, /FIELD_STAFF_END_INSPECTION_LABEL/);
     assert.doesNotMatch(officeBlock, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
   });
 
@@ -291,7 +296,7 @@ describe('field-staff-claim-view lock', () => {
   it('tespit tamamla onay ister; saha ofis dosyasını kapatmaz', () => {
     const detail = read('../app/panel/hasar-dosyalari/[id]/page.tsx');
     assert.match(detail, /window\.confirm/);
-    assert.match(detail, /Tespiti tamamlamak istediğinize emin misiniz/);
+    assert.match(detail, /FIELD_STAFF_END_INSPECTION_CONFIRM/);
     assert.match(detail, /\/inspection/);
     assert.doesNotMatch(detail, /saha-dosya-kapat/);
     assert.doesNotMatch(detail, /field-close/);
@@ -299,5 +304,6 @@ describe('field-staff-claim-view lock', () => {
     assert.match(detail, /notifyFieldStaffClaimsChanged/);
     assert.match(detail, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
     assert.match(detail, /FIELD_STAFF_ASSIGNMENTS_HREF/);
+    assert.match(detail, /OPS_NOTICE\.sahaTespitSonlandir/);
   });
 });

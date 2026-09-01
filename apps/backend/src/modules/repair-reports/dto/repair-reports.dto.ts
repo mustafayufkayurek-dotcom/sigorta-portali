@@ -207,6 +207,11 @@ export class UpdateReportItemDto {
   lumpSumPrice?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  supplierTotal?: number;
+
+  @IsOptional()
   @IsBoolean()
   materialIncluded?: boolean;
 

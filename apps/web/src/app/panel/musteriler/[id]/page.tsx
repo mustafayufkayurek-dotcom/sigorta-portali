@@ -133,6 +133,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             {isCorporate ? (
               <>
+                <InfoRow label="Kısa Ad" value={customer.shortName} className="col-span-2" />
                 <InfoRow label="Şirket Adı" value={customer.companyName} className="col-span-2" />
                 <InfoRow label="Alt Tip" value={subTypeLabel ? (
                   <Badge variant="blue">{subTypeLabel}</Badge>
@@ -143,6 +144,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
               </>
             ) : (
               <>
+                <InfoRow label="Kısa Ad" value={customer.shortName} className="col-span-2" />
                 <InfoRow label="Ad Soyad" value={`${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim()} className="col-span-2" />
                 <InfoRow label="TC Kimlik" value={
                   customer.identityNo ? (

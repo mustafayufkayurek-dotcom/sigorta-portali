@@ -82,7 +82,7 @@ export class VendorStatementsService {
         include: {
           vendor: { select: { id: true, name: true, phone: true, email: true, taxNumber: true } },
           createdBy: { select: { id: true, firstName: true, lastName: true } },
-          items: { select: { lineDescription: true, workGroupId: true, workGroup: { select: { name: true } } } },
+          items: { select: { lineDescription: true, workGroupId: true, totalAmount: true, workGroup: { select: { name: true } } } },
           _count: { select: { items: true, receipts: true } },
         },
         orderBy: { createdAt: 'desc' },

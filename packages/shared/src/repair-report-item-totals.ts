@@ -39,9 +39,12 @@ export function repairItemSupplierNeedsHeal(item: RepairItemTotalsInput): boolea
 }
 
 export function repairItemResolvedSupplierTotal(item: RepairItemTotalsInput): number {
-  if (item.pricingType === 'lumpsum') return Number(item.lumpSumPrice) || 0;
-  if (repairItemSupplierNeedsHeal(item)) return repairItemSupplierTotal(item);
   const stored = Number(item.supplierTotal);
+  if (item.pricingType === 'lumpsum') {
+    if (Number.isFinite(stored) && stored > 0) return stored;
+    return Number(item.lumpSumPrice) || 0;
+  }
+  if (repairItemSupplierNeedsHeal(item)) return repairItemSupplierTotal(item);
   if (Number.isFinite(stored) && stored > 0) return stored;
   return repairItemSupplierTotal(item);
 }

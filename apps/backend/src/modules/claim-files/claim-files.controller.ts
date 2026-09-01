@@ -392,7 +392,7 @@ export class ClaimFilesController {
 
   @Post(':id/field-close')
   @RequirePermissions('claim_file.update')
-  @ApiOperation({ summary: 'Saha kapatma kapısı — ofis dosyasını kapatmaz (400)' })
+  @ApiOperation({ summary: 'Saha kapatma — tespiti sonlandırır, ofis dosyasını kapatmaz' })
   async fieldClose(
     @Param('id') id: string,
     @Body() body: { note?: string },

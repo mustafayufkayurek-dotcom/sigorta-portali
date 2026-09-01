@@ -304,6 +304,8 @@ export default function SigortaSirketleriPage() {
     const desiredStatus = assistanceForm.status;
     const payload = {
       companyName: assistanceForm.companyName.trim(),
+      shortName: String(editingAssistance?.shortName ?? '').trim()
+        || assistanceForm.companyName.trim(),
       email: assistanceForm.email.trim() || null,
       phone: assistanceForm.phone.trim() || null,
       city: assistanceForm.city.trim() || null,

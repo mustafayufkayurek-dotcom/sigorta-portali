@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
-import { buildHasarHakedisGrantLines, buildHasarHakedisSecimSatirlari, DOSYA_ODEME_IS_GRUBU_YOK, DOSYA_ODEME_TEDARIKCI_YOK, avansAciklamaMetni, dosyaOdemeIsGrubu, dosyaOdemeTedarikciAdi, gercekTedarikciIsGruplari, hasarHakedisKalan, isHasarHakedisSatiriPasif, isOrnekHakedisSatiri, workGroupJobsLabel } from './hasar-hakedis-grant.ts';
+import { avansPayiForSatir, buildHasarHakedisGrantLines, buildHasarHakedisSecimSatirlari, DOSYA_ODEME_IS_GRUBU_YOK, DOSYA_ODEME_TEDARIKCI_YOK, avansAciklamaMetni, dosyaOdemeIsGrubu, dosyaOdemeTedarikciAdi, gercekTedarikciIsGruplari, hasarHakedisKalan, isHasarHakedisSatiriPasif, isOrnekHakedisSatiri, scaleGrantDetailsToAmount, verilenHakedisForSatir, workGroupJobsLabel } from './hasar-hakedis-grant.ts';
 import { netHakedisAfterAvans } from '../../../../packages/shared/src/hasar-flow-groups.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -201,6 +201,57 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.equal(hasarHakedisKalan(12500, 1500, 6500), 4500);
   });
 
+  it('aynı tedarikçide ikinci iş grubu kalan hakediş durur', () => {
+    const statements = [{
+      vendorId: 'v1',
+      status: 'APPROVED',
+      totalAmount: 13000,
+      items: [{
+        workGroupId: 'alc',
+        lineDescription: 'Alçıpan İşleri',
+        totalAmount: 13000,
+      }],
+    }];
+    const verilenSihhi = verilenHakedisForSatir({
+      vendorId: 'v1',
+      workGroupId: 'siva',
+      workGroupLabel: 'Sıhhi Tesisat İşleri',
+      statements,
+      vendorSatirSayisi: 2,
+    });
+    const verilenAlc = verilenHakedisForSatir({
+      vendorId: 'v1',
+      workGroupId: 'alc',
+      workGroupLabel: 'Alçıpan İşleri',
+      statements,
+      vendorSatirSayisi: 2,
+    });
+    assert.equal(verilenSihhi, 0);
+    assert.equal(hasarHakedisKalan(12000, 0, verilenSihhi), 12000);
+    assert.equal(isHasarHakedisSatiriPasif({
+      vendorId: 'v1',
+      workGroupId: 'siva',
+      kalanHakedis: hasarHakedisKalan(12000, 0, verilenSihhi),
+    }), false);
+    assert.equal(verilenAlc, 13000);
+    assert.equal(hasarHakedisKalan(13000, 0, verilenAlc), 0);
+  });
+
+  it('avans iş grubu satırına bütçe payıyla yazılır', () => {
+    assert.equal(avansPayiForSatir(13000, 25000, 5000), 2600);
+    assert.equal(avansPayiForSatir(12000, 25000, 5000), 2400);
+    assert.equal(avansPayiForSatir(13000, 13000, 1500), 1500);
+  });
+
+  it('bütçe düzenlenince kalem payı ölçeklenir', () => {
+    const scaled = scaleGrantDetailsToAmount(
+      [{ id: 'i1', jobDescription: 'Boru', amount: 8000 }, { id: 'i2', jobDescription: 'Musluk', amount: 4000 }],
+      18000,
+    );
+    assert.equal(scaled[0]?.amount, 12000);
+    assert.equal(scaled[1]?.amount, 6000);
+  });
+
   it('avans brüt hakedişten düşülür', () => {
     assert.equal(netHakedisAfterAvans(12500, 2500), 10000);
   });
@@ -244,6 +295,8 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.match(panel, /hasar-hakedis-bakiye/);
     assert.match(panel, /Kalan Bakiye/);
     assert.match(panel, /Finansa Aktar/);
+    assert.match(panel, /Bu iş grubuna hakediş verildi/);
+    assert.doesNotMatch(panel, /Bu tedarikçiye hakediş verildi/);
     assert.match(panel, /Sözleşme durumunu belirleyiniz/);
     assert.doesNotMatch(panel, /Dosyada sözleşme var mı sorun/);
     assert.match(panel, /Avans Ver/);
@@ -274,7 +327,17 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.match(panel, /paymentDokumLayoutStyle/);
     assert.match(panel, /fromFile: claimId/);
     assert.match(panel, /label: 'Dosya'/);
+    assert.match(panel, /verilenHakedisForSatir/);
+    assert.match(panel, /avansPayiForSatir/);
+    assert.match(panel, /hasar-hakedis-butce-duzenle/);
+    assert.match(panel, />\s*Düzenle\s*</);
+    assert.match(panel, /scaleGrantDetailsToAmount/);
     assert.doesNotMatch(panel, /Tedarikçi Dosyaları/);
     assert.doesNotMatch(panel, /profile-overview/);
+    const statements = readFileSync(
+      join(here, '../../../../apps/backend/src/modules/vendor-statements/vendor-statements.service.ts'),
+      'utf8',
+    );
+    assert.match(statements, /items: \{ select: \{ lineDescription: true, workGroupId: true, totalAmount: true/);
   });
 });

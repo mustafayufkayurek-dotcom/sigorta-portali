@@ -573,6 +573,36 @@ export class RepairReportsService {
     const item = await this.prisma.repairReportItem.findUnique({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Kalem bulunamadı');
 
+    const supplierOnly = dto.supplierTotal != null
+      && dto.salesUnitPrice === undefined
+      && dto.lumpSumPrice === undefined
+      && dto.pricingType === undefined
+      && dto.supplierUnitPrice === undefined
+      && dto.quantity === undefined;
+
+    if (supplierOnly) {
+      const nextSupplier = Math.round(Number(dto.supplierTotal) * 100) / 100;
+      if (!(nextSupplier >= 0)) throw new BadRequestException('Tedarikçi fiyatı girin.');
+      const updated = await this.prisma.repairReportItem.update({
+        where: { id: itemId },
+        data: {
+          supplierTotal: nextSupplier,
+          supplierUnitPrice: item.pricingType === 'lumpsum' ? item.supplierUnitPrice : nextSupplier,
+          marginPct: repairItemMarginPct({
+            pricingType: item.pricingType,
+            lumpSumPrice: item.lumpSumPrice,
+            quantity: item.quantity,
+            salesUnitPrice: item.salesUnitPrice,
+            supplierUnitPrice: item.pricingType === 'lumpsum' ? item.supplierUnitPrice : nextSupplier,
+            supplierTotal: nextSupplier,
+          }),
+        },
+        include: { workGroup: true, damageType: true },
+      });
+      await this.recalculateTotals(item.reportId);
+      return updated;
+    }
+
     const pricingType = dto.pricingType ?? item.pricingType;
     const quantity = dto.quantity ?? item.quantity;
     const supplierUnitPrice = dto.supplierUnitPrice ?? item.supplierUnitPrice;

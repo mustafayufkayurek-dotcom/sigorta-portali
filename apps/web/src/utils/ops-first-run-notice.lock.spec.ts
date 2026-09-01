@@ -111,9 +111,11 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.doesNotMatch(hakedisPanel, /CommercialPricingDrawer/);
     assert.match(hakedisPanel, /hasar-gider-hakedis/);
     assert.match(hakedisPanel, /Gider/);
-    assert.equal(OPS_NOTICE.hasarHakedisGider.id, 'hasar-hakedis-gider-v549');
+    assert.equal(OPS_NOTICE.hasarHakedisGider.id, 'hasar-hakedis-gider-v552');
     assert.match(OPS_NOTICE.hasarHakedisGider.body, /Finansa Aktar/);
     assert.match(OPS_NOTICE.hasarHakedisGider.body, /ödeme kuyruğu/);
+    assert.match(OPS_NOTICE.hasarHakedisGider.body, /Düzenle/);
+    assert.match(OPS_NOTICE.hasarHakedisGider.body, /her iş grubu/);
     assert.match(hakedisPanel, /Finansa Aktar/);
     assert.match(hakedisPanel, /tahsilatlar\?queue=payable/);
     assert.equal(OPS_NOTICE.hasarMasrafButceEk.id, 'hasar-masraf-butce-ek-v535');
@@ -195,6 +197,20 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(OPS_NOTICE.hasarGelirFaturali.body, /Faturasız seçince KDV alanı kapanır/);
     assert.match(OPS_NOTICE.hasarGelirFaturali.body, /Tahsilat kaynağı dosyadan gelir/);
     assert.match(OPS_NOTICE.hasarGelirFaturali.body, /finans burada yeniden seçmez/);
+  });
+
+  it('Saha tespit sonlandır şeridi durur', () => {
+    const hasarDosya = readFileSync(
+      join(here, '../app/panel/hasar-dosyalari/[id]/page.tsx'),
+      'utf8',
+    );
+    assert.match(hasarDosya, /OPS_NOTICE\.sahaTespitSonlandir/);
+    assert.match(hasarDosya, /saha-tespit-sonlandir-seridi/);
+    assert.equal(OPS_NOTICE.sahaTespitSonlandir.id, 'saha-tespit-sonlandir-v551');
+    assert.match(OPS_NOTICE.sahaTespitSonlandir.body, /Tespiti Sonlandır/);
+    assert.match(OPS_NOTICE.sahaTespitSonlandir.body, /dosya sorumlusuna düşer/);
+    assert.match(OPS_NOTICE.sahaTespitSonlandir.body, /Kapatma dosya sorumlusundadır/);
+    assert.doesNotMatch(OPS_NOTICE.sahaTespitSonlandir.body, /Google|API/);
   });
 
   it('personel kılavuzu Acil tedarikçi ve dosya sorumlusu maddelerini taşır', () => {

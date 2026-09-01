@@ -26,6 +26,7 @@ import { ACIKLAMA_YARDIM } from '@/utils/aciklama-yardim';
 import { fmtDate } from '@/utils/date-helpers';
 import {
   avansAciklamaMetni,
+  avansPayiForSatir,
   buildHasarHakedisGrantLines,
   buildHasarHakedisSecimSatirlari,
   DOSYA_ODEME_IS_GRUBU_YOK,
@@ -35,6 +36,8 @@ import {
   hasarHakedisKalan,
   isHasarHakedisSatiriPasif,
   isOrnekHakedisSatiri,
+  scaleGrantDetailsToAmount,
+  verilenHakedisForSatir,
   type HasarHakedisGrantDetail,
   type HasarHakedisSecimSatiri,
 } from '@/utils/hasar-hakedis-grant';
@@ -484,6 +487,8 @@ function HakedisTedarikciKartlari({
   saving,
   sendingKey,
   onGonder,
+  onButceKaydet,
+  savingButceKey,
   aksiyonEtiket = 'Finansa Aktar',
   pasifEtiket = 'Hakediş verildi',
   savingEtiket = 'Aktarılıyor…',
@@ -492,16 +497,20 @@ function HakedisTedarikciKartlari({
   rows: HasarHakedisSecimSatiri[];
   emptySuppliers: boolean;
   pasif: (row: HasarHakedisSecimSatiri) => boolean;
-  avansOf: (vendorId: string) => number;
-  verilenOf: (vendorId: string) => number;
+  avansOf: (row: HasarHakedisSecimSatiri) => number;
+  verilenOf: (row: HasarHakedisSecimSatiri) => number;
   saving: boolean;
   sendingKey: string | null;
   onGonder: (row: HasarHakedisSecimSatiri) => void;
+  onButceKaydet?: (row: HasarHakedisSecimSatiri, amount: number) => Promise<void> | void;
+  savingButceKey?: string | null;
   aksiyonEtiket?: string;
   pasifEtiket?: string;
   savingEtiket?: string;
   testId?: string;
 }) {
+  const [duzenlenenKey, setDuzenlenenKey] = useState<string | null>(null);
+  const [butceDraft, setButceDraft] = useState('');
   if (emptySuppliers) {
     return <p className="text-[12px] font-normal text-slate-500">Dosyada görevli tedarikçi yok.</p>;
   }
@@ -511,9 +520,10 @@ function HakedisTedarikciKartlari({
   return (
     <ul className="space-y-2" data-testid={testId}>
       {rows.map((row) => {
-        const avans = avansOf(row.vendorId);
-        const kalan = hasarHakedisKalan(row.amount, avans, verilenOf(row.vendorId));
+        const avans = avansOf(row);
+        const kalan = hasarHakedisKalan(row.amount, avans, verilenOf(row));
         const isPasif = pasif(row) || kalan <= 0;
+        const duzenleniyor = duzenlenenKey === row.key;
         return (
           <li
             key={row.key}
@@ -530,7 +540,65 @@ function HakedisTedarikciKartlari({
               row.workGroupLabel === 'İş Grubu Yok' ? 'text-red-700' : isPasif ? 'text-slate-500' : 'text-slate-800'
             }`}>{row.workGroupLabel}</p>
             <div className={`mt-2 space-y-0.5 ${isPasif ? 'text-slate-400' : 'text-slate-600'}`}>
-              <StatementLine label="Bütçe" value={row.amount} />
+              {onButceKaydet && duzenleniyor ? (
+                <div className="space-y-2 py-[3px]">
+                  <p className="text-[13px] font-normal text-slate-600">Bütçe</p>
+                  <TrAmountInput
+                    id={`hasar-hakedis-butce-${row.key}`}
+                    autoFocus
+                    value={butceDraft}
+                    onChange={setButceDraft}
+                    className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pr-9 text-right text-[13px] font-medium tabular-nums outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDuzenlenenKey(null);
+                        setButceDraft('');
+                      }}
+                      className="rounded-lg px-2.5 py-1 text-[12px] font-medium text-slate-600 hover:bg-slate-100"
+                    >
+                      Vazgeç
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingButceKey === row.key}
+                      onClick={() => {
+                        const next = parseTrAmountInput(butceDraft);
+                        if (next == null || !(next > 0)) return;
+                        void Promise.resolve(onButceKaydet(row, next)).then(() => {
+                          setDuzenlenenKey(null);
+                          setButceDraft('');
+                        });
+                      }}
+                      className="rounded-lg bg-blue-600 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+                    >
+                      {savingButceKey === row.key ? 'Kaydediliyor…' : 'Kaydet'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-baseline justify-between gap-3 py-[3px]">
+                  <p className="text-[13px] font-normal text-slate-600">Bütçe</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-[13px] font-normal tabular-nums text-slate-800">{fmt(row.amount)}</p>
+                    {onButceKaydet ? (
+                      <button
+                        type="button"
+                        data-testid="hasar-hakedis-butce-duzenle"
+                        onClick={() => {
+                          setDuzenlenenKey(row.key);
+                          setButceDraft(numberToTrAmountInput(row.amount));
+                        }}
+                        className="text-[12px] font-medium text-blue-700 hover:underline"
+                      >
+                        Düzenle
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              )}
               <StatementLine label="Ödenen Avans" value={avans} />
               <StatementLine label="Kalan Hakediş" value={kalan} strong />
             </div>
@@ -746,6 +814,7 @@ export function HasarFileHakedisPanel({
   const [composer, setComposer] = useState<Composer>('none');
   const [, setOpening] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingButceKey, setSavingButceKey] = useState<string | null>(null);
   const [lines, setLines] = useState<GrantLine[]>([]);
   const [, setOpenGroupKey] = useState<string | null>(null);
   const [, setTalepDraft] = useState('');
@@ -1065,18 +1134,6 @@ export function HasarFileHakedisPanel({
   const secilenSatir = secimSatirlari.find((row) => row.key === secilenHakedisKey) ?? null;
   const secilenAvansSatir = hakedisSayfaSatirlari.find((row) => row.key === secilenAvansKey) ?? null;
 
-  const satirPasif = (row: HasarHakedisSecimSatiri) => isHasarHakedisSatiriPasif({
-    vendorId: row.vendorId,
-    workGroupId: row.workGroupId,
-    kalanHakedis: hasarHakedisKalan(row.amount, vendorAvans(row.vendorId), vendorVerilenHakedis(row.vendorId)),
-    statements: hakedis.map((item) => ({
-      vendorId: item.vendor?.id,
-      vendor: item.vendor,
-      status: item.status,
-    })),
-    hakedisGonderildiVendorIds,
-  });
-
   const selectHakedisSatiri = (row: HasarHakedisSecimSatiri) => {
     if (satirPasif(row)) return;
     const supplier = suppliers.find((item) => item.id === row.vendorId);
@@ -1134,13 +1191,51 @@ export function HasarFileHakedisPanel({
     return Math.round(fromPayments * 100) / 100;
   };
 
-  const talepBrut = secilenSatir
-    ? hasarHakedisKalan(
-      secilenSatir.amount,
-      vendorAvans(secilenSatir.vendorId),
-      vendorVerilenHakedis(secilenSatir.vendorId),
-    )
-    : 0;
+  const vendorSatirToplam = (vendorId: string) => Math.round(
+    secimSatirlari
+      .filter((row) => row.vendorId === vendorId)
+      .reduce((sum, row) => sum + row.amount, 0) * 100,
+  ) / 100;
+
+  const satirVerilen = (row: HasarHakedisSecimSatiri) => verilenHakedisForSatir({
+    vendorId: row.vendorId,
+    workGroupId: row.workGroupId,
+    workGroupLabel: row.workGroupLabel,
+    statements: hakedis,
+    payments: payments.map((item) => ({
+      payerId: item.payerId,
+      amount: item.amount,
+      skip: isAvansPayment(item) || isHakedisMahsupPayment(item),
+    })),
+    vendorSatirSayisi: secimSatirlari.filter((item) => item.vendorId === row.vendorId).length,
+  });
+
+  const satirAvans = (row: HasarHakedisSecimSatiri) => avansPayiForSatir(
+    row.amount,
+    vendorSatirToplam(row.vendorId),
+    vendorAvans(row.vendorId),
+  );
+
+  const satirKalan = (row: HasarHakedisSecimSatiri) => hasarHakedisKalan(
+    row.amount,
+    satirAvans(row),
+    satirVerilen(row),
+  );
+
+  const satirPasif = (row: HasarHakedisSecimSatiri) => isHasarHakedisSatiriPasif({
+    vendorId: row.vendorId,
+    workGroupId: row.workGroupId,
+    kalanHakedis: satirKalan(row),
+    statements: hakedis.map((item) => ({
+      vendorId: item.vendor?.id,
+      vendor: item.vendor,
+      status: item.status,
+      items: item.items,
+    })),
+    hakedisGonderildiVendorIds,
+  });
+
+  const talepBrut = secilenSatir ? satirKalan(secilenSatir) : 0;
   const onayliToplam = hakedis.reduce((s, row) => s + Number(row.totalAmount ?? 0), 0);
   buildHasarHakedisOzet({
     sozlesmeTutari: sozlesme,
@@ -1160,23 +1255,17 @@ export function HasarFileHakedisPanel({
     ? Math.round((sozlesme - kullanilanTutar) * 100) / 100
     : null;
   const avansTutarDraft = parseTrAmountInput(avansDraft) ?? 0;
-  const avansSatirKalan = secilenAvansSatir
-    ? hasarHakedisKalan(
-      secilenAvansSatir.amount,
-      vendorAvans(secilenAvansSatir.vendorId),
-      vendorVerilenHakedis(secilenAvansSatir.vendorId),
-    )
-    : null;
+  const avansSatirKalan = secilenAvansSatir ? satirKalan(secilenAvansSatir) : null;
   const avansSatirKalanSonra = secilenAvansSatir
     ? hasarHakedisKalan(
       secilenAvansSatir.amount,
-      vendorAvans(secilenAvansSatir.vendorId) + avansTutarDraft,
-      vendorVerilenHakedis(secilenAvansSatir.vendorId),
+      satirAvans(secilenAvansSatir) + avansTutarDraft,
+      satirVerilen(secilenAvansSatir),
     )
     : null;
   const stripSozlesme = composer === 'avans' && secilenAvansSatir ? secilenAvansSatir.amount : sozlesme;
   const stripKullanilan = composer === 'avans' && secilenAvansSatir
-    ? vendorAvans(secilenAvansSatir.vendorId) + vendorVerilenHakedis(secilenAvansSatir.vendorId) + avansTutarDraft
+    ? satirAvans(secilenAvansSatir) + satirVerilen(secilenAvansSatir) + avansTutarDraft
     : kullanilanTutar;
   const stripKalan = composer === 'avans' && secilenAvansSatir
     ? avansSatirKalanSonra
@@ -1189,8 +1278,6 @@ export function HasarFileHakedisPanel({
     avansIsBedeli,
     (secilenAvansSatir ? vendorAvans(secilenAvansSatir.vendorId) : avansHesap.avansToplam) + avansTutarDraft,
   );
-  const hakedisButceAsim = sozlesme != null && talepBrut > 0
-    && (onayliToplam + talepBrut) > sozlesme + 0.009;
   const sozlesmeMuaf = isHasarVendorContractWaived({ id: claimId, fileNo });
   const sozlesmeHazir = sozlesmeMuaf
     ? true
@@ -1387,6 +1474,46 @@ export function HasarFileHakedisPanel({
     }
   };
 
+  const saveButce = async (row: HasarHakedisSecimSatiri, amount: number) => {
+    if (!(amount > 0)) {
+      showToast('error', 'Bütçe tutarı girin.');
+      return;
+    }
+    const matchesLine = (line: GrantLine) => {
+      if (row.workGroupId && line.workGroupId) return line.workGroupId === row.workGroupId;
+      return line.label.toLocaleLowerCase('tr-TR') === row.workGroupLabel.toLocaleLowerCase('tr-TR');
+    };
+    const nextLines = lines.map((line) => {
+      if (!matchesLine(line)) return line;
+      return {
+        ...line,
+        amount: numberToTrAmountInput(amount),
+        details: scaleGrantDetailsToAmount(line.details, amount),
+      };
+    });
+    setLines(nextLines);
+    const nextSum = nextLines.reduce((sum, line) => sum + (parseTrAmountInput(line.amount) ?? 0), 0);
+    if (nextSum > 0) {
+      setSozlesme(nextSum);
+      setOnerilen(nextSum);
+    }
+    const changed = nextLines.find(matchesLine);
+    const kalemler = (changed?.details ?? []).filter((item) => item.id);
+    if (kalemler.length === 0) return;
+    setSavingButceKey(row.key);
+    try {
+      await Promise.all(kalemler.map((item) => axios.put(
+        `${API}/repair-report-items/${item.id}`,
+        { supplierTotal: item.amount },
+        { headers: authHeader() },
+      )));
+    } catch (e) {
+      showToast('error', axiosErrorMessage(e, 'Bütçe kaydı yazılamadı. Bu hakedişte yeni tutar durur.'));
+    } finally {
+      setSavingButceKey(null);
+    }
+  };
+
   const submitGrant = async (hedef?: HasarHakedisSecimSatiri) => {
     const satir = hedef ?? secilenSatir;
     if (!satir) {
@@ -1398,14 +1525,10 @@ export function HasarFileHakedisPanel({
       return;
     }
     if (satirPasif(satir)) {
-      showToast('error', 'Bu tedarikçiye hakediş verildi.');
+      showToast('error', 'Bu iş grubuna hakediş verildi.');
       return;
     }
-    const kalan = hasarHakedisKalan(
-      satir.amount,
-      vendorAvans(satir.vendorId),
-      vendorVerilenHakedis(satir.vendorId),
-    );
+    const kalan = satirKalan(satir);
     if (kalan <= 0) {
       showToast('error', 'Kalan hakediş yok.');
       return;
@@ -1426,7 +1549,7 @@ export function HasarFileHakedisPanel({
       showToast('error', ACIKLAMA_YARDIM.sozlesmeYok);
       return;
     }
-    if (hakedisButceAsim) {
+    if (sozlesme != null && (onayliToplam + kalan) > sozlesme + 0.009) {
       showToast('error', 'Bu tutar bütçeyi aşıyor. Hakediş onaylanmaz.');
       return;
     }
@@ -1451,8 +1574,9 @@ export function HasarFileHakedisPanel({
         { headers: authHeader() },
       );
       showToast('success', 'Finansa aktarıldı.');
-      closePanel();
-      router.push(`/panel/finans/tahsilatlar?queue=payable&claimFileId=${claimId}`);
+      await load();
+      setComposer('hakedis');
+      setSecilenHakedisKey(null);
     } catch (e) {
       showToast('error', axiosErrorMessage(e, 'Hakediş verilemedi.'));
     } finally {
@@ -1612,13 +1736,9 @@ export function HasarFileHakedisPanel({
                         <HakedisTedarikciKartlari
                           rows={hakedisSayfaSatirlari}
                           emptySuppliers={suppliers.length === 0 && hakedisSayfaSatirlari.length === 0}
-                          pasif={(row) => hasarHakedisKalan(
-                            row.amount,
-                            vendorAvans(row.vendorId),
-                            vendorVerilenHakedis(row.vendorId),
-                          ) <= 0}
-                          avansOf={vendorAvans}
-                          verilenOf={vendorVerilenHakedis}
+                          pasif={(row) => satirKalan(row) <= 0}
+                          avansOf={satirAvans}
+                          verilenOf={satirVerilen}
                           saving={false}
                           sendingKey={null}
                           onGonder={selectAvansSatiri}
@@ -1638,7 +1758,7 @@ export function HasarFileHakedisPanel({
                           }`}>{secilenAvansSatir.workGroupLabel}</p>
                           <div className="mt-2 space-y-0.5 text-slate-600">
                             <StatementLine label="Bütçe" value={secilenAvansSatir.amount} />
-                            <StatementLine label="Ödenen Avans" value={vendorAvans(secilenAvansSatir.vendorId)} />
+                            <StatementLine label="Ödenen Avans" value={satirAvans(secilenAvansSatir)} />
                             <StatementLine
                               label="Bu Avans"
                               value={avansTutarDraft}
@@ -1741,11 +1861,13 @@ export function HasarFileHakedisPanel({
                         rows={hakedisSayfaSatirlari}
                         emptySuppliers={suppliers.length === 0 && hakedisSayfaSatirlari.length === 0}
                         pasif={satirPasif}
-                        avansOf={vendorAvans}
-                        verilenOf={vendorVerilenHakedis}
+                        avansOf={satirAvans}
+                        verilenOf={satirVerilen}
                         saving={saving}
                         sendingKey={secilenHakedisKey}
                         onGonder={(row) => void submitGrant(row)}
+                        onButceKaydet={saveButce}
+                        savingButceKey={savingButceKey}
                       />
                     </div>
                     {secimSatirlari.some((row) => !satirPasif(row)) && !sozlesmeMuaf ? (

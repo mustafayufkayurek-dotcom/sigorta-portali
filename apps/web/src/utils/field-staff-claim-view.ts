@@ -58,7 +58,7 @@ function formatInspectionDateTime(iso: string | null | undefined): string {
 /** Liste/detay — Tespit Yapıldı / Yapılmadı + tarih saat */
 export function fieldStaffInspectionStatus(claim: FieldStaffClaimLite): FieldStaffInspectionStatus {
   const code = (claim.currentStatus?.code ?? '').toUpperCase();
-  const statusDone = code === 'INSPECTION_DONE';
+  const statusDone = code === 'INSPECTION_DONE' || code === 'SITE_VISIT_DONE';
   const done = Boolean(claim.inspectionDone) || statusDone;
   const doneAt =
     claim.inspectionDoneAt
@@ -88,6 +88,13 @@ export const FIELD_STAFF_COMPLETED_INSPECTIONS_HREF = '/panel/saha/tespiti-tamam
 export const FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL = 'Tamamlanan Tespitler';
 export const FIELD_STAFF_ASSIGNMENTS_HREF = '/panel/hasar-dosyalari';
 export const FIELD_STAFF_ASSIGNMENTS_LABEL = 'Atanan Dosyalar';
+export const FIELD_STAFF_END_INSPECTION_LABEL = 'Tespiti Sonlandır';
+export const FIELD_STAFF_END_INSPECTION_CONFIRM =
+  'Tespiti sonlandırmak istediğinize emin misiniz?\n\nDosya dosya sorumlusuna iletilir. Dosya kapanmaz.';
+export const FIELD_STAFF_END_INSPECTION_TOAST =
+  'Tespit sonlandı. Dosya dosya sorumlusunda açık durur.';
+export const FIELD_STAFF_END_INSPECTION_DONE =
+  'Tespit sonlandı. Dosya sorumlusuna iletildi.';
 
 /** Dosya sorumlusu — saha sayfası yok; tespit biten açık dosya Hasar Dosyaları’nda işlenir. */
 export const OFFICE_COMPLETED_INSPECTIONS_HREF = '/panel/hasar-dosyalari?status=open';

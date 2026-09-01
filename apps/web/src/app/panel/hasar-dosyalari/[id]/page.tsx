@@ -38,6 +38,10 @@ import {
   FIELD_STAFF_ASSIGNMENTS_HREF,
   FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
   FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
+  FIELD_STAFF_END_INSPECTION_CONFIRM,
+  FIELD_STAFF_END_INSPECTION_DONE,
+  FIELD_STAFF_END_INSPECTION_LABEL,
+  FIELD_STAFF_END_INSPECTION_TOAST,
   FIELD_STAFF_HIDDEN_CLAIM_TABS,
   fieldStaffAddress,
   fieldStaffDirectionsUrl,
@@ -256,9 +260,7 @@ function FieldStaffVisitCard({
 
   const markInspectionDone = async () => {
     if (inspection.done || marking) return;
-    const ok = window.confirm(
-      'Tespiti tamamlamak istediğinize emin misiniz?\n\nNot ve fotoğrafların iletildiğini kontrol edin.',
-    );
+    const ok = window.confirm(FIELD_STAFF_END_INSPECTION_CONFIRM);
     if (!ok) return;
     setMarking(true);
     try {
@@ -275,10 +277,12 @@ function FieldStaffVisitCard({
           ...(claim.currentStatus ?? {}),
           code: 'INSPECTION_DONE',
           name: 'Tespit Yapıldı',
+          isClosedState: false,
         },
+        closedAt: null,
         statusChangedAt: nowIso,
       });
-      showToast('success', 'Tespit Yapıldı Olarak İşaretlendi');
+      showToast('success', FIELD_STAFF_END_INSPECTION_TOAST);
       notifyFieldStaffClaimsChanged();
       void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
       void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
@@ -371,6 +375,13 @@ function FieldStaffVisitCard({
           </div>
         </div>
 
+        <OpsFirstRunNotice
+          noticeId={OPS_NOTICE.sahaTespitSonlandir.id}
+          title={OPS_NOTICE.sahaTespitSonlandir.title}
+          body={OPS_NOTICE.sahaTespitSonlandir.body}
+          testId="saha-tespit-sonlandir-seridi"
+        />
+
         {!inspection.done ? (
           <button
             type="button"
@@ -379,12 +390,12 @@ function FieldStaffVisitCard({
             className="inline-flex w-full items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
             data-testid="saha-tespit-isaretle"
           >
-            {marking ? 'İşaretleniyor…' : 'Tespit Yapıldı Olarak İşaretle'}
+            {marking ? 'İşaretleniyor…' : FIELD_STAFF_END_INSPECTION_LABEL}
           </button>
         ) : (
           <div className="space-y-2">
             <p className="rounded-xl border border-status-success/30 bg-status-success/10 px-3.5 py-2.5 text-center text-sm font-semibold text-status-success">
-              Tespit Tamamlandı
+              {FIELD_STAFF_END_INSPECTION_DONE}
             </p>
             <Link
               href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}

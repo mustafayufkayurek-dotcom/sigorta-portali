@@ -3171,13 +3171,13 @@ export class ClaimFilesService {
   }
 
   /**
-   * Saha tespitçisi ofis dosyasını kapatamaz.
-   * Tespit `POST .../inspection` ile biter; kapatma dosya sorumlusunundur.
+   * Saha «Dosyayı Kapat» / field-close tespiti sonlandırır.
+   * Dosya dosya sorumlusuna açık düşer; kapatma onda.
    */
   async closeAfterFieldInspection(
     fileId: string,
-    _actor: { id: string; role?: { code?: string } | null; roleCode?: string },
-    _note?: string,
+    actor: { id: string; role?: { code?: string } | null; roleCode?: string },
+    note?: string,
   ) {
     const file = await this.prisma.claimFile.findUnique({
       where: { id: fileId },
@@ -3187,9 +3187,22 @@ export class ClaimFilesService {
     if (file.currentStatus?.isClosedState) {
       return file;
     }
-    throw new BadRequestException(
-      'Saha tespiti dosyayı kapatmaz. Tespiti tamamlayın; kapatma dosya sorumlusunundur.',
+    const already = await this.prisma.fileActivityLog.findFirst({
+      where: { claimFileId: fileId, action: 'INSPECTION_DONE' },
+      select: { id: true },
+    });
+    if (already) {
+      return file;
+    }
+    await this.addInspectionNote(
+      fileId,
+      { note: note?.trim() || 'Saha tespiti tamamlandı.' },
+      actor,
     );
+    return this.prisma.claimFile.findUnique({
+      where: { id: fileId },
+      include: { currentStatus: true },
+    });
   }
 
   async submitCostReport(fileId: string, body: { totalCost: number; description: string; storageKey?: string }, actor: any) {

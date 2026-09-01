@@ -67,6 +67,16 @@ export class CustomersService {
     data.shortName = short;
   }
 
+  /** Kısmi PATCH Kısa Ad göndermezse karttaki kayıt durur; boşaltılmaz. */
+  private keepExistingShortName(
+    data: Record<string, unknown>,
+    existing: CustomerNameFields,
+  ): void {
+    if (String(data.shortName ?? '').trim()) return;
+    const kept = existing.shortName?.trim();
+    if (kept) data.shortName = kept;
+  }
+
   private collectAuthorizedPersonSamples(data: Record<string, unknown>, contacts?: any[]) {
     const samples: { firstName: string; lastName: string; combined: string }[] = [];
     const first = String(data.contactFirstName ?? '').trim();
@@ -513,10 +523,11 @@ export class CustomersService {
   }
 
   async update(id: string, data: any, actorUserId?: string) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
     const { contacts, contactInfos, customerType, ...rest } = data as any;
     this.sanitizeCustomerWriteData(rest);
     await this.assertCustomerSubTypeIfRequired(rest);
+    this.keepExistingShortName(rest, existing);
     this.assertShortNameRequired(rest);
     if (customerType && !rest.entityType) {
       rest.entityType = customerType;
@@ -940,6 +951,18 @@ export class CustomersService {
     }
     delete rest.privateServiceType;
     delete rest.customerType;
+    const allowed = new Set([
+      'type', 'entityType', 'subType', 'identityNo', 'taxNumber', 'taxOffice',
+      'fullName', 'firstName', 'lastName', 'companyName', 'shortName',
+      'authorizedPerson', 'contactFirstName', 'contactLastName',
+      'phone', 'email', 'city', 'district', 'neighborhood', 'streetName',
+      'buildingNo', 'doorNo', 'address', 'birthDate', 'latitude', 'longitude',
+      'serviceType', 'serviceBranches', 'source', 'satisfactionScore',
+      'followUpDate', 'tags', 'status', 'notes', 'updatedByUserId',
+    ]);
+    for (const key of Object.keys(rest)) {
+      if (!allowed.has(key)) delete rest[key];
+    }
   }
 
   private parseDate(value: any): string | null {

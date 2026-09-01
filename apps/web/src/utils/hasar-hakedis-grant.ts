@@ -229,6 +229,116 @@ export function hasarHakedisKalan(butce: number, odenenAvans: number, verilenHak
   return Math.round(Math.max(0, butce - odenenAvans - verilenHakedis) * 100) / 100;
 }
 
+function isGrubuEtiketKey(name?: string | null): string {
+  return workGroupJobsLabel(name).toLocaleLowerCase('tr-TR');
+}
+
+export type HasarHakedisVerilenKalem = {
+  workGroupId?: string | null;
+  lineDescription?: string | null;
+  workGroup?: { name?: string | null } | null;
+  totalAmount?: number | null;
+};
+
+export type HasarHakedisVerilenKaynak = {
+  vendorId?: string;
+  vendor?: { id?: string };
+  status?: string;
+  totalAmount?: number | null;
+  items?: HasarHakedisVerilenKalem[];
+};
+
+function satirIsGrubuEslesir(
+  item: HasarHakedisVerilenKalem,
+  satir: { workGroupId?: string; workGroupLabel?: string },
+): boolean {
+  if (satir.workGroupId && item.workGroupId && item.workGroupId === satir.workGroupId) return true;
+  const want = isGrubuEtiketKey(satir.workGroupLabel);
+  if (!want || want === 'iş grubu' || want === isGrubuEtiketKey(DOSYA_ODEME_IS_GRUBU_YOK)) return false;
+  const got = isGrubuEtiketKey(item.lineDescription || item.workGroup?.name);
+  return Boolean(got && got === want);
+}
+
+/**
+ * Verilen hakediş iş grubuna yazılır. Aynı tedarikçinin diğer kalemi
+ * bu satırın kalanını sıfırlamaz.
+ */
+export function verilenHakedisForSatir(source: {
+  vendorId: string;
+  workGroupId?: string;
+  workGroupLabel?: string;
+  statements?: HasarHakedisVerilenKaynak[];
+  payments?: Array<{ payerId?: string | null; amount?: number; skip?: boolean }>;
+  vendorSatirSayisi?: number;
+}): number {
+  const vendorId = source.vendorId;
+  if (!vendorId) return 0;
+  let fromItems = 0;
+  let vendorHasStatement = false;
+  for (const row of source.statements ?? []) {
+    const id = row.vendorId || row.vendor?.id;
+    if (id !== vendorId) continue;
+    if (String(row.status ?? '').toLowerCase() === 'cancelled') continue;
+    vendorHasStatement = true;
+    const items = row.items ?? [];
+    const matched = items.filter((item) => satirIsGrubuEslesir(item, source));
+    if (matched.length === 0) {
+      if (items.length === 0 && (source.vendorSatirSayisi ?? 1) <= 1) {
+        fromItems += Number(row.totalAmount) || 0;
+      }
+      continue;
+    }
+    const matchedSum = matched.reduce((sum, item) => sum + (Number(item.totalAmount) || 0), 0);
+    if (matchedSum > 0) {
+      fromItems += matchedSum;
+      continue;
+    }
+    const onlyThisLine = items.length === 1 || matched.length === items.length;
+    if (onlyThisLine) fromItems += Number(row.totalAmount) || 0;
+  }
+  if (fromItems > 0) return Math.round(fromItems * 100) / 100;
+  if (vendorHasStatement) return 0;
+  if ((source.vendorSatirSayisi ?? 1) > 1) return 0;
+  let fromPayments = 0;
+  for (const row of source.payments ?? []) {
+    if (row.payerId !== vendorId) continue;
+    if (row.skip) continue;
+    fromPayments += Number(row.amount ?? 0);
+  }
+  return Math.round(fromPayments * 100) / 100;
+}
+
+/** Avans tedarikçi üzerinedir; iş grubu satırına bütçe payıyla yazılır. */
+export function avansPayiForSatir(lineAmount: number, vendorLineTotal: number, vendorAvans: number): number {
+  if (!(vendorAvans > 0) || !(lineAmount > 0) || !(vendorLineTotal > 0)) return 0;
+  if (vendorLineTotal <= lineAmount + 0.009) return Math.round(vendorAvans * 100) / 100;
+  return Math.round(((vendorAvans * lineAmount) / vendorLineTotal) * 100) / 100;
+}
+
+/** Bütçe düzenlenince kalem payları yeni tutara ölçeklenir. */
+export function scaleGrantDetailsToAmount(
+  details: HasarHakedisGrantDetail[],
+  nextAmount: number,
+): HasarHakedisGrantDetail[] {
+  const next = Math.round(Math.max(0, nextAmount) * 100) / 100;
+  if (details.length === 0) return details;
+  const prev = details.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  if (!(prev > 0)) {
+    const head = details[0];
+    if (!head) return details;
+    return [{ ...head, amount: next }, ...details.slice(1).map((item) => ({ ...item, amount: 0 }))];
+  }
+  const scaled = details.map((item) => ({
+    ...item,
+    amount: Math.round(((Number(item.amount) || 0) / prev) * next * 100) / 100,
+  }));
+  const drift = Math.round((next - scaled.reduce((sum, item) => sum + item.amount, 0)) * 100) / 100;
+  if (scaled[0]) {
+    scaled[0] = { ...scaled[0], amount: Math.round((scaled[0].amount + drift) * 100) / 100 };
+  }
+  return scaled;
+}
+
 export function isHasarHakedisSatiriPasif(source: {
   vendorId: string;
   workGroupId?: string;

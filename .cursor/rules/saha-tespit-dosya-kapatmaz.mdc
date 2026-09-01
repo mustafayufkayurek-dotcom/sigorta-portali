@@ -1,29 +1,31 @@
 ---
-description: Saha tespitçisi ofis hasar dosyasını kapatamaz
+description: Saha tespiti bitince dosya sorumlusuna düşer; kapatma onda
 alwaysApply: true
 ---
 
-# Saha Tespit — Ofis Dosyasını Kapatmaz
+# Saha Tespit — Tespiti Sonlandır; Kapatma Dosya Sorumlusunda
 
-**Kaynak (Mustafa · 01.09.2026):** Saha tespitçisi «Dosyayı Kapat» deyince ofis dosyası da kapanıyordu. Açık listeden düşüyordu.
+**Kaynak (Mustafa · 01.09.2026):** Saha tespit tarafında tespit bitip **Tespiti Sonlandır** tıklanınca dosya dosya sorumlusu ekranına düşer; dosya sorumlusu kendi işine devam eder. Saha «Dosyayı Kapat» dese de dosya tamamen kapanmaz. Kapatma dosya sorumlusundadır.
 
-**Temel cümle:** Saha **tespiti bitirir.** Dosyayı **dosya sorumlusu** kapatır.
+**Temel cümle:** Saha **tespiti sonlandırır.** Dosya **dosya sorumlusuna düşer.** Kapatma **dosya sorumlusunundur.**
 
 ## Zorunlu
 
-1. Saha kartında «Tespit Yapıldı Olarak İşaretle» + Tamamlanan Tespitler. **Dosyayı Kapat** yok.
-2. `POST .../inspection` tespit işaretler; dosya `closed` olmaz.
-3. `POST .../field-close` açık dosyayı kapatmaz; 400: «Saha tespiti dosyayı kapatmaz.»
-4. Kapanış anketi saha kapatmasından açılmaz.
+1. Saha kartında **Tespiti Sonlandır**. Tespit bitince Tamamlanan Tespitler. Ofis açık listede işler (`/panel/hasar-dosyalari?status=open`).
+2. `POST .../inspection` tespiti bitirir; dosya `closed` olmaz.
+3. `POST .../field-close` (eski «Dosyayı Kapat») tespiti sonlandırır; ofis dosyasını kapatmaz. `closedAt` / kapalı durum yazılmaz.
+4. Kapanış anketi saha sonlandırmasından açılmaz.
+5. Eski saha kapatmasıyla kapanmış ofis dosyası açık kalır (`scripts/repair-saha-field-close-reopen.sql`). Tespit durur.
 
 ## Yasak (açık onay yoksa)
 
-- Saha düğmesiyle `closedAt` / `isClosedState`
+- Saha düğmesiyle dosyayı tamamen kapatmak
+- Tespit bitince dosyayı ofis açık listeden düşürmek
 - Bu kilidi «sadeleştirme» diye kaldırmak
 
 ## Durdurma
 
-Saha kapatınca ofis yine kapanırsa → **dur, aynı gün geri koy**.
+Saha sonlandırınca ofis yine kapalı görünürse → **dur, aynı gün geri koy**.
 
 Regresyon:
 

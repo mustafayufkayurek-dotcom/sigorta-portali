@@ -3,6 +3,12 @@
 export const OPS_FIRST_RUN_STORAGE_PREFIX = 'meridyen-ops-notice:';
 
 export const OPS_NOTICE = {
+  sahaTespitSonlandir: {
+    id: 'saha-tespit-sonlandir-v551',
+    title: 'Tespiti sonlandır',
+    body:
+      'Tespit bitince Tespiti Sonlandır deyin. Dosya dosya sorumlusuna düşer; dosya kapanmaz. Kapatma dosya sorumlusundadır.',
+  },
   acilKayitliTedarikci: {
     id: 'acil-kayitli-tedarikci-v520',
     title: 'Tedarikçi Önerisi',
@@ -52,10 +58,10 @@ export const OPS_NOTICE = {
       'Masraf eklerken Bütçelenen veya Ek İş seçin. Ek iş kârı ayrı ve toplamda görünür. Araç kirası, maaş, SGK ve vergi bu dosyaya yazılmaz; Finans’te yönetim gideri havuzuna işlenir, ayın son günü dağıtılmadıysa finans ve yöneticiye hatırlatılır.',
   },
   hasarHakedisGider: {
-    id: 'hasar-hakedis-gider-v549',
+    id: 'hasar-hakedis-gider-v552',
     title: 'Tedarikçi hakedişi',
     body:
-      'Hakediş Yönetimi dosya, bütçe, önceki hakediş ve avanstan hesaplar. Yeni hakedişte Finansa Aktar ödeme kuyruğuna düşer. Aynı evrakı yeniden yüklemezsiniz.',
+      'Aynı tedarikçinin her iş grubu ayrı Finansa Aktar ile ödeme kuyruğuna düşer. Bütçelenen fiyatı Düzenle ile değiştirirsiniz. Aynı evrakı yeniden yüklemezsiniz.',
   },
   hasarSigortaliOdemeli: {
     id: 'hasar-satis-faturasi-talebi-v548',
