@@ -1,13 +1,17 @@
 ---
-description: Full deploy v549 alındı — 01.09.2026
+description: Full deploy v550 alındı — 01.09.2026
 alwaysApply: true
 ---
 
-# Full deploy v549 (01.09.2026) — alındı
+# Full deploy v550 (01.09.2026) — alındı
 
-Canlı: web **v549** · backend **v549**. Rollback: web v548 / backend v548.
+Canlı: web **v550** · backend **v550**. Rollback: web v549 / backend v549.
 
-## Alınan paket (v549 full)
+## Alınan paket (v550 full)
+
+Örnek hakediş satırı kalkar. Saha tespiti ofis dosyasını kapatmaz. Avans tavanı yok; iş bedelinin yarısını geçerse onay. Finans Avans uyarısı. Sözleşme uyarısı: Sözleşme durumunu belirleyiniz.
+
+## v549 durur (bozulmaz)
 
 Geriye dönük üç dosyada tedarikçi sözleşmesi yüklenmez: Adalet Vakfı, Serap Richard, İlknur Yılmaz. Diğer dosyada soru durur.
 

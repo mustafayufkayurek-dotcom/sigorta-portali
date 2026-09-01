@@ -8,18 +8,27 @@
 
 ---
 
-## Canlı durum (1 Eylül 2026 — v549)
+## Canlı durum (1 Eylül 2026 — v550)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v549-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v549-amd64` | deploy sırası |
-| **Rollback** | Web **v548** / Backend **v548** | manifest `rollbackImages` |
-| **Etiket** | `v549-hasar-uc-dosya-sozlesme` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v550-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v550-amd64` | deploy sırası |
+| **Rollback** | Web **v549** / Backend **v549** | manifest `rollbackImages` |
+| **Etiket** | `v550-hasar-hakedis-saha-avans` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v550 — Full (1 Eylül 2026) — Hakediş örnek yok; saha kapatmaz; avans yarı onay
+
+- Hakediş listesinde örnek tedarikçi satırı yok
+- Saha tespiti ofis dosyasını kapatmaz
+- Avans tavanı yok; iş bedelinin yarısını geçerse ekran uyarısı + onay; finans **Avans uyarısı**
+- Sözleşme uyarısı: «Sözleşme durumunu belirleyiniz.»
+- v549 üç dosya sözleşme muafiyeti durur
+- Rollback web+backend **v549**. İK yok.
 
 ### v549 — Full (1 Eylül 2026) — Üç dosyada sözleşme muafiyeti
 
