@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-01",
-  "label": "v550-hasar-hakedis-saha-avans",
-  "description": "Full: Örnek hakediş satırı kalkar. Saha tespiti ofis dosyasını kapatmaz. Avans tavanı yok; iş bedelinin yarısını geçerse onay. Finans Avans uyarısı. Sözleşme uyarısı: Sözleşme durumunu belirleyiniz. v549 üç dosya muafiyeti durur. İK yok. Rollback web v549 / backend v549.",
+  "label": "v551-dosya-durum-son-islem",
+  "description": "Full: Dosya durumu son işlemi gösterir. Red kapanışın altında kalmaz. Revizyon Revizyon Talep Edildi. v550 hakediş/saha/avans durur. İK yok. Rollback web v550 / backend v550.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v550-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v550-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v551-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v551-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v549-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v549-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v550-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v550-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

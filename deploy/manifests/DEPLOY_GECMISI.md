@@ -8,18 +8,27 @@
 
 ---
 
-## Canlı durum (1 Eylül 2026 — v550)
+## Canlı durum (1 Eylül 2026 — v551)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v550-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v550-amd64` | deploy sırası |
-| **Rollback** | Web **v549** / Backend **v549** | manifest `rollbackImages` |
-| **Etiket** | `v550-hasar-hakedis-saha-avans` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v551-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v551-amd64` | deploy sırası |
+| **Rollback** | Web **v550** / Backend **v550** | manifest `rollbackImages` |
+| **Etiket** | `v551-dosya-durum-son-islem` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v551 — Full (1 Eylül 2026) — Dosya durumu son işlem
+
+- Red «Dosya Kapatıldı» olmaz; **Reddedildi** kalır
+- Revizyon **Revizyon Talep Edildi**; «Rapor Yazım Aşamasında» yazılmaz
+- Onaya giden revize rapor **Onay Bekliyor**
+- Gerçek kapanış **Dosya Kapatıldı**
+- v550 hakediş/saha/avans durur
+- Rollback web+backend **v550**. İK yok.
 
 ### v550 — Full (1 Eylül 2026) — Hakediş örnek yok; saha kapatmaz; avans yarı onay
 
