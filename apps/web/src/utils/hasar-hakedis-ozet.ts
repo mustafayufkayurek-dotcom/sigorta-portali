@@ -69,13 +69,6 @@ export type OdemePlanSatir = {
   tipLabel?: string;
 };
 
-export const HASAR_AVANS_LIMIT_ORAN = 0.2;
-
-export function resolveHasarAvansLimit(sozlesmeTutari: number | null | undefined): number | null {
-  if (sozlesmeTutari == null || sozlesmeTutari <= 0) return null;
-  return roundTry(sozlesmeTutari * HASAR_AVANS_LIMIT_ORAN);
-}
-
 export function hakedisTutarKirilim(input: {
   totalAmount?: number | null;
   items?: Array<{ totalAmount?: number | null; vatRate?: number | null }>;

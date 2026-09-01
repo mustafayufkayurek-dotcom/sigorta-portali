@@ -1,0 +1,32 @@
+---
+description: Saha tespitçisi ofis hasar dosyasını kapatamaz
+alwaysApply: true
+---
+
+# Saha Tespit — Ofis Dosyasını Kapatmaz
+
+**Kaynak (Mustafa · 01.09.2026):** Saha tespitçisi «Dosyayı Kapat» deyince ofis dosyası da kapanıyordu. Açık listeden düşüyordu.
+
+**Temel cümle:** Saha **tespiti bitirir.** Dosyayı **dosya sorumlusu** kapatır.
+
+## Zorunlu
+
+1. Saha kartında «Tespit Yapıldı Olarak İşaretle» + Tamamlanan Tespitler. **Dosyayı Kapat** yok.
+2. `POST .../inspection` tespit işaretler; dosya `closed` olmaz.
+3. `POST .../field-close` açık dosyayı kapatmaz; 400: «Saha tespiti dosyayı kapatmaz.»
+4. Kapanış anketi saha kapatmasından açılmaz.
+
+## Yasak (açık onay yoksa)
+
+- Saha düğmesiyle `closedAt` / `isClosedState`
+- Bu kilidi «sadeleştirme» diye kaldırmak
+
+## Durdurma
+
+Saha kapatınca ofis yine kapanırsa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+pnpm smoke:hasar-rapor-revizyon
+```

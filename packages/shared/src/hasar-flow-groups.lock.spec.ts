@@ -19,6 +19,9 @@ import {
   scaleAmountsToNet,
   vendorsMissingRepairPhotos,
   withAvansNote,
+  withAvansYariUstuNote,
+  isAvansYariUstuNote,
+  isHasarAvansYariUstu,
 } from './hasar-flow-groups.ts';
 
 describe('hasar-flow-groups lock', () => {
@@ -94,6 +97,13 @@ describe('hasar-flow-groups lock', () => {
   it('avans notu dosyaya yazılır', () => {
     assert.equal(isAvansPaymentNote('[AVANS] 5000'), true);
     assert.match(withAvansNote('acil nakit'), /^\[AVANS\]/);
+    assert.equal(isHasarAvansYariUstu(32000, 10000), false);
+    assert.equal(isHasarAvansYariUstu(32000, 16001), true);
+    const yari = withAvansYariUstuNote('Test');
+    assert.equal(isAvansYariUstuNote(yari), true);
+    assert.match(yari, /\[AVANS\]/);
+    assert.match(yari, /\[YARI-USTU\]/);
+    assert.equal(isAvansPaymentNote(yari), true);
   });
 
   it('ödenmiş avans hakedişten düşülür', () => {

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { ArrowLeft, Banknote, Check, Receipt, Wallet, X } from 'lucide-react';
-import { AVANS_REF_PREFIX, isAvansPayment, isHakedisMahsupPayment, isHasarVendorContractWaived, resolveHasarAvansHesap, withAvansNote } from '@sigorta/shared';
+import { AVANS_REF_PREFIX, HASAR_AVANS_YARI_ONAY_METNI, HASAR_AVANS_YARI_USTU_ETIKET, isAvansPayment, isAvansYariUstuNote, isHakedisMahsupPayment, isHasarAvansYariUstu, isHasarVendorContractWaived, resolveHasarAvansHesap, withAvansNote, withAvansYariUstuNote } from '@sigorta/shared';
 import { FinanceRowActions, printFinanceSlip, vendorEkstreHref } from '@/components/finance/FinanceRowActions';
 import { FinansPanelCard } from '@/components/finance/FinansPanelUI';
 import {
@@ -35,8 +35,6 @@ import {
   hasarHakedisKalan,
   isHasarHakedisSatiriPasif,
   isOrnekHakedisSatiri,
-  ORNEK_HAKEDIS_TEDARIKCILERI,
-  ornekHakedisAvans,
   type HasarHakedisGrantDetail,
   type HasarHakedisSecimSatiri,
 } from '@/utils/hasar-hakedis-grant';
@@ -47,7 +45,6 @@ import {
   hakedisDurumEtiket,
   hakedisKesintiNet,
   hakedisTutarKirilim,
-  resolveHasarAvansLimit,
   type HakedisKaynak,
 } from '@/utils/hasar-hakedis-ozet';
 import { numberToTrAmountInput, parseTrAmountInput } from '@/utils/tr-amount-input';
@@ -80,6 +77,7 @@ type DosyaOdeme = {
   fileId?: string | null;
   fileNo?: string | null;
   note?: string;
+  avansYariUstu?: boolean;
 };
 
 const DOSYA_ODEME_COLUMNS: TableColumnDef[] = [
@@ -89,6 +87,7 @@ const DOSYA_ODEME_COLUMNS: TableColumnDef[] = [
   { id: 'fileNo', label: 'Dosya', defaultWidth: 140, minWidth: 108 },
   { id: 'workGroup', label: 'İş Grubu', defaultWidth: 148, minWidth: 112 },
   { id: 'tur', label: 'Tür', defaultWidth: 96, minWidth: 80 },
+  { id: 'avansUyari', label: 'Avans uyarısı', defaultWidth: 128, minWidth: 108 },
   { id: 'tutar', label: 'Tutar', defaultWidth: 112, minWidth: 88 },
   { id: 'durum', label: 'Durum', defaultWidth: 112, minWidth: 88 },
   { id: 'actions', label: 'İşlemler', defaultWidth: 96, minWidth: 80, pin: 'end', alwaysVisible: true, resizable: false },
@@ -296,7 +295,7 @@ function PaymentDokum({
   claimId: string;
 }) {
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
-  const tableColumns = usePanelTableColumns('table-cols:hasar-dosya-odeme-v3', DOSYA_ODEME_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:hasar-dosya-odeme-v4', DOSYA_ODEME_COLUMNS);
   const sorted = useMemo(
     () =>
       sortRowsByClientSort(rows, clientSort, (row, key) => {
@@ -313,6 +312,8 @@ function PaymentDokum({
             return row.workGroupLabel;
           case 'tur':
             return row.tur;
+          case 'avansUyari':
+            return row.avansYariUstu ? HASAR_AVANS_YARI_USTU_ETIKET : '';
           case 'tutar':
             return row.tutar;
           case 'durum':
@@ -395,6 +396,18 @@ function PaymentDokum({
                       );
                     case 'tur':
                       return <PanelTableTd key={col.id} colId={col.id} className="py-2 font-normal text-slate-700">{row.tur}</PanelTableTd>;
+                    case 'avansUyari':
+                      return (
+                        <PanelTableTd key={col.id} colId={col.id} className="py-2">
+                          {row.avansYariUstu ? (
+                            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                              {HASAR_AVANS_YARI_USTU_ETIKET}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </PanelTableTd>
+                      );
                     case 'tutar':
                       return <PanelTableTd key={col.id} colId={col.id} align="right" className="py-2 font-medium tabular-nums text-slate-900">{fmt(row.tutar)}</PanelTableTd>;
                     case 'durum':
@@ -1033,7 +1046,7 @@ export function HasarFileHakedisPanel({
     [lines, suppliers, catalogWorkGroupIds],
   );
   const hakedisSayfaSatirlari = useMemo(
-    () => [...secimSatirlari, ...ORNEK_HAKEDIS_TEDARIKCILERI],
+    () => secimSatirlari,
     [secimSatirlari],
   );
   const hakedisGonderildiVendorIds = useMemo(() => {
@@ -1096,8 +1109,6 @@ export function HasarFileHakedisPanel({
   };
 
   const vendorAvans = (vendorId: string) => {
-    const ornek = ornekHakedisAvans(vendorId);
-    if (ornek != null) return ornek;
     const rows = payments.filter((row) => row.payerId === vendorId && isAvansPayment(row));
     if (rows.length > 0) {
       return Math.round(rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0) * 100) / 100;
@@ -1141,10 +1152,6 @@ export function HasarFileHakedisPanel({
     avansToplam: avansHesap.avansToplam,
     oncekiMahsupToplam: avansHesap.alreadyMahsup,
   });
-  const avansLimit = resolveHasarAvansLimit(sozlesme);
-  const kalanAvansHakki = avansLimit == null
-    ? null
-    : Math.round(Math.max(0, avansLimit - avansHesap.avansToplam) * 100) / 100;
   const verilenToplam = vendor?.id
     ? vendorVerilenHakedis(vendor.id)
     : onayliToplam;
@@ -1174,10 +1181,14 @@ export function HasarFileHakedisPanel({
   const stripKalan = composer === 'avans' && secilenAvansSatir
     ? avansSatirKalanSonra
     : kalanTutar;
-  const avansLimitAsim = kalanAvansHakki != null && avansTutarDraft > kalanAvansHakki + 0.009;
   const avansButceAsim = (avansSatirKalan != null && avansTutarDraft > avansSatirKalan + 0.009)
     || (sozlesme != null && avansTutarDraft > 0
       && (kullanilanTutar + avansTutarDraft) > sozlesme + 0.009);
+  const avansIsBedeli = secilenAvansSatir?.amount ?? sozlesme ?? null;
+  const avansYariUstu = isHasarAvansYariUstu(
+    avansIsBedeli,
+    (secilenAvansSatir ? vendorAvans(secilenAvansSatir.vendorId) : avansHesap.avansToplam) + avansTutarDraft,
+  );
   const hakedisButceAsim = sozlesme != null && talepBrut > 0
     && (onayliToplam + talepBrut) > sozlesme + 0.009;
   const sozlesmeMuaf = isHasarVendorContractWaived({ id: claimId, fileNo });
@@ -1256,6 +1267,7 @@ export function HasarFileHakedisPanel({
           fileId: satirDosyaId,
           fileNo: row.claimFile?.fileNo || (satirDosyaId === claimId ? fileNo : null),
           note: row.note ?? undefined,
+          avansYariUstu: isAvansYariUstuNote(row.note),
         };
       });
     const masraf = expenses.map((row) => {
@@ -1280,6 +1292,7 @@ export function HasarFileHakedisPanel({
         fileId: claimId,
         fileNo,
         note: row.description,
+        avansYariUstu: false,
       };
     });
     return [...odeme, ...masraf].sort((a, b) => new Date(b.talepTarihi ?? b.odemeTarihi ?? 0).getTime() - new Date(a.talepTarihi ?? a.odemeTarihi ?? 0).getTime());
@@ -1304,7 +1317,7 @@ export function HasarFileHakedisPanel({
       return;
     }
     if (!sozlesmeMuaf && !sozlesmeCevap) {
-      showToast('error', 'Dosyada sözleşme var mı sorun.');
+      showToast('error', 'Sözleşme durumunu belirleyiniz.');
       return;
     }
     if (!sozlesmeHazir) {
@@ -1334,10 +1347,18 @@ export function HasarFileHakedisPanel({
       showToast('error', 'Bu tutar bütçeyi aşıyor. Avans onaylanmaz.');
       return;
     }
-    if (kalanAvansHakki != null && amount > kalanAvansHakki + 0.009) {
-      showToast('error', 'Avans limiti aşıyor. Bu tutar onaylanmaz.');
-      return;
+    const yariUstu = isHasarAvansYariUstu(
+      satir.amount || sozlesme,
+      vendorAvans(satir.vendorId) + amount,
+    );
+    if (yariUstu) {
+      const ok = window.confirm(HASAR_AVANS_YARI_ONAY_METNI);
+      if (!ok) return;
     }
+    const aciklamaNotu = sozlesmeCevap === 'yok'
+      ? `${aciklamaTrim} · Sözleşme yok: ${sozlesmeYokNeden.trim()}`
+      : aciklamaTrim;
+    const avansNotu = yariUstu ? withAvansYariUstuNote(aciklamaNotu) : withAvansNote(aciklamaNotu);
     setSavingAvans(true);
     try {
       await axios.post(
@@ -1352,11 +1373,7 @@ export function HasarFileHakedisPanel({
           currency: 'TRY',
           paymentDate: talepTarihi,
           referenceNo: AVANS_REF_PREFIX,
-          note: withAvansNote(
-            sozlesmeCevap === 'yok'
-              ? `${aciklamaTrim} · Sözleşme yok: ${sozlesmeYokNeden.trim()}`
-              : aciklamaTrim,
-          ),
+          note: avansNotu,
         },
         { headers: authHeader() },
       );
@@ -1402,7 +1419,7 @@ export function HasarFileHakedisPanel({
       return;
     }
     if (!sozlesmeMuaf && !sozlesmeCevap) {
-      showToast('error', 'Dosyada sözleşme var mı sorun.');
+      showToast('error', 'Sözleşme durumunu belirleyiniz.');
       return;
     }
     if (!sozlesmeHazir) {
@@ -1679,8 +1696,10 @@ export function HasarFileHakedisPanel({
                           </label>
                           {avansButceAsim ? (
                             <p className="mt-1.5 text-[12px] font-normal text-red-700">Bu tutar bütçeyi aşıyor.</p>
-                          ) : avansLimitAsim ? (
-                            <p className="mt-1.5 text-[12px] font-normal text-red-700">Avans limiti aşıyor.</p>
+                          ) : avansYariUstu ? (
+                            <p className="mt-1.5 text-[12px] font-normal text-amber-800">
+                              Bu avans iş bedelinin yarısını aşıyor. Göndermeden önce onay gerekir.
+                            </p>
                           ) : null}
                           <div className="mt-3 flex justify-end">
                             <button

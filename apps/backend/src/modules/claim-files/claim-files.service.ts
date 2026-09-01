@@ -3169,13 +3169,13 @@ export class ClaimFilesService {
   }
 
   /**
-   * Saha tespit sonrası dosya kapatma — claim_file.update yeterli (status_change gerekmez).
-   * Onaylı UI confirm sonrası çağrılır.
+   * Saha tespitçisi ofis dosyasını kapatamaz.
+   * Tespit `POST .../inspection` ile biter; kapatma dosya sorumlusunundur.
    */
   async closeAfterFieldInspection(
     fileId: string,
-    actor: { id: string; role?: { code?: string } | null; roleCode?: string },
-    note?: string,
+    _actor: { id: string; role?: { code?: string } | null; roleCode?: string },
+    _note?: string,
   ) {
     const file = await this.prisma.claimFile.findUnique({
       where: { id: fileId },
@@ -3185,56 +3185,9 @@ export class ClaimFilesService {
     if (file.currentStatus?.isClosedState) {
       return file;
     }
-
-    const closed = await this.prisma.claimStatus.findFirst({
-      where: { isClosedState: true, code: 'closed' },
-    });
-    if (!closed) {
-      throw new BadRequestException('Kapalı durum (closed) tanımı bulunamadı.');
-    }
-
-    const [updated] = await this.prisma.$transaction([
-      this.prisma.claimFile.update({
-        where: { id: fileId },
-        data: {
-          currentStatusId: closed.id,
-          closedAt: new Date(),
-          lastActivityAt: new Date(),
-          lastHumanActionAt: new Date(),
-        },
-        include: { currentStatus: true },
-      }),
-      this.prisma.claimStatusHistory.create({
-        data: {
-          claimFileId: fileId,
-          fromStatusId: file.currentStatusId,
-          toStatusId: closed.id,
-          changedByUserId: actor.id,
-          note: note?.trim() || 'Saha tespiti sonrası dosya kapatıldı.',
-        },
-      }),
-    ]);
-
-    await this.logActivity({
-      claimFileId: fileId,
-      action: 'STATUS_CHANGED',
-      actorId: actor.id,
-      actorRole: actor.role?.code ?? actor.roleCode ?? 'unknown',
-      description: 'Saha tespiti sonrası dosya kapatıldı.',
-      metadata: {
-        fromStatusId: file.currentStatusId,
-        toStatusId: closed.id,
-        toStatusCode: 'closed',
-      },
-    });
-
-    this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
-
-    void this.surveys?.ensureCampaignForClaimFile(fileId).catch((err) =>
-      this.logger.warn(`[Survey] Kapanış kampanyası: ${err?.message}`),
+    throw new BadRequestException(
+      'Saha tespiti dosyayı kapatmaz. Tespiti tamamlayın; kapatma dosya sorumlusunundur.',
     );
-
-    return updated;
   }
 
   async submitCostReport(fileId: string, body: { totalCost: number; description: string; storageKey?: string }, actor: any) {

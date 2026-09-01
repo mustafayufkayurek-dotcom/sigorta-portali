@@ -16,8 +16,8 @@ import {
   hakedisKesintiNet,
   hakedisTutarKirilim,
   parseAvansMahsupFromNote,
-  resolveHasarAvansLimit,
 } from './hasar-hakedis-ozet.ts';
+import { isHasarAvansYariUstu, hasarAvansYariEsik } from '../../../../packages/shared/src/hasar-flow-groups.ts';
 import { buildHasarHakedisGrantLines } from './hasar-hakedis-grant.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -75,9 +75,12 @@ describe('hasar hakediş özet LOCK', () => {
     assert.deepEqual(buildHasarHakedisGrantLines({ reportItems: [] }), []);
   });
 
-  it('avans limiti sözleşmenin yüzde yirmisidir; sözleşme yoksa Eksik', () => {
-    assert.equal(resolveHasarAvansLimit(12500), 2500);
-    assert.equal(resolveHasarAvansLimit(null), null);
+  it('avans tavanı yok; iş bedelinin yarısını geçerse uyarı eşiğidir', () => {
+    assert.equal(hasarAvansYariEsik(32000), 16000);
+    assert.equal(isHasarAvansYariUstu(32000, 16000), false);
+    assert.equal(isHasarAvansYariUstu(32000, 16001), true);
+    assert.equal(isHasarAvansYariUstu(12500, 2500), false);
+    assert.equal(hasarAvansYariEsik(null), null);
     assert.equal(hakedisTutarKirilim({ totalAmount: 6000, items: [{ totalAmount: 6000, vatRate: 0 }] }).kdv, 0);
     assert.equal(hakedisDurumEtiket({ status: 'APPROVED', odemeDurumu: 'completed' }), 'Ödendi');
     const akis = buildHakedisAkis({
@@ -163,6 +166,13 @@ describe('hasar hakediş özet LOCK', () => {
     assert.match(panel, /Talep tarihi/);
     assert.match(panel, /Avans talep tarihi/);
     assert.match(panel, /Dosyada sözleşme var mı/);
+    assert.match(panel, /Sözleşme durumunu belirleyiniz/);
+    assert.doesNotMatch(panel, /Dosyada sözleşme var mı sorun/);
+    assert.match(panel, /HASAR_AVANS_YARI_ONAY_METNI/);
+    assert.match(panel, /window\.confirm/);
+    assert.match(panel, /Avans uyarısı/);
+    assert.doesNotMatch(panel, /Avans limiti aşıyor/);
+    assert.doesNotMatch(panel, /resolveHasarAvansLimit/);
     assert.match(panel, /dosya-sozlesme-soru/);
     assert.match(panel, /Sözleşme Yoksa Açıklayınız/);
     assert.match(panel, /vendor-contracts/);
@@ -187,6 +197,10 @@ describe('hasar hakediş özet LOCK', () => {
     assert.doesNotMatch(panel, /CommercialPricingDrawer/);
     assert.doesNotMatch(panel, /\$\{fmt\([^)]+\)\} TL/);
     assert.doesNotMatch(panel, /return `₺ /);
+    const tahsilat = readFileSync(join(here, '../app/panel/finans/tahsilatlar/page.tsx'), 'utf8');
+    assert.match(tahsilat, /Avans uyarısı/);
+    assert.match(tahsilat, /isAvansYariUstuNote/);
+    assert.match(tahsilat, /HASAR_AVANS_YARI_USTU_ETIKET/);
   });
 
   it('avans geçmişi mahsubu sırayla böler', () => {

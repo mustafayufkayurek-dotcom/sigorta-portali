@@ -291,46 +291,6 @@ function FieldStaffVisitCard({
     }
   };
 
-  const closeClaimFile = async () => {
-    if (marking) return;
-    const ok = window.confirm(
-      'Bu hasar dosyasını kapatmak istediğinize emin misiniz?\n\nKapatılan dosya açık listeden çıkar.',
-    );
-    if (!ok) return;
-    setMarking(true);
-    try {
-      const res = await axios.post(
-        `${API}/claim-files/${claim.id}/field-close`,
-        { note: 'Saha tespiti sonrası dosya kapatıldı.' },
-        { headers: authHeader() },
-      );
-      const closed = res.data?.data?.currentStatus;
-      onClaimUpdated?.({
-        currentStatus: {
-          ...(claim.currentStatus ?? {}),
-          ...(closed ?? {}),
-          code: closed?.code ?? 'closed',
-          name: closed?.name ?? 'Kapatıldı',
-          isClosedState: true,
-        },
-        closedAt: res.data?.data?.closedAt ?? new Date().toISOString(),
-      });
-      showToast('success', 'Dosya Kapatıldı');
-      notifyFieldStaffClaimsChanged();
-      void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
-      void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
-      void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
-      void queryClient.invalidateQueries({ queryKey: ['office-inspection-reminder'] });
-    } catch (err) {
-      reportCaughtError(
-        err,
-        getApiErrorMessage(err, 'Dosya kapatılamadı. Dosya sorumlusuna iletin.'),
-      );
-    } finally {
-      setMarking(false);
-    }
-  };
-
   return (
     <div
       className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-900/[0.03]"
@@ -432,19 +392,9 @@ function FieldStaffVisitCard({
             >
               {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
             </Link>
-            {!claim?.currentStatus?.isClosedState && !claim?.closedAt ? (
-              <button
-                type="button"
-                onClick={() => void closeClaimFile()}
-                disabled={marking}
-                className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-                data-testid="saha-dosya-kapat"
-              >
-                {marking ? 'Kapatılıyor…' : 'Dosyayı Kapat'}
-              </button>
-            ) : (
+            {claim?.currentStatus?.isClosedState || claim?.closedAt ? (
               <p className="text-center text-xs font-medium text-slate-500">Dosya Kapalı</p>
-            )}
+            ) : null}
           </div>
         )}
       </div>

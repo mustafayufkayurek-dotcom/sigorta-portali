@@ -102,6 +102,42 @@ export function withAvansNote(note: string | null | undefined): string {
   return t ? `${AVANS_NOTE_PREFIX} ${t}` : AVANS_NOTE_PREFIX;
 }
 
+/** Avans tavanı yok. İş bedelinin yarısını geçerse uyarı + onay. */
+export const HASAR_AVANS_YARI_ORAN = 0.5;
+export const AVANS_YARI_USTU_MARKER = '[YARI-USTU]';
+export const HASAR_AVANS_YARI_USTU_ETIKET = 'Yarı üstü';
+export const HASAR_AVANS_YARI_ONAY_METNI =
+  'Bu avans iş bedelinin yarısını aşıyor. Onaylıyor musunuz?';
+
+export function hasarAvansYariEsik(isBedeli: number | null | undefined): number | null {
+  const n = Number(isBedeli);
+  if (!(n > 0)) return null;
+  return Math.round(n * HASAR_AVANS_YARI_ORAN * 100) / 100;
+}
+
+/** Toplam avans iş bedelinin yarısını geçtiyse true. Eşitlikte uyarı yok. */
+export function isHasarAvansYariUstu(
+  isBedeli: number | null | undefined,
+  avansToplam: number,
+): boolean {
+  const esik = hasarAvansYariEsik(isBedeli);
+  if (esik == null) return false;
+  return Number(avansToplam) > esik + 0.009;
+}
+
+export function isAvansYariUstuNote(note: string | null | undefined): boolean {
+  return String(note ?? '').toUpperCase().includes('YARI-USTU');
+}
+
+export function withAvansYariUstuNote(note: string | null | undefined): string {
+  const base = withAvansNote(note);
+  if (isAvansYariUstuNote(base)) return base;
+  if (base.toUpperCase().startsWith(AVANS_NOTE_PREFIX)) {
+    return `${AVANS_NOTE_PREFIX} ${AVANS_YARI_USTU_MARKER}${base.slice(AVANS_NOTE_PREFIX.length)}`;
+  }
+  return `${AVANS_NOTE_PREFIX} ${AVANS_YARI_USTU_MARKER} ${base}`.trim();
+}
+
 export function avansCountsTowardHakedisMahsup(status: string | null | undefined): boolean {
   return status === 'completed';
 }

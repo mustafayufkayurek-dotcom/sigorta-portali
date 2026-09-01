@@ -288,11 +288,14 @@ describe('field-staff-claim-view lock', () => {
     assert.match(redirect, /router\.replace/);
   });
 
-  it('tespit tamamla ve dosya kapat onay ister', () => {
+  it('tespit tamamla onay ister; saha ofis dosyasını kapatmaz', () => {
     const detail = read('../app/panel/hasar-dosyalari/[id]/page.tsx');
     assert.match(detail, /window\.confirm/);
-    assert.match(detail, /saha-dosya-kapat/);
-    assert.match(detail, /field-close/);
+    assert.match(detail, /Tespiti tamamlamak istediğinize emin misiniz/);
+    assert.match(detail, /\/inspection/);
+    assert.doesNotMatch(detail, /saha-dosya-kapat/);
+    assert.doesNotMatch(detail, /field-close/);
+    assert.doesNotMatch(detail, /Dosyayı Kapat/);
     assert.match(detail, /notifyFieldStaffClaimsChanged/);
     assert.match(detail, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
     assert.match(detail, /FIELD_STAFF_ASSIGNMENTS_HREF/);

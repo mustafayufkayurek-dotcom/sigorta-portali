@@ -17,72 +17,10 @@ export type HasarHakedisGrantLine = {
   ornek?: boolean;
 };
 
-export const ORNEK_HAKEDIS_TOPLAM = 12_500;
-
-/** Hakediş sayfasında duran örnek tedarikçiler (finansa gitmez). */
-export const ORNEK_HAKEDIS_TEDARIKCILERI: HasarHakedisSecimSatiri[] = [
-  {
-    key: 'ornek-orhan',
-    workGroupId: 'ornek-mob',
-    workGroupLabel: 'Mobilya İşleri',
-    vendorId: 'ornek-orhan',
-    vendorName: 'Orhan Şimşek',
-    paymentDueDays: 15,
-    amount: 90_000,
-  },
-  {
-    key: 'ornek-boyaci',
-    workGroupId: 'ornek-boya',
-    workGroupLabel: 'Boya İşleri',
-    vendorId: 'ornek-boyaci',
-    vendorName: 'Boyacı Usta',
-    paymentDueDays: 15,
-    amount: 40_000,
-  },
-];
-
+/** Eski örnek satır sızarsa finansa gitmez. Canlı listeye örnek basılmaz. */
 export function isOrnekHakedisSatiri(row: { key?: string; vendorId?: string }): boolean {
   return String(row.key ?? '').startsWith('ornek-')
     || String(row.vendorId ?? '').startsWith('ornek-');
-}
-
-export function ornekHakedisAvans(vendorId: string): number | null {
-  if (vendorId === 'ornek-orhan') return 10_000;
-  if (vendorId === 'ornek-boyaci') return 0;
-  return null;
-}
-
-/** Raporda kalem yoksa gösterilen iş grubu örneği (Mobilya / Sıva). */
-export function buildOrnekHasarHakedisLines(toplam: number): HasarHakedisGrantLine[] {
-  const base = toplam > 0 ? toplam : ORNEK_HAKEDIS_TOPLAM;
-  const mobilya = Math.round(base * 0.6);
-  const siva = base - mobilya;
-  return [
-    {
-      key: 'ornek-mobilya',
-      label: 'Mobilya İşleri',
-      amount: mobilya,
-      ornek: true,
-      details: [{
-        jobDescription: 'Koltuk döşeme',
-        quantity: 1,
-        unit: 'adet',
-        amount: mobilya,
-      }],
-    },
-    {
-      key: 'ornek-siva',
-      label: 'Sıva İşleri',
-      amount: siva,
-      ornek: true,
-      details: [{
-        jobDescription: 'Duvar sıva tamiri',
-        quantity: 1,
-        unit: 'm2',
-        amount: siva,
-      }],
-    },
-  ];
 }
 
 type ReportItem = {

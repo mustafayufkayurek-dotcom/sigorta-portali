@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
-import { buildHasarHakedisGrantLines, buildHasarHakedisSecimSatirlari, DOSYA_ODEME_IS_GRUBU_YOK, DOSYA_ODEME_TEDARIKCI_YOK, avansAciklamaMetni, dosyaOdemeIsGrubu, dosyaOdemeTedarikciAdi, gercekTedarikciIsGruplari, hasarHakedisKalan, isHasarHakedisSatiriPasif, isOrnekHakedisSatiri, ORNEK_HAKEDIS_TEDARIKCILERI, ornekHakedisAvans, workGroupJobsLabel } from './hasar-hakedis-grant.ts';
+import { buildHasarHakedisGrantLines, buildHasarHakedisSecimSatirlari, DOSYA_ODEME_IS_GRUBU_YOK, DOSYA_ODEME_TEDARIKCI_YOK, avansAciklamaMetni, dosyaOdemeIsGrubu, dosyaOdemeTedarikciAdi, gercekTedarikciIsGruplari, hasarHakedisKalan, isHasarHakedisSatiriPasif, isOrnekHakedisSatiri, workGroupJobsLabel } from './hasar-hakedis-grant.ts';
 import { netHakedisAfterAvans } from '../../../../packages/shared/src/hasar-flow-groups.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -205,16 +205,15 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.equal(netHakedisAfterAvans(12500, 2500), 10000);
   });
 
-  it('hakediş sayfasında iki örnek tedarikçi durur', () => {
-    assert.equal(ORNEK_HAKEDIS_TEDARIKCILERI.length, 2);
-    assert.equal(ORNEK_HAKEDIS_TEDARIKCILERI[0]?.vendorName, 'Orhan Şimşek');
-    assert.equal(ORNEK_HAKEDIS_TEDARIKCILERI[0]?.workGroupLabel, 'Mobilya İşleri');
-    assert.equal(ORNEK_HAKEDIS_TEDARIKCILERI[0]?.amount, 90_000);
-    assert.equal(ornekHakedisAvans('ornek-orhan'), 10_000);
-    assert.equal(hasarHakedisKalan(90_000, 10_000), 80_000);
-    assert.equal(ORNEK_HAKEDIS_TEDARIKCILERI[1]?.vendorName, 'Boyacı Usta');
-    assert.equal(ORNEK_HAKEDIS_TEDARIKCILERI[1]?.workGroupLabel, 'Boya İşleri');
-    assert.equal(isOrnekHakedisSatiri(ORNEK_HAKEDIS_TEDARIKCILERI[0]!), true);
+  it('hakediş sayfasına örnek tedarikçi basılmaz', () => {
+    assert.equal(isOrnekHakedisSatiri({ key: 'ornek-orhan', vendorId: 'ornek-orhan' }), true);
+    assert.equal(isOrnekHakedisSatiri({ key: 'v1', vendorId: 'gercek-uuid' }), false);
+    const panel = readFileSync(join(here, '../components/finance/HasarFileHakedisPanel.tsx'), 'utf8');
+    assert.match(panel, /hakedisSayfaSatirlari = useMemo\(\s*\(\) => secimSatirlari/s);
+    assert.doesNotMatch(panel, /ORNEK_HAKEDIS_TEDARIKCILERI/);
+    assert.doesNotMatch(panel, /ornek-orhan/);
+    assert.doesNotMatch(panel, /Boyacı Usta/);
+    assert.match(panel, /isOrnekHakedisSatiri/);
   });
 
   it('avans açıklamasına İş Grubu Yok yazılmaz', () => {
@@ -236,7 +235,7 @@ describe('hasar hakediş maliyeti LOCK', () => {
     const panel = readFileSync(join(here, '../components/finance/HasarFileHakedisPanel.tsx'), 'utf8');
     assert.match(panel, /buildHasarHakedisGrantLines/);
     assert.match(panel, /buildHasarHakedisSecimSatirlari/);
-    assert.match(panel, /ORNEK_HAKEDIS_TEDARIKCILERI/);
+    assert.doesNotMatch(panel, /ORNEK_HAKEDIS_TEDARIKCILERI/);
     assert.match(panel, /hasar-hakedis-is-grubu/);
     assert.match(panel, /hasar-hakedis-sayfa-listesi/);
     assert.match(panel, /Hakediş verildi/);
@@ -245,6 +244,8 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.match(panel, /hasar-hakedis-bakiye/);
     assert.match(panel, /Kalan Bakiye/);
     assert.match(panel, /Finansa Aktar/);
+    assert.match(panel, /Sözleşme durumunu belirleyiniz/);
+    assert.doesNotMatch(panel, /Dosyada sözleşme var mı sorun/);
     assert.match(panel, /Avans Ver/);
     assert.match(panel, /hasar-avans-tedarikci/);
     assert.match(panel, /payerId: satir.vendorId/);
@@ -263,6 +264,9 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.doesNotMatch(panel, /CommercialPricingDrawer/);
     assert.match(panel, /label: 'Tedarikçi Adı Soyadı'/);
     assert.match(panel, /label: 'İş Grubu'/);
+    assert.match(panel, /Avans uyarısı/);
+    assert.match(panel, /HASAR_AVANS_YARI_ONAY_METNI/);
+    assert.doesNotMatch(panel, /Avans limiti aşıyor/);
     assert.match(panel, /Ödeme Tarihi/);
     assert.match(panel, /Hakediş Talep Tarihi/);
     assert.match(panel, /TableColumnsProvider/);

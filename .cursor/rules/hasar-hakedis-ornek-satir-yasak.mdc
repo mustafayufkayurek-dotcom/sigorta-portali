@@ -1,0 +1,32 @@
+---
+description: Hakediş çekmecesine örnek tedarikçi basılmaz
+alwaysApply: true
+---
+
+# Hasar Hakediş — Örnek Satır Yasağı
+
+**Kaynak (Mustafa · 01.09.2026):** Hakediş çekmecesinde Orhan Şimşek / Boyacı Usta duruyordu. Personel gerçek sandı; Finansa Aktar «örnek tedarikçi» dedi.
+
+**Temel cümle:** Hakediş listesi **yalnız dosyadaki gerçek tedarikçi.** Örnek isim basılmaz.
+
+## Zorunlu
+
+1. `hakedisSayfaSatirlari` = `secimSatirlari`. `ORNEK_HAKEDIS_TEDARIKCILERI` yok.
+2. Tedarikçi yoksa boş metin: «Dosyada görevli tedarikçi yok.»
+3. Tedarikçi kartı maliyet özeti boşsa örnek rakam yok; «Henüz maliyet kaydı yok.»
+4. `isOrnekHakedisSatiri` eski `ornek-` satırı finansa keser.
+
+## Yasak (açık onay yoksa)
+
+- Canlı çekmeceye örnek tedarikçi eklemek
+- Boş maliyeti sahte satırla doldurmak
+
+## Durdurma
+
+Örnek isim yine çıkarsa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-hasar-hakedis.sh
+```

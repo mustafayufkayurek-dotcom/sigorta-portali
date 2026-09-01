@@ -26,7 +26,7 @@ import {
   type ClientSortState,
 } from '@/utils/panel-table-sort';
 import { formatTryAmount } from '@/utils/format-try-amount';
-import { isOfficeStaffRole, usePanelRoleCode } from '@/hooks/usePanelRole';
+import { HASAR_AVANS_YARI_USTU_ETIKET, isAvansYariUstuNote } from '@sigorta/shared';
 
 const PAYMENT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'paymentDate', label: 'Tarih / Vade', defaultWidth: 112, minWidth: 96 },
@@ -35,6 +35,7 @@ const PAYMENT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'counterparty', label: 'Taraf / Kanal', defaultWidth: 140, minWidth: 100 },
   { id: 'method', label: 'Yöntem', defaultWidth: 96, minWidth: 80 },
   { id: 'amount', label: 'Tutar', defaultWidth: 108, minWidth: 88 },
+  { id: 'avansUyari', label: 'Avans uyarısı', defaultWidth: 128, minWidth: 108 },
   { id: 'status', label: 'Durum', defaultWidth: 108, minWidth: 88 },
   { id: 'note', label: 'Not', defaultWidth: 160, minWidth: 96 },
 ];
@@ -122,6 +123,8 @@ export default function TahsilatlarPage() {
             return METHOD_LABEL[p.method] ?? p.method ?? '';
           case 'amount':
             return p.amount ?? 0;
+          case 'avansUyari':
+            return isAvansYariUstuNote(p.note) ? HASAR_AVANS_YARI_USTU_ETIKET : '';
           case 'status':
             return p.status ?? '';
           case 'note':
@@ -321,6 +324,7 @@ export default function TahsilatlarPage() {
                     <SortablePanelTableTh colId="counterparty" sortKey="counterparty" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Taraf / Kanal</SortablePanelTableTh>
                     <SortablePanelTableTh colId="method" sortKey="method" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Yöntem</SortablePanelTableTh>
                     <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tutar</SortablePanelTableTh>
+                    <SortablePanelTableTh colId="avansUyari" sortKey="avansUyari" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Avans uyarısı</SortablePanelTableTh>
                     <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Durum</SortablePanelTableTh>
                     <SortablePanelTableTh colId="note" sortKey="note" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Not</SortablePanelTableTh>
                     <th className="px-4 py-3 text-center">İşlemler</th>
@@ -368,6 +372,15 @@ export default function TahsilatlarPage() {
                         </PanelTableTd>
                         <PanelTableTd colId="method" className="px-4 py-3 text-xs">{METHOD_LABEL[p.method] ?? p.method}</PanelTableTd>
                         <PanelTableTd colId="amount" className="px-4 py-3 text-right font-bold">{fmtCurrency(p.amount)}</PanelTableTd>
+                        <PanelTableTd colId="avansUyari" className="px-4 py-3">
+                          {isAvansYariUstuNote(p.note) ? (
+                            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                              {HASAR_AVANS_YARI_USTU_ETIKET}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </PanelTableTd>
                         <PanelTableTd colId="status" className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
                             p.status === 'completed' ? 'bg-green-50 text-green-700 border-green-100'

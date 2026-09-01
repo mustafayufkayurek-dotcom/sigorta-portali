@@ -1032,7 +1032,10 @@ function GenelBakisTab({
       <VendorBankConfirmationCard vendor={vendor} onUpdate={onVendorUpdate} />
 
       <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.1fr_0.9fr]">
-        <SectionCard title="Maliyet Özeti" subtitle={maliyetOzet.ornek ? 'Örnek görünüm — dosyada maliyet oluşunca gerçek rakam gelir' : undefined}>
+        <SectionCard title="Maliyet Özeti">
+          {highlightedCost.length === 0 ? (
+            <p className="text-sm text-slate-500">Henüz maliyet kaydı yok.</p>
+          ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
@@ -1050,7 +1053,6 @@ function GenelBakisTab({
                   <tr key={row.serviceType} className="border-b border-slate-50 last:border-0">
                     <td className="py-1.5 pr-3 font-medium text-slate-800">
                       {toTitleCaseTR(String(row.serviceType ?? ''))}
-                      {maliyetOzet.ornek ? <span className="ml-1.5 text-[10px] font-medium text-slate-400">Örnek</span> : null}
                     </td>
                     <td className="py-1.5 pr-3 text-right tabular-nums text-slate-600">{formatTryAmount(row.minCost, { fractionDigits: 0 })}</td>
                     <td className="py-1.5 pr-3 text-right tabular-nums text-slate-600">{formatTryAmount(row.avgCost, { fractionDigits: 0 })}</td>
@@ -1062,6 +1064,7 @@ function GenelBakisTab({
               </tbody>
             </table>
           </div>
+          )}
         </SectionCard>
 
         <SectionCard title="Hizmet Kalitesi">
