@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (1 Eylül 2026 — v551)
+## Canlı durum (1 Eylül 2026 — v552)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v551-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v551-amd64` | deploy sırası |
-| **Rollback** | Web **v550** / Backend **v550** | manifest `rollbackImages` |
-| **Etiket** | `v551-dosya-durum-son-islem` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v552-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v552-amd64` | deploy sırası |
+| **Rollback** | Web **v551** / Backend **v551** | manifest `rollbackImages` |
+| **Etiket** | `v552-saha-hakedis-kisa-ad` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v552 — Full (1 Eylül 2026) — Saha sonlandırır; iş grubu hakedişi; kısa ad
+
+- Saha **Tespiti Sonlandır**; ofis dosyası kapanmaz, dosya sorumlusuna açık düşer
+- Aynı tedarikçinin her iş grubu ayrı finansa gider; bütçe Düzenle satışa dokunmaz
+- Kısmi kayıt Kısa Ad’ı silmez; boş kısa ad karttaki isimden doldurulur (8 kayıt)
+- v551 durum kilidi durur. Rollback web+backend **v551**. İK yok.
 
 ### v551 — Full (1 Eylül 2026) — Dosya durumu son işlem
 

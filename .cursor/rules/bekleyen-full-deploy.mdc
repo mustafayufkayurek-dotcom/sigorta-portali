@@ -1,13 +1,17 @@
 ---
-description: Full deploy v551 alındı — 01.09.2026
+description: Full deploy v552 alındı — 01.09.2026
 alwaysApply: true
 ---
 
-# Full deploy v551 (01.09.2026) — alındı
+# Full deploy v552 (01.09.2026) — alındı
 
-Canlı: web **v551** · backend **v551**. Rollback: web v550 / backend v550.
+Canlı: web **v552** · backend **v552**. Rollback: web v551 / backend v551.
 
-## Alınan paket (v551 full)
+## Alınan paket (v552 full)
+
+Saha **Tespiti Sonlandır**; ofis dosyasını kapatmaz. Aynı tedarikçinin her iş grubu ayrı hakediş. Kısmi kayıt Kısa Ad’ı silmez; boş kısa ad karttaki isimden doldurulur.
+
+## v551 durur (bozulmaz)
 
 Dosya durumu son işlemi gösterir. Red «Dosya Kapatıldı» olmaz. Revizyon «Revizyon Talep Edildi». Gerçek kapanış «Dosya Kapatıldı».
 

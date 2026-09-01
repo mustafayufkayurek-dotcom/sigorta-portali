@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-01",
-  "label": "v551-dosya-durum-son-islem",
-  "description": "Full: Dosya durumu son işlemi gösterir. Red kapanışın altında kalmaz. Revizyon Revizyon Talep Edildi. v550 hakediş/saha/avans durur. İK yok. Rollback web v550 / backend v550.",
+  "label": "v552-saha-hakedis-kisa-ad",
+  "description": "Full: Saha Tespiti Sonlandır ofis dosyasını kapatmaz. Aynı tedarikçinin her iş grubu ayrı hakediş. Kısmi kayıt Kısa Ad’ı silmez; boş kısa ad karttaki isimden doldurulur. v551 durum kilidi durur. İK yok. Rollback web v551 / backend v551.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v551-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v551-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v552-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v552-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v550-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v550-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v551-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v551-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
