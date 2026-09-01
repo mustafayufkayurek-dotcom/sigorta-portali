@@ -8,14 +8,28 @@ cd "$REPO_ROOT"
 
 PAY='apps/backend/src/modules/payments/payments.service.ts'
 ENT='apps/backend/src/modules/emergency/acil-vendor-entitlement.ts'
+# Eski sahte kuyruk id yok. Acil satırı gerçek Payment + emergencyCaseId; Ödenecekler’de durur.
 for SYM in parseAcilEntitlementQueueId toAcilFinanceQueueRow; do
-  if grep -q "$SYM" "$PAY" && ! grep -q "export function ${SYM}" "$ENT"; then
-    echo "HATA: payments.service $SYM çağırıyor; Acil dosyada yok — derleme kırılır."
+  if grep -q "$SYM" "$PAY" "$ENT"; then
+    echo "HATA: $SYM — Acil artık sahte kuyruk id kullanmaz."
     exit 1
   fi
 done
-if grep -q "acil-vendor-entitlement" "$PAY"; then
-  echo "HATA: Hasar ödeme servisi Acil kuyruğuna bağlanmış — v545 Acil yolu ayrı kalır."
+# Hasar 15/30 statement yolu durur. Acil satırına vade basılmaz.
+if ! grep -q "syncPendingPaymentsForStatement" "$PAY"; then
+  echo "HATA: Hasar statement ödeme yolu silinmiş."
+  exit 1
+fi
+if ! grep -q "VENDOR_HAKEDIS_DUE_DAYS" "$PAY"; then
+  echo "HATA: Hasar 15/30 vade sabiti silinmiş."
+  exit 1
+fi
+if grep -q "acilHakedisDueDate\|ACIL-HAKEDIS" "$PAY"; then
+  echo "HATA: Acil hakediş üretimi Hasar ödeme servisine taşınmış — emergency-finance’te kalır."
+  exit 1
+fi
+if grep -q "paymentDueDays\|VENDOR_HAKEDIS_DUE_DAYS" "$ENT"; then
+  echo "HATA: Acil hakedişe Hasar vadesi girmiş."
   exit 1
 fi
 
