@@ -28,7 +28,10 @@ describe('survey closure lock', () => {
 
   it('kapanışta kampanya oluşur, WhatsApp API gönderimi yok', () => {
     assert.match(claimFiles, /ensureCampaignForClaimFile\(id\)/);
-    assert.match(claimFiles, /ensureCampaignForClaimFile\(fileId\)/);
+    assert.doesNotMatch(
+      claimFiles.slice(claimFiles.indexOf('async closeAfterFieldInspection')),
+      /ensureCampaignForClaimFile/,
+    );
     assert.match(emergency, /ensureCampaignForEmergencyCase/);
     assert.match(service, /buildWhatsAppUrl/);
     assert.doesNotMatch(service, /sendWhatsAppMessage/);
