@@ -63,6 +63,9 @@ function resolveMuvafakatBadge(conds: ClaimClosureConditions): StepBadge {
 }
 
 function resolveVendorBadge(conds: ClaimClosureConditions): StepBadge {
+  if (conds.vendorContractWaived) {
+    return { label: 'Gerekmez', tone: 'success' };
+  }
   if (conds.vendorContractSigned) {
     return { label: 'İmzalandı', tone: 'success' };
   }
@@ -231,9 +234,11 @@ export function EvrakOzetPanel({
             ? 'Link gönderildi. Sigortalının belgeyi okuyup onaylaması bekleniyor.'
             : 'Muvafakat süreci devam ediyor.';
 
-  const vendorDesc = conditions.vendorContractSigned
-    ? 'Tedarikçi sözleşmesi imzalandı ve dosyada mevcut.'
-    : 'Atanan tedarikçi ile sözleşme imzalanması gerekiyor.';
+  const vendorDesc = conditions.vendorContractWaived
+    ? 'Geriye dönük kapanmış dosya. Tedarikçi sözleşmesi yüklenmez.'
+    : conditions.vendorContractSigned
+      ? 'Tedarikçi sözleşmesi imzalandı ve dosyada mevcut.'
+      : 'Atanan tedarikçi ile sözleşme imzalanması gerekiyor.';
 
   const kapamaDesc = conditions.canCreateInvoiceRequest
     ? 'Onaylı rapor veya muvafakat duruyor. Talep Operasyonu Başlat → Dosya Onaylandı adımından gider. Onarımın bitmesi beklenmez.'

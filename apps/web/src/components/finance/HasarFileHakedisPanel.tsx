@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { ArrowLeft, Banknote, Check, Receipt, Wallet, X } from 'lucide-react';
-import { AVANS_REF_PREFIX, isAvansPayment, isHakedisMahsupPayment, resolveHasarAvansHesap, withAvansNote } from '@sigorta/shared';
+import { AVANS_REF_PREFIX, isAvansPayment, isHakedisMahsupPayment, isHasarVendorContractWaived, resolveHasarAvansHesap, withAvansNote } from '@sigorta/shared';
 import { FinanceRowActions, printFinanceSlip, vendorEkstreHref } from '@/components/finance/FinanceRowActions';
 import { FinansPanelCard } from '@/components/finance/FinansPanelUI';
 import {
@@ -1180,11 +1180,14 @@ export function HasarFileHakedisPanel({
       && (kullanilanTutar + avansTutarDraft) > sozlesme + 0.009);
   const hakedisButceAsim = sozlesme != null && talepBrut > 0
     && (onayliToplam + talepBrut) > sozlesme + 0.009;
-  const sozlesmeHazir = sozlesmeCevap === 'var'
+  const sozlesmeMuaf = isHasarVendorContractWaived({ id: claimId, fileNo });
+  const sozlesmeHazir = sozlesmeMuaf
     ? true
-    : sozlesmeCevap === 'yok'
-      ? Boolean(sozlesmeYokNeden.trim())
-      : false;
+    : sozlesmeCevap === 'var'
+      ? true
+      : sozlesmeCevap === 'yok'
+        ? Boolean(sozlesmeYokNeden.trim())
+        : false;
 
   const cagirDosyaSozlesmesi = async () => {
     setSozlesmeCevap('var');
@@ -1300,7 +1303,7 @@ export function HasarFileHakedisPanel({
       showToast('error', 'Bu tedarikçide kalan yok.');
       return;
     }
-    if (!sozlesmeCevap) {
+    if (!sozlesmeMuaf && !sozlesmeCevap) {
       showToast('error', 'Dosyada sözleşme var mı sorun.');
       return;
     }
@@ -1398,7 +1401,7 @@ export function HasarFileHakedisPanel({
       showToast('error', `${satir.vendorName} kartında 15 veya 30 gün vade seçili değil.`);
       return;
     }
-    if (!sozlesmeCevap) {
+    if (!sozlesmeMuaf && !sozlesmeCevap) {
       showToast('error', 'Dosyada sözleşme var mı sorun.');
       return;
     }
@@ -1690,6 +1693,7 @@ export function HasarFileHakedisPanel({
                             </button>
                           </div>
                         </div>
+                        {!sozlesmeMuaf ? (
                         <SozlesmeSoru
                           cevap={sozlesmeCevap}
                           yokNeden={sozlesmeYokNeden}
@@ -1704,6 +1708,7 @@ export function HasarFileHakedisPanel({
                           onYokNeden={setSozlesmeYokNeden}
                           onPdfHata={(e) => showToast('error', axiosErrorMessage(e, 'Sözleşme açılamadı.'))}
                         />
+                        ) : null}
                       </>
                     )}
                   </div>
@@ -1724,7 +1729,7 @@ export function HasarFileHakedisPanel({
                         onGonder={(row) => void submitGrant(row)}
                       />
                     </div>
-                    {secimSatirlari.some((row) => !satirPasif(row)) ? (
+                    {secimSatirlari.some((row) => !satirPasif(row)) && !sozlesmeMuaf ? (
                       <SozlesmeSoru
                         cevap={sozlesmeCevap}
                         yokNeden={sozlesmeYokNeden}

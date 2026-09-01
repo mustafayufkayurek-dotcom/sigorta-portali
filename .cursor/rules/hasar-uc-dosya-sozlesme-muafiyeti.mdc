@@ -1,0 +1,27 @@
+# Hasar Üç Dosya Sözleşme Muafiyeti Kilidi
+
+**Kaynak (Mustafa · 01.09.2026):** Geriye dönük kapanmış üç dosyada tedarikçi sözleşmesi yüklenemiyordu. Muafiyet yalnız bu dosyalardır.
+
+**Temel cümle:** Adalet Vakfı, Serap Richard ve İlknur Yılmaz dosyalarında **sözleşme yüklenmez.** Başka dosyaya yayılmaz.
+
+## Zorunlu
+
+1. Liste `HASAR_VENDOR_CONTRACT_WAIVED_FILES` — üç kayıt: `822017`, `14102847240002`, `EUREKO`.
+2. Hakediş/avans bu dosyada «Dosyada sözleşme var mı?» sormaz.
+3. Evrak rozeti **Gerekmez**. Diğer dosyada soru ve yükleme durur.
+
+## Yasak (açık onay yoksa)
+
+- Muafiyeti tüm Hasar dosyalarına yaymak
+- Bu üç dosyayı tekrar sözleşmeye zorlamak
+- Bu kilidi «sadeleştirme» diye kaldırmak
+
+## Durdurma
+
+Başka dosyada sözleşme kalkarsa veya bu üçünde yine kesilirse → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-hasar-hakedis.sh
+```

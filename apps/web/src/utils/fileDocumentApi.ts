@@ -77,6 +77,7 @@ export interface ClaimClosureConditions {
   muvafakatnamePhysicallyUploaded: boolean;
   repairReportApproved: boolean;
   vendorContractSigned: boolean;
+  vendorContractWaived?: boolean;
   canCreateInvoiceRequest: boolean;
   muvafakatnameId: string | null;
   muvafakatnameStatus: FileDocumentStatus | null;

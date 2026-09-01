@@ -19,6 +19,7 @@ export * from './finance-operation-no';
 export * from './collection-party';
 export * from './backup-health';
 export * from './acil-vendor-quality';
+export * from './hasar-vendor-contract-waiver';
 export * from './hasar-flow-groups';
 export * from './file-expense-work-group-audit';
 export * from './acil-file-owner-delegation';

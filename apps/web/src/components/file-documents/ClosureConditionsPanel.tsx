@@ -318,8 +318,8 @@ export default function ClosureConditionsPanel(props: Props) {
                 />
                 <ConditionRow
                   met={conditions.vendorContractSigned}
-                  label="Tedarikçi sözleşmesi (zorunlu değil)"
-                  help="Fatura talebi sözleşme beklemez"
+                  label={conditions.vendorContractWaived ? 'Tedarikçi sözleşmesi (bu dosyada gerekmez)' : 'Tedarikçi sözleşmesi (zorunlu değil)'}
+                  help={conditions.vendorContractWaived ? 'Geriye dönük kapanmış dosya' : 'Fatura talebi sözleşme beklemez'}
                 />
               </>
             ) : conditions ? (

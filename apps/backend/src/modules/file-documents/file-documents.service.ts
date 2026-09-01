@@ -15,7 +15,7 @@ import {
 import { buildAppPath } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
-import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isAcilDigitalApprovalRequired } from '@sigorta/shared';
+import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isAcilDigitalApprovalRequired, isHasarVendorContractWaived } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -775,11 +775,13 @@ export class FileDocumentsService {
       }),
     ]);
 
+    const waived = isHasarVendorContractWaived({ id: claimFileId });
     const conditions = {
       muvafakatnameDigitallyApproved: !!muvafakatname?.digitallyApprovedAt,
       muvafakatnamePhysicallyUploaded: !!muvafakatname?.physicalUploadKey,
       repairReportApproved: !!repairReport,
-      vendorContractSigned: !!vendorContract,
+      vendorContractSigned: !!vendorContract || waived,
+      vendorContractWaived: waived,
     };
 
     return {
