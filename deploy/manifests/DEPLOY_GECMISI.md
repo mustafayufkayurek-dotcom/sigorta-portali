@@ -2,24 +2,31 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 13 Temmuz 2026
+**Son güncelleme:** 1 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (13 Temmuz 2026 — v346 web)
+## Canlı durum (1 Eylül 2026 — v548)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v346-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v342-amd64` | korunur |
-| **Rollback** | Web **v345** / Backend **v340** | manifest `rollbackImages` |
-| **Etiket** | `v346-dashboard-faz4-d0` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v548-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v548-amd64` | deploy sırası |
+| **Rollback** | Web **v547** / Backend **v546** | manifest `rollbackImages` |
+| **Etiket** | `v548-hasar-tahsilat-gelir` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v548 — Full (1 Eylül 2026) — Hasar tahsilat tarafı ve gelir
+
+- Satış faturası kime Dosya Onaylandı adımında sorulur; Finansa talep et ile kilitlenir
+- Yeni Gelir: Faturalı / Faturasız; faturasızda KDV yok
+- Avans açıklaması kutu içinde; iş grubu adı yazılmaz
+- Rollback web **v547** / backend **v546**. İK yok.
 
 ### v547 — Web-only (31 Ağustos 2026) — Hasar avans tedarikçi seçimi
 

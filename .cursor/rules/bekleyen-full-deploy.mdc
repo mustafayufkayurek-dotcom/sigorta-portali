@@ -1,20 +1,25 @@
 ---
-description: Web-only deploy v547 alındı — 31.08.2026
+description: Full deploy v548 alındı — 01.09.2026
 alwaysApply: true
 ---
 
-# Web-only deploy v547 (31.08.2026) — alındı
+# Full deploy v548 (01.09.2026) — alındı
 
-Canlı: web **v547** · backend **v546**. Rollback: web v546 / backend v546.
+Canlı: web **v548** · backend **v548**. Rollback: web v547 / backend v546.
 
-## Alınan paket (v547 web)
+## Alınan paket (v548 full)
 
-1. Hasar Avans: tedarikçi bütçeyle listelenir, seçilir, kalan düşülür.
-2. Avans açıklamasına «İş Grubu Yok» yazılmaz.
+1. Satış faturası kime: Operasyonu Başlat → Dosya Onaylandı. Finans tekrar sormaz.
+2. Yeni Gelir: Faturalı (%20 KDV) / Faturasız (KDV yok). Kaynak dosyadan.
+3. Avans açıklaması kutu içinde; iş grubu adı yazılmaz.
+
+## v547 durur (bozulmaz)
+
+Hasar Avans: tedarikçi bütçeyle seçilir. Açıklamaya «İş Grubu Yok» yazılmaz.
 
 ## v546 durur (bozulmaz)
 
-Hasar Gider & Bütçe tedarikçi hakedişi, ödeme tablosu, tahsilatlar (dosya sorumlusu). Backend v546.
+Hasar Gider & Bütçe tedarikçi hakedişi, ödeme tablosu, tahsilatlar (dosya sorumlusu).
 
 ## v545 durur (bozulmaz)
 
@@ -23,10 +28,6 @@ Sigorta şirketi yalnız **kendi** dosyasında muvafakati Evraklar’da görür 
 ## v544 durur (bozulmaz)
 
 Fiziki evrak oturumla. Evrak Türleri sekmeleri, DOC kodu, Ayarlar işlem ikonları.
-
-## v543 durur (bozulmaz)
-
-Operasyon sözlükleri Ayarlar kaydından. Hasar planlayıcı Boyacı maketi yok.
 
 ## Canlıda yok
 
