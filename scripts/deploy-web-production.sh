@@ -44,7 +44,7 @@ WEB_NO_CACHE=""
 if [ "${NO_CACHE:-}" = "1" ]; then WEB_NO_CACHE="--no-cache"; fi
 
 run_remote() {
-  ssh -o BatchMode=yes "$REMOTE_HOST" "$@"
+  ssh -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=20 "$REMOTE_HOST" "$@"
 }
 
 echo "=== Web-only deploy: $DEPLOY_TAG ==="

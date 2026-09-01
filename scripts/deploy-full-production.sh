@@ -12,7 +12,7 @@ DEPLOY_TAG="${1:?Kullanım: deploy-full-production.sh ETİKET}"
 SKIP_RSYNC="${2:-}"
 
 run_remote() {
-  ssh -o BatchMode=yes "$REMOTE_HOST" "$@"
+  ssh -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=20 "$REMOTE_HOST" "$@"
 }
 
 if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
