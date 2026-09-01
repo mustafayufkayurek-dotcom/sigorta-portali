@@ -308,6 +308,7 @@ export function formatLiveReportFinance(report?: {
         : 0;
   return {
     total: fmtLiveAmount(total),
+    totalAmount: total,
     supplierCost: fmtLiveAmount(supplierCost),
     actualExpense: fmtLiveAmount(0),
     expectedIncome: fmtLiveAmount(total),

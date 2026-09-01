@@ -172,9 +172,9 @@ export function workGroupJobsLabel(name?: string | null): string {
   return `${t} İşleri`;
 }
 
-/** Avans açıklamasına «İş Grubu Yok» yazılmaz. Gerçek iş grubu durur. */
-export function avansAciklamaMetni(workGroupLabel?: string | null): string {
-  const t = String(workGroupLabel ?? '').trim();
+/** Kayıt metninden «İş Grubu Yok» düşer; iş grubu adı kutu doldurmaz. */
+export function avansAciklamaMetni(value?: string | null): string {
+  const t = String(value ?? '').trim();
   if (!t) return '';
   if (t === DOSYA_ODEME_IS_GRUBU_YOK) return '';
   if (t.toLocaleLowerCase('tr-TR') === 'iş grubu yok') return '';

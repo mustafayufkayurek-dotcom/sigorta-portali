@@ -50,6 +50,9 @@ import {
   supplierAssignConflictMessage,
   supplierAssignConflicts,
   vendorPaidFromOutgoingStatuses,
+  parseCollectionParty,
+  canToggleCollectionPartyLock,
+  isCollectionPartyChangeBlocked,
   type OperationPreset,
   type VerbalManualDecision,
 } from '@sigorta/shared';
@@ -1647,6 +1650,8 @@ export class ClaimFilesService {
         addressLine?: string | null;
       } | null;
       assignedOfficeUserId?: string | null;
+      collectionParty?: string | null;
+      collectionPartyLocked?: boolean;
     };
 
     const {
@@ -1668,6 +1673,40 @@ export class ClaimFilesService {
     if (rest.hideFinancialFromAssignees !== undefined && rest.hideFinancialFromAssignees !== false) {
       if (!canManageFinancialVisibility(requestingUser?.roleCode)) {
         throw new ForbiddenException('Finansal görünürlük ayarını yalnızca yönetici değiştirebilir');
+      }
+    }
+
+    if (rest.collectionPartyLocked !== undefined) {
+      if (!canToggleCollectionPartyLock(requestingUser?.roleCode)) {
+        throw new ForbiddenException('Tahsilat kilidini yalnız yönetici açıp kapatabilir');
+      }
+      rest.collectionPartyLocked = Boolean(rest.collectionPartyLocked);
+    }
+
+    if (rest.collectionParty !== undefined) {
+      const parsed = parseCollectionParty(rest.collectionParty);
+      if (!parsed) {
+        throw new BadRequestException('Tahsilat tarafı Sigorta Şirketi veya Sigortalı ödemeli olmalıdır');
+      }
+      const isAdmin = canToggleCollectionPartyLock(requestingUser?.roleCode);
+      const unlocking = rest.collectionPartyLocked === false;
+      const current = parseCollectionParty(existingAny.collectionParty) ?? 'insurance_company';
+      const changing = parsed !== current;
+      if (
+        changing
+        && isCollectionPartyChangeBlocked({
+          locked: Boolean(existingAny.collectionPartyLocked),
+          isAdmin,
+          unlocking,
+        })
+      ) {
+        throw new BadRequestException(
+          'Tahsilat tarafı kilitli. Yönetici Dosya Bilgileri içinde kilidi açmalıdır.',
+        );
+      }
+      rest.collectionParty = parsed;
+      if (changing && isAdmin) {
+        rest.collectionPartyLocked = true;
       }
     }
 

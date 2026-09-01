@@ -7,6 +7,7 @@ import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
 import { CollapsibleSectionCard } from '../claim-detail-ui';
 import { useToast } from '@/contexts/ToastContext';
 import { resolveFileFinanceKpis } from '@sigorta/shared';
+import { isInsuredCollectionParty } from '@sigorta/shared';
 
 function PlAmountCell({
   amount,
@@ -130,6 +131,18 @@ export function FinansOzetPanel({
 
   return (
     <div className="space-y-4">
+      {isInsuredCollectionParty(claim?.collectionParty) && (
+        <div
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
+          data-testid="hasar-sigortali-tahsil-ozet"
+        >
+          <p className="text-sm font-semibold text-amber-900">Sigortalıdan tahsil</p>
+          <p className="mt-0.5 text-xs text-amber-800">
+            Kalan {fmtCurrency(kpis.outstanding)}
+            {s?.collectedFromInsured != null ? ` · Tahsil edilen ${fmtCurrency(s.collectedFromInsured)}` : ''}
+          </p>
+        </div>
+      )}
       {loading ? (
         <div className="py-8 text-center text-slate-400 text-sm">Özet hesaplanıyor...</div>
       ) : !s && kpis.planRevenue <= 0 && kpis.planCost <= 0 ? (

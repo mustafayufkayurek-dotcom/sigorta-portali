@@ -60,7 +60,7 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, isExpertFirmCustomer, staffVisibleClaimStatusName } from '@sigorta/shared';
+import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, isExpertFirmCustomer, isInsuredCollectionParty, staffVisibleClaimStatusName } from '@sigorta/shared';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
@@ -498,6 +498,14 @@ function DosyaSayfaUstu({
         <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-blue-900">
           {headerBand}
         </p>
+        {isInsuredCollectionParty(claim.collectionParty) ? (
+          <span
+            data-testid="hasar-sigortali-odemeli-rozet"
+            className="inline-flex shrink-0 items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800"
+          >
+            Sigortalı ödemeli
+          </span>
+        ) : null}
         <div className="w-full min-w-0 sm:w-auto sm:max-w-[min(100%,16rem)] sm:ml-auto">
           <ClaimFileHeaderStatusCluster
             showTitle={false}
@@ -1791,7 +1799,11 @@ export default function ClaimFileDetailPage() {
           )}
           {activeGroup === 'evraklar' && <EvraklarTab claimId={id!} claim={claim} />}
           {activeGroup === 'finans' && canViewFinancials && (
-            <FinansTab claim={claim} claimId={id!} />
+            <FinansTab
+              claim={claim}
+              claimId={id!}
+              onClaimUpdated={(patch) => setClaim((c: any) => ({ ...c, ...patch }))}
+            />
           )}
           {activeGroup === 'operasyon' && (
             <div className="space-y-3">

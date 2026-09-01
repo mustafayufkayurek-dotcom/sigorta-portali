@@ -345,6 +345,11 @@ model ClaimFile {
   insuredName           String?   @map("insured_name")         // Sigortalı adı
   insuredPhone          String?   @map("insured_phone")        // Sigortalı telefon
 
+  // Tahsilat kime: insurance_company (varsayılan) | insured (sigortalı ödemeli)
+  collectionParty String @default("insurance_company") @map("collection_party")
+  /// Finansa talep sonrası kilitli. Yalnız admin Dosya Bilgileri’nde açar.
+  collectionPartyLocked Boolean @default(false) @map("collection_party_locked")
+
   // Online kart tahsilat (PayTR)
   requiresOnlineCardCollection Boolean @default(false) @map("requires_online_card_collection")
   onlineCardCollectionStatus   String? @map("online_card_collection_status")
@@ -1546,7 +1551,7 @@ model Invoice {
   invoiceNo          String   @unique @map("invoice_no")
   invoiceDate        DateTime @map("invoice_date")
   dueDate            DateTime? @map("due_date")
-  counterpartyType   String   @map("counterparty_type")   // insurance_company | vendor | customer
+  counterpartyType   String   @map("counterparty_type")   // insurance_company | vendor | customer | insured
   counterpartyId     String?  @map("counterparty_id")
   currency           String   @default("TRY")
   subtotalAmount     Float    @default(0) @map("subtotal_amount")
@@ -1583,7 +1588,7 @@ model Payment {
   amount          Float
   currency        String   @default("TRY")
   method          String                            // eft | havale | credit_card | cash | offset
-  payerType       String   @map("payer_type")      // insurance_company | vendor | customer
+  payerType       String   @map("payer_type")      // insurance_company | vendor | customer | insured
   payerId         String?  @map("payer_id")
   invoiceId       String?  @map("invoice_id")
   referenceNo     String?  @map("reference_no")
@@ -2596,6 +2601,7 @@ model ClaimFileRevenue {
   // insurance_company | insured
   description      String?
   amount           Float
+  billed           Boolean   @default(true)
   vatRate          Float     @default(0) @map("vat_rate")
   vatAmount        Float     @default(0) @map("vat_amount")
   totalAmount      Float     @map("total_amount")

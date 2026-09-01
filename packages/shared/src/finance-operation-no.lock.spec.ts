@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { financeOperationNo, shouldCreateApprovedFileFee } from './finance-operation-no.ts';
+import { financeOperationNo, resolveClaimRevenueVat, shouldCreateApprovedFileFee } from './finance-operation-no.ts';
 
 describe('finans işlem no + onay gelir kapısı', () => {
   it('masraf ve gelir no üretir', () => {
@@ -43,5 +43,17 @@ describe('finans işlem no + onay gelir kapısı', () => {
       }),
       false,
     );
+  });
+
+  it('faturasız gelirde KDV sıfırlanır; tutar net kalır', () => {
+    assert.deepEqual(
+      resolveClaimRevenueVat({ billed: false, amount: 10000, vatRate: 20 }),
+      { billed: false, vatRate: 0, vatAmount: 0, totalAmount: 10000 },
+    );
+    assert.deepEqual(
+      resolveClaimRevenueVat({ billed: true, amount: 10000, vatRate: 20 }),
+      { billed: true, vatRate: 20, vatAmount: 2000, totalAmount: 12000 },
+    );
+    assert.equal(resolveClaimRevenueVat({ amount: 5000, vatRate: 10 }).billed, true);
   });
 });

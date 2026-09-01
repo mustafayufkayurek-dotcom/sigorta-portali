@@ -22,6 +22,7 @@ import { cycleClientSort, sortRowsByClientSort, type ClientSortState } from '@/u
 import { useToast } from '@/contexts/ToastContext';
 import { API, authHeader } from '@/utils/api';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import { ACIKLAMA_YARDIM } from '@/utils/aciklama-yardim';
 import { fmtDate } from '@/utils/date-helpers';
 import {
   avansAciklamaMetni,
@@ -677,7 +678,7 @@ function SozlesmeSoru({
             onChange={(e) => onYokNeden(e.target.value)}
             rows={2}
             required
-            placeholder="Neden sözleşme olmadığını yazın"
+            placeholder={ACIKLAMA_YARDIM.sozlesmeYok}
             className="mt-1 min-h-[56px] w-full resize-none rounded-lg border border-slate-200 px-2.5 py-2 text-[13px] font-normal outline-none focus:ring-1 focus:ring-blue-500"
           />
         </label>
@@ -1089,7 +1090,7 @@ export function HasarFileHakedisPanel({
     });
     setSecilenAvansKey(row.key);
     setAvansDraft('');
-    setAvansAciklama(avansAciklamaMetni(row.workGroupLabel));
+    setAvansAciklama('');
     setSelectedId(null);
     setDetail(null);
   };
@@ -1304,12 +1305,12 @@ export function HasarFileHakedisPanel({
       return;
     }
     if (!sozlesmeHazir) {
-      showToast('error', 'Sözleşme yoksa açıklayınız.');
+      showToast('error', ACIKLAMA_YARDIM.sozlesmeYok);
       return;
     }
     const aciklamaTrim = avansAciklamaMetni(avansAciklama);
     if (!aciklamaTrim) {
-      showToast('error', 'Açıklama zorunludur.');
+      showToast('error', ACIKLAMA_YARDIM.avans);
       return;
     }
     const amount = parseTrAmountInput(avansDraft) ?? 0;
@@ -1402,7 +1403,7 @@ export function HasarFileHakedisPanel({
       return;
     }
     if (!sozlesmeHazir) {
-      showToast('error', 'Sözleşme yoksa açıklayınız.');
+      showToast('error', ACIKLAMA_YARDIM.sozlesmeYok);
       return;
     }
     if (hakedisButceAsim) {
@@ -1668,7 +1669,8 @@ export function HasarFileHakedisPanel({
                               )}
                               rows={3}
                               required
-                              placeholder="Avans talebinin nedenini açıklayın"
+                              placeholder={ACIKLAMA_YARDIM.avans}
+                              data-testid="hasar-avans-aciklama"
                               className="mt-1 min-h-[72px] w-full resize-none rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[13px] font-normal outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </label>

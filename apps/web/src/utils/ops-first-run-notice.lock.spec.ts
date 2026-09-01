@@ -160,6 +160,43 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.doesNotMatch(musteri, /OpenAI|ChatGPT|Google Places/);
   });
 
+  it('Hasar Dosya Onaylandı adımında satış faturası talebi şeridi durur', () => {
+    const steps = readFileSync(
+      join(here, '../components/hasar-operasyon-planlayicisi/steps.tsx'),
+      'utf8',
+    );
+    const card = readFileSync(
+      join(here, '../components/hasar-operasyon-planlayicisi/HasarSalesInvoiceRequestCard.tsx'),
+      'utf8',
+    );
+    const finansTab = readFileSync(
+      join(here, '../app/panel/hasar-dosyalari/[id]/_components/tabs/FinansTab.tsx'),
+      'utf8',
+    );
+    assert.match(steps, /HasarSalesInvoiceRequestCard/);
+    assert.match(card, /OPS_NOTICE\.hasarSigortaliOdemeli/);
+    assert.match(card, /hasar-sigortali-odemeli-seridi/);
+    assert.doesNotMatch(finansTab, /hasar-sigortali-odemeli-seridi/);
+    assert.equal(OPS_NOTICE.hasarSigortaliOdemeli.id, 'hasar-satis-faturasi-talebi-v548');
+    assert.match(OPS_NOTICE.hasarSigortaliOdemeli.body, /fatura sigortalıya/);
+    assert.match(OPS_NOTICE.hasarSigortaliOdemeli.body, /sigorta şirketi carisine yazılmaz/);
+  });
+
+  it('Hasar Yeni Gelir çekmecesinde faturalı / faturasız şeridi durur', () => {
+    const gelir = readFileSync(
+      join(here, '../components/finance/ClaimFileGelirTahsilatPanel.tsx'),
+      'utf8',
+    );
+    assert.match(gelir, /OPS_NOTICE\.hasarGelirFaturali/);
+    assert.match(gelir, /hasar-gelir-faturali-seridi/);
+    assert.match(gelir, /hasar-gelir-faturasiz/);
+    assert.match(gelir, /KDV hesaplanmaz/);
+    assert.equal(OPS_NOTICE.hasarGelirFaturali.id, 'hasar-gelir-faturali-v549');
+    assert.match(OPS_NOTICE.hasarGelirFaturali.body, /Faturasız seçince KDV alanı kapanır/);
+    assert.match(OPS_NOTICE.hasarGelirFaturali.body, /Tahsilat kaynağı dosyadan gelir/);
+    assert.match(OPS_NOTICE.hasarGelirFaturali.body, /finans burada yeniden seçmez/);
+  });
+
   it('personel kılavuzu Acil tedarikçi ve dosya sorumlusu maddelerini taşır', () => {
     assert.match(guide, /id="acil-yardim"/);
     assert.match(guide, /Önerilen Tedarikçiler/);

@@ -55,12 +55,20 @@ export function vendorsMissingRepairPhotos(
   );
 }
 
-/** Fatura talebi onarım bitişini ve sözleşmeyi beklemez. Muvafakat yeter. */
+/** Fatura talebi onarım bitişini ve sözleşmeyi beklemez. Onaylı rapor veya muvafakat yeter. */
 export function canCreateHasarInvoiceRequest(input: {
   muvafakatnameDigitallyApproved: boolean;
   repairReportApproved?: boolean;
 }): boolean {
-  return Boolean(input.muvafakatnameDigitallyApproved);
+  return Boolean(input.muvafakatnameDigitallyApproved) || Boolean(input.repairReportApproved);
+}
+
+/** 4. adım kutusu: onaylı rapor ve tutar. Taslak / 0 TL’de çıkmaz. */
+export function canOfferHasarSalesInvoiceRequest(input: {
+  reportApproved: boolean;
+  totalAmount: number;
+}): boolean {
+  return Boolean(input.reportApproved) && Number(input.totalAmount) > 0;
 }
 
 export const AVANS_NOTE_PREFIX = '[AVANS]';

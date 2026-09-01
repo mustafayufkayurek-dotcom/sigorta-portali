@@ -6,6 +6,7 @@ import {
   HASAR_WA_ONARIM,
   HASAR_WA_ONAY,
   canCreateHasarInvoiceRequest,
+  canOfferHasarSalesInvoiceRequest,
   isAvansPayment,
   isAvansPaymentNote,
   isHakedisMahsupPayment,
@@ -57,6 +58,25 @@ describe('hasar-flow-groups lock', () => {
         muvafakatnameDigitallyApproved: false,
         repairReportApproved: true,
       }),
+      true,
+    );
+    assert.equal(
+      canCreateHasarInvoiceRequest({
+        muvafakatnameDigitallyApproved: false,
+        repairReportApproved: false,
+      }),
+      false,
+    );
+    assert.equal(
+      canOfferHasarSalesInvoiceRequest({ reportApproved: true, totalAmount: 12500 }),
+      true,
+    );
+    assert.equal(
+      canOfferHasarSalesInvoiceRequest({ reportApproved: true, totalAmount: 0 }),
+      false,
+    );
+    assert.equal(
+      canOfferHasarSalesInvoiceRequest({ reportApproved: false, totalAmount: 12500 }),
       false,
     );
   });

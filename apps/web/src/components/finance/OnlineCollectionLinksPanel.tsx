@@ -55,13 +55,27 @@ type CollectionLink = {
   paidAt?: string;
 };
 
-export function OnlineCollectionLinksPanel({ claimFileId }: { claimFileId: string }) {
+export function OnlineCollectionLinksPanel({
+  claimFileId,
+  insuredName,
+  insuredPhone,
+}: {
+  claimFileId: string;
+  insuredName?: string | null;
+  insuredPhone?: string | null;
+}) {
   const { showToast } = useToast();
   const [links, setLinks] = useState<CollectionLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ amount: '', payerName: '', payerEmail: '', payerPhone: '', description: '' });
+  const [form, setForm] = useState({
+    amount: '',
+    payerName: insuredName ?? '',
+    payerEmail: '',
+    payerPhone: insuredPhone ?? '',
+    description: '',
+  });
 
   const load = useCallback(() => {
     setLoading(true);
@@ -73,6 +87,14 @@ export function OnlineCollectionLinksPanel({ claimFileId }: { claimFileId: strin
   }, [claimFileId]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    setForm((prev) => ({
+      ...prev,
+      payerName: prev.payerName || (insuredName ?? ''),
+      payerPhone: prev.payerPhone || (insuredPhone ?? ''),
+    }));
+  }, [insuredName, insuredPhone]);
 
   const handleCreate = async () => {
     const amount = parseFloat(form.amount);
@@ -96,7 +118,13 @@ export function OnlineCollectionLinksPanel({ claimFileId }: { claimFileId: strin
       );
       const url = res.data.data?.paymentUrl;
       setShowForm(false);
-      setForm({ amount: '', payerName: '', payerEmail: '', payerPhone: '', description: '' });
+      setForm({
+        amount: '',
+        payerName: insuredName ?? '',
+        payerEmail: '',
+        payerPhone: insuredPhone ?? '',
+        description: '',
+      });
       load();
       if (url) {
         await navigator.clipboard.writeText(url).catch(() => {});

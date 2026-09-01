@@ -525,6 +525,7 @@ export class VatReportService {
       where: {
         entryDate: { gte: from, lte: to },
         status: { not: 'cancelled' },
+        billed: true,
       },
       include: { claimFile: { select: { fileNo: true } } },
       orderBy: { entryDate: 'asc' },

@@ -9,6 +9,7 @@ import {
   Min,
   Max,
   ValidateIf,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateClaimFileRevenueDto {
@@ -29,6 +30,11 @@ export class CreateClaimFileRevenueDto {
   @IsNumber()
   @IsPositive()
   amount!: number;
+
+  /** false = faturasız; KDV hesaplanmaz. */
+  @IsOptional()
+  @IsBoolean()
+  billed?: boolean;
 
   @IsOptional()
   @IsNumber()

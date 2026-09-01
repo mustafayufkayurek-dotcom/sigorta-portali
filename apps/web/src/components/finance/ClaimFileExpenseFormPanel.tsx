@@ -16,6 +16,7 @@ import { API, authHeader } from '@/utils/api';
 import { normalizeTrDateValue, isCompleteTrDateValue } from '@/utils/tr-date-input';
 import { parseTrAmountInput, numberToTrAmountInput } from '@/utils/tr-amount-input';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { ACIKLAMA_YARDIM } from '@/utils/aciklama-yardim';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { financeOperationNo } from '@sigorta/shared';
 import {
@@ -289,7 +290,7 @@ export function ClaimFileExpenseFormPanel({
       if (needsSubgroup && !expenseCategoryId) blockers.push('Masraf alt grubu seçin');
     }
     if (masrafAmounts.gross <= 0) blockers.push('Geçerli tutar girin');
-    if (!description.trim()) blockers.push('Açıklama yazın');
+    if (!description.trim()) blockers.push(ACIKLAMA_YARDIM.masraf);
     if (!isCompleteTrDateValue(normalizeTrDateValue(date))) blockers.push('Geçerli tarih girin (GG.AA.YYYY)');
     return blockers;
   }, [
@@ -693,7 +694,7 @@ export function ClaimFileExpenseFormPanel({
           <label className={labelCls}>Açıklama {requiredHint}</label>
           <input
             className={inputCls}
-            placeholder="Masraf açıklaması"
+            placeholder={ACIKLAMA_YARDIM.masraf}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             onBlur={(e) => {

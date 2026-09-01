@@ -4,8 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { TrDateInput } from '@/components/ui/TrDateInput';
-import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import { OnlineCollectionLinksPanel } from '@/components/finance/OnlineCollectionLinksPanel';
+import {
+  getInvoiceRequestsByClaimFile,
+  type InvoiceRequest,
+} from '@/utils/invoiceRequestApi';
 import {
   FinansActionButton,
   FinansDataTable,
@@ -24,7 +27,14 @@ import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
 import { VendorSuggestPanel } from '../VendorSuggestPanel';
 import { fetchVendorQuoteComparison } from '@/utils/vendor-intelligence-profile';
 import { withAvansNote } from '@sigorta/shared';
-import { financeOperationNo } from '@sigorta/shared';
+import {
+  defaultInvoiceCounterpartyType,
+  defaultPaymentPayerType,
+  financeCounterpartyLabel,
+  financeOperationNo,
+  hasarInvoiceRequestGoneLabel,
+  isInsuredCollectionParty,
+} from '@sigorta/shared';
 
 export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: string }) {
   const { showToast } = useToast();
@@ -671,11 +681,13 @@ const INVOICE_STATUS_COLOR: Record<string, string> = {
 export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }) {
   const { showToast } = useToast();
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoiceRequests, setInvoiceRequests] = useState<InvoiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const invoiceDefaultType = defaultInvoiceCounterpartyType(claim?.collectionParty);
   const [form, setForm] = useState({
     invoiceType: 'sales',
-    counterpartyType: 'insurance_company',
+    counterpartyType: invoiceDefaultType,
     currency: 'TRY',
     subtotalAmount: '',
     vatRate: '20',
@@ -694,7 +706,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
 
   const resetForm = () => ({
     invoiceType: 'sales',
-    counterpartyType: 'insurance_company',
+    counterpartyType: defaultInvoiceCounterpartyType(claim?.collectionParty),
     currency: 'TRY',
     subtotalAmount: '',
     vatRate: '20',
@@ -713,13 +725,27 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
 
   const load = useCallback(() => {
     setLoading(true);
-    axios.get(`${API}/claim-files/${claimId}/invoices`, { headers: authHeader() })
-      .then((r) => setInvoices(r.data.data ?? []))
+    Promise.all([
+      axios.get(`${API}/claim-files/${claimId}/invoices`, { headers: authHeader() }),
+      getInvoiceRequestsByClaimFile(claimId).catch(() => [] as InvoiceRequest[]),
+    ])
+      .then(([invRes, reqs]) => {
+        setInvoices(invRes.data.data ?? []);
+        setInvoiceRequests(reqs);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [claimId]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (showForm) return;
+    setForm((prev) => ({
+      ...prev,
+      counterpartyType: defaultInvoiceCounterpartyType(claim?.collectionParty),
+    }));
+  }, [claim?.collectionParty, showForm]);
 
   const handleSave = async () => {
     const validationError = validateInvoiceForm();
@@ -738,7 +764,8 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
         vatAmount: computedAmounts.vatAmount,
         withholdingAmount: 0,
         totalAmount: computedAmounts.totalAmount,
-        notes: form.notes.trim() || undefined,
+        notes: form.notes.trim()
+          || (form.counterpartyType === 'insured' ? (claim?.insuredName ?? undefined) : undefined),
         claimFileId: claimId,
       }, { headers: authHeader() });
       setShowForm(false);
@@ -773,26 +800,31 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
     .filter((i) => i.invoiceType === 'purchase')
     .reduce((s, i) => s + (i.totalAmount ?? 0), 0);
   const pendingCount = invoices.filter((i) => ['draft', 'sent'].includes(i.status)).length;
+  const activeInvoiceRequest = invoiceRequests.find((r) =>
+    ['pending', 'approved', 'invoiced'].includes(r.status),
+  );
 
   return (
     <div className="space-y-4">
       <FinansPanelCard
         title="Fatura Talebi"
-        subtitle="Sigorta şirketine kesilecek fatura için talep oluşturun. Onarımın bitmesi beklenmez."
+        subtitle="Talep Operasyonu Başlat → Dosya Onaylandı adımından gider. Kesilen fatura burada kalır."
       >
-        <ClosureConditionsPanel
-          serviceType="claim"
-          entityId={claimId}
-          fileNo={claim?.fileNo ?? ''}
-          insuranceCompanyId={claim?.insuranceCompanyId}
-          insuranceCompanyName={claim?.insuranceCompany?.name}
-          totalAmount={claim?.budget?.totalAmount ?? 0}
-          workItemsSummary={[]}
-          showClosureChecklist={false}
-          showInvoiceRequest
-          showSurvey
-          fileClosed={Boolean(claim?.currentStatus?.isClosedState || claim?.closedAt)}
-        />
+        {activeInvoiceRequest ? (
+          <p className="text-sm font-semibold text-emerald-800" data-testid="hasar-fatura-talep-durum">
+            {hasarInvoiceRequestGoneLabel(claim?.collectionParty)}
+            {activeInvoiceRequest.requestNo ? ` · ${activeInvoiceRequest.requestNo}` : ''}
+          </p>
+        ) : (
+          <p className="text-sm text-slate-600" data-testid="hasar-fatura-talep-durum">
+            Henüz talep yok. Rapor onaylanınca Dosya Onaylandı adımında Finansa talep et.
+          </p>
+        )}
+        {isInsuredCollectionParty(claim?.collectionParty) ? (
+          <p className="mt-2 text-sm text-slate-600" data-testid="hasar-fatura-sigortali-not">
+            Unvan: {claim?.insuredName?.trim() || 'Sigortalı adı dosyada yok'}. Sigorta carisine bu dosya düşmez.
+          </p>
+        ) : null}
       </FinansPanelCard>
 
       <FinansPanelCard
@@ -859,9 +891,15 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
                     className={finansInputClass}
                   >
                     <option value="insurance_company">Sigorta Şirketi</option>
+                    <option value="insured">Sigortalı</option>
                     <option value="vendor">Tedarikçi</option>
                     <option value="customer">Müşteri</option>
                   </select>
+                  {form.counterpartyType === 'insured' && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Unvan: {claim?.insuredName?.trim() || 'Sigortalı adı dosyada yok'}
+                    </p>
+                  )}
                 </div>
               </FinansFormSection>
 
@@ -941,6 +979,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
               <tr>
                 <th className="text-center px-3 py-2.5">Fatura No</th>
                 <th className="text-center px-3 py-2.5">Tip</th>
+                <th className="text-center px-3 py-2.5">Karşı Taraf</th>
                 <th className="text-center px-3 py-2.5">Tarih</th>
                 <th className="text-right px-3 py-2.5">Ara Toplam</th>
                 <th className="text-right px-3 py-2.5">Toplam</th>
@@ -956,6 +995,11 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${inv.invoiceType === 'sales' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                       {INVOICE_TYPE_LABEL[inv.invoiceType] ?? inv.invoiceType}
                     </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-600">
+                    {inv.counterpartyType === 'insured'
+                      ? (claim?.insuredName?.trim() || financeCounterpartyLabel(inv.counterpartyType))
+                      : financeCounterpartyLabel(inv.counterpartyType)}
                   </td>
                   <td className="px-3 py-2.5 text-slate-600">{fmtDate(inv.invoiceDate)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{fmtCurrency(inv.subtotalAmount)}</td>
@@ -995,7 +1039,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
 const PAYMENT_TYPE_LABEL: Record<string, string> = { incoming: 'Gelen', outgoing: 'Giden' };
 const PAYMENT_METHOD_LABEL: Record<string, string> = { eft: 'EFT', havale: 'Havale', credit_card: 'Kredi Kartı', cash: 'Nakit', offset: 'Mahsuplaşma' };
 
-export function TahsilatlarTab({ claimId }: { claimId: string }) {
+export function TahsilatlarTab({ claimId, claim }: { claimId: string; claim?: any }) {
   const { showToast } = useToast();
   const [payments, setPayments] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -1005,7 +1049,7 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
   const [form, setForm] = useState<any>({
     paymentType: 'incoming',
     method: 'eft',
-    payerType: 'insurance_company',
+    payerType: defaultPaymentPayerType(claim?.collectionParty),
     payerId: '',
     amount: 0,
     currency: 'TRY',
@@ -1062,7 +1106,7 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
       setForm({
         paymentType: 'incoming',
         method: 'eft',
-        payerType: 'insurance_company',
+        payerType: defaultPaymentPayerType(claim?.collectionParty),
         payerId: '',
         amount: 0,
         currency: 'TRY',
@@ -1107,7 +1151,11 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
 
   return (
     <div className="space-y-4">
-      <OnlineCollectionLinksPanel claimFileId={claimId} />
+      <OnlineCollectionLinksPanel
+        claimFileId={claimId}
+        insuredName={claim?.insuredName}
+        insuredPhone={claim?.insuredPhone}
+      />
 
       <FinansPanelCard
         title="Tahsilatlar & Ödemeler"
@@ -1199,6 +1247,7 @@ export function TahsilatlarTab({ claimId }: { claimId: string }) {
                     className={finansInputClass}
                   >
                     <option value="insurance_company">Sigorta Şirketi</option>
+                    <option value="insured">Sigortalı</option>
                     <option value="vendor">Tedarikçi</option>
                     <option value="customer">Müşteri</option>
                   </select>

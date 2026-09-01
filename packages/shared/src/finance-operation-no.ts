@@ -24,3 +24,17 @@ export function shouldCreateApprovedFileFee(input: {
   if (status !== 'approved' && status !== 'externally_approved') return false;
   return Number(input.salesAmount ?? 0) > 0;
 }
+
+/** Faturasız gelirde KDV işlemez; tutar net kayda geçer. */
+export function resolveClaimRevenueVat(input: {
+  billed?: boolean | null;
+  amount: number;
+  vatRate?: number | null;
+}): { billed: boolean; vatRate: number; vatAmount: number; totalAmount: number } {
+  const billed = input.billed !== false;
+  const amount = Math.max(0, Number(input.amount) || 0);
+  const vatRate = billed ? Math.max(0, Number(input.vatRate) || 0) : 0;
+  const vatAmount = billed ? Math.round(((amount * vatRate) / 100) * 100) / 100 : 0;
+  const totalAmount = Math.round((amount + vatAmount) * 100) / 100;
+  return { billed, vatRate, vatAmount, totalAmount };
+}

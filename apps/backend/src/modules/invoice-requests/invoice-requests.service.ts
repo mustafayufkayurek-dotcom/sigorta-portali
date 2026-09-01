@@ -61,11 +61,8 @@ export class InvoiceRequestsService {
         dto.claimFileId,
       );
       if (!conds.canCreateInvoiceRequest) {
-        const missing: string[] = [];
-        if (!conds.muvafakatnameDigitallyApproved)
-          missing.push('Muvafakatname dijital onayı');
         throw new BadRequestException(
-          `Fatura talebi için: ${missing.join(', ')}. Onarımın bitmesi beklenmez.`,
+          'Fatura talebi için onaylı rapor veya muvafakatname dijital onayı gerekir. Onarımın bitmesi beklenmez.',
         );
       }
     }
@@ -146,6 +143,17 @@ export class InvoiceRequestsService {
       await this.notifyFinanceInvoiceRequest(created).catch((err) =>
         this.logger.warn(
           `Fatura talebi bildirimi atlandı (${created.requestNo}): ${err instanceof Error ? err.message : err}`,
+        ),
+      );
+    }
+
+    if (created.claimFileId) {
+      await this.prisma.claimFile.update({
+        where: { id: created.claimFileId },
+        data: { collectionPartyLocked: true },
+      }).catch((err) =>
+        this.logger.warn(
+          `Tahsilat kilidi yazılamadı (${created.requestNo}): ${err instanceof Error ? err.message : err}`,
         ),
       );
     }

@@ -25,6 +25,7 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   bash "$SCRIPT_DIR/smoke-v541-ek.sh"
   bash "$SCRIPT_DIR/smoke-resim-akis.sh"
   bash "$SCRIPT_DIR/smoke-hasar-hakedis.sh"
+  bash "$SCRIPT_DIR/smoke-hasar-tahsilat-gelir.sh"
   bash "$SCRIPT_DIR/smoke-acil-supplier-assignment.sh"
 fi
 

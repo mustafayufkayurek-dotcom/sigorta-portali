@@ -142,6 +142,7 @@ export const PREVIEW = {
     owner: 'Mehmet Kaya',
     updatedAt: '19.07.2026 15:40',
     total: '48.500 ₺',
+    totalAmount: 48500,
     supplierCost: '32.000 ₺',
     actualExpense: '8.200 ₺',
     expectedIncome: '48.500 ₺',

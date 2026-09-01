@@ -19,26 +19,64 @@ import {
   finansFileInputClass,
   finansInputClass,
 } from '@/components/finance/FinansPanelUI';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { useToast } from '@/contexts/ToastContext';
+import { ACIKLAMA_YARDIM } from '@/utils/aciklama-yardim';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { API, authHeader, fmtCurrency, fmtDate } from '@/app/panel/hasar-dosyalari/[id]/_components/claim-detail-utils';
 import { withAvansNote } from '@sigorta/shared';
+import {
+  defaultPaymentPayerType,
+  financeCounterpartyLabel,
+  resolveClaimRevenueVat,
+  resolveFileFeeCollectionSource,
+} from '@sigorta/shared';
 
 type Drawer = 'gelir' | 'tahsilat' | null;
 
-const emptyGelir = () => ({
+function claimCollectionSource(claim?: {
+  collectionParty?: string | null;
+  insuranceCompanyId?: string | null;
+  insuranceCompany?: { id?: string | null } | null;
+}) {
+  return resolveFileFeeCollectionSource({
+    collectionParty: claim?.collectionParty,
+    insuranceCompanyId: claim?.insuranceCompanyId ?? claim?.insuranceCompany?.id,
+  });
+}
+
+function claimCollectionSourceName(claim?: {
+  collectionParty?: string | null;
+  insuranceCompanyId?: string | null;
+  insuranceCompany?: { id?: string | null; name?: string | null } | null;
+  insuredName?: string | null;
+}) {
+  const source = claimCollectionSource(claim);
+  if (source === 'insured') {
+    return claim?.insuredName?.trim() || 'Sigortalı adı dosyada yok';
+  }
+  return claim?.insuranceCompany?.name?.trim() || 'Şirket adı dosyada yok';
+}
+
+const emptyGelir = (claim?: {
+  collectionParty?: string | null;
+  insuranceCompanyId?: string | null;
+  insuranceCompany?: { id?: string | null } | null;
+}) => ({
   revenueType: 'file_fee',
-  collectionSource: 'insurance_company',
+  collectionSource: claimCollectionSource(claim),
   description: '',
   amount: '',
-  vatRate: '0',
+  billed: true,
+  vatRate: '20',
   entryDate: new Date().toISOString().split('T')[0],
   extraWorkItemId: '',
 });
 
-const emptyTahsilat = () => ({
+const emptyTahsilat = (collectionParty?: string | null) => ({
   paymentType: 'incoming' as string,
   method: 'eft',
-  payerType: 'insurance_company',
+  payerType: defaultPaymentPayerType(collectionParty),
   payerId: '',
   amount: 0,
   currency: 'TRY',
@@ -60,7 +98,13 @@ function downloadCsv(filename: string, rows: string[][]) {
   URL.revokeObjectURL(a.href);
 }
 
-export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
+export function ClaimFileGelirTahsilatPanel({
+  claimId,
+  claim,
+}: {
+  claimId: string;
+  claim?: any;
+}) {
   const { showToast } = useToast();
   const canDelete = canDeleteClaimFinance();
   const [revenues, setRevenues] = useState<any[]>([]);
@@ -70,8 +114,8 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
   const [extraWorks, setExtraWorks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [drawer, setDrawer] = useState<Drawer>(null);
-  const [gelir, setGelir] = useState(emptyGelir);
-  const [tahsilat, setTahsilat] = useState(emptyTahsilat);
+  const [gelir, setGelir] = useState(() => emptyGelir(claim));
+  const [tahsilat, setTahsilat] = useState(() => emptyTahsilat(claim?.collectionParty));
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -106,6 +150,7 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
       kind: 'gelir' | 'tahsilat' | 'odeme';
       date: string;
       islem: string;
+      billed: boolean | null;
       aciklama: string;
       borc: number;
       alacak: number;
@@ -116,6 +161,7 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
         kind: 'gelir',
         date: r.entryDate ?? r.createdAt,
         islem: r.revenueType === 'extra_work' ? 'Ekstra İş' : 'Dosya Bedeli',
+        billed: r.billed !== false,
         aciklama: r.description || 'Gelir',
         borc: Number(r.totalAmount ?? r.amount ?? 0),
         alacak: 0,
@@ -128,6 +174,7 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
         kind: incoming ? 'tahsilat' : 'odeme',
         date: p.paymentDate ?? p.createdAt,
         islem: incoming ? 'Tahsilat' : 'Tedarikçi Ödemesi',
+        billed: null,
         aciklama: p.note || p.referenceNo || (incoming ? 'Tahsilat' : 'Ödeme'),
         borc: incoming ? 0 : Number(p.amount ?? 0),
         alacak: incoming ? Number(p.amount ?? 0) : 0,
@@ -145,11 +192,21 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
   const totalTahsilat = rows.filter((r) => r.kind === 'tahsilat').reduce((s, r) => s + r.alacak, 0);
   const kalan = totalGelir - totalTahsilat;
 
+  const gelirVat = useMemo(
+    () =>
+      resolveClaimRevenueVat({
+        billed: gelir.billed,
+        amount: parseTrAmountInput(gelir.amount) ?? 0,
+        vatRate: parseFloat(gelir.vatRate),
+      }),
+    [gelir.billed, gelir.amount, gelir.vatRate],
+  );
+
   const saveGelir = async (andNew: boolean) => {
     if (!gelir.entryDate) { showToast('error', 'Tarih Zorunludur'); return; }
     const amountNum = parseTrAmountInput(gelir.amount);
     if (!amountNum || amountNum <= 0) { showToast('error', 'Tutar Sıfırdan Büyük Olmalıdır'); return; }
-    if (!gelir.description.trim()) { showToast('error', 'Açıklama Zorunludur'); return; }
+    if (!gelir.description.trim()) { showToast('error', ACIKLAMA_YARDIM.gelir); return; }
     if (gelir.revenueType === 'extra_work' && !gelir.extraWorkItemId) {
       showToast('error', 'Ekstra İş Seçilmesi Zorunludur');
       return;
@@ -160,17 +217,18 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
         `${API}/claim-files/${claimId}/revenues`,
         {
           revenueType: gelir.revenueType,
-          collectionSource: gelir.collectionSource,
+          collectionSource: claimCollectionSource(claim),
           description: gelir.description.trim(),
           amount: amountNum,
-          vatRate: parseFloat(gelir.vatRate),
+          billed: gelir.billed,
+          vatRate: gelir.billed ? parseFloat(gelir.vatRate) || 0 : 0,
           entryDate: gelir.entryDate,
           extraWorkItemId: gelir.revenueType === 'extra_work' ? gelir.extraWorkItemId : undefined,
         },
         { headers: authHeader() },
       );
       showToast('success', 'Gelir Kaydedildi');
-      setGelir(emptyGelir());
+      setGelir(emptyGelir(claim));
       await load();
       if (!andNew) setDrawer(null);
     } catch (e: any) {
@@ -201,7 +259,7 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
         });
       }
       showToast('success', tahsilat.paymentType === 'incoming' ? 'Tahsilat Kaydedildi' : 'Ödeme Kaydedildi');
-      setTahsilat(emptyTahsilat());
+      setTahsilat(emptyTahsilat(claim?.collectionParty));
       setReceiptFile(null);
       await load();
       if (!andNew) setDrawer(null);
@@ -230,21 +288,25 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
 
   return (
     <div className="space-y-4">
-      <OnlineCollectionLinksPanel claimFileId={claimId} />
+      <OnlineCollectionLinksPanel
+        claimFileId={claimId}
+        insuredName={claim?.insuredName}
+        insuredPhone={claim?.insuredPhone}
+      />
 
       <FinansPanelCard
         title="Cari Hesap Ekstresi"
         subtitle="Gelir borç, tahsilat alacak — bakiye kalan alacak"
         action={{
           label: 'Yeni Gelir',
-          onClick: () => { setGelir(emptyGelir()); setDrawer('gelir'); },
+          onClick: () => { setGelir(emptyGelir(claim)); setDrawer('gelir'); },
           variant: 'primary',
         }}
       >
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
-            onClick={() => { setTahsilat(emptyTahsilat()); setDrawer('tahsilat'); }}
+            onClick={() => { setTahsilat(emptyTahsilat(claim?.collectionParty)); setDrawer('tahsilat'); }}
             className="inline-flex items-center rounded-lg border border-brand-600 bg-white px-3.5 py-2 text-xs font-medium text-brand-700 hover:bg-brand-50"
           >
             Yeni Tahsilat
@@ -306,7 +368,14 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
                 {rows.map((r) => (
                   <tr key={r.id} className="hover:bg-slate-50/80">
                     <td className="whitespace-nowrap px-3 py-2 text-slate-600">{fmtDate(r.date)}</td>
-                    <td className="px-3 py-2 text-slate-700">{r.islem}</td>
+                    <td className="px-3 py-2 text-slate-700">
+                      <span>{r.islem}</span>
+                      {r.kind === 'gelir' && r.billed === false ? (
+                        <span className="ml-1.5 inline-flex rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                          Faturasız
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-3 py-2 text-slate-600">{r.aciklama}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.borc ? fmtCurrency(r.borc) : '—'}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-emerald-700">{r.alacak ? fmtCurrency(r.alacak) : '—'}</td>
@@ -335,49 +404,156 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
         open={drawer === 'gelir'}
         onClose={() => setDrawer(null)}
         title="Yeni Gelir"
-        width={480}
+        width={520}
         scrollContent={false}
       >
         <div className="flex h-full flex-col">
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-            <FinansFieldLabel required>Tarih</FinansFieldLabel>
-            <TrDateInput value={gelir.entryDate} onChange={(entryDate) => setGelir({ ...gelir, entryDate })} className={finansInputClass} />
-            <FinansFieldLabel>Gelir Tipi</FinansFieldLabel>
-            <select value={gelir.revenueType} onChange={(e) => setGelir({ ...gelir, revenueType: e.target.value, extraWorkItemId: '' })} className={finansInputClass}>
-              <option value="file_fee">Dosya Bedeli</option>
-              <option value="extra_work">Ekstra İş</option>
-            </select>
-            <FinansFieldLabel>Tahsilat Kaynağı</FinansFieldLabel>
-            <select value={gelir.collectionSource} onChange={(e) => setGelir({ ...gelir, collectionSource: e.target.value })} className={finansInputClass}>
-              <option value="insurance_company">Sigorta Şirketi</option>
-              <option value="insured">Sigortalı</option>
-            </select>
-            <FinansFieldLabel required>Tutar (TL)</FinansFieldLabel>
-            <TrAmountInput value={gelir.amount} onChange={(amount) => setGelir({ ...gelir, amount })} className={finansInputClass} />
-            <FinansFieldLabel>KDV (%)</FinansFieldLabel>
-            <input type="number" min="0" max="100" value={gelir.vatRate} onChange={(e) => setGelir({ ...gelir, vatRate: e.target.value })} className={finansInputClass} />
-            {gelir.revenueType === 'extra_work' && (
-              <>
-                <FinansFieldLabel required>Ekstra İş</FinansFieldLabel>
-                <select value={gelir.extraWorkItemId} onChange={(e) => setGelir({ ...gelir, extraWorkItemId: e.target.value })} className={finansInputClass}>
-                  <option value="">Seçiniz…</option>
-                  {extraWorks.map((ew: any) => (
-                    <option key={ew.id} value={ew.id}>{ew.title}</option>
-                  ))}
-                </select>
-              </>
-            )}
-            <FinansFieldLabel required>Açıklama</FinansFieldLabel>
-            <input
-              type="text"
-              value={gelir.description}
-              onChange={(e) => setGelir({ ...gelir, description: e.target.value })}
-              onBlur={(e) => {
-                const v = toTitleCaseTR(e.target.value.trim());
-                if (v) setGelir({ ...gelir, description: v });
-              }}
-              className={finansInputClass}
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+            <OpsFirstRunNotice
+              noticeId={OPS_NOTICE.hasarGelirFaturali.id}
+              title={OPS_NOTICE.hasarGelirFaturali.title}
+              body={OPS_NOTICE.hasarGelirFaturali.body}
+              testId="hasar-gelir-faturali-seridi"
+              compact
             />
+
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold text-slate-500">Kayıt türü</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  data-testid="hasar-gelir-faturali"
+                  onClick={() =>
+                    setGelir({
+                      ...gelir,
+                      billed: true,
+                      vatRate: !gelir.vatRate || gelir.vatRate === '0' ? '20' : gelir.vatRate,
+                    })
+                  }
+                  className={`rounded-lg border px-3 py-2 text-left ${
+                    gelir.billed
+                      ? 'border-brand-600 bg-brand-50 text-slate-900'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="block text-[11px] font-semibold">Faturalı</span>
+                  <span className="mt-0.5 block text-[11px] text-slate-500">KDV hesaplanır</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="hasar-gelir-faturasiz"
+                  onClick={() => setGelir({ ...gelir, billed: false })}
+                  className={`rounded-lg border px-3 py-2 text-left ${
+                    !gelir.billed
+                      ? 'border-brand-600 bg-brand-50 text-slate-900'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="block text-[11px] font-semibold">Faturasız</span>
+                  <span className="mt-0.5 block text-[11px] text-slate-500">KDV yok, tutar net</span>
+                </button>
+              </div>
+            </div>
+
+            <FinansFormSection title="Gelir Bilgileri">
+              <div>
+                <FinansFieldLabel required>Tarih</FinansFieldLabel>
+                <TrDateInput value={gelir.entryDate} onChange={(entryDate) => setGelir({ ...gelir, entryDate })} className={finansInputClass} />
+              </div>
+              <div>
+                <FinansFieldLabel>Gelir Tipi</FinansFieldLabel>
+                <select value={gelir.revenueType} onChange={(e) => setGelir({ ...gelir, revenueType: e.target.value, extraWorkItemId: '' })} className={finansInputClass}>
+                  <option value="file_fee">Dosya Bedeli</option>
+                  <option value="extra_work">Ekstra İş</option>
+                </select>
+              </div>
+              <div>
+                <FinansFieldLabel>Tahsilat Kaynağı</FinansFieldLabel>
+                <p
+                  className={`${finansInputClass} bg-slate-50 font-medium text-slate-800`}
+                  data-testid="hasar-gelir-tahsilat-kaynagi"
+                >
+                  {financeCounterpartyLabel(claimCollectionSource(claim))}
+                </p>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  {claimCollectionSourceName(claim)}. Dosyadan gelir; burada değişmez.
+                </p>
+              </div>
+              {gelir.revenueType === 'extra_work' ? (
+                <div>
+                  <FinansFieldLabel required>Ekstra İş</FinansFieldLabel>
+                  <select value={gelir.extraWorkItemId} onChange={(e) => setGelir({ ...gelir, extraWorkItemId: e.target.value })} className={finansInputClass}>
+                    <option value="">Seçiniz…</option>
+                    {extraWorks.map((ew: any) => (
+                      <option key={ew.id} value={ew.id}>{ew.title}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+            </FinansFormSection>
+
+            <FinansFormSection title="Tutar">
+              <div className={gelir.billed ? '' : 'sm:col-span-2'}>
+                <FinansFieldLabel required>{gelir.billed ? 'Tutar (KDV Hariç)' : 'Tutar (net)'}</FinansFieldLabel>
+                <TrAmountInput value={gelir.amount} onChange={(amount) => setGelir({ ...gelir, amount })} className={finansInputClass} />
+              </div>
+              {gelir.billed ? (
+                <>
+                  <div>
+                    <FinansFieldLabel>KDV Oranı (%)</FinansFieldLabel>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={gelir.vatRate}
+                      onChange={(e) => setGelir({ ...gelir, vatRate: e.target.value })}
+                      className={finansInputClass}
+                      data-testid="hasar-gelir-kdv-orani"
+                    />
+                  </div>
+                  <div>
+                    <FinansFieldLabel>Hesaplanan KDV</FinansFieldLabel>
+                    <input
+                      type="text"
+                      readOnly
+                      value={fmtCurrency(gelirVat.vatAmount)}
+                      className={`${finansInputClass} bg-slate-50 text-slate-700`}
+                      data-testid="hasar-gelir-kdv-tutar"
+                    />
+                  </div>
+                  <div>
+                    <FinansFieldLabel>Genel Toplam</FinansFieldLabel>
+                    <input
+                      type="text"
+                      readOnly
+                      value={fmtCurrency(gelirVat.totalAmount)}
+                      className={`${finansInputClass} bg-slate-50 font-semibold text-slate-800`}
+                      data-testid="hasar-gelir-genel-toplam"
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="sm:col-span-2 text-[11px] text-slate-500" data-testid="hasar-gelir-faturasiz-not">
+                  KDV hesaplanmaz. Kayıt tutarı nettir.
+                </p>
+              )}
+            </FinansFormSection>
+
+            <div>
+              <FinansFieldLabel required>Açıklama</FinansFieldLabel>
+              <input
+                type="text"
+                value={gelir.description}
+                onChange={(e) => setGelir({ ...gelir, description: e.target.value })}
+                onBlur={(e) => {
+                  const v = toTitleCaseTR(e.target.value.trim());
+                  if (v) setGelir({ ...gelir, description: v });
+                }}
+                className={finansInputClass}
+                placeholder={ACIKLAMA_YARDIM.gelir}
+              />
+            </div>
           </div>
           <div className="flex justify-end gap-2 border-t border-slate-100 px-4 pb-8 pt-3.5">
             <button type="button" onClick={() => setDrawer(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600">İptal</button>
@@ -433,6 +609,7 @@ export function ClaimFileGelirTahsilatPanel({ claimId }: { claimId: string }) {
                   <FinansFieldLabel>Karşı Taraf</FinansFieldLabel>
                   <select value={tahsilat.payerType} onChange={(e) => setTahsilat({ ...tahsilat, payerType: e.target.value, payerId: '' })} className={finansInputClass}>
                     <option value="insurance_company">Sigorta Şirketi</option>
+                    <option value="insured">Sigortalı</option>
                     <option value="vendor">Tedarikçi</option>
                     <option value="customer">Müşteri</option>
                   </select>

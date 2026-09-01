@@ -27,8 +27,8 @@ export class CreatePaymentDto {
   @IsIn(['eft', 'havale', 'credit_card', 'cash', 'offset'])
   method!: string;
 
-  @ApiProperty({ enum: ['insurance_company', 'vendor', 'customer'] })
-  @IsIn(['insurance_company', 'vendor', 'customer'])
+  @ApiProperty({ enum: ['insurance_company', 'vendor', 'customer', 'insured'] })
+  @IsIn(['insurance_company', 'vendor', 'customer', 'insured'])
   payerType!: string;
 
   @ApiPropertyOptional()

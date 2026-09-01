@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { shouldCreateApprovedFileFee } from '@sigorta/shared';
+import { resolveFileFeeCollectionSource, resolveClaimRevenueVat, shouldCreateApprovedFileFee } from '@sigorta/shared';
 import { CreateClaimFileRevenueDto } from './dto/create-claim-file-revenue.dto';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class ClaimFileRevenueService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(claimFileId: string, dto: CreateClaimFileRevenueDto, userId: string) {
-    await this.assertClaimFileExists(claimFileId);
+    const claim = await this.assertClaimFileExists(claimFileId);
 
     if (dto.revenueType === 'extra_work' && !dto.extraWorkItemId) {
       throw new BadRequestException('extra_work tipi gelir için extraWorkItemId zorunludur');
@@ -29,17 +29,23 @@ export class ClaimFileRevenueService {
       await this.assertExtraWorkItemBelongs(claimFileId, dto.extraWorkItemId);
     }
 
-    const vatRate = dto.vatRate ?? 0;
-    const vatAmount = (dto.amount * vatRate) / 100;
-    const totalAmount = dto.amount + vatAmount;
+    const { billed, vatRate, vatAmount, totalAmount } = resolveClaimRevenueVat({
+      billed: dto.billed,
+      amount: dto.amount,
+      vatRate: dto.vatRate,
+    });
 
     const revenue = await this.prisma.claimFileRevenue.create({
       data: {
         claimFileId,
         revenueType: dto.revenueType,
-        collectionSource: dto.collectionSource,
+        collectionSource: resolveFileFeeCollectionSource({
+          collectionParty: claim.collectionParty,
+          insuranceCompanyId: claim.insuranceCompanyId,
+        }),
         description: dto.description,
         amount: dto.amount,
+        billed,
         vatRate,
         vatAmount,
         totalAmount,
@@ -167,7 +173,7 @@ export class ClaimFileRevenueService {
 
     const claim = await this.prisma.claimFile.findUnique({
       where: { id: claimFileId },
-      select: { insuranceCompanyId: true },
+      select: { insuranceCompanyId: true, collectionParty: true },
     });
 
     try {
@@ -175,7 +181,10 @@ export class ClaimFileRevenueService {
         claimFileId,
         {
           revenueType: 'file_fee',
-          collectionSource: claim?.insuranceCompanyId ? 'insurance_company' : 'insured',
+          collectionSource: resolveFileFeeCollectionSource({
+            collectionParty: claim?.collectionParty,
+            insuranceCompanyId: claim?.insuranceCompanyId,
+          }),
           description: `Dosya Bedeli — ${report.reportNo}`,
           amount: Number(report.totalSalesAmount),
           vatRate: 0,
@@ -248,9 +257,13 @@ export class ClaimFileRevenueService {
     }
   }
 
-  private async assertClaimFileExists(id: string): Promise<void> {
-    const cf = await this.prisma.claimFile.findUnique({ where: { id }, select: { id: true } });
+  private async assertClaimFileExists(id: string) {
+    const cf = await this.prisma.claimFile.findUnique({
+      where: { id },
+      select: { id: true, collectionParty: true, insuranceCompanyId: true },
+    });
     if (!cf) throw new NotFoundException(`ClaimFile ${id} bulunamadı`);
+    return cf;
   }
 
   private async assertExtraWorkItemBelongs(claimFileId: string, extraWorkItemId: string): Promise<void> {

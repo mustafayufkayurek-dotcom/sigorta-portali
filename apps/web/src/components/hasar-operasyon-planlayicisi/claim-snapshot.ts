@@ -106,6 +106,7 @@ export type PlannerClaimSnapshot = {
     owner: string;
     updatedAt: string;
     total: string;
+    totalAmount: number;
     supplierCost: string;
     actualExpense: string;
     expectedIncome: string;
@@ -152,6 +153,8 @@ export type PlannerClaimSnapshot = {
     missingPhotoVendorIds: string[];
     canInvoice: boolean;
   };
+  collectionParty: string | null;
+  insuranceCompanyId: string | null;
 };
 
 function fmtDateTime(iso: string | null | undefined): { date: string; time: string; at: string } {
@@ -229,6 +232,8 @@ export function previewSnapshot(): PlannerClaimSnapshot {
       missingPhotoVendorIds: [],
       canInvoice: false,
     },
+    collectionParty: null,
+    insuranceCompanyId: null,
   };
 }
 
@@ -293,7 +298,9 @@ type ClaimFileLite = {
   insuredName?: string | null;
   insuredPhone?: string | null;
   lossType?: string | null;
-  insuranceCompany?: { name?: string; contactEmail?: string | null } | null;
+  collectionParty?: string | null;
+  insuranceCompanyId?: string | null;
+  insuranceCompany?: { id?: string; name?: string; contactEmail?: string | null } | null;
   customer?: {
     fullName?: string | null;
     companyName?: string | null;
@@ -634,5 +641,7 @@ export function mapLiveSnapshot(
       missingPhotoVendorIds: flags.missingPhotoVendorIds ?? [],
       canInvoice: Boolean(flags.canInvoice),
     },
+    collectionParty: claimFile?.collectionParty ?? null,
+    insuranceCompanyId: claimFile?.insuranceCompanyId ?? claimFile?.insuranceCompany?.id ?? null,
   };
 }

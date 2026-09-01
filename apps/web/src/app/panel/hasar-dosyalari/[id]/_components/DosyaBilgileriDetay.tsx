@@ -17,6 +17,7 @@ import {
   quickDamageTypeDisplayLabel,
 } from '@/utils/quick-repair-damage-types';
 import { DosyaBilgileriEditModal } from './DosyaBilgileriEditModal';
+import { HasarCollectionPartyAdminLock } from './HasarCollectionPartyAdminLock';
 import { FILE_STATUS_BADGE_BASE, FILE_STATUS_TONE } from '@/components/panel/file-status-tone';
 
 /** Durum rengi ortak sözlükten gelir; Acil ile aynı renk davranışı. */
@@ -418,6 +419,12 @@ export function DosyaBilgileriDetay({
               ))}
             </div>
           )}
+          {onClaimUpdated ? (
+            <HasarCollectionPartyAdminLock
+              claim={claim}
+              onUpdated={(patch) => onClaimUpdated(patch)}
+            />
+          ) : null}
         </div>
       )}
       {editOpen && onClaimUpdated && (

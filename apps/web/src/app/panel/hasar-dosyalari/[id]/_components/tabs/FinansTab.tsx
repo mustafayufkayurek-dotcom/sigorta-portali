@@ -29,6 +29,7 @@ export function FinansTab({
 }: {
   claim: any;
   claimId: string;
+  onClaimUpdated?: (patch: Partial<any>) => void;
 }) {
   const searchParams = useSearchParams();
   const [subTab, setSubTab] = useState<FinansSubTab>(() => finansAltTab(searchParams.get('alt')));
@@ -62,7 +63,7 @@ export function FinansTab({
       )}
 
       {subTab === 'gelir-tahsilat' && (
-        <ClaimFileGelirTahsilatPanel claimId={claimId} />
+        <ClaimFileGelirTahsilatPanel claimId={claimId} claim={claim} />
       )}
 
       {subTab === 'gider-butce' && (

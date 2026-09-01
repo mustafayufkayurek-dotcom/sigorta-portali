@@ -19,8 +19,8 @@ export class CreateInvoiceDto {
   @IsDateString()
   dueDate?: string;
 
-  @ApiProperty({ enum: ['insurance_company', 'vendor', 'customer'] })
-  @IsIn(['insurance_company', 'vendor', 'customer'])
+  @ApiProperty({ enum: ['insurance_company', 'vendor', 'customer', 'insured'] })
+  @IsIn(['insurance_company', 'vendor', 'customer', 'insured'])
   counterpartyType!: string;
 
   @ApiPropertyOptional()

@@ -16,6 +16,7 @@ export * from './file-finance-kpis';
 export * from './file-vendor-pay';
 export * from './supplier-assignment-guard';
 export * from './finance-operation-no';
+export * from './collection-party';
 export * from './backup-health';
 export * from './acil-vendor-quality';
 export * from './hasar-flow-groups';

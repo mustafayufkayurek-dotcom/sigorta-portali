@@ -20,6 +20,7 @@ describe('masraf iş grubu denetimi UI LOCK', () => {
     assert.match(form, /Ek İş/);
     assert.match(form, /\(Zorunlu\)/);
     assert.match(form, /Açıklama \{requiredHint\}/);
+    assert.match(form, /placeholder=\{ACIKLAMA_YARDIM\.masraf\}/);
     const filePanel = readFileSync(
       join(root, 'apps/web/src/components/finance/FileMasrafIsleme.tsx'),
       'utf8',

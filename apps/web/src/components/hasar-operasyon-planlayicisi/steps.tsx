@@ -39,6 +39,7 @@ import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import { ClaimManualDocumentsPanel } from '@/components/file-documents/ClaimManualDocumentsPanel';
 import { VendorRepairPhotosPanel } from '@/components/field-survey/VendorRepairPhotosPanel';
 import SpeechToText from '@/components/SpeechToText';
+import { HasarSalesInvoiceRequestCard } from './HasarSalesInvoiceRequestCard';
 import { openPlannerMap, plannerMapsHref } from './planner-maps';
 import { usePlanner } from './planner-context';
 import { sendPlannerApprovalMail } from './planner-send-approval-mail';
@@ -1468,6 +1469,7 @@ export function StepApproved() {
           </div>
         ) : null}
       </Card>
+      <HasarSalesInvoiceRequestCard />
     </div>
   );
 }

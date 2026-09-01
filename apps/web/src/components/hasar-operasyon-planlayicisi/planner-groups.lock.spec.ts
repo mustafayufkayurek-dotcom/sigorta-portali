@@ -23,6 +23,12 @@ describe('hasar planner groups lock', () => {
     assert.equal(PLANNER_STEPS.find((s) => s.id === 'whatsapp')?.hidden, true);
     assert.equal(PLANNER_VISIBLE_STEPS.find((s) => s.id === 'approved')?.label, 'Dosya Onaylandı');
     assert.ok(PLANNER_VISIBLE_STEPS.some((s) => s.id === 'docs_upload'));
+    const stepsSrc = readFileSync(join(here, 'steps.tsx'), 'utf8');
+    const card = readFileSync(join(here, 'HasarSalesInvoiceRequestCard.tsx'), 'utf8');
+    assert.match(stepsSrc, /HasarSalesInvoiceRequestCard/);
+    assert.match(card, /Satış faturası talebi/);
+    assert.match(card, /Finansa talep et/);
+    assert.doesNotMatch(card, /Yeni Fatura/);
   });
 
   it('çekmece ve özet grupları basar, sıradaki işlem listesi yok', () => {

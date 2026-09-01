@@ -57,6 +57,18 @@ export const OPS_NOTICE = {
     body:
       'Hakediş Yönetimi dosya, bütçe, önceki hakediş ve avanstan hesaplar. Yeni hakedişte Finansa Aktar ödeme kuyruğuna düşer. Aynı evrakı yeniden yüklemezsiniz.',
   },
+  hasarSigortaliOdemeli: {
+    id: 'hasar-satis-faturasi-talebi-v548',
+    title: 'Satış faturası talebi',
+    body:
+      'Rapor onaylanınca burada fatura kime kesilsin sorulur. Finansa talep et deyince finans kuyruğuna düşer. Bu seçim Finans’te tekrar sorulmaz. Sigortalı ödemeli dosyada tahsilat sigortalıdan, fatura sigortalıya kesilir; sigorta şirketi carisine yazılmaz.',
+  },
+  hasarGelirFaturali: {
+    id: 'hasar-gelir-faturali-v549',
+    title: 'Gelir kaydı',
+    body:
+      'Faturalı kayıtta KDV hesaplanır. Faturasız seçince KDV alanı kapanır; yazdığınız tutar net kayda geçer. Tahsilat kaynağı dosyadan gelir. Fatura kime, Dosya Onaylandı adımında sorulur; finans burada yeniden seçmez. Onaylı rapor dosya bedelini aynı tarafa yazar.',
+  },
   hasarRaporSonDegisiklik: {
     id: 'hasar-rapor-v526',
     title: 'Bu raporda ne değişti',

@@ -16,7 +16,7 @@ import {
   mergeWhereAnd,
   RequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
-import { AVANS_REF_PREFIX, isAvansPayment } from '@sigorta/shared';
+import { AVANS_REF_PREFIX, coerceIncomingPayerType, isAvansPayment, isInsuredCollectionParty } from '@sigorta/shared';
 
 /** Varsayılan vade — tedarikçi kartında seçim yoksa (geçici geri uyumluluk) */
 export const VENDOR_HAKEDIS_DUE_DAYS_DEFAULT = 30;
@@ -354,18 +354,25 @@ export class PaymentsService {
       if (!invoice) throw new NotFoundException('Fatura bulunamadı');
     }
 
-    if (dto.paymentType === 'outgoing' && dto.payerType === 'vendor' && !dto.payerId) {
+    const payerType = coerceIncomingPayerType({
+      collectionParty: claimFile.collectionParty,
+      paymentType: dto.paymentType,
+      payerType: dto.payerType,
+    });
+    const payerId = payerType === 'vendor' ? (dto.payerId ?? null) : null;
+
+    if (dto.paymentType === 'outgoing' && payerType === 'vendor' && !payerId) {
       throw new BadRequestException('Tedarikçi ödemesi için tedarikçi seçilmelidir');
     }
 
-    if (dto.payerType === 'vendor' && dto.payerId) {
-      const vendor = await this.prisma.vendor.findUnique({ where: { id: dto.payerId } });
+    if (payerType === 'vendor' && payerId) {
+      const vendor = await this.prisma.vendor.findUnique({ where: { id: payerId } });
       if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
     }
 
     const isAvans =
       dto.paymentType === 'outgoing'
-      && dto.payerType === 'vendor'
+      && payerType === 'vendor'
       && isAvansPayment({ note: dto.note, referenceNo: dto.referenceNo });
     const status = isAvans ? 'pending' : (dto.status ?? 'completed');
 
@@ -377,8 +384,8 @@ export class PaymentsService {
         amount: dto.amount,
         currency: dto.currency ?? 'TRY',
         method: dto.method,
-        payerType: dto.payerType,
-        payerId: dto.payerId ?? null,
+        payerType,
+        payerId,
         invoiceId: dto.invoiceId ?? null,
         referenceNo: isAvans ? (dto.referenceNo || AVANS_REF_PREFIX) : (dto.referenceNo ?? null),
         status,
@@ -418,7 +425,9 @@ export class PaymentsService {
       await this.syncPaymentToRevenue(payment.id, dto.claimFileId, dto.amount);
     }
 
-    this.triggerLogoPaymentSync(payment.id, payment.paymentType).catch(() => {});
+    if (!isInsuredCollectionParty(payerType)) {
+      this.triggerLogoPaymentSync(payment.id, payment.paymentType).catch(() => {});
+    }
 
     return payment;
   }
@@ -490,6 +499,16 @@ export class PaymentsService {
     });
     if (existing) return existing;
 
+    const claimFile = await this.prisma.claimFile.findUnique({
+      where: { id: params.claimFileId },
+      select: { collectionParty: true },
+    });
+    const payerType = coerceIncomingPayerType({
+      collectionParty: claimFile?.collectionParty,
+      paymentType: 'incoming',
+      payerType: 'customer',
+    });
+
     const payment = await this.prisma.payment.create({
       data: {
         claimFileId: params.claimFileId,
@@ -498,7 +517,7 @@ export class PaymentsService {
         amount: params.amount,
         currency: 'TRY',
         method: 'credit_card',
-        payerType: 'customer',
+        payerType,
         payerId: null,
         status: 'completed',
         collectionChannel: 'online_kart',
@@ -534,7 +553,9 @@ export class PaymentsService {
       await this.syncPaymentToRevenue(payment.id, params.claimFileId, params.amount);
     }
 
-    this.triggerLogoPaymentSync(payment.id, payment.paymentType).catch(() => {});
+    if (!isInsuredCollectionParty(payerType)) {
+      this.triggerLogoPaymentSync(payment.id, payment.paymentType).catch(() => {});
+    }
     return payment;
   }
 

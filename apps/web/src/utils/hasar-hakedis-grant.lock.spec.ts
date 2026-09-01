@@ -224,6 +224,14 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.equal(avansAciklamaMetni('Alçıpan İşleri'), 'Alçıpan İşleri');
   });
 
+  it('avans açıklaması boş açılır; iş grubu adı kutu doldurmaz', () => {
+    const panel = readFileSync(join(here, '../components/finance/HasarFileHakedisPanel.tsx'), 'utf8');
+    assert.match(panel, /setAvansAciklama\(''\)/);
+    assert.doesNotMatch(panel, /setAvansAciklama\(avansAciklamaMetni/);
+    assert.match(panel, /placeholder=\{ACIKLAMA_YARDIM\.avans\}/);
+    assert.doesNotMatch(panel, /hasar-avans-aciklama-yardim/);
+  });
+
   it('panel fiş, TL, Finansa Aktar ve ödeme kuyruğunu taşır', () => {
     const panel = readFileSync(join(here, '../components/finance/HasarFileHakedisPanel.tsx'), 'utf8');
     assert.match(panel, /buildHasarHakedisGrantLines/);

@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, Optional, ForbiddenException } f
 import { canViewFileFinancials } from '@/common/helpers/financial-visibility.helper';
 import { PrismaService } from '@/prisma/prisma.service';
 import { FinancialSummaryService } from './financial-summary.service';
+import { coerceSalesInvoiceCounterparty, isInsuredCollectionParty } from '@sigorta/shared';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { LogoSyncService } from '../logo-integration/services/logo-sync.service';
@@ -108,6 +109,15 @@ export class InvoicesService {
     if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
 
     const invoiceNo = await this.generateInvoiceNo(dto.invoiceType);
+    const counterpartyType = coerceSalesInvoiceCounterparty({
+      collectionParty: claimFile.collectionParty,
+      invoiceType: dto.invoiceType,
+      counterpartyType: dto.counterpartyType,
+    });
+    const counterpartyId = counterpartyType === 'insured' ? null : (dto.counterpartyId ?? null);
+    const notes =
+      dto.notes
+      ?? (counterpartyType === 'insured' ? (claimFile.insuredName ?? null) : null);
 
     const invoice = await this.prisma.invoice.create({
       data: {
@@ -116,15 +126,15 @@ export class InvoicesService {
         invoiceNo,
         invoiceDate: new Date(dto.invoiceDate),
         dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
-        counterpartyType: dto.counterpartyType,
-        counterpartyId: dto.counterpartyId ?? null,
+        counterpartyType,
+        counterpartyId,
         currency: dto.currency ?? 'TRY',
         subtotalAmount: dto.subtotalAmount,
         vatAmount: dto.vatAmount ?? 0,
         withholdingAmount: dto.withholdingAmount ?? 0,
         totalAmount: dto.totalAmount,
         documentFileId: dto.documentFileId ?? null,
-        notes: dto.notes ?? null,
+        notes,
         createdByUserId: userId,
         status: 'draft',
       },
@@ -133,7 +143,9 @@ export class InvoicesService {
     await this.financialSummary.recalculate(dto.claimFileId);
     await this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
 
-    this.triggerLogoInvoiceSync(invoice.id, invoice.invoiceType).catch(() => {});
+    if (!isInsuredCollectionParty(counterpartyType)) {
+      this.triggerLogoInvoiceSync(invoice.id, invoice.invoiceType).catch(() => {});
+    }
 
     return invoice;
   }

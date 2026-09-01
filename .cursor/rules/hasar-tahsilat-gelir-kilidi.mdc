@@ -1,0 +1,30 @@
+# Hasar Tahsilat Tarafı Ve Gelir Kilidi
+
+**Kaynak (Mustafa · 01.09.2026):** Satış faturası kime, Dosya Onaylandı adımında sorulur. Finans tekrar sormaz. Yeni Gelir’de Faturalı / Faturasız durur. Avans açıklaması kutu içinde, iş grubu adı yazılmaz.
+
+**Temel cümle:** Tahsilat tarafı dosyadandır. Faturasızda KDV işlemez. Avans gerekçesi kutunun içindedir.
+
+## Zorunlu
+
+1. 4. adım `HasarSalesInvoiceRequestCard`: Fatura kime + Finansa talep et. Finans’te aynı soru yok.
+2. `collectionParty` talep sonrası kilitli. Yalnız admin Dosya Bilgileri → Detay’da açar.
+3. Gelir / fatura / tahsilat `collectionParty` ile aynı tarafa yazılır. Sigortalı ödemelide sigorta carisine sync yok.
+4. Yeni Gelir: Faturalı (KDV) / Faturasız (KDV yok, tutar net). Kaynak dosyadan, seçilmez.
+5. Avans açıklaması boş açılır. Placeholder: `Avans Gerekçesini Açıklayınız.` Alt satır yardım yok. «İş Grubu Yok» yazılmaz.
+
+## Yasak (açık onay yoksa)
+
+- Finans’te «fatura kime»yi yeniden sormak
+- Faturasızda KDV alanı bırakmak
+- Avans kutusuna iş grubu adını doldurmak
+- Bu kilidi «sadeleştirme» diye kaldırmak
+
+## Durdurma
+
+Taraf karışır, KDV faturasızda işler veya avans kutusu yine iş grubu ile dolarsa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-hasar-tahsilat-gelir.sh
+```
