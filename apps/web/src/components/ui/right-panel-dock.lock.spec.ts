@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { RIGHT_PANEL_DOCK_REMIND_MS, rightPanelDockClass } from './right-panel-dock.ts';
+import { RIGHT_PANEL_DOCK_REMIND_MS, rightPanelDockClass } from './right-panel-dock-state.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 

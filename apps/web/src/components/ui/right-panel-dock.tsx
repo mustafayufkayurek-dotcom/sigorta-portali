@@ -7,7 +7,7 @@ import {
   RIGHT_PANEL_DOCK_REMIND_MS,
   rightPanelDockClass,
   useRightPanelDock,
-} from './right-panel-dock.ts';
+} from './right-panel-dock-state.ts';
 
 export { RIGHT_PANEL_DOCK_REMIND_MS, rightPanelDockClass, useRightPanelDock };
 
