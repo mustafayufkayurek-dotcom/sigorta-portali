@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (2 Eylül 2026 — v556)
+## Canlı durum (2 Eylül 2026 — v557)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v556-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v556-amd64` | deploy sırası |
-| **Rollback** | Web **v555** / Backend **v555** | manifest `rollbackImages` |
-| **Etiket** | `v556-tahsilat-kapanis-panel` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v557-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v557-amd64` | deploy sırası |
+| **Rollback** | Web **v556** / Backend **v556** | manifest `rollbackImages` |
+| **Etiket** | `v557-evrak-hakedis` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v557 — Full (2 Eylül 2026) — Evrak kırmızısı, hakediş karışması
+
+- Kapalı dosyada Evrak Yükleme yeşil: yükleme veya dosya kapanışı. Fiziki muvafakat sayılır
+- Hasar Gider hakedişi yalnız bu dosya; başka dosyanın ödemesi basılmaz
+- Acil tespit bulgusu v556’daki gibi durur. Eski boş dosya kendiliğinden dolmaz
+- Rollback web+backend **v556**. İK yok. Tedarikçi türü kutusu bu pakette yok
 
 ### v556 — Full (2 Eylül 2026) — Tahsilat, ofis kapanış, tespit, sağ panel
 

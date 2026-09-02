@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-02",
-  "label": "v556-tahsilat-kapanis-panel",
-  "description": "Full: Hasar tahsilat FK, ofis kapanış/iptal, Acil tespit bulgusu, sağ panel kaydır + kayıt hatırlatması. v555 mail paketi durur. İK yok. Rollback web v555 / backend v555.",
+  "label": "v557-evrak-hakedis",
+  "description": "Full: kapalı dosyada evrak kırmızısı kapanır, Gider hakedişi yalnız bu dosya, Acil tespit bulgusu durur. v556 tahsilat/kapanış/panel durur. İK yok. Rollback web v556 / backend v556.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v556-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v556-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v557-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v557-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v555-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v555-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v556-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v556-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

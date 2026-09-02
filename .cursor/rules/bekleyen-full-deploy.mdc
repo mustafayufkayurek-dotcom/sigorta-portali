@@ -1,20 +1,23 @@
 ---
-description: Full deploy v556 alındı — İK sırada
+description: Full deploy v557 alındı — İK sırada
 alwaysApply: true
 ---
 
-# Full deploy v556 (02.09.2026) — alındı
+# Full deploy v557 (02.09.2026) — alındı
 
-Canlı: web **v556** · backend **v556**. Rollback: web v555 / backend v555.
+Canlı: web **v557** · backend **v557**. Rollback: web v556 / backend v556.
 
-## Alınan paket (v556 full)
+## Alınan paket (v557 full)
 
-**Hasar tahsilat + ofis kapanış + Acil tespit bulgusu + sağ panel kaydır.**
+**Kapalı dosyada evrak kırmızısı + hakediş karışması. Acil tespit bulgusu durur.**
 
-1. Yeni Tahsilat: fatura seçilmeden kayıt. Boş «Seçiniz» Prisma FK kırmaz.
-2. Hasar kapanış: süreç bitmeden kapanmaz. Hizmet iptalse **Dosyayı İptal Et**. **İptal nedeni zorunlu** (en az 10 karakter; boş geçilmez). İptal eden ve işlem zamanı dosyada durur. Saha kapatmaz.
-3. Acil tespit bulgusu: kapanışta yazılan metin dosyada kalır. Kaydet / kapatmadan önce kayda geçer. Boş güncelleme mevcut metni silmez.
-4. Sağ panel: soldaki sayfaya tıklayınca çekmece kapanmaz, sağa kayar. X ve Çıkış Yap’ta kayıt hatırlatması durur.
+1. Kapalı dosyada Evrak Yükleme yeşil: yükleme veya dosya kapanışı. Fiziki muvafakat sayılır.
+2. Hasar Gider hakedişi yalnız bu dosya. Başka dosyanın ödemesi basılmaz.
+3. Acil tespit bulgusu v556’daki gibi durur. Eski boş dosya kendiliğinden dolmaz.
+
+## v556 durur (bozulmaz)
+
+Tahsilat FK, ofis kapanış/iptal, Acil tespit persist, sağ panel kaydır.
 
 ## v555 durur (bozulmaz)
 
