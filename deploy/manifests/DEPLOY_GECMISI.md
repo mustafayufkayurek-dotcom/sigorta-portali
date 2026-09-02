@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (2 Eylül 2026 — v555)
+## Canlı durum (2 Eylül 2026 — v556)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v555-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v555-amd64` | deploy sırası |
-| **Rollback** | Web **v554** / Backend **v554** | manifest `rollbackImages` |
-| **Etiket** | `v555-mail-kapanis-onay-anket` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v556-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v556-amd64` | deploy sırası |
+| **Rollback** | Web **v555** / Backend **v555** | manifest `rollbackImages` |
+| **Etiket** | `v556-tahsilat-kapanis-panel` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v556 — Full (2 Eylül 2026) — Tahsilat, ofis kapanış, tespit, sağ panel
+
+- Hasar tahsilat: boş fatura kaydı FK kırmaz
+- Ofis süreç bitmeden kapatmaz; iptal nedeni zorunlu. Saha kapatmaz
+- Acil tespit bulgusu kapatmadan önce yazılır; boş güncelleme silmez
+- Sağ panel soldaki sayfaya tıklayınca kapanmaz; X/çıkışta kayıt hatırlatması
+- Rollback web+backend **v555**. İK yok. Tedarikçi türü kutusu bu pakette yok
 
 ### v555 — Full (2 Eylül 2026) — Kapanış, anket, onay talep, rapor onaylandı
 

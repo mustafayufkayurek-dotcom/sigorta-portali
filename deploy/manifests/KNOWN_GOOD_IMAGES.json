@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-02",
-  "label": "v555-mail-kapanis-onay-anket",
-  "description": "Full: Dosya kapanış, anket raporu, onay talep, rapor onaylandı, şifre sıfırlama. Logo 120px. v554 hoş geldin durur. İK yok. Rollback web v554 / backend v554.",
+  "label": "v556-tahsilat-kapanis-panel",
+  "description": "Full: Hasar tahsilat FK, ofis kapanış/iptal, Acil tespit bulgusu, sağ panel kaydır + kayıt hatırlatması. v555 mail paketi durur. İK yok. Rollback web v555 / backend v555.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v555-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v555-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v556-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v556-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v554-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v554-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v555-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v555-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
