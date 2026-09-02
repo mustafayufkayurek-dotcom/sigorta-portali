@@ -8,6 +8,13 @@ import {
 import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
+import {
+  buildFileClosureEmailHtml,
+  buildFileClosureEmailPlaintext,
+  customerFirmTitle,
+  isMeridyenInternalMailbox,
+  type FileClosureAudience,
+} from '@/modules/notifications/email/file-closure-email.template';
 import { SmsService } from '@/modules/notifications/sms/sms.service';
 import { MessageTemplateService, TEMPLATE_TYPES } from '@/modules/notifications/sms/message-template.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
@@ -34,7 +41,7 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
-import { resolveDepartmentFileSubjectByLabel } from '@/common/helpers/dosya-konusu.helper';
+import { resolveDepartmentFileSubjectByLabel, settingsDefinedFileSubjectName } from '@/common/helpers/dosya-konusu.helper';
 import {
   APPROVAL_WAITING_REPORT_STATUSES,
   claimStatusProductLabel,
@@ -2119,17 +2126,10 @@ export class ClaimFilesService {
         });
       }
 
-      // Müşteriye bildirim (email varsa)
-      if (fullFile.customer?.email) {
-        void this.claimEventEmail.onClaimClosed({
-          recipientEmail: fullFile.customer.email,
-          recipientUserId: fullFile.customer.id ?? 'customer',
-          fileNo: (claimFile as any).fileNo,
-          customer: customerName,
-          closedAt,
-          claimFileId: id,
-        });
-      }
+      // Dış partiler (sigorta, eksper, broker, asistans): kapanış görseli. Meridyen personele gitmez.
+      void this.sendHasarFileClosureMails(id, fullFile).catch((err) =>
+        this.logger.warn(`[Kapanış maili] ${err?.message}`),
+      );
 
       // In-app bildirim: Atanmış personele dosya kapandı bildirimi
       const fileNo = (claimFile as any).fileNo;
@@ -2158,6 +2158,137 @@ export class ClaimFilesService {
     }
 
     return updated;
+  }
+
+  /**
+   * Hasar dosya kapanışı — sigorta, eksper, broker, asistans.
+   * Meridyen personeline bu görsel gitmez (onlar onClaimClosed alır).
+   */
+  private async sendHasarFileClosureMails(claimFileId: string, claimFile: any) {
+    const mailer = this.emailService;
+    if (!mailer) return;
+
+    const departmentName = String(claimFile.department?.name || 'Hasar Onarım').trim() || 'Hasar Onarım';
+    const fileNo = String(claimFile.fileNo || '').trim();
+    const insuranceCompanyName = String(claimFile.insuranceCompany?.name || '').trim();
+    const fileSubject = String(
+      claimFile.claimSubject?.name
+      || claimFile.departmentFileSubject?.name
+      || '',
+    ).trim()
+      || await settingsDefinedFileSubjectName(
+        this.prisma,
+        claimFile.lossType,
+        claimFile.departmentId,
+      );
+    const insuredName = String(claimFile.insuredName || '').trim();
+    const insuredPhone = String(claimFile.insuredPhone || '').trim();
+    const notificationAt = claimFile.notificationDate || claimFile.createdAt || null;
+    const closedAt = claimFile.closedAt || new Date();
+
+    let fileFeeAmount = Number(claimFile.financialSummary?.fileFeeRevenue || 0);
+    if (!(fileFeeAmount > 0)) {
+      const approved = await this.prisma.repairReport.findFirst({
+        where: {
+          claimFileId,
+          status: { in: [...APPROVED_REPAIR_REPORT_STATUSES] },
+        },
+        orderBy: { updatedAt: 'desc' },
+        select: { totalSalesAmount: true },
+      });
+      fileFeeAmount = Number(approved?.totalSalesAmount || 0);
+    }
+
+    type Dispatch = { email: string; organizationName: string; audience: FileClosureAudience };
+    const seen = new Set<string>();
+    const dispatches: Dispatch[] = [];
+    const add = (raw: string | null | undefined, organizationName: string, audience: FileClosureAudience) => {
+      const email = String(raw || '').trim().toLowerCase();
+      if (!email || !email.includes('@') || seen.has(email) || isMeridyenInternalMailbox(email)) return;
+      seen.add(email);
+      dispatches.push({ email, organizationName: organizationName.trim(), audience });
+    };
+
+    add(claimFile.insuranceCompany?.contactEmail, insuranceCompanyName, 'other');
+
+    const expertOfficeRows = await this.prisma.repairReport.findMany({
+      where: { claimFileId, expertOfficeId: { not: null } },
+      select: {
+        expertOffice: {
+          select: { email: true, companyName: true, fullName: true, shortName: true },
+        },
+      },
+      take: 20,
+    });
+    for (const row of expertOfficeRows) {
+      add(row.expertOffice?.email, customerFirmTitle(row.expertOffice), 'other');
+    }
+    add(
+      claimFile.assignedAdjuster?.email || claimFile.assignedAdjuster?.adjuster?.email,
+      String(claimFile.assignedAdjuster?.adjuster?.company || '').trim()
+        || `${claimFile.assignedAdjuster?.firstName || ''} ${claimFile.assignedAdjuster?.lastName || ''}`.trim(),
+      'other',
+    );
+
+    const customerSubType = String(claimFile.customer?.subType || '').trim();
+    const customerTitle = customerFirmTitle(claimFile.customer);
+    if (customerSubType === 'asistan_firmasi') {
+      add(claimFile.customer?.email, customerTitle, 'assistance');
+    } else if (customerSubType === 'broker_firmasi') {
+      add(claimFile.customer?.email, customerTitle, 'other');
+    } else if (customerSubType === 'eksper_firmasi' || customerSubType === 'eksper') {
+      add(claimFile.customer?.email, customerTitle, 'other');
+    }
+
+    const contacts = claimFile.customer?.id
+      ? await this.prisma.customerContact.findMany({
+          where: { customerId: claimFile.customer.id, email: { not: null } },
+          select: { email: true },
+          take: 10,
+        })
+      : [];
+    if (customerSubType === 'asistan_firmasi' || customerSubType === 'broker_firmasi'
+      || customerSubType === 'eksper_firmasi' || customerSubType === 'eksper') {
+      const audience: FileClosureAudience = customerSubType === 'asistan_firmasi' ? 'assistance' : 'other';
+      for (const contact of contacts) add(contact.email, customerTitle, audience);
+    }
+
+    if (!dispatches.length) {
+      this.logger.warn(`[Kapanış maili] ${fileNo}: dış alıcı yok`);
+      return;
+    }
+
+    const subject = `Dosya Kapanışı – ${fileNo}`;
+    for (const item of dispatches) {
+      const data = {
+        departmentName,
+        organizationName: item.organizationName,
+        fileNo,
+        insuranceCompanyName,
+        fileSubject,
+        insuredName,
+        insuredPhone,
+        notificationAt,
+        closedAt,
+        fileFeeAmount: fileFeeAmount > 0 ? fileFeeAmount : null,
+        audience: item.audience,
+        nextStepText: 'Dosya kapatılmıştır. Sorularınız için bizimle iletişime geçebilirsiniz.',
+      };
+      const result = await mailer.sendEmail(
+        item.email,
+        subject,
+        buildFileClosureEmailHtml(data),
+        {
+          text: buildFileClosureEmailPlaintext(data),
+          mailbox: 'HASAR',
+        },
+      );
+      if (!result.sent || result.via !== 'graph') {
+        this.logger.warn(
+          `[Kapanış maili] ${fileNo} → ${item.email} gitmedi: ${result.errorMsg || result.via || 'graph yok'}`,
+        );
+      }
+    }
   }
 
   async getTimeline(

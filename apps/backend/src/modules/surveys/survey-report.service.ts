@@ -1,12 +1,41 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { buildSurveyReportHtml, SurveyReportData } from './survey-report.template';
 
-const MONTH_NAMES_TR = [
+type SurveyCampaignScope = Prisma.SurveyCampaignWhereInput;
+
+type MonthlyReportTarget = {
+  kind: 'insurance' | 'assistance' | 'expert' | 'broker';
+  name: string;
+  email: string;
+  campaignWhere: SurveyCampaignScope;
+};
+
+function firmName(c: {
+  companyName?: string | null;
+  fullName?: string | null;
+  shortName?: string | null;
+}): string {
+  return String(c.companyName || c.fullName || c.shortName || '').trim();
+}
+
+export const MONTH_NAMES_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
+
+export function previousCalendarMonth(now = new Date()): { year: number; month: number } {
+  const month = now.getMonth() === 0 ? 12 : now.getMonth();
+  const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  return { year, month };
+}
+
+export function canApproveSurveyMonthlyReport(roleCode?: string | null): boolean {
+  const code = String(roleCode ?? '').trim().toLowerCase();
+  return code === 'admin' || code === 'manager';
+}
 
 @Injectable()
 export class SurveyReportService {
@@ -17,26 +46,172 @@ export class SurveyReportService {
     private readonly emailService: EmailService,
   ) {}
 
-  // ── Aylık rapor verisi üret ────────────────────────────────────────────────
+  private addMonthlyTarget(
+    targets: MonthlyReportTarget[],
+    seen: Set<string>,
+    target: MonthlyReportTarget,
+  ) {
+    const email = String(target.email ?? '').trim().toLowerCase();
+    if (!email || seen.has(email)) return;
+    seen.add(email);
+    targets.push({ ...target, email });
+  }
+
+  /** Sigorta + asistans + eksper + broker — aynı yönetici onayı kuralı. */
+  private async collectMonthlyReportTargets(): Promise<MonthlyReportTarget[]> {
+    const targets: MonthlyReportTarget[] = [];
+    const seen = new Set<string>();
+
+    const companies = await this.prisma.insuranceCompany.findMany({
+      where: { status: 'active', contactEmail: { not: null } },
+    });
+    for (const company of companies) {
+      if (!company.contactEmail) continue;
+      this.addMonthlyTarget(targets, seen, {
+        kind: 'insurance',
+        name: company.name,
+        email: company.contactEmail,
+        campaignWhere: { insuranceCompanyId: company.id },
+      });
+    }
+
+    const assistants = await this.prisma.customer.findMany({
+      where: { status: 'active', subType: 'asistan_firmasi' },
+      select: { id: true, companyName: true, fullName: true, shortName: true, email: true },
+    });
+    for (const firm of assistants) {
+      const name = firmName(firm) || 'Asistans firması';
+      const campaignWhere: SurveyCampaignScope = { emergencyCase: { customerId: firm.id } };
+      if (firm.email) {
+        this.addMonthlyTarget(targets, seen, {
+          kind: 'assistance',
+          name,
+          email: firm.email,
+          campaignWhere,
+        });
+      }
+    }
+
+    const assistanceUsers = await this.prisma.user.findMany({
+      where: { status: 'active', role: { code: 'assistance_company_user' } },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        userAssistantCustomerScopes: { select: { customerId: true } },
+      },
+    });
+    for (const user of assistanceUsers) {
+      const ids = user.userAssistantCustomerScopes.map((s) => s.customerId);
+      if (!ids.length) continue;
+      this.addMonthlyTarget(targets, seen, {
+        kind: 'assistance',
+        name: `${user.firstName} ${user.lastName}`.trim() || 'Asistans firması',
+        email: user.email,
+        campaignWhere: { emergencyCase: { customerId: { in: ids } } },
+      });
+    }
+
+    const expertOffices = await this.prisma.customer.findMany({
+      where: { status: 'active', subType: { in: ['eksper_firmasi', 'eksper'] } },
+      select: { id: true, companyName: true, fullName: true, shortName: true, email: true },
+    });
+    for (const office of expertOffices) {
+      if (!office.email) continue;
+      this.addMonthlyTarget(targets, seen, {
+        kind: 'expert',
+        name: firmName(office) || 'Eksper firması',
+        email: office.email,
+        campaignWhere: {
+          claimFile: {
+            OR: [
+              { customerId: office.id },
+              { repairReports: { some: { expertOfficeId: office.id } } },
+            ],
+          },
+        },
+      });
+    }
+
+    const expertUsers = await this.prisma.user.findMany({
+      where: { status: 'active', role: { code: 'expert' } },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        adjuster: { select: { company: true } },
+      },
+    });
+    for (const user of expertUsers) {
+      this.addMonthlyTarget(targets, seen, {
+        kind: 'expert',
+        name: user.adjuster?.company?.trim() || `${user.firstName} ${user.lastName}`.trim() || 'Eksper',
+        email: user.email,
+        campaignWhere: {
+          claimFile: {
+            OR: [
+              { assignedAdjusterId: user.id },
+              {
+                sourceChannel: 'expert_portal',
+                repairReports: { some: { createdByUserId: user.id } },
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    const brokers = await this.prisma.customer.findMany({
+      where: { status: 'active', subType: 'broker_firmasi' },
+      select: { id: true, companyName: true, fullName: true, shortName: true, email: true },
+    });
+    for (const firm of brokers) {
+      if (!firm.email) continue;
+      this.addMonthlyTarget(targets, seen, {
+        kind: 'broker',
+        name: firmName(firm) || 'Broker firması',
+        email: firm.email,
+        campaignWhere: { claimFile: { customerId: firm.id } },
+      });
+    }
+
+    const brokerUsers = await this.prisma.user.findMany({
+      where: { status: 'active', role: { code: 'broker_user' } },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        userInsuranceCompanyScopes: { select: { insuranceCompanyId: true } },
+      },
+    });
+    for (const user of brokerUsers) {
+      const insuranceIds = user.userInsuranceCompanyScopes.map((s) => s.insuranceCompanyId);
+      if (!insuranceIds.length) continue;
+      this.addMonthlyTarget(targets, seen, {
+        kind: 'broker',
+        name: `${user.firstName} ${user.lastName}`.trim() || 'Broker',
+        email: user.email,
+        campaignWhere: { insuranceCompanyId: { in: insuranceIds } },
+      });
+    }
+
+    return targets;
+  }
 
   async generateMonthlyReport(
     year: number,
-    month: number, // 1-12
-    insuranceCompanyId: string,
+    month: number,
+    campaignWhere: SurveyCampaignScope,
+    recipientName: string,
+    recipientEmail: string,
   ): Promise<SurveyReportData | null> {
-    const company = await this.prisma.insuranceCompany.findUnique({
-      where: { id: insuranceCompanyId },
-    });
-    if (!company) return null;
-
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 1);
 
-    // Bu aya ait kampanyalar
     const campaigns = await this.prisma.surveyCampaign.findMany({
       where: {
-        insuranceCompanyId,
-        createdAt: { gte: startDate, lt: endDate },
+        AND: [campaignWhere, { createdAt: { gte: startDate, lt: endDate } }],
       },
       include: { response: true },
     });
@@ -47,7 +222,7 @@ export class SurveyReportService {
     const responseRate = totalSent > 0 ? (totalCompleted / totalSent) * 100 : 0;
 
     if (totalCompleted === 0) {
-      return null; // Veri yoksa rapor gönderme
+      return null;
     }
 
     const responses = completed.map((c) => c.response!);
@@ -69,7 +244,6 @@ export class SurveyReportService {
     const recommendCount = responses.filter((r) => r.q6Recommend).length;
     const recommendRate = (recommendCount / totalCompleted) * 100;
 
-    // Son 6 ay trend
     const trend: SurveyReportData['trend'] = [];
     for (let i = 5; i >= 0; i--) {
       const tMonth = month - i;
@@ -81,9 +255,11 @@ export class SurveyReportService {
 
       const tCampaigns = await this.prisma.surveyCampaign.findMany({
         where: {
-          insuranceCompanyId,
-          createdAt: { gte: tStart, lt: tEnd },
-          status: 'completed',
+          AND: [
+            campaignWhere,
+            { createdAt: { gte: tStart, lt: tEnd } },
+            { status: 'completed' },
+          ],
         },
         include: { response: true },
       });
@@ -109,7 +285,6 @@ export class SurveyReportService {
       });
     }
 
-    // Yorumlar
     const withComments = responses.filter(
       (r) => r.q7Comment && r.q7Comment.trim().length > 10,
     );
@@ -131,8 +306,8 @@ export class SurveyReportService {
       period: `${MONTH_NAMES_TR[month - 1]} ${year}`,
       year,
       month,
-      insuranceCompanyName: company.name,
-      insuranceCompanyEmail: company.contactEmail ?? '',
+      insuranceCompanyName: recipientName,
+      insuranceCompanyEmail: recipientEmail,
       totalSent,
       totalCompleted,
       responseRate,
@@ -144,30 +319,27 @@ export class SurveyReportService {
     };
   }
 
-  // ── Tüm sigorta şirketlerine aylık rapor gönder ───────────────────────────
-
   async sendMonthlyReports(year: number, month: number): Promise<void> {
-    const companies = await this.prisma.insuranceCompany.findMany({
-      where: { status: 'active', contactEmail: { not: null } },
-    });
+    const targets = await this.collectMonthlyReportTargets();
 
     this.logger.log(
-      `Aylık anket raporu gönderimi başladı — ${MONTH_NAMES_TR[month - 1]} ${year} — ${companies.length} şirket`,
+      `Aylık anket raporu gönderimi başladı — ${MONTH_NAMES_TR[month - 1]} ${year} — ${targets.length} alıcı (sigorta, asistans, eksper, broker)`,
     );
 
     let sent = 0;
     let skipped = 0;
 
-    for (const company of companies) {
-      if (!company.contactEmail) {
-        skipped++;
-        continue;
-      }
-
+    for (const target of targets) {
       try {
-        const reportData = await this.generateMonthlyReport(year, month, company.id);
+        const reportData = await this.generateMonthlyReport(
+          year,
+          month,
+          target.campaignWhere,
+          target.name,
+          target.email,
+        );
         if (!reportData) {
-          this.logger.debug(`Rapor verisi yok, atlanıyor → ${company.name}`);
+          this.logger.debug(`Rapor verisi yok, atlanıyor → ${target.name}`);
           skipped++;
           continue;
         }
@@ -175,20 +347,117 @@ export class SurveyReportService {
         const html = buildSurveyReportHtml(reportData);
         const subject = `Meridyen Assistance – ${reportData.period} Müşteri Memnuniyet Raporu`;
 
-        const sentMail = await this.emailService.sendEmail(company.contactEmail, subject, html);
+        const sentMail = await this.emailService.sendEmail(target.email, subject, html);
         if (!sentMail.sent) {
-          this.logger.error(`Rapor gönderilemedi → ${company.name}: ${sentMail.errorMsg ?? 'kutu reddi'}`);
+          this.logger.error(`Rapor gönderilemedi → ${target.name}: ${sentMail.errorMsg ?? 'kutu reddi'}`);
           continue;
         }
         sent++;
-        this.logger.log(`Rapor gönderildi → ${company.name} (${company.contactEmail})`);
+        this.logger.log(`Rapor gönderildi → ${target.name} (${target.email})`);
       } catch (err: any) {
-        this.logger.error(`Rapor gönderilemedi → ${company.name}: ${err.message}`);
+        this.logger.error(`Rapor gönderilemedi → ${target.name}: ${err.message}`);
       }
     }
 
     this.logger.log(
       `Aylık rapor tamamlandı — gönderilen: ${sent}, atlanan: ${skipped}`,
     );
+  }
+
+  async periodHasReportData(year: number, month: number): Promise<boolean> {
+    const targets = await this.collectMonthlyReportTargets();
+    for (const target of targets) {
+      const data = await this.generateMonthlyReport(
+        year,
+        month,
+        target.campaignWhere,
+        target.name,
+        target.email,
+      );
+      if (data) return true;
+    }
+    return false;
+  }
+
+  async getOrPrepareMonthlyDispatch(now = new Date()) {
+    const { year, month } = previousCalendarMonth(now);
+    const period = `${MONTH_NAMES_TR[month - 1]} ${year}`;
+    const hasData = await this.periodHasReportData(year, month);
+    if (!hasData) {
+      return {
+        year,
+        month,
+        period,
+        status: 'empty' as const,
+        canAsk: false,
+        canApprove: false,
+      };
+    }
+
+    let row = await this.prisma.surveyMonthlyDispatch.findUnique({
+      where: { year_month: { year, month } },
+    });
+    if (!row) {
+      row = await this.prisma.surveyMonthlyDispatch.create({
+        data: { year, month, status: 'ready' },
+      });
+    }
+
+    return {
+      year,
+      month,
+      period,
+      status: row.status,
+      canAsk: row.status === 'ready',
+      canApprove: row.status === 'ready' || row.status === 'requested',
+      requestedAt: row.requestedAt,
+      sentAt: row.sentAt,
+    };
+  }
+
+  async requestMonthlySend(userId: string, now = new Date()) {
+    const snapshot = await this.getOrPrepareMonthlyDispatch(now);
+    if (snapshot.status === 'empty') {
+      throw new BadRequestException('Bu dönem için gönderilecek anket raporu yok.');
+    }
+    if (snapshot.status === 'sent') {
+      throw new BadRequestException('Bu dönem raporu zaten gönderildi.');
+    }
+    if (snapshot.status === 'requested') {
+      return snapshot;
+    }
+    await this.prisma.surveyMonthlyDispatch.update({
+      where: { year_month: { year: snapshot.year, month: snapshot.month } },
+      data: {
+        status: 'requested',
+        requestedByUserId: userId,
+        requestedAt: now,
+      },
+    });
+    return this.getOrPrepareMonthlyDispatch(now);
+  }
+
+  async approveMonthlySend(userId: string, roleCode: string | null | undefined, now = new Date()) {
+    if (!canApproveSurveyMonthlyReport(roleCode)) {
+      throw new ForbiddenException('Yönetici onayı olmadan anket raporu gönderilemez.');
+    }
+    const snapshot = await this.getOrPrepareMonthlyDispatch(now);
+    if (snapshot.status === 'empty') {
+      throw new BadRequestException('Bu dönem için gönderilecek anket raporu yok.');
+    }
+    if (snapshot.status === 'sent') {
+      throw new BadRequestException('Bu dönem raporu zaten gönderildi.');
+    }
+    await this.sendMonthlyReports(snapshot.year, snapshot.month);
+    await this.prisma.surveyMonthlyDispatch.update({
+      where: { year_month: { year: snapshot.year, month: snapshot.month } },
+      data: {
+        status: 'sent',
+        approvedByUserId: userId,
+        approvedAt: now,
+        sentAt: now,
+      },
+    });
+    return this.getOrPrepareMonthlyDispatch(now);
   }
 }

@@ -3275,12 +3275,10 @@ export default function AcilDosyaDetayPage() {
                       <p className="text-rose-600">Alıcı bulunamadı</p>
                     )}
                   </div>
-                  {closurePreview.greetingName?.trim() ? (
-                    <p data-testid="kapanis-email-hitap">
-                      <span className="font-semibold text-slate-700">Hitap: </span>
-                      Sayın {closurePreview.greetingName.trim()}
-                    </p>
-                  ) : null}
+                  <p data-testid="kapanis-email-hitap">
+                    <span className="font-semibold text-slate-700">Hitap: </span>
+                    Sn. Yetkili
+                  </p>
                   <p><span className="font-semibold text-slate-700">Firma: </span>{closurePreview.assistansName}</p>
                   <p data-testid="kapanis-email-konu">
                     <span className="font-semibold text-slate-700">Konu: </span>{closurePreview.subject}

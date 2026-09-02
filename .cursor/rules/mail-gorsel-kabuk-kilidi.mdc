@@ -1,0 +1,40 @@
+---
+description: Onaylı giden mail kabuğu ve metinleri kaybolmasın
+alwaysApply: true
+---
+
+# Mail Görsel Kabuğu Kilidi
+
+**Kaynak (Mustafa · 02.09.2026):** Hoş geldin, kapanış, anket, onay talep, rapor onaylandı, şifre sıfırlama. Bitmiş görsel «sadeleştirme» diye eski kabuğa dönmesin.
+
+**Temel cümle:** Bu mailler **aynı kabukta** durur: logo **120px**, lacivert başlık. Konu ve gövde metni onaylı sıradadır.
+
+## Zorunlu
+
+1. Kabuk `buildTransactionalEmailHtml` / kapanışta `buildFileClosureEmailHtml`. `Operasyon Bildirimi` bu pakete basılmaz.
+2. Logo `width="120"` / `120px`. `196px` yok.
+3. Dış kullanıcıda firma adı `Sn.` üstünde. Meridyen personelde firma satırı yok.
+4. Eksperden onay istenirken konu `{Sigorta}-{Dosya No}-Onay Talep`. Başlık **Onay Talep**. Gövde: «Hasar onarım raporu onay ve görüşleriniz beklemektedir.»
+5. Eksper onayınca konu `{Rapor Onaylandı}-{Sigorta}-{Dosya No}`. Başlık **Rapor Onaylandı**. Gövde: «Eksper onarım raporunu onaylanmıştır. Operasyon planlama aşamasına geçiniz.»
+6. Onay özeti: Sigorta şirketi → Dosya No → Onay Gönderim tarihi. **Rapor No yok.**
+7. Kapanış: alıcı sigorta / asistans / eksper / broker. Meridyen personele bu görsel gitmez. Süre yalnız asistans. Dosya bedeli `TL +KDV`.
+8. Ay sonu anket raporu otomatik gitmez. Personel sorar; yönetici onayı olmadan gönderilmez.
+
+## Yasak (açık onay yoksa)
+
+- Başlığı «Hasar Onarım Raporu Onay Talebi» veya konu sonunu «Onarım Raporu» yapmak
+- Onay / kapanış / anket / şifre mailini `buildNotificationEmailHtml` Operasyon Bildirimi kabuğuna almak
+- Bu kilitleri “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Onaylı görsel kaybolursa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-outbound-mail.sh
+node --experimental-strip-types --test \
+  apps/backend/src/modules/notifications/email/file-closure-email.lock.spec.ts \
+  apps/backend/src/modules/surveys/survey-monthly-report.lock.spec.ts
+```

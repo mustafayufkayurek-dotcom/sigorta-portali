@@ -74,3 +74,6 @@ tmp-screenshots/
 # Local leftovers — not product
 .local-*
 apps/web/public/local-demo/
+
+# Local email HTML previews — not product, never rsync
+.preview/

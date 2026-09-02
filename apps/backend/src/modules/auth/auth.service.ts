@@ -11,6 +11,7 @@ import { buildAppPath } from '@/common/utils/app-url';
 import { AuthTokens, RegisterDto, mergeAcilFileOwnerPermissions } from '@sigorta/shared';
 import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
+import { buildTransactionalEmailHtml, formatSnPersonGreeting, isMeridyenStaffRole, organizationLineForMail } from '@/modules/notifications/email/email.template';
 
 function normalizeAuthEmail(email: string): string {
   return normalizeEmailAddress(email);
@@ -261,25 +262,24 @@ export class AuthService {
     });
 
     const resetUrl = buildAppPath(this.config, `/giris/sifre-sifirla?token=${encodeURIComponent(token)}`);
-    const firstName = (user as { firstName?: string | null }).firstName?.trim() || 'Yetkili';
+    const organizationName = await this.resolvePasswordResetOrganization(user);
+    const html = buildTransactionalEmailHtml({
+      title: 'Şifre Sıfırlama',
+      organizationName,
+      greeting: formatSnPersonGreeting(
+        (user as { firstName?: string | null }).firstName,
+        (user as { lastName?: string | null }).lastName,
+      ),
+      intro: 'Hesabınız için şifre sıfırlama talebi alındı. Bağlantı 1 saat geçerlidir.',
+      actionUrl: resetUrl,
+      actionLabel: 'Şifreyi Sıfırla',
+      footerNote: 'Bu talebi siz oluşturmadıysanız bu e-postayı yok sayın.',
+      portalUrl: buildAppPath(this.config, '/giris'),
+    });
     const result = await this.email.sendEmail(
       user.email,
       'Şifre Sıfırlama — Meridyen Assistance',
-      `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1e40af;">Şifre Sıfırlama</h2>
-          <p>Sayın ${firstName},</p>
-          <p>Hesabınız için şifre sıfırlama talebi alındı. Bağlantı 1 saat geçerlidir.</p>
-          <p>
-            <a href="${resetUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
-              Şifreyi Sıfırla
-            </a>
-          </p>
-          <p style="margin-top: 20px; color: #64748b; font-size: 12px;">
-            Bu talebi siz oluşturmadıysanız bu e-postayı yok sayın.
-          </p>
-        </div>
-      `,
+      html,
       { text: `Şifre sıfırlama bağlantısı (1 saat geçerli): ${resetUrl}` },
     );
 
@@ -292,6 +292,62 @@ export class AuthService {
     }
 
     return { requested: true };
+  }
+
+  private async resolvePasswordResetOrganization(user: {
+    id: string;
+    email: string;
+    role?: { code?: string | null } | null;
+  }): Promise<string | undefined> {
+    const roleCode = user.role?.code;
+    if (isMeridyenStaffRole(roleCode)) return undefined;
+
+    const code = String(roleCode ?? '').trim().toLowerCase();
+    if (code === 'expert') {
+      const row = await this.prisma.user.findUnique({
+        where: { id: user.id },
+        select: { adjuster: { select: { company: true, name: true } } },
+      });
+      return organizationLineForMail(
+        row?.adjuster?.company?.trim() || row?.adjuster?.name?.trim(),
+        roleCode,
+      );
+    }
+    if (code === 'insurance_company_user') {
+      const scope = await this.prisma.userInsuranceCompanyScope.findFirst({
+        where: { userId: user.id },
+        select: { insuranceCompany: { select: { name: true } } },
+      });
+      return organizationLineForMail(scope?.insuranceCompany?.name, roleCode);
+    }
+    if (code === 'assistance_company_user') {
+      const scope = await this.prisma.userAssistantCustomerScope.findFirst({
+        where: { userId: user.id },
+        select: {
+          customer: { select: { companyName: true, fullName: true, shortName: true } },
+        },
+      });
+      const customer = scope?.customer;
+      return organizationLineForMail(
+        customer?.companyName || customer?.fullName || customer?.shortName,
+        roleCode,
+      );
+    }
+    if (code === 'broker_user') {
+      const firm = await this.prisma.customer.findFirst({
+        where: {
+          status: 'active',
+          subType: 'broker_firmasi',
+          email: { equals: user.email, mode: 'insensitive' },
+        },
+        select: { companyName: true, fullName: true, shortName: true },
+      });
+      return organizationLineForMail(
+        firm?.companyName || firm?.fullName || firm?.shortName,
+        roleCode,
+      );
+    }
+    return undefined;
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

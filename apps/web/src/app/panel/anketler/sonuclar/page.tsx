@@ -19,6 +19,7 @@ import { ScoreDistributionChart } from './_components/ScoreDistributionChart';
 import { SurveyPerformanceTable } from './_components/SurveyPerformanceTable';
 import { RecentResponses } from './_components/RecentResponses';
 import { ActionRequiredCard } from './_components/ActionRequiredCard';
+import { MonthlySurveyReportAskCard } from './_components/MonthlySurveyReportAskCard';
 import { DepartmentFinanceTable } from './_components/DepartmentFinanceTable';
 import { QuickDatePresets } from './_components/QuickDatePresets';
 import { FilterDrawer } from './_components/FilterDrawer';
@@ -206,6 +207,8 @@ export default function AnketSonuclariPage() {
       >
         {SURVEY_MONTH_END_CUSTOMER_NOTICE}
       </div>
+
+      <MonthlySurveyReportAskCard />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <QuickDatePresets active={quickPreset} onSelect={applyQuickPreset} />

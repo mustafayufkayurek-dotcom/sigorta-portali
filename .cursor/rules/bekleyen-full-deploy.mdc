@@ -1,5 +1,5 @@
 ---
-description: Full deploy v554 alındı — hoş geldin maili
+description: Full deploy v554 alındı — anket/onay/şifre sırada
 alwaysApply: true
 ---
 
@@ -11,9 +11,26 @@ Canlı: web **v554** · backend **v554**. Rollback: web v553 / backend v553.
 
 Hoş geldin maili: metin kullanıcının gerçek ekranına göre. Üst bantta rol yok; firma adı ismin üstünde. Giriş **https://app.meridyen-tr.com/giris**. Logo **120px**. Asistans ayrı şablon.
 
-## Bekleyen — canlıya alınmadı
+## Sırada — toplu canlıya al (Mustafa «canlıya al» deyince)
 
-**Sağ panel kaydır + kayıt hatırlatması.** İhbar, Acil kapanış, 72s hatırlatma, onarım raporu teslimi. Anket raporu / dış onay / şifre sıfırlama kabuğu lokal; hoş geldin ile karışmaz.
+**Dosya kapanış maili** (lokal hazır; hoş geldin v554 ve anket paketiyle karışmaz).
+
+Hasar Onarım + Acil Yardım. Alıcı: sigorta, asistans, eksper, broker. Meridyen personele bu görsel gitmez.
+Üst rozet dosyanın departmanı. Müşteri ünvanı `Sn. Yetkili`nin üstünde. Adres, asistan firması satırı, hizmet verilme yok.
+İşe başlama / kapanış / süre yalnız asistans. Dosya bedeli `… TL +KDV`. Dosya konusu yalnız Ayarlar tanımları.
+
+**Anket raporu + dış onay + şifre sıfırlama** (lokal hazır; hoş geldin v554 ile karışmaz).
+
+1. Ay sonu anket raporu otomatik gitmez. Personel sorar; yönetici onayı olmadan gönderilmez.
+2. Rapor sigorta + **asistans** + **eksper** + **broker** firmalarına gider. Aynı onay kuralı.
+3. Soru etiketlerinde `(Meridyen Assistance)` yok.
+4. Onay talebi ve şifre sıfırlama: `Sn. Ad Soyad`. Firma adı ismin üstünde. **Meridyen kullanıcısında firma satırı yok.**
+5. Onay özeti: Sigorta şirketi → Dosya No → Onay Gönderim tarihi. **Rapor No yok.**
+   Konu: `{Sigorta Şirketi}-{Dosya No}-Onay Talep`. Eksper onayınca: `{Rapor Onaylandı}-{Sigorta Şirketi}-{Dosya No}`. Başlık: Onay Talep / Rapor Onaylandı (dış onay kabuğu).
+   İstek metni: «Hasar onarım raporu onay ve görüşleriniz beklemektedir.» Eksper onayında: «Eksper onarım raporunu onaylanmıştır. Operasyon planlama aşamasına geçiniz.»
+6. Kabuk hoş geldin ile aynı: logo **120px**, lacivert başlık.
+
+**Ayrıca bekleyen (bu paketle karışmaz):** sağ panel kaydır + kayıt hatırlatması (ihbar, Acil kapanış, 72s, onarım raporu teslimi).
 
 Alım yalnız Mustafa «canlıya al» deyince. İK ile karışmaz.
 

@@ -62,7 +62,8 @@ describe('survey closure lock', () => {
 
   it('statik route :id den önce tanımlanır', () => {
     const closureIdx = controller.indexOf("@Get('closure-unsent')");
+    const monthlyIdx = controller.indexOf("@Get('monthly-report')");
     const idIdx = controller.indexOf("@Get(':id')");
-    assert.ok(closureIdx >= 0 && idIdx > closureIdx);
+    assert.ok(closureIdx >= 0 && monthlyIdx > closureIdx && idIdx > monthlyIdx);
   });
 });

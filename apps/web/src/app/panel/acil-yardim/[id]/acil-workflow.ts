@@ -515,35 +515,39 @@ export function buildClosureEmailPreview(input: {
   issueType: string;
   salePrice: number | null;
   closedAt: string;
+  workStartedAt?: string | null;
+  insuranceCompanyName?: string | null;
+  organizationName?: string | null;
+  durationLabel?: string | null;
   summary: string;
   greetingName?: string | null;
 }): { subject: string; body: string } {
   const sale =
     input.salePrice != null && input.salePrice > 0
-      ? `${input.salePrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`
+      ? `${input.salePrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL +KDV`
       : '—';
-  const greeting = input.greetingName?.trim()
-    ? `Sayın ${input.greetingName.trim()},`
-    : 'Sayın Yetkili,';
+  const org = (input.organizationName || '').trim();
   const subject = `Dosya Kapanışı – ${input.fileNo}`;
   const phone = (input.insuredPhone || '').trim() || '—';
   const body = [
-    greeting,
+    ...(org ? [org] : []),
+    `Sn. Yetkili,`,
     ``,
-    `Dosya kapanış bilgileri aşağıdadır.`,
-    ``,
+    `İhbar Tarihi: —`,
+    `Sigorta şirketi: ${(input.insuranceCompanyName || '').trim() || '—'}`,
     `Dosya No: ${input.fileNo}`,
-    `Sigortalı: ${input.insuredLabel}`,
-    `Sigortalı Telefon: ${phone}`,
     `Dosya Konusu: ${meridyenIssueTypeLabel(input.issueType)}`,
-    `Tamamlanma: ${input.summary}`,
-    `Onaylı Hizmet Bedeli: ${sale}`,
+    `Sigortalı Adı Soyadı: ${input.insuredLabel}`,
+    `Sigortalı Telefon: ${phone}`,
+    `İşe Başlama: ${(input.workStartedAt || '').trim() || '—'}`,
     `Kapanış Tarihi: ${input.closedAt}`,
+    `Süre: ${(input.durationLabel || '').trim() || '—'}`,
+    `Dosya bedeli: ${sale}`,
     ``,
-    `Ekler: onaylı fotoğraflar ve kapanış belgeleri (varsa).`,
+    `Kapanış raporu ve belgeler bu e-postanın ekindedir.`,
     ``,
     `Saygılarımızla,`,
-    `Meridyen Assistance`,
+    `Meridyen Asistans`,
   ].join('\n');
   assertCustomerFacingPayloadSafe(body);
   return { subject, body };

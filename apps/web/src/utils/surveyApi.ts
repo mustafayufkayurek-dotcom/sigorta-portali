@@ -124,3 +124,28 @@ export function saveSurveyOwnerExplanation(
     ownerExplanation,
   });
 }
+
+export type SurveyMonthlyDispatchStatus = 'empty' | 'ready' | 'requested' | 'sent';
+
+export interface SurveyMonthlyDispatch {
+  year: number;
+  month: number;
+  period: string;
+  status: SurveyMonthlyDispatchStatus;
+  canAsk: boolean;
+  canApprove: boolean;
+  requestedAt?: string | null;
+  sentAt?: string | null;
+}
+
+export function getSurveyMonthlyDispatch(): Promise<SurveyMonthlyDispatch> {
+  return apiClient.get<SurveyMonthlyDispatch>('/surveys/monthly-report');
+}
+
+export function requestSurveyMonthlySend(): Promise<SurveyMonthlyDispatch> {
+  return apiClient.post<SurveyMonthlyDispatch>('/surveys/monthly-report/request-send');
+}
+
+export function approveSurveyMonthlySend(): Promise<SurveyMonthlyDispatch> {
+  return apiClient.post<SurveyMonthlyDispatch>('/surveys/monthly-report/approve-send');
+}

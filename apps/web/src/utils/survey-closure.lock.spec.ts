@@ -60,6 +60,9 @@ describe('survey closure UI lock', () => {
     const results = read('../app/panel/anketler/sonuclar/page.tsx');
     assert.match(results, /anket-ay-sonu-uyari/);
     assert.match(results, /SURVEY_MONTH_END_CUSTOMER_NOTICE/);
+    assert.match(results, /MonthlySurveyReportAskCard/);
+    const ask = read('../app/panel/anketler/sonuclar/_components/MonthlySurveyReportAskCard.tsx');
+    assert.match(ask, /asistans, eksper ve broker/);
 
     const evrak = read('../app/evrak/[token]/page.tsx');
     assert.match(evrak, /sigortali-onay-uyari/);

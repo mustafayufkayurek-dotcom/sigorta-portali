@@ -13,7 +13,7 @@ import {
   buildApprovalReminderEmailSubject,
   buildApprovalReminderEmailText,
 } from './approval-reminder-email.template';
-import { buildNotificationEmailHtml } from './email.template';
+import { buildNotificationEmailHtml, raporOnaylandiSubject, buildRaporOnaylandiEmailHtml, formatSnPersonGreeting } from './email.template';
 
 @Injectable()
 export class ClaimEventEmailService {
@@ -95,25 +95,28 @@ export class ClaimEventEmailService {
     recipientUserId: string;
     reportNo: string;
     fileNo: string;
+    insuranceCompanyName?: string | null;
     approvedBy: string;
     claimFileId: string;
     reportId: string;
+    recipientFirstName?: string | null;
+    recipientLastName?: string | null;
   }) {
-    await this.email.sendIfPreferred(
-      params.recipientUserId,
-      'reportApproved',
+    await this.email.sendEmail(
       params.recipientEmail,
-      `Rapor Onaylandı: ${params.reportNo}`,
-      {
-        title: 'Rapor Onaylandı',
-        preheader: `${params.reportNo} numaralı rapor onaylandı.`,
-        rows: [
-          { label: 'Rapor No', value: params.reportNo },
-          { label: 'Dosya No', value: params.fileNo },
-          { label: 'Onaylayan', value: params.approvedBy },
-        ],
+      raporOnaylandiSubject(params.insuranceCompanyName, params.fileNo),
+      buildRaporOnaylandiEmailHtml({
+        insuranceCompanyName: params.insuranceCompanyName,
+        fileNo: params.fileNo,
+        approvedBy: params.approvedBy,
+        greeting: formatSnPersonGreeting(params.recipientFirstName, params.recipientLastName),
+        intro: 'Onarım raporu onaylandı.',
         actionUrl: buildPanelUrl(this.appUrl, panelOnarimRaporuPath(params.claimFileId, params.reportId)),
-        actionLabel: 'Raporu Görüntüle',
+        portalUrl: this.appUrl,
+      }),
+      {
+        text: `${params.fileNo} numaralı dosyanın onarım raporu onaylandı.`,
+        mailbox: 'HASAR',
       },
     );
   }

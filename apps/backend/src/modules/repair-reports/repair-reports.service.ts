@@ -1338,9 +1338,12 @@ export class RepairReportsService {
         recipientUserId: report.createdByUserId,
         reportNo: report.reportNo,
         fileNo: (report.claimFile as any)?.fileNo ?? '',
+        insuranceCompanyName: report.claimFile?.insuranceCompany?.name ?? '',
         approvedBy: approver ? `${approver.firstName} ${approver.lastName}` : '',
         claimFileId: report.claimFileId,
         reportId,
+        recipientFirstName: (report.createdBy as any)?.firstName,
+        recipientLastName: (report.createdBy as any)?.lastName,
       });
     }
 

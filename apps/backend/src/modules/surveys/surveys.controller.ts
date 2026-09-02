@@ -10,13 +10,17 @@ import {
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { SurveysService } from './surveys.service';
+import { SurveyReportService } from './survey-report.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { OwnerExplanationDto } from './dto/owner-explanation.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('surveys')
 export class SurveysController {
-  constructor(private readonly svc: SurveysService) {}
+  constructor(
+    private readonly svc: SurveysService,
+    private readonly reportSvc: SurveyReportService,
+  ) {}
 
   @Get()
   async findAll(@Query('insuranceCompanyId') insuranceCompanyId?: string) {
@@ -41,6 +45,25 @@ export class SurveysController {
   @Get('closure-unsent')
   async listClosureUnsent(@CurrentUser() user: { id?: string } | undefined) {
     return { data: await this.svc.listClosureUnsent(user?.id ?? '') };
+  }
+
+  @Get('monthly-report')
+  async monthlyReport() {
+    return { data: await this.reportSvc.getOrPrepareMonthlyDispatch() };
+  }
+
+  @Post('monthly-report/request-send')
+  async requestMonthlyReportSend(@CurrentUser() user: { id?: string } | undefined) {
+    return { data: await this.reportSvc.requestMonthlySend(user?.id ?? '') };
+  }
+
+  @Post('monthly-report/approve-send')
+  async approveMonthlyReportSend(
+    @CurrentUser() user: { id?: string; roleCode?: string | null } | undefined,
+  ) {
+    return {
+      data: await this.reportSvc.approveMonthlySend(user?.id ?? '', user?.roleCode),
+    };
   }
 
   @Get(':id')

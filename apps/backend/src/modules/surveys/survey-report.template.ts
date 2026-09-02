@@ -1,7 +1,10 @@
+import { resolveWelcomeEmailLogoUrl } from '../notifications/email/email-brand.util';
+
 export interface SurveyReportData {
   period: string; // "Nisan 2026"
   year: number;
   month: number;
+  /** Alıcı ünvanı — sigorta, asistans, eksper veya broker */
   insuranceCompanyName: string;
   insuranceCompanyEmail: string;
   totalSent: number;
@@ -54,8 +57,8 @@ export function buildSurveyReportHtml(data: SurveyReportData): string {
 
   const questionLabels = [
     'Genel hizmet memnuniyeti',
-    'Müdahale hızı (Meridyen Assistance)',
-    'Süreç boyunca bilgilendirme (Meridyen Assistance)',
+    'Müdahale hızı',
+    'Süreç boyunca bilgilendirme',
     'Yapılan işin kalitesi',
     'Ekip profesyonelliği',
   ];
@@ -76,6 +79,8 @@ export function buildSurveyReportHtml(data: SurveyReportData): string {
     )
     .join('');
 
+  const logoUrl = resolveWelcomeEmailLogoUrl();
+
   return `<!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -83,18 +88,27 @@ export function buildSurveyReportHtml(data: SurveyReportData): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Meridyen Assistance – ${data.period} Müşteri Memnuniyet Raporu</title>
 </head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;">
+<body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#0F172A;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;padding:32px 0;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1);">
+        <table width="640" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,.06);">
 
-          <!-- Header -->
           <tr>
-            <td style="background:#1e3a5f;padding:28px 32px;">
-              <p style="margin:0;font-size:13px;color:#93c5fd;letter-spacing:1px;text-transform:uppercase;">Meridyen Assistance</p>
-              <h1 style="margin:6px 0 0;font-size:22px;color:#ffffff;">${data.period} Müşteri Memnuniyet Raporu</h1>
-              <p style="margin:6px 0 0;font-size:13px;color:#bfdbfe;">${data.insuranceCompanyName} için hazırlanmıştır</p>
+            <td style="padding:8px 20px;background:#ffffff;border-bottom:2px solid #1E5AA8;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="right" style="vertical-align:top;">
+                    <img src="${logoUrl}" alt="Meridyen Asistans" width="120" style="display:block;width:120px;max-width:100%;height:auto;margin:0 0 0 auto;border:0;outline:none;text-decoration:none;"/>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:14px 20px;background:linear-gradient(135deg,#0b2847 0%,#123A63 55%,#1E5AA8 100%);">
+              <h1 style="margin:0;font-size:20px;line-height:1.28;font-weight:800;color:#ffffff;">${data.period} Müşteri Memnuniyet Raporu</h1>
+              <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,.88);">${data.insuranceCompanyName} için hazırlanmıştır</p>
             </td>
           </tr>
 

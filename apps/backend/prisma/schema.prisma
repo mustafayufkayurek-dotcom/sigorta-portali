@@ -223,6 +223,8 @@ model User {
   hrLeaveRequestsRejected    HrLeaveRequest[]          @relation("HrLeaveRejectedBy")
   hrAttendanceConfirmations  HrAttendanceEntry[]       @relation("HrAttendanceConfirmedBy")
   hrAttendancePeriodLocks    HrAttendancePeriodLock[]  @relation("HrAttendancePeriodLockedBy")
+  monthlySurveyReportsRequested SurveyMonthlyDispatch[] @relation("SurveyMonthlyRequestedBy")
+  monthlySurveyReportsApproved  SurveyMonthlyDispatch[] @relation("SurveyMonthlyApprovedBy")
 
   @@index([email])
   @@index([roleId])
@@ -3156,6 +3158,27 @@ model SurveyResponse {
   campaign SurveyCampaign @relation(fields: [campaignId], references: [id])
 
   @@map("survey_responses")
+}
+
+model SurveyMonthlyDispatch {
+  id                String    @id @default(uuid())
+  year              Int
+  month             Int
+  status            String    @default("ready")
+  /// ready | requested | sent
+  requestedByUserId String?   @map("requested_by_user_id")
+  requestedAt       DateTime? @map("requested_at")
+  approvedByUserId  String?   @map("approved_by_user_id")
+  approvedAt        DateTime? @map("approved_at")
+  sentAt            DateTime? @map("sent_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  requestedBy User? @relation("SurveyMonthlyRequestedBy", fields: [requestedByUserId], references: [id])
+  approvedBy  User? @relation("SurveyMonthlyApprovedBy", fields: [approvedByUserId], references: [id])
+
+  @@unique([year, month])
+  @@map("survey_monthly_dispatches")
 }
 
 // ─── Ekran İzin Sistemi ───────────────────────────────────────────────────────

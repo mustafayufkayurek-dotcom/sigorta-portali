@@ -19,6 +19,8 @@ import { buildEmergencyOperationChain } from './emergency-operation-chain';
 import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
+import { buildFileClosureEmailHtml, buildFileClosureEmailPlaintext, customerFirmTitle, isMeridyenInternalMailbox } from '@/modules/notifications/email/file-closure-email.template';
+import { settingsDefinedFileSubjectName } from '@/common/helpers/dosya-konusu.helper';
 import { StorageService } from '@/modules/storage/storage.service';
 import { htmlDocumentToPdf } from '@/common/utils/html-document-to-pdf';
 import {
@@ -1060,6 +1062,7 @@ export class EmergencyCasesService {
             fullName: true,
             firstName: true,
             lastName: true,
+            subType: true,
           },
         },
         costEntries: {
@@ -1087,8 +1090,7 @@ export class EmergencyCasesService {
     const addEmail = (raw?: string | null) => {
       const e = (raw || '').trim().toLowerCase();
       if (!e || !e.includes('@')) return;
-      // Meridyen iç kutuları alıcıya ekleme
-      if (/@(meridyen|localhost)/i.test(e)) return;
+      if (isMeridyenInternalMailbox(e)) return;
       emailSet.add(e);
     };
 
@@ -1099,9 +1101,8 @@ export class EmergencyCasesService {
     addEmail(emergencyCase.customer?.email);
 
     const recipients = [...emailSet];
-    const latestInbound = [...inbound].reverse().find((m) => (m.fromAddress || '').includes('@'));
-    const greetingName = this.resolveClosureGreetingName(latestInbound?.fromName, latestInbound?.fromAddress);
-    const greeting = greetingName ? `Sayın ${greetingName},` : 'Sayın Yetkili,';
+    const assistansName = customerFirmTitle(emergencyCase.customer);
+    const greetingName = 'Yetkili';
 
     const to = recipients.join(', ');
     const fileNo = emergencyCase.fileNo || emergencyCase.caseNo;
@@ -1113,10 +1114,6 @@ export class EmergencyCasesService {
     const insuredPhone =
       (await this.ensureCustomerPhoneFromInbound(caseId, emergencyCase.customerPhone)) || '—';
     const saleAmount = emergencyCase.costEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-    const saleLabel =
-      saleAmount > 0
-        ? `${saleAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`
-        : '—';
     const closedAt = (emergencyCase.resolvedAt || new Date()).toLocaleString('tr-TR');
     const inboundAt = inbound[0]?.receivedAt
       ? inbound[0].receivedAt.toLocaleString('tr-TR')
@@ -1131,27 +1128,28 @@ export class EmergencyCasesService {
       : '—';
     const summary = (emergencyCase.notes || '').trim().slice(0, 160) || 'Hizmet tamamlandı';
     const subject = `Dosya Kapanışı – ${fileNo}`;
-    const bodyText = [
-      greeting,
-      '',
-      'Dosya kapanış bilgileri aşağıdadır.',
-      '',
-      `Dosya No: ${fileNo}`,
-      `Sigortalı: ${insured}`,
-      `Sigortalı Telefon: ${insuredPhone}`,
-      `Dosya Konusu: ${emergencyCase.issueType}`,
-      `İhbar Tarihi: ${inboundAt}`,
-      `İşe Başlama: ${workStartedAt}`,
-      `Hizmet Verilme: ${serviceDeliveredAt}`,
-      `Operasyon / Tamamlanma: ${summary}`,
-      `Onaylı Hizmet Bedeli: ${saleLabel}`,
-      `Kapanış Tarihi: ${closedAt}`,
-      '',
-      'Ekler: kapanış raporu PDF, onaylı fotoğraflar ve belgeler (varsa).',
-      '',
-      'Saygılarımızla,',
-      'Meridyen Assistance',
-    ].join('\n');
+    const customerSubType = String(emergencyCase.customer?.subType || '').trim();
+    const audience =
+      customerSubType === 'eksper_firmasi' || customerSubType === 'eksper' || customerSubType === 'broker_firmasi'
+        ? 'other'
+        : 'assistance';
+    const fileSubject = await settingsDefinedFileSubjectName(this.prisma, emergencyCase.issueType);
+    const closureData = {
+      departmentName: 'Acil Yardım',
+      organizationName: assistansName,
+      fileNo,
+      insuranceCompanyName: '',
+      fileSubject,
+      insuredName: insured === '—' ? '' : insured,
+      insuredPhone: insuredPhone === '—' ? '' : insuredPhone,
+      notificationAt: inbound[0]?.receivedAt || emergencyCase.fileDate || null,
+      workStartedAt: emergencyCase.workStartedAt,
+      closedAt: emergencyCase.resolvedAt || new Date(),
+      fileFeeAmount: saleAmount > 0 ? saleAmount : null,
+      audience,
+    };
+    const bodyText = buildFileClosureEmailPlaintext(closureData);
+    const html = buildFileClosureEmailHtml(closureData);
 
     // Güvenlik: alış / kâr / iç operasyon ifadeleri sızmasın
     const forbidden = /(alış|ali[sş]\s*fiyat|kâr\s*\(?%|kar\s*\(?%|i[cç]\s*operasyon|hakedi[sş])/i;
@@ -1173,7 +1171,7 @@ export class EmergencyCasesService {
       content: buildAcilClosureReportPdf({
         fileNo,
         insured,
-        subject: String(emergencyCase.issueType || ''),
+        subject: fileSubject || String(emergencyCase.issueType || ''),
         ihbarAt: inboundAt,
         workStartedAt,
         serviceDeliveredAt,
@@ -1246,11 +1244,6 @@ export class EmergencyCasesService {
       }
     }
 
-    const assistansName =
-      emergencyCase.customer?.companyName
-      || emergencyCase.customer?.fullName
-      || 'Asistans Firması';
-
     return {
       to,
       recipients,
@@ -1258,10 +1251,7 @@ export class EmergencyCasesService {
       assistansName,
       subject,
       bodyText,
-      html: `<pre style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:1.5;color:#0f172a;white-space:pre-wrap">${bodyText
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')}</pre>`,
+      html,
       attachmentNames,
       attachments,
       fileNo,

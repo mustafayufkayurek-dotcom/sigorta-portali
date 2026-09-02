@@ -9,21 +9,14 @@ export class SurveyReportScheduler {
   constructor(private readonly reportService: SurveyReportService) {}
 
   /**
-   * Her ayın 1'inde saat 09:00'da (İstanbul) önceki ayın raporu gönderilir.
+   * Her ayın 1'inde saat 09:00'da (İstanbul) önceki ayın raporu hazırlanır.
+   * Mail gitmez; personel Anket Sonuçları'nda sorulur, yönetici onayından sonra gider.
    */
   @Cron('0 9 1 * *', { name: 'survey-monthly-report', timeZone: 'Europe/Istanbul' })
   async handleMonthlyReport() {
-    const now = new Date();
-    // Önceki ayı hesapla
-    const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
-    const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-
-    this.logger.log(
-      `Aylık anket raporu scheduler tetiklendi → ${prevMonth}/${prevYear}`,
-    );
-
+    this.logger.log('Aylık anket raporu scheduler: gönderim yok, hazırlık sorusu açılır');
     try {
-      await this.reportService.sendMonthlyReports(prevYear, prevMonth);
+      await this.reportService.getOrPrepareMonthlyDispatch();
     } catch (err: any) {
       this.logger.error(`Aylık rapor scheduler hatası: ${err.message}`);
     }

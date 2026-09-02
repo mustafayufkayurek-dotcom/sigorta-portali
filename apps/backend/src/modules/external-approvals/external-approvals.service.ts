@@ -6,12 +6,22 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { buildAppPath } from '@/common/utils/app-url';
+import { buildAppPath, resolveAppUrl } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ReportPdfService } from '../repair-reports/pdf/report-pdf.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
+import {
+  buildTransactionalEmailHtml,
+  buildExternalApprovalSummaryHtml,
+  formatSnPersonGreeting,
+  organizationLineForMail,
+  onarimRaporuRequestSubject,
+  raporOnaylandiSubject,
+  buildRaporOnaylandiEmailHtml,
+} from '@/modules/notifications/email/email.template';
+import { buildPanelUrl, panelOnarimRaporuPath } from '@/common/utils/panel-url';
 import { SendExternalApprovalDto, RespondExternalApprovalDto } from './dto/external-approvals.dto';
 
 @Injectable()
@@ -207,6 +217,12 @@ export class ExternalApprovalsService {
       },
     });
 
+    if (dto.action === 'approved' && approval.approverType === 'expert') {
+      void this.sendExpertApprovedStaffEmail(approval.id).catch((err) =>
+        this.logger.warn(`Eksper onay maili gitmedi (token): ${err instanceof Error ? err.message : err}`),
+      );
+    }
+
     return { message: dto.action === 'approved' ? 'Onay verildi' : 'Red bildirildi' };
   }
 
@@ -283,6 +299,12 @@ export class ExternalApprovalsService {
     } catch (err) {
       this.logger.warn(
         `Onay bildirimi oluşturulamadı (approval=${id}): ${err instanceof Error ? err.message : err}`,
+      );
+    }
+
+    if (dto.action === 'approved' && approval.approverType === 'expert') {
+      void this.sendExpertApprovedStaffEmail(approval.id).catch((err) =>
+        this.logger.warn(`Eksper onay maili gitmedi (portal): ${err instanceof Error ? err.message : err}`),
       );
     }
 
@@ -534,6 +556,71 @@ export class ExternalApprovalsService {
     return buildWhatsAppMeUrl(phone, message) ?? `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
   }
 
+  private async sendExpertApprovedStaffEmail(approvalId: string) {
+    const approval = await this.prisma.externalApproval.findUnique({
+      where: { id: approvalId },
+      select: {
+        approverType: true,
+        approverName: true,
+        sentBy: { select: { email: true, firstName: true, lastName: true } },
+        approver: { select: { firstName: true, lastName: true } },
+        report: {
+          select: {
+            id: true,
+            claimFileId: true,
+            claimFile: {
+              select: {
+                fileNo: true,
+                insuranceCompany: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!approval || approval.approverType !== 'expert') return;
+    const to = approval.sentBy?.email?.trim();
+    if (!to) return;
+
+    const insuranceCompanyName = approval.report?.claimFile?.insuranceCompany?.name ?? '';
+    const fileNo = approval.report?.claimFile?.fileNo ?? '';
+    const approvedBy = [
+      approval.approver?.firstName,
+      approval.approver?.lastName,
+    ].filter(Boolean).join(' ').trim() || approval.approverName?.trim() || 'Eksper';
+    const greeting = formatSnPersonGreeting(
+      approval.sentBy?.firstName,
+      approval.sentBy?.lastName,
+    );
+    const appUrl = resolveAppUrl(this.config);
+    const actionUrl = approval.report?.claimFileId && approval.report.id
+      ? buildPanelUrl(appUrl, panelOnarimRaporuPath(approval.report.claimFileId, approval.report.id))
+      : undefined;
+
+    const result = await this.email.sendEmail(
+      to,
+      raporOnaylandiSubject(insuranceCompanyName, fileNo),
+      buildRaporOnaylandiEmailHtml({
+        insuranceCompanyName,
+        fileNo,
+        approvedBy,
+        greeting,
+        intro: 'Eksper onarım raporunu onaylanmıştır.\nOperasyon planlama aşamasına geçiniz.',
+        actionUrl,
+        portalUrl: buildAppPath(this.config, '/giris'),
+      }),
+      {
+        text: `Eksper onarım raporunu onaylanmıştır. Operasyon planlama aşamasına geçiniz. Dosya: ${fileNo}`,
+        mailbox: 'HASAR',
+      },
+    );
+    if (!result.sent || result.via !== 'graph') {
+      this.logger.warn(
+        `Eksper onay maili Hasar kutusundan gitmedi (${to}): ${result.errorMsg || result.via || 'graph yok'}`,
+      );
+    }
+  }
+
   private async sendApprovalEmail(
     approvalId: string,
     reportId: string,
@@ -561,7 +648,7 @@ export class ExternalApprovalsService {
           },
         },
         expertOffice: {
-          select: { id: true, companyName: true, phone: true, email: true },
+          select: { id: true, companyName: true, fullName: true, shortName: true, phone: true, email: true },
         },
         originalReport: { select: { id: true, reportNo: true, versionNo: true, createdAt: true } },
         items: {
@@ -593,28 +680,64 @@ export class ExternalApprovalsService {
       throw new BadRequestException('PDF ek oluşmadan dış onay maili gönderilemez');
     }
 
+    const approval = await this.prisma.externalApproval.findUnique({
+      where: { id: approvalId },
+      select: {
+        createdAt: true,
+        sentAt: true,
+        approverType: true,
+        approverName: true,
+        approver: {
+          select: {
+            firstName: true,
+            lastName: true,
+            role: { select: { code: true } },
+            adjuster: { select: { company: true, name: true } },
+          },
+        },
+      },
+    });
+    const insuranceCompanyName = pdfReport.claimFile?.insuranceCompany?.name ?? '';
+    const expertFirm =
+      pdfReport.expertOffice?.companyName
+      || pdfReport.expertOffice?.fullName
+      || pdfReport.expertOffice?.shortName
+      || approval?.approver?.adjuster?.company
+      || approval?.approver?.adjuster?.name
+      || '';
+    const recipientFirm = approval?.approverType === 'expert' ? expertFirm : insuranceCompanyName;
+    const organizationName = organizationLineForMail(
+      recipientFirm,
+      approval?.approver?.role?.code,
+    );
+    const greeting = formatSnPersonGreeting(
+      approval?.approver?.firstName,
+      approval?.approver?.lastName,
+      approval?.approverName,
+      recipientFirm,
+    );
+
     const result = await this.email.sendEmail(
       email,
-      `Onay Talebi: ${pdfReport.reportNo} — Hasar Onarım Raporu`,
-      `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1e40af;">Hasar Onarım Raporu Onay Talebi</h2>
-            <p>Sayın yetkili,</p>
-            <p><strong>${pdfReport.reportNo}</strong> numaralı hasar onarım raporu onayınızı beklemektedir.</p>
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
-              <p style="margin: 4px 0;"><strong>Rapor No:</strong> ${pdfReport.reportNo}</p>
-              <p style="margin: 4px 0;"><strong>Hasar Dosya No:</strong> ${pdfReport.claimFile?.fileNo ?? '—'}</p>
-              <p style="margin: 4px 0;"><strong>Sigorta Şirketi:</strong> ${pdfReport.claimFile?.insuranceCompany?.name ?? '—'}</p>
-            </div>
-            <p>Rapor PDF ektedir. İncelemek ve onaylamak için aşağıdaki linke tıklayın:</p>
-            <a href="${approvalUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
-              Raporu İncele ve Onayla
-            </a>
-            <p style="margin-top: 20px; color: #64748b; font-size: 12px;">
-              Bu link 72 saat geçerlidir. Sorun yaşarsanız lütfen bizimle iletişime geçin.
-            </p>
-          </div>
-        `,
+      onarimRaporuRequestSubject(
+        insuranceCompanyName,
+        pdfReport.claimFile?.fileNo,
+      ),
+      buildTransactionalEmailHtml({
+        title: 'Onay Talep',
+        organizationName,
+        greeting,
+        intro: 'Hasar onarım raporu onay ve görüşleriniz beklemektedir.',
+        bodyHtml: buildExternalApprovalSummaryHtml({
+          insuranceCompanyName,
+          fileNo: pdfReport.claimFile?.fileNo ?? '',
+          sentAt: approval?.sentAt ?? approval?.createdAt ?? new Date(),
+        }),
+        actionUrl: approvalUrl,
+        actionLabel: 'Raporu İncele ve Onayla',
+        footerNote: 'Bu link 72 saat geçerlidir. Sorun yaşarsanız lütfen bizimle iletişime geçin.',
+        portalUrl: buildAppPath(this.config, '/giris'),
+      }),
       {
         text: `${pdfReport.reportNo} numaralı hasar onarım raporu onayınızı bekliyor: ${approvalUrl}`,
         attachments: [

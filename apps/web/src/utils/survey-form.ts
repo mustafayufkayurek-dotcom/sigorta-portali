@@ -80,7 +80,7 @@ export const SURVEY_OWNER_EXPLANATION_MESSAGE =
   'Olumsuz ankette dosya sorumlusu açıklaması zorunludur.';
 
 export const SURVEY_MONTH_END_CUSTOMER_NOTICE =
-  'Anket sonuçları ay sonunda müşteriye gönderilir. Olumsuz sonuçlar ayrıca raporlanır.';
+  'Aylık anket raporu ay sonunda otomatik gitmez. Personel sorar; yönetici onayı olmadan gönderilmez.';
 
 export function surveyDissatisfiedCommentMissing(
   q6Recommend: boolean | null,

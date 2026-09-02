@@ -36,3 +36,30 @@ export async function resolveDepartmentFileSubjectByLabel(
   );
   return match ? { id: match.id, name: match.name } : null;
 }
+
+/**
+ * Mail / dış yazışma dosya konusu — yalnız Ayarlar kaydının adı.
+ * Kod (su-baskini) veya serbest ihbar metni yazılmaz.
+ */
+export async function settingsDefinedFileSubjectName(
+  prisma: PrismaService,
+  raw?: string | null,
+  departmentId?: string | null,
+): Promise<string> {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) return '';
+
+  const dept = await resolveDepartmentFileSubjectByLabel(prisma, trimmed, departmentId);
+  if (dept?.name?.trim()) return dept.name.trim();
+
+  const key = trimmed.toLocaleLowerCase('tr-TR');
+  const subjects = await prisma.claimSubject.findMany({
+    where: { isActive: true },
+    select: { name: true, code: true },
+  });
+  const hit = subjects.find(
+    (s) => s.name.trim().toLocaleLowerCase('tr-TR') === key
+      || s.code.trim().toLocaleLowerCase('tr-TR') === key,
+  );
+  return hit?.name?.trim() || '';
+}
