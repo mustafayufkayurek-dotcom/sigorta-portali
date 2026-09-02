@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-02",
-  "label": "v554-hos-geldin-mail",
-  "description": "Full: Hoş geldin maili gerçek ekrana göre; giriş adresi canlı; logo 120px. Asistans ayrı. v553 hakediş durur. İK yok. Rollback web v553 / backend v553.",
+  "label": "v555-mail-kapanis-onay-anket",
+  "description": "Full: Dosya kapanış, anket raporu, onay talep, rapor onaylandı, şifre sıfırlama. Logo 120px. v554 hoş geldin durur. İK yok. Rollback web v554 / backend v554.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v554-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v554-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v555-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v555-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v553-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v553-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v554-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v554-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

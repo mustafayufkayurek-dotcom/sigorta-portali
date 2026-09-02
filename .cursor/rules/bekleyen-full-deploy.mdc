@@ -1,38 +1,36 @@
 ---
-description: Full deploy v554 alındı — anket/onay/şifre sırada
+description: Full deploy v555 alındı — sağ panel sırada
 alwaysApply: true
 ---
 
-# Full deploy v554 (02.09.2026) — alındı
+# Full deploy v555 (02.09.2026) — alındı
 
-Canlı: web **v554** · backend **v554**. Rollback: web v553 / backend v553.
+Canlı: web **v555** · backend **v555**. Rollback: web v554 / backend v554.
 
-## Alınan paket (v554 full)
+## Alınan paket (v555 full)
 
-Hoş geldin maili: metin kullanıcının gerçek ekranına göre. Üst bantta rol yok; firma adı ismin üstünde. Giriş **https://app.meridyen-tr.com/giris**. Logo **120px**. Asistans ayrı şablon.
+**Dosya kapanış + anket raporu + dış onay + şifre sıfırlama + rapor onaylandı.**
 
-## Sırada — toplu canlıya al (Mustafa «canlıya al» deyince)
+Hasar Onarım + Acil Yardım kapanış maili: sigorta, asistans, eksper, broker. Meridyen personele bu görsel gitmez.
+Üst rozet dosyanın departmanı. Müşteri ünvanı `Sn. Yetkili`nin üstünde. Süre yalnız asistans. Dosya bedeli `… TL +KDV`.
 
-**Dosya kapanış maili** (lokal hazır; hoş geldin v554 ve anket paketiyle karışmaz).
+Ay sonu anket raporu otomatik gitmez. Personel sorar; yönetici onayı olmadan gönderilmez. Rapor sigorta + asistans + eksper + broker.
 
-Hasar Onarım + Acil Yardım. Alıcı: sigorta, asistans, eksper, broker. Meridyen personele bu görsel gitmez.
-Üst rozet dosyanın departmanı. Müşteri ünvanı `Sn. Yetkili`nin üstünde. Adres, asistan firması satırı, hizmet verilme yok.
-İşe başlama / kapanış / süre yalnız asistans. Dosya bedeli `… TL +KDV`. Dosya konusu yalnız Ayarlar tanımları.
+Onay talep: `{Sigorta Şirketi}-{Dosya No}-Onay Talep`. Başlık **Onay Talep**. «Hasar onarım raporu onay ve görüşleriniz beklemektedir.»
+Eksper onayınca: `{Rapor Onaylandı}-{Sigorta Şirketi}-{Dosya No}`. Başlık **Rapor Onaylandı**. «Eksper onarım raporunu onaylanmıştır. Operasyon planlama aşamasına geçiniz.»
+Şifre sıfırlama aynı kabuk. Logo **120px**.
 
-**Anket raporu + dış onay + şifre sıfırlama** (lokal hazır; hoş geldin v554 ile karışmaz).
+Hoş geldin v554 durur.
 
-1. Ay sonu anket raporu otomatik gitmez. Personel sorar; yönetici onayı olmadan gönderilmez.
-2. Rapor sigorta + **asistans** + **eksper** + **broker** firmalarına gider. Aynı onay kuralı.
-3. Soru etiketlerinde `(Meridyen Assistance)` yok.
-4. Onay talebi ve şifre sıfırlama: `Sn. Ad Soyad`. Firma adı ismin üstünde. **Meridyen kullanıcısında firma satırı yok.**
-5. Onay özeti: Sigorta şirketi → Dosya No → Onay Gönderim tarihi. **Rapor No yok.**
-   Konu: `{Sigorta Şirketi}-{Dosya No}-Onay Talep`. Eksper onayınca: `{Rapor Onaylandı}-{Sigorta Şirketi}-{Dosya No}`. Başlık: Onay Talep / Rapor Onaylandı (dış onay kabuğu).
-   İstek metni: «Hasar onarım raporu onay ve görüşleriniz beklemektedir.» Eksper onayında: «Eksper onarım raporunu onaylanmıştır. Operasyon planlama aşamasına geçiniz.»
-6. Kabuk hoş geldin ile aynı: logo **120px**, lacivert başlık.
+## Ayrıca bekleyen (bu paketle karışmaz)
 
-**Ayrıca bekleyen (bu paketle karışmaz):** sağ panel kaydır + kayıt hatırlatması (ihbar, Acil kapanış, 72s, onarım raporu teslimi).
+Sağ panel kaydır + kayıt hatırlatması (ihbar, Acil kapanış, 72s, onarım raporu teslimi).
 
 Alım yalnız Mustafa «canlıya al» deyince. İK ile karışmaz.
+
+## v554 durur (bozulmaz)
+
+Hoş geldin maili: metin kullanıcının gerçek ekranına göre. Üst bantta rol yok; firma adı ismin üstünde. Giriş **https://app.meridyen-tr.com/giris**. Logo **120px**. Asistans ayrı şablon.
 
 ## v553 durur (bozulmaz)
 

@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (2 Eylül 2026 — v554)
+## Canlı durum (2 Eylül 2026 — v555)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v554-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v554-amd64` | deploy sırası |
-| **Rollback** | Web **v553** / Backend **v553** | manifest `rollbackImages` |
-| **Etiket** | `v554-hos-geldin-mail` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v555-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v555-amd64` | deploy sırası |
+| **Rollback** | Web **v554** / Backend **v554** | manifest `rollbackImages` |
+| **Etiket** | `v555-mail-kapanis-onay-anket` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v555 — Full (2 Eylül 2026) — Kapanış, anket, onay talep, rapor onaylandı
+
+- Dosya kapanış maili Hasar + Acil; sigorta / asistans / eksper / broker. Meridyen personele bu görsel gitmez
+- Anket raporu otomatik gitmez; personel sorar, yönetici onayı şart. Sigorta + asistans + eksper + broker
+- Onay talep: `{Sigorta}-{Dosya No}-Onay Talep`. Rapor onaylandı: `{Rapor Onaylandı}-{Sigorta}-{Dosya No}`
+- Kabuk logo 120px, lacivert başlık. v554 hoş geldin durur
+- Rollback web+backend **v554**. İK yok. Sağ panel kaydır ayrı
 
 ### v554 — Full (2 Eylül 2026) — Hoş geldin maili gerçek ekrana göre
 
