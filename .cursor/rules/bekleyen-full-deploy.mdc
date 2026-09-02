@@ -1,15 +1,25 @@
 ---
-description: Full deploy v553 alındı — 01.09.2026
+description: Full deploy v554 alındı — hoş geldin maili
 alwaysApply: true
 ---
 
-# Full deploy v553 (01.09.2026) — alındı
+# Full deploy v554 (02.09.2026) — alındı
 
-Canlı: web **v553** · backend **v553**. Rollback: web v552 / backend v552.
+Canlı: web **v554** · backend **v554**. Rollback: web v553 / backend v553.
 
-## Alınan paket (v553 full)
+## Alınan paket (v554 full)
 
-Acil: ödenmeyen hakediş finans **Ödenecekler** kuyruğunda durur. Finansa gittikten sonra **Ödendi** işlemini finans personeli yapar; işlemi yapan kaydolur. Vade yok.
+Hoş geldin maili: metin kullanıcının gerçek ekranına göre. Üst bantta rol yok; firma adı ismin üstünde. Giriş **https://app.meridyen-tr.com/giris**. Logo **120px**. Asistans ayrı şablon.
+
+## Bekleyen — canlıya alınmadı
+
+**Sağ panel kaydır + kayıt hatırlatması.** İhbar, Acil kapanış, 72s hatırlatma, onarım raporu teslimi. Anket raporu / dış onay / şifre sıfırlama kabuğu lokal; hoş geldin ile karışmaz.
+
+Alım yalnız Mustafa «canlıya al» deyince. İK ile karışmaz.
+
+## v553 durur (bozulmaz)
+
+Acil: ödenmeyen hakediş finans **Ödenecekler** kuyruğunda durur. Finansa gittikten sonra **Ödendi** finans personelindedir. Vade yok.
 
 ## v552 durur (bozulmaz)
 

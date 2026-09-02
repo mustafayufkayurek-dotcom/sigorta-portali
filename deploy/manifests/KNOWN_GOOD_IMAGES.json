@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-09-01",
-  "label": "v553-acil-hakedis-odeme",
-  "description": "Full: Acil ödenmeyen hakediş finans Ödenecekler’de durur. Ödendi işlemini finans personeli yapar; işlemi yapan kaydolur. Vade yok. v552 saha/hakediş/kısa ad durur. İK yok. Rollback web v552 / backend v552.",
+  "updatedAt": "2026-09-02",
+  "label": "v554-hos-geldin-mail",
+  "description": "Full: Hoş geldin maili gerçek ekrana göre; giriş adresi canlı; logo 120px. Asistans ayrı. v553 hakediş durur. İK yok. Rollback web v553 / backend v553.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v553-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v553-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v554-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v554-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v552-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v552-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v553-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v553-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

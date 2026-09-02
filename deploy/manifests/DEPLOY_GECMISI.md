@@ -2,24 +2,31 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 1 Eylül 2026
+**Son güncelleme:** 2 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (1 Eylül 2026 — v553)
+## Canlı durum (2 Eylül 2026 — v554)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v553-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v553-amd64` | deploy sırası |
-| **Rollback** | Web **v552** / Backend **v552** | manifest `rollbackImages` |
-| **Etiket** | `v553-acil-hakedis-odeme` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v554-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v554-amd64` | deploy sırası |
+| **Rollback** | Web **v553** / Backend **v553** | manifest `rollbackImages` |
+| **Etiket** | `v554-hos-geldin-mail` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v554 — Full (2 Eylül 2026) — Hoş geldin maili gerçek ekrana göre
+
+- Metin personel / sigorta / eksper / broker / asistans ekranına göre
+- Üst bantta rol yazılmaz; firma adı ismin üstünde
+- Giriş **https://app.meridyen-tr.com/giris**. Logo **120px**
+- v553 hakediş durur. Rollback web+backend **v553**. İK yok.
 
 ### v553 — Full (1 Eylül 2026) — Acil hakediş Ödenecekler; Ödendi finansındır
 
