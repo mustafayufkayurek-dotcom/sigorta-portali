@@ -306,7 +306,7 @@ export class ClaimOperationCenterService {
   }
 
   private async buildFlowFlags(claimFileId: string, vendorIds: string[]) {
-    const [docs, fileDoc, claimRow, report] = await Promise.all([
+    const [docs, fileDoc, claimRow, report, closureDocCount] = await Promise.all([
       this.prisma.entityDocument.findMany({
         where: { entityType: 'claim_file', entityId: claimFileId },
         select: { notes: true, mimeType: true },
@@ -323,6 +323,13 @@ export class ClaimOperationCenterService {
       this.prisma.repairReport.findFirst({
         where: { claimFileId, status: { in: ['approved', 'externally_approved'] } },
         select: { id: true },
+      }),
+      this.prisma.fileDocument.count({
+        where: {
+          entityType: 'claim_file',
+          entityId: claimFileId,
+          physicalUploadKey: { not: null },
+        },
       }),
     ]);
     const photoDocs = docs.filter((d) => String(d.mimeType ?? '').startsWith('image/'));
@@ -344,6 +351,7 @@ export class ClaimOperationCenterService {
       repairPhotosReady: vendorIds.length > 0 && missingPhotoVendorIds.length === 0,
       repairCompleted,
       canInvoice: muvafakatApproved && Boolean(report),
+      hasClosureDocuments: closureDocCount > 0,
     };
   }
 

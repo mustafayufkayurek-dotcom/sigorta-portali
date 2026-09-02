@@ -100,6 +100,23 @@ export function dosyaOdemeIsGrubu(source: {
   return DOSYA_ODEME_IS_GRUBU_YOK;
 }
 
+/** Gider sayfası yalnız açık dosyanın ödemesini basar; tedarikçinin diğer dosyası karışmaz. */
+export function isBuDosyaOdeme(
+  row: { claimFileId?: string | null; claimFile?: { id?: string | null } | null },
+  claimId: string,
+): boolean {
+  if (!claimId) return false;
+  const fileId = row.claimFileId ?? row.claimFile?.id ?? null;
+  return fileId === claimId;
+}
+
+export function buDosyaOdemeKaynagi<T extends {
+  claimFileId?: string | null;
+  claimFile?: { id?: string | null } | null;
+}>(rows: T[], claimId: string): T[] {
+  return rows.filter((row) => isBuDosyaOdeme(row, claimId));
+}
+
 /** Rapordaki iş grubu adı — «Mobilya» → «Mobilya İşleri». */
 export function workGroupJobsLabel(name?: string | null): string {
   const t = String(name ?? '').trim().replace(/\s*iş grubu$/giu, '').trim();

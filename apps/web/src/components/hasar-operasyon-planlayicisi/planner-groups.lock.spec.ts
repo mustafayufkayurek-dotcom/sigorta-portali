@@ -56,7 +56,9 @@ describe('hasar planner groups lock', () => {
     assert.match(stepsSrc, /function StepDocsUpload/);
     assert.match(stepsSrc, /function StepFileClose/);
     assert.match(stepsSrc, /hasar-ofis-dosya-kapat-seridi/);
-    assert.match(stepsSrc, /ClaimManualDocumentsPanel claimId=\{claim.claimId\}/);
+    assert.match(stepsSrc, /ClaimManualDocumentsPanel/);
+    assert.match(stepsSrc, /onUploaded/);
+    assert.match(stepsSrc, /refreshClaim/);
     const panel = readFileSync(join(here, 'OperasyonPlanlayiciPanel.tsx'), 'utf8');
     assert.match(panel, /hasar-ofis-dosya-kapat/);
     const ctx = readFileSync(join(here, 'planner-context.tsx'), 'utf8');

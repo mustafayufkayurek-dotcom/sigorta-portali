@@ -15,6 +15,7 @@ import {
 import {
   computePlannerStepStatuses,
   formatLiveReportFinance,
+  hasDocsUploadFromActivity,
   hasWaForKind,
   hasWhatsappSent,
   hasRepairWhatsappSent,
@@ -303,6 +304,7 @@ type OperationCenterPayload = {
     repairPhotosReady?: boolean;
     missingPhotoVendorIds?: string[];
     canInvoice?: boolean;
+    hasClosureDocuments?: boolean;
   };
 };
 
@@ -410,11 +412,8 @@ export function mapLiveSnapshot(
     claimFile?.latestRepairReport?.status,
     claimFile?.latestRepairReport?.reportNo,
   );
-  const hasDocsUpload = activity.some((item) => {
-    const action = String(item.action ?? '');
-    const desc = String(item.description ?? '');
-    return /MANUAL_DOCUMENT|DOCUMENT_UPLOADED|FILE_DOCUMENT/i.test(action) || /manuel evrak|evrak yüklendi/i.test(desc);
-  });
+  const hasDocsUpload =
+    Boolean(flags.hasClosureDocuments) || hasDocsUploadFromActivity(activity);
   const statusCode = claimFile?.currentStatus?.code ?? null;
   const fileCancelled = String(statusCode ?? '').toLowerCase() === 'cancelled';
   const fileClosed = Boolean(!fileCancelled && (claimFile?.currentStatus?.isClosedState || claimFile?.closedAt || statusCode === 'closed'));

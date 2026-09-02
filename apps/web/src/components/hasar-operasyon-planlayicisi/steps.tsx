@@ -1525,7 +1525,7 @@ function StepClosureSurvey() {
 }
 
 function StepDocsUpload() {
-  const { claim } = usePlanner();
+  const { claim, refreshClaim } = usePlanner();
   if (!claim.claimId) {
     return <p className="mt-3 text-xs text-slate-500">Dosya bağlı değil.</p>;
   }
@@ -1534,7 +1534,12 @@ function StepDocsUpload() {
       <p className="text-xs text-slate-600">
         Manuel evrak buradan yüklenir. Yüklenen evrak ve resimler Evraklar → Tespit Ve Onarım’da birikir. Evraklar özetindeki yükleme de durur.
       </p>
-      <ClaimManualDocumentsPanel claimId={claim.claimId} />
+      <ClaimManualDocumentsPanel
+        claimId={claim.claimId}
+        onUploaded={() => {
+          void refreshClaim();
+        }}
+      />
     </div>
   );
 }

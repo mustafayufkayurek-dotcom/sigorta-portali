@@ -50,6 +50,7 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /saveFindingsText/);
     assert.match(acilPage, /Tespit bulguları kaydedilmeden dosya kapatılamaz/);
     assert.match(acilPage, /tespit-bulgulari-ozet/);
+    assert.match(acilPage, /if \(step === 'kapanis'\)/);
     assert.match(acilPage, /vendorStep/);
     assert.match(acilPage, /approvalStep/);
     assert.match(acilPage, /acil-onay-evrak/);

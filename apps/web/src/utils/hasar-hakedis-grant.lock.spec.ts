@@ -3,12 +3,29 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
-import { avansPayiForSatir, buildHasarHakedisGrantLines, buildHasarHakedisSecimSatirlari, DOSYA_ODEME_IS_GRUBU_YOK, DOSYA_ODEME_TEDARIKCI_YOK, avansAciklamaMetni, dosyaOdemeIsGrubu, dosyaOdemeTedarikciAdi, gercekTedarikciIsGruplari, hasarHakedisKalan, isHasarHakedisSatiriPasif, isOrnekHakedisSatiri, scaleGrantDetailsToAmount, verilenHakedisForSatir, workGroupJobsLabel } from './hasar-hakedis-grant.ts';
+import { avansPayiForSatir, buildHasarHakedisGrantLines, buildHasarHakedisSecimSatirlari, buDosyaOdemeKaynagi, DOSYA_ODEME_IS_GRUBU_YOK, DOSYA_ODEME_TEDARIKCI_YOK, avansAciklamaMetni, dosyaOdemeIsGrubu, dosyaOdemeTedarikciAdi, gercekTedarikciIsGruplari, hasarHakedisKalan, isBuDosyaOdeme, isHasarHakedisSatiriPasif, isOrnekHakedisSatiri, scaleGrantDetailsToAmount, verilenHakedisForSatir, workGroupJobsLabel } from './hasar-hakedis-grant.ts';
 import { netHakedisAfterAvans } from '../../../../packages/shared/src/hasar-flow-groups.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe('hasar hakediş maliyeti LOCK', () => {
+  it('gider sayfası yalnız bu dosyanın hakedişini basar', () => {
+    const buDosya = 'ilknur';
+    const rows = buDosyaOdemeKaynagi([
+      { id: '1', claimFileId: 'ilknur' },
+      { id: '2', claimFileId: 'diger-1', claimFile: { id: 'diger-1' } },
+      { id: '3', claimFile: { id: 'ilknur' } },
+      { id: '4', claimFileId: 'diger-2' },
+    ], buDosya);
+    assert.deepEqual(rows.map((row) => row.id), ['1', '3']);
+    assert.equal(isBuDosyaOdeme({ claimFileId: 'diger-1' }, buDosya), false);
+    const panel = readFileSync(join(here, '../components/finance/HasarFileHakedisPanel.tsx'), 'utf8');
+    assert.match(panel, /buDosyaOdemeKaynagi\(payments, claimId\)/);
+    assert.match(panel, /buDosyaOdemeKaynagi\(payRows, claimId\)/);
+    assert.doesNotMatch(panel, /tedarikciHareketleri/);
+    assert.doesNotMatch(panel, /payerId: row\.id/);
+  });
+
   it('dosya hareketinde tedarikçi ve iş grubu boş bırakılmaz', () => {
     assert.equal(dosyaOdemeTedarikciAdi({ vendorName: 'Orhan Şimşek' }), 'Orhan Şimşek');
     assert.equal(dosyaOdemeTedarikciAdi({}), DOSYA_ODEME_TEDARIKCI_YOK);

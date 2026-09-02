@@ -37,6 +37,7 @@ import {
   DOSYA_ODEME_TEDARIKCI_YOK,
   dosyaOdemeIsGrubu,
   dosyaOdemeTedarikciAdi,
+  buDosyaOdemeKaynagi,
   hasarHakedisKalan,
   isHasarHakedisSatiriPasif,
   isOrnekHakedisSatiri,
@@ -799,7 +800,6 @@ export function HasarFileHakedisPanel({
   const [catalogWorkGroupIds, setCatalogWorkGroupIds] = useState<string[]>([]);
   const [fileNo, setFileNo] = useState('');
   const [payments, setPayments] = useState<PaymentRow[]>([]);
-  const [tedarikciHareketleri, setTedarikciHareketleri] = useState<PaymentRow[]>([]);
   const [expenses, setExpenses] = useState<Array<{
     id: string;
     amount?: number;
@@ -990,34 +990,8 @@ export function HasarFileHakedisPanel({
         });
       }
       const payRows = pay.status === 'fulfilled' ? asList<PaymentRow>(pay.value.data) : [];
-      setPayments(payRows);
+      setPayments(buDosyaOdemeKaynagi(payRows, claimId));
       setExpenses(exp.status === 'fulfilled' ? asList(exp.value.data) : []);
-      const adaylar: Array<{ id: string; name: string }> = [];
-      const seen = new Set<string>();
-      const pushAday = (id?: string | null, name?: string | null) => {
-        if (!id || seen.has(id)) return;
-        seen.add(id);
-        adaylar.push({ id, name: name || 'Tedarikçi' });
-      };
-      if (ctx.status === 'fulfilled') {
-        const payload = unwrap(ctx.value.data) as { suppliers?: VendorCtx[] };
-        for (const row of payload?.suppliers ?? []) pushAday(row.id, row.name);
-      }
-      for (const row of payRows) pushAday(row.payerId, row.vendorName);
-      const hareketler = (await Promise.all(adaylar.map(async (row) => {
-        try {
-          const res = await axios.get(`${API}/payments`, {
-            headers: authHeader(),
-            params: { paymentType: 'outgoing', payerType: 'vendor', payerId: row.id, limit: 200 },
-          });
-          return asList<PaymentRow>(res.data);
-        } catch {
-          return [] as PaymentRow[];
-        }
-      }))).flat();
-      const byId = new Map<string, PaymentRow>();
-      for (const row of hareketler) byId.set(row.id, row);
-      setTedarikciHareketleri([...byId.values()].filter((row) => row.claimFileId && row.claimFileId !== claimId));
       try {
         await hydrateGrantSource();
       } catch {
@@ -1025,7 +999,6 @@ export function HasarFileHakedisPanel({
       }
     } catch {
       setHakedis([]);
-      setTedarikciHareketleri([]);
     } finally {
       setLoading(false);
     }
@@ -1335,7 +1308,7 @@ export function HasarFileHakedisPanel({
     const statementLabelsOf = (vendorId?: string | null) => hakedis
       .filter((item) => (item.vendor?.id ?? null) === (vendorId ?? null))
       .flatMap((item) => (item.items ?? []).map((line) => line.lineDescription || line.workGroup?.name));
-    const odemeKaynak = [...payments, ...tedarikciHareketleri];
+    const odemeKaynak = buDosyaOdemeKaynagi(payments, claimId);
     const gorulen = new Set<string>();
     const odeme = odemeKaynak
       .filter((row) => !isHakedisMahsupPayment(row) && !gorulen.has(row.id) && (gorulen.add(row.id), true))
@@ -1398,7 +1371,7 @@ export function HasarFileHakedisPanel({
       };
     });
     return [...odeme, ...masraf].sort((a, b) => new Date(b.talepTarihi ?? b.odemeTarihi ?? 0).getTime() - new Date(a.talepTarihi ?? a.odemeTarihi ?? 0).getTime());
-  }, [payments, tedarikciHareketleri, expenses, suppliers, vendor?.name, lines, hakedis, claimId, fileNo]);
+  }, [payments, expenses, suppliers, vendor?.name, lines, hakedis, claimId, fileNo]);
 
   const submitAvans = async () => {
     const satir = secilenAvansSatir;

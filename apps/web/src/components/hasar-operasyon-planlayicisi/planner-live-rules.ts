@@ -170,6 +170,24 @@ export type PlannerStepFlags = {
   hasFileClosed?: boolean;
 };
 
+/** Kapanış evrakı: yüklenen fiziki/manuel evrak veya dosya kapanışı. */
+export function hasDocsUploadFromActivity(activity: PlannerActivityItem[] = []): boolean {
+  return activity.some((item) => {
+    const action = String(item.action ?? '');
+    const desc = String(item.description ?? '');
+    return (
+      /MANUAL_DOCUMENT|DOCUMENT_UPLOADED|FILE_DOCUMENT/i.test(action)
+      || /manuel evrak|evrak yüklendi/i.test(desc)
+    );
+  });
+}
+
+export function plannerDocsUploadDone(
+  flags: Pick<PlannerStepFlags, 'hasDocsUpload' | 'hasFileClosed'>,
+): boolean {
+  return Boolean(flags.hasDocsUpload) || Boolean(flags.hasFileClosed);
+}
+
 export function computePlannerStepStatuses(
   flags: PlannerStepFlags,
 ): Record<StepId, StepStatus> {
@@ -186,7 +204,7 @@ export function computePlannerStepStatuses(
     muvafakat: Boolean(flags.hasMuvafakat),
     repair_complete: Boolean(flags.hasRepairComplete),
     closure_survey: Boolean(flags.hasClosureSurvey),
-    docs_upload: Boolean(flags.hasDocsUpload),
+    docs_upload: plannerDocsUploadDone(flags),
     file_close: Boolean(flags.hasFileClosed),
   };
   const result = {} as Record<StepId, StepStatus>;
