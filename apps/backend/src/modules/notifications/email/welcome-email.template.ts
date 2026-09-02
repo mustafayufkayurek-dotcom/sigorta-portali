@@ -1,6 +1,11 @@
 import { resolveWelcomeEmailLogoUrl } from './email-brand.util';
 
-export type WelcomeEmailRole = 'EXPERT' | 'INSURANCE_COMPANY' | 'BROKER' | 'MERIDYEN_STAFF';
+export type WelcomeEmailRole =
+  | 'EXPERT'
+  | 'INSURANCE_COMPANY'
+  | 'BROKER'
+  | 'ASSISTANCE_COMPANY'
+  | 'MERIDYEN_STAFF';
 
 export interface WelcomeEmailData {
   recipientName?: string;
@@ -40,6 +45,9 @@ interface RoleTemplateContent {
     title: string;
     description: string;
   }>;
+  highlightsTitle: string;
+  stepThreeTitle: string;
+  stepThreeDescription: string;
   guideFileName: string;
 }
 
@@ -60,110 +68,187 @@ const COLORS = {
   amber: '#B45309',
 };
 
-const PORTAL_WELCOME_ACTIONS: RoleTemplateContent['actions'] = [
-  {
-    title: 'Dosyalar',
-    description: 'Yetkili olduğunuz hasar dosyalarını konu, durum ve sorumlu bilgisiyle listeleyin.',
-  },
-  {
-    title: 'Bekleyen Onaylar',
-    description: 'İncelemeniz gereken onay taleplerini görüntüleyin ve yanıtlayın.',
-  },
-  {
-    title: 'Faturalar',
-    description: 'Düzenleme, vade ve tutar bilgileriyle fatura kayıtlarını takip edin.',
-  },
-  {
-    title: 'Dosya Durum Takibi',
-    description: 'Her dosyanın güncel aşamasını renkli durum etiketleriyle izleyin.',
-  },
-  {
-    title: 'Onay ve Red İşlemleri',
-    description: 'Talepleri onaylayın veya gerekçeli red bildirin.',
-  },
-  {
-    title: 'Ana Ekran Özeti',
-    description: 'Bekleyen onay sayısı, toplam dosya ve son hareketleri tek bakışta görün.',
-  },
-];
-
-function buildPortalWelcomeContent(scopeLabel: string, guideFileName: string): RoleTemplateContent {
-  return {
-    subject: "Meridyen Hasar Yönetim Platformu'na Hoş Geldiniz",
-    welcomeTitle: "Meridyen Hasar Yönetim Platformu'na Hoş Geldiniz",
-    valuePitch: 'Hasar dosyalarınızı listelerde ve onay ekranlarında tek merkezden izleyin.',
-    intro: `Yetkili olduğunuz ${scopeLabel} kapsamındaki hasar dosyalarının güncel durumunu dosya listesinde ve onay taleplerinde güvenle takip edebilirsiniz.`,
-    whyPoints: [
-      'Yetkili dosyaların liste ve durum takibi',
-      'Bekleyen onay taleplerini tek ekrandan yönetim',
-      'Fatura listesi ve ödeme durumu görünümü',
-      'Ana ekranda bekleyen onay ve son hareket özeti',
-    ],
-    actions: PORTAL_WELCOME_ACTIONS,
-    guideFileName,
-  };
-}
+const PORTAL_WELCOME_TITLE = "Meridyen Hasar Yönetim Platformu'na Hoş Geldiniz";
 
 const ROLE_CONTENT: Record<WelcomeEmailRole, RoleTemplateContent> = {
   EXPERT: {
-    subject: "Meridyen Hasar Yönetim Platformu'na Hoş Geldiniz",
-    welcomeTitle: "Meridyen Hasar Yönetim Platformu'na Hoş Geldiniz",
-    valuePitch: 'Hasar süreçlerinizi hızlandırın; sahadan operasyona tek platformdan bağlanın.',
+    subject: PORTAL_WELCOME_TITLE,
+    welcomeTitle: PORTAL_WELCOME_TITLE,
+    valuePitch: 'Sahadan ihbar, sesli not ve dosya takibini eksper portalından yürütün.',
     intro:
-      'Platform üzerinden fotoğraf ve evrak paylaşabilir, süreci anlık takip edebilir ve operasyon ekibiyle güvenli iletişim kurabilirsiniz.',
+      'Eksper portalında size bağlı dosyaları görür, sahadan ihbar açar, fotoğraf ve evrak iletirsiniz. Adres ve açıklamayı sesli notla bırakabilirsiniz.',
     fieldHighlight:
-      'Sahadan dosya ihbarı ve hasar ihbarında bulunabilirsiniz. İhbarınızı platforma anında ileterek süreci tek ekrandan başlatabilirsiniz.',
-    fieldHighlightLabel: 'Önemli — Sahadan İhbar',
+      'Sahada ihbar açarken adres ve açıklamayı konuşarak iletebilirsiniz. Konuşmanız metne dönüşür; yazım sizi bekletmez.',
+    fieldHighlightLabel: 'Önemli — Sesli Not',
     whyPoints: [
-      'Sahadan dosya ihbarı ve hasar ihbarı — anında platforma iletim',
-      'Fotoğraf ve evrak paylaşımı tek ekrandan',
-      'Dosya bazlı süreç takibi ve operasyon ekibiyle kayıt altında iletişim',
-      'Oto dışı tüm branşlarda dijital ihbar ve şeffaf süreç görünümü',
+      'Sahadan ihbar...',
+      'Sesli not özellikleri...',
+      'Fotoğraf ve evrak yükleme...',
+      'Rapor ve onayları tek ekrandan izleme...',
     ],
     actions: [
       {
-        title: 'Dosya İhbarı Oluşturma',
-        description: 'Oto dışı tüm branşlarda yeni dosya ihbarı açın.',
+        title: 'Sahadan İhbar',
+        description: 'Sahadan ihbar...',
       },
       {
-        title: 'Fotoğraf Yükleme',
-        description: 'Saha görsellerinizi ilgili dosyaya güvenle iletin.',
+        title: 'Sesli Not',
+        description: 'Sesli not özellikleri...',
       },
       {
-        title: 'Evrak Paylaşımı',
-        description: 'Değerlendirme ve destek evraklarınızı dosyaya ekleyin.',
+        title: 'Fotoğraf ve Evrak',
+        description: 'Fotoğraf ve evrak yükleme...',
       },
       {
-        title: 'Dosya Bazlı Süreç Takibi',
-        description: 'Dosyanızın güncel durumunu ve adımlarını izleyin.',
-      },
-      {
-        title: 'Operasyon Ekibiyle Güvenli İletişim',
-        description: 'Operasyon ekibiyle platform üzerinden bilgi alışverişi yapın.',
-      },
-      {
-        title: 'Tüm Süreçlere Tek Platformdan Erişim',
-        description: 'İhbar, evrak, süreç ve iletişimi tek ekrandan yönetin.',
+        title: 'Rapor ve Onay',
+        description: 'Rapor ve onayları tek ekrandan izleme...',
       },
     ],
+    highlightsTitle: 'Eksper Portalında Öne Çıkanlar',
+    stepThreeTitle: 'Portale Geçin',
+    stepThreeDescription: 'Eksper portalındaki dosya ve onay ekranlarını açın.',
     guideFileName: '03-eksper-portal-tanitim.pdf',
   },
-  INSURANCE_COMPANY: buildPortalWelcomeContent('sigorta şirketi', '02-sigorta-portal-kilavuzu.pdf'),
-  BROKER: buildPortalWelcomeContent('broker firması', '04-broker-portal-kilavuzu.pdf'),
+  INSURANCE_COMPANY: {
+    subject: PORTAL_WELCOME_TITLE,
+    welcomeTitle: PORTAL_WELCOME_TITLE,
+    valuePitch: 'Yetkili hasar dosyalarınızı izleyin, onaylayın ve evrakları görün.',
+    intro:
+      'Dosya Takip ekranında yetkili olduğunuz hasar dosyalarını izler, bekleyen onayları yanıtlar, evrakları görürsünüz.',
+    fieldHighlightLabel: 'Önemli — Dosya Takip',
+    fieldHighlight:
+      'Günlük işiniz Dosya Takip ekranındadır. Dosyalar, bekleyen onaylar, canlı izle ve evraklar bu alandan açılır.',
+    whyPoints: [
+      'Yetkili hasar dosyalarının listesi ve durum takibi',
+      'Bekleyen onayları yanıtlama',
+      'Canlı İzle ile dosya ilerleyişi',
+      'Dosyaya bağlı faturaları görüntüleme',
+    ],
+    actions: [
+      {
+        title: 'Dosya Takip',
+        description: 'Yetkili dosyaların özetini ve son hareketleri görün.',
+      },
+      {
+        title: 'Dosyalar',
+        description: 'Konu, durum ve sorumlu ile dosya listesini açın.',
+      },
+      {
+        title: 'Bekleyen Onaylar',
+        description: 'Onay taleplerini görüntüleyin, onaylayın veya gerekçeli reddedin.',
+      },
+      {
+        title: 'Canlı İzle',
+        description: 'Dosyanın güncel aşamasını izleyin.',
+      },
+      {
+        title: 'Faturalar',
+        description: 'Yetkili olduğunuz dosyalara bağlı faturaları görüntüleyin.',
+      },
+      {
+        title: 'Operasyon Ağı',
+        description: 'Dosyanın operasyon görünümünü takip edin.',
+      },
+    ],
+    highlightsTitle: 'Sayfanızda Öne Çıkanlar',
+    stepThreeTitle: 'Dosya Takibe Geçin',
+    stepThreeDescription: 'Dosya Takip ekranından yetkili dosyalarınızı açın.',
+    guideFileName: '02-sigorta-portal-kilavuzu.pdf',
+  },
+  BROKER: {
+    subject: PORTAL_WELCOME_TITLE,
+    welcomeTitle: PORTAL_WELCOME_TITLE,
+    valuePitch: 'Broker kapsamındaki hasar dosyalarını izleyin ve onayları yanıtlayın.',
+    intro:
+      'Yetkili olduğunuz broker kapsamındaki hasar dosyalarını listeler, onay taleplerini yanıtlar ve dosyaya bağlı faturaları görürsünüz.',
+    fieldHighlightLabel: 'Önemli — Dosya Takibi',
+    fieldHighlight:
+      'İşiniz yetkili dosyaları izlemek ve onayları yanıtlamaktır.',
+    whyPoints: [
+      'Broker kapsamındaki dosyaların liste ve durum takibi',
+      'Bekleyen onayları yanıtlama',
+      'Dosyaya bağlı faturaları görüntüleme',
+      'Dosya ilerleyişini tek ekrandan izleme',
+    ],
+    actions: [
+      {
+        title: 'Dosyalar',
+        description: 'Yetkili hasar dosyalarını konu ve durumla listeleyin.',
+      },
+      {
+        title: 'Bekleyen Onaylar',
+        description: 'Onay taleplerini görüntüleyin ve yanıtlayın.',
+      },
+      {
+        title: 'Dosya Durumu',
+        description: 'Her dosyanın güncel aşamasını izleyin.',
+      },
+      {
+        title: 'Faturalar',
+        description: 'Yetkili dosyalara bağlı faturaları görüntüleyin.',
+      },
+    ],
+    highlightsTitle: 'Sayfanızda Öne Çıkanlar',
+    stepThreeTitle: 'Dosya Takibe Geçin',
+    stepThreeDescription: 'Yetkili dosya ve onay ekranlarını açın.',
+    guideFileName: '04-broker-portal-kilavuzu.pdf',
+  },
+  ASSISTANCE_COMPANY: {
+    subject: PORTAL_WELCOME_TITLE,
+    welcomeTitle: PORTAL_WELCOME_TITLE,
+    valuePitch: 'Yetkili acil yardım dosyalarını izleyin ve onayları yanıtlayın.',
+    intro:
+      'Asistans portalında yetkili olduğunuz acil yardım dosyalarını izler, bekleyen onayları yanıtlar ve dosyaya bağlı faturaları görürsünüz.',
+    fieldHighlightLabel: 'Önemli — Acil Dosya Takibi',
+    fieldHighlight:
+      'Bu ekran acil yardım dosyalarını izlemek içindir.',
+    whyPoints: [
+      'Yetkili acil yardım dosyalarının listesi',
+      'Bekleyen onayları yanıtlama',
+      'Canlı İzle ile dosya ilerleyişi',
+      'Dosyaya bağlı faturaları görüntüleme',
+    ],
+    actions: [
+      {
+        title: 'Dosya Takip',
+        description: 'Yetkili acil yardım dosyalarının özetini görün.',
+      },
+      {
+        title: 'Dosyalar',
+        description: 'Acil yardım dosyalarını konu ve durumla listeleyin.',
+      },
+      {
+        title: 'Bekleyen Onaylar',
+        description: 'Onay taleplerini görüntüleyin ve yanıtlayın.',
+      },
+      {
+        title: 'Canlı İzle',
+        description: 'Dosyanın güncel aşamasını izleyin.',
+      },
+      {
+        title: 'Faturalar',
+        description: 'Yetkili dosyalara bağlı faturaları görüntüleyin.',
+      },
+    ],
+    highlightsTitle: 'Sayfanızda Öne Çıkanlar',
+    stepThreeTitle: 'Dosya Takibe Geçin',
+    stepThreeDescription: 'Asistans portalındaki acil dosyalarınızı açın.',
+    guideFileName: '01-personel-kullanim-kilavuzu.pdf',
+  },
   MERIDYEN_STAFF: {
     subject: WELCOME_SUBJECT,
     welcomeTitle: WELCOME_SUBJECT,
     valuePitch: 'Günlük operasyon önceliklerinizi tek merkezden yönetin.',
     intro:
-      'Hasar ve acil yardım dosyalarını yönetebilir, Operasyon Merkezi üzerinden günlük öncelikleri görebilir ve dosya süreçlerini kayıt altında takip edebilirsiniz.',
+      'Hasar ve acil yardım dosyalarını yönetebilir, Operasyon Merkezi üzerinden günlük öncelikleri görebilirsiniz. Tedarikçi ve finans ekranları yetkiniz açıksa görünür.',
     fieldHighlightLabel: 'Önemli — Operasyon Merkezi',
     fieldHighlight:
-      'Operasyon Merkezi ile günün öncelikli işlerini, bekleyen aksiyonları ve darboğazları tek ekrandan okuyarak ekip planınızı hızlandırabilirsiniz.',
+      'Operasyon Merkezi ile günün öncelikli işlerini, bekleyen aksiyonları ve darboğazları tek ekrandan okuyabilirsiniz.',
     whyPoints: [
-      'Hasar ve acil yardım süreçlerini tek panelde yönetim',
+      'Hasar ve acil yardım dosyalarını panelden yönetim',
       'Operasyon Merkezi ile günlük öncelik görünümü',
       'Dosya, evrak ve onay akışlarında sorumluluk takibi',
-      'Finans, tedarikçi ve eksper modüllerine rol bazlı erişim',
+      'Tedarikçi ve finans ekranlarına yetkiniz varsa erişim',
     ],
     actions: [
       {
@@ -180,17 +265,20 @@ const ROLE_CONTENT: Record<WelcomeEmailRole, RoleTemplateContent> = {
       },
       {
         title: 'Müşteri ve Tedarikçi',
-        description: 'Müşteri kayıtları ve tedarikçi süreçlerini yönetin.',
+        description: 'Yetkiniz açıksa müşteri ve tedarikçi kayıtlarını yönetin.',
       },
       {
         title: 'Evrak ve Dijital Onay',
         description: 'Evrak yükleyin ve onay süreçlerini başlatın.',
       },
       {
-        title: 'Finans Modülleri',
-        description: 'Fatura, masraf ve tahsilat ekranlarına rolünüze göre erişin.',
+        title: 'Finans',
+        description: 'Yetkiniz açıksa fatura, masraf ve tahsilat ekranlarını açın.',
       },
     ],
+    highlightsTitle: 'Operasyon Alanınızda Öne Çıkanlar',
+    stepThreeTitle: 'Paneli Kullanın',
+    stepThreeDescription: 'Yetkinize açık operasyon ekranlarına geçin.',
     guideFileName: '01-personel-kullanim-kilavuzu.pdf',
   },
 };
@@ -288,12 +376,30 @@ function whyBox(points: string[]): string {
     </table>`;
 }
 
+function isLocalAppHost(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === 'localhost' || host === '127.0.0.1';
+  } catch {
+    return true;
+  }
+}
+
+/** Hoş geldin mailindeki giriş adresi canlı sitedir; lokal host yazılmaz. */
+export function resolveWelcomeLoginUrl(portalUrl?: string): string {
+  const raw = (portalUrl ?? DEFAULT_PORTAL_URL).trim() || DEFAULT_PORTAL_URL;
+  if (isLocalAppHost(raw)) {
+    return DEFAULT_PORTAL_URL;
+  }
+  return raw;
+}
+
 export function generateWelcomeEmail(
   role: WelcomeEmailRole,
   data: WelcomeEmailData = {},
 ): WelcomeEmailRenderResult {
   const content = ROLE_CONTENT[role];
-  const portalUrl = data.portalUrl ?? DEFAULT_PORTAL_URL;
+  const portalUrl = resolveWelcomeLoginUrl(data.portalUrl);
   const supportEmail = data.supportEmail ?? DEFAULT_SUPPORT_EMAIL;
   const organizationName = data.organizationName?.trim();
   const greetingLine = buildGreetingLine(data.recipientName);
@@ -311,17 +417,6 @@ export function generateWelcomeEmail(
     : '';
 
   const primaryCta = `<a href="${escapedPortalUrl}" style="display:inline-block;background:${COLORS.blue};color:#ffffff;text-decoration:none;padding:13px 24px;border-radius:8px;font-size:14px;font-weight:800;box-shadow:0 4px 12px rgba(30,90,168,.28);">Meridyen'e Giriş Yap</a>`;
-
-  const officeLabel =
-    role === 'INSURANCE_COMPANY' ? 'Kurum' : role === 'MERIDYEN_STAFF' ? 'Operasyon Birimi' : undefined;
-
-  const officeLine = organizationName
-    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 12px;background:${COLORS.surface};border:1px solid ${COLORS.border};border-radius:10px;"><tr><td style="padding:12px 14px;">${
-        officeLabel
-          ? `<div style="font-size:11px;font-weight:700;color:${COLORS.muted};margin-bottom:4px;">${officeLabel}</div>`
-          : ''
-      }<div style="font-size:16px;font-weight:800;line-height:1.35;color:${COLORS.navy};">${escapeHtml(organizationName)}</div></td></tr></table>`
-    : '';
 
   const accountInfoBlock =
     accountEmail || temporaryPassword
@@ -403,15 +498,19 @@ export function generateWelcomeEmail(
           </tr>
 
           <tr>
-            <td style="padding:12px 20px 10px;background:linear-gradient(135deg,#0b2847 0%,#123A63 55%,#1E5AA8 100%);">
+            <td style="padding:14px 20px 14px;background:linear-gradient(135deg,#0b2847 0%,#123A63 55%,#1E5AA8 100%);">
               <h1 style="margin:0;font-size:20px;line-height:1.28;font-weight:800;color:#ffffff;">${escapeHtml(content.welcomeTitle)}</h1>
             </td>
           </tr>
 
           <tr>
             <td style="padding:24px 22px 26px;background:#ffffff;">
-              ${officeLine}
-              <p style="margin:0 0 10px;font-size:15px;line-height:1.6;color:${COLORS.ink};font-weight:700;">${escapeHtml(greetingLine)}</p>
+              ${
+                organizationName
+                  ? `<div style="font-size:13px;font-weight:800;color:${COLORS.navy};letter-spacing:.01em;margin:0 0 2px;">${escapeHtml(organizationName)}</div>`
+                  : ''
+              }
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${COLORS.ink};font-weight:700;">${escapeHtml(greetingLine)}</p>
               ${content.fieldHighlight && content.fieldHighlightLabel ? fieldHighlightBox(content.fieldHighlightLabel, content.fieldHighlight) : ''}
               <p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:${COLORS.muted};">${escapeHtml(content.intro)}</p>
 
@@ -432,13 +531,13 @@ export function generateWelcomeEmail(
               <div style="font-size:15px;font-weight:800;color:${COLORS.ink};margin:0 0 12px;">3 Adımda Başlayın</div>
               <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 22px;">
                 <tr>
-                  ${compactStepCell('Geçici Şifre ile Giriş', 'Giriş bilgilerinizi aşağıdaki karttan kullanın.', 1)}
+                  ${compactStepCell('Geçici Şifre ile Giriş', 'Giriş bilgilerinizi karttan kullanın.', 1)}
                   ${compactStepCell('Şifrenizi Güncelleyin', 'İlk oturumda kişisel şifrenizi belirleyin.', 2)}
-                  ${compactStepCell('Paneli Kullanın', 'Yetkinize göre operasyon ekranlarına geçin.', 3)}
+                  ${compactStepCell(content.stepThreeTitle, content.stepThreeDescription, 3)}
                 </tr>
               </table>
 
-              <div style="font-size:15px;font-weight:800;color:${COLORS.ink};margin:0 0 12px;">Operasyon Alanınızda Öne Çıkanlar</div>
+              <div style="font-size:15px;font-weight:800;color:${COLORS.ink};margin:0 0 12px;">${escapeHtml(content.highlightsTitle)}</div>
               <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
                 ${actionGrid2Col(content.actions)}
               </table>
@@ -505,9 +604,9 @@ export function generateWelcomeEmail(
     '3 Adımda Başlayın:',
     '1. Sisteme geçici şifrenizle giriş yapın.',
     '2. İlk girişte yeni şifrenizi belirleyin.',
-    '3. Operasyon panelinizi kullanmaya başlayın.',
+    `3. ${content.stepThreeTitle} — ${content.stepThreeDescription}`,
     '',
-    'Operasyon Alanınızda Öne Çıkanlar:',
+    `${content.highlightsTitle}:`,
     ...content.actions.map((action, index) => `${index + 1}. ${action.title} - ${action.description}`),
     '',
     `Portal: ${portalUrl}`,

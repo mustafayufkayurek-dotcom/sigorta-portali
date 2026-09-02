@@ -494,7 +494,7 @@ export class UsersService {
     if (roleCode === 'expert') return 'EXPERT';
     if (roleCode === 'insurance_company_user') return 'INSURANCE_COMPANY';
     if (roleCode === 'broker_user') return 'BROKER';
-    if (roleCode === 'assistance_company_user') return 'MERIDYEN_STAFF';
+    if (roleCode === 'assistance_company_user') return 'ASSISTANCE_COMPANY';
     return 'MERIDYEN_STAFF';
   }
 
@@ -506,6 +506,8 @@ export class UsersService {
         return '/docs/02-sigorta-portal-kilavuzu.pdf';
       case 'BROKER':
         return '/docs/04-broker-portal-kilavuzu.pdf';
+      case 'ASSISTANCE_COMPANY':
+        return '/docs/01-personel-kullanim-kilavuzu.pdf';
       default:
         return '/docs/01-personel-kullanim-kilavuzu.pdf';
     }
