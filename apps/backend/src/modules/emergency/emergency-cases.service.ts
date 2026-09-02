@@ -19,7 +19,13 @@ import { buildEmergencyOperationChain } from './emergency-operation-chain';
 import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
-import { buildFileClosureEmailHtml, buildFileClosureEmailPlaintext, customerFirmTitle, isMeridyenInternalMailbox } from '@/modules/notifications/email/file-closure-email.template';
+import {
+  buildFileClosureEmailHtml,
+  buildFileClosureEmailPlaintext,
+  customerFirmTitle,
+  isMeridyenInternalMailbox,
+  type FileClosureAudience,
+} from '@/modules/notifications/email/file-closure-email.template';
 import { settingsDefinedFileSubjectName } from '@/common/helpers/dosya-konusu.helper';
 import { StorageService } from '@/modules/storage/storage.service';
 import { htmlDocumentToPdf } from '@/common/utils/html-document-to-pdf';
@@ -1129,7 +1135,7 @@ export class EmergencyCasesService {
     const summary = (emergencyCase.notes || '').trim().slice(0, 160) || 'Hizmet tamamlandı';
     const subject = `Dosya Kapanışı – ${fileNo}`;
     const customerSubType = String(emergencyCase.customer?.subType || '').trim();
-    const audience =
+    const audience: FileClosureAudience =
       customerSubType === 'eksper_firmasi' || customerSubType === 'eksper' || customerSubType === 'broker_firmasi'
         ? 'other'
         : 'assistance';
@@ -1257,26 +1263,6 @@ export class EmergencyCasesService {
       fileNo,
       caseStatus: emergencyCase.status,
     };
-  }
-
-  private resolveClosureGreetingName(fromName?: string | null, fromAddress?: string | null): string | null {
-    const raw = (fromName || '').trim();
-    if (raw) {
-      // "Ad Soyad <mail>" veya "Ad Soyad" → Title Case benzeri ilk iki kelime
-      const cleaned = raw.replace(/<[^>]+>/g, '').replace(/["']/g, '').trim();
-      if (cleaned && !cleaned.includes('@')) {
-        return cleaned
-          .split(/\s+/)
-          .slice(0, 3)
-          .map((w) => w.charAt(0).toLocaleUpperCase('tr-TR') + w.slice(1).toLocaleLowerCase('tr-TR'))
-          .join(' ');
-      }
-    }
-    const local = (fromAddress || '').split('@')[0]?.trim();
-    if (local && local.length >= 2 && !/^(info|destek|noreply|no-reply|mail|operasyon)/i.test(local)) {
-      return local.charAt(0).toLocaleUpperCase('tr-TR') + local.slice(1);
-    }
-    return null;
   }
 
   async previewClosureEmail(caseId: string) {

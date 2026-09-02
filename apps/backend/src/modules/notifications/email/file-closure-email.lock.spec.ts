@@ -23,6 +23,7 @@ describe('dosya kapanış maili LOCK', () => {
   it('acil kapanış yeni görseli kullanır; asistan firması ve hizmet verilme gövdede yok', () => {
     assert.match(emergency, /buildFileClosureEmailHtml/);
     assert.match(emergency, /buildFileClosureEmailPlaintext/);
+    assert.match(emergency, /FileClosureAudience/);
     assert.doesNotMatch(emergency, /Asistan Firması:/);
     assert.doesNotMatch(emergency, /Onaylı Hizmet Bedeli:/);
     assert.match(emergency, /mailbox:\s*'IHBAR'/);
