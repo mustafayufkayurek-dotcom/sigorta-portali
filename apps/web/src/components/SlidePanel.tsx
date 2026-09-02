@@ -1,6 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { RightPanelDockTab, rightPanelDockClass, useRightPanelDock } from '@/components/ui/right-panel-dock';
+import { useRightPanelUnsavedGuard } from '@/components/ui/right-panel-unsaved';
 
 interface SlidePanelProps {
   open: boolean;
@@ -15,38 +19,40 @@ interface SlidePanelProps {
 
 export function SlidePanel({ open, onClose, title, subtitle, width = 400, scrollContent = true, children }: SlidePanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const { docked, dock, expand } = useRightPanelDock(open);
+  const { requestClose } = useRightPanelUnsavedGuard({
+    open,
+    expand,
+    close: onClose,
+    panelRef,
+  });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || docked) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') dock();
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [open, onClose]);
+  }, [open, docked, dock]);
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={`fixed inset-0 z-[200] transition-all duration-300 ${
-          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          open && !docked ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         } bg-black/20 backdrop-blur-[2px]`}
-        onClick={onClose}
+        onClick={dock}
         aria-hidden="true"
       />
 
-      {/* Panel — mobil: tam ekran; sm+: sabit genişlik */}
       <div
         ref={panelRef}
         style={{ ['--slide-panel-w' as string]: `${width}px` }}
-        className={`fixed top-0 right-0 z-[210] flex h-full w-full max-w-[100vw] flex-col border-l border-gray-100 bg-white shadow-2xl shadow-black/20 transition-transform duration-300 ease-in-out sm:w-[var(--slide-panel-w)] sm:max-w-none ${
-          open ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className={`fixed top-0 right-0 z-[210] flex h-full w-full max-w-[100vw] flex-col border-l border-gray-100 bg-white shadow-2xl shadow-black/20 transition-transform duration-300 ease-in-out sm:w-[var(--slide-panel-w)] sm:max-w-none ${rightPanelDockClass(open, docked)}`}
         role="dialog"
-        aria-modal="true"
+        aria-modal={open && !docked}
       >
-        {/* Header */}
         {title !== undefined && (
           <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4 py-3.5 sm:px-5">
             <div className="min-w-0 pr-3">
@@ -55,7 +61,7 @@ export function SlidePanel({ open, onClose, title, subtitle, width = 400, scroll
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
               aria-label="Kapat"
             >
@@ -66,7 +72,17 @@ export function SlidePanel({ open, onClose, title, subtitle, width = 400, scroll
           </div>
         )}
 
-        {/* Content */}
+        {open && !docked ? (
+          <div className="px-4 pt-3 sm:px-5">
+            <OpsFirstRunNotice
+              noticeId={OPS_NOTICE.sagPanelKaydir.id}
+              title={OPS_NOTICE.sagPanelKaydir.title}
+              body={OPS_NOTICE.sagPanelKaydir.body}
+              testId="sag-panel-kaydir-seridi"
+            />
+          </div>
+        ) : null}
+
         <div
           className={
             scrollContent
@@ -77,6 +93,9 @@ export function SlidePanel({ open, onClose, title, subtitle, width = 400, scroll
           {children}
         </div>
       </div>
+      {open && docked ? (
+        <RightPanelDockTab label={title?.trim() || 'Panel'} onClick={expand} />
+      ) : null}
     </>
   );
 }

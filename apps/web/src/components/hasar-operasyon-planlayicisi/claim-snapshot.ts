@@ -8,6 +8,11 @@ import { PLANNER_STEPS, PLANNER_VISIBLE_STEPS } from './types';
 import { PREVIEW } from './preview-data';
 import { plannerMapsHref } from './planner-maps';
 import {
+  hasarCancelActorName,
+  hasarOfficeCloseMissing,
+  pickHasarCancelHistory,
+} from '@sigorta/shared';
+import {
   computePlannerStepStatuses,
   formatLiveReportFinance,
   hasWaForKind,
@@ -155,6 +160,11 @@ export type PlannerClaimSnapshot = {
   };
   collectionParty: string | null;
   insuranceCompanyId: string | null;
+  fileClosed: boolean;
+  fileCancelled: boolean;
+  statusCode: string | null;
+  closeMissing: string[];
+  cancelRecord: { at: string; by: string; reason: string } | null;
 };
 
 function fmtDateTime(iso: string | null | undefined): { date: string; time: string; at: string } {
@@ -234,6 +244,11 @@ export function previewSnapshot(): PlannerClaimSnapshot {
     },
     collectionParty: null,
     insuranceCompanyId: null,
+    fileClosed: false,
+    fileCancelled: false,
+    statusCode: null,
+    closeMissing: ['Onaylı rapor', 'Onarım bitişi'],
+    cancelRecord: null,
   };
 }
 
@@ -351,6 +366,14 @@ type ClaimFileLite = {
   approvedBudgetAmount?: number | null;
   estimatedCostAmount?: number | null;
   createdAt?: string;
+  closedAt?: string | null;
+  currentStatus?: { code?: string | null; isClosedState?: boolean | null } | null;
+  statusHistory?: Array<{
+    changedAt?: string | Date | null;
+    note?: string | null;
+    toStatus?: { code?: string | null } | null;
+    changedByUser?: { firstName?: string | null; lastName?: string | null } | null;
+  }> | null;
 };
 
 export function mapLiveSnapshot(
@@ -392,6 +415,22 @@ export function mapLiveSnapshot(
     const desc = String(item.description ?? '');
     return /MANUAL_DOCUMENT|DOCUMENT_UPLOADED|FILE_DOCUMENT/i.test(action) || /manuel evrak|evrak yüklendi/i.test(desc);
   });
+  const statusCode = claimFile?.currentStatus?.code ?? null;
+  const fileCancelled = String(statusCode ?? '').toLowerCase() === 'cancelled';
+  const fileClosed = Boolean(!fileCancelled && (claimFile?.currentStatus?.isClosedState || claimFile?.closedAt || statusCode === 'closed'));
+  const closeMissing = hasarOfficeCloseMissing({
+    statusCode,
+    hasApprovedReport: pipeline.hasApproved,
+  });
+  const cancelRow = pickHasarCancelHistory(claimFile?.statusHistory ?? []);
+  const cancelAt = fmtDateTime(cancelRow?.changedAt ? String(cancelRow.changedAt) : null);
+  const cancelRecord = fileCancelled && cancelRow
+    ? {
+        at: cancelAt.at,
+        by: hasarCancelActorName(cancelRow.changedByUser),
+        reason: String(cancelRow.note ?? '').trim(),
+      }
+    : null;
   const stepStatuses = computePlannerStepStatuses({
     hasAppointment: hasAppt,
     hasInspector,
@@ -406,6 +445,7 @@ export function mapLiveSnapshot(
     hasRepairComplete: Boolean(flags.repairCompleted),
     hasClosureSurvey: hasClosureSurveyWa(activity),
     hasDocsUpload,
+    hasFileClosed: fileClosed || fileCancelled,
   });
 
   const completedCount = PLANNER_VISIBLE_STEPS.filter((s) => stepStatuses[s.id] === 'done').length;
@@ -506,6 +546,7 @@ export function mapLiveSnapshot(
       'repair_whatsapp',
       'repair_complete',
       'docs_upload',
+      'file_close',
     ] as const
   ).map((step) => ({
     state: stepStatuses[step],
@@ -643,5 +684,10 @@ export function mapLiveSnapshot(
     },
     collectionParty: claimFile?.collectionParty ?? null,
     insuranceCompanyId: claimFile?.insuranceCompanyId ?? claimFile?.insuranceCompany?.id ?? null,
+    fileClosed,
+    fileCancelled,
+    statusCode,
+    closeMissing,
+    cancelRecord,
   };
 }

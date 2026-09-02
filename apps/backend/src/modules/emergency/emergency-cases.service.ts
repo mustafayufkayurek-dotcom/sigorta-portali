@@ -34,6 +34,7 @@ import {
   resolveEmergencyOperationLabel,
   isAcilVendorQualityWarning,
   shouldReportAcilNegativeVendorStrike,
+  nextEmergencyFindingsText,
 } from '@sigorta/shared';
 import { VendorRecommendationService } from '@/modules/vendors/vendor-recommendation.service';
 import {
@@ -852,6 +853,8 @@ export class EmergencyCasesService {
       }
     }
 
+    const nextFindings = nextEmergencyFindingsText(dto.findingsText, existing.data?.findingsText);
+
     const updated = await this.prisma.emergencyCase.update({
       where: { id },
       data: {
@@ -867,7 +870,7 @@ export class EmergencyCasesService {
         ...(dto.assignedVendorId !== undefined && { assignedVendorId: dto.assignedVendorId }),
         ...(dto.assignedUserId !== undefined && { assignedUserId: dto.assignedUserId }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
-        ...(dto.findingsText !== undefined && { findingsText: dto.findingsText }),
+        ...(nextFindings !== undefined && { findingsText: nextFindings }),
         ...(dto.vendorPaid !== undefined && { vendorPaid: dto.vendorPaid }),
         ...(dto.latitude !== undefined && { latitude: dto.latitude }),
         ...(dto.longitude !== undefined && { longitude: dto.longitude }),

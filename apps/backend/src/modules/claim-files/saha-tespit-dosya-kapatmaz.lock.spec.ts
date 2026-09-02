@@ -32,6 +32,8 @@ describe('saha tespit ofis dosyasını kapatmaz LOCK', () => {
     assert.match(ctrl, /closeAfterFieldInspection/);
     assert.match(ctrl, /ofis dosyasını kapatmaz/);
     assert.match(ctrl, /tespiti sonlandırır/);
+    assert.match(ctrl, /:id\/office-close/);
+    assert.match(ctrl, /:id\/office-cancel/);
   });
 
   it('eski saha kapatması ofis dosyasını kapalı bırakmaz; from_status açılır', () => {

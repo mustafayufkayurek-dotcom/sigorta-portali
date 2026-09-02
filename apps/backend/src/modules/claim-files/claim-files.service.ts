@@ -60,6 +60,8 @@ import {
   parseCollectionParty,
   canToggleCollectionPartyLock,
   isCollectionPartyChangeBlocked,
+  hasarOfficeCloseMissing,
+  hasarCancelReasonOk,
   type OperationPreset,
   type VerbalManualDecision,
 } from '@sigorta/shared';
@@ -179,6 +181,10 @@ const STATUS_CODE_COLORS: Record<string, string> = {
   INSPECTION_DONE: '#F59E0B',
   COST_REPORT_SUBMITTED: '#10B981',
 };
+
+function isFieldStaffRole(roleCode?: string | null): boolean {
+  return String(roleCode ?? '').trim().toLowerCase() === 'field_staff';
+}
 
 @Injectable()
 export class ClaimFilesService {
@@ -2063,8 +2069,36 @@ export class ClaimFilesService {
       throw new BadRequestException('Hedef durum bulunamadı');
     }
 
+    if (fromStatus.isClosedState && toStatus.code === 'closed') {
+      return claimFile;
+    }
+    if (fromStatus.code === 'cancelled' && toStatus.code === 'cancelled') {
+      return claimFile;
+    }
+
+    const roleCode = requestingUser?.roleCode ?? null;
+    if (toStatus.isClosedState && isFieldStaffRole(roleCode)) {
+      throw new ForbiddenException(
+        'Saha tespit dosyayı kapatamaz. Kapatma dosya sorumlusundadır.',
+      );
+    }
+
+    if (toStatus.code === 'closed') {
+      await this.assertOfficeCloseReady(id);
+    }
+    if (toStatus.code === 'cancelled') {
+      const reason = String(dto.note ?? '').trim();
+      if (!hasarCancelReasonOk(reason)) {
+        throw new BadRequestException('İptal için açıklama yazınız.');
+      }
+    }
+
     const allowedTransitions = STATUS_TRANSITIONS[fromStatus.code] ?? [];
-    if (!allowedTransitions.includes(toStatus.code)) {
+    const officeClosing =
+      toStatus.code === 'closed' && toStatus.isClosedState && fromStatus.code !== 'cancelled';
+    const officeCancelling =
+      toStatus.code === 'cancelled' && fromStatus.code !== 'closed';
+    if (!allowedTransitions.includes(toStatus.code) && !officeClosing && !officeCancelling) {
       throw new BadRequestException(
         `'${fromStatus.name}' durumundan '${toStatus.name}' durumuna geçiş yapılamaz`,
       );
@@ -2098,8 +2132,8 @@ export class ClaimFilesService {
       userId,
     });
 
-    // Email: Dosya kapandı
-    if (toStatus.isClosedState && this.claimEventEmail) {
+    // Email: yalnız gerçek kapanış (iptal bu görseli göndermez)
+    if (toStatus.code === 'closed' && this.claimEventEmail) {
       const fullFile = claimFile as any;
       const closedAt = new Date().toLocaleDateString('tr-TR');
 
@@ -2158,6 +2192,89 @@ export class ClaimFilesService {
     }
 
     return updated;
+  }
+
+  /**
+   * Dosya sorumlusu kapatır. Saha field-close bunu çağırmaz.
+   */
+  async officeClose(
+    id: string,
+    userId: string,
+    requestingUser?: { id: string; roleCode?: string | null },
+  ) {
+    await this.assertHasarFileMutationAllowed(requestingUser ?? { id: userId });
+    if (isFieldStaffRole(requestingUser?.roleCode)) {
+      throw new ForbiddenException(
+        'Saha tespit dosyayı kapatamaz. Kapatma dosya sorumlusundadır.',
+      );
+    }
+    const closed = await this.prisma.claimStatus.findFirst({
+      where: { code: 'closed' },
+    });
+    if (!closed?.isClosedState) {
+      throw new BadRequestException('Kapalı dosya durumu bulunamadı');
+    }
+    return this.changeStatus(
+      id,
+      { toStatusId: closed.id, note: 'Dosya kapatıldı' },
+      userId,
+      requestingUser,
+    );
+  }
+
+  /**
+   * Hizmet iptal: açıklama zorunlu. Saha iptal edemez.
+   */
+  async officeCancel(
+    id: string,
+    userId: string,
+    reason: string,
+    requestingUser?: { id: string; roleCode?: string | null },
+  ) {
+    await this.assertHasarFileMutationAllowed(requestingUser ?? { id: userId });
+    if (isFieldStaffRole(requestingUser?.roleCode)) {
+      throw new ForbiddenException(
+        'Saha tespit dosyayı iptal edemez. İptal dosya sorumlusundadır.',
+      );
+    }
+    const note = String(reason ?? '').trim();
+    if (!hasarCancelReasonOk(note)) {
+      throw new BadRequestException('İptal için açıklama yazınız.');
+    }
+    const cancelled = await this.prisma.claimStatus.findFirst({
+      where: { code: 'cancelled' },
+    });
+    if (!cancelled) {
+      throw new BadRequestException('İptal dosya durumu bulunamadı');
+    }
+    return this.changeStatus(
+      id,
+      { toStatusId: cancelled.id, note },
+      userId,
+      requestingUser,
+    );
+  }
+
+  private async assertOfficeCloseReady(claimFileId: string) {
+    const [file, report] = await Promise.all([
+      this.prisma.claimFile.findUnique({
+        where: { id: claimFileId },
+        select: { currentStatus: { select: { code: true } } },
+      }),
+      this.prisma.repairReport.findFirst({
+        where: { claimFileId, status: { in: [...APPROVED_REPAIR_REPORT_STATUSES] } },
+        select: { id: true },
+      }),
+    ]);
+    const missing = hasarOfficeCloseMissing({
+      statusCode: file?.currentStatus?.code,
+      hasApprovedReport: Boolean(report),
+    });
+    if (missing.length) {
+      throw new BadRequestException(
+        `Dosya süreçleri tamamlanmadan kapatılamaz: ${missing.join(', ')}. Hizmet iptalse Dosyayı İptal Et kullanın.`,
+      );
+    }
   }
 
   /**

@@ -30,7 +30,7 @@ describe('dosya kapanış maili LOCK', () => {
   });
 
   it('hasar kapanışında müşteriye eski şablon gitmez; dış partilere HASAR kutusundan gider', () => {
-    const closed = claims.slice(claims.indexOf('if (toStatus.isClosedState'));
+    const closed = claims.slice(claims.indexOf("if (toStatus.code === 'closed'"));
     const block = closed.slice(0, closed.indexOf('\n  async '));
     assert.match(block, /sendHasarFileClosureMails/);
     assert.doesNotMatch(block, /customer\?\.email[\s\S]{0,200}onClaimClosed/);

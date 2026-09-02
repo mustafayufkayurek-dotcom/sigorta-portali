@@ -75,6 +75,12 @@ export const OPS_NOTICE = {
     body:
       'Faturalı kayıtta KDV hesaplanır. Faturasız seçince KDV alanı kapanır; yazdığınız tutar net kayda geçer. Tahsilat kaynağı dosyadan gelir. Fatura kime, Dosya Onaylandı adımında sorulur; finans burada yeniden seçmez. Onaylı rapor dosya bedelini aynı tarafa yazar.',
   },
+  hasarOfisDosyaKapat: {
+    id: 'hasar-ofis-dosya-kapat-v556',
+    title: 'Dosyayı kapat',
+    body:
+      'Süreçler bitmeden dosya kapanmaz. Onaylı rapor ve onarım bitişi gerekir. Hizmet iptalse Dosyayı İptal Et; iptal nedeni zorunlu. İptal eden ve işlem zamanı dosyada durur. Saha kapatmaz.',
+  },
   hasarRaporSonDegisiklik: {
     id: 'hasar-rapor-v526',
     title: 'Bu raporda ne değişti',
@@ -98,6 +104,12 @@ export const OPS_NOTICE = {
     title: 'Bu dosyada ne değişti',
     body:
       'Operasyon dijital onaylı servis formu olmadan ilerlemez. Anket kapandıktan sonra kapanış tercihlidir. Konum tespiti durur; tedarikçiye pin gider. Dört işlem saati kayıtlıdır. Resimler oturumla görünür.',
+  },
+  sagPanelKaydir: {
+    id: 'sag-panel-kaydir-v556',
+    title: 'Sağ panel',
+    body:
+      'Soldaki sayfaya tıklayınca panel kapanmaz; sağa kayar. Şeride tıklayınca yazdığınız durur. X veya Çıkış Yap deyince kayıt hatırlatması çıkar.',
   },
 } as const;
 

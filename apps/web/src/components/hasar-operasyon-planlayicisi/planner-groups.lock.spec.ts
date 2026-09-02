@@ -23,6 +23,8 @@ describe('hasar planner groups lock', () => {
     assert.equal(PLANNER_STEPS.find((s) => s.id === 'whatsapp')?.hidden, true);
     assert.equal(PLANNER_VISIBLE_STEPS.find((s) => s.id === 'approved')?.label, 'Dosya Onaylandı');
     assert.ok(PLANNER_VISIBLE_STEPS.some((s) => s.id === 'docs_upload'));
+    assert.equal(PLANNER_VISIBLE_STEPS.find((s) => s.id === 'file_close')?.label, 'Dosyayı Kapat');
+    assert.equal(PLANNER_VISIBLE_STEPS.find((s) => s.id === 'file_close')?.group, 'kapanis');
     const stepsSrc = readFileSync(join(here, 'steps.tsx'), 'utf8');
     const card = readFileSync(join(here, 'HasarSalesInvoiceRequestCard.tsx'), 'utf8');
     assert.match(stepsSrc, /HasarSalesInvoiceRequestCard/);
@@ -52,6 +54,18 @@ describe('hasar planner groups lock', () => {
     assert.match(collect, /readOnly/);
     assert.doesNotMatch(collect, /Dosya Seç Ve Yükle/);
     assert.match(stepsSrc, /function StepDocsUpload/);
+    assert.match(stepsSrc, /function StepFileClose/);
+    assert.match(stepsSrc, /hasar-ofis-dosya-kapat-seridi/);
     assert.match(stepsSrc, /ClaimManualDocumentsPanel claimId=\{claim.claimId\}/);
+    const panel = readFileSync(join(here, 'OperasyonPlanlayiciPanel.tsx'), 'utf8');
+    assert.match(panel, /hasar-ofis-dosya-kapat/);
+    const ctx = readFileSync(join(here, 'planner-context.tsx'), 'utf8');
+    assert.match(ctx, /office-close/);
+    assert.match(ctx, /office-cancel/);
+    assert.match(ctx, /closeMissing/);
+    assert.match(stepsSrc, /hasar-ofis-dosya-iptal/);
+    assert.match(stepsSrc, /Dosyayı İptal Et/);
+    assert.match(stepsSrc, /hasarCancelReasonOk\(reason\)/);
+    assert.match(stepsSrc, /İptal nedeni \(zorunlu\)/);
   });
 });

@@ -896,8 +896,8 @@ export default function AcilDosyaDetayPage() {
     return true;
   }
 
-  async function saveFindingsText(): Promise<boolean> {
-    const text = draftFindings.trim();
+  async function saveFindingsText(override?: string): Promise<boolean> {
+    const text = (override ?? draftFindings).trim() || (vaka?.findingsText || '').trim();
     if (!text) {
       setFindingsError('Tespit Bulguları zorunludur.');
       return false;
@@ -905,6 +905,7 @@ export default function AcilDosyaDetayPage() {
     if (!id) return false;
     if ((vaka?.findingsText || '').trim() === text) {
       setFindingsError(null);
+      setDraftFindings(text);
       return true;
     }
     setFindingsSaving(true);
@@ -1632,6 +1633,13 @@ export default function AcilDosyaDetayPage() {
 
   async function handleCloseFile(allowIncomplete = false) {
     if (closeSubmitRef.current || closeBusy) return;
+    const findingsOk = await saveFindingsText();
+    if (!findingsOk) {
+      setActionFlash('Tespit bulguları kaydedilmeden dosya kapatılamaz.');
+      plannerRef.current?.openStep('kapanis');
+      setConfirmAction(null);
+      return;
+    }
     if (!requireAssignedVendor()) {
       setConfirmAction(null);
       return;
@@ -2209,6 +2217,12 @@ export default function AcilDosyaDetayPage() {
                     {(vaka.notes || '').trim() || 'Bu dosya için henüz not yok.'}
                   </p>
                 </div>
+                <div className="min-w-0" data-testid="tespit-bulgulari-ozet">
+                  <p className="text-[11px] text-slate-400">Tespit Bulguları</p>
+                  <p className="mt-0.5 whitespace-pre-wrap break-words text-xs font-medium leading-snug text-slate-800">
+                    {(vaka.findingsText || '').trim() || 'Bu dosya için henüz tespit bulgusu yok.'}
+                  </p>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3" data-testid="acil-islem-saatleri">
                   <div className="min-w-0">
                     <p className="text-[11px] text-slate-400">İhbar</p>
@@ -2340,15 +2354,16 @@ export default function AcilDosyaDetayPage() {
                 <h4 className="text-xs font-semibold text-slate-900">İşlem detayı ve resimler</h4>
                 <p className="text-[11px] text-slate-500">Tedarikçiden gelince dosyaya işlenir</p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2" ref={findingsFormRef}>
                 <div>
                   <p className="mb-1.5 text-[11px] font-semibold text-slate-600">Tespit Fotoğrafları</p>
                   <FieldInspectionPhotosPanel entityType="emergency_case" entityId={vaka.id} />
                 </div>
                 <div>
-                  <p className="mb-1.5 text-[11px] font-semibold text-slate-600">Tespit Notları</p>
+                  <p className="mb-1.5 text-[11px] font-semibold text-slate-600">Tespit Bulguları</p>
                   <div className="relative">
                     <textarea
+                      ref={findingsTextareaRef}
                       value={draftFindings}
                       onChange={(e) => {
                         setDraftFindings(e.target.value);
@@ -2370,6 +2385,7 @@ export default function AcilDosyaDetayPage() {
                             : text;
                           setDraftFindings(next);
                           if (next.trim()) setFindingsError(null);
+                          void saveFindingsText(next);
                         }}
                       />
                     </div>
@@ -2549,8 +2565,12 @@ export default function AcilDosyaDetayPage() {
             if (!ok) throw new Error(priceFormError || 'Fiyat kaydedilemedi.');
             if (!vaka.assignedVendorId) throw new Error('Tedarikçi atayın.');
           }
-          if (step === 'kapanis' && !fileAlreadyClosed) {
-            await handleCloseFile();
+          if (step === 'kapanis') {
+            const findingsOk = await saveFindingsText();
+            if (!findingsOk) throw new Error(findingsError || 'Tespit bulguları kaydedilemedi.');
+            if (!fileAlreadyClosed) {
+              await handleCloseFile();
+            }
           }
           if (step === 'finans' && !financeDone) {
             await handleSendToFinance();
@@ -2993,12 +3013,12 @@ export default function AcilDosyaDetayPage() {
                 ) : (
                   <p className="text-xs text-slate-400">İşlem geçmişi henüz yok.</p>
                 )}
-                {vaka.findingsText && (
-                  <div data-testid="tespit-bulgulari-ozet">
+                {vaka.findingsText ? (
+                  <div data-testid="tespit-bulgulari-gecmis">
                     <p className="text-xs text-slate-400">Tespit Bulguları</p>
                     <p className="text-slate-700 mt-0.5 whitespace-pre-wrap">{vaka.findingsText}</p>
                   </div>
-                )}
+                ) : null}
                 {vaka.notes && (
                   <div>
                     <p className="text-xs text-slate-400">Notlar</p>

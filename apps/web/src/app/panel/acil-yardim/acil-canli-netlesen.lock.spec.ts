@@ -47,6 +47,9 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /acil-saha-tespit/);
     assert.match(acilPage, /FieldInspectionPhotosPanel/);
     assert.match(acilPage, /tespit-bulgulari-input/);
+    assert.match(acilPage, /saveFindingsText/);
+    assert.match(acilPage, /Tespit bulguları kaydedilmeden dosya kapatılamaz/);
+    assert.match(acilPage, /tespit-bulgulari-ozet/);
     assert.match(acilPage, /vendorStep/);
     assert.match(acilPage, /approvalStep/);
     assert.match(acilPage, /acil-onay-evrak/);

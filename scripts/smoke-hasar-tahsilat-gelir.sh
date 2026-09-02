@@ -12,5 +12,6 @@ node --experimental-strip-types --test \
   apps/web/src/utils/hasar-collection-party.lock.spec.ts \
   apps/web/src/utils/hasar-gelir-billed.lock.spec.ts \
   apps/web/src/utils/aciklama-yardim.lock.spec.ts \
-  apps/web/src/utils/ops-first-run-notice.lock.spec.ts
+  apps/web/src/utils/ops-first-run-notice.lock.spec.ts \
+  apps/backend/src/modules/payments/payment-invoice-id.lock.spec.ts
 echo "=== Hasar tahsilat / gelir kilit: PASS ==="

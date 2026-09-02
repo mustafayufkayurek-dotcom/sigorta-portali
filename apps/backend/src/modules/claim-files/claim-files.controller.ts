@@ -402,6 +402,37 @@ export class ClaimFilesController {
     return { success: true, data };
   }
 
+  @Post(':id/office-close')
+  @RequirePermissions('claim_file.status_change')
+  @ApiOperation({ summary: 'Ofis dosya kapanışı — saha kapatmaz' })
+  async officeClose(@Param('id') id: string, @CurrentUser() user: any) {
+    const data = await this.claimFilesService.officeClose(id, user.id, {
+      id: user?.id ?? user?.userId,
+      roleCode: user?.roleCode ?? user?.role?.code,
+    });
+    return { success: true, data };
+  }
+
+  @Post(':id/office-cancel')
+  @RequirePermissions('claim_file.status_change')
+  @ApiOperation({ summary: 'Ofis dosya iptali — açıklama zorunlu, saha iptal edemez' })
+  async officeCancel(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.claimFilesService.officeCancel(
+      id,
+      user.id,
+      body?.reason ?? '',
+      {
+        id: user?.id ?? user?.userId,
+        roleCode: user?.roleCode ?? user?.role?.code,
+      },
+    );
+    return { success: true, data };
+  }
+
   @Post(':id/cost-report')
   @RequirePermissions('claim_file.update')
   @ApiOperation({ summary: 'Maliyet raporu gönder' })

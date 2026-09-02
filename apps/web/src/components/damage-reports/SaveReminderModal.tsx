@@ -49,6 +49,8 @@ export default function SaveReminderModal({
   open,
   intent = 'leave',
   detail = 'none',
+  message,
+  canSave = true,
   saving = false,
   countdownSeconds = DEFAULT_COUNTDOWN,
   onSave,
@@ -58,6 +60,8 @@ export default function SaveReminderModal({
   open: boolean;
   intent?: SaveReminderIntent;
   detail?: SaveReminderDetail;
+  message?: string;
+  canSave?: boolean;
   saving?: boolean;
   countdownSeconds?: number;
   onSave: () => void;
@@ -93,7 +97,7 @@ export default function SaveReminderModal({
     : ' Yazımı tamamladıysanız kaydetmenizi öneririz.';
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center z-[90] p-4">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center z-[240] p-4" data-testid="kayit-hatirlatmasi">
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200/80"
         role="dialog"
@@ -117,19 +121,31 @@ export default function SaveReminderModal({
 
         <div className="px-5 py-4">
           <p id="save-reminder-desc" className="text-sm text-slate-600 leading-relaxed">
-            Raporda kaydedilmemiş değişiklikler var{detailSuffix(detail)}.{bodyExtra}
+            {message
+              ? `${message}.${bodyExtra}`
+              : `Raporda kaydedilmemiş değişiklikler var${detailSuffix(detail)}.${bodyExtra}`}
           </p>
         </div>
 
         <div className="px-5 pb-5 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saving}
-            className="w-full rounded-xl bg-emerald-600 text-white py-2.5 text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm"
-          >
-            {saving ? 'Kaydediliyor...' : 'Kaydet'}
-          </button>
+          {canSave ? (
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className="w-full rounded-xl bg-emerald-600 text-white py-2.5 text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm"
+            >
+              {saving ? 'Kaydediliyor...' : 'Kaydet'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onContinue}
+              className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+            >
+              Yazmaya Devam Et
+            </button>
+          )}
           <button
             type="button"
             onClick={onDiscard}
@@ -137,13 +153,15 @@ export default function SaveReminderModal({
           >
             {discardLabel}
           </button>
-          <button
-            type="button"
-            onClick={onContinue}
-            className="w-full rounded-xl py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-          >
-            Yazmaya Devam Et
-          </button>
+          {canSave ? (
+            <button
+              type="button"
+              onClick={onContinue}
+              className="w-full rounded-xl py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Yazmaya Devam Et
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

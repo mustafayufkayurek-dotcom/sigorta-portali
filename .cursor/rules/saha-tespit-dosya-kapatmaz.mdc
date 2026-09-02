@@ -16,6 +16,7 @@ alwaysApply: true
 3. `POST .../field-close` (eski «Dosyayı Kapat») tespiti sonlandırır; ofis dosyasını kapatmaz. `closedAt` / kapalı durum yazılmaz.
 4. Kapanış anketi saha sonlandırmasından açılmaz.
 5. Eski saha kapatmasıyla kapanmış ofis dosyası açık kalır (`scripts/repair-saha-field-close-reopen.sql`). Tespit durur.
+6. Ofis kapatır: planlayıcı **Dosya Kapanış → Dosyayı Kapat** (`POST .../office-close`). Süreç bitmeden kapanmaz. Hizmet iptalse **Dosyayı İptal Et** (`POST .../office-cancel`) + açıklama. Saha bu kapıları kullanamaz.
 
 ## Yasak (açık onay yoksa)
 

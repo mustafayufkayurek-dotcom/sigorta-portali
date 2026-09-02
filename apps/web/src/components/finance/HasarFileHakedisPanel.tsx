@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -22,6 +22,10 @@ import { cycleClientSort, sortRowsByClientSort, type ClientSortState } from '@/u
 import { useToast } from '@/contexts/ToastContext';
 import { API, authHeader } from '@/utils/api';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { RightPanelDockTab, rightPanelDockClass, useRightPanelDock } from '@/components/ui/right-panel-dock';
+import { useRightPanelUnsavedGuard } from '@/components/ui/right-panel-unsaved';
 import { ACIKLAMA_YARDIM } from '@/utils/aciklama-yardim';
 import { fmtDate } from '@/utils/date-helpers';
 import {
@@ -810,6 +814,15 @@ export function HasarFileHakedisPanel({
   }>>([]);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const closePanelRef = useRef<() => void>(() => {});
+  const { docked, dock, expand } = useRightPanelDock(drawerOpen);
+  const { requestClose } = useRightPanelUnsavedGuard({
+    open: drawerOpen,
+    expand,
+    close: () => closePanelRef.current(),
+    panelRef,
+  });
   const [, setFilter] = useState<DrawerTab>('avans');
   const [composer, setComposer] = useState<Composer>('none');
   const [, setOpening] = useState(false);
@@ -1052,6 +1065,8 @@ export function HasarFileHakedisPanel({
     setSecilenHakedisKey(null);
     setSecilenAvansKey(null);
   };
+
+  closePanelRef.current = closePanel;
 
   const goToPayments = () => {
     setDrawerOpen(false);
@@ -1602,15 +1617,19 @@ export function HasarFileHakedisPanel({
 
   const drawer = drawerOpen && typeof document !== 'undefined'
     ? createPortal(
+        <>
         <div
-          className="fixed inset-0 z-[200] flex justify-end"
+          className={`fixed inset-0 z-[200] flex justify-end ${docked ? 'pointer-events-none' : ''}`}
           role="dialog"
           aria-modal="true"
           aria-label="Hakediş Yönetimi"
           data-testid="hasar-hakedis-ver-panel"
         >
-          <button type="button" onClick={closePanel} aria-label="Paneli kapat" className="absolute inset-0 bg-slate-950/25 backdrop-blur-[2px]" />
-          <section className="relative flex h-full w-full max-w-[460px] flex-col rounded-l-xl bg-white shadow-2xl">
+          <button type="button" onClick={dock} aria-label="Paneli yana kaydır" className={`absolute inset-0 bg-slate-950/25 backdrop-blur-[2px] ${docked ? 'pointer-events-none opacity-0' : ''}`} />
+          <section
+            ref={panelRef}
+            className={`relative flex h-full w-full max-w-[460px] flex-col rounded-l-xl bg-white shadow-2xl transition-transform duration-300 ease-in-out ${rightPanelDockClass(drawerOpen, docked)}`}
+          >
             <header className="shrink-0 px-4 pt-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -1668,7 +1687,7 @@ export function HasarFileHakedisPanel({
                   </button>
                   <button
                     type="button"
-                    onClick={closePanel}
+                    onClick={requestClose}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50"
                     aria-label="Kapat"
                   >
@@ -1676,6 +1695,17 @@ export function HasarFileHakedisPanel({
                   </button>
                 </div>
               </div>
+
+              {!docked ? (
+                <div className="px-4 pt-2">
+                  <OpsFirstRunNotice
+                    noticeId={OPS_NOTICE.sagPanelKaydir.id}
+                    title={OPS_NOTICE.sagPanelKaydir.title}
+                    body={OPS_NOTICE.sagPanelKaydir.body}
+                    testId="sag-panel-kaydir-seridi"
+                  />
+                </div>
+              ) : null}
 
               <div className="mt-3">
                 <BudgetStrip sozlesme={stripSozlesme} kullanilan={stripKullanilan} kalan={stripKalan} />
@@ -1946,14 +1976,16 @@ export function HasarFileHakedisPanel({
                 </button>
                 <button
                   type="button"
-                  onClick={closePanel}
+                  onClick={requestClose}
                   className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-slate-50"
                 >
                   Kapat
                 </button>
             </footer>
           </section>
-        </div>,
+        </div>
+        {docked ? <RightPanelDockTab label="Hakediş" onClick={expand} /> : null}
+        </>,
         document.body,
       )
     : null;

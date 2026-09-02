@@ -15,7 +15,8 @@ export type StepId =
   | 'muvafakat'
   | 'repair_complete'
   | 'closure_survey'
-  | 'docs_upload';
+  | 'docs_upload'
+  | 'file_close';
 
 export type PlannerGroupId = 'onay' | 'onarim' | 'kapanis';
 
@@ -70,6 +71,7 @@ export const PLANNER_STEPS: PlannerStep[] = [
   { id: 'repair_complete', n: 3, label: 'Onarım Bitiş', status: 'future', group: 'onarim' },
   { id: 'closure_survey', n: 0, label: 'Kapanış Anketi', status: 'future', group: 'kapanis', hidden: true },
   { id: 'docs_upload', n: 1, label: 'Evrak Yükleme', status: 'future', group: 'kapanis' },
+  { id: 'file_close', n: 2, label: 'Dosyayı Kapat', status: 'future', group: 'kapanis' },
 ];
 
 export const PLANNER_VISIBLE_STEPS = PLANNER_STEPS.filter((s) => !s.hidden);

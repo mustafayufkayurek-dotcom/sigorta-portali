@@ -23,6 +23,7 @@ import {
 import { normalizeTrDateValue } from '@/utils/tr-date-input';
 import { buildSupplierTaskMapFromNotes } from '@/utils/hasar-supplier-tasks';
 import { isLegacyOpsCatchupBypassActive } from '@/utils/whatsapp-sent-confirm-gate';
+import { hasarCancelReasonOk } from '@sigorta/shared';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { getMandatoryChecks, missingMandatoryLabels } from './mandatory-fields';
 import type { StepId } from './types';
@@ -93,6 +94,7 @@ type PlannerDraft = {
   applyWaTemplateForRecipient: (recipientType: string) => string;
   validateStep: (step: StepId) => { ok: boolean; missing: string[] };
   saveStep: (step: StepId) => Promise<SaveStepResult>;
+  cancelOpenFile: (reason: string) => Promise<SaveStepResult>;
   recordWhatsAppContact: (input?: {
     status?: 'opened' | 'sent' | 'ready';
     recipientType?: 'insured' | 'adjuster' | 'vendor';
@@ -637,6 +639,33 @@ export function PlannerProvider({
           case 'docs_upload':
             await refreshClaim();
             return { ok: true, message: 'Evraklar → Tespit Ve Onarım’da birikir.' };
+          case 'file_close': {
+            if (claim.fileCancelled) {
+              await refreshClaim();
+              return { ok: true, message: 'Dosya iptal edilmiş.' };
+            }
+            if (claim.fileClosed) {
+              await refreshClaim();
+              return { ok: true, message: 'Dosya zaten kapalı.' };
+            }
+            if (claim.closeMissing.length) {
+              return {
+                ok: false,
+                message: `Dosya süreçleri tamamlanmadan kapatılamaz: ${claim.closeMissing.join(', ')}. Hizmet iptalse Dosyayı İptal Et kullanın.`,
+              };
+            }
+            if (typeof window !== 'undefined'
+              && !window.confirm('Tüm işlemler bitti. Dosya kapatılsın mı? Sigorta, eksper ve broker kapanış maili alır.')) {
+              return { ok: false, message: 'Kapatma iptal edildi.' };
+            }
+            await axios.post(
+              `${API}/claim-files/${claimId}/office-close`,
+              {},
+              { headers: authHeader() },
+            );
+            await refreshClaim();
+            return { ok: true, message: 'Dosya kapatıldı. Kapanış maili dış firmalara gider.' };
+          }
           default:
             return { ok: false, message: 'Bu adım için kayıt tanımlı değil.' };
         }
@@ -672,6 +701,56 @@ export function PlannerProvider({
       resolveWaPhone,
       refreshClaim,
     ],
+  );
+
+  const cancelOpenFile = useCallback(
+    async (reason: string): Promise<SaveStepResult> => {
+      if (mode === 'preview' || !claimId) {
+        return { ok: false, message: 'Önizlemede iptal yazılmaz.' };
+      }
+      if (!canEdit) {
+        return { ok: false, message: 'Bu işlem için yetkiniz yok.' };
+      }
+      if (claim.fileCancelled) {
+        return { ok: true, message: 'Dosya iptal edilmiş.' };
+      }
+      if (claim.fileClosed) {
+        return { ok: false, message: 'Kapalı dosya iptal edilmez.' };
+      }
+      if (!hasarCancelReasonOk(reason)) {
+        return { ok: false, message: 'İptal için açıklama yazınız.' };
+      }
+      if (typeof window !== 'undefined'
+        && !window.confirm('Hizmet iptal. Dosya iptal edilsin mi?')) {
+        return { ok: false, message: 'İptal işlemi durduruldu.' };
+      }
+      if (saveLock.current) {
+        return { ok: false, message: 'Kayıt sürüyor — tekrar gönderim engellendi.' };
+      }
+      saveLock.current = true;
+      setSaving(true);
+      try {
+        await axios.post(
+          `${API}/claim-files/${claimId}/office-cancel`,
+          { reason: reason.trim() },
+          { headers: authHeader() },
+        );
+        await refreshClaim();
+        return { ok: true, message: 'Dosya iptal edildi.' };
+      } catch (error: any) {
+        const msg =
+          error?.response?.data?.message ??
+          (Array.isArray(error?.response?.data?.message)
+            ? error.response.data.message.join(', ')
+            : null) ??
+          'İptal kaydedilemedi.';
+        return { ok: false, message: typeof msg === 'string' ? msg : 'İptal kaydedilemedi.' };
+      } finally {
+        saveLock.current = false;
+        setSaving(false);
+      }
+    },
+    [mode, claimId, canEdit, claim.fileCancelled, claim.fileClosed, refreshClaim],
   );
 
   const value: PlannerDraft = {
@@ -723,6 +802,7 @@ export function PlannerProvider({
     applyWaTemplateForRecipient,
     validateStep,
     saveStep,
+    cancelOpenFile,
     recordWhatsAppContact,
     saving,
     onGoToReports: onGoToReports ?? null,

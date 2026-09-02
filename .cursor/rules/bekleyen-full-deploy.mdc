@@ -1,5 +1,5 @@
 ---
-description: Full deploy v555 alındı — sağ panel sırada
+description: Full deploy v555 alındı — tahsilat/kapanış ve sağ panel sırada
 alwaysApply: true
 ---
 
@@ -25,6 +25,12 @@ Hoş geldin v554 durur.
 ## Ayrıca bekleyen (bu paketle karışmaz)
 
 Sağ panel kaydır + kayıt hatırlatması (ihbar, Acil kapanış, 72s, onarım raporu teslimi).
+
+**Hasar tahsilat + ofis kapanış + Acil tespit bulgusu** (lokal hazır; v555 mail paketiyle karışmaz).
+
+1. Yeni Tahsilat: fatura seçilmeden kayıt. Boş «Seçiniz» Prisma FK kırmaz.
+2. Hasar kapanış: süreç bitmeden kapanmaz. Hizmet iptalse **Dosyayı İptal Et**. **İptal nedeni zorunlu** (en az 10 karakter; boş geçilmez). İptal eden ve işlem zamanı dosyada durur.
+3. Acil tespit bulgusu: kapanışta yazılan metin dosyada kalır. Kaydet / kapatmadan önce kayda geçer. Boş güncelleme mevcut metni silmez.
 
 Alım yalnız Mustafa «canlıya al» deyince. İK ile karışmaz.
 

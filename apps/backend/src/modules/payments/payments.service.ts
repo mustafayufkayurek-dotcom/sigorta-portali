@@ -28,6 +28,12 @@ import { sanitizeAuditValue } from '@/modules/audit-logs/audit-log.sanitizer';
 export const VENDOR_HAKEDIS_DUE_DAYS_DEFAULT = 30;
 export const VENDOR_HAKEDIS_DUE_DAYS_OPTIONS = [15, 30] as const;
 
+/** Select «Seçiniz» boş string FK kırmaz. */
+export function optionalPaymentFkId(value?: string | null): string | null {
+  const id = typeof value === 'string' ? value.trim() : '';
+  return id || null;
+}
+
 export type PaymentListParams = {
   claimFileId?: string;
   payerId?: string;
@@ -381,8 +387,10 @@ export class PaymentsService {
     const claimFile = await this.prisma.claimFile.findUnique({ where: { id: dto.claimFileId } });
     if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
 
-    if (dto.invoiceId) {
-      const invoice = await this.prisma.invoice.findUnique({ where: { id: dto.invoiceId } });
+    const invoiceId = optionalPaymentFkId(dto.invoiceId);
+    const bankAccountId = optionalPaymentFkId(dto.bankAccountId);
+    if (invoiceId) {
+      const invoice = await this.prisma.invoice.findUnique({ where: { id: invoiceId } });
       if (!invoice) throw new NotFoundException('Fatura bulunamadı');
     }
 
@@ -418,10 +426,10 @@ export class PaymentsService {
         method: dto.method,
         payerType,
         payerId,
-        invoiceId: dto.invoiceId ?? null,
+        invoiceId,
         referenceNo: isAvans ? (dto.referenceNo || AVANS_REF_PREFIX) : (dto.referenceNo ?? null),
         status,
-        bankAccountId: dto.bankAccountId ?? null,
+        bankAccountId,
         note: dto.note ?? null,
         createdByUserId: userId,
       },
@@ -445,8 +453,8 @@ export class PaymentsService {
     }
 
     // Update linked invoice status if applicable
-    if (dto.invoiceId && payment.status === 'completed') {
-      await this.updateInvoicePaymentStatus(dto.invoiceId);
+    if (invoiceId && payment.status === 'completed') {
+      await this.updateInvoicePaymentStatus(invoiceId);
     }
 
     await this.financialSummary.recalculate(dto.claimFileId);

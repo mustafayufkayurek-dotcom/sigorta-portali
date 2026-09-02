@@ -64,9 +64,10 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, isExpertFirmCustomer, isInsuredCollectionParty, staffVisibleClaimStatusName } from '@sigorta/shared';
+import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, hasarCancelActorName, isExpertFirmCustomer, isInsuredCollectionParty, pickHasarCancelHistory, staffVisibleClaimStatusName } from '@sigorta/shared';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { fmtDateTime } from '@/utils/date-helpers';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
@@ -492,6 +493,23 @@ function DosyaSayfaUstu({
           />
         </div>
       </div>
+
+      {(() => {
+        const row = pickHasarCancelHistory(claim.statusHistory ?? []);
+        if (String(claim.currentStatus?.code ?? '').toLowerCase() !== 'cancelled' || !row) return null;
+        const when = fmtDateTime(row.changedAt ? String(row.changedAt) : null);
+        const who = hasarCancelActorName(row.changedByUser);
+        return (
+          <p
+            className="mx-4 mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700"
+            data-testid="hasar-dosya-iptal-kaydi"
+          >
+            <span className="font-semibold">Dosya iptal edildi.</span>{' '}
+            {who} · {when}
+            {row.note ? `. ${row.note}` : ''}
+          </p>
+        );
+      })()}
 
       <DosyaBilgileriDetay
         claim={claim}
@@ -1655,7 +1673,7 @@ export default function ClaimFileDetailPage() {
         <ClaimSurveyUnsentBanner
           claimFileId={claim.id}
           assignedOfficeUserId={claim.assignedOfficeUserId ?? claim.assignedOfficeUser?.id}
-          fileClosed={Boolean(claim.currentStatus?.isClosedState || claim.closedAt)}
+          fileClosed={Boolean(claim.currentStatus?.code === 'closed')}
         />
       )}
 

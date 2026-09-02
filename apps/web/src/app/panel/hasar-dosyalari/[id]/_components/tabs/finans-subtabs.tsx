@@ -1097,6 +1097,7 @@ export function TahsilatlarTab({ claimId, claim }: { claimId: string; claim?: an
     try {
       const payload = { ...form, claimFileId: claimId };
       if (payload.payerType !== 'vendor') delete payload.payerId;
+      if (!payload.invoiceId) delete payload.invoiceId;
       if (payload.isAvans) {
         payload.note = withAvansNote(payload.note);
       }

@@ -145,6 +145,8 @@ export function getMandatoryChecks(
       ];
     case 'docs_upload':
       return [{ key: 'claim', label: 'Dosya', ok: Boolean(claim.claimId) }];
+    case 'file_close':
+      return [{ key: 'claim', label: 'Dosya', ok: Boolean(claim.claimId) }];
     default:
       return [];
   }

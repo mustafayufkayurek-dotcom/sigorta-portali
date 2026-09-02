@@ -18,7 +18,13 @@ describe('tutar yazarken nokta', () => {
       join(dir, '../components/finance/ClaimFileGelirTahsilatPanel.tsx'),
       'utf8',
     );
+    const amount = readFileSync(
+      join(dir, '../components/ui/TrAmountInput.tsx'),
+      'utf8',
+    );
     assert.match(gelir, /TrAmountInput/);
     assert.doesNotMatch(gelir, /type="number".*gelir\.amount/);
+    assert.match(gelir, /noValidate/);
+    assert.match(amount, /\[&:invalid\]:shadow-none/);
   });
 });

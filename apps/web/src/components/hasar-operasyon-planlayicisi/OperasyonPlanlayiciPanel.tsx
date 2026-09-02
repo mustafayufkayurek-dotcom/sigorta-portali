@@ -12,6 +12,10 @@ import { API, authHeader } from '@/utils/api';
 import { PLANNER_GROUPS, PLANNER_STEPS, type StepId, type StepStatus } from './types';
 import { renderStepContent } from './steps';
 import { PlannerProvider, usePlanner } from './planner-context';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { RightPanelDockTab, rightPanelDockClass, useRightPanelDock } from '@/components/ui/right-panel-dock';
+import { useRightPanelUnsavedGuard } from '@/components/ui/right-panel-unsaved';
 import {
   mapLiveSnapshot,
   type PlannerClaimSnapshot,
@@ -112,6 +116,19 @@ function PlanlayiciInner({
 }) {
   const { claim, saveStep, saving, canEdit } = usePlanner();
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const { docked, dock, expand } = useRightPanelDock(drawerOpen);
+  const onSave = async () => {
+    const result = await saveStep(activeStep);
+    setSaveNotice(result.message);
+  };
+  const { requestClose } = useRightPanelUnsavedGuard({
+    open: drawerOpen,
+    expand,
+    close: () => setDrawerOpen(false),
+    onSave,
+    panelRef,
+  });
 
   const steps = useMemo(
     () =>
@@ -123,11 +140,6 @@ function PlanlayiciInner({
   );
 
   const activeMeta = steps.find((s) => s.id === activeStep) ?? steps[0];
-
-  const onSave = async () => {
-    const result = await saveStep(activeStep);
-    setSaveNotice(result.message);
-  };
 
   return (
     <div className="relative">
@@ -209,14 +221,17 @@ function PlanlayiciInner({
           <button
             type="button"
             aria-label="Kapat"
-            className="fixed inset-0 z-40 bg-slate-900/30"
-            onClick={() => setDrawerOpen(false)}
+            className={`fixed inset-0 z-40 bg-slate-900/30 ${docked ? 'pointer-events-none opacity-0' : ''}`}
+            onClick={dock}
           />
           {/*
             FINAL referans: sol kenar dikey akış (turuncu aktif / yeşil tamam / gri bekleyen).
             Üstte yatay adım sekmesi YOK. Panel ~ max-w-xl (lokal ölçü).
           */}
-          <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl sm:max-w-2xl">
+          <aside
+            ref={panelRef}
+            className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-in-out sm:max-w-2xl ${rightPanelDockClass(drawerOpen, docked)}`}
+          >
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
               <div>
                 <h2 className="text-base font-bold text-slate-950">Operasyon Planlayıcısı</h2>
@@ -226,13 +241,23 @@ function PlanlayiciInner({
               </div>
               <button
                 type="button"
-                onClick={() => setDrawerOpen(false)}
+                onClick={requestClose}
                 className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 aria-label="Kapat"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
+            {!docked ? (
+              <div className="px-4 pt-3">
+                <OpsFirstRunNotice
+                  noticeId={OPS_NOTICE.sagPanelKaydir.id}
+                  title={OPS_NOTICE.sagPanelKaydir.title}
+                  body={OPS_NOTICE.sagPanelKaydir.body}
+                  testId="sag-panel-kaydir-seridi"
+                />
+              </div>
+            ) : null}
 
             <div className="flex min-h-0 flex-1">
               {/* Sol kenar akış — FINAL referans */}
@@ -332,7 +357,8 @@ function PlanlayiciInner({
                         saveNotice.includes('değil') ||
                         saveNotice.includes('başarısız') ||
                         saveNotice.includes('yetkiniz') ||
-                        saveNotice.includes('engellendi')
+                        saveNotice.includes('engellendi') ||
+                        saveNotice.includes('iptal')
                           ? 'border border-amber-200 bg-amber-50 text-amber-900'
                           : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
                       }`}
@@ -344,17 +370,27 @@ function PlanlayiciInner({
                     <button
                       type="button"
                       className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                      onClick={() => setDrawerOpen(false)}
+                      onClick={requestClose}
                     >
                       İptal
                     </button>
                     <button
                       type="button"
-                      disabled={saving || !canEdit}
+                      disabled={
+                        saving
+                        || !canEdit
+                        || (activeStep === 'file_close'
+                          && (claim.fileClosed || claim.fileCancelled || claim.closeMissing.length > 0))
+                      }
                       className="flex-1 rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
                       onClick={onSave}
+                      data-testid={activeStep === 'file_close' ? 'hasar-ofis-dosya-kapat' : undefined}
                     >
-                      {saving ? 'Kaydediliyor...' : 'Kaydet'}
+                      {saving
+                        ? (activeStep === 'file_close' ? 'Kapatılıyor...' : 'Kaydediliyor...')
+                        : activeStep === 'file_close'
+                          ? (claim.fileCancelled ? 'Dosya İptal' : claim.fileClosed ? 'Dosya Kapalı' : 'Dosyayı Kapat')
+                          : 'Kaydet'}
                     </button>
                   </div>
                   {!canEdit ? (
@@ -366,6 +402,7 @@ function PlanlayiciInner({
               </div>
             </div>
           </aside>
+          {docked ? <RightPanelDockTab label="Operasyon" onClick={expand} /> : null}
         </>
       ) : null}
     </div>
@@ -396,7 +433,7 @@ export function OperasyonPlanlayiciPanel({
       setError(null);
       if (!opts?.soft) setLoading(true);
       try {
-        const [opRes, inspRes, vendorRes, fieldStaffRes] = await Promise.all([
+        const [opRes, inspRes, vendorRes, fieldStaffRes, claimRes] = await Promise.all([
           axios.get(`${API}/claim-operation-center/${claimId}`, { headers: authHeader() }),
           axios
             .get(`${API}/claim-files/${claimId}/vendors/nearby?purpose=inspector`, {
@@ -411,6 +448,7 @@ export function OperasyonPlanlayiciPanel({
           axios
             .get(`${API}/claim-files/assignable-staff?role=field_staff`, { headers: authHeader() })
             .catch(() => ({ data: null })),
+          axios.get(`${API}/claim-files/${claimId}`, { headers: authHeader() }).catch(() => ({ data: null })),
         ]);
 
         const op = opRes.data?.data ?? opRes.data;
@@ -467,10 +505,20 @@ export function OperasyonPlanlayiciPanel({
             }))
           : [];
 
-        const next = mapLiveSnapshot(op, claimFileRef.current, inspList, vendorList);
+        const next = mapLiveSnapshot(
+          op,
+          claimRes.data?.data ?? claimRes.data ?? claimFileRef.current,
+          inspList,
+          vendorList,
+        );
         setSnapshot(next);
         if (opts?.notifyParent) {
-          onClaimUpdatedRef.current?.({});
+          const live = claimRes.data?.data ?? claimRes.data;
+          onClaimUpdatedRef.current?.(
+            live
+              ? { currentStatus: live.currentStatus, closedAt: live.closedAt }
+              : {},
+          );
         }
         return next;
       } catch (e: any) {

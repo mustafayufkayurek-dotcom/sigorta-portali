@@ -14,10 +14,10 @@ alwaysApply: true
 
 - Adres satırında telefon yok; telefon aranabilir.
 - Alış/satış kutusunda TL; binlik nokta; kâr/zarar yüzde.
-- Tespit fotoğrafları / notları ve kapanış resimleri **Operasyonu Başlat** çekmecesinde (sayfa gövdesinde değil).
+- Tespit fotoğrafları ve tespit bulguları **Operasyonu Başlat** çekmecesinde, kapanış adımında (sayfa gövdesinde yükleme kutusu yok). Yazılan tespit bulgusu `findingsText` olarak kalır; Kaydet / kapatmadan önce kayda geçer. Dosya Bilgileri → Detay’da okunur. Boş güncelleme mevcut metni silmez.
 - **Operasyon özeti** 5 adım kare (ikon + sonuç satırı) + **Sıradaki iş**; altta tekrarlayan süreç/durum listesi yok. Üstteki 8’li daire şeridi yok. Hasar’daki “İlerleme Özeti / Dosyada Kimler Var?” kopyası değildir.
 - Sıra: **İhbar → Tedarikçi Ve Maliyet → Onay Talep Akışı (servis formu dijital onay + sigortalı haber) → Kapanış (anket kapandıktan sonra tercihli) → Ödeme Ve Finans**. Operasyon dijital onaylı servis formu olmadan ilerlemez. Kapat ile finansa gönder ayrıdır.
-- Tespit fotoğrafları / notları ve kapanış resimleri **Operasyonu Başlat** çekmecesinde, kapanış adımında (sayfa gövdesinde değil).
+- Kapanış resimleri **Operasyonu Başlat** çekmecesinde, kapanış adımında (sayfa gövdesinde değil).
 - Tek **Operasyonu Başlat**; durum şeridi / 3 kolon / tekrarlayan aç düğmeleri yok (iş çekmecede).
 - Hasar tipi sekme şeridi yok; Dosya Bütçesi formu ana sayfada yok.
 - İş bitiminde dosya tedarikçisine hakediş; tarih-saat kayıtlı; finans **Ödenecekler** kuyruğuna düşer; **vade yok**. Finansa gittikten sonra **Ödendi** finans personelindedir; işlemi yapan kaydolur.
@@ -40,5 +40,7 @@ Regresyon:
 ```bash
 pnpm smoke:acil-netlesen
 node --experimental-strip-types --test \
-  apps/web/src/components/acil-operasyon-planlayicisi/planner-gates.lock.spec.ts
+  apps/web/src/components/acil-operasyon-planlayicisi/planner-gates.lock.spec.ts \
+  packages/shared/src/emergency-findings-text.lock.spec.ts \
+  apps/backend/src/modules/emergency/acil-tespit-bulgusu.lock.spec.ts
 ```

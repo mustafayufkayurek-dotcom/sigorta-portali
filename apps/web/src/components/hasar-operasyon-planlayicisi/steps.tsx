@@ -38,12 +38,15 @@ import type { StepId } from './types';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import { ClaimManualDocumentsPanel } from '@/components/file-documents/ClaimManualDocumentsPanel';
 import { VendorRepairPhotosPanel } from '@/components/field-survey/VendorRepairPhotosPanel';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import SpeechToText from '@/components/SpeechToText';
 import { HasarSalesInvoiceRequestCard } from './HasarSalesInvoiceRequestCard';
 import { openPlannerMap, plannerMapsHref } from './planner-maps';
 import { usePlanner } from './planner-context';
 import { sendPlannerApprovalMail } from './planner-send-approval-mail';
 import { repairReportStatusLabel } from '@/utils/repair-report-status';
+import { hasarCancelReasonOk } from '@sigorta/shared';
 import {
   plannerApprovalPartyLabel,
   resolvePlannerApprovalParty,
@@ -1536,6 +1539,91 @@ function StepDocsUpload() {
   );
 }
 
+function StepFileClose() {
+  const { claim, cancelOpenFile, saving, canEdit } = usePlanner();
+  const [reason, setReason] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
+
+  if (claim.fileCancelled) {
+    return (
+      <div className="mt-3 space-y-3">
+        <p
+          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-800"
+          data-testid="hasar-dosya-iptal-kaydi"
+        >
+          <span className="font-semibold">Dosya iptal edildi.</span>
+          {claim.cancelRecord ? (
+            <>
+              {' '}
+              {claim.cancelRecord.by} · {claim.cancelRecord.at}
+              {claim.cancelRecord.reason ? `. ${claim.cancelRecord.reason}` : ''}
+            </>
+          ) : null}
+        </p>
+      </div>
+    );
+  }
+
+  if (claim.fileClosed) {
+    return (
+      <div className="mt-3 space-y-3">
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-800">
+          Dosya kapatıldı. Sigorta, eksper ve broker kapanış maili alır.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-3">
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.hasarOfisDosyaKapat.id}
+        title={OPS_NOTICE.hasarOfisDosyaKapat.title}
+        body={OPS_NOTICE.hasarOfisDosyaKapat.body}
+        testId="hasar-ofis-dosya-kapat-seridi"
+      />
+      <Card title="Dosya kapanışı">
+        {claim.closeMissing.length ? (
+          <p className="text-xs leading-relaxed text-amber-800">
+            Süreçler bitmeden kapatılamaz: {claim.closeMissing.join(', ')}. Altta Dosyayı Kapat durur.
+          </p>
+        ) : (
+          <p className="text-xs leading-relaxed text-slate-600">
+            Tüm işlemler bitti. Altta Dosyayı Kapat deyince kapanış maili gider.
+          </p>
+        )}
+      </Card>
+      <Card title="Hizmet iptal">
+        <p className="mb-2 text-xs leading-relaxed text-slate-600">
+          Hizmet iptal edildiyse dosyayı iptal edin. Açıklama zorunlu. İptal eden ve zamanı dosyada durur.
+        </p>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+          required
+          className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800"
+          placeholder="İptal nedeni (zorunlu)"
+          data-testid="hasar-dosya-iptal-aciklama"
+        />
+        <button
+          type="button"
+          disabled={saving || !canEdit || !hasarCancelReasonOk(reason)}
+          onClick={async () => {
+            const result = await cancelOpenFile(reason);
+            setNotice(result.message);
+          }}
+          className="mt-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+          data-testid="hasar-ofis-dosya-iptal"
+        >
+          Dosyayı İptal Et
+        </button>
+        {notice ? <p className="mt-2 text-[11px] text-slate-600">{notice}</p> : null}
+      </Card>
+    </div>
+  );
+}
+
 export function renderStepContent(step: StepId) {
   switch (step) {
     case 'insured_appointment':
@@ -1564,6 +1652,8 @@ export function renderStepContent(step: StepId) {
       return <StepClosureSurvey />;
     case 'docs_upload':
       return <StepDocsUpload />;
+    case 'file_close':
+      return <StepFileClose />;
     default:
       return null;
   }

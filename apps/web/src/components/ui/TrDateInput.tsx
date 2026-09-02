@@ -63,6 +63,10 @@ export function TrDateInput({
   const pickerValue = normalizeTrDateValue(value);
   const displayValue = trDateInputDisplayValue(value);
   const inputClassName = enablePicker ? [className, 'pr-9'].filter(Boolean).join(' ') : className;
+  /** Windows Chrome :invalid kırmızı gölgeyi opacity-0 date kutusunda da basar. */
+  const nativeDateClass =
+    'appearance-none border-0 shadow-none outline-none ring-0 [&:invalid]:shadow-none [&:invalid]:outline-none [&:invalid]:ring-0 [&:invalid]:border-0';
+  const textInputClass = `${inputClassName} [&:invalid]:shadow-none [&:invalid]:outline-none`;
 
   if (enablePicker && nativeOverlay) {
     return (
@@ -84,7 +88,7 @@ export function TrDateInput({
             const next = e.target.value;
             if (next) onChange(next);
           }}
-          className="absolute inset-0 z-[1] h-full w-full cursor-pointer opacity-0"
+          className={`absolute inset-0 z-[1] h-full w-full cursor-pointer opacity-0 ${nativeDateClass}`}
         />
         <span
           className="pointer-events-none absolute inset-y-0 right-0 z-[2] flex items-center px-2.5 text-slate-400"
@@ -99,13 +103,14 @@ export function TrDateInput({
   const textInput = (
     <input
       type="text"
-      inputMode="numeric"
+      autoComplete="off"
+      spellCheck={false}
       maxLength={10}
       id={id}
       disabled={disabled}
       aria-label={ariaLabel}
       placeholder={placeholder}
-      className={inputClassName}
+      className={textInputClass}
       value={displayValue}
       onChange={(e) => onChange(handleTrDateInputChange(e.target.value))}
       onFocus={enablePicker ? openPicker : undefined}
@@ -131,7 +136,7 @@ export function TrDateInput({
           const next = e.target.value;
           if (next) onChange(next);
         }}
-        className="absolute bottom-0 right-0 h-0 w-0 opacity-0 pointer-events-none"
+        className={`pointer-events-none absolute bottom-0 right-0 h-0 w-0 opacity-0 ${nativeDateClass}`}
       />
       <button
         type="button"

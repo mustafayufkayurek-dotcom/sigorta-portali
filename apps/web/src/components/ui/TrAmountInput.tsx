@@ -42,11 +42,12 @@ export function TrAmountInput({
       <input
         type="text"
         inputMode="decimal"
+        autoComplete="off"
         id={id}
         disabled={disabled}
         autoFocus={autoFocus}
         placeholder={placeholder}
-        className={`${className}${prefix ? ' pl-7' : ''}${prefix ? '' : ' pr-10'}`}
+        className={`${className}${prefix ? ' pl-7' : ''}${prefix ? '' : ' pr-10'} [&:invalid]:shadow-none [&:invalid]:outline-none`}
         value={display}
         onChange={(e) => onChange(formatTrAmountInput(e.target.value))}
         onBlur={onBlur}

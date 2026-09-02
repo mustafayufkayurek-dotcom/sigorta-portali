@@ -241,6 +241,10 @@ export function ClaimFileGelirTahsilatPanel({
   };
 
   const saveTahsilat = async (andNew: boolean) => {
+    if (!tahsilat.amount || tahsilat.amount <= 0) {
+      showToast('error', 'Tutar Sıfırdan Büyük Olmalıdır');
+      return;
+    }
     if (tahsilat.paymentType === 'outgoing' && tahsilat.payerType === 'vendor' && !tahsilat.payerId) {
       showToast('error', 'Tedarikçi ödemesi için tedarikçi seçiniz');
       return;
@@ -249,6 +253,8 @@ export function ClaimFileGelirTahsilatPanel({
     try {
       const payload: any = { ...tahsilat, claimFileId: claimId };
       if (payload.payerType !== 'vendor') delete payload.payerId;
+      if (!payload.invoiceId) delete payload.invoiceId;
+      if (!payload.bankAccountId) delete payload.bankAccountId;
       if (payload.isAvans) payload.note = withAvansNote(payload.note);
       delete payload.isAvans;
       const res = await axios.post(`${API}/payments`, payload, { headers: authHeader() });
@@ -266,7 +272,14 @@ export function ClaimFileGelirTahsilatPanel({
       await load();
       if (!andNew) setDrawer(null);
     } catch (e: any) {
-      showToast('error', e?.response?.data?.message ?? 'Kayıt yapılamadı');
+      const raw = e?.response?.data?.message;
+      const msg = Array.isArray(raw) ? raw.join(' ') : String(raw ?? '');
+      showToast(
+        'error',
+        /prisma|foreign key|invoice_id/i.test(msg)
+          ? 'Tahsilat kaydedilemedi. Fatura seçmeden kaydedebilirsiniz.'
+          : (msg || 'Kayıt yapılamadı'),
+      );
     } finally {
       setSaving(false);
     }
@@ -572,7 +585,12 @@ export function ClaimFileGelirTahsilatPanel({
         width={520}
         scrollContent={false}
       >
-        <div className="flex h-full flex-col">
+        <form
+          noValidate
+          autoComplete="off"
+          className="flex h-full flex-col"
+          onSubmit={(e) => e.preventDefault()}
+        >
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
             <FinansFormSection title="Tahsilat Bilgileri">
               <div>
@@ -591,6 +609,7 @@ export function ClaimFileGelirTahsilatPanel({
                 <TrAmountInput
                   value={tahsilat.amount ? String(tahsilat.amount) : ''}
                   onChange={(v) => setTahsilat({ ...tahsilat, amount: parseTrAmountInput(v) ?? 0 })}
+                  placeholder=""
                   className={finansInputClass}
                 />
               </div>
@@ -664,7 +683,7 @@ export function ClaimFileGelirTahsilatPanel({
             <button type="button" disabled={saving} onClick={() => void saveTahsilat(true)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700">Kaydet ve Yeni</button>
             <button type="button" disabled={saving} onClick={() => void saveTahsilat(false)} className="rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white">{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
           </div>
-        </div>
+        </form>
       </SlidePanel>
     </div>
   );

@@ -215,6 +215,30 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.doesNotMatch(OPS_NOTICE.sahaTespitSonlandir.body, /Google|API/);
   });
 
+  it('Hasar ofis dosya kapat şeridi durur', () => {
+    const steps = readFileSync(
+      join(here, '../components/hasar-operasyon-planlayicisi/steps.tsx'),
+      'utf8',
+    );
+    assert.match(steps, /OPS_NOTICE\.hasarOfisDosyaKapat/);
+    assert.match(steps, /hasar-ofis-dosya-kapat-seridi/);
+    assert.equal(OPS_NOTICE.hasarOfisDosyaKapat.id, 'hasar-ofis-dosya-kapat-v556');
+    assert.match(OPS_NOTICE.hasarOfisDosyaKapat.body, /Süreçler bitmeden/);
+    assert.match(OPS_NOTICE.hasarOfisDosyaKapat.body, /Dosyayı İptal Et/);
+    assert.match(OPS_NOTICE.hasarOfisDosyaKapat.body, /iptal nedeni zorunlu/);
+    assert.match(OPS_NOTICE.hasarOfisDosyaKapat.body, /Saha kapatmaz/);
+    assert.doesNotMatch(OPS_NOTICE.hasarOfisDosyaKapat.body, /Google|API/);
+  });
+
+  it('sağ panel kaydır şeridi durur', () => {
+    assert.equal(OPS_NOTICE.sagPanelKaydir.id, 'sag-panel-kaydir-v556');
+    assert.match(OPS_NOTICE.sagPanelKaydir.body, /sağa kayar/);
+    assert.match(OPS_NOTICE.sagPanelKaydir.body, /kayıt hatırlatması/);
+    assert.doesNotMatch(OPS_NOTICE.sagPanelKaydir.body, /Google|API/);
+    const slide = readFileSync(join(here, '../components/SlidePanel.tsx'), 'utf8');
+    assert.match(slide, /OPS_NOTICE\.sagPanelKaydir/);
+  });
+
   it('personel kılavuzu Acil tedarikçi ve dosya sorumlusu maddelerini taşır', () => {
     assert.match(guide, /id="acil-yardim"/);
     assert.match(guide, /Önerilen Tedarikçiler/);

@@ -28,6 +28,7 @@ const STEP_ORDER: StepId[] = [
   'repair_complete',
   'closure_survey',
   'docs_upload',
+  'file_close',
 ];
 
 function metaOf(item: PlannerActivityItem): Record<string, unknown> {
@@ -166,6 +167,7 @@ export type PlannerStepFlags = {
   hasRepairComplete?: boolean;
   hasClosureSurvey?: boolean;
   hasDocsUpload?: boolean;
+  hasFileClosed?: boolean;
 };
 
 export function computePlannerStepStatuses(
@@ -185,6 +187,7 @@ export function computePlannerStepStatuses(
     repair_complete: Boolean(flags.hasRepairComplete),
     closure_survey: Boolean(flags.hasClosureSurvey),
     docs_upload: Boolean(flags.hasDocsUpload),
+    file_close: Boolean(flags.hasFileClosed),
   };
   const result = {} as Record<StepId, StepStatus>;
   let waitingPlaced = false;
@@ -222,6 +225,7 @@ export function plannerProgressText(step: StepId, status: StepStatus): string {
     repair_complete: 'Onarım bitişi bekleniyor',
     closure_survey: 'Kapanış anketi bekleniyor',
     docs_upload: 'Evrak yükleme bekleniyor',
+    file_close: 'Dosya kapanışı bekleniyor',
   };
   const done: Record<StepId, string> = {
     insured_appointment: 'Randevu oluşturuldu',
@@ -237,6 +241,7 @@ export function plannerProgressText(step: StepId, status: StepStatus): string {
     repair_complete: 'Onarım bitiş — finansa bildirildi',
     closure_survey: 'Kapanış anketi gönderildi',
     docs_upload: 'Evrak yüklendi',
+    file_close: 'Dosya kapatıldı',
   };
   if (status === 'done') return done[step];
   return waiting[step];
