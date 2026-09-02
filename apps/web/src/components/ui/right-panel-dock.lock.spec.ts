@@ -27,6 +27,8 @@ describe('sağ panel kaydır LOCK', () => {
     assert.match(slide, /RightPanelDockTab/);
     assert.match(slide, /OPS_NOTICE\.sagPanelKaydir/);
     const tab = readFileSync(join(here, 'right-panel-dock.tsx'), 'utf8');
+    assert.match(tab, /from '\.\/right-panel-dock-state'/);
+    assert.doesNotMatch(tab, /from '\.\/right-panel-dock-state\.ts'/);
     assert.match(tab, /sag-panel-geri-ac/);
     assert.match(tab, /createPortal/);
     assert.match(tab, /fixed right-0/);
