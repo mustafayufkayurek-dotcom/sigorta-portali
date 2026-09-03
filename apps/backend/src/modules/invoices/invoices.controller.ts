@@ -101,6 +101,14 @@ export class InvoicesController {
     return { success: true, data };
   }
 
+  @Post('invoices/:id/notify-owner')
+  @RequirePermissions('invoice.update')
+  @ApiOperation({ summary: 'Kesilen faturayı dosya sorumlusuna bildir' })
+  async notifyFileOwner(@Param('id') id: string) {
+    const data = await this.service.notifyFileOwner(id);
+    return { success: true, data };
+  }
+
   @Delete('invoices/:id')
   @RequirePermissions('invoice.delete')
   @ApiOperation({ summary: 'Fatura sil' })

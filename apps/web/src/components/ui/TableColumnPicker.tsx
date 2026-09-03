@@ -309,6 +309,7 @@ export function ResizableTh({
   return (
     <th
       style={{ width, minWidth: width, maxWidth: width }}
+      title={dragProps ? 'Sütunu sürükleyerek yerini değiştirin' : undefined}
       className={`group relative box-border select-none overflow-hidden !text-center ${className} ${dragClassName ?? ''}`.trim()}
       {...restDragProps}
     >

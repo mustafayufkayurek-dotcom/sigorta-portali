@@ -62,8 +62,15 @@ export interface InvoiceRequest {
   createdAt: string;
   approvedAt?: string | null;
   invoicedAt?: string | null;
-  claimFile?: { fileNo: string; id: string } | null;
-  emergencyCase?: { caseNo: string; id: string } | null;
+  claimFile?: {
+    fileNo: string;
+    id: string;
+    insuredName?: string | null;
+    collectionParty?: string | null;
+    customer?: { shortName?: string | null; companyName?: string | null; fullName?: string | null } | null;
+    insuranceCompany?: { name?: string | null } | null;
+  } | null;
+  emergencyCase?: { caseNo: string; id: string; customerName?: string | null } | null;
   insuranceCompany?: { name: string } | null;
   createdBy?: { id: string; firstName: string; lastName: string } | null;
   approvedBy?: { id: string; firstName: string; lastName: string } | null;
@@ -134,13 +141,44 @@ export function getInvoiceRequest(id: string): Promise<InvoiceRequest> {
 export function updateInvoiceRequestStatus(
   id: string,
   status: InvoiceRequestStatus,
-  extras?: { invoiceId?: string; notes?: string },
+  extras?: { invoiceId?: string; notes?: string; salesInvoiceNo?: string },
 ): Promise<InvoiceRequest> {
   return authFetch(`${API}/invoice-requests/${id}/status`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status, ...extras }),
   }).then((r) => handleResponse<unknown>(r).then(asInvoiceRequest));
+}
+
+export function notifyInvoiceRequestOwner(id: string): Promise<{
+  notified: number;
+  alreadyNotified: boolean;
+  recipients: string[];
+}> {
+  return authFetch(`${API}/invoice-requests/${id}/notify-owner`, {
+    method: 'POST',
+  }).then((r) =>
+    handleResponse<unknown>(r).then((raw) => {
+      const body = unwrapApiData<{ notified?: number; alreadyNotified?: boolean; recipients?: string[] }>(raw);
+      return {
+        notified: Number(body?.notified) || 0,
+        alreadyNotified: Boolean(body?.alreadyNotified),
+        recipients: Array.isArray(body?.recipients) ? body.recipients.filter((n) => typeof n === 'string' && n.trim()) : [],
+      };
+    }),
+  );
+}
+
+export function fileOwnerNotifyToast(result: { alreadyNotified?: boolean; recipients?: string[] }): string {
+  const names = (result.recipients ?? []).filter(Boolean);
+  if (result.alreadyNotified) {
+    return names.length
+      ? `${names.join(', ')} bugün zaten bilgilendirildi. Üst çanı açınca görür.`
+      : 'Dosya sorumlusu bugün zaten bilgilendirildi. Üst çanı açınca görür.';
+  }
+  return names.length
+    ? `Bildirim ${names.join(', ')} adlı dosya sorumlusunun panel ziline düştü.`
+    : 'Bildirim dosya sorumlusunun panel ziline düştü. Üst çanı açınca görür.';
 }
 
 export function getInvoiceRequestsByClaimFile(

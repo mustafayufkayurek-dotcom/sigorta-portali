@@ -72,5 +72,9 @@ export class UpdateInvoiceRequestStatusDto {
 
   @IsString()
   @IsOptional()
+  salesInvoiceNo?: string;
+
+  @IsString()
+  @IsOptional()
   notes?: string;
 }

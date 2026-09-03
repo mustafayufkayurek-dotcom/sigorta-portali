@@ -5,7 +5,27 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import { FinansTablePager } from '@/components/finance/FinansTablePager';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+import { FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
 import { formatTryAmount } from '@/utils/format-try-amount';
+
+const DOSYA_PL_COLUMNS: TableColumnDef[] = [
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 140, minWidth: 100 },
+  { id: 'revenue', label: 'Gelir', defaultWidth: 108, minWidth: 88 },
+  { id: 'cost', label: 'Gider', defaultWidth: 108, minWidth: 88 },
+  { id: 'profit', label: 'Net Kâr', defaultWidth: 120, minWidth: 96 },
+  { id: 'margin', label: 'Marj %', defaultWidth: 88, minWidth: 72 },
+];
 
 function fmtCurrency(n: number | null | undefined) {
   return formatTryAmount(n, { fractionDigits: 0 });
@@ -18,6 +38,11 @@ export default function DosyaPLPage() {
   const [error, setError] = useState('');
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(0); // 0 = tüm yıl
+  const tableColumns = usePanelTableColumns('table-cols:finans-dosya-pl', DOSYA_PL_COLUMNS);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.dosyaPl, 20),
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,12 +70,16 @@ export default function DosyaPLPage() {
   ];
 
   const isProfit = !portfolioPL || portfolioPL.netProfit >= 0;
+  const pagedRanking = sliceFinansPage(ranking, page, pageSize);
 
   return (
     <div className="space-y-6 min-h-screen bg-white dark:bg-slate-900 p-6">
       <FinansSubpageBreadcrumb current="Dosya P&L" />
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-900">Portföy Kârlılık Analizi</h2>
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Dosya P/L</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Dosya bazında gelir, gider ve net kâr.</p>
+        </div>
         <div className="flex gap-2">
           <select
             value={year}
@@ -77,99 +106,102 @@ export default function DosyaPLPage() {
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>}
-      {portfolioPL && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-500 mb-1">Dosya Sayısı</p>
-            <p className="text-2xl font-bold text-slate-900">{portfolioPL.fileCount}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-500 mb-1">Toplam Gelir</p>
-            <p className="text-xl font-bold text-blue-700">{fmtCurrency(portfolioPL.totalRevenue)}</p>
-            <div className="mt-1 text-xs text-slate-400 space-y-0.5">
-              <div>Dosya: {fmtCurrency(portfolioPL.fileFeeRevenue)}</div>
-              <div>Ekstra: {fmtCurrency(portfolioPL.extraWorkRevenue)}</div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-500 mb-1">Toplam Gider</p>
-            <p className="text-xl font-bold text-red-600">{fmtCurrency(portfolioPL.totalCost)}</p>
-            <div className="mt-1 text-xs text-slate-400 space-y-0.5">
-              <div>Değişken: {fmtCurrency(portfolioPL.totalVariableCost)}</div>
-              <div>Sabit Pay: {fmtCurrency(portfolioPL.overheadShare)}</div>
-            </div>
-          </div>
-          <div className={`rounded-xl border p-4 ${isProfit ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-            <p className="text-xs text-slate-500 mb-1">Net Kâr / Zarar</p>
-            <p className={`text-xl font-bold ${isProfit ? 'text-green-800' : 'text-red-700'}`}>{fmtCurrency(portfolioPL.netProfit)}</p>
-            <p className={`text-sm mt-1 ${isProfit ? 'text-green-600' : 'text-status-danger'}`}>
-              %{(portfolioPL.netMarginPct ?? 0).toFixed(1)} kâr marjı
-            </p>
-          </div>
-        </div>
-      )}
+      <FinansKpiStrip
+        tone="light"
+        items={[
+          { label: 'Dosya Sayısı', value: portfolioPL ? String(portfolioPL.fileCount ?? '—') : '—', accent: portfolioPL?.fileCount ? 'text-slate-800' : 'text-slate-400' },
+          { label: 'Toplam Gelir', value: fmtCurrency(portfolioPL?.totalRevenue), accent: (portfolioPL?.totalRevenue ?? 0) > 0 ? 'text-emerald-400' : 'text-slate-400' },
+          { label: 'Toplam Gider', value: fmtCurrency(portfolioPL?.totalCost), accent: (portfolioPL?.totalCost ?? 0) > 0 ? 'text-amber-400' : 'text-slate-400' },
+          {
+            label: 'Net Kâr / Zarar',
+            value: portfolioPL ? fmtCurrency(portfolioPL.netProfit) : '—',
+            accent: !portfolioPL ? 'text-slate-400' : isProfit ? 'text-emerald-400' : 'text-red-400',
+          },
+        ]}
+      />
 
-      {/* Tahsilat özeti */}
       {portfolioPL && (
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <p className="text-sm font-semibold text-slate-700 mb-3">Tahsilat Kırılımı</p>
+        <FinansPanelCard title="Tahsilat Kırılımı">
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-slate-500 mb-1">Sigorta Şirketinden Tahsilat</p>
-              <p className="font-bold text-green-700">{fmtCurrency(portfolioPL.totalCollected - (portfolioPL.collectedFromInsured ?? 0))}</p>
+              <p className="font-semibold text-slate-800">{fmtCurrency(portfolioPL.totalCollected - (portfolioPL.collectedFromInsured ?? 0))}</p>
             </div>
             <div>
               <p className="text-slate-500 mb-1">Sigortalıdan Tahsil</p>
-              <p className="font-bold text-green-700">{fmtCurrency(portfolioPL.collectedFromInsured ?? 0)}</p>
+              <p className="font-semibold text-slate-800">{fmtCurrency(portfolioPL.collectedFromInsured ?? 0)}</p>
             </div>
             <div>
               <p className="text-slate-500 mb-1">Bekleyen Bakiye</p>
-              <p className="font-bold text-orange-600">{fmtCurrency(portfolioPL.outstandingBalance ?? 0)}</p>
+              <p className="font-semibold text-slate-800">{fmtCurrency(portfolioPL.outstandingBalance ?? 0)}</p>
             </div>
           </div>
-        </div>
+        </FinansPanelCard>
       )}
 
-      {/* Kârlılık sıralaması */}
-      <div className="bg-white rounded-xl border border-slate-200">
-        <div className="p-4 border-b border-slate-100">
-          <p className="text-sm font-semibold text-slate-700">Dosya Kârlılık Sıralaması</p>
-        </div>
+      <TableColumnsProvider value={tableColumns}>
+      <FinansPanelCard title="Dosya Kârlılık Sıralaması" noPadding>
         {ranking.length === 0 ? (
-          <p className="text-sm text-slate-400 p-6 text-center">Henüz kayıt bulunamadı.</p>
-        ) : (
-          <div className="divide-y divide-slate-50">
-            {ranking.map((item: any, i: number) => {
-              const isPos = item.netProfit >= 0;
-              return (
-                <div key={item.claimFileId} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-slate-400 w-5">{i + 1}</span>
-                    <div>
-                      <Link
-                        href={`/panel/hasar-dosyalari/${item.claimFileId}`}
-                        className="text-sm font-medium text-blue-700 hover:underline"
-                      >
-                        {item.claimFile?.fileNo ?? item.claimFileId}
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="flex gap-6 text-sm">
-                    <span className="text-slate-500">{fmtCurrency(item.totalRevenue)}</span>
-                    <span className="text-status-danger">{fmtCurrency(item.totalCost)}</span>
-                    <span className={`font-bold ${isPos ? 'text-green-700' : 'text-red-600'}`}>
-                      {fmtCurrency(item.netProfit)}
-                      <span className="text-xs font-normal ml-1">
-                        (%{(item.netMarginPct ?? item.grossMarginPct ?? 0).toFixed(1)})
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="p-4">
+            <FinansEmptyState title="Dosya kârlılık kaydı yok." description="Dönem içinde kapanan veya maliyeti oluşan dosya burada sıralanır." />
           </div>
+        ) : (
+          <>
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+              <PanelTableColumnPicker tableColumns={tableColumns} />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+                <thead className="bg-slate-50 text-xs text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 w-8 text-center">#</th>
+                    <PanelTableTh colId="fileNo" className="px-4 py-3 text-center">Dosya No</PanelTableTh>
+                    <PanelTableTh colId="revenue" className="px-4 py-3 text-center">Gelir</PanelTableTh>
+                    <PanelTableTh colId="cost" className="px-4 py-3 text-center">Gider</PanelTableTh>
+                    <PanelTableTh colId="profit" className="px-4 py-3 text-center">Net Kâr</PanelTableTh>
+                    <PanelTableTh colId="margin" className="px-4 py-3 text-center">Marj %</PanelTableTh>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {pagedRanking.slice.map((item: any, i: number) => {
+                    const isPos = item.netProfit >= 0;
+                    return (
+                      <tr key={item.claimFileId} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 text-xs text-slate-400">{(pagedRanking.safePage - 1) * pageSize + i + 1}</td>
+                        <PanelTableTd colId="fileNo" className="px-4 py-3">
+                          <Link
+                            href={`/panel/hasar-dosyalari/${item.claimFileId}`}
+                            className="text-sm font-medium text-blue-700 hover:underline"
+                          >
+                            {item.claimFile?.fileNo ?? item.claimFileId}
+                          </Link>
+                        </PanelTableTd>
+                        <PanelTableTd colId="revenue" className="px-4 py-3 text-right text-slate-600">{fmtCurrency(item.totalRevenue)}</PanelTableTd>
+                        <PanelTableTd colId="cost" className="px-4 py-3 text-right text-status-danger">{fmtCurrency(item.totalCost)}</PanelTableTd>
+                        <PanelTableTd colId="profit" className={`px-4 py-3 text-right font-bold ${isPos ? 'text-green-700' : 'text-red-600'}`}>
+                          {fmtCurrency(item.netProfit)}
+                        </PanelTableTd>
+                        <PanelTableTd colId="margin" className={`px-4 py-3 text-right ${isPos ? 'text-green-700' : 'text-red-600'}`}>
+                          %{(item.netMarginPct ?? item.grossMarginPct ?? 0).toFixed(1)}
+                        </PanelTableTd>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <FinansTablePager
+              page={pagedRanking.safePage}
+              pageSize={pageSize}
+              total={pagedRanking.total}
+              storageKey={FINANS_TABLE_PAGE_KEYS.dosyaPl}
+              onPageChange={setPage}
+              onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+            />
+          </>
         )}
-      </div>
+      </FinansPanelCard>
+      </TableColumnsProvider>
     </div>
   );
 }

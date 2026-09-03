@@ -185,6 +185,33 @@ const KPI_ICON: Record<string, typeof Wallet> = {
   Bekleyen: CalendarDays,
   'Fatura Sayısı': Receipt,
   'Beklenen Kâr': Banknote,
+  'Kesilen Toplam': Receipt,
+  'Bekleyen Talep': CalendarDays,
+  'Vadesi Geçmiş': TrendingDown,
+  'Toplam Dosya': Hash,
+  'Toplam Gider': TrendingDown,
+  'Net Kar': Banknote,
+  'Toplam Kar': TrendingUp,
+  'Toplam Zarar': TrendingDown,
+  'Net KZ': Scale,
+  'Toplam Portföy Değeri': Wallet,
+  'Dosya Sayısı': Hash,
+  'Toplam Bütçe': Receipt,
+  'Kalan Bütçe': Scale,
+  'Bütçe Sapması': Scale,
+  'Ek İş Masrafı': Banknote,
+  'Ort. Marj': Scale,
+  'Toplam Kâr': Banknote,
+  'Hesaplanan KDV': TrendingUp,
+  'İndirilecek KDV': TrendingDown,
+  'Harcanan (Bütçe)': Receipt,
+  'Matrah (KDV hariç)': Scale,
+  'Brüt Toplam': Wallet,
+  'Tahmini Net KDV': Scale,
+  'Net Kâr / Zarar': Banknote,
+  'Fatura mahsupu': Receipt,
+  'Operasyonel tahmin': Scale,
+  Fark: Scale,
 };
 
 function kpiAccentForTone(accent: string | undefined, tone: 'dark' | 'light') {
@@ -253,18 +280,20 @@ export function FinansKpiStrip({
         return (
           <div
             key={item.label}
-            className={`flex items-center gap-3 px-3.5 py-3.5 ${
-              i < items.length - 1 ? (dark ? 'border-r border-white/10' : 'border-r border-slate-100') : ''
-            }`}
+            className={`${
+              dark
+                ? 'flex items-center gap-3 px-3.5 py-3.5'
+                : 'flex flex-col items-center justify-center gap-2 px-3.5 py-3.5 text-center'
+            } ${i < items.length - 1 ? (dark ? 'border-r border-white/10' : 'border-r border-slate-100') : ''}`}
           >
             <span
-              className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:inline-flex ${
+              className={`${dark ? 'hidden sm:inline-flex' : 'inline-flex'} h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
                 dark ? 'bg-white/10 text-slate-200' : 'bg-slate-100 text-slate-600'
               }`}
             >
               <Icon className="h-4 w-4" strokeWidth={1.75} />
             </span>
-            <div className="min-w-0 text-left">
+            <div className={`min-w-0 ${dark ? 'text-left' : 'w-full'}`}>
               <p
                 className={`text-[10px] font-medium uppercase tracking-wide leading-none ${
                   dark ? 'text-slate-400' : 'text-slate-500'

@@ -1,7 +1,12 @@
-import { IsString, IsOptional, IsNumber, IsDateString, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsDateString, IsIn, MinLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateInvoiceDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  invoiceNo?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
@@ -56,4 +61,10 @@ export class UpdateInvoiceDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ description: 'Düzenleme nedeni — kayıtta zorunlu' })
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  editReason?: string;
 }

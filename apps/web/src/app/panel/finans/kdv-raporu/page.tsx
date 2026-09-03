@@ -6,7 +6,34 @@ import axios from 'axios';
 import Link from 'next/link';
 import { API, authHeader } from '@/utils/api';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import { FinansTablePager } from '@/components/finance/FinansTablePager';
+import {
+  usePanelTableColumns,
+  TableColumnsProvider,
+  PanelTableColumnPicker,
+  PanelTableTd,
+  PanelTableTh,
+  panelTableLayoutStyle,
+  type TableColumnDef,
+} from '@/components/ui/TableColumnPicker';
+import { FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
 import { formatTryAmount } from '@/utils/format-try-amount';
+
+const KDV_LINE_COLUMNS: TableColumnDef[] = [
+  { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 80 },
+  { id: 'documentNo', label: 'Belge No', defaultWidth: 110, minWidth: 88 },
+  { id: 'source', label: 'Kaynak', defaultWidth: 120, minWidth: 96 },
+  { id: 'fileNo', label: 'Dosya', defaultWidth: 100, minWidth: 80 },
+  { id: 'category', label: 'Kategori', defaultWidth: 110, minWidth: 88 },
+  { id: 'description', label: 'Açıklama', defaultWidth: 160, minWidth: 100 },
+  { id: 'netAmount', label: 'Matrah', defaultWidth: 108, minWidth: 88 },
+  { id: 'vatRate', label: 'KDV %', defaultWidth: 72, minWidth: 64 },
+  { id: 'vatAmount', label: 'KDV', defaultWidth: 96, minWidth: 80 },
+  { id: 'grossAmount', label: 'Toplam', defaultWidth: 108, minWidth: 88 },
+  { id: 'direction', label: 'Yön', defaultWidth: 100, minWidth: 80 },
+  { id: 'status', label: 'Durum', defaultWidth: 88, minWidth: 72 },
+];
 
 function fmtCurrency(n: number | null | undefined) {
   return formatTryAmount(n, { fractionDigits: 2 });
@@ -232,16 +259,18 @@ export default function KdvRaporuPage() {
       ) : report && s ? (
         <>
           {method === 'compare' && report.compare && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <CompareCard label="Fatura mahsupu" value={fmtCurrency(report.compare.invoiceNetPayable)} tone="blue" />
-              <CompareCard label="Operasyonel tahmin" value={fmtCurrency(report.compare.operationalNetPayable)} tone="amber" />
-              <CompareCard
-                label="Fark"
-                value={fmtCurrency(report.compare.difference)}
-                tone={Math.abs(report.compare.difference) < 1 ? 'emerald' : 'red'}
-                sub={report.compare.note}
-              />
-            </div>
+            <FinansKpiStrip
+              tone="light"
+              items={[
+                { label: 'Fatura mahsupu', value: fmtCurrency(report.compare.invoiceNetPayable), accent: 'text-slate-800' },
+                { label: 'Operasyonel tahmin', value: fmtCurrency(report.compare.operationalNetPayable), accent: 'text-amber-400' },
+                {
+                  label: 'Fark',
+                  value: fmtCurrency(report.compare.difference),
+                  accent: Math.abs(report.compare.difference) < 1 ? 'text-emerald-400' : 'text-red-400',
+                },
+              ]}
+            />
           )}
 
           {(method === 'invoice_settlement' || method === 'compare') && (
@@ -257,34 +286,32 @@ export default function KdvRaporuPage() {
 
           {/* KPI row for other methods */}
           {method !== 'invoice_settlement' && method !== 'compare' && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {method === 'invoice_sales' && (
-                <>
-                  <KpiCard label="Hesaplanan KDV" value={fmtCurrency(s.outputVat)} sub={`${s.outputCount} satış faturası`} tone="emerald" />
-                  <KpiCard label="Matrah (KDV hariç)" value={fmtCurrency(s.outputNet)} sub="Satış toplamı" tone="slate" />
-                  <KpiCard label="Brüt Toplam" value={fmtCurrency(s.outputGross)} sub="KDV dahil" tone="slate" />
-                </>
-              )}
-              {method === 'invoice_purchase' && (
-                <>
-                  <KpiCard label="İndirilecek KDV" value={fmtCurrency(s.inputVat)} sub={`${s.inputCount} alış faturası`} tone="amber" />
-                  <KpiCard label="Matrah (KDV hariç)" value={fmtCurrency(s.inputNet)} sub="Alış toplamı" tone="slate" />
-                  <KpiCard label="Brüt Toplam" value={fmtCurrency(s.inputGross)} sub="KDV dahil" tone="slate" />
-                </>
-              )}
-              {method === 'operational' && (
-                <>
-                  <KpiCard label="İndirilecek KDV" value={fmtCurrency(s.inputVat)} sub={`${s.inputCount} gider kalemi`} tone="amber" />
-                  <KpiCard label="Hesaplanan KDV" value={fmtCurrency(s.outputVat)} sub={`${s.outputCount} gelir kalemi`} tone="emerald" />
-                  <KpiCard
-                    label="Tahmini Net KDV"
-                    value={fmtCurrency(s.netVatPayable > 0 ? s.netVatPayable : -s.netVatCredit)}
-                    sub={s.netVatPayable > 0 ? 'Ödenecek' : 'Mahsup / iade potansiyeli'}
-                    tone="blue"
-                  />
-                </>
-              )}
-            </div>
+            <FinansKpiStrip
+              tone="light"
+              items={
+                method === 'invoice_sales'
+                  ? [
+                      { label: 'Hesaplanan KDV', value: fmtCurrency(s.outputVat), accent: s.outputVat > 0 ? 'text-emerald-400' : 'text-slate-400' },
+                      { label: 'Matrah (KDV hariç)', value: fmtCurrency(s.outputNet), accent: 'text-slate-800' },
+                      { label: 'Brüt Toplam', value: fmtCurrency(s.outputGross), accent: 'text-slate-800' },
+                    ]
+                  : method === 'invoice_purchase'
+                    ? [
+                        { label: 'İndirilecek KDV', value: fmtCurrency(s.inputVat), accent: s.inputVat > 0 ? 'text-amber-400' : 'text-slate-400' },
+                        { label: 'Matrah (KDV hariç)', value: fmtCurrency(s.inputNet), accent: 'text-slate-800' },
+                        { label: 'Brüt Toplam', value: fmtCurrency(s.inputGross), accent: 'text-slate-800' },
+                      ]
+                    : [
+                        { label: 'İndirilecek KDV', value: fmtCurrency(s.inputVat), accent: s.inputVat > 0 ? 'text-amber-400' : 'text-slate-400' },
+                        { label: 'Hesaplanan KDV', value: fmtCurrency(s.outputVat), accent: s.outputVat > 0 ? 'text-emerald-400' : 'text-slate-400' },
+                        {
+                          label: 'Tahmini Net KDV',
+                          value: fmtCurrency(s.netVatPayable > 0 ? s.netVatPayable : -s.netVatCredit),
+                          accent: s.netVatPayable > 0 ? 'text-blue-400' : 'text-slate-800',
+                        },
+                      ]
+              }
+            />
           )}
 
           {/* Detail tabs */}
@@ -321,7 +348,6 @@ export default function KdvRaporuPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <InvoiceSummaryPanel
                 title="Satış — Hesaplanan KDV"
-                tone="emerald"
                 summary={report.invoiceSection.summary}
                 side="output"
                 emptyHint={
@@ -334,7 +360,6 @@ export default function KdvRaporuPage() {
               />
               <InvoiceSummaryPanel
                 title="Alış — İndirilecek KDV"
-                tone="amber"
                 summary={report.invoiceSection.summary}
                 side="input"
                 emptyHint={
@@ -347,7 +372,9 @@ export default function KdvRaporuPage() {
               />
             </div>
           ) : (
-            <LinesTable lines={displayLines} summary={report.summary} showDirection={method !== 'invoice_sales' && method !== 'invoice_purchase'} />
+            <FinansPanelCard title="KDV Kalemleri" subtitle={`${displayLines.length} kayıt`} noPadding>
+              <LinesTable lines={displayLines} summary={report.summary} showDirection={method !== 'invoice_sales' && method !== 'invoice_purchase'} />
+            </FinansPanelCard>
           )}
 
           <p className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-200 dark:border-slate-700 pt-3">
@@ -447,10 +474,9 @@ function CompactVatCell({
 }
 
 function InvoiceSummaryPanel({
-  title, tone, summary, side, emptyHint,
+  title, summary, side, emptyHint,
 }: {
   title: string;
-  tone: 'emerald' | 'amber';
   summary: VatSummary;
   side: 'input' | 'output';
   emptyHint: React.ReactNode;
@@ -459,26 +485,20 @@ function InvoiceSummaryPanel({
   const net = side === 'output' ? summary.outputNet : summary.inputNet;
   const vat = side === 'output' ? summary.outputVat : summary.inputVat;
   const gross = side === 'output' ? summary.outputGross : summary.inputGross;
-  const border = tone === 'emerald' ? 'border-emerald-100' : 'border-amber-100';
 
   return (
-    <div className={`rounded-lg border ${border} bg-white dark:bg-slate-800 overflow-hidden`}>
-      <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-700">
-        <h3 className="text-xs font-semibold text-slate-800 dark:text-white">{title}</h3>
-      </div>
-      <div className="p-3">
-        {count === 0 ? (
-          <p className="text-xs text-slate-400 leading-relaxed">{emptyHint}</p>
-        ) : (
-          <dl className="space-y-3">
-            <Row label="Fatura adedi" value={String(count)} />
-            <Row label="Matrah (KDV hariç)" value={fmtCurrency(net)} />
-            <Row label="KDV tutarı" value={fmtCurrency(vat)} bold />
-            <Row label="Genel toplam" value={fmtCurrency(gross)} />
-          </dl>
-        )}
-      </div>
-    </div>
+    <FinansPanelCard title={title}>
+      {count === 0 ? (
+        <p className="text-xs text-slate-400 leading-relaxed">{emptyHint}</p>
+      ) : (
+        <dl className="space-y-3">
+          <Row label="Fatura adedi" value={String(count)} />
+          <Row label="Matrah (KDV hariç)" value={fmtCurrency(net)} />
+          <Row label="KDV tutarı" value={fmtCurrency(vat)} bold />
+          <Row label="Genel toplam" value={fmtCurrency(gross)} />
+        </dl>
+      )}
+    </FinansPanelCard>
   );
 }
 
@@ -491,38 +511,6 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
   );
 }
 
-function KpiCard({ label, value, sub, tone }: { label: string; value: string; sub: string; tone: string }) {
-  const tones: Record<string, string> = {
-    emerald: 'border-emerald-100 bg-emerald-50/70',
-    amber: 'border-amber-100 bg-amber-50/70',
-    blue: 'border-blue-100 bg-blue-50/70',
-    slate: 'border-slate-200 bg-white',
-  };
-  return (
-    <div className={`rounded-xl border p-4 shadow-sm ${tones[tone] ?? tones.slate}`}>
-      <p className="text-[10px] text-slate-500">{label}</p>
-      <p className="text-xl font-bold text-slate-900 mt-1 tabular-nums">{value}</p>
-      <p className="text-[11px] text-slate-400 mt-1">{sub}</p>
-    </div>
-  );
-}
-
-function CompareCard({ label, value, tone, sub }: { label: string; value: string; tone: string; sub?: string }) {
-  const tones: Record<string, string> = {
-    blue: 'border-blue-200 bg-blue-50/70',
-    amber: 'border-amber-200 bg-amber-50/70',
-    emerald: 'border-emerald-200 bg-emerald-50/70',
-    red: 'border-red-200 bg-red-50/70',
-  };
-  return (
-    <div className={`rounded-xl border p-4 ${tones[tone]}`}>
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="text-xl font-bold tabular-nums mt-1">{value}</p>
-      {sub && <p className="text-[11px] text-slate-500 mt-2">{sub}</p>}
-    </div>
-  );
-}
-
 function LinesTable({
   lines, summary, showDirection,
 }: {
@@ -530,44 +518,70 @@ function LinesTable({
   summary: VatSummary;
   showDirection?: boolean;
 }) {
+  const colDefs = useMemo(
+    () => (showDirection ? KDV_LINE_COLUMNS : KDV_LINE_COLUMNS.filter((c) => c.id !== 'direction')),
+    [showDirection],
+  );
+  const tableColumns = usePanelTableColumns(
+    showDirection ? 'table-cols:finans-kdv-dir' : 'table-cols:finans-kdv',
+    colDefs,
+  );
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.kdv, 20),
+  );
+  const paged = sliceFinansPage(lines, page, pageSize);
+
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+    <TableColumnsProvider value={tableColumns}>
+      <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+        <PanelTableColumnPicker tableColumns={tableColumns} />
+      </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[1000px]">
+        <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
           <thead className="bg-slate-50 dark:bg-slate-700/50">
             <tr>
-              {['Tarih', 'Belge No', 'Kaynak', 'Dosya', 'Kategori', 'Açıklama', 'Matrah', 'KDV %', 'KDV', 'Toplam', ...(showDirection ? ['Yön'] : []), 'Durum'].map((h) => (
-                <th key={h} className={`px-3 py-2 text-xs font-semibold text-slate-500 ${
-                  ['Matrah', 'KDV', 'Toplam'].includes(h) ? 'text-right' : 'text-left'
-                }`}>{h}</th>
-              ))}
+              <PanelTableTh colId="date" className="px-3 py-2 text-xs font-semibold text-slate-500">Tarih</PanelTableTh>
+              <PanelTableTh colId="documentNo" className="px-3 py-2 text-xs font-semibold text-slate-500">Belge No</PanelTableTh>
+              <PanelTableTh colId="source" className="px-3 py-2 text-xs font-semibold text-slate-500">Kaynak</PanelTableTh>
+              <PanelTableTh colId="fileNo" className="px-3 py-2 text-xs font-semibold text-slate-500">Dosya</PanelTableTh>
+              <PanelTableTh colId="category" className="px-3 py-2 text-xs font-semibold text-slate-500">Kategori</PanelTableTh>
+              <PanelTableTh colId="description" className="px-3 py-2 text-xs font-semibold text-slate-500">Açıklama</PanelTableTh>
+              <PanelTableTh colId="netAmount" className="px-3 py-2 text-xs font-semibold text-slate-500 text-right">Matrah</PanelTableTh>
+              <PanelTableTh colId="vatRate" className="px-3 py-2 text-xs font-semibold text-slate-500 text-right">KDV %</PanelTableTh>
+              <PanelTableTh colId="vatAmount" className="px-3 py-2 text-xs font-semibold text-slate-500 text-right">KDV</PanelTableTh>
+              <PanelTableTh colId="grossAmount" className="px-3 py-2 text-xs font-semibold text-slate-500 text-right">Toplam</PanelTableTh>
+              {showDirection ? (
+                <PanelTableTh colId="direction" className="px-3 py-2 text-xs font-semibold text-slate-500">Yön</PanelTableTh>
+              ) : null}
+              <PanelTableTh colId="status" className="px-3 py-2 text-xs font-semibold text-slate-500">Durum</PanelTableTh>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {lines.length === 0 ? (
-              <tr><td colSpan={12} className="px-4 py-12 text-center text-slate-400 text-sm">Bu dönemde kayıt yok</td></tr>
-            ) : lines.map((l) => (
+              <tr><td colSpan={12} className="px-4 py-8"><FinansEmptyState title="Bu dönemde KDV kaydı yok." description="Kesilen satış veya alış faturası burada mahsup edilir." /></td></tr>
+            ) : paged.slice.map((l) => (
               <tr key={l.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30">
-                <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.date)}</td>
-                <td className="px-3 py-2 text-xs font-mono">{l.documentNo ?? '—'}</td>
-                <td className="px-3 py-2 text-xs">{SOURCE_LABEL[l.source] ?? l.source}</td>
-                <td className="px-3 py-2 text-xs font-mono">{l.fileNo ?? '—'}</td>
-                <td className="px-3 py-2 text-xs">{l.category}</td>
-                <td className="px-3 py-2 text-xs max-w-[180px] truncate">{l.description ?? '—'}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtCurrency(l.netAmount)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">%{l.vatRate}</td>
-                <td className="px-3 py-2 text-right tabular-nums font-medium text-amber-700">{fmtCurrency(l.vatAmount)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtCurrency(l.grossAmount)}</td>
-                {showDirection && (
-                  <td className="px-3 py-2">
+                <PanelTableTd colId="date" className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.date)}</PanelTableTd>
+                <PanelTableTd colId="documentNo" className="px-3 py-2 text-xs font-mono">{l.documentNo ?? '—'}</PanelTableTd>
+                <PanelTableTd colId="source" className="px-3 py-2 text-xs">{SOURCE_LABEL[l.source] ?? l.source}</PanelTableTd>
+                <PanelTableTd colId="fileNo" className="px-3 py-2 text-xs font-mono">{l.fileNo ?? '—'}</PanelTableTd>
+                <PanelTableTd colId="category" className="px-3 py-2 text-xs">{l.category}</PanelTableTd>
+                <PanelTableTd colId="description" className="px-3 py-2 text-xs max-w-[180px] truncate">{l.description ?? '—'}</PanelTableTd>
+                <PanelTableTd colId="netAmount" className="px-3 py-2 text-right tabular-nums">{fmtCurrency(l.netAmount)}</PanelTableTd>
+                <PanelTableTd colId="vatRate" className="px-3 py-2 text-right tabular-nums">%{l.vatRate}</PanelTableTd>
+                <PanelTableTd colId="vatAmount" className="px-3 py-2 text-right tabular-nums font-medium text-amber-700">{fmtCurrency(l.vatAmount)}</PanelTableTd>
+                <PanelTableTd colId="grossAmount" className="px-3 py-2 text-right tabular-nums">{fmtCurrency(l.grossAmount)}</PanelTableTd>
+                {showDirection ? (
+                  <PanelTableTd colId="direction" className="px-3 py-2">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                       l.direction === 'input' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
                     }`}>
                       {l.direction === 'input' ? 'İndirilecek' : 'Hesaplanan'}
                     </span>
-                  </td>
-                )}
-                <td className="px-3 py-2 text-xs text-slate-400">{l.status ?? '—'}</td>
+                  </PanelTableTd>
+                ) : null}
+                <PanelTableTd colId="status" className="px-3 py-2 text-xs text-slate-400">{l.status ?? '—'}</PanelTableTd>
               </tr>
             ))}
           </tbody>
@@ -584,6 +598,16 @@ function LinesTable({
           )}
         </table>
       </div>
-    </div>
+      {lines.length > 0 ? (
+        <FinansTablePager
+          page={paged.safePage}
+          pageSize={pageSize}
+          total={paged.total}
+          storageKey={FINANS_TABLE_PAGE_KEYS.kdv}
+          onPageChange={setPage}
+          onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+        />
+      ) : null}
+    </TableColumnsProvider>
   );
 }

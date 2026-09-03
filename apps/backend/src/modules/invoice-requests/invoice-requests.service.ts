@@ -9,6 +9,8 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { FileDocumentsService } from '../file-documents/file-documents.service';
 import { SurveysService } from '@/modules/surveys/surveys.service';
+import { InvoicesService } from '@/modules/invoices/invoices.service';
+import { staffDisplayName } from '@/modules/invoices/invoice-edit-note';
 import { isAcilDigitalApprovalRequired } from '@sigorta/shared';
 import {
   CreateInvoiceRequestDto,
@@ -38,6 +40,7 @@ export class InvoiceRequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileDocumentsService: FileDocumentsService,
+    private readonly invoicesService: InvoicesService,
     @Inject(forwardRef(() => SurveysService))
     private readonly surveysService: SurveysService,
   ) {}
@@ -279,11 +282,21 @@ export class InvoiceRequestsService {
         ...(serviceType ? { serviceType } : {}),
       },
       include: {
-        claimFile: { select: { fileNo: true, id: true } },
-        emergencyCase: { select: { caseNo: true, id: true } },
+        claimFile: {
+          select: {
+            fileNo: true,
+            id: true,
+            insuredName: true,
+            collectionParty: true,
+            customer: { select: { shortName: true, companyName: true, fullName: true } },
+            insuranceCompany: { select: { name: true } },
+          },
+        },
+        emergencyCase: { select: { caseNo: true, id: true, customerName: true } },
         insuranceCompany: { select: { name: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         approvedBy: { select: { id: true, firstName: true, lastName: true } },
+        invoice: { select: { id: true, invoiceNo: true, status: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -334,23 +347,52 @@ export class InvoiceRequestsService {
     dto: UpdateInvoiceRequestStatusDto,
     userId: string,
   ) {
-    await this.findOne(id);
+    const current = await this.findOne(id);
 
-    const updateData: any = { status: dto.status };
+    const updateData: Record<string, unknown> = { status: dto.status };
 
     if (dto.status === 'approved') {
       updateData.approvedByUserId = userId;
       updateData.approvedAt = new Date();
     }
-    if (dto.status === 'invoiced') {
-      updateData.invoicedAt = new Date();
-      if (dto.invoiceId) updateData.invoiceId = dto.invoiceId;
-    }
     if (dto.notes) updateData.notes = dto.notes;
+    if (dto.status === 'invoiced') {
+      const salesInvoiceNo = (dto.salesInvoiceNo ?? '').trim();
+      if (!dto.invoiceId && !current.invoiceId && !salesInvoiceNo) {
+        throw new BadRequestException('Satış fatura numarası gerekli');
+      }
+      updateData.invoicedAt = new Date();
+      if (dto.invoiceId) {
+        updateData.invoiceId = dto.invoiceId;
+      } else if (!current.invoiceId && salesInvoiceNo && current.claimFileId) {
+        const linked = await this.invoicesService.linkOrCreateIssuedSalesInvoice({
+          claimFileId: current.claimFileId,
+          invoiceNo: salesInvoiceNo,
+          totalAmount: current.totalAmount,
+          insuranceCompanyId: current.insuranceCompanyId,
+          notes: `Fatura talebi ${current.requestNo}`,
+          userId,
+        });
+        updateData.invoiceId = linked.id;
+      } else if (!current.invoiceId && salesInvoiceNo) {
+        updateData.notes = withSalesInvoiceNote(
+          typeof updateData.notes === 'string' ? updateData.notes : current.notes,
+          salesInvoiceNo,
+        );
+      }
+    }
 
     const result = await this.prisma.invoiceRequest.update({
       where: { id },
       data: updateData,
+      include: {
+        claimFile: { select: { fileNo: true, id: true } },
+        emergencyCase: { select: { caseNo: true, id: true } },
+        insuranceCompany: { select: { name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+        approvedBy: { select: { id: true, firstName: true, lastName: true } },
+        invoice: { select: { id: true, invoiceNo: true, status: true } },
+      },
     });
 
     // Faturalanan dosya için otomatik anket kampanyası oluştur
@@ -360,9 +402,104 @@ export class InvoiceRequestsService {
         .catch(() => {
           // Anket oluşturma hatası fatura işlemini engellemesin
         });
+      try {
+        await this.notifyFileOwner(id);
+      } catch (err) {
+        this.logger.warn(
+          `Dosya sorumlusuna bildirim atlandı (${id}): ${err instanceof Error ? err.message : err}`,
+        );
+      }
     }
 
     return result;
+  }
+
+  async notifyFileOwner(id: string): Promise<{ notified: number; alreadyNotified: boolean; recipients: string[] }> {
+    const req = await this.findOne(id);
+    if (req.status !== 'invoiced') {
+      throw new BadRequestException('Önce Faturalandı seçin ve satış fatura numarasını girin.');
+    }
+
+    const ownerIds = await this.resolveFileOwnerUserIds(req);
+    if (ownerIds.length === 0) {
+      throw new BadRequestException('Bu dosyada sorumlu personel yok. Bildirim düşmez.');
+    }
+    const owners = await this.prisma.user.findMany({
+      where: { id: { in: ownerIds } },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    const recipients = owners.map((user) => staffDisplayName(user)).filter(Boolean);
+
+    const invoiceNo =
+      req.invoice?.invoiceNo
+      ?? String(req.notes ?? '').match(/Satış fatura no:\s*(.+)/i)?.[1]?.trim()
+      ?? '';
+    const fileNo = (req.fileNo ?? '').trim() || req.claimFile?.fileNo || req.emergencyCase?.caseNo || '';
+    const body = invoiceNo
+      ? `${fileNo} dosyasında ${invoiceNo} numaralı satış faturası kesildi.`
+      : `${fileNo} dosyasında satış faturası kesildi.`;
+
+    const relatedEntityType = req.claimFileId
+      ? 'claim_file'
+      : req.emergencyCaseId
+        ? 'emergency_case'
+        : 'invoice_request';
+    const relatedEntityId = req.claimFileId ?? req.emergencyCaseId ?? req.id;
+
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    let notified = 0;
+    for (const userId of ownerIds) {
+      const already = await this.prisma.notification.findFirst({
+        where: {
+          userId,
+          type: 'sales_invoice_issued',
+          relatedEntityId,
+          createdAt: { gte: dayStart },
+        },
+        select: { id: true },
+      });
+      if (already) continue;
+      await this.prisma.notification.create({
+        data: {
+          userId,
+          type: 'sales_invoice_issued',
+          title: 'Kesilen fatura',
+          body,
+          channel: 'in_app',
+          status: 'unread',
+          relatedEntityType,
+          relatedEntityId,
+        },
+      });
+      notified += 1;
+    }
+    return { notified, alreadyNotified: notified === 0, recipients };
+  }
+
+  private async resolveFileOwnerUserIds(req: {
+    claimFileId?: string | null;
+    emergencyCaseId?: string | null;
+    createdByUserId: string;
+  }): Promise<string[]> {
+    const ids = new Set<string>();
+    if (req.claimFileId) {
+      const file = await this.prisma.claimFile.findUnique({
+        where: { id: req.claimFileId },
+        select: { assignedOfficeUserId: true, currentResponsibleUserId: true },
+      });
+      if (file?.assignedOfficeUserId) ids.add(file.assignedOfficeUserId);
+      if (file?.currentResponsibleUserId) ids.add(file.currentResponsibleUserId);
+    }
+    if (req.emergencyCaseId) {
+      const emergencyCase = await this.prisma.emergencyCase.findUnique({
+        where: { id: req.emergencyCaseId },
+        select: { assignedUserId: true },
+      });
+      if (emergencyCase?.assignedUserId) ids.add(emergencyCase.assignedUserId);
+    }
+    if (ids.size === 0 && req.createdByUserId) ids.add(req.createdByUserId);
+    return [...ids];
   }
 
   /** Finansa gönderilmiş acil dosyalarda yazılmamış satış taleplerini tamamlar. */
@@ -486,4 +623,10 @@ export class InvoiceRequestsService {
       monthlyInvoiced,
     };
   }
+}
+
+function withSalesInvoiceNote(notes: string | null | undefined, invoiceNo: string): string {
+  const line = `Satış fatura no: ${invoiceNo}`;
+  const base = String(notes ?? '').replace(/\n?Satış fatura no:\s*.*/gi, '').trim();
+  return base ? `${base}\n${line}` : line;
 }

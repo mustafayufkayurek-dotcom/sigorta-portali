@@ -66,4 +66,10 @@ export class InvoiceRequestsController {
     const data = await this.service.updateStatus(id, dto, req.user.id);
     return { success: true, data };
   }
+
+  @Post(':id/notify-owner')
+  async notifyFileOwner(@Param('id') id: string) {
+    const data = await this.service.notifyFileOwner(id);
+    return { success: true, data };
+  }
 }

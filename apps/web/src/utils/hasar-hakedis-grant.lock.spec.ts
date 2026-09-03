@@ -22,8 +22,10 @@ describe('hasar hakediş maliyeti LOCK', () => {
     const panel = readFileSync(join(here, '../components/finance/HasarFileHakedisPanel.tsx'), 'utf8');
     assert.match(panel, /buDosyaOdemeKaynagi\(payments, claimId\)/);
     assert.match(panel, /buDosyaOdemeKaynagi\(payRows, claimId\)/);
+    assert.match(panel, /claimFileId: claimId, paymentType: 'outgoing'/);
     assert.doesNotMatch(panel, /tedarikciHareketleri/);
     assert.doesNotMatch(panel, /payerId: row\.id/);
+    assert.doesNotMatch(panel, /params: \{[^}]*payerId/);
   });
 
   it('dosya hareketinde tedarikçi ve iş grubu boş bırakılmaz', () => {

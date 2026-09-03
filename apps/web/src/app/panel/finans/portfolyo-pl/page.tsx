@@ -15,6 +15,9 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import { FinansTablePager } from '@/components/finance/FinansTablePager';
+import { FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
 import {
   cycleClientSort,
   sortRowsByClientSort,
@@ -59,6 +62,10 @@ export default function PortfolyoPLPage() {
   const [error, setError] = useState('');
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const tableColumns = usePanelTableColumns('table-cols:finans-portfolyo-pl', PORTFOLIO_PL_TABLE_COLUMNS);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.portfolyo, 20),
+  );
 
   const sortedRows = useMemo(
     () =>
@@ -84,6 +91,7 @@ export default function PortfolyoPLPage() {
       }),
     [rows, clientSort],
   );
+  const pagedRows = sliceFinansPage(sortedRows, page, pageSize);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -125,60 +133,12 @@ export default function PortfolyoPLPage() {
   }, [period, router]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(1); }, [period]);
 
   const totalPortfolyoDegeri = rows.reduce((s, r) => s + r.gelir, 0);
   const totalKar   = rows.filter((r) => r.netKZ > 0).reduce((s, r) => s + r.netKZ, 0);
   const totalZarar = rows.filter((r) => r.netKZ < 0).reduce((s, r) => s + Math.abs(r.netKZ), 0);
   const netKZ      = rows.reduce((s, r) => s + r.netKZ, 0);
-
-  const summaryCards = [
-    {
-      label: 'Toplam Portföy Değeri',
-      value: fmtCurrency(totalPortfolyoDegeri),
-      color: 'text-slate-800 dark:text-slate-100',
-      bg: 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700',
-      icon: (
-        <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Toplam Kar',
-      value: fmtCurrency(totalKar),
-      color: 'text-green-700 dark:text-green-400',
-      bg: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
-      icon: (
-        <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Toplam Zarar',
-      value: fmtCurrency(totalZarar),
-      color: 'text-red-700 dark:text-red-400',
-      bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
-      icon: (
-        <svg className="w-5 h-5 text-status-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17H5m0 0V9m0 8l8-8 4 4 6-6" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Net KZ',
-      value: fmtCurrency(netKZ),
-      color: netKZ >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400',
-      bg: netKZ >= 0
-        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-        : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
-      icon: (
-        <svg className="w-5 h-5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-    },
-  ];
 
   return (
     <div className="space-y-6 min-h-screen bg-white dark:bg-slate-900 p-6">
@@ -210,30 +170,28 @@ export default function PortfolyoPLPage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {summaryCards.map((card) => (
-          <div key={card.label} className={`rounded-xl border p-4 ${card.bg}`}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{card.label}</p>
-              {card.icon}
-            </div>
-            <p className={`text-xl font-bold ${card.color}`}>{rows.length === 0 ? '—' : card.value}</p>
-          </div>
-        ))}
-      </div>
+      <FinansKpiStrip
+        tone="light"
+        items={[
+          { label: 'Toplam Portföy Değeri', value: rows.length === 0 ? '—' : fmtCurrency(totalPortfolyoDegeri), accent: totalPortfolyoDegeri > 0 ? 'text-slate-800' : 'text-slate-400' },
+          { label: 'Toplam Kar', value: rows.length === 0 ? '—' : fmtCurrency(totalKar), accent: totalKar > 0 ? 'text-emerald-400' : 'text-slate-400' },
+          { label: 'Toplam Zarar', value: rows.length === 0 ? '—' : fmtCurrency(totalZarar), accent: totalZarar > 0 ? 'text-red-400' : 'text-slate-400' },
+          {
+            label: 'Net KZ',
+            value: rows.length === 0 ? '—' : fmtCurrency(netKZ),
+            accent: netKZ > 0 ? 'text-emerald-400' : netKZ < 0 ? 'text-red-400' : 'text-slate-400',
+          },
+        ]}
+      />
 
-      {/* Table */}
       <TableColumnsProvider value={tableColumns}>
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-700">
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Sigorta Şirketi Bazlı KZ — <span className="text-brand-600 dark:text-blue-400">{period}</span>
-          </p>
-          <div className="flex items-center gap-2">
-            {!loading && <span className="text-xs text-slate-400 dark:text-slate-500">{rows.length} şirket</span>}
-            <PanelTableColumnPicker tableColumns={tableColumns} />
-          </div>
+      <FinansPanelCard
+        title="Sigorta Şirketi Bazlı KZ"
+        subtitle={`${period}${!loading && rows.length > 0 ? ` · ${rows.length} şirket` : ''}`}
+        noPadding
+      >
+        <div className="flex justify-end px-4 py-2 border-b border-slate-100 dark:border-slate-700">
+          <PanelTableColumnPicker tableColumns={tableColumns} />
         </div>
 
         {loading ? (
@@ -243,13 +201,8 @@ export default function PortfolyoPLPage() {
         ) : error ? (
           <div className="px-5 py-4 text-sm text-red-600 dark:text-red-400">{error}</div>
         ) : rows.length === 0 ? (
-          <div className="py-16 flex flex-col items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-              <svg className="w-6 h-6 text-slate-300 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <p className="text-sm text-slate-400 dark:text-slate-500">Henüz veri bulunmamaktadır.</p>
+          <div className="p-4">
+            <FinansEmptyState title="Portföy kaydı yok." description="Seçilen dönemde sigorta şirketi bazlı kâr/zarar burada durur." />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -266,7 +219,7 @@ export default function PortfolyoPLPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/60">
-                {sortedRows.map((row) => (
+                {pagedRows.slice.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
                     <PanelTableTd colId="sigortaSirketi" className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
@@ -325,9 +278,17 @@ export default function PortfolyoPLPage() {
                 </tr>
               </tfoot>
             </table>
+            <FinansTablePager
+              page={pagedRows.safePage}
+              pageSize={pageSize}
+              total={pagedRows.total}
+              storageKey={FINANS_TABLE_PAGE_KEYS.portfolyo}
+              onPageChange={setPage}
+              onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+            />
           </div>
         )}
-      </div>
+      </FinansPanelCard>
       </TableColumnsProvider>
     </div>
   );

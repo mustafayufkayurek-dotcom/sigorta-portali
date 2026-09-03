@@ -8,11 +8,21 @@ import {
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTd,
+  PanelTableTh,
   SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import {
+  FinansActionButton,
+  FinansEmptyState,
+  FinansFieldLabel,
+  FinansFormPanel,
+  FinansPanelCard,
+  finansInputClass,
+} from '@/components/finance/FinansPanelUI';
+import { EditButton, SettingsTableActions } from '@/components/settings/SettingsUI';
 import {
   cycleClientSort,
   sortRowsByClientSort,
@@ -20,6 +30,8 @@ import {
 } from '@/utils/panel-table-sort';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { FinansTablePager } from '@/components/finance/FinansTablePager';
+import { FINANS_ACTIONS_COLUMN, FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
 
 const BANK_ACCOUNT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'bankName', label: 'Banka', defaultWidth: 140, minWidth: 100 },
@@ -27,6 +39,7 @@ const BANK_ACCOUNT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'iban', label: 'IBAN', defaultWidth: 200, minWidth: 140 },
   { id: 'currency', label: 'Para Birimi', defaultWidth: 96, minWidth: 72 },
   { id: 'status', label: 'Durum', defaultWidth: 88, minWidth: 72 },
+  FINANS_ACTIONS_COLUMN,
 ];
 
 
@@ -41,6 +54,10 @@ export default function BankaHesaplariPage() {
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.banka, 20),
+  );
   const tableColumns = usePanelTableColumns('table-cols:finans-banka-hesaplari', BANK_ACCOUNT_TABLE_COLUMNS);
 
   const sortedAccounts = useMemo(
@@ -63,6 +80,7 @@ export default function BankaHesaplariPage() {
       }),
     [accounts, clientSort],
   );
+  const pagedAccounts = sliceFinansPage(sortedAccounts, page, pageSize);
 
   const load = () => {
     setLoading(true);
@@ -102,29 +120,51 @@ export default function BankaHesaplariPage() {
     <div className="space-y-5 min-h-screen bg-white dark:bg-slate-900 p-6">
       <FinansSubpageBreadcrumb current="Banka Hesapları" />
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-900">Banka Hesapları</h2>
-        <button type="button" onClick={() => { setShowForm(true); setEditId(null); setForm({ bankName: '', branchName: '', iban: '', currency: 'TRY', isActive: true }); }} className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700">+ Yeni Hesap</button>
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Banka Hesapları</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Tahsilat ve ödeme için kayıtlı hesaplar.</p>
+        </div>
+        <FinansActionButton
+          label={showForm ? 'Formu Kapat' : 'Yeni Hesap'}
+          onClick={() => {
+            if (showForm) {
+              setShowForm(false);
+              setEditId(null);
+              return;
+            }
+            setShowForm(true);
+            setEditId(null);
+            setForm({ bankName: '', branchName: '', iban: '', currency: 'TRY', isActive: true });
+          }}
+          variant={showForm ? 'neutral' : 'primary'}
+          active={showForm}
+          showPlus={!showForm}
+        />
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-          <h4 className="font-medium text-slate-800 text-sm">{editId ? 'Hesabı Düzenle' : 'Yeni Banka Hesabı'}</h4>
+        <FinansFormPanel
+          title={editId ? 'Hesabı Düzenle' : 'Yeni Banka Hesabı'}
+          onCancel={() => { setShowForm(false); setEditId(null); }}
+          onSubmit={() => { void handleSave(); }}
+          saving={saving}
+        >
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Banka Adı *</label>
-              <input type="text" value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Garanti BBVA" />
+              <FinansFieldLabel required>Banka Adı</FinansFieldLabel>
+              <input type="text" value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} className={finansInputClass} placeholder="Garanti BBVA" />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Şube Adı</label>
-              <input type="text" value={form.branchName} onChange={(e) => setForm({ ...form, branchName: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Merkez Şube" />
+              <FinansFieldLabel>Şube Adı</FinansFieldLabel>
+              <input type="text" value={form.branchName} onChange={(e) => setForm({ ...form, branchName: e.target.value })} className={finansInputClass} placeholder="Merkez Şube" />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-slate-500 mb-1 block">IBAN *</label>
-              <input type="text" value={form.iban} onChange={(e) => setForm({ ...form, iban: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono" placeholder="TR00 0000 0000 0000 0000 0000 00" />
+              <FinansFieldLabel required>IBAN</FinansFieldLabel>
+              <input type="text" value={form.iban} onChange={(e) => setForm({ ...form, iban: e.target.value })} className={`${finansInputClass} font-mono`} placeholder="TR00 0000 0000 0000 0000 0000 00" />
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Para Birimi</label>
-              <select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+              <FinansFieldLabel>Para Birimi</FinansFieldLabel>
+              <select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} className={finansInputClass}>
                 <option value="TRY">TRY</option>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
@@ -135,11 +175,7 @@ export default function BankaHesaplariPage() {
               <label htmlFor="isActive" className="text-sm text-slate-700">Aktif</label>
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">İptal</button>
-            <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50">{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
-          </div>
-        </div>
+        </FinansFormPanel>
       )}
 
       {loading ? (
@@ -147,42 +183,71 @@ export default function BankaHesaplariPage() {
       ) : error ? (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">{error}</div>
       ) : accounts.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed border-slate-200 py-16 text-center text-sm text-slate-400">Henüz kayıt bulunamadı.</div>
+        <FinansPanelCard title="Banka Hesapları">
+          <FinansEmptyState title="Kayıtlı banka hesabı yok." description="Tahsilat ve ödeme için hesap ekleyin." />
+        </FinansPanelCard>
       ) : (
         <TableColumnsProvider value={tableColumns}>
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <FinansPanelCard title="Banka Hesapları" subtitle={`${accounts.length} kayıt`} noPadding>
           <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
             <PanelTableColumnPicker tableColumns={tableColumns} />
           </div>
           <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
-                <SortablePanelTableTh colId="bankName" sortKey="bankName" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">Banka</SortablePanelTableTh>
-                <SortablePanelTableTh colId="branchName" sortKey="branchName" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">Şube</SortablePanelTableTh>
-                <SortablePanelTableTh colId="iban" sortKey="iban" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">IBAN</SortablePanelTableTh>
-                <SortablePanelTableTh colId="currency" sortKey="currency" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">Para Birimi</SortablePanelTableTh>
-                <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">Durum</SortablePanelTableTh>
-                <th className="text-center px-4 py-3">İşlem</th>
+                {tableColumns.prefs.orderedVisibleColumns.map((col) => (
+                  col.id === 'actions' ? (
+                    <PanelTableTh key={col.id} colId={col.id} className="text-center px-2 py-3" resizable={false}>{col.label}</PanelTableTh>
+                  ) : (
+                    <SortablePanelTableTh key={col.id} colId={col.id} sortKey={col.id} activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3">{col.label}</SortablePanelTableTh>
+                  )
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {sortedAccounts.map((acc) => (
+              {pagedAccounts.slice.map((acc) => (
                 <tr key={acc.id} className="hover:bg-slate-50">
-                  <PanelTableTd colId="bankName" className="px-4 py-3 font-medium text-slate-800">{acc.bankName}</PanelTableTd>
-                  <PanelTableTd colId="branchName" className="px-4 py-3 text-slate-600">{acc.branchName ?? '—'}</PanelTableTd>
-                  <PanelTableTd colId="iban" className="px-4 py-3 font-mono text-xs text-slate-700">{acc.iban}</PanelTableTd>
-                  <PanelTableTd colId="currency" className="px-4 py-3 text-slate-600">{acc.currency}</PanelTableTd>
-                  <PanelTableTd colId="status" className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acc.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{acc.isActive ? 'Aktif' : 'Pasif'}</span>
-                  </PanelTableTd>
-                  <td className="px-4 py-3">
-                    <button type="button" onClick={() => handleEdit(acc)} className="text-xs text-brand-600 hover:underline">Düzenle</button>
-                  </td>
+                  {tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                    switch (col.id) {
+                      case 'bankName':
+                        return <PanelTableTd key={col.id} colId="bankName" className="px-4 py-3 font-medium text-slate-800">{acc.bankName}</PanelTableTd>;
+                      case 'branchName':
+                        return <PanelTableTd key={col.id} colId="branchName" className="px-4 py-3 text-slate-600">{acc.branchName ?? '—'}</PanelTableTd>;
+                      case 'iban':
+                        return <PanelTableTd key={col.id} colId="iban" className="px-4 py-3 font-mono text-xs text-slate-700">{acc.iban}</PanelTableTd>;
+                      case 'currency':
+                        return <PanelTableTd key={col.id} colId="currency" className="px-4 py-3 text-slate-600">{acc.currency}</PanelTableTd>;
+                      case 'status':
+                        return (
+                          <PanelTableTd key={col.id} colId="status" className="px-4 py-3">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acc.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{acc.isActive ? 'Aktif' : 'Pasif'}</span>
+                          </PanelTableTd>
+                        );
+                      case 'actions':
+                        return (
+                          <PanelTableTd key={col.id} colId="actions" className="px-2 py-3">
+                            <SettingsTableActions>
+                              <EditButton onClick={() => handleEdit(acc)} />
+                            </SettingsTableActions>
+                          </PanelTableTd>
+                        );
+                      default:
+                        return null;
+                    }
+                  })}
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+          <FinansTablePager
+            page={pagedAccounts.safePage}
+            pageSize={pageSize}
+            total={sortedAccounts.length}
+            storageKey={FINANS_TABLE_PAGE_KEYS.banka}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </FinansPanelCard>
         </TableColumnsProvider>
       )}
     </div>

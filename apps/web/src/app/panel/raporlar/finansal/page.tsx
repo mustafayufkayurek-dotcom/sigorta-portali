@@ -19,6 +19,9 @@ import {
   sortRowsByClientSort,
   type ClientSortState,
 } from '@/utils/panel-table-sort';
+import { FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import { FinansTablePager } from '@/components/finance/FinansTablePager';
+import { FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
 
 const OVERDUE_INVOICES_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'invoiceNo', label: 'Fatura No', defaultWidth: 120, minWidth: 96 },
@@ -103,6 +106,22 @@ export default function FinansalRaporPage() {
   const [clientSortTrend, setClientSortTrend] = useState<ClientSortState>(null);
   const [clientSortCollections, setClientSortCollections] = useState<ClientSortState>(null);
   const [clientSortProfit, setClientSortProfit] = useState<ClientSortState>(null);
+  const [overduePage, setOverduePage] = useState(1);
+  const [overduePageSize, setOverduePageSize] = useState<FinansTablePageSize>(() =>
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalOverdue, 20),
+  );
+  const [trendPage, setTrendPage] = useState(1);
+  const [trendPageSize, setTrendPageSize] = useState<FinansTablePageSize>(() =>
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalTrend, 20),
+  );
+  const [collectionsPage, setCollectionsPage] = useState(1);
+  const [collectionsPageSize, setCollectionsPageSize] = useState<FinansTablePageSize>(() =>
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalCollections, 20),
+  );
+  const [profitPage, setProfitPage] = useState(1);
+  const [profitPageSize, setProfitPageSize] = useState<FinansTablePageSize>(() =>
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalProfit, 20),
+  );
 
   const sortedOverdueInvoices = useMemo(
     () =>
@@ -117,6 +136,7 @@ export default function FinansalRaporPage() {
       }),
     [data?.overdueInvoices, clientSortOverdue],
   );
+  const pagedOverdue = sliceFinansPage(sortedOverdueInvoices, overduePage, overduePageSize);
 
   const sortedMonthlyTrend = useMemo(
     () =>
@@ -134,6 +154,7 @@ export default function FinansalRaporPage() {
       }),
     [monthlyTrend, clientSortTrend],
   );
+  const pagedTrend = sliceFinansPage(sortedMonthlyTrend, trendPage, trendPageSize);
 
   const sortedInsuranceCollections = useMemo(
     () =>
@@ -149,6 +170,7 @@ export default function FinansalRaporPage() {
       }),
     [data?.insuranceCollections, clientSortCollections],
   );
+  const pagedCollections = sliceFinansPage(sortedInsuranceCollections, collectionsPage, collectionsPageSize);
 
   const sortedProfitableFiles = useMemo(
     () =>
@@ -164,6 +186,7 @@ export default function FinansalRaporPage() {
       }),
     [data?.topProfitableFiles, clientSortProfit],
   );
+  const pagedProfit = sliceFinansPage(sortedProfitableFiles, profitPage, profitPageSize);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -259,20 +282,19 @@ export default function FinansalRaporPage() {
         </div>
       </div>
 
-      {/* Summary KPI cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[
-          { label: 'Toplam Gelir', value: s ? fmtCurrency(s.totalRevenue) : '—', cls: 'text-slate-800 dark:text-slate-100', bg: 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700' },
-          { label: 'Toplam Gider', value: s ? fmtCurrency(s.totalCost) : '—', cls: 'text-slate-800 dark:text-slate-100', bg: 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700' },
-          { label: 'Toplam Kâr', value: s ? fmtCurrency(s.totalProfit) : '—', cls: (s?.totalProfit ?? 0) >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400', bg: (s?.totalProfit ?? 0) >= 0 ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
-          { label: 'Ort. Marj', value: s ? `%${(s.avgMarginPct ?? 0).toFixed(1)}` : '—', cls: 'text-indigo-700 dark:text-indigo-400', bg: 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700' },
-        ].map((card) => (
-          <div key={card.label} className={`rounded-xl border p-4 shadow-sm ${card.bg}`}>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{card.label}</p>
-            <p className={`mt-1 text-lg font-bold ${card.cls}`}>{loading ? '…' : card.value}</p>
-          </div>
-        ))}
-      </div>
+      <FinansKpiStrip
+        tone="light"
+        items={[
+          { label: 'Toplam Gelir', value: loading ? '…' : s ? fmtCurrency(s.totalRevenue) : '—', accent: (s?.totalRevenue ?? 0) > 0 ? 'text-emerald-400' : 'text-slate-400' },
+          { label: 'Toplam Gider', value: loading ? '…' : s ? fmtCurrency(s.totalCost) : '—', accent: (s?.totalCost ?? 0) > 0 ? 'text-amber-400' : 'text-slate-400' },
+          {
+            label: 'Toplam Kâr',
+            value: loading ? '…' : s ? fmtCurrency(s.totalProfit) : '—',
+            accent: (s?.totalProfit ?? 0) > 0 ? 'text-emerald-400' : (s?.totalProfit ?? 0) < 0 ? 'text-red-400' : 'text-slate-400',
+          },
+          { label: 'Ort. Marj', value: loading ? '…' : s ? `%${(s.avgMarginPct ?? 0).toFixed(1)}` : '—', accent: 'text-slate-800' },
+        ]}
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
@@ -294,8 +316,7 @@ export default function FinansalRaporPage() {
 
       {tab === 'ozet' && (
         <div className="space-y-5">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Bütçe Sapma Özeti</h3>
+          <FinansPanelCard title="Bütçe Sapma Özeti">
             <div className="grid grid-cols-3 gap-4">
               {[
                 { label: 'Tahmini', value: data?.budgetDeviation?.totalEstimated, cls: 'text-slate-700 dark:text-slate-300' },
@@ -308,16 +329,18 @@ export default function FinansalRaporPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </FinansPanelCard>
           <TableColumnsProvider value={overdueTableColumns}>
-          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Vadesi Geçmiş Faturalar</h3>
+          <FinansPanelCard title="Vadesi Geçmiş Faturalar" noPadding>
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
               <PanelTableColumnPicker tableColumns={overdueTableColumns} />
             </div>
             {(data?.overdueInvoices?.length ?? 0) === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">Vadesi geçmiş fatura yok</p>
+              <div className="p-4">
+                <FinansEmptyState title="Vadesi geçmiş fatura yok." description="Vadesi geçen kesilen fatura burada durur." />
+              </div>
             ) : (
+              <>
               <div className="overflow-x-auto">
               <table className="w-full text-sm" style={panelTableLayoutStyle(overdueTableColumns)}>
                 <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
@@ -329,7 +352,7 @@ export default function FinansalRaporPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {sortedOverdueInvoices.map((inv: any) => (
+                  {pagedOverdue.slice.map((inv: any) => (
                     <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                       <PanelTableTd colId="invoiceNo" className="px-4 py-2 text-xs font-mono text-slate-700 dark:text-slate-300">{inv.invoiceNo}</PanelTableTd>
                       <PanelTableTd colId="fileNo" className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{inv.fileNo}</PanelTableTd>
@@ -340,15 +363,23 @@ export default function FinansalRaporPage() {
                 </tbody>
               </table>
               </div>
+              <FinansTablePager
+                page={pagedOverdue.safePage}
+                pageSize={overduePageSize}
+                total={pagedOverdue.total}
+                storageKey={FINANS_TABLE_PAGE_KEYS.finansalOverdue}
+                onPageChange={setOverduePage}
+                onPageSizeChange={(n) => { setOverduePageSize(n); setOverduePage(1); }}
+              />
+              </>
             )}
-          </div>
+          </FinansPanelCard>
           </TableColumnsProvider>
         </div>
       )}
 
       {tab === 'trend' && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
-          <h3 className="mb-5 text-sm font-semibold text-slate-700 dark:text-slate-200">12 Aylık Gelir – Gider – Kâr Trendi</h3>
+        <FinansPanelCard title="12 Aylık Gelir – Gider – Kâr Trendi">
           {/* Monthly table */}
           <TableColumnsProvider value={trendTableColumns}>
           <div className="overflow-x-auto mb-6">
@@ -366,7 +397,7 @@ export default function FinansalRaporPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {sortedMonthlyTrend.map((d) => {
+                {pagedTrend.slice.map((d) => {
                   const profitVal = d.profit ?? d.revenue - d.cost;
                   const marj = d.revenue > 0 ? ((profitVal / d.revenue) * 100).toFixed(1) : '0.0';
                   return (
@@ -383,6 +414,14 @@ export default function FinansalRaporPage() {
                 })}
               </tbody>
             </table>
+            <FinansTablePager
+              page={pagedTrend.safePage}
+              pageSize={trendPageSize}
+              total={pagedTrend.total}
+              storageKey={FINANS_TABLE_PAGE_KEYS.finansalTrend}
+              onPageChange={setTrendPage}
+              onPageSizeChange={(n) => { setTrendPageSize(n); setTrendPage(1); }}
+            />
           </div>
           </TableColumnsProvider>
           {/* CSS bar trend chart */}
@@ -409,12 +448,11 @@ export default function FinansalRaporPage() {
                 </div>
               ))}
             </div>
-        </div>
+        </FinansPanelCard>
       )}
 
       {tab === 'kategoriler' && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
-          <h3 className="mb-5 text-sm font-semibold text-slate-700 dark:text-slate-200">Kategori Bazlı Harcamalar</h3>
+        <FinansPanelCard title="Kategori Bazlı Harcamalar">
           <div className="space-y-3">
             {categorySpending.map((cat) => {
               const pct = Math.round((cat.amount / maxCatAmount) * 100);
@@ -435,14 +473,16 @@ export default function FinansalRaporPage() {
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Toplam</span>
             <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{fmtCurrency(totalCatAmount)}</span>
           </div>
-        </div>
+        </FinansPanelCard>
       )}
 
       {tab === 'tahsilat' && (
         <TableColumnsProvider value={collectionsTableColumns}>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+        <FinansPanelCard title="Sigorta Tahsilat" noPadding>
           {(data?.insuranceCollections?.length ?? 0) === 0 ? (
-            <p className="py-12 text-center text-sm text-slate-400 dark:text-slate-500">Henüz veri bulunmamaktadır.</p>
+            <div className="p-4">
+              <FinansEmptyState title="Sigorta tahsilat kaydı yok." description="Şirket bazlı tahsilat burada durur." />
+            </div>
           ) : (
             <>
             <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
@@ -460,7 +500,7 @@ export default function FinansalRaporPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {sortedInsuranceCollections.map((ins: any) => (
+                {pagedCollections.slice.map((ins: any) => (
                   <tr key={ins.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                     <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{ins.name}</PanelTableTd>
                     <PanelTableTd colId="count" className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">{ins.count}</PanelTableTd>
@@ -476,17 +516,27 @@ export default function FinansalRaporPage() {
               </tbody>
             </table>
             </div>
+            <FinansTablePager
+              page={pagedCollections.safePage}
+              pageSize={collectionsPageSize}
+              total={pagedCollections.total}
+              storageKey={FINANS_TABLE_PAGE_KEYS.finansalCollections}
+              onPageChange={setCollectionsPage}
+              onPageSizeChange={(n) => { setCollectionsPageSize(n); setCollectionsPage(1); }}
+            />
             </>
           )}
-        </div>
+        </FinansPanelCard>
         </TableColumnsProvider>
       )}
 
       {tab === 'karlilik' && (
         <TableColumnsProvider value={profitabilityTableColumns}>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+        <FinansPanelCard title="Kârlılık" noPadding>
           {(data?.topProfitableFiles?.length ?? 0) === 0 ? (
-            <p className="py-12 text-center text-sm text-slate-400 dark:text-slate-500">Kârlılık verisi yükleniyor...</p>
+            <div className="p-4">
+              <FinansEmptyState title="Kârlılık kaydı yok." description="Dosya bazlı kâr burada durur." />
+            </div>
           ) : (
             <>
             <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
@@ -504,7 +554,7 @@ export default function FinansalRaporPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {sortedProfitableFiles.map((f: any) => (
+                {pagedProfit.slice.map((f: any) => (
                   <tr key={f.claimFileId} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
                     <PanelTableTd colId="fileNo" className="px-4 py-2 font-mono text-xs text-brand-600 dark:text-blue-400">
                       <a href={`/panel/hasar-dosyalari/${f.claimFileId}`} className="hover:underline">{f.fileNo}</a>
@@ -518,9 +568,17 @@ export default function FinansalRaporPage() {
               </tbody>
             </table>
             </div>
+            <FinansTablePager
+              page={pagedProfit.safePage}
+              pageSize={profitPageSize}
+              total={pagedProfit.total}
+              storageKey={FINANS_TABLE_PAGE_KEYS.finansalProfit}
+              onPageChange={setProfitPage}
+              onPageSizeChange={(n) => { setProfitPageSize(n); setProfitPage(1); }}
+            />
             </>
           )}
-        </div>
+        </FinansPanelCard>
         </TableColumnsProvider>
       )}
     </div>

@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import AgreementConsentModal from '@/components/AgreementConsentModal';
@@ -11,6 +11,7 @@ import { SESSION_KEEPALIVE_MS, API } from '@/utils/api';
 import { clearAuth, ensureValidSession, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred, isRememberMeInactive, isRememberMeExpired, logoutAndRedirect } from '@/utils/auth-session';
 import { installAxiosAuthInterceptors } from '@/utils/setup-axios-auth';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
+import { FinansOncelikliGorevModal } from '@/components/finance/FinansOncelikliGorevModal';
 import { WorkHoursPanelGate, type WorkHoursPanelGateHandle } from '@/components/hr/WorkHoursPanelGate';
 import { NavigationGuardProvider } from '@/contexts/NavigationGuardContext';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
@@ -2090,6 +2091,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           isOfficeStaff={isOfficeStaffRole(roleCode)}
         />
         <SessionTimeoutBar />
+        <Suspense fallback={null}>
+          <FinansOncelikliGorevModal enabled={isFinance && !loading && Boolean(user) && !mustChangePassword} />
+        </Suspense>
         <WorkHoursPanelGate
           ref={workHoursGateRef}
           enabled={

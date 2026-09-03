@@ -92,4 +92,62 @@ describe('invoice-request-list lock', () => {
     assert.match(service, /'FINANCE'/);
     assert.match(service, /relatedEntityType: 'invoice_request'/);
   });
+
+  it('Faturalandı satış fatura numarası ister; İşlemler menüsü dosya sorumlusuna bildirir', () => {
+    const dto = read('../../../backend/src/modules/invoice-requests/dto/invoice-requests.dto.ts');
+    assert.match(dto, /salesInvoiceNo/);
+
+    const service = read('../../../backend/src/modules/invoice-requests/invoice-requests.service.ts');
+    assert.match(service, /Satış fatura numarası gerekli/);
+    assert.match(service, /linkOrCreateIssuedSalesInvoice/);
+    assert.match(service, /notifyFileOwner/);
+    assert.match(service, /sales_invoice_issued/);
+    assert.match(service, /assignedOfficeUserId/);
+
+    const controller = read('../../../backend/src/modules/invoice-requests/invoice-requests.controller.ts');
+    assert.match(controller, /:id\/notify-owner/);
+
+    const api = read('./invoiceRequestApi.ts');
+    assert.match(api, /salesInvoiceNo/);
+    assert.match(api, /notifyInvoiceRequestOwner/);
+    assert.match(api, /invoice-requests\/\$\{id\}\/notify-owner/);
+
+    const section = read('../components/finance/FaturaTalepleriSection.tsx');
+    assert.match(section, /InvoiceRequestRowActions/);
+    assert.match(section, /fatura-talep-satis-no-modal/);
+    assert.match(section, /Satış fatura numarası/);
+    assert.match(section, /FINANS_ACTIONS_COLUMN/);
+    assert.match(section, /orderedVisibleColumns/);
+    assert.match(section, /notifyInvoiceRequestOwner/);
+    assert.doesNotMatch(section, /<select[\s\S]*DURUM_LABEL/);
+
+    const actions = read('../components/finance/FinanceRowActions.tsx');
+    assert.match(actions, /title="Yazdır"/);
+    assert.match(actions, /title="Dosya sorumlusuna bildir"/);
+    assert.match(actions, /title="Düzenle"/);
+    assert.match(actions, /title="İptal et"/);
+    assert.match(actions, /<Printer /);
+    assert.match(actions, /<Send /);
+    assert.match(actions, /<Pencil /);
+    assert.match(actions, /<XCircle /);
+    assert.doesNotMatch(actions, /Kesilen faturalar dosya sorumlusuna bildirilsin/);
+    assert.match(actions, /InvoiceRequestRowActions/);
+    assert.match(actions, /fatura-talep-islemler/);
+
+    const faturalar = read('../app/panel/finans/faturalar/page.tsx');
+    assert.match(faturalar, /status !== 'cancelled'/);
+    assert.match(faturalar, /FINANS_ACTIONS_COLUMN/);
+    assert.match(faturalar, /FinansTablePager/);
+    assert.match(faturalar, /faturaTalepleriTabPulseClass/);
+    assert.match(faturalar, /notify-owner/);
+    assert.match(faturalar, /label: 'Müşteri'/);
+    assert.doesNotMatch(faturalar, /label: 'Eksper'/);
+    assert.match(faturalar, /orderedVisibleColumns/);
+    assert.match(faturalar, /editReason/);
+    assert.match(api, /fileOwnerNotifyToast/);
+    assert.match(api, /recipients/);
+    assert.match(section, /printFinanceSlip/);
+    assert.match(section, /label: 'Müşteri'/);
+    assert.match(actions, /createObjectURL/);
+  });
 });

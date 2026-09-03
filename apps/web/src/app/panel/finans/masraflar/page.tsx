@@ -8,6 +8,9 @@ import { TrAmountInput } from '@/components/ui/TrAmountInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ExpenseFilePickerModal, type ExpensePickerHasarFile } from '@/components/finance/ExpenseFilePickerModal';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { FinansActionButton, FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import { FinansTablePager } from '@/components/finance/FinansTablePager';
+import { FINANS_ACTIONS_COLUMN, FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ReceiptCameraModal, prefersNativeCameraCapture } from '@/components/ReceiptCameraModal';
 import {
@@ -15,6 +18,7 @@ import {
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTd,
+  PanelTableTh,
   PanelTableSummaryFoot,
   SortablePanelTableTh,
   panelTableLayoutStyle,
@@ -109,6 +113,7 @@ const EXPENSE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'description', label: 'Açıklama', defaultWidth: 200, minWidth: 120 },
   { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
   { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 88 },
+  FINANS_ACTIONS_COLUMN,
 ];
 
 interface Expense {
@@ -241,6 +246,10 @@ export default function MasraflarPage() {
 
   const tableColumns = usePanelTableColumns('table-cols:finans-masraflar', EXPENSE_TABLE_COLUMNS);
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.masraflar, 20),
+  );
 
   const sortedExpenses = useMemo(
     () =>
@@ -266,6 +275,7 @@ export default function MasraflarPage() {
       }),
     [expenses, clientSort],
   );
+  const pagedExpenses = sliceFinansPage(sortedExpenses, page, pageSize);
 
   // Form
   const [showForm,   setShowForm]   = useState(false);
@@ -922,15 +932,13 @@ export default function MasraflarPage() {
             Dosya bütçelerine karşı gerçekleşen masrafları izleyin; sapmayı anında görün
           </p>
         </div>
-        <button
+        <FinansActionButton
+          label={showForm ? 'Formu Kapat' : 'Masraf Ekle'}
           onClick={() => (showForm ? closeExpenseForm() : openExpenseForm())}
-          className="flex items-center gap-1.5 text-sm bg-brand-600 text-white px-4 py-2 rounded-xl hover:bg-brand-700 shadow-sm font-medium transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          {showForm ? 'Formu Kapat' : 'Masraf Ekle'}
-        </button>
+          variant={showForm ? 'neutral' : 'primary'}
+          active={showForm}
+          showPlus={!showForm}
+        />
       </div>
 
       <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/20 px-4 py-3">
@@ -941,44 +949,24 @@ export default function MasraflarPage() {
         </p>
       </div>
 
-      {/* KPI şeridi — bütçe odaklı */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3 shadow-sm">
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">Toplam Bütçe</p>
-          <p className="text-lg font-bold text-slate-900 dark:text-slate-100">{fmt(budgetSummary?.totalBudgetLimit ?? 0)}</p>
-          <p className="text-[10px] text-slate-400">{budgetSummary?.fileCount ?? 0} dosya</p>
-        </div>
-        <div className={`rounded-lg border px-4 py-3 ${PLAN_META[PLAN_BUTCE].cardCls}`}>
-          <p className="text-[11px] font-medium text-brand-600 dark:text-blue-400">Harcanan (Bütçe)</p>
-          <p className="text-lg font-bold text-blue-700 dark:text-blue-300">{fmt(budgetSummary?.totalSpentButce ?? butceTotal)}</p>
-          <p className="text-[10px] text-blue-400">
-            {budgetSummary?.usagePercent != null ? `%${budgetSummary.usagePercent} kullanım` : '—'}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3 shadow-sm">
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">Kalan Bütçe</p>
-          <p className={`text-lg font-bold ${(budgetSummary?.totalRemaining ?? 0) < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-300'}`}>
-            {fmt(budgetSummary?.totalRemaining ?? 0)}
-          </p>
-          <p className="text-[10px] text-slate-400">plan − harcama</p>
-        </div>
-        <div className={`rounded-lg border px-4 py-3 ${(budgetSummary?.totalVariance ?? 0) > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Bütçe Sapması</p>
-          <p className={`text-lg font-bold ${(budgetSummary?.totalVariance ?? 0) > 0 ? 'text-red-700 dark:text-red-300' : 'text-slate-800 dark:text-slate-100'}`}>
-            {(budgetSummary?.totalVariance ?? 0) > 0 ? '+' : ''}{fmt(budgetSummary?.totalVariance ?? 0)}
-          </p>
-          <p className="text-[10px] text-slate-400">
-            {(budgetSummary?.overBudgetFileCount ?? 0) > 0
-              ? `${budgetSummary?.overBudgetFileCount} dosya aşımda`
-              : 'sapma yok'}
-          </p>
-        </div>
-        <div className={`rounded-lg border px-4 py-3 ${PLAN_META[PLAN_EK].cardCls}`}>
-          <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">Ek İş Masrafı</p>
-          <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{fmt(budgetSummary?.totalSpentEk ?? ekTotal)}</p>
-          <p className="text-[10px] text-amber-400">{expenses.length} kalem</p>
-        </div>
-      </div>
+      <FinansKpiStrip
+        tone="light"
+        items={[
+          { label: 'Toplam Bütçe', value: fmt(budgetSummary?.totalBudgetLimit ?? 0), accent: (budgetSummary?.totalBudgetLimit ?? 0) > 0 ? 'text-slate-800' : 'text-slate-400' },
+          { label: 'Harcanan (Bütçe)', value: fmt(budgetSummary?.totalSpentButce ?? butceTotal), accent: (budgetSummary?.totalSpentButce ?? butceTotal) > 0 ? 'text-blue-400' : 'text-slate-400' },
+          {
+            label: 'Kalan Bütçe',
+            value: fmt(budgetSummary?.totalRemaining ?? 0),
+            accent: (budgetSummary?.totalRemaining ?? 0) < 0 ? 'text-red-400' : (budgetSummary?.totalRemaining ?? 0) > 0 ? 'text-emerald-400' : 'text-slate-400',
+          },
+          {
+            label: 'Bütçe Sapması',
+            value: `${(budgetSummary?.totalVariance ?? 0) > 0 ? '+' : ''}${fmt(budgetSummary?.totalVariance ?? 0)}`,
+            accent: (budgetSummary?.totalVariance ?? 0) > 0 ? 'text-red-400' : 'text-slate-800',
+          },
+          { label: 'Ek İş Masrafı', value: fmt(budgetSummary?.totalSpentEk ?? ekTotal), accent: (budgetSummary?.totalSpentEk ?? ekTotal) > 0 ? 'text-amber-400' : 'text-slate-400' },
+        ]}
+      />
 
       {/* Özet analiz — katlanır (QuickBooks / Xero progressive disclosure) */}
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
@@ -1653,29 +1641,22 @@ export default function MasraflarPage() {
         </div>
       </div>
 
-      {/* Liste Tablosu */}
       <TableColumnsProvider value={tableColumns}>
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-        <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Masraf Listesi</p>
-            <span className="text-xs text-slate-400 dark:text-slate-500">{expenses.length} kayıt</span>
-          </div>
+      <FinansPanelCard title="Masraf Listesi" subtitle={`${expenses.length} kayıt`} noPadding>
+        <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
           <PanelTableColumnPicker tableColumns={tableColumns} />
         </div>
 
         {loading ? (
           <div className="py-12 text-center text-sm text-slate-400 dark:text-slate-500">Yükleniyor...</div>
         ) : expenses.length === 0 ? (
-          <div className="py-14 text-center">
-            <svg className="w-10 h-10 text-slate-200 dark:text-slate-700 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <p className="text-sm text-slate-400 dark:text-slate-500">Henüz veri bulunmamaktadır.</p>
-            <button type="button" onClick={() => openExpenseForm()}
-              className="mt-3 text-xs text-brand-600 dark:text-blue-400 hover:underline">
-              + İlk masrafı ekle
-            </button>
+          <div className="p-4">
+            <FinansEmptyState title="Masraf kaydı yok." description="Onaylı bütçesi olan dosyaya masraf burada durur." />
+            <div className="mt-3 text-center">
+              <button type="button" onClick={() => openExpenseForm()} className="text-sm font-medium text-brand-600 hover:underline">
+                Masraf ekle
+              </button>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -1690,13 +1671,13 @@ export default function MasraflarPage() {
                   <SortablePanelTableTh colId="description" sortKey="description" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Açıklama</SortablePanelTableTh>
                   <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-center">Tutar</SortablePanelTableTh>
                   <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Tarih</SortablePanelTableTh>
-                  <th className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-right w-[72px]">
-                    İşlem
-                  </th>
+                  <PanelTableTh colId="actions" className="px-2 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-center" resizable={false}>
+                    İşlemler
+                  </PanelTableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {sortedExpenses.map((e) => {
+                {pagedExpenses.slice.map((e) => {
                   const meta = PLAN_META[e.expensePlan] ?? PLAN_META[PLAN_BUTCE];
                   return (
                     <tr key={e.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors">
@@ -1730,7 +1711,7 @@ export default function MasraflarPage() {
                       <PanelTableTd colId="date" className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">
                         {fmtDate(e.date)}
                       </PanelTableTd>
-                      <td className="px-5 py-3.5">
+                      <PanelTableTd colId="actions" className="px-2 py-3.5">
                         <div className="flex items-center justify-end gap-1">
                           <button type="button" onClick={() => handleEdit(e)} title="Düzenle"
                             className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
@@ -1745,7 +1726,7 @@ export default function MasraflarPage() {
                             </svg>
                           </button>
                         </div>
-                      </td>
+                      </PanelTableTd>
                     </tr>
                   );
                 })}
@@ -1756,9 +1737,17 @@ export default function MasraflarPage() {
                 value={fmt(grandTotal)}
               />
             </table>
+            <FinansTablePager
+              page={pagedExpenses.safePage}
+              pageSize={pageSize}
+              total={pagedExpenses.total}
+              storageKey={FINANS_TABLE_PAGE_KEYS.masraflar}
+              onPageChange={setPage}
+              onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+            />
           </div>
         )}
-      </div>
+      </FinansPanelCard>
       </TableColumnsProvider>
     </div>
   );

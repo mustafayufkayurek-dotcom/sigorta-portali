@@ -11,7 +11,7 @@ import {
   computeTalepOzet,
   type TalepOzet,
 } from '@/components/finance/FaturaTalepleriSection';
-import { getInvoiceRequests } from '@/utils/invoiceRequestApi';
+import { fileOwnerNotifyToast, getInvoiceRequests } from '@/utils/invoiceRequestApi';
 import { faturaListTabHref, resolveFaturaListTab, type FaturaListTab } from '@/utils/invoice-request-envelope';
 import { isFinanceRole, usePanelRoleCode } from '@/hooks/usePanelRole';
 import {
@@ -21,25 +21,46 @@ import {
   PanelTableTh,
   PanelTableTd,
   SortablePanelTableTh,
+  PanelTableColGroup,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import {
+  FinansEmptyState,
+  FinansKpiStrip,
+  FinansPanelCard,
+} from '@/components/finance/FinansPanelUI';
+import { InvoiceRowActions, printFinanceSlip } from '@/components/finance/FinanceRowActions';
+import { FinansTablePager } from '@/components/finance/FinansTablePager';
+import { faturaTalepleriTabPulseClass } from '@/components/finance/FinansOncelikliGorevModal';
+import { FINANS_ACTIONS_COLUMN, FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, type FinansTablePageSize } from '@/utils/finans-table-page';
+import { unseenInvoiceRequestIds } from '@/utils/invoice-request-alert';
+import { invoicePartyCustomerName } from '@/utils/invoice-customer-name';
 
 const INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'invoiceNo', label: 'Fatura No', defaultWidth: 120, minWidth: 96 },
-  { id: 'expert', label: 'Eksper', defaultWidth: 140, minWidth: 100 },
-  { id: 'insuranceCompany', label: 'Sigorta Şirketi', defaultWidth: 148, minWidth: 100 },
+  { id: 'customer', label: 'Müşteri', defaultWidth: 168, minWidth: 120 },
   { id: 'fileNo', label: 'Dosya No', defaultWidth: 108, minWidth: 88 },
   { id: 'invoiceType', label: 'Tip', defaultWidth: 88, minWidth: 72 },
   { id: 'invoiceDate', label: 'Tarih', defaultWidth: 104, minWidth: 88 },
   { id: 'totalAmount', label: 'Tutar', defaultWidth: 108, minWidth: 88 },
   { id: 'status', label: 'Durum', defaultWidth: 108, minWidth: 88 },
+  FINANS_ACTIONS_COLUMN,
 ];
 
 function fmtDate(d: string | null | undefined) { return d ? new Date(d).toLocaleDateString('tr-TR') : '—'; }
 function fmtCurrency(n: number | null | undefined) {
   return formatTryAmount(n, { fractionDigits: 0 });
+}
+
+function invoiceCustomerOf(inv: any): string {
+  return invoicePartyCustomerName({
+    collectionParty: inv.claimFile?.collectionParty,
+    insuredName: inv.claimFile?.insuredName,
+    customer: inv.claimFile?.customer,
+    insuranceCompanyName: inv.claimFile?.insuranceCompany?.name ?? inv.insuranceCompany,
+  });
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -54,7 +75,7 @@ const STATUS_COLOR: Record<string, string> = {
   overdue:   'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/60 dark:text-red-300 dark:border-red-700',
 };
 
-type SortKey = 'invoiceDate' | 'totalAmount' | 'invoiceNo' | 'status';
+type SortKey = 'invoiceDate' | 'totalAmount' | 'invoiceNo' | 'status' | 'customer' | 'fileNo' | 'invoiceType';
 type SortDir = 'asc' | 'desc';
 
 export default function FaturalarPage() {
@@ -96,19 +117,27 @@ function FaturalarPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState<any>({ invoiceType: '', status: '', page: 1, limit: 20 });
+  const [filters, setFilters] = useState<any>({
+    invoiceType: '',
+    status: '',
+    page: 1,
+    limit: readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.faturalar, 20),
+  });
   const [sortKey, setSortKey] = useState<SortKey>('invoiceDate');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [stats, setStats] = useState({ total: 0, paid: 0, pending: 0, overdue: 0, totalCount: 0, paidCount: 0 });
   const [talepOzet, setTalepOzet] = useState<TalepOzet>({
-    total: 0, pendingCount: 0, pendingAmount: 0, approvedCount: 0, approvedAmount: 0,
+    total: 0, pendingCount: 0, pendingAmount: 0, approvedCount: 0, approvedAmount: 0, pendingIds: [],
   });
-  const tableColumns = usePanelTableColumns('table-cols:finans-faturalar', INVOICE_TABLE_COLUMNS);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [editDraft, setEditDraft] = useState({ invoiceNo: '', invoiceDate: '', notes: '', editReason: '' });
+  const [editSaving, setEditSaving] = useState(false);
+  const tableColumns = usePanelTableColumns('table-cols:finans-faturalar-v2', INVOICE_TABLE_COLUMNS);
 
   const loadTalepOzet = useCallback(() => {
     getInvoiceRequests()
       .then((data) => setTalepOzet(computeTalepOzet(data)))
-      .catch(() => setTalepOzet({ total: 0, pendingCount: 0, pendingAmount: 0, approvedCount: 0, approvedAmount: 0 }));
+      .catch(() => setTalepOzet({ total: 0, pendingCount: 0, pendingAmount: 0, approvedCount: 0, approvedAmount: 0, pendingIds: [] }));
   }, []);
 
   useEffect(() => { loadTalepOzet(); }, [loadTalepOzet]);
@@ -129,10 +158,11 @@ function FaturalarPageContent() {
         if (summary) {
           setStats({ total: summary.totalAmount ?? 0, paid: summary.paidAmount ?? 0, pending: summary.pendingAmount ?? 0, overdue: summary.overdueAmount ?? 0, totalCount: summary.totalCount ?? 0, paidCount: summary.paidCount ?? 0 });
         } else {
-          const t = data.reduce((s: number, i: any) => s + (i.totalAmount ?? 0), 0);
-          const p = data.filter((i: any) => i.status === 'paid').reduce((s: number, i: any) => s + (i.totalAmount ?? 0), 0);
-          const ov = data.filter((i: any) => i.status === 'overdue').reduce((s: number, i: any) => s + (i.totalAmount ?? 0), 0);
-          setStats({ total: t, paid: p, pending: t - p - ov, overdue: ov, totalCount: data.length, paidCount: data.filter((i: any) => i.status === 'paid').length });
+          const active = data.filter((i: any) => i.status !== 'cancelled');
+          const t = active.reduce((s: number, i: any) => s + (i.totalAmount ?? 0), 0);
+          const p = active.filter((i: any) => i.status === 'paid').reduce((s: number, i: any) => s + (i.totalAmount ?? 0), 0);
+          const ov = active.filter((i: any) => i.status === 'overdue').reduce((s: number, i: any) => s + (i.totalAmount ?? 0), 0);
+          setStats({ total: t, paid: p, pending: t - p - ov, overdue: ov, totalCount: data.length, paidCount: active.filter((i: any) => i.status === 'paid').length });
         }
       })
       .catch((err) => {
@@ -145,16 +175,74 @@ function FaturalarPageContent() {
       .finally(() => setLoading(false));
   }, [filters, search]);
 
-  useEffect(() => { if (activeTab === 'kesilen') load(); }, [load, activeTab]);
+  useEffect(() => { load(); }, [load]);
 
-  const handleStatusChange = async (id: string, status: string, label: string) => {
+  const handleStatusChange = async (inv: any, status: string, label: string) => {
+    if (status === 'cancelled' && inv.status === 'cancelled') {
+      showToast('info', 'Bu fatura zaten iptal.');
+      return;
+    }
     try {
-      await axios.patch(`${API}/invoices/${id}/status`, { status }, { headers: authHeader() });
+      await axios.patch(`${API}/invoices/${inv.id}/status`, { status }, { headers: authHeader() });
       showToast('success', `Fatura durumu "${label}" olarak güncellendi.`);
       load();
     } catch (err: any) {
       if (axios.isAxiosError(err) && err.response?.status === 401) { router.push('/giris'); return; }
       showToast('error', err?.response?.data?.message ?? 'Hata oluştu.');
+    }
+  };
+
+  const handleNotifyOwner = async (id: string) => {
+    try {
+      const r = await axios.post(`${API}/invoices/${id}/notify-owner`, {}, { headers: authHeader() });
+      showToast('success', fileOwnerNotifyToast(r.data?.data ?? {}));
+    } catch (err: any) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) { router.push('/giris'); return; }
+      showToast('error', err?.response?.data?.message ?? 'Bildirim gönderilemedi.');
+    }
+  };
+
+  const openEdit = (inv: any) => {
+    setEditing(inv);
+    setEditDraft({
+      invoiceNo: inv.invoiceNo ?? '',
+      invoiceDate: inv.invoiceDate ? String(inv.invoiceDate).slice(0, 10) : '',
+      notes: inv.notes ?? '',
+      editReason: '',
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const invoiceNo = editDraft.invoiceNo.trim();
+    const editReason = editDraft.editReason.trim();
+    if (!invoiceNo) {
+      showToast('error', 'Satış fatura numarası gerekli.');
+      return;
+    }
+    if (editReason.length < 3) {
+      showToast('error', 'Düzenleme nedeni zorunludur.');
+      return;
+    }
+    setEditSaving(true);
+    try {
+      await axios.patch(`${API}/invoices/${editing.id}`, {
+        invoiceNo,
+        invoiceDate: editDraft.invoiceDate || undefined,
+        notes: editDraft.notes,
+        editReason,
+      }, { headers: authHeader() });
+      if (invoiceNo !== (editing.invoiceNo ?? '')) {
+        await axios.post(`${API}/invoices/${editing.id}/notify-owner`, {}, { headers: authHeader() }).catch(() => undefined);
+      }
+      showToast('success', 'Fatura güncellendi. Dosya sorumlusuna bildirildi.');
+      setEditing(null);
+      load();
+    } catch (err: any) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) { router.push('/giris'); return; }
+      showToast('error', err?.response?.data?.message ?? 'Fatura güncellenemedi.');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -168,7 +256,16 @@ function FaturalarPageContent() {
     if (sortKey === 'invoiceDate') { av = a.invoiceDate ?? ''; bv = b.invoiceDate ?? ''; }
     else if (sortKey === 'totalAmount') { av = a.totalAmount ?? 0; bv = b.totalAmount ?? 0; }
     else if (sortKey === 'invoiceNo') { av = a.invoiceNo ?? ''; bv = b.invoiceNo ?? ''; }
-    else { av = a.status ?? ''; bv = b.status ?? ''; }
+    else if (sortKey === 'customer') {
+      av = invoiceCustomerOf(a);
+      bv = invoiceCustomerOf(b);
+    } else if (sortKey === 'fileNo') {
+      av = a.claimFile?.fileNo ?? a.claimFileId ?? '';
+      bv = b.claimFile?.fileNo ?? b.claimFileId ?? '';
+    } else if (sortKey === 'invoiceType') {
+      av = a.invoiceType ?? '';
+      bv = b.invoiceType ?? '';
+    } else { av = a.status ?? ''; bv = b.status ?? ''; }
     if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
     return sortDir === 'asc' ? String(av).localeCompare(String(bv), 'tr') : String(bv).localeCompare(String(av), 'tr');
   });
@@ -179,34 +276,38 @@ function FaturalarPageContent() {
     <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
       <FinansSubpageBreadcrumb current="Faturalar" />
 
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Faturalar</h2>
-          <p className="text-sm text-slate-400 dark:text-slate-500">
-            Kesilen faturalar ve dosya kapanış fatura talepleri — tek ekrandan özet ve işlem.
-          </p>
-        </div>
+      <div>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Faturalar</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Kesilen fatura ve kapanış talebi aynı yerde. Renk yalnız duruma göre.
+        </p>
       </div>
 
-      {/* Birleşik özet */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <SummaryCard label="Kesilen Toplam" value={fmtCurrency(stats.total)} sub={`${stats.totalCount} fatura`} color="blue" />
-        <SummaryCard label="Tahsil Edilen" value={fmtCurrency(stats.paid)} sub={stats.total > 0 ? `%${collectionRate} oran` : '—'} color="green" />
-        <SummaryCard label="Bekleyen Fatura" value={fmtCurrency(stats.pending)} sub="Tahsil edilmedi" color="yellow" />
-        <SummaryCard label="Vadesi Geçmiş" value={fmtCurrency(stats.overdue)} sub="Acil takip" color="red" />
-        <SummaryCard
-          label="Bekleyen Talep"
-          value={talepOzet.pendingCount > 0 ? String(talepOzet.pendingCount) : '—'}
-          sub={talepOzet.pendingCount > 0 ? fmtCurrency(talepOzet.pendingAmount) : 'Onay bekliyor'}
-          color="yellow"
-        />
-        <SummaryCard
-          label="Onaylı Talep"
-          value={talepOzet.approvedCount > 0 ? String(talepOzet.approvedCount) : '—'}
-          sub={talepOzet.approvedCount > 0 ? fmtCurrency(talepOzet.approvedAmount) : 'Faturalandırılacak'}
-          color="blue"
-        />
-      </div>
+      <FinansKpiStrip
+        tone="light"
+        items={[
+          {
+            label: 'Kesilen Toplam',
+            value: fmtCurrency(stats.total),
+            accent: stats.total > 0 ? 'text-slate-800' : 'text-slate-400',
+          },
+          {
+            label: 'Tahsil Edilen',
+            value: fmtCurrency(stats.paid),
+            accent: stats.paid > 0 ? 'text-emerald-400' : 'text-slate-400',
+          },
+          {
+            label: 'Bekleyen Talep',
+            value: talepOzet.pendingCount > 0 ? String(talepOzet.pendingCount) : '—',
+            accent: talepOzet.pendingCount > 0 ? 'text-amber-400' : 'text-slate-400',
+          },
+          {
+            label: 'Vadesi Geçmiş',
+            value: fmtCurrency(stats.overdue),
+            accent: stats.overdue > 0 ? 'text-red-400' : 'text-slate-400',
+          },
+        ]}
+      />
 
       {/* Sekmeler */}
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
@@ -231,11 +332,11 @@ function FaturalarPageContent() {
             activeTab === 'talepler'
               ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-          }`}
+          } ${activeTab !== 'talepler' ? faturaTalepleriTabPulseClass(talepOzet.pendingCount, unseenInvoiceRequestIds(talepOzet.pendingIds).length) : ''}`}
         >
           Fatura Talepleri
           {talepOzet.pendingCount > 0 && (
-            <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 text-xs font-bold">
+            <span className={`ml-1.5 px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 text-xs font-bold ${faturaTalepleriTabPulseClass(talepOzet.pendingCount, unseenInvoiceRequestIds(talepOzet.pendingIds).length)}`}>
               {talepOzet.pendingCount}
             </span>
           )}
@@ -263,7 +364,7 @@ function FaturalarPageContent() {
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm px-4 py-3 flex gap-3 flex-wrap items-center">
         <input
           className="border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 w-56 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors placeholder-slate-400 dark:placeholder-slate-500"
-          placeholder="Dosya no, eksper, şirket ara..."
+          placeholder="Dosya no, müşteri, fatura no ara..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
@@ -293,7 +394,7 @@ function FaturalarPageContent() {
         {(filters.invoiceType || filters.status || search) && (
           <button
             type="button"
-            onClick={() => { setSearch(''); setFilters({ invoiceType: '', status: '', page: 1, limit: 20 }); }}
+            onClick={() => { setSearch(''); setFilters({ invoiceType: '', status: '', page: 1, limit: filters.limit }); }}
             className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline"
           >
             Temizle
@@ -306,27 +407,62 @@ function FaturalarPageContent() {
       ) : error ? (
         <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm">{error}</div>
       ) : invoices.length === 0 ? (
-        <EmptyState msg="Henüz veri bulunmamaktadır." />
+        <FinansPanelCard title="Kesilen Faturalar">
+          <FinansEmptyState
+            title={search || filters.invoiceType || filters.status ? 'Aramaya uyan kesilen fatura yok.' : 'Kesilen fatura yok.'}
+            description={
+              talepOzet.pendingCount > 0
+                ? `${talepOzet.pendingCount} talep Fatura Talepleri sekmesinde bekliyor.`
+                : 'Dosya kapanışında kesilen fatura burada durur.'
+            }
+          />
+          {talepOzet.pendingCount > 0 && !search && !filters.invoiceType && !filters.status && (
+            <div className="mt-3 text-center">
+              <button
+                type="button"
+                onClick={() => setTab('talepler')}
+                className="text-sm font-medium text-brand-600 hover:underline"
+              >
+                Fatura Talepleri’ne geç
+              </button>
+            </div>
+          )}
+        </FinansPanelCard>
       ) : (
         <TableColumnsProvider value={tableColumns}>
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+        <FinansPanelCard title="Kesilen Faturalar" subtitle={`${total} kayıt`} noPadding>
           <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
             <PanelTableColumnPicker tableColumns={tableColumns} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [40] })}>
+              <PanelTableColGroup leadingWidths={[40]} />
               <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 dark:text-slate-400">
                 <tr>
                   <th className="text-center px-4 py-3 w-10">#</th>
-                  <SortablePanelTableTh colId="invoiceNo" sortKey="invoiceNo" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium">Fatura No</SortablePanelTableTh>
-                  <PanelTableTh colId="expert" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-center">Eksper</PanelTableTh>
-                  <PanelTableTh colId="insuranceCompany" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-center">Sigorta Şirketi</PanelTableTh>
-                  <PanelTableTh colId="fileNo" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-center">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="invoiceType" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-center">Tip</PanelTableTh>
-                  <SortablePanelTableTh colId="invoiceDate" sortKey="invoiceDate" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium">Tarih</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="totalAmount" sortKey="totalAmount" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium text-center">Tutar</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={sortKey} sortDir={sortDir} onSort={(k) => toggleSort(k as SortKey)} className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium">Durum</SortablePanelTableTh>
-                  <th className="text-center px-4 py-3">İşlem</th>
+                  {tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                    const thClass = 'px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium';
+                    if (col.id === 'actions') {
+                      return (
+                        <PanelTableTh key={col.id} colId={col.id} className="text-center px-2 py-3" resizable={false}>
+                          {col.label}
+                        </PanelTableTh>
+                      );
+                    }
+                    return (
+                      <SortablePanelTableTh
+                        key={col.id}
+                        colId={col.id}
+                        sortKey={col.id}
+                        activeSortKey={sortKey}
+                        sortDir={sortDir}
+                        onSort={(k) => toggleSort(k as SortKey)}
+                        className={thClass}
+                      >
+                        {col.label}
+                      </SortablePanelTableTh>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
@@ -336,120 +472,152 @@ function FaturalarPageContent() {
                     className={`hover:bg-blue-50/30 dark:hover:bg-slate-700/40 transition-colors ${rowIdx % 2 !== 0 ? 'bg-slate-50/30 dark:bg-slate-800/60' : 'bg-white dark:bg-slate-800'}`}
                   >
                     <td className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">{(filters.page - 1) * filters.limit + rowIdx + 1}</td>
-                    <PanelTableTd colId="invoiceNo" className="px-4 py-3 font-mono text-xs text-slate-700 dark:text-slate-300">{inv.invoiceNo ?? '—'}</PanelTableTd>
-                    <PanelTableTd colId="expert" className="px-4 py-3 text-slate-700 dark:text-slate-200">
-                      {inv.claimFile?.assignedExpert
-                        ? `${inv.claimFile.assignedExpert.firstName ?? ''} ${inv.claimFile.assignedExpert.lastName ?? ''}`.trim()
-                        : (inv.claimFile?.expert?.name ?? '—')}
-                    </PanelTableTd>
-                    <PanelTableTd colId="insuranceCompany" className="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs">
-                      {inv.claimFile?.insuranceCompany?.name ?? inv.insuranceCompany ?? '—'}
-                    </PanelTableTd>
-                    <PanelTableTd colId="fileNo" className="px-4 py-3">
-                      {inv.claimFileId
-                        ? <a href={`/panel/hasar-dosyalari/${inv.claimFileId}`} className="text-brand-600 dark:text-blue-400 hover:underline text-xs font-mono">{inv.claimFile?.fileNo ?? inv.claimFileId}</a>
-                        : <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>}
-                    </PanelTableTd>
-                    <PanelTableTd colId="invoiceType" className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${inv.invoiceType === 'sales' ? 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800' : 'bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-900/40 dark:text-orange-400 dark:border-orange-800'}`}>
-                        {inv.invoiceType === 'sales' ? 'Satış' : 'Alış'}
-                      </span>
-                    </PanelTableTd>
-                    <PanelTableTd colId="invoiceDate" className="px-4 py-3 text-slate-600 dark:text-slate-300">{fmtDate(inv.invoiceDate)}</PanelTableTd>
-                    <PanelTableTd colId="totalAmount" className="px-4 py-3 text-right font-semibold text-slate-800 dark:text-slate-100">{fmtCurrency(inv.totalAmount)}</PanelTableTd>
-                    <PanelTableTd colId="status" className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLOR[inv.status] ?? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'}`}>
-                        {STATUS_LABEL[inv.status] ?? inv.status}
-                      </span>
-                    </PanelTableTd>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {inv.status === 'draft' && (
-                          <QuickActionBtn onClick={() => handleStatusChange(inv.id, 'sent', 'Gönderildi')} color="blue">Gönder</QuickActionBtn>
-                        )}
-                        {inv.status === 'sent' && (
-                          <QuickActionBtn onClick={() => handleStatusChange(inv.id, 'paid', 'Ödendi')} color="green">Ödendi</QuickActionBtn>
-                        )}
-                        {!['cancelled', 'paid'].includes(inv.status) && (
-                          <QuickActionBtn onClick={() => handleStatusChange(inv.id, 'cancelled', 'İptal')} color="red">İptal</QuickActionBtn>
-                        )}
-                      </div>
-                    </td>
+                    {tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                      switch (col.id) {
+                        case 'invoiceNo':
+                          return <PanelTableTd key={col.id} colId="invoiceNo" className="px-4 py-3 font-mono text-xs text-slate-700 dark:text-slate-300">{inv.invoiceNo ?? '—'}</PanelTableTd>;
+                        case 'customer':
+                          return <PanelTableTd key={col.id} colId="customer" className="px-4 py-3 text-slate-700 dark:text-slate-200">{invoiceCustomerOf(inv)}</PanelTableTd>;
+                        case 'fileNo':
+                          return (
+                            <PanelTableTd key={col.id} colId="fileNo" className="px-4 py-3">
+                              {inv.claimFileId
+                                ? <a href={`/panel/hasar-dosyalari/${inv.claimFileId}`} className="text-brand-600 dark:text-blue-400 hover:underline text-xs font-mono">{inv.claimFile?.fileNo ?? inv.claimFileId}</a>
+                                : <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>}
+                            </PanelTableTd>
+                          );
+                        case 'invoiceType':
+                          return (
+                            <PanelTableTd key={col.id} colId="invoiceType" className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${inv.invoiceType === 'sales' ? 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800' : 'bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-900/40 dark:text-orange-400 dark:border-orange-800'}`}>
+                                {inv.invoiceType === 'sales' ? 'Satış' : 'Alış'}
+                              </span>
+                            </PanelTableTd>
+                          );
+                        case 'invoiceDate':
+                          return <PanelTableTd key={col.id} colId="invoiceDate" className="px-4 py-3 text-slate-600 dark:text-slate-300">{fmtDate(inv.invoiceDate)}</PanelTableTd>;
+                        case 'totalAmount':
+                          return <PanelTableTd key={col.id} colId="totalAmount" className="px-4 py-3 text-right font-semibold text-slate-800 dark:text-slate-100">{fmtCurrency(inv.totalAmount)}</PanelTableTd>;
+                        case 'status':
+                          return (
+                            <PanelTableTd key={col.id} colId="status" className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLOR[inv.status] ?? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'}`}>
+                                {STATUS_LABEL[inv.status] ?? inv.status}
+                              </span>
+                            </PanelTableTd>
+                          );
+                        case 'actions':
+                          return (
+                            <PanelTableTd key={col.id} colId="actions" className="px-2 py-3">
+                              <InvoiceRowActions
+                                status={inv.status}
+                                onPrint={() => printFinanceSlip({
+                                  title: `Fatura ${inv.invoiceNo ?? ''}`.trim(),
+                                  fileNo: inv.claimFile?.fileNo ?? inv.claimFileId,
+                                  customer: invoiceCustomerOf(inv),
+                                  invoiceType: inv.invoiceType === 'sales' ? 'Satış' : 'Alış',
+                                  date: fmtDate(inv.invoiceDate),
+                                  amount: inv.totalAmount ?? 0,
+                                  status: STATUS_LABEL[inv.status] ?? inv.status,
+                                })}
+                                onNotifyOwner={() => handleNotifyOwner(inv.id)}
+                                onEdit={() => openEdit(inv)}
+                                onMarkPaid={() => handleStatusChange(inv, 'paid', 'Ödendi')}
+                                onCancel={() => handleStatusChange(inv, 'cancelled', 'İptal')}
+                              />
+                            </PanelTableTd>
+                          );
+                        default:
+                          return null;
+                      }
+                    })}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
-            <span className="text-xs text-slate-400 dark:text-slate-500">{total} kayıt · sayfa {filters.page}</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={filters.page <= 1}
-                onClick={() => setFilters((p: any) => ({ ...p, page: p.page - 1 }))}
-                className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded-lg disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
-              >
-                ← Önceki
-              </button>
-              <button
-                type="button"
-                disabled={invoices.length < filters.limit}
-                onClick={() => setFilters((p: any) => ({ ...p, page: p.page + 1 }))}
-                className="px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded-lg disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
-              >
-                Sonraki →
-              </button>
-            </div>
-          </div>
-        </div>
+          <FinansTablePager
+            page={filters.page}
+            pageSize={filters.limit as FinansTablePageSize}
+            total={total}
+            storageKey={FINANS_TABLE_PAGE_KEYS.faturalar}
+            onPageChange={(next) => setFilters((p: any) => ({ ...p, page: next }))}
+            onPageSizeChange={(next) => setFilters((p: any) => ({ ...p, limit: next, page: 1 }))}
+          />
+        </FinansPanelCard>
         </TableColumnsProvider>
       )}
         </>
       )}
+
+      {editing ? (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Fatura düzenle">
+          <button type="button" className="absolute inset-0 bg-slate-950/30" aria-label="Kapat" onClick={() => !editSaving && setEditing(null)} />
+          <div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-xl dark:bg-slate-800">
+            <h2 className="text-[15px] font-medium text-slate-900 dark:text-white">Fatura düzenle</h2>
+            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-slate-50 px-3 py-3 text-xs dark:bg-slate-700/40">
+              <div>
+                <dt className="text-slate-500">Müşteri</dt>
+                <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-100">{invoiceCustomerOf(editing)}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Dosya No</dt>
+                <dd className="mt-0.5 font-mono text-slate-800 dark:text-slate-100">{editing.claimFile?.fileNo ?? editing.claimFileId ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Tip</dt>
+                <dd className="mt-0.5 text-slate-800 dark:text-slate-100">{editing.invoiceType === 'sales' ? 'Satış' : 'Alış'}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Tutar</dt>
+                <dd className="mt-0.5 font-semibold text-slate-800 dark:text-slate-100">{fmtCurrency(editing.totalAmount)}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Durum</dt>
+                <dd className="mt-0.5 text-slate-800 dark:text-slate-100">{STATUS_LABEL[editing.status] ?? editing.status}</dd>
+              </div>
+            </dl>
+            <label className="mt-4 block text-xs text-slate-500">Satış fatura numarası</label>
+            <input
+              value={editDraft.invoiceNo}
+              onChange={(e) => setEditDraft((p) => ({ ...p, invoiceNo: e.target.value }))}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+            />
+            <label className="mt-3 block text-xs text-slate-500">Tarih</label>
+            <input
+              type="date"
+              value={editDraft.invoiceDate}
+              onChange={(e) => setEditDraft((p) => ({ ...p, invoiceDate: e.target.value }))}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+            />
+            <label className="mt-3 block text-xs text-slate-500">Açıklama</label>
+            <textarea
+              value={editDraft.notes}
+              onChange={(e) => setEditDraft((p) => ({ ...p, notes: e.target.value }))}
+              rows={3}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+            />
+            <label className="mt-3 block text-xs text-slate-500">Düzenleme nedeni <span className="text-red-600">*</span></label>
+            <textarea
+              value={editDraft.editReason}
+              onChange={(e) => setEditDraft((p) => ({ ...p, editReason: e.target.value }))}
+              rows={2}
+              required
+              placeholder="Neden düzenlendiğini yazın"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" disabled={editSaving} onClick={() => setEditing(null)} className="rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300">Vazgeç</button>
+              <button type="button" disabled={editSaving || !editDraft.invoiceNo.trim() || editDraft.editReason.trim().length < 3} onClick={() => void saveEdit()} className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40">Kaydet</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
 
 // ── Shared components ─────────────────────────────────────────────────────────
-
-function QuickActionBtn({ onClick, color, children }: { onClick: () => void; color: 'blue' | 'green' | 'red'; children: React.ReactNode }) {
-  const cls = {
-    blue:  'text-brand-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-700',
-    green: 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 border-green-200 dark:border-green-700',
-    red:   'text-status-danger dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 border-red-200 dark:border-red-700',
-  }[color];
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap ${cls}`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SummaryCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: 'blue' | 'green' | 'yellow' | 'red' }) {
-  const colorCls = {
-    blue:   'border-blue-100 dark:border-blue-900/50 bg-blue-50/40 dark:bg-blue-900/20',
-    green:  'border-green-100 dark:border-green-900/50 bg-green-50/40 dark:bg-green-900/20',
-    yellow: 'border-yellow-100 dark:border-yellow-900/50 bg-yellow-50/40 dark:bg-yellow-900/20',
-    red:    'border-red-100 dark:border-red-900/50 bg-red-50/40 dark:bg-red-900/20',
-  }[color];
-  const valueCls = {
-    blue:   'text-blue-700 dark:text-blue-400',
-    green:  'text-green-700 dark:text-green-400',
-    yellow: 'text-yellow-700 dark:text-yellow-400',
-    red:    'text-red-700 dark:text-red-400',
-  }[color];
-  return (
-    <div className={`rounded-xl border shadow-sm p-4 ${colorCls}`}>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{label}</p>
-      <p className={`text-lg font-bold ${valueCls}`}>{value}</p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>}
-    </div>
-  );
-}
 
 function TableSkeleton({ cols = 6 }: { cols?: number }) {
   return (
@@ -464,15 +632,3 @@ function TableSkeleton({ cols = 6 }: { cols?: number }) {
   );
 }
 
-function EmptyState({ msg }: { msg: string }) {
-  return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-dashed border-slate-200 dark:border-slate-600 py-16 flex flex-col items-center justify-center gap-3">
-      <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-        <svg className="w-6 h-6 text-slate-300 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      </div>
-      <p className="text-sm text-slate-400 dark:text-slate-500">{msg}</p>
-    </div>
-  );
-}
