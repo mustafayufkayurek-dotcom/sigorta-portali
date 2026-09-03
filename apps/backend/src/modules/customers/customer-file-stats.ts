@@ -1,3 +1,4 @@
+import { EmergencyStatus } from '@prisma/client';
 import type { PrismaService } from '@/prisma/prisma.service';
 
 export type CustomerFileStatsParty = {
@@ -25,7 +26,10 @@ export const INSURANCE_LINKED_SUB_TYPES = new Set([
   'broker_firmasi',
 ]);
 
-const CLOSED_EMERGENCY = ['COZULDU', 'FATURALANDILDI'] as const;
+const CLOSED_EMERGENCY: EmergencyStatus[] = [
+  EmergencyStatus.COZULDU,
+  EmergencyStatus.FATURALANDILDI,
+];
 
 export function normalizePartyName(value: string | null | undefined): string {
   return (value ?? '')
@@ -145,14 +149,14 @@ export async function attachCustomerFileStats<T extends CustomerFileStatsParty>(
     ]);
 
   const applyCount = (
-    rows: { customerId: string | null; _count: { _all: number } }[],
+    rows: Array<{ customerId: string | null; _count?: { _all?: number } }>,
     field: 'claim' | 'emergency' | 'openClaim' | 'openEmergency',
   ) => {
     for (const row of rows) {
       if (!row.customerId) continue;
       const current = stats.get(row.customerId);
       if (!current) continue;
-      const n = row._count._all;
+      const n = row._count?._all ?? 0;
       if (field === 'claim') current.claim += n;
       if (field === 'emergency') current.emergency += n;
       if (field === 'openClaim' || field === 'openEmergency') current.open += n;
