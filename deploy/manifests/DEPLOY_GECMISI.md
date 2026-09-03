@@ -2,24 +2,32 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 2 Eylül 2026
+**Son güncelleme:** 3 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (2 Eylül 2026 — v557)
+## Canlı durum (3 Eylül 2026 — v558)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v557-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v557-amd64` | deploy sırası |
-| **Rollback** | Web **v556** / Backend **v556** | manifest `rollbackImages` |
-| **Etiket** | `v557-evrak-hakedis` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v558-amd64` | deploy sırası |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v558-amd64` | deploy sırası |
+| **Rollback** | Web **v557** / Backend **v557** | manifest `rollbackImages` |
+| **Etiket** | `v558-finans-faturalar` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v558 — Full (3 Eylül 2026) — Finans faturalar
+
+- Müşteri sütunu; eksper/sigorta sütunu yok
+- İşlemler: Yazdır, Bildir (dosya sorumlusu panel zili), Düzenle, İptal; düzenleme nedeni zorunlu
+- Fatura Talepleri sekmesi bekleyende yanar; finans girişinde öncelikli görev
+- Finans tablolarında sayfa boyu ve sütun kaydırma
+- Rollback web+backend **v557**. İK yok. Tedarikçi türü kutusu bu pakette yok
 
 ### v557 — Full (2 Eylül 2026) — Evrak kırmızısı, hakediş karışması
 
