@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
-  SortablePanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
@@ -331,33 +333,32 @@ export default function RevisionRequestsPage() {
         </div>
       ) : filteredRevisions.length > 0 ? (
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+          <PanelTableScroll>
           <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+            <PanelTableColGroup />
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <SortablePanelTableTh colId="reportNo" sortKey="reportNo" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Rapor No</SortablePanelTableTh>
-                <SortablePanelTableTh colId="requester" sortKey="requester" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Talep Eden</SortablePanelTableTh>
-                <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Tarih</SortablePanelTableTh>
-                <SortablePanelTableTh colId="reason" sortKey="reason" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Sebep</SortablePanelTableTh>
-                <SortablePanelTableTh colId="priority" sortKey="priority" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Öncelik</SortablePanelTableTh>
-                <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Durum</SortablePanelTableTh>
-                <SortablePanelTableTh colId="duration" sortKey="duration" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Süre</SortablePanelTableTh>
-                <SortablePanelTableTh colId="assignee" sortKey="assignee" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Atanan</SortablePanelTableTh>
+                <PanelOrderedHeaderRow
+                  tableColumns={tableColumns}
+                  thClass="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide"
+                  sortKey={clientSort?.key ?? null}
+                  sortDir={clientSort?.dir ?? 'asc'}
+                  onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
+                />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filteredRevisions.map((rev) => {
                 const { label: timeLabel, isOverdue } = remainingTime(rev.deadlineAt);
                 const isUrgent = rev.priority === 'CRITICAL' || rev.status === 'ESCALATED';
-                return (
-                  <tr
-                    key={rev.id}
-                    onClick={() => router.push(`/panel/revizyon-talepleri/${rev.id}`)}
-                    className={`hover:bg-blue-50/30 cursor-pointer transition-colors ${isUrgent ? 'border-l-4 border-red-400' : ''}`}
-                  >
-                    <PanelTableTd colId="reportNo" className="px-5 py-3.5">
+                const cells: Record<string, ReactNode> = {
+                  reportNo: (
+                    <PanelTableTd key="reportNo" colId="reportNo" className="px-5 py-3.5">
                       <p className="font-medium text-slate-900">{rev.report?.reportNo ?? '—'}</p>
                     </PanelTableTd>
-                    <PanelTableTd colId="requester" className="px-4 py-3.5">
+                  ),
+                  requester: (
+                    <PanelTableTd key="requester" colId="requester" className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                           {rev.requestedBy?.firstName?.charAt(0) ?? '?'}
@@ -365,19 +366,25 @@ export default function RevisionRequestsPage() {
                         <span className="text-sm text-slate-600">{rev.requestedBy?.firstName} {rev.requestedBy?.lastName}</span>
                       </div>
                     </PanelTableTd>
-                    <PanelTableTd colId="date" className="px-4 py-3.5 text-slate-400 text-xs">{fmtDate(rev.createdAt)}</PanelTableTd>
-                    <PanelTableTd colId="reason" className="px-4 py-3.5">
+                  ),
+                  date: <PanelTableTd key="date" colId="date" className="px-4 py-3.5 text-slate-400 text-xs">{fmtDate(rev.createdAt)}</PanelTableTd>,
+                  reason: (
+                    <PanelTableTd key="reason" colId="reason" className="px-4 py-3.5">
                       <div>
                         <p className="text-slate-700 text-xs font-medium">{REASON_LABELS[rev.reason] ?? rev.reason}</p>
                         <p className="text-slate-400 text-xs mt-0.5 max-w-[200px] truncate">{rev.reasonNote}</p>
                       </div>
                     </PanelTableTd>
-                    <PanelTableTd colId="priority" className="px-4 py-3.5">
+                  ),
+                  priority: (
+                    <PanelTableTd key="priority" colId="priority" className="px-4 py-3.5">
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE[rev.priority]}`}>
                         {PRIORITY_LABELS[rev.priority]}
                       </span>
                     </PanelTableTd>
-                    <PanelTableTd colId="status" className="px-4 py-3.5">
+                  ),
+                  status: (
+                    <PanelTableTd key="status" colId="status" className="px-4 py-3.5">
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[rev.status]}`}>
                         {rev.status === 'ESCALATED' && (
                           <span className="mr-1 w-1.5 h-1.5 rounded-full bg-status-danger animate-pulse inline-block" />
@@ -385,7 +392,9 @@ export default function RevisionRequestsPage() {
                         {STATUS_LABELS[rev.status]}
                       </span>
                     </PanelTableTd>
-                    <PanelTableTd colId="duration" className="px-4 py-3.5">
+                  ),
+                  duration: (
+                    <PanelTableTd key="duration" colId="duration" className="px-4 py-3.5">
                       {rev.deadlineAt ? (
                         <span className={`text-xs font-medium ${isOverdue ? 'text-red-600' : 'text-slate-500'}`}>
                           {isOverdue && <span className="mr-1">⚠</span>}
@@ -395,7 +404,9 @@ export default function RevisionRequestsPage() {
                         <span className="text-xs text-slate-300">—</span>
                       )}
                     </PanelTableTd>
-                    <PanelTableTd colId="assignee" className="px-4 py-3.5">
+                  ),
+                  assignee: (
+                    <PanelTableTd key="assignee" colId="assignee" className="px-4 py-3.5">
                       {rev.assignedTo ? (
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
@@ -407,11 +418,21 @@ export default function RevisionRequestsPage() {
                         <span className="text-xs text-slate-300">Atanmadı</span>
                       )}
                     </PanelTableTd>
+                  ),
+                };
+                return (
+                  <tr
+                    key={rev.id}
+                    onClick={() => router.push(`/panel/revizyon-talepleri/${rev.id}`)}
+                    className={`hover:bg-blue-50/30 cursor-pointer transition-colors ${isUrgent ? 'border-l-4 border-red-400' : ''}`}
+                  >
+                    {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          </PanelTableScroll>
         </div>
       ) : null}
     </div>

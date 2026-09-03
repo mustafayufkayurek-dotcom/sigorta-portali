@@ -572,7 +572,10 @@ export class SystemSettingsService {
 
   async getVendorTypes(): Promise<string[]> {
     const value = await this.get('vendor_types');
-    return (value as string[]) ?? [];
+    const list = Array.isArray(value)
+      ? value.map((item) => String(item ?? '').trim()).filter(Boolean)
+      : [];
+    return list.length > 0 ? list : ['Taşeron', 'Malzeme', 'Lojistik', 'Ekipman', 'Diğer'];
   }
 
   async setVendorTypes(types: string[]): Promise<string[]> {

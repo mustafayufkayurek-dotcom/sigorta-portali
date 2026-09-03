@@ -117,7 +117,7 @@ function PlanlayiciInner({
   const { claim, saveStep, saving, canEdit } = usePlanner();
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
-  const { docked, dock, expand } = useRightPanelDock(drawerOpen);
+  const { docked, dock, expand } = useRightPanelDock(drawerOpen, { title: 'Operasyon' });
   const onSave = async () => {
     const result = await saveStep(activeStep);
     setSaveNotice(result.message);

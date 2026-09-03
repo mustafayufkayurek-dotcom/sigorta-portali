@@ -11,6 +11,11 @@ import {
 } from '@sigorta/shared';
 import * as ExcelJS from 'exceljs';
 import { classifyAuthorizedPersonNamesWithAi } from './authorized-person-ai.util';
+import {
+  applyCustomerFileStats,
+  attachCustomerFileStats,
+  resolveInsuranceCompanyIdsForCustomer,
+} from './customer-file-stats';
 
 type CustomerNameFields = {
   entityType?: string | null;
@@ -400,10 +405,14 @@ export class CustomersService {
       this.prisma.customer.count({ where }),
     ]);
 
-    const data = rawData.map(({ claimFiles, ...rest }) => ({
-      ...rest,
-      lastActivityDate: claimFiles[0]?.createdAt ?? null,
-    }));
+    const stats = await attachCustomerFileStats(this.prisma, rawData);
+    const data = rawData.map(({ claimFiles, ...rest }) => {
+      const stat = stats.get(rest.id);
+      return {
+        ...applyCustomerFileStats(rest, stat),
+        lastActivityDate: stat?.lastActivity ?? claimFiles[0]?.createdAt ?? null,
+      };
+    });
 
     return {
       data,
@@ -424,7 +433,50 @@ export class CustomersService {
     if (!customer) {
       throw new NotFoundException('Müşteri bulunamadı');
     }
-    return customer;
+    const stats = await attachCustomerFileStats(this.prisma, [customer]);
+    const withStats = applyCustomerFileStats(customer, stats.get(customer.id));
+    const insuranceIds = await resolveInsuranceCompanyIdsForCustomer(this.prisma, customer);
+    const claimWhere = insuranceIds.length
+      ? { OR: [{ customerId: id }, { insuranceCompanyId: { in: insuranceIds } }] }
+      : { customerId: id };
+    const [claimFiles, emergencyCases] = await Promise.all([
+      this.prisma.claimFile.findMany({
+        where: claimWhere,
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+        select: {
+          id: true,
+          fileNo: true,
+          claimNo: true,
+          createdAt: true,
+          updatedAt: true,
+          currentStatus: { select: { code: true, name: true, isClosedState: true } },
+        },
+      }),
+      this.prisma.emergencyCase.findMany({
+        where: { customerId: id },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+        select: {
+          id: true,
+          caseNo: true,
+          fileNo: true,
+          createdAt: true,
+          updatedAt: true,
+          status: true,
+        },
+      }),
+    ]);
+    return {
+      ...withStats,
+      claimFiles: claimFiles.map((f) => ({
+        ...f,
+        fileNumber: f.fileNo,
+        status: f.currentStatus.isClosedState ? 'closed' : 'open',
+        statusName: f.currentStatus.name,
+      })),
+      emergencyCases,
+    };
   }
 
   /**
@@ -600,10 +652,27 @@ export class CustomersService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    throw new BadRequestException(
-      'Müşteri kalıcı olarak silinemez. Arşivlemek için arşivle işlemini kullanın.',
-    );
+    const customer = await this.findOne(id);
+    const totalFiles = customer._count?.claimFiles ?? 0;
+    if (totalFiles > 0) {
+      throw new BadRequestException(
+        `Bu müşterinin ${totalFiles} dosyası var. Kalıcı silinemez. Arşivlemek için arşivle işlemini kullanın.`,
+      );
+    }
+    await this.assertCanArchiveCustomer(id, customer);
+    const expertReports = await this.prisma.repairReport.count({
+      where: { expertOfficeId: id },
+    });
+    if (expertReports > 0) {
+      throw new BadRequestException(
+        'Bu müşteri eksper ofisi olarak raporda duruyor. Kalıcı silinemez.',
+      );
+    }
+    await this.prisma.$transaction([
+      this.prisma.customerAccessLog.deleteMany({ where: { customerId: id } }),
+      this.prisma.customer.delete({ where: { id } }),
+    ]);
+    return { message: 'Müşteri kalıcı olarak silindi' };
   }
 
   private async assertCanArchiveCustomer(id: string, customer?: Awaited<ReturnType<typeof this.findOne>>): Promise<void> {
@@ -874,11 +943,9 @@ export class CustomersService {
   async exportToExcel(ids: string[]): Promise<Buffer> {
     const customers = await this.prisma.customer.findMany({
       where: ids.length ? { id: { in: ids } } : undefined,
-      include: {
-        _count: { select: { claimFiles: true } },
-      },
       orderBy: { createdAt: 'desc' },
     });
+    const stats = await attachCustomerFileStats(this.prisma, customers);
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Müşteriler');
@@ -924,7 +991,7 @@ export class CustomersService {
         durum: statusLabel[(c as any).status ?? ''] ?? (c as any).status ?? '',
         kaynak: (c as any).source ?? '',
         etiketler: ((c as any).tags as string[] ?? []).join(', '),
-        dosyaSayisi: c._count?.claimFiles ?? 0,
+        dosyaSayisi: stats.get(c.id)?.total ?? 0,
       });
     }
 

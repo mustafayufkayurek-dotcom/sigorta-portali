@@ -9,6 +9,8 @@ import {
   PanelTableColumnPicker,
   PanelTableTd,
   PanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
   SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
@@ -192,7 +194,9 @@ export default function BankaHesaplariPage() {
           <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
             <PanelTableColumnPicker tableColumns={tableColumns} />
           </div>
+          <PanelTableScroll>
           <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+            <PanelTableColGroup />
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>
                 {tableColumns.prefs.orderedVisibleColumns.map((col) => (
@@ -239,6 +243,7 @@ export default function BankaHesaplariPage() {
               ))}
             </tbody>
           </table>
+          </PanelTableScroll>
           <FinansTablePager
             page={pagedAccounts.safePage}
             pageSize={pageSize}

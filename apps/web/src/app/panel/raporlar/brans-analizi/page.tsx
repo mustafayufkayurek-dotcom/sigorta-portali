@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -9,9 +9,10 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  SortablePanelTableTh,
-  PanelTableTh,
   PanelTableTd,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -473,37 +474,46 @@ export default function BransAnaliziPage() {
                   <h4 className="text-sm font-semibold text-slate-800">Branş Detay Tablosu</h4>
                   <PanelTableColumnPicker tableColumns={branchDetailTableColumns} />
                 </div>
-                <div className="p-5 overflow-x-auto">
+                <PanelTableScroll className="p-5">
                   <table className="w-full text-sm" style={panelTableLayoutStyle(branchDetailTableColumns)}>
+                    <PanelTableColGroup />
                     <thead>
                       <tr className="border-b border-slate-100">
-                        <SortablePanelTableTh colId="branch" sortKey="branch" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</SortablePanelTableTh>
-                        <SortablePanelTableTh colId="total" sortKey="total" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam</SortablePanelTableTh>
-                        <SortablePanelTableTh colId="open" sortKey="open" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Açık</SortablePanelTableTh>
-                        <SortablePanelTableTh colId="closed" sortKey="closed" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Kapanan</SortablePanelTableTh>
-                        <SortablePanelTableTh colId="avgCloseDays" sortKey="avgCloseDays" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</SortablePanelTableTh>
-                        <SortablePanelTableTh colId="lastFileDate" sortKey="lastFileDate" activeSortKey={clientSortDist?.key ?? null} sortDir={clientSortDist?.dir ?? 'asc'} onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</SortablePanelTableTh>
+                        <PanelOrderedHeaderRow
+                          tableColumns={branchDetailTableColumns}
+                          thClass="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide"
+                          sortKey={clientSortDist?.key ?? null}
+                          sortDir={clientSortDist?.dir ?? 'asc'}
+                          onSort={(k) => setClientSortDist((p) => cycleClientSort(p, k))}
+                        />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {sortedDistRows.map((row, i) => (
-                        <tr key={row.branch} className="hover:bg-slate-50/50 transition-colors">
-                          <PanelTableTd colId="branch" className="py-3 pr-4">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: BRANCH_COLORS[i % BRANCH_COLORS.length] }} />
-                              <span className="font-medium text-slate-800">{row.branch}</span>
-                            </div>
-                          </PanelTableTd>
-                          <PanelTableTd colId="total" className="py-3 text-right font-semibold text-brand-600">{row.total}</PanelTableTd>
-                          <PanelTableTd colId="open" className="py-3 text-right text-amber-600 font-medium">{row.open}</PanelTableTd>
-                          <PanelTableTd colId="closed" className="py-3 text-right text-green-600 font-medium">{row.closed}</PanelTableTd>
-                          <PanelTableTd colId="avgCloseDays" className="py-3 text-right text-slate-600">{row.avgCloseDays != null ? `${row.avgCloseDays} gün` : '—'}</PanelTableTd>
-                          <PanelTableTd colId="lastFileDate" className="py-3 text-right text-slate-500 text-xs">{fmtDate(row.lastFileDate)}</PanelTableTd>
-                        </tr>
-                      ))}
+                      {sortedDistRows.map((row, i) => {
+                        const cells: Record<string, ReactNode> = {
+                          branch: (
+                            <PanelTableTd key="branch" colId="branch" className="py-3 pr-4">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: BRANCH_COLORS[i % BRANCH_COLORS.length] }} />
+                                <span className="font-medium text-slate-800">{row.branch}</span>
+                              </div>
+                            </PanelTableTd>
+                          ),
+                          total: <PanelTableTd key="total" colId="total" className="py-3 text-right font-semibold text-brand-600">{row.total}</PanelTableTd>,
+                          open: <PanelTableTd key="open" colId="open" className="py-3 text-right text-amber-600 font-medium">{row.open}</PanelTableTd>,
+                          closed: <PanelTableTd key="closed" colId="closed" className="py-3 text-right text-green-600 font-medium">{row.closed}</PanelTableTd>,
+                          avgCloseDays: <PanelTableTd key="avgCloseDays" colId="avgCloseDays" className="py-3 text-right text-slate-600">{row.avgCloseDays != null ? `${row.avgCloseDays} gün` : '—'}</PanelTableTd>,
+                          lastFileDate: <PanelTableTd key="lastFileDate" colId="lastFileDate" className="py-3 text-right text-slate-500 text-xs">{fmtDate(row.lastFileDate)}</PanelTableTd>,
+                        };
+                        return (
+                          <tr key={row.branch} className="hover:bg-slate-50/50 transition-colors">
+                            {branchDetailTableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
-                </div>
+                </PanelTableScroll>
               </div>
               </TableColumnsProvider>
             </div>
@@ -546,85 +556,106 @@ export default function BransAnaliziPage() {
                   </div>
                   <PanelTableColumnPicker tableColumns={customerPerfTableColumns} />
                 </div>
-                <div className="overflow-x-auto">
+                <PanelTableScroll>
                   <table className="w-full text-sm" style={panelTableLayoutStyle(customerPerfTableColumns)}>
+                    <PanelTableColGroup />
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/50">
-                        <SortablePanelTableTh colId="customer" sortKey="customer" activeSortKey={clientSortCustomer?.key ?? null} sortDir={clientSortCustomer?.dir ?? 'asc'} onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))} className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">Müşteri</SortablePanelTableTh>
-                        <SortablePanelTableTh colId="service" sortKey="service" activeSortKey={clientSortCustomer?.key ?? null} sortDir={clientSortCustomer?.dir ?? 'asc'} onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Hizmet</SortablePanelTableTh>
-                        <SortablePanelTableTh colId="files" sortKey="files" activeSortKey={clientSortCustomer?.key ?? null} sortDir={clientSortCustomer?.dir ?? 'asc'} onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Dosya</SortablePanelTableTh>
-                        <PanelTableTh colId="branchDist" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Branş Dağılımı</PanelTableTh>
-                        <SortablePanelTableTh colId="trend" sortKey="trend" activeSortKey={clientSortCustomer?.key ?? null} sortDir={clientSortCustomer?.dir ?? 'asc'} onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Trend</SortablePanelTableTh>
-                        <SortablePanelTableTh colId="avgClose" sortKey="avgClose" activeSortKey={clientSortCustomer?.key ?? null} sortDir={clientSortCustomer?.dir ?? 'asc'} onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))} className="text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</SortablePanelTableTh>
-                        <th className="text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide">İşlem</th>
+                        <PanelOrderedHeaderRow
+                          tableColumns={customerPerfTableColumns}
+                          thClass={(id) => id === 'customer' || id === 'action' ? 'text-center px-5 py-3 text-xs font-semibold text-slate-500 tracking-wide' : 'text-center px-4 py-3 text-xs font-semibold text-slate-500 tracking-wide'}
+                          unsortableIds={['branchDist', 'action']}
+                          sortKey={clientSortCustomer?.key ?? null}
+                          sortDir={clientSortCustomer?.dir ?? 'asc'}
+                          onSort={(k) => setClientSortCustomer((p) => cycleClientSort(p, k))}
+                        />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {sortedCustomers.map((c) => (
-                        <tr key={c.customerId} className="hover:bg-slate-50/50 transition-colors">
-                          <PanelTableTd colId="customer" className="px-5 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${c.entityType === 'corporate' ? 'bg-brand-600' : 'bg-purple-600'}`}>
-                                {c.customerName.charAt(0).toUpperCase()}
+                      {sortedCustomers.map((c) => {
+                        const cells: Record<string, ReactNode> = {
+                          customer: (
+                            <PanelTableTd key="customer" colId="customer" className="px-5 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${c.entityType === 'corporate' ? 'bg-brand-600' : 'bg-purple-600'}`}>
+                                  {c.customerName.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-800 text-sm">{c.customerName}</p>
+                                  <p className="text-xs text-slate-400">{c.entityType === 'corporate' ? 'Kurumsal' : 'Bireysel'}</p>
+                                </div>
                               </div>
+                            </PanelTableTd>
+                          ),
+                          service: (
+                            <PanelTableTd key="service" colId="service" className="px-4 py-3">
+                              {c.serviceType ? (
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  c.serviceType === 'HASAR'
+                                    ? 'bg-blue-50 text-blue-700'
+                                    : 'bg-red-50 text-red-700'
+                                }`}>
+                                  {c.serviceType === 'HASAR' ? 'Hasar' : 'Acil Yardım'}
+                                </span>
+                              ) : <span className="text-slate-300 text-xs">—</span>}
+                            </PanelTableTd>
+                          ),
+                          files: (
+                            <PanelTableTd key="files" colId="files" className="px-4 py-3 text-right">
                               <div>
-                                <p className="font-medium text-slate-800 text-sm">{c.customerName}</p>
-                                <p className="text-xs text-slate-400">{c.entityType === 'corporate' ? 'Kurumsal' : 'Bireysel'}</p>
+                                <span className="font-semibold text-slate-800">{c.totalFiles}</span>
+                                <div className="flex justify-end gap-2 text-xs mt-0.5">
+                                  <span className="text-amber-600">{c.openFiles} açık</span>
+                                  <span className="text-green-600">{c.closedFiles} kapalı</span>
+                                </div>
                               </div>
-                            </div>
-                          </PanelTableTd>
-                          <PanelTableTd colId="service" className="px-4 py-3">
-                            {c.serviceType ? (
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                c.serviceType === 'HASAR'
-                                  ? 'bg-blue-50 text-blue-700'
-                                  : 'bg-red-50 text-red-700'
-                              }`}>
-                                {c.serviceType === 'HASAR' ? 'Hasar' : 'Acil Yardım'}
-                              </span>
-                            ) : <span className="text-slate-300 text-xs">—</span>}
-                          </PanelTableTd>
-                          <PanelTableTd colId="files" className="px-4 py-3 text-right">
-                            <div>
-                              <span className="font-semibold text-slate-800">{c.totalFiles}</span>
-                              <div className="flex justify-end gap-2 text-xs mt-0.5">
-                                <span className="text-amber-600">{c.openFiles} açık</span>
-                                <span className="text-green-600">{c.closedFiles} kapalı</span>
+                            </PanelTableTd>
+                          ),
+                          branchDist: (
+                            <PanelTableTd key="branchDist" colId="branchDist" className="px-4 py-3">
+                              <div className="flex justify-center">
+                                <MiniBar dist={c.branchDistribution} />
                               </div>
-                            </div>
-                          </PanelTableTd>
-                          <PanelTableTd colId="branchDist" className="px-4 py-3">
-                            <div className="flex justify-center">
-                              <MiniBar dist={c.branchDistribution} />
-                            </div>
-                          </PanelTableTd>
-                          <PanelTableTd colId="trend" className="px-4 py-3 text-center">
-                            <TrendBadge trend={c.trend} />
-                          </PanelTableTd>
-                          <PanelTableTd colId="avgClose" className="px-4 py-3 text-right text-slate-600">
-                            {c.avgCloseDays != null ? `${c.avgCloseDays} gün` : '—'}
-                          </PanelTableTd>
-                          <PanelTableTd colId="action" className="px-5 py-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => router.push(`/panel/musteriler/${c.customerId}?tab=analiz`)}
-                              className="text-xs text-brand-600 hover:text-blue-700 font-medium hover:underline"
-                            >
-                              Detay
-                            </button>
-                          </PanelTableTd>
-                        </tr>
-                      ))}
+                            </PanelTableTd>
+                          ),
+                          trend: (
+                            <PanelTableTd key="trend" colId="trend" className="px-4 py-3 text-center">
+                              <TrendBadge trend={c.trend} />
+                            </PanelTableTd>
+                          ),
+                          avgClose: (
+                            <PanelTableTd key="avgClose" colId="avgClose" className="px-4 py-3 text-right text-slate-600">
+                              {c.avgCloseDays != null ? `${c.avgCloseDays} gün` : '—'}
+                            </PanelTableTd>
+                          ),
+                          action: (
+                            <PanelTableTd key="action" colId="action" className="px-5 py-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/panel/musteriler/${c.customerId}?tab=analiz`)}
+                                className="text-xs text-brand-600 hover:text-blue-700 font-medium hover:underline"
+                              >
+                                Detay
+                              </button>
+                            </PanelTableTd>
+                          ),
+                        };
+                        return (
+                          <tr key={c.customerId} className="hover:bg-slate-50/50 transition-colors">
+                            {customerPerfTableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
+                          </tr>
+                        );
+                      })}
                       {sortedCustomers.length === 0 && (
                         <tr>
-                          <td colSpan={customerPerfTableColumns.prefs.visibleIds.length || 1} className="px-5 py-10 text-center text-slate-400 text-sm">
+                          <td colSpan={customerPerfTableColumns.prefs.orderedVisibleColumns.length || 1} className="px-5 py-10 text-center text-slate-400 text-sm">
                             Veri Bulunamadı
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
-                </div>
+                </PanelTableScroll>
               </div>
               </TableColumnsProvider>
             </div>
@@ -666,33 +697,44 @@ export default function BransAnaliziPage() {
                     </div>
                     <PanelTableColumnPicker tableColumns={growthTableColumns} />
                   </div>
-                  <div className="p-5 overflow-x-auto">
+                  <PanelTableScroll className="p-5">
                     <table className="w-full text-sm" style={panelTableLayoutStyle(growthTableColumns)}>
+                      <PanelTableColGroup />
                       <thead>
                         <tr className="border-b border-slate-100">
-                          <SortablePanelTableTh colId="branch" sortKey="branch" activeSortKey={clientSortGrowth?.key ?? null} sortDir={clientSortGrowth?.dir ?? 'asc'} onSort={(k) => setClientSortGrowth((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Branş</SortablePanelTableTh>
-                          <SortablePanelTableTh colId="total" sortKey="total" activeSortKey={clientSortGrowth?.key ?? null} sortDir={clientSortGrowth?.dir ?? 'asc'} onSort={(k) => setClientSortGrowth((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Toplam Dosya</SortablePanelTableTh>
-                          <SortablePanelTableTh colId="avgCloseDays" sortKey="avgCloseDays" activeSortKey={clientSortGrowth?.key ?? null} sortDir={clientSortGrowth?.dir ?? 'asc'} onSort={(k) => setClientSortGrowth((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Ort. Kapanma</SortablePanelTableTh>
-                          <SortablePanelTableTh colId="lastFileDate" sortKey="lastFileDate" activeSortKey={clientSortGrowth?.key ?? null} sortDir={clientSortGrowth?.dir ?? 'asc'} onSort={(k) => setClientSortGrowth((p) => cycleClientSort(p, k))} className="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide">Son Dosya</SortablePanelTableTh>
+                          <PanelOrderedHeaderRow
+                            tableColumns={growthTableColumns}
+                            thClass="text-center pb-3 text-xs font-semibold text-slate-500 tracking-wide"
+                            sortKey={clientSortGrowth?.key ?? null}
+                            sortDir={clientSortGrowth?.dir ?? 'asc'}
+                            onSort={(k) => setClientSortGrowth((p) => cycleClientSort(p, k))}
+                          />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
-                        {sortedGrowthRows.map((row, i) => (
-                          <tr key={row.branch} className="hover:bg-slate-50/50 transition-colors">
-                            <PanelTableTd colId="branch" className="py-3 pr-4">
-                              <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: BRANCH_COLORS[i % BRANCH_COLORS.length] }} />
-                                <span className="font-medium text-slate-800">{row.branch}</span>
-                              </div>
-                            </PanelTableTd>
-                            <PanelTableTd colId="total" className="py-3 text-right font-semibold text-brand-600">{row.total}</PanelTableTd>
-                            <PanelTableTd colId="avgCloseDays" className="py-3 text-right text-slate-600">{row.avgCloseDays != null ? `${row.avgCloseDays} gün` : '—'}</PanelTableTd>
-                            <PanelTableTd colId="lastFileDate" className="py-3 text-right text-slate-500 text-xs">{fmtDate(row.lastFileDate)}</PanelTableTd>
-                          </tr>
-                        ))}
+                        {sortedGrowthRows.map((row, i) => {
+                          const cells: Record<string, ReactNode> = {
+                            branch: (
+                              <PanelTableTd key="branch" colId="branch" className="py-3 pr-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: BRANCH_COLORS[i % BRANCH_COLORS.length] }} />
+                                  <span className="font-medium text-slate-800">{row.branch}</span>
+                                </div>
+                              </PanelTableTd>
+                            ),
+                            total: <PanelTableTd key="total" colId="total" className="py-3 text-right font-semibold text-brand-600">{row.total}</PanelTableTd>,
+                            avgCloseDays: <PanelTableTd key="avgCloseDays" colId="avgCloseDays" className="py-3 text-right text-slate-600">{row.avgCloseDays != null ? `${row.avgCloseDays} gün` : '—'}</PanelTableTd>,
+                            lastFileDate: <PanelTableTd key="lastFileDate" colId="lastFileDate" className="py-3 text-right text-slate-500 text-xs">{fmtDate(row.lastFileDate)}</PanelTableTd>,
+                          };
+                          return (
+                            <tr key={row.branch} className="hover:bg-slate-50/50 transition-colors">
+                              {growthTableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
-                  </div>
+                  </PanelTableScroll>
                 </div>
                 </TableColumnsProvider>
               )}

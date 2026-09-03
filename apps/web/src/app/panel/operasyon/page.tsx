@@ -21,6 +21,7 @@ import {
   PanelTableTd,
   PanelTableTh,
   PanelTableColGroup,
+  PanelTableScroll,
   SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
@@ -1420,7 +1421,7 @@ function OperasyonPageContent() {
               </button>
             ))}
           </div>
-          <div className="hidden overflow-x-auto lg:block">
+          <PanelTableScroll className="hidden lg:block">
             <table className={`w-full ${isAcilListMode ? 'text-sm' : 'text-xs'}`} style={opsTableStyle}>
               <PanelTableColGroup />
               <thead className="table-head-row">
@@ -1659,7 +1660,7 @@ function OperasyonPageContent() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </PanelTableScroll>
           </>
         )}
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2">

@@ -46,7 +46,7 @@ import type { LucideIcon } from 'lucide-react';
 const EKSPER_PORTAL_HOME = '/panel/eksper-portal';
 const EKSPER_PORTAL_LABEL = 'Eksper Paneli';
 
-const CENTERED_TABLE_COLS = new Set(['subject', 'status', 'delayDays', 'actions']);
+const CENTERED_TABLE_COLS = new Set(['subject', 'status', 'delayDays', 'createdAt', 'actions']);
 
 /** D3XX referans kolon sırası (sabit varsayılan) */
 const EKSPER_FILE_TABLE_COLUMNS: TableColumnDef[] = [
@@ -56,7 +56,7 @@ const EKSPER_FILE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'status', label: 'Durum', defaultWidth: 140, minWidth: 120 },
   { id: 'delayDays', label: 'Gecikme Gün', defaultWidth: 110, minWidth: 96 },
   { id: 'createdAt', label: 'Oluşturulma Tarihi', defaultWidth: 120, minWidth: 100 },
-  { id: 'actions', label: 'İşlemler', defaultWidth: 112, minWidth: 104, pin: 'end', resizable: false },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 168, minWidth: 148, pin: 'end', resizable: false },
 ];
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
@@ -134,7 +134,7 @@ export default function EksperDosyalarPage() {
   const [notesRefreshToken, setNotesRefreshToken] = useState(0);
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
 
-  const tableColumns = usePanelTableColumns('table-cols:eksper-portal-dosyalar-v6', EKSPER_FILE_TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:eksper-portal-dosyalar-v7', EKSPER_FILE_TABLE_COLUMNS);
 
   const syncFileIdInUrl = useCallback(
     (id: string | null) => {
@@ -538,7 +538,8 @@ export default function EksperDosyalarPage() {
                                 <PanelTableTd
                                   key={col.id}
                                   colId="createdAt"
-                                  className="px-3 py-2.5 text-[12px] tabular-nums text-[#9AA3AF]"
+                                  align="center"
+                                  className="table-td-center px-3 py-2.5 text-[12px] tabular-nums text-[#9AA3AF]"
                                 >
                                   {fmtDate(f.createdAt)}
                                 </PanelTableTd>

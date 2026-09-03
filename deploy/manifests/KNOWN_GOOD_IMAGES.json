@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-03",
-  "label": "v558-finans-faturalar",
-  "description": "Full: finans faturalar müşteri sütunu, işlem ikonları, dosya sorumlusu zili, düzenleme nedeni, sütun kaydırma. v557 evrak/hakediş durur. İK yok. Tedarikçi türü kutusu yok. Rollback web v557 / backend v557.",
+  "label": "v559-eksper-liste-musteri-sayac",
+  "description": "Full: eksper portal satır ikonları, günlük listelerde sütun kaydırma, müşteri dosya sayısı (asistan/sigorta), sağ panel sayfa geçişi, hasar KPI kapsam. İK personel+zimmet yok. Rollback web v558 / backend v558.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v558-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v558-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v559-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v559-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v557-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v557-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v558-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v558-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

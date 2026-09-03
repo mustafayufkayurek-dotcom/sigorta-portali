@@ -16,8 +16,10 @@ import {
   deriveOperationStage,
   hasarListStatusQuery,
   isApprovalWaitingReport,
+  isHasarWorkloadOpenStage,
   staffVisibleClaimStatusName,
   resolveEmergencyOperationLabel,
+  tallyHasarOperationKpis,
 } from './operation-status.ts';
 
 describe('dış onay = Onay Bekliyor LOCK', () => {
@@ -207,5 +209,36 @@ describe('son işlem kapanışı ezmez LOCK', () => {
       resolveEmergencyOperationLabel({ status: 'COZULDU' }),
       'Dosya Kapatıldı',
     );
+  });
+});
+
+describe('hasar dosya sorumlusu KPI kartı LOCK', () => {
+  it('red ve kapanış açık iş sayılmaz; rapor yazımı taslak artıklarından şişmez', () => {
+    const todayRange = {
+      from: new Date('2026-09-03T00:00:00+03:00'),
+      to: new Date('2026-09-03T23:59:59.999+03:00'),
+    };
+    const tally = tallyHasarOperationKpis(
+      [
+        { claimStatusCode: 'budget_preparing', newestReportStatus: 'draft' },
+        { claimStatusCode: 'budget_preparing', newestReportStatus: 'rejected' },
+        { claimStatusCode: 'closed', newestReportStatus: null },
+        { claimStatusCode: 'budget_submitted', newestReportStatus: 'pending_approval' },
+        { claimStatusCode: 'pre_review', newestReportStatus: 'draft' },
+        {
+          claimStatusCode: 'repair_in_progress',
+          newestReportStatus: 'approved',
+          createdAt: '2026-09-03T08:00:00+03:00',
+        },
+      ],
+      todayRange,
+    );
+    assert.equal(tally.openClaims, 4);
+    assert.equal(tally.reportWriting, 2);
+    assert.equal(tally.approvalPending, 1);
+    assert.equal(tally.reportApproval, 1);
+    assert.equal(tally.openedTodayClaims, 1);
+    assert.equal(isHasarWorkloadOpenStage('rapor_reddedildi'), false);
+    assert.equal(isHasarWorkloadOpenStage('rapor_yaziliyor'), true);
   });
 });

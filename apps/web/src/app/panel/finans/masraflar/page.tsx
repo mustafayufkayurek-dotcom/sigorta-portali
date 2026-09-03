@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -18,9 +18,10 @@ import {
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   PanelTableSummaryFoot,
-  SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -1659,59 +1660,81 @@ export default function MasraflarPage() {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+              <PanelTableColGroup />
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-700/40 text-left">
-                  <SortablePanelTableTh colId="operationNo" sortKey="id" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">İşlem No</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Dosya No</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="expensePlan" sortKey="expensePlan" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Bütçe Tipi</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="expenseGroupName" sortKey="expenseGroupName" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Masraf Grubu</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="expenseSubgroupName" sortKey="expenseSubgroupName" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Alt Grup</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="description" sortKey="description" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Açıklama</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-center">Tutar</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Tarih</SortablePanelTableTh>
-                  <PanelTableTh colId="actions" className="px-2 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-center" resizable={false}>
-                    İşlemler
-                  </PanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={tableColumns}
+                    thClass={(id) =>
+                      id === 'actions'
+                        ? 'px-2 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-center'
+                        : id === 'amount'
+                          ? 'px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 text-center'
+                          : 'px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400'
+                    }
+                    unsortableIds={['actions']}
+                    sortKey={clientSort?.key ?? null}
+                    sortDir={clientSort?.dir ?? 'asc'}
+                    onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
+                    sortKeyFor={(id) => (id === 'operationNo' ? 'id' : id)}
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                 {pagedExpenses.slice.map((e) => {
                   const meta = PLAN_META[e.expensePlan] ?? PLAN_META[PLAN_BUTCE];
-                  return (
-                    <tr key={e.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors">
-                      <PanelTableTd colId="operationNo" className="px-5 py-3.5">
+                  const cells: Record<string, ReactNode> = {
+                    operationNo: (
+                      <PanelTableTd key="operationNo" colId="operationNo" className="px-5 py-3.5">
                         <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200">
                           {financeOperationNo('MSF', e.id, e.createdAt ?? e.date)}
                         </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="fileNo" className="px-5 py-3.5">
+                    ),
+                    fileNo: (
+                      <PanelTableTd key="fileNo" colId="fileNo" className="px-5 py-3.5">
                         <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">
                           {e.fileNo || '—'}
                         </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="expensePlan" className="px-5 py-3.5 max-w-0">
+                    ),
+                    expensePlan: (
+                      <PanelTableTd key="expensePlan" colId="expensePlan" className="px-5 py-3.5 max-w-0">
                         <span className={`inline-flex max-w-full truncate items-center text-xs font-semibold px-2.5 py-0.5 rounded-full ${meta.badgeCls}`}>
                           {meta.label}
                         </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="expenseGroupName" className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-300 max-w-0">
+                    ),
+                    expenseGroupName: (
+                      <PanelTableTd key="expenseGroupName" colId="expenseGroupName" className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-300 max-w-0">
                         <span className="block truncate">{e.expenseGroupName ? toTitleCaseTR(e.expenseGroupName) : '—'}</span>
                       </PanelTableTd>
-                      <PanelTableTd colId="expenseSubgroupName" className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-300">
+                    ),
+                    expenseSubgroupName: (
+                      <PanelTableTd key="expenseSubgroupName" colId="expenseSubgroupName" className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-300">
                         {e.expenseSubgroupName ? toTitleCaseTR(e.expenseSubgroupName) : '—'}
                       </PanelTableTd>
-                      <PanelTableTd colId="description" className="px-5 py-3.5 text-slate-600 dark:text-slate-300" title={e.description || undefined}>
+                    ),
+                    description: (
+                      <PanelTableTd key="description" colId="description" className="px-5 py-3.5 text-slate-600 dark:text-slate-300" title={e.description || undefined}>
                         {e.description ? toTitleCaseTR(e.description) : <span className="text-slate-300 dark:text-slate-600 italic">Açıklama yok</span>}
                       </PanelTableTd>
-                      <PanelTableTd colId="amount" className="px-5 py-3.5 text-right font-semibold text-slate-900 dark:text-slate-100">
+                    ),
+                    amount: (
+                      <PanelTableTd key="amount" colId="amount" className="px-5 py-3.5 text-right font-semibold text-slate-900 dark:text-slate-100">
                         {fmt(e.amount)}
                       </PanelTableTd>
-                      <PanelTableTd colId="date" className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">
+                    ),
+                    date: (
+                      <PanelTableTd key="date" colId="date" className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">
                         {fmtDate(e.date)}
                       </PanelTableTd>
-                      <PanelTableTd colId="actions" className="px-2 py-3.5">
+                    ),
+                    actions: (
+                      <PanelTableTd key="actions" colId="actions" className="px-2 py-3.5">
                         <div className="flex items-center justify-end gap-1">
                           <button type="button" onClick={() => handleEdit(e)} title="Düzenle"
                             className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
@@ -1727,6 +1750,11 @@ export default function MasraflarPage() {
                           </button>
                         </div>
                       </PanelTableTd>
+                    ),
+                  };
+                  return (
+                    <tr key={e.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors">
+                      {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                     </tr>
                   );
                 })}
@@ -1737,6 +1765,7 @@ export default function MasraflarPage() {
                 value={fmt(grandTotal)}
               />
             </table>
+          </PanelTableScroll>
             <FinansTablePager
               page={pagedExpenses.safePage}
               pageSize={pageSize}
@@ -1745,7 +1774,7 @@ export default function MasraflarPage() {
               onPageChange={setPage}
               onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
             />
-          </div>
+          </>
         )}
       </FinansPanelCard>
       </TableColumnsProvider>

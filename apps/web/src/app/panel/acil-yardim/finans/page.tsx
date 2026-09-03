@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense, useMemo } from 'react';
+import { useEffect, useState, useCallback, Suspense, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -14,7 +14,9 @@ import {
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTd,
-  SortablePanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -360,11 +362,13 @@ function FinansPageInner() {
         <div className="text-center py-16 text-slate-400 text-sm">Bu döneme ait kayıt bulunamadı.</div>
       ) : (
         <TableColumnsProvider value={tableColumns}>
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
             <PanelTableColumnPicker tableColumns={tableColumns} />
           </div>
-          <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+          <PanelTableScroll>
+          <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [40] })}>
+            <PanelTableColGroup leadingWidths={[40]} />
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-500">
                 <th className="px-4 py-3 text-center w-10">
@@ -375,18 +379,69 @@ function FinansPageInner() {
                     className="rounded"
                   />
                 </th>
-                <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Tarih</SortablePanelTableTh>
-                <SortablePanelTableTh colId="customer" sortKey="customer" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Müşteri</SortablePanelTableTh>
-                <SortablePanelTableTh colId="issueType" sortKey="issueType" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Konu</SortablePanelTableTh>
-                <SortablePanelTableTh colId="vendorPay" sortKey="vendorPay" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Tedarikçi Ödemesi</SortablePanelTableTh>
-                <SortablePanelTableTh colId="gelir" sortKey="gelir" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Gelir</SortablePanelTableTh>
-                <SortablePanelTableTh colId="gider" sortKey="gider" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Gider</SortablePanelTableTh>
-                <SortablePanelTableTh colId="kar" sortKey="kar" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Kâr</SortablePanelTableTh>
-                <SortablePanelTableTh colId="invoice" sortKey="invoice" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center font-semibold">Fatura</SortablePanelTableTh>
+                <PanelOrderedHeaderRow
+                  tableColumns={tableColumns}
+                  thClass="px-4 py-3 text-center font-semibold"
+                  sortKey={clientSort?.key ?? null}
+                  sortDir={clientSort?.dir ?? 'asc'}
+                  onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
+                />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {sortedRows.map((row) => (
+              {sortedRows.map((row) => {
+                const cells: Record<string, ReactNode> = {
+                  date: (
+                    <PanelTableTd key="date" colId="date" className="px-4 py-3 text-slate-500">{fmtDate(row.fileDate ?? row.createdAt)}</PanelTableTd>
+                  ),
+                  customer: (
+                    <PanelTableTd key="customer" colId="customer" className="px-4 py-3">
+                      <Link href={`/panel/acil-yardim/${row.id}`} className="font-medium text-slate-900 hover:text-brand-600">
+                        {row.customerName}
+                      </Link>
+                      <p className="text-xs text-slate-400">{row.caseNo}</p>
+                    </PanelTableTd>
+                  ),
+                  issueType: (
+                    <PanelTableTd key="issueType" colId="issueType" className="px-4 py-3 text-blue-700 font-medium">{row.issueType}</PanelTableTd>
+                  ),
+                  vendorPay: (
+                    <PanelTableTd key="vendorPay" colId="vendorPay" className="px-4 py-3">
+                      <span className={acilVendorPayTone(row.vendorPaid)} data-testid="acil-finans-liste-odeme">
+                        {acilVendorPayLabel(row.vendorPaid)}
+                      </span>
+                    </PanelTableTd>
+                  ),
+                  gelir: (
+                    <PanelTableTd key="gelir" colId="gelir" className="px-4 py-3 text-right text-green-700 font-semibold">{fmt(row.totalGelir)} ₺</PanelTableTd>
+                  ),
+                  gider: (
+                    <PanelTableTd key="gider" colId="gider" className="px-4 py-3 text-right text-red-600 font-semibold">{fmt(row.totalGider)} ₺</PanelTableTd>
+                  ),
+                  kar: (
+                    <PanelTableTd key="kar" colId="kar" className={`px-4 py-3 text-right font-bold ${row.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+                      {fmt(row.netKar)} ₺
+                    </PanelTableTd>
+                  ),
+                  invoice: (
+                    <PanelTableTd key="invoice" colId="invoice" className="px-4 py-3">
+                      {row.isFaturalandildi ? (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                          Faturalandı
+                        </span>
+                      ) : row.overdueLevel !== 'none' ? (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${OVERDUE_BADGE[row.overdueLevel]}`}>
+                          {OVERDUE_LABEL[row.overdueLevel]}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                          Bekliyor
+                        </span>
+                      )}
+                    </PanelTableTd>
+                  ),
+                };
+                return (
                 <tr key={row.id} className={`hover:bg-slate-50 transition-colors ${
                   row.overdueLevel === 'critical' ? 'bg-red-50/30' :
                   row.overdueLevel === 'warning' ? 'bg-yellow-50/30' : ''
@@ -401,52 +456,44 @@ function FinansPageInner() {
                       />
                     )}
                   </td>
-                  <PanelTableTd colId="date" className="px-4 py-3 text-slate-500">{fmtDate(row.fileDate ?? row.createdAt)}</PanelTableTd>
-                  <PanelTableTd colId="customer" className="px-4 py-3">
-                    <Link href={`/panel/acil-yardim/${row.id}`} className="font-medium text-slate-900 hover:text-brand-600">
-                      {row.customerName}
-                    </Link>
-                    <p className="text-xs text-slate-400">{row.caseNo}</p>
-                  </PanelTableTd>
-                  <PanelTableTd colId="issueType" className="px-4 py-3 text-blue-700 font-medium">{row.issueType}</PanelTableTd>
-                  <PanelTableTd colId="vendorPay" className="px-4 py-3">
-                    <span className={acilVendorPayTone(row.vendorPaid)} data-testid="acil-finans-liste-odeme">
-                      {acilVendorPayLabel(row.vendorPaid)}
-                    </span>
-                  </PanelTableTd>
-                  <PanelTableTd colId="gelir" className="px-4 py-3 text-right text-green-700 font-semibold">{fmt(row.totalGelir)} ₺</PanelTableTd>
-                  <PanelTableTd colId="gider" className="px-4 py-3 text-right text-red-600 font-semibold">{fmt(row.totalGider)} ₺</PanelTableTd>
-                  <PanelTableTd colId="kar" className={`px-4 py-3 text-right font-bold ${row.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
-                    {fmt(row.netKar)} ₺
-                  </PanelTableTd>
-                  <PanelTableTd colId="invoice" className="px-4 py-3">
-                    {row.isFaturalandildi ? (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                        Faturalandı
-                      </span>
-                    ) : row.overdueLevel !== 'none' ? (
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${OVERDUE_BADGE[row.overdueLevel]}`}>
-                        {OVERDUE_LABEL[row.overdueLevel]}
-                      </span>
-                    ) : (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                        Bekliyor
-                      </span>
-                    )}
-                  </PanelTableTd>
+                  {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
             <tfoot className="border-t-2 border-slate-100 bg-slate-50">
               <tr className="text-xs font-bold text-slate-700">
-                <td colSpan={5} className="px-4 py-3">{listSummary.totalCases} kayıt</td>
-                <PanelTableTd colId="gelir" className="px-4 py-3 text-right text-green-700">{fmt(listSummary.totalGelir)} ₺</PanelTableTd>
-                <PanelTableTd colId="gider" className="px-4 py-3 text-right text-red-600">{fmt(listSummary.totalGider)} ₺</PanelTableTd>
-                <PanelTableTd colId="kar" className={`px-4 py-3 text-right ${listSummary.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{fmt(listSummary.netKar)} ₺</PanelTableTd>
-                <PanelTableTd colId="invoice" className="px-4 py-3">{null}</PanelTableTd>
+                <td className="px-4 py-3" />
+                {(() => {
+                  const valueIds = new Set(['gelir', 'gider', 'kar', 'invoice']);
+                  let labelShown = false;
+                  const footCells: Record<string, ReactNode> = {
+                    gelir: (
+                      <PanelTableTd key="gelir" colId="gelir" className="px-4 py-3 text-right text-green-700">{fmt(listSummary.totalGelir)} ₺</PanelTableTd>
+                    ),
+                    gider: (
+                      <PanelTableTd key="gider" colId="gider" className="px-4 py-3 text-right text-red-600">{fmt(listSummary.totalGider)} ₺</PanelTableTd>
+                    ),
+                    kar: (
+                      <PanelTableTd key="kar" colId="kar" className={`px-4 py-3 text-right ${listSummary.netKar >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{fmt(listSummary.netKar)} ₺</PanelTableTd>
+                    ),
+                    invoice: (
+                      <PanelTableTd key="invoice" colId="invoice" className="px-4 py-3">{null}</PanelTableTd>
+                    ),
+                  };
+                  return tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                    if (footCells[col.id]) return footCells[col.id];
+                    if (!labelShown && !valueIds.has(col.id)) {
+                      labelShown = true;
+                      return <td key={col.id} className="px-4 py-3">{listSummary.totalCases} kayıt</td>;
+                    }
+                    return <td key={col.id} className="px-4 py-3" />;
+                  });
+                })()}
               </tr>
             </tfoot>
           </table>
+          </PanelTableScroll>
         </div>
         </TableColumnsProvider>
       )}

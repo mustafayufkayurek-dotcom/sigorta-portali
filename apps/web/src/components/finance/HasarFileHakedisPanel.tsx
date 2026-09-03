@@ -816,7 +816,7 @@ export function HasarFileHakedisPanel({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
   const closePanelRef = useRef<() => void>(() => {});
-  const { docked, dock, expand } = useRightPanelDock(drawerOpen);
+  const { docked, dock, expand } = useRightPanelDock(drawerOpen, { title: 'Hakediş' });
   const { requestClose } = useRightPanelUnsavedGuard({
     open: drawerOpen,
     expand,

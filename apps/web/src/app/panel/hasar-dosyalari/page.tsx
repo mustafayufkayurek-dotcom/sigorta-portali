@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState, useMemo } from 'react';
+import { Suspense, useEffect, useState, useMemo, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { SlidePanel } from '@/components/SlidePanel';
@@ -12,8 +12,9 @@ import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
-  SortablePanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
@@ -359,9 +360,12 @@ function ClaimFilesPageContent() {
     reportWriting?: number;
     reportApproval?: number;
   }>(
-    ['claim-files-operation-stats'],
+    ['claim-files-operation-stats', officeStaffUserId],
     '/claim-files/operation-stats',
-    { enabled: !isFieldStaff },
+    {
+      enabled: !isFieldStaff,
+      params: officeStaffUserId ? { assignedOfficeUserId: officeStaffUserId } : undefined,
+    },
   );
 
   // --- TanStack Query: Pending Revisions ---
@@ -708,33 +712,18 @@ function ClaimFilesPageContent() {
       {/* Table */}
       {loading ? (
         <div className="table-container">
-          <div className="overflow-x-auto">
+          <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+              <PanelTableColGroup />
               <thead className="table-head-row">
                 <tr>
-                  <PanelTableTh colId="fileNo" className="table-th-center">Dosya No</PanelTableTh>
-                  <PanelTableTh colId="customer" className="table-th-center">Müşteri</PanelTableTh>
-                  <PanelTableTh colId="insured" className="table-th-center">Sigortalı</PanelTableTh>
-                  <PanelTableTh colId="date" className="table-th-center">Tarih</PanelTableTh>
-                  <PanelTableTh colId="subject" className="table-th-center">Dosya Konusu</PanelTableTh>
-                  <PanelTableTh colId="status" className="table-th-center">Dosya Durumu</PanelTableTh>
-                  <PanelTableTh colId="supplier" className="table-th-center">Tedarikçi</PanelTableTh>
-                  <PanelTableTh colId="vendorPay" className="table-th-center">Ödemeler</PanelTableTh>
-                  <PanelTableTh colId="invoice" className="table-th-center">Fatura</PanelTableTh>
-                  <PanelTableTh colId="amount" className="table-th-center">Tutar</PanelTableTh>
-                  <PanelTableTh colId="reportSales" className="table-th-center">Beklenen Ciro</PanelTableTh>
-                  <PanelTableTh colId="reportCost" className="table-th-center">Tedarikçi Maliyet Toplamı</PanelTableTh>
-                  <PanelTableTh colId="reportProfit" className="table-th-center">Beklenen Kar</PanelTableTh>
-                  <PanelTableTh colId="priority" className="table-th-center">Öncelik</PanelTableTh>
-                  <PanelTableTh colId="revision" className="table-th-center">Revizyon</PanelTableTh>
-                  <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
-                  <PanelTableTh colId="sira" className="table-th-center">Sıra</PanelTableTh>
+                  <PanelOrderedHeaderRow tableColumns={tableColumns} />
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-t border-slate-100">
-                    {TABLE_COLUMNS.map((col) => (
+                    {tableColumns.prefs.orderedVisibleColumns.map((col) => (
                       <PanelTableTd key={col.id} colId={col.id} className="px-4 py-3">
                         <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" />
                       </PanelTableTd>
@@ -743,7 +732,7 @@ function ClaimFilesPageContent() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </PanelTableScroll>
         </div>
       ) : visibleClaims.length === 0 ? (
         <div className="table-container">
@@ -1007,29 +996,24 @@ function ClaimFilesPageContent() {
               );
             })}
           </div>
-          <div className={`hidden overflow-x-auto ${isFieldStaff ? '' : 'lg:block'}`}>
+          <PanelTableScroll className={`hidden ${isFieldStaff ? '' : 'lg:block'}`}>
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+              <PanelTableColGroup />
               <thead className="table-head-row">
                 <tr>
-                  <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya No</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="customer" sortKey="customer" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Müşteri</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="insured" sortKey="insured" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Sigortalı</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="date" sortKey="date" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tarih</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="subject" sortKey="subject" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya Konusu</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Dosya Durumu</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="supplier" sortKey="supplier" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tedarikçi</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="vendorPay" sortKey="vendorPay" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">
-                    <span data-testid="hasar-odeme-durumu-sutun">Ödemeler</span>
-                  </SortablePanelTableTh>
-                  <SortablePanelTableTh colId="invoice" sortKey="invoice" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Fatura</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tutar</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="reportSales" sortKey="reportSales" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Beklenen Ciro</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="reportCost" sortKey="reportCost" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tedarikçi Maliyet Toplamı</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="reportProfit" sortKey="reportProfit" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Beklenen Kar</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="priority" sortKey="priority" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Öncelik</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="revision" sortKey="revision" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Revizyon</SortablePanelTableTh>
-                  <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
-                  <PanelTableTh colId="sira" className="table-th-center">Sıra</PanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={tableColumns}
+                    sortKey={clientSort?.key ?? null}
+                    sortDir={clientSort?.dir ?? 'asc'}
+                    onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
+                    renderLabel={(id, label) =>
+                      id === 'vendorPay' ? (
+                        <span data-testid="hasar-odeme-durumu-sutun">{label}</span>
+                      ) : (
+                        label
+                      )
+                    }
+                  />
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -1056,14 +1040,9 @@ function ClaimFilesPageContent() {
                         ? 'Rapor onay bekliyor'
                         : undefined;
 
-                  return (
-                    <tr
-                      key={claim.id}
-                      className={`table-row cursor-pointer ${rowAccent}`}
-                      title={rowTitle}
-                      onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}?mode=edit`)}
-                    >
-                      <PanelTableTd colId="fileNo" className="table-td font-mono text-xs font-semibold text-slate-900">
+                  const cells: Record<string, ReactNode> = {
+                    fileNo: (
+                      <PanelTableTd key="fileNo" colId="fileNo" className="table-td font-mono text-xs font-semibold text-slate-900">
                         <span className="inline-flex flex-wrap items-center gap-1">
                           {claimListFileNo(claim)}
                           {claim.approval72hExceeded ? (
@@ -1071,7 +1050,10 @@ function ClaimFilesPageContent() {
                           ) : null}
                         </span>
                       </PanelTableTd>
+                    ),
+                    customer: (
                       <PanelTableTd
+                        key="customer"
                         colId="customer"
                         wrap
                         className="table-td text-xs max-w-[160px]"
@@ -1079,14 +1061,22 @@ function ClaimFilesPageContent() {
                       >
                         <OpsCustomerCell kind="hasar" name={customer.name} typeLabel={customer.typeLabel} href={customer.customerHref} />
                       </PanelTableTd>
-                      <PanelTableTd colId="insured" className="table-td text-xs max-w-[180px]" title={insuredName}>
+                    ),
+                    insured: (
+                      <PanelTableTd key="insured" colId="insured" className="table-td text-xs max-w-[180px]" title={insuredName}>
                         {insuredName}
                       </PanelTableTd>
-                      <PanelTableTd colId="date" className="table-td text-slate-400 text-xs">{fmtDate(claim.createdAt)}</PanelTableTd>
-                      <PanelTableTd colId="subject" align="center" className="table-td-center text-xs max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
+                    ),
+                    date: (
+                      <PanelTableTd key="date" colId="date" className="table-td text-slate-400 text-xs">{fmtDate(claim.createdAt)}</PanelTableTd>
+                    ),
+                    subject: (
+                      <PanelTableTd key="subject" colId="subject" align="center" className="table-td-center text-xs max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
                         {resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}
                       </PanelTableTd>
-                      <PanelTableTd colId="status" align="center" className="table-td-center">
+                    ),
+                    status: (
+                      <PanelTableTd key="status" colId="status" align="center" className="table-td-center">
                         <ClaimStatusBadge
                           status={claim.currentStatus}
                           reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
@@ -1094,29 +1084,44 @@ function ClaimFilesPageContent() {
                           operationStatusLabel={claim.operationStatusLabel}
                         />
                       </PanelTableTd>
-                      <PanelTableTd colId="supplier" className="table-td text-xs max-w-[120px]" title={supplierName ?? undefined}>
+                    ),
+                    supplier: (
+                      <PanelTableTd key="supplier" colId="supplier" className="table-td text-xs max-w-[120px]" title={supplierName ?? undefined}>
                         {supplierName ?? <span className="text-slate-300">Atanmadı</span>}
                       </PanelTableTd>
-                      <PanelTableTd colId="vendorPay" className="table-td">
+                    ),
+                    vendorPay: (
+                      <PanelTableTd key="vendorPay" colId="vendorPay" className="table-td">
                         <span className={acilVendorPayTone(claim.vendorPaid)} data-testid="hasar-liste-odeme">
                           {acilVendorPayLabel(claim.vendorPaid)}
                         </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="invoice" className="table-td">
+                    ),
+                    invoice: (
+                      <PanelTableTd key="invoice" colId="invoice" className="table-td">
                         <span className={INVOICE_STATUS_CLASSES[invStatus] ?? 'badge badge-gray'}>
                           {INVOICE_STATUS_LABELS[invStatus] ?? invStatus}
                         </span>
                       </PanelTableTd>
-                      <PanelTableTd colId="amount" className="table-td text-xs font-semibold">
+                    ),
+                    amount: (
+                      <PanelTableTd key="amount" colId="amount" className="table-td text-xs font-semibold">
                         {fmtAmount(totalAmount)}
                       </PanelTableTd>
-                      <PanelTableTd colId="reportSales" className="table-td text-xs font-semibold text-slate-800">
+                    ),
+                    reportSales: (
+                      <PanelTableTd key="reportSales" colId="reportSales" className="table-td text-xs font-semibold text-slate-800">
                         {rapor ? fmtAmount(rapor.totalSalesAmount) : '—'}
                       </PanelTableTd>
-                      <PanelTableTd colId="reportCost" className="table-td text-xs font-semibold text-slate-800">
+                    ),
+                    reportCost: (
+                      <PanelTableTd key="reportCost" colId="reportCost" className="table-td text-xs font-semibold text-slate-800">
                         {rapor ? fmtAmount(rapor.totalSupplierCost) : '—'}
                       </PanelTableTd>
+                    ),
+                    reportProfit: (
                       <PanelTableTd
+                        key="reportProfit"
                         colId="reportProfit"
                         className={`table-td text-xs font-semibold ${
                           rapor && Number(rapor.grossProfit) < 0 ? 'text-status-danger' : 'text-slate-800'
@@ -1124,14 +1129,18 @@ function ClaimFilesPageContent() {
                       >
                         {rapor ? fmtAmount(rapor.grossProfit) : '—'}
                       </PanelTableTd>
-                      <PanelTableTd colId="priority" className="table-td">
+                    ),
+                    priority: (
+                      <PanelTableTd key="priority" colId="priority" className="table-td">
                         {claim.priority && (
                           <span className={priorityBadgeClass(claim.priority)}>
                             {formatPriorityLabel(claim.priority)}
                           </span>
                         )}
                       </PanelTableTd>
-                      <PanelTableTd colId="revision" className="table-td">
+                    ),
+                    revision: (
+                      <PanelTableTd key="revision" colId="revision" className="table-td">
                         {revCount > 0 ? (
                           <span className="badge badge-amber">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
@@ -1141,7 +1150,9 @@ function ClaimFilesPageContent() {
                           <span className="text-slate-300 text-xs">—</span>
                         )}
                       </PanelTableTd>
-                      <PanelTableTd colId="actions" wrap={false} className="table-td-center">
+                    ),
+                    actions: (
+                      <PanelTableTd key="actions" colId="actions" wrap={false} className="table-td-center">
                         <div
                           className="inline-flex"
                           onClick={(e) => e.stopPropagation()}
@@ -1175,15 +1186,28 @@ function ClaimFilesPageContent() {
                           />
                         </div>
                       </PanelTableTd>
-                      <PanelTableTd colId="sira" align="center" className="table-td-center tabular-nums font-semibold text-slate-700">
+                    ),
+                    sira: (
+                      <PanelTableTd key="sira" colId="sira" align="center" className="table-td-center tabular-nums font-semibold text-slate-700">
                         {opsListRowNumber(page, limit, rowIdx)}
                       </PanelTableTd>
+                    ),
+                  };
+
+                  return (
+                    <tr
+                      key={claim.id}
+                      className={`table-row cursor-pointer ${rowAccent}`}
+                      title={rowTitle}
+                      onClick={() => router.push(`/panel/hasar-dosyalari/${claim.id}?mode=edit`)}
+                    >
+                      {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-          </div>
+          </PanelTableScroll>
           <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/60">
             <div className="flex flex-wrap items-center gap-3">
               <OpsListPageSizeSelect

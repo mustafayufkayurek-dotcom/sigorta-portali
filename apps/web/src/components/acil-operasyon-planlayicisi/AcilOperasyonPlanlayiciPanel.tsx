@@ -183,7 +183,7 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
     const [saveError, setSaveError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const panelRef = useRef<HTMLElement | null>(null);
-    const { docked, dock, expand } = useRightPanelDock(drawerOpen);
+    const { docked, dock, expand } = useRightPanelDock(drawerOpen, { title: 'Operasyon' });
     const { requestClose } = useRightPanelUnsavedGuard({
       open: drawerOpen,
       expand,

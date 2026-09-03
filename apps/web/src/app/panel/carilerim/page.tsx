@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
@@ -11,7 +11,9 @@ import {
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTd,
-  SortablePanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -207,18 +209,19 @@ export default function CarilerimPage() {
             <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
               <PanelTableColumnPicker tableColumns={tableColumns} />
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+            <PanelTableScroll>
+              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [32], trailingWidths: [72] })}>
+                <PanelTableColGroup leadingWidths={[32]} trailingWidths={[72]} />
                 <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500">
                   <tr>
                     <th className="w-8 px-2 py-3" aria-label="Genişlet" />
-                    <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Müşteri</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="phone" sortKey="phone" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Telefon</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="totalFiles" sortKey="totalFiles" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Dosya</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="openFiles" sortKey="openFiles" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Açık</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="closedFiles" sortKey="closedFiles" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Kapalı</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="lastActivity" sortKey="lastActivity" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Son hareket</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Durum</SortablePanelTableTh>
+                    <PanelOrderedHeaderRow
+                      tableColumns={tableColumns}
+                      sortKey={clientSort?.key ?? null}
+                      sortDir={clientSort?.dir ?? 'asc'}
+                      onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
+                      thClass="px-4 py-3 text-center"
+                    />
                     <th className="px-4 py-3 text-center">İşlem</th>
                   </tr>
                 </thead>
@@ -226,6 +229,37 @@ export default function CarilerimPage() {
                   {sortedCustomers.map((customer, idx) => {
                     const expanded = expandedId === customer.customerId;
                     const openPct = pct(customer.openFiles, customer.totalFiles);
+                    const cells: Record<string, ReactNode> = {
+                      name: (
+                          <PanelTableTd key="name" colId="name" className="px-4 py-3 font-medium text-slate-900 dark:text-white">{customer.name}</PanelTableTd>
+                      ),
+                      phone: (
+                          <PanelTableTd key="phone" colId="phone" className="px-4 py-3 font-mono text-xs text-slate-500">{maskPhone(customer.phone)}</PanelTableTd>
+                      ),
+                      totalFiles: (
+                          <PanelTableTd key="totalFiles" colId="totalFiles" className="px-4 py-3 text-right tabular-nums">{customer.totalFiles}</PanelTableTd>
+                      ),
+                      openFiles: (
+                          <PanelTableTd key="openFiles" colId="openFiles" className="px-4 py-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{customer.openFiles}</PanelTableTd>
+                      ),
+                      closedFiles: (
+                          <PanelTableTd key="closedFiles" colId="closedFiles" className="px-4 py-3 text-right tabular-nums text-slate-500">{customer.closedFiles}</PanelTableTd>
+                      ),
+                      lastActivity: (
+                          <PanelTableTd key="lastActivity" colId="lastActivity" className="px-4 py-3 text-xs text-slate-500">{relativeTime(customer.lastActivityDate)}</PanelTableTd>
+                      ),
+                      status: (
+                          <PanelTableTd key="status" colId="status" className="px-4 py-3">
+                            <div className="flex items-center gap-2 min-w-[88px]">
+                              <div className="flex-1 h-1 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex">
+                                <div className="bg-status-success" style={{ width: `${openPct}%` }} />
+                                <div className="bg-slate-300 dark:bg-slate-600 flex-1" />
+                              </div>
+                              <span className="text-[10px] text-slate-400 tabular-nums">{Math.round(openPct)}%</span>
+                            </div>
+                          </PanelTableTd>
+                      ),
+                    };
                     return (
                       <Fragment key={customer.customerId}>
                         <tr key={customer.customerId} className={`hover:bg-blue-50/30 dark:hover:bg-slate-700/40 ${idx % 2 ? 'bg-slate-50/30 dark:bg-slate-800/60' : ''}`}>
@@ -239,21 +273,7 @@ export default function CarilerimPage() {
                               <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
                             </button>
                           </td>
-                          <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-900 dark:text-white">{customer.name}</PanelTableTd>
-                          <PanelTableTd colId="phone" className="px-4 py-3 font-mono text-xs text-slate-500">{maskPhone(customer.phone)}</PanelTableTd>
-                          <PanelTableTd colId="totalFiles" className="px-4 py-3 text-right tabular-nums">{customer.totalFiles}</PanelTableTd>
-                          <PanelTableTd colId="openFiles" className="px-4 py-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{customer.openFiles}</PanelTableTd>
-                          <PanelTableTd colId="closedFiles" className="px-4 py-3 text-right tabular-nums text-slate-500">{customer.closedFiles}</PanelTableTd>
-                          <PanelTableTd colId="lastActivity" className="px-4 py-3 text-xs text-slate-500">{relativeTime(customer.lastActivityDate)}</PanelTableTd>
-                          <PanelTableTd colId="status" className="px-4 py-3">
-                            <div className="flex items-center gap-2 min-w-[88px]">
-                              <div className="flex-1 h-1 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 flex">
-                                <div className="bg-status-success" style={{ width: `${openPct}%` }} />
-                                <div className="bg-slate-300 dark:bg-slate-600 flex-1" />
-                              </div>
-                              <span className="text-[10px] text-slate-400 tabular-nums">{Math.round(openPct)}%</span>
-                            </div>
-                          </PanelTableTd>
+                          {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                           <td className="px-4 py-3">
                             <Link href={`/panel/musteriler?highlight=${customer.customerId}`} className="text-xs text-brand-600 dark:text-blue-400 hover:underline">
                               Detay
@@ -263,7 +283,7 @@ export default function CarilerimPage() {
                         {expanded && customer.files.map((file) => (
                           <tr key={`${customer.customerId}-${file.id}`} className="bg-slate-50/50 dark:bg-slate-800/40">
                             <td />
-                            <td colSpan={8} className="px-4 py-2">
+                            <td colSpan={tableColumns.prefs.orderedVisibleColumns.length + 1} className="px-4 py-2">
                               <Link
                                 href={`/panel/hasar-dosyalari/${file.id}`}
                                 className="flex items-center justify-between gap-3 text-xs hover:text-brand-600 dark:hover:text-blue-400"
@@ -285,7 +305,7 @@ export default function CarilerimPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </PanelTableScroll>
           </div>
         </TableColumnsProvider>
       )}

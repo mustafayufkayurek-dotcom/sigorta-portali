@@ -40,6 +40,8 @@ export function isVendorTypeOther(type: string): boolean {
   return type.trim().toLowerCase() === 'diğer' || type.trim().toLowerCase() === 'diger';
 }
 
+export { DEFAULT_VENDOR_TYPES, resolveVendorTypeList } from './vendor-type-list';
+
 /** Tedarikçi türü görüntüleme — Türkçe yazım kuralı (hizmet → Hizmet) */
 export function formatVendorTypeLabel(type: string | null | undefined): string | null {
   if (!type?.trim()) return null;

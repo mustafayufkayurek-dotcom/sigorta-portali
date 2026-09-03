@@ -233,6 +233,7 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
   it('sağ panel kaydır şeridi durur', () => {
     assert.equal(OPS_NOTICE.sagPanelKaydir.id, 'sag-panel-kaydir-v556');
     assert.match(OPS_NOTICE.sagPanelKaydir.body, /sağa kayar/);
+    assert.match(OPS_NOTICE.sagPanelKaydir.body, /Başka sayfaya/);
     assert.match(OPS_NOTICE.sagPanelKaydir.body, /kayıt hatırlatması/);
     assert.doesNotMatch(OPS_NOTICE.sagPanelKaydir.body, /Google|API/);
     const slide = readFileSync(join(here, '../components/SlidePanel.tsx'), 'utf8');

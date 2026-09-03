@@ -923,7 +923,80 @@ export function PanelTableFrame({
       {toolbar ? (
         <div className="flex min-w-0 justify-end border-b border-slate-100 px-3 py-2 sm:px-4">{toolbar}</div>
       ) : null}
-      <div className="max-w-full overflow-x-auto">{children}</div>
+      <PanelTableScroll>{children}</PanelTableScroll>
     </div>
+  );
+}
+
+/** Yatay sütun kaydırması — ebeveyn overflow-hidden olsa da kaydırma çubuğu çıkar */
+export function PanelTableScroll({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`min-w-0 w-full max-w-full overflow-x-auto ${className}`.trim()}>
+      {children}
+    </div>
+  );
+}
+
+const DEFAULT_UNSORTABLE_COL_IDS = ['actions', 'sira', 'select'];
+
+/** Başlıkları görünür sıraya göre çizer; Sütunlar menüsündeki sıra tabloda durur */
+export function PanelOrderedHeaderRow({
+  tableColumns,
+  columns,
+  thClass = 'table-th-center',
+  unsortableIds = DEFAULT_UNSORTABLE_COL_IDS,
+  sortKey = null,
+  sortDir = 'asc',
+  onSort,
+  sortKeyFor,
+  renderLabel,
+}: {
+  tableColumns: PanelTableColumnsValue;
+  columns?: TableColumnDef[];
+  thClass?: string | ((colId: string) => string);
+  unsortableIds?: string[];
+  sortKey?: string | null;
+  sortDir?: 'asc' | 'desc';
+  onSort?: (key: string) => void;
+  sortKeyFor?: (colId: string) => string;
+  renderLabel?: (colId: string, label: string) => ReactNode;
+}) {
+  const cols = columns ?? tableColumns.prefs.orderedVisibleColumns;
+  const locked = new Set(unsortableIds);
+  return (
+    <>
+      {cols.map((col) => {
+        const className = typeof thClass === 'function' ? thClass(col.id) : thClass;
+        const label = renderLabel ? renderLabel(col.id, col.label) : col.label;
+        const resizable = col.resizable !== false;
+        if (locked.has(col.id) || !onSort) {
+          return (
+            <PanelTableTh key={col.id} colId={col.id} className={className} resizable={resizable}>
+              {label}
+            </PanelTableTh>
+          );
+        }
+        return (
+          <SortablePanelTableTh
+            key={col.id}
+            colId={col.id}
+            sortKey={sortKeyFor ? sortKeyFor(col.id) : col.id}
+            activeSortKey={sortKey}
+            sortDir={sortDir}
+            onSort={onSort}
+            className={className}
+            resizable={resizable}
+          >
+            {label}
+          </SortablePanelTableTh>
+        );
+      })}
+    </>
   );
 }

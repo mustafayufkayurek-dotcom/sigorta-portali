@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
@@ -36,6 +36,8 @@ import {
   VENDOR_DOC_OTHER_SELECT,
   HIZMET_KOLU_OTHER_KEY,
   isVendorTypeOther,
+  resolveVendorTypeList,
+  DEFAULT_VENDOR_TYPES,
   isOtherDocumentTypeName,
   vendorCategoryShowsHasarKollari,
   vendorCategoryShowsAcilKollari,
@@ -70,8 +72,9 @@ import {
 import {
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
-  SortablePanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
@@ -805,7 +808,7 @@ export default function VendorsPage() {
   const [duplicateConflicts, setDuplicateConflicts] = useState<{ phone?: string; email?: string }>({});
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
-  const [vendorTypes, setVendorTypes] = useState<string[]>([]);
+  const [vendorTypes, setVendorTypes] = useState<string[]>(() => [...DEFAULT_VENDOR_TYPES]);
   const [showAddType, setShowAddType] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
   const [savingType, setSavingType] = useState(false);
@@ -1106,10 +1109,9 @@ export default function VendorsPage() {
   const loadVendorTypes = useCallback(async () => {
     try {
       const r = await axios.get(`${API}/system-settings/vendor-types`, { headers: authHeader() });
-      const list: string[] = r.data.data || [];
-      setVendorTypes(list);
+      setVendorTypes(resolveVendorTypeList(r.data.data));
     } catch {
-      setVendorTypes([]);
+      setVendorTypes(resolveVendorTypeList([]));
     }
   }, []);
 
@@ -1352,6 +1354,27 @@ export default function VendorsPage() {
     setSelectedProvince(match);
     void loadServiceDistricts(match.id);
   }, [activeSection, form.city, provinces]);
+
+  const applyVendorType = (next: string) => {
+    const prevEffective = isVendorTypeOther(form.type)
+      ? typeCustom.trim() || form.type
+      : form.type;
+    const nextEffective = isVendorTypeOther(next) ? typeCustom.trim() || next : next;
+    const prevMode = prevEffective ? resolveVendorTypeHizmetMode(prevEffective) : null;
+    const nextMode = nextEffective ? resolveVendorTypeHizmetMode(nextEffective) : null;
+    setForm((p) => ({ ...p, type: next }));
+    if (!isVendorTypeOther(next)) setTypeCustom('');
+    if (nextMode !== prevMode) {
+      setSelectedWorkGroupIds([]);
+      setCustomHasarKol('');
+      setServiceBranches([]);
+      setCustomAcilKol('');
+      setTypeActivityPicks([]);
+      setTypeActivityCustom('');
+      setTypeActivityOtherOpen(false);
+    }
+    if (next) setHizmetKollariOpen(true);
+  };
 
   const handleAddVendorType = async () => {
     const t = newTypeName.trim();
@@ -2281,32 +2304,28 @@ export default function VendorsPage() {
           </div>
 
           <div className="table-container ops-queue-table hidden md:block">
-          <div className="overflow-x-auto">
+          <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+              <PanelTableColGroup />
               <thead className="table-head-row">
                 <tr>
-                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Tedarikçi</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="type" sortKey="type" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Tür / Tip</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="contact" sortKey="contact" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">İletişim</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="location" sortKey="location" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Konum</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="jobCount" sortKey="jobCount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">İş Sayısı</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="lastJob" sortKey="lastJob" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Son İş</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="contractEnd" sortKey="contractEnd" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Sözleşme Bitiş</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Durum</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="recordOwner" sortKey="recordOwner" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Kayıt Sahibi</SortablePanelTableTh>
-                  <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={tableColumns}
+                    sortKey={clientSort?.key ?? null}
+                    sortDir={clientSort?.dir ?? 'asc'}
+                    onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
+                    thClass={(id) =>
+                      id === 'name' || id === 'contact' || id === 'recordOwner' ? 'table-th' : 'table-th-center'
+                    }
+                    unsortableIds={['actions']}
+                  />
                 </tr>
               </thead>
               <tbody className="table-body">
-                {sortedVendors.map((v) => (
-                  <tr key={v.id} className="table-row cursor-pointer"
-                    onClick={(e) => {
-                      if ((e.target as HTMLElement).closest('a, button, input')) return;
-                      setDrawerVendorId(v.id);
-                      setDrawerOpen(true);
-                    }}
-                  >
-                  <PanelTableTd colId="name" className="table-td">
+                {sortedVendors.map((v) => {
+                  const cells: Record<string, ReactNode> = {
+                    name: (
+                  <PanelTableTd key="name" colId="name" className="table-td">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${v.entityType === 'individual' ? 'bg-purple-500' : 'bg-indigo-600'}`}>
                         {v.name.charAt(0).toUpperCase()}
@@ -2317,7 +2336,9 @@ export default function VendorsPage() {
                       </div>
                     </div>
                   </PanelTableTd>
-                  <PanelTableTd colId="type" align="center" className="table-td">
+                    ),
+                    type: (
+                  <PanelTableTd key="type" colId="type" align="center" className="table-td">
                     <div className="flex justify-center">
                       <span className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${v.entityType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-indigo-50 text-indigo-700'}`}>
                         {v.entityType === 'individual' ? Icon.user : Icon.building}
@@ -2325,7 +2346,9 @@ export default function VendorsPage() {
                       </span>
                     </div>
                   </PanelTableTd>
-                  <PanelTableTd colId="contact" className="table-td">
+                    ),
+                    contact: (
+                  <PanelTableTd key="contact" colId="contact" className="table-td">
                     <div className="space-y-1">
                       {v.email && (
                         <p className="text-xs text-slate-600 flex items-center gap-1.5">{Icon.mail}{v.email}</p>
@@ -2336,14 +2359,18 @@ export default function VendorsPage() {
                       {!v.email && !v.phone && <span className="text-xs text-slate-300">—</span>}
                     </div>
                   </PanelTableTd>
-                  <PanelTableTd colId="location" align="center" className="table-td">
+                    ),
+                    location: (
+                  <PanelTableTd key="location" colId="location" align="center" className="table-td">
                     {v.city ? (
                       <p className="text-xs text-slate-600 inline-flex items-center justify-center gap-1">
                         {Icon.mapPin}{v.city}{v.district ? ` / ${v.district}` : ''}
                       </p>
                     ) : <span className="text-xs text-slate-300">—</span>}
                   </PanelTableTd>
-                  <PanelTableTd colId="jobCount" align="center" className="table-td">
+                    ),
+                    jobCount: (
+                  <PanelTableTd key="jobCount" colId="jobCount" align="center" className="table-td">
                     {(v._count?.costEntries ?? 0) > 0 ? (
                       <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
                         {v._count.costEntries}
@@ -2352,7 +2379,9 @@ export default function VendorsPage() {
                       <span className="text-xs text-slate-300">—</span>
                     )}
                   </PanelTableTd>
-                  <PanelTableTd colId="lastJob" align="center" className="table-td">
+                    ),
+                    lastJob: (
+                  <PanelTableTd key="lastJob" colId="lastJob" align="center" className="table-td">
                     {v.lastJobDate ? (
                       <span className="text-xs text-slate-500 whitespace-nowrap" title={new Date(v.lastJobDate).toLocaleDateString('tr-TR')}>
                         {relativeTime(v.lastJobDate)}
@@ -2361,7 +2390,9 @@ export default function VendorsPage() {
                       <span className="text-xs text-slate-300">—</span>
                     )}
                   </PanelTableTd>
-                  <PanelTableTd colId="contractEnd" align="center" className="table-td">
+                    ),
+                    contractEnd: (
+                  <PanelTableTd key="contractEnd" colId="contractEnd" align="center" className="table-td">
                     {v.contractEndDate ? (() => {
                       const days = contractDaysLeft(v.contractEndDate);
                       const display = isoToDisplayContract(v.contractEndDate);
@@ -2374,28 +2405,46 @@ export default function VendorsPage() {
                       return <span className="text-xs text-slate-600 whitespace-nowrap">{display}</span>;
                     })() : <span className="text-xs text-slate-300">—</span>}
                   </PanelTableTd>
-                  <PanelTableTd colId="status" align="center" className="table-td">
+                    ),
+                    status: (
+                  <PanelTableTd key="status" colId="status" align="center" className="table-td">
                     <button type="button" onClick={() => handleToggleStatus(v)}
                       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${v.status === 'active' ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${v.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
                       {v.status === 'active' ? 'Aktif' : 'Pasif'}
                     </button>
                   </PanelTableTd>
-                  <PanelTableTd colId="recordOwner" className="table-td">
+                    ),
+                    recordOwner: (
+                  <PanelTableTd key="recordOwner" colId="recordOwner" className="table-td">
                     <span className="text-xs text-slate-600">{formatVendorRecordOwner(v)}</span>
                   </PanelTableTd>
-                  <PanelTableTd colId="actions" wrap={false} align="center" className="table-td">
+                    ),
+                    actions: (
+                  <PanelTableTd key="actions" colId="actions" wrap={false} align="center" className="table-td">
                     <VendorRowActions
                       vendorId={v.id}
                       onEdit={() => openEdit(v)}
                       onDelete={() => requestDelete(v.id, v.name)}
                     />
                   </PanelTableTd>
+                    ),
+                  };
+                  return (
+                  <tr key={v.id} className="table-row cursor-pointer"
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest('a, button, input')) return;
+                      setDrawerVendorId(v.id);
+                      setDrawerOpen(true);
+                    }}
+                  >
+                  {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                 </tr>
-              ))}
+                  );
+                })}
             </tbody>
           </table>
-          </div>
+          </PanelTableScroll>
           {total > limit && (
             <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100 bg-slate-50/60">
               <span className="text-xs text-slate-400">{(page - 1) * limit + 1}–{Math.min(page * limit, total)} / {total} tedarikçi</span>
@@ -2514,35 +2563,18 @@ export default function VendorsPage() {
                   {/* Tür */}
                   <SectionDivider icon={Icon.briefcase} title="Tedarikçi Türü" />
                   <div className="flex flex-col gap-2 mb-3 sm:flex-row">
-                    <div className="min-w-0 flex-1">
-                      <select
-                        className={inp}
+                    <div className="min-w-0 flex-1" data-testid="tedarikci-turu-sec">
+                      <SearchableSelect
+                        options={vendorTypes.map((t) => ({
+                          value: t,
+                          label: formatVendorTypeLabel(t) || t,
+                        }))}
                         value={form.type}
-                        onChange={(e) => {
-                          const next = e.target.value;
-                          const prevEffective = isVendorTypeOther(form.type)
-                            ? typeCustom.trim() || form.type
-                            : form.type;
-                          const nextEffective = isVendorTypeOther(next) ? typeCustom.trim() || next : next;
-                          const prevMode = prevEffective ? resolveVendorTypeHizmetMode(prevEffective) : null;
-                          const nextMode = nextEffective ? resolveVendorTypeHizmetMode(nextEffective) : null;
-                          setForm((p) => ({ ...p, type: next }));
-                          if (!isVendorTypeOther(next)) setTypeCustom('');
-                          if (nextMode !== prevMode) {
-                            setSelectedWorkGroupIds([]);
-                            setCustomHasarKol('');
-                            setServiceBranches([]);
-                            setCustomAcilKol('');
-                            setTypeActivityPicks([]);
-                            setTypeActivityCustom('');
-                            setTypeActivityOtherOpen(false);
-                          }
-                          if (next) setHizmetKollariOpen(true);
-                        }}
-                      >
-                        <option value="">Tür Seçin...</option>
-                        {vendorTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-                      </select>
+                        onChange={applyVendorType}
+                        placeholder="Tür Seçin..."
+                        emptyText="Tür bulunamadı. Yeni Tür ile ekleyin."
+                        inputClassName={`${inp} bg-white`}
+                      />
                       {isVendorTypeOther(form.type) && (
                         <div className="mt-2">
                           <label className="block text-xs font-medium text-slate-500 mb-1.5">

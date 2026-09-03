@@ -109,7 +109,7 @@ export const OPS_NOTICE = {
     id: 'sag-panel-kaydir-v556',
     title: 'Sağ panel',
     body:
-      'Soldaki sayfaya tıklayınca panel kapanmaz; sağa kayar. Şeride tıklayınca yazdığınız durur. X veya Çıkış Yap deyince kayıt hatırlatması çıkar.',
+      'Soldaki sayfaya tıklayınca panel kapanmaz; sağa kayar. Başka sayfaya gitseniz şerit durur. Şeride tıklayınca yazdığınız durur. X veya Çıkış Yap deyince kayıt hatırlatması çıkar.',
   },
 } as const;
 

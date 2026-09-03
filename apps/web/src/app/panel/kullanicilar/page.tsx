@@ -31,8 +31,9 @@ import {
 import {
   PanelTableColumnPicker,
   PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   PanelTableTd,
-  SortablePanelTableTh,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
@@ -2173,7 +2174,7 @@ export default function KullanicilarPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <PanelTableScroll>
             <table
               className="w-full text-sm"
               style={panelTableLayoutStyle(tableColumns, {
@@ -2203,21 +2204,13 @@ export default function KullanicilarPage() {
                       )}
                     </button>
                   </th>
-                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
-                    Ad Soyad
-                  </SortablePanelTableTh>
-                  <SortablePanelTableTh colId="email" sortKey="email" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
-                    E-posta
-                  </SortablePanelTableTh>
-                  <SortablePanelTableTh colId="role" sortKey="role" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
-                    Görev
-                  </SortablePanelTableTh>
-                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
-                    Durum
-                  </SortablePanelTableTh>
-                  <SortablePanelTableTh colId="lastLogin" sortKey="lastLogin" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500">
-                    Son Giriş
-                  </SortablePanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={tableColumns}
+                    sortKey={clientSort?.key ?? null}
+                    sortDir={clientSort?.dir ?? 'asc'}
+                    onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
+                    thClass="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500"
+                  />
                   <th
                     className="box-border px-4 py-3 text-right text-xs font-semibold tracking-wide text-slate-500"
                     style={{ width: TABLE_ACTIONS_COL_WIDTH, minWidth: TABLE_ACTIONS_COL_WIDTH }}
@@ -2229,36 +2222,10 @@ export default function KullanicilarPage() {
               <tbody className="divide-y divide-slate-100">
                 {sorted.map((u) => {
                   const rowStatus = normalizeUserStatus(u.status);
-                  return (
-                  <tr
-                    key={`${u.id}-${rowStatus}`}
-                    className={`transition-colors hover:bg-slate-50 ${selected.has(u.id) ? 'bg-blue-50/50' : ''} ${rowStatus !== 'active' ? 'opacity-70' : ''}`}
-                  >
-                    {/* Checkbox */}
-                    <td className="box-border px-4 py-3" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
-                      {isProtectedSystemAdmin(u) || u.id === currentUserId ? (
-                        <span
-                          className="inline-flex h-4 w-4 rounded border border-slate-200 bg-slate-100"
-                          title={u.id === currentUserId ? 'Kendi hesabınızı seçemezsiniz' : 'Sistem yöneticisi seçilemez'}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => toggleSelect(u.id)}
-                          className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
-                            selected.has(u.id) ? 'border-brand-600 bg-brand-600' : 'border-slate-300 bg-white hover:border-blue-400'
-                          }`}
-                          aria-label={`${u.firstName} ${u.lastName} seç`}
-                        >
-                          {selected.has(u.id) && (
-                            <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
-                          )}
-                        </button>
-                      )}
-                    </td>
-
-                    {/* Ad Soyad */}
+                  const cells: Record<string, ReactNode> = {
+                    name: (
                     <PanelTableTd
+                      key="name"
                       colId="name"
                       className="px-4 py-3"
                       title={`${u.firstName} ${u.lastName}${u.phone ? ` · ${formatPhoneDisplay(u.phone)}` : ''}`}
@@ -2279,14 +2246,14 @@ export default function KullanicilarPage() {
                         </div>
                       </div>
                     </PanelTableTd>
-
-                    {/* E-posta */}
-                    <PanelTableTd colId="email" className="px-4 py-3 text-slate-600" title={u.email}>
+                    ),
+                    email: (
+                    <PanelTableTd key="email" colId="email" className="px-4 py-3 text-slate-600" title={u.email}>
                       <span className="block truncate">{u.email}</span>
                     </PanelTableTd>
-
-                    {/* Rol */}
-                    <PanelTableTd colId="role" className="px-4 py-3 align-middle">
+                    ),
+                    role: (
+                    <PanelTableTd key="role" colId="role" className="px-4 py-3 align-middle">
                       {u.role ? (() => {
                         const roleLines = displayRoleWithOperation(u);
                         return (
@@ -2321,9 +2288,9 @@ export default function KullanicilarPage() {
                         <span className="text-slate-400 text-xs">—</span>
                       )}
                     </PanelTableTd>
-
-                    {/* Durum */}
-                    <PanelTableTd colId="status" className="px-4 py-3">
+                    ),
+                    status: (
+                    <PanelTableTd key="status" colId="status" className="px-4 py-3">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${statusBadgeCls(rowStatus)}`}
                       >
@@ -2333,9 +2300,39 @@ export default function KullanicilarPage() {
                         {statusLabel(rowStatus)}
                       </span>
                     </PanelTableTd>
-
-                    {/* Son Giriş */}
-                    <PanelTableTd colId="lastLogin" className="px-4 py-3 text-slate-500 text-xs">{fmtDate(u.lastLoginAt)}</PanelTableTd>
+                    ),
+                    lastLogin: (
+                    <PanelTableTd key="lastLogin" colId="lastLogin" className="px-4 py-3 text-slate-500 text-xs">{fmtDate(u.lastLoginAt)}</PanelTableTd>
+                    ),
+                  };
+                  return (
+                  <tr
+                    key={`${u.id}-${rowStatus}`}
+                    className={`transition-colors hover:bg-slate-50 ${selected.has(u.id) ? 'bg-blue-50/50' : ''} ${rowStatus !== 'active' ? 'opacity-70' : ''}`}
+                  >
+                    {/* Checkbox */}
+                    <td className="box-border px-4 py-3" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
+                      {isProtectedSystemAdmin(u) || u.id === currentUserId ? (
+                        <span
+                          className="inline-flex h-4 w-4 rounded border border-slate-200 bg-slate-100"
+                          title={u.id === currentUserId ? 'Kendi hesabınızı seçemezsiniz' : 'Sistem yöneticisi seçilemez'}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => toggleSelect(u.id)}
+                          className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
+                            selected.has(u.id) ? 'border-brand-600 bg-brand-600' : 'border-slate-300 bg-white hover:border-blue-400'
+                          }`}
+                          aria-label={`${u.firstName} ${u.lastName} seç`}
+                        >
+                          {selected.has(u.id) && (
+                            <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+                          )}
+                        </button>
+                      )}
+                    </td>
+                    {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
 
                     {/* İşlemler */}
                     <td
@@ -2404,7 +2401,7 @@ export default function KullanicilarPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </PanelTableScroll>
         )}
 
         {/* Alt bilgi */}

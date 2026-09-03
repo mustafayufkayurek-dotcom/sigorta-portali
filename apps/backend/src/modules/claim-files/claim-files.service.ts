@@ -3,6 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import {
   applyClaimFileListScope,
   assertClaimFileAccess,
+  mergeWhereAnd,
   normalizeRequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
 import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
@@ -36,6 +37,7 @@ import {
   resolveProvinceDistrictIds,
 } from './vendor-area-match.util';
 import { mergeAssignableStaffWithDelegates } from './assignable-file-owners';
+import { resolveInsuranceCompanyIdsForCustomer } from '@/modules/customers/customer-file-stats';
 import { resolveCityDistrictFromAddress } from '@/modules/operation-inbox/inbound-location.util';
 import {
   resolveClaimSubjectIdByLabel,
@@ -49,7 +51,10 @@ import {
   CLOSED_CLAIM_STATUS_CODES,
   FINANCE_TRANSFER_STATUS_CODES,
   deriveOperationStage,
+  deriveOperationStageId,
   hoursSince,
+  isHasarWorkloadOpenStage,
+  tallyHasarOperationKpis,
   isApproval72hExceeded,
   isApprovalWaitingReport,
   resolveOperationStatusLabel,
@@ -345,13 +350,28 @@ export class ClaimFilesService {
   ) {
     const customer = await this.prisma.customer.findUnique({
       where: { id: customerId },
-      select: { id: true },
+      select: {
+        id: true,
+        taxNumber: true,
+        companyName: true,
+        fullName: true,
+        shortName: true,
+        subType: true,
+      },
     });
     if (!customer) {
       throw new NotFoundException('Müşteri bulunamadı');
     }
 
-    return this.findAll({ ...params, customerId }, requestingUser);
+    const linkedInsuranceCompanyIds = await resolveInsuranceCompanyIdsForCustomer(
+      this.prisma,
+      customer,
+    );
+
+    return this.findAll(
+      { ...params, customerId, linkedInsuranceCompanyIds },
+      requestingUser,
+    );
   }
 
   private startOfUtcDay(dateStr?: string): Date {
@@ -488,6 +508,7 @@ export class ClaimFilesService {
     assignedAdjusterId?: string;
     insuranceCompanyIds?: string[];
     assistantCustomerIds?: string[];
+    linkedInsuranceCompanyIds?: string[];
     invoiceStatus?: string;
     repairReportStatus?: string;
     dateFrom?: string;
@@ -502,7 +523,14 @@ export class ClaimFilesService {
     const skip = (page - 1) * limit;
 
     const baseWhere: Record<string, unknown> = {};
-    if (params?.customerId) baseWhere.customerId = params.customerId;
+    if (params?.customerId && params.linkedInsuranceCompanyIds?.length) {
+      baseWhere.OR = [
+        { customerId: params.customerId },
+        { insuranceCompanyId: { in: params.linkedInsuranceCompanyIds } },
+      ];
+    } else if (params?.customerId) {
+      baseWhere.customerId = params.customerId;
+    }
     if (params?.statusId) baseWhere.currentStatusId = params.statusId;
     if (params?.insuranceCompanyId) baseWhere.insuranceCompanyId = params.insuranceCompanyId;
     if (params?.assignedFieldUserId) baseWhere.assignedFieldUserId = params.assignedFieldUserId;
@@ -574,12 +602,13 @@ export class ClaimFilesService {
     this.applyOpsPresetWhere(baseWhere, params?.opsPreset, requestingUser);
 
     const normalizedUser = normalizeRequestUser(requestingUser);
+    let scopedWhere: Record<string, unknown> = { ...baseWhere };
     if (normalizedUser && this.operationalAccessGrants?.isDelegationScopedRole(normalizedUser.roleCode)) {
       const delegationWhere = await this.operationalAccessGrants.buildClaimFileDelegationScope(
         normalizedUser.id,
         normalizedUser.roleCode,
       );
-      Object.assign(baseWhere, delegationWhere);
+      scopedWhere = mergeWhereAnd(scopedWhere, delegationWhere);
     }
 
     const expertOfficeCustomerIds =
@@ -587,20 +616,27 @@ export class ClaimFilesService {
         ? await this.getExpertOfficeCustomerIds(normalizedUser.id)
         : undefined;
 
-    const where = applyClaimFileListScope(
-      baseWhere,
+    let where = applyClaimFileListScope(
+      scopedWhere,
       normalizedUser,
       params?.insuranceCompanyIds,
       params?.assistantCustomerIds,
       expertOfficeCustomerIds,
-    ) as any;
+    ) as Record<string, unknown>;
+
+    if (statusCodeLower === 'open' && params?.assignedOfficeUserId) {
+      const excludedIds = await this.claimFileIdsNotWorkloadOpen(where);
+      if (excludedIds.length) {
+        where = mergeWhereAnd(where, { id: { notIn: excludedIds } });
+      }
+    }
 
     const orderBy = this.parseSort(params?.sort);
 
     // select: yerel DB’de henüz migrate edilmemiş skaler kolonlara (ör. assigned_inspector_vendor_id) dayanmamak için
     const [data, total] = await Promise.all([
       this.prisma.claimFile.findMany({
-        where,
+        where: where as any,
         skip,
         take: limit,
         select: {
@@ -682,7 +718,7 @@ export class ClaimFilesService {
         },
         orderBy,
       }),
-      this.prisma.claimFile.count({ where }),
+      this.prisma.claimFile.count({ where: where as any }),
     ]);
 
     const dataWithReports = await this.attachLatestRepairReports(data);
@@ -789,30 +825,87 @@ export class ClaimFilesService {
     });
   }
 
-  private async countForOpsPreset(
-    opsPreset: OperationPreset,
+  private async applyClaimFileDelegationScope(
+    baseWhere: Record<string, unknown>,
     requestingUser?: { id: string; roleCode: string },
-  ): Promise<number> {
-    const baseWhere: Record<string, unknown> = {};
-    this.applyOpsPresetWhere(baseWhere, opsPreset, requestingUser);
-
+  ): Promise<Record<string, unknown>> {
     const normalizedUser = normalizeRequestUser(requestingUser);
+    let where: Record<string, unknown> = { ...baseWhere };
     if (normalizedUser && this.operationalAccessGrants?.isDelegationScopedRole(normalizedUser.roleCode)) {
       const delegationWhere = await this.operationalAccessGrants.buildClaimFileDelegationScope(
         normalizedUser.id,
         normalizedUser.roleCode,
       );
-      Object.assign(baseWhere, delegationWhere);
+      where = mergeWhereAnd(where, delegationWhere);
     }
-
-    const where = applyClaimFileListScope(baseWhere, requestingUser) as any;
-    return this.prisma.claimFile.count({ where });
+    const expertOfficeCustomerIds =
+      normalizedUser?.roleCode === 'expert'
+        ? await this.getExpertOfficeCustomerIds(normalizedUser.id)
+        : undefined;
+    return applyClaimFileListScope(
+      where,
+      normalizedUser,
+      undefined,
+      undefined,
+      expertOfficeCustomerIds,
+    ) as Record<string, unknown>;
   }
 
-  /** Operasyon sayfası KPI sayaçları — hasar + acil yardım birlikte. */
-  async getOperationStats(requestingUser?: { id: string; roleCode: string; vendorId?: string | null }) {
+  /** Listedeki Durum ile aynı: red / kapanış / iptal açık iş kuyruğuna girmez. */
+  private async claimFileIdsNotWorkloadOpen(scopeWhere: Record<string, unknown>): Promise<string[]> {
+    const rows = await this.prisma.claimFile.findMany({
+      where: scopeWhere as any,
+      select: {
+        id: true,
+        currentStatus: { select: { code: true } },
+        repairReports: {
+          orderBy: { updatedAt: 'desc' as const },
+          take: 1,
+          select: { status: true },
+        },
+      },
+    });
+    const verbalByClaim = await this.latestVerbalDecisions(rows.map((row) => row.id));
+    const excluded: string[] = [];
+    for (const row of rows) {
+      const stageId = deriveOperationStageId({
+        claimStatusCode: row.currentStatus?.code,
+        reportStatus: row.repairReports[0]?.status ?? null,
+        verbalDecision: verbalByClaim.get(row.id) ?? null,
+      });
+      if (!isHasarWorkloadOpenStage(stageId)) excluded.push(row.id);
+    }
+    return excluded;
+  }
+
+  private async countForOpsPreset(
+    opsPreset: OperationPreset,
+    requestingUser?: { id: string; roleCode: string },
+    extraWhere: Record<string, unknown> = {},
+  ): Promise<number> {
+    const baseWhere: Record<string, unknown> = { ...extraWhere };
+    this.applyOpsPresetWhere(baseWhere, opsPreset, requestingUser);
+    const where = await this.applyClaimFileDelegationScope(baseWhere, requestingUser);
+    return this.prisma.claimFile.count({ where: where as any });
+  }
+
+  /** Operasyon / Hasar KPI — hasar kartları liste Durum etiketiyle aynı aşamadan sayılır. */
+  async getOperationStats(
+    requestingUser?: { id: string; roleCode: string; vendorId?: string | null },
+    params?: { assignedOfficeUserId?: string },
+  ) {
     const closedEmergency = this.closedEmergencyStatuses();
-    const { from: todayFrom, to: todayTo } = this.istanbulDayRange();
+    const todayRange = this.istanbulDayRange();
+    const { from: todayFrom, to: todayTo } = todayRange;
+
+    const extraWhere: Record<string, unknown> = {};
+    if (
+      requestingUser?.id
+      && params?.assignedOfficeUserId
+      && params.assignedOfficeUserId === requestingUser.id
+    ) {
+      extraWhere.assignedOfficeUserId = requestingUser.id;
+    }
 
     let emergencyScope: Record<string, unknown> = {};
     if (
@@ -825,28 +918,34 @@ export class ClaimFilesService {
       );
     }
 
+    const claimScopeWhere = await this.applyClaimFileDelegationScope(extraWhere, requestingUser);
+
     const [
-      openClaims,
+      stageRows,
       priorityUrgentClaims,
-      openedTodayClaims,
-      approvalPending,
-      reportWriting,
-      reportApproval,
       financeTransfer,
       delayRisk,
       approval72h,
       openEmergency,
       openedTodayEmergency,
     ] = await Promise.all([
-      this.countForOpsPreset('open', requestingUser),
-      this.countForOpsPreset('urgent', requestingUser),
-      this.countForOpsPreset('opened_today', requestingUser),
-      this.countForOpsPreset('approval_pending', requestingUser),
-      this.countForOpsPreset('report_writing', requestingUser),
-      this.countForOpsPreset('report_approval', requestingUser),
-      this.countForOpsPreset('finance_transfer', requestingUser),
-      this.countForOpsPreset('delay_risk', requestingUser),
-      this.countForOpsPreset('approval_72h', requestingUser),
+      this.prisma.claimFile.findMany({
+        where: claimScopeWhere as any,
+        select: {
+          id: true,
+          createdAt: true,
+          currentStatus: { select: { code: true } },
+          repairReports: {
+            orderBy: { updatedAt: 'desc' as const },
+            take: 1,
+            select: { status: true },
+          },
+        },
+      }),
+      this.countForOpsPreset('urgent', requestingUser, extraWhere),
+      this.countForOpsPreset('finance_transfer', requestingUser, extraWhere),
+      this.countForOpsPreset('delay_risk', requestingUser, extraWhere),
+      this.countForOpsPreset('approval_72h', requestingUser, extraWhere),
       this.prisma.emergencyCase.count({
         where: { ...emergencyScope, status: { notIn: [...closedEmergency] } },
       }),
@@ -854,6 +953,25 @@ export class ClaimFilesService {
         where: { ...emergencyScope, createdAt: { gte: todayFrom, lte: todayTo } },
       }),
     ]);
+
+    const verbalByClaim = await this.latestVerbalDecisions(stageRows.map((row) => row.id));
+    const stageTally = tallyHasarOperationKpis(
+      stageRows.map((row) => ({
+        createdAt: row.createdAt,
+        claimStatusCode: row.currentStatus?.code,
+        newestReportStatus: row.repairReports[0]?.status ?? null,
+        verbalDecision: verbalByClaim.get(row.id) ?? null,
+      })),
+      todayRange,
+    );
+
+    const {
+      openClaims,
+      openedTodayClaims,
+      approvalPending,
+      reportWriting,
+      reportApproval,
+    } = stageTally;
 
     return {
       openClaims,

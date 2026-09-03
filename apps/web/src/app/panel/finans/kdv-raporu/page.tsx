@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
@@ -13,7 +13,9 @@ import {
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -537,67 +539,100 @@ function LinesTable({
       <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
         <PanelTableColumnPicker tableColumns={tableColumns} />
       </div>
-      <div className="overflow-x-auto">
+      <PanelTableScroll>
         <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+          <PanelTableColGroup />
           <thead className="bg-slate-50 dark:bg-slate-700/50">
             <tr>
-              <PanelTableTh colId="date" className="px-3 py-2 text-xs font-semibold text-slate-500">Tarih</PanelTableTh>
-              <PanelTableTh colId="documentNo" className="px-3 py-2 text-xs font-semibold text-slate-500">Belge No</PanelTableTh>
-              <PanelTableTh colId="source" className="px-3 py-2 text-xs font-semibold text-slate-500">Kaynak</PanelTableTh>
-              <PanelTableTh colId="fileNo" className="px-3 py-2 text-xs font-semibold text-slate-500">Dosya</PanelTableTh>
-              <PanelTableTh colId="category" className="px-3 py-2 text-xs font-semibold text-slate-500">Kategori</PanelTableTh>
-              <PanelTableTh colId="description" className="px-3 py-2 text-xs font-semibold text-slate-500">Açıklama</PanelTableTh>
-              <PanelTableTh colId="netAmount" className="px-3 py-2 text-xs font-semibold text-slate-500 text-right">Matrah</PanelTableTh>
-              <PanelTableTh colId="vatRate" className="px-3 py-2 text-xs font-semibold text-slate-500 text-right">KDV %</PanelTableTh>
-              <PanelTableTh colId="vatAmount" className="px-3 py-2 text-xs font-semibold text-slate-500 text-right">KDV</PanelTableTh>
-              <PanelTableTh colId="grossAmount" className="px-3 py-2 text-xs font-semibold text-slate-500 text-right">Toplam</PanelTableTh>
-              {showDirection ? (
-                <PanelTableTh colId="direction" className="px-3 py-2 text-xs font-semibold text-slate-500">Yön</PanelTableTh>
-              ) : null}
-              <PanelTableTh colId="status" className="px-3 py-2 text-xs font-semibold text-slate-500">Durum</PanelTableTh>
+              <PanelOrderedHeaderRow
+                tableColumns={tableColumns}
+                thClass={(id) =>
+                  ['netAmount', 'vatRate', 'vatAmount', 'grossAmount'].includes(id)
+                    ? 'px-3 py-2 text-xs font-semibold text-slate-500 text-right'
+                    : 'px-3 py-2 text-xs font-semibold text-slate-500'
+                }
+              />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {lines.length === 0 ? (
-              <tr><td colSpan={12} className="px-4 py-8"><FinansEmptyState title="Bu dönemde KDV kaydı yok." description="Kesilen satış veya alış faturası burada mahsup edilir." /></td></tr>
-            ) : paged.slice.map((l) => (
-              <tr key={l.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30">
-                <PanelTableTd colId="date" className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.date)}</PanelTableTd>
-                <PanelTableTd colId="documentNo" className="px-3 py-2 text-xs font-mono">{l.documentNo ?? '—'}</PanelTableTd>
-                <PanelTableTd colId="source" className="px-3 py-2 text-xs">{SOURCE_LABEL[l.source] ?? l.source}</PanelTableTd>
-                <PanelTableTd colId="fileNo" className="px-3 py-2 text-xs font-mono">{l.fileNo ?? '—'}</PanelTableTd>
-                <PanelTableTd colId="category" className="px-3 py-2 text-xs">{l.category}</PanelTableTd>
-                <PanelTableTd colId="description" className="px-3 py-2 text-xs max-w-[180px] truncate">{l.description ?? '—'}</PanelTableTd>
-                <PanelTableTd colId="netAmount" className="px-3 py-2 text-right tabular-nums">{fmtCurrency(l.netAmount)}</PanelTableTd>
-                <PanelTableTd colId="vatRate" className="px-3 py-2 text-right tabular-nums">%{l.vatRate}</PanelTableTd>
-                <PanelTableTd colId="vatAmount" className="px-3 py-2 text-right tabular-nums font-medium text-amber-700">{fmtCurrency(l.vatAmount)}</PanelTableTd>
-                <PanelTableTd colId="grossAmount" className="px-3 py-2 text-right tabular-nums">{fmtCurrency(l.grossAmount)}</PanelTableTd>
-                {showDirection ? (
-                  <PanelTableTd colId="direction" className="px-3 py-2">
+              <tr><td colSpan={tableColumns.prefs.orderedVisibleColumns.length} className="px-4 py-8"><FinansEmptyState title="Bu dönemde KDV kaydı yok." description="Kesilen satış veya alış faturası burada mahsup edilir." /></td></tr>
+            ) : paged.slice.map((l) => {
+              const cells: Record<string, ReactNode> = {
+                date: (
+                  <PanelTableTd key="date" colId="date" className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.date)}</PanelTableTd>
+                ),
+                documentNo: (
+                  <PanelTableTd key="documentNo" colId="documentNo" className="px-3 py-2 text-xs font-mono">{l.documentNo ?? '—'}</PanelTableTd>
+                ),
+                source: (
+                  <PanelTableTd key="source" colId="source" className="px-3 py-2 text-xs">{SOURCE_LABEL[l.source] ?? l.source}</PanelTableTd>
+                ),
+                fileNo: (
+                  <PanelTableTd key="fileNo" colId="fileNo" className="px-3 py-2 text-xs font-mono">{l.fileNo ?? '—'}</PanelTableTd>
+                ),
+                category: (
+                  <PanelTableTd key="category" colId="category" className="px-3 py-2 text-xs">{l.category}</PanelTableTd>
+                ),
+                description: (
+                  <PanelTableTd key="description" colId="description" className="px-3 py-2 text-xs max-w-[180px] truncate">{l.description ?? '—'}</PanelTableTd>
+                ),
+                netAmount: (
+                  <PanelTableTd key="netAmount" colId="netAmount" className="px-3 py-2 text-right tabular-nums">{fmtCurrency(l.netAmount)}</PanelTableTd>
+                ),
+                vatRate: (
+                  <PanelTableTd key="vatRate" colId="vatRate" className="px-3 py-2 text-right tabular-nums">%{l.vatRate}</PanelTableTd>
+                ),
+                vatAmount: (
+                  <PanelTableTd key="vatAmount" colId="vatAmount" className="px-3 py-2 text-right tabular-nums font-medium text-amber-700">{fmtCurrency(l.vatAmount)}</PanelTableTd>
+                ),
+                grossAmount: (
+                  <PanelTableTd key="grossAmount" colId="grossAmount" className="px-3 py-2 text-right tabular-nums">{fmtCurrency(l.grossAmount)}</PanelTableTd>
+                ),
+                direction: (
+                  <PanelTableTd key="direction" colId="direction" className="px-3 py-2">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                       l.direction === 'input' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
                     }`}>
                       {l.direction === 'input' ? 'İndirilecek' : 'Hesaplanan'}
                     </span>
                   </PanelTableTd>
-                ) : null}
-                <PanelTableTd colId="status" className="px-3 py-2 text-xs text-slate-400">{l.status ?? '—'}</PanelTableTd>
-              </tr>
-            ))}
+                ),
+                status: (
+                  <PanelTableTd key="status" colId="status" className="px-3 py-2 text-xs text-slate-400">{l.status ?? '—'}</PanelTableTd>
+                ),
+              };
+              return (
+                <tr key={l.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30">
+                  {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
+                </tr>
+              );
+            })}
           </tbody>
           {lines.length > 0 && (
             <tfoot className="bg-slate-50 dark:bg-slate-700/50 font-semibold text-xs">
               <tr>
-                <td colSpan={6} className="px-3 py-2 text-right text-slate-500">Toplam</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtCurrency(summary.inputNet + summary.outputNet)}</td>
-                <td />
-                <td className="px-3 py-2 text-right tabular-nums text-amber-700">{fmtCurrency(summary.inputVat + summary.outputVat)}</td>
-                <td colSpan={showDirection ? 3 : 2} />
+                {(() => {
+                  const numericIds = new Set(['netAmount', 'vatRate', 'vatAmount', 'grossAmount']);
+                  const lastText = [...tableColumns.prefs.orderedVisibleColumns].reverse().find((c) => !numericIds.has(c.id));
+                  return tableColumns.prefs.orderedVisibleColumns.map((col) => {
+                    if (col.id === 'netAmount') {
+                      return <td key={col.id} className="px-3 py-2 text-right tabular-nums">{fmtCurrency(summary.inputNet + summary.outputNet)}</td>;
+                    }
+                    if (col.id === 'vatAmount') {
+                      return <td key={col.id} className="px-3 py-2 text-right tabular-nums text-amber-700">{fmtCurrency(summary.inputVat + summary.outputVat)}</td>;
+                    }
+                    if (col.id === lastText?.id) {
+                      return <td key={col.id} className="px-3 py-2 text-right text-slate-500">Toplam</td>;
+                    }
+                    return <td key={col.id} className="px-3 py-2" />;
+                  });
+                })()}
               </tr>
             </tfoot>
           )}
         </table>
-      </div>
+      </PanelTableScroll>
       {lines.length > 0 ? (
         <FinansTablePager
           page={paged.safePage}

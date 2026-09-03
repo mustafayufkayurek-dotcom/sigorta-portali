@@ -275,6 +275,67 @@ export function deriveOperationStage(input: DeriveOperationStageInput): Operatio
   return OPERATION_STAGES[deriveOperationStageId(input)];
 }
 
+/** Kart «Açık Dosya»: kapanmış, iptal, reddedilmiş dosya açık iş sayılmaz. */
+const HASAR_KPI_NOT_OPEN_STAGES = new Set<OperationStageId>([
+  'dosya_kapandi',
+  'iptal',
+  'rapor_reddedildi',
+]);
+
+export function isHasarWorkloadOpenStage(stageId: OperationStageId): boolean {
+  return !HASAR_KPI_NOT_OPEN_STAGES.has(stageId);
+}
+
+export type HasarKpiFileInput = {
+  createdAt?: Date | string | null;
+  claimStatusCode?: string | null;
+  newestReportStatus?: string | null;
+  verbalDecision?: VerbalManualDecision | null;
+};
+
+export type HasarOperationKpiTally = {
+  openClaims: number;
+  reportWriting: number;
+  approvalPending: number;
+  reportApproval: number;
+  openedTodayClaims: number;
+};
+
+/**
+ * Hasar dosya sorumlusu kartları — listedeki Durum etiketiyle aynı aşama.
+ * Kovalar örtüşebilir (açık iş içinde rapor yazımı da durur); red/kapanış açık sayılmaz.
+ */
+export function tallyHasarOperationKpis(
+  files: HasarKpiFileInput[],
+  todayRange: { from: Date; to: Date },
+): HasarOperationKpiTally {
+  const tally: HasarOperationKpiTally = {
+    openClaims: 0,
+    reportWriting: 0,
+    approvalPending: 0,
+    reportApproval: 0,
+    openedTodayClaims: 0,
+  };
+  for (const file of files) {
+    const stageId = deriveOperationStageId({
+      claimStatusCode: file.claimStatusCode,
+      reportStatus: file.newestReportStatus,
+      verbalDecision: file.verbalDecision,
+    });
+    if (isHasarWorkloadOpenStage(stageId)) tally.openClaims += 1;
+    if (stageId === 'rapor_yaziliyor') tally.reportWriting += 1;
+    if (stageId === 'onay_bekliyor') {
+      tally.approvalPending += 1;
+      tally.reportApproval += 1;
+    }
+    if (!file.createdAt) continue;
+    const created = typeof file.createdAt === 'string' ? new Date(file.createdAt) : file.createdAt;
+    if (Number.isNaN(created.getTime())) continue;
+    if (created >= todayRange.from && created <= todayRange.to) tally.openedTodayClaims += 1;
+  }
+  return tally;
+}
+
 export function resolveOperationStatusLabel(
   input: DeriveOperationStageInput & { approval72hExceeded?: boolean },
 ): string {

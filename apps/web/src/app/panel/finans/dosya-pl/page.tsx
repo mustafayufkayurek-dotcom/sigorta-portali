@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
@@ -12,7 +12,9 @@ import {
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -150,25 +152,24 @@ export default function DosyaPLPage() {
             <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
               <PanelTableColumnPicker tableColumns={tableColumns} />
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+            <PanelTableScroll>
+              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [32] })}>
+                <PanelTableColGroup leadingWidths={[32]} />
                 <thead className="bg-slate-50 text-xs text-slate-500">
                   <tr>
                     <th className="px-4 py-3 w-8 text-center">#</th>
-                    <PanelTableTh colId="fileNo" className="px-4 py-3 text-center">Dosya No</PanelTableTh>
-                    <PanelTableTh colId="revenue" className="px-4 py-3 text-center">Gelir</PanelTableTh>
-                    <PanelTableTh colId="cost" className="px-4 py-3 text-center">Gider</PanelTableTh>
-                    <PanelTableTh colId="profit" className="px-4 py-3 text-center">Net Kâr</PanelTableTh>
-                    <PanelTableTh colId="margin" className="px-4 py-3 text-center">Marj %</PanelTableTh>
+                    <PanelOrderedHeaderRow
+                      tableColumns={tableColumns}
+                      thClass="px-4 py-3 text-center"
+                    />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {pagedRanking.slice.map((item: any, i: number) => {
                     const isPos = item.netProfit >= 0;
-                    return (
-                      <tr key={item.claimFileId} className="hover:bg-slate-50">
-                        <td className="px-4 py-3 text-xs text-slate-400">{(pagedRanking.safePage - 1) * pageSize + i + 1}</td>
-                        <PanelTableTd colId="fileNo" className="px-4 py-3">
+                    const cells: Record<string, ReactNode> = {
+                      fileNo: (
+                        <PanelTableTd key="fileNo" colId="fileNo" className="px-4 py-3">
                           <Link
                             href={`/panel/hasar-dosyalari/${item.claimFileId}`}
                             className="text-sm font-medium text-blue-700 hover:underline"
@@ -176,20 +177,34 @@ export default function DosyaPLPage() {
                             {item.claimFile?.fileNo ?? item.claimFileId}
                           </Link>
                         </PanelTableTd>
-                        <PanelTableTd colId="revenue" className="px-4 py-3 text-right text-slate-600">{fmtCurrency(item.totalRevenue)}</PanelTableTd>
-                        <PanelTableTd colId="cost" className="px-4 py-3 text-right text-status-danger">{fmtCurrency(item.totalCost)}</PanelTableTd>
-                        <PanelTableTd colId="profit" className={`px-4 py-3 text-right font-bold ${isPos ? 'text-green-700' : 'text-red-600'}`}>
+                      ),
+                      revenue: (
+                        <PanelTableTd key="revenue" colId="revenue" className="px-4 py-3 text-right text-slate-600">{fmtCurrency(item.totalRevenue)}</PanelTableTd>
+                      ),
+                      cost: (
+                        <PanelTableTd key="cost" colId="cost" className="px-4 py-3 text-right text-status-danger">{fmtCurrency(item.totalCost)}</PanelTableTd>
+                      ),
+                      profit: (
+                        <PanelTableTd key="profit" colId="profit" className={`px-4 py-3 text-right font-bold ${isPos ? 'text-green-700' : 'text-red-600'}`}>
                           {fmtCurrency(item.netProfit)}
                         </PanelTableTd>
-                        <PanelTableTd colId="margin" className={`px-4 py-3 text-right ${isPos ? 'text-green-700' : 'text-red-600'}`}>
+                      ),
+                      margin: (
+                        <PanelTableTd key="margin" colId="margin" className={`px-4 py-3 text-right ${isPos ? 'text-green-700' : 'text-red-600'}`}>
                           %{(item.netMarginPct ?? item.grossMarginPct ?? 0).toFixed(1)}
                         </PanelTableTd>
+                      ),
+                    };
+                    return (
+                      <tr key={item.claimFileId} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 text-xs text-slate-400">{(pagedRanking.safePage - 1) * pageSize + i + 1}</td>
+                        {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-            </div>
+            </PanelTableScroll>
             <FinansTablePager
               page={pagedRanking.safePage}
               pageSize={pageSize}

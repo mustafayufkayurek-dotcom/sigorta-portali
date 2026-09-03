@@ -75,11 +75,17 @@ export class ClaimFilesController {
   @Get('operation-stats')
   @RequirePermissions('claim_file.view')
   @ApiOperation({ summary: 'Operasyon sayfası KPI sayaçları' })
-  async operationStats(@CurrentUser() user: any) {
-    const data = await this.claimFilesService.getOperationStats({
-      id: user?.id ?? user?.userId,
-      roleCode: user?.roleCode ?? user?.role?.code,
-    });
+  async operationStats(
+    @CurrentUser() user: any,
+    @Query('assignedOfficeUserId') assignedOfficeUserId?: string,
+  ) {
+    const data = await this.claimFilesService.getOperationStats(
+      {
+        id: user?.id ?? user?.userId,
+        roleCode: user?.roleCode ?? user?.role?.code,
+      },
+      { assignedOfficeUserId },
+    );
     return { success: true, data };
   }
 

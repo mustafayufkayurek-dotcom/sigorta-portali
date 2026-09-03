@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { FinanceRowActions, printFinanceSlip, vendorEkstreHref } from '@/components/finance/FinanceRowActions';
@@ -13,7 +13,9 @@ import {
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTd,
-  SortablePanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -315,28 +317,27 @@ export default function TahsilatlarPage() {
             <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
               <PanelTableColumnPicker tableColumns={tableColumns} />
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+            <PanelTableScroll>
+              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { trailingWidths: [140] })}>
+                <PanelTableColGroup trailingWidths={[140]} />
                 <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500">
                   <tr>
-                    <SortablePanelTableTh colId="paymentDate" sortKey="paymentDate" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tarih / Vade</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="fileCase" sortKey="fileCase" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Dosya</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="paymentType" sortKey="paymentType" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Yön</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="counterparty" sortKey="counterparty" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Taraf / Kanal</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="method" sortKey="method" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Yöntem</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tutar</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="avansUyari" sortKey="avansUyari" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Avans uyarısı</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Durum</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="note" sortKey="note" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Not</SortablePanelTableTh>
+                    <PanelOrderedHeaderRow
+                      tableColumns={tableColumns}
+                      thClass="px-4 py-3 text-center"
+                      sortKey={clientSort?.key ?? null}
+                      sortDir={clientSort?.dir ?? 'asc'}
+                      onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
+                    />
                     <th className="px-4 py-3 text-center">İşlemler</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
                   {sortedPayments.map((p, idx) => {
                     const isOverdue = p.status === 'pending' && p.paymentType === 'outgoing' && p.dueDate && new Date(p.dueDate) <= new Date();
-                    return (
-                      <tr key={p.id} className={`hover:bg-blue-50/30 dark:hover:bg-slate-700/40 ${idx % 2 ? 'bg-slate-50/30 dark:bg-slate-800/60' : ''}`}>
-                        <PanelTableTd colId="paymentDate" className="px-4 py-3 text-xs">
+                    const cells: Record<string, ReactNode> = {
+                      paymentDate: (
+                        <PanelTableTd key="paymentDate" colId="paymentDate" className="px-4 py-3 text-xs">
                           <div className="text-slate-700 dark:text-slate-200">{fmtDate(p.paymentDate)}</div>
                           {p.queueSource === 'acil_hakedis' ? (
                             <div className="text-[10px] mt-0.5 font-medium text-slate-500">Vade yok</div>
@@ -346,7 +347,9 @@ export default function TahsilatlarPage() {
                             </div>
                           ) : null}
                         </PanelTableTd>
-                        <PanelTableTd colId="fileCase" className="px-4 py-3">
+                      ),
+                      fileCase: (
+                        <PanelTableTd key="fileCase" colId="fileCase" className="px-4 py-3">
                           {p.emergencyCaseId || p.emergencyCase?.id ? (
                             <a href={`/panel/acil-yardim/${p.emergencyCaseId || p.emergencyCase.id}`} className="text-brand-600 dark:text-blue-400 hover:underline font-mono text-xs">
                               {p.emergencyCase?.fileNo || p.emergencyCase?.caseNo || p.claimFile?.fileNo || '—'}
@@ -357,12 +360,16 @@ export default function TahsilatlarPage() {
                             </a>
                           ) : '—'}
                         </PanelTableTd>
-                        <PanelTableTd colId="paymentType" className="px-4 py-3">
+                      ),
+                      paymentType: (
+                        <PanelTableTd key="paymentType" colId="paymentType" className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${p.paymentType === 'incoming' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>
                             {p.paymentType === 'incoming' ? '↓ Tahsilat' : '↑ Ödeme'}
                           </span>
                         </PanelTableTd>
-                        <PanelTableTd colId="counterparty" className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
+                      ),
+                      counterparty: (
+                        <PanelTableTd key="counterparty" colId="counterparty" className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
                           {p.vendorName && <div className="font-medium">{p.vendorName}</div>}
                           {p.collectionChannel && (
                             <div className="text-slate-400">{CHANNEL_LABEL[p.collectionChannel] ?? p.collectionChannel}</div>
@@ -371,9 +378,15 @@ export default function TahsilatlarPage() {
                             <div className="text-slate-400">Ekstre: {p.vendorStatementItem.statement.statementNo}</div>
                           )}
                         </PanelTableTd>
-                        <PanelTableTd colId="method" className="px-4 py-3 text-xs">{METHOD_LABEL[p.method] ?? p.method}</PanelTableTd>
-                        <PanelTableTd colId="amount" className="px-4 py-3 text-right font-bold">{fmtCurrency(p.amount)}</PanelTableTd>
-                        <PanelTableTd colId="avansUyari" className="px-4 py-3">
+                      ),
+                      method: (
+                        <PanelTableTd key="method" colId="method" className="px-4 py-3 text-xs">{METHOD_LABEL[p.method] ?? p.method}</PanelTableTd>
+                      ),
+                      amount: (
+                        <PanelTableTd key="amount" colId="amount" className="px-4 py-3 text-right font-bold">{fmtCurrency(p.amount)}</PanelTableTd>
+                      ),
+                      avansUyari: (
+                        <PanelTableTd key="avansUyari" colId="avansUyari" className="px-4 py-3">
                           {isAvansYariUstuNote(p.note) ? (
                             <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
                               {HASAR_AVANS_YARI_USTU_ETIKET}
@@ -382,7 +395,9 @@ export default function TahsilatlarPage() {
                             <span className="text-slate-400">—</span>
                           )}
                         </PanelTableTd>
-                        <PanelTableTd colId="status" className="px-4 py-3">
+                      ),
+                      status: (
+                        <PanelTableTd key="status" colId="status" className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
                             p.status === 'completed' ? 'bg-green-50 text-green-700 border-green-100'
                               : p.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-100'
@@ -396,7 +411,9 @@ export default function TahsilatlarPage() {
                             </div>
                           ) : null}
                         </PanelTableTd>
-                        <PanelTableTd colId="note" className="px-4 py-3 text-xs text-slate-500 max-w-[200px] truncate" title={p.note}>
+                      ),
+                      note: (
+                        <PanelTableTd key="note" colId="note" className="px-4 py-3 text-xs text-slate-500 max-w-[200px] truncate" title={p.note}>
                           {p.queueSource === 'acil_hakedis' ? (
                             <span className="mr-1 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">Acil hakediş</span>
                           ) : null}
@@ -405,6 +422,11 @@ export default function TahsilatlarPage() {
                           ) : null}
                           {p.note ?? '—'}
                         </PanelTableTd>
+                      ),
+                    };
+                    return (
+                      <tr key={p.id} className={`hover:bg-blue-50/30 dark:hover:bg-slate-700/40 ${idx % 2 ? 'bg-slate-50/30 dark:bg-slate-800/60' : ''}`}>
+                        {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                         <td className="px-4 py-3">
                           <FinanceRowActions
                             onPrint={() => printFinanceSlip({
@@ -434,7 +456,7 @@ export default function TahsilatlarPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </PanelTableScroll>
             <div className="px-4 py-3 border-t flex justify-between items-center text-xs text-slate-400">
               <span>{total} kayıt · sayfa {filters.page}</span>
               <div className="flex gap-2">

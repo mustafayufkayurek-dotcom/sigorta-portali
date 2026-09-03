@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 /** Soldaki sayfaya tıklayınca sağ panel kapanmaz; sağa kayar. İşlem durur. */
-export function useRightPanelDock(open: boolean) {
+export function useRightPanelDockState(open: boolean) {
   const [docked, setDocked] = useState(false);
 
   useEffect(() => {
@@ -16,6 +16,9 @@ export function useRightPanelDock(open: boolean) {
     expand: () => setDocked(false),
   };
 }
+
+/** Geriye uyum — oturum yazımı `right-panel-dock.tsx` içinde. */
+export const useRightPanelDock = useRightPanelDockState;
 
 export function rightPanelDockClass(open: boolean, docked: boolean): string {
   if (!open) return 'translate-x-full pointer-events-none';

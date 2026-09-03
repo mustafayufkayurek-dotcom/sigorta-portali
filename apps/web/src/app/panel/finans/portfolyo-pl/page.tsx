@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
@@ -10,7 +10,9 @@ import {
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTd,
-  SortablePanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -205,79 +207,120 @@ export default function PortfolyoPLPage() {
             <FinansEmptyState title="Portföy kaydı yok." description="Seçilen dönemde sigorta şirketi bazlı kâr/zarar burada durur." />
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+              <PanelTableColGroup />
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-700/50">
-                  <SortablePanelTableTh colId="sigortaSirketi" sortKey="sigortaSirketi" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Sigorta Şirketi</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="donem" sortKey="donem" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Dönem</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="dosyaSayisi" sortKey="dosyaSayisi" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Dosya Sayısı</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="gelir" sortKey="gelir" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Gelir</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="gider" sortKey="gider" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Gider</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="netKZ" sortKey="netKZ" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Net KZ</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="marjPct" sortKey="marjPct" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center">Marj %</SortablePanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={tableColumns}
+                    thClass="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wider text-center"
+                    sortKey={clientSort?.key ?? null}
+                    sortDir={clientSort?.dir ?? 'asc'}
+                    onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/60">
-                {pagedRows.slice.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
-                    <PanelTableTd colId="sigortaSirketi" className="px-5 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-2 h-2 rounded-full bg-blue-400 dark:bg-blue-500 flex-shrink-0" />
-                        <span className="font-medium text-slate-800 dark:text-slate-100">{row.sigortaSirketi}</span>
-                      </div>
-                    </PanelTableTd>
-                    <PanelTableTd colId="donem" className="px-5 py-3.5 text-slate-500 dark:text-slate-400">{row.donem}</PanelTableTd>
-                    <PanelTableTd colId="dosyaSayisi" className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.dosyaSayisi}</PanelTableTd>
-                    <PanelTableTd colId="gelir" className="px-5 py-3.5 text-right font-medium text-slate-700 dark:text-slate-300">{fmtCurrency(row.gelir)}</PanelTableTd>
-                    <PanelTableTd colId="gider" className="px-5 py-3.5 text-right font-medium text-slate-700 dark:text-slate-300">{fmtCurrency(row.gider)}</PanelTableTd>
-                    <PanelTableTd colId="netKZ" className="px-5 py-3.5 text-right">
-                      <span className={`font-bold ${row.netKZ >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                        {row.netKZ >= 0 ? '+' : ''}{fmtCurrency(row.netKZ)}
-                      </span>
-                    </PanelTableTd>
-                    <PanelTableTd colId="marjPct" className="px-5 py-3.5 text-right">
-                      <span className={`inline-flex items-center justify-center text-xs font-bold px-2.5 py-1 rounded-full ${
-                        row.marjPct >= 20
-                          ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
-                          : row.marjPct >= 0
-                          ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
-                          : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'
-                      }`}>
-                        {row.marjPct >= 0 ? '+' : ''}{row.marjPct.toFixed(2)}%
-                      </span>
-                    </PanelTableTd>
-                  </tr>
-                ))}
+                {pagedRows.slice.map((row) => {
+                  const cells: Record<string, ReactNode> = {
+                    sigortaSirketi: (
+                      <PanelTableTd key="sigortaSirketi" colId="sigortaSirketi" className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-2 h-2 rounded-full bg-blue-400 dark:bg-blue-500 flex-shrink-0" />
+                          <span className="font-medium text-slate-800 dark:text-slate-100">{row.sigortaSirketi}</span>
+                        </div>
+                      </PanelTableTd>
+                    ),
+                    donem: (
+                      <PanelTableTd key="donem" colId="donem" className="px-5 py-3.5 text-slate-500 dark:text-slate-400">{row.donem}</PanelTableTd>
+                    ),
+                    dosyaSayisi: (
+                      <PanelTableTd key="dosyaSayisi" colId="dosyaSayisi" className="px-5 py-3.5 text-right text-slate-700 dark:text-slate-300">{row.dosyaSayisi}</PanelTableTd>
+                    ),
+                    gelir: (
+                      <PanelTableTd key="gelir" colId="gelir" className="px-5 py-3.5 text-right font-medium text-slate-700 dark:text-slate-300">{fmtCurrency(row.gelir)}</PanelTableTd>
+                    ),
+                    gider: (
+                      <PanelTableTd key="gider" colId="gider" className="px-5 py-3.5 text-right font-medium text-slate-700 dark:text-slate-300">{fmtCurrency(row.gider)}</PanelTableTd>
+                    ),
+                    netKZ: (
+                      <PanelTableTd key="netKZ" colId="netKZ" className="px-5 py-3.5 text-right">
+                        <span className={`font-bold ${row.netKZ >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                          {row.netKZ >= 0 ? '+' : ''}{fmtCurrency(row.netKZ)}
+                        </span>
+                      </PanelTableTd>
+                    ),
+                    marjPct: (
+                      <PanelTableTd key="marjPct" colId="marjPct" className="px-5 py-3.5 text-right">
+                        <span className={`inline-flex items-center justify-center text-xs font-bold px-2.5 py-1 rounded-full ${
+                          row.marjPct >= 20
+                            ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
+                            : row.marjPct >= 0
+                            ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
+                            : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'
+                        }`}>
+                          {row.marjPct >= 0 ? '+' : ''}{row.marjPct.toFixed(2)}%
+                        </span>
+                      </PanelTableTd>
+                    ),
+                  };
+                  return (
+                    <tr key={row.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
+                      {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/60">
-                  <PanelTableTd colId="sigortaSirketi" className="px-5 py-3 font-bold text-slate-800 dark:text-slate-100">Toplam</PanelTableTd>
-                  <PanelTableTd colId="donem" className="px-5 py-3">{null}</PanelTableTd>
-                  <PanelTableTd colId="dosyaSayisi" className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
-                    {rows.reduce((s, r) => s + r.dosyaSayisi, 0)}
-                  </PanelTableTd>
-                  <PanelTableTd colId="gelir" className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
-                    {fmtCurrency(rows.reduce((s, r) => s + r.gelir, 0))}
-                  </PanelTableTd>
-                  <PanelTableTd colId="gider" className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
-                    {fmtCurrency(rows.reduce((s, r) => s + r.gider, 0))}
-                  </PanelTableTd>
-                  <PanelTableTd colId="netKZ" className="px-5 py-3 text-right">
-                    <span className={`font-bold ${netKZ >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                      {netKZ >= 0 ? '+' : ''}{fmtCurrency(netKZ)}
-                    </span>
-                  </PanelTableTd>
-                  <PanelTableTd colId="marjPct" className="px-5 py-3 text-right">
-                    <span className={`font-bold text-sm ${netKZ >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                      {totalPortfolyoDegeri > 0
-                        ? `${netKZ >= 0 ? '+' : ''}${((netKZ / totalPortfolyoDegeri) * 100).toFixed(2)}%`
-                        : '—'}
-                    </span>
-                  </PanelTableTd>
+                  {(() => {
+                    const footCells: Record<string, ReactNode> = {
+                      sigortaSirketi: (
+                        <PanelTableTd key="sigortaSirketi" colId="sigortaSirketi" className="px-5 py-3 font-bold text-slate-800 dark:text-slate-100">Toplam</PanelTableTd>
+                      ),
+                      donem: (
+                        <PanelTableTd key="donem" colId="donem" className="px-5 py-3">{null}</PanelTableTd>
+                      ),
+                      dosyaSayisi: (
+                        <PanelTableTd key="dosyaSayisi" colId="dosyaSayisi" className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
+                          {rows.reduce((s, r) => s + r.dosyaSayisi, 0)}
+                        </PanelTableTd>
+                      ),
+                      gelir: (
+                        <PanelTableTd key="gelir" colId="gelir" className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
+                          {fmtCurrency(rows.reduce((s, r) => s + r.gelir, 0))}
+                        </PanelTableTd>
+                      ),
+                      gider: (
+                        <PanelTableTd key="gider" colId="gider" className="px-5 py-3 text-right font-bold text-slate-800 dark:text-slate-100">
+                          {fmtCurrency(rows.reduce((s, r) => s + r.gider, 0))}
+                        </PanelTableTd>
+                      ),
+                      netKZ: (
+                        <PanelTableTd key="netKZ" colId="netKZ" className="px-5 py-3 text-right">
+                          <span className={`font-bold ${netKZ >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                            {netKZ >= 0 ? '+' : ''}{fmtCurrency(netKZ)}
+                          </span>
+                        </PanelTableTd>
+                      ),
+                      marjPct: (
+                        <PanelTableTd key="marjPct" colId="marjPct" className="px-5 py-3 text-right">
+                          <span className={`font-bold text-sm ${netKZ >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                            {totalPortfolyoDegeri > 0
+                              ? `${netKZ >= 0 ? '+' : ''}${((netKZ / totalPortfolyoDegeri) * 100).toFixed(2)}%`
+                              : '—'}
+                          </span>
+                        </PanelTableTd>
+                      ),
+                    };
+                    return tableColumns.prefs.orderedVisibleColumns.map((col) => footCells[col.id] ?? null);
+                  })()}
                 </tr>
               </tfoot>
             </table>
+          </PanelTableScroll>
             <FinansTablePager
               page={pagedRows.safePage}
               pageSize={pageSize}
@@ -286,7 +329,7 @@ export default function PortfolyoPLPage() {
               onPageChange={setPage}
               onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
             />
-          </div>
+          </>
         )}
       </FinansPanelCard>
       </TableColumnsProvider>

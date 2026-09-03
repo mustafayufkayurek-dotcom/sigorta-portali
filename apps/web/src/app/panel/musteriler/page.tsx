@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import {
@@ -43,6 +43,8 @@ import {
   isHasarCustomerServiceType,
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
+import { customerFileCounts } from '@/utils/customer-file-counts';
+import { useRestoreRightPanelSession } from '@/components/ui/right-panel-session-hook';
 import {
   parseMusteriGrubuAddContext,
   type MusteriGrubuAddContext,
@@ -60,8 +62,9 @@ import { listedCustomerShortLabel } from '@/utils/operation-customer-display';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
-  PanelTableTh,
-  SortablePanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   TableColumnsProvider,
   usePanelTableColumns,
   panelTableLayoutStyle,
@@ -308,9 +311,7 @@ function CustomerHoverCard({ customer, anchorRef, visible }: HoverCardProps) {
   };
 
   const branches: string[] = Array.isArray(customer.serviceBranches) ? customer.serviceBranches : [];
-  const totalFiles = (customer._count?.claimFiles ?? customer._count?.files ?? 0);
-  const openFiles = customer._openCount ?? 0;
-  const closedFiles = Math.max(0, totalFiles - openFiles);
+  const { total: totalFiles, open: openFiles, closed: closedFiles } = customerFileCounts(customer);
 
   return (
     <div
@@ -484,10 +485,18 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
   const statusCls = STATUS_COLOR[customer?.status ?? ''] ?? 'bg-slate-100 text-slate-500 border-slate-200';
   const statusLabel = DRAWER_STATUS_LABEL[customer?.status ?? ''] ?? customer?.status ?? '—';
   const claimFiles: any[] = customer?.claimFiles?.slice(0, 5) ?? [];
+  const emergencyCases: any[] = customer?.emergencyCases?.slice(0, 5) ?? [];
+  const fileCounts = customer ? customerFileCounts(customer) : { total: 0, open: 0, closed: 0 };
   const stars = customer?.satisfactionScore ? Number(customer.satisfactionScore) : 0;
 
   return (
-    <SlidePanel open={open} onClose={onClose} width={400}>
+    <SlidePanel
+      open={open}
+      onClose={onClose}
+      width={400}
+      dockTitle={name !== '—' ? name : 'Müşteri Özeti'}
+      dockRestore={customerId ? { kind: 'customer-drawer', customerId } : undefined}
+    >
       {/* Custom header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex-shrink-0">
         <div>
@@ -588,27 +597,39 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
           <div className="px-5 pt-4 pb-4 border-b border-slate-50">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-base">📂</span>
-              <p className="text-xs font-semibold text-slate-700 tracking-wide">Hasar Dosyaları</p>
-              {customer._count?.claimFiles != null && (
-                <span className="ml-auto text-xs text-slate-400">{customer._count.claimFiles} Toplam</span>
-              )}
+              <p className="text-xs font-semibold text-slate-700 tracking-wide">Dosyalar</p>
+              <span className="ml-auto text-xs text-slate-400">{fileCounts.total} Toplam</span>
             </div>
-            {claimFiles.length === 0 ? (
-              <p className="text-xs text-slate-400 py-2">Henüz Hasar Dosyası Yok.</p>
+            <div className="mb-3 flex gap-1">
+              <span className="rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">{fileCounts.total} toplam</span>
+              <span className="rounded-lg bg-orange-50 px-2 py-1 text-[10px] font-semibold text-orange-600">{fileCounts.open} açık</span>
+              <span className="rounded-lg bg-green-50 px-2 py-1 text-[10px] font-semibold text-green-700">{fileCounts.closed} kapanan</span>
+            </div>
+            {claimFiles.length === 0 && emergencyCases.length === 0 ? (
+              <p className="text-xs text-slate-400 py-2">Henüz dosya yok.</p>
             ) : (
               <div className="space-y-2">
                 {claimFiles.map((f: any) => {
-                  const st = CLAIM_STATUS_LABEL[f.status] ?? { label: f.status ?? '—', cls: 'bg-slate-100 text-slate-500 border-slate-200' };
+                  const st = CLAIM_STATUS_LABEL[f.status] ?? { label: f.statusName ?? f.status ?? '—', cls: 'bg-slate-100 text-slate-500 border-slate-200' };
                   return (
                     <div key={f.id} className="flex items-center justify-between gap-2 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-slate-700 truncate">{f.fileNumber ?? f.id?.slice(0, 8)}</p>
-                        <p className="text-xs text-slate-400">{fmtDate(f.createdAt)}</p>
+                        <p className="text-xs font-medium text-slate-700 truncate">{f.fileNumber ?? f.fileNo ?? f.id?.slice(0, 8)}</p>
+                        <p className="text-xs text-slate-400">Hasar · {fmtDate(f.createdAt)}</p>
                       </div>
                       <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border flex-shrink-0 ${st.cls}`}>{st.label}</span>
                     </div>
                   );
                 })}
+                {emergencyCases.map((f: any) => (
+                  <div key={f.id} className="flex items-center justify-between gap-2 bg-orange-50 rounded-lg px-3 py-2 border border-orange-100">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-slate-700 truncate">{f.fileNo ?? f.caseNo ?? f.id?.slice(0, 8)}</p>
+                      <p className="text-xs text-slate-400">Acil · {fmtDate(f.createdAt)}</p>
+                    </div>
+                    <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border flex-shrink-0 bg-orange-50 text-orange-700 border-orange-100">{f.status ?? '—'}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -838,6 +859,11 @@ export default function MusterilerPage() {
   // ── Drawer state ──────────────────────────────────────────────────────────
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerCustomerId, setDrawerCustomerId] = useState<string | null>(null);
+  useRestoreRightPanelSession('customer-drawer', (restore) => {
+    if (!restore.customerId) return;
+    setDrawerCustomerId(restore.customerId);
+    setDrawerOpen(true);
+  });
   const [settingsReturn, setSettingsReturn] = useState<MusteriGrubuAddContext | null>(null);
   const groupAddHandled = useRef(false);
   const editCustomerHandled = useRef(false);
@@ -1856,7 +1882,7 @@ export default function MusterilerPage() {
           case 'service':
             return c.subType ?? '';
           case 'files':
-            return c._count?.claimFiles ?? c.fileCount ?? 0;
+            return customerFileCounts(c).total;
           case 'activity':
             return c.lastActivityAt ?? c.updatedAt ?? '';
           case 'status':
@@ -2391,7 +2417,7 @@ export default function MusterilerPage() {
                           </span>
                         ) : null}
                         <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                          {c._count?.claimFiles ?? 0} dosya
+                          {customerFileCounts(c).total} dosya
                         </span>
                       </div>
                       {c.phone ? (
@@ -2417,8 +2443,9 @@ export default function MusterilerPage() {
             })}
           </div>
 
-          <div className="hidden overflow-x-auto lg:block">
-            <table className="text-sm" style={panelTableLayoutStyle(tableColumns)}>
+          <PanelTableScroll className="hidden lg:block">
+            <table className="text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [36] })}>
+              <PanelTableColGroup leadingWidths={[36]} />
               <thead className="sticky top-0 z-10">
                 <tr className="table-head-row">
                   <th className="px-3 py-2.5 w-9">
@@ -2430,14 +2457,20 @@ export default function MusterilerPage() {
                       className="w-3.5 h-3.5 rounded border-slate-300 accent-emerald-600 cursor-pointer"
                     />
                   </th>
-                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Kısa Ad</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="phone" sortKey="phone" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th">Telefon</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="type" sortKey="type" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Tip</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="service" sortKey="service" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Hizmet</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="files" sortKey="files" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Dosya</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="activity" sortKey="activity" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th text-center">Aktivite</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="status" sortKey="status" activeSortKey={clientSort?.key ?? null} sortDir={clientSort?.dir ?? 'asc'} onSort={(k) => setClientSort((p) => cycleClientSort(p, k))} className="table-th-center">Durum</SortablePanelTableTh>
-                  <PanelTableTh colId="actions" className="table-th-center">İşlemler</PanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={tableColumns}
+                    sortKey={clientSort?.key ?? null}
+                    sortDir={clientSort?.dir ?? 'asc'}
+                    onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
+                    thClass={(id) =>
+                      id === 'status' || id === 'actions'
+                        ? 'table-th-center'
+                        : id === 'name' || id === 'phone'
+                          ? 'table-th'
+                          : 'table-th text-center'
+                    }
+                    unsortableIds={['actions']}
+                  />
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -2448,6 +2481,110 @@ export default function MusterilerPage() {
                   const subTypeLabel = subTypeDef?.label ?? null;
                   const isOverdue = c.followUpDate && c.status === 'active' && new Date(c.followUpDate) < new Date(new Date().setHours(0, 0, 0, 0));
                   const overdueDays = isOverdue ? Math.floor((Date.now() - new Date(c.followUpDate).getTime()) / 86_400_000) : 0;
+                  const cells: Record<string, ReactNode> = {
+                    name: (
+                      <PanelTableTd key="name" colId="name" className="table-td">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-7 h-7 rounded-md flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${c.customerType === 'individual' ? 'bg-purple-500' : 'bg-emerald-600'}`}>
+                            {(listed.defined ? listed.name : '?').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            {listed.defined ? (
+                              <Link href={`/panel/musteriler/${c.id}`} className="text-xs font-semibold text-slate-800 hover:text-emerald-600 transition-colors truncate block">
+                                {listed.name}
+                              </Link>
+                            ) : (
+                              <OpsCustomerCell name={listed.name} typeLabel={null} href={listed.href} />
+                            )}
+                            {c.city ? <p className="text-[11px] text-slate-400 leading-tight truncate">{c.city}</p> : null}
+                          </div>
+                        </div>
+                      </PanelTableTd>
+                    ),
+                    phone: (
+                      <PanelTableTd key="phone" colId="phone" className="table-td">
+                        {c.phone ? (
+                          <PhoneContactActions phone={c.phone} variant="inline" />
+                        ) : (
+                          <span className="text-[11px] text-slate-300">—</span>
+                        )}
+                      </PanelTableTd>
+                    ),
+                    type: (
+                      <PanelTableTd key="type" colId="type" className="table-td text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${c.customerType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                            {c.customerType === 'individual' ? 'Bireysel' : 'Kurumsal'}
+                          </span>
+                          {subTypeLabel && (
+                            <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] whitespace-nowrap ${
+                              subTypeDef?.color === 'orange' ? 'bg-orange-50 text-orange-700' :
+                              subTypeDef?.color === 'green'  ? 'bg-green-50 text-green-700' :
+                              subTypeDef?.color === 'purple' ? 'bg-purple-50 text-purple-700' :
+                              subTypeDef?.color === 'blue'   ? 'bg-emerald-50 text-emerald-700' :
+                              'bg-slate-50 text-slate-600'
+                            }`}>
+                              {subTypeLabel}
+                            </span>
+                          )}
+                        </div>
+                      </PanelTableTd>
+                    ),
+                    service: (
+                      <PanelTableTd key="service" colId="service" align="center" className="table-td">
+                        {c.serviceType ? (
+                          <span className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                            isHasarCustomerServiceType(c.serviceType)
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                              : 'bg-orange-50 text-orange-700 border-orange-100'
+                          }`}>
+                            {customerServiceTypeLabel(c.serviceType)}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300">—</span>
+                        )}
+                      </PanelTableTd>
+                    ),
+                    files: (
+                      <PanelTableTd key="files" colId="files" align="center" className="table-td-center">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
+                          {customerFileCounts(c).total}
+                        </span>
+                      </PanelTableTd>
+                    ),
+                    activity: (
+                      <PanelTableTd key="activity" colId="activity" align="center" className="table-td-center">
+                        {isOverdue ? (
+                          <div>
+                            <span className="text-[11px] font-semibold text-status-danger">{overdueDays}g gecikme</span>
+                            <p className="text-[10px] text-red-400 leading-tight">{new Date(c.followUpDate).toLocaleDateString('tr-TR')}</p>
+                          </div>
+                        ) : (
+                          <span className={`text-[11px] font-medium ${activityColor(c.lastActivityDate)}`}>
+                            {relativeTime(c.lastActivityDate)}
+                          </span>
+                        )}
+                      </PanelTableTd>
+                    ),
+                    status: (
+                      <PanelTableTd key="status" colId="status" className="table-td text-center">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border ${STATUS_COLOR[c.status] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.status === 'active' ? 'bg-green-500' : c.status === 'blacklisted' ? 'bg-status-danger' : 'bg-slate-400'}`} />
+                          {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara Liste' : 'Arşiv'}
+                        </span>
+                      </PanelTableTd>
+                    ),
+                    actions: (
+                      <PanelTableTd key="actions" colId="actions" wrap={false} className="table-td-center">
+                        <CustomerRowActions
+                          customerId={c.id}
+                          canArchive={c.status !== 'passive'}
+                          onEdit={() => void openCustomerForEditById(c.id)}
+                          onArchive={() => handleArchiveCustomer(c.id, name || '—')}
+                        />
+                      </PanelTableTd>
+                    ),
+                  };
                   return (
                     <tr
                       key={c.id}
@@ -2469,105 +2606,13 @@ export default function MusterilerPage() {
                           className="w-3.5 h-3.5 rounded border-slate-300 accent-emerald-600 cursor-pointer"
                         />
                       </td>
-                      {/* Ad Soyad */}
-                      <PanelTableTd colId="name" className="table-td">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className={`w-7 h-7 rounded-md flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${c.customerType === 'individual' ? 'bg-purple-500' : 'bg-emerald-600'}`}>
-                            {(listed.defined ? listed.name : '?').charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            {listed.defined ? (
-                              <Link href={`/panel/musteriler/${c.id}`} className="text-xs font-semibold text-slate-800 hover:text-emerald-600 transition-colors truncate block">
-                                {listed.name}
-                              </Link>
-                            ) : (
-                              <OpsCustomerCell name={listed.name} typeLabel={null} href={listed.href} />
-                            )}
-                            {c.city ? <p className="text-[11px] text-slate-400 leading-tight truncate">{c.city}</p> : null}
-                          </div>
-                        </div>
-                      </PanelTableTd>
-                      {/* Telefon */}
-                      <PanelTableTd colId="phone" className="table-td">
-                        {c.phone ? (
-                          <PhoneContactActions phone={c.phone} variant="inline" />
-                        ) : (
-                          <span className="text-[11px] text-slate-300">—</span>
-                        )}
-                      </PanelTableTd>
-                      {/* Tip */}
-                      <PanelTableTd colId="type" className="table-td text-center">
-                        <div className="flex flex-col items-center gap-0.5">
-                          <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${c.customerType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                            {c.customerType === 'individual' ? 'Bireysel' : 'Kurumsal'}
-                          </span>
-                          {subTypeLabel && (
-                            <span className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] whitespace-nowrap ${
-                              subTypeDef?.color === 'orange' ? 'bg-orange-50 text-orange-700' :
-                              subTypeDef?.color === 'green'  ? 'bg-green-50 text-green-700' :
-                              subTypeDef?.color === 'purple' ? 'bg-purple-50 text-purple-700' :
-                              subTypeDef?.color === 'blue'   ? 'bg-emerald-50 text-emerald-700' :
-                              'bg-slate-50 text-slate-600'
-                            }`}>
-                              {subTypeLabel}
-                            </span>
-                          )}
-                        </div>
-                      </PanelTableTd>
-                      {/* Hizmet Türü */}
-                      <PanelTableTd colId="service" align="center" className="table-td">
-                        {c.serviceType ? (
-                          <span className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                            isHasarCustomerServiceType(c.serviceType)
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                              : 'bg-orange-50 text-orange-700 border-orange-100'
-                          }`}>
-                            {customerServiceTypeLabel(c.serviceType)}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-300">—</span>
-                        )}
-                      </PanelTableTd>
-                      {/* Dosya Sayısı */}
-                      <PanelTableTd colId="files" align="center" className="table-td-center">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
-                          {c._count?.claimFiles ?? 0}
-                        </span>
-                      </PanelTableTd>
-                      {/* Aktivite */}
-                      <PanelTableTd colId="activity" align="center" className="table-td-center">
-                        {isOverdue ? (
-                          <div>
-                            <span className="text-[11px] font-semibold text-status-danger">{overdueDays}g gecikme</span>
-                            <p className="text-[10px] text-red-400 leading-tight">{new Date(c.followUpDate).toLocaleDateString('tr-TR')}</p>
-                          </div>
-                        ) : (
-                          <span className={`text-[11px] font-medium ${activityColor(c.lastActivityDate)}`}>
-                            {relativeTime(c.lastActivityDate)}
-                          </span>
-                        )}
-                      </PanelTableTd>
-                      {/* Durum */}
-                      <PanelTableTd colId="status" className="table-td text-center">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border ${STATUS_COLOR[c.status] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.status === 'active' ? 'bg-green-500' : c.status === 'blacklisted' ? 'bg-status-danger' : 'bg-slate-400'}`} />
-                          {c.status === 'active' ? 'Aktif' : c.status === 'blacklisted' ? 'Kara Liste' : 'Arşiv'}
-                        </span>
-                      </PanelTableTd>
-                      <PanelTableTd colId="actions" wrap={false} className="table-td-center">
-                        <CustomerRowActions
-                          customerId={c.id}
-                          canArchive={c.status !== 'passive'}
-                          onEdit={() => void openCustomerForEditById(c.id)}
-                          onArchive={() => handleArchiveCustomer(c.id, name || '—')}
-                        />
-                      </PanelTableTd>
+                      {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-          </div>
+          </PanelTableScroll>
           <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 bg-slate-50/60">
             <span className="text-xs text-slate-400">
               {total === 0 ? '0 kayıt' : `${(page - 1) * limit + 1}–${Math.min(page * limit, total)} / ${total} müşteri`}

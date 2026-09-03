@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Eye, Mail, MoreVertical, Trash2 } from 'lucide-react';
+import { Eye, FileText, MoreVertical, StickyNote, Trash2 } from 'lucide-react';
 import { ActionIconButton } from '@/components/ui/ActionIconButton';
 
 export type ExpertDosyalarActionsProps = {
@@ -16,7 +16,8 @@ export type ExpertDosyalarActionsProps = {
 };
 
 /**
- * Dosyalarım işlemleri — Rapor Önizleme · Not Yaz · Üç Nokta
+ * Dosyalarım / Onay Bekliyor / Rapor Bekleyenler —
+ * Dosya Detayı · Not Yaz ikon; kalanı üç nokta.
  * Menü ve hover önizleme portal ile açılır (tablo overflow kesmesin).
  */
 export function ExpertDosyalarActions({
@@ -136,9 +137,7 @@ export function ExpertDosyalarActions({
             data-testid="eksper-dosyalar-menu"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            {menuItem('Dosya Detayı', onDetail)}
             {menuItem('Evraklar', onDocuments)}
-            {menuItem('Not Yaz', onAddNote)}
             {menuItem('Geçmiş', onHistory)}
             <div className="my-1 border-t border-slate-100" />
             {menuItem('Silme Talebi', onDeleteRequest, { danger: true })}
@@ -154,11 +153,14 @@ export function ExpertDosyalarActions({
       onClick={(e) => e.stopPropagation()}
       data-testid="eksper-dosyalar-actions"
     >
+      <ActionIconButton label="Dosya Detayı" onClick={onDetail} testId="eksper-dosyalar-detail">
+        <FileText className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+      </ActionIconButton>
+      <ActionIconButton label="Not Yaz" onClick={onAddNote} testId="eksper-dosyalar-note">
+        <StickyNote className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+      </ActionIconButton>
       <ActionIconButton label="Rapor Önizleme" onClick={onViewReport}>
         <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </ActionIconButton>
-      <ActionIconButton label="Not Yaz" onClick={onAddNote}>
-        <Mail className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
       </ActionIconButton>
       <ActionIconButton
         label="Diğer"

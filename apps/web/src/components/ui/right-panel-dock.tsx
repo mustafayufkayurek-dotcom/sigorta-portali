@@ -1,15 +1,70 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft } from 'lucide-react';
 import {
   RIGHT_PANEL_DOCK_REMIND_MS,
   rightPanelDockClass,
-  useRightPanelDock,
+  useRightPanelDockState,
 } from './right-panel-dock-state';
+import {
+  clearRightPanelSession,
+  currentPanelHref,
+  hrefMatchesSession,
+  patchRightPanelSession,
+  readRightPanelSession,
+  writeRightPanelSession,
+  type RightPanelRestore,
+} from './right-panel-session';
 
-export { RIGHT_PANEL_DOCK_REMIND_MS, rightPanelDockClass, useRightPanelDock };
+export { RIGHT_PANEL_DOCK_REMIND_MS, rightPanelDockClass };
+
+export type RightPanelDockOptions = {
+  title?: string;
+  restore?: RightPanelRestore;
+};
+
+/** Kaydırınca oturuma yazar; başka sayfada şerit durur. */
+export function useRightPanelDock(open: boolean, options?: RightPanelDockOptions) {
+  const core = useRightPanelDockState(open);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+  const wasOpen = useRef(false);
+
+  useEffect(() => {
+    if (open) {
+      wasOpen.current = true;
+      return;
+    }
+    if (!wasOpen.current) return;
+    const session = readRightPanelSession();
+    if (session && hrefMatchesSession(session.href, currentPanelHref())) {
+      clearRightPanelSession();
+    }
+  }, [open]);
+
+  return {
+    docked: core.docked,
+    dock: () => {
+      core.dock();
+      if (!open) return;
+      writeRightPanelSession({
+        title: optionsRef.current?.title?.trim() || 'Panel',
+        href: currentPanelHref(),
+        docked: true,
+        restore: optionsRef.current?.restore,
+      });
+    },
+    expand: () => {
+      core.expand();
+      const session = readRightPanelSession();
+      if (session && hrefMatchesSession(session.href, currentPanelHref())) {
+        patchRightPanelSession({ docked: false });
+      }
+    },
+  };
+}
 
 /** Kaydırılmış panelin tutamağı — iç içerik sızmaz; yalnız bu şerit görünür. */
 export function RightPanelDockTab({

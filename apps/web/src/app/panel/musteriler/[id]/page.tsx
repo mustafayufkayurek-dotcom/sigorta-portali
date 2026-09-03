@@ -12,6 +12,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
 import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType } from '@/utils/customer-form-helpers';
+import { customerFileCounts } from '@/utils/customer-file-counts';
 import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
 import {
   readAnaMusteriHaberlesme,
@@ -245,7 +246,9 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
         <SectionCard title="Dosya İstatistikleri">
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Toplam Dosya', value: customer._count?.claimFiles ?? 0, color: 'text-emerald-600' },
+              { label: 'Toplam Dosya', value: customerFileCounts(customer).total, color: 'text-emerald-600' },
+              { label: 'Açık', value: customerFileCounts(customer).open, color: 'text-orange-500' },
+              { label: 'Kapanan', value: customerFileCounts(customer).closed, color: 'text-green-600' },
               { label: 'Durum', value: (
                 <Badge variant={customer.status === 'active' ? 'green' : customer.status === 'blacklisted' ? 'red' : 'gray'}>
                   {customer.status === 'active' ? '● Aktif' : customer.status === 'blacklisted' ? '⛔ Kara Liste' : '● Arşiv'}
@@ -390,13 +393,22 @@ function YetkiliIletisimTab({ customer }: { customer: any }) {
 // ── Hasar Dosyaları Tab ───────────────────────────────────────────────────────
 function CustomerDosyalarTab({ customerId }: { customerId: string }) {
   const [files, setFiles] = useState<any[]>([]);
+  const [emergencyFiles, setEmergencyFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewFile, setPreviewFile] = useState<any>(null);
 
   const load = () => {
     setLoading(true);
-    axios.get(`${API}/customers/${customerId}/claim-files?limit=50`, { headers: authHeader() })
-      .then((r) => setFiles(r.data.data || [])).catch(console.error).finally(() => setLoading(false));
+    Promise.all([
+      axios.get(`${API}/customers/${customerId}/claim-files?limit=50`, { headers: authHeader() }),
+      axios.get(`${API}/customers/${customerId}/emergency-cases`, { headers: authHeader() }),
+    ])
+      .then(([claimRes, emergencyRes]) => {
+        setFiles(claimRes.data.data || []);
+        setEmergencyFiles(emergencyRes.data.data || []);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [customerId]);
@@ -405,7 +417,7 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
 
   return (
     <>
-      <SectionCard title="Hasar Dosyaları" subtitle={`${files.length} dosya`}>
+      <SectionCard title="Hasar Dosyaları" subtitle={`${files.length} hasar`}>
         {!files.length ? (
           <div className="py-8 text-center">
             <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-2 text-xl">📂</div>
@@ -440,6 +452,34 @@ function CustomerDosyalarTab({ customerId }: { customerId: string }) {
                       </svg>
                     </button>
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Acil Yardım Dosyaları" subtitle={`${emergencyFiles.length} acil`}>
+        {!emergencyFiles.length ? (
+          <div className="py-8 text-center">
+            <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-2 text-xl">🚑</div>
+            <p className="text-slate-500 font-medium text-sm">Acil yardım dosyası bulunamadı.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {emergencyFiles.map((f) => (
+              <div key={f.id} className="border border-slate-100 rounded-xl hover:border-orange-200 transition-all">
+                <div className="flex items-center justify-between p-3.5">
+                  <a href={`/panel/acil-yardim/${f.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600 text-sm flex-shrink-0">🚑</div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">{f.fileNo ?? f.caseNo ?? f.id.slice(0, 8).toUpperCase()}</p>
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">{f.customerName ?? f.issueType ?? 'Acil'} · {fmtDate(f.createdAt ?? f.fileDate)}</p>
+                    </div>
+                  </a>
+                  <span className="text-xs rounded-full px-2.5 py-1 font-medium bg-orange-50 text-orange-700">
+                    {f.status ?? '—'}
+                  </span>
                 </div>
               </div>
             ))}
@@ -847,7 +887,7 @@ export default function CustomerDetailPage() {
         {/* Stats Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-5 border-t border-slate-50">
           {[
-            { label: 'Hasar Dosyası', value: customer._count?.claimFiles ?? 0 },
+            { label: 'Dosya', value: customerFileCounts(customer).total },
             { label: 'Yetkili Kişi', value: contactCount },
             { label: 'Memnuniyet', value: customer.satisfactionScore ? `${customer.satisfactionScore}/5 ★` : '—' },
             { label: 'Kayıt Tarihi', value: fmtDate(customer.createdAt) },
@@ -886,9 +926,9 @@ export default function CustomerDetailPage() {
               }`}>
               <span>{tab.icon}</span>
               {tab.label}
-              {tab.id === 'dosyalar' && (customer._count?.claimFiles ?? 0) > 0 && (
+              {tab.id === 'dosyalar' && customerFileCounts(customer).total > 0 && (
                 <span className="ml-1 bg-emerald-100 text-emerald-700 text-xs rounded-full px-1.5 py-0.5 font-semibold">
-                  {customer._count?.claimFiles}
+                  {customerFileCounts(customer).total}
                 </span>
               )}
             </button>

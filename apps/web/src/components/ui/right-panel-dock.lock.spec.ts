@@ -38,6 +38,15 @@ describe('sağ panel kaydır LOCK', () => {
     assert.match(tab, /Bekleyen işlem/);
     assert.match(tab, /Geri aç/);
     assert.equal(RIGHT_PANEL_DOCK_REMIND_MS, 20_000);
+    const session = readFileSync(join(here, 'right-panel-session.ts'), 'utf8');
+    const host = readFileSync(join(here, 'right-panel-dock-host.tsx'), 'utf8');
+    const layout = readFileSync(join(here, '../../app/panel/layout.tsx'), 'utf8');
+    assert.match(session, /RIGHT_PANEL_SESSION_KEY/);
+    assert.match(session, /writeRightPanelSession/);
+    assert.match(tab, /writeRightPanelSession/);
+    assert.match(host, /RightPanelDockTab/);
+    assert.match(host, /session\.href/);
+    assert.match(layout, /RightPanelDockHost/);
   });
 
   it('Acil ve Hasar çekmecesi aynı kaydırmayı kullanır; hakediş dışarı tıklayınca formu silmez', () => {

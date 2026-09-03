@@ -35,7 +35,7 @@ export class SystemSettingsController {
   }
 
   @Get('vendor-types')
-  @RequirePermissions('settings.view')
+  @RequirePermissions('settings.view', 'vendor.view', 'vendor.create')
   @ApiOperation({ summary: 'Tedarikçi türlerini getir' })
   async getVendorTypes() {
     const data = await this.service.getVendorTypes();

@@ -1,15 +1,17 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  SortablePanelTableTh,
   PanelTableTd,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -217,34 +219,40 @@ export default function PersonelPerformansPage() {
             <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
               <PanelTableColumnPicker tableColumns={staffTableColumns} />
             </div>
-            <div className="overflow-x-auto">
+            <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(staffTableColumns)}>
+              <PanelTableColGroup />
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
-                  <SortablePanelTableTh colId="userName" sortKey="userName" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Ad Soyad</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="userType" sortKey="userType" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tip</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="totalFiles" sortKey="totalFiles" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Toplam</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="openFiles" sortKey="openFiles" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Açık</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="closedFiles" sortKey="closedFiles" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Kapanan</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="slaViolations" sortKey="slaViolations" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">SLA İhlali</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="avgCloseDays" sortKey="avgCloseDays" activeSortKey={clientSortStaff?.key ?? null} sortDir={clientSortStaff?.dir ?? 'asc'} onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Ort. Kapanış (gün)</SortablePanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={staffTableColumns}
+                    thClass="px-4 py-3 text-center"
+                    sortKey={clientSortStaff?.key ?? null}
+                    sortDir={clientSortStaff?.dir ?? 'asc'}
+                    onSort={(k) => setClientSortStaff((p) => cycleClientSort(p, k))}
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {sortedStaffUsers.map((u) => (
-                  <tr key={u.userId} className="hover:bg-slate-50">
-                    <PanelTableTd colId="userName" className="px-4 py-3 font-medium text-slate-800">{u.userName}</PanelTableTd>
-                    <PanelTableTd colId="userType" className="px-4 py-3 text-slate-500">{u.userType}</PanelTableTd>
-                    <PanelTableTd colId="totalFiles" className="px-4 py-3 text-right">{u.totalFiles}</PanelTableTd>
-                    <PanelTableTd colId="openFiles" className="px-4 py-3 text-right text-brand-600">{u.openFiles}</PanelTableTd>
-                    <PanelTableTd colId="closedFiles" className="px-4 py-3 text-right text-green-600">{u.closedFiles}</PanelTableTd>
-                    <PanelTableTd colId="slaViolations" className="px-4 py-3 text-right text-red-600 font-medium">{u.slaViolations}</PanelTableTd>
-                    <PanelTableTd colId="avgCloseDays" className="px-4 py-3 text-right">{u.avgCloseDays}</PanelTableTd>
-                  </tr>
-                ))}
+                {sortedStaffUsers.map((u) => {
+                  const cells: Record<string, ReactNode> = {
+                    userName: <PanelTableTd key="userName" colId="userName" className="px-4 py-3 font-medium text-slate-800">{u.userName}</PanelTableTd>,
+                    userType: <PanelTableTd key="userType" colId="userType" className="px-4 py-3 text-slate-500">{u.userType}</PanelTableTd>,
+                    totalFiles: <PanelTableTd key="totalFiles" colId="totalFiles" className="px-4 py-3 text-right">{u.totalFiles}</PanelTableTd>,
+                    openFiles: <PanelTableTd key="openFiles" colId="openFiles" className="px-4 py-3 text-right text-brand-600">{u.openFiles}</PanelTableTd>,
+                    closedFiles: <PanelTableTd key="closedFiles" colId="closedFiles" className="px-4 py-3 text-right text-green-600">{u.closedFiles}</PanelTableTd>,
+                    slaViolations: <PanelTableTd key="slaViolations" colId="slaViolations" className="px-4 py-3 text-right text-red-600 font-medium">{u.slaViolations}</PanelTableTd>,
+                    avgCloseDays: <PanelTableTd key="avgCloseDays" colId="avgCloseDays" className="px-4 py-3 text-right">{u.avgCloseDays}</PanelTableTd>,
+                  };
+                  return (
+                    <tr key={u.userId} className="hover:bg-slate-50">
+                      {staffTableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            </div>
+            </PanelTableScroll>
           </div>
           </TableColumnsProvider>
         </div>
@@ -270,32 +278,43 @@ export default function PersonelPerformansPage() {
             <div className="px-4 py-2 border-b border-slate-100 flex justify-end">
               <PanelTableColumnPicker tableColumns={vendorTableColumns} />
             </div>
-            <div className="overflow-x-auto">
+            <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(vendorTableColumns)}>
+              <PanelTableColGroup />
               <thead className="bg-slate-50 text-xs text-slate-500">
                 <tr>
-                  <SortablePanelTableTh colId="vendorName" sortKey="vendorName" activeSortKey={clientSortVendor?.key ?? null} sortDir={clientSortVendor?.dir ?? 'asc'} onSort={(k) => setClientSortVendor((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tedarikçi</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="assignmentCount" sortKey="assignmentCount" activeSortKey={clientSortVendor?.key ?? null} sortDir={clientSortVendor?.dir ?? 'asc'} onSort={(k) => setClientSortVendor((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Atama</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="completedCount" sortKey="completedCount" activeSortKey={clientSortVendor?.key ?? null} sortDir={clientSortVendor?.dir ?? 'asc'} onSort={(k) => setClientSortVendor((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tamamlanan</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="completionRate" sortKey="completionRate" activeSortKey={clientSortVendor?.key ?? null} sortDir={clientSortVendor?.dir ?? 'asc'} onSort={(k) => setClientSortVendor((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tamamlama Oranı</SortablePanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={vendorTableColumns}
+                    thClass="px-4 py-3 text-center"
+                    sortKey={clientSortVendor?.key ?? null}
+                    sortDir={clientSortVendor?.dir ?? 'asc'}
+                    onSort={(k) => setClientSortVendor((p) => cycleClientSort(p, k))}
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {sortedVendorStats.map((v) => (
-                  <tr key={v.vendorId} className="hover:bg-slate-50">
-                    <PanelTableTd colId="vendorName" className="px-4 py-3 font-medium text-slate-800">{v.vendorName}</PanelTableTd>
-                    <PanelTableTd colId="assignmentCount" className="px-4 py-3 text-right">{v.assignmentCount}</PanelTableTd>
-                    <PanelTableTd colId="completedCount" className="px-4 py-3 text-right text-green-600">{v.completedCount}</PanelTableTd>
-                    <PanelTableTd colId="completionRate" className="px-4 py-3 text-right">
-                      <span className={`font-medium ${v.completionRate >= 80 ? 'text-green-700' : v.completionRate >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
-                        %{v.completionRate}
-                      </span>
-                    </PanelTableTd>
-                  </tr>
-                ))}
+                {sortedVendorStats.map((v) => {
+                  const cells: Record<string, ReactNode> = {
+                    vendorName: <PanelTableTd key="vendorName" colId="vendorName" className="px-4 py-3 font-medium text-slate-800">{v.vendorName}</PanelTableTd>,
+                    assignmentCount: <PanelTableTd key="assignmentCount" colId="assignmentCount" className="px-4 py-3 text-right">{v.assignmentCount}</PanelTableTd>,
+                    completedCount: <PanelTableTd key="completedCount" colId="completedCount" className="px-4 py-3 text-right text-green-600">{v.completedCount}</PanelTableTd>,
+                    completionRate: (
+                      <PanelTableTd key="completionRate" colId="completionRate" className="px-4 py-3 text-right">
+                        <span className={`font-medium ${v.completionRate >= 80 ? 'text-green-700' : v.completionRate >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                          %{v.completionRate}
+                        </span>
+                      </PanelTableTd>
+                    ),
+                  };
+                  return (
+                    <tr key={v.vendorId} className="hover:bg-slate-50">
+                      {vendorTableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            </div>
+            </PanelTableScroll>
           </div>
           </TableColumnsProvider>
         </div>

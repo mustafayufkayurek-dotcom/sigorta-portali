@@ -14,6 +14,7 @@ import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { FinansOncelikliGorevModal } from '@/components/finance/FinansOncelikliGorevModal';
 import { WorkHoursPanelGate, type WorkHoursPanelGateHandle } from '@/components/hr/WorkHoursPanelGate';
 import { NavigationGuardProvider } from '@/contexts/NavigationGuardContext';
+import { RightPanelDockHost } from '@/components/ui/right-panel-dock-host';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { GlobalActivityStrip } from '@/components/ui/GlobalActivityStrip';
 import { LoadingScreen } from '@/components/ui/LoadingIndicator';
@@ -2082,6 +2083,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         ) : null}
           </div>
         </div>
+        <RightPanelDockHost />
         <PanelHelpDrawer
           roleCode={roleCode}
           isExpert={isExpert}

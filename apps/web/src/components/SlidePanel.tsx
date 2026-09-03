@@ -5,6 +5,7 @@ import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { RightPanelDockTab, rightPanelDockClass, useRightPanelDock } from '@/components/ui/right-panel-dock';
 import { useRightPanelUnsavedGuard } from '@/components/ui/right-panel-unsaved';
+import type { RightPanelRestore } from '@/components/ui/right-panel-session';
 
 interface SlidePanelProps {
   open: boolean;
@@ -14,12 +15,27 @@ interface SlidePanelProps {
   width?: number;
   /** false: children manage scroll (sticky header/footer forms) */
   scrollContent?: boolean;
+  dockTitle?: string;
+  dockRestore?: RightPanelRestore;
   children: React.ReactNode;
 }
 
-export function SlidePanel({ open, onClose, title, subtitle, width = 400, scrollContent = true, children }: SlidePanelProps) {
+export function SlidePanel({
+  open,
+  onClose,
+  title,
+  subtitle,
+  width = 400,
+  scrollContent = true,
+  dockTitle,
+  dockRestore,
+  children,
+}: SlidePanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const { docked, dock, expand } = useRightPanelDock(open);
+  const { docked, dock, expand } = useRightPanelDock(open, {
+    title: dockTitle ?? title,
+    restore: dockRestore,
+  });
   const { requestClose } = useRightPanelUnsavedGuard({
     open,
     expand,
@@ -94,7 +110,7 @@ export function SlidePanel({ open, onClose, title, subtitle, width = 400, scroll
         </div>
       </div>
       {open && docked ? (
-        <RightPanelDockTab label={title?.trim() || 'Panel'} onClick={expand} />
+        <RightPanelDockTab label={(dockTitle ?? title)?.trim() || 'Panel'} onClick={expand} />
       ) : null}
     </>
   );

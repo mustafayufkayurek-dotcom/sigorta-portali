@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -9,8 +9,10 @@ import {
   usePanelTableColumns,
   TableColumnsProvider,
   PanelTableColumnPicker,
-  SortablePanelTableTh,
   PanelTableTd,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelOrderedHeaderRow,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -341,28 +343,37 @@ export default function FinansalRaporPage() {
               </div>
             ) : (
               <>
-              <div className="overflow-x-auto">
+              <PanelTableScroll>
               <table className="w-full text-sm" style={panelTableLayoutStyle(overdueTableColumns)}>
+                <PanelTableColGroup />
                 <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                   <tr>
-                    <SortablePanelTableTh colId="invoiceNo" sortKey="invoiceNo" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-2 text-center">Fatura No</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-2 text-center">Dosya No</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="amount" sortKey="amount" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-2 text-center">Tutar</SortablePanelTableTh>
-                    <SortablePanelTableTh colId="daysOverdue" sortKey="daysOverdue" activeSortKey={clientSortOverdue?.key ?? null} sortDir={clientSortOverdue?.dir ?? 'asc'} onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))} className="px-4 py-2 text-center">Gecikme (gün)</SortablePanelTableTh>
+                    <PanelOrderedHeaderRow
+                      tableColumns={overdueTableColumns}
+                      thClass="px-4 py-2 text-center"
+                      sortKey={clientSortOverdue?.key ?? null}
+                      sortDir={clientSortOverdue?.dir ?? 'asc'}
+                      onSort={(k) => setClientSortOverdue((p) => cycleClientSort(p, k))}
+                    />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {pagedOverdue.slice.map((inv: any) => (
-                    <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                      <PanelTableTd colId="invoiceNo" className="px-4 py-2 text-xs font-mono text-slate-700 dark:text-slate-300">{inv.invoiceNo}</PanelTableTd>
-                      <PanelTableTd colId="fileNo" className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{inv.fileNo}</PanelTableTd>
-                      <PanelTableTd colId="amount" className="px-4 py-2 text-right font-medium text-slate-800 dark:text-slate-100">{fmtCurrency(inv.totalAmount)}</PanelTableTd>
-                      <PanelTableTd colId="daysOverdue" className="px-4 py-2 text-right text-red-600 dark:text-red-400 font-bold">{inv.daysOverdue}</PanelTableTd>
-                    </tr>
-                  ))}
+                  {pagedOverdue.slice.map((inv: any) => {
+                    const cells: Record<string, ReactNode> = {
+                      invoiceNo: <PanelTableTd key="invoiceNo" colId="invoiceNo" className="px-4 py-2 text-xs font-mono text-slate-700 dark:text-slate-300">{inv.invoiceNo}</PanelTableTd>,
+                      fileNo: <PanelTableTd key="fileNo" colId="fileNo" className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{inv.fileNo}</PanelTableTd>,
+                      amount: <PanelTableTd key="amount" colId="amount" className="px-4 py-2 text-right font-medium text-slate-800 dark:text-slate-100">{fmtCurrency(inv.totalAmount)}</PanelTableTd>,
+                      daysOverdue: <PanelTableTd key="daysOverdue" colId="daysOverdue" className="px-4 py-2 text-right text-red-600 dark:text-red-400 font-bold">{inv.daysOverdue}</PanelTableTd>,
+                    };
+                    return (
+                      <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                        {overdueTableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
-              </div>
+              </PanelTableScroll>
               <FinansTablePager
                 page={pagedOverdue.safePage}
                 pageSize={overduePageSize}
@@ -382,33 +393,41 @@ export default function FinansalRaporPage() {
         <FinansPanelCard title="12 Aylık Gelir – Gider – Kâr Trendi">
           {/* Monthly table */}
           <TableColumnsProvider value={trendTableColumns}>
-          <div className="overflow-x-auto mb-6">
+          <PanelTableScroll className="mb-6">
             <div className="flex justify-end mb-2">
               <PanelTableColumnPicker tableColumns={trendTableColumns} />
             </div>
             <table className="w-full text-sm" style={panelTableLayoutStyle(trendTableColumns)}>
+              <PanelTableColGroup />
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <SortablePanelTableTh colId="month" sortKey="month" activeSortKey={clientSortTrend?.key ?? null} sortDir={clientSortTrend?.dir ?? 'asc'} onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))} className="px-3 py-2 text-center">Ay</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="revenue" sortKey="revenue" activeSortKey={clientSortTrend?.key ?? null} sortDir={clientSortTrend?.dir ?? 'asc'} onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))} className="px-3 py-2 text-center">Gelir</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="cost" sortKey="cost" activeSortKey={clientSortTrend?.key ?? null} sortDir={clientSortTrend?.dir ?? 'asc'} onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))} className="px-3 py-2 text-center">Gider</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="profit" sortKey="profit" activeSortKey={clientSortTrend?.key ?? null} sortDir={clientSortTrend?.dir ?? 'asc'} onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))} className="px-3 py-2 text-center">Kâr / Zarar</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="margin" sortKey="margin" activeSortKey={clientSortTrend?.key ?? null} sortDir={clientSortTrend?.dir ?? 'asc'} onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))} className="px-3 py-2 text-center">Marj</SortablePanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={trendTableColumns}
+                    thClass="px-3 py-2 text-center"
+                    sortKey={clientSortTrend?.key ?? null}
+                    sortDir={clientSortTrend?.dir ?? 'asc'}
+                    onSort={(k) => setClientSortTrend((p) => cycleClientSort(p, k))}
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                 {pagedTrend.slice.map((d) => {
                   const profitVal = d.profit ?? d.revenue - d.cost;
                   const marj = d.revenue > 0 ? ((profitVal / d.revenue) * 100).toFixed(1) : '0.0';
-                  return (
-                    <tr key={d.month} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                      <PanelTableTd colId="month" className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200">{d.month}</PanelTableTd>
-                      <PanelTableTd colId="revenue" className="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{fmtCurrency(d.revenue)}</PanelTableTd>
-                      <PanelTableTd colId="cost" className="px-3 py-2 text-right text-red-600 dark:text-red-400">{fmtCurrency(d.cost)}</PanelTableTd>
-                      <PanelTableTd colId="profit" className={`px-3 py-2 text-right font-bold ${profitVal >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                  const cells: Record<string, ReactNode> = {
+                    month: <PanelTableTd key="month" colId="month" className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200">{d.month}</PanelTableTd>,
+                    revenue: <PanelTableTd key="revenue" colId="revenue" className="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{fmtCurrency(d.revenue)}</PanelTableTd>,
+                    cost: <PanelTableTd key="cost" colId="cost" className="px-3 py-2 text-right text-red-600 dark:text-red-400">{fmtCurrency(d.cost)}</PanelTableTd>,
+                    profit: (
+                      <PanelTableTd key="profit" colId="profit" className={`px-3 py-2 text-right font-bold ${profitVal >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                         {profitVal >= 0 ? '+' : ''}{fmtCurrency(profitVal)}
                       </PanelTableTd>
-                      <PanelTableTd colId="margin" className={`px-3 py-2 text-right ${Number(marj) >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>%{marj}</PanelTableTd>
+                    ),
+                    margin: <PanelTableTd key="margin" colId="margin" className={`px-3 py-2 text-right ${Number(marj) >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>%{marj}</PanelTableTd>,
+                  };
+                  return (
+                    <tr key={d.month} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                      {trendTableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                     </tr>
                   );
                 })}
@@ -422,7 +441,7 @@ export default function FinansalRaporPage() {
               onPageChange={setTrendPage}
               onPageSizeChange={(n) => { setTrendPageSize(n); setTrendPage(1); }}
             />
-          </div>
+          </PanelTableScroll>
           </TableColumnsProvider>
           {/* CSS bar trend chart */}
           <div className="flex items-end gap-2 h-44">
@@ -488,34 +507,44 @@ export default function FinansalRaporPage() {
             <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
               <PanelTableColumnPicker tableColumns={collectionsTableColumns} />
             </div>
-            <div className="overflow-x-auto">
+            <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(collectionsTableColumns)}>
+              <PanelTableColGroup />
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <SortablePanelTableTh colId="name" sortKey="name" activeSortKey={clientSortCollections?.key ?? null} sortDir={clientSortCollections?.dir ?? 'asc'} onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Sigorta Şirketi</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="count" sortKey="count" activeSortKey={clientSortCollections?.key ?? null} sortDir={clientSortCollections?.dir ?? 'asc'} onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Dosya Sayısı</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="revenue" sortKey="revenue" activeSortKey={clientSortCollections?.key ?? null} sortDir={clientSortCollections?.dir ?? 'asc'} onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Toplam Gelir</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="collected" sortKey="collected" activeSortKey={clientSortCollections?.key ?? null} sortDir={clientSortCollections?.dir ?? 'asc'} onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tahsilat</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="collectionRate" sortKey="collectionRate" activeSortKey={clientSortCollections?.key ?? null} sortDir={clientSortCollections?.dir ?? 'asc'} onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Tahsilat Oranı</SortablePanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={collectionsTableColumns}
+                    thClass="px-4 py-3 text-center"
+                    sortKey={clientSortCollections?.key ?? null}
+                    sortDir={clientSortCollections?.dir ?? 'asc'}
+                    onSort={(k) => setClientSortCollections((p) => cycleClientSort(p, k))}
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {pagedCollections.slice.map((ins: any) => (
-                  <tr key={ins.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                    <PanelTableTd colId="name" className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{ins.name}</PanelTableTd>
-                    <PanelTableTd colId="count" className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">{ins.count}</PanelTableTd>
-                    <PanelTableTd colId="revenue" className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(ins.revenue)}</PanelTableTd>
-                    <PanelTableTd colId="collected" className="px-4 py-3 text-right text-green-700 dark:text-green-400">{fmtCurrency(ins.collected)}</PanelTableTd>
-                    <PanelTableTd colId="collectionRate" className="px-4 py-3 text-right">
-                      <span className={`font-bold ${ins.collectionRate >= 80 ? 'text-green-600 dark:text-green-400' : ins.collectionRate >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
-                        %{ins.collectionRate.toFixed(1)}
-                      </span>
-                    </PanelTableTd>
-                  </tr>
-                ))}
+                {pagedCollections.slice.map((ins: any) => {
+                  const cells: Record<string, ReactNode> = {
+                    name: <PanelTableTd key="name" colId="name" className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{ins.name}</PanelTableTd>,
+                    count: <PanelTableTd key="count" colId="count" className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">{ins.count}</PanelTableTd>,
+                    revenue: <PanelTableTd key="revenue" colId="revenue" className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(ins.revenue)}</PanelTableTd>,
+                    collected: <PanelTableTd key="collected" colId="collected" className="px-4 py-3 text-right text-green-700 dark:text-green-400">{fmtCurrency(ins.collected)}</PanelTableTd>,
+                    collectionRate: (
+                      <PanelTableTd key="collectionRate" colId="collectionRate" className="px-4 py-3 text-right">
+                        <span className={`font-bold ${ins.collectionRate >= 80 ? 'text-green-600 dark:text-green-400' : ins.collectionRate >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+                          %{ins.collectionRate.toFixed(1)}
+                        </span>
+                      </PanelTableTd>
+                    ),
+                  };
+                  return (
+                    <tr key={ins.name} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                      {collectionsTableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            </div>
+            </PanelTableScroll>
             <FinansTablePager
               page={pagedCollections.safePage}
               pageSize={collectionsPageSize}
@@ -542,32 +571,42 @@ export default function FinansalRaporPage() {
             <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
               <PanelTableColumnPicker tableColumns={profitabilityTableColumns} />
             </div>
-            <div className="overflow-x-auto">
+            <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(profitabilityTableColumns)}>
+              <PanelTableColGroup />
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
-                  <SortablePanelTableTh colId="fileNo" sortKey="fileNo" activeSortKey={clientSortProfit?.key ?? null} sortDir={clientSortProfit?.dir ?? 'asc'} onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Dosya No</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="actualRevenue" sortKey="actualRevenue" activeSortKey={clientSortProfit?.key ?? null} sortDir={clientSortProfit?.dir ?? 'asc'} onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Fiili Gelir</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="actualCost" sortKey="actualCost" activeSortKey={clientSortProfit?.key ?? null} sortDir={clientSortProfit?.dir ?? 'asc'} onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Fiili Gider</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="grossProfit" sortKey="grossProfit" activeSortKey={clientSortProfit?.key ?? null} sortDir={clientSortProfit?.dir ?? 'asc'} onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Brüt Kâr</SortablePanelTableTh>
-                  <SortablePanelTableTh colId="grossMarginPct" sortKey="grossMarginPct" activeSortKey={clientSortProfit?.key ?? null} sortDir={clientSortProfit?.dir ?? 'asc'} onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))} className="px-4 py-3 text-center">Marj</SortablePanelTableTh>
+                  <PanelOrderedHeaderRow
+                    tableColumns={profitabilityTableColumns}
+                    thClass="px-4 py-3 text-center"
+                    sortKey={clientSortProfit?.key ?? null}
+                    sortDir={clientSortProfit?.dir ?? 'asc'}
+                    onSort={(k) => setClientSortProfit((p) => cycleClientSort(p, k))}
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {pagedProfit.slice.map((f: any) => (
-                  <tr key={f.claimFileId} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
-                    <PanelTableTd colId="fileNo" className="px-4 py-2 font-mono text-xs text-brand-600 dark:text-blue-400">
-                      <a href={`/panel/hasar-dosyalari/${f.claimFileId}`} className="hover:underline">{f.fileNo}</a>
-                    </PanelTableTd>
-                    <PanelTableTd colId="actualRevenue" className="px-4 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(f.actualRevenue)}</PanelTableTd>
-                    <PanelTableTd colId="actualCost" className="px-4 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(f.actualCost)}</PanelTableTd>
-                    <PanelTableTd colId="grossProfit" className={`px-4 py-2 text-right font-bold ${f.grossProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{fmtCurrency(f.grossProfit)}</PanelTableTd>
-                    <PanelTableTd colId="grossMarginPct" className={`px-4 py-2 text-right ${f.grossMarginPct >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>%{(f.grossMarginPct ?? 0).toFixed(1)}</PanelTableTd>
-                  </tr>
-                ))}
+                {pagedProfit.slice.map((f: any) => {
+                  const cells: Record<string, ReactNode> = {
+                    fileNo: (
+                      <PanelTableTd key="fileNo" colId="fileNo" className="px-4 py-2 font-mono text-xs text-brand-600 dark:text-blue-400">
+                        <a href={`/panel/hasar-dosyalari/${f.claimFileId}`} className="hover:underline">{f.fileNo}</a>
+                      </PanelTableTd>
+                    ),
+                    actualRevenue: <PanelTableTd key="actualRevenue" colId="actualRevenue" className="px-4 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(f.actualRevenue)}</PanelTableTd>,
+                    actualCost: <PanelTableTd key="actualCost" colId="actualCost" className="px-4 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCurrency(f.actualCost)}</PanelTableTd>,
+                    grossProfit: <PanelTableTd key="grossProfit" colId="grossProfit" className={`px-4 py-2 text-right font-bold ${f.grossProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{fmtCurrency(f.grossProfit)}</PanelTableTd>,
+                    grossMarginPct: <PanelTableTd key="grossMarginPct" colId="grossMarginPct" className={`px-4 py-2 text-right ${f.grossMarginPct >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>%{(f.grossMarginPct ?? 0).toFixed(1)}</PanelTableTd>,
+                  };
+                  return (
+                    <tr key={f.claimFileId} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                      {profitabilityTableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            </div>
+            </PanelTableScroll>
             <FinansTablePager
               page={pagedProfit.safePage}
               pageSize={profitPageSize}
