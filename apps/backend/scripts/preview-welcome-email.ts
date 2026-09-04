@@ -8,8 +8,8 @@ import {
 const outDir = join(__dirname, '../../../.preview');
 mkdirSync(outDir, { recursive: true });
 
-function wrapPreview(body: string, title: string): string {
-  return `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${title}</title><style>body{margin:0;padding:12px;background:#cbd5e1;}</style></head><body>${body}</body></html>`;
+function wrapPreview(body: string, title: string, extraHead = ''): string {
+  return `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${title}</title>${extraHead}<style>body{margin:0;padding:12px;background:#cbd5e1;}</style></head><body>${body}</body></html>`;
 }
 
 function writeRolePreview(
@@ -35,13 +35,22 @@ function writeRolePreview(
     /https?:\/\/[^"'\s]+\/docs\/meridyen-logo-original\.png/g,
     './meridyen-logo-original.png',
   );
-  const cardMatch = html.match(/<table width="640"[\s\S]*<\/table>\s*<\/td>\s*<\/tr>\s*<\/table>\s*<\/body>/i);
-  const cardHtml = cardMatch?.[0].replace(/\s*<\/body>$/, '') ?? html;
+  const extraHead = [html.match(/<style>[\s\S]*?<\/style>/i)?.[0] ?? '', html.match(/<script>[\s\S]*?<\/script>/i)?.[0] ?? ''].join('');
+  const cardMatch = html.match(/<table width="640"[\s\S]*<\/table>\s*<\/td>\s*<\/tr>\s*<\/table>/i);
+  const cardHtml = cardMatch?.[0] ?? html;
 
   const slug = role.toLowerCase().replace(/_/g, '-');
   writeFileSync(
     join(outDir, `welcome-email-${slug}.html`),
-    wrapPreview(`<p style="text-align:center;font:13px sans-serif;color:#475569;margin:0 0 12px;">Hoş geldin maili — ${label}</p>${cardHtml}`, label),
+    wrapPreview(
+      `<div style="max-width:640px;margin:0 auto 12px;background:#ffffff;border:1px solid #E2E8F0;border-radius:10px;padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="font-size:11px;font-weight:700;color:#64748B;">Konu</div>
+  <div style="font-size:15px;font-weight:800;color:#0F172A;margin-top:4px;">${rendered.subject.replace(/</g, '&lt;')}</div>
+</div>
+<p style="text-align:center;font:13px sans-serif;color:#475569;margin:0 0 12px;">Hoş geldin maili — ${label}</p>${cardHtml}`,
+      label,
+      extraHead,
+    ),
   );
 }
 
@@ -87,6 +96,16 @@ const previews = [
     guideUrl: 'https://app.meridyen-tr.com/docs/04-broker-portal-kilavuzu.pdf',
     accountEmail: 'elif@neova.com',
     guideHtml: '/docs/04-broker-portal-kilavuzu.html',
+  },
+  {
+    role: 'ASSISTANCE_COMPANY' as const,
+    label: 'Asistans Kullanıcısı',
+    guideAudience: 'Asistans Kullanıcıları İçin',
+    recipientName: 'Deniz Aksoy',
+    organizationName: 'Remed Asistans',
+    guideUrl: 'https://app.meridyen-tr.com/docs/01-personel-kullanim-kilavuzu.pdf',
+    accountEmail: 'deniz@asistans.com',
+    guideHtml: '/docs/01-personel-kullanim-kilavuzu.html',
   },
 ];
 

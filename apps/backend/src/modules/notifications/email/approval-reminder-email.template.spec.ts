@@ -5,9 +5,10 @@ import {
 } from './approval-reminder-email.template';
 
 describe('approval-reminder-email.template', () => {
-  it('konu satırı dosya no içerir', () => {
-    expect(buildApprovalReminderEmailSubject('HS-100')).toContain('HS-100');
-    expect(buildApprovalReminderEmailSubject('HS-100')).toContain('Onay Hatırlatması');
+  it('konu satırı sigorta ve dosya no içerir', () => {
+    expect(buildApprovalReminderEmailSubject('Anadolu Sigorta', 'HS-100')).toBe(
+      'Onay Hatırlatması-Anadolu Sigorta-HS-100',
+    );
   });
 
   it('HTML atama mavisi kullanmaz; turuncu/charcoal aciliyet dili kullanır', () => {

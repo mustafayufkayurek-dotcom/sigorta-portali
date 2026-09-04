@@ -6,9 +6,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { getDocumentBranding, DOCUMENT_HEADER_STYLES } from '@/common/utils/document-branding';
+import { getDocumentBranding } from '@/common/utils/document-branding';
 import {
-  DOCUMENT_QR_STYLES,
   injectDigitalApprovalQrIntoHtml,
   renderDigitalApprovalQrBlock,
 } from '@/common/utils/document-qr';
@@ -23,8 +22,21 @@ import {
 } from './dto/file-documents.dto';
 import { MUVAFAKATNAME_TEMPLATE } from './muvafakatname.template';
 import { escHtml, escHtmlRecord } from '@/common/utils/html-escape';
+import sharp from 'sharp';
 import { StorageService } from '@/modules/storage/storage.service';
 import { toInsuredFacingMatbuHtml } from './matbu-insured-view';
+import {
+  buildEmergencyMatbuPhotoHtml,
+  buildEmergencyMatbuWorkSummary,
+  buildEmergencyMatbuApprovalTrailHtml,
+  EMERGENCY_MATBU_TEMPLATE,
+  formatWorkSummaryHtml,
+  meridyenLogoDataUri,
+  resolveEmergencyMatbuIdentity,
+  splitKdvDahil,
+  HASAR_REPORT_PHOTO_BOX,
+  isMatbuImageFile,
+} from './emergency-matbu-form';
 import {
   allowsClaimManualPhysicalKind,
   isClaimInsuredCatalogDocumentType,
@@ -35,156 +47,6 @@ import {
   isInsuranceCompanyUser,
   normalizeRequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
-
-/** Müşteriye dönük matbu — iç fiyat / kâr etiketleri sızmaz */
-const INTERNAL_COST_DESC_RE =
-  /alış\s*fiyat|satış\s*fiyat|tedarikçi\s*alış|tedarikçi\s*maliyet|müşteri\s*satış|meridyen\s*satış|kâr\s*oran|kar\s*oran/i;
-
-function isCustomerFacingWorkSummary(description: string | null | undefined): boolean {
-  const t = (description ?? '').trim();
-  if (!t) return false;
-  if (INTERNAL_COST_DESC_RE.test(t)) return false;
-  return true;
-}
-
-function buildEmergencyMatbuWorkSummary(ec: {
-  issueType: string;
-  notes?: string | null;
-  costEntries: Array<{ description: string; entryType?: string }>;
-}): string {
-  const usable = ec.costEntries
-    .map((c) => (c.description ?? '').trim())
-    .filter((d) => isCustomerFacingWorkSummary(d));
-
-  if (usable.length > 0) {
-    return usable.map((d) => `• ${toTitleCaseTR(d)}`).join('\n');
-  }
-
-  const notes = (ec.notes ?? '').trim();
-  if (notes && isCustomerFacingWorkSummary(notes)) {
-    return toTitleCaseTR(notes);
-  }
-
-  const issueCanonical =
-    mapInboundLossTypeToMeridyen(ec.issueType)
-    ?? (toTitleCaseTR((ec.issueType ?? '').trim()) || 'Acil Yardım');
-  return `${issueCanonical} Hizmeti Tamamlandı.`;
-}
-
-const MATBU_EVRAK_TEMPLATE = `<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8">
-  <title>Servis Onay Formu — {{case_no}}</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 0; background: white; }
-    .page { padding: 28px; max-width: 780px; margin: 0 auto; }
-${DOCUMENT_HEADER_STYLES}
-${DOCUMENT_QR_STYLES}
-    h1 { text-align: center; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; margin: 0 0 4px; color: #1a4080; }
-    .form-subtitle { text-align: center; font-size: 11px; color: #6b7280; margin: 0 0 20px; }
-    .header-right { text-align: right; font-size: 11px; color: #374151; margin-bottom: 20px; }
-    .header-right strong { display: block; font-size: 13px; color: #111827; }
-    .section { margin-bottom: 18px; }
-    .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #6b7280; letter-spacing: 0.04em; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
-    .info-row { display: flex; gap: 6px; font-size: 12px; }
-    .info-row .label { color: #6b7280; white-space: nowrap; min-width: 110px; }
-    .info-row .value { color: #111827; font-weight: 500; }
-    .is-ozeti { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; font-size: 12px; color: #374151; min-height: 60px; }
-    .tutar-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
-    .tutar-box .label { font-size: 12px; color: #1e40af; font-weight: 600; }
-    .tutar-box .value { font-size: 16px; font-weight: bold; color: #1e3a8a; }
-    .tutar-uyari { background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #92400e; line-height: 1.5; }
-    .signature-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
-    .sig-box { border: 1px solid #d1d5db; border-radius: 6px; padding: 14px; }
-    .sig-box h4 { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #374151; margin: 0 0 6px; }
-    .sig-box .sig-info { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
-    .sig-line { border-top: 1px solid #9ca3af; margin-top: 44px; padding-top: 5px; font-size: 10px; color: #9ca3af; }
-    .consent-text { font-size: 11px; color: #4b5563; line-height: 1.6; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; margin-bottom: 14px; }
-    .footer { margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 10px; color: #9ca3af; text-align: center; }
-  </style>
-</head>
-<body>
-<div class="page">
-
-  <div class="doc-header-with-qr">
-    <div class="doc-header-main">
-      <div class="doc-header-logo">
-        <img src="{{logo_url}}" alt="Meridyen" />
-      </div>
-    </div>
-    {{dijital_onay_qr}}
-  </div>
-
-  <h1>Servis Onay Formu</h1>
-  <p class="form-subtitle">Acil Yardım Hizmetleri</p>
-
-  <div class="header-right">
-    <strong>{{case_no}}</strong>
-    Düzenlenme Tarihi: {{tarih}}
-  </div>
-
-  <!-- Müşteri & Dosya Bilgileri -->
-  <div class="section">
-    <div class="section-title">Müşteri ve Dosya Bilgileri</div>
-    <div class="info-grid">
-      <div class="info-row"><span class="label">Ad Soyad:</span><span class="value">{{musteri_ad}}</span></div>
-      <div class="info-row"><span class="label">Telefon:</span><span class="value">{{musteri_telefon}}</span></div>
-      <div class="info-row"><span class="label">Hizmet Adresi:</span><span class="value">{{adres}}</span></div>
-      <div class="info-row"><span class="label">İlçe / İl:</span><span class="value">{{ilce_il}}</span></div>
-      <div class="info-row"><span class="label">Dosya No:</span><span class="value">{{dosya_no}}</span></div>
-      <div class="info-row"><span class="label">Dosya Konusu:</span><span class="value">{{konu}}</span></div>
-      <div class="info-row"><span class="label">Tedarikçi / Ekip:</span><span class="value">{{tedarikci}}</span></div>
-      <div class="info-row"><span class="label">Hizmet Tarihi:</span><span class="value">{{tarih}}</span></div>
-    </div>
-  </div>
-
-  <!-- Yapılan İş Özeti -->
-  <div class="section">
-    <div class="section-title">Yapılan İş Özeti</div>
-    <div class="is-ozeti">{{is_ozeti}}</div>
-  </div>
-
-  <!-- Tutar -->
-  <div class="section">
-    <div class="tutar-box">
-      <span class="label">Toplam Hizmet Bedeli (KDV Dahil)</span>
-      <span class="value">{{toplam_tutar}} ₺</span>
-    </div>
-  </div>
-
-  <!-- Onay Metni -->
-  <div class="consent-text">
-    Ben, aşağıda imzası bulunan <strong>{{musteri_ad}}</strong>, Meridyen Assistance tarafından yukarıda
-    belirtilen adreste gerçekleştirilen hizmeti ve açıklanan toplam bedeli onayladığımı beyan ederim.
-    Dijital onay, bu dosya için hizmetin kabulü niteliğindedir.
-  </div>
-
-  <!-- İmza Alanları -->
-  <div class="signature-section">
-    <div class="sig-box">
-      <h4>Hizmet Veren</h4>
-      <p class="sig-info">Meridyen Assistance</p>
-      <p class="sig-info">Yetkili: ____________________</p>
-      <div class="sig-line">İmza · Tarih</div>
-    </div>
-    <div class="sig-box">
-      <h4>Müşteri / Hak Sahibi</h4>
-      <p class="sig-info">Ad Soyad: ____________________</p>
-      <p class="sig-info">T.C. Kimlik No: ________________</p>
-      <div class="sig-line">İmza · Tarih</div>
-    </div>
-  </div>
-
-  <div class="footer">
-    Bu form Meridyen Assistance tarafından düzenlenmiştir. Dosya No: {{case_no}} · {{tarih}}
-  </div>
-
-</div>
-</body>
-</html>`;
 
 @Injectable()
 export class FileDocumentsService {
@@ -220,6 +82,181 @@ export class FileDocumentsService {
   private formatCurrency(amount: number | null | undefined): string {
     if (amount == null || Number.isNaN(amount)) return '—';
     return amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  private async loadEmergencyCaseForMatbu(id: string) {
+    return this.prisma.emergencyCase.findUnique({
+      where: { id },
+      include: {
+        customer: {
+          select: {
+            companyName: true,
+            shortName: true,
+            fullName: true,
+            firstName: true,
+            lastName: true,
+            subType: true,
+            phone: true,
+          },
+        },
+        costEntries: { select: { amount: true, description: true, entryType: true } },
+      },
+    });
+  }
+
+  private async embedHasarReportPhoto(buf: Buffer): Promise<string | null> {
+    try {
+      const out = await sharp(buf)
+        .rotate()
+        .resize({
+          width: HASAR_REPORT_PHOTO_BOX.width,
+          height: HASAR_REPORT_PHOTO_BOX.height,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: 82 })
+        .toBuffer();
+      if (!out.length) return null;
+      return `data:image/jpeg;base64,${out.toString('base64')}`;
+    } catch {
+      return null;
+    }
+  }
+
+  private async buildEmergencyMatbuPhotoMarkup(entityId: string): Promise<string> {
+    const [docs, inbound] = await Promise.all([
+      this.prisma.entityDocument.findMany({
+        where: { entityType: 'emergency_case', entityId },
+        select: {
+          fileName: true,
+          mimeType: true,
+          notes: true,
+          storageKey: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.inboundAttachment.findMany({
+        where: {
+          inboundMessage: { emergencyCaseId: entityId },
+          storageKey: { not: null },
+        },
+        select: {
+          fileName: true,
+          contentType: true,
+          storageKey: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    const entityImages = docs.filter((d) => isMatbuImageFile(d.mimeType, d.fileName));
+    const tespit = entityImages.filter((d) => /tespit/i.test(d.notes ?? ''));
+    const rest = entityImages.filter((d) => !/tespit/i.test(d.notes ?? ''));
+    const inboxImages = inbound.filter((d) => isMatbuImageFile(d.contentType, d.fileName));
+    const picked = [...tespit, ...rest, ...inboxImages];
+    const photos: Array<{ dataUri: string; alt: string }> = [];
+    for (const doc of picked) {
+      const key = ('storageKey' in doc ? doc.storageKey : null) || '';
+      if (!key) continue;
+      try {
+        const buf = await this.storage.download(key);
+        if (!buf?.length) continue;
+        const dataUri = await this.embedHasarReportPhoto(buf);
+        if (!dataUri) continue;
+        const name = (doc.fileName || 'Tespit').replace(/\.[^.]+$/, '');
+        photos.push({ dataUri, alt: name });
+      } catch {
+        /* resim yok sayılır; form yine üretilir */
+      }
+    }
+    return buildEmergencyMatbuPhotoHtml(photos);
+  }
+
+  private async renderEmergencyMatbuHtml(
+    ec: NonNullable<Awaited<ReturnType<FileDocumentsService['loadEmergencyCaseForMatbu']>>>,
+    publicUrl: string,
+  ): Promise<string> {
+    const gelirTotal = ec.costEntries
+      .filter((c) => c.entryType === 'gelir')
+      .reduce((s, c) => s + c.amount, 0);
+
+    const identity = resolveEmergencyMatbuIdentity(ec);
+    const kdvSplit = splitKdvDahil(gelirTotal);
+    const konuLabel =
+      mapInboundLossTypeToMeridyen(ec.issueType)
+      ?? toTitleCaseTR(ec.issueType)
+      ?? ec.issueType;
+
+    const companyPlaceholders = await this.getDocumentCompanyPlaceholders();
+    const embeddedLogo = meridyenLogoDataUri();
+    const photoHtml = await this.buildEmergencyMatbuPhotoMarkup(ec.id);
+    const qrBlock = renderDigitalApprovalQrBlock(publicUrl);
+    const isOzetiHtml = formatWorkSummaryHtml(
+      buildEmergencyMatbuWorkSummary({
+        issueType: ec.issueType,
+        notes: ec.notes,
+        findingsText: ec.findingsText,
+        costEntries: ec.costEntries,
+      }),
+    );
+
+    const placeholders: Record<string, string> = {
+      '{{case_no}}': ec.caseNo,
+      '{{dosya_no}}': identity.dosyaNo,
+      '{{tarih}}': new Date().toLocaleDateString('tr-TR'),
+      '{{ana_musteri}}': identity.anaMusteri,
+      '{{sigorta_sirketi}}': toTitleCaseTR(identity.sigortaSirketi) || identity.sigortaSirketi,
+      '{{musteri_ad}}': toTitleCaseTR(identity.sigortaliAd) || identity.sigortaliAd,
+      '{{musteri_telefon}}': identity.sigortaliTelefon,
+      '{{adres}}': identity.sigortaliAdres,
+      '{{konu}}': konuLabel,
+      '{{is_ozeti}}': isOzetiHtml,
+      '{{matrah}}': kdvSplit.matrah,
+      '{{kdv}}': kdvSplit.kdv,
+      '{{toplam_tutar}}': kdvSplit.toplam,
+      '{{dosya_resimleri}}': photoHtml,
+      '{{dijital_onay_izi}}': buildEmergencyMatbuApprovalTrailHtml({}),
+      ...companyPlaceholders,
+      '{{sirket_adres}}': '',
+      '{{dijital_onay_qr}}': qrBlock,
+      '{{logo_url}}': embeddedLogo,
+    };
+
+    let rendered = EMERGENCY_MATBU_TEMPLATE;
+    const safePlaceholders = escHtmlRecord(
+      placeholders,
+      new Set(['{{dijital_onay_qr}}', '{{dosya_resimleri}}', '{{logo_url}}', '{{is_ozeti}}', '{{dijital_onay_izi}}']),
+    );
+    for (const [k, v] of Object.entries(safePlaceholders)) {
+      rendered = rendered.replaceAll(k, v);
+    }
+    return injectDigitalApprovalQrIntoHtml(rendered, qrBlock);
+  }
+
+  /** Onaysız taslak/gönderilmiş formu güncel şablonla yeniler. Onaylı kopyaya dokunulmaz. */
+  private async refreshUnapprovedEmergencyMatbu<T extends {
+    id: string;
+    entityType: string;
+    entityId: string;
+    documentKind: string;
+    digitallyApprovedAt: Date | null;
+    publicToken: string | null;
+    renderedContent: string;
+  }>(doc: T): Promise<T> {
+    if (doc.documentKind !== 'matbu_evrak' || doc.entityType !== 'emergency_case') return doc;
+    if (doc.digitallyApprovedAt || !doc.publicToken) return doc;
+    const ec = await this.loadEmergencyCaseForMatbu(doc.entityId);
+    if (!ec) return doc;
+    const publicUrl = buildAppPath(this.config, `/evrak/${doc.publicToken}`);
+    const rendered = await this.renderEmergencyMatbuHtml(ec, publicUrl);
+    if (rendered === doc.renderedContent) return doc;
+    await this.prisma.fileDocument.update({
+      where: { id: doc.id },
+      data: { renderedContent: rendered },
+    });
+    return { ...doc, renderedContent: rendered };
   }
 
   // ── Oluşturma ─────────────────────────────────────────────────────────────
@@ -295,86 +332,13 @@ export class FileDocumentsService {
     }
 
     if (dto.entityType === 'emergency_case') {
-      const ec = await this.prisma.emergencyCase.findUnique({
-        where: { id: dto.entityId },
-        include: {
-          assignedVendor: { select: { name: true, phone: true } },
-          costEntries: { select: { amount: true, description: true, entryType: true } },
-        },
-      });
+      const ec = await this.loadEmergencyCaseForMatbu(dto.entityId);
       if (!ec) throw new NotFoundException('Acil yardım vakası bulunamadı');
-
-      // Müşteriye satış bedeli (gelir); alış/gider tutarı matbuya yazılmaz
-      const gelirTotal = ec.costEntries
-        .filter((c) => c.entryType === 'gelir')
-        .reduce((s, c) => s + c.amount, 0);
-      const toplamTutar = gelirTotal;
-
-      const isOzeti = buildEmergencyMatbuWorkSummary(ec);
-
-      const vendorName = (ec.assignedVendor?.name ?? '').trim();
-      const vendorPhone = (ec.assignedVendor?.phone ?? '').trim();
-      const tedarikci = vendorName
-        ? vendorPhone
-          ? `${toTitleCaseTR(vendorName)} · ${vendorPhone}`
-          : toTitleCaseTR(vendorName)
-        : '—';
-
-      const musteriTelefon = (ec.customerPhone ?? '').trim() || '—';
-
-      // İlçe / İl
-      const ilceIl = [ec.district, ec.city].filter(Boolean).join(' / ') || '—';
-
-      const konuLabel =
-        mapInboundLossTypeToMeridyen(ec.issueType)
-        ?? toTitleCaseTR(ec.issueType)
-        ?? ec.issueType;
-
-      // Ayarlardan özel template varsa kullan
-      const customTpl = await this.prisma.systemSetting.findUnique({
-        where: { key: 'matbu_evrak_template' },
-      });
-      let sourceTpl = customTpl ? String((customTpl.value as any) ?? '') : MATBU_EVRAK_TEMPLATE;
-      if (!sourceTpl.trim()) sourceTpl = MATBU_EVRAK_TEMPLATE;
-      // Eski özel şablonlarda sokak adresi satırını kaldır (marka adı kalır)
-      sourceTpl = sourceTpl
-        .replace(/\n?\s*\{\{sirket_adres\}\}/g, '')
-        .replace(/>\s*Hizmet Türü:\s*</g, '>Dosya Konusu:<');
-      const companyPlaceholders = await this.getDocumentCompanyPlaceholders();
-
-      const placeholders: Record<string, string> = {
-        '{{case_no}}': ec.caseNo,
-        '{{dosya_no}}': ec.fileNo ?? ec.caseNo,
-        '{{tarih}}': new Date().toLocaleDateString('tr-TR'),
-        '{{musteri_ad}}': toTitleCaseTR(ec.customerName) || ec.customerName,
-        '{{musteri_telefon}}': musteriTelefon,
-        '{{adres}}': ec.address,
-        '{{ilce_il}}': ilceIl,
-        '{{konu}}': konuLabel,
-        '{{tedarikci}}': tedarikci,
-        '{{is_ozeti}}': isOzeti,
-        '{{toplam_tutar}}': toplamTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 }),
-        ...companyPlaceholders,
-        // Acil matbu: şirket sokak adresi müşteri formunda gösterilmez
-        '{{sirket_adres}}': '',
-      };
 
       const publicToken = randomUUID();
       const publicTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       const publicUrl = buildAppPath(this.config, `/evrak/${publicToken}`);
-      const qrBlock = renderDigitalApprovalQrBlock(publicUrl);
-      placeholders['{{dijital_onay_qr}}'] = qrBlock;
-
-      let rendered = sourceTpl;
-      // Özel şablonda QR CSS yoksa ekle
-      if (!rendered.includes('dijital-onay-qr') && !rendered.includes(DOCUMENT_QR_STYLES.slice(0, 40))) {
-        rendered = rendered.replace('</style>', `${DOCUMENT_QR_STYLES}\n  </style>`);
-      }
-      const safePlaceholders = escHtmlRecord(placeholders, new Set(['{{dijital_onay_qr}}']));
-      for (const [k, v] of Object.entries(safePlaceholders)) {
-        rendered = rendered.replaceAll(k, v);
-      }
-      rendered = injectDigitalApprovalQrIntoHtml(rendered, qrBlock);
+      const rendered = await this.renderEmergencyMatbuHtml(ec, publicUrl);
 
       return this.prisma.fileDocument.create({
         data: {
@@ -655,10 +619,11 @@ export class FileDocumentsService {
       return this.getPhysicalFileBuffer(id, user);
     }
     if (doc.renderedContent?.trim()) {
+      const fresh = await this.refreshUnapprovedEmergencyMatbu(doc);
       const html =
-        doc.documentKind === 'matbu_evrak'
-          ? toInsuredFacingMatbuHtml(doc.renderedContent)
-          : doc.renderedContent;
+        fresh.documentKind === 'matbu_evrak'
+          ? toInsuredFacingMatbuHtml(fresh.renderedContent)
+          : fresh.renderedContent;
       const fileName =
         doc.documentKind === 'muvafakatname' ? 'muvafakatname.html' : 'evrak.html';
       return {
@@ -677,10 +642,13 @@ export class FileDocumentsService {
       where: { publicToken: token },
       select: {
         id: true,
+        entityType: true,
+        entityId: true,
         documentKind: true,
         status: true,
         renderedContent: true,
         digitallyApprovedAt: true,
+        publicToken: true,
         publicTokenExpiresAt: true,
       },
     });
@@ -688,13 +656,14 @@ export class FileDocumentsService {
     if (doc.publicTokenExpiresAt && doc.publicTokenExpiresAt < new Date()) {
       throw new BadRequestException('Bu evrak linkinin süresi dolmuştur');
     }
-    if (doc.documentKind === 'matbu_evrak' && doc.renderedContent) {
+    const fresh = await this.refreshUnapprovedEmergencyMatbu(doc);
+    if (fresh.documentKind === 'matbu_evrak' && fresh.renderedContent) {
       return {
-        ...doc,
-        renderedContent: toInsuredFacingMatbuHtml(doc.renderedContent),
+        ...fresh,
+        renderedContent: toInsuredFacingMatbuHtml(fresh.renderedContent),
       };
     }
-    return doc;
+    return fresh;
   }
 
   async markViewed(token: string, ip?: string) {
@@ -733,15 +702,31 @@ export class FileDocumentsService {
     const approvedAt = new Date();
     const signatureData = `accepted:${fullName}:${approvedAt.toISOString()}`;
 
-    // İmzalı HTML ekle
-    const signedBadge = `
+    let updatedContent = doc.renderedContent;
+    if (doc.documentKind === 'matbu_evrak') {
+      const trail = buildEmergencyMatbuApprovalTrailHtml({
+        approvedFullName: fullName,
+        approvedAt,
+        ip: ip ?? null,
+      });
+      if (updatedContent.includes('data-testid="dijital-onay-izi"')) {
+        updatedContent = updatedContent.replace(
+          /(<div class="approval-trail-section" data-testid="dijital-onay-izi">)[\s\S]*?(<div class="report-footer")/,
+          `$1${trail}\n$2`,
+        );
+      } else {
+        updatedContent = updatedContent.replace('</body>', `${trail}</body>`);
+      }
+    } else {
+      const signedBadge = `
       <div style="background:#f0fdf4;border:2px solid #16a34a;border-radius:8px;padding:12px 16px;margin-top:16px;font-size:12px">
         <strong style="color:#15803d">Dijital Onay</strong><br>
         <span style="color:#166534">${escHtml(fullName)}</span> tarafından 
         <span style="color:#166534">${escHtml(approvedAt.toLocaleString('tr-TR'))}</span> tarihinde onaylanmıştır.
         ${ip ? `<br><span style="color:#9ca3af;font-size:10px">IP: ${escHtml(ip)}</span>` : ''}
       </div>`;
-    const updatedContent = doc.renderedContent.replace('</body>', `${signedBadge}</body>`);
+      updatedContent = doc.renderedContent.replace('</body>', `${signedBadge}</body>`);
+    }
 
     return this.prisma.fileDocument.update({
       where: { id: doc.id },

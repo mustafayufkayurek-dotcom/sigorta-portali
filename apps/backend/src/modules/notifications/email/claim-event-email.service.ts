@@ -13,7 +13,15 @@ import {
   buildApprovalReminderEmailSubject,
   buildApprovalReminderEmailText,
 } from './approval-reminder-email.template';
-import { buildNotificationEmailHtml, raporOnaylandiSubject, buildRaporOnaylandiEmailHtml, formatSnPersonGreeting } from './email.template';
+import {
+  buildNotificationEmailHtml,
+  buildRaporOnaylandiEmailHtml,
+  formatSnPersonGreeting,
+  RAPOR_ONAYLANDI_INTRO,
+  raporOnaylandiSubject,
+  yeniIhbarSubject,
+} from './email.template';
+import { buildInboxIhbarEmailTemplate } from '@/modules/operation-inbox/inbox-ihbar-email';
 
 @Injectable()
 export class ClaimEventEmailService {
@@ -31,28 +39,37 @@ export class ClaimEventEmailService {
     recipientEmail: string;
     recipientUserId: string;
     fileNo: string;
-    customer: string;
-    branch: string;
-    priority: string;
     claimFileId: string;
+    customerLongName?: string | null;
+    insuranceCompanyName?: string | null;
+    fileSubject?: string | null;
+    insuredName?: string | null;
+    city?: string | null;
+    district?: string | null;
+    address?: string | null;
+    notificationAt?: Date | string | null;
+    expertOfficeShortName?: string | null;
   }) {
+    const actionUrl = buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId));
     await this.email.sendIfPreferred(
       params.recipientUserId,
       'newClaimFile',
       params.recipientEmail,
-      `Yeni Hasar Dosyası Oluşturuldu: ${params.fileNo}`,
-      {
-        title: 'Yeni Hasar Dosyası',
-        preheader: `${params.fileNo} numaralı yeni bir hasar dosyası oluşturuldu.`,
-        rows: [
-          { label: 'Dosya No', value: params.fileNo },
-          { label: 'Müşteri', value: params.customer },
-          { label: 'Branş', value: params.branch },
-          { label: 'Aciliyet', value: params.priority },
-        ],
-        actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
-        actionLabel: 'Dosyayı Görüntüle',
-      },
+      yeniIhbarSubject(params.expertOfficeShortName),
+      buildInboxIhbarEmailTemplate({
+        fileType: 'hasar',
+        fileNo: params.fileNo,
+        notificationAt: params.notificationAt,
+        customerLongName: params.customerLongName,
+        insuranceCompanyName: params.insuranceCompanyName,
+        fileSubject: params.fileSubject,
+        insuredName: params.insuredName,
+        city: params.city,
+        district: params.district,
+        address: params.address,
+        actionUrl,
+        portalUrl: this.appUrl,
+      }),
     );
   }
 
@@ -101,21 +118,22 @@ export class ClaimEventEmailService {
     reportId: string;
     recipientFirstName?: string | null;
     recipientLastName?: string | null;
+    expertOfficeName?: string | null;
   }) {
     await this.email.sendEmail(
       params.recipientEmail,
-      raporOnaylandiSubject(params.insuranceCompanyName, params.fileNo),
+      raporOnaylandiSubject(params.insuranceCompanyName, params.fileNo, params.expertOfficeName),
       buildRaporOnaylandiEmailHtml({
         insuranceCompanyName: params.insuranceCompanyName,
         fileNo: params.fileNo,
         approvedBy: params.approvedBy,
         greeting: formatSnPersonGreeting(params.recipientFirstName, params.recipientLastName),
-        intro: 'Onarım raporu onaylandı.',
+        intro: RAPOR_ONAYLANDI_INTRO,
         actionUrl: buildPanelUrl(this.appUrl, panelOnarimRaporuPath(params.claimFileId, params.reportId)),
         portalUrl: this.appUrl,
       }),
       {
-        text: `${params.fileNo} numaralı dosyanın onarım raporu onaylandı.`,
+        text: `Eksper onarım raporunu onaylanmıştır. Operasyon planlama aşamasına geçiniz. Dosya: ${params.fileNo}`,
         mailbox: 'HASAR',
       },
     );
@@ -346,7 +364,7 @@ export class ClaimEventEmailService {
     };
     return this.email.sendEmail(
       to,
-      buildApprovalReminderEmailSubject(fileNo),
+      buildApprovalReminderEmailSubject(insuranceCompanyName, fileNo),
       buildApprovalReminderEmailHtml(payload),
       { text: buildApprovalReminderEmailText(payload) },
     );

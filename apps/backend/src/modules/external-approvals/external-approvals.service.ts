@@ -18,6 +18,7 @@ import {
   formatSnPersonGreeting,
   organizationLineForMail,
   onarimRaporuRequestSubject,
+  expertOfficeSubjectLabel,
   raporOnaylandiSubject,
   buildRaporOnaylandiEmailHtml,
 } from '@/modules/notifications/email/email.template';
@@ -574,6 +575,9 @@ export class ExternalApprovalsService {
                 insuranceCompany: { select: { name: true } },
               },
             },
+            expertOffice: {
+              select: { shortName: true, companyName: true, fullName: true },
+            },
           },
         },
       },
@@ -599,7 +603,11 @@ export class ExternalApprovalsService {
 
     const result = await this.email.sendEmail(
       to,
-      raporOnaylandiSubject(insuranceCompanyName, fileNo),
+      raporOnaylandiSubject(
+        insuranceCompanyName,
+        fileNo,
+        expertOfficeSubjectLabel(approval.report?.expertOffice),
+      ),
       buildRaporOnaylandiEmailHtml({
         insuranceCompanyName,
         fileNo,

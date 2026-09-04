@@ -570,6 +570,9 @@ export default function AcilDosyaDetayPage() {
   const marginToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [budgetEditing, setBudgetEditing] = useState(true);
   const [draftFindings, setDraftFindings] = useState('');
+  const draftFindingsRef = useRef('');
+  draftFindingsRef.current = draftFindings;
+  const lastFindingsFileIdRef = useRef<string | null>(null);
   const [findingsError, setFindingsError] = useState<string | null>(null);
   const [, setFindingsSaving] = useState(false);
   const findingsFormRef = useRef<HTMLDivElement | null>(null);
@@ -618,8 +621,26 @@ export default function AcilDosyaDetayPage() {
     setLoading(true);
     try {
       const caseRes = await getCase(id);
+      const idChanged = lastFindingsFileIdRef.current !== id;
+      if (idChanged) {
+        lastFindingsFileIdRef.current = id;
+        draftFindingsRef.current = '';
+      }
+      const localDraft = idChanged ? '' : draftFindingsRef.current;
+      const serverText = caseRes.data.findingsText ?? '';
       setVaka(caseRes.data);
-      setDraftFindings(caseRes.data.findingsText ?? '');
+      if (localDraft.trim() && localDraft.trim() !== (serverText || '').trim()) {
+        setDraftFindings(localDraft);
+        try {
+          const saved = await updateCase(id, { findingsText: localDraft } as Partial<EmergencyCase>);
+          setVaka(saved.data);
+          setDraftFindings(saved.data.findingsText ?? localDraft);
+        } catch {
+          setDraftFindings(localDraft);
+        }
+      } else {
+        setDraftFindings(serverText);
+      }
       setFindingsError(null);
       const [costRes, processRes] = await Promise.all([
         getCostEntries(id).catch(() => ({
@@ -2229,11 +2250,11 @@ export default function AcilDosyaDetayPage() {
                     <p className="mt-0.5 text-xs font-medium text-slate-800">{ihbarRozet}</p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] text-slate-400">İşe başlama</p>
+                    <p className="text-[11px] text-slate-400">İşe Başlama</p>
                     <p className="mt-0.5 text-xs font-medium text-slate-800">{workStartedLabel || '—'}</p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] text-slate-400">Hizmet verilme</p>
+                    <p className="text-[11px] text-slate-400">Hizmet Verilme</p>
                     <p className="mt-0.5 text-xs font-medium text-slate-800">{serviceDeliveredLabel || '—'}</p>
                   </div>
                   <div className="min-w-0">
@@ -2299,6 +2320,10 @@ export default function AcilDosyaDetayPage() {
 
       <AcilOperasyonPlanlayiciPanel
         ref={plannerRef}
+        onNavigateStep={() => {
+          const text = draftFindingsRef.current;
+          if (text.trim()) void saveFindingsText(text);
+        }}
         vendorStep={(
           <div className="space-y-3">
             <OpsFirstRunNotice
@@ -3297,7 +3322,7 @@ export default function AcilDosyaDetayPage() {
                   </div>
                   <p data-testid="kapanis-email-hitap">
                     <span className="font-semibold text-slate-700">Hitap: </span>
-                    Sn. Yetkili
+                    {closurePreview.greetingName || 'Sn. Yetkili'}
                   </p>
                   <p><span className="font-semibold text-slate-700">Firma: </span>{closurePreview.assistansName}</p>
                   <p data-testid="kapanis-email-konu">

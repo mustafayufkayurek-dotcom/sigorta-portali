@@ -32,6 +32,7 @@ describe('aylık anket raporu LOCK', () => {
 
   it('ay sonu raporu sigorta, asistans, eksper ve broker alıcılarına gider', () => {
     const svc = read('survey-report.service.ts');
+    assert.match(svc, /monthlySurveyReportSubject/);
     assert.match(svc, /collectMonthlyReportTargets/);
     assert.match(svc, /asistan_firmasi/);
     assert.match(svc, /eksper_firmasi/);
@@ -85,7 +86,7 @@ describe('aylık anket raporu LOCK', () => {
     assert.doesNotMatch(ext, /Hasar Onarım Raporu Onay Talebi/);
     assert.doesNotMatch(ext, /Operasyon Bildirimi/);
     assert.match(chrome, /joinMailSubjectParts\(insuranceCompanyName, fileNo, 'Onay Talep'\)/);
-    assert.match(chrome, /joinMailSubjectParts\('Rapor Onaylandı'/);
+    assert.match(chrome, /Rapor Onaylandı \(\$\{office\}\)/);
     assert.doesNotMatch(chrome, /'Onarım Raporu'/);
   });
 });

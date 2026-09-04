@@ -3,8 +3,7 @@ import {
   clearAuth,
   ensureValidSession,
   getAccessToken,
-  getRefreshToken,
-  persistTokens,
+  refreshSessionTokens,
 } from './auth-session';
 
 export { ensureValidSession };
@@ -65,32 +64,18 @@ export async function authFetch(
 
   let response = await fetch(url, { ...init, headers, credentials: 'include' });
 
-  if (response.status === 401 && method !== 'GET' && method !== 'HEAD') {
-    const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      try {
-        const refreshed = await fetch(`${API}/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ refreshToken }),
-        });
-        const body = await refreshed.json().catch(() => null);
-        const tokens = body?.data;
-        if (tokens?.accessToken && tokens?.refreshToken) {
-          persistTokens(tokens.accessToken, tokens.refreshToken);
-          response = await fetch(url, {
-            ...init,
-            credentials: 'include',
-            headers: {
-              ...headers,
-              Authorization: `Bearer ${tokens.accessToken}`,
-            },
-          });
-        }
-      } catch {
-        /* refresh başarısız */
-      }
+  if (response.status === 401) {
+    const refreshed = await refreshSessionTokens(API);
+    const nextToken = getAccessToken();
+    if (refreshed && nextToken) {
+      response = await fetch(url, {
+        ...init,
+        credentials: 'include',
+        headers: {
+          ...headers,
+          Authorization: `Bearer ${nextToken}`,
+        },
+      });
     }
   }
 
@@ -126,28 +111,16 @@ export async function authAxios<T>(
       throw error;
     }
 
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-      clearAuth();
-      if (typeof window !== 'undefined') window.location.href = '/giris';
-      throw error;
-    }
-
-    try {
-      const refreshed = await axios.post(`${API}/auth/refresh`, { refreshToken });
-      const tokens = refreshed.data?.data;
-      if (tokens?.accessToken && tokens?.refreshToken) {
-        persistTokens(tokens.accessToken, tokens.refreshToken);
-        return await axios.request<T>({
-          ...config,
-          headers: {
-            ...config.headers,
-            Authorization: `Bearer ${tokens.accessToken}`,
-          },
-        });
-      }
-    } catch {
-      /* refresh başarısız */
+    const refreshed = await refreshSessionTokens(API);
+    const nextToken = getAccessToken();
+    if (refreshed && nextToken) {
+      return await axios.request<T>({
+        ...config,
+        headers: {
+          ...config.headers,
+          Authorization: `Bearer ${nextToken}`,
+        },
+      });
     }
 
     clearAuth();

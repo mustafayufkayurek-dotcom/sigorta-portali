@@ -531,7 +531,9 @@ export function buildClosureEmailPreview(input: {
   const phone = (input.insuredPhone || '').trim() || '—';
   const body = [
     ...(org ? [org] : []),
-    `Sn. Yetkili,`,
+    input.greetingName?.trim()
+      ? (input.greetingName.trim().endsWith(',') ? input.greetingName.trim() : `Sn. ${input.greetingName.replace(/^(sayın|sn\.?)\s+/i, '').trim()},`)
+      : `Sn. Yetkili,`,
     ``,
     `İhbar Tarihi: —`,
     `Sigorta şirketi: ${(input.insuranceCompanyName || '').trim() || '—'}`,

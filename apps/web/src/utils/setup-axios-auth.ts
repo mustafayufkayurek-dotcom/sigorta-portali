@@ -3,8 +3,7 @@ import {
   clearAuth,
   ensureValidSession,
   getAccessToken,
-  getRefreshToken,
-  persistTokens,
+  refreshSessionTokens,
 } from '@/utils/auth-session';
 import { API } from '@/utils/api';
 
@@ -52,27 +51,13 @@ export function installAxiosAuthInterceptors(): void {
       }
       if (isPublicAuthRequest(config.url)) throw error;
 
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
-        clearAuth();
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/giris')) {
-          window.location.href = '/giris?reason=session_expired';
-        }
-        throw error;
-      }
-
       config._authRetried = true;
-      try {
-        const refreshed = await axios.post(`${API}/auth/refresh`, { refreshToken });
-        const tokens = (refreshed.data as { data?: { accessToken?: string; refreshToken?: string } })?.data;
-        if (tokens?.accessToken && tokens?.refreshToken) {
-          persistTokens(tokens.accessToken, tokens.refreshToken);
-          config.headers = config.headers ?? {};
-          config.headers.Authorization = `Bearer ${tokens.accessToken}`;
-          return axios.request(config);
-        }
-      } catch {
-        /* refresh başarısız */
+      const refreshed = await refreshSessionTokens(API);
+      const nextToken = getAccessToken();
+      if (refreshed && nextToken) {
+        config.headers = config.headers ?? {};
+        config.headers.Authorization = `Bearer ${nextToken}`;
+        return axios.request(config);
       }
 
       clearAuth();

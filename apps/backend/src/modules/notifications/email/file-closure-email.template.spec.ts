@@ -1,6 +1,7 @@
 import {
   buildFileClosureEmailHtml,
   buildFileClosureEmailRows,
+  closureCardGreeting,
   formatClosureDuration,
   formatFileFeeWithVat,
   isMeridyenInternalMailbox,
@@ -21,6 +22,15 @@ describe('file-closure-email', () => {
     fileFeeAmount: 1250,
     audience: 'assistance' as const,
   };
+
+  it('uses authorized person from customer card in greeting', () => {
+    expect(closureCardGreeting({
+      contactFirstName: 'Ayşe',
+      contactLastName: 'Yılmaz',
+    })).toBe('Sn. Ayşe Yılmaz,');
+    expect(closureCardGreeting(null, 'Mehmet Kaya')).toBe('Sn. Mehmet Kaya,');
+    expect(closureCardGreeting(null)).toBe('Sn. Yetkili,');
+  });
 
   it('puts customer title above greeting and department on banner, not under title', () => {
     const html = buildFileClosureEmailHtml(base);

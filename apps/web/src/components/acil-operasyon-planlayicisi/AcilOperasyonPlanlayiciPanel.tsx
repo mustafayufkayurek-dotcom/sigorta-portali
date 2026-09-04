@@ -57,6 +57,8 @@ type Props = {
   operationStep?: ReactNode;
   /** Canlı: kapanış fotoğrafları bu adımda */
   closingStep?: ReactNode;
+  /** Adım değişince taslak (tespit) kayda geçsin */
+  onNavigateStep?: (from: OperatorStepKey, to: OperatorStepKey) => void;
 };
 
 const STEP_ICONS: Record<OperatorStepKey, LucideIcon> = {
@@ -177,7 +179,7 @@ function stepResultLine(key: OperatorStepKey, body: PlannerStepBodyProps): strin
 }
 
 export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHandle, Props>(
-  function AcilOperasyonPlanlayiciPanel({ stepStatuses, body, onSaved, vendorStep, approvalStep, operationStep, closingStep }, ref) {
+  function AcilOperasyonPlanlayiciPanel({ stepStatuses, body, onSaved, vendorStep, approvalStep, operationStep, closingStep, onNavigateStep }, ref) {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [activeStep, setActiveStep] = useState<OperatorStepKey>('ihbar');
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -192,11 +194,16 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
       panelRef,
     });
 
+    function goToStep(step: OperatorStepKey) {
+      if (step !== activeStep) onNavigateStep?.(activeStep, step);
+      setActiveStep(step);
+      setDrawerOpen(true);
+      setSaveError(null);
+    }
+
     useImperativeHandle(ref, () => ({
       openStep: (step: OperatorStepKey) => {
-        setActiveStep(step);
-        setDrawerOpen(true);
-        setSaveError(null);
+        goToStep(step);
       },
     }));
 
@@ -295,8 +302,7 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
                   key={s.key}
                   type="button"
                   onClick={() => {
-                    setActiveStep(s.key);
-                    setDrawerOpen(true);
+                    goToStep(s.key);
                   }}
                   className={`rounded-xl border px-2.5 py-3 text-left transition ${statusTone(s.status, active)}${
                     isNext ? ' acil-siradaki-pulse border-amber-400' : ''
@@ -333,8 +339,7 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
           <button
             type="button"
             onClick={() => {
-              setActiveStep(nextJob.step);
-              setDrawerOpen(true);
+              goToStep(nextJob.step);
             }}
             className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700"
             data-testid="acil-planlayici-ac"
@@ -403,8 +408,7 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
                           <button
                             type="button"
                             onClick={() => {
-                              setActiveStep(s.key);
-                              setSaveError(null);
+                              goToStep(s.key);
                             }}
                             className={`relative flex w-full items-start gap-2 rounded-lg px-1.5 py-2 text-left ${
                               active ? 'bg-orange-50' : 'hover:bg-slate-50'

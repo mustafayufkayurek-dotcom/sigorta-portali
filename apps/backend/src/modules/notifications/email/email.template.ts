@@ -19,6 +19,10 @@ export interface NotificationEmailTemplateData extends EmailTemplateData {
   nextStepTitle?: string;
   nextStepText?: string;
   portalUrl?: string;
+  /** Boş string: «Operasyon Bildirimi» yazılmaz (onaylı ihbar). */
+  kickerLabel?: string;
+  /** Lacivert bantta başlığın altı — müşteri uzun ünvanı. */
+  bannerLead?: string;
 }
 
 function escapeHtml(text: string): string {
@@ -97,12 +101,77 @@ export function onarimRaporuRequestSubject(
   return joinMailSubjectParts(insuranceCompanyName, fileNo, 'Onay Talep');
 }
 
+/** Yeni ihbar konu: Yeni İhbar-{Eksper Ofisi Kısa Ad} */
+export function yeniIhbarSubject(expertOfficeShortName?: string | null): string {
+  const shortName = String(expertOfficeShortName ?? '').trim();
+  return shortName ? `Yeni İhbar-${shortName}` : 'Yeni İhbar';
+}
+
+export function expertOfficeSubjectLabel(office?: {
+  shortName?: string | null;
+  companyName?: string | null;
+  fullName?: string | null;
+} | null): string {
+  return String(office?.shortName || office?.companyName || office?.fullName || '').trim();
+}
+
 /** 2–3. Eksper onay verdi / içeride rapor onaylandı */
 export function raporOnaylandiSubject(
   insuranceCompanyName?: string | null,
   fileNo?: string | null,
+  expertOffice?: string | null,
 ): string {
-  return joinMailSubjectParts('Rapor Onaylandı', insuranceCompanyName, fileNo);
+  const office = String(expertOffice ?? '').trim();
+  const head = office ? `Rapor Onaylandı (${office})` : 'Rapor Onaylandı';
+  return joinMailSubjectParts(head, insuranceCompanyName, fileNo);
+}
+
+export const RAPOR_ONAYLANDI_INTRO =
+  'Eksper onarım raporunu onaylanmıştır.\nOperasyon planlama aşamasına geçiniz.';
+
+export function buildNewClaimFileEmailHtml(params: {
+  fileNo: string;
+  customer: string;
+  branch: string;
+  priority: string;
+  actionUrl: string;
+  portalUrl?: string;
+}): string {
+  const fileNo = escapeHtml(String(params.fileNo ?? '').trim() || '—');
+  const customer = escapeHtml(String(params.customer ?? '').trim() || '—');
+  const branch = escapeHtml(String(params.branch ?? '').trim() || '—');
+  const priority = escapeHtml(String(params.priority ?? '').trim() || '—');
+  const bodyHtml = `
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;background:#ffffff;">
+              <tr>
+                <td colspan="2" style="padding:14px 16px;background:#F8FAFC;font-size:13px;font-weight:800;color:#123A63;border-bottom:1px solid #E2E8F0;">Dosya Özeti</td>
+              </tr>
+              <tr>
+                <td style="width:34%;padding:13px 16px;font-size:13px;font-weight:700;color:#64748B;">Dosya No</td>
+                <td style="padding:13px 16px;font-size:14px;font-weight:800;color:#0F172A;">${fileNo}</td>
+              </tr>
+              <tr>
+                <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#F8FAFC;">Müşteri</td>
+                <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;background:#F8FAFC;">${customer}</td>
+              </tr>
+              <tr>
+                <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;">Branş</td>
+                <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;">${branch}</td>
+              </tr>
+              <tr>
+                <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#F8FAFC;">Aciliyet</td>
+                <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;background:#F8FAFC;">${priority}</td>
+              </tr>
+            </table>`;
+  return buildTransactionalEmailHtml({
+    title: 'Yeni Hasar Dosyası',
+    intro: `${params.fileNo} numaralı yeni bir hasar dosyası oluşturuldu.\nİlgili kaydı inceleyebilir, süreci panel üzerinden takip edebilirsiniz.`,
+    bodyHtml,
+    actionUrl: params.actionUrl,
+    actionLabel: 'Dosyayı Görüntüle',
+    footerNote: 'Buton çalışmazsa panele giriş yapıp ilgili kaydı arayın.',
+    portalUrl: params.portalUrl,
+  });
 }
 
 export function buildRaporOnaylandiEmailHtml(params: {
@@ -119,9 +188,7 @@ export function buildRaporOnaylandiEmailHtml(params: {
     title: 'Rapor Onaylandı',
     organizationName: String(params.insuranceCompanyName ?? '').trim() || undefined,
     greeting: params.greeting,
-    intro:
-      params.intro
-      || 'Eksper onarım raporunu onaylanmıştır.\nOperasyon planlama aşamasına geçiniz.',
+    intro: params.intro || RAPOR_ONAYLANDI_INTRO,
     bodyHtml: buildRaporOnaylandiSummaryHtml({
       insuranceCompanyName: params.insuranceCompanyName,
       fileNo: params.fileNo,
@@ -330,9 +397,12 @@ export function buildNotificationEmailHtml(data: NotificationEmailTemplateData):
   const preheader = data.preheader ? escapeHtml(data.preheader) : '';
   const badgeLabel = data.badgeLabel ? escapeHtml(data.badgeLabel) : '';
   const greeting = data.greeting ? escapeHtml(data.greeting) : '';
-  const bodyNote = data.bodyNote
-    ? escapeHtml(data.bodyNote)
-    : 'İlgili kaydı inceleyebilir, süreci panel üzerinden takip edebilirsiniz.';
+  const bodyNote =
+    data.bodyNote === undefined
+      ? 'İlgili kaydı inceleyebilir, süreci panel üzerinden takip edebilirsiniz.'
+      : escapeHtml(data.bodyNote);
+  const kicker = data.kickerLabel === undefined ? 'Operasyon Bildirimi' : data.kickerLabel.trim();
+  const bannerLead = data.bannerLead ? escapeHtml(data.bannerLead.trim()) : '';
   const nextStepTitle = escapeHtml(data.nextStepTitle ?? 'Sonraki Adım');
   const nextStepText = data.nextStepText ? escapeHtml(data.nextStepText) : '';
   const footerNote = data.footerNote ? escapeHtml(data.footerNote) : '';
@@ -362,7 +432,9 @@ export function buildNotificationEmailHtml(data: NotificationEmailTemplateData):
     ? `<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#0F172A;font-weight:700;">${greeting}</p>`
     : '';
 
-  const bodyNoteHtml = `<p style="margin:0 0 18px;font-size:14px;line-height:1.65;color:#64748B;">${bodyNote}</p>`;
+  const bodyNoteHtml = bodyNote
+    ? `<p style="margin:0 0 18px;font-size:14px;line-height:1.65;color:#64748B;">${bodyNote}</p>`
+    : '';
 
   const nextStepHtml = nextStepText
     ? `
@@ -411,10 +483,14 @@ export function buildNotificationEmailHtml(data: NotificationEmailTemplateData):
           <td style="padding:14px 24px;background:#ffffff;border-bottom:2px solid #1E5AA8;">
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
               <tr>
-                <td style="vertical-align:middle;">
-                  <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748B;">Operasyon Bildirimi</div>
+                ${
+                  kicker
+                    ? `<td style="vertical-align:middle;">
+                  <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748B;">${escapeHtml(kicker)}</div>
                 </td>
-                <td align="right" style="vertical-align:middle;">
+                <td align="right" style="vertical-align:middle;">`
+                    : `<td align="right" style="vertical-align:middle;">`
+                }
                   <img src="${logoUrl}" alt="Meridyen Asistans" width="120" style="display:block;width:120px;max-width:100%;height:auto;margin:0 0 0 auto;border:0;outline:none;text-decoration:none;"/>
                 </td>
               </tr>
@@ -427,9 +503,11 @@ export function buildNotificationEmailHtml(data: NotificationEmailTemplateData):
             ${badgeHtml}
             <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;font-weight:800;color:#ffffff;">${title}</h1>
             ${
-              preheader
-                ? `<p style="margin:0;font-size:14px;line-height:1.55;color:rgba(255,255,255,.88);">${preheader}</p>`
-                : ''
+              bannerLead
+                ? `<p style="margin:0;font-size:15px;line-height:1.5;font-weight:700;color:rgba(255,255,255,.94);">${bannerLead}</p>`
+                : preheader
+                  ? `<p style="margin:0;font-size:14px;line-height:1.55;color:rgba(255,255,255,.88);">${preheader}</p>`
+                  : ''
             }
           </td>
         </tr>

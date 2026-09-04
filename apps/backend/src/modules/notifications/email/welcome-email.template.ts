@@ -40,6 +40,7 @@ interface RoleTemplateContent {
   intro: string;
   fieldHighlightLabel?: string;
   fieldHighlight?: string;
+  whyTitle?: string;
   whyPoints: string[];
   actions: Array<{
     title: string;
@@ -49,6 +50,9 @@ interface RoleTemplateContent {
   stepThreeTitle: string;
   stepThreeDescription: string;
   guideFileName: string;
+  hideBanner?: boolean;
+  storyTitle?: string;
+  storyBody?: string;
 }
 
 const DEFAULT_PORTAL_URL = 'https://app.meridyen-tr.com/giris';
@@ -68,169 +72,99 @@ const COLORS = {
   amber: '#B45309',
 };
 
+/** Panoya alma ipucu — HTML e-postada clipboard API yok; şifre `user-select:all`. */
+const WELCOME_PASSWORD_COPY_ICON = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+)}`;
+
 const PORTAL_WELCOME_TITLE = "Meridyen Hasar Yönetim Platformu'na Hoş Geldiniz";
+const INSURANCE_BROKER_SUBJECT =
+  'Meridyen Hasar Yönetim Platformu -> Dosya İzleme Erişiminiz Hazır';
+const INSURANCE_BROKER_HIGHLIGHT =
+  'Meridyen Hasar Yönetim Platformu;\nKonut, Endüstriyel Ve Denizcilik hasar dosyaları asistans hizmetlerimizde hızlı, şeffaf ve değer katarak operasyonel verimliliğinizi artırmak için yenilendik.';
+const INSURANCE_BROKER_STORY =
+  'Meridyen Hasar Yönetim Platformu ile eksper kanalı ile şirketiniz adına yürütülen tüm hasar onarım süreçlerini dijital ortamdan, anlık olarak izleyebilirsiniz. Telefon ve e-posta trafiğine gerek kalmadan dosyalarınızın güncel durumuna her an erişebilirsiniz.';
+const INSURANCE_BROKER_WHY = [
+  'Dosya Durumu Takibi : Şirketinize ait tüm hasar dosyalarını tek panelden görüntüleyin. Hangi aşamada, ne zaman tamamlanacak?',
+  'Onarım Sürecini Canlı İzleme : Dosyalarınızın onarım aşamalarını, saha fotoğraflarını ve durum güncellemelerini adım adım takip edin.',
+  'Evrak ve Rapor Erişimi : Onarım raporları, onarım faturaları, hasar fotoğrafları ve tüm dosya evrakları dijital ortamda, 7/24 erişilebilir.',
+  'Her Cihazdan Güvenli Erişim : Masaüstü, tablet veya mobil - ofiste ya da sahada, güvenli giriş ile her yerden erişim.',
+];
+const ASSISTANCE_SUBJECT = "Meridyen Dosya Yönetim Platformu'na Hoş Geldiniz";
+const ASSISTANCE_HIGHLIGHT =
+  'Acil yardım dosyalarınızı artık ihbardan kapanışa kadar tek platformdan yönetebilirsiniz.\nSaha operasyon hizmetlerimizde; Hızlı, Şeffaf Ve Değer Katarak operasyon verimliliğinizi arttırmak için yenilendik.';
+const ASSISTANCE_STORY =
+  'Saha operasyonlarımızı; izleyip "tedarikçi nerede?" sorularına son verin, dosyanın hangi aşamada olduğunu, sahada ne olduğunu ve ne beklediğini her an görebilirsiniz.';
+const ASSISTANCE_WHY = [
+  'Dosya Yönetimi : İhbar alımından dosya kapanışına kadar tüm dosyaları aşama bazında takip edin. Her dosyanın durumunu tek panelden görün.',
+  'Dijital Evrak ve Onay : Dijital onay sistemi ile zaman tasarrufu,',
+  'Otomatik Kapanış Raporu : Dosya tamamlandığında kapanış raporu PDF olarak iletilir.',
+  'Anket Sonuçları : Her dosya kapanışında yapılan anket sonuçları dönem bazlı toplu olarak raporlanır.',
+];
 
 const ROLE_CONTENT: Record<WelcomeEmailRole, RoleTemplateContent> = {
   EXPERT: {
     subject: PORTAL_WELCOME_TITLE,
     welcomeTitle: PORTAL_WELCOME_TITLE,
-    valuePitch: 'Sahadan ihbar, sesli not ve dosya takibini eksper portalından yürütün.',
-    intro:
-      'Eksper portalında size bağlı dosyaları görür, sahadan ihbar açar, fotoğraf ve evrak iletirsiniz. Adres ve açıklamayı sesli notla bırakabilirsiniz.',
+    valuePitch: 'Konut, endüstriyel ve denizcilik hasar dosyalarında asistans.',
+    intro: '',
     fieldHighlight:
-      'Sahada ihbar açarken adres ve açıklamayı konuşarak iletebilirsiniz. Konuşmanız metne dönüşür; yazım sizi bekletmez.',
-    fieldHighlightLabel: 'Önemli — Sesli Not',
+      'Meridyen Hasar Yönetim Platformu;\nKonut, Endüstriyel Ve Denizcilik hasar dosyaları asistans hizmetlerimizde hızlı, şeffaf ve değer katarak operasyonel verimliliğinizi artırmak için yenilendik.',
+    whyTitle: 'Platformla neler yapabilirsiniz?',
     whyPoints: [
-      'Sahadan ihbar...',
-      'Sesli not özellikleri...',
-      'Fotoğraf ve evrak yükleme...',
-      'Rapor ve onayları tek ekrandan izleme...',
+      'Mobil Uyumlu Tasarım — Masaüstü, tablet veya telefondan tam erişim,',
+      'Sahadan Anlık İhbar ve Dosya Açma — Saha ekibiniz mobil cihazdan ihbar oluşturabilir, lokasyon ve detay girebilir,',
+      'Fotoğraf ve Evrak Yönetimi — Hasar fotoğrafları ve hasar ihbarına konu evrakları dijital ortamda yükleme,',
+      'Tek Ekrandan Dosya Takibi — Onarım raporlarınızın durumunu tek panelden izleyin.',
+      'Ve daha bir çok özellik... — ',
     ],
-    actions: [
-      {
-        title: 'Sahadan İhbar',
-        description: 'Sahadan ihbar...',
-      },
-      {
-        title: 'Sesli Not',
-        description: 'Sesli not özellikleri...',
-      },
-      {
-        title: 'Fotoğraf ve Evrak',
-        description: 'Fotoğraf ve evrak yükleme...',
-      },
-      {
-        title: 'Rapor ve Onay',
-        description: 'Rapor ve onayları tek ekrandan izleme...',
-      },
-    ],
-    highlightsTitle: 'Eksper Portalında Öne Çıkanlar',
+    actions: [],
+    highlightsTitle: '',
     stepThreeTitle: 'Portale Geçin',
     stepThreeDescription: 'Eksper portalındaki dosya ve onay ekranlarını açın.',
     guideFileName: '03-eksper-portal-tanitim.pdf',
   },
   INSURANCE_COMPANY: {
-    subject: PORTAL_WELCOME_TITLE,
+    subject: INSURANCE_BROKER_SUBJECT,
     welcomeTitle: PORTAL_WELCOME_TITLE,
-    valuePitch: 'Yetkili hasar dosyalarınızı izleyin, onaylayın ve evrakları görün.',
-    intro:
-      'Dosya Takip ekranında yetkili olduğunuz hasar dosyalarını izler, bekleyen onayları yanıtlar, evrakları görürsünüz.',
-    fieldHighlightLabel: 'Önemli — Dosya Takip',
-    fieldHighlight:
-      'Günlük işiniz Dosya Takip ekranındadır. Dosyalar, bekleyen onaylar, canlı izle ve evraklar bu alandan açılır.',
-    whyPoints: [
-      'Yetkili hasar dosyalarının listesi ve durum takibi',
-      'Bekleyen onayları yanıtlama',
-      'Canlı İzle ile dosya ilerleyişi',
-      'Dosyaya bağlı faturaları görüntüleme',
-    ],
-    actions: [
-      {
-        title: 'Dosya Takip',
-        description: 'Yetkili dosyaların özetini ve son hareketleri görün.',
-      },
-      {
-        title: 'Dosyalar',
-        description: 'Konu, durum ve sorumlu ile dosya listesini açın.',
-      },
-      {
-        title: 'Bekleyen Onaylar',
-        description: 'Onay taleplerini görüntüleyin, onaylayın veya gerekçeli reddedin.',
-      },
-      {
-        title: 'Canlı İzle',
-        description: 'Dosyanın güncel aşamasını izleyin.',
-      },
-      {
-        title: 'Faturalar',
-        description: 'Yetkili olduğunuz dosyalara bağlı faturaları görüntüleyin.',
-      },
-      {
-        title: 'Operasyon Ağı',
-        description: 'Dosyanın operasyon görünümünü takip edin.',
-      },
-    ],
-    highlightsTitle: 'Sayfanızda Öne Çıkanlar',
+    valuePitch: 'Hasar onarım süreçlerini dijital ortamdan anlık izleyin.',
+    intro: INSURANCE_BROKER_STORY,
+    fieldHighlight: INSURANCE_BROKER_HIGHLIGHT,
+    storyTitle: 'Sizin İçin Ne Değişiyor?',
+    whyTitle: 'Platform ile Neler Yapabilirsiniz?',
+    whyPoints: INSURANCE_BROKER_WHY,
+    actions: [],
+    highlightsTitle: '',
     stepThreeTitle: 'Dosya Takibe Geçin',
     stepThreeDescription: 'Dosya Takip ekranından yetkili dosyalarınızı açın.',
     guideFileName: '02-sigorta-portal-kilavuzu.pdf',
   },
   BROKER: {
-    subject: PORTAL_WELCOME_TITLE,
+    subject: INSURANCE_BROKER_SUBJECT,
     welcomeTitle: PORTAL_WELCOME_TITLE,
-    valuePitch: 'Broker kapsamındaki hasar dosyalarını izleyin ve onayları yanıtlayın.',
-    intro:
-      'Yetkili olduğunuz broker kapsamındaki hasar dosyalarını listeler, onay taleplerini yanıtlar ve dosyaya bağlı faturaları görürsünüz.',
-    fieldHighlightLabel: 'Önemli — Dosya Takibi',
-    fieldHighlight:
-      'İşiniz yetkili dosyaları izlemek ve onayları yanıtlamaktır.',
-    whyPoints: [
-      'Broker kapsamındaki dosyaların liste ve durum takibi',
-      'Bekleyen onayları yanıtlama',
-      'Dosyaya bağlı faturaları görüntüleme',
-      'Dosya ilerleyişini tek ekrandan izleme',
-    ],
-    actions: [
-      {
-        title: 'Dosyalar',
-        description: 'Yetkili hasar dosyalarını konu ve durumla listeleyin.',
-      },
-      {
-        title: 'Bekleyen Onaylar',
-        description: 'Onay taleplerini görüntüleyin ve yanıtlayın.',
-      },
-      {
-        title: 'Dosya Durumu',
-        description: 'Her dosyanın güncel aşamasını izleyin.',
-      },
-      {
-        title: 'Faturalar',
-        description: 'Yetkili dosyalara bağlı faturaları görüntüleyin.',
-      },
-    ],
-    highlightsTitle: 'Sayfanızda Öne Çıkanlar',
+    valuePitch: 'Hasar onarım süreçlerini dijital ortamdan anlık izleyin.',
+    intro: INSURANCE_BROKER_STORY,
+    fieldHighlight: INSURANCE_BROKER_HIGHLIGHT,
+    storyTitle: 'Sizin İçin Ne Değişiyor?',
+    whyTitle: 'Platform ile Neler Yapabilirsiniz?',
+    whyPoints: INSURANCE_BROKER_WHY,
+    actions: [],
+    highlightsTitle: '',
     stepThreeTitle: 'Dosya Takibe Geçin',
     stepThreeDescription: 'Yetkili dosya ve onay ekranlarını açın.',
     guideFileName: '04-broker-portal-kilavuzu.pdf',
   },
   ASSISTANCE_COMPANY: {
-    subject: PORTAL_WELCOME_TITLE,
-    welcomeTitle: PORTAL_WELCOME_TITLE,
-    valuePitch: 'Yetkili acil yardım dosyalarını izleyin ve onayları yanıtlayın.',
-    intro:
-      'Asistans portalında yetkili olduğunuz acil yardım dosyalarını izler, bekleyen onayları yanıtlar ve dosyaya bağlı faturaları görürsünüz.',
-    fieldHighlightLabel: 'Önemli — Acil Dosya Takibi',
-    fieldHighlight:
-      'Bu ekran acil yardım dosyalarını izlemek içindir.',
-    whyPoints: [
-      'Yetkili acil yardım dosyalarının listesi',
-      'Bekleyen onayları yanıtlama',
-      'Canlı İzle ile dosya ilerleyişi',
-      'Dosyaya bağlı faturaları görüntüleme',
-    ],
-    actions: [
-      {
-        title: 'Dosya Takip',
-        description: 'Yetkili acil yardım dosyalarının özetini görün.',
-      },
-      {
-        title: 'Dosyalar',
-        description: 'Acil yardım dosyalarını konu ve durumla listeleyin.',
-      },
-      {
-        title: 'Bekleyen Onaylar',
-        description: 'Onay taleplerini görüntüleyin ve yanıtlayın.',
-      },
-      {
-        title: 'Canlı İzle',
-        description: 'Dosyanın güncel aşamasını izleyin.',
-      },
-      {
-        title: 'Faturalar',
-        description: 'Yetkili dosyalara bağlı faturaları görüntüleyin.',
-      },
-    ],
-    highlightsTitle: 'Sayfanızda Öne Çıkanlar',
+    subject: ASSISTANCE_SUBJECT,
+    welcomeTitle: ASSISTANCE_SUBJECT,
+    valuePitch: 'Acil yardım dosyalarını ihbardan kapanışa kadar tek platformdan yönetin.',
+    intro: ASSISTANCE_STORY,
+    fieldHighlight: ASSISTANCE_HIGHLIGHT,
+    storyTitle: 'Sizin İçin Ne Değişiyor?',
+    whyTitle: 'Platform ile Neler Yapabilirsiniz?',
+    whyPoints: ASSISTANCE_WHY,
+    actions: [],
+    highlightsTitle: '',
     stepThreeTitle: 'Dosya Takibe Geçin',
     stepThreeDescription: 'Asistans portalındaki acil dosyalarınızı açın.',
     guideFileName: '01-personel-kullanim-kilavuzu.pdf',
@@ -292,7 +226,10 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function buildGreetingLine(recipientName?: string): string {
+function buildGreetingLine(role: WelcomeEmailRole, recipientName?: string): string {
+  if (role === 'EXPERT') {
+    return 'Değerli Eksperimiz ve Ekibi;';
+  }
   const name = recipientName?.trim();
   if (!name) {
     return GENERIC_GREETING;
@@ -343,33 +280,75 @@ function compactStepCell(title: string, description: string, index: number): str
 }
 
 function fieldHighlightBox(label: string, highlight: string): string {
+  const labelHtml = label
+    ? `<div style="font-size:12px;font-weight:800;color:${COLORS.blue};margin-bottom:6px;">${escapeHtml(label)}</div>`
+    : '';
+  const lines = highlight.split('\n').map((line) => line.trim()).filter(Boolean);
+  const highlightHtml =
+    lines.length > 1
+      ? `<div style="font-size:15px;font-weight:800;line-height:1.45;color:${COLORS.navy};margin:0 0 8px;">${escapeHtml(lines[0])}</div>
+          <div style="font-size:15px;font-weight:800;line-height:1.55;color:${COLORS.navy};">${escapeHtml(lines.slice(1).join(' '))}</div>`
+      : `<div style="font-size:15px;font-weight:800;line-height:1.45;color:${COLORS.navy};">${escapeHtml(highlight)}</div>`;
   return `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#EFF6FF;border:1px solid #93C5FD;border-left:4px solid ${COLORS.blue};border-radius:10px;">
       <tr>
         <td style="padding:14px 16px;">
-          <div style="font-size:12px;font-weight:800;color:${COLORS.blue};margin-bottom:6px;">${escapeHtml(label)}</div>
-          <div style="font-size:15px;font-weight:800;line-height:1.45;color:${COLORS.navy};">${escapeHtml(highlight)}</div>
+          ${labelHtml}
+          ${highlightHtml}
         </td>
       </tr>
     </table>`;
 }
 
-function whyBox(points: string[]): string {
+function whyBox(points: string[], title = 'Meridyen ile Neler Kazanırsınız?'): string {
   const items = points
-    .map(
-      (point) => `
+    .map((point) => {
+      const sep = ' — ';
+      const splitAt = point.indexOf(sep);
+      if (splitAt === -1) {
+        const colonSep = ' : ';
+        const colonAt = point.indexOf(colonSep);
+        if (colonAt !== -1) {
+          const itemTitle = escapeHtml(point.slice(0, colonAt));
+          const itemBody = escapeHtml(point.slice(colonAt + colonSep.length).trim());
+          return `
+        <tr>
+          <td style="padding:0 0 8px;font-size:13px;line-height:1.5;color:${COLORS.ink};">
+            <span style="color:${COLORS.blue};font-weight:800;margin-right:6px;">✓</span><b style="font-weight:700;color:${COLORS.navy};">${itemTitle} :</b><span> ${itemBody}</span>
+          </td>
+        </tr>`;
+        }
+        return `
         <tr>
           <td style="padding:0 0 8px;font-size:13px;line-height:1.5;color:${COLORS.ink};">
             <span style="color:${COLORS.blue};font-weight:800;margin-right:6px;">✓</span>${escapeHtml(point)}
           </td>
-        </tr>`,
-    )
+        </tr>`;
+      }
+      const itemTitle = escapeHtml(point.slice(0, splitAt));
+      const itemBody = escapeHtml(point.slice(splitAt + sep.length).trim());
+      const square = `<span style="display:inline-block;width:6px;height:6px;background:${COLORS.navy};margin:0 8px 1px 0;vertical-align:middle;"></span>`;
+      if (!itemBody) {
+        return `
+        <tr>
+          <td style="padding:0 0 10px;font-size:14px;line-height:1.55;color:#0F172A;">
+            ${square}<span style="font-weight:800;color:${COLORS.navy};">${itemTitle}</span>
+          </td>
+        </tr>`;
+      }
+      return `
+        <tr>
+          <td style="padding:0 0 10px;font-size:14px;line-height:1.55;color:#0F172A;">
+            ${square}<span style="font-weight:800;color:${COLORS.navy};">${itemTitle}:</span><span style="font-weight:400;color:#0F172A;"> ${itemBody}</span>
+          </td>
+        </tr>`;
+    })
     .join('');
   return `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;">
       <tr>
-        <td style="padding:14px 16px;">
-          <div style="font-size:14px;font-weight:800;color:${COLORS.navy};margin-bottom:8px;">Meridyen ile Neler Kazanırsınız?</div>
+        <td style="padding:16px 18px;">
+          <div style="font-size:14px;font-weight:800;color:${COLORS.navy};margin-bottom:4px;">${escapeHtml(title)}</div>
           <table width="100%" cellpadding="0" cellspacing="0">${items}</table>
         </td>
       </tr>
@@ -402,7 +381,7 @@ export function generateWelcomeEmail(
   const portalUrl = resolveWelcomeLoginUrl(data.portalUrl);
   const supportEmail = data.supportEmail ?? DEFAULT_SUPPORT_EMAIL;
   const organizationName = data.organizationName?.trim();
-  const greetingLine = buildGreetingLine(data.recipientName);
+  const greetingLine = buildGreetingLine(role, data.recipientName);
   const guideUrl = data.guideUrl;
   const accountEmail = data.accountEmail?.trim();
   const temporaryPassword = data.temporaryPassword?.trim();
@@ -444,13 +423,13 @@ export function generateWelcomeEmail(
                   temporaryPassword
                     ? `
                 <tr>
-                  <td colspan="2" style="padding:0;border-top:1px solid ${COLORS.border};background:#0F172A;">
+                  <td colspan="2" style="padding:0;border-top:1px solid ${COLORS.border};background:${COLORS.blue};">
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="padding:14px 16px;">
-                          <div style="font-size:12px;font-weight:700;color:#CBD5E1;margin-bottom:6px;">Geçici Şifre</div>
-                          <div style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:18px;font-weight:800;color:#FFFFFF;letter-spacing:.04em;word-break:break-all;">${escapeHtml(temporaryPassword)}</div>
-                          <div style="font-size:11px;color:#94A3B8;margin-top:6px;line-height:1.45;">İlk girişte bu şifreyi kullanın; ardından kişisel şifrenizi belirleyin.</div>
+                          <div style="font-size:13px;font-weight:800;color:#FFFFFF;margin-bottom:8px;">Geçici Şifre</div>
+                          <span class="welcome-temp-pwd" tabindex="0" data-pwd="${escapeHtml(temporaryPassword)}" onclick="try{navigator.clipboard.writeText(this.getAttribute('data-pwd'))}catch(e){}" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:18px;font-weight:800;color:#FFFFFF;letter-spacing:.04em;word-break:break-all;-webkit-user-select:all;user-select:all;">${escapeHtml(temporaryPassword)}<span class="welcome-temp-pwd-copy" aria-hidden="true"><img src="${WELCOME_PASSWORD_COPY_ICON}" width="16" height="16" alt="" style="display:block;border:0;outline:none;" /></span></span>
+                          <div style="font-size:13px;font-weight:600;color:#FFFFFF;margin-top:10px;line-height:1.5;">İlk girişte bu şifreyi kullanın; ardından kişisel şifrenizi belirleyin.</div>
                         </td>
                       </tr>
                     </table>
@@ -473,12 +452,36 @@ export function generateWelcomeEmail(
               </table>`
     : '';
 
+  const bannerTitleStyle =
+    content.welcomeTitle.length > 70
+      ? 'font-size:18px;line-height:1.4;'
+      : 'font-size:20px;line-height:1.28;';
+
   const html = `<!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>${escapeHtml(content.subject)}</title>
+  <style>
+    .welcome-temp-pwd { position: relative; display: inline-block; cursor: pointer; }
+    .welcome-temp-pwd-copy {
+      position: absolute;
+      left: 100%;
+      bottom: 2px;
+      margin-left: 8px;
+      width: 16px;
+      height: 16px;
+      opacity: 0;
+      pointer-events: none;
+      user-select: none;
+      transition: opacity .16s ease;
+    }
+    .welcome-temp-pwd:hover .welcome-temp-pwd-copy,
+    .welcome-temp-pwd:focus .welcome-temp-pwd-copy {
+      opacity: 1;
+    }
+  </style>
 </head>
 <body style="margin:0;padding:0;background:${COLORS.surface};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:${COLORS.ink};">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:${COLORS.surface};padding:32px 16px;">
@@ -497,11 +500,15 @@ export function generateWelcomeEmail(
             </td>
           </tr>
 
-          <tr>
-            <td style="padding:14px 20px 14px;background:linear-gradient(135deg,#0b2847 0%,#123A63 55%,#1E5AA8 100%);">
-              <h1 style="margin:0;font-size:20px;line-height:1.28;font-weight:800;color:#ffffff;">${escapeHtml(content.welcomeTitle)}</h1>
+          ${
+            content.hideBanner
+              ? ''
+              : `<tr>
+            <td style="padding:16px 20px;background:linear-gradient(135deg,#0b2847 0%,#123A63 55%,#1E5AA8 100%);">
+              <h1 style="margin:0;${bannerTitleStyle}font-weight:800;color:#ffffff;">${escapeHtml(content.welcomeTitle)}</h1>
             </td>
-          </tr>
+          </tr>`
+          }
 
           <tr>
             <td style="padding:24px 22px 26px;background:#ffffff;">
@@ -511,10 +518,13 @@ export function generateWelcomeEmail(
                   : ''
               }
               <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${COLORS.ink};font-weight:700;">${escapeHtml(greetingLine)}</p>
-              ${content.fieldHighlight && content.fieldHighlightLabel ? fieldHighlightBox(content.fieldHighlightLabel, content.fieldHighlight) : ''}
-              <p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:${COLORS.muted};">${escapeHtml(content.intro)}</p>
-
-              ${whyBox(content.whyPoints)}
+              ${content.fieldHighlight ? fieldHighlightBox(content.fieldHighlightLabel ?? content.storyTitle ?? '', content.fieldHighlight) : ''}
+              ${
+                content.intro
+                  ? `<p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:${COLORS.muted};">${escapeHtml(content.intro)}</p>`
+                  : ''
+              }
+              ${whyBox(content.whyPoints, content.whyTitle)}
 
               ${accountInfoBlock}
               ${passwordChangeNotice}
@@ -537,16 +547,14 @@ export function generateWelcomeEmail(
                 </tr>
               </table>
 
-              <div style="font-size:15px;font-weight:800;color:${COLORS.ink};margin:0 0 12px;">${escapeHtml(content.highlightsTitle)}</div>
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
-                ${actionGrid2Col(content.actions)}
-              </table>
-
+              ${
+                content.actions.length
+                  ? `<div style="font-size:15px;font-weight:800;color:${COLORS.ink};margin:0 0 12px;">${escapeHtml(content.highlightsTitle)}</div>
               <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
-                <tr>
-                  <td align="center">${primaryCta}</td>
-                </tr>
-              </table>
+                ${actionGrid2Col(content.actions)}
+              </table>`
+                  : ''
+              }
 
               <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(180deg,#F8FAFC 0%,#EFF6FF 100%);border:1px solid ${COLORS.border};border-radius:10px;">
                 <tr>
@@ -591,6 +599,9 @@ export function generateWelcomeEmail(
     organizationName ? organizationName : '',
     greetingLine,
     '',
+    content.fieldHighlight || '',
+    content.storyTitle || '',
+    content.storyBody || '',
     content.intro,
     accountEmail || temporaryPassword ? '\nGiriş Bilgileri:' : '',
     `Giriş Adresi: ${portalUrl}`,
@@ -598,7 +609,7 @@ export function generateWelcomeEmail(
     temporaryPassword ? `Geçici Şifre: ${temporaryPassword}` : '',
     data.forcePasswordChange ? 'Güvenliğiniz için ilk girişinizde şifrenizi değiştirmeniz zorunludur.' : '',
     '',
-    'Meridyen ile Neler Kazanırsınız?:',
+    `${content.whyTitle ?? 'Meridyen ile Neler Kazanırsınız?'}:`,
     ...content.whyPoints.map((point) => `- ${point}`),
     '',
     '3 Adımda Başlayın:',
@@ -606,9 +617,9 @@ export function generateWelcomeEmail(
     '2. İlk girişte yeni şifrenizi belirleyin.',
     `3. ${content.stepThreeTitle} — ${content.stepThreeDescription}`,
     '',
-    `${content.highlightsTitle}:`,
-    ...content.actions.map((action, index) => `${index + 1}. ${action.title} - ${action.description}`),
-    '',
+    ...(content.actions.length
+      ? [content.highlightsTitle ? `${content.highlightsTitle}:` : '', ...content.actions.map((action, index) => `${index + 1}. ${action.title} - ${action.description}`), '']
+      : []),
     `Portal: ${portalUrl}`,
     '',
     'Kullanım kılavuzunu indirebilir veya inceleyebilirsiniz.',

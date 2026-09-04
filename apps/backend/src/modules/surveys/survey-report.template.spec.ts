@@ -1,3 +1,4 @@
+import { monthlySurveyReportSubject } from './survey-report.service';
 import { buildSurveyReportHtml } from './survey-report.template';
 
 describe('buildSurveyReportHtml', () => {
@@ -26,5 +27,11 @@ describe('buildSurveyReportHtml', () => {
     expect(html).toContain('Süreç boyunca bilgilendirme');
     expect(html).not.toContain('(Meridyen Assistance)');
     expect(html).not.toContain('Meridyen Assistance)');
+  });
+
+  it('uses assistance firm and month-year in subject', () => {
+    expect(monthlySurveyReportSubject('Remed Asistans', 9, 2026)).toBe(
+      'Remed Asistans-Eylül-2026 Müşteri Memnuniyet Raporu',
+    );
   });
 });

@@ -195,8 +195,15 @@ export function buildApprovalReminderEmailHtml(data: ApprovalReminderEmailData):
 </html>`;
 }
 
-export function buildApprovalReminderEmailSubject(fileNo: string): string {
-  return `Onay Hatırlatması — ${fileNo}`;
+export function buildApprovalReminderEmailSubject(
+  insuranceCompanyName?: string | null,
+  fileNo?: string | null,
+): string {
+  const insurance = String(insuranceCompanyName ?? '').trim();
+  const no = String(fileNo ?? '').trim();
+  return [insurance, no].filter(Boolean).length
+    ? ['Onay Hatırlatması', insurance, no].filter(Boolean).join('-')
+    : 'Onay Hatırlatması';
 }
 
 export function buildApprovalReminderEmailText(data: ApprovalReminderEmailData): string {

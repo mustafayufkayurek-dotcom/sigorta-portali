@@ -367,13 +367,56 @@ export function isRememberMeInactive(): boolean {
   return !Number.isFinite(last) || Date.now() - last > REMEMBER_ME_MAX_MS;
 }
 
+let refreshInFlight: Promise<boolean> | null = null;
+
+function normalizeApiBase(apiBase: string): string {
+  return apiBase.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
+}
+
+/**
+ * Refresh tek sırada. Aynı anda birden fazla 401 aynı tokeni yakmasın;
+ * başarılı yenileme sonrası diğer deneme oturumu silmesin.
+ */
+export async function refreshSessionTokens(apiBase: string): Promise<boolean> {
+  if (isPasswordLoginRequired()) return false;
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const usedToken = getRefreshToken();
+    if (!usedToken) return false;
+    const base = normalizeApiBase(apiBase);
+    try {
+      const refreshed = await axios.post(
+        `${base}/auth/refresh`,
+        { refreshToken: usedToken },
+        { withCredentials: true },
+      );
+      const tokens = refreshed.data?.data;
+      if (tokens?.accessToken && tokens?.refreshToken) {
+        persistTokens(tokens.accessToken, tokens.refreshToken);
+        return true;
+      }
+    } catch {
+      const latest = getRefreshToken();
+      if (latest && latest !== usedToken && getAccessToken()) {
+        return true;
+      }
+    }
+    return Boolean(getAccessToken() && getRefreshToken());
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+
+  return refreshInFlight;
+}
+
 /** Oturum geçerli mi kontrol eder; 401 ise refresh dener. */
 export async function ensureValidSession(apiBase: string): Promise<boolean> {
   if (isPasswordLoginRequired()) return false;
   const token = getAccessToken();
   if (!token) return false;
 
-  const base = apiBase.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
+  const base = normalizeApiBase(apiBase);
 
   try {
     await axios.get(`${base}/auth/me`, {
@@ -386,19 +429,7 @@ export async function ensureValidSession(apiBase: string): Promise<boolean> {
     if (!axios.isAxiosError(error) || error.response?.status !== 401) {
       return false;
     }
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
-    try {
-      const refreshed = await axios.post(`${base}/auth/refresh`, { refreshToken }, { withCredentials: true });
-      const tokens = refreshed.data?.data;
-      if (tokens?.accessToken && tokens?.refreshToken) {
-        persistTokens(tokens.accessToken, tokens.refreshToken);
-        return true;
-      }
-    } catch {
-      /* refresh başarısız */
-    }
-    return false;
+    return refreshSessionTokens(base);
   }
 }
 

@@ -197,21 +197,18 @@ export default function EvrakOnayPage() {
       </div>
       {doc?.documentKind === 'matbu_evrak' && (stage === 'view' || stage === 'approve') ? (
         <div
-          className="print:hidden max-w-3xl mx-auto mt-3 px-4"
+          className="print:hidden max-w-2xl mx-auto mt-4 px-6"
           data-testid="sigortali-onay-uyari"
         >
-          <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            Bu belgeyi onaylamanız gerekir. Onay vermeden sayfayı kapatırsanız işlem tamamlanmaz.
-          </p>
-          <p className="mt-2 text-xs text-slate-600">
-            Yazıcı gerekmez. Aşağıdaki Onayla ile belgenizi telefondan onaylayın.
+          <p className="text-[13px] text-slate-600">
+            Bu belgeyi onaylamanız gerekir. Onay vermeden işlem tamamlanmaz. Yazıcı gerekmez; Onayla yeterlidir.
           </p>
         </div>
       ) : null}
 
       {/* Document HTML */}
-      <div className="max-w-3xl mx-auto my-4 px-4 print:max-w-none print:mx-0 print:px-0 print:my-0">
-        <div className="bg-white rounded-xl shadow overflow-hidden print:shadow-none print:rounded-none">
+      <div className="max-w-[210mm] mx-auto my-2 px-4 print:max-w-none print:mx-0 print:px-0 print:my-0">
+        <div className="bg-white print:shadow-none">
           {doc?.renderedContent && (
             <div
               className="w-full evrak-document-root"
@@ -279,9 +276,9 @@ export default function EvrakOnayPage() {
       )}
 
       {doc?.documentKind === 'matbu_evrak' && stage === 'view' ? (
-        <div className="print:hidden sticky bottom-0 z-20 border-t border-amber-200 bg-amber-50 px-4 py-3">
-          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-            <p className="text-sm font-medium text-amber-950">Onay vermeden işlem tamamlanmaz.</p>
+        <div className="print:hidden sticky bottom-0 z-20 border-t border-slate-200 bg-white px-4 py-3">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+            <p className="text-sm text-slate-600">Onay vermeden işlem tamamlanmaz.</p>
             <button
               type="button"
               onClick={() => setStage('approve')}

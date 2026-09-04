@@ -8,7 +8,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import AgreementConsentModal from '@/components/AgreementConsentModal';
 import GlobalSearch from '@/components/GlobalSearch';
 import { SESSION_KEEPALIVE_MS, API } from '@/utils/api';
-import { clearAuth, ensureValidSession, getAccessToken, getRefreshToken, hasValidSessionScope, persistTokens, isRememberMePreferred, isRememberMeInactive, isRememberMeExpired, logoutAndRedirect } from '@/utils/auth-session';
+import { clearAuth, ensureValidSession, getAccessToken, hasValidSessionScope, refreshSessionTokens, isRememberMePreferred, isRememberMeInactive, isRememberMeExpired, logoutAndRedirect } from '@/utils/auth-session';
 import { installAxiosAuthInterceptors } from '@/utils/setup-axios-auth';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { FinansOncelikliGorevModal } from '@/components/finance/FinansOncelikliGorevModal';
@@ -1544,35 +1544,31 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           }
         }
         if (axios.isAxiosError(error) && error.response?.status === 401) {
-          const refreshToken = getRefreshToken();
-          if (refreshToken) {
+          const refreshedOk = await refreshSessionTokens(apiBase);
+          const nextAccess = getAccessToken();
+          if (refreshedOk && nextAccess) {
             try {
-              const refreshResponse = await axios.post(`${apiBase}/auth/refresh`, {
-                refreshToken,
+              const retryMe = await axios.get(`${apiBase}/auth/me`, {
+                headers: { Authorization: `Bearer ${nextAccess}` },
               });
-              const tokens = refreshResponse.data?.data;
-              if (tokens?.accessToken && tokens?.refreshToken) {
-                persistTokens(tokens.accessToken, tokens.refreshToken);
-                const retryMe = await axios.get(`${apiBase}/auth/me`, {
-                  headers: { Authorization: `Bearer ${tokens.accessToken}` },
+              const me = retryMe.data?.data ?? retryMe.data;
+              if (me) {
+                setUser(me);
+                localStorage.setItem('user', JSON.stringify(me));
+                window.dispatchEvent(new Event('meridyen:user-updated'));
+                const permissions = await axios.get(`${apiBase}/users/me/permissions`, {
+                  headers: { Authorization: `Bearer ${nextAccess}` },
                 });
-                const me = retryMe.data?.data ?? retryMe.data;
-                if (me) {
-                  setUser(me);
-                  localStorage.setItem('user', JSON.stringify(me));
-                  window.dispatchEvent(new Event('meridyen:user-updated'));
-                  const permissions = await axios.get(`${apiBase}/users/me/permissions`, {
-                    headers: { Authorization: `Bearer ${tokens.accessToken}` },
-                  });
-                  const permData = permissions.data?.data ?? permissions.data;
-                  const screens = Array.isArray(permData?.screens) && permData.screens.length > 0
-                    ? permData.screens
-                    : getDefaultScreensForRole(me?.role?.code ?? '');
-                  setAllowedScreens(screens);
-                  return;
-                }
+                const permData = permissions.data?.data ?? permissions.data;
+                const screens = Array.isArray(permData?.screens) && permData.screens.length > 0
+                  ? permData.screens
+                  : getDefaultScreensForRole(me?.role?.code ?? '');
+                setAllowedScreens(screens);
+                return;
               }
-            } catch {}
+            } catch {
+              /* yenileme sonrası me alınamadı */
+            }
           }
         }
         clearAuth({ preserveRememberedEmail: isRememberMePreferred() });

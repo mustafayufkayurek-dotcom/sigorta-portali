@@ -149,13 +149,13 @@ write(
 write(
   'rapor-onaylandi-mail.html',
   withSubjectBar(
-    raporOnaylandiSubject('Ray Sigorta', 'RCS-20261868899'),
+    raporOnaylandiSubject('Ray Sigorta', 'RCS-20261868899', 'Fidar'),
     buildRaporOnaylandiEmailHtml({
       insuranceCompanyName: 'Ray Sigorta',
       fileNo: 'RCS-20261868899',
       approvedBy: 'Ayşe Yılmaz',
       greeting: formatSnPersonGreeting('Mehmet', 'Kaya'),
-      intro: 'Onarım raporu onaylandı.',
+      intro: 'Eksper onarım raporunu onaylanmıştır.\nOperasyon planlama aşamasına geçiniz.',
       actionUrl: 'https://app.meridyen-tr.com/giris',
       portalUrl: 'https://app.meridyen-tr.com/giris',
     }),
@@ -165,7 +165,7 @@ write(
 write(
   'eksper-onay-verildi-mail.html',
   withSubjectBar(
-    raporOnaylandiSubject('Ray Sigorta', 'RCS-20261868899'),
+    raporOnaylandiSubject('Ray Sigorta', 'RCS-20261868899', 'Fidar'),
     buildRaporOnaylandiEmailHtml({
       insuranceCompanyName: 'Ray Sigorta',
       fileNo: 'RCS-20261868899',
@@ -179,7 +179,7 @@ write(
 );
 
 const expertRequestSubject = onarimRaporuRequestSubject('Ray Sigorta', 'RCS-20261868899');
-const approvedSubject = raporOnaylandiSubject('Ray Sigorta', 'RCS-20261868899');
+const approvedSubject = raporOnaylandiSubject('Ray Sigorta', 'RCS-20261868899', 'Fidar');
 
 write(
   'eksper-onay-konu.html',
@@ -231,7 +231,7 @@ write(
         <div class="subject">${approvedSubject}</div>
       </div>
       <div class="body">
-        Format: <code>Rapor Onaylandı-Sigorta Şirketi-Dosya Numarası</code>
+        Format: <code>Rapor Onaylandı (Eksper Ofisi)-Sigorta Şirketi-Dosya Numarası</code>
         <p style="margin:12px 0 0;"><a href="eksper-onay-verildi-mail.html">Gövde önizlemesi</a></p>
       </div>
     </div>
@@ -244,7 +244,7 @@ write(
         <div class="subject">${approvedSubject}</div>
       </div>
       <div class="body">
-        Format: <code>Rapor Onaylandı-Sigorta Şirketi-Dosya Numarası</code>
+        Format: <code>Rapor Onaylandı (Eksper Ofisi)-Sigorta Şirketi-Dosya Numarası</code>
         <p style="margin:12px 0 0;"><a href="rapor-onaylandi-mail.html">Gövde önizlemesi</a></p>
       </div>
     </div>

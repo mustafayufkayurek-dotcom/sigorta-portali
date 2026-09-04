@@ -26,6 +26,14 @@ export const MONTH_NAMES_TR = [
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
+export function monthlySurveyReportSubject(firmName: string, month: number, year: number): string {
+  const firm = String(firmName || '').trim();
+  const period = `${MONTH_NAMES_TR[month - 1]}-${year}`;
+  return firm
+    ? `${firm}-${period} Müşteri Memnuniyet Raporu`
+    : `${period} Müşteri Memnuniyet Raporu`;
+}
+
 export function previousCalendarMonth(now = new Date()): { year: number; month: number } {
   const month = now.getMonth() === 0 ? 12 : now.getMonth();
   const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
@@ -98,15 +106,21 @@ export class SurveyReportService {
         email: true,
         firstName: true,
         lastName: true,
-        userAssistantCustomerScopes: { select: { customerId: true } },
+        userAssistantCustomerScopes: {
+          select: {
+            customerId: true,
+            customer: { select: { companyName: true, fullName: true, shortName: true } },
+          },
+        },
       },
     });
     for (const user of assistanceUsers) {
       const ids = user.userAssistantCustomerScopes.map((s) => s.customerId);
       if (!ids.length) continue;
+      const scopedFirm = user.userAssistantCustomerScopes[0]?.customer;
       this.addMonthlyTarget(targets, seen, {
         kind: 'assistance',
-        name: `${user.firstName} ${user.lastName}`.trim() || 'Asistans firması',
+        name: firmName(scopedFirm) || `${user.firstName} ${user.lastName}`.trim() || 'Asistans firması',
         email: user.email,
         campaignWhere: { emergencyCase: { customerId: { in: ids } } },
       });
@@ -345,7 +359,7 @@ export class SurveyReportService {
         }
 
         const html = buildSurveyReportHtml(reportData);
-        const subject = `Meridyen Assistance – ${reportData.period} Müşteri Memnuniyet Raporu`;
+        const subject = monthlySurveyReportSubject(target.name, month, year);
 
         const sentMail = await this.emailService.sendEmail(target.email, subject, html);
         if (!sentMail.sent) {

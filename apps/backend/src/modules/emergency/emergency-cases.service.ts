@@ -22,6 +22,7 @@ import { ClaimEventEmailService } from '@/modules/notifications/email/claim-even
 import {
   buildFileClosureEmailHtml,
   buildFileClosureEmailPlaintext,
+  closureCardGreeting,
   customerFirmTitle,
   isMeridyenInternalMailbox,
   type FileClosureAudience,
@@ -1071,6 +1072,9 @@ export class EmergencyCasesService {
             fullName: true,
             firstName: true,
             lastName: true,
+            contactFirstName: true,
+            contactLastName: true,
+            authorizedPerson: true,
             subType: true,
           },
         },
@@ -1111,7 +1115,8 @@ export class EmergencyCasesService {
 
     const recipients = [...emailSet];
     const assistansName = customerFirmTitle(emergencyCase.customer);
-    const greetingName = 'Yetkili';
+    const greeting = closureCardGreeting(emergencyCase.customer);
+    const greetingName = greeting.replace(/,$/, '');
 
     const to = recipients.join(', ');
     const fileNo = emergencyCase.fileNo || emergencyCase.caseNo;
@@ -1146,6 +1151,7 @@ export class EmergencyCasesService {
     const closureData = {
       departmentName: 'Acil Yardım',
       organizationName: assistansName,
+      greeting,
       fileNo,
       insuranceCompanyName: '',
       fileSubject,

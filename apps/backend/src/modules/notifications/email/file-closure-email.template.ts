@@ -87,6 +87,31 @@ export function customerFirmTitle(c?: {
   return String(c?.companyName || c?.fullName || c?.shortName || '').trim();
 }
 
+/** Karttaki yetkili adı; yoksa Sn. Yetkili. */
+export function closureCardGreeting(
+  c?: {
+    contactFirstName?: string | null;
+    contactLastName?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    authorizedPerson?: string | null;
+  } | null,
+  contactFullName?: string | null,
+): string {
+  const fromContact = [c?.contactFirstName, c?.contactLastName].filter(Boolean).join(' ').trim();
+  const fromPerson = [c?.firstName, c?.lastName].filter(Boolean).join(' ').trim();
+  const name = (
+    fromContact
+    || String(contactFullName ?? '').trim()
+    || String(c?.authorizedPerson ?? '').trim()
+    || fromPerson
+  ).replace(/^(sayın|sn\.?)\s+/i, '').trim();
+  if (!name || /^(yetkili|kullanıcı|kullanici)$/i.test(name)) {
+    return 'Sn. Yetkili,';
+  }
+  return `Sn. ${name},`;
+}
+
 export function formatFileFeeWithVat(amount?: number | null): string {
   if (amount == null || !Number.isFinite(amount) || amount <= 0) return '—';
   const money = amount.toLocaleString('tr-TR', {

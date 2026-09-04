@@ -48,4 +48,28 @@ describe('acil sunum özeti boşluk LOCK', () => {
     assert.match(steps, /onChange=\{\(e\) => p\.onApprovalText\(withAcilOnayMetinOnEk\(e\.target\.value\)\)\}/);
     assert.match(steps, /acilOnayMetinGovde\(p\.approvalText\)\.trim\(\)/);
   });
+
+  it('Riziko adreste sunum kutusunda tekrarlanmaz', () => {
+    assert.match(steps, /Sunum özeti/);
+    assert.match(steps, /acil-onay-metin/);
+    assert.doesNotMatch(steps, /Sunum özeti[\s\S]{0,500}\{p\.approvalText\}/);
+  });
+
+  it('bütçe kutusunda dosya konusu durur', () => {
+    assert.match(steps, /acil-butce-dosya-konusu/);
+    assert.match(steps, /Dosya Konusu/);
+    assert.match(steps, /Bu Dosyanın Bütçesi/);
+    assert.match(steps, /p\.file\.subject/);
+  });
+
+  it('tespit yazısı adım değişince ve yenilemede kaybolmaz', () => {
+    const page = readFileSync(
+      join(here, '../../app/panel/acil-yardim/[id]/page.tsx'),
+      'utf8',
+    );
+    const panel = readFileSync(join(here, 'AcilOperasyonPlanlayiciPanel.tsx'), 'utf8');
+    assert.match(page, /draftFindingsRef/);
+    assert.match(page, /onNavigateStep/);
+    assert.match(panel, /onNavigateStep\?\./);
+  });
 });

@@ -8,7 +8,9 @@ import {
   onarimRaporuRequestSubject,
   organizationLineForMail,
   raporOnaylandiSubject,
+  yeniIhbarSubject,
   buildRaporOnaylandiEmailHtml,
+  buildNewClaimFileEmailHtml,
 } from './email.template';
 
 describe('buildWelcomeInviteEmailHtml', () => {
@@ -141,9 +143,11 @@ describe('rapor mail konuları', () => {
     expect(onarimRaporuRequestSubject('Ray Sigorta', 'RCS-20261868899')).toBe(
       'Ray Sigorta-RCS-20261868899-Onay Talep',
     );
-    expect(raporOnaylandiSubject('Ray Sigorta', 'RCS-20261868899')).toBe(
-      'Rapor Onaylandı-Ray Sigorta-RCS-20261868899',
+    expect(raporOnaylandiSubject('Ray Sigorta', 'RCS-20261868899', 'Fidar')).toBe(
+      'Rapor Onaylandı (Fidar)-Ray Sigorta-RCS-20261868899',
     );
+    expect(yeniIhbarSubject('Fidar')).toBe('Yeni İhbar-Fidar');
+    expect(yeniIhbarSubject('')).toBe('Yeni İhbar');
   });
 
   it('expert approved body follows rapor onaylandı shell without report no', () => {
@@ -164,6 +168,26 @@ describe('rapor mail konuları', () => {
     expect(html).not.toContain('Operasyon Bildirimi');
     expect(html).not.toContain('Rapor No');
     expect(html.indexOf('Ray Sigorta')).toBeLessThan(html.indexOf('Sn. Mehmet Kaya,'));
+  });
+});
+
+describe('buildNewClaimFileEmailHtml', () => {
+  it('uses transactional shell without Operasyon Bildirimi', () => {
+    const html = buildNewClaimFileEmailHtml({
+      fileNo: '49/19430902',
+      customer: 'Osem',
+      branch: 'diger',
+      priority: 'normal',
+      actionUrl: 'https://app.meridyen-tr.com/panel/hasar-dosyalari/abc',
+      portalUrl: 'https://app.meridyen-tr.com/giris',
+    });
+    expect(html).toContain('Yeni Hasar Dosyası');
+    expect(html).toContain('width="120"');
+    expect(html).toContain('49/19430902');
+    expect(html).toContain('Osem');
+    expect(html).toContain('Dosyayı Görüntüle');
+    expect(html).not.toContain('Operasyon Bildirimi');
+    expect(html).not.toContain('196px');
   });
 });
 

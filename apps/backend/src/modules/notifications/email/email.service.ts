@@ -291,4 +291,26 @@ export class EmailService {
 
     return this.sendTemplateEmail(to, subject, templateData);
   }
+
+  /** Tercih kapısı + hazır HTML (onaylı kabuk). */
+  async sendIfPreferredHtml(
+    userId: string,
+    preferenceKey: keyof Omit<import('@prisma/client').UserEmailPreferences, 'id' | 'userId' | 'user'>,
+    to: string,
+    subject: string,
+    html: string,
+    options?: EmailSendOptions,
+  ): Promise<EmailSendResult> {
+    const prefs = await this.prisma.userEmailPreferences.findUnique({
+      where: { userId },
+    });
+
+    const allowed = prefs ? Boolean((prefs as any)[preferenceKey]) : true;
+    if (!allowed) {
+      this.logger.debug(`Email atlandı (tercih kapalı) → userId: ${userId}, pref: ${preferenceKey}`);
+      return { sent: false, errorMsg: 'Kullanıcı e-posta tercihi kapalı.' };
+    }
+
+    return this.sendEmail(to, subject, html, options);
+  }
 }

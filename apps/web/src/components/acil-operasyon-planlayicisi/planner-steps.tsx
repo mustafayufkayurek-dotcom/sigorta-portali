@@ -272,7 +272,7 @@ function VendorPayConfirm(p: PlannerStepBodyProps) {
   const paidBy = (p.vendorPaidByName || p.vendorOdeme?.recordedByName || '').trim();
   const paidAt = p.vendorPaidAt || p.vendorOdeme?.recordedAt;
   return (
-    <Card title="Tedarikçi ödemesi">
+    <Card title="Tedarikçi Ödemesi">
       <p className="text-[11px] text-slate-500">
         Ödendi veya ödenmedi kaydı bu dosyada, finansa göndermeden önce sizin işinizdir.
         Finansa gittikten sonra Ödendi işlemini finans personeli yapar. İşlemi yapan adıyla kaydolur.
@@ -424,8 +424,22 @@ function FinanceVatBlock({
 }
 
 function BudgetCard(p: PlannerStepBodyProps) {
+  const konu = p.file.subject?.trim() || '—';
+  const konuBos = konu === '—';
   return (
-    <Card title="Bu dosyanın bütçesi">
+    <Card title="Bu Dosyanın Bütçesi">
+      <label className="mb-2.5 block text-[11px] font-semibold text-slate-600" data-testid="acil-butce-dosya-konusu">
+        Dosya Konusu
+        <span
+          className={`mt-1 block rounded-lg border px-2.5 py-2 text-xs font-medium ${
+            konuBos
+              ? 'border-amber-200 bg-amber-50 text-amber-900'
+              : 'border-slate-200 bg-slate-50 text-slate-900'
+          }`}
+        >
+          {konu}
+        </span>
+      </label>
       <div className="grid grid-cols-2 gap-2">
         <AmountField label="Alış" value={p.alis} onChange={p.onAlis} />
         <AmountField label="Satış" value={p.satis} onChange={p.onSatis} />
@@ -444,7 +458,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
   if (p.step === 'ihbar') {
     return (
       <div className="space-y-3">
-        <Card title="İhbar özeti">
+        <Card title="İhbar Özeti">
           <p className="text-[11px] text-slate-500">Müşteri mailinden içeri aktarılan kayıt.</p>
           <p className="mt-1 text-sm font-semibold text-slate-900">{p.file.insured}</p>
           <p className="mt-0.5 text-[11px] text-slate-500">
@@ -481,7 +495,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
           )}
         </Card>
         {p.skipVendorPicker ? null : (
-          <Card title="Önerilen tedarikçiler">
+          <Card title="Önerilen Tedarikçiler">
             <p className="mb-2 text-[11px] text-slate-500">İlk 3 açık. Diğer kayıtlılar kapalı.</p>
             <div className="space-y-1.5">
               {featured.map((v) => {
@@ -529,7 +543,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
           </Card>
         )}
         {p.assignedVendor ? (
-          <Card title="Atanan tedarikçi ve skor">
+          <Card title="Atanan Tedarikçi Ve Skor">
             <div className="flex items-start gap-2">
               <UserRound className="mt-0.5 h-4 w-4 text-slate-400" />
               <div>
@@ -585,7 +599,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
     const showMail = anaMusteriAllowsEmail(ch);
     return (
       <div className="space-y-3">
-        <Card title="Bedeli sun ve onay al">
+        <Card title="Bedeli Sun Ve Onay Al">
           <p className="text-[11px] text-slate-500">
             Ana müşteriye göre yöntem değişir. Genel zorunluluk yoktur.
           </p>
@@ -618,7 +632,6 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             <p className="mt-1 text-[11px] text-slate-500">Kime: {p.file.customerEmail || p.file.customer}</p>
             <p className="text-[11px] text-slate-500">Talep: {p.approvalRequestedAt}</p>
             <p className="text-[11px] text-slate-500">Karar: {p.approvalDecidedAt ?? 'Bekleniyor'}</p>
-            <p className="mt-2 whitespace-pre-wrap text-xs leading-snug text-slate-800">{p.approvalText}</p>
           </div>
           <textarea
             value={p.approvalText.startsWith(ACIL_ONAY_METIN_ON_EK) ? p.approvalText : withAcilOnayMetinOnEk(p.approvalText)}
@@ -662,7 +675,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             <Btn onClick={() => p.onApprovalState('reddedildi')}>Red</Btn>
           </div>
         </Card>
-        <Card title="Servis onay formu">
+        <Card title="Servis Onay Formu">
           <p className="text-[11px] text-slate-500" data-testid="acil-onay-dijital-evrak">
             {isAcilDigitalApprovalRequired()
               ? 'Acil’de muvafakatname yok. Dijital onay bu forma alınır. Vazgeçilmez.'
@@ -676,7 +689,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             <p className="mt-2 text-xs font-semibold text-slate-600">Zorunluluk 18:01’de geri gelir.</p>
           )}
         </Card>
-        <Card title="Sigortalı bilgilendirme">
+        <Card title="Sigortalı Bilgilendirme">
           <p className="text-[11px] text-slate-500">Sigortalı hattı WhatsApp. Onay sonrası haber verilir.</p>
           <div className="mt-2">
             <WaBtn
@@ -706,7 +719,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
   if (p.step === 'kapanis') {
     return (
       <div className="space-y-3">
-        <Card title="Tedarikçiden gelen görüntüler">
+        <Card title="Tedarikçiden Gelen Görüntüler">
           <p className="mb-2 text-[11px] text-slate-500">
             Gelen kutuya düşen resimler kapanış kontrolüne sayılır. Eksikse buradan da yüklenir.
             {(p.inboxPhotoCount ?? 0) > 0
@@ -729,7 +742,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             ) : null}
           </div>
         </Card>
-        <Card title="Hizmet verilme">
+        <Card title="Hizmet Verilme">
           <label className="flex items-center gap-2 text-xs text-slate-800" data-testid="acil-hizmet-verildi">
             <input
               type="checkbox"
@@ -749,7 +762,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
                 : 'Önce onay talep akışı tamamlansın.'}
           </p>
         </Card>
-        <Card title="Dosya kapanışı">
+        <Card title="Dosya Kapanışı">
           {p.fileClosed ? (
             <p className="text-xs font-semibold text-emerald-700">
               Dosya kapatıldı{p.file.closedAt ? ` · ${p.file.closedAt}` : ''}. Ana müşteriye kapanış maili otomatik gider.
@@ -784,7 +797,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
           </div>
         </Card>
         {p.fileClosed ? (
-          <Card title="Anket (tercihli)">
+          <Card title="Anket (Tercihli)">
             <p className="text-[11px] text-slate-500">Dosya kapandıktan sonra gönderilebilir. Kapatmayı kilitlemez.</p>
             <div className="mt-2">
               <WaBtn
@@ -811,18 +824,18 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
   return (
     <div className="space-y-3">
       <VendorPayConfirm {...p} />
-      <Card title="Finans aktarım özeti">
+      <Card title="Finans Aktarım Özeti">
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
             <p className="text-[10px] text-slate-400">Dosya</p>
             <p className="font-semibold text-slate-800">{p.file.fileNo}</p>
           </div>
           <div>
-            <p className="text-[10px] text-slate-400">Dosya konusu</p>
+            <p className="text-[10px] text-slate-400">Dosya Konusu</p>
             <p className="font-semibold text-slate-800">{p.file.subject || '—'}</p>
           </div>
           <div data-testid="acil-tedarikci-odeme-dokum">
-            <p className="text-[10px] text-slate-400">Hakediş ödeme</p>
+            <p className="text-[10px] text-slate-400">Hakediş Ödeme</p>
             <p className="font-semibold text-slate-800">
               {p.vendorPaid === true ? 'Ödendi' : p.vendorPaid === false ? 'Ödenmedi' : 'Kayıt yok'}
               {p.vendorOdeme

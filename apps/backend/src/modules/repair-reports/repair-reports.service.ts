@@ -1292,6 +1292,7 @@ export class RepairReportsService {
       where: { id: reportId },
       include: {
         createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+        expertOffice: { select: { shortName: true, companyName: true, fullName: true } },
         claimFile: {
           select: {
             id: true,
@@ -1339,6 +1340,11 @@ export class RepairReportsService {
         reportNo: report.reportNo,
         fileNo: (report.claimFile as any)?.fileNo ?? '',
         insuranceCompanyName: report.claimFile?.insuranceCompany?.name ?? '',
+        expertOfficeName:
+          report.expertOffice?.shortName
+          || report.expertOffice?.companyName
+          || report.expertOffice?.fullName
+          || '',
         approvedBy: approver ? `${approver.firstName} ${approver.lastName}` : '',
         claimFileId: report.claimFileId,
         reportId,

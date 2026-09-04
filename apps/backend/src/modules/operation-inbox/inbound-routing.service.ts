@@ -458,7 +458,7 @@ export class InboundRoutingService {
     if (!mf?.insuredPhone?.trim()) missing.push('Sigortalı telefonu');
     if (!mf?.insuredAddress?.trim()) missing.push('Sigortalı adresi');
     if (!mf?.fileNo?.trim() && !mf?.policyNo?.trim()) missing.push('Dosya / poliçe numarası');
-    if (!mf?.fileSubject?.trim()) missing.push('Dosya konusu');
+    if (!mf?.fileSubject?.trim()) missing.push('Dosya Konusu');
     if (!mf?.lossType?.trim()) missing.push('Hasar şekli / hizmet türü');
     return missing;
   }

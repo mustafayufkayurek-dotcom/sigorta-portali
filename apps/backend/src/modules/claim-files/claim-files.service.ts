@@ -12,6 +12,7 @@ import { EmailService } from '@/modules/notifications/email/email.service';
 import {
   buildFileClosureEmailHtml,
   buildFileClosureEmailPlaintext,
+  closureCardGreeting,
   customerFirmTitle,
   isMeridyenInternalMailbox,
   type FileClosureAudience,
@@ -1666,6 +1667,7 @@ export class ClaimFilesService {
           currentStatus: true,
           customer: true,
           propertyAddress: true,
+          claimSubject: { select: { name: true } },
           assignedFieldUser: { select: { id: true, firstName: true, lastName: true, email: true } },
           assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, email: true } },
         },
@@ -1735,8 +1737,8 @@ export class ClaimFilesService {
         });
       }
 
-      // Email: Yeni dosya oluşturma bildirimi
-      if (this.claimEventEmail) {
+      // Email: Yeni dosya oluşturma bildirimi (gelen kutu kendi kartını gönderir)
+      if (this.claimEventEmail && sourceChannel !== 'email_inbox') {
         const recipients: Array<{ id: string; email: string }> = [];
         if (created.assignedFieldUser && (created.assignedFieldUser as any).email) {
           recipients.push({ id: created.assignedFieldUserId!, email: (created.assignedFieldUser as any).email });
@@ -1744,15 +1746,30 @@ export class ClaimFilesService {
         if (created.assignedOfficeUser && (created.assignedOfficeUser as any).email) {
           recipients.push({ id: created.assignedOfficeUserId!, email: (created.assignedOfficeUser as any).email });
         }
+        const customerLongName = (
+          (created.customer as any)?.companyName
+          || (created.customer as any)?.fullName
+          || ''
+        ).trim();
+        const expertOfficeShortName = await this.resolveExpertOfficeShortName({
+          customer: created.customer,
+          assignedAdjusterId: created.assignedAdjusterId,
+        });
         for (const r of recipients) {
           void this.claimEventEmail.onNewClaimFile({
             recipientEmail: r.email,
             recipientUserId: r.id,
             fileNo: created.fileNo,
-            customer: customerName,
-            branch: created.productBranch,
-            priority: created.priority,
             claimFileId: created.id,
+            customerLongName,
+            insuranceCompanyName: created.insuranceCompany?.name ?? null,
+            fileSubject: (created as any).claimSubject?.name || created.lossType,
+            insuredName: created.insuredName,
+            city: (created as any)?.propertyAddress?.city ?? null,
+            district: (created as any)?.propertyAddress?.district ?? null,
+            address: (created as any)?.propertyAddress?.addressLine ?? null,
+            notificationAt: created.notificationDate || created.createdAt,
+            expertOfficeShortName,
           });
         }
       }
@@ -2395,6 +2412,37 @@ export class ClaimFilesService {
     }
   }
 
+  private async resolveExpertOfficeShortName(params: {
+    customer?: {
+      subType?: string | null;
+      shortName?: string | null;
+      companyName?: string | null;
+      fullName?: string | null;
+    } | null;
+    assignedAdjusterId?: string | null;
+  }): Promise<string> {
+    const sub = String(params.customer?.subType || '');
+    if (sub === 'eksper_firmasi' || sub === 'eksper') {
+      return String(params.customer?.shortName || '').trim();
+    }
+    if (!params.assignedAdjusterId) return '';
+    const user = await this.prisma.user.findUnique({
+      where: { id: params.assignedAdjusterId },
+      select: { adjuster: { select: { company: true } } },
+    });
+    const company = String(user?.adjuster?.company || '').trim();
+    if (!company) return '';
+    const office = await this.prisma.customer.findFirst({
+      where: {
+        status: 'active',
+        subType: { in: ['eksper_firmasi', 'eksper'] },
+        OR: [{ companyName: company }, { fullName: company }, { shortName: company }],
+      },
+      select: { shortName: true },
+    });
+    return String(office?.shortName || '').trim();
+  }
+
   /**
    * Hasar dosya kapanışı — sigorta, eksper, broker, asistans.
    * Meridyen personeline bu görsel gitmez (onlar onClaimClosed alır).
@@ -2434,14 +2482,19 @@ export class ClaimFilesService {
       fileFeeAmount = Number(approved?.totalSalesAmount || 0);
     }
 
-    type Dispatch = { email: string; organizationName: string; audience: FileClosureAudience };
+    type Dispatch = { email: string; organizationName: string; audience: FileClosureAudience; greeting: string };
     const seen = new Set<string>();
     const dispatches: Dispatch[] = [];
-    const add = (raw: string | null | undefined, organizationName: string, audience: FileClosureAudience) => {
+    const add = (
+      raw: string | null | undefined,
+      organizationName: string,
+      audience: FileClosureAudience,
+      greeting = 'Sn. Yetkili,',
+    ) => {
       const email = String(raw || '').trim().toLowerCase();
       if (!email || !email.includes('@') || seen.has(email) || isMeridyenInternalMailbox(email)) return;
       seen.add(email);
-      dispatches.push({ email, organizationName: organizationName.trim(), audience });
+      dispatches.push({ email, organizationName: organizationName.trim(), audience, greeting });
     };
 
     add(claimFile.insuranceCompany?.contactEmail, insuranceCompanyName, 'other');
@@ -2450,42 +2503,61 @@ export class ClaimFilesService {
       where: { claimFileId, expertOfficeId: { not: null } },
       select: {
         expertOffice: {
-          select: { email: true, companyName: true, fullName: true, shortName: true },
+          select: {
+            email: true,
+            companyName: true,
+            fullName: true,
+            shortName: true,
+            contactFirstName: true,
+            contactLastName: true,
+            firstName: true,
+            lastName: true,
+            authorizedPerson: true,
+          },
         },
       },
       take: 20,
     });
     for (const row of expertOfficeRows) {
-      add(row.expertOffice?.email, customerFirmTitle(row.expertOffice), 'other');
+      add(
+        row.expertOffice?.email,
+        customerFirmTitle(row.expertOffice),
+        'other',
+        closureCardGreeting(row.expertOffice),
+      );
     }
     add(
       claimFile.assignedAdjuster?.email || claimFile.assignedAdjuster?.adjuster?.email,
       String(claimFile.assignedAdjuster?.adjuster?.company || '').trim()
         || `${claimFile.assignedAdjuster?.firstName || ''} ${claimFile.assignedAdjuster?.lastName || ''}`.trim(),
       'other',
+      closureCardGreeting(null, `${claimFile.assignedAdjuster?.firstName || ''} ${claimFile.assignedAdjuster?.lastName || ''}`.trim()),
     );
 
     const customerSubType = String(claimFile.customer?.subType || '').trim();
     const customerTitle = customerFirmTitle(claimFile.customer);
+    const customerGreeting = closureCardGreeting(claimFile.customer);
     if (customerSubType === 'asistan_firmasi') {
-      add(claimFile.customer?.email, customerTitle, 'assistance');
+      add(claimFile.customer?.email, customerTitle, 'assistance', customerGreeting);
     } else if (customerSubType === 'broker_firmasi') {
-      add(claimFile.customer?.email, customerTitle, 'other');
+      add(claimFile.customer?.email, customerTitle, 'other', customerGreeting);
     } else if (customerSubType === 'eksper_firmasi' || customerSubType === 'eksper') {
-      add(claimFile.customer?.email, customerTitle, 'other');
+      add(claimFile.customer?.email, customerTitle, 'other', customerGreeting);
     }
 
     const contacts = claimFile.customer?.id
       ? await this.prisma.customerContact.findMany({
           where: { customerId: claimFile.customer.id, email: { not: null } },
-          select: { email: true },
+          select: { email: true, name: true },
           take: 10,
         })
       : [];
     if (customerSubType === 'asistan_firmasi' || customerSubType === 'broker_firmasi'
       || customerSubType === 'eksper_firmasi' || customerSubType === 'eksper') {
       const audience: FileClosureAudience = customerSubType === 'asistan_firmasi' ? 'assistance' : 'other';
-      for (const contact of contacts) add(contact.email, customerTitle, audience);
+      for (const contact of contacts) {
+        add(contact.email, customerTitle, audience, closureCardGreeting(claimFile.customer, contact.name));
+      }
     }
 
     if (!dispatches.length) {
@@ -2498,6 +2570,7 @@ export class ClaimFilesService {
       const data = {
         departmentName,
         organizationName: item.organizationName,
+        greeting: item.greeting,
         fileNo,
         insuranceCompanyName,
         fileSubject,
