@@ -17,7 +17,9 @@ if node --experimental-strip-types -e "process.exit(0)" >/dev/null 2>&1; then
     apps/web/src/utils/acil-supplier-assignment.lock.spec.ts \
     apps/web/src/utils/ops-first-run-notice.lock.spec.ts \
     apps/backend/src/modules/vendors/acil-supplier-recommendation.lock.spec.ts \
-    packages/shared/src/acil-vendor-quality.lock.spec.ts
+    packages/shared/src/acil-vendor-quality.lock.spec.ts \
+    apps/web/src/utils/vendor-form-helpers.lock.spec.ts \
+    apps/backend/src/modules/system-settings/vendor-types-permission.lock.spec.ts
 else
   echo "PASS: lock.spec atlandı (sunucu Node .ts strip yok) — kaynak kilidi yeterli"
 fi

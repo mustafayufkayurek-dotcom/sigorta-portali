@@ -22,6 +22,7 @@ import {
   type PlannerInspector,
   type PlannerSupplier,
 } from './claim-snapshot';
+import { resolvePlannerEntry } from './planner-live-rules';
 
 /** FINAL referans — sol kenar akış renkleri */
 const C = {
@@ -153,7 +154,10 @@ function PlanlayiciInner({
           </h2>
           <button
             type="button"
-            onClick={() => setDrawerOpen(true)}
+            onClick={() => {
+              if (claim.fileClosed) setActiveStep('file_close');
+              setDrawerOpen(true);
+            }}
             className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
           >
             Operasyon Planlayıcısı
@@ -419,8 +423,9 @@ export function OperasyonPlanlayiciPanel({
   const [snapshot, setSnapshot] = useState<PlannerClaimSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeStep, setActiveStep] = useState<StepId>('insured_appointment');
+  const entryAppliedRef = useRef(false);
 
   /** Parent claim / callback her render’da değişir — load bağımlılığına alma (flicker döngüsü). */
   const claimFileRef = useRef(claimFile);
@@ -542,8 +547,20 @@ export function OperasyonPlanlayiciPanel({
   );
 
   useEffect(() => {
+    entryAppliedRef.current = false;
+  }, [claimId]);
+
+  useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!snapshot || entryAppliedRef.current) return;
+    entryAppliedRef.current = true;
+    const entry = resolvePlannerEntry(snapshot.stepStatuses, snapshot.fileClosed);
+    setActiveStep(entry.step);
+    setDrawerOpen(entry.openDrawer);
+  }, [snapshot]);
 
   if (loading && !snapshot) {
     return <p className="py-10 text-center text-sm text-slate-400">Operasyon planlayıcısı yükleniyor...</p>;

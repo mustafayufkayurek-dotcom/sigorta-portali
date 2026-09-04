@@ -3,7 +3,7 @@
  * Renk/etiket bu bayraklardan türetilir; JSX içinde sabit status yok.
  */
 
-import { isPlannerStepOnScreen, type StepId, type StepStatus } from './types';
+import { isPlannerStepOnScreen, PLANNER_VISIBLE_STEPS, type StepId, type StepStatus } from './types';
 
 export type PlannerActivityItem = {
   action?: string | null;
@@ -226,6 +226,19 @@ export function computePlannerStepStatuses(
     }
   }
   return result;
+}
+
+/** Kapalı dosyada çekmece kapalı + kapanış adımı; açıkta sıradaki iş. */
+export function resolvePlannerEntry(
+  statuses: Record<StepId, StepStatus>,
+  fileClosed: boolean,
+): { step: StepId; openDrawer: boolean } {
+  if (fileClosed) {
+    return { step: 'file_close', openDrawer: false };
+  }
+  const waiting = PLANNER_VISIBLE_STEPS.find((s) => statuses[s.id] === 'waiting');
+  if (waiting) return { step: waiting.id, openDrawer: true };
+  return { step: PLANNER_VISIBLE_STEPS[0]?.id ?? 'insured_appointment', openDrawer: true };
 }
 
 export function plannerProgressText(step: StepId, status: StepStatus): string {
