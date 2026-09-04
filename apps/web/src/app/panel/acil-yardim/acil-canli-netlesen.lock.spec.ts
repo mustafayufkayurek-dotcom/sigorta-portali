@@ -170,7 +170,7 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(steps, /acil-finans-kdv/);
     assert.match(acilPage, /alisVatMode: displayAlisVat/);
     assert.match(acilPage, /satisVatMode: displaySatisVat/);
-    assert.match(steps, /Anket \(tercihli\)/);
+    assert.match(steps, /Anket \(Tercihli\)/);
     assert.match(acilPage, /data-testid="acil-onay-evrak"/);
     assert.match(acilPage, /FileDocumentPanel/);
     assert.match(acilPage, /documentKind="matbu_evrak"/);
