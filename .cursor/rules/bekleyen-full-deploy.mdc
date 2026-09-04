@@ -1,21 +1,23 @@
 ---
-description: Full deploy v559 alındı — sırada ihbar maili, hoş geldin, İK, Acil servis formu+bütçe
+description: Full deploy v560 alındı — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Full deploy v559 (03.09.2026) — alındı
+# Full deploy v560 (04.09.2026) — alındı
 
-Canlı: web **v559** · backend **v559**. Rollback: web v558 / backend v558.
+Canlı: web **v560** · backend **v560**. Rollback: web v559 / backend v559.
 
-## Alınan paket (v559 full)
+## Alınan paket (v560 full)
 
-**Eksper liste + günlük sütun kaydırma + müşteri dosya sayısı + sağ panel sayfa geçişi + hasar KPI kapsam.**
+**Yeni ihbar maili + hoş geldin (eksper/sigorta/broker/asistans) + Acil servis onay formu ve bütçe Dosya Konusu.** İK yok.
 
-1. Eksper portal Dosyalar: satırda Dosya Detayı + Not Yaz; menüde Evraklar / Geçmiş / Silme Talebi; Oluşturulma Tarihi orta.
-2. Günlük listelerde sütun sırası + yatay kaydırma (Hasar, Operasyon, Müşteriler, Tedarikçiler, Finans listeleri, raporlar).
-3. Müşteri hover / liste / kart: asistan ve sigorta kartlarında gerçek dosya (hasar + acil + eşleşen şirket); açık / kapanan doğru.
-4. Sağ panel yana kaydırınca başka sayfaya gidilse de şerit durur; tıklayınca kaldığı yerden açılır.
-5. Hasar dosya sorumlusu KPI kartı: red/kapanış açık sayılmaz; rapor yazımı taslak artığı şişirmez.
+1. Yeni ihbar: konu **Yeni İhbar-{Eksper Ofisi Kısa Ad}**, bant **Yeni İhbar Dosyası**, rozet Hasar / Acil Yardım Departmanı, **Operasyon Bildirimi yok**.
+2. Hoş geldin: logo 120px, **Meridyen'e Giriş Yap**, geçici şifrede Kopyala yazısı yok; eksper / sigorta-broker / asistans metinleri onaylı. Personel hoş geldin aynı. **Operasyon Bildirimi yok.**
+3. Acil servis formu: Hasar rapor kabuğu; tarih Ana Müşteri üstünde; kısa ad; matrah + KDV + hizmet bedeli; tedarikçi yok; dijital onay izi. Operasyonu Başlat → **Bu Dosyanın Bütçesi** → **Dosya Konusu**.
+
+## v559 durur (bozulmaz)
+
+Eksper liste, sütun kaydırma, müşteri dosya sayısı, sağ panel sayfa geçişi, hasar KPI kapsam.
 
 ## v558 durur (bozulmaz)
 
@@ -25,22 +27,12 @@ Finans Faturalar müşteri sütunu, işlem ikonları, bildirim, düzenleme neden
 
 Kapalı dosyada evrak kırmızısı, hakediş yalnız bu dosya, Acil tespit bulgusu.
 
-## v556 durur (bozulmaz)
-
-Tahsilat FK, ofis kapanış/iptal, Acil tespit persist, sağ panel kaydır (aynı sayfa).
-
 ## Canlıda yok
 
-Hoş geldin maili (eksper + sigorta + broker + asistans, 04.09.2026 lokal onay). Yeni ihbar maili. İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj karışmaz. Hasar rapor tipi. Acil tedarikçi türü kutusu. **Acil servis onay formu + bütçe Dosya Konusu** (04.09.2026 lokal; mail paketleriyle karışmaz).
+İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj karışmaz. Hasar rapor tipi. Acil tedarikçi türü kutusu.
 
 ## Sırada (karışmaz)
 
-1. **Yeni ihbar maili:** 1 Eylül onaylı kart. Konu **Yeni İhbar-{Eksper Ofisi Kısa Ad}**. Bant başlığı **Yeni İhbar Dosyası**. Rozet Hasar / Acil Yardım Departmanı. Bantta müşteri uzun ünvanı. Tablo **Dosya Bilgileri** (İhbar Tarihi → Sigorta/Asistan → Dosya No → Konu → Sigortalı → Adres). Ortada Dosyayı Görüntüle. **Operasyon Bildirimi yok.** Bu pakette kapanış / anket / onay / şifre kabuğuna dokunulmaz. Hoş geldin ayrı pakettir.
-2. **Hoş geldin maili (04.09.2026 lokal onay — eksper + sigorta + broker + asistans):** Personel hoş geldin aynı kalır. Lacivert üst bant durur. **Meridyen'e Giriş Yap** tek düğme. Geçici şifrede **Kopyala** yazısı yok; ikon satır değil, şifre üzerine gelince çıkar. Logo 120px. **Operasyon Bildirimi yok.** Kapanış / anket / onay / şifre kabuğuna dokunulmaz.
-   - **Eksper:** Konu **Meridyen Hasar Yönetim Platformu'na Hoş Geldiniz**. Selamlama **Değerli Eksperimiz ve Ekibi;** kişisel isim yok. Çerçeve: **Meridyen Hasar Yönetim Platformu;** + yenilendik. **Platformla neler yapabilirsiniz?** maddeleri.
-   - **Sigorta ve broker:** Konu **Meridyen Hasar Yönetim Platformu -> Dosya İzleme Erişiminiz Hazır**. Firma + Sayın Ad Soyad. Kutu etiketi **Sizin İçin Ne Değişiyor?** + yenilendik. Gri paragraf. Liste **Platform ile Neler Yapabilirsiniz?** (`:` öncesi kalın).
-   - **Asistans:** Konu ve bant **Meridyen Dosya Yönetim Platformu'na Hoş Geldiniz**. Firma + Sayın Ad Soyad. Kutu: ihbardan kapanış + **yenilendik**. Gri paragraf: tedarikçi nerede. Liste **Platform ile Neler Yapabilirsiniz?** (Dosya Yönetimi, Dijital Evrak ve Onay, Otomatik Kapanış Raporu, Anket Sonuçları).
-3. **İK personel özlük:** Personel Ekle + zimmet aynı kayıtta. Puantaj ayrı.
-4. **Acil servis onay formu + bütçe (04.09.2026 lokal):** Hasar onarım raporu kabuğu. Tarih Ana Müşteri üstünde. Ana Müşteri kısa ad. Hizmet bedeli: Matrah (KDV hariç) + KDV (%20) + Hizmet Bedeli (KDV dahil). Formda tedarikçi yok. Dijital onay izi form sonunda. Operasyonu Başlat → **Bu Dosyanın Bütçesi** → **Dosya Konusu** (`issue_type` / üst bantla aynı). Başlık yazımı her kelime büyük. Sigortalı evrakta hizmet bedeli durur. **Yeni ihbar / hoş geldin / kapanış maili ve İK bu pakete karışmaz.** Sıra (1–3) durur; Mustafa öne alırsa o gün söyler.
+1. **İK personel özlük:** Personel Ekle + zimmet aynı kayıtta. Puantaj ayrı.
 
 Alım yalnız Mustafa «canlıya al» deyince.
