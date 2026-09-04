@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-09-04",
-  "label": "v560-ihbar-hosgeldin-acil-form",
-  "description": "Full: yeni ihbar maili, hoş geldin (eksper/sigorta/broker/asistans), Acil servis onay formu + bütçe Dosya Konusu. Logo 120px, Operasyon Bildirimi yok (onaylı mailler). İK personel+zimmet yok. Rollback web v559 / backend v559.",
+  "updatedAt": "2026-09-05",
+  "label": "v561-hasar-cekmece-acil-tur",
+  "description": "Full: Hasar planlayıcı kapalı dosyada çekmece kapalı / açıkta sıradaki iş; Acil tedarikçi türü kutusu (yetki + açılır liste). v560 mail/form durur. İK yok. Rollback web v560 / backend v560.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v560-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v560-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v561-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v561-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v559-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v559-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v560-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v560-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

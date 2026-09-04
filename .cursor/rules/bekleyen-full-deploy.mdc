@@ -1,35 +1,30 @@
 ---
-description: Full deploy v560 alındı — sırada yalnız İK personel+zimmet
+description: Full deploy v561 alındı — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Full deploy v560 (04.09.2026) — alındı
+# Full deploy v561 (05.09.2026) — alındı
 
-Canlı: web **v560** · backend **v560**. Rollback: web v559 / backend v559.
+Canlı: web **v561** · backend **v561**. Rollback: web v560 / backend v560.
 
-## Alınan paket (v560 full)
+## Alınan paket (v561 full)
 
-**Yeni ihbar maili + hoş geldin (eksper/sigorta/broker/asistans) + Acil servis onay formu ve bütçe Dosya Konusu.** İK yok.
+**Hasar planlayıcı çekmece girişi + Acil tedarikçi türü kutusu.** İK yok.
 
-1. Yeni ihbar: konu **Yeni İhbar-{Eksper Ofisi Kısa Ad}**, bant **Yeni İhbar Dosyası**, rozet Hasar / Acil Yardım Departmanı, **Operasyon Bildirimi yok**.
-2. Hoş geldin: logo 120px, **Meridyen'e Giriş Yap**, geçici şifrede Kopyala yazısı yok; eksper / sigorta-broker / asistans metinleri onaylı. Personel hoş geldin aynı. **Operasyon Bildirimi yok.**
-3. Acil servis formu: Hasar rapor kabuğu; tarih Ana Müşteri üstünde; kısa ad; matrah + KDV + hizmet bedeli; tedarikçi yok; dijital onay izi. Operasyonu Başlat → **Bu Dosyanın Bütçesi** → **Dosya Konusu**.
+1. Hasar dosyası: kapalıysa çekmece kapalı; Operasyon Planlayıcısı kapanış adımını açar. Açıksa çekmece sıradaki bekleyen adımda açılır.
+2. Tedarikçiler → Yeni Tedarikçi: Acil kayıtta **Tedarikçi Türü** açılır (Taşeron / Malzeme / Lojistik / Ekipman / Diğer). Liste tedarikçi gören/ekleyen yetkisiyle gelir.
+
+## v560 durur (bozulmaz)
+
+Yeni ihbar maili, hoş geldin (eksper/sigorta/broker/asistans), Acil servis formu + bütçe Dosya Konusu.
 
 ## v559 durur (bozulmaz)
 
 Eksper liste, sütun kaydırma, müşteri dosya sayısı, sağ panel sayfa geçişi, hasar KPI kapsam.
 
-## v558 durur (bozulmaz)
-
-Finans Faturalar müşteri sütunu, işlem ikonları, bildirim, düzenleme nedeni, sütun kaydırma.
-
-## v557 durur (bozulmaz)
-
-Kapalı dosyada evrak kırmızısı, hakediş yalnız bu dosya, Acil tespit bulgusu.
-
 ## Canlıda yok
 
-İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj karışmaz. Hasar rapor tipi. Acil tedarikçi türü kutusu.
+İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj karışmaz. Hasar rapor tipi.
 
 ## Sırada (karışmaz)
 
