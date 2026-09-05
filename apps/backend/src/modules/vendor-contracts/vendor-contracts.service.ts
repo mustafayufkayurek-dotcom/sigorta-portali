@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { buildAppPath } from '@/common/utils/app-url';
@@ -43,6 +44,12 @@ function partyIdLine(identityNo?: string | null, taxNumber?: string | null): str
 function partyAddressLine(parts: Array<string | null | undefined>): string {
   const s = parts.map((p) => (p ?? '').trim()).filter(Boolean).join(', ');
   return s || 'Kayıtta yok';
+}
+
+function vendorContractWorkItemsJson(
+  ...args: Parameters<typeof wrapVendorContractWorkItems>
+): Prisma.InputJsonValue {
+  return wrapVendorContractWorkItems(...args) as unknown as Prisma.InputJsonValue;
 }
 
 @Injectable()
@@ -174,7 +181,7 @@ export class VendorContractsService {
     const existingReq = readVendorContractCorrectionRequest(contract.workItems);
     const items = unwrapVendorContractWorkItems(contract.workItems);
     const kind = readVendorContractKind(contract.workItems);
-    const workItems = wrapVendorContractWorkItems(
+    const workItems = vendorContractWorkItemsJson(
       kind,
       items,
       existingReq
@@ -212,7 +219,7 @@ export class VendorContractsService {
       requestedAt: new Date().toISOString(),
       status: 'pending',
     };
-    const workItems = wrapVendorContractWorkItems(
+    const workItems = vendorContractWorkItemsJson(
       readVendorContractKind(contract.workItems),
       unwrapVendorContractWorkItems(contract.workItems),
       { correctionRequest },
@@ -275,7 +282,7 @@ export class VendorContractsService {
         fileNo: draft.fileNo,
         insuranceCompanyName: draft.insuranceCompanyName,
         damageAddress: draft.damageAddress,
-        workItems: wrapVendorContractWorkItems(draft.kind, draft.workItems),
+        workItems: vendorContractWorkItemsJson(draft.kind, draft.workItems),
         renderedContent,
         status: 'draft',
         publicToken,
@@ -729,70 +736,6 @@ export class VendorContractsService {
   }
 
   // ── HTML Şablonu ──────────────────────────────────────────────────────────
-
-  private buildSimpleApprovalHtml(opts: {
-    contractNo: string;
-    contractDate: Date;
-    fileNo: string;
-    insuranceCompanyName: string;
-    vendorName: string;
-    vendorIdLine: string;
-    vendorAddressLine: string;
-    insuredName: string;
-    insuredIdLine: string;
-    insuredAddressLine: string;
-    damageAddress: string;
-    totalLabel: string;
-    logoUrl: string;
-    companyName: string;
-    companyAddress: string;
-  }): string {
-    const contractNo = escHtml(opts.contractNo);
-    const fileNo = escHtml(opts.fileNo);
-    const insuranceCompanyName = escHtml(opts.insuranceCompanyName || '—');
-    const vendorName = escHtml(opts.vendorName);
-    const vendorIdLine = escHtml(opts.vendorIdLine);
-    const vendorAddressLine = escHtml(opts.vendorAddressLine);
-    const insuredName = escHtml(opts.insuredName || '—');
-    const insuredIdLine = escHtml(opts.insuredIdLine);
-    const insuredAddressLine = escHtml(opts.insuredAddressLine);
-    const damageAddress = escHtml(opts.damageAddress || 'Kayıtta yok');
-    const totalLabel = escHtml(opts.totalLabel);
-    const logoUrl = escHtml(opts.logoUrl);
-    const companyName = escHtml(opts.companyName);
-
-    return `<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8">
-  <title>Dijital Onay - ${contractNo}</title>
-  <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; color: #1f2937; margin: 0; padding: 24px; }
-${DOCUMENT_HEADER_STYLES}
-  </style>
-</head>
-<body>
-  ${renderDocumentHeaderHtml({ logoUrl, companyName, companyAddress: opts.companyAddress })}
-  <h1 style="font-size:18px;color:#1a4080;margin:16px 0 8px">Tedarikçi Dijital Onayı</h1>
-  <p style="color:#6b7280;margin:0 0 16px">100.000 TL altı işler için kısa onay. WhatsApp yazışması kayıt olarak durur; asıl onay sayfada adıyla tamamlanır.</p>
-  <table style="width:100%;border-collapse:collapse;font-size:13px">
-    <tr><td style="padding:6px 0;color:#6b7280;width:160px">Onay No</td><td style="font-weight:600">${contractNo}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">Dosya No</td><td style="font-weight:600">${fileNo}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">Tarih</td><td>${escHtml(opts.contractDate.toLocaleDateString('tr-TR'))}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">Sigorta</td><td>${insuranceCompanyName}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">Tedarikçi</td><td>${vendorName}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">Tedarikçi TC / Vergi</td><td>${vendorIdLine}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">Tedarikçi Adresi</td><td>${vendorAddressLine}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">Sigortalı</td><td>${insuredName}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">Sigortalı TC / Vergi</td><td>${insuredIdLine}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">Sigortalı Adresi</td><td>${insuredAddressLine}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">Hasar Adresi</td><td>${damageAddress}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280">İş Bedeli</td><td style="font-weight:700">${totalLabel}</td></tr>
-  </table>
-  <p style="margin-top:20px;line-height:1.6">Bu sayfada adını yazarak onaylayan tedarikçi, yukarıdaki dosyada belirtilen işi kabul ettiğini beyan eder.</p>
-</body>
-</html>`;
-  }
 
   private buildContractHtml(opts: {
     contractNo: string;
