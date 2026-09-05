@@ -195,14 +195,17 @@ export function FaturaTalepleriSection({ onOzetChange }: FaturaTalepleriSectionP
 
   const applyUpdated = (updated: InvoiceRequest) => {
     setTalepler((list) => {
-      const next = list.map((t) => {
+      const next = list.map((t): InvoiceRequest => {
         if (t.id !== updated.id) return t;
+        const issueType = updated.emergencyCase?.issueType ?? t.emergencyCase?.issueType;
+        if (!updated.emergencyCase && !t.emergencyCase) return updated;
         return {
           ...updated,
           emergencyCase: {
-            ...t.emergencyCase,
-            ...updated.emergencyCase,
-            issueType: updated.emergencyCase?.issueType ?? t.emergencyCase?.issueType,
+            caseNo: updated.emergencyCase?.caseNo ?? t.emergencyCase?.caseNo ?? updated.fileNo,
+            id: updated.emergencyCase?.id ?? t.emergencyCase?.id ?? updated.emergencyCaseId ?? updated.id,
+            customerName: updated.emergencyCase?.customerName ?? t.emergencyCase?.customerName,
+            issueType,
           },
         };
       });
