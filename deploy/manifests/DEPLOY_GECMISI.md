@@ -8,18 +8,23 @@
 
 ---
 
-## Canlı durum (5 Eylül 2026 — web v564 / backend v563)
+## Canlı durum (5 Eylül 2026 — web v565 / backend v563)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v564-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v565-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v563-amd64` | durur |
-| **Rollback** | Web **v563** / Backend **v563** | manifest `rollbackImages` |
-| **Etiket** | `v564-tedarikci-kimlik-yazi` | |
+| **Rollback** | Web **v564** / Backend **v563** | manifest `rollbackImages` |
+| **Etiket** | `v565-tedarikci-kimlik-buyuk-harf` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v565 — Web (5 Eylül 2026) — Vergi No Eksik / TC No Eksik
+
+- Eksik baş harfi büyük. Backend v563 durur. İK yok
+- Rollback web **v564** / backend **v563**
 
 ### v564 — Web (5 Eylül 2026) — Tedarikçi Vergi No / TC No eksik
 

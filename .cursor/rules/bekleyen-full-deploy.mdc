@@ -1,27 +1,22 @@
 ---
-description: Web v564 alındı — backend v563 — sırada yalnız İK personel+zimmet
+description: Web v565 alındı — backend v563 — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Web v564 (05.09.2026) — alındı
+# Web v565 (05.09.2026) — alındı
 
-Canlı: web **v564** · backend **v563**. Rollback: web v563 / backend v563.
+Canlı: web **v565** · backend **v563**. Rollback: web v564 / backend v563.
 
-## Alınan paket (v564 web)
+## Alınan paket (v565 web)
 
-**Tedarikçi listesinde eksik kimlik yazısı.** İK yok.
+**Vergi No Eksik / TC No Eksik.** İK yok.
 
 1. Şahıs: ismin altında **TC No Eksik**. Şirket: **Vergi No Eksik**.
-2. Liste kabuğu sade (üstte sarı şerit yok). Dar sütunda yazı kesilmez.
-3. Düzenle ile numara yazılır; yoksa sözleşme çıkmaz.
+2. Liste kabuğu sade. Dar sütunda yazı kesilmez.
 
-## v563 durur (bozulmaz)
+## v564 / v563 durur (bozulmaz)
 
-Kimlik sayısı API’de durur. Sözleşme/kimlik kilidi v562 ile aynı.
-
-## v562 durur (bozulmaz)
-
-Hasar tedarikçi sözleşmesi tek metin; dosya sorumlusu görür, yönetici düzeltir; TC/vergi zorunlu; iş tanımı kaydı.
+Kimlik yazısı ve sözleşme kilidi durur. Backend v563.
 
 ## Canlıda yok
 
