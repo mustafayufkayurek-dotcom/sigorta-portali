@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (5 Eylül 2026 — web v566 / backend v566)
+## Canlı durum (5 Eylül 2026 — web v567 / backend v567)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v566-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v566-amd64` | canlı |
-| **Rollback** | Web **v565** / Backend **v563** | manifest `rollbackImages` |
-| **Etiket** | `v566-fatura-talep-acil` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v567-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v567-amd64` | canlı |
+| **Rollback** | Web **v566** / Backend **v566** | manifest `rollbackImages` |
+| **Etiket** | `v567-acil-kesilen-fatura` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v567 — Full (5 Eylül 2026) — Acil kesilen fatura; kartlar tam özet
+
+- Acil Faturalandı Kesilen Faturalar’a düşer; Hasar ciro/kârı karışmaz
+- Finans kesilen kartları ve Asistans Faturalar kesilen özetten
+- Tablo: Acil fatura Hasar dosyasına bağlanmaz
+- Rollback web+backend **v566**. İK yok
 
 ### v566 — Full (5 Eylül 2026) — Fatura talebi iş kalemi; Acil sözleşme yok
 

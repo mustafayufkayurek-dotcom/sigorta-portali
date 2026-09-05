@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-05",
-  "label": "v566-fatura-talep-acil",
-  "description": "Full: Fatura talebinde yapılan iş kalemi ve zorunlu iptal açıklaması. Acil Yardımda sözleşme yok. İK yok. Rollback web v565 / backend v563.",
+  "label": "v567-acil-kesilen-fatura",
+  "description": "Full: Acil kesilen fatura Hasar’dan ayrı. Finans ve Asistans fatura kartları kesilen özetten. Rollback web+backend v566. İK yok.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v566-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v566-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v567-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v567-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v565-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v563-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v566-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v566-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

@@ -1,23 +1,23 @@
 ---
-description: Web+backend v566 alındı — sırada yalnız İK personel+zimmet
+description: Web+backend v567 alındı — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Web + backend v566 (05.09.2026) — alındı
+# Web + backend v567 (05.09.2026) — alındı
 
-Canlı: web **v566** · backend **v566**. Rollback: web **v565** / backend **v563**.
+Canlı: web **v567** · backend **v567**. Rollback: web **v566** / backend **v566**.
 
-## Alınan paket (v566)
+## Alınan paket (v567)
 
-**Fatura talebi iş kalemi + iptal açıklaması. Acil’de sözleşme yok.** İK yok.
+**Acil kesilen fatura Hasar’dan ayrı. Finans ve Asistans kartları tam özetten.** İK yok.
 
-1. Fatura Talepleri: yapılan iş (dosya konusu) görünür. Göz ile incelenir.
-2. İptal (X) açıklamasız olmaz.
-3. Acil Yardım her dosyada sözleşme / dijital servis formu istemez.
+1. Acil Faturalandı → Kesilen Faturalar (Acil dosyaya bağlı). Hasar ciro/kârı karışmaz.
+2. Finans kesilen kartları tüm kayıttan; Faturalandı sonrası Kesilen yenilenir; arama çalışır.
+3. Asistans Faturalar kartları kesilen özetten (ödenen / bekleyen).
 
-## v565 / v563 durur (bozulmaz)
+## v566 durur (bozulmaz)
 
-Tedarikçi **Vergi No Eksik** / **TC No Eksik**. Hasar dijital onay ve sözleşme ayrı.
+Fatura talebi iş kalemi + iptal açıklaması. Acil’de sözleşme yok.
 
 ## Canlıda yok
 
