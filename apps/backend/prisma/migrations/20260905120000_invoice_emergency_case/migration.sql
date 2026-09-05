@@ -48,7 +48,7 @@ INSERT INTO "invoices" (
   "created_at",
   "updated_at"
 )
-SELECT
+SELECT DISTINCT ON (trim(substring(ir."notes" from 'Satış fatura no:\s*([^\n]+)')))
   gen_random_uuid()::text,
   NULL,
   ir."emergency_case_id",
@@ -78,7 +78,10 @@ WHERE ir."status" = 'invoiced'
   AND NOT EXISTS (
     SELECT 1 FROM "invoices" i
     WHERE i."invoice_no" = trim(substring(ir."notes" from 'Satış fatura no:\s*([^\n]+)'))
-  );
+  )
+ORDER BY
+  trim(substring(ir."notes" from 'Satış fatura no:\s*([^\n]+)')),
+  ir."invoiced_at" DESC NULLS LAST;
 
 UPDATE "invoice_requests" ir
 SET "invoice_id" = i."id"
