@@ -229,14 +229,15 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.doesNotMatch(OPS_NOTICE.hasarVendorContractKind.body, /Google|API/);
   });
 
-  it('Tedarikçi listesinde eksik kimlik şeridi durur', () => {
+  it('Tedarikçi listesinde eksik kimlik ismin yanında durur', () => {
     const tedarikci = readFileSync(
       join(here, '../app/panel/tedarikciler/page.tsx'),
       'utf8',
     );
-    assert.match(tedarikci, /OPS_NOTICE\.tedarikciKimlikEksik/);
-    assert.match(tedarikci, /tedarikci-kimlik-eksik-seridi/);
-    assert.equal(OPS_NOTICE.tedarikciKimlikEksik.id, 'tedarikci-kimlik-eksik-v562');
+    assert.match(tedarikci, /tedarikci-satir-kimlik-eksik/);
+    assert.match(tedarikci, /vendorIdentityGapLabel/);
+    assert.doesNotMatch(tedarikci, /tedarikci-kimlik-eksik-seridi/);
+    assert.doesNotMatch(tedarikci, /tedarikci-kimlik-eksik-filtre/);
     assert.match(OPS_NOTICE.tedarikciKimlikEksik.body, /TC/);
     assert.match(OPS_NOTICE.tedarikciKimlikEksik.body, /vergi no/);
     assert.match(OPS_NOTICE.tedarikciKimlikEksik.body, /sözleşme çıkmaz/);

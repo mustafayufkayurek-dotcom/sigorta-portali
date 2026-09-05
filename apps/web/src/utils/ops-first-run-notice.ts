@@ -85,7 +85,7 @@ export const OPS_NOTICE = {
     id: 'tedarikci-kimlik-eksik-v562',
     title: 'Eksik kimlik',
     body:
-      'Şahıs tedarikçide TC, şirket tedarikçide vergi no zorunlu. Listede eksik satır işaretlenir. Düzenle deyip numarayı yazın; yoksa sözleşme çıkmaz.',
+      'Şahıs tedarikçide TC, şirket tedarikçide vergi no zorunlu. Listede ismin altında Vergi No eksik veya TC No eksik yazar. Düzenle deyip numarayı yazın; yoksa sözleşme çıkmaz.',
   },
   hasarOfisDosyaKapat: {
     id: 'hasar-ofis-dosya-kapat-v556',
