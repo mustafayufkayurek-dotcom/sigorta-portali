@@ -2,24 +2,36 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 3 Eylül 2026
+**Son güncelleme:** 5 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (3 Eylül 2026 — v558)
+## Canlı durum (5 Eylül 2026 — web v564 / backend v563)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v558-amd64` | deploy sırası |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v558-amd64` | deploy sırası |
-| **Rollback** | Web **v557** / Backend **v557** | manifest `rollbackImages` |
-| **Etiket** | `v558-finans-faturalar` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v564-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v563-amd64` | durur |
+| **Rollback** | Web **v563** / Backend **v563** | manifest `rollbackImages` |
+| **Etiket** | `v564-tedarikci-kimlik-yazi` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v564 — Web (5 Eylül 2026) — Tedarikçi Vergi No / TC No eksik
+
+- İsim altında **Vergi No eksik** veya **TC No eksik**; dar sütunda kesilmez
+- Liste kabuğu sade. Backend v563 durur. İK yok
+- Rollback web **v563** / backend **v563**
+
+### v563 — Full (5 Eylül 2026) — Tedarikçi eksik kimlik işareti
+
+- Listede TC veya vergi no yoksa kayıt işaretlenir
+- v562 sözleşme/kimlik kilidi durur. İK yok
+- Rollback web+backend **v562**
 
 ### v558 — Full (3 Eylül 2026) — Finans faturalar
 
