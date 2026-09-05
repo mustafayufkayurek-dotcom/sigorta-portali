@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (5 Eylül 2026 — web v567 / backend v567)
+## Canlı durum (5 Eylül 2026 — web v568 / backend v568)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v567-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v567-amd64` | canlı |
-| **Rollback** | Web **v566** / Backend **v566** | manifest `rollbackImages` |
-| **Etiket** | `v567-acil-kesilen-fatura` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v568-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v568-amd64` | canlı |
+| **Rollback** | Web **v567** / Backend **v567** | manifest `rollbackImages` |
+| **Etiket** | `v568-harita-dosya-is-adresi` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v568 — Full (5 Eylül 2026) — Harita iş adresi; Hasar/Acil ayrı
+
+- Açık dosya pin’i iş adresinde. Tedarikçi telefonu yok. Yeşil kutu sahada
+- Personel dairesi sizin telefon. Haritada bir kez şerit. Hasar kabuğu aynı
+- Rollback web+backend **v567**. İK yok
 
 ### v567 — Full (5 Eylül 2026) — Acil kesilen fatura; kartlar tam özet
 

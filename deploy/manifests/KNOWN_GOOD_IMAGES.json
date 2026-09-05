@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-05",
-  "label": "v567-acil-kesilen-fatura",
-  "description": "Full: Acil kesilen fatura Hasar’dan ayrı. Finans ve Asistans fatura kartları kesilen özetten. Rollback web+backend v566. İK yok.",
+  "label": "v568-harita-dosya-is-adresi",
+  "description": "Full: Haritada açık Hasar/Acil iş adresinde. Tedarikçi telefonu yok. Rollback web+backend v567. İK yok.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v567-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v567-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v568-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v568-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v566-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v566-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v567-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v567-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -24,6 +24,7 @@
     "/panel/ayarlar/tanimlar",
     "/panel/ayarlar/evrak-turleri",
     "/panel/ayarlar/yetkilendirme",
+    "/panel/harita",
     "/panel/operasyon",
     "/panel/operasyon/gelen-kutusu",
     "/panel/hasar-dosyalari",

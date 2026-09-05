@@ -1,23 +1,23 @@
 ---
-description: Web+backend v567 alındı — sırada yalnız İK personel+zimmet
+description: Web+backend v568 alındı — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Web + backend v567 (05.09.2026) — alındı
+# Web + backend v568 (05.09.2026) — alındı
 
-Canlı: web **v567** · backend **v567**. Rollback: web **v566** / backend **v566**.
+Canlı: web **v568** · backend **v568**. Rollback: web **v567** / backend **v567**.
 
-## Alınan paket (v567)
+## Alınan paket (v568)
 
-**Acil kesilen fatura Hasar’dan ayrı. Finans ve Asistans kartları tam özetten.** İK yok.
+**Harita: açık Hasar ve Acil iş adresinde. Tedarikçi telefonu yok.** İK yok.
 
-1. Acil Faturalandı → Kesilen Faturalar (Acil dosyaya bağlı). Hasar ciro/kârı karışmaz.
-2. Finans kesilen kartları tüm kayıttan; Faturalandı sonrası Kesilen yenilenir; arama çalışır.
-3. Asistans Faturalar kartları kesilen özetten (ödenen / bekleyen).
+1. Pin dosya numarası; Hasar / Acil ayrı. Konum iş adresi. Yeşil kutu sahada.
+2. Personel dairesi yalnız sizin telefon konumu. Haritada bir kez şerit.
+3. v567 Acil kesilen fatura durur.
 
-## v566 durur (bozulmaz)
+## v567 durur (bozulmaz)
 
-Fatura talebi iş kalemi + iptal açıklaması. Acil’de sözleşme yok.
+Acil Faturalandı → Kesilen; Hasar ciro/kârı karışmaz. Finans ve Asistans kartları tam özetten.
 
 ## Canlıda yok
 
