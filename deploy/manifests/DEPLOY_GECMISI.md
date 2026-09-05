@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (5 Eylül 2026 — web v565 / backend v563)
+## Canlı durum (5 Eylül 2026 — web v566 / backend v566)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v565-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v563-amd64` | durur |
-| **Rollback** | Web **v564** / Backend **v563** | manifest `rollbackImages` |
-| **Etiket** | `v565-tedarikci-kimlik-buyuk-harf` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v566-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v566-amd64` | canlı |
+| **Rollback** | Web **v565** / Backend **v563** | manifest `rollbackImages` |
+| **Etiket** | `v566-fatura-talep-acil` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v566 — Full (5 Eylül 2026) — Fatura talebi iş kalemi; Acil sözleşme yok
+
+- Yapılan iş kalemi dosya konusu. İptal açıklaması zorunlu. Göz ile incelenir
+- Acil Yardımda her dosyada sözleşme / dijital servis formu yok
+- Rollback web **v565** / backend **v563**. İK yok
 
 ### v565 — Web (5 Eylül 2026) — Vergi No Eksik / TC No Eksik
 

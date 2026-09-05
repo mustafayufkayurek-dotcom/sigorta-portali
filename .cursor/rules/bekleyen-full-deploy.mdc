@@ -1,22 +1,23 @@
 ---
-description: Web v565 alındı — backend v563 — sırada yalnız İK personel+zimmet
+description: Web+backend v566 alındı — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Web v565 (05.09.2026) — alındı
+# Web + backend v566 (05.09.2026) — alındı
 
-Canlı: web **v565** · backend **v563**. Rollback: web v564 / backend v563.
+Canlı: web **v566** · backend **v566**. Rollback: web **v565** / backend **v563**.
 
-## Alınan paket (v565 web)
+## Alınan paket (v566)
 
-**Vergi No Eksik / TC No Eksik.** İK yok.
+**Fatura talebi iş kalemi + iptal açıklaması. Acil’de sözleşme yok.** İK yok.
 
-1. Şahıs: ismin altında **TC No Eksik**. Şirket: **Vergi No Eksik**.
-2. Liste kabuğu sade. Dar sütunda yazı kesilmez.
+1. Fatura Talepleri: yapılan iş (dosya konusu) görünür. Göz ile incelenir.
+2. İptal (X) açıklamasız olmaz.
+3. Acil Yardım her dosyada sözleşme / dijital servis formu istemez.
 
-## v564 / v563 durur (bozulmaz)
+## v565 / v563 durur (bozulmaz)
 
-Kimlik yazısı ve sözleşme kilidi durur. Backend v563.
+Tedarikçi **Vergi No Eksik** / **TC No Eksik**. Hasar dijital onay ve sözleşme ayrı.
 
 ## Canlıda yok
 
