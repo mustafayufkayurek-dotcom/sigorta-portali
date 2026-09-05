@@ -269,6 +269,17 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(slide, /OPS_NOTICE\.sagPanelKaydir/);
   });
 
+  it('harita iş adresi şeridi durur; Google yok', () => {
+    const harita = readFileSync(join(here, '../app/panel/harita/page.tsx'), 'utf8');
+    assert.match(harita, /OpsFirstRunNotice/);
+    assert.match(harita, /OPS_NOTICE\.haritaDosyaIsAdresi/);
+    assert.match(harita, /harita-dosya-is-adresi-seridi/);
+    assert.equal(OPS_NOTICE.haritaDosyaIsAdresi.id, 'harita-dosya-is-adresi-v568');
+    assert.match(OPS_NOTICE.haritaDosyaIsAdresi.body, /iş adresidir/);
+    assert.match(OPS_NOTICE.haritaDosyaIsAdresi.body, /Hasar ve Acil ayrı/);
+    assert.doesNotMatch(OPS_NOTICE.haritaDosyaIsAdresi.body, /Google|API/);
+  });
+
   it('personel kılavuzu Acil tedarikçi ve dosya sorumlusu maddelerini taşır', () => {
     assert.match(guide, /id="acil-yardim"/);
     assert.match(guide, /Önerilen Tedarikçiler/);

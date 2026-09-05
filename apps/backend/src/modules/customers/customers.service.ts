@@ -443,7 +443,7 @@ export class CustomersService {
       this.prisma.claimFile.findMany({
         where: claimWhere,
         orderBy: { updatedAt: 'desc' },
-        take: 5,
+        take: 20,
         select: {
           id: true,
           fileNo: true,
@@ -456,7 +456,7 @@ export class CustomersService {
       this.prisma.emergencyCase.findMany({
         where: { customerId: id },
         orderBy: { updatedAt: 'desc' },
-        take: 5,
+        take: 20,
         select: {
           id: true,
           caseNo: true,

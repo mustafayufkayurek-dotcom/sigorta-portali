@@ -123,6 +123,12 @@ export const OPS_NOTICE = {
     body:
       'Soldaki sayfaya tıklayınca panel kapanmaz; sağa kayar. Başka sayfaya gitseniz şerit durur. Şeride tıklayınca yazdığınız durur. X veya Çıkış Yap deyince kayıt hatırlatması çıkar.',
   },
+  haritaDosyaIsAdresi: {
+    id: 'harita-dosya-is-adresi-v568',
+    title: 'Harita',
+    body:
+      'Hasar ve Acil ayrı durur. Kutu iş adresidir; tedarikçi telefonu gerekmez. Yeşil kutu sahada iş. Daire sizin personelin telefon konumudur.',
+  },
 } as const;
 
 export function opsNoticeStorageKey(noticeId: string): string {

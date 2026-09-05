@@ -268,6 +268,8 @@ export function applyCustomerFileStats<T extends CustomerFileStatsParty>(
   _count: { claimFiles: number; files: number; emergencyCases: number };
   _openCount: number;
   _closedCount: number;
+  _claimCount: number;
+  _emergencyCount: number;
 } {
   const s = stat ?? emptyCustomerFileStats();
   const existingCount = (customer as { _count?: Record<string, number> })._count ?? {};
@@ -281,5 +283,7 @@ export function applyCustomerFileStats<T extends CustomerFileStatsParty>(
     },
     _openCount: s.open,
     _closedCount: s.closed,
+    _claimCount: s.claim,
+    _emergencyCount: s.emergency,
   };
 }

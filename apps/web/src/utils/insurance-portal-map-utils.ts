@@ -1,6 +1,7 @@
 import { resolveProvinceCoords } from '@/data/turkey-province-coords';
 import { formatClaimSubjectLabel } from '@/utils/text-helpers';
 import type {
+  InsuranceMapDepartment,
   InsuranceMapPin,
   InsurancePinCategory,
   InsurancePinSlaTone,
@@ -39,6 +40,7 @@ export type ClaimFileForMap = {
     longitude?: number | null;
   } | null;
   currentStatus?: { name?: string; code?: string } | null;
+  department?: InsuranceMapDepartment;
 };
 
 const CATEGORY_COLORS: Record<InsurancePinCategory, string> = {
@@ -73,7 +75,20 @@ export function resolvePinSlaTone(file: {
   return 'ok';
 }
 
-export function pinSlaColor(tone: InsurancePinSlaTone | undefined, category: InsurancePinCategory): string {
+const ACIL_SLA_COLORS: Record<InsurancePinSlaTone, string> = {
+  ok: '#EA580C',
+  warn: '#C2410C',
+  late: '#B91C1C',
+};
+
+export function pinSlaColor(
+  tone: InsurancePinSlaTone | undefined,
+  category: InsurancePinCategory,
+  department?: InsuranceMapDepartment,
+): string {
+  if (department === 'acil') {
+    return tone ? ACIL_SLA_COLORS[tone] : '#EA580C';
+  }
   if (tone) return SLA_COLORS[tone];
   return pinCategoryColor(category);
 }
@@ -171,7 +186,13 @@ export function claimFileToMapPin(file: ClaimFileForMap): InsuranceMapPin | null
   const subjectLabel =
     file.claimSubject?.name?.trim()
     || formatClaimSubjectLabel(file.lossType, file.productBranch);
-  const tooltip = subjectLabel === '—' ? 'Hasar Dosyası' : subjectLabel;
+  const department: InsuranceMapDepartment = file.department === 'acil' ? 'acil' : 'hasar';
+  const tooltip =
+    subjectLabel === '—'
+      ? department === 'acil'
+        ? 'Acil Yardım'
+        : 'Hasar Dosyası'
+      : subjectLabel;
   const category = detectPinCategory(
     file.lossType,
     file.productBranch,
@@ -191,6 +212,7 @@ export function claimFileToMapPin(file: ClaimFileForMap): InsuranceMapPin | null
     longitude: coords.lng,
     label: fileNumber,
     tooltip,
+    department,
     category,
     isShowcase: false,
     city: coords.city,

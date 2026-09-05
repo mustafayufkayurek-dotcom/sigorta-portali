@@ -30,7 +30,7 @@ export class UserLocationsController {
 
   @Get('field-map')
   @RequirePermissions('location.view')
-  @ApiOperation({ summary: 'Saha haritası: personel + aktif tedarikçiler (hasar/acil)' })
+  @ApiOperation({ summary: 'Saha haritası: personel + açık hasar/acil dosyaları (iş adresi)' })
   async getFieldMap() {
     const data = await this.service.getFieldMap();
     return { success: true, data };

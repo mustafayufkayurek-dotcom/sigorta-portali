@@ -17,10 +17,12 @@ describe('müşteri dosya sayısı UI LOCK', () => {
       total: 12,
       open: 0,
       closed: 12,
+      claim: 12,
+      emergency: 0,
     });
     assert.deepEqual(
       customerFileCounts({ _count: { claimFiles: 42 }, _openCount: 10, _closedCount: 32 }),
-      { total: 42, open: 10, closed: 32 },
+      { total: 42, open: 10, closed: 32, claim: 42, emergency: 0 },
     );
   });
 
@@ -30,5 +32,6 @@ describe('müşteri dosya sayısı UI LOCK', () => {
     assert.match(list, /customerFileCounts/);
     assert.match(detail, /customerFileCounts/);
     assert.match(detail, /emergency-cases/);
+    assert.match(detail, /Acil Yardım Dosyaları/);
   });
 });

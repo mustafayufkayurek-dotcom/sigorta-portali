@@ -46,6 +46,9 @@ describe('müşteri dosya sayısı LOCK', () => {
     );
     assert.equal(row._count.claimFiles, 42);
     assert.equal(row._count.files, 42);
+    assert.equal(row._count.emergencyCases, 30);
+    assert.equal(row._claimCount, 12);
+    assert.equal(row._emergencyCount, 30);
     assert.equal(row._openCount, 10);
     assert.equal(row._closedCount, 32);
     assert.equal(emptyCustomerFileStats().total, 0);

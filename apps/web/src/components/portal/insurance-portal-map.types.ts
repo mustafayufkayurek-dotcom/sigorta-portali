@@ -4,12 +4,15 @@ export type InsurancePortalViewMode = 'ours' | 'network';
 
 export type InsurancePinSlaTone = 'ok' | 'warn' | 'late';
 
+export type InsuranceMapDepartment = 'hasar' | 'acil';
+
 export type InsuranceMapPin = {
   id: string;
   latitude: number;
   longitude: number;
   label: string;
   tooltip: string;
+  department?: InsuranceMapDepartment;
   category: InsurancePinCategory;
   isShowcase?: boolean;
   fileNumber?: string;

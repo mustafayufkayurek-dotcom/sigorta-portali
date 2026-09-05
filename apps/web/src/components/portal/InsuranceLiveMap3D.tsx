@@ -24,7 +24,7 @@ const STREET_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const PIN_ZOOM_STEPS = [14.5, 16, 17.2, 18.2, 19];
 
 function buildMarkerHtml(pin: InsuranceMapPin): string {
-  const color = pinSlaColor(pin.slaTone, pin.category);
+  const color = pinSlaColor(pin.slaTone, pin.category, pin.department);
   const icon = CATEGORY_ICONS[pin.category];
   const showcaseRing = pin.isShowcase
     ? 'box-shadow:0 0 0 3px rgba(245,158,11,0.55), 0 2px 8px rgba(0,0,0,0.35);'

@@ -12,15 +12,69 @@ export interface LocationPoint {
   timestamp: string;
 }
 
+export type FieldMapActorType =
+  | 'personel'
+  | 'vendor_hasar'
+  | 'vendor_acil'
+  | 'file_hasar'
+  | 'file_acil';
+
+export type FieldMapJobStage = 'yeni' | 'atandi' | 'sahada';
+
 export interface FieldMapPoint {
-  actorType: 'personel' | 'vendor_hasar' | 'vendor_acil';
+  actorType: FieldMapActorType;
   id: string;
   name: string;
   latitude: number;
   longitude: number;
   timestamp?: string;
-  locationKind: 'live' | 'registered';
+  locationKind: 'live' | 'job';
+  jobStage?: FieldMapJobStage;
+  jobStageLabel?: string;
   activeJob?: { label: string; fileNo?: string; href?: string };
+}
+
+function isPlotCoord(lat?: number | null, lng?: number | null): boolean {
+  return (
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    !(lat === 0 && lng === 0)
+  );
+}
+
+/** Aynı iş adresindeki dosyalar üst üste binmesin (~10–20 m). */
+function nudgeById(id: string, lat: number, lng: number): { lat: number; lng: number } {
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  const dLat = ((h % 17) - 8) * 0.00012;
+  const dLng = (((h >> 4) % 17) - 8) * 0.00012;
+  return { lat: lat + dLat, lng: lng + dLng };
+}
+
+function hasarJobStage(code?: string | null, hasVendor?: boolean): {
+  stage: FieldMapJobStage;
+  label: string;
+} {
+  const c = (code ?? '').toLowerCase();
+  if (
+    c.includes('repair_in_progress') ||
+    c.includes('inspection') ||
+    c.includes('field')
+  ) {
+    return { stage: 'sahada', label: 'Sahada' };
+  }
+  if (c.includes('supplier_assigned') || c.includes('repair_planning') || hasVendor) {
+    return { stage: 'atandi', label: 'Atandı' };
+  }
+  return { stage: 'yeni', label: 'Yeni ihbar' };
+}
+
+function acilJobStage(status: string): { stage: FieldMapJobStage; label: string } {
+  if (status === 'SAHADA') return { stage: 'sahada', label: 'Sahada' };
+  if (status === 'ATANDI') return { stage: 'atandi', label: 'Atandı' };
+  return { stage: 'yeni', label: 'Yeni ihbar' };
 }
 
 @Injectable()
@@ -164,100 +218,90 @@ export class UserLocationsService {
     const [claimFiles, emergencyCases] = await Promise.all([
       this.prisma.claimFile.findMany({
         where: {
-          assignedSupplierId: { not: null },
           currentStatus: { isClosedState: false },
-          assignedSupplier: {
-            latitude: { not: null },
-            longitude: { not: null },
-          },
+          OR: [
+            { propertyAddress: { latitude: { not: null }, longitude: { not: null } } },
+            { customer: { latitude: { not: null }, longitude: { not: null } } },
+          ],
         },
+        take: 400,
         orderBy: { updatedAt: 'desc' },
         select: {
           id: true,
           fileNo: true,
+          updatedAt: true,
           assignedSupplierId: true,
-          assignedSupplier: {
-            select: {
-              id: true,
-              name: true,
-              latitude: true,
-              longitude: true,
-              updatedAt: true,
-            },
-          },
+          currentStatus: { select: { code: true, name: true } },
+          assignedSupplier: { select: { name: true } },
+          propertyAddress: { select: { latitude: true, longitude: true } },
+          customer: { select: { latitude: true, longitude: true } },
         },
       }),
       this.prisma.emergencyCase.findMany({
         where: {
-          assignedVendorId: { not: null },
-          status: { in: ['ATANDI', 'SAHADA'] },
-          assignedVendor: {
-            latitude: { not: null },
-            longitude: { not: null },
-          },
+          status: { in: ['GELEN', 'ATANDI', 'SAHADA'] },
+          latitude: { not: null },
+          longitude: { not: null },
         },
+        take: 400,
         orderBy: { updatedAt: 'desc' },
         select: {
           id: true,
           caseNo: true,
           fileNo: true,
-          assignedVendorId: true,
-          assignedVendor: {
-            select: {
-              id: true,
-              name: true,
-              latitude: true,
-              longitude: true,
-              updatedAt: true,
-            },
-          },
+          status: true,
+          latitude: true,
+          longitude: true,
+          updatedAt: true,
+          assignedVendor: { select: { name: true } },
         },
       }),
     ]);
 
-    const hasarByVendor = new Map<string, (typeof claimFiles)[0]>();
     for (const cf of claimFiles) {
-      const vendorId = cf.assignedSupplierId!;
-      if (!hasarByVendor.has(vendorId)) hasarByVendor.set(vendorId, cf);
-    }
-
-    for (const [vendorId, cf] of hasarByVendor) {
-      const v = cf.assignedSupplier!;
+      const lat = cf.propertyAddress?.latitude ?? cf.customer?.latitude ?? null;
+      const lng = cf.propertyAddress?.longitude ?? cf.customer?.longitude ?? null;
+      if (!isPlotCoord(lat, lng)) continue;
+      const pos = nudgeById(cf.id, lat!, lng!);
+      const stage = hasarJobStage(cf.currentStatus?.code, Boolean(cf.assignedSupplierId));
+      const vendor = cf.assignedSupplier?.name;
       points.push({
-        actorType: 'vendor_hasar',
-        id: `${vendorId}__hasar`,
-        name: v.name,
-        latitude: v.latitude!,
-        longitude: v.longitude!,
-        timestamp: v.updatedAt.toISOString(),
-        locationKind: 'registered',
+        actorType: 'file_hasar',
+        id: `file_hasar__${cf.id}`,
+        name: cf.fileNo,
+        latitude: pos.lat,
+        longitude: pos.lng,
+        timestamp: cf.updatedAt.toISOString(),
+        locationKind: 'job',
+        jobStage: stage.stage,
+        jobStageLabel: cf.currentStatus?.name || stage.label,
         activeJob: {
-          label: 'Onarım Dosyası',
+          label: vendor ? `Hasar · ${vendor}` : 'Hasar Dosyası',
           fileNo: cf.fileNo,
           href: `/panel/hasar-dosyalari/${cf.id}`,
         },
       });
     }
 
-    const acilByVendor = new Map<string, (typeof emergencyCases)[0]>();
     for (const ec of emergencyCases) {
-      const vendorId = ec.assignedVendorId!;
-      if (!acilByVendor.has(vendorId)) acilByVendor.set(vendorId, ec);
-    }
-
-    for (const [vendorId, ec] of acilByVendor) {
-      const v = ec.assignedVendor!;
+      if (!isPlotCoord(ec.latitude, ec.longitude)) continue;
+      const fileNo = ec.fileNo ?? ec.caseNo;
+      const pos = nudgeById(ec.id, ec.latitude!, ec.longitude!);
+      const stage = acilJobStage(ec.status);
+      const vendor = ec.assignedVendor?.name;
       points.push({
-        actorType: 'vendor_acil',
-        id: `${vendorId}__acil`,
-        name: v.name,
-        latitude: v.latitude!,
-        longitude: v.longitude!,
-        timestamp: v.updatedAt.toISOString(),
-        locationKind: 'registered',
+        actorType: 'file_acil',
+        id: `file_acil__${ec.id}`,
+        name: fileNo,
+        latitude: pos.lat,
+        longitude: pos.lng,
+        timestamp: ec.updatedAt.toISOString(),
+        locationKind: 'job',
+        jobStage: stage.stage,
+        jobStageLabel: stage.label,
         activeJob: {
-          label: 'Acil Yardım Dosyası',
-          fileNo: ec.fileNo ?? ec.caseNo,
+          label: vendor ? `Acil · ${vendor}` : 'Acil Yardım Dosyası',
+          fileNo,
           href: `/panel/acil-yardim/${ec.id}`,
         },
       });

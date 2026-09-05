@@ -4,12 +4,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { getAccessToken } from '@/utils/auth-session';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
 
-type ActorType = 'personel' | 'vendor_hasar' | 'vendor_acil';
-type FilterTab = 'all' | 'personel' | 'vendor_hasar' | 'vendor_acil';
+type ActorType = 'personel' | 'vendor_hasar' | 'vendor_acil' | 'file_hasar' | 'file_acil';
+type FilterTab = 'all' | 'personel' | 'hasar' | 'acil';
+
+type JobStage = 'yeni' | 'atandi' | 'sahada';
 
 interface FieldMapPoint {
   actorType: ActorType;
@@ -18,7 +22,9 @@ interface FieldMapPoint {
   latitude: number;
   longitude: number;
   timestamp?: string;
-  locationKind: 'live' | 'registered';
+  locationKind: 'live' | 'job';
+  jobStage?: JobStage;
+  jobStageLabel?: string;
   activeJob?: { label: string; fileNo?: string; href?: string };
 }
 
@@ -31,15 +37,32 @@ interface RotaNoktasi {
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'all', label: 'Tümü' },
   { key: 'personel', label: 'Personel' },
-  { key: 'vendor_hasar', label: 'Onarım' },
-  { key: 'vendor_acil', label: 'Acil' },
+  { key: 'hasar', label: 'Hasar' },
+  { key: 'acil', label: 'Acil' },
 ];
 
 const ACTOR_LABEL: Record<ActorType, string> = {
   personel: 'Personel',
-  vendor_hasar: 'Onarım Tedarikçisi',
+  vendor_hasar: 'Hasar Tedarikçisi',
   vendor_acil: 'Acil Tedarikçisi',
+  file_hasar: 'Hasar Dosyası',
+  file_acil: 'Acil Yardım Dosyası',
 };
+
+function isHasarPoint(p: FieldMapPoint): boolean {
+  return p.actorType === 'file_hasar' || p.actorType === 'vendor_hasar';
+}
+
+function isAcilPoint(p: FieldMapPoint): boolean {
+  return p.actorType === 'file_acil' || p.actorType === 'vendor_acil';
+}
+
+function esc(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/"/g, '&quot;');
+}
 
 const APPOINTMENT_TYPE: Record<string, string> = {
   expert_visit: 'Eksper Ziyareti',
@@ -77,12 +100,33 @@ function personelInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
+function fileColor(point: FieldMapPoint): string {
+  if (point.jobStage === 'sahada') return '#15803D';
+  const hasar = point.actorType === 'file_hasar' || point.actorType === 'vendor_hasar';
+  if (hasar) return point.jobStage === 'yeni' ? '#64748B' : '#2563EB';
+  return point.jobStage === 'yeni' ? '#FB923C' : '#EA580C';
+}
+
+function fileMarkerHtml(point: FieldMapPoint, letter: string): string {
+  const color = fileColor(point);
+  const label = esc(point.activeJob?.fileNo || point.name);
+  const stage = esc(point.jobStageLabel || '');
+  return `
+      <div class="relative flex flex-col items-center">
+        <div style="min-width:42px;height:36px;border-radius:8px;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;padding:0 7px;">
+          ${letter}
+        </div>
+        <div class="mt-1 max-w-[10rem] truncate whitespace-nowrap rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-900 shadow">${label}</div>
+        ${stage ? `<div class="mt-0.5 whitespace-nowrap rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-medium text-white">${stage}</div>` : ''}
+      </div>`;
+}
+
 function buildMarkerHtml(point: FieldMapPoint): string {
-  const label = point.name;
+  const label = esc(point.name);
 
   if (point.actorType === 'personel') {
     const color = COLOR_MAP[markerColor(point.timestamp)];
-    const initials = personelInitials(point.name);
+    const initials = esc(personelInitials(point.name));
     return `
       <div class="relative flex flex-col items-center">
         <div style="width:36px;height:36px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;">${initials}</div>
@@ -90,23 +134,16 @@ function buildMarkerHtml(point: FieldMapPoint): string {
       </div>`;
   }
 
-  if (point.actorType === 'vendor_hasar') {
-    return `
-      <div class="relative flex flex-col items-center">
-        <div style="width:36px;height:36px;border-radius:50%;background:#2563EB;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;">H</div>
-        <div class="mt-1 whitespace-nowrap rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-900 shadow">${label}</div>
-      </div>`;
+  if (point.actorType === 'file_hasar' || point.actorType === 'vendor_hasar') {
+    return fileMarkerHtml(point, 'H');
   }
 
-  return `
-    <div class="relative flex flex-col items-center">
-      <div style="width:36px;height:36px;border-radius:50%;background:#EA580C;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;">A</div>
-      <div class="mt-1 whitespace-nowrap rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-900 shadow">${label}</div>
-    </div>`;
+  return fileMarkerHtml(point, 'A');
 }
 
 function buildPopupHtml(point: FieldMapPoint): string {
-  const locationKindLabel = point.locationKind === 'live' ? 'Canlı' : 'Kayıtlı Konum';
+  const locationKindLabel =
+    point.locationKind === 'live' ? 'Personel telefonu' : 'İş adresi';
   const jobLabel =
     point.activeJob?.label && APPOINTMENT_TYPE[point.activeJob.label]
       ? APPOINTMENT_TYPE[point.activeJob.label]
@@ -114,19 +151,24 @@ function buildPopupHtml(point: FieldMapPoint): string {
 
   return `
     <div class="font-sans text-[13px] text-slate-800">
-      <strong>${point.name}</strong>
+      <strong>${esc(point.activeJob?.fileNo || point.name)}</strong>
       <div class="mt-1 text-slate-500">${ACTOR_LABEL[point.actorType]}</div>
       <hr class="my-2 border-slate-100">
-      <div>Konum Türü: ${locationKindLabel}</div>
+      <div>Konum: ${locationKindLabel}</div>
+      ${
+        point.jobStageLabel
+          ? `<div>Durum: ${esc(point.jobStageLabel)}</div>`
+          : ''
+      }
       <div>Son Güncelleme: ${formatRelative(point.timestamp)}</div>
       ${
         point.activeJob?.fileNo
           ? `<hr class="my-2 border-slate-100">
-             <div>Aktif Dosya No: ${point.activeJob.fileNo}</div>
-             ${jobLabel ? `<div class="text-slate-500">${jobLabel}</div>` : ''}
+             <div>Dosya No: ${esc(point.activeJob.fileNo)}</div>
+             ${jobLabel ? `<div class="text-slate-500">${esc(jobLabel)}</div>` : ''}
              ${
                point.activeJob.href
-                 ? `<a href="${point.activeJob.href}" class="mt-1 inline-block text-brand-600 underline">Dosyaya Git</a>`
+                 ? `<a href="${esc(point.activeJob.href)}" class="mt-1 inline-block text-brand-600 underline">Dosyaya Git</a>`
                  : ''
              }`
           : ''
@@ -153,7 +195,9 @@ export default function HaritaPage() {
 
   const filteredPoints = points.filter((p) => {
     if (filter === 'all') return true;
-    return p.actorType === filter;
+    if (filter === 'personel') return p.actorType === 'personel';
+    if (filter === 'hasar') return isHasarPoint(p);
+    return isAcilPoint(p);
   });
 
   const personelPoints = points.filter((p) => p.actorType === 'personel');
@@ -280,8 +324,8 @@ export default function HaritaPage() {
 
   const counts = {
     personel: points.filter((p) => p.actorType === 'personel').length,
-    vendor_hasar: points.filter((p) => p.actorType === 'vendor_hasar').length,
-    vendor_acil: points.filter((p) => p.actorType === 'vendor_acil').length,
+    hasar: points.filter(isHasarPoint).length,
+    acil: points.filter(isAcilPoint).length,
   };
 
   const seciliPersonelAdi = personelPoints.find((p) => p.id === seciliPersonel)?.name;
@@ -289,6 +333,13 @@ export default function HaritaPage() {
   return (
     <div className="flex h-[calc(100dvh-3.5rem-1rem)] min-h-[360px] flex-col gap-3 overflow-hidden sm:h-[calc(100vh-130px)]">
       <div className="min-w-0 shrink-0 space-y-3 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+        <OpsFirstRunNotice
+          compact
+          noticeId={OPS_NOTICE.haritaDosyaIsAdresi.id}
+          title={OPS_NOTICE.haritaDosyaIsAdresi.title}
+          body={OPS_NOTICE.haritaDosyaIsAdresi.body}
+          testId="harita-dosya-is-adresi-seridi"
+        />
         {/* Filtre sekmeleri — mobil: 2 sütun grid */}
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {FILTER_TABS.map((tab) => (
@@ -368,13 +419,14 @@ export default function HaritaPage() {
             Personel Aktif · {activePersonelCount}
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-brand-600" />
-            Onarım · {counts.vendor_hasar}
+            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm bg-brand-600" />
+            Hasar · {counts.hasar}
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-orange-600" />
-            Acil · {counts.vendor_acil}
+            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm bg-orange-600" />
+            Acil · {counts.acil}
           </span>
+          <span className="text-slate-400">Kutu = iş adresi · yeşil kutu = sahada</span>
           {yukleniyor && <span className="text-slate-400">Yükleniyor...</span>}
         </div>
       </div>
@@ -386,7 +438,8 @@ export default function HaritaPage() {
             <div className="mx-3 rounded-lg border border-slate-200 bg-white px-4 py-4 text-center shadow-sm sm:px-6">
               <p className="text-sm font-semibold text-slate-800">Haritada Gösterilecek Konum Yok</p>
               <p className="mt-1 text-xs text-slate-500">
-                Seçili filtre için aktif personel veya tedarikçi bulunamadı.
+                Seçili filtre için personel veya iş adresi olan açık dosya yok. Pin, tedarikçi
+                telefonu değil; dosyanın iş adresidir.
               </p>
             </div>
           </div>

@@ -59,7 +59,7 @@ const BASEMAP_LAYERS: Record<InsuranceMapBasemap, BasemapConfig> = {
 };
 
 function buildMarkerHtml(pin: InsuranceMapPin): string {
-  const color = pinSlaColor(pin.slaTone, pin.category);
+  const color = pinSlaColor(pin.slaTone, pin.category, pin.department);
   const icon = CATEGORY_ICONS[pin.category];
   const showcaseRing = pin.isShowcase
     ? 'box-shadow:0 0 0 3px rgba(245,158,11,0.55), 0 2px 8px rgba(0,0,0,0.25);'
