@@ -374,9 +374,10 @@ export class InvoiceRequestsService {
       updateData.invoicedAt = new Date();
       if (dto.invoiceId) {
         updateData.invoiceId = dto.invoiceId;
-      } else if (!current.invoiceId && salesInvoiceNo && current.claimFileId) {
+      } else if (!current.invoiceId && salesInvoiceNo && (current.claimFileId || current.emergencyCaseId)) {
         const linked = await this.invoicesService.linkOrCreateIssuedSalesInvoice({
           claimFileId: current.claimFileId,
+          emergencyCaseId: current.emergencyCaseId,
           invoiceNo: salesInvoiceNo,
           totalAmount: current.totalAmount,
           insuranceCompanyId: current.insuranceCompanyId,
@@ -385,10 +386,7 @@ export class InvoiceRequestsService {
         });
         updateData.invoiceId = linked.id;
       } else if (!current.invoiceId && salesInvoiceNo) {
-        updateData.notes = withSalesInvoiceNote(
-          typeof updateData.notes === 'string' ? updateData.notes : current.notes,
-          salesInvoiceNo,
-        );
+        throw new BadRequestException('Fatura talebi dosyaya bağlı değil');
       }
     }
 
@@ -635,12 +633,6 @@ export class InvoiceRequestsService {
       monthlyInvoiced,
     };
   }
-}
-
-function withSalesInvoiceNote(notes: string | null | undefined, invoiceNo: string): string {
-  const line = `Satış fatura no: ${invoiceNo}`;
-  const base = String(notes ?? '').replace(/\n?Satış fatura no:\s*.*/gi, '').trim();
-  return base ? `${base}\n${line}` : line;
 }
 
 function withCancelNote(notes: string | null | undefined, reason: string): string {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { invoicePartyCustomerName } from './invoice-customer-name.ts';
+import { invoiceIssuedFileHref, invoiceIssuedFileNo, invoicePartyCustomerName } from './invoice-customer-name.ts';
 
 describe('invoice-customer-name', () => {
   it('sigortalı tahsilatta sigortalı adını basar', () => {
@@ -32,5 +32,13 @@ describe('invoice-customer-name', () => {
       }),
       'Sezgi Global',
     );
+  });
+
+  it('acil dosya kesilen faturada hasar yoluna düşmez', () => {
+    assert.equal(
+      invoiceIssuedFileHref({ emergencyCaseId: 'ec-1', claimFileId: null }),
+      '/panel/acil-yardim/ec-1',
+    );
+    assert.equal(invoiceIssuedFileNo({ emergencyCase: { caseNo: 'AY-9' } }), 'AY-9');
   });
 });

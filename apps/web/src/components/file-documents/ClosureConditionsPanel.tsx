@@ -107,7 +107,7 @@ function reqBadge(status: string) {
   const map: Record<string, { label: string; color: string }> = {
     pending: { label: 'Bekliyor', color: 'bg-yellow-100 text-yellow-700' },
     approved: { label: 'Onaylandı', color: 'bg-blue-100 text-blue-700' },
-    invoiced: { label: 'Faturalandi', color: 'bg-green-100 text-green-700' },
+    invoiced: { label: 'Faturalandı', color: 'bg-green-100 text-green-700' },
     cancelled: { label: 'İptal', color: 'bg-red-100 text-red-700' },
   };
   const s = map[status] ?? { label: status, color: 'bg-gray-100 text-gray-600' };

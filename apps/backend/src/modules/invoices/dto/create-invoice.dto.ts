@@ -1,10 +1,17 @@
-import { IsString, IsOptional, IsNumber, IsDateString, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsDateString, IsIn, ValidateIf } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateInvoiceDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @ValidateIf((o: CreateInvoiceDto) => !o.emergencyCaseId)
   @IsString()
-  claimFileId!: string;
+  claimFileId?: string;
+
+  @ApiPropertyOptional()
+  @ValidateIf((o: CreateInvoiceDto) => !o.claimFileId)
+  @IsOptional()
+  @IsString()
+  emergencyCaseId?: string;
 
   @ApiProperty({ enum: ['sales', 'purchase'] })
   @IsIn(['sales', 'purchase'])

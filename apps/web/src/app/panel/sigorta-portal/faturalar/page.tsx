@@ -93,6 +93,7 @@ export default function SigortaFaturalarPage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [total, setTotal] = useState(0);
+  const [amountSummary, setAmountSummary] = useState<{ paid: number; pending: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [missingScope, setMissingScope] = useState(false);
@@ -134,6 +135,15 @@ export default function SigortaFaturalarPage() {
       .then((res) => {
         setInvoices((res?.data ?? []) as Invoice[]);
         setTotal(res?.meta?.total ?? 0);
+        const s = res?.summary;
+        setAmountSummary(
+          s
+            ? {
+                paid: s.paidAmount ?? 0,
+                pending: (s.pendingAmount ?? 0) + (s.overdueAmount ?? 0),
+              }
+            : null,
+        );
       })
       .catch((err: Error) => {
         if (err.message === 'SESSION_REQUIRED') {
@@ -154,12 +164,13 @@ export default function SigortaFaturalarPage() {
   }, [toast]);
 
   const totals = useMemo(() => {
+    if (amountSummary) return amountSummary;
     const paid = invoices.filter((i) => i.status === 'paid').reduce((s, i) => s + i.totalAmount, 0);
     const pending = invoices
       .filter((i) => i.status === 'sent' || i.status === 'overdue' || i.status === 'partial')
       .reduce((s, i) => s + i.totalAmount, 0);
     return { paid, pending };
-  }, [invoices]);
+  }, [amountSummary, invoices]);
 
   const visibleInvoices = useMemo(() => {
     const q = searchQuery.trim().toLocaleLowerCase('tr');

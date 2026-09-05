@@ -40,14 +40,14 @@ export class InvoicesController {
     if (this.resolveRoleCode(user) === 'insurance_company_user') {
       const companyIds = await this.claimFilesService.getInsuranceScopes(user.id);
       if (companyIds.length === 0) {
-        return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
+        return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 }, summary: { totalAmount: 0, paidAmount: 0, pendingAmount: 0, overdueAmount: 0, totalCount: 0, paidCount: 0 } };
       }
       query.insuranceCompanyIds = companyIds;
     }
     if (this.resolveRoleCode(user) === 'assistance_company_user') {
       const customerIds = await this.claimFilesService.getAssistantCustomerScopes(user.id);
       if (customerIds.length === 0) {
-        return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
+        return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 }, summary: { totalAmount: 0, paidAmount: 0, pendingAmount: 0, overdueAmount: 0, totalCount: 0, paidCount: 0 } };
       }
       query.assistantCustomerIds = customerIds;
     }
@@ -69,7 +69,8 @@ export class InvoicesController {
     }
     if (this.resolveRoleCode(user) === 'assistance_company_user') {
       const customerIds = await this.claimFilesService.getAssistantCustomerScopes(user.id);
-      const claimCustomerId = (data as { claimFile?: { customerId?: string } })?.claimFile?.customerId;
+      const claimCustomerId = (data as { claimFile?: { customerId?: string }; emergencyCase?: { customerId?: string } })?.claimFile?.customerId
+        ?? (data as { emergencyCase?: { customerId?: string } })?.emergencyCase?.customerId;
       if (!customerIds.length || !claimCustomerId || !customerIds.includes(claimCustomerId)) {
         throw new ForbiddenException('Bu faturaya erişim izniniz bulunmamaktadır');
       }

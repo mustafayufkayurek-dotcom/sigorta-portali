@@ -1549,7 +1549,8 @@ model BankAccount {
 
 model Invoice {
   id                 String   @id @default(uuid())
-  claimFileId        String   @map("claim_file_id")
+  claimFileId        String?  @map("claim_file_id")
+  emergencyCaseId    String?  @map("emergency_case_id")
   invoiceType        String   @map("invoice_type")        // sales | purchase
   invoiceNo          String   @unique @map("invoice_no")
   invoiceDate        DateTime @map("invoice_date")
@@ -1568,7 +1569,8 @@ model Invoice {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  claimFile   ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  claimFile      ClaimFile?      @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  emergencyCase  EmergencyCase?  @relation(fields: [emergencyCaseId], references: [id], onDelete: Cascade)
   createdBy   User      @relation("CreatedInvoices", fields: [createdByUserId], references: [id])
   payments    Payment[]
   // P&L Faz 3
@@ -1577,6 +1579,7 @@ model Invoice {
   invoiceRequests InvoiceRequest[]
 
   @@index([claimFileId])
+  @@index([emergencyCaseId])
   @@index([status])
   @@index([dueDate])
   @@map("invoices")
@@ -2838,6 +2841,7 @@ model EmergencyCase {
   inboundMessages InboundMessage[]
   vendorEntitlement EmergencyVendorEntitlement?
   payment           Payment?
+  invoices          Invoice[]
   surveyCampaigns SurveyCampaign[]
 
   @@index([status])

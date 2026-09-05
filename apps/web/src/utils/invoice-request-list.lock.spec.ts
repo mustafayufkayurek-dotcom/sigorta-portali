@@ -144,8 +144,17 @@ describe('invoice-request-list lock', () => {
     assert.match(actions, /InvoiceRequestRowActions/);
     assert.match(actions, /fatura-talep-islemler/);
 
+    const invoicesSvc = read('../../../backend/src/modules/invoices/invoices.service.ts');
+    assert.match(invoicesSvc, /summary: \{/);
+    assert.match(invoicesSvc, /totalCount: total/);
+    assert.match(invoicesSvc, /params\.search/);
+    assert.match(invoicesSvc, /emergencyCaseId/);
     const faturalar = read('../app/panel/finans/faturalar/page.tsx');
     assert.match(faturalar, /status !== 'cancelled'/);
+    assert.match(faturalar, /summary\.totalAmount/);
+    assert.match(faturalar, /metaTotal/);
+    assert.match(faturalar, /invoiceIssuedFileHref/);
+    assert.match(faturalar, /onIssuedChange/);
     assert.match(faturalar, /FINANS_ACTIONS_COLUMN/);
     assert.match(faturalar, /FinansTablePager/);
     assert.match(faturalar, /faturaTalepleriTabPulseClass/);
@@ -156,8 +165,21 @@ describe('invoice-request-list lock', () => {
     assert.match(faturalar, /editReason/);
     assert.match(api, /fileOwnerNotifyToast/);
     assert.match(api, /recipients/);
-    assert.match(section, /printFinanceSlip/);
+    assert.match(section, /onIssuedChange/);
+    assert.doesNotMatch(section, /invoiced' && prev.claimFileId/);
     assert.match(section, /label: 'Müşteri'/);
     assert.match(actions, /createObjectURL/);
+  });
+
+  it('asistans faturalar kesilen özetten okur; acil kesilen hasar dosyasına bağlanmaz', () => {
+    const asistans = read('../app/panel/asistans-portal/faturalar/page.tsx');
+    assert.match(asistans, /fetchPortalInvoices/);
+    assert.doesNotMatch(asistans, /fetchPortalEmergencyBillingRows/);
+    assert.match(asistans, /Ödenen Toplam/);
+    assert.match(asistans, /s\.paidAmount/);
+    const schema = read('../../../backend/prisma/schema.prisma');
+    assert.match(schema, /emergencyCaseId\s+String\?\s+@map\("emergency_case_id"\)/);
+    const invoicesSvc = read('../../../backend/src/modules/invoices/invoices.service.ts');
+    assert.match(invoicesSvc, /touchClaimFinance/);
   });
 });

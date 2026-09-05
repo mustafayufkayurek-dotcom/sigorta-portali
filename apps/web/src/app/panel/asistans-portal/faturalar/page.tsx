@@ -25,12 +25,10 @@ import {
 import { fmtDate } from '@/utils/date-helpers';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import {
-  emergencyStatusLabel,
-} from '@/utils/assistance-portal-stages';
-import {
-  fetchPortalEmergencyBillingRows,
+  fetchPortalInvoices,
   hasPortalSessionToken,
 } from '@/utils/portal-api';
+import { invoiceIssuedFileNo } from '@/utils/invoice-customer-name';
 import { hasAssistanceCompanyUserAccess, readAssistancePortalUser } from '@/utils/portal-assistance-scope';
 import {
   cycleClientSort,
@@ -58,18 +56,40 @@ interface Invoice {
   dueDate?: string | null;
   totalAmount: number;
   status: string;
+  claimFileId?: string | null;
+  emergencyCaseId?: string | null;
   claimFile?: { fileNo?: string; id?: string };
+  emergencyCase?: { id?: string; caseNo?: string; fileNo?: string | null };
+}
+
+function portalDrawerFile(inv: Invoice): { id: string; fileNo: string } | null {
+  const id = inv.emergencyCase?.id || inv.emergencyCaseId || inv.claimFile?.id || inv.claimFileId;
+  if (!id) return null;
+  return { id, fileNo: invoiceIssuedFileNo(inv) };
 }
 
 function statusLabel(s: string) {
-  return emergencyStatusLabel(s);
+  const map: Record<string, string> = {
+    draft: 'Taslak',
+    sent: 'Gönderildi',
+    paid: 'Ödendi',
+    overdue: 'Gecikmiş',
+    cancelled: 'İptal',
+    partial: 'Kısmi Ödeme',
+  };
+  return map[s] ?? s;
 }
 
 function statusBadgeClass(s: string) {
-  const code = String(s || '').toUpperCase();
-  if (code === 'FATURALANDILDI') return 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100';
-  if (code === 'COZULDU') return 'bg-brand-50 text-brand-800 ring-1 ring-brand-100';
-  return 'bg-slate-100 text-slate-600 ring-1 ring-slate-200';
+  const map: Record<string, string> = {
+    draft: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+    sent: 'bg-brand-50 text-brand-800 ring-1 ring-brand-100',
+    paid: 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100',
+    overdue: 'bg-red-50 text-red-700 ring-1 ring-red-100',
+    cancelled: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
+    partial: 'bg-amber-50 text-amber-800 ring-1 ring-amber-100',
+  };
+  return map[s] ?? 'bg-slate-100 text-slate-600 ring-1 ring-slate-200';
 }
 
 export default function AsistansFaturalarPage() {
@@ -78,6 +98,7 @@ export default function AsistansFaturalarPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [amountSummary, setAmountSummary] = useState<{ paid: number; pending: number } | null>(null);
   const [missingScope, setMissingScope] = useState(false);
   const [drawerFile, setDrawerFile] = useState<ExpertDrawerFile | null>(null);
   const [drawerTab, setDrawerTab] = useState<'ozet' | 'belgeler' | 'operasyon' | 'notlar'>('ozet');
@@ -108,19 +129,19 @@ export default function AsistansFaturalarPage() {
       router.push('/giris');
       return;
     }
-    fetchPortalEmergencyBillingRows(100)
+    fetchPortalInvoices(50)
       .then((res) => {
-        const mapped: Invoice[] = (res.data ?? []).map((row) => ({
-          id: row.id,
-          invoiceNo: row.invoiceNo,
-          invoiceDate: row.invoiceDate,
-          dueDate: row.dueDate,
-          totalAmount: row.totalAmount,
-          status: row.status,
-          claimFile: { id: row.caseId, fileNo: row.fileNo },
-        }));
-        setInvoices(mapped);
-        setTotal(mapped.length);
+        setInvoices((res?.data ?? []) as Invoice[]);
+        setTotal(res?.meta?.total ?? 0);
+        const s = res?.summary;
+        setAmountSummary(
+          s
+            ? {
+                paid: s.paidAmount ?? 0,
+                pending: (s.pendingAmount ?? 0) + (s.overdueAmount ?? 0),
+              }
+            : null,
+        );
       })
       .catch((err: Error) => {
         if (err.message === 'SESSION_REQUIRED') {
@@ -141,14 +162,13 @@ export default function AsistansFaturalarPage() {
   }, [toast]);
 
   const totals = useMemo(() => {
-    const paid = invoices
-      .filter((i) => String(i.status).toUpperCase() === 'FATURALANDILDI')
-      .reduce((s, i) => s + i.totalAmount, 0);
+    if (amountSummary) return amountSummary;
+    const paid = invoices.filter((i) => i.status === 'paid').reduce((s, i) => s + i.totalAmount, 0);
     const pending = invoices
-      .filter((i) => String(i.status).toUpperCase() !== 'FATURALANDILDI')
+      .filter((i) => i.status === 'sent' || i.status === 'overdue' || i.status === 'partial')
       .reduce((s, i) => s + i.totalAmount, 0);
     return { paid, pending };
-  }, [invoices]);
+  }, [amountSummary, invoices]);
 
   const visibleInvoices = useMemo(() => {
     const q = searchQuery.trim().toLocaleLowerCase('tr');
@@ -158,6 +178,7 @@ export default function AsistansFaturalarPage() {
           const hay = [
             inv.invoiceNo,
             inv.claimFile?.fileNo,
+            invoiceIssuedFileNo(inv),
             statusLabel(inv.status),
             fmtMoney(inv.totalAmount),
           ]
@@ -170,7 +191,7 @@ export default function AsistansFaturalarPage() {
         case 'invoiceNo':
           return inv.invoiceNo ?? '';
         case 'fileNo':
-          return inv.claimFile?.fileNo ?? '';
+          return invoiceIssuedFileNo(inv);
         case 'invoiceDate':
           return inv.invoiceDate ?? '';
         case 'dueDate':
@@ -185,16 +206,18 @@ export default function AsistansFaturalarPage() {
     });
   }, [invoices, searchQuery, clientSort]);
 
-  const openFileSummary = (inv: Invoice) => {
-    if (!inv.claimFile?.id) {
+  const openDrawer = (inv: Invoice, tab: 'ozet' | 'belgeler' | 'operasyon' | 'notlar') => {
+    const file = portalDrawerFile(inv);
+    if (!file) {
       setToast('Bu fatura için dosya kaydı bulunamadı.');
       return;
     }
-    setDrawerTab('ozet');
-    setDrawerFile({
-      id: inv.claimFile.id,
-      fileNo: inv.claimFile.fileNo ?? '—',
-    });
+    setDrawerTab(tab);
+    setDrawerFile(file);
+  };
+
+  const openFileSummary = (inv: Invoice) => {
+    openDrawer(inv, 'ozet');
   };
 
   const openPreview = (inv: Invoice) => {
@@ -202,39 +225,15 @@ export default function AsistansFaturalarPage() {
   };
 
   const openNote = (inv: Invoice) => {
-    if (!inv.claimFile?.id) {
-      setToast('Bu fatura için dosya kaydı bulunamadı.');
-      return;
-    }
-    setDrawerTab('notlar');
-    setDrawerFile({
-      id: inv.claimFile.id,
-      fileNo: inv.claimFile.fileNo ?? '—',
-    });
+    openDrawer(inv, 'notlar');
   };
 
   const openDocuments = (inv: Invoice) => {
-    if (!inv.claimFile?.id) {
-      setToast('Bu fatura için dosya kaydı bulunamadı.');
-      return;
-    }
-    setDrawerTab('belgeler');
-    setDrawerFile({
-      id: inv.claimFile.id,
-      fileNo: inv.claimFile.fileNo ?? '—',
-    });
+    openDrawer(inv, 'belgeler');
   };
 
   const openHistory = (inv: Invoice) => {
-    if (!inv.claimFile?.id) {
-      setToast('Bu fatura için dosya kaydı bulunamadı.');
-      return;
-    }
-    setDrawerTab('notlar');
-    setDrawerFile({
-      id: inv.claimFile.id,
-      fileNo: inv.claimFile.fileNo ?? '—',
-    });
+    openDrawer(inv, 'notlar');
   };
 
   const copyText = async (value: string, okMsg: string, emptyMsg: string) => {
@@ -293,7 +292,7 @@ export default function AsistansFaturalarPage() {
         </div>
       ) : (
         <>
-          {invoices.length > 0 && (
+          {(total > 0 || invoices.length > 0) && (
             <div className="grid grid-cols-2 gap-2">
               <div className="group relative flex min-h-[4.75rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white px-3 pb-2.5 pt-2 shadow-sm">
                 <span
@@ -303,7 +302,7 @@ export default function AsistansFaturalarPage() {
                   <Banknote className="h-4 w-4" strokeWidth={1.75} />
                 </span>
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-6 text-center">
-                  <p className="w-full text-[11px] font-medium leading-tight text-slate-500">Finansa Aktarılan</p>
+                  <p className="w-full text-[11px] font-medium leading-tight text-slate-500">Ödenen Toplam</p>
                   <p className="w-full text-lg font-bold tabular-nums leading-none tracking-tight text-status-success">
                     {fmtMoney(totals.paid)}
                   </p>
@@ -317,7 +316,7 @@ export default function AsistansFaturalarPage() {
                   <Clock3 className="h-4 w-4" strokeWidth={1.75} />
                 </span>
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-6 text-center">
-                  <p className="w-full text-[11px] font-medium leading-tight text-slate-500">Kapanmış (Bekleyen Aktarım)</p>
+                  <p className="w-full text-[11px] font-medium leading-tight text-slate-500">Bekleyen Toplam</p>
                   <p className="w-full text-lg font-bold tabular-nums leading-none tracking-tight text-status-warning">
                     {fmtMoney(totals.pending)}
                   </p>
@@ -332,7 +331,7 @@ export default function AsistansFaturalarPage() {
               items={visibleInvoices.map((inv) => ({
                 id: inv.id,
                 fileNo: inv.invoiceNo,
-                subject: inv.claimFile?.fileNo ? `Dosya: ${inv.claimFile.fileNo}` : 'Dosya Bağlantısı Yok',
+                subject: invoiceIssuedFileNo(inv) !== '—' ? `Dosya: ${invoiceIssuedFileNo(inv)}` : 'Dosya Bağlantısı Yok',
                 statusName: statusLabel(inv.status),
                 createdAt: inv.invoiceDate,
                 assignedUser: fmtMoney(inv.totalAmount),
@@ -450,7 +449,7 @@ export default function AsistansFaturalarPage() {
                                     colId="fileNo"
                                     className="px-3 py-2.5 text-[13px] font-medium text-[#10151F]"
                                   >
-                                    {inv.claimFile?.fileNo ?? '—'}
+                                    {invoiceIssuedFileNo(inv)}
                                   </PanelTableTd>
                                 );
                               case 'invoiceDate':
@@ -498,7 +497,7 @@ export default function AsistansFaturalarPage() {
                                   <PanelTableTd key={col.id} colId="actions" className="table-td-center px-3 py-2.5">
                                     <InsuranceFaturalarActions
                                       rowId={inv.id}
-                                      hasClaimFile={Boolean(inv.claimFile?.id)}
+                                      hasClaimFile={Boolean(portalDrawerFile(inv))}
                                       onPreviewReport={() => openPreview(inv)}
                                       onAddNote={() => openNote(inv)}
                                       onFileSummary={() => openFileSummary(inv)}

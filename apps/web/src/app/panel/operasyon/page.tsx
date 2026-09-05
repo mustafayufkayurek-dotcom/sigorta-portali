@@ -989,7 +989,7 @@ function OperasyonPageContent() {
         <OpsStripKpi
           dense
           label="Açık Dosya"
-          value={opsStats?.openEmergency ?? opsStats?.urgent ?? '—'}
+          value={opsStats?.openEmergency ?? '—'}
           color="bg-brand-600"
           icon={FolderOpen}
         />

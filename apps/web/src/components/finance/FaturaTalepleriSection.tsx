@@ -146,9 +146,10 @@ export function computeTalepOzet(talepler: InvoiceRequest[]): TalepOzet {
 
 interface FaturaTalepleriSectionProps {
   onOzetChange?: (ozet: TalepOzet) => void;
+  onIssuedChange?: () => void;
 }
 
-export function FaturaTalepleriSection({ onOzetChange }: FaturaTalepleriSectionProps) {
+export function FaturaTalepleriSection({ onOzetChange, onIssuedChange }: FaturaTalepleriSectionProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [talepler, setTalepler] = useState<InvoiceRequest[]>([]);
@@ -236,6 +237,7 @@ export function FaturaTalepleriSection({ onOzetChange }: FaturaTalepleriSectionP
     try {
       const updated = await updateInvoiceRequestStatus(id, yeniDurum, extras);
       applyUpdated(updated);
+      if (yeniDurum === 'invoiced') onIssuedChange?.();
       showToast(
         'success',
         yeniDurum === 'invoiced'

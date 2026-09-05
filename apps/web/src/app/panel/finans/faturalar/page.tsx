@@ -36,7 +36,7 @@ import { FinansTablePager } from '@/components/finance/FinansTablePager';
 import { faturaTalepleriTabPulseClass } from '@/components/finance/FinansOncelikliGorevModal';
 import { FINANS_ACTIONS_COLUMN, FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, type FinansTablePageSize } from '@/utils/finans-table-page';
 import { unseenInvoiceRequestIds } from '@/utils/invoice-request-alert';
-import { invoicePartyCustomerName } from '@/utils/invoice-customer-name';
+import { invoiceIssuedFileHref, invoiceIssuedFileNo, invoicePartyCustomerName } from '@/utils/invoice-customer-name';
 
 const INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'invoiceNo', label: 'Fatura No', defaultWidth: 120, minWidth: 96 },
@@ -58,8 +58,9 @@ function invoiceCustomerOf(inv: any): string {
   return invoicePartyCustomerName({
     collectionParty: inv.claimFile?.collectionParty,
     insuredName: inv.claimFile?.insuredName,
-    customer: inv.claimFile?.customer,
+    customer: inv.claimFile?.customer ?? inv.emergencyCase?.customer,
     insuranceCompanyName: inv.claimFile?.insuranceCompany?.name ?? inv.insuranceCompany,
+    emergencyCustomerName: inv.emergencyCase?.customerName,
   });
 }
 
@@ -154,15 +155,23 @@ function FaturalarPageContent() {
         const data = r.data.data ?? [];
         setInvoices(data);
         setTotal(r.data.meta?.total ?? 0);
+        const metaTotal = r.data.meta?.total ?? data.length;
         const summary = r.data.summary;
         if (summary) {
-          setStats({ total: summary.totalAmount ?? 0, paid: summary.paidAmount ?? 0, pending: summary.pendingAmount ?? 0, overdue: summary.overdueAmount ?? 0, totalCount: summary.totalCount ?? 0, paidCount: summary.paidCount ?? 0 });
+          setStats({
+            total: summary.totalAmount ?? 0,
+            paid: summary.paidAmount ?? 0,
+            pending: summary.pendingAmount ?? 0,
+            overdue: summary.overdueAmount ?? 0,
+            totalCount: summary.totalCount ?? metaTotal,
+            paidCount: summary.paidCount ?? 0,
+          });
         } else {
           const active = data.filter((i: any) => i.status !== 'cancelled');
           const t = active.reduce((s: number, i: any) => s + (i.totalAmount ?? 0), 0);
           const p = active.filter((i: any) => i.status === 'paid').reduce((s: number, i: any) => s + (i.totalAmount ?? 0), 0);
           const ov = active.filter((i: any) => i.status === 'overdue').reduce((s: number, i: any) => s + (i.totalAmount ?? 0), 0);
-          setStats({ total: t, paid: p, pending: t - p - ov, overdue: ov, totalCount: data.length, paidCount: active.filter((i: any) => i.status === 'paid').length });
+          setStats({ total: t, paid: p, pending: t - p - ov, overdue: ov, totalCount: metaTotal, paidCount: active.filter((i: any) => i.status === 'paid').length });
         }
       })
       .catch((err) => {
@@ -260,8 +269,8 @@ function FaturalarPageContent() {
       av = invoiceCustomerOf(a);
       bv = invoiceCustomerOf(b);
     } else if (sortKey === 'fileNo') {
-      av = a.claimFile?.fileNo ?? a.claimFileId ?? '';
-      bv = b.claimFile?.fileNo ?? b.claimFileId ?? '';
+      av = invoiceIssuedFileNo(a);
+      bv = invoiceIssuedFileNo(b);
     } else if (sortKey === 'invoiceType') {
       av = a.invoiceType ?? '';
       bv = b.invoiceType ?? '';
@@ -344,7 +353,7 @@ function FaturalarPageContent() {
       </div>
 
       {activeTab === 'talepler' ? (
-        <FaturaTalepleriSection onOzetChange={setTalepOzet} />
+        <FaturaTalepleriSection onOzetChange={setTalepOzet} onIssuedChange={load} />
       ) : (
         <>
       {/* Tahsilat Oranı Bar — yalnızca kesilen faturalar */}
@@ -481,9 +490,9 @@ function FaturalarPageContent() {
                         case 'fileNo':
                           return (
                             <PanelTableTd key={col.id} colId="fileNo" className="px-4 py-3">
-                              {inv.claimFileId
-                                ? <a href={`/panel/hasar-dosyalari/${inv.claimFileId}`} className="text-brand-600 dark:text-blue-400 hover:underline text-xs font-mono">{inv.claimFile?.fileNo ?? inv.claimFileId}</a>
-                                : <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>}
+                              {invoiceIssuedFileHref(inv)
+                                ? <a href={invoiceIssuedFileHref(inv)!} className="text-brand-600 dark:text-blue-400 hover:underline text-xs font-mono">{invoiceIssuedFileNo(inv)}</a>
+                                : <span className="text-slate-400 dark:text-slate-500 text-xs">{invoiceIssuedFileNo(inv)}</span>}
                             </PanelTableTd>
                           );
                         case 'invoiceType':
@@ -513,7 +522,7 @@ function FaturalarPageContent() {
                                 status={inv.status}
                                 onPrint={() => printFinanceSlip({
                                   title: `Fatura ${inv.invoiceNo ?? ''}`.trim(),
-                                  fileNo: inv.claimFile?.fileNo ?? inv.claimFileId,
+                                  fileNo: invoiceIssuedFileNo(inv),
                                   customer: invoiceCustomerOf(inv),
                                   invoiceType: inv.invoiceType === 'sales' ? 'Satış' : 'Alış',
                                   date: fmtDate(inv.invoiceDate),
@@ -562,7 +571,7 @@ function FaturalarPageContent() {
               </div>
               <div>
                 <dt className="text-slate-500">Dosya No</dt>
-                <dd className="mt-0.5 font-mono text-slate-800 dark:text-slate-100">{editing.claimFile?.fileNo ?? editing.claimFileId ?? '—'}</dd>
+                <dd className="mt-0.5 font-mono text-slate-800 dark:text-slate-100">{invoiceIssuedFileNo(editing)}</dd>
               </div>
               <div>
                 <dt className="text-slate-500">Tip</dt>
