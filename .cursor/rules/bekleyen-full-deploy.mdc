@@ -1,28 +1,26 @@
 ---
-description: Full deploy v562 alındı — sırada yalnız İK personel+zimmet
+description: Full deploy v563 alındı — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Full deploy v562 (05.09.2026) — alındı
+# Full deploy v563 (05.09.2026) — alındı
 
-Canlı: web **v562** · backend **v562**. Rollback: web v561 / backend v561.
+Canlı: web **v563** · backend **v563**. Rollback: web v562 / backend v562.
 
-## Alınan paket (v562 full)
+## Alınan paket (v563 full)
 
-**Hasar tedarikçi sözleşmesi + kimlik kilidi + iş tanımı kaydı.** İK yok.
+**Tedarikçi eksik kimlik işareti.** İK yok.
 
-1. Sözleşme tek metin; 100.000 TL kısa/uzun ayrımı yok.
-2. Dosya sorumlusu metni görür; düzeltme yöneticide. «Yöneticiden düzeltme iste».
-3. Şahıs TC, şirket vergi no zorunlu; yoksa sözleşme çıkmaz.
-4. Onarım raporunda iş tanımı kaydı durur.
+1. Tedarikçiler listesinde TC veya vergi no yoksa satır işaretlenir.
+2. «Eksikleri göster» yalnız o kayıtları listeler. Düzenle ile tamamlanır.
+
+## v562 durur (bozulmaz)
+
+Hasar tedarikçi sözleşmesi tek metin; dosya sorumlusu görür, yönetici düzeltir; TC/vergi zorunlu; iş tanımı kaydı.
 
 ## v561 durur (bozulmaz)
 
 Hasar planlayıcı çekmece girişi; Acil tedarikçi türü kutusu.
-
-## v560 durur (bozulmaz)
-
-Yeni ihbar maili, hoş geldin, Acil servis formu + bütçe Dosya Konusu.
 
 ## Canlıda yok
 

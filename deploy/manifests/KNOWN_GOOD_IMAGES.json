@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-05",
-  "label": "v562-tedarikci-sozlesme-kimlik",
-  "description": "Full: Hasar tedarikçi sözleşmesi tek metin (100.000 eşiği yok); dosya sorumlusu görür, yönetici düzeltir; TC/vergi zorunlu; iş tanımı kayıt. v561 çekmece/tür durur. İK yok. Rollback web v561 / backend v561.",
+  "label": "v563-tedarikci-kimlik-isaret",
+  "description": "Full: Tedarikçiler listesinde eksik TC/vergi işaretlenir; personel Düzenle ile tamamlar. v562 sözleşme/kimlik kilidi durur. İK yok. Rollback web v562 / backend v562.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v562-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v562-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v563-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v563-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v561-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v561-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v562-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v562-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
