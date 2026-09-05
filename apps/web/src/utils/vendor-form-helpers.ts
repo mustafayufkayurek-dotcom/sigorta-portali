@@ -351,7 +351,7 @@ export function vendorIdentityGapLabel(vendor: {
   taxNumber?: string | null;
 }): string | null {
   if (!vendorContractIdentityMissing(vendor)) return null;
-  return String(vendor.entityType ?? '').toLowerCase() === 'corporate' ? 'Vergi No eksik' : 'TC No eksik';
+  return String(vendor.entityType ?? '').toLowerCase() === 'corporate' ? 'Vergi No Eksik' : 'TC No Eksik';
 }
 
 export function vendorPhoneRequiredError(

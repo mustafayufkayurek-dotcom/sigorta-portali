@@ -23,7 +23,7 @@
 
 ### v564 — Web (5 Eylül 2026) — Tedarikçi Vergi No / TC No eksik
 
-- İsim altında **Vergi No eksik** veya **TC No eksik**; dar sütunda kesilmez
+- İsim altında **Vergi No Eksik** veya **TC No Eksik**; dar sütunda kesilmez
 - Liste kabuğu sade. Backend v563 durur. İK yok
 - Rollback web **v563** / backend **v563**
 

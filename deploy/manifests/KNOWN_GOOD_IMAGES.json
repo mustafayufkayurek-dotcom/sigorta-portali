@@ -1,7 +1,7 @@
 {
   "updatedAt": "2026-09-05",
   "label": "v564-tedarikci-kimlik-yazi",
-  "description": "Web: Tedarikçi isminin altında Vergi No eksik / TC No eksik. Liste kabuğu sade. Backend v563 durur. İK yok. Rollback web v563 / backend v563.",
+  "description": "Web: Tedarikçi isminin altında Vergi No Eksik / TC No Eksik. Liste kabuğu sade. Backend v563 durur. İK yok. Rollback web v563 / backend v563.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
