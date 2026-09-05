@@ -60,6 +60,19 @@ describe('acil satış fatura talebi LOCK', () => {
     assert.equal(body.totalAmount, 2500);
     assert.equal('insuranceCompanyId' in body, false);
     assert.equal(body.insuranceCompanyName, 'Sezgi Global');
+    assert.equal(body.workItemsSummary[0]?.description, 'Hizmet');
+  });
+
+  it('satış fiyatı etiketi yerine dosya konusunu yazar', () => {
+    const body = acilSalesInvoiceRequestBody({
+      emergencyCaseId: 'ec-1',
+      caseNo: 'AY-1',
+      customerName: 'Sezgi Global',
+      issueType: 'Çilingir',
+      gelirEntries: [{ description: 'Meridyen Satış Fiyatı', amount: 3500 }],
+    });
+    assert.equal(body.workItemsSummary[0]?.description, 'Çilingir');
+    assert.equal(body.totalAmount, 3500);
   });
 
   it('system aktörü dosya oluşturan kişiye düşer', () => {

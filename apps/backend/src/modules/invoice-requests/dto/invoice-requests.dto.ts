@@ -77,4 +77,8 @@ export class UpdateInvoiceRequestStatusDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsString()
+  @IsOptional()
+  cancelReason?: string;
 }

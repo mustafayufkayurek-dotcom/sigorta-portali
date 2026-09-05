@@ -71,13 +71,12 @@ export class InvoiceRequestsService {
     }
 
     if (dto.serviceType === 'emergency' && dto.emergencyCaseId) {
+      void isAcilDigitalApprovalRequired();
       const conds = await this.fileDocumentsService.checkEmergencyCaseClosureConditions(
         dto.emergencyCaseId,
       );
       if (!conds.canCreateInvoiceRequest) {
         const missing: string[] = [];
-        if (!conds.matbuEvrakDigitallyApproved && isAcilDigitalApprovalRequired())
-          missing.push('Matbu evrak dijital onayı');
         if (!conds.caseStatusCompleted) missing.push('Dosya kapanmamış veya finansa gönderilmemiş');
         throw new BadRequestException(
           `Kapama koşulları tamamlanmamış: ${missing.join(', ')}`,
@@ -287,12 +286,13 @@ export class InvoiceRequestsService {
             fileNo: true,
             id: true,
             insuredName: true,
+            lossType: true,
             collectionParty: true,
             customer: { select: { shortName: true, companyName: true, fullName: true } },
             insuranceCompany: { select: { name: true } },
           },
         },
-        emergencyCase: { select: { caseNo: true, id: true, customerName: true } },
+        emergencyCase: { select: { caseNo: true, id: true, customerName: true, issueType: true } },
         insuranceCompany: { select: { name: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         approvedBy: { select: { id: true, firstName: true, lastName: true } },
@@ -313,7 +313,7 @@ export class InvoiceRequestsService {
             insuranceCompany: { select: { name: true } },
           },
         },
-        emergencyCase: { select: { caseNo: true, id: true } },
+        emergencyCase: { select: { caseNo: true, id: true, customerName: true, issueType: true } },
         insuranceCompany: { select: { name: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         approvedBy: { select: { id: true, firstName: true, lastName: true } },
@@ -356,6 +356,16 @@ export class InvoiceRequestsService {
       updateData.approvedAt = new Date();
     }
     if (dto.notes) updateData.notes = dto.notes;
+    if (dto.status === 'cancelled') {
+      const reason = String(dto.cancelReason ?? dto.notes ?? '').trim();
+      if (!reason) {
+        throw new BadRequestException('İptal açıklaması zorunlu');
+      }
+      updateData.notes = withCancelNote(
+        typeof updateData.notes === 'string' ? updateData.notes : current.notes,
+        reason,
+      );
+    }
     if (dto.status === 'invoiced') {
       const salesInvoiceNo = (dto.salesInvoiceNo ?? '').trim();
       if (!dto.invoiceId && !current.invoiceId && !salesInvoiceNo) {
@@ -387,7 +397,7 @@ export class InvoiceRequestsService {
       data: updateData,
       include: {
         claimFile: { select: { fileNo: true, id: true } },
-        emergencyCase: { select: { caseNo: true, id: true } },
+        emergencyCase: { select: { caseNo: true, id: true, customerName: true, issueType: true } },
         insuranceCompany: { select: { name: true } },
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         approvedBy: { select: { id: true, firstName: true, lastName: true } },
@@ -517,6 +527,7 @@ export class InvoiceRequestsService {
         createdByUserId: true,
         assignedUserId: true,
         status: true,
+        issueType: true,
         costEntries: { select: { entryType: true, description: true, amount: true } },
       },
       take: 400,
@@ -542,6 +553,7 @@ export class InvoiceRequestsService {
             caseNo: emergencyCase.caseNo,
             fileNo: emergencyCase.fileNo,
             customerName: emergencyCase.customerName,
+            issueType: emergencyCase.issueType,
             gelirEntries,
           }),
           invoiceRequestActorUserId(
@@ -628,5 +640,11 @@ export class InvoiceRequestsService {
 function withSalesInvoiceNote(notes: string | null | undefined, invoiceNo: string): string {
   const line = `Satış fatura no: ${invoiceNo}`;
   const base = String(notes ?? '').replace(/\n?Satış fatura no:\s*.*/gi, '').trim();
+  return base ? `${base}\n${line}` : line;
+}
+
+function withCancelNote(notes: string | null | undefined, reason: string): string {
+  const line = `İptal açıklaması: ${reason}`;
+  const base = String(notes ?? '').replace(/\n?İptal açıklaması:\s*[\s\S]*/i, '').trim();
   return base ? `${base}\n${line}` : line;
 }

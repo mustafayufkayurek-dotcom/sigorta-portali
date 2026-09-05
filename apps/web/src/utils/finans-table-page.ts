@@ -29,8 +29,8 @@ export const FINANS_TABLE_PAGE_KEYS = {
 export const FINANS_ACTIONS_COLUMN = {
   id: 'actions',
   label: 'İşlemler',
-  defaultWidth: 140,
-  minWidth: 128,
+  defaultWidth: 164,
+  minWidth: 148,
   pin: 'end',
   alwaysVisible: true,
   resizable: false,

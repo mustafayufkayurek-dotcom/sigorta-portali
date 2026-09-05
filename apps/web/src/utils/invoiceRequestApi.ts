@@ -66,11 +66,12 @@ export interface InvoiceRequest {
     fileNo: string;
     id: string;
     insuredName?: string | null;
+    lossType?: string | null;
     collectionParty?: string | null;
     customer?: { shortName?: string | null; companyName?: string | null; fullName?: string | null } | null;
     insuranceCompany?: { name?: string | null } | null;
   } | null;
-  emergencyCase?: { caseNo: string; id: string; customerName?: string | null } | null;
+  emergencyCase?: { caseNo: string; id: string; customerName?: string | null; issueType?: string | null } | null;
   insuranceCompany?: { name: string } | null;
   createdBy?: { id: string; firstName: string; lastName: string } | null;
   approvedBy?: { id: string; firstName: string; lastName: string } | null;
@@ -141,7 +142,7 @@ export function getInvoiceRequest(id: string): Promise<InvoiceRequest> {
 export function updateInvoiceRequestStatus(
   id: string,
   status: InvoiceRequestStatus,
-  extras?: { invoiceId?: string; notes?: string; salesInvoiceNo?: string },
+  extras?: { invoiceId?: string; notes?: string; salesInvoiceNo?: string; cancelReason?: string },
 ): Promise<InvoiceRequest> {
   return authFetch(`${API}/invoice-requests/${id}/status`, {
     method: 'PUT',

@@ -313,6 +313,7 @@ export class EmergencyCasesService {
         fileNo: emergencyCase.fileNo,
         customerName: emergencyCase.customerName,
         gelirEntries,
+        issueType: emergencyCase.issueType,
       }),
       invoiceRequestActorUserId(userId, emergencyCase.createdByUserId),
       { skipClosureCheck: true },

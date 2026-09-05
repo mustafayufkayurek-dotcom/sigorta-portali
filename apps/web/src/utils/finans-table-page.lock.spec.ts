@@ -31,7 +31,7 @@ describe('finans-table-page lock', () => {
   it('İşlemler sütunu sağda dar ve kaydırılmaz', () => {
     const src = read('./finans-table-page.ts');
     assert.match(src, /id: 'actions'/);
-    assert.match(src, /defaultWidth: 140/);
+    assert.match(src, /defaultWidth: 164/);
     assert.match(src, /pin: 'end'/);
     assert.match(src, /resizable: false/);
   });

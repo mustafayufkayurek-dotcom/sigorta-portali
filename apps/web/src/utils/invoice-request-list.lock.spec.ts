@@ -96,9 +96,11 @@ describe('invoice-request-list lock', () => {
   it('Faturalandı satış fatura numarası ister; İşlemler menüsü dosya sorumlusuna bildirir', () => {
     const dto = read('../../../backend/src/modules/invoice-requests/dto/invoice-requests.dto.ts');
     assert.match(dto, /salesInvoiceNo/);
+    assert.match(dto, /cancelReason/);
 
     const service = read('../../../backend/src/modules/invoice-requests/invoice-requests.service.ts');
     assert.match(service, /Satış fatura numarası gerekli/);
+    assert.match(service, /İptal açıklaması zorunlu/);
     assert.match(service, /linkOrCreateIssuedSalesInvoice/);
     assert.match(service, /notifyFileOwner/);
     assert.match(service, /sales_invoice_issued/);
@@ -119,9 +121,17 @@ describe('invoice-request-list lock', () => {
     assert.match(section, /FINANS_ACTIONS_COLUMN/);
     assert.match(section, /orderedVisibleColumns/);
     assert.match(section, /notifyInvoiceRequestOwner/);
+    assert.match(section, /fatura-talep-icerik/);
+    assert.match(section, /onView/);
+    assert.match(section, /Yapılan İş Kalemi/);
+    assert.match(section, /fatura-talep-iptal-modal/);
+    assert.match(section, /İptal açıklaması zorunlu/);
     assert.doesNotMatch(section, /<select[\s\S]*DURUM_LABEL/);
 
     const actions = read('../components/finance/FinanceRowActions.tsx');
+    assert.match(actions, /title="Görüntüle"/);
+    assert.match(actions, /<Eye /);
+    assert.match(actions, /fatura-talep-goruntule/);
     assert.match(actions, /title="Yazdır"/);
     assert.match(actions, /title="Dosya sorumlusuna bildir"/);
     assert.match(actions, /title="Düzenle"/);

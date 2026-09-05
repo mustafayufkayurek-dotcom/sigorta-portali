@@ -129,15 +129,12 @@ export function buildEmergencyOperationChain(input: {
   const closed = input.status === 'COZULDU' || input.status === 'FATURALANDILDI';
   const financeTransferred = input.invoiceRequestCount > 0 || input.invoiceDraftCount > 0 || input.status === 'FATURALANDILDI';
   const entitlementGranted = Boolean(input.vendorEntitlementGrantedAt);
-
-  const digitalRequired = isAcilDigitalApprovalRequired();
-  const digitalOk = !digitalRequired || input.hasApprovedMatbuEvrak;
+  isAcilDigitalApprovalRequired();
 
   const blockerReasons: string[] = [];
   if (!isHistorical) {
     if (!vendorAssigned) blockerReasons.push('Tedarikçi ataması yapılmadı');
     if (!salePriceCreated) blockerReasons.push('Satış fiyatı için gelir kaydı girilmedi');
-    if (!digitalOk) blockerReasons.push('Matbu evrak dijital onayı eksik');
     if (!closed) blockerReasons.push('Dosya kapanışı tamamlanmadı');
   }
 
@@ -185,13 +182,9 @@ export function buildEmergencyOperationChain(input: {
     },
     {
       key: 'onay',
-      label: 'Onay ve Evrak',
-      state: digitalOk ? 'done' : salePriceCreated ? 'current' : 'pending',
-      note: isHistorical
-        ? (input.hasApprovedMatbuEvrak ? 'Matbu evrak dijital onaylı' : 'Tarihsel dosya — onay zorunlu değil')
-        : !digitalRequired
-          ? (input.hasApprovedMatbuEvrak ? 'Matbu evrak dijital onaylı' : '28.08.2026 18:01’e kadar onay zorunlu değil')
-          : (input.hasApprovedMatbuEvrak ? 'Matbu evrak dijital onaylı' : 'Matbu evrak onayı bekleniyor'),
+      label: 'Onay',
+      state: salePriceCreated ? 'done' : vendorAssigned ? 'current' : 'pending',
+      note: 'Acil Yardımda sözleşme uygulanmaz',
     },
     {
       key: 'saha',

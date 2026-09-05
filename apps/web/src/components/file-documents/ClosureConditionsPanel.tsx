@@ -325,11 +325,6 @@ export default function ClosureConditionsPanel(props: Props) {
             ) : conditions ? (
               <>
                 <ConditionRow
-                  met={(conditions as EmergencyClosureConditions).matbuEvrakDigitallyApproved}
-                  label="Servis Onay Formu dijital onayı"
-                  help="Servis onay formu WhatsApp ile gönderilmeli ve onaylanmalı"
-                />
-                <ConditionRow
                   met={(conditions as EmergencyClosureConditions).caseStatusCompleted}
                   label="Dosya tamamlandı (ÇÖZÜLDÜ)"
                   help="Dosya durumu ÇÖZÜLDÜ olarak işaretlenmeli"

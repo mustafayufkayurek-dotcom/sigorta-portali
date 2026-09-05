@@ -22,7 +22,6 @@ import {
   EmergencyCase, EmergencyCostEntry, EmergencyStatus, VendorRecommendation,
   type ClosureEmailPreview, type EmergencyUrgency,
 } from '@/utils/emergencyApi';
-import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import ClosurePhotosPanel from '@/components/file-documents/ClosurePhotosPanel';
 import { FieldInspectionPhotosPanel } from '@/components/field-survey/FieldInspectionPhotosPanel';
@@ -1480,11 +1479,7 @@ export default function AcilDosyaDetayPage() {
       return;
     }
     if (!flow.customerApproved) {
-      setActionFlash(
-        acilDigitalApprovalGateOk(false)
-          ? 'Önce müşteri onayı.'
-          : 'Önce müşteri onayı ve dijital evrak.',
-      );
+      setActionFlash('Önce müşteri onayı.');
       return;
     }
     const docsNow = vaka.operationChain?.documents;
@@ -1869,14 +1864,14 @@ export default function AcilDosyaDetayPage() {
     tedarikci_maliyet: vaka.assignedVendorId && vendorCostDone
       ? 'done'
       : 'waiting',
-    onay: flow.customerApproved && digitalDocsOk
+    onay: flow.customerApproved
       ? 'done'
       : vendorCostDone
         ? 'waiting'
         : 'future',
     kapanis: (vaka.status === 'COZULDU' || vaka.status === 'FATURALANDILDI' || Boolean(vaka.resolvedAt) || flow.fileClosed)
       ? 'done'
-      : flow.customerApproved && digitalDocsOk
+      : flow.customerApproved
         ? 'waiting'
         : 'future',
     finans: (flow.financeTransferred || vaka.status === 'FATURALANDILDI')
@@ -1999,7 +1994,7 @@ export default function AcilDosyaDetayPage() {
   const requiredOpsItems = closeGate.items;
   const missingCloseLabels = closeGate.missingLabels;
 
-  const workStartDone = flow.customerApproved && digitalDocsOk;
+  const workStartDone = flow.customerApproved;
   const serviceDone = flow.serviceCompleted || fileAlreadyClosed;
   const initialNotifyDone = requiredOps.insuredInitialNotify;
   const closureSurveyDone = closeGate.surveyDone;
@@ -2361,12 +2356,9 @@ export default function AcilDosyaDetayPage() {
         )}
         approvalStep={(
           <div className="space-y-3" data-testid="acil-onay-evrak">
-            <FileDocumentPanel
-              entityType="emergency_case"
-              entityId={vaka.id}
-              documentKind="matbu_evrak"
-              defaultPhone={insuredPhoneLabel(vaka) === '—' ? '' : insuredPhoneLabel(vaka)}
-            />
+            <p className="text-xs text-slate-500">
+              Acil Yardımda sözleşme uygulanmaz. Müşteri onayı sunum özetinden kaydedilir.
+            </p>
           </div>
         )}
         closingStep={(
@@ -2788,15 +2780,9 @@ export default function AcilDosyaDetayPage() {
                   iconClassName="text-slate-600"
                 />
                 <p className="mt-1 text-xs text-slate-500 leading-snug">
-                  Yazışma ekleri. Servis onay formu burada da durur. Kapanış fotoğrafları kapanış adımında.
+                  Yazışma ekleri. Kapanış fotoğrafları kapanış adımında.
                 </p>
               </div>
-              <FileDocumentPanel
-                entityType="emergency_case"
-                entityId={vaka.id}
-                documentKind="matbu_evrak"
-                defaultPhone={insuredPhoneLabel(vaka) === '—' ? '' : insuredPhoneLabel(vaka)}
-              />
               <div className="rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2 max-h-36 overflow-auto">
                 <InboundEmailCorrespondencePanel emergencyCaseId={vaka.id} compact />
               </div>
@@ -3180,7 +3166,12 @@ export default function AcilDosyaDetayPage() {
                 entityId={vaka.id}
                 fileNo={vaka.caseNo}
                 totalAmount={costs.reduce((s, c) => s + c.amount, 0)}
-                workItemsSummary={[]}
+                workItemsSummary={costs
+                  .filter((c) => c.entryType === 'gelir' && Number(c.amount) > 0)
+                  .map((c) => ({
+                    description: (vaka.issueType || c.description || 'Acil Yardım').trim(),
+                    amount: c.amount,
+                  }))}
                 fileClosed={vaka.status === 'COZULDU' || vaka.status === 'FATURALANDILDI'}
               />
             )}

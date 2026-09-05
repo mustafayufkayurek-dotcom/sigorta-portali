@@ -172,8 +172,8 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /satisVatMode: displaySatisVat/);
     assert.match(steps, /Anket \(Tercihli\)/);
     assert.match(acilPage, /data-testid="acil-onay-evrak"/);
-    assert.match(acilPage, /FileDocumentPanel/);
-    assert.match(acilPage, /documentKind="matbu_evrak"/);
+    assert.doesNotMatch(acilPage, /FileDocumentPanel/);
+    assert.doesNotMatch(acilPage, /documentKind="matbu_evrak"/);
     assert.match(acilPage, /acil-finans-ozet-serit/);
     assert.doesNotMatch(acilPage, /acil-servis-anket-ozet/);
     assert.match(acilPage, /acil-gider-ozet/);
@@ -190,7 +190,8 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(backend, /kapanis-raporu-/);
     assert.match(backend, /sendClosureEmailOnClose/);
     const approvalBlock = acilPage.slice(acilPage.indexOf('acil-onay-evrak'));
-    assert.match(approvalBlock, /<FileDocumentPanel/);
+    assert.doesNotMatch(approvalBlock, /<FileDocumentPanel/);
+    assert.match(approvalBlock, /sözleşme uygulanmaz/);
     const beforeDrawer = acilPage.slice(0, acilPage.indexOf('approvalStep'));
     assert.doesNotMatch(beforeDrawer, /<FileDocumentPanel/);
   });

@@ -44,7 +44,7 @@ describe('acil sunum özeti boşluk LOCK', () => {
     assert.doesNotMatch(wrapFn, /body \? `/);
     assert.doesNotMatch(gates, /\.trim\(\)\.replace\(\/\^Riziko adreste/);
     assert.match(gates, /acilOnayMetinGovde\(s\.approvalText\)\.trim\(\)/);
-    assert.match(gates, /2026-08-28T18:01:00\+03:00/);
+    assert.doesNotMatch(gates, /Servis onay formu dijital onayı olmadan/);
     assert.match(steps, /onChange=\{\(e\) => p\.onApprovalText\(withAcilOnayMetinOnEk\(e\.target\.value\)\)\}/);
     assert.match(steps, /acilOnayMetinGovde\(p\.approvalText\)\.trim\(\)/);
   });

@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, MoreVertical, Pencil, Printer, ScrollText, Send, XCircle } from 'lucide-react';
+import { CheckCircle2, Eye, MoreVertical, Pencil, Printer, ScrollText, Send, XCircle } from 'lucide-react';
 import { formatTryAmount } from '@/utils/format-try-amount';
 
 function escapeHtml(value: string) {
@@ -297,12 +297,14 @@ export function InvoiceRowActions({
 /** Fatura talebi satırı — Kesilen Faturalar ile aynı işlem ikonları. */
 export function InvoiceRequestRowActions({
   status: _status,
+  onView,
   onPrint,
   onNotifyOwner,
   onEdit,
   onCancel,
 }: {
   status: string;
+  onView: () => void;
   onPrint: () => void;
   onNotifyOwner?: () => void;
   onEdit?: () => void;
@@ -310,6 +312,9 @@ export function InvoiceRequestRowActions({
 }) {
   return (
     <div className="flex items-center justify-end gap-0.5" data-testid="fatura-talep-islemler">
+      <button type="button" title="Görüntüle" aria-label="Görüntüle" onClick={onView} className={iconBtn} data-testid="fatura-talep-goruntule">
+        <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+      </button>
       <button type="button" title="Yazdır" aria-label="Yazdır" onClick={onPrint} className={iconBtn}>
         <Printer className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
       </button>

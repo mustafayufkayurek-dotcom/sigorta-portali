@@ -619,9 +619,7 @@ export function evaluateOperationStartGate(input: {
   if (!input.hasVendor) missing.push('Tedarikçi');
   if (!input.saleReady) missing.push(CLOSE_FINANCE_CHECK_LABELS.salePrice);
   if (!input.customerApproved) missing.push('Müşteri Onayı');
-  if (isAcilDigitalApprovalRequired() && !input.digitalApproval) {
-    missing.push(CLOSE_FINANCE_CHECK_LABELS.digitalApproval);
-  }
+  void isAcilDigitalApprovalRequired();
   return { ready: missing.length === 0, missingLabels: missing };
 }
 

@@ -14,11 +14,25 @@ export function canOpenAcilSalesInvoiceRequest(input: {
   return Number(input.gelirTotal) > 0;
 }
 
+const GENERIC_PRICE = /^(meridyen satış fiyatı|tedarikçi alış fiyatı)$/i;
+
+export function acilInvoiceWorkDescription(
+  issueType: string | null | undefined,
+  fallback: string | null | undefined,
+): string {
+  const job = String(issueType ?? '').trim();
+  if (job) return job;
+  const label = String(fallback ?? '').trim();
+  if (label && !GENERIC_PRICE.test(label)) return label;
+  return 'Acil Yardım';
+}
+
 export function acilSalesInvoiceRequestBody(input: {
   emergencyCaseId: string;
   caseNo: string;
   fileNo?: string | null;
   customerName: string;
+  issueType?: string | null;
   gelirEntries: Array<{ description: string; amount: number }>;
 }): {
   serviceType: 'emergency';
@@ -30,6 +44,7 @@ export function acilSalesInvoiceRequestBody(input: {
   notes: string;
 } {
   const gelirEntries = input.gelirEntries.filter((e) => Number(e.amount) > 0);
+  const job = acilInvoiceWorkDescription(input.issueType, gelirEntries[0]?.description);
   return {
     serviceType: 'emergency',
     emergencyCaseId: input.emergencyCaseId,
@@ -37,7 +52,7 @@ export function acilSalesInvoiceRequestBody(input: {
     fileNo: (input.fileNo ?? '').trim() || input.caseNo,
     totalAmount: gelirEntries.reduce((s, e) => s + Number(e.amount), 0),
     workItemsSummary: gelirEntries.map((e) => ({
-      description: e.description,
+      description: acilInvoiceWorkDescription(input.issueType, e.description) || job,
       amount: e.amount,
     })),
     notes: 'Acil yardım — dosya sorumlusunun finansa gönderimi.',
