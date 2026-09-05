@@ -19,6 +19,7 @@ import {
   ReorderClausesDto,
   UpdateTemplateDto,
 } from './dto/vendor-contracts.dto';
+import { escHtml, escHtmlRecord } from '@/common/utils/html-escape';
 import {
   readVendorContractKind,
   unwrapVendorContractWorkItems,
