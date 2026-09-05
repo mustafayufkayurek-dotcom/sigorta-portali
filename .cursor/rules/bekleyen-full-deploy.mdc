@@ -1,30 +1,32 @@
 ---
-description: Full deploy v561 alındı — sırada yalnız İK personel+zimmet
+description: Full deploy v562 alındı — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Full deploy v561 (05.09.2026) — alındı
+# Full deploy v562 (05.09.2026) — alındı
 
-Canlı: web **v561** · backend **v561**. Rollback: web v560 / backend v560.
+Canlı: web **v562** · backend **v562**. Rollback: web v561 / backend v561.
 
-## Alınan paket (v561 full)
+## Alınan paket (v562 full)
 
-**Hasar planlayıcı çekmece girişi + Acil tedarikçi türü kutusu.** İK yok.
+**Hasar tedarikçi sözleşmesi + kimlik kilidi + iş tanımı kaydı.** İK yok.
 
-1. Hasar dosyası: kapalıysa çekmece kapalı; Operasyon Planlayıcısı kapanış adımını açar. Açıksa çekmece sıradaki bekleyen adımda açılır.
-2. Tedarikçiler → Yeni Tedarikçi: Acil kayıtta **Tedarikçi Türü** açılır (Taşeron / Malzeme / Lojistik / Ekipman / Diğer). Liste tedarikçi gören/ekleyen yetkisiyle gelir.
+1. Sözleşme tek metin; 100.000 TL kısa/uzun ayrımı yok.
+2. Dosya sorumlusu metni görür; düzeltme yöneticide. «Yöneticiden düzeltme iste».
+3. Şahıs TC, şirket vergi no zorunlu; yoksa sözleşme çıkmaz.
+4. Onarım raporunda iş tanımı kaydı durur.
+
+## v561 durur (bozulmaz)
+
+Hasar planlayıcı çekmece girişi; Acil tedarikçi türü kutusu.
 
 ## v560 durur (bozulmaz)
 
-Yeni ihbar maili, hoş geldin (eksper/sigorta/broker/asistans), Acil servis formu + bütçe Dosya Konusu.
-
-## v559 durur (bozulmaz)
-
-Eksper liste, sütun kaydırma, müşteri dosya sayısı, sağ panel sayfa geçişi, hasar KPI kapsam.
+Yeni ihbar maili, hoş geldin, Acil servis formu + bütçe Dosya Konusu.
 
 ## Canlıda yok
 
-İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj karışmaz. Hasar rapor tipi.
+İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj karışmaz.
 
 ## Sırada (karışmaz)
 
