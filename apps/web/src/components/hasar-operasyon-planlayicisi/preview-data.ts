@@ -144,6 +144,7 @@ export const PREVIEW = {
     total: '48.500 ₺',
     totalAmount: 48500,
     supplierCost: '32.000 ₺',
+    supplierCostAmount: 32000,
     actualExpense: '8.200 ₺',
     expectedIncome: '48.500 ₺',
     profit: '8.300 ₺',

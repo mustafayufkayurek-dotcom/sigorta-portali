@@ -41,5 +41,6 @@ node --experimental-strip-types --test \
   apps/web/src/utils/ops-first-run-notice.lock.spec.ts \
   apps/web/src/components/ui/right-panel-dock.lock.spec.ts \
   packages/shared/src/hasar-flow-groups.lock.spec.ts \
-  packages/shared/src/hasar-vendor-contract-waiver.lock.spec.ts
+  packages/shared/src/hasar-vendor-contract-waiver.lock.spec.ts \
+  packages/shared/src/hasar-vendor-contract-kind.lock.spec.ts
 echo "=== Hasar hakediş kilit: PASS ==="

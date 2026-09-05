@@ -1963,6 +1963,7 @@ interface EditableItemsTableProps {
   onAdd: (data: any) => Promise<void>;
   onDirtyChange?: (count: number) => void;
   onWorkGroupCreated?: (workGroup: any) => void;
+  onWorkSubGroupCreated?: (workGroupId: string, subGroup: any) => void;
   onNotify?: (type: 'error' | 'warning' | 'success', message: string) => void;
   onConfirm?: (message: string) => Promise<boolean>;
 }
@@ -2484,7 +2485,7 @@ function KalemColResizeHandle({
 }
 
 const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTableProps>(function EditableItemsTable(
-  { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange, onWorkGroupCreated, onNotify, onConfirm },
+  { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange, onWorkGroupCreated, onWorkSubGroupCreated, onNotify, onConfirm },
   ref,
 ) {
   const notify = onNotify ?? ((_type: 'error' | 'warning' | 'success', _message: string) => {});
@@ -2652,9 +2653,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
   const resolveSubGroups = useCallback((workGroupId: string): any[] => {
     if (!workGroupId) return [];
-    const embedded = getEmbeddedSubGroups(workGroupId);
-    if (embedded && embedded.length > 0) return embedded;
-    return subGroups[workGroupId] ?? embedded ?? [];
+    const local = subGroups[workGroupId];
+    const embedded = getEmbeddedSubGroups(workGroupId) ?? [];
+    if (Array.isArray(local) && local.length > 0) {
+      const seen = new Set(local.map((s: any) => s.id).filter(Boolean));
+      const extras = embedded.filter((s: any) => s.id && !seen.has(s.id));
+      return extras.length ? [...local, ...extras] : local;
+    }
+    return embedded;
   }, [getEmbeddedSubGroups, subGroups]);
 
   // work-groups listesindeki alt grupları önbelleğe al
@@ -2685,7 +2691,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     if (!workGroupId) return;
     const embedded = getEmbeddedSubGroups(workGroupId);
     if (embedded && embedded.length > 0) {
-      setSubGroups((prev) => ({ ...prev, [workGroupId]: embedded }));
+      setSubGroups((prev) => {
+        const local = prev[workGroupId] ?? [];
+        if (local.length >= embedded.length) return prev;
+        const seen = new Set(local.map((s: any) => s.id).filter(Boolean));
+        return { ...prev, [workGroupId]: [...local, ...embedded.filter((s: any) => s.id && !seen.has(s.id))] };
+      });
       return;
     }
     if (subGroups[workGroupId] !== undefined || loadingSubGroupIds.has(workGroupId)) return;
@@ -2714,11 +2725,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       { headers: authHeader() },
     );
     const newSg = res.data.data ?? res.data;
-    // Mevcut sub-groups listesini güncelle
     setSubGroups((prev) => {
-      const existing = prev[workGroupId] ?? [];
+      const existing = prev[workGroupId] ?? getEmbeddedSubGroups(workGroupId) ?? [];
+      if (newSg?.id && existing.some((s: any) => s.id === newSg.id)) {
+        return { ...prev, [workGroupId]: existing };
+      }
       return { ...prev, [workGroupId]: [...existing, newSg] };
     });
+    onWorkSubGroupCreated?.(workGroupId, newSg);
     return { name: newSg.name, unitType: newSg.unitType };
   };
 
@@ -3512,15 +3526,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                         onFocus={() => setActiveCell({ rowIdx, col: 'jobDescription' })}
                         onBlur={() => { tryAutoSaveRow(row._id); }}
                         onSelect={(v, unit) => {
-                          setRows((prev) => prev.map((r) => {
-                            if (r._id !== row._id) return r;
-                            const merged = mergeVendorMemoryIntoRow({
-                              ...r,
-                              jobDescription: v,
-                              unit: unit ?? r.unit,
-                            });
-                            return { ...r, ...merged, _isDirty: true };
-                          }));
+                          const base = rowsRef.current.find((r) => r._id === row._id) ?? row;
+                          const nextUnit = unit ?? base.unit;
+                          const merged = mergeVendorMemoryIntoRow({
+                            ...base,
+                            jobDescription: v,
+                            unit: nextUnit,
+                          });
+                          setRows((prev) => prev.map((r) => (
+                            r._id === row._id ? { ...r, ...merged, _isDirty: true } : r
+                          )));
+                          tryAutoSaveRow(row._id, merged);
                         }}
                         onAddNew={createSubGroup}
                         onNotify={onNotify}
@@ -4091,6 +4107,7 @@ function EmergencyReportEditor({
   workGroups,
   onReload,
   onWorkGroupCreated,
+  onWorkSubGroupCreated,
 }: {
   report: any;
   reportId: string;
@@ -4098,6 +4115,7 @@ function EmergencyReportEditor({
   workGroups: any[];
   onReload: () => void;
   onWorkGroupCreated?: (workGroup: any) => void;
+  onWorkSubGroupCreated?: (workGroupId: string, subGroup: any) => void;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -4357,6 +4375,7 @@ function EmergencyReportEditor({
               onDelete={handleDeleteItem}
               onAdd={handleAddItem}
               onWorkGroupCreated={onWorkGroupCreated}
+              onWorkSubGroupCreated={onWorkSubGroupCreated}
             />
           </SectionCard>
 
@@ -4514,6 +4533,15 @@ export default function RepairReportPage() {
       if (prev.some((wg) => wg.id === workGroup.id)) return prev;
       return [...prev, workGroup].sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99) || String(a.name).localeCompare(String(b.name), 'tr'));
     });
+  }, []);
+  const handleWorkSubGroupCreated = useCallback((workGroupId: string, subGroup: any) => {
+    if (!workGroupId || !subGroup) return;
+    setWorkGroups((prev) => prev.map((wg) => {
+      if (wg.id !== workGroupId) return wg;
+      const current = Array.isArray(wg.workSubGroups) ? wg.workSubGroups : [];
+      if (subGroup.id && current.some((s: any) => s.id === subGroup.id)) return wg;
+      return { ...wg, workSubGroups: [...current, subGroup] };
+    }));
   }, []);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'internal' | 'external'>('internal');
@@ -5629,6 +5657,7 @@ export default function RepairReportPage() {
         workGroups={workGroups}
         onReload={load}
         onWorkGroupCreated={handleWorkGroupCreated}
+        onWorkSubGroupCreated={handleWorkSubGroupCreated}
       />
     );
   }
@@ -6141,6 +6170,7 @@ export default function RepairReportPage() {
           onAdd={handleAddItem}
           onDirtyChange={setDirtyItemCount}
           onWorkGroupCreated={handleWorkGroupCreated}
+          onWorkSubGroupCreated={handleWorkSubGroupCreated}
           onNotify={notify}
           onConfirm={askConfirm}
         />

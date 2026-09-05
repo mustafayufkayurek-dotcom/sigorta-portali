@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsUUID, IsInt, IsBoolean, Min, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsInt, IsBoolean, Min, IsDateString, IsIn } from 'class-validator';
 
 export class CreateVendorContractDto {
   @IsUUID()
@@ -23,6 +23,26 @@ export class CreateVendorContractDto {
   @IsInt()
   @Min(1)
   signDeadlineDays?: number;
+
+  /** simple/detailed alanı durur ama eşik uygulanmaz; metin her zaman tam sözleşmedir */
+  @IsOptional()
+  @IsIn(['simple', 'detailed'])
+  kind?: 'simple' | 'detailed';
+
+  /** Bu dosyaya özel metin; boşsa şablon üretilir */
+  @IsOptional()
+  @IsString()
+  renderedContent?: string;
+}
+
+export class RequestVendorContractCorrectionDto {
+  @IsString()
+  note!: string;
+}
+
+export class UpdateVendorContractContentDto {
+  @IsString()
+  renderedContent!: string;
 }
 
 export class CreateClauseDto {

@@ -38,6 +38,7 @@ import type { StepId } from './types';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import { ClaimManualDocumentsPanel } from '@/components/file-documents/ClaimManualDocumentsPanel';
 import { VendorRepairPhotosPanel } from '@/components/field-survey/VendorRepairPhotosPanel';
+import { PlannerVendorContractGuide } from './PlannerVendorContractGuide';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import SpeechToText from '@/components/SpeechToText';
@@ -1483,7 +1484,9 @@ function StepRepairWhatsApp() {
     <div className="mt-3 space-y-3">
       <p className="text-xs text-slate-600">
         Onarım planı: tarih, iş ve kim gidecek. Bir alıcıya gönderilince aynı alıcı yeniden seçilmez.
+        Tedarikçi sözleşmesi burada görülür. Düzeltme yöneticidedir.
       </p>
+      <PlannerVendorContractGuide />
       <StepWhatsApp lockSentRecipients={claim.contactWa.repairTypes} purpose="repair" />
     </div>
   );

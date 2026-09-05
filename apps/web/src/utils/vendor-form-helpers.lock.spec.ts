@@ -24,8 +24,17 @@ describe('tedarikçi türü listesi LOCK', () => {
 
   it('form native select yerine açılır liste kullanır; yetkisiz yüklemede varsayılan kalır', () => {
     const page = readFileSync(join(here, '../app/panel/tedarikciler/page.tsx'), 'utf8');
-    const helper = readFileSync(join(here, 'vendor-type-list.ts'), 'utf8');
-    assert.match(helper, /DEFAULT_VENDOR_TYPES/);
+    assert.match(page, /vendorIdentityCardLine/);
+    assert.match(page, /Şahıs/);
+    assert.match(page, /Şirket/);
+    assert.match(page, /hint: 'TC kimlik no'/);
+    assert.match(page, /hint: 'Vergi no'/);
+    const formHelper = readFileSync(join(here, 'vendor-form-helpers.ts'), 'utf8');
+    assert.match(formHelper, /vendorIdentityCardLine/);
+    assert.match(formHelper, /TC Kimlik No/);
+    assert.match(formHelper, /Vergi No/);
+    const typeList = readFileSync(join(here, 'vendor-type-list.ts'), 'utf8');
+    assert.match(typeList, /DEFAULT_VENDOR_TYPES/);
     assert.match(page, /data-testid="tedarikci-turu-sec"/);
     assert.match(page, /resolveVendorTypeList/);
     assert.match(page, /DEFAULT_VENDOR_TYPES/);

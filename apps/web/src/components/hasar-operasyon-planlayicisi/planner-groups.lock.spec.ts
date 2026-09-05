@@ -28,6 +28,7 @@ describe('hasar planner groups lock', () => {
     const stepsSrc = readFileSync(join(here, 'steps.tsx'), 'utf8');
     const card = readFileSync(join(here, 'HasarSalesInvoiceRequestCard.tsx'), 'utf8');
     assert.match(stepsSrc, /HasarSalesInvoiceRequestCard/);
+    assert.match(stepsSrc, /PlannerVendorContractGuide/);
     assert.match(card, /Satış faturası talebi/);
     assert.match(card, /Finansa talep et/);
     assert.doesNotMatch(card, /Yeni Fatura/);

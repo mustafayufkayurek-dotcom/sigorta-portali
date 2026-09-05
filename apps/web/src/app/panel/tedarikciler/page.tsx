@@ -53,6 +53,9 @@ import {
   resolveVendorPrimaryEmail,
   resolveVendorPrimaryPhone,
   vendorPhoneRequiredError,
+  vendorEntityTypeLabel,
+  vendorIdentityCardLine,
+  vendorIdentityDocumentHint,
   filterDocumentTypesForCategory,
   VENDOR_RELATION_SECTION_TITLE,
   VENDOR_RELATION_SECTION_HINT,
@@ -88,6 +91,12 @@ import {
 import { VendorRowActions } from '@/components/vendors/VendorRowActions';
 import { OpsKpiSegmentBand, OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import { BadgeCheck, Building2, Warehouse } from 'lucide-react';
+import {
+  extractIdentityCandidatesFromText,
+  identityMatchesVendor,
+  isValidTcKimlikNo,
+  isValidVergiNo,
+} from '@sigorta/shared';
 
 import { getAccessToken } from '@/utils/auth-session';
 
@@ -515,11 +524,11 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
 
   const typeBadge = vendor?.entityType === 'individual' ? (
     <span className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border bg-purple-50 text-purple-700 border-purple-100">
-      {Icon.user} <span className="ml-1">Bireysel</span>
+      {Icon.user} <span className="ml-1">Şahıs</span>
     </span>
   ) : (
     <span className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border bg-indigo-50 text-indigo-700 border-indigo-100">
-      {Icon.building} <span className="ml-1">Kurumsal</span>
+      {Icon.building} <span className="ml-1">Şirket</span>
     </span>
   );
 
@@ -581,6 +590,15 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
                     {statusLabel}
                   </span>
                 </div>
+                {(() => {
+                  const idLine = vendorIdentityCardLine(vendor);
+                  return (
+                    <p className="mt-2 text-xs text-slate-600">
+                      <span className="font-medium text-slate-500">{idLine.label}: </span>
+                      {idLine.value}
+                    </p>
+                  );
+                })()}
               </div>
             </div>
             <div className="space-y-2.5">
@@ -920,7 +938,7 @@ export default function VendorsPage() {
       sortRowsByClientSort(vendors, clientSort, (v, key) => {
         switch (key) {
           case 'name': return v.name ?? '';
-          case 'type': return v.entityType === 'individual' ? 'Bireysel' : 'Kurumsal';
+          case 'type': return vendorEntityTypeLabel(v.entityType);
           case 'contact': return v.email ?? v.phone ?? '';
           case 'location': return [v.city, v.district].filter(Boolean).join(' / ');
           case 'jobCount': return v._count?.costEntries ?? 0;
@@ -1554,6 +1572,23 @@ export default function VendorsPage() {
         errors.lastName = 'Bu alan zorunludur';
         missingLabels.push('Soyad');
       }
+      if (!isValidTcKimlikNo(form.identityNo)) {
+        errors.identityNo = 'Geçerli TC kimlik no zorunludur';
+        missingLabels.push('TC Kimlik No');
+      }
+      if (nviResult !== true) {
+        showToast('warning', 'Kayıt için TC kimlik doğrulaması gerekir.');
+        setActiveSection(0);
+        return;
+      }
+    }
+    if (form.entityType === 'corporate' && !isValidVergiNo(form.taxNumber)) {
+      errors.taxNumber = 'Vergi numarası zorunludur';
+      missingLabels.push('Vergi No');
+    }
+    if (!editVendor && pendingDocs.length === 0) {
+      showToast('warning', 'TC kimlik veya vergi levhası yükleyin. Sözleşme kayıttaki numarayı basar.');
+      return;
     }
 
     const resolvedPhone = resolveVendorPrimaryPhone(form.phone, contacts, contactInfos);
@@ -1883,7 +1918,7 @@ export default function VendorsPage() {
     setPage(1);
   };
 
-  const entityTypeLabel: Record<string, string> = { individual: 'Bireysel', corporate: 'Kurumsal' };
+  const entityTypeLabel: Record<string, string> = { individual: 'Şahıs', corporate: 'Şirket' };
   const statusLabel: Record<string, string> = { active: 'Aktif', passive: 'Pasif' };
 
   // Modal sections
@@ -2021,7 +2056,7 @@ export default function VendorsPage() {
         />
         <OpsStripKpi
           embedded
-          label="Kurumsal"
+          label="Şirket"
           value={summary.corporateCount}
           color="bg-indigo-600"
           icon={Building2}
@@ -2057,8 +2092,8 @@ export default function VendorsPage() {
 
           <select className="panel-filter-control" value={entityTypeFilter} onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(1); }}>
             <option value="">Tüm Tipler</option>
-            <option value="individual">Bireysel</option>
-            <option value="corporate">Kurumsal</option>
+            <option value="individual">Şahıs</option>
+            <option value="corporate">Şirket</option>
           </select>
 
           <select className="panel-filter-control" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
@@ -2247,7 +2282,10 @@ export default function VendorsPage() {
                       </span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                      <span>{v.entityType === 'individual' ? 'Bireysel' : 'Kurumsal'}</span>
+                      <span>{vendorEntityTypeLabel(v.entityType)}</span>
+                      <span>
+                        {vendorIdentityCardLine(v).label}: {vendorIdentityCardLine(v).value}
+                      </span>
                       {v.city ? (
                         <span className="inline-flex items-center gap-1">
                           {Icon.mapPin}
@@ -2342,9 +2380,12 @@ export default function VendorsPage() {
                     <div className="flex justify-center">
                       <span className={`inline-flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${v.entityType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-indigo-50 text-indigo-700'}`}>
                         {v.entityType === 'individual' ? Icon.user : Icon.building}
-                        {v.entityType === 'individual' ? 'Bireysel' : 'Kurumsal'}
+                        {vendorEntityTypeLabel(v.entityType)}
                       </span>
                     </div>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {vendorIdentityCardLine(v).label}: {vendorIdentityCardLine(v).value}
+                    </p>
                   </PanelTableTd>
                     ),
                     contact: (
@@ -2488,7 +2529,7 @@ export default function VendorsPage() {
               const displayName = form.entityType === 'individual'
                 ? `${form.firstName} ${form.lastName}`.trim()
                 : form.name.trim();
-              const typeLabel = form.entityType === 'individual' ? 'Bireysel Tedarikçi' : 'Kurumsal Tedarikçi';
+              const typeLabel = form.entityType === 'individual' ? 'Şahıs tedarikçi' : 'Şirket tedarikçi';
               return displayName ? (
                 <div className="flex items-center gap-2 px-6 py-2.5 bg-indigo-50 border-b border-indigo-100">
                   <svg className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2546,16 +2587,27 @@ export default function VendorsPage() {
                   <SectionDivider icon={Icon.building} title="Tedarikçi Tipi" />
                   <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-2">
                     {[
-                      { val: 'corporate', label: 'Kurumsal', icon: Icon.building, color: 'indigo' },
-                      { val: 'individual', label: 'Bireysel', icon: Icon.user, color: 'purple' },
-                    ].map(({ val, label, icon, color }) => (
-                      <button key={val} type="button" onClick={() => { setForm((p) => ({ ...p, entityType: val as any })); setFieldErrors({}); }}
-                        className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium border-2 transition-all
+                      { val: 'corporate', label: 'Şirket', hint: 'Vergi no', icon: Icon.building, color: 'indigo' },
+                      { val: 'individual', label: 'Şahıs', hint: 'TC kimlik no', icon: Icon.user, color: 'purple' },
+                    ].map(({ val, label, hint, icon, color }) => (
+                      <button key={val} type="button" onClick={() => {
+                        setForm((p) => ({
+                          ...p,
+                          entityType: val as 'corporate' | 'individual',
+                          ...(val === 'corporate' ? { identityNo: '' } : { taxNumber: '', taxOffice: '', tradeRegistryNo: '' }),
+                        }));
+                        setNviResult(null);
+                        setGibError(null);
+                        setNumericErrors({});
+                        setFieldErrors({});
+                      }}
+                        className={`flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer
                           ${form.entityType === val
                             ? color === 'indigo' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-purple-600 text-white border-purple-600 shadow-sm'
                             : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                           }`}>
-                        {icon} {label}
+                        <span className="inline-flex items-center gap-2">{icon} {label}</span>
+                        <span className={`text-[10px] font-normal ${form.entityType === val ? 'text-white/80' : 'text-slate-400'}`}>{hint}</span>
                       </button>
                     ))}
                   </div>
@@ -2783,7 +2835,7 @@ export default function VendorsPage() {
                           </FormField>
                         </div>
                         <div className="col-span-1 sm:col-span-2">
-                        <FormField label="Vergi No">
+                        <FormField label="Vergi No" required error={fieldErrors.taxNumber}>
                           <div className="flex gap-2">
                             <input className={`flex-1 border rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${numericErrors.taxNumber ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                               placeholder="10 Haneli VKN" maxLength={10} value={form.taxNumber}
@@ -2827,7 +2879,7 @@ export default function VendorsPage() {
                         <FormField label="Soyad" required error={fieldErrors.lastName}>
                           <input className={fieldErrors.lastName ? inpError : inp} placeholder="Soyad" value={form.lastName} onChange={(e) => { setForm((p) => ({ ...p, lastName: e.target.value, name: `${p.firstName} ${e.target.value}`.trim() })); setFieldErrors((p) => { const n = { ...p }; delete n.lastName; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v, name: `${p.firstName} ${v}`.trim() })); }} />
                         </FormField>
-                        <FormField label="TC Kimlik No">
+                        <FormField label="TC Kimlik No" required error={fieldErrors.identityNo}>
                           <input className={`${inp} ${numericErrors.identityNo ? 'border-red-400 bg-red-50 focus:ring-red-400/30' : ''}`}
                             placeholder="11 Haneli TC" maxLength={11} value={form.identityNo}
                             onChange={(e) => handleNumericChange('identityNo', e.target.value)} />
@@ -3625,6 +3677,7 @@ export default function VendorsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                     </svg>
                   } title="Evrak Yükleme" />
+                  <p className="mb-2 text-[11px] text-slate-500">{vendorIdentityDocumentHint(form.entityType)}</p>
                   <div className="space-y-2 mb-2">
                     <div className="flex flex-wrap gap-3 items-end">
                       <div className="flex-1 min-w-48">
@@ -3683,6 +3736,29 @@ export default function VendorsPage() {
                               documentTypeName: displayName,
                               customLabel: isManualOther ? customLabel : undefined,
                             }]);
+                            void file.arrayBuffer().then((buf) => {
+                              const raw = new TextDecoder('latin1').decode(buf);
+                              const extracted = extractIdentityCandidatesFromText(raw);
+                              const match = identityMatchesVendor({
+                                entityType: form.entityType,
+                                identityNo: form.identityNo,
+                                taxNumber: form.taxNumber,
+                                extracted,
+                              });
+                              if (match === 'empty-extract') return;
+                              if (match === 'mismatch') {
+                                showToast('warning', 'Yüklenen belgedeki numara kayıtla uyuşmuyor. Sözleşme kayıttaki TC/vergiyi basar.');
+                                return;
+                              }
+                              if (form.entityType !== 'corporate' && !form.identityNo && extracted.tc[0]) {
+                                handleNumericChange('identityNo', extracted.tc[0]);
+                                showToast('success', 'Belgeden TC okundu. Doğrulamayı tamamlayın.');
+                              }
+                              if (form.entityType === 'corporate' && !form.taxNumber && extracted.vergi[0]) {
+                                handleNumericChange('taxNumber', extracted.vergi[0]);
+                                showToast('success', 'Belgeden vergi no okundu.');
+                              }
+                            });
                             setDocSelectedTypeId('');
                             setDocCustomType('');
                             if (e.target) e.target.value = '';

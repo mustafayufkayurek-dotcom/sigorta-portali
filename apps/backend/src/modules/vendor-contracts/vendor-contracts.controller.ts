@@ -20,6 +20,8 @@ import {
   ReorderClausesDto,
   SendWhatsappDto,
   UpdateTemplateDto,
+  UpdateVendorContractContentDto,
+  RequestVendorContractCorrectionDto,
 } from './dto/vendor-contracts.dto';
 
 @Controller('vendor-contracts')
@@ -70,14 +72,37 @@ export class VendorContractsController {
     return { data: await this.svc.findByClaimFile(claimFileId) };
   }
 
+  @Post('preview')
+  async preview(@Body() dto: CreateVendorContractDto) {
+    return { data: await this.svc.preview(dto) };
+  }
+
   @Post()
-  async create(@Body() dto: CreateVendorContractDto, @CurrentUser() user: any) {
-    return { data: await this.svc.create(dto, user.id) };
+  async create(@Body() dto: CreateVendorContractDto, @CurrentUser() user: { id: string; roleCode?: string }) {
+    return { data: await this.svc.create(dto, user) };
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return { data: await this.svc.findOne(id) };
+  }
+
+  @Patch(':id/content')
+  async updateContent(
+    @Param('id') id: string,
+    @Body() dto: UpdateVendorContractContentDto,
+    @CurrentUser() user: { id: string; roleCode?: string },
+  ) {
+    return { data: await this.svc.updateRenderedContent(id, dto.renderedContent, user) };
+  }
+
+  @Post(':id/correction-request')
+  async requestCorrection(
+    @Param('id') id: string,
+    @Body() dto: RequestVendorContractCorrectionDto,
+    @CurrentUser() user: { id: string; firstName?: string; lastName?: string; roleCode?: string },
+  ) {
+    return { data: await this.svc.requestCorrection(id, dto.note, user) };
   }
 
   @Delete(':id')

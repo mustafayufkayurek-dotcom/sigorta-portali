@@ -15,6 +15,7 @@ import {
   normalizeLocationLabel,
   resolveProvinceDistrictIds,
 } from '@/modules/claim-files/vendor-area-match.util';
+import { vendorContractIdentityMissing } from '@sigorta/shared';
 import * as ExcelJS from 'exceljs';
 
 @Injectable()
@@ -133,6 +134,7 @@ export class VendorsService {
         { email: { contains: params.search, mode: 'insensitive' } },
         { phone: { contains: params.search, mode: 'insensitive' } },
         { taxNumber: { contains: params.search, mode: 'insensitive' } },
+        { identityNo: { contains: params.search, mode: 'insensitive' } },
       ];
       if (where.OR) {
         where.AND = [{ OR: where.OR }, { OR: searchOr }];
@@ -290,9 +292,24 @@ export class VendorsService {
     return vendorData;
   }
 
+  private assertVendorIdentity(vendor: {
+    entityType?: string | null;
+    identityNo?: string | null;
+    taxNumber?: string | null;
+  }) {
+    if (vendorContractIdentityMissing(vendor)) {
+      throw new BadRequestException(
+        String(vendor.entityType ?? '').toLowerCase() === 'corporate'
+          ? 'Şirket tedarikçide vergi numarası zorunludur.'
+          : 'Şahıs tedarikçide TC kimlik numarası zorunludur.',
+      );
+    }
+  }
+
   async create(data: any, createdByUserId?: string) {
     const { serviceAreas, workGroupIds, contacts, contactInfos, ...rest } = data;
     const vendorData = this.sanitizeVendorWriteData(rest);
+    this.assertVendorIdentity(vendorData as { entityType?: string | null; identityNo?: string | null; taxNumber?: string | null });
     const vendor = await this.prisma.vendor.create({
       data: {
         ...(vendorData as any),
@@ -344,6 +361,11 @@ export class VendorsService {
     const existing = await this.findOne(id);
     const { serviceAreas, workGroupIds, contacts, contactInfos, ...rest } = data;
     const vendorData = this.sanitizeVendorWriteData(rest, existing as any);
+    this.assertVendorIdentity({
+      entityType: (vendorData.entityType as string | undefined) ?? (existing as { entityType?: string }).entityType,
+      identityNo: (vendorData.identityNo as string | null | undefined) ?? (existing as { identityNo?: string | null }).identityNo,
+      taxNumber: (vendorData.taxNumber as string | null | undefined) ?? (existing as { taxNumber?: string | null }).taxNumber,
+    });
 
     await this.prisma.vendor.update({ where: { id }, data: vendorData as any });
 

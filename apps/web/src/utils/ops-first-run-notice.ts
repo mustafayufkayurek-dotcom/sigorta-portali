@@ -75,6 +75,12 @@ export const OPS_NOTICE = {
     body:
       'Faturalı kayıtta KDV hesaplanır. Faturasız seçince KDV alanı kapanır; yazdığınız tutar net kayda geçer. Tahsilat kaynağı dosyadan gelir. Fatura kime, Dosya Onaylandı adımında sorulur; finans burada yeniden seçmez. Onaylı rapor dosya bedelini aynı tarafa yazar.',
   },
+  hasarVendorContractKind: {
+    id: 'hasar-vendor-contract-v563',
+    title: 'Tedarikçi sözleşmesi',
+    body:
+      'Onarım Planlama’da sözleşmeyi görürsünüz. Metni dosya sorumlusu değiştirmez; yanlışsa yöneticiden düzeltme ister. Tedarikçi kaydındaki TC veya vergi no sözleşmeye basılır. Gönderim WhatsApp ile onay sayfasına gider.',
+  },
   hasarOfisDosyaKapat: {
     id: 'hasar-ofis-dosya-kapat-v556',
     title: 'Dosyayı kapat',

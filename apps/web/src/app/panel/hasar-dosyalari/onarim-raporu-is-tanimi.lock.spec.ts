@@ -54,6 +54,12 @@ describe('onarim-raporu iş tanımı LOCK', () => {
     assert.doesNotMatch(selector, /catch \{ \/\* ignore \*\/ \}/);
   });
 
+  it('yeni iş tanımı gömülü listeyi ezmez; satır hemen kayda gider', () => {
+    assert.match(page, /const local = subGroups\[workGroupId\]/);
+    assert.match(page, /onWorkSubGroupCreated/);
+    assert.match(page, /tryAutoSaveRow\(row\._id, merged\)/);
+  });
+
   it('Acil rapor başlığı Taslak/Sunuldu ikilisi kullanmaz; gerçek aşama etiketi gösterir', () => {
     assert.doesNotMatch(page, /status === 'draft' \? 'Taslak' : 'Sunuldu'/);
     assert.match(page, /repairReportStatusLabel\(report\.status\)/);

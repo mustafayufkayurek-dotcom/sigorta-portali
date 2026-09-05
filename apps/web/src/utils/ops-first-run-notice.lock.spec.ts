@@ -215,6 +215,20 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.doesNotMatch(OPS_NOTICE.sahaTespitSonlandir.body, /Google|API/);
   });
 
+  it('Hasar tedarikçi onay maliyeti şeridi durur', () => {
+    const vendorGuide = readFileSync(
+      join(here, '../components/hasar-operasyon-planlayicisi/PlannerVendorContractGuide.tsx'),
+      'utf8',
+    );
+    assert.match(vendorGuide, /OPS_NOTICE\.hasarVendorContractKind/);
+    assert.match(vendorGuide, /hasar-vendor-contract-ilk-kullanim-seridi/);
+    assert.equal(OPS_NOTICE.hasarVendorContractKind.id, 'hasar-vendor-contract-v563');
+    assert.match(OPS_NOTICE.hasarVendorContractKind.body, /Onarım Planlama/);
+    assert.match(OPS_NOTICE.hasarVendorContractKind.body, /düzeltme/);
+    assert.match(OPS_NOTICE.hasarVendorContractKind.body, /TC veya vergi/);
+    assert.doesNotMatch(OPS_NOTICE.hasarVendorContractKind.body, /Google|API/);
+  });
+
   it('Hasar ofis dosya kapat şeridi durur', () => {
     const steps = readFileSync(
       join(here, '../components/hasar-operasyon-planlayicisi/steps.tsx'),

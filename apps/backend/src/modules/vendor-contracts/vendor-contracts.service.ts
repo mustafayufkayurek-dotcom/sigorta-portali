@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { buildAppPath } from '@/common/utils/app-url';
@@ -19,7 +19,30 @@ import {
   ReorderClausesDto,
   UpdateTemplateDto,
 } from './dto/vendor-contracts.dto';
-import { escHtml, escHtmlRecord } from '@/common/utils/html-escape';
+import {
+  readVendorContractKind,
+  unwrapVendorContractWorkItems,
+  wrapVendorContractWorkItems,
+  readVendorContractCorrectionRequest,
+  isVendorContractManagerRole,
+  vendorContractIdentityMissing,
+  type HasarVendorContractKind,
+  type VendorContractCorrectionRequest,
+} from '@sigorta/shared';
+
+function partyIdLine(identityNo?: string | null, taxNumber?: string | null): string {
+  const tc = (identityNo ?? '').trim();
+  const tax = (taxNumber ?? '').trim();
+  const parts: string[] = [];
+  if (tc) parts.push(`TC ${tc}`);
+  if (tax && tax !== tc) parts.push(`Vergi No ${tax}`);
+  return parts.join(' · ') || 'Kayıtta yok';
+}
+
+function partyAddressLine(parts: Array<string | null | undefined>): string {
+  const s = parts.map((p) => (p ?? '').trim()).filter(Boolean).join(', ');
+  return s || 'Kayıtta yok';
+}
 
 @Injectable()
 export class VendorContractsService {
@@ -113,7 +136,172 @@ export class VendorContractsService {
 
   // ── Sözleşme Oluşturma ─────────────────────────────────────────────────────
 
-  async create(dto: CreateVendorContractDto, createdByUserId: string) {
+  async preview(dto: CreateVendorContractDto) {
+    const draft = await this.composeContract(dto, true);
+    return {
+      kind: draft.kind,
+      html: draft.html,
+      totalAmount: draft.totalAmount,
+      vendorName: draft.vendorName,
+      fileNo: draft.fileNo,
+    };
+  }
+
+  async updateRenderedContent(
+    id: string,
+    renderedContent: string,
+    user: { id: string; roleCode?: string },
+  ) {
+    if (!isVendorContractManagerRole(user.roleCode)) {
+      throw new ForbiddenException('Sözleşme metnini yalnız yönetici düzeltir. Dosya sorumlusu düzeltme ister.');
+    }
+    const contract = await this.findOne(id);
+    if (contract.status === 'vendor_signed') {
+      throw new BadRequestException('İmzalanmış sözleşmeye müdahale edilemez');
+    }
+    if (contract.status === 'cancelled') {
+      throw new BadRequestException('İptal edilmiş sözleşmeye müdahale edilemez');
+    }
+    const html = renderedContent.trim();
+    if (!html) throw new BadRequestException('Sözleşme metni boş olamaz');
+    let pdfKey = contract.pdfStorageKey;
+    try {
+      pdfKey = await this.generatePdf(id, html);
+    } catch (err) {
+      this.logger.error(`Dosyaya özel PDF üretim hatası [${id}]: ${err}`);
+    }
+    const existingReq = readVendorContractCorrectionRequest(contract.workItems);
+    const items = unwrapVendorContractWorkItems(contract.workItems);
+    const kind = readVendorContractKind(contract.workItems);
+    const workItems = wrapVendorContractWorkItems(
+      kind,
+      items,
+      existingReq
+        ? { correctionRequest: { ...existingReq, status: 'resolved' } }
+        : undefined,
+    );
+    return this.prisma.vendorContract.update({
+      where: { id },
+      data: {
+        renderedContent: html,
+        pdfStorageKey: pdfKey,
+        status: contract.status === 'draft' ? 'ready' : contract.status,
+        workItems,
+      },
+    });
+  }
+
+  async requestCorrection(
+    id: string,
+    note: string,
+    user: { id: string; firstName?: string; lastName?: string; roleCode?: string },
+  ) {
+    const contract = await this.findOne(id);
+    if (contract.status === 'vendor_signed') {
+      throw new BadRequestException('İmzalanmış sözleşmeye düzeltme istenemez');
+    }
+    if (contract.status === 'cancelled') {
+      throw new BadRequestException('İptal edilmiş sözleşmeye düzeltme istenemez');
+    }
+    const trimmed = note.trim();
+    if (!trimmed) throw new BadRequestException('Düzeltme gerekçesi yazın');
+    const correctionRequest: VendorContractCorrectionRequest = {
+      note: trimmed,
+      requestedByUserId: user.id,
+      requestedAt: new Date().toISOString(),
+      status: 'pending',
+    };
+    const workItems = wrapVendorContractWorkItems(
+      readVendorContractKind(contract.workItems),
+      unwrapVendorContractWorkItems(contract.workItems),
+      { correctionRequest },
+    );
+    await this.prisma.vendorContract.update({
+      where: { id },
+      data: { workItems },
+    });
+    const who = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Dosya sorumlusu';
+    const managers = await this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        role: { code: { in: ['admin', 'manager', 'ops_manager', 'ADMIN', 'MANAGER', 'OPS_MANAGER'] } },
+      },
+      select: { id: true },
+    });
+    if (managers.length) {
+      await this.prisma.notification.createMany({
+        data: managers.map((m) => ({
+          userId: m.id,
+          type: 'vendor_contract_correction',
+          title: 'Sözleşme düzeltme isteği',
+          body: `${who} · ${contract.fileNo} · ${contract.vendorName}: ${trimmed}`,
+          channel: 'in_app',
+          status: 'unread',
+          relatedEntityType: 'vendor_contract',
+          relatedEntityId: contract.id,
+        })),
+      });
+    }
+    return this.findOne(id);
+  }
+
+  async create(dto: CreateVendorContractDto, user: { id: string; roleCode?: string }) {
+    const draft = await this.composeContract(dto, false);
+    const renderedContent =
+      isVendorContractManagerRole(user.roleCode) && (dto.renderedContent ?? '').trim()
+        ? (dto.renderedContent ?? '').trim()
+        : draft.html;
+
+    const publicToken = randomUUID();
+    const publicTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    const contract = await this.prisma.vendorContract.create({
+      data: {
+        contractNo: draft.contractNo,
+        claimFileId: dto.claimFileId,
+        vendorId: dto.vendorId,
+        repairReportId: dto.repairReportId ?? null,
+        templateId: draft.templateId,
+        contractDate: draft.contractDate,
+        startDate: draft.startDate,
+        deliveryDate: draft.deliveryDate,
+        signDeadlineAt: draft.signDeadlineAt,
+        vendorName: draft.vendorName,
+        vendorTaxOrIdNo: draft.vendorTaxOrIdNo,
+        vendorAddress: draft.vendorAddress,
+        vendorPhone: draft.vendorPhone,
+        insuredName: draft.insuredName,
+        fileNo: draft.fileNo,
+        insuranceCompanyName: draft.insuranceCompanyName,
+        damageAddress: draft.damageAddress,
+        workItems: wrapVendorContractWorkItems(draft.kind, draft.workItems),
+        renderedContent,
+        status: 'draft',
+        publicToken,
+        publicTokenExpiresAt,
+        createdByUserId: user.id,
+      },
+      include: {
+        claimFile: { include: { insuranceCompany: true } },
+        vendor: true,
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    try {
+      const pdfKey = await this.generatePdf(contract.id, renderedContent);
+      await this.prisma.vendorContract.update({
+        where: { id: contract.id },
+        data: { pdfStorageKey: pdfKey, status: 'ready' },
+      });
+      return { ...contract, pdfStorageKey: pdfKey, status: 'ready', contractKind: draft.kind };
+    } catch (err) {
+      this.logger.error(`PDF üretim hatası [${contract.id}]: ${err}`);
+      return { ...contract, contractKind: draft.kind };
+    }
+  }
+
+  private async composeContract(dto: CreateVendorContractDto, preview: boolean) {
     // 1. Veri yükle
     const claimFile = await this.prisma.claimFile.findUnique({
       where: { id: dto.claimFileId },
@@ -127,8 +315,14 @@ export class VendorContractsService {
 
     const vendor = await this.prisma.vendor.findUnique({ where: { id: dto.vendorId } });
     if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
+    if (vendorContractIdentityMissing(vendor)) {
+      throw new BadRequestException(
+        'Tedarikçi kaydında TC veya vergi no yok. Sözleşme basılmaz. Tedarikçiler ekranından kimliği tamamlayın.',
+      );
+    }
 
     let reportItems: any[] = [];
+    let reportSupplierCost = 0;
     if (dto.repairReportId) {
       const report = await this.prisma.repairReport.findUnique({
         where: { id: dto.repairReportId },
@@ -138,6 +332,7 @@ export class VendorContractsService {
       if (report.claimFileId !== dto.claimFileId)
         throw new BadRequestException('Rapor bu dosyaya ait değil');
       reportItems = report.items;
+      reportSupplierCost = Number(report.totalSupplierCost ?? 0);
     }
 
     // 2. Template ve maddeleri yükle
@@ -154,16 +349,36 @@ export class VendorContractsService {
     const signDeadlineDays = dto.signDeadlineDays ?? 3;
     const signDeadlineAt = new Date(Date.now() + signDeadlineDays * 24 * 60 * 60 * 1000);
 
-    const totalAmount = reportItems.reduce((s, i) => s + (i.supplierTotal ?? 0), 0);
+    const itemTotal = reportItems.reduce((s, i) => s + (i.supplierTotal ?? 0), 0);
+    const totalAmount = itemTotal > 0 ? itemTotal : reportSupplierCost;
+    const kind: HasarVendorContractKind = 'detailed';
     const damageAddress = claimFile.propertyAddress
       ? `${claimFile.propertyAddress.addressLine ?? ''} ${claimFile.propertyAddress.district ?? ''} ${claimFile.propertyAddress.city ?? ''}`.trim()
       : '';
     const insuredName =
       claimFile.customer?.fullName ?? claimFile.customer?.companyName ?? '';
+    const vendorIdLine = partyIdLine(vendor.identityNo, vendor.taxNumber);
+    const vendorAddressLine = partyAddressLine([
+      vendor.address,
+      vendor.neighborhood,
+      vendor.streetName,
+      vendor.buildingNo,
+      vendor.district,
+      vendor.city,
+    ]);
+    const insuredIdLine = partyIdLine(claimFile.customer?.identityNo, claimFile.customer?.taxNumber);
+    const insuredAddressLine = partyAddressLine([
+      claimFile.customer?.address,
+      claimFile.customer?.neighborhood,
+      claimFile.customer?.streetName,
+      claimFile.customer?.buildingNo,
+      claimFile.customer?.district,
+      claimFile.customer?.city,
+    ]);
 
-    // 4. contractNo üret
-    const count = await this.prisma.vendorContract.count();
-    const contractNo = `VC-${contractDate.getFullYear()}-${String(count + 1).padStart(5, '0')}`;
+    const contractNo = preview
+      ? 'ÖNİZLEME'
+      : `VC-${contractDate.getFullYear()}-${String((await this.prisma.vendorContract.count()) + 1).padStart(5, '0')}`;
 
     // 5. İş kalemleri HTML tablosu
     const workItemsHtml =
@@ -210,11 +425,13 @@ export class VendorContractsService {
         '{{imza_sure_gun}}': String(signDeadlineDays),
         '{{dosya_no}}': claimFile.fileNo,
         '{{sigorta_sirketi}}': claimFile.insuranceCompany?.name ?? '—',
-        '{{hasar_adresi}}': damageAddress || '—',
+        '{{hasar_adresi}}': damageAddress || 'Kayıtta yok',
         '{{sigorta_musteri_ad}}': insuredName || '—',
+        '{{sigortali_tc}}': insuredIdLine,
+        '{{sigortali_adres}}': insuredAddressLine,
         '{{tedarikci_ad}}': vendor.name,
-        '{{tedarikci_vergi_no}}': vendor.taxNumber ?? vendor.identityNo ?? '—',
-        '{{tedarikci_adres}}': [vendor.address, vendor.district, vendor.city].filter(Boolean).join(', ') || '—',
+        '{{tedarikci_vergi_no}}': vendorIdLine,
+        '{{tedarikci_adres}}': vendorAddressLine,
         '{{tedarikci_telefon}}': vendor.phone ?? '—',
         '{{is_kalemleri}}': workItemsHtml,
         '{{toplam_tutar}}': `${totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`,
@@ -234,84 +451,57 @@ export class VendorContractsService {
     // 8. HTML birleştir
     const branding = await getDocumentBranding(this.prisma, this.config);
     const renderedContent = this.buildContractHtml({
+            contractNo,
+            contractDate,
+            fileNo: claimFile.fileNo,
+            insuranceCompanyName: claimFile.insuranceCompany?.name ?? '',
+            vendorName: vendor.name,
+            vendorIdLine,
+            vendorAddressLine,
+            insuredName,
+            insuredIdLine,
+            insuredAddressLine,
+            damageAddress,
+            clauses: renderedClauses,
+            logoUrl: branding.logoUrl,
+            companyName: branding.companyName,
+            companyAddress: branding.companyAddress,
+          });
+
+    return {
+      kind,
+      html: renderedContent,
+      totalAmount,
       contractNo,
+      templateId: template.id,
       contractDate,
-      fileNo: claimFile.fileNo,
-      insuranceCompanyName: claimFile.insuranceCompany?.name ?? '',
+      startDate,
+      deliveryDate,
+      signDeadlineAt,
       vendorName: vendor.name,
-      vendorTaxOrIdNo: vendor.taxNumber ?? vendor.identityNo ?? '',
-      insuredName,
-      damageAddress,
-      clauses: renderedClauses,
-      logoUrl: branding.logoUrl,
-      companyName: branding.companyName,
-      companyAddress: branding.companyAddress,
-    });
-
-    // 9. publicToken
-    const publicToken = randomUUID();
-    const publicTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 gün
-
-    // 10. Kaydet
-    const contract = await this.prisma.vendorContract.create({
-      data: {
-        contractNo,
-        claimFileId: dto.claimFileId,
-        vendorId: dto.vendorId,
-        repairReportId: dto.repairReportId ?? null,
-        templateId: template.id,
-        contractDate,
-        startDate,
-        deliveryDate,
-        signDeadlineAt,
-        vendorName: vendor.name,
-        vendorTaxOrIdNo: vendor.taxNumber ?? vendor.identityNo ?? null,
-        vendorAddress: [vendor.address, vendor.district, vendor.city].filter(Boolean).join(', ') || null,
-        vendorPhone: vendor.phone ?? null,
-        insuredName: insuredName || null,
-        fileNo: claimFile.fileNo,
-        insuranceCompanyName: claimFile.insuranceCompany?.name ?? null,
-        damageAddress: damageAddress || null,
-        workItems: reportItems.map((i) => ({
-          id: i.id,
-          jobDescription: i.jobDescription,
-          quantity: i.quantity,
-          unit: i.unit,
-          supplierUnitPrice: i.supplierUnitPrice,
-          supplierTotal: i.supplierTotal,
-          workGroupName: i.workGroup?.name ?? null,
-        })),
-        renderedContent,
-        status: 'draft',
-        publicToken,
-        publicTokenExpiresAt,
-        createdByUserId,
-      },
-      include: {
-        claimFile: { include: { insuranceCompany: true } },
-        vendor: true,
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
-
-    // 11. PDF üret (async, hata olsa kayıt bozulmasın)
-    try {
-      const pdfKey = await this.generatePdf(contract.id, renderedContent);
-      await this.prisma.vendorContract.update({
-        where: { id: contract.id },
-        data: { pdfStorageKey: pdfKey, status: 'ready' },
-      });
-      return { ...contract, pdfStorageKey: pdfKey, status: 'ready' };
-    } catch (err) {
-      this.logger.error(`PDF üretim hatası [${contract.id}]: ${err}`);
-      return contract;
-    }
+      vendorTaxOrIdNo: vendorIdLine === 'Kayıtta yok' ? null : vendorIdLine,
+      vendorAddress: vendorAddressLine === 'Kayıtta yok' ? null : vendorAddressLine,
+      vendorPhone: vendor.phone ?? null,
+      insuredName: insuredName || null,
+      fileNo: claimFile.fileNo,
+      insuranceCompanyName: claimFile.insuranceCompany?.name ?? null,
+      damageAddress: damageAddress || null,
+      workItems: reportItems.map((i) => ({
+        id: i.id,
+        jobDescription: i.jobDescription,
+        quantity: i.quantity,
+        unit: i.unit,
+        supplierUnitPrice: i.supplierUnitPrice,
+        supplierTotal: i.supplierTotal,
+        workGroupName: i.workGroup?.name ?? null,
+      })),
+    };
   }
 
   // ── Liste & Detay ──────────────────────────────────────────────────────────
 
   async findByClaimFile(claimFileId: string) {
-    return this.prisma.vendorContract.findMany({
+    const rows = await this.prisma.vendorContract.findMany({
       where: { claimFileId },
       include: {
         vendor: { select: { id: true, name: true, phone: true } },
@@ -319,6 +509,11 @@ export class VendorContractsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+    return rows.map((c) => ({
+      ...c,
+      contractKind: readVendorContractKind(c.workItems),
+      correctionRequest: readVendorContractCorrectionRequest(c.workItems),
+    }));
   }
 
   async findOne(id: string) {
@@ -332,7 +527,11 @@ export class VendorContractsService {
       },
     });
     if (!contract) throw new NotFoundException('Sözleşme bulunamadı');
-    return contract;
+    return {
+      ...contract,
+      contractKind: readVendorContractKind(contract.workItems),
+      correctionRequest: readVendorContractCorrectionRequest(contract.workItems),
+    };
   }
 
   async cancel(id: string) {
@@ -364,8 +563,8 @@ export class VendorContractsService {
   async recordWhatsappSent(id: string, phone: string) {
     const contract = await this.findOne(id);
     const link = buildAppPath(this.config, `/sozlesme/${contract.publicToken}`);
-    const message =
-      `Sayın ${contract.vendorName},\n\nMeridyen Assistance tarafından "${contract.fileNo}" numaralı dosya için düzenlenen tedarikçi sözleşmesini aşağıdaki linkten inceleyebilir ve imzalayabilirsiniz:\n\n${link}\n\nSözleşme No: ${contract.contractNo}\nİmza Son Tarihi: ${contract.signDeadlineAt ? new Date(contract.signDeadlineAt).toLocaleDateString('tr-TR') : '—'}\n\nMeridyen Assistance`;
+    const vendorId = (contract.vendorTaxOrIdNo ?? '').trim() || 'Kayıtta yok';
+    const message = `Sayın ${contract.vendorName},\n\nMeridyen Assistance tarafından "${contract.fileNo}" numaralı dosya için düzenlenen tedarikçi sözleşmesini aşağıdaki linkten inceleyebilir ve imzalayabilirsiniz.\n\nTC / Vergi No: ${vendorId}\nSözleşme No: ${contract.contractNo}\nİmza Son Tarihi: ${contract.signDeadlineAt ? new Date(contract.signDeadlineAt).toLocaleDateString('tr-TR') : '—'}\n\n${link}\n\nMeridyen Assistance`;
     const waUrl = buildWhatsAppMeUrl(phone, message);
     if (!waUrl) {
       throw new BadRequestException('Geçerli bir WhatsApp telefon numarası gerekli');
@@ -380,7 +579,7 @@ export class VendorContractsService {
       },
     });
 
-    return { waUrl, link };
+    return { waUrl, link, message };
   }
 
   async sendReminder(id: string) {
@@ -418,6 +617,7 @@ export class VendorContractsService {
         fileNo: true,
         insuranceCompanyName: true,
         renderedContent: true,
+        workItems: true,
         status: true,
         signedAt: true,
         publicTokenExpiresAt: true,
@@ -427,7 +627,10 @@ export class VendorContractsService {
     if (contract.publicTokenExpiresAt && contract.publicTokenExpiresAt < new Date()) {
       throw new BadRequestException('Bu sözleşme linki süresi dolmuştur');
     }
-    return contract;
+    return {
+      ...contract,
+      contractKind: readVendorContractKind(contract.workItems),
+    };
   }
 
   async signByToken(token: string, fullName: string) {
@@ -526,14 +729,81 @@ export class VendorContractsService {
 
   // ── HTML Şablonu ──────────────────────────────────────────────────────────
 
+  private buildSimpleApprovalHtml(opts: {
+    contractNo: string;
+    contractDate: Date;
+    fileNo: string;
+    insuranceCompanyName: string;
+    vendorName: string;
+    vendorIdLine: string;
+    vendorAddressLine: string;
+    insuredName: string;
+    insuredIdLine: string;
+    insuredAddressLine: string;
+    damageAddress: string;
+    totalLabel: string;
+    logoUrl: string;
+    companyName: string;
+    companyAddress: string;
+  }): string {
+    const contractNo = escHtml(opts.contractNo);
+    const fileNo = escHtml(opts.fileNo);
+    const insuranceCompanyName = escHtml(opts.insuranceCompanyName || '—');
+    const vendorName = escHtml(opts.vendorName);
+    const vendorIdLine = escHtml(opts.vendorIdLine);
+    const vendorAddressLine = escHtml(opts.vendorAddressLine);
+    const insuredName = escHtml(opts.insuredName || '—');
+    const insuredIdLine = escHtml(opts.insuredIdLine);
+    const insuredAddressLine = escHtml(opts.insuredAddressLine);
+    const damageAddress = escHtml(opts.damageAddress || 'Kayıtta yok');
+    const totalLabel = escHtml(opts.totalLabel);
+    const logoUrl = escHtml(opts.logoUrl);
+    const companyName = escHtml(opts.companyName);
+
+    return `<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Dijital Onay - ${contractNo}</title>
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; color: #1f2937; margin: 0; padding: 24px; }
+${DOCUMENT_HEADER_STYLES}
+  </style>
+</head>
+<body>
+  ${renderDocumentHeaderHtml({ logoUrl, companyName, companyAddress: opts.companyAddress })}
+  <h1 style="font-size:18px;color:#1a4080;margin:16px 0 8px">Tedarikçi Dijital Onayı</h1>
+  <p style="color:#6b7280;margin:0 0 16px">100.000 TL altı işler için kısa onay. WhatsApp yazışması kayıt olarak durur; asıl onay sayfada adıyla tamamlanır.</p>
+  <table style="width:100%;border-collapse:collapse;font-size:13px">
+    <tr><td style="padding:6px 0;color:#6b7280;width:160px">Onay No</td><td style="font-weight:600">${contractNo}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">Dosya No</td><td style="font-weight:600">${fileNo}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">Tarih</td><td>${escHtml(opts.contractDate.toLocaleDateString('tr-TR'))}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">Sigorta</td><td>${insuranceCompanyName}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">Tedarikçi</td><td>${vendorName}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">Tedarikçi TC / Vergi</td><td>${vendorIdLine}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">Tedarikçi Adresi</td><td>${vendorAddressLine}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">Sigortalı</td><td>${insuredName}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">Sigortalı TC / Vergi</td><td>${insuredIdLine}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">Sigortalı Adresi</td><td>${insuredAddressLine}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">Hasar Adresi</td><td>${damageAddress}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280">İş Bedeli</td><td style="font-weight:700">${totalLabel}</td></tr>
+  </table>
+  <p style="margin-top:20px;line-height:1.6">Bu sayfada adını yazarak onaylayan tedarikçi, yukarıdaki dosyada belirtilen işi kabul ettiğini beyan eder.</p>
+</body>
+</html>`;
+  }
+
   private buildContractHtml(opts: {
     contractNo: string;
     contractDate: Date;
     fileNo: string;
     insuranceCompanyName: string;
     vendorName: string;
-    vendorTaxOrIdNo: string;
+    vendorIdLine: string;
+    vendorAddressLine: string;
     insuredName: string;
+    insuredIdLine: string;
+    insuredAddressLine: string;
     damageAddress: string;
     clauses: Array<{ title: string; content: string }>;
     logoUrl: string;
@@ -556,9 +826,12 @@ export class VendorContractsService {
     const fileNo = escHtml(opts.fileNo);
     const insuranceCompanyName = escHtml(opts.insuranceCompanyName || '—');
     const vendorName = escHtml(opts.vendorName);
-    const vendorTaxOrIdNo = escHtml(opts.vendorTaxOrIdNo || '—');
+    const vendorIdLine = escHtml(opts.vendorIdLine);
+    const vendorAddressLine = escHtml(opts.vendorAddressLine);
     const insuredName = escHtml(opts.insuredName || '—');
-    const damageAddress = escHtml(opts.damageAddress || '—');
+    const insuredIdLine = escHtml(opts.insuredIdLine);
+    const insuredAddressLine = escHtml(opts.insuredAddressLine);
+    const damageAddress = escHtml(opts.damageAddress || 'Kayıtta yok');
     const logoUrl = escHtml(opts.logoUrl);
     const companyName = escHtml(opts.companyName);
     const companyAddress = escHtml(opts.companyAddress);
@@ -633,9 +906,12 @@ ${DOCUMENT_HEADER_STYLES}
       <div class="info-item"><label>Dosya No</label><span>${fileNo}</span></div>
       <div class="info-item"><label>Sigorta Şirketi</label><span>${insuranceCompanyName}</span></div>
       <div class="info-item"><label>Sigortalı</label><span>${insuredName}</span></div>
+      <div class="info-item"><label>Sigortalı TC / Vergi</label><span>${insuredIdLine}</span></div>
+      <div class="info-item"><label>Sigortalı Adresi</label><span>${insuredAddressLine}</span></div>
       <div class="info-item"><label>Hasar Adresi</label><span>${damageAddress}</span></div>
       <div class="info-item"><label>Tedarikçi / Taşeron</label><span>${vendorName}</span></div>
-      <div class="info-item"><label>Vergi / TC No</label><span>${vendorTaxOrIdNo}</span></div>
+      <div class="info-item"><label>Tedarikçi TC / Vergi</label><span>${vendorIdLine}</span></div>
+      <div class="info-item"><label>Tedarikçi Adresi</label><span>${vendorAddressLine}</span></div>
     </div>
 
     ${clausesHtml}

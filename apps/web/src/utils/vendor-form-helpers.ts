@@ -321,6 +321,29 @@ export function resolveVendorPrimaryEmail(
   return '';
 }
 
+export function vendorEntityTypeLabel(entityType?: string | null): string {
+  return String(entityType ?? '').toLowerCase() === 'individual' ? 'Şahıs' : 'Şirket';
+}
+
+export function vendorIdentityCardLine(vendor: {
+  entityType?: string | null;
+  identityNo?: string | null;
+  taxNumber?: string | null;
+}): { label: string; value: string } {
+  if (String(vendor.entityType ?? '').toLowerCase() === 'individual') {
+    const value = String(vendor.identityNo ?? '').trim();
+    return { label: 'TC Kimlik No', value: value || 'Kayıtta yok' };
+  }
+  const value = String(vendor.taxNumber ?? '').trim();
+  return { label: 'Vergi No', value: value || 'Kayıtta yok' };
+}
+
+export function vendorIdentityDocumentHint(entityType?: string | null): string {
+  return String(entityType ?? '').toLowerCase() === 'individual'
+    ? 'Şahıs kayıtta TC kimlik belgesi yüklenir; sözleşme bu numarayı basar.'
+    : 'Şirket kayıtta vergi levhası yüklenir; sözleşme bu numarayı basar.';
+}
+
 export function vendorPhoneRequiredError(
   phone: string,
   phoneType: 'gsm' | 'landline' = 'gsm',

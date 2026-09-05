@@ -238,7 +238,7 @@ export function EvrakOzetPanel({
     ? 'Geriye dönük kapanmış dosya. Tedarikçi sözleşmesi yüklenmez.'
     : conditions.vendorContractSigned
       ? 'Tedarikçi sözleşmesi imzalandı ve dosyada mevcut.'
-      : 'Atanan tedarikçi ile sözleşme imzalanması gerekiyor.';
+      : 'Onay Operasyonu Başlat → Onarım Planlama’dadır. Bu sekmede toplananı görürsünüz.';
 
   const kapamaDesc = conditions.canCreateInvoiceRequest
     ? 'Onaylı rapor veya muvafakat duruyor. Talep Operasyonu Başlat → Dosya Onaylandı adımından gider. Onarımın bitmesi beklenmez.'
@@ -288,7 +288,7 @@ export function EvrakOzetPanel({
             title="Tedarikçi Sözleşmesi"
             description={vendorDesc}
             badge={vendorBadge}
-            actionLabel="Sözleşmeye Git"
+            actionLabel="Toplananlara Bak"
             onAction={() => onNavigate('sozlesmeler')}
             done={vendorDone}
           />

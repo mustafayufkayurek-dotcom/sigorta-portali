@@ -114,6 +114,7 @@ export type PlannerClaimSnapshot = {
     total: string;
     totalAmount: number;
     supplierCost: string;
+    supplierCostAmount: number;
     actualExpense: string;
     expectedIncome: string;
     profit: string;
