@@ -75,6 +75,8 @@ describe('hasar tedarikçi sözleşme türü LOCK', () => {
     assert.match(svc, /isVendorContractManagerRole/);
     assert.match(svc, /Tedarikçi kaydında TC veya vergi no yok/);
     assert.match(vendors, /assertVendorIdentity/);
+    assert.match(vendors, /identityGapVendorIds/);
+    assert.match(vendors, /identityMissingCount/);
     const modal = readFileSync(
       join(here, '../../../apps/web/src/components/hasar-operasyon-planlayicisi/VendorContractPreviewModal.tsx'),
       'utf8',

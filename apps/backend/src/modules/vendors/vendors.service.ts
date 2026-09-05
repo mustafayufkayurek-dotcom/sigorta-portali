@@ -82,12 +82,20 @@ export class VendorsService {
     workGroupId?: string;
     serviceRegion?: string;
     category?: string;
+    identityMissing?: string | boolean;
   }) {
     const page = Number(params?.page) || 1;
     const limit = Number(params?.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: any = {};
+    if (this.isIdentityMissingFilter(params?.identityMissing)) {
+      const gapIds = await this.identityGapVendorIds();
+      if (!gapIds.length) {
+        return { data: [], meta: { total: 0, page, limit, totalPages: 0 } };
+      }
+      where.id = { in: gapIds };
+    }
     if (params?.status) where.status = params.status;
     if (params?.type) where.type = params.type;
     if (params?.entityType) where.entityType = params.entityType;
@@ -177,12 +185,25 @@ export class VendorsService {
   }
 
   async getSummary() {
-    const [total, activeCount, corporateCount] = await Promise.all([
+    const [total, activeCount, corporateCount, identityGapIds] = await Promise.all([
       this.prisma.vendor.count(),
       this.prisma.vendor.count({ where: { status: 'active' } }),
       this.prisma.vendor.count({ where: { entityType: 'corporate' } }),
+      this.identityGapVendorIds(),
     ]);
-    return { total, activeCount, corporateCount };
+    return { total, activeCount, corporateCount, identityMissingCount: identityGapIds.length };
+  }
+
+  private isIdentityMissingFilter(value: string | boolean | undefined): boolean {
+    const s = String(value ?? '').toLowerCase();
+    return value === true || s === '1' || s === 'true' || s === 'yes';
+  }
+
+  private async identityGapVendorIds(): Promise<string[]> {
+    const rows = await this.prisma.vendor.findMany({
+      select: { id: true, entityType: true, identityNo: true, taxNumber: true },
+    });
+    return rows.filter((v) => vendorContractIdentityMissing(v)).map((v) => v.id);
   }
 
   async findOne(id: string) {

@@ -12,10 +12,11 @@ type Props = {
   vendorId: string;
   onEdit: () => void;
   onDelete: () => void;
+  highlightEdit?: boolean;
 };
 
 /** Müşteri/Hasar satır ikonları ile aynı kabuk; kapsam yalnız tedarikçi kartı. */
-export function VendorRowActions({ vendorId, onEdit, onDelete }: Props) {
+export function VendorRowActions({ vendorId, onEdit, onDelete, highlightEdit }: Props) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -104,7 +105,17 @@ export function VendorRowActions({ vendorId, onEdit, onDelete }: Props) {
       >
         <Eye className="h-3.5 w-3.5" aria-hidden />
       </Link>
-      <button type="button" title="Düzenle" aria-label="Düzenle" className={iconBtnClass} onClick={onEdit}>
+      <button
+        type="button"
+        title={highlightEdit ? 'Kimliği tamamla' : 'Düzenle'}
+        aria-label={highlightEdit ? 'Kimliği tamamla' : 'Düzenle'}
+        className={
+          highlightEdit
+            ? 'inline-flex h-7 w-7 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+            : iconBtnClass
+        }
+        onClick={onEdit}
+      >
         <Pencil className="h-3.5 w-3.5" aria-hidden />
       </button>
       <button

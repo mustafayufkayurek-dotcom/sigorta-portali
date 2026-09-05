@@ -29,6 +29,7 @@ import {
   VENDOR_DOC_OTHER_SELECT,
   VENDOR_RELATION_SECTION_TITLE,
   formatVendorTypeLabel,
+  vendorIdentityGapLabel,
   type VendorCategory,
   type VendorDocumentTypeRow,
 } from '@/utils/vendor-form-helpers';
@@ -1471,6 +1472,7 @@ export default function VendorDetailPage() {
   if (!vendor) return <div className="text-slate-400 py-16 text-center">Tedarikçi Bulunamadı.</div>;
 
   const isCorporate = vendor.entityType !== 'individual';
+  const identityGap = vendorIdentityGapLabel(vendor);
   const contactCount = vendor.contacts?.length ?? 0;
   const hasBirthday = vendor.contacts?.some((c: any) => {
     if (!c.birthDate) return false;
@@ -1519,6 +1521,9 @@ export default function VendorDetailPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
+                {identityGap ? (
+                  <Badge variant="amber">{identityGap}</Badge>
+                ) : null}
                 {hasBirthday && <Badge variant="amber">🎂 Bugün Doğum Günü!</Badge>}
                 <Badge variant={vendor.status === 'active' ? 'green' : 'gray'}>
                   <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${vendor.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
@@ -1537,6 +1542,20 @@ export default function VendorDetailPage() {
           </div>
         </div>
       </div>
+
+      {identityGap ? (
+        <div className="mb-3 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-amber-900">
+            {identityGap}. Sözleşme bu kayıt tamamlanmadan çıkmaz.
+          </p>
+          <Link
+            href={`/panel/tedarikciler?edit=${vendor.id}`}
+            className="shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-amber-700"
+          >
+            Kimliği tamamla
+          </Link>
+        </div>
+      ) : null}
 
       {/* ── Tabs ── */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm mb-3 overflow-x-auto">

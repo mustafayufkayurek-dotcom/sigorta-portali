@@ -33,6 +33,13 @@ describe('tedarikçi türü listesi LOCK', () => {
     assert.match(formHelper, /vendorIdentityCardLine/);
     assert.match(formHelper, /TC Kimlik No/);
     assert.match(formHelper, /Vergi No/);
+    assert.match(formHelper, /vendorIdentityGapLabel/);
+    assert.match(formHelper, /TC eksik/);
+    assert.match(formHelper, /Vergi no eksik/);
+    assert.match(page, /vendorIdentityGapLabel/);
+    assert.match(page, /Eksikleri göster/);
+    assert.match(page, /identityMissing/);
+    assert.match(page, /Kimliği Tamamla/);
     const typeList = readFileSync(join(here, 'vendor-type-list.ts'), 'utf8');
     assert.match(typeList, /DEFAULT_VENDOR_TYPES/);
     assert.match(page, /data-testid="tedarikci-turu-sec"/);

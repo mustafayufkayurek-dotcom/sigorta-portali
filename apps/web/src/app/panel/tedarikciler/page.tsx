@@ -56,6 +56,7 @@ import {
   vendorEntityTypeLabel,
   vendorIdentityCardLine,
   vendorIdentityDocumentHint,
+  vendorIdentityGapLabel,
   filterDocumentTypesForCategory,
   VENDOR_RELATION_SECTION_TITLE,
   VENDOR_RELATION_SECTION_HINT,
@@ -91,11 +92,14 @@ import {
 import { VendorRowActions } from '@/components/vendors/VendorRowActions';
 import { OpsKpiSegmentBand, OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import { BadgeCheck, Building2, Warehouse } from 'lucide-react';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import {
   extractIdentityCandidatesFromText,
   identityMatchesVendor,
   isValidTcKimlikNo,
   isValidVergiNo,
+  vendorContractIdentityMissing,
 } from '@sigorta/shared';
 
 import { getAccessToken } from '@/utils/auth-session';
@@ -592,11 +596,19 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
                 </div>
                 {(() => {
                   const idLine = vendorIdentityCardLine(vendor);
+                  const gap = vendorIdentityGapLabel(vendor);
                   return (
-                    <p className="mt-2 text-xs text-slate-600">
-                      <span className="font-medium text-slate-500">{idLine.label}: </span>
-                      {idLine.value}
-                    </p>
+                    <>
+                      <p className={`mt-2 text-xs ${gap ? 'font-medium text-amber-800' : 'text-slate-600'}`}>
+                        <span className="font-medium text-slate-500">{idLine.label}: </span>
+                        {idLine.value}
+                      </p>
+                      {gap ? (
+                        <p className="mt-1.5 text-xs font-medium text-amber-800" data-testid="tedarikci-cekmece-kimlik-eksik">
+                          {gap}. Sözleşme çıkmaz — Düzenle ile tamamlayın.
+                        </p>
+                      ) : null}
+                    </>
                   );
                 })()}
               </div>
@@ -759,9 +771,13 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
           type="button"
           onClick={() => { onEdit(vendor); }}
           disabled={!vendor}
-          className="flex-1 border border-slate-200 text-slate-700 text-sm font-medium py-2.5 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
+          className={`flex-1 text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 ${
+            vendor && vendorContractIdentityMissing(vendor)
+              ? 'bg-amber-600 text-white hover:bg-amber-700'
+              : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
         >
-          Düzenle
+          {vendor && vendorContractIdentityMissing(vendor) ? 'Kimliği Tamamla' : 'Düzenle'}
         </button>
       </div>
     </SlidePanel>
@@ -791,7 +807,7 @@ export default function VendorsPage() {
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState({ total: 0, activeCount: 0, corporateCount: 0 });
+  const [summary, setSummary] = useState({ total: 0, activeCount: 0, corporateCount: 0, identityMissingCount: 0 });
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -806,6 +822,8 @@ export default function VendorsPage() {
     return wg ? wg.split(',').filter(Boolean) : [];
   });
   const [serviceRegionFilter, setServiceRegionFilter] = useState(() => searchParams.get('serviceRegion') ?? '');
+  const [identityMissingFilter, setIdentityMissingFilter] = useState(() => searchParams.get('identity') === 'missing');
+  const bootEditIdRef = useRef(searchParams.get('edit'));
   const [wgFilterOpen, setWgFilterOpen] = useState(false);
   const wgFilterRef = useRef<HTMLDivElement>(null);
 
@@ -1155,6 +1173,7 @@ export default function VendorsPage() {
         total: d.total ?? 0,
         activeCount: d.activeCount ?? 0,
         corporateCount: d.corporateCount ?? 0,
+        identityMissingCount: d.identityMissingCount ?? 0,
       });
     } catch (e) { console.error(e); }
   }, []);
@@ -1168,6 +1187,7 @@ export default function VendorsPage() {
       if (statusFilter) params.set('status', statusFilter);
       if (entityTypeFilter) params.set('entityType', entityTypeFilter);
       if (serviceRegionFilter) params.set('serviceRegion', serviceRegionFilter);
+      if (identityMissingFilter) params.set('identityMissing', '1');
       selectedWorkGroupIds_filter.forEach((id) => params.append('workGroupId', id));
       const r = await axios.get(`${API}/vendors?${params}`, { headers: authHeader() });
       setVendors(r.data.data || []);
@@ -1176,7 +1196,7 @@ export default function VendorsPage() {
       console.error(e);
       showToast('error', 'Tedarikçi listesi yüklenemedi. Mevcut kayıtlar korundu — tekrar deneyin.');
     } finally { setLoading(false); }
-  }, [search, typeFilter, statusFilter, entityTypeFilter, serviceRegionFilter, selectedWorkGroupIds_filter, page]); // eslint-disable-line
+  }, [search, typeFilter, statusFilter, entityTypeFilter, serviceRegionFilter, identityMissingFilter, selectedWorkGroupIds_filter, page]); // eslint-disable-line
 
   // Debounce searchInput → search
   useEffect(() => {
@@ -1192,11 +1212,12 @@ export default function VendorsPage() {
     if (statusFilter) p.set('status', statusFilter);
     if (entityTypeFilter) p.set('entityType', entityTypeFilter);
     if (serviceRegionFilter) p.set('serviceRegion', serviceRegionFilter);
+    if (identityMissingFilter) p.set('identity', 'missing');
     if (selectedWorkGroupIds_filter.length) p.set('workGroups', selectedWorkGroupIds_filter.join(','));
     if (page > 1) p.set('page', String(page));
     const qs = p.toString();
     router.replace(qs ? `?${qs}` : '?', { scroll: false });
-  }, [search, typeFilter, statusFilter, entityTypeFilter, serviceRegionFilter, selectedWorkGroupIds_filter, page]); // eslint-disable-line
+  }, [search, typeFilter, statusFilter, entityTypeFilter, serviceRegionFilter, identityMissingFilter, selectedWorkGroupIds_filter, page]); // eslint-disable-line
 
   const loadDocumentTypes = useCallback(async () => {
     try {
@@ -1553,6 +1574,16 @@ export default function VendorsPage() {
     setActiveSection(0); setShowModal(true);
   };
 
+  useEffect(() => {
+    const id = bootEditIdRef.current;
+    if (!id) return;
+    bootEditIdRef.current = null;
+    axios
+      .get(`${API}/vendors/${id}`, { headers: authHeader() })
+      .then((r) => openEdit(r.data.data ?? r.data))
+      .catch(() => showToast('error', 'Tedarikçi kartı açılamadı.'));
+  }, []);
+
   const handleSave = async (overrideSaveMode?: SaveMode) => {
     // Validasyon
     const errors: Record<string, string> = {};
@@ -1889,11 +1920,12 @@ export default function VendorsPage() {
   const selectedWgNames = workGroups.filter((wg) => selectedWorkGroupIds.includes(wg.id));
   const selectedWgFilterNames = workGroups.filter((wg) => selectedWorkGroupIds_filter.includes(wg.id));
 
-  const hasActiveFilters = !!(search || typeFilter || statusFilter || entityTypeFilter || serviceRegionFilter || selectedWorkGroupIds_filter.length);
+  const hasActiveFilters = !!(search || typeFilter || statusFilter || entityTypeFilter || serviceRegionFilter || identityMissingFilter || selectedWorkGroupIds_filter.length);
 
   const applyKpiToplam = () => {
     setStatusFilter('');
     setEntityTypeFilter('');
+    setIdentityMissingFilter(false);
     setPage(1);
   };
   const applyKpiAktif = () => {
@@ -1904,11 +1936,16 @@ export default function VendorsPage() {
     setEntityTypeFilter((cur) => (cur === 'corporate' ? '' : 'corporate'));
     setPage(1);
   };
+  const showIdentityGaps = () => {
+    setIdentityMissingFilter(true);
+    setPage(1);
+  };
 
   const clearAllFilters = () => {
     setSearchInput(''); setSearch('');
     setTypeFilter(''); setStatusFilter('');
     setEntityTypeFilter(''); setServiceRegionFilter('');
+    setIdentityMissingFilter(false);
     setSelectedWorkGroupIds_filter([]);
     setPage(1);
   };
@@ -1986,6 +2023,41 @@ export default function VendorsPage() {
         </div>
       </div>
 
+      <OpsFirstRunNotice
+        compact
+        noticeId={OPS_NOTICE.tedarikciKimlikEksik.id}
+        title={OPS_NOTICE.tedarikciKimlikEksik.title}
+        body={OPS_NOTICE.tedarikciKimlikEksik.body}
+        testId="tedarikci-kimlik-eksik-seridi"
+      />
+
+      {summary.identityMissingCount > 0 && (
+        <div
+          className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-start"
+          data-testid="tedarikci-kimlik-eksik-banner"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900">
+              {summary.identityMissingCount} tedarikçide TC veya vergi no yok
+            </p>
+            <p className="mt-0.5 text-xs text-amber-800">
+              Şahısta TC, şirkette vergi no zorunlu. Yoksa sözleşme çıkmaz. Satırdaki Düzenle ile tamamlayın.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={showIdentityGaps}
+            className={`shrink-0 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+              identityMissingFilter
+                ? 'border-amber-400 bg-amber-100 text-amber-900'
+                : 'border-amber-300 bg-white text-amber-800 hover:bg-amber-100'
+            }`}
+          >
+            Eksikleri göster
+          </button>
+        </div>
+      )}
+
       {/* ── Sözleşme Uyarı Banner ── */}
       {contractAlert && (contractAlert.expiredCount > 0 || contractAlert.expiringCount > 0) && (
         <div className="space-y-2">
@@ -2042,7 +2114,7 @@ export default function VendorsPage() {
           value={summary.total}
           color="bg-brand-600"
           icon={Warehouse}
-          active={!statusFilter && !entityTypeFilter}
+          active={!statusFilter && !entityTypeFilter && !identityMissingFilter}
           onClick={applyKpiToplam}
         />
         <OpsStripKpi
@@ -2166,6 +2238,9 @@ export default function VendorsPage() {
             {statusFilter && <FilterChip label={`Durum: ${statusLabel[statusFilter] ?? statusFilter}`} onRemove={() => { setStatusFilter(''); setPage(1); }} />}
             {typeFilter && <FilterChip label={`Tür: ${typeFilter}`} onRemove={() => { setTypeFilter(''); setPage(1); }} />}
             {serviceRegionFilter && <FilterChip label={`Bölge: ${serviceRegionFilter}`} onRemove={() => { setServiceRegionFilter(''); setPage(1); }} />}
+            {identityMissingFilter && (
+              <FilterChip label="Kimlik eksik" onRemove={() => { setIdentityMissingFilter(false); setPage(1); }} />
+            )}
             {selectedWgFilterNames.map((wg) => (
               <FilterChip key={wg.id} label={`Faaliyet: ${wg.name}`} onRemove={() => toggleWgFilter(wg.id)} />
             ))}
@@ -2243,12 +2318,17 @@ export default function VendorsPage() {
         <>
           {/* Mobil kart listesi */}
           <div className="space-y-2 md:hidden">
-            {vendors.map((v) => (
+            {vendors.map((v) => {
+              const identityGap = vendorIdentityGapLabel(v);
+              return (
               <div
                 key={v.id}
                 role="button"
                 tabIndex={0}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors active:bg-slate-50"
+                className={`rounded-xl border bg-white p-4 shadow-sm transition-colors active:bg-slate-50 ${
+                  identityGap ? 'border-amber-300' : 'border-slate-200'
+                }`}
+                data-identity-gap={identityGap ? '1' : undefined}
                 onClick={() => {
                   setDrawerVendorId(v.id);
                   setDrawerOpen(true);
@@ -2283,9 +2363,15 @@ export default function VendorsPage() {
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                       <span>{vendorEntityTypeLabel(v.entityType)}</span>
-                      <span>
-                        {vendorIdentityCardLine(v).label}: {vendorIdentityCardLine(v).value}
-                      </span>
+                      {identityGap ? (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                          {identityGap}
+                        </span>
+                      ) : (
+                        <span>
+                          {vendorIdentityCardLine(v).label}: {vendorIdentityCardLine(v).value}
+                        </span>
+                      )}
                       {v.city ? (
                         <span className="inline-flex items-center gap-1">
                           {Icon.mapPin}
@@ -2308,12 +2394,14 @@ export default function VendorsPage() {
                 <div className="mt-3 flex items-center justify-end border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
                   <VendorRowActions
                     vendorId={v.id}
+                    highlightEdit={!!identityGap}
                     onEdit={() => openEdit(v)}
                     onDelete={() => requestDelete(v.id, v.name)}
                   />
                 </div>
               </div>
-            ))}
+            );
+            })}
             {total > limit && (
               <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
                 <span className="text-xs text-slate-400">
@@ -2361,6 +2449,7 @@ export default function VendorsPage() {
               </thead>
               <tbody className="table-body">
                 {sortedVendors.map((v) => {
+                  const identityGap = vendorIdentityGapLabel(v);
                   const cells: Record<string, ReactNode> = {
                     name: (
                   <PanelTableTd key="name" colId="name" className="table-td">
@@ -2371,6 +2460,9 @@ export default function VendorsPage() {
                       <div>
                         <Link href={`/panel/tedarikciler/${v.id}`} className="font-semibold text-slate-800 hover:text-brand-600 transition-colors">{v.name}</Link>
                         {v.type && <p className="text-xs text-slate-400 mt-0.5">{formatVendorTypeLabel(v.type)}</p>}
+                        {identityGap ? (
+                          <p className="mt-0.5 text-[11px] font-semibold text-amber-800">{identityGap}</p>
+                        ) : null}
                       </div>
                     </div>
                   </PanelTableTd>
@@ -2383,8 +2475,8 @@ export default function VendorsPage() {
                         {vendorEntityTypeLabel(v.entityType)}
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      {vendorIdentityCardLine(v).label}: {vendorIdentityCardLine(v).value}
+                    <p className={`mt-1 text-[11px] ${identityGap ? 'font-medium text-amber-800' : 'text-slate-500'}`}>
+                      {identityGap ?? `${vendorIdentityCardLine(v).label}: ${vendorIdentityCardLine(v).value}`}
                     </p>
                   </PanelTableTd>
                     ),
@@ -2465,6 +2557,7 @@ export default function VendorsPage() {
                   <PanelTableTd key="actions" colId="actions" wrap={false} align="center" className="table-td">
                     <VendorRowActions
                       vendorId={v.id}
+                      highlightEdit={!!identityGap}
                       onEdit={() => openEdit(v)}
                       onDelete={() => requestDelete(v.id, v.name)}
                     />
@@ -2472,7 +2565,7 @@ export default function VendorsPage() {
                     ),
                   };
                   return (
-                  <tr key={v.id} className="table-row cursor-pointer"
+                  <tr key={v.id} className={`table-row cursor-pointer ${identityGap ? 'bg-amber-50/70' : ''}`}
                     onClick={(e) => {
                       if ((e.target as HTMLElement).closest('a, button, input')) return;
                       setDrawerVendorId(v.id);
@@ -2531,6 +2624,7 @@ export default function VendorsPage() {
                 : form.name.trim();
               const typeLabel = form.entityType === 'individual' ? 'Şahıs tedarikçi' : 'Şirket tedarikçi';
               return displayName ? (
+                <>
                 <div className="flex items-center gap-2 px-6 py-2.5 bg-indigo-50 border-b border-indigo-100">
                   <svg className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -2538,6 +2632,12 @@ export default function VendorsPage() {
                   <span className="text-sm font-semibold text-indigo-800">{displayName}</span>
                   <span className="text-xs text-indigo-500 font-medium">— {typeLabel}</span>
                 </div>
+                {editVendor && vendorIdentityGapLabel(form) ? (
+                  <div className="border-b border-amber-200 bg-amber-50 px-6 py-2 text-xs font-medium text-amber-900">
+                    {vendorIdentityGapLabel(form)}. Sözleşme bu kayıt tamamlanmadan çıkmaz.
+                  </div>
+                ) : null}
+                </>
               ) : (
                 <div className="flex items-center gap-2 px-6 py-2.5 bg-slate-50 border-b border-slate-100">
                   <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

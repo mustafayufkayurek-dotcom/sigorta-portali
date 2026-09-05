@@ -1,3 +1,4 @@
+import { vendorContractIdentityMissing } from '@sigorta/shared';
 import { toTitleCaseTR } from './text-helpers';
 import { customerPhoneValidationError } from '@/utils/customer-form-helpers';
 import {
@@ -342,6 +343,15 @@ export function vendorIdentityDocumentHint(entityType?: string | null): string {
   return String(entityType ?? '').toLowerCase() === 'individual'
     ? 'Şahıs kayıtta TC kimlik belgesi yüklenir; sözleşme bu numarayı basar.'
     : 'Şirket kayıtta vergi levhası yüklenir; sözleşme bu numarayı basar.';
+}
+
+export function vendorIdentityGapLabel(vendor: {
+  entityType?: string | null;
+  identityNo?: string | null;
+  taxNumber?: string | null;
+}): string | null {
+  if (!vendorContractIdentityMissing(vendor)) return null;
+  return String(vendor.entityType ?? '').toLowerCase() === 'corporate' ? 'Vergi no eksik' : 'TC eksik';
 }
 
 export function vendorPhoneRequiredError(

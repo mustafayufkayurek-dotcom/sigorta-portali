@@ -81,6 +81,12 @@ export const OPS_NOTICE = {
     body:
       'Onarım Planlama’da sözleşmeyi görürsünüz. Metni dosya sorumlusu değiştirmez; yanlışsa yöneticiden düzeltme ister. Tedarikçi kaydındaki TC veya vergi no sözleşmeye basılır. Gönderim WhatsApp ile onay sayfasına gider.',
   },
+  tedarikciKimlikEksik: {
+    id: 'tedarikci-kimlik-eksik-v562',
+    title: 'Eksik kimlik',
+    body:
+      'Şahıs tedarikçide TC, şirket tedarikçide vergi no zorunlu. Listede eksik satır işaretlenir. Düzenle deyip numarayı yazın; yoksa sözleşme çıkmaz.',
+  },
   hasarOfisDosyaKapat: {
     id: 'hasar-ofis-dosya-kapat-v556',
     title: 'Dosyayı kapat',
