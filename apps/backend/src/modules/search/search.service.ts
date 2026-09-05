@@ -211,6 +211,7 @@ export class SearchService {
               invoiceNo: true,
               totalAmount: true,
               claimFile: { select: { fileNo: true } },
+              emergencyCase: { select: { fileNo: true, caseNo: true } },
             },
             take: LIMIT,
             orderBy: { updatedAt: 'desc' },
