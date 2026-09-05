@@ -28,6 +28,14 @@ export class OverdueInvoiceScheduler {
             assignedOfficeUserId: true,
           },
         },
+        emergencyCase: {
+          select: {
+            id: true,
+            fileNo: true,
+            caseNo: true,
+            assignedUserId: true,
+          },
+        },
         createdBy: {
           select: { id: true },
         },
@@ -49,9 +57,15 @@ export class OverdueInvoiceScheduler {
       else if (daysOverdue >= 15) severity = 'high';
       else if (daysOverdue >= 7) severity = 'warning';
 
+      const fileNo =
+        invoice.claimFile?.fileNo
+        ?? invoice.emergencyCase?.fileNo
+        ?? invoice.emergencyCase?.caseNo
+        ?? '—';
       const targetUserId =
-        invoice.claimFile.assignedOfficeUserId ??
-        invoice.createdBy.id;
+        invoice.claimFile?.assignedOfficeUserId
+        ?? invoice.emergencyCase?.assignedUserId
+        ?? invoice.createdBy.id;
 
       if (!targetUserId) continue;
 
@@ -72,7 +86,7 @@ export class OverdueInvoiceScheduler {
           userId: targetUserId,
           type: 'invoice_overdue',
           title: `Vadesi Geçmiş Fatura — ${daysOverdue} Gün (${severity})`,
-          body: `${invoice.invoiceNo} numaralı fatura ${daysOverdue} gün gecikmiş. Dosya: ${invoice.claimFile.fileNo}`,
+          body: `${invoice.invoiceNo} numaralı fatura ${daysOverdue} gün gecikmiş. Dosya: ${fileNo}`,
           channel: 'in_app',
           relatedEntityType: 'invoice',
           relatedEntityId: invoice.id,

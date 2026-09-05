@@ -775,7 +775,10 @@ export class DashboardService {
     // Overdue invoices
     const overdueInvoices = await this.prisma.invoice.findMany({
       where: { dueDate: { lt: today }, status: { notIn: ['paid', 'cancelled'] } },
-      include: { claimFile: { select: { fileNo: true } } },
+      include: {
+        claimFile: { select: { fileNo: true } },
+        emergencyCase: { select: { fileNo: true, caseNo: true } },
+      },
       orderBy: { dueDate: 'asc' },
       take: 10,
     });
@@ -883,7 +886,7 @@ export class DashboardService {
       overdueInvoices: overdueInvoices.map((inv) => ({
         id: inv.id,
         invoiceNo: inv.invoiceNo,
-        fileNo: inv.claimFile.fileNo,
+        fileNo: inv.claimFile?.fileNo ?? inv.emergencyCase?.fileNo ?? inv.emergencyCase?.caseNo ?? '—',
         dueDate: inv.dueDate,
         totalAmount: inv.totalAmount,
         status: inv.status,

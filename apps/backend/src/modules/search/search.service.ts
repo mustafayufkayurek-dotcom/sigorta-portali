@@ -202,6 +202,8 @@ export class SearchService {
               OR: [
                 { invoiceNo: { contains: q, mode: 'insensitive' } },
                 { claimFile: { is: { fileNo: { contains: q, mode: 'insensitive' } } } },
+                { emergencyCase: { is: { caseNo: { contains: q, mode: 'insensitive' } } } },
+                { emergencyCase: { is: { fileNo: { contains: q, mode: 'insensitive' } } } },
               ],
             },
             select: {
@@ -317,7 +319,10 @@ export class SearchService {
     const faturalarMapped: SearchResultItem[] = (invoices as any[]).map((i) => ({
       id: i.id,
       title: i.invoiceNo,
-      subtitle: [i.claimFile?.fileNo, i.totalAmount ? `₺${Number(i.totalAmount).toLocaleString('tr-TR')}` : null]
+      subtitle: [
+        i.claimFile?.fileNo ?? i.emergencyCase?.fileNo ?? i.emergencyCase?.caseNo,
+        i.totalAmount ? `₺${Number(i.totalAmount).toLocaleString('tr-TR')}` : null,
+      ]
         .filter(Boolean)
         .join(' · '),
       url: `/panel/finans/faturalar/${i.id}`,
