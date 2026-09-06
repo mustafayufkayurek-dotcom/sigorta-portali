@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { resolveProvinceCoords } from '@sigorta/shared';
 
 export interface LocationPoint {
   latitude: number;
@@ -19,7 +20,7 @@ export type FieldMapActorType =
   | 'file_hasar'
   | 'file_acil';
 
-export type FieldMapJobStage = 'yeni' | 'atandi' | 'sahada';
+export type FieldMapJobStage = 'yeni' | 'atandi' | 'sahada' | 'kapandi';
 
 export interface FieldMapPoint {
   actorType: FieldMapActorType;
@@ -31,6 +32,9 @@ export interface FieldMapPoint {
   locationKind: 'live' | 'job';
   jobStage?: FieldMapJobStage;
   jobStageLabel?: string;
+  city?: string;
+  customerId?: string | null;
+  assignedOfficeUserId?: string | null;
   activeJob?: { label: string; fileNo?: string; href?: string };
 }
 
@@ -71,9 +75,29 @@ function hasarJobStage(code?: string | null, hasVendor?: boolean): {
   return { stage: 'yeni', label: 'Yeni ihbar' };
 }
 
+function resolveJobPlot(
+  lat?: number | null,
+  lng?: number | null,
+  city?: string | null,
+  addressLine?: string | null,
+): { lat: number; lng: number; city?: string } | null {
+  const cityLabel = city?.trim() && city.trim().toLocaleLowerCase('tr-TR') !== 'belirtilmemiş'
+    ? city.trim()
+    : undefined;
+  if (isPlotCoord(lat, lng)) {
+    return { lat: lat!, lng: lng!, city: cityLabel };
+  }
+  const province = resolveProvinceCoords(city) ?? resolveProvinceCoords(addressLine);
+  if (!province) return null;
+  return { lat: province.lat, lng: province.lng, city: cityLabel };
+}
+
 function acilJobStage(status: string): { stage: FieldMapJobStage; label: string } {
   if (status === 'SAHADA') return { stage: 'sahada', label: 'Sahada' };
   if (status === 'ATANDI') return { stage: 'atandi', label: 'Atandı' };
+  if (status === 'COZULDU' || status === 'FATURALANDILDI') {
+    return { stage: 'kapandi', label: 'Kapandı' };
+  }
   return { stage: 'yeni', label: 'Yeni ihbar' };
 }
 
@@ -194,18 +218,22 @@ export class UserLocationsService {
     return { user, locations };
   }
 
-  async getFieldMap(): Promise<FieldMapPoint[]> {
+  async getFieldMap(opts?: {
+    customerId?: string;
+    ownerUserId?: string;
+  }): Promise<FieldMapPoint[]> {
     const personnel = await this.getLatestAll();
     const points: FieldMapPoint[] = personnel.map((p) => {
       const ts = p.lastLocation.timestamp;
       return {
-        actorType: 'personel',
+        actorType: 'personel' as const,
         id: p.userId,
         name: `${p.firstName} ${p.lastName}`.trim(),
         latitude: p.lastLocation.latitude,
         longitude: p.lastLocation.longitude,
         timestamp: ts instanceof Date ? ts.toISOString() : String(ts),
-        locationKind: 'live',
+        locationKind: 'live' as const,
+        assignedOfficeUserId: p.userId,
         activeJob: p.activeAppointment
           ? {
               label: p.activeAppointment.type,
@@ -215,35 +243,58 @@ export class UserLocationsService {
       };
     });
 
-    const [claimFiles, emergencyCases] = await Promise.all([
+    const closedSince = new Date();
+    closedSince.setDate(closedSince.getDate() - 180);
+
+    const [openClaims, closedClaims, emergencyCases] = await Promise.all([
       this.prisma.claimFile.findMany({
-        where: {
-          currentStatus: { isClosedState: false },
-          OR: [
-            { propertyAddress: { latitude: { not: null }, longitude: { not: null } } },
-            { customer: { latitude: { not: null }, longitude: { not: null } } },
-          ],
-        },
-        take: 400,
+        where: { currentStatus: { isClosedState: false } },
+        take: 600,
         orderBy: { updatedAt: 'desc' },
         select: {
           id: true,
           fileNo: true,
           updatedAt: true,
+          customerId: true,
+          assignedOfficeUserId: true,
           assignedSupplierId: true,
-          currentStatus: { select: { code: true, name: true } },
+          currentStatus: { select: { code: true, name: true, isClosedState: true } },
           assignedSupplier: { select: { name: true } },
-          propertyAddress: { select: { latitude: true, longitude: true } },
-          customer: { select: { latitude: true, longitude: true } },
+          propertyAddress: { select: { latitude: true, longitude: true, city: true, addressLine: true } },
+          customer: { select: { latitude: true, longitude: true, city: true } },
+        },
+      }),
+      this.prisma.claimFile.findMany({
+        where: {
+          currentStatus: { isClosedState: true },
+          updatedAt: { gte: closedSince },
+        },
+        take: 300,
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          fileNo: true,
+          updatedAt: true,
+          customerId: true,
+          assignedOfficeUserId: true,
+          assignedSupplierId: true,
+          currentStatus: { select: { code: true, name: true, isClosedState: true } },
+          assignedSupplier: { select: { name: true } },
+          propertyAddress: { select: { latitude: true, longitude: true, city: true, addressLine: true } },
+          customer: { select: { latitude: true, longitude: true, city: true } },
         },
       }),
       this.prisma.emergencyCase.findMany({
         where: {
-          status: { in: ['GELEN', 'ATANDI', 'SAHADA'] },
-          latitude: { not: null },
-          longitude: { not: null },
+          OR: [
+            { status: { in: ['GELEN', 'ATANDI', 'SAHADA'] } },
+            {
+              status: { in: ['COZULDU', 'FATURALANDILDI'] },
+              updatedAt: { gte: closedSince },
+            },
+          ],
         },
-        take: 400,
+        take: 600,
         orderBy: { updatedAt: 'desc' },
         select: {
           id: true,
@@ -252,18 +303,30 @@ export class UserLocationsService {
           status: true,
           latitude: true,
           longitude: true,
+          city: true,
+          customerId: true,
+          assignedUserId: true,
           updatedAt: true,
+          address: true,
           assignedVendor: { select: { name: true } },
         },
       }),
     ]);
 
-    for (const cf of claimFiles) {
-      const lat = cf.propertyAddress?.latitude ?? cf.customer?.latitude ?? null;
-      const lng = cf.propertyAddress?.longitude ?? cf.customer?.longitude ?? null;
-      if (!isPlotCoord(lat, lng)) continue;
-      const pos = nudgeById(cf.id, lat!, lng!);
-      const stage = hasarJobStage(cf.currentStatus?.code, Boolean(cf.assignedSupplierId));
+    for (const cf of [...openClaims, ...closedClaims]) {
+      const city = cf.propertyAddress?.city ?? cf.customer?.city ?? null;
+      const plot = resolveJobPlot(
+        cf.propertyAddress?.latitude ?? cf.customer?.latitude,
+        cf.propertyAddress?.longitude ?? cf.customer?.longitude,
+        city,
+        cf.propertyAddress?.addressLine,
+      );
+      if (!plot) continue;
+      const pos = nudgeById(cf.id, plot.lat, plot.lng);
+      const closed = Boolean(cf.currentStatus?.isClosedState);
+      const stage = closed
+        ? { stage: 'kapandi' as const, label: cf.currentStatus?.name || 'Kapandı' }
+        : hasarJobStage(cf.currentStatus?.code, Boolean(cf.assignedSupplierId));
       const vendor = cf.assignedSupplier?.name;
       points.push({
         actorType: 'file_hasar',
@@ -274,7 +337,10 @@ export class UserLocationsService {
         timestamp: cf.updatedAt.toISOString(),
         locationKind: 'job',
         jobStage: stage.stage,
-        jobStageLabel: cf.currentStatus?.name || stage.label,
+        jobStageLabel: closed ? cf.currentStatus?.name || 'Kapandı' : cf.currentStatus?.name || stage.label,
+        city: plot.city,
+        customerId: cf.customerId,
+        assignedOfficeUserId: cf.assignedOfficeUserId,
         activeJob: {
           label: vendor ? `Hasar · ${vendor}` : 'Hasar Dosyası',
           fileNo: cf.fileNo,
@@ -284,9 +350,10 @@ export class UserLocationsService {
     }
 
     for (const ec of emergencyCases) {
-      if (!isPlotCoord(ec.latitude, ec.longitude)) continue;
+      const plot = resolveJobPlot(ec.latitude, ec.longitude, ec.city, ec.address);
+      if (!plot) continue;
       const fileNo = ec.fileNo ?? ec.caseNo;
-      const pos = nudgeById(ec.id, ec.latitude!, ec.longitude!);
+      const pos = nudgeById(ec.id, plot.lat, plot.lng);
       const stage = acilJobStage(ec.status);
       const vendor = ec.assignedVendor?.name;
       points.push({
@@ -299,6 +366,9 @@ export class UserLocationsService {
         locationKind: 'job',
         jobStage: stage.stage,
         jobStageLabel: stage.label,
+        city: plot.city,
+        customerId: ec.customerId,
+        assignedOfficeUserId: ec.assignedUserId,
         activeJob: {
           label: vendor ? `Acil · ${vendor}` : 'Acil Yardım Dosyası',
           fileNo,
@@ -307,7 +377,17 @@ export class UserLocationsService {
       });
     }
 
-    return points;
+    let out = points;
+    if (opts?.customerId) {
+      out = out.filter((p) => p.actorType !== 'personel' && p.customerId === opts.customerId);
+    }
+    if (opts?.ownerUserId) {
+      out = out.filter((p) => {
+        if (p.actorType === 'personel') return p.id === opts.ownerUserId;
+        return p.assignedOfficeUserId === opts.ownerUserId;
+      });
+    }
+    return out;
   }
 
   async cleanOldLocations(): Promise<number> {

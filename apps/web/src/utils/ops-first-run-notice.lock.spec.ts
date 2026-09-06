@@ -270,13 +270,14 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
   });
 
   it('harita iş adresi şeridi durur; Google yok', () => {
-    const harita = readFileSync(join(here, '../app/panel/harita/page.tsx'), 'utf8');
+    const harita = readFileSync(join(here, '../components/operasyon/FieldOperationsMap.tsx'), 'utf8');
     assert.match(harita, /OpsFirstRunNotice/);
     assert.match(harita, /OPS_NOTICE\.haritaDosyaIsAdresi/);
     assert.match(harita, /harita-dosya-is-adresi-seridi/);
-    assert.equal(OPS_NOTICE.haritaDosyaIsAdresi.id, 'harita-dosya-is-adresi-v568');
+    assert.equal(OPS_NOTICE.haritaDosyaIsAdresi.id, 'harita-bolge-il-v569');
     assert.match(OPS_NOTICE.haritaDosyaIsAdresi.body, /iş adresidir/);
     assert.match(OPS_NOTICE.haritaDosyaIsAdresi.body, /Hasar ve Acil ayrı/);
+    assert.match(OPS_NOTICE.haritaDosyaIsAdresi.body, /Bölge Seç/);
     assert.doesNotMatch(OPS_NOTICE.haritaDosyaIsAdresi.body, /Google|API/);
   });
 

@@ -46,12 +46,12 @@ export default function OperationReferenceFilters({
       </select>
 
       <select
-        aria-label="İl filtresi"
+        aria-label="Bölge filtresi"
         className={selectClass}
         value={filters.city}
         onChange={(e) => onChange({ ...filters, city: e.target.value })}
       >
-        <option value="all">Tüm İller</option>
+        <option value="all">Bölge Seç</option>
         {cityOptions.map((city) => (
           <option key={city} value={city}>
             {city}

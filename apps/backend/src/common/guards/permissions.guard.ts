@@ -15,6 +15,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'payment.view',
     'task.view', 'task.create', 'task.update',
     'dashboard.view',
+    'location.view',
     'operation_inbox.view', 'operation_inbox.manage',
     'role.view', 'role.manage',
   ],

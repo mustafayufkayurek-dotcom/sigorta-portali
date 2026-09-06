@@ -124,10 +124,10 @@ export const OPS_NOTICE = {
       'Soldaki sayfaya tıklayınca panel kapanmaz; sağa kayar. Başka sayfaya gitseniz şerit durur. Şeride tıklayınca yazdığınız durur. X veya Çıkış Yap deyince kayıt hatırlatması çıkar.',
   },
   haritaDosyaIsAdresi: {
-    id: 'harita-dosya-is-adresi-v568',
+    id: 'harita-bolge-il-v569',
     title: 'Harita',
     body:
-      'Hasar ve Acil ayrı durur. Kutu iş adresidir; tedarikçi telefonu gerekmez. Yeşil kutu sahada iş. Daire sizin personelin telefon konumudur.',
+      'Hasar ve Acil ayrı durur. Pin iş adresidir; il adı yeter, tedarikçi telefonu gerekmez. Tercihle kapanan dosya da durur. Üstte Bölge Seç. Yeşil kutu sahada iş. Daire personel telefonudur.',
   },
 } as const;
 

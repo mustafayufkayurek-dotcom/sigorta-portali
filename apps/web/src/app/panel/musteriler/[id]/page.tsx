@@ -13,6 +13,7 @@ import { fmtDate } from '@/utils/date-helpers';
 import { formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
 import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType } from '@/utils/customer-form-helpers';
 import { customerFileCounts } from '@/utils/customer-file-counts';
+import { FieldOperationsMap } from '@/components/operasyon/FieldOperationsMap';
 import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
 import {
   readAnaMusteriHaberlesme,
@@ -65,12 +66,13 @@ const BRANCH_COLORS = [
   '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
 ];
 
-type CustomerTab = 'profil' | 'yetkili' | 'iletisim' | 'dosyalar' | 'evraklar' | 'analiz';
+type CustomerTab = 'profil' | 'yetkili' | 'iletisim' | 'dosyalar' | 'harita' | 'evraklar' | 'analiz';
 
 const TABS: { id: CustomerTab; label: string; icon: string }[] = [
   { id: 'profil', label: 'Profil', icon: '👤' },
   { id: 'yetkili', label: 'Yetkili & İletişim', icon: '📡' },
   { id: 'dosyalar', label: 'Hasar Dosyaları', icon: '📂' },
+  { id: 'harita', label: 'Harita', icon: '🗺️' },
   { id: 'evraklar', label: 'Evraklar', icon: '📄' },
   { id: 'analiz', label: 'Branş Analizi', icon: '📊' },
 ];
@@ -940,6 +942,9 @@ export default function CustomerDetailPage() {
       {activeTab === 'profil' && <CustomerProfilTab customer={customer} isFieldStaff={isFieldStaff} onReload={load} onEdit={() => router.push(`/panel/musteriler?edit=${id}`)} />}
       {activeTab === 'yetkili' && <YetkiliIletisimTab customer={customer} />}
       {activeTab === 'dosyalar' && <CustomerDosyalarTab customerId={id!} />}
+      {activeTab === 'harita' && (
+        <FieldOperationsMap customerId={id!} compact showNotice />
+      )}
       {activeTab === 'evraklar' && (
         <EntityDocumentsTab
           mode="entity"

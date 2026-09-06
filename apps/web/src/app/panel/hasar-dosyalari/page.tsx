@@ -73,6 +73,7 @@ import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsur
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { FieldOperationsMap } from '@/components/operasyon/FieldOperationsMap';
 import { acilVendorPayLabel, acilVendorPayTone } from '@/utils/acil-vendor-pay';
 
 
@@ -563,6 +564,14 @@ function ClaimFilesPageContent() {
           )}
         </div>
       </div>
+
+      {!isFieldStaff && (
+        <FieldOperationsMap
+          compact
+          ownerOnly={Boolean(officeStaffUserId)}
+          defaultFilter="hasar"
+        />
+      )}
 
       {!isFieldStaff && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" data-testid="hasar-kpi-band">

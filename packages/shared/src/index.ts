@@ -1,4 +1,5 @@
 export * from './types';
+export * from './turkey-province-coords';
 export * from './enums';
 export * from './schemas';
 export * from './agreement-templates';

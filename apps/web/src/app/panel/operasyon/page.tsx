@@ -61,6 +61,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { FieldOperationsMap } from '@/components/operasyon/FieldOperationsMap';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import {
   ACIL_PRODUCT_STAGE_FILTERS,
@@ -352,7 +353,7 @@ export default function OperasyonPage() {
 function OperasyonPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { showFinanceExtraAccessAcil } = usePanelAccess();
+  const { showFinanceExtraAccessAcil, isOfficeStaff, isManagement } = usePanelAccess();
   const [colsStorageKey, setColsStorageKey] = useState(() => {
     const filter = searchParams.get('filter');
     if (filter === 'acil' || filter === 'hasar' || filter === 'all') {
@@ -982,6 +983,12 @@ function OperasyonPageContent() {
           ) : null}
         </div>
       </div>
+
+      <FieldOperationsMap
+        compact
+        ownerOnly={isOfficeStaff && !isManagement}
+        defaultFilter={isAcilListMode ? 'acil' : 'all'}
+      />
 
       {/* Dosya Özeti KPI — Acil listesinde yalnız acil sayıları */}
       {isAcilListMode ? (

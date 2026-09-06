@@ -1,0 +1,31 @@
+---
+description: Özet kart ve durum renkleri anlam taşır (renk psikolojisi)
+alwaysApply: true
+---
+
+# Renk psikolojisi — özet kart ve durum
+
+Renk süs değildir. Personel bakınca anlamı okur. Hasar referans ailesi dışına çıkılmaz.
+
+## Anlam
+
+| Renk | Anlam | Kullanım |
+|------|--------|----------|
+| Mavi (`brand`) | Güven, süreç, izleme | Hasar, Tümü/genel bakış |
+| Turuncu | Acil, dikkat, hız | Acil Yardım |
+| Yeşil | Olumlu, sahada, tamam | Sahada iş, aktif/onay |
+| Gri / slate | Kapandı, nötr, dinmiş iş | Kapalı dosya |
+| Kırmızı | Hata, gecikme, yasak | Yalnız gerçek sorun |
+
+## Zorunlu
+
+1. Özet kartında renk, kartın işine uyar (Hasar mavi, Acil turuncu, kapandı gri).
+2. İl / bölge seçilince kart **sayıları o ile göre** değişir. Türkiye geneli sayı il seçiliyken durmaz.
+3. Anlamı olmayan sıfır kart (ör. Personel 0) basılmaz.
+4. Kartlar aynı yükseklik, aynı boşluk; dağınık hap + ayrı lejant yığını yok.
+
+## Yasak
+
+- Dekoratif gökkuşağı, her karta ayrı moda renk
+- İl seçiliyken ülke toplamını kartta bırakmak
+- Yeşili “güzel dursun” diye her yere basmak

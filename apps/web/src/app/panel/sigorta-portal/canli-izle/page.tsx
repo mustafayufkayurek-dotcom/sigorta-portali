@@ -357,12 +357,12 @@ export default function SigortaCanliIzlePage() {
           </select>
 
           <select
-            aria-label="İl"
+            aria-label="Bölge Seç"
             className={selectClass}
             value={city}
             onChange={(e) => setCity(e.target.value)}
           >
-            <option value="all">Tüm İller</option>
+            <option value="all">Bölge Seç</option>
             {cityOptions.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}

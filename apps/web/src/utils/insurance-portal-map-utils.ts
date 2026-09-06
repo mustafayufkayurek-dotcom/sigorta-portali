@@ -38,6 +38,7 @@ export type ClaimFileForMap = {
     city?: string;
     latitude?: number | null;
     longitude?: number | null;
+    addressLine?: string | null;
   } | null;
   currentStatus?: { name?: string; code?: string } | null;
   department?: InsuranceMapDepartment;
@@ -165,7 +166,8 @@ function resolveFileCoords(file: ClaimFileForMap): {
   }
 
   const city = file.propertyAddress?.city ?? file.customer?.city;
-  const province = resolveProvinceCoords(city);
+  const province =
+    resolveProvinceCoords(city) ?? resolveProvinceCoords(file.propertyAddress?.addressLine);
   if (!province) return null;
 
   const [jLat, jLng] = jitterCoords(file.id, province.lat, province.lng);

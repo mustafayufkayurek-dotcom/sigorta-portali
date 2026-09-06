@@ -29,10 +29,19 @@ export class UserLocationsController {
   }
 
   @Get('field-map')
-  @RequirePermissions('location.view')
-  @ApiOperation({ summary: 'Saha haritası: personel + açık hasar/acil dosyaları (iş adresi)' })
-  async getFieldMap() {
-    const data = await this.service.getFieldMap();
+  @RequirePermissions('location.view', 'claim_file.view')
+  @ApiOperation({ summary: 'Saha haritası: personel + Hasar/Acil dosyaları (iş adresi veya il)' })
+  async getFieldMap(
+    @CurrentUser() user: { id?: string; userId?: string },
+    @Query('customerId') customerId?: string,
+    @Query('ownerOnly') ownerOnly?: string,
+  ) {
+    const ownerUserId =
+      ownerOnly === '1' || ownerOnly === 'true' ? user?.id ?? user?.userId : undefined;
+    const data = await this.service.getFieldMap({
+      customerId: customerId?.trim() || undefined,
+      ownerUserId,
+    });
     return { success: true, data };
   }
 

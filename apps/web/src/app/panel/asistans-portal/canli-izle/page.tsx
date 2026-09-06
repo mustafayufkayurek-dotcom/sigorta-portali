@@ -379,12 +379,12 @@ export default function AsistansCanliIzlePage() {
 
         <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center">
           <select
-            aria-label="İl"
+            aria-label="Bölge Seç"
             className={selectClass}
             value={city}
             onChange={(e) => setCity(e.target.value)}
           >
-            <option value="all">Tüm İller</option>
+            <option value="all">Bölge Seç</option>
             {cityOptions.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
