@@ -2,24 +2,30 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 5 Eylül 2026
+**Son güncelleme:** 6 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (5 Eylül 2026 — web v568 / backend v568)
+## Canlı durum (6 Eylül 2026 — web v569 / backend v569)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v568-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v568-amd64` | canlı |
-| **Rollback** | Web **v567** / Backend **v567** | manifest `rollbackImages` |
-| **Etiket** | `v568-harita-dosya-is-adresi` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v569-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v569-amd64` | canlı |
+| **Rollback** | Web **v568** / Backend **v568** | manifest `rollbackImages` |
+| **Etiket** | `v569-harita-bolge-il` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v569 — Full (6 Eylül 2026) — Harita il, kapanan dosya, bölge
+
+- GPS yoksa pin il adıyla durur. Tercihle kapanan Hasar/Acil görünür
+- Bölge seç. Müşteri kartı ve dosya sorumlusu listesinde aynı harita
+- Rollback web+backend **v568**. İK yok
 
 ### v568 — Full (5 Eylül 2026) — Harita iş adresi; Hasar/Acil ayrı
 
