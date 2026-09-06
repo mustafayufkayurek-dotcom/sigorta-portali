@@ -22,6 +22,8 @@ import {
   PanelTableTd,
   SortablePanelTableTh,
   PanelTableColGroup,
+  PanelTableScroll,
+  PanelListToolbarPickers,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -40,6 +42,7 @@ import { faturaTalepleriTabPulseClass } from '@/components/finance/FinansOncelik
 import { FINANS_ACTIONS_COLUMN, FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, type FinansTablePageSize } from '@/utils/finans-table-page';
 import { unseenInvoiceRequestIds } from '@/utils/invoice-request-alert';
 import { invoiceIssuedFileHref, invoiceIssuedFileNo, invoicePartyCustomerName } from '@/utils/invoice-customer-name';
+import { HintIcon } from '@/components/ui/HintIcon';
 
 const INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'invoiceNo', label: 'Fatura No', defaultWidth: 120, minWidth: 96 },
@@ -290,10 +293,10 @@ function FaturalarPageContent() {
       <FinansSubpageBreadcrumb current="Faturalar" />
 
       <div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Faturalar</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Kesilen fatura ve kapanış talebi aynı yerde. Renk yalnız duruma göre.
-        </p>
+        <h2 className="inline-flex items-center gap-1.5 text-xl font-bold text-slate-900 dark:text-white">
+          Faturalar
+          <HintIcon text="Kesilen Faturalar kayıttır. Fatura Talepleri kapanıştan gelen kesilecek iştir; kesilince diğer sekmeye geçer." />
+        </h2>
       </div>
 
       <FinansKpiStrip
@@ -444,17 +447,19 @@ function FaturalarPageContent() {
       ) : (
         <TableColumnsProvider value={tableColumns}>
         <FinansPanelCard title="Kesilen Faturalar" subtitle={`${total} kayıt`} noPadding>
-          <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end gap-2">
-            <PanelTableColumnPicker tableColumns={tableColumns} />
-            <PortalRowActionsPicker
-              catalog={FINANS_FATURA_ROW_ACTIONS}
-              pinnedIds={rowActions.pinnedIds}
-              onToggle={rowActions.toggle}
-              onReset={rowActions.reset}
-            />
+          <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+            <PanelListToolbarPickers>
+              <PanelTableColumnPicker tableColumns={tableColumns} />
+              <PortalRowActionsPicker
+                catalog={FINANS_FATURA_ROW_ACTIONS}
+                pinnedIds={rowActions.pinnedIds}
+                onToggle={rowActions.toggle}
+                onReset={rowActions.reset}
+              />
+            </PanelListToolbarPickers>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [40] })}>
+          <PanelTableScroll>
+            <table className="text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [40] })}>
               <PanelTableColGroup leadingWidths={[40]} />
               <thead className="table-head-row portal-table-head text-xs">
                 <tr>
@@ -556,7 +561,7 @@ function FaturalarPageContent() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </PanelTableScroll>
           <FinansTablePager
             page={filters.page}
             pageSize={filters.limit as FinansTablePageSize}

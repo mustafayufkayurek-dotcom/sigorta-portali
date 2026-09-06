@@ -28,6 +28,8 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   bash "$SCRIPT_DIR/smoke-hasar-tahsilat-gelir.sh"
   bash "$SCRIPT_DIR/smoke-acil-supplier-assignment.sh"
   bash "$SCRIPT_DIR/smoke-liste-gorunum.sh"
+  bash "$SCRIPT_DIR/smoke-panel-auth-gate.sh"
+  bash "$SCRIPT_DIR/smoke-baslik-hint.sh"
 fi
 
 WEB_VERSION="$(printf '%s' "$DEPLOY_TAG" | grep -oE 'v[0-9]+' | head -1 || true)"

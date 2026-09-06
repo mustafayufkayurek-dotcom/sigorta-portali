@@ -311,10 +311,10 @@ export function ResizableTh({
     <th
       style={{ width, minWidth: width, maxWidth: width }}
       title={dragProps ? 'Sütunu sürükleyerek yerini değiştirin' : undefined}
-      className={`group relative box-border select-none overflow-hidden !text-center ${className} ${dragClassName ?? ''}`.trim()}
+      className={`group relative box-border select-none overflow-visible !text-center ${className} ${dragClassName ?? ''}`.trim()}
       {...restDragProps}
     >
-      <span className={`flex min-w-0 items-center justify-center truncate px-1 pr-3 ${dragProps ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+      <span className={`flex items-center justify-center whitespace-nowrap px-2 pr-3 ${dragProps ? 'cursor-grab active:cursor-grabbing' : ''}`}>
         {children}
       </span>
       {resizable && (
@@ -332,7 +332,7 @@ export function ResizableTh({
             const label = fitLabel ?? colId;
             onResize(colId, estimateColumnContentWidth(label, minWidth, defaultWidth ?? width, fitSamples));
           }}
-          className="absolute -right-0.5 top-0 z-20 flex h-full w-4 cursor-col-resize touch-none items-stretch justify-center"
+          className="absolute inset-y-0 right-0 z-20 flex h-full w-2 cursor-col-resize touch-none items-stretch justify-center"
         >
           <span className="my-1 w-0.5 rounded-full bg-slate-200 transition-colors group-hover:bg-blue-400 dark:bg-slate-600 dark:group-hover:bg-blue-400" />
         </span>
@@ -652,6 +652,14 @@ function colMeta(ctx: PanelTableColumnsValue, colId: string) {
   return ctx.columns.find((c) => c.id === colId);
 }
 
+export function PanelListToolbarPickers({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-nowrap items-center justify-end gap-2 shrink-0">
+      {children}
+    </div>
+  );
+}
+
 export function PanelTableColumnPicker({ tableColumns }: { tableColumns: PanelTableColumnsValue }) {
   return (
     <TableColumnPicker
@@ -712,7 +720,7 @@ interface PanelTableTdProps {
   title?: string;
   /** Kurumsal tablo hizası — operasyon listelerinde varsayılan center */
   align?: 'left' | 'center' | 'right';
-  /** true: satır kaydır; false: kes. Boş: diğer ekranların mevcut hücresi (Hasar kabuğu dokunulmaz). */
+  /** true: satır kaydır. Boş veya false: tek satır kes — dar sütunda harf harf satır kırılmaz. */
   wrap?: boolean;
 }
 
@@ -731,9 +739,7 @@ export function PanelTableTd({ colId, className = '', children, title, align = '
   const wrapClass =
     wrap === true
       ? 'max-w-full whitespace-normal break-words [overflow-wrap:anywhere] leading-snug'
-      : wrap === false
-        ? 'truncate whitespace-nowrap'
-        : '';
+      : 'truncate whitespace-nowrap';
   return (
     <td
       className={`max-w-0 overflow-hidden align-middle ${alignClass} ${className}`}
@@ -801,7 +807,7 @@ export function SortablePanelTableTh({
       tabIndex={0}
       title={sortTitle}
       aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
-      className={`inline-flex w-full cursor-pointer items-center justify-center gap-1 transition-colors hover:text-slate-800 dark:hover:text-slate-100 ${
+      className={`inline-flex max-w-full cursor-pointer items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-slate-800 dark:hover:text-slate-100 ${
         active ? 'text-blue-700 dark:text-blue-300' : 'text-inherit'
       }`}
       onClick={(e) => {
@@ -932,7 +938,9 @@ export function PanelTableFrame({
   return (
     <div className={`min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-200 bg-white ${className}`}>
       {toolbar ? (
-        <div className="flex min-w-0 justify-end border-b border-slate-100 px-3 py-2 sm:px-4">{toolbar}</div>
+        <div className="flex min-w-0 justify-end border-b border-slate-100 px-3 py-2 sm:px-4">
+          <PanelListToolbarPickers>{toolbar}</PanelListToolbarPickers>
+        </div>
       ) : null}
       <PanelTableScroll>{children}</PanelTableScroll>
     </div>

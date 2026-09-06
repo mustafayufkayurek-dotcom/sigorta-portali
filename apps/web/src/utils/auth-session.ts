@@ -278,6 +278,7 @@ export function clearAuth(options?: { preserveRememberedEmail?: boolean }) {
   const rememberFlag = keepEmailPref && isRememberMePreferred() ? '1' : null;
 
   requirePasswordLogin();
+  void clearWebAuthCookies();
   clearSessionTokensOnly();
   localStorage.removeItem(REMEMBER_ME_FLAG);
   localStorage.removeItem(REMEMBERED_EMAIL_KEY);
@@ -291,6 +292,36 @@ export function clearAuth(options?: { preserveRememberedEmail?: boolean }) {
   }
 }
 
+export async function establishWebAuthCookies(
+  tokens: { accessToken: string; refreshToken: string },
+  remember: boolean,
+): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetch('/web-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        remember,
+      }),
+    });
+  } catch {
+    /* kapı yazılamazsa adres çubuğu girişi yine kesilir */
+  }
+}
+
+export async function clearWebAuthCookies(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetch('/web-auth', { method: 'DELETE', credentials: 'include' });
+  } catch {
+    /* yok say */
+  }
+}
+
 export function persistTokens(accessToken: string, refreshToken: string) {
   initAuthStorage();
   // Çıkış sonrası yarış: refresh token geri yazmasın
@@ -300,6 +331,7 @@ export function persistTokens(accessToken: string, refreshToken: string) {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
     touchAuthActivity();
+    void establishWebAuthCookies({ accessToken, refreshToken }, true);
     return;
   }
   sessionStorage.setItem('accessToken', accessToken);
@@ -308,6 +340,7 @@ export function persistTokens(accessToken: string, refreshToken: string) {
   localStorage.setItem(AUTH_PERSISTENCE_KEY, 'session');
   purgeOrphanLocalTokens();
   touchAuthActivity();
+  void establishWebAuthCookies({ accessToken, refreshToken }, false);
 }
 
 export function storeAuthAfterLogin(
@@ -335,6 +368,7 @@ export function storeAuthAfterLogin(
     localStorage.setItem(LAST_AUTH_ACTIVITY_KEY, String(now));
     markBrowserSessionActive();
     markTabSessionActive();
+    void establishWebAuthCookies(tokens, true);
     return;
   }
 
@@ -349,6 +383,7 @@ export function storeAuthAfterLogin(
   localStorage.setItem(AUTH_PERSISTENCE_KEY, 'session');
   markBrowserSessionActive();
   markTabSessionActive();
+  void establishWebAuthCookies(tokens, false);
 }
 
 export function isRememberMeExpired(): boolean {
@@ -461,8 +496,14 @@ export async function attemptAutoLogin(apiBase: string): Promise<boolean> {
   const ok = await ensureValidSession(apiBase);
   if (!ok) {
     clearSessionTokensOnly();
+    return false;
   }
-  return ok;
+  const accessToken = getAccessToken();
+  const refreshToken = getRefreshToken();
+  if (accessToken && refreshToken) {
+    await establishWebAuthCookies({ accessToken, refreshToken }, isRememberMePreferred());
+  }
+  return true;
 }
 
 /**
@@ -481,6 +522,7 @@ export async function logoutAndRedirect(
   requirePasswordLogin();
   clearSessionTokensOnly();
   localStorage.removeItem('user');
+  await clearWebAuthCookies();
 
   if (accessToken) {
     try {

@@ -116,6 +116,8 @@ describe('invoice-request-list lock', () => {
 
     const section = read('../components/finance/FaturaTalepleriSection.tsx');
     assert.match(section, /InvoiceRequestRowActions/);
+    assert.match(section, /PortalRowActionsPicker/);
+    assert.match(section, /FINANS_FATURA_TALEP_ROW_ACTIONS/);
     assert.match(section, /fatura-talep-satis-no-modal/);
     assert.match(section, /Satış fatura numarası/);
     assert.match(section, /FINANS_ACTIONS_COLUMN/);
@@ -129,13 +131,14 @@ describe('invoice-request-list lock', () => {
     assert.doesNotMatch(section, /<select[\s\S]*DURUM_LABEL/);
 
     const actions = read('../components/finance/FinanceRowActions.tsx');
-    assert.match(actions, /title="Görüntüle"/);
+    assert.match(actions, /label: 'Görüntüle'/);
     assert.match(actions, /<Eye /);
     assert.match(actions, /fatura-talep-goruntule/);
-    assert.match(actions, /title="Yazdır"/);
-    assert.match(actions, /title="Dosya sorumlusuna bildir"/);
-    assert.match(actions, /title="Düzenle"/);
-    assert.match(actions, /title="İptal et"/);
+    assert.match(actions, /PinnableRowActions/);
+    assert.match(actions, /label: 'Yazdır'/);
+    assert.match(actions, /label: 'Dosya Sorumlusuna Bildir'/);
+    assert.match(actions, /label: 'Düzenle'/);
+    assert.match(actions, /label: 'İptal Et'/);
     assert.match(actions, /<Printer /);
     assert.match(actions, /<Send /);
     assert.match(actions, /<Pencil /);

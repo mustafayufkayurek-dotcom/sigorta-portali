@@ -86,6 +86,13 @@ describe('finans-table-page lock', () => {
     assert.match(faturalar, /fileOwnerNotifyToast/);
   });
 
+  it('KDV raporu faturalar gibi tam ekrana oturur', () => {
+    const kdv = read('../app/panel/finans/kdv-raporu/page.tsx');
+    assert.match(kdv, /min-h-screen bg-white/);
+    assert.match(kdv, /space-y-5 p-6/);
+    assert.doesNotMatch(kdv, /max-w-6xl mx-auto/);
+  });
+
   it('yeni talepte sekme yanar; bekleyen varken yanar', () => {
     assert.equal(faturaTalepleriTabPulseClass(2, 1), 'animate-pulse ring-2 ring-amber-400 ring-offset-1');
     assert.equal(faturaTalepleriTabPulseClass(2, 0), 'animate-pulse ring-2 ring-amber-400 ring-offset-1');
@@ -103,5 +110,29 @@ describe('finans-table-page lock', () => {
     const layout = read('../app/panel/layout.tsx');
     assert.match(layout, /FinansOncelikliGorevModal/);
     assert.match(layout, /<Suspense fallback=\{null\}>/);
+  });
+
+  it('KDV bilgi sayfasıdır; resmi beyanname değildir', () => {
+    const kdv = read('../app/panel/finans/kdv-raporu/page.tsx');
+    assert.match(kdv, /Resmi beyanname değildir/);
+    assert.match(kdv, /Taslak fatura girer; iptal girmez/);
+    assert.match(kdv, /sıfır doğrudur/);
+    assert.doesNotMatch(kdv, /mali müşavir denetimi/);
+  });
+
+  it('fatura talebi kesilen faturadan ayrı anlatılır', () => {
+    const faturalar = read('../app/panel/finans/faturalar/page.tsx');
+    const talepler = read('../components/finance/FaturaTalepleriSection.tsx');
+    assert.match(faturalar, /Kesilen Faturalar kayıttır/);
+    assert.match(talepler, /Kesilmiş fatura değil; kapanıştan gelen kesilecek talep/);
+  });
+
+  it('tedarikçi ödeme kuyruğu ayrı sayfa değildir', () => {
+    const tahsilat = read('../app/panel/finans/tahsilatlar/page.tsx');
+    const modules = read('../features/dashboard/components/finance/finance-modules.constants.ts');
+    assert.match(tahsilat, /Tedarikçi Ödeme Kuyruğu/);
+    assert.match(tahsilat, /ayrı sayfa değildir/);
+    assert.match(modules, /queue=payable/);
+    assert.match(modules, /Resmi beyanname değildir/);
   });
 });

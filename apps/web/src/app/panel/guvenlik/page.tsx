@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { PageTitleWithHint } from "@/components/ui/HintIcon";
 
 export default function GuvenlikPage() {
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden">
       <div className="page-header">
         <div className="min-w-0">
-          <h1 className="page-title">Güvenlik</h1>
-          <p className="page-subtitle">
-            Güvenlik modüllerinden birini seçin.
-          </p>
+          <PageTitleWithHint
+            title="Güvenlik"
+            hint="Erişim kayıtları ve güvenlik kontrolleri."
+          />
         </div>
       </div>
       <div className="flex flex-col gap-2">

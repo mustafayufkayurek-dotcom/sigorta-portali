@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { AlertTriangle, Star, TrendingUp, Wallet, Receipt, Percent } from 'lucide-react';
+import { HintIcon } from '@/components/ui/HintIcon';
 import { MGMT } from './mgmt-theme';
 
 export type MgmtSummaryCell = {
@@ -39,7 +40,10 @@ export function MgmtExecutiveSummary({ cells }: { cells: MgmtSummaryCell[] }) {
       style={{ boxShadow: MGMT.shadow }}
     >
       <div className="mb-2">
-        <h2 className="text-[14px] font-semibold text-[#0F172A]">Yönetici Özeti</h2>
+        <h2 className="inline-flex items-center gap-1 text-[14px] font-semibold text-[#0F172A]">
+          Yönetici Özeti
+          <HintIcon text="Seçilen dönemin özet göstergeleri." />
+        </h2>
       </div>
       <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-6">
         {cells.map((cell) => {
@@ -97,7 +101,7 @@ export function MgmtExecutiveSummary({ cells }: { cells: MgmtSummaryCell[] }) {
                   href={cell.detailHref}
                   className="mt-1 shrink-0 text-[11px] font-medium text-[#2563EB] hover:underline"
                 >
-                  Detayları Gör →
+                  Ayrıntı
                 </Link>
               ) : null}
             </div>

@@ -30,6 +30,8 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   bash "$SCRIPT_DIR/smoke-hasar-tahsilat-gelir.sh"
   bash "$SCRIPT_DIR/smoke-acil-supplier-assignment.sh"
   bash "$SCRIPT_DIR/smoke-liste-gorunum.sh"
+  bash "$SCRIPT_DIR/smoke-panel-auth-gate.sh"
+  bash "$SCRIPT_DIR/smoke-baslik-hint.sh"
   echo "=== Sunucu disk (kod kopyalamadan önce) ==="
   run_remote "FREE=\$(df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'); echo \"Disk boş: \${FREE} GB (minimum 5 GB)\"; [ \"\${FREE}\" -ge 5 ] || { echo 'HATA: Sunucuda yeterli disk yok — kod kopyalanmaz. scripts/server-disk-maintenance.sh'; exit 1; }"
 fi

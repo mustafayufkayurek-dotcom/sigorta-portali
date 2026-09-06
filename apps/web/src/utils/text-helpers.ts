@@ -1,4 +1,4 @@
-import { isInboundIhbarNoteText, mapInboundCategoryKnown, mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import { formatMeridyenDisplayLabel, isInboundIhbarNoteText, mapInboundCategoryKnown, mapInboundLossTypeToMeridyen } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 
 /**
@@ -129,13 +129,10 @@ export function normalizeFormFreeText(value: string): string {
 
 /**
  * API kod/slug alanlarını kullanıcıya gösterilecek Title Case metne çevirir.
- * "endustriyel-yangin" → "Endustriyel Yangın", "HASAR_ONARIM" → "Hasar Onarım"
+ * "endustriyel-yangin" → "Endüstriyel-Yangın", "HASAR_ONARIM" → "Hasar Onarım"
  */
 export function formatDisplayLabel(value: string | null | undefined): string {
-  const trimmed = value?.trim();
-  if (!trimmed) return '—';
-  const spaced = trimmed.replace(/[-_/]+/g, ' ').replace(/\s+/g, ' ').trim();
-  return toTitleCaseTR(spaced);
+  return formatMeridyenDisplayLabel(value);
 }
 
 export type ClaimIhbarKonusuSource = {
@@ -154,7 +151,7 @@ function finalizeDosyaKonusuLabel(raw: string): string {
   const mapped =
     mapInboundLossTypeToMeridyen(raw)
     ?? mapInboundCategoryKnown(raw);
-  return mapped ?? toTitleCaseTR(raw);
+  return formatMeridyenDisplayLabel(mapped ?? raw);
 }
 
 /**

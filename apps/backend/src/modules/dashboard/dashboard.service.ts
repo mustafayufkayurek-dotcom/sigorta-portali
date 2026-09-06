@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { resolveClaimProfitAmount } from '@sigorta/shared';
+import { resolveClaimProfitAmount, formatMeridyenDisplayLabel } from '@sigorta/shared';
 import { canViewFileFinancials } from '@/common/helpers/financial-visibility.helper';
 import { EmergencyStatus, EmergencyUrgency } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -826,7 +826,7 @@ export class DashboardService {
       planMo.cost += displayCost;
       planMo.profit += profit;
 
-      const branch = (f.productBranch || 'Diğer').trim() || 'Diğer';
+      const branch = formatMeridyenDisplayLabel((f.productBranch || 'Diğer').trim() || 'Diğer');
       deptMap.set(branch, (deptMap.get(branch) ?? 0) + displayRev);
 
       if (!f.insuranceCompany) continue;

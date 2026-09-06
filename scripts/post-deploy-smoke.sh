@@ -162,6 +162,29 @@ assert_frontend_route() {
 assert_status_and_body "GET /api/v1/health returns 200 and status ok" "200" "/api/v1/health" "GET" "" '"status":"ok"'
 assert_status_and_body "GET /giris returns 200" "200" "/giris"
 
+assert_unauthenticated_panel_blocked() {
+  local path="$1"
+  local headers code loc
+  headers="$(mktemp "${TMPDIR:-/tmp}/unauth-panel.XXXXXX")"
+  curl -sS -D "$headers" -o /dev/null "$BASE_URL$path" || true
+  code="$(awk 'BEGIN{c=""} /^HTTP/{c=$2} END{print c}' "$headers" | tr -d '\r')"
+  loc="$(awk 'tolower($1)=="location:" {print $2}' "$headers" | tr -d '\r')"
+  rm -f "$headers"
+  if [ "$code" != "307" ] && [ "$code" != "302" ] && [ "$code" != "303" ]; then
+    fail "oturumsuz $path girişe gitmeli (HTTP $code)"
+    return
+  fi
+  if ! printf '%s' "$loc" | grep -q '/giris'; then
+    fail "oturumsuz $path Location /giris olmalı ($loc)"
+    return
+  fi
+  pass "oturumsuz $path girişe gider"
+}
+
+assert_unauthenticated_panel_blocked "/panel"
+assert_unauthenticated_panel_blocked "/panel/hasar-dosyalari"
+assert_unauthenticated_panel_blocked "/panel/operasyon"
+
 LOGIN_PAYLOAD=$(printf '{"email":"%s","password":"%s"}' "$LOGIN_EMAIL" "$LOGIN_PASSWORD")
 ACCESS_TOKEN=""
 

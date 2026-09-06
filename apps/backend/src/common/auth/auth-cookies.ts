@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
+import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME } from '@sigorta/shared';
 
-export const ACCESS_COOKIE_NAME = 'meridyen_at';
-export const REFRESH_COOKIE_NAME = 'meridyen_rt';
+export { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME };
 
 export function durationToSeconds(raw: string | undefined, fallback: number): number {
   const m = /^(\d+)\s*([smhd])$/i.exec(String(raw ?? '').trim());

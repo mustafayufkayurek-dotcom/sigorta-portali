@@ -9,8 +9,10 @@ import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { HintIcon } from '@/components/ui/HintIcon';
 import {
   PanelTableColumnPicker,
+  PanelListToolbarPickers,
   PanelTableTd,
   PanelTableColGroup,
   PanelTableScroll,
@@ -491,7 +493,16 @@ function ClaimFilesPageContent() {
             </svg>
           </div>
           <div>
-            <h2 className="page-title">{isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}</h2>
+            <h2 className="inline-flex items-center gap-1.5 page-title">
+              {isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}
+              <HintIcon
+                text={
+                  isFieldStaff
+                    ? 'Size atanan hasar işleri.'
+                    : 'Hasar dosyası listesi.'
+                }
+              />
+            </h2>
             {!loading && (
               <p className="page-subtitle">
                 {isFieldStaff
@@ -689,8 +700,8 @@ function ClaimFilesPageContent() {
             </button>
           )}
           {!isFieldStaff && (
-            <div className="w-full flex-shrink-0 sm:ml-auto sm:w-auto">
-              <div className="hidden lg:block">
+            <div className="hidden lg:block sm:ml-auto">
+              <PanelListToolbarPickers>
                 <PanelTableColumnPicker tableColumns={tableColumns} />
                 <PortalRowActionsPicker
                   catalog={OPS_ROW_ACTIONS}
@@ -698,7 +709,7 @@ function ClaimFilesPageContent() {
                   onToggle={rowActions.toggle}
                   onReset={rowActions.reset}
                 />
-              </div>
+              </PanelListToolbarPickers>
             </div>
           )}
         </div>

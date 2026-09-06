@@ -13,11 +13,13 @@ import {
   FolderOpen,
   Hourglass,
 } from 'lucide-react';
+import { HintIcon } from '@/components/ui/HintIcon';
 import { EmergencyCase } from '@/utils/emergencyApi';
 import { asList } from '@/utils/emergency-list-unwrap';
 import { apiClient } from '@/lib/api-client';
 import {
   PanelTableColumnPicker,
+  PanelListToolbarPickers,
   PanelTableTd,
   PanelTableTh,
   PanelTableColGroup,
@@ -914,7 +916,10 @@ function OperasyonPageContent() {
           <div>
             {isAcilListMode ? (
               <>
-                <h2 className="page-title">Acil Yardım Dosyaları</h2>
+                <h2 className="inline-flex items-center gap-1.5 page-title">
+                  Acil Yardım Dosyaları
+                  <HintIcon text="Acil yardım dosyası listesi." />
+                </h2>
                 {!isLoading && (
                   <p className="page-subtitle">
                     {filteredRows.length} dosya bulundu
@@ -945,8 +950,10 @@ function OperasyonPageContent() {
               </>
             ) : (
               <>
-                <h2 className="page-title">Dosya Özeti</h2>
-                <p className="page-subtitle">Dosyaya girmeden: durum, kimde, risk ve gecikme süresi</p>
+                <h2 className="inline-flex items-center gap-1.5 page-title">
+                  Dosya Özeti
+                  <HintIcon text="Dosya durumu, sorumluluk ve gecikme süresi." />
+                </h2>
               </>
             )}
           </div>
@@ -1196,8 +1203,8 @@ function OperasyonPageContent() {
                 Temizle ×
               </button>
             ) : null}
-            <div className="w-full flex-shrink-0 sm:ml-auto sm:w-auto">
-              <div className="hidden lg:flex lg:items-center lg:gap-2">
+            <div className="hidden lg:block sm:ml-auto">
+              <PanelListToolbarPickers>
                 <PanelTableColumnPicker tableColumns={tableColumns} />
                 <PortalRowActionsPicker
                   catalog={OPS_ROW_ACTIONS}
@@ -1205,7 +1212,7 @@ function OperasyonPageContent() {
                   onToggle={rowActions.toggle}
                   onReset={rowActions.reset}
                 />
-              </div>
+              </PanelListToolbarPickers>
             </div>
           </div>
         </div>
@@ -1267,7 +1274,7 @@ function OperasyonPageContent() {
                 <option value="fileNo:asc">Dosya No A-Z</option>
                 <option value="priority:desc">Öncelik</option>
               </select>
-              <div className="hidden lg:flex lg:items-center lg:gap-2">
+              <PanelListToolbarPickers>
                 <PanelTableColumnPicker tableColumns={tableColumns} />
                 <PortalRowActionsPicker
                   catalog={OPS_ROW_ACTIONS}
@@ -1275,7 +1282,7 @@ function OperasyonPageContent() {
                   onToggle={rowActions.toggle}
                   onReset={rowActions.reset}
                 />
-              </div>
+              </PanelListToolbarPickers>
             </div>
           </div>
 

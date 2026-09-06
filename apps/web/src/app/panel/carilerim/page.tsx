@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } f
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { ChevronDown, RefreshCw, Search, Users } from 'lucide-react';
+import { ChevronDown, Eye, RefreshCw, Search, Users } from 'lucide-react';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
 import {
   usePanelTableColumns,
@@ -14,10 +14,15 @@ import {
   PanelTableColGroup,
   PanelTableScroll,
   PanelOrderedHeaderRow,
+  PanelListToolbarPickers,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { API, authHeader } from '@/utils/api';
+import { PinnableRowActions } from '@/components/portal/PinnableRowActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { FINANS_CARI_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { relativeTime } from '@/utils/date-helpers';
 import {
   cycleClientSort,
@@ -28,10 +33,10 @@ import {
 const CARI_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'name', label: 'Müşteri', defaultWidth: 180, minWidth: 120 },
   { id: 'phone', label: 'Telefon', defaultWidth: 120, minWidth: 96 },
-  { id: 'totalFiles', label: 'Dosya', defaultWidth: 72, minWidth: 56 },
-  { id: 'openFiles', label: 'Açık', defaultWidth: 64, minWidth: 52 },
-  { id: 'closedFiles', label: 'Kapalı', defaultWidth: 64, minWidth: 52 },
-  { id: 'lastActivity', label: 'Son hareket', defaultWidth: 120, minWidth: 96 },
+  { id: 'totalFiles', label: 'Dosya', defaultWidth: 88, minWidth: 72 },
+  { id: 'openFiles', label: 'Açık', defaultWidth: 80, minWidth: 72 },
+  { id: 'closedFiles', label: 'Kapalı', defaultWidth: 88, minWidth: 72 },
+  { id: 'lastActivity', label: 'Son hareket', defaultWidth: 136, minWidth: 112 },
   { id: 'status', label: 'Durum', defaultWidth: 96, minWidth: 80 },
 ];
 
@@ -71,6 +76,7 @@ type LoadState = 'loading' | 'ready' | 'error';
 export default function CarilerimPage() {
   const router = useRouter();
   const tableColumns = usePanelTableColumns('table-cols:carilerim', CARI_TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:carilerim-v1', FINANS_CARI_ROW_ACTIONS);
   const [customers, setCustomers] = useState<MyCustomer[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [error, setError] = useState('');
@@ -207,10 +213,18 @@ export default function CarilerimPage() {
         <TableColumnsProvider value={tableColumns}>
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
             <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
-              <PanelTableColumnPicker tableColumns={tableColumns} />
+              <PanelListToolbarPickers>
+                <PanelTableColumnPicker tableColumns={tableColumns} />
+                <PortalRowActionsPicker
+                  catalog={FINANS_CARI_ROW_ACTIONS}
+                  pinnedIds={rowActions.pinnedIds}
+                  onToggle={rowActions.toggle}
+                  onReset={rowActions.reset}
+                />
+              </PanelListToolbarPickers>
             </div>
             <PanelTableScroll>
-              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [32], trailingWidths: [72] })}>
+              <table className="text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [32], trailingWidths: [72] })}>
                 <PanelTableColGroup leadingWidths={[32]} trailingWidths={[72]} />
                 <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500">
                   <tr>
@@ -275,9 +289,24 @@ export default function CarilerimPage() {
                           </td>
                           {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                           <td className="px-4 py-3">
-                            <Link href={`/panel/musteriler?highlight=${customer.customerId}`} className="text-xs text-brand-600 dark:text-blue-400 hover:underline">
-                              Detay
-                            </Link>
+                            <PinnableRowActions
+                              rowId={customer.customerId}
+                              menuEvent="finans-cari-menu-open"
+                              testId="cari-satir-islemler"
+                              menuTestId="finans-cari-menu"
+                              moreTestId="finans-cari-more"
+                              pinnedIds={rowActions.pinnedIds}
+                              items={[
+                                {
+                                  id: 'view',
+                                  label: 'Detay',
+                                  onClick: () => {
+                                    router.push(`/panel/musteriler?highlight=${customer.customerId}`);
+                                  },
+                                  icon: <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+                                },
+                              ]}
+                            />
                           </td>
                         </tr>
                         {expanded && customer.files.map((file) => (

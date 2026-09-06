@@ -39,7 +39,7 @@ export function ApprovalDelayWidget({ staggerIndex = 0, compact = false }: Appro
   return (
     <WidgetShell
       title="Onay Gecikmeleri"
-      subtitle="24 Saat Üzeri Bekleyen Onarım Raporu Onayları"
+      subtitle="24 saati aşan onarım raporu onayları"
       variant="alert"
       staggerIndex={staggerIndex}
       compact={compact}

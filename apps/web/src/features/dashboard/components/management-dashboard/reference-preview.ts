@@ -114,7 +114,7 @@ export const REFERENCE_SUMMARY: MgmtSummaryCell[] = [
   },
   {
     id: 'dikkat',
-    title: 'Dikkat Gereken',
+    title: 'Müdahale Bekleyen',
     primary: 'Tedarik Zinciri Kâr Marjı Düşüyor',
     secondary: '↓ %-9,3',
     tone: 'warning',
@@ -122,7 +122,7 @@ export const REFERENCE_SUMMARY: MgmtSummaryCell[] = [
   },
   {
     id: 'personel',
-    title: 'Öne Çıkan Personel',
+    title: 'Performans Önde',
     primary: 'Mehmet Kaya',
     secondary: 'Kâr Marjı %38,6',
     tone: 'positive',

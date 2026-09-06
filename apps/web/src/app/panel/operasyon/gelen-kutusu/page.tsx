@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
+import { HintIcon } from '@/components/ui/HintIcon';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { stripInboundAddressPollution } from '@sigorta/shared';
 import { parseSenderPersonName } from '@/utils/inbox-customer-prefill';
@@ -1584,12 +1585,15 @@ export default function GelenKutusuPage() {
             </svg>
           </div>
           <div>
-            <h1 className="page-title">Gelen Kutusu</h1>
+            <h1 className="inline-flex items-center gap-1.5 page-title">
+              Gelen Kutusu
+              <HintIcon text="Paylaşımlı ihbar ve hasar kutularından gelen yazışmalar." />
+            </h1>
+            {stats ? (
             <p className="page-subtitle">
-              {stats
-                ? `${stats.pending} bekleyen · ${stats.unownedCount ?? 0} sahipsiz · ${stats.today} bugün gelen`
-                : 'ihbar@ ve hasar@ paylaşımlı kutularından gelen mailler'}
+              {`${stats.pending} bekleyen · ${stats.unownedCount ?? 0} sahipsiz · ${stats.today} bugün gelen`}
             </p>
+            ) : null}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">

@@ -1,5 +1,5 @@
 ---
-description: Web v573 alındı — sırada yalnız İK personel+zimmet
+description: Web v573 alındı — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
@@ -25,5 +25,11 @@ Canlı: web **v573** · backend **v571**. Rollback: web **v572** / backend **v57
 ## Sırada (karışmaz)
 
 1. **İK personel özlük:** Personel Ekle + zimmet aynı kayıtta. Puantaj ayrı.
+2. **Panel oturum kapısı:** Adres çubuğundan şifresiz panele girilmez.
+3. **Başlık bilgi ikonu:** Sayfa açıklaması başlığın yanındaki bilgide; amatör tanım yok.
+4. **KDV raporu:** Sayfa açılır; tutar biçimi durur. Satış/alış mahsup. Dönem Türkiye saati.
+5. **Finans liste görünümü:** Başlık harfi kesilmez. Sütunlar/İşlemler yan yana; işlem gizle-göster fatura talepleri, tahsilat/ödeme, masraflar, cariler.
+6. **Konut-Yangın yazımı:** Konu etiketi doğru tire ve ı.
+7. **Mail adresi (yalnız tespit):** Hoş geldin Kullanıcılar kaydından; dosya mailleri müşteri kartı kutusundan. Düzeltme ayrı paket.
 
 Alım yalnız Mustafa «canlıya al» deyince.

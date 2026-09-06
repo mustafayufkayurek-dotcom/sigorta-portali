@@ -1,12 +1,19 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
-**Tarih:** 28 Haziran 2026 (güncelleme 26.08.2026)  
-**Referans canlı sürüm:** Web + backend **v540**  
+**Tarih:** 28 Haziran 2026 (güncelleme 06.09.2026)  
+**Referans canlı sürüm:** Web **v573** · backend **v571**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
-**Sıradaki canlı paket (Mustafa · 26.08.2026, henüz alınmadı):** v541 — Hasar dijital onay WhatsApp; Hasar/Acil ürün durum dili; liste Sıra; Test Notları kalkar; Acil dijital onay 28.08.2026 18:00’e kadar kapalı, 18:01’de açılır. İşlemsizlik bu pakette yok. İK / puantaj karışmaz.
+**Sıradaki canlı paketler (Mustafa · 06.09.2026, henüz alınmadı — karışmaz):**
+1. İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj ayrı.
+2. Panel oturum kapısı — adres çubuğundan şifresiz giriş yok.
+3. Başlık bilgi ikonu — açıklama başlık yanında; amatör tanım yok.
+4. KDV raporu düzeltmesi — sayfa açılır; tutar biçimi; satış/alış.
+5. Finans liste görünümü — başlık kesilmez; Sütunlar/İşlemler gizle-göster.
+6. Konut-Yangın yazımı.
+7. Mail adresi tespiti (Kullanıcılar vs müşteri kartı) — düzeltme ayrı.
 
 ---
 
@@ -33,7 +40,12 @@ Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertele
 | B7 | **Hasar / Acil ürün durum dili** | Mustafa 26.08.2026 | v541. Eski adlar (Eksper Atandı, Bütçe…) düşer. Dosya İptal Edildi. Acil: Hizmet Verildi, tespit yok. |
 | B8 | **Liste Sıra sütunu** | Mustafa 26.08.2026 | v541. Hasar ve Acil birikim listesinin son sütunu. |
 | B9 | **Test Notları kaldırıldı** | Mustafa 26.08.2026 | v541. Menü, Ayarlar ve yetkiden kalktı; eski adres panele gider. |
-| B10 | **Acil dijital onay geçici durdurma** | Mustafa 27.08.2026 | v541. 28.08.2026 18:00’e kadar zorunlu değil; 18:01’de talimatsız açılır. Hasar dokunulmaz. |
+| B11 | **Panel oturum kapısı** | Mustafa 06.09.2026 | Adres çubuğundan şifresiz panele girilmez. Kod + kilit hazır. Canlıya alınmadı. |
+| B12 | **Başlık bilgi ikonu** | Mustafa 06.09.2026 | Sayfa açıklaması başlık yanındaki bilgide. Amatör tanım yok. Canlıya alınmadı. |
+| B13 | **KDV raporu düzeltmesi** | Mustafa 06.09.2026 | Açılmazdı (`formatTryAmount`). Satış/alış, dönem, yerleşim. Canlıya alınmadı. |
+| B14 | **Finans liste görünümü** | Mustafa 06.09.2026 | Başlık kesilmez. İşlem gizle-göster talepler, tahsilat/ödeme, masraf, cari. Canlıya alınmadı. |
+| B15 | **Konut-Yangın yazımı** | Mustafa 06.09.2026 | Konu etiketi. Canlıya alınmadı. |
+| B16 | **Mail kutusu tespiti** | Mustafa 06.09.2026 | Hoş geldin Kullanıcılar; dosya maili müşteri kartı. Düzeltme ayrı paket. |
 
 ---
 

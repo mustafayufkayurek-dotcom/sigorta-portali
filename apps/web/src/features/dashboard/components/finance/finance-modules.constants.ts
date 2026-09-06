@@ -9,26 +9,26 @@ export const FINANCE_MODULES: FinanceModuleItem[] = [
   {
     title: 'Satış Fatura Talepleri',
     href: '/panel/finans/faturalar?tab=talepler',
-    purpose: 'Kapanan hasar, acil yardım ve özel müşteri dosyalarından gelen kesilecek satış fatura taleplerini toplar.',
-    action: 'Onay bekleyen ve kesime hazır talepleri inceleyin; faturayı kesince durumu güncelleyin.',
+    purpose: 'Dosya kapanışından gelen kesilecek satış talebi. Kesilmiş fatura burada durmaz.',
+    action: 'Onaylayıp kesin; kesilen kayıt Kesilen Faturalar sekmesine geçer.',
   },
   {
     title: 'Tedarikçi Ödeme Kuyruğu',
     href: '/panel/finans/tahsilatlar?queue=payable',
-    purpose: 'Hakediş onayı, avans ve kapanan dosya tedarikçi ödemelerinin biriktiği giden ödeme kuyruğu.',
-    action: 'Bekleyen ve vadesi gelen ödemeleri dosya bazında takip edin.',
+    purpose: 'Tedarikçi hakediş ve avans. Ayrı sayfa değildir; Tahsilatlar içindeki Tedarikçi Ödeme Kuyruğu sekmesidir.',
+    action: 'Bekleyen ve vadesi gelen ödemeyi bu sekmede işaretleyin.',
   },
   {
     title: 'Tahsilatlar ve Ödemeler',
     href: '/panel/finans/tahsilatlar',
-    purpose: 'Gelir ve gider kuyruklarını takip eder; tahsilat dosyada, tedarikçi ödemeleri hakediş onayından düşer.',
-    action: 'Tahsilat / ödeme kuyruğu, vadesi gelenler ve tamamlanan hareketler burada listelenir.',
+    purpose: 'Tahsilat ve tedarikçi ödemesi aynı sayfada durur. Tedarikçi işi Tedarikçi Ödeme Kuyruğu sekmesindedir.',
+    action: 'Sekmelerden tahsilat, tedarikçi ödeme, vadesi gelen ve tamamlananı açın.',
   },
   {
     title: 'Faturalar',
     href: '/panel/finans/faturalar',
-    purpose: 'Kesilen faturalar ile sahadan gelen fatura taleplerini tek yerden yönetir.',
-    action: 'Özet kartlarından durumu görün; kesilen faturalar ve bekleyen talepleri aynı sayfada inceleyin.',
+    purpose: 'Kesilen fatura kayıttır. Fatura Talepleri kapanıştan gelen kesilecek iştir.',
+    action: 'İki sekmeyi karıştırmayın; talebi kesin, kayıt Kesilen Faturalar’da durur.',
   },
   {
     title: 'Masraflar',
@@ -51,8 +51,8 @@ export const FINANCE_MODULES: FinanceModuleItem[] = [
   {
     title: 'KDV Raporu',
     href: '/panel/finans/kdv-raporu',
-    purpose: 'Satış ve alış faturalarından KDV mahsupu; mali müşavir denetimi.',
-    action: 'Fatura mahsupu, satış/alış ayrımı veya operasyonel karşılaştırma modunu seçin.',
+    purpose: 'Seçilen aydaki satış eksi alış KDV. Fatura yoksa sıfır doğrudur. Resmi beyanname değildir.',
+    action: 'Dönemi Faturalar’daki aya göre seçin; mahsup özetini okuyun.',
   },
   {
     title: 'Kârlılık Analizi',

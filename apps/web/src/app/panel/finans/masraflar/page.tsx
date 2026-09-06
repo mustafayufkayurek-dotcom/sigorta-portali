@@ -10,6 +10,10 @@ import { ExpenseFilePickerModal, type ExpensePickerHasarFile } from '@/component
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
 import { FinansActionButton, FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
 import { FinansTablePager } from '@/components/finance/FinansTablePager';
+import { PinnableRowActions } from '@/components/portal/PinnableRowActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { FINANS_MASRAF_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { FINANS_ACTIONS_COLUMN, FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ReceiptCameraModal, prefersNativeCameraCapture } from '@/components/ReceiptCameraModal';
@@ -22,6 +26,7 @@ import {
   PanelTableScroll,
   PanelOrderedHeaderRow,
   PanelTableSummaryFoot,
+  PanelListToolbarPickers,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -107,7 +112,7 @@ interface ExpenseCategoryFlat {
 
 const EXPENSE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'operationNo', label: 'İşlem No', defaultWidth: 128, minWidth: 110 },
-  { id: 'fileNo', label: 'Dosya No', defaultWidth: 100, minWidth: 80 },
+  { id: 'fileNo', label: 'Dosya No', defaultWidth: 160, minWidth: 120 },
   { id: 'expensePlan', label: 'Bütçe Tipi', defaultWidth: 96, minWidth: 80 },
   { id: 'expenseGroupName', label: 'Masraf Grubu', defaultWidth: 112, minWidth: 88 },
   { id: 'expenseSubgroupName', label: 'Alt Grup', defaultWidth: 108, minWidth: 88 },
@@ -246,6 +251,7 @@ export default function MasraflarPage() {
   const [loading,  setLoading]  = useState(true);
 
   const tableColumns = usePanelTableColumns('table-cols:finans-masraflar', EXPENSE_TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:finans-masraflar-v1', FINANS_MASRAF_ROW_ACTIONS);
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
@@ -1645,7 +1651,15 @@ export default function MasraflarPage() {
       <TableColumnsProvider value={tableColumns}>
       <FinansPanelCard title="Masraf Listesi" subtitle={`${expenses.length} kayıt`} noPadding>
         <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
-          <PanelTableColumnPicker tableColumns={tableColumns} />
+          <PanelListToolbarPickers>
+            <PanelTableColumnPicker tableColumns={tableColumns} />
+            <PortalRowActionsPicker
+              catalog={FINANS_MASRAF_ROW_ACTIONS}
+              pinnedIds={rowActions.pinnedIds}
+              onToggle={rowActions.toggle}
+              onReset={rowActions.reset}
+            />
+          </PanelListToolbarPickers>
         </div>
 
         {loading ? (
@@ -1662,7 +1676,7 @@ export default function MasraflarPage() {
         ) : (
           <>
           <PanelTableScroll>
-            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+            <table className="text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <PanelTableColGroup />
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-700/40 text-left">
@@ -1695,7 +1709,7 @@ export default function MasraflarPage() {
                       </PanelTableTd>
                     ),
                     fileNo: (
-                      <PanelTableTd key="fileNo" colId="fileNo" className="px-5 py-3.5">
+                      <PanelTableTd key="fileNo" colId="fileNo" className="px-5 py-3.5" title={e.fileNo || undefined}>
                         <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">
                           {e.fileNo || '—'}
                         </span>
@@ -1735,20 +1749,37 @@ export default function MasraflarPage() {
                     ),
                     actions: (
                       <PanelTableTd key="actions" colId="actions" className="px-2 py-3.5">
-                        <div className="flex items-center justify-end gap-1">
-                          <button type="button" onClick={() => handleEdit(e)} title="Düzenle"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button type="button" onClick={() => handleDelete(e.id)} title="Sil"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-status-danger hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
+                        <PinnableRowActions
+                          rowId={e.id}
+                          menuEvent="finans-masraf-menu-open"
+                          testId="masraf-satir-islemler"
+                          menuTestId="finans-masraf-menu"
+                          moreTestId="finans-masraf-more"
+                          pinnedIds={rowActions.pinnedIds}
+                          items={[
+                            {
+                              id: 'edit',
+                              label: 'Düzenle',
+                              onClick: () => handleEdit(e),
+                              icon: (
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              ),
+                            },
+                            {
+                              id: 'delete',
+                              label: 'Sil',
+                              onClick: () => { void handleDelete(e.id); },
+                              danger: true,
+                              icon: (
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              ),
+                            },
+                          ]}
+                        />
                       </PanelTableTd>
                     ),
                   };

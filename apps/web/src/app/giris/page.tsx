@@ -6,13 +6,13 @@ import axios from 'axios';
 import { API } from '@/utils/api';
 import { LoginBrandLogo } from '@/components/brand/LoginBrandLogo';
 import {
-  attemptAutoLogin,
   storeAuthAfterLogin,
   loadRememberedLoginForm,
   setRememberMePreference,
-  isPasswordLoginRequired,
+  establishWebAuthCookies,
 } from '@/utils/auth-session';
-import { getLoginHomePath, readStoredPanelUser } from '@/utils/panel-access';
+import { getLoginHomePath } from '@/utils/panel-access';
+import { safePanelNextPath } from '@/lib/panel-auth-gate';
 
 const API_URL = API;
 
@@ -308,6 +308,8 @@ export default function LoginPage() {
       setError('Hareketsizlik nedeniyle oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın.');
     } else if (reason === 'logout') {
       setError('Çıkış yapıldı. Devam etmek için şifrenizle giriş yapın.');
+    } else if (reason === 'auth') {
+      setError('Devam etmek için e-posta ve şifrenizle giriş yapın.');
     }
     if (!authHydrated.current) {
       authHydrated.current = true;
@@ -317,19 +319,7 @@ export default function LoginPage() {
       setFormReady(true);
     }
 
-    const blockAuto =
-      isPasswordLoginRequired()
-      || reason === 'logout'
-      || reason === 'timeout'
-      || reason === 'session_expired';
-
-    if (!blockAuto) {
-      attemptAutoLogin(API_URL).then((ok) => {
-        if (ok) {
-          router.replace(getLoginHomePath(String(readStoredPanelUser()?.role?.code ?? '')));
-        }
-      });
-    }
+    // Adres çubuğu / doğrudan giriş: şifresiz otomatik geçiş yok.
 
     // Fetch public company name only; login logo is fixed to the accepted static brand asset.
     axios.get(`${API_URL}/system-settings/company-info`)
@@ -379,11 +369,13 @@ export default function LoginPage() {
       }
 
       storeAuthAfterLogin(tokens, shouldRemember, normalizedEmail);
+      await establishWebAuthCookies(tokens, shouldRemember);
       setRememberMePreference(shouldRemember, normalizedEmail);
       localStorage.setItem('user', JSON.stringify(user));
       window.dispatchEvent(new Event('meridyen:user-updated'));
 
-      router.replace(getLoginHomePath(String(user?.role?.code ?? '')));
+      const next = safePanelNextPath(new URLSearchParams(window.location.search).get('next'));
+      router.replace(next ?? getLoginHomePath(String(user?.role?.code ?? '')));
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const msg = axiosErr.response?.data?.message || 'E-posta veya şifre hatalı.';

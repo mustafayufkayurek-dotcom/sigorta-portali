@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { toGrossAmount, toNetAmount } from './overhead.constants';
+import { VAT_COUNTED_INVOICE_STATUSES, vatReportPeriodBounds } from './vat-report-period';
 
 /** Fatura mahsupu | yalnız satış | yalnız alış | operasyonel | karşılaştırma */
 export type VatReportMethod =
@@ -124,8 +125,6 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
   cancelled: 'İptal',
   overdue: 'Vadesi Geçti',
 };
-
-const COUNTED_INVOICE_STATUSES = ['sent', 'paid', 'partial', 'overdue'];
 
 const METHOD_META: Record<VatReportMethod, { title: string; description: string; formula: string }> = {
   invoice_settlement: {
@@ -285,8 +284,7 @@ export class VatReportService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getReport(year: number, month?: number, method: VatReportMethod = 'invoice_settlement'): Promise<VatReportResult> {
-    const from = month ? new Date(year, month - 1, 1) : new Date(year, 0, 1);
-    const to = month ? new Date(year, month, 0, 23, 59, 59, 999) : new Date(year, 11, 31, 23, 59, 59, 999);
+    const { from, to } = vatReportPeriodBounds(year, month);
 
     const monthLabel = month
       ? new Date(year, month - 1, 1).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })
@@ -307,7 +305,7 @@ export class VatReportService {
     };
 
     const notes: string[] = [
-      'Fatura mahsupunda yalnızca taslak ve iptal dışındaki faturalar (gönderildi, ödendi, kısmi, vadesi geçmiş) dahil edilir.',
+      'Fatura mahsupunda iptal dışındaki satış ve alış faturaları (taslak dahil) döneme göre alınır.',
       'Operasyonel kayıtlar fiş ve masraf girişlerinden türetilir; resmi beyan için fatura mahsupu esas alınmalıdır.',
       'Net KDV pozisyonu bilgilendirme amaçlıdır — beyanname için mali müşavirin onayı gerekir.',
     ];
@@ -385,7 +383,7 @@ export class VatReportService {
     const invoices = await this.prisma.invoice.findMany({
       where: {
         invoiceDate: { gte: from, lte: to },
-        status: { in: COUNTED_INVOICE_STATUSES },
+        status: { in: [...VAT_COUNTED_INVOICE_STATUSES] },
       },
       include: { claimFile: { select: { fileNo: true } } },
       orderBy: { invoiceDate: 'asc' },

@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
+import { HintIcon } from '@/components/ui/HintIcon';
 import { PerformanceKpiBoard } from '@/components/hr/PerformanceKpiBoard';
 import {
   PanelTableColumnPicker,
@@ -1078,8 +1079,10 @@ export function PerformanceManagementPanel({
             </svg>
           </div>
           <div>
-            <h1 className="page-title">Görev Ve Sorumluluk</h1>
-            <p className="page-subtitle">Dosya Sorumlusu Çıktısı, Onay Ve İş Yükü</p>
+            <h1 className="inline-flex items-center gap-1.5 page-title">
+              Görev ve Sorumluluk
+              <HintIcon text="Dosya sorumlusu üretimi, onay ve iş yükü." />
+            </h1>
           </div>
         </div>
         <div className="page-header-actions">

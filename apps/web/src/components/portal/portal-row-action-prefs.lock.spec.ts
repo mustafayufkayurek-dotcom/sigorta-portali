@@ -5,6 +5,8 @@ import {
   DOSYALAR_ROW_ACTIONS,
   FATURALAR_ROW_ACTIONS,
   FINANS_FATURA_ROW_ACTIONS,
+  FINANS_FATURA_TALEP_ROW_ACTIONS,
+  FINANS_MASRAF_ROW_ACTIONS,
   FINANS_TAHSILAT_ROW_ACTIONS,
   MUSTERI_ROW_ACTIONS,
   ONAYLAR_ROW_ACTIONS,
@@ -36,6 +38,10 @@ test('iç listelerde önerilen işlemler kolona düşer', () => {
   assert.ok(defaultPinnedActionIds(OPS_ROW_ACTIONS).includes('note'));
   assert.ok(defaultPinnedActionIds(FINANS_FATURA_ROW_ACTIONS).includes('notify'));
   assert.ok(defaultPinnedActionIds(FINANS_TAHSILAT_ROW_ACTIONS).includes('ekstre'));
+  assert.ok(defaultPinnedActionIds(FINANS_FATURA_TALEP_ROW_ACTIONS).includes('view'));
+  assert.ok(!defaultPinnedActionIds(FINANS_FATURA_TALEP_ROW_ACTIONS).includes('cancel'));
+  assert.ok(defaultPinnedActionIds(FINANS_MASRAF_ROW_ACTIONS).includes('edit'));
+  assert.ok(!defaultPinnedActionIds(FINANS_MASRAF_ROW_ACTIONS).includes('delete'));
   assert.ok(defaultPinnedActionIds(ADMIN_USER_ROW_ACTIONS).includes('resetPwd'));
   assert.ok(MUSTERI_ROW_ACTIONS.find((a) => a.id === 'archive')?.suggested);
   assert.ok(TEDARIKCI_ROW_ACTIONS.find((a) => a.id === 'delete')?.suggested);

@@ -1,6 +1,7 @@
 import { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { PageTitleWithHint } from './HintIcon';
 
 export interface PageHeaderBreadcrumb {
   label: string;
@@ -45,8 +46,11 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-content-primary">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-content-secondary">{subtitle}</p>}
+          <PageTitleWithHint
+            title={title}
+            hint={subtitle}
+            titleClassName="text-2xl font-bold tracking-tight text-content-primary"
+          />
           {lastUpdated && <p className="mt-1 text-xs text-content-tertiary">Son Güncelleme: {lastUpdated}</p>}
         </div>
         {resolvedActions && <div className="flex shrink-0 flex-wrap items-center gap-2">{resolvedActions}</div>}

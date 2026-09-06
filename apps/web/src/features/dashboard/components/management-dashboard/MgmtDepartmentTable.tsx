@@ -1,6 +1,7 @@
 'use client';
 
 import { Building2, FileSpreadsheet } from 'lucide-react';
+import { HintIcon } from '@/components/ui/HintIcon';
 import { MgmtEmpty } from './MgmtEmpty';
 import { MGMT } from './mgmt-theme';
 
@@ -59,8 +60,9 @@ export function MgmtDepartmentTable({
       style={{ boxShadow: MGMT.shadow }}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-100 px-3 py-2.5">
-        <h2 className="min-w-0 truncate text-[14px] font-semibold text-[#0F172A]">
-          Departman Bazlı Finansal Performans
+        <h2 className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-[#0F172A]">
+          <span className="min-w-0 truncate">Departman Bazlı Finansal Performans</span>
+          <HintIcon text="Günlük, haftalık ve aylık ciro, gider ve kâr." />
         </h2>
         <button
           type="button"

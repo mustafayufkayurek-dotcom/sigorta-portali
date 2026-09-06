@@ -1,0 +1,33 @@
+---
+description: Adres çubuğundan oturumsuz panele girilmez
+alwaysApply: true
+---
+
+# Panel Oturum Kapısı Kilidi
+
+**Kaynak (Mustafa · 06.09.2026):** Adres çubuğuna yazıp Enter deyince kullanıcı bilgisi istenmeden yazılıma giriliyordu.
+
+**Temel cümle:** Panel **oturum çerezi olmadan açılmaz.** Adres yazılınca giriş istenir.
+
+## Zorunlu
+
+1. `middleware.ts` `/panel` ve `/` için oturum çerezi bakar. Yoksa `/giris`.
+2. Giriş sayfası şifresiz otomatik geçmez (`attemptAutoLogin` yok).
+3. Panel oturumsuz boyanmaz; kullanıcı yoksa girişe döner.
+4. Anket / ödeme / onay / sözleşme / evrak / ekstre açık kalır.
+
+## Yasak (açık onay yoksa)
+
+- Oturumsuz `/panel` 200
+- Giriş ekranında şifresiz otomatik içeri alma
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Adres çubuğundan yine şifresiz girilirse → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-panel-auth-gate.sh
+```

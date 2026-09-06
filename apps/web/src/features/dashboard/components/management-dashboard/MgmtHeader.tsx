@@ -1,6 +1,7 @@
 'use client';
 
 import { Presentation } from 'lucide-react';
+import { HintIcon } from '@/components/ui/HintIcon';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   PERIOD_LABELS,
@@ -30,12 +31,10 @@ export function MgmtHeader({
   return (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
-        <h1 className="text-[22px] font-semibold tracking-tight text-[#0F172A] md:text-[24px]">
+        <h1 className="inline-flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-[#0F172A] md:text-[24px]">
           Yönetim Paneli
+          <HintIcon text="Finans, operasyon ve personel performansının kurumsal özeti." />
         </h1>
-        <p className="mt-1 text-[13px] text-[#64748B]">
-          Kurumsal finans, operasyon ve personel performansını tek ekranda izleyin.
-        </p>
       </div>
 
       <div className="flex w-full min-w-0 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">

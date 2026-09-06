@@ -1138,8 +1138,8 @@ async function main() {
   // ── Domain Ayrıştırma: İhbar Konuları (ClaimSubject) ───────────────────────
   const claimSubjects = [
     // Hasar konuları
-    { code: 'konut-yangin', name: 'Konut Yangın', category: 'hasar', sortOrder: 1 },
-    { code: 'endustriyel-yangin', name: 'Endüstriyel Yangın', category: 'hasar', sortOrder: 2 },
+    { code: 'konut-yangin', name: 'Konut-Yangın', category: 'hasar', sortOrder: 1 },
+    { code: 'endustriyel-yangin', name: 'Endüstriyel-Yangın', category: 'hasar', sortOrder: 2 },
     { code: 'dahili-su', name: 'Dahili Su', category: 'hasar', sortOrder: 3 },
     { code: 'hirsizlik', name: 'Hırsızlık', category: 'hasar', sortOrder: 4 },
     { code: 'cam-kirilmasi', name: 'Cam Kırılması', category: 'hasar', sortOrder: 5 },
@@ -1216,7 +1216,7 @@ async function main() {
   const departments = [
     {
       code: 'konut-yangin',
-      name: 'Konut Yangın',
+      name: 'Konut-Yangın',
       description: 'Konut yangın hasar dosyaları',
       color: '#EF4444',
       sortOrder: 1,
@@ -1240,7 +1240,7 @@ async function main() {
     },
     {
       code: 'endustriyel-yangin',
-      name: 'Endüstriyel Yangın',
+      name: 'Endüstriyel-Yangın',
       description: 'Endüstriyel yangın hasar dosyaları',
       color: '#F97316',
       sortOrder: 3,
@@ -1354,9 +1354,9 @@ async function main() {
   // ── DEPRECATED: Meridyen Hizmet Branşları (ServiceBranch scope=meridyen) ──
   // Okuma artık department_file_subjects üzerinden yapılır; yeni kayıt eklenmez.
   const legacyMeridyenServiceBranches = [
-    { name: 'Konut Yangın',         type: 'hasar',      sortOrder: 1 },
+    { name: 'Konut-Yangın',         type: 'hasar',      sortOrder: 1 },
     { name: 'Dahili Su',            type: 'hasar',      sortOrder: 2 },
-    { name: 'Endüstriyel Yangın',   type: 'hasar',      sortOrder: 3 },
+    { name: 'Endüstriyel-Yangın',   type: 'hasar',      sortOrder: 3 },
     { name: 'Deprem',               type: 'hasar',      sortOrder: 4 },
     { name: 'Hırsızlık',            type: 'hasar',      sortOrder: 5 },
     { name: 'Cam Kırılması',        type: 'hasar',      sortOrder: 6 },

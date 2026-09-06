@@ -387,7 +387,7 @@ function getPanelMainLinks({
         ? [
             { title: 'Finans Merkezi', href: '/panel/finans', icon: MonitorCheck, exactMatch: true },
             { title: 'Fatura Talepleri', href: '/panel/finans/faturalar?tab=talepler', icon: FileText },
-            { title: 'Ödeme Kuyruğu', href: '/panel/finans/tahsilatlar?queue=payable', icon: Receipt },
+            { title: 'Tedarikçi Ödeme Kuyruğu', href: '/panel/finans/tahsilatlar?queue=payable', icon: Receipt },
             {
               title: 'Operasyon',
               href: '/panel/operasyon',
@@ -1502,9 +1502,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     const token = getAccessToken();
     if (!token || !hasValidSessionScope() || isRememberMeExpired() || isRememberMeInactive()) {
       clearAuth({ preserveRememberedEmail: isRememberMePreferred() });
-      setLoading(false);
-      setAuthChecked(true);
-      router.push('/giris');
+      window.location.replace('/giris?reason=auth');
       return;
     }
     const apiBase = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}`.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
@@ -1572,7 +1570,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           }
         }
         clearAuth({ preserveRememberedEmail: isRememberMePreferred() });
-        router.push('/giris');
+        window.location.replace('/giris?reason=auth');
       })
       .finally(() => {
         setLoading(false);
@@ -1922,7 +1920,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     sidebarCollapsed,
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
         <LoadingScreen />

@@ -165,7 +165,7 @@ function StaffSummaryStrip({ rows }: { rows: StaffProductivityRow[] }) {
       label: 'Ort. Memnuniyet',
       value: s.avgScore != null ? s.avgScore.toFixed(1).replace('.', ',') : '—',
     },
-    { label: 'Öne Çıkan', value: s.topName },
+    { label: 'Performans önde', value: s.topName },
   ];
   return (
     <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -322,7 +322,7 @@ export function StaffProductivityDetailSection({ rows }: { rows: StaffProductivi
           </p>
         </div>
         <div className="rounded-lg bg-slate-50 px-3 py-2 text-center">
-          <p className="text-[10px] font-medium text-slate-500">Öne Çıkan</p>
+          <p className="text-[10px] font-medium text-slate-500">Performans önde</p>
           <p className="truncate text-lg font-bold text-slate-800" title={s.topName}>
             {s.topName}
           </p>

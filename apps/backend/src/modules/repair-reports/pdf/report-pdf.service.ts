@@ -250,8 +250,8 @@ function escHtml(s: string | null | undefined): string {
 }
 
 const QUICK_DAMAGE_TYPE_LABELS: Record<string, string> = {
-  FIRE_HOME: 'Konut Yangını',
-  FIRE_INDUSTRIAL: 'Endüstriyel Yangın',
+  FIRE_HOME: 'Konut-Yangın',
+  FIRE_INDUSTRIAL: 'Endüstriyel-Yangın',
   WATER_INTERNAL: 'Su Hasarı',
   NATURAL_DISASTER: 'Doğal Afet',
   EARTHQUAKE: 'Deprem',

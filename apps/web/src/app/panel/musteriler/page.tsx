@@ -10,6 +10,7 @@ import {
 } from '@/utils/validators';
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { useToast } from '@/contexts/ToastContext';
+import { HintIcon } from '@/components/ui/HintIcon';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ContactPhoneField } from '@/components/ContactPhoneField';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -1960,14 +1961,18 @@ export default function MusterilerPage() {
             </svg>
           </div>
           <div>
+            <div className="flex items-center gap-1.5">
             <h2 className="page-title">Müşteriler</h2>
-            <p className="page-subtitle">
-              {subTypeFilter === 'eksper_firmasi'
-                ? 'Eksper Firması Kayıtları — Hasar İhbar Cari Hesapları'
-                : subTypeFilter === 'asistan_firmasi'
-                  ? 'Geliştirilebilir müşteri ve görüşme kartları; operasyon seçimi müşteri kartından yapılır.'
-                : 'Bireysel ve Kurumsal Müşteri Yönetimi'}
-            </p>
+            <HintIcon
+              text={
+                subTypeFilter === 'eksper_firmasi'
+                  ? 'Eksper firması kayıtları ve hasar ihbar cari hesapları.'
+                  : subTypeFilter === 'asistan_firmasi'
+                    ? 'Asistans müşteri ve görüşme kartları. Operasyon seçimi müşteri kartındandır.'
+                    : 'Bireysel ve kurumsal müşteri kayıtları.'
+              }
+            />
+            </div>
           </div>
         </div>
         <button type="button" onClick={() => { resetForm(); loadCustomerSources(); loadCustomerSubTypes(); setShowModal(true); }}

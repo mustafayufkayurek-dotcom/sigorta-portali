@@ -27,6 +27,7 @@ import { geocodeAddressCascade } from '@/utils/geocode-address';
 import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { validateIBAN } from '@/utils/validators';
+import { HintIcon } from '@/components/ui/HintIcon';
 import {
   BANK_CONFIRMATION_STATUS_LABELS,
   compareVendorAccountHolder,
@@ -2003,8 +2004,10 @@ export default function VendorsPage() {
             </svg>
           </div>
           <div className="min-w-0">
-            <h2 className="page-title">Tedarikçiler</h2>
-            <p className="page-subtitle">Tedarikçi ve Alt Yüklenici Yönetimi</p>
+            <h2 className="inline-flex items-center gap-1.5 page-title">
+              Tedarikçiler
+              <HintIcon text="Kayıtlı tedarikçi ve alt yüklenici listesi." />
+            </h2>
           </div>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">

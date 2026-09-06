@@ -172,8 +172,10 @@ export interface FieldOperationServiceBranch {
 /** İhbar konusu ile karışmış eski branş adları — saha operasyon listesinde gösterilmez */
 const CLAIM_SUBJECT_LIKE_SERVICE_BRANCHES = new Set([
   'Konut Yangın',
+  'Konut-Yangın',
   'Dahili Su',
   'Endüstriyel Yangın',
+  'Endüstriyel-Yangın',
   'Deprem',
   'Hırsızlık',
   'Cam Kırılması',

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { CheckCircle2, Eye, MoreVertical, Pencil, Printer, ScrollText, Send, XCircle } from 'lucide-react';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { PinnableRowActions } from '@/components/portal/PinnableRowActions';
-import { defaultPinnedActionIds, FINANS_FATURA_ROW_ACTIONS, FINANS_TAHSILAT_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { defaultPinnedActionIds, FINANS_FATURA_ROW_ACTIONS, FINANS_FATURA_TALEP_ROW_ACTIONS, FINANS_TAHSILAT_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
 
 function escapeHtml(value: string) {
   return value
@@ -331,8 +331,10 @@ export function InvoiceRowActions({
   );
 }
 
-/** Fatura talebi satırı — Kesilen Faturalar ile aynı işlem ikonları. */
+/** Fatura talebi satırı — Kesilen Faturalar ile aynı işlem seçici. */
 export function InvoiceRequestRowActions({
+  rowId,
+  pinnedIds,
   status: _status,
   onView,
   onPrint,
@@ -340,6 +342,8 @@ export function InvoiceRequestRowActions({
   onEdit,
   onCancel,
 }: {
+  rowId?: string;
+  pinnedIds?: string[];
   status: string;
   onView: () => void;
   onPrint: () => void;
@@ -347,29 +351,53 @@ export function InvoiceRequestRowActions({
   onEdit?: () => void;
   onCancel?: () => void;
 }) {
+  const uid = useId();
+  const pins = pinnedIds ?? defaultPinnedActionIds(FINANS_FATURA_TALEP_ROW_ACTIONS);
   return (
-    <div className="flex items-center justify-end gap-0.5" data-testid="fatura-talep-islemler">
-      <button type="button" title="Görüntüle" aria-label="Görüntüle" onClick={onView} className={iconBtn} data-testid="fatura-talep-goruntule">
-        <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </button>
-      <button type="button" title="Yazdır" aria-label="Yazdır" onClick={onPrint} className={iconBtn}>
-        <Printer className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </button>
-      {onNotifyOwner ? (
-        <button type="button" title="Dosya sorumlusuna bildir" aria-label="Dosya sorumlusuna bildir" onClick={onNotifyOwner} className={iconBtn}>
-          <Send className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        </button>
-      ) : null}
-      {onEdit ? (
-        <button type="button" title="Düzenle" aria-label="Düzenle" onClick={onEdit} className={iconBtn}>
-          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        </button>
-      ) : null}
-      {onCancel ? (
-        <button type="button" title="İptal et" aria-label="İptal et" onClick={onCancel} className={`${iconBtn} hover:bg-red-50 hover:text-status-danger`}>
-          <XCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        </button>
-      ) : null}
-    </div>
+    <PinnableRowActions
+      rowId={rowId ?? uid}
+      menuEvent="finans-fatura-talep-menu-open"
+      testId="fatura-talep-islemler"
+      menuTestId="finans-fatura-talep-menu"
+      moreTestId="finans-fatura-talep-more"
+      pinnedIds={pins}
+      items={[
+        {
+          id: 'view',
+          label: 'Görüntüle',
+          onClick: onView,
+          testId: 'fatura-talep-goruntule',
+          icon: <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'print',
+          label: 'Yazdır',
+          onClick: onPrint,
+          icon: <Printer className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'notify',
+          label: 'Dosya Sorumlusuna Bildir',
+          onClick: () => onNotifyOwner?.(),
+          hidden: !onNotifyOwner,
+          icon: <Send className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'edit',
+          label: 'Düzenle',
+          onClick: () => onEdit?.(),
+          hidden: !onEdit,
+          icon: <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'cancel',
+          label: 'İptal Et',
+          onClick: () => onCancel?.(),
+          hidden: !onCancel,
+          danger: true,
+          icon: <XCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+      ]}
+    />
   );
 }

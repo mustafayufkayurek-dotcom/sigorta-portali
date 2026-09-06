@@ -13,6 +13,9 @@ import {
 } from '@/utils/invoiceRequestApi';
 import { getCase } from '@/utils/emergencyApi';
 import { InvoiceRequestRowActions, printFinanceSlip } from '@/components/finance/FinanceRowActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { FINANS_FATURA_TALEP_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { invoicePartyCustomerName } from '@/utils/invoice-customer-name';
 import {
   usePanelTableColumns,
@@ -21,6 +24,9 @@ import {
   PanelTableTh,
   PanelTableTd,
   SortablePanelTableTh,
+  PanelTableColGroup,
+  PanelTableScroll,
+  PanelListToolbarPickers,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -34,10 +40,11 @@ import { FinansTablePager } from '@/components/finance/FinansTablePager';
 import { invoiceRequestWorkItems } from '@/utils/invoice-request-work-items';
 import { FINANS_ACTIONS_COLUMN, FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, type FinansTablePageSize } from '@/utils/finans-table-page';
 import { markInvoiceRequestsSeen } from '@/utils/invoice-request-alert';
+import { HintIcon } from '@/components/ui/HintIcon';
 
 const INVOICE_REQUEST_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'tarih', label: 'Tarih', defaultWidth: 104, minWidth: 88 },
-  { id: 'dosyaNo', label: 'Dosya No', defaultWidth: 108, minWidth: 88 },
+  { id: 'dosyaNo', label: 'Dosya No', defaultWidth: 168, minWidth: 128 },
   { id: 'customer', label: 'Müşteri', defaultWidth: 168, minWidth: 120 },
   { id: 'aciklama', label: 'Yapılan İş Kalemi', defaultWidth: 200, minWidth: 120 },
   { id: 'tutar', label: 'Tutar', defaultWidth: 108, minWidth: 88 },
@@ -164,6 +171,7 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange }: FaturaT
     readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.talepler, 20),
   );
   const tableColumns = usePanelTableColumns('table-cols:finans-fatura-talepleri-v4', INVOICE_REQUEST_TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:finans-fatura-talepleri-v1', FINANS_FATURA_TALEP_ROW_ACTIONS);
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [inspecting, setInspecting] = useState<InvoiceRequest | null>(null);
   const [cancelling, setCancelling] = useState<InvoiceRequest | null>(null);
@@ -345,8 +353,9 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange }: FaturaT
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-500 dark:text-slate-400">
-        Dosya kapanışı için sahadan gelen talepler. Onayladıktan sonra kesilen fatura &quot;Kesilen Faturalar&quot; sekmesinde görünür.
+      <p className="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+        Kesilmiş fatura değil; kapanıştan gelen kesilecek talep.
+        <HintIcon text="Onaylayıp kestikten sonra kayıt Kesilen Faturalar sekmesine geçer. Bu liste talep kuyruğudur." />
       </p>
 
       {error && (
@@ -378,7 +387,15 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange }: FaturaT
       <TableColumnsProvider value={tableColumns}>
         <FinansPanelCard title="Fatura Talepleri" subtitle={`${filtered.length} kayıt`} noPadding>
           <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
-            <PanelTableColumnPicker tableColumns={tableColumns} />
+            <PanelListToolbarPickers>
+              <PanelTableColumnPicker tableColumns={tableColumns} />
+              <PortalRowActionsPicker
+                catalog={FINANS_FATURA_TALEP_ROW_ACTIONS}
+                pinnedIds={rowActions.pinnedIds}
+                onToggle={rowActions.toggle}
+                onReset={rowActions.reset}
+              />
+            </PanelListToolbarPickers>
           </div>
           {loading ? (
             <div className="animate-pulse p-6 space-y-3">
@@ -386,11 +403,12 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange }: FaturaT
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-4">
-              <FinansEmptyState title="Fatura talebi yok." description="Dosya kapanışında gelen talep burada durur." />
+              <FinansEmptyState title="Fatura talebi yok." description="Kesilmiş fatura burada durmaz. Kapanıştan gelen kesilecek talep bu kuyruğa düşer." />
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+            <PanelTableScroll>
+              <table className="text-sm" style={panelTableLayoutStyle(tableColumns)}>
+                <PanelTableColGroup />
                 <thead className="bg-slate-50 dark:bg-slate-700/40 border-b border-slate-100 dark:border-slate-700">
                   <tr>
                     {tableColumns.prefs.orderedVisibleColumns.map((col) => {
@@ -427,8 +445,8 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange }: FaturaT
                             return <PanelTableTd key={col.id} colId="tarih" className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{fmtDate(t.createdAt)}</PanelTableTd>;
                           case 'dosyaNo':
                             return (
-                              <PanelTableTd key={col.id} colId="dosyaNo" className="px-4 py-3">
-                                <span className="text-xs font-mono text-brand-600 dark:text-blue-400">{t.fileNo}</span>
+                              <PanelTableTd key={col.id} colId="dosyaNo" className="px-4 py-3" title={t.fileNo}>
+                                <span className="text-xs font-mono font-semibold text-brand-600 dark:text-blue-400">{t.fileNo}</span>
                               </PanelTableTd>
                             );
                           case 'customer':
@@ -454,6 +472,8 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange }: FaturaT
                             return (
                               <PanelTableTd key={col.id} colId="actions" className="px-2 py-3">
                                 <InvoiceRequestRowActions
+                                  rowId={t.id}
+                                  pinnedIds={rowActions.pinnedIds}
                                   status={t.status}
                                   onView={() => setInspecting(t)}
                                   onPrint={() => printFinanceSlip({
@@ -482,7 +502,7 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange }: FaturaT
                   ))}
                 </tbody>
               </table>
-            </div>
+            </PanelTableScroll>
           )}
           {!loading && filtered.length > 0 ? (
             <FinansTablePager

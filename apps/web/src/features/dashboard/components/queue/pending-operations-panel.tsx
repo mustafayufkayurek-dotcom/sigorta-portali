@@ -83,7 +83,7 @@ export function PendingOperationsPanel({ staggerIndex = 0 }: PendingOperationsPa
     <WidgetShell
       sectionId="bekleyen-operasyonlar"
       title="Bekleyen Operasyonlar"
-      subtitle="Öncelikli İlk 5 İş — Hasar Ve Acil Ortak"
+      subtitle="Öncelikli ilk beş iş — Hasar ve Acil"
       icon={<ClipboardList className="h-4 w-4 text-slate-600" />}
       staggerIndex={staggerIndex}
       isLoaded={!isLoading}

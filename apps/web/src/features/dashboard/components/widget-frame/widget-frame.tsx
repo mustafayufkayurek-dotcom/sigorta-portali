@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { HintIcon } from '@/components/ui/HintIcon';
 
 interface WidgetFrameProps {
   title: string;
@@ -57,17 +58,11 @@ export function WidgetFrame({
           {icon && <div className="flex items-center justify-center">{icon}</div>}
           <div>
             <h3
-              className={`text-sm font-semibold ${variant === 'alert' ? 'text-red-800 dark:text-red-200' : 'text-slate-900 dark:text-white'}`}
+              className={`inline-flex items-center gap-1 text-sm font-semibold ${variant === 'alert' ? 'text-red-800 dark:text-red-200' : 'text-slate-900 dark:text-white'}`}
             >
               {title}
+              {subtitle ? <HintIcon text={subtitle} /> : null}
             </h3>
-            {subtitle && (
-              <p
-                className={`mt-0.5 text-xs ${variant === 'alert' ? 'text-red-700/80 dark:text-red-200/70' : 'text-slate-500 dark:text-slate-400'}`}
-              >
-                {subtitle}
-              </p>
-            )}
           </div>
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}

@@ -35,8 +35,8 @@ function coords(city: string, offset?: { lat: number; lng: number }): { latitude
 export const OPERATION_REFERENCE_POOL: OperationReferenceRecord[] = [
   {
     id: 'ref-konut-yangin-tr',
-    title: 'Konut Yangın Hasar Onarımları',
-    operationType: 'Konut Yangın Hasar Onarımı',
+    title: 'Konut-Yangın Hasar Onarımları',
+    operationType: 'Konut-Yangın Hasar Onarımı',
     category: 'residential',
     categoryLabel: 'Konut Operasyonları',
     city: 'Türkiye Geneli',
@@ -233,8 +233,8 @@ export const OPERATION_REFERENCE_POOL: OperationReferenceRecord[] = [
   },
   {
     id: 'ref-gaziantep-yangin',
-    title: 'Endüstriyel Yangın Emtia Kurtarma',
-    operationType: 'Endüstriyel Yangın Emtia Kurtarma',
+    title: 'Endüstriyel-Yangın Emtia Kurtarma',
+    operationType: 'Endüstriyel-Yangın Emtia Kurtarma',
     category: 'industrial',
     categoryLabel: 'Endüstriyel Operasyonlar',
     city: 'Gaziantep',
@@ -304,7 +304,7 @@ export const OPERATION_REFERENCE_POOL: OperationReferenceRecord[] = [
   },
   {
     id: 'ref-hatay-konut',
-    title: 'Konut Yangını Sonrası Antika ve Eşya Kurtarma',
+    title: 'Konut-Yangın Sonrası Antika ve Eşya Kurtarma',
     operationType: 'Konut Eşya Kurtarma',
     category: 'residential',
     categoryLabel: 'Konut Operasyonları',

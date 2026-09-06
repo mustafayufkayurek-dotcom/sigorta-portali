@@ -62,6 +62,23 @@ export const FINANS_TAHSILAT_ROW_ACTIONS: PortalRowActionDef[] = [
   { id: 'pay', label: 'Ödendi İşaretle', defaultPinned: true },
 ];
 
+export const FINANS_FATURA_TALEP_ROW_ACTIONS: PortalRowActionDef[] = [
+  { id: 'view', label: 'Görüntüle', defaultPinned: true },
+  { id: 'print', label: 'Yazdır', defaultPinned: true },
+  { id: 'notify', label: 'Dosya Sorumlusuna Bildir', defaultPinned: true, suggested: true },
+  { id: 'edit', label: 'Düzenle', defaultPinned: false },
+  { id: 'cancel', label: 'İptal Et', defaultPinned: false },
+];
+
+export const FINANS_MASRAF_ROW_ACTIONS: PortalRowActionDef[] = [
+  { id: 'edit', label: 'Düzenle', defaultPinned: true },
+  { id: 'delete', label: 'Sil', defaultPinned: false },
+];
+
+export const FINANS_CARI_ROW_ACTIONS: PortalRowActionDef[] = [
+  { id: 'view', label: 'Detay', defaultPinned: true },
+];
+
 export const ADMIN_USER_ROW_ACTIONS: PortalRowActionDef[] = [
   { id: 'edit', label: 'Düzenle', defaultPinned: true },
   { id: 'resetPwd', label: 'Geçici Şifre Üret', defaultPinned: true, suggested: true },

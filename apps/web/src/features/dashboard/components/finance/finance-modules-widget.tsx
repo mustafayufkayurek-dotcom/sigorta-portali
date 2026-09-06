@@ -13,7 +13,7 @@ export function FinanceModulesWidget({ staggerIndex = 0 }: FinanceModulesWidgetP
   return (
     <WidgetShell
       title="Finans Modülleri"
-      subtitle="Finans menüsü altındaki sayfaların amacı ve hangi işlem için açılacağı"
+      subtitle="Finans menüsündeki sayfalar ve kullanım amacı"
       icon={<LayoutGrid className="h-5 w-5 text-slate-600" />}
       staggerIndex={staggerIndex}
     >

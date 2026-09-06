@@ -19,6 +19,7 @@ import {
   PanelTableColGroup,
   PanelTableScroll,
   PanelOrderedHeaderRow,
+  PanelListToolbarPickers,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
@@ -33,10 +34,11 @@ import {
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { HASAR_AVANS_YARI_USTU_ETIKET, isAvansYariUstuNote } from '@sigorta/shared';
 import { isOfficeStaffRole, usePanelRoleCode } from '@/hooks/usePanelRole';
+import { HintIcon } from '@/components/ui/HintIcon';
 
 const PAYMENT_TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'paymentDate', label: 'Tarih / Vade', defaultWidth: 112, minWidth: 96 },
-  { id: 'fileCase', label: 'Dosya', defaultWidth: 108, minWidth: 88 },
+  { id: 'paymentDate', label: 'Tarih / Vade', defaultWidth: 148, minWidth: 128 },
+  { id: 'fileCase', label: 'Dosya', defaultWidth: 128, minWidth: 100 },
   { id: 'paymentType', label: 'Yön', defaultWidth: 96, minWidth: 80 },
   { id: 'counterparty', label: 'Taraf / Kanal', defaultWidth: 140, minWidth: 100 },
   { id: 'method', label: 'Yöntem', defaultWidth: 96, minWidth: 80 },
@@ -212,7 +214,7 @@ export default function TahsilatlarPage() {
   const queueTabs: { key: QueueTab; label: string; badge?: number }[] = [
     { key: 'all', label: 'Tümü' },
     { key: 'collection', label: 'Tahsilat Kuyruğu', badge: summary.pendingIncomingCount },
-    { key: 'payable', label: 'Ödeme Kuyruğu', badge: summary.pendingOutgoingCount },
+    { key: 'payable', label: 'Tedarikçi Ödeme Kuyruğu', badge: summary.pendingOutgoingCount },
     { key: 'due', label: 'Vadesi Gelen', badge: summary.dueOutgoingCount },
     { key: 'completed', label: 'Tamamlanan' },
   ];
@@ -231,10 +233,15 @@ export default function TahsilatlarPage() {
       />
 
       <div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tahsilatlar ve Ödemeler</h2>
-        <p className="text-sm text-slate-400 dark:text-slate-500">
-          Dosya sorumlusunun verdiği tahsilat, avans ve tedarikçi hakedişi burada durur.
-        </p>
+        <h2 className="inline-flex items-center gap-1.5 text-xl font-bold text-slate-900 dark:text-white">
+          Tahsilatlar ve Ödemeler
+          <HintIcon text="Tedarikçi ödemesi ayrı sayfa değildir. Tedarikçi Ödeme Kuyruğu sekmesinde durur." />
+        </h2>
+        {queue === 'payable' ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Tedarikçi hakediş ve avans bu sekmede durur.
+          </p>
+        ) : null}
       </div>
 
       {/* Kompakt özet şeridi — tek satır, alacak/borç ayrımı */}
@@ -318,17 +325,19 @@ export default function TahsilatlarPage() {
       ) : (
         <TableColumnsProvider value={tableColumns}>
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end gap-2">
-              <PanelTableColumnPicker tableColumns={tableColumns} />
-              <PortalRowActionsPicker
-                catalog={FINANS_TAHSILAT_ROW_ACTIONS}
-                pinnedIds={rowActions.pinnedIds}
-                onToggle={rowActions.toggle}
-                onReset={rowActions.reset}
-              />
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+              <PanelListToolbarPickers>
+                <PanelTableColumnPicker tableColumns={tableColumns} />
+                <PortalRowActionsPicker
+                  catalog={FINANS_TAHSILAT_ROW_ACTIONS}
+                  pinnedIds={rowActions.pinnedIds}
+                  onToggle={rowActions.toggle}
+                  onReset={rowActions.reset}
+                />
+              </PanelListToolbarPickers>
             </div>
             <PanelTableScroll>
-              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { trailingWidths: [140] })}>
+              <table className="text-sm" style={panelTableLayoutStyle(tableColumns, { trailingWidths: [140] })}>
                 <PanelTableColGroup trailingWidths={[140]} />
                 <thead className="table-head-row portal-table-head text-xs">
                   <tr>
@@ -347,7 +356,7 @@ export default function TahsilatlarPage() {
                     const isOverdue = p.status === 'pending' && p.paymentType === 'outgoing' && p.dueDate && new Date(p.dueDate) <= new Date();
                     const cells: Record<string, ReactNode> = {
                       paymentDate: (
-                        <PanelTableTd key="paymentDate" colId="paymentDate" className="px-4 py-3 text-xs">
+                        <PanelTableTd key="paymentDate" colId="paymentDate" wrap className="px-4 py-3 text-xs">
                           <div className="text-slate-700 dark:text-slate-200">{fmtDate(p.paymentDate)}</div>
                           {p.queueSource === 'acil_hakedis' ? (
                             <div className="text-[10px] mt-0.5 font-medium text-slate-500">Vade yok</div>

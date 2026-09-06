@@ -16,11 +16,13 @@ import {
   PanelTableColGroup,
   PanelTableScroll,
   PanelOrderedHeaderRow,
+  PanelListToolbarPickers,
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import { HintIcon } from '@/components/ui/HintIcon';
 
 const KDV_LINE_COLUMNS: TableColumnDef[] = [
   { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 80 },
@@ -214,13 +216,16 @@ export default function KdvRaporuPage() {
   const s = report?.summary;
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-5 space-y-4">
+    <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
       <FinansSubpageBreadcrumb current="KDV Raporu" />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">KDV Raporu & Mahsup</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {report?.period.label ?? 'Dönem seçin'} · Satış KDV − Alış KDV = ödenecek vergi
+          <h1 className="inline-flex items-center gap-1.5 text-xl font-bold text-slate-900 dark:text-white">
+            KDV Raporu
+            <HintIcon text="Satış KDV eksi alış KDV’dir. Seçilen ayda fatura yoksa sıfır doğrudur; ayı Faturalar’dan bakın. Resmi beyanname değildir." />
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            {report?.period.label ?? 'Dönem seçin'}
           </p>
         </div>
         <PeriodControls
@@ -354,9 +359,9 @@ export default function KdvRaporuPage() {
                 side="output"
                 emptyHint={
                   <span>
-                    Satış faturası yok.{' '}
+                    Bu ay satış faturası yok; sıfır doğrudur.{' '}
                     <Link href="/panel/finans/faturalar" className="text-brand-600 underline">Faturalar</Link>
-                    {' '}ekranından ekleyin.
+                    {' '}ekranındaki aya bakın.
                   </span>
                 }
               />
@@ -366,9 +371,9 @@ export default function KdvRaporuPage() {
                 side="input"
                 emptyHint={
                   <span>
-                    Alış faturası yok.{' '}
+                    Bu ay alış faturası yok; sıfır doğrudur.{' '}
                     <Link href="/panel/finans/faturalar" className="text-brand-600 underline">Faturalar</Link>
-                    {' '}ekranında alış olarak kaydedin.
+                    {' '}ekranındaki aya bakın.
                   </span>
                 }
               />
@@ -380,7 +385,7 @@ export default function KdvRaporuPage() {
           )}
 
           <p className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-200 dark:border-slate-700 pt-3">
-            {report.methodology.formula}. Taslak ve iptal faturalar dahil değildir. Resmi beyan için mali müşavirin onayı gerekir.
+            {report.methodology.formula}. Taslak fatura girer; iptal girmez. Bu sayfa bilgi içindir, resmi KDV beyannamesi değildir.
           </p>
         </>
       ) : null}
@@ -537,10 +542,12 @@ function LinesTable({
   return (
     <TableColumnsProvider value={tableColumns}>
       <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
-        <PanelTableColumnPicker tableColumns={tableColumns} />
+        <PanelListToolbarPickers>
+          <PanelTableColumnPicker tableColumns={tableColumns} />
+        </PanelListToolbarPickers>
       </div>
       <PanelTableScroll>
-        <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+        <table className="text-sm" style={panelTableLayoutStyle(tableColumns)}>
           <PanelTableColGroup />
           <thead className="bg-slate-50 dark:bg-slate-700/50">
             <tr>
@@ -556,7 +563,7 @@ function LinesTable({
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
             {lines.length === 0 ? (
-              <tr><td colSpan={tableColumns.prefs.orderedVisibleColumns.length} className="px-4 py-8"><FinansEmptyState title="Bu dönemde KDV kaydı yok." description="Kesilen satış veya alış faturası burada mahsup edilir." /></td></tr>
+              <tr><td colSpan={tableColumns.prefs.orderedVisibleColumns.length} className="px-4 py-8"><FinansEmptyState title="Bu dönemde KDV kaydı yok." description="Seçilen ayda satış veya alış faturası yoksa burası boş kalır. Ayı Faturalar’dan kontrol edin." /></td></tr>
             ) : paged.slice.map((l) => {
               const cells: Record<string, ReactNode> = {
                 date: (

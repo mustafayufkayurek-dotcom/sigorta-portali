@@ -13,6 +13,7 @@ import {
 import { listSurveyCampaigns, type SurveyCampaign } from '@/utils/surveyApi';
 import { computeChangePct } from '../kpi/strip-kpi';
 import { formatCurrency, formatNumber } from '../../utils/formatters';
+import { formatDisplayLabel } from '@/utils/text-helpers';
 import {
   useDashboardOperations,
   useOwnershipLoad,
@@ -325,7 +326,7 @@ export function useManagementDashboardData(
       : plQuery.isError
         ? 'Dönem P/L alınamadı'
         : !plEnabled && display.basis === 'empty'
-          ? 'Bu dönem için finans API yok'
+          ? 'Bu dönem için finans kaydı yok'
           : display.caption;
 
     return [
@@ -443,20 +444,20 @@ export function useManagementDashboardData(
       {
         id: 'gider',
         title: 'En Yüksek Gider',
-        primary: 'Gider Kırılımı Henüz Yok',
+        primary: 'Gider kırılımı yok',
         tone: 'neutral',
         detailHref: '/panel/finans/masraflar',
       },
       {
         id: 'marj',
         title: 'En Yüksek Kâr Marjı',
-        primary: 'Marj Kırılımı Henüz Yok',
+        primary: 'Marj kırılımı yok',
         tone: 'neutral',
         detailHref: '/panel/finans/karlilik',
       },
       {
         id: 'dikkat',
-        title: 'Dikkat Gereken',
+        title: 'Müdahale Bekleyen',
         primary:
           bottlenecksCritical > 0
             ? `${formatNumber(bottlenecksCritical)} Personelde Kritik Dosya Var`
@@ -466,8 +467,8 @@ export function useManagementDashboardData(
       },
       {
         id: 'personel',
-        title: 'Öne Çıkan Personel',
-        primary: topStaff?.userName?.trim() || 'Personel Verisi Yok',
+        title: 'Performans Önde',
+        primary: topStaff?.userName?.trim() || 'Personel kaydı yok',
         secondary: topStaff
           ? `${formatNumber(topStaff.closedFiles)} Tamamlanan Dosya`
           : undefined,
@@ -538,9 +539,9 @@ export function useManagementDashboardData(
       label: monthTrendLabel(m.month),
       margin: m.revenue > 0 ? Math.round(((m.profit / m.revenue) * 100) * 10) / 10 : 0,
     }));
-    const slices: DeptSlice[] = (financeQuery.data?.departmentSlices ?? []).filter(
-      (d) => d.value > 0,
-    );
+    const slices: DeptSlice[] = (financeQuery.data?.departmentSlices ?? [])
+      .filter((d) => d.value > 0)
+      .map((d) => ({ ...d, name: formatDisplayLabel(d.name) }));
 
     return {
       trend: trendPoints,

@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
 import { Check, Copy, Plus, Search, UserCheck, X } from 'lucide-react';
+import { HintIcon } from '@/components/ui/HintIcon';
 import { PhoneInput } from '@/components/PhoneInput';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
@@ -2002,10 +2003,10 @@ export default function KullanicilarPage() {
       {/* Başlık */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-950">Kullanıcı Yönetimi</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Sistem kullanıcılarını görüntüleyin ve yönetin.
-          </p>
+          <h1 className="inline-flex items-center gap-1.5 text-xl font-semibold text-slate-950">
+            Kullanıcılar
+            <HintIcon text="Sistem kullanıcılarını görüntüleyin ve yönetin." />
+          </h1>
         </div>
         <button
           type="button"

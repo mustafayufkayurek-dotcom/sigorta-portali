@@ -13,6 +13,7 @@ import {
   User,
 } from 'lucide-react';
 import axios from 'axios';
+import { HintIcon } from '@/components/ui/HintIcon';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { getAccessToken } from '@/utils/auth-session';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
@@ -466,8 +467,10 @@ export function FieldOperationsMap({
               <MapPin className="h-5 w-5" aria-hidden />
             </div>
             <div>
-              <h2 className="page-title">Harita</h2>
-              <p className="page-subtitle">İş adresi veya il · yeşil kutu sahada</p>
+              <h2 className="inline-flex items-center gap-1.5 page-title">
+                Harita
+                <HintIcon text="İş adresine göre konum. Sahadaki durum işaretlenir." />
+              </h2>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@
 import { API, getToken } from '@/utils/api';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { PageTitleWithHint } from '@/components/ui/HintIcon';
 import {
   usePanelTableColumns,
   TableColumnsProvider,
@@ -185,10 +186,10 @@ export default function ErisimLoglariPage() {
     <div className="min-w-0 overflow-x-hidden">
       <div className="page-header">
         <div className="min-w-0">
-          <h1 className="page-title">Erişim Logları</h1>
-          <p className="page-subtitle">
-            Müşteri Bilgisi Erişim Kayıtları ve Anormal Erişim Uyarıları
-          </p>
+          <PageTitleWithHint
+            title="Erişim Kayıtları"
+            hint="Müşteri bilgisine erişim ve olağandışı erişim uyarıları."
+          />
         </div>
       </div>
 
