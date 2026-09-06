@@ -94,7 +94,7 @@ export default function PanelPage() {
 
   const subtitle =
     layout.layoutId === 'field_staff'
-      ? 'Atanan dosyalar ve tamamlanan tespitler'
+      ? 'Atanan Dosyalar ve Tamamlanan Tespitler'
       : showOfficeLayout
         ? scopeLabel
           ? `${scopeLabel} kapsamındaki dosyalar, onay gecikmeleri ve bekleyen işler.`
