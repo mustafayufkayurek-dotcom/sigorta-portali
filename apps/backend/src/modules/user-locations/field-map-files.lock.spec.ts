@@ -78,7 +78,53 @@ describe('saha haritası dosya iş adresi LOCK', () => {
     assert.match(musteri, /customerId=\{id!\}/);
     assert.match(hasarListe, /FieldOperationsMap/);
     assert.match(hasarListe, /ownerOnly/);
+    assert.match(hasarListe, /mapOwnerOnly/);
     assert.match(operasyon, /FieldOperationsMap/);
     assert.match(operasyon, /ownerOnly/);
+    assert.match(harita, /ownerOnly=\{!isAdmin\}/);
+  });
+
+  it('sigorta ve operasyon ağı pinleri panel kutusu ile aynıdır', () => {
+    const pinUtil = readFileSync(
+      join(here, '../../../../../apps/web/src/utils/harita-pin-signal.ts'),
+      'utf8',
+    );
+    const live3d = readFileSync(
+      join(here, '../../../../../apps/web/src/components/portal/InsuranceLiveMap3D.tsx'),
+      'utf8',
+    );
+    const portalMap = readFileSync(
+      join(here, '../../../../../apps/web/src/components/portal/InsurancePortalMap.tsx'),
+      'utf8',
+    );
+    const refMap = readFileSync(
+      join(here, '../../../../../apps/web/src/components/portal/OperationReferenceMap.tsx'),
+      'utf8',
+    );
+    assert.match(pinUtil, /buildPanelFileMarkerHtml/);
+    assert.match(mapUi, /buildPanelFileMarkerHtml/);
+    assert.match(live3d, /InsurancePortalMap/);
+    assert.match(portalMap, /openstreetmap.org/);
+    assert.match(portalMap, /buildPanelFileMarkerHtml/);
+    assert.match(refMap, /buildPanelFileMarkerHtml/);
+    assert.match(refMap, /openstreetmap.org/);
+  });
+
+  it('açık dosya pini sinyal verir; sağlık Bozulmuş yanıp söner', () => {
+    assert.match(mapUi, /buildPanelFileMarkerHtml/);
+    assert.match(mapUi, /jobStage !== 'kapandi'/);
+    const health = readFileSync(
+      join(here, '../../../../../apps/web/src/components/panel/PanelSystemHealth.tsx'),
+      'utf8',
+    );
+    assert.match(health, /animate-pulse/);
+    assert.match(health, /label: 'Bozulmuş'/);
+    assert.match(health, /HEALTH_API/);
+    const liveMap = readFileSync(
+      join(here, '../claim-files/claim-files.service.ts'),
+      'utf8',
+    );
+    assert.match(liveMap, /allowClosedFallback/);
+    assert.match(liveMap, /isClosedState: true/);
   });
 });

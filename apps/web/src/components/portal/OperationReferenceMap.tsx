@@ -9,17 +9,18 @@ import {
   type ReferenceOperationCategory,
 } from '@/components/portal/operation-reference.types';
 import { referenceCategoryColor } from '@/utils/operation-reference-utils';
+import { buildPanelFileMarkerHtml, ensureHaritaPinSignalCss, escHaritaHtml } from '@/utils/harita-pin-signal';
 
 const DETAIL_CONTACT_PHONE_DISPLAY = '0 532 133 4144';
 const DETAIL_CONTACT_PHONE_TEL = '+905321334144';
 
-const CATEGORY_ICONS: Record<ReferenceOperationCategory, string> = {
-  residential: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>`,
-  industrial: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M5 20V10l4-2v12"/><path d="M9 20V6l5-2.5v16"/><path d="M14 20V4l6-3v19"/></svg>`,
-  public_critical: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 21V7l6-4 6 4v14"/><path d="M10 21v-6h4v6"/></svg>`,
-  maritime: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18"/><path d="M4 14c2-3 4-4 8-4s6 1 8 4"/><path d="M6 14l-2-4h16l-2 4"/></svg>`,
-  disaster: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.5 1-2.5 2.5-2.5S16 10.5 16 12a2.5 2.5 0 002.5 2.5"/><path d="M12 2c1 3 3 5 3 8a3 3 0 01-6 0c0-3 2-5 3-8z"/></svg>`,
-  social: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>`,
+const CATEGORY_LETTER: Record<ReferenceOperationCategory, string> = {
+  residential: 'K',
+  industrial: 'E',
+  public_critical: 'M',
+  maritime: 'D',
+  disaster: 'F',
+  social: 'T',
 };
 
 const POPUP_OPTIONS = {
@@ -32,56 +33,32 @@ const POPUP_OPTIONS = {
 };
 
 function buildMarkerHtml(pin: ReferenceMapPin): string {
-  const color = referenceCategoryColor(pin.category);
-  const icon = CATEGORY_ICONS[pin.category];
-  return `
-    <div class="relative flex flex-col items-center" data-pin-id="${pin.id}">
-      <div style="width:36px;height:36px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
-        ${icon}
-      </div>
-    </div>`;
+  return buildPanelFileMarkerHtml({
+    letter: CATEGORY_LETTER[pin.category],
+    color: referenceCategoryColor(pin.category),
+    label: pin.city || pin.label,
+    stage: pin.status,
+    signal: pin.statusTone !== 'success',
+  });
 }
 
 function buildPopupHtml(pin: ReferenceMapPin): string {
   const location = pin.district
     ? `${pin.city.toLocaleUpperCase('tr-TR')} / ${pin.district}`
     : pin.city.toLocaleUpperCase('tr-TR');
-  const statusColor = pin.statusTone === 'success' ? '#22C55E' : '#94A3B8';
 
   return `
-    <div data-popup-pin-id="${pin.id}" style="font-family:system-ui,-apple-system,sans-serif;min-width:240px;max-width:280px;color:#E2E8F0;background:#0B1F3A;border-radius:12px;padding:0;margin:-1px;">
-      <div style="padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,0.08);">
-        <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;color:#94A3B8;margin-bottom:4px;">${location}</div>
-        <div style="font-size:15px;font-weight:700;color:#FFFFFF;line-height:1.3;">${pin.institutionDisplay}</div>
-      </div>
-      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;">
-        <div>
-          <div style="font-size:10px;color:#64748B;margin-bottom:2px;">Operasyon</div>
-          <div style="font-size:12px;font-weight:500;color:#F1F5F9;">${pin.operationType}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:#64748B;margin-bottom:2px;">Kategori</div>
-          <div style="font-size:12px;font-weight:500;color:#F1F5F9;">${pin.categoryLabel}</div>
-        </div>
-        <div style="display:flex;gap:16px;">
-          <div>
-            <div style="font-size:10px;color:#64748B;margin-bottom:2px;">Tarih</div>
-            <div style="font-size:12px;font-weight:500;color:#F1F5F9;">${pin.dateLabel}</div>
-          </div>
-          <div>
-            <div style="font-size:10px;color:#64748B;margin-bottom:2px;">Durum</div>
-            <div style="font-size:12px;font-weight:600;color:${statusColor};display:flex;align-items:center;gap:4px;">
-              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusColor};"></span>
-              ${pin.status}
-            </div>
-          </div>
-        </div>
-      </div>
-      <div style="padding:0 16px 14px;">
-        <button type="button" data-action="reference-detail" style="width:100%;background:#2563EB;color:white;border:none;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer;">
-          Detayları Gör →
-        </button>
-      </div>
+    <div class="font-sans text-[13px] text-slate-800" data-popup-pin-id="${escHaritaHtml(pin.id)}">
+      <strong>${escHaritaHtml(pin.institutionDisplay)}</strong>
+      <div class="mt-1 text-slate-500">${escHaritaHtml(pin.operationType)}</div>
+      <hr class="my-2 border-slate-100">
+      <div>Konum: ${escHaritaHtml(location)}</div>
+      <div>Durum: ${escHaritaHtml(pin.status)}</div>
+      <div>Kategori: ${escHaritaHtml(pin.categoryLabel)}</div>
+      <div>Tarih: ${escHaritaHtml(pin.dateLabel)}</div>
+      <button type="button" data-action="reference-detail" class="mt-2 inline-block text-brand-600 underline">
+        Detayları Gör
+      </button>
     </div>`;
 }
 
@@ -245,6 +222,7 @@ export default function OperationReferenceMap({
       if (cancelled) return;
       leafletRef.current = L.default ?? L;
 
+      ensureHaritaPinSignalCss();
       if (!document.getElementById('leaflet-css')) {
         const link = document.createElement('link');
         link.id = 'leaflet-css';
@@ -257,16 +235,16 @@ export default function OperationReferenceMap({
         style.id = 'operation-reference-map-css';
         style.textContent = `
           .operation-reference-popup .leaflet-popup-content-wrapper {
-            background: transparent;
-            box-shadow: none;
-            padding: 0;
-            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+            padding: 10px 12px;
+            border-radius: 10px;
           }
           .operation-reference-popup .leaflet-popup-content {
             margin: 0;
           }
           .operation-reference-popup .leaflet-popup-tip {
-            background: #0B1F3A;
+            background: #fff;
           }
         `;
         document.head.appendChild(style);

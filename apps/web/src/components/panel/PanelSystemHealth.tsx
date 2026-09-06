@@ -15,7 +15,10 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 
-type HealthStatus = 'active' | 'degraded' | 'maintenance' | 'unknown';
+const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const HEALTH_API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
+
+type HealthStatus = 'active' | 'degraded' | 'maintenance' | 'unknown' | 'warn';
 type ServiceTone = 'up' | 'down' | 'degraded' | 'unknown';
 
 type ServiceCheck = {
@@ -44,11 +47,15 @@ type HealthPayload = {
 };
 
 function resolveStatus(data: HealthPayload | null, error: boolean): HealthStatus {
-  if (error || !data) return 'degraded';
+  if (error && !data) return 'degraded';
+  if (!data) return 'degraded';
   if (data.maintenanceMode) return 'maintenance';
+  const db = serviceTone(data.services?.database);
+  if (db === 'down') return 'degraded';
   const s = String(data.status ?? '').toLowerCase();
+  if (s === 'down' || s === 'error' || s === 'fail') return 'degraded';
   if (s === 'ok' || s === 'healthy' || data.ok === true) return 'active';
-  if (s === 'degraded' || s === 'warn') return 'degraded';
+  if (s === 'degraded' || s === 'warn') return 'warn';
   if (s === 'maintenance') return 'maintenance';
   return 'active';
 }
@@ -68,7 +75,7 @@ function serviceTone(check: ServiceCheck | undefined, fallback: ServiceTone = 'u
 
 function toneFromOverall(status: HealthStatus): ServiceTone {
   if (status === 'active') return 'up';
-  if (status === 'maintenance') return 'degraded';
+  if (status === 'maintenance' || status === 'warn') return 'degraded';
   if (status === 'degraded') return 'down';
   return 'unknown';
 }
@@ -87,6 +94,14 @@ const STATUS_UI: Record<
   },
   degraded: {
     label: 'Bozulmuş',
+    dot: 'bg-status-warning',
+    border: 'border-amber-200 dark:border-amber-800',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    text: 'text-amber-800 dark:text-amber-300',
+    Icon: AlertTriangle,
+  },
+  warn: {
+    label: 'Zayıf',
     dot: 'bg-status-warning',
     border: 'border-amber-200 dark:border-amber-800',
     bg: 'bg-amber-50 dark:bg-amber-950/40',
@@ -151,9 +166,18 @@ export function PanelSystemHealth() {
   const fetchHealth = async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get<HealthPayload>('/health');
+      const response = await fetch(`${HEALTH_API}/health`);
+      let data: HealthPayload | null = null;
+      try {
+        data = (await response.json()) as HealthPayload;
+      } catch {
+        data = null;
+      }
+      if (!data) {
+        data = await apiClient.get<HealthPayload>('/health');
+      }
       setPayload(data);
-      setStatus(resolveStatus(data, false));
+      setStatus(resolveStatus(data, !response.ok && serviceTone(data?.services?.database) === 'down'));
       setLastChecked(new Date());
     } catch {
       setPayload(null);
@@ -182,18 +206,19 @@ export function PanelSystemHealth() {
   const Icon = ui.Icon;
   const overall = toneFromOverall(status);
   const services = payload?.services;
+  const apiTone: ServiceTone = payload ? 'up' : overall;
 
   const rows: ServiceRow[] = [
     {
       key: 'api',
       label: 'API',
-      tone: overall,
+      tone: apiTone,
       Icon: Server,
     },
     {
       key: 'database',
       label: 'Database',
-      tone: serviceTone(services?.database, overall),
+      tone: serviceTone(services?.database, payload ? 'unknown' : overall),
       Icon: Database,
     },
     {
@@ -205,7 +230,7 @@ export function PanelSystemHealth() {
     {
       key: 'queue',
       label: 'Queue',
-      tone: serviceTone(services?.queue ?? services?.redis, overall),
+      tone: serviceTone(services?.queue ?? services?.redis, payload ? 'unknown' : overall),
       Icon: Workflow,
     },
     {
@@ -217,7 +242,7 @@ export function PanelSystemHealth() {
     {
       key: 'worker',
       label: 'Worker',
-      tone: serviceTone(services?.worker ?? services?.redis, overall),
+      tone: serviceTone(services?.worker ?? services?.redis, payload ? 'unknown' : overall),
       Icon: Cpu,
     },
   ];
@@ -230,8 +255,9 @@ export function PanelSystemHealth() {
           setOpen((v) => !v);
           if (!open) void fetchHealth();
         }}
-        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${ui.border} ${ui.bg} ${ui.text}`}
+        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${ui.border} ${ui.bg} ${ui.text} ${status === 'degraded' ? 'animate-pulse' : ''}`}
         title="Sistem Sağlık Paneli"
+        data-health-status={status}
         aria-expanded={open}
         aria-haspopup="dialog"
       >

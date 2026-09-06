@@ -75,6 +75,7 @@ import { MissingShortNameBanner } from '@/components/customers/MissingShortNameB
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { FieldOperationsMap } from '@/components/operasyon/FieldOperationsMap';
 import { acilVendorPayLabel, acilVendorPayTone } from '@/utils/acil-vendor-pay';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
 
 
 const fmtAmount = (n: number | undefined | null) => formatTryAmount(n, { fractionDigits: 0 });
@@ -271,6 +272,8 @@ function ClaimFilesPageContent() {
   const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v9', TABLE_COLUMNS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
+  const { isAdmin, isOfficeStaff, isManagement } = usePanelAccess();
+  const mapOwnerOnly = !isAdmin && (isOfficeStaff || isManagement);
 
   // --- TanStack Query: Insurance Companies ---
   const { data: insuranceCompaniesResponse } = useApiQuery<unknown>(
@@ -568,7 +571,7 @@ function ClaimFilesPageContent() {
       {!isFieldStaff && (
         <FieldOperationsMap
           compact
-          ownerOnly={Boolean(officeStaffUserId)}
+          ownerOnly={mapOwnerOnly}
           defaultFilter="hasar"
         />
       )}

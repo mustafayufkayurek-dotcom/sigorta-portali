@@ -2941,109 +2941,131 @@ export class ClaimFilesService {
     requestingUser?: { id: string; roleCode?: string | null; vendorId?: string | null },
   ) {
     const limit = Math.min(Math.max(Number(params?.limit) || 500, 1), 1000);
-    const baseWhere: Record<string, unknown> = {
-      currentStatus: { code: { notIn: [...CLOSED_CLAIM_STATUS_CODES] } },
+    const statusGroup = String(params?.statusGroup ?? 'all').trim().toLowerCase();
+    const allowClosedFallback =
+      statusGroup === 'open' || statusGroup === 'all' || statusGroup === '';
+
+    const buildWhere = (closed: boolean) => {
+      const baseWhere: Record<string, unknown> = closed
+        ? {
+            currentStatus: { isClosedState: true },
+            updatedAt: { gte: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000) },
+          }
+        : {
+            currentStatus: { code: { notIn: [...CLOSED_CLAIM_STATUS_CODES] } },
+          };
+
+      if (params?.insuranceCompanyIds?.length) {
+        baseWhere.insuranceCompanyId = { in: params.insuranceCompanyIds };
+      }
+      if (params?.assistantCustomerIds?.length) {
+        baseWhere.customerId = { in: params.assistantCustomerIds };
+      }
+      if (params?.claimSubjectId?.trim()) {
+        baseWhere.claimSubjectId = params.claimSubjectId.trim();
+      }
+      if (params?.assignedOfficeUserId?.trim()) {
+        baseWhere.assignedOfficeUserId = params.assignedOfficeUserId.trim();
+      }
+
+      const city = params?.city?.trim();
+      if (city && city.toLocaleLowerCase('tr-TR') !== 'all') {
+        baseWhere.OR = [
+          { propertyAddress: { city: { equals: city, mode: 'insensitive' } } },
+          { customer: { city: { equals: city, mode: 'insensitive' } } },
+        ];
+      }
+
+      if (!closed) {
+        if (statusGroup === 'in_repair') {
+          baseWhere.currentStatus = {
+            code: { in: ['repair_in_progress', 'repair_planning', 'supplier_assigned'] },
+          };
+        } else if (statusGroup === 'approval_pending') {
+          delete baseWhere.currentStatus;
+          baseWhere.repairReports = {
+            some: { status: { in: [...APPROVAL_WAITING_REPORT_STATUSES] } },
+          };
+        }
+      }
+
+      return applyClaimFileListScope(
+        baseWhere,
+        normalizeRequestUser(requestingUser),
+        params?.insuranceCompanyIds,
+        params?.assistantCustomerIds,
+      ) as any;
     };
 
-    if (params?.insuranceCompanyIds?.length) {
-      baseWhere.insuranceCompanyId = { in: params.insuranceCompanyIds };
-    }
-    if (params?.assistantCustomerIds?.length) {
-      baseWhere.customerId = { in: params.assistantCustomerIds };
-    }
-    if (params?.claimSubjectId?.trim()) {
-      baseWhere.claimSubjectId = params.claimSubjectId.trim();
-    }
-    if (params?.assignedOfficeUserId?.trim()) {
-      baseWhere.assignedOfficeUserId = params.assignedOfficeUserId.trim();
-    }
-
-    const city = params?.city?.trim();
-    if (city && city.toLocaleLowerCase('tr-TR') !== 'all') {
-      baseWhere.OR = [
-        { propertyAddress: { city: { equals: city, mode: 'insensitive' } } },
-        { customer: { city: { equals: city, mode: 'insensitive' } } },
-      ];
-    }
-
-    const statusGroup = String(params?.statusGroup ?? 'open').trim().toLowerCase();
-    if (statusGroup === 'in_repair') {
-      baseWhere.currentStatus = {
-        code: { in: ['repair_in_progress', 'repair_planning', 'supplier_assigned'] },
-      };
-    } else if (statusGroup === 'approval_pending') {
-      baseWhere.repairReports = {
-        some: { status: { in: [...APPROVAL_WAITING_REPORT_STATUSES] } },
-      };
-    } else if (statusGroup === 'open' || !statusGroup || statusGroup === 'all') {
-      // açık dosyalar — baseWhere zaten kapalıları dışlar
-    }
-
-    const where = applyClaimFileListScope(
-      baseWhere,
-      normalizeRequestUser(requestingUser),
-      params?.insuranceCompanyIds,
-      params?.assistantCustomerIds,
-    ) as any;
-
-    const rows = await this.prisma.claimFile.findMany({
-      where,
-      take: limit,
-      orderBy: { updatedAt: 'desc' },
-      select: {
-        id: true,
-        fileNo: true,
-        lossType: true,
-        productBranch: true,
-        propertyType: true,
-        slaDueAt: true,
-        supplierAssignedAt: true,
-        estimatedRepairEndAt: true,
-        claimSubjectId: true,
-        assignedOfficeUserId: true,
-        currentStatus: { select: { id: true, code: true, name: true, color: true } },
-        claimSubject: { select: { id: true, name: true } },
-        propertyAddress: {
-          select: {
-            city: true,
-            district: true,
-            latitude: true,
-            longitude: true,
-            addressLine: true,
-          },
+    const liveMapSelect = {
+      id: true,
+      fileNo: true,
+      lossType: true,
+      productBranch: true,
+      propertyType: true,
+      slaDueAt: true,
+      supplierAssignedAt: true,
+      estimatedRepairEndAt: true,
+      claimSubjectId: true,
+      assignedOfficeUserId: true,
+      currentStatus: { select: { id: true, code: true, name: true, color: true } },
+      claimSubject: { select: { id: true, name: true } },
+      propertyAddress: {
+        select: {
+          city: true,
+          district: true,
+          latitude: true,
+          longitude: true,
+          addressLine: true,
         },
-        customer: {
-          select: {
-            city: true,
-            latitude: true,
-            longitude: true,
-          },
+      },
+      customer: {
+        select: {
+          city: true,
+          latitude: true,
+          longitude: true,
         },
-        assignedOfficeUser: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-        vendorContracts: {
-          where: { status: { notIn: ['cancelled'] } },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: { startDate: true, deliveryDate: true, status: true },
-        },
-        repairReports: {
-          orderBy: { createdAt: 'desc' },
-          take: 8,
-          select: {
-            id: true,
-            status: true,
-            externalApprovals: {
-              where: { status: 'approved' },
-              orderBy: { respondedAt: 'desc' },
-              take: 1,
-              select: { respondedAt: true },
-            },
+      },
+      assignedOfficeUser: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+      vendorContracts: {
+        where: { status: { notIn: ['cancelled'] } },
+        orderBy: { createdAt: 'desc' as const },
+        take: 1,
+        select: { startDate: true, deliveryDate: true, status: true },
+      },
+      repairReports: {
+        orderBy: { createdAt: 'desc' as const },
+        take: 8,
+        select: {
+          id: true,
+          status: true,
+          externalApprovals: {
+            where: { status: 'approved' },
+            orderBy: { respondedAt: 'desc' as const },
+            take: 1,
+            select: { respondedAt: true },
           },
         },
       },
+    };
+
+    let rows = await this.prisma.claimFile.findMany({
+      where: buildWhere(false),
+      take: limit,
+      orderBy: { updatedAt: 'desc' },
+      select: liveMapSelect,
     });
+
+    if (rows.length === 0 && allowClosedFallback) {
+      rows = await this.prisma.claimFile.findMany({
+        where: buildWhere(true),
+        take: limit,
+        orderBy: { updatedAt: 'desc' },
+        select: liveMapSelect,
+      });
+    }
 
     const now = Date.now();
     const data = rows.map((row) => {

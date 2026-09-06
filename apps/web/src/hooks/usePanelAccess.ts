@@ -47,10 +47,13 @@ export function usePanelAccess() {
     const operationArea = userOperationArea(user);
     const operationalAccessGrants = user?.operationalAccessGrants ?? [];
 
+    const isAdmin = roleCodesMatch(roleCode, 'admin');
+
     return {
       roleCode,
       operationArea,
       operationalAccessGrants,
+      isAdmin,
       isManagement: isManagementRole(roleCode),
       isOfficeStaff: isOfficeStaffRole(roleCode),
       isFieldStaff: isFieldStaffRole(roleCode),

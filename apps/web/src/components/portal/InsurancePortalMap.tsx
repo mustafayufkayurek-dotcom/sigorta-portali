@@ -1,15 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { InsuranceMapPin, InsurancePinCategory } from './insurance-portal-map.types';
-import { pinSlaColor } from '@/utils/insurance-portal-map-utils';
-
-const CATEGORY_ICONS: Record<InsurancePinCategory, string> = {
-  residential: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>`,
-  industrial: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M5 20V10l4-2v12"/><path d="M9 20V6l5-2.5v16"/><path d="M14 20V4l6-3v19"/><path d="M18 8h.01"/><path d="M18 12h.01"/></svg>`,
-  marine: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h18"/><path d="M5 17 8 9h8l3 8"/><path d="M12 9V5"/><path d="M12 5h4l-1 2"/><path d="M2 20c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0"/></svg>`,
-  generic: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
-};
+import type { InsuranceMapPin } from './insurance-portal-map.types';
+import { CLOSED_CLAIM_STATUS_CODES } from '@sigorta/shared';
+import { buildPanelFileMarkerHtml, ensureHaritaPinSignalCss, escHaritaHtml } from '@/utils/harita-pin-signal';
 
 const POPUP_OPTIONS = {
   maxWidth: 300,
@@ -34,10 +28,11 @@ type BasemapConfig = {
 
 const BASEMAP_LAYERS: Record<InsuranceMapBasemap, BasemapConfig> = {
   street: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Sokak Haritası',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap Katkıda Bulunanları',
     maxZoom: 19,
     maxNativeZoom: 19,
+    subdomains: 'abc',
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -58,59 +53,52 @@ const BASEMAP_LAYERS: Record<InsuranceMapBasemap, BasemapConfig> = {
   },
 };
 
-function buildMarkerHtml(pin: InsuranceMapPin): string {
-  const color = pinSlaColor(pin.slaTone, pin.category, pin.department);
-  const icon = CATEGORY_ICONS[pin.category];
-  const showcaseRing = pin.isShowcase
-    ? 'box-shadow:0 0 0 3px rgba(245,158,11,0.55), 0 2px 8px rgba(0,0,0,0.25);'
-    : 'box-shadow:0 2px 8px rgba(0,0,0,0.25);';
+function isOpenInsurancePin(pin: InsuranceMapPin): boolean {
+  if (pin.isShowcase) return false;
+  const code = String(pin.statusCode ?? '').toLowerCase();
+  return !(CLOSED_CLAIM_STATUS_CODES as readonly string[]).includes(code);
+}
 
-  return `
-    <div class="relative flex flex-col items-center" data-pin-id="${pin.id}">
-      <div style="width:36px;height:36px;border-radius:50%;background:${color};border:3px solid white;${showcaseRing}display:flex;align-items:center;justify-content:center;">
-        ${icon}
-      </div>
-    </div>`;
+function insuranceFileColor(pin: InsuranceMapPin): string {
+  if (pin.isShowcase || !isOpenInsurancePin(pin)) return '#64748B';
+  if (pin.department === 'acil') return '#EA580C';
+  return '#2563EB';
+}
+
+function buildMarkerHtml(pin: InsuranceMapPin): string {
+  return buildPanelFileMarkerHtml({
+    letter: pin.department === 'acil' ? 'A' : 'H',
+    color: insuranceFileColor(pin),
+    label: pin.fileNumber || pin.label,
+    stage: pin.statusName,
+    signal: isOpenInsurancePin(pin),
+  });
 }
 
 function buildPopupHtml(pin: InsuranceMapPin, interactive: boolean): string {
-  const location = (pin.city ?? 'İl Belirtilmemiş').toLocaleUpperCase('tr-TR');
-  const subject = pin.claimSubjectName || pin.tooltip || 'Hasar Dosyası';
-  const statusColor = pin.slaTone === 'late' ? '#F87171' : pin.slaTone === 'warn' ? '#FBBF24' : '#22C55E';
-  const actions = interactive && pin.fileId
-    ? `
-      <div style="padding:0 16px 14px;display:flex;flex-direction:column;gap:8px;">
-        <button type="button" data-live-map-action="summary" data-file-id="${pin.fileId}"
-          style="width:100%;background:#2563EB;color:white;border:none;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer;">
-          Dosya Özeti
-        </button>
-        <button type="button" data-live-map-action="message" data-file-id="${pin.fileId}"
-          style="width:100%;background:transparent;color:#E2E8F0;border:1px solid rgba(255,255,255,0.18);border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer;">
-          Mesaj Gönder
-        </button>
-      </div>`
-    : '';
+  const fileNo = escHaritaHtml(pin.fileNumber || pin.label || '—');
+  const subject = escHaritaHtml(pin.claimSubjectName || pin.tooltip || 'Hasar Dosyası');
+  const status = escHaritaHtml(pin.statusName ?? '—');
+  const city = escHaritaHtml(pin.city ?? 'İl Belirtilmemiş');
+  const fileId = escHaritaHtml(pin.fileId ?? '');
+  const actions =
+    interactive && pin.fileId
+      ? `
+      <hr class="my-2 border-slate-100">
+      <button type="button" data-live-map-action="summary" data-file-id="${fileId}"
+        class="mt-1 inline-block text-brand-600 underline">Dosya Özeti</button>
+      <button type="button" data-live-map-action="message" data-file-id="${fileId}"
+        class="mt-1 ml-3 inline-block text-brand-600 underline">Mesaj Gönder</button>`
+      : '';
 
   return `
-    <div data-popup-pin-id="${pin.id}" style="font-family:system-ui,-apple-system,sans-serif;min-width:240px;max-width:280px;color:#E2E8F0;background:#0B1F3A;border-radius:12px;padding:0;margin:-1px;">
-      <div style="padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,0.08);">
-        <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;color:#94A3B8;margin-bottom:4px;">${location}</div>
-        <div style="font-size:15px;font-weight:700;color:#FFFFFF;line-height:1.3;">${subject}</div>
-      </div>
-      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;">
-        ${pin.fileNumber ? `
-        <div>
-          <div style="font-size:10px;color:#64748B;margin-bottom:2px;">Dosya No</div>
-          <div style="font-size:12px;font-weight:600;color:#F1F5F9;">${pin.fileNumber}</div>
-        </div>` : ''}
-        <div>
-          <div style="font-size:10px;color:#64748B;margin-bottom:2px;">Durum</div>
-          <div style="font-size:12px;font-weight:600;color:${statusColor};display:flex;align-items:center;gap:4px;">
-            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${statusColor};"></span>
-            ${pin.statusName ?? '—'}
-          </div>
-        </div>
-      </div>
+    <div class="font-sans text-[13px] text-slate-800" data-popup-pin-id="${escHaritaHtml(pin.id)}">
+      <strong>${fileNo}</strong>
+      <div class="mt-1 text-slate-500">${subject}</div>
+      <hr class="my-2 border-slate-100">
+      <div>Konum: İş adresi</div>
+      <div>Durum: ${status}</div>
+      <div>Bölge: ${city}</div>
       ${actions}
     </div>`;
 }
@@ -196,7 +184,13 @@ export default function InsurancePortalMap({
   }, [onSelectPin, onMessagePin]);
 
   useEffect(() => {
-    pinsByIdRef.current = new Map(pins.map((p) => [p.id, p]));
+    pinsByIdRef.current = new Map(
+      pins.flatMap((p) => {
+        const entries: Array<[string, InsuranceMapPin]> = [[p.id, p]];
+        if (p.fileId) entries.push([p.fileId, p]);
+        return entries;
+      }),
+    );
   }, [pins]);
 
   const closeMapPopup = useCallback(() => {
@@ -284,6 +278,7 @@ export default function InsurancePortalMap({
       if (cancelled) return;
       leafletRef.current = L.default ?? L;
 
+      ensureHaritaPinSignalCss();
       if (!document.getElementById('leaflet-css')) {
         const link = document.createElement('link');
         link.id = 'leaflet-css';
@@ -297,21 +292,21 @@ export default function InsurancePortalMap({
         style.id = 'insurance-live-map-css';
         style.textContent = `
           .insurance-live-map-popup .leaflet-popup-content-wrapper {
-            background: transparent;
-            box-shadow: none;
-            padding: 0;
-            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+            padding: 10px 12px;
+            border-radius: 10px;
           }
           .insurance-live-map-popup .leaflet-popup-content {
             margin: 0;
           }
           .insurance-live-map-popup .leaflet-popup-tip {
-            background: #0B1F3A;
+            background: #fff;
           }
           .insurance-live-map-popup .leaflet-popup-close-button {
-            color: #94A3B8 !important;
-            top: 8px !important;
-            right: 10px !important;
+            color: #64748B !important;
+            top: 6px !important;
+            right: 8px !important;
           }
           .leaflet-container.insurance-live-map-satellite {
             background: #0b1f3a;

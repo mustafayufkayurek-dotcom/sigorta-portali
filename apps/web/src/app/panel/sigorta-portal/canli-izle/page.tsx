@@ -21,8 +21,8 @@ import type { InsuranceMapPin } from '@/components/portal/insurance-portal-map.t
 const InsuranceLiveMap3D = dynamic(() => import('@/components/portal/InsuranceLiveMap3D'), {
   ssr: false,
   loading: () => (
-    <div className="flex min-h-[640px] items-center justify-center rounded-xl border border-slate-200 bg-slate-900">
-      <p className="text-sm font-medium text-white">Harita Yükleniyor...</p>
+    <div className="flex min-h-[640px] items-center justify-center rounded-xl border border-slate-200 bg-white">
+      <p className="text-sm font-medium text-slate-600">Harita Yükleniyor...</p>
     </div>
   ),
 });

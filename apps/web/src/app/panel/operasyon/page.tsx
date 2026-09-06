@@ -353,7 +353,7 @@ export default function OperasyonPage() {
 function OperasyonPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { showFinanceExtraAccessAcil, isOfficeStaff, isManagement } = usePanelAccess();
+  const { showFinanceExtraAccessAcil, isOfficeStaff, isManagement, isAdmin } = usePanelAccess();
   const [colsStorageKey, setColsStorageKey] = useState(() => {
     const filter = searchParams.get('filter');
     if (filter === 'acil' || filter === 'hasar' || filter === 'all') {
@@ -986,7 +986,9 @@ function OperasyonPageContent() {
 
       <FieldOperationsMap
         compact
-        ownerOnly={isOfficeStaff && !isManagement}
+        ownerOnly={
+          showFinanceExtraAccessAcil ? false : !isAdmin && (isOfficeStaff || isManagement)
+        }
         defaultFilter={isAcilListMode ? 'acil' : 'all'}
       />
 

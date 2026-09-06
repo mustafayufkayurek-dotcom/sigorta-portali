@@ -19,8 +19,9 @@ export class HealthService {
       const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
       this.redisClient = new IORedis.default(redisUrl, {
         lazyConnect: true,
-        connectTimeout: 5000,
+        connectTimeout: 800,
         maxRetriesPerRequest: 1,
+        enableOfflineQueue: false,
       });
     }
     return this.redisClient;
@@ -40,9 +41,10 @@ export class HealthService {
     const redisStatus = redis.status === 'fulfilled' ? redis.value : { status: 'down', error: (redis as PromiseRejectedResult).reason?.message };
 
     const allUp = dbStatus.status === 'up' && redisStatus.status === 'up';
+    const dbUp = dbStatus.status === 'up';
 
     return {
-      status: allUp ? 'ok' : 'degraded',
+      status: dbUp ? (allUp ? 'ok' : 'degraded') : 'down',
       maintenanceMode: process.env.SYSTEM_MAINTENANCE_MODE === 'true',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
@@ -83,7 +85,11 @@ export class HealthService {
   private async checkRedis() {
     try {
       const client = this.getRedisClient();
-      await client.ping();
+      const ping = client.ping();
+      const timeout = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('redis timeout')), 900);
+      });
+      await Promise.race([ping, timeout]);
       return { status: 'up' };
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unknown error';

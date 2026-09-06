@@ -1,7 +1,9 @@
 'use client';
 
 import { FieldOperationsMap } from '@/components/operasyon/FieldOperationsMap';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
 
 export default function HaritaPage() {
-  return <FieldOperationsMap showNotice showPersonnelRoute />;
+  const { isAdmin } = usePanelAccess();
+  return <FieldOperationsMap showNotice showPersonnelRoute ownerOnly={!isAdmin} />;
 }

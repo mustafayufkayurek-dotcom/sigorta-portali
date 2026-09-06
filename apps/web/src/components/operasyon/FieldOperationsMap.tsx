@@ -17,6 +17,7 @@ import { TrDateInput } from '@/components/ui/TrDateInput';
 import { getAccessToken } from '@/utils/auth-session';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { buildPanelFileMarkerHtml, ensureHaritaPinSignalCss } from '@/utils/harita-pin-signal';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -125,17 +126,13 @@ function fileColor(point: FieldMapPoint): string {
 }
 
 function fileMarkerHtml(point: FieldMapPoint, letter: string): string {
-  const color = fileColor(point);
-  const label = esc(point.activeJob?.fileNo || point.name);
-  const stage = esc(point.jobStageLabel || '');
-  return `
-      <div class="relative flex flex-col items-center">
-        <div style="min-width:42px;height:36px;border-radius:8px;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;padding:0 7px;">
-          ${letter}
-        </div>
-        <div class="mt-1 max-w-[10rem] truncate whitespace-nowrap rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-900 shadow">${label}</div>
-        ${stage ? `<div class="mt-0.5 whitespace-nowrap rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-medium text-white">${stage}</div>` : ''}
-      </div>`;
+  return buildPanelFileMarkerHtml({
+    letter,
+    color: fileColor(point),
+    label: point.activeJob?.fileNo || point.name,
+    stage: point.jobStageLabel,
+    signal: point.jobStage !== 'kapandi',
+  });
 }
 
 function buildMarkerHtml(point: FieldMapPoint): string {
@@ -359,6 +356,7 @@ export function FieldOperationsMap({
   useEffect(() => {
     import('leaflet').then((L) => {
       leafletRef.current = L.default ?? L;
+      ensureHaritaPinSignalCss();
       if (!document.getElementById('leaflet-css')) {
         const link = document.createElement('link');
         link.id = 'leaflet-css';
