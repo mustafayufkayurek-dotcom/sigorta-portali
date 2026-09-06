@@ -127,4 +127,21 @@ describe('saha haritası dosya iş adresi LOCK', () => {
     assert.match(liveMap, /allowClosedFallback/);
     assert.match(liveMap, /isClosedState: true/);
   });
+
+  it('sigorta ve asistans Canlı İzle şehir listesi değil haritadır', () => {
+    const sigortaLive = readFileSync(
+      join(here, '../../../../../apps/web/src/app/panel/sigorta-portal/canli-izle/page.tsx'),
+      'utf8',
+    );
+    const asistansLive = readFileSync(
+      join(here, '../../../../../apps/web/src/app/panel/asistans-portal/canli-izle/page.tsx'),
+      'utf8',
+    );
+    assert.match(sigortaLive, /InsuranceLiveMap3D/);
+    assert.match(asistansLive, /InsuranceLiveMap3D/);
+    assert.doesNotMatch(sigortaLive, /Şehir Görünümü/);
+    assert.doesNotMatch(asistansLive, /Şehir Görünümü/);
+    assert.doesNotMatch(sigortaLive, /viewMode/);
+    assert.doesNotMatch(asistansLive, /viewMode/);
+  });
 });

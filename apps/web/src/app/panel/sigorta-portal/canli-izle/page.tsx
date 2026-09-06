@@ -7,8 +7,6 @@ import Link from 'next/link';
 import axios from 'axios';
 import {
   AlertTriangle,
-  Building2,
-  Map as MapIcon,
   MapPin,
   Wrench,
   X,
@@ -34,7 +32,6 @@ import { hasInsuranceCompanyUserAccess, readInsurancePortalUser } from '@/utils/
 import { useToast } from '@/contexts/ToastContext';
 
 type StatusGroup = 'all' | 'open' | 'in_repair' | 'approval_pending';
-type ViewMode = 'map' | 'city';
 
 type ClaimSubjectOption = { id: string; name: string };
 
@@ -75,7 +72,6 @@ export default function SigortaCanliIzlePage() {
   const [city, setCity] = useState('all');
   const [statusGroup, setStatusGroup] = useState<StatusGroup>('all');
   const [officeUserId, setOfficeUserId] = useState('all');
-  const [viewMode, setViewMode] = useState<ViewMode>('map');
   const [selectedPin, setSelectedPin] = useState<InsuranceMapPin | null>(null);
   const [noteFileId, setNoteFileId] = useState<string | null>(null);
 
@@ -181,62 +177,6 @@ export default function SigortaCanliIzlePage() {
       .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
   }, [files]);
 
-  const cityGroups = useMemo(() => {
-    const groups = new Map<string, InsuranceMapPin[]>();
-    const push = (cityName: string, entry: InsuranceMapPin) => {
-      const list = groups.get(cityName) ?? [];
-      list.push(entry);
-      groups.set(cityName, list);
-    };
-
-    // Haritada görünen pin’ler önce (şehir listesi harita ile aynı kaynağı kullansın)
-    for (const pin of pins) {
-      push((pin.city ?? '').trim() || 'İl Belirtilmemiş', pin);
-    }
-
-    const pinIds = new Set(pins.map((p) => p.id));
-    for (const file of files) {
-      if (pinIds.has(file.id)) continue;
-      const cityName =
-        (file.propertyAddress?.city ?? file.customer?.city)?.trim() || 'İl Belirtilmemiş';
-      push(cityName, {
-        id: file.id,
-        fileId: file.id,
-        fileNumber: file.fileNo ?? file.fileNumber ?? '—',
-        latitude: 0,
-        longitude: 0,
-        label: file.fileNo ?? '—',
-        tooltip: file.claimSubject?.name || file.lossType || 'Hasar Dosyası',
-        category: 'generic',
-        city: cityName === 'İl Belirtilmemiş' ? undefined : cityName,
-        statusName: file.currentStatus?.name,
-        statusCode: file.currentStatus?.code,
-        delayRisk: Boolean(file.delayRisk),
-        slaTone: file.delayRisk ? 'late' : 'ok',
-        claimSubjectName: file.claimSubject?.name || file.lossType || 'Hasar Dosyası',
-        approvedAt: file.approvedAt ? String(file.approvedAt) : null,
-        repairStartAt: file.repairStartAt ? String(file.repairStartAt) : null,
-        estimatedRepairEndAt: file.estimatedRepairEndAt ? String(file.estimatedRepairEndAt) : null,
-        assignedOfficeUserName: officeLabel(file.assignedOfficeUser),
-      });
-    }
-
-    return Array.from(groups.entries())
-      .map(([name, items]) => ({ name, items, count: items.length }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'tr'));
-  }, [files, pins]);
-
-  // Şehir görünümüne geçince / liste gelince sağ özet dolsun
-  useEffect(() => {
-    if (viewMode !== 'city') return;
-    const first = cityGroups[0]?.items[0];
-    if (!first) return;
-    setSelectedPin((prev) => {
-      if (prev && cityGroups.some((g) => g.items.some((i) => i.id === prev.id))) return prev;
-      return first;
-    });
-  }, [viewMode, cityGroups]);
-
   const selectPin = useCallback((pin: InsuranceMapPin) => {
     setSelectedPin({ ...pin });
   }, []);
@@ -281,41 +221,6 @@ export default function SigortaCanliIzlePage() {
           currentLabel="Canlı İzle"
           title="Canlı İzle"
         />
-
-        <div
-          className="inline-flex w-full max-w-md rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
-          role="tablist"
-          aria-label="Görünüm"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === 'map'}
-            onClick={() => setViewMode('map')}
-            className={`inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition ${
-              viewMode === 'map' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <MapIcon className="h-4 w-4" aria-hidden />
-            Harita
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === 'city'}
-            onClick={() => {
-              setViewMode('city');
-              const first = cityGroups[0]?.items[0];
-              if (first) setSelectedPin({ ...first });
-            }}
-            className={`inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition ${
-              viewMode === 'city' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <Building2 className="h-4 w-4" aria-hidden />
-            Şehir
-          </button>
-        </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {[
@@ -394,100 +299,23 @@ export default function SigortaCanliIzlePage() {
 
         <div className="grid min-h-[640px] grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-h-[640px] min-w-0">
-            {viewMode === 'map' ? (
-              <ErrorBoundary
-                fallback={
-                  <div className="flex min-h-[640px] flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white p-6">
-                    <p className="text-sm font-semibold text-slate-800">Harita Geçici Olarak Açılamadı</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setViewMode('city');
-                        const first = cityGroups[0]?.items[0];
-                        if (first) setSelectedPin({ ...first });
-                      }}
-                      className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
-                    >
-                      Şehir Görünümüne Geç
-                    </button>
-                  </div>
-                }
-              >
-                <InsuranceLiveMap3D
-                  key="live-map-street"
-                  pins={pins}
-                  loading={filesLoading}
-                  onSelectPin={selectPin}
-                  onMessagePin={(pin) => {
-                    if (pin.fileId) setNoteFileId(pin.fileId);
-                  }}
-                />
-              </ErrorBoundary>
-            ) : (
-              <div
-                className="space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                style={{ minHeight: 640 }}
-              >
-                <div className="mb-1 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-800">Şehir Görünümü</p>
-                  <span className="text-xs font-medium text-slate-500">
-                    {cityGroups.length} İl · {files.length} Dosya
-                  </span>
+            <ErrorBoundary
+              fallback={
+                <div className="flex min-h-[640px] flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white p-6">
+                  <p className="text-sm font-semibold text-slate-800">Harita Geçici Olarak Açılamadı</p>
                 </div>
-                {filesLoading && (
-                  <p className="py-10 text-center text-sm text-slate-500">Yükleniyor...</p>
-                )}
-                {!filesLoading && cityGroups.length === 0 && (
-                  <p className="py-10 text-center text-sm text-slate-500">Gösterilecek Dosya Yok</p>
-                )}
-                {!filesLoading &&
-                  cityGroups.map((group) => (
-                    <div key={group.name} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (group.items[0]) selectPin(group.items[0]);
-                        }}
-                        className="mb-2.5 flex w-full items-center justify-between gap-2 text-left"
-                      >
-                        <p className="text-sm font-semibold text-slate-900">{group.name}</p>
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
-                          {group.count} Dosya
-                        </span>
-                      </button>
-                      <div className="flex flex-wrap gap-2">
-                        {group.items.map((pin) => {
-                          const selected = selectedPin?.id === pin.id;
-                          return (
-                            <button
-                              key={pin.id}
-                              type="button"
-                              onClick={() => selectPin(pin)}
-                              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold shadow-sm transition ${
-                                selected
-                                  ? 'border-brand-500 bg-brand-50 text-brand-800 ring-2 ring-brand-200'
-                                  : 'border-emerald-200 bg-white text-slate-700 hover:border-brand-300 hover:text-brand-700'
-                              }`}
-                            >
-                              <span
-                                className={`h-2 w-2 rounded-full ${
-                                  pin.slaTone === 'late'
-                                    ? 'bg-status-danger'
-                                    : pin.slaTone === 'warn'
-                                      ? 'bg-status-warning'
-                                      : 'bg-status-success'
-                                }`}
-                                aria-hidden
-                              />
-                              {pin.fileNumber ?? pin.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
+              }
+            >
+              <InsuranceLiveMap3D
+                key="live-map-street"
+                pins={pins}
+                loading={filesLoading}
+                onSelectPin={selectPin}
+                onMessagePin={(pin) => {
+                  if (pin.fileId) setNoteFileId(pin.fileId);
+                }}
+              />
+            </ErrorBoundary>
           </div>
 
           <aside key={selectedPin?.id ?? 'empty'} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
