@@ -11,6 +11,7 @@ import {
   type DragEvent,
   type ReactNode,
 } from 'react';
+import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 
 export interface TableColumnDef {
   id: string;
@@ -820,12 +821,20 @@ export function SortablePanelTableTh({
     >
       {children}
       <span
-        className={`text-[10px] font-semibold transition-opacity ${
-          active ? 'opacity-100 text-brand-600 dark:text-blue-400' : 'opacity-40 group-hover:opacity-70'
+        className={`inline-flex shrink-0 ${
+          active ? 'text-slate-700 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'
         }`}
         aria-hidden
       >
-        {active ? (sortDir === 'desc' ? '↓' : '↑') : '⇅'}
+        {active ? (
+          sortDir === 'desc' ? (
+            <ArrowDown className="h-4 w-4 stroke-[2.5]" />
+          ) : (
+            <ArrowUp className="h-4 w-4 stroke-[2.5]" />
+          )
+        ) : (
+          <ChevronsUpDown className="h-4 w-4 stroke-[2.5]" />
+        )}
       </span>
     </span>
   );

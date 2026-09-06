@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, Eye, MoreVertical, Pencil, Printer, ScrollText, Send, XCircle } from 'lucide-react';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import { PinnableRowActions } from '@/components/portal/PinnableRowActions';
+import { defaultPinnedActionIds, FINANS_FATURA_ROW_ACTIONS, FINANS_TAHSILAT_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
 
 function escapeHtml(value: string) {
   return value
@@ -84,44 +86,53 @@ export function vendorEkstreHref(source: {
 }
 
 export function FinanceRowActions({
+  rowId,
+  pinnedIds,
   onPrint,
   ekstreHref,
   onMarkPaid,
 }: {
+  rowId?: string;
+  pinnedIds?: string[];
   onPrint: () => void;
   ekstreHref?: string | null;
   onMarkPaid?: () => void;
 }) {
+  const uid = useId();
+  const pins = pinnedIds ?? defaultPinnedActionIds(FINANS_TAHSILAT_ROW_ACTIONS);
   return (
-    <div className="flex items-center justify-end gap-0.5" data-testid="finans-satir-islemler">
-      <button
-        type="button"
-        title="Yazdır"
-        onClick={onPrint}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-700"
-      >
-        <Printer className="h-3.5 w-3.5" strokeWidth={1.75} />
-      </button>
-      {ekstreHref ? (
-        <a
-          href={ekstreHref}
-          title="Cari Hesap Ekstresi"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-700"
-        >
-          <ScrollText className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </a>
-      ) : null}
-      {onMarkPaid ? (
-        <button
-          type="button"
-          title="Ödendi İşaretle"
-          onClick={onMarkPaid}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-emerald-500 hover:bg-emerald-50 hover:text-emerald-700"
-        >
-          <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </button>
-      ) : null}
-    </div>
+    <PinnableRowActions
+      rowId={rowId ?? uid}
+      menuEvent="finans-tahsilat-menu-open"
+      testId="finans-satir-islemler"
+      menuTestId="finans-tahsilat-menu"
+      moreTestId="finans-tahsilat-more"
+      pinnedIds={pins}
+      items={[
+        {
+          id: 'print',
+          label: 'Yazdır',
+          onClick: onPrint,
+          icon: <Printer className="h-3.5 w-3.5" strokeWidth={1.75} />,
+        },
+        {
+          id: 'ekstre',
+          label: 'Cari Hesap Ekstresi',
+          onClick: () => {
+            if (ekstreHref) window.location.href = ekstreHref;
+          },
+          hidden: !ekstreHref,
+          icon: <ScrollText className="h-3.5 w-3.5" strokeWidth={1.75} />,
+        },
+        {
+          id: 'pay',
+          label: 'Ödendi İşaretle',
+          onClick: () => onMarkPaid?.(),
+          hidden: !onMarkPaid,
+          icon: <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} />,
+        },
+      ]}
+    />
   );
 }
 
@@ -250,6 +261,8 @@ export function FinanceKebabMenu({
 
 /** Kesilen fatura satırı — İşlemler ikonları. */
 export function InvoiceRowActions({
+  rowId,
+  pinnedIds,
   status,
   onPrint,
   onNotifyOwner,
@@ -257,6 +270,8 @@ export function InvoiceRowActions({
   onCancel,
   onMarkPaid,
 }: {
+  rowId?: string;
+  pinnedIds?: string[];
   status: string;
   onPrint: () => void;
   onNotifyOwner?: () => void;
@@ -264,33 +279,55 @@ export function InvoiceRowActions({
   onCancel?: () => void;
   onMarkPaid?: () => void;
 }) {
+  const uid = useId();
   const canPay = status === 'sent';
+  const pins = pinnedIds ?? defaultPinnedActionIds(FINANS_FATURA_ROW_ACTIONS);
   return (
-    <div className="flex items-center justify-end gap-0.5" data-testid="fatura-satir-islemler">
-      <button type="button" title="Yazdır" aria-label="Yazdır" onClick={onPrint} className={iconBtn}>
-        <Printer className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </button>
-      {onNotifyOwner ? (
-        <button type="button" title="Dosya sorumlusuna bildir" aria-label="Dosya sorumlusuna bildir" onClick={onNotifyOwner} className={iconBtn}>
-          <Send className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        </button>
-      ) : null}
-      {onEdit ? (
-        <button type="button" title="Düzenle" aria-label="Düzenle" onClick={onEdit} className={iconBtn}>
-          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        </button>
-      ) : null}
-      {canPay && onMarkPaid ? (
-        <button type="button" title="Ödendi" aria-label="Ödendi" onClick={onMarkPaid} className={iconBtn}>
-          <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        </button>
-      ) : null}
-      {onCancel ? (
-        <button type="button" title="İptal et" aria-label="İptal et" onClick={onCancel} className={`${iconBtn} hover:bg-red-50 hover:text-status-danger`}>
-          <XCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        </button>
-      ) : null}
-    </div>
+    <PinnableRowActions
+      rowId={rowId ?? uid}
+      menuEvent="finans-fatura-menu-open"
+      testId="fatura-satir-islemler"
+      menuTestId="finans-fatura-menu"
+      moreTestId="finans-fatura-more"
+      pinnedIds={pins}
+      items={[
+        {
+          id: 'print',
+          label: 'Yazdır',
+          onClick: onPrint,
+          icon: <Printer className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'notify',
+          label: 'Dosya Sorumlusuna Bildir',
+          onClick: () => onNotifyOwner?.(),
+          hidden: !onNotifyOwner,
+          icon: <Send className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'edit',
+          label: 'Düzenle',
+          onClick: () => onEdit?.(),
+          hidden: !onEdit,
+          icon: <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'pay',
+          label: 'Ödendi',
+          onClick: () => onMarkPaid?.(),
+          hidden: !(canPay && onMarkPaid),
+          icon: <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'cancel',
+          label: 'İptal Et',
+          onClick: () => onCancel?.(),
+          hidden: !onCancel,
+          danger: true,
+          icon: <XCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+      ]}
+    />
   );
 }
 

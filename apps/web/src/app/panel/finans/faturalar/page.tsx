@@ -32,6 +32,9 @@ import {
   FinansPanelCard,
 } from '@/components/finance/FinansPanelUI';
 import { InvoiceRowActions, printFinanceSlip } from '@/components/finance/FinanceRowActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { FINANS_FATURA_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { FinansTablePager } from '@/components/finance/FinansTablePager';
 import { faturaTalepleriTabPulseClass } from '@/components/finance/FinansOncelikliGorevModal';
 import { FINANS_ACTIONS_COLUMN, FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, type FinansTablePageSize } from '@/utils/finans-table-page';
@@ -134,6 +137,7 @@ function FaturalarPageContent() {
   const [editDraft, setEditDraft] = useState({ invoiceNo: '', invoiceDate: '', notes: '', editReason: '' });
   const [editSaving, setEditSaving] = useState(false);
   const tableColumns = usePanelTableColumns('table-cols:finans-faturalar-v2', INVOICE_TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:finans-faturalar-v1', FINANS_FATURA_ROW_ACTIONS);
 
   const loadTalepOzet = useCallback(() => {
     getInvoiceRequests()
@@ -440,13 +444,19 @@ function FaturalarPageContent() {
       ) : (
         <TableColumnsProvider value={tableColumns}>
         <FinansPanelCard title="Kesilen Faturalar" subtitle={`${total} kayıt`} noPadding>
-          <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+          <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end gap-2">
             <PanelTableColumnPicker tableColumns={tableColumns} />
+            <PortalRowActionsPicker
+              catalog={FINANS_FATURA_ROW_ACTIONS}
+              pinnedIds={rowActions.pinnedIds}
+              onToggle={rowActions.toggle}
+              onReset={rowActions.reset}
+            />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [40] })}>
               <PanelTableColGroup leadingWidths={[40]} />
-              <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 dark:text-slate-400">
+              <thead className="table-head-row portal-table-head text-xs">
                 <tr>
                   <th className="text-center px-4 py-3 w-10">#</th>
                   {tableColumns.prefs.orderedVisibleColumns.map((col) => {
@@ -519,6 +529,8 @@ function FaturalarPageContent() {
                           return (
                             <PanelTableTd key={col.id} colId="actions" className="px-2 py-3">
                               <InvoiceRowActions
+                                rowId={inv.id}
+                                pinnedIds={rowActions.pinnedIds}
                                 status={inv.status}
                                 onPrint={() => printFinanceSlip({
                                   title: `Fatura ${inv.invoiceNo ?? ''}`.trim(),

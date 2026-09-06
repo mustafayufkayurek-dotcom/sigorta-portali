@@ -71,17 +71,15 @@ describe('saha haritası dosya iş adresi LOCK', () => {
     assert.doesNotMatch(mapUi, /label: 'Personel'/);
   });
 
-  it('müşteri ve dosya sorumlusu ekranlarında harita durur', () => {
+  it('harita yalnız Harita menüsü ve müşteri kartında durur; dosya listesinde yok', () => {
     assert.match(controller, /ownerOnly/);
     assert.match(controller, /customerId/);
     assert.match(musteri, /FieldOperationsMap/);
     assert.match(musteri, /customerId=\{id!\}/);
-    assert.match(hasarListe, /FieldOperationsMap/);
-    assert.match(hasarListe, /ownerOnly/);
-    assert.match(hasarListe, /mapOwnerOnly/);
-    assert.match(operasyon, /FieldOperationsMap/);
-    assert.match(operasyon, /ownerOnly/);
+    assert.match(harita, /FieldOperationsMap/);
     assert.match(harita, /ownerOnly=\{!isAdmin\}/);
+    assert.doesNotMatch(hasarListe, /FieldOperationsMap/);
+    assert.doesNotMatch(operasyon, /FieldOperationsMap/);
   });
 
   it('sigorta ve operasyon ağı pinleri panel kutusu ile aynıdır', () => {

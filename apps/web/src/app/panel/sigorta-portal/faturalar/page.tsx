@@ -6,6 +6,9 @@ import { Banknote, Clock3 } from 'lucide-react';
 import PortalPageHeader from '@/components/portal/PortalPageHeader';
 import PortalMobileFileList from '@/components/portal/PortalMobileFileList';
 import { InsuranceFaturalarActions } from '@/components/portal/InsuranceFaturalarActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { FATURALAR_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import {
   ExpertFileDetailDrawer,
   type ExpertDrawerFile,
@@ -52,7 +55,7 @@ const SIGORTA_INVOICE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'dueDate', label: 'Vade', defaultWidth: 110, minWidth: 96 },
   { id: 'totalAmount', label: 'Tutar', defaultWidth: 120, minWidth: 100 },
   { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
-  { id: 'actions', label: 'İşlemler', defaultWidth: 132, minWidth: 120, pin: 'end', resizable: false },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 176, minWidth: 148, pin: 'end', resizable: false },
 ];
 
 interface Invoice {
@@ -109,6 +112,7 @@ export default function SigortaFaturalarPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const tableColumns = usePanelTableColumns('table-cols:sigorta-portal-faturalar-v4', SIGORTA_INVOICE_TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:sigorta-portal-faturalar-v1', FATURALAR_ROW_ACTIONS);
 
   useEffect(() => {
     const { user, hasScope } = readInsurancePortalUser();
@@ -402,6 +406,12 @@ export default function SigortaFaturalarPage() {
                       title="Fatura No veya Dosya Noya Göre Ara"
                     />
                     <PanelTableColumnPicker tableColumns={tableColumns} />
+                    <PortalRowActionsPicker
+                      catalog={FATURALAR_ROW_ACTIONS}
+                      pinnedIds={rowActions.pinnedIds}
+                      onToggle={rowActions.toggle}
+                      onReset={rowActions.reset}
+                    />
                   </div>
                 </div>
               }
@@ -413,14 +423,14 @@ export default function SigortaFaturalarPage() {
                   data-testid="sigorta-faturalar-table"
                 >
                   <PanelTableColGroup />
-                  <thead className="bg-[#F5F6F8]">
+                  <thead className="table-head-row portal-table-head">
                     <tr>
                       {tableColumns.prefs.orderedVisibleColumns.map((col) => {
                         const thClass = CENTERED_COLS.has(col.id)
-                          ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
+                          ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-slate-700'
                           : RIGHT_COLS.has(col.id)
-                            ? '!px-3 !py-2.5 text-right text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
-                            : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]';
+                            ? '!px-3 !py-2.5 text-right text-[11px] font-semibold tracking-[0.02em] text-slate-700'
+                            : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-slate-700';
                         if (col.id === 'actions') {
                           return (
                             <PanelTableTh
@@ -536,6 +546,7 @@ export default function SigortaFaturalarPage() {
                                   <PanelTableTd key={col.id} colId="actions" className="table-td-center px-3 py-2.5">
                                     <InsuranceFaturalarActions
                                       rowId={inv.id}
+                                      pinnedIds={rowActions.pinnedIds}
                                       hasClaimFile={Boolean(inv.claimFile?.id)}
                                       onPreviewReport={() => openPreview(inv)}
                                       onAddNote={() => openNote(inv)}

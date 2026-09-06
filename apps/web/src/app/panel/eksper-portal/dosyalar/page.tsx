@@ -413,12 +413,12 @@ export default function EksperDosyalarPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs" style={panelTableLayoutStyle(displayTableColumns)} data-testid="eksper-dosyalar-table">
               <PanelTableColGroup />
-              <thead className="bg-[#F5F6F8]">
+              <thead className="table-head-row portal-table-head">
                 <tr>
                   {displayTableColumns.prefs.orderedVisibleColumns.map((col) => {
                     const thClass = CENTERED_TABLE_COLS.has(col.id)
-                      ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
-                      : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]';
+                      ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-slate-700'
+                      : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-slate-700';
                     if (col.id === 'actions') {
                       return (
                         <PanelTableTh

@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import PortalPageHeader from '@/components/portal/PortalPageHeader';
 import PortalMobileFileList from '@/components/portal/PortalMobileFileList';
 import { InsuranceDosyalarActions } from '@/components/portal/InsuranceDosyalarActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { DOSYALAR_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import {
   ExpertFileDetailDrawer,
   type ExpertDrawerFile,
@@ -62,7 +65,7 @@ const FILE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'amount', label: 'Dosya Bedeli', defaultWidth: 120, minWidth: 100 },
   { id: 'assignedUser', label: 'Meridyen Sorumlusu', defaultWidth: 180, minWidth: 150 },
   { id: 'createdAt', label: 'İhbar Tarihi', defaultWidth: 140, minWidth: 120 },
-  { id: 'actions', label: 'İşlemler', defaultWidth: 128, minWidth: 112, pin: 'end', resizable: false },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 176, minWidth: 148, pin: 'end', resizable: false },
 ];
 
 type EmergencyRow = {
@@ -193,6 +196,7 @@ function AsistansDosyalarContent() {
     'table-cols:asistans-portal-dosyalar-v2',
     FILE_TABLE_COLUMNS,
   );
+  const rowActions = usePortalRowActionPrefs('row-actions:asistans-portal-dosyalar-v1', DOSYALAR_ROW_ACTIONS);
 
   const reloadFiles = async () => {
     const [em, catalog] = await Promise.all([
@@ -470,6 +474,12 @@ function AsistansDosyalarContent() {
                       className="w-48 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                     />
                     <PanelTableColumnPicker tableColumns={tableColumns} />
+                    <PortalRowActionsPicker
+                      catalog={DOSYALAR_ROW_ACTIONS}
+                      pinnedIds={rowActions.pinnedIds}
+                      onToggle={rowActions.toggle}
+                      onReset={rowActions.reset}
+                    />
                   </div>
                 </div>
               }
@@ -477,14 +487,14 @@ function AsistansDosyalarContent() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs" style={panelTableLayoutStyle(tableColumns)}>
                   <PanelTableColGroup />
-                  <thead className="bg-[#F5F6F8]">
+                  <thead className="table-head-row portal-table-head">
                     <tr>
                       {tableColumns.prefs.orderedVisibleColumns.map((col) => {
                         const thClass = CENTERED_COLS.has(col.id)
-                          ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
+                          ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-slate-700'
                           : RIGHT_COLS.has(col.id)
-                            ? '!px-3 !py-2.5 text-right text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
-                            : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]';
+                            ? '!px-3 !py-2.5 text-right text-[11px] font-semibold tracking-[0.02em] text-slate-700'
+                            : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-slate-700';
                         if (col.id === 'actions') {
                           return (
                             <PanelTableTh key={col.id} colId={col.id} resizable={false} className={thClass}>
@@ -605,9 +615,11 @@ function AsistansDosyalarContent() {
                                   <PanelTableTd key={col.id} colId={col.id} className="table-td-center px-3 py-2.5">
                                     <InsuranceDosyalarActions
                                       rowId={f.id}
+                                      pinnedIds={rowActions.pinnedIds}
                                       onFileSummary={() => openDrawer(f.id, 'ozet')}
                                       onAddNote={() => openDrawer(f.id, 'notlar')}
                                       onDocuments={() => openDrawer(f.id, 'belgeler')}
+                                      onOperation={() => openDrawer(f.id, 'operasyon')}
                                       onHistory={() => openDrawer(f.id, 'notlar')}
                                       onCopyFileNo={() => void copyFileNo(f)}
                                     />

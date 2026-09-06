@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { Check, Copy, Download, Eye, FileText, FolderOpen, History, Mail, MoreVertical } from 'lucide-react';
-import { ActionIconButton } from '@/components/ui/ActionIconButton';
+import { Check, Copy, Download, Eye, FileText, FolderOpen, History, Mail } from 'lucide-react';
+import { PinnableRowActions } from './PinnableRowActions';
 
 export type InsuranceOnaylarActionsProps = {
   rowId: string;
+  pinnedIds: string[];
   canRespond: boolean;
   onPreviewReport: () => void;
   onApprove: () => void;
@@ -18,14 +17,9 @@ export type InsuranceOnaylarActionsProps = {
   onCopyFileNo: () => void;
 };
 
-/**
- * Bekleyen Onaylar
- * Kolon: Rapor Önizleme · Onayla · Dosya Notu
- * ⋮: Dosya Özeti · Evraklar · Raporu İndir · Geçmiş · Dosya No Kopyala
- * (Ana kolon işlemleri menüde tekrarlanmaz.)
- */
 export function InsuranceOnaylarActions({
   rowId,
+  pinnedIds,
   canRespond,
   onPreviewReport,
   onApprove,
@@ -36,175 +30,67 @@ export function InsuranceOnaylarActions({
   onHistory,
   onCopyFileNo,
 }: InsuranceOnaylarActionsProps) {
-  const [open, setOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const moreBtnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const updateMenuPos = () => {
-    const btn = moreBtnRef.current;
-    if (!btn) return;
-    const rect = btn.getBoundingClientRect();
-    const menuWidth = 220;
-    const left = Math.min(
-      Math.max(8, rect.right - menuWidth),
-      window.innerWidth - menuWidth - 8,
-    );
-    setMenuPos({ top: rect.bottom + 4, left });
-  };
-
-  useLayoutEffect(() => {
-    if (!open) {
-      setMenuPos(null);
-      return;
-    }
-    updateMenuPos();
-    const onScrollOrResize = () => updateMenuPos();
-    window.addEventListener('scroll', onScrollOrResize, true);
-    window.addEventListener('resize', onScrollOrResize);
-    return () => {
-      window.removeEventListener('scroll', onScrollOrResize, true);
-      window.removeEventListener('resize', onScrollOrResize);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (rootRef.current?.contains(target)) return;
-      if (menuRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    const timer = window.setTimeout(() => {
-      document.addEventListener('mousedown', onDoc);
-    }, 0);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      window.clearTimeout(timer);
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    const closeOthers = (e: Event) => {
-      const detail = (e as CustomEvent<string>).detail;
-      if (detail !== rowId) setOpen(false);
-    };
-    window.addEventListener('sigorta-onaylar-menu-open', closeOthers as EventListener);
-    return () => window.removeEventListener('sigorta-onaylar-menu-open', closeOthers as EventListener);
-  }, [rowId]);
-
-  const toggleMenu = () => {
-    setOpen((v) => {
-      const next = !v;
-      if (next) {
-        window.dispatchEvent(new CustomEvent('sigorta-onaylar-menu-open', { detail: rowId }));
-      }
-      return next;
-    });
-  };
-
-  const run = (fn: () => void) => {
-    setOpen(false);
-    window.setTimeout(fn, 0);
-  };
-
-  const menuItem = (label: string, fn: () => void, icon: ReactNode) => (
-    <button
-      type="button"
-      role="menuitem"
-      className="flex w-full items-center gap-2 px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
-      onMouseDown={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        run(fn);
-      }}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-
-  const menu =
-    open && menuPos && typeof document !== 'undefined'
-      ? createPortal(
-          <div
-            ref={menuRef}
-            className="fixed z-[220] min-w-[220px] rounded-lg border border-slate-200 bg-white py-1 text-xs shadow-lg"
-            style={{ top: menuPos.top, left: menuPos.left }}
-            role="menu"
-            data-testid="sigorta-onaylar-menu"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            {menuItem(
-              'Dosya Özeti',
-              onFileSummary,
-              <FolderOpen className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />,
-            )}
-            {menuItem(
-              'Evraklar',
-              onDocuments,
-              <FileText className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />,
-            )}
-            {menuItem(
-              'Raporu İndir',
-              onDownloadReport,
-              <Download className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />,
-            )}
-            {menuItem(
-              'Geçmiş',
-              onHistory,
-              <History className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />,
-            )}
-            <div className="my-1 border-t border-slate-100" />
-            {menuItem(
-              'Dosya No Kopyala',
-              onCopyFileNo,
-              <Copy className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />,
-            )}
-          </div>,
-          document.body,
-        )
-      : null;
-
   return (
-    <div
-      ref={rootRef}
-      className="relative flex items-center justify-center gap-1"
-      onClick={(e) => e.stopPropagation()}
-      data-testid="sigorta-onaylar-actions"
-    >
-      <ActionIconButton label="Rapor Önizleme" onClick={onPreviewReport}>
-        <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </ActionIconButton>
-      {canRespond ? (
-        <ActionIconButton label="Onayla" onClick={onApprove} testId="sigorta-onaylar-approve">
-          <Check className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        </ActionIconButton>
-      ) : null}
-      <ActionIconButton
-        label="Dosya Notu Oluştur Ve Gönder"
-        onClick={onAddNote}
-        testId="sigorta-onaylar-note"
-      >
-        <Mail className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </ActionIconButton>
-      <ActionIconButton
-        label="Diğer"
-        onClick={toggleMenu}
-        testId="sigorta-onaylar-more"
-        buttonRef={moreBtnRef}
-        showTooltip={false}
-      >
-        <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </ActionIconButton>
-      {menu}
-    </div>
+    <PinnableRowActions
+      rowId={rowId}
+      menuEvent="sigorta-onaylar-menu-open"
+      testId="sigorta-onaylar-actions"
+      menuTestId="sigorta-onaylar-menu"
+      moreTestId="sigorta-onaylar-more"
+      pinnedIds={pinnedIds}
+      items={[
+        {
+          id: 'preview',
+          label: 'Rapor Önizleme',
+          onClick: onPreviewReport,
+          icon: <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'approve',
+          label: 'Onayla',
+          onClick: onApprove,
+          hidden: !canRespond,
+          testId: 'sigorta-onaylar-approve',
+          icon: <Check className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'note',
+          label: 'Dosya Notu Oluştur Ve Gönder',
+          onClick: onAddNote,
+          testId: 'sigorta-onaylar-note',
+          icon: <Mail className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'documents',
+          label: 'Evraklar',
+          onClick: onDocuments,
+          icon: <FileText className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'summary',
+          label: 'Dosya Özeti',
+          onClick: onFileSummary,
+          icon: <FolderOpen className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'download',
+          label: 'Raporu İndir',
+          onClick: onDownloadReport,
+          icon: <Download className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'history',
+          label: 'Geçmiş',
+          onClick: onHistory,
+          icon: <History className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
+          id: 'copyFileNo',
+          label: 'Dosya No Kopyala',
+          onClick: onCopyFileNo,
+          icon: <Copy className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+      ]}
+    />
   );
 }

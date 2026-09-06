@@ -37,6 +37,9 @@ import {
 } from '@/utils/operation-customer-display';
 import { InsuredNameInlineEdit } from '@/components/claim-files/InsuredNameInlineEdit';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { OPS_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
 import { resolveOpsEmailDefaultTo } from '@/utils/ops-email-default-to';
 import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
@@ -61,7 +64,6 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
-import { FieldOperationsMap } from '@/components/operasyon/FieldOperationsMap';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import {
   ACIL_PRODUCT_STAGE_FILTERS,
@@ -353,7 +355,7 @@ export default function OperasyonPage() {
 function OperasyonPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { showFinanceExtraAccessAcil, isOfficeStaff, isManagement, isAdmin } = usePanelAccess();
+  const { showFinanceExtraAccessAcil } = usePanelAccess();
   const [colsStorageKey, setColsStorageKey] = useState(() => {
     const filter = searchParams.get('filter');
     if (filter === 'acil' || filter === 'hasar' || filter === 'all') {
@@ -391,6 +393,7 @@ function OperasyonPageContent() {
   const [opsPreset, setOpsPreset] = useState<OperationPreset | ''>('');
   const tableColumnDefs = filterType === 'acil' ? ACIL_TABLE_COLUMNS : TABLE_COLUMNS;
   const tableColumns = usePanelTableColumns(colsStorageKey, tableColumnDefs);
+  const rowActions = usePortalRowActionPrefs('row-actions:operasyon-v1', OPS_ROW_ACTIONS);
 
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'hasar' | 'acil'; id: string; fileNo: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -984,14 +987,6 @@ function OperasyonPageContent() {
         </div>
       </div>
 
-      <FieldOperationsMap
-        compact
-        ownerOnly={
-          showFinanceExtraAccessAcil ? false : !isAdmin && (isOfficeStaff || isManagement)
-        }
-        defaultFilter={isAcilListMode ? 'acil' : 'all'}
-      />
-
       {/* Dosya Özeti KPI — Acil listesinde yalnız acil sayıları */}
       {isAcilListMode ? (
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" data-testid="ops-kpi-band-acil">
@@ -1202,8 +1197,14 @@ function OperasyonPageContent() {
               </button>
             ) : null}
             <div className="w-full flex-shrink-0 sm:ml-auto sm:w-auto">
-              <div className="hidden lg:block">
+              <div className="hidden lg:flex lg:items-center lg:gap-2">
                 <PanelTableColumnPicker tableColumns={tableColumns} />
+                <PortalRowActionsPicker
+                  catalog={OPS_ROW_ACTIONS}
+                  pinnedIds={rowActions.pinnedIds}
+                  onToggle={rowActions.toggle}
+                  onReset={rowActions.reset}
+                />
               </div>
             </div>
           </div>
@@ -1266,8 +1267,14 @@ function OperasyonPageContent() {
                 <option value="fileNo:asc">Dosya No A-Z</option>
                 <option value="priority:desc">Öncelik</option>
               </select>
-              <div className="hidden lg:block">
+              <div className="hidden lg:flex lg:items-center lg:gap-2">
                 <PanelTableColumnPicker tableColumns={tableColumns} />
+                <PortalRowActionsPicker
+                  catalog={OPS_ROW_ACTIONS}
+                  pinnedIds={rowActions.pinnedIds}
+                  onToggle={rowActions.toggle}
+                  onReset={rowActions.reset}
+                />
               </div>
             </div>
           </div>
@@ -1433,7 +1440,7 @@ function OperasyonPageContent() {
           <PanelTableScroll className="hidden lg:block">
             <table className={`w-full ${isAcilListMode ? 'text-sm' : 'text-xs'}`} style={opsTableStyle}>
               <PanelTableColGroup />
-              <thead className="table-head-row">
+              <thead className="table-head-row portal-table-head">
                 <tr>
                   {visibleOpsColumns.map((col) =>
                     col.id === 'actions' || col.id === 'sira' ? (
@@ -1641,6 +1648,7 @@ function OperasyonPageContent() {
                                 kind={row.kind}
                                 id={row.id}
                                 fileNo={row.fileNo}
+                                pinnedIds={rowActions.pinnedIds}
                                 reportId={row.reportId}
                                 defaultEmailTo={row.defaultEmailTo}
                                 onAddNote={

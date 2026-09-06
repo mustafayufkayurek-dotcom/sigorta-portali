@@ -56,6 +56,9 @@ import { usePanelRoleCode } from '@/hooks/usePanelRole';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { OpsKpiSegmentBand, OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import { CustomerRowActions } from '@/components/customers/CustomerRowActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { MUSTERI_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
 import { Building2, UserRound, Users } from 'lucide-react';
 import { listedCustomerShortLabel } from '@/utils/operation-customer-display';
@@ -751,6 +754,7 @@ export default function MusterilerPage() {
   const router = useRouter();
   const roleCode = usePanelRoleCode();
   const tableColumns = usePanelTableColumns('table-cols:musteriler', TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:musteriler-v1', MUSTERI_ROW_ACTIONS);
   const searchParams = useSearchParams();
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2135,8 +2139,14 @@ export default function MusterilerPage() {
               )}
             </div>
           )}
-          <div className="flex-shrink-0 sm:ml-auto">
+          <div className="flex-shrink-0 sm:ml-auto flex items-center gap-2">
             <PanelTableColumnPicker tableColumns={tableColumns} />
+            <PortalRowActionsPicker
+              catalog={MUSTERI_ROW_ACTIONS}
+              pinnedIds={rowActions.pinnedIds}
+              onToggle={rowActions.toggle}
+              onReset={rowActions.reset}
+            />
           </div>
         </div>
         {hasActiveFilters && (
@@ -2433,6 +2443,7 @@ export default function MusterilerPage() {
                   <div className="mt-3 flex items-center justify-end border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
                     <CustomerRowActions
                       customerId={c.id}
+                      pinnedIds={rowActions.pinnedIds}
                       canArchive={c.status !== 'passive'}
                       onEdit={() => void openCustomerForEditById(c.id)}
                       onArchive={() => handleArchiveCustomer(c.id, name || '—')}
@@ -2446,7 +2457,7 @@ export default function MusterilerPage() {
           <PanelTableScroll className="hidden lg:block">
             <table className="text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [36] })}>
               <PanelTableColGroup leadingWidths={[36]} />
-              <thead className="sticky top-0 z-10">
+              <thead className="sticky top-0 z-10 table-head-row portal-table-head">
                 <tr className="table-head-row">
                   <th className="px-3 py-2.5 w-9">
                     <input
@@ -2578,6 +2589,7 @@ export default function MusterilerPage() {
                       <PanelTableTd key="actions" colId="actions" wrap={false} className="table-td-center">
                         <CustomerRowActions
                           customerId={c.id}
+                          pinnedIds={rowActions.pinnedIds}
                           canArchive={c.status !== 'passive'}
                           onEdit={() => void openCustomerForEditById(c.id)}
                           onArchive={() => handleArchiveCustomer(c.id, name || '—')}

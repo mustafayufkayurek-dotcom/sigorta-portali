@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import PortalPageHeader from '@/components/portal/PortalPageHeader';
 import PortalMobileFileList from '@/components/portal/PortalMobileFileList';
 import { InsuranceOnaylarActions } from '@/components/portal/InsuranceOnaylarActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { ONAYLAR_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import {
   ExpertFileDetailDrawer,
   type ExpertDrawerFile,
@@ -56,7 +59,7 @@ const ONAYLAR_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'status', label: 'Durum', defaultWidth: 120, minWidth: 96 },
   { id: 'sentAt', label: 'Gönderildi', defaultWidth: 140, minWidth: 120 },
   { id: 'expiresAt', label: 'Son Tarih', defaultWidth: 140, minWidth: 120 },
-  { id: 'actions', label: 'İşlemler', defaultWidth: 156, minWidth: 144, pin: 'end', resizable: false },
+  { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
 ];
 
 interface Approval {
@@ -162,6 +165,7 @@ export default function SigortaOnaylarPage() {
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
 
   const tableColumns = usePanelTableColumns('table-cols:sigorta-portal-onaylar-v1', ONAYLAR_TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:sigorta-portal-onaylar-v1', ONAYLAR_ROW_ACTIONS);
 
   const loadApprovals = () => {
     if (!hasPortalSessionToken()) {
@@ -450,6 +454,12 @@ export default function SigortaOnaylarPage() {
                       title="Dosya No, Rapor No veya Konuya Göre Ara"
                     />
                     <PanelTableColumnPicker tableColumns={tableColumns} />
+                    <PortalRowActionsPicker
+                      catalog={ONAYLAR_ROW_ACTIONS}
+                      pinnedIds={rowActions.pinnedIds}
+                      onToggle={rowActions.toggle}
+                      onReset={rowActions.reset}
+                    />
                   </div>
                 </div>
               }
@@ -461,14 +471,14 @@ export default function SigortaOnaylarPage() {
                   data-testid="sigorta-onaylar-table"
                 >
                   <PanelTableColGroup />
-                  <thead className="bg-[#F5F6F8]">
+                  <thead className="table-head-row portal-table-head">
                     <tr>
                       {tableColumns.prefs.orderedVisibleColumns.map((col) => {
                         const thClass = CENTERED_TABLE_COLS.has(col.id)
-                          ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
+                          ? 'table-th-center !px-3 !py-2.5 text-[11px] font-semibold tracking-[0.02em] text-slate-700'
                           : RIGHT_TABLE_COLS.has(col.id)
-                            ? '!px-3 !py-2.5 text-right text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]'
-                            : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-[#9AA3AF]';
+                            ? '!px-3 !py-2.5 text-right text-[11px] font-semibold tracking-[0.02em] text-slate-700'
+                            : '!px-3 !py-2.5 text-left text-[11px] font-semibold tracking-[0.02em] text-slate-700';
                         if (col.id === 'actions') {
                           return (
                             <PanelTableTh
@@ -613,6 +623,7 @@ export default function SigortaOnaylarPage() {
                                       <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                                       <InsuranceOnaylarActions
                                         rowId={a.id}
+                                        pinnedIds={rowActions.pinnedIds}
                                         canRespond={a.status === 'pending'}
                                         onPreviewReport={() => openPreview(a)}
                                         onApprove={() => openRespond(a, 'approved')}

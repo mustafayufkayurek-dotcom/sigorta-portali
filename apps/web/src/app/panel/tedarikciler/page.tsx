@@ -90,6 +90,9 @@ import {
   type ClientSortState,
 } from '@/utils/panel-table-sort';
 import { VendorRowActions } from '@/components/vendors/VendorRowActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { TEDARIKCI_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { OpsKpiSegmentBand, OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import { BadgeCheck, Building2, Warehouse } from 'lucide-react';
 import {
@@ -800,6 +803,7 @@ const TABLE_COLUMNS: TableColumnDef[] = [
 
 export default function VendorsPage() {
   const tableColumns = usePanelTableColumns('table-cols:tedarikciler', TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:tedarikciler-v1', TEDARIKCI_ROW_ACTIONS);
   const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -2179,8 +2183,14 @@ export default function VendorsPage() {
             ))}
           </select>
 
-          <div className="w-full flex-shrink-0 sm:ml-auto sm:w-auto">
+          <div className="w-full flex-shrink-0 sm:ml-auto sm:w-auto flex items-center gap-2">
             <PanelTableColumnPicker tableColumns={tableColumns} />
+            <PortalRowActionsPicker
+              catalog={TEDARIKCI_ROW_ACTIONS}
+              pinnedIds={rowActions.pinnedIds}
+              onToggle={rowActions.toggle}
+              onReset={rowActions.reset}
+            />
           </div>
         </div>
 
@@ -2224,7 +2234,7 @@ export default function VendorsPage() {
         <div className="table-container">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="table-head-row">
+              <thead className="table-head-row portal-table-head">
                 <tr>
                   <th className="table-th">İsim / Firma</th>
                   <th className="table-th">Branş</th>
@@ -2339,6 +2349,7 @@ export default function VendorsPage() {
                 <div className="mt-3 flex items-center justify-end border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
                   <VendorRowActions
                     vendorId={v.id}
+                    pinnedIds={rowActions.pinnedIds}
                     onEdit={() => openEdit(v)}
                     onDelete={() => requestDelete(v.id, v.name)}
                   />
@@ -2377,7 +2388,7 @@ export default function VendorsPage() {
           <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <PanelTableColGroup />
-              <thead className="table-head-row">
+              <thead className="table-head-row portal-table-head">
                 <tr>
                   <PanelOrderedHeaderRow
                     tableColumns={tableColumns}
@@ -2500,6 +2511,7 @@ export default function VendorsPage() {
                   <PanelTableTd key="actions" colId="actions" wrap={false} align="center" className="table-td">
                     <VendorRowActions
                       vendorId={v.id}
+                      pinnedIds={rowActions.pinnedIds}
                       onEdit={() => openEdit(v)}
                       onDelete={() => requestDelete(v.id, v.name)}
                     />

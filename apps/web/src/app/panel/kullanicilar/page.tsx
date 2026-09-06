@@ -12,7 +12,7 @@ import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
-import { Archive, Check, Copy, KeyRound, Pencil, Plus, Search, Trash2, UserCheck, X } from 'lucide-react';
+import { Check, Copy, Plus, Search, UserCheck, X } from 'lucide-react';
 import { PhoneInput } from '@/components/PhoneInput';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
@@ -39,6 +39,10 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import { AdminUserRowActions } from '@/components/users/AdminUserRowActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { ADMIN_USER_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { formatPhoneDisplay } from '@/data/country-codes';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import {
@@ -647,42 +651,9 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'lastLogin', label: 'Son Giriş', defaultWidth: 120, minWidth: 96 },
 ];
 
-function RowIconButton({
-  title,
-  onClick,
-  disabled,
-  children,
-  tone = 'neutral',
-}: {
-  title: string;
-  onClick?: () => void;
-  disabled?: boolean;
-  children: ReactNode;
-  tone?: 'neutral' | 'amber' | 'emerald' | 'red';
-}) {
-  const toneCls = {
-    neutral: 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
-    amber: 'text-slate-500 hover:bg-amber-50 hover:text-amber-700',
-    emerald: 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700',
-    red: 'text-red-600 hover:bg-red-50 hover:text-red-700',
-  }[tone];
-
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-label={title}
-      disabled={disabled}
-      onClick={onClick}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${toneCls}`}
-    >
-      {children}
-    </button>
-  );
-}
-
 export default function KullanicilarPage() {
   const tableColumns = usePanelTableColumns('table-cols:kullanicilar', TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:kullanicilar-v1', ADMIN_USER_ROW_ACTIONS);
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -2093,8 +2064,14 @@ export default function KullanicilarPage() {
               </option>
             ))}
           </select>
-          <div className="flex justify-start sm:justify-end">
+          <div className="flex justify-start gap-2 sm:justify-end">
             <PanelTableColumnPicker tableColumns={tableColumns} />
+            <PortalRowActionsPicker
+              catalog={ADMIN_USER_ROW_ACTIONS}
+              pinnedIds={rowActions.pinnedIds}
+              onToggle={rowActions.toggle}
+              onReset={rowActions.reset}
+            />
           </div>
         </div>
         <p className="mt-3 text-xs leading-5 text-slate-500">
@@ -2187,7 +2164,7 @@ export default function KullanicilarPage() {
                 trailingWidths={[TABLE_ACTIONS_COL_WIDTH]}
               />
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="table-head-row portal-table-head border-b border-slate-200">
                   <th className="box-border px-4 py-3 text-center" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
                     <button
                       type="button"
@@ -2339,62 +2316,23 @@ export default function KullanicilarPage() {
                       className="box-border px-4 py-3 align-middle"
                       style={{ width: TABLE_ACTIONS_COL_WIDTH, minWidth: TABLE_ACTIONS_COL_WIDTH }}
                     >
-                      <div className="flex items-center justify-end gap-0.5">
-                        <RowIconButton
-                          title={isProtectedSystemAdmin(u) ? 'Sistem yöneticisi düzenlenemez' : 'Düzenle'}
-                          disabled={isProtectedSystemAdmin(u)}
-                          onClick={isProtectedSystemAdmin(u) ? undefined : () => openEdit(u)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </RowIconButton>
-
-                        {!isProtectedSystemAdmin(u) && (
-                          <RowIconButton
-                            title="Geçici Şifre Üret"
-                            tone="amber"
-                            onClick={() => {
-                              setEditingUser(u);
-                              setResetPwdError('');
-                              setResetCredential(null);
-                              setModal('resetPwd');
-                            }}
-                          >
-                            <KeyRound className="h-4 w-4" />
-                          </RowIconButton>
-                        )}
-
-                        {(rowStatus === 'inactive' || rowStatus === 'archived') &&
-                          !isProtectedSystemAdmin(u) &&
-                          u.id !== currentUserId && (
-                            <RowIconButton
-                              title="Yeniden Aktifleştir"
-                              tone="emerald"
-                              onClick={() => handleToggleStatus(u)}
-                            >
-                              <UserCheck className="h-4 w-4" />
-                            </RowIconButton>
-                          )}
-
-                        {rowStatus === 'archived' && !isProtectedSystemAdmin(u) && u.id !== currentUserId && (
-                          <RowIconButton
-                            title="Kalıcı Sil"
-                            tone="red"
-                            onClick={() => handlePermanentDelete(u)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </RowIconButton>
-                        )}
-
-                        {rowStatus === 'active' && !isProtectedSystemAdmin(u) && u.id !== currentUserId && (
-                          <RowIconButton
-                            title="Arşivle"
-                            tone="red"
-                            onClick={() => handleToggleStatus(u)}
-                          >
-                            <Archive className="h-4 w-4" />
-                          </RowIconButton>
-                        )}
-                      </div>
+                      <AdminUserRowActions
+                        userId={u.id}
+                        pinnedIds={rowActions.pinnedIds}
+                        protectedAdmin={isProtectedSystemAdmin(u)}
+                        isSelf={u.id === currentUserId}
+                        status={rowStatus}
+                        onEdit={() => openEdit(u)}
+                        onResetPwd={() => {
+                          setEditingUser(u);
+                          setResetPwdError('');
+                          setResetCredential(null);
+                          setModal('resetPwd');
+                        }}
+                        onActivate={() => handleToggleStatus(u)}
+                        onArchive={() => handleToggleStatus(u)}
+                        onDelete={() => handlePermanentDelete(u)}
+                      />
                     </td>
                   </tr>
                   );

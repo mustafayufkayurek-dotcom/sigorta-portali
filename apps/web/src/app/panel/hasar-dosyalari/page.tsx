@@ -31,6 +31,9 @@ import {
 import { opsListRowNumber } from '@/utils/ops-list-sira';
 import { resolveClaimSupplierDisplayName } from '@/utils/claim-supplier-display';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { OPS_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
 import { resolveOpsEmailDefaultTo } from '@/utils/ops-email-default-to';
 import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
@@ -73,9 +76,7 @@ import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsur
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
-import { FieldOperationsMap } from '@/components/operasyon/FieldOperationsMap';
 import { acilVendorPayLabel, acilVendorPayTone } from '@/utils/acil-vendor-pay';
-import { usePanelAccess } from '@/hooks/usePanelAccess';
 
 
 const fmtAmount = (n: number | undefined | null) => formatTryAmount(n, { fractionDigits: 0 });
@@ -270,10 +271,9 @@ function ClaimFilesPageContent() {
   }, []);
   /** v6: iş kuyruğu varsayılan sütun — para Sütunlar’da */
   const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v9', TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:hasar-dosyalari-v1', OPS_ROW_ACTIONS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
-  const { isAdmin, isOfficeStaff, isManagement } = usePanelAccess();
-  const mapOwnerOnly = !isAdmin && (isOfficeStaff || isManagement);
 
   // --- TanStack Query: Insurance Companies ---
   const { data: insuranceCompaniesResponse } = useApiQuery<unknown>(
@@ -569,14 +569,6 @@ function ClaimFilesPageContent() {
       </div>
 
       {!isFieldStaff && (
-        <FieldOperationsMap
-          compact
-          ownerOnly={mapOwnerOnly}
-          defaultFilter="hasar"
-        />
-      )}
-
-      {!isFieldStaff && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" data-testid="hasar-kpi-band">
           <OpsStripKpi
             dense
@@ -700,6 +692,12 @@ function ClaimFilesPageContent() {
             <div className="w-full flex-shrink-0 sm:ml-auto sm:w-auto">
               <div className="hidden lg:block">
                 <PanelTableColumnPicker tableColumns={tableColumns} />
+                <PortalRowActionsPicker
+                  catalog={OPS_ROW_ACTIONS}
+                  pinnedIds={rowActions.pinnedIds}
+                  onToggle={rowActions.toggle}
+                  onReset={rowActions.reset}
+                />
               </div>
             </div>
           )}
@@ -727,7 +725,7 @@ function ClaimFilesPageContent() {
           <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <PanelTableColGroup />
-              <thead className="table-head-row">
+              <thead className="table-head-row portal-table-head">
                 <tr>
                   <PanelOrderedHeaderRow tableColumns={tableColumns} />
                 </tr>
@@ -976,6 +974,7 @@ function ClaimFilesPageContent() {
                       kind="hasar"
                       id={claim.id}
                       fileNo={claimListFileNo(claim)}
+                      pinnedIds={rowActions.pinnedIds}
                       reportId={rapor?.id ?? null}
                       defaultEmailTo={resolveOpsEmailDefaultTo({
                         customerEmail: claim.customer?.email,
@@ -1011,7 +1010,7 @@ function ClaimFilesPageContent() {
           <PanelTableScroll className={`hidden ${isFieldStaff ? '' : 'lg:block'}`}>
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <PanelTableColGroup />
-              <thead className="table-head-row">
+              <thead className="table-head-row portal-table-head">
                 <tr>
                   <PanelOrderedHeaderRow
                     tableColumns={tableColumns}
@@ -1174,6 +1173,7 @@ function ClaimFilesPageContent() {
                             kind="hasar"
                             id={claim.id}
                             fileNo={claimListFileNo(claim)}
+                            pinnedIds={rowActions.pinnedIds}
                             reportId={rapor?.id ?? null}
                             defaultEmailTo={resolveOpsEmailDefaultTo({
                         customerEmail: claim.customer?.email,

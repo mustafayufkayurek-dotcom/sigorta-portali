@@ -4,6 +4,9 @@ import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { FinanceRowActions, printFinanceSlip, vendorEkstreHref } from '@/components/finance/FinanceRowActions';
+import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
+import { FINANS_TAHSILAT_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
+import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { getAccessToken } from '@/utils/auth-session';
@@ -109,6 +112,7 @@ export default function TahsilatlarPage() {
   });
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const tableColumns = usePanelTableColumns('table-cols:finans-tahsilatlar', PAYMENT_TABLE_COLUMNS);
+  const rowActions = usePortalRowActionPrefs('row-actions:finans-tahsilatlar-v1', FINANS_TAHSILAT_ROW_ACTIONS);
 
   const sortedPayments = useMemo(
     () =>
@@ -314,13 +318,19 @@ export default function TahsilatlarPage() {
       ) : (
         <TableColumnsProvider value={tableColumns}>
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end gap-2">
               <PanelTableColumnPicker tableColumns={tableColumns} />
+              <PortalRowActionsPicker
+                catalog={FINANS_TAHSILAT_ROW_ACTIONS}
+                pinnedIds={rowActions.pinnedIds}
+                onToggle={rowActions.toggle}
+                onReset={rowActions.reset}
+              />
             </div>
             <PanelTableScroll>
               <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { trailingWidths: [140] })}>
                 <PanelTableColGroup trailingWidths={[140]} />
-                <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500">
+                <thead className="table-head-row portal-table-head text-xs">
                   <tr>
                     <PanelOrderedHeaderRow
                       tableColumns={tableColumns}
@@ -429,6 +439,8 @@ export default function TahsilatlarPage() {
                         {tableColumns.prefs.orderedVisibleColumns.map((col) => cells[col.id] ?? null)}
                         <td className="px-4 py-3">
                           <FinanceRowActions
+                            rowId={p.id}
+                            pinnedIds={rowActions.pinnedIds}
                             onPrint={() => printFinanceSlip({
                               title: p.paymentType === 'incoming' ? 'Tahsilat' : 'Ödeme',
                               fileNo: p.emergencyCase?.fileNo || p.emergencyCase?.caseNo || p.claimFile?.fileNo,
