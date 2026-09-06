@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-06",
-  "label": "v571-sigorta-canli-izle-harita",
-  "description": "Full: Sigorta/asistans Canlı İzle şehir listesi yok; yalnız harita. Rollback web+backend v570. İK yok.",
+  "label": "v572-liste-islem-harita",
+  "description": "Web: liste işlem seçici; Dosya Özeti/Hasar/Acil listesinde harita yok. Backend v571. Rollback web v571. İK yok.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v571-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v571-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v572-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v570-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v570-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v571-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v571-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

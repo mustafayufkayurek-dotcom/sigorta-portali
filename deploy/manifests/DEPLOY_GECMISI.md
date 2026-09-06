@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (6 Eylül 2026 — web v571 / backend v571)
+## Canlı durum (6 Eylül 2026 — web v572 / backend v571)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v571-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v572-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v571-amd64` | canlı |
-| **Rollback** | Web **v570** / Backend **v570** | manifest `rollbackImages` |
-| **Etiket** | `v571-sigorta-canli-izle-harita` | |
+| **Rollback** | Web **v571** / Backend **v571** | manifest `rollbackImages` |
+| **Etiket** | `v572-liste-islem-harita` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v572 — Web (6 Eylül 2026) — Liste işlem; listeden harita kalktı
+
+- Kolonda görünen işlemler seçilir. Portal, dosya sorumlusu, finans, admin listeleri
+- Dosya Özeti / Hasar / Acil listesinde harita yok. Harita menüsü durur
+- Backend **v571** durur. Rollback web **v571**. İK yok
 
 ### v571 — Full (6 Eylül 2026) — Sigorta Canlı İzle yalnız harita
 

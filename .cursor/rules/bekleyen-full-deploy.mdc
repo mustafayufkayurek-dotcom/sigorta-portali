@@ -1,23 +1,22 @@
 ---
-description: Web+backend v571 alındı — sırada yalnız İK personel+zimmet
+description: Web v572 alındı — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Web + backend v571 (06.09.2026) — alındı
+# Web v572 (06.09.2026) — alındı
 
-Canlı: web **v571** · backend **v571**. Rollback: web **v570** / backend **v570**.
+Canlı: web **v572** · backend **v571**. Rollback: web **v571** / backend **v571**.
 
-## Alınan paket (v571)
+## Alınan paket (v572)
 
-**Sigorta/asistans Canlı İzle: şehir listesi yok, yalnız harita.** İK yok.
+**Liste işlem seçici. Dosya listelerinden harita kalktı.** İK yok.
 
-1. Şehir sekmesi kalkar. Sayfa doğrudan kutu harita.
-2. Bölge seç durur.
-3. v570 sağlık uyarısı pinleri kesmez; açık yoksa kapanan; nabız durur.
+1. Sütunlar yanında İşlemler: işaretli ikon kolonda, kalan üç noktada.
+2. Dosya Özeti, Hasar, Acil listesinde harita yok. Harita menüsü durur.
 
-## v570 durur (bozulmaz)
+## v571 durur (bozulmaz)
 
-Kopuklukta Bozulmuş. Sigorta açık yoksa kapananı görür. Portal kutu OSM.
+Sigorta/asistans Canlı İzle yalnız harita. Şehir listesi yok.
 
 ## Canlıda yok
 
