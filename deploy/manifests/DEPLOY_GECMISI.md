@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (6 Eylül 2026 — web v570 / backend v570)
+## Canlı durum (6 Eylül 2026 — web v571 / backend v571)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v570-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v570-amd64` | canlı |
-| **Rollback** | Web **v569** / Backend **v569** | manifest `rollbackImages` |
-| **Etiket** | `v570-harita-sigorta-kutu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v571-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v571-amd64` | canlı |
+| **Rollback** | Web **v570** / Backend **v570** | manifest `rollbackImages` |
+| **Etiket** | `v571-sigorta-canli-izle-harita` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v571 — Full (6 Eylül 2026) — Sigorta Canlı İzle yalnız harita
+
+- Şehir listesi yok. Sigorta/asistans Canlı İzle doğrudan harita
+- Bölge seç durur. v570 sağlık / kapanan yedek / kutu harita durur
+- Rollback web+backend **v570**. İK yok
 
 ### v570 — Full (6 Eylül 2026) — Harita sağlık; sigorta kapanan; portal kutu
 
