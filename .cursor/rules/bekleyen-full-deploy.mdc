@@ -1,23 +1,23 @@
 ---
-description: Web+backend v569 alındı — sırada yalnız İK personel+zimmet
+description: Web+backend v570 alındı — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Web + backend v569 (06.09.2026) — alındı
+# Web + backend v570 (06.09.2026) — alındı
 
-Canlı: web **v569** · backend **v569**. Rollback: web **v568** / backend **v568**.
+Canlı: web **v570** · backend **v570**. Rollback: web **v569** / backend **v569**.
 
-## Alınan paket (v569)
+## Alınan paket (v570)
 
-**Harita: il adı yeter. Kapanan dosya durur. Bölge seç.** İK yok.
+**Harita: sağlık uyarısı pinleri kesmez. Sigorta açık yoksa kapananı görür. Portal kutu.** İK yok.
 
-1. GPS yoksa pin il merkezinde. Tercihle kapanan Hasar/Acil görünür.
-2. Bölge seç; kart sayıları o ile göre. Müşteri ve dosya sorumlusu aynı harita.
-3. v568 iş adresi / Hasar-Acil ayrı durur.
+1. Kopuklukta Bozulmuş. Açık pin nabız. Dosya sorumlusu yalnız kendi dosyası.
+2. Sigorta/asistans Canlı İzle ve Operasyon Ağı aynı kutu harita.
+3. v569 il adı / kapanan dosya / bölge seç durur.
 
-## v568 durur (bozulmaz)
+## v569 durur (bozulmaz)
 
-Açık dosya pin’i iş adresinde. Tedarikçi telefonu yok. Yeşil kutu sahada.
+GPS yoksa pin il merkezinde. Tercihle kapanan Hasar/Acil. Bölge seç; kart o ile göre.
 
 ## Canlıda yok
 

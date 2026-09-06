@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (6 Eylül 2026 — web v569 / backend v569)
+## Canlı durum (6 Eylül 2026 — web v570 / backend v570)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v569-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v569-amd64` | canlı |
-| **Rollback** | Web **v568** / Backend **v568** | manifest `rollbackImages` |
-| **Etiket** | `v569-harita-bolge-il` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v570-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v570-amd64` | canlı |
+| **Rollback** | Web **v569** / Backend **v569** | manifest `rollbackImages` |
+| **Etiket** | `v570-harita-sigorta-kutu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v570 — Full (6 Eylül 2026) — Harita sağlık; sigorta kapanan; portal kutu
+
+- Sağlık uyarısı pinleri kesmez. Kopuklukta Bozulmuş görünür
+- Sigortada açık dosya yoksa kapanan görünür. Dosya sorumlusu yalnız kendi işi
+- Açık pin nabız. Sigorta/asistans Canlı İzle ve Operasyon Ağı aynı kutu harita
+- Rollback web+backend **v569**. İK yok
 
 ### v569 — Full (6 Eylül 2026) — Harita il, kapanan dosya, bölge
 
