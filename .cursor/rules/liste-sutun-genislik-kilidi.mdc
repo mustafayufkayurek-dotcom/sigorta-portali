@@ -1,0 +1,31 @@
+---
+description: Panel liste sütun genişliği kilitli kalır
+alwaysApply: true
+---
+
+# Liste Sütun Genişliği Kilidi
+
+**Kaynak (Mustafa · 06.09.2026):** Sütunlar düzensiz genişleyip daralıyordu.
+
+**Temel cümle:** Liste tablosu **ekrana göre şişmez.** Sütun kendi ölçüsünde durur.
+
+## Zorunlu
+
+1. `panelTableLayoutStyle` genişlik yüzde değil, sütun toplamı piksel.
+2. `PanelTableColGroup` her sütuna genişlik yazar. `flex` boş bırakmaz.
+3. Taşınca yana kayar; diğer sütunlar ezilmez.
+
+## Yasak (açık onay yoksa)
+
+- Tabloyu `width: 100%` ile ekrana yaymak
+- Konu sütununu colgroup’da genişliksiz bırakmak
+
+## Durdurma
+
+Sütunlar yine oynarsa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-liste-gorunum.sh
+```

@@ -20,7 +20,7 @@ export interface TableColumnDef {
   defaultWidth?: number;
   minWidth?: number;
   resizable?: boolean;
-  /** Kalan tablo genişliğini doldurur (colgroup width atanmaz) */
+  /** Eski doldurma işareti; genişlik yine defaultWidth ile kilitli kalır */
   flex?: boolean;
   /** Sağda sabit kalır (ör. İşlemler) — sürüklenmez, sıranın sonuna kilitlenir */
   pin?: 'end';
@@ -763,10 +763,7 @@ export function PanelTableColGroup({ leadingWidths = [], trailingWidths = [] }: 
         <col key={`leading-${index}`} style={{ width }} />
       ))}
       {visible.map((col) => (
-        <col
-          key={col.id}
-          style={col.flex ? undefined : { width: ctx.widths.getWidth(col.id) }}
-        />
+        <col key={col.id} style={{ width: ctx.widths.getWidth(col.id) }} />
       ))}
       {trailingWidths.map((width, index) => (
         <col key={`trailing-${index}`} style={{ width }} />
@@ -828,12 +825,12 @@ export function SortablePanelTableTh({
       >
         {active ? (
           sortDir === 'desc' ? (
-            <ArrowDown className="h-4 w-4 stroke-[2.5]" />
+            <ArrowDown className="h-3.5 w-3.5 stroke-[2.5]" />
           ) : (
-            <ArrowUp className="h-4 w-4 stroke-[2.5]" />
+            <ArrowUp className="h-3.5 w-3.5 stroke-[2.5]" />
           )
         ) : (
-          <ChevronsUpDown className="h-4 w-4 stroke-[2.5]" />
+          <ChevronsUpDown className="h-3.5 w-3.5 stroke-[2.5]" />
         )}
       </span>
     </span>
@@ -857,7 +854,12 @@ export function panelTableLayoutStyle(
       0,
     ) + leading + trailing;
   const totalPx = Math.max(total, 720);
-  return { tableLayout: 'fixed' as const, width: '100%', minWidth: `${totalPx}px` };
+  /** Tam piksel — %100 olursa sütunlar ekrana göre şişer / daralır. */
+  return {
+    tableLayout: 'fixed' as const,
+    width: `${totalPx}px`,
+    minWidth: `${totalPx}px`,
+  };
 }
 
 interface PanelTableSummaryFootProps {

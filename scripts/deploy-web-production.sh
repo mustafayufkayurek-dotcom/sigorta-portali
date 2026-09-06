@@ -27,6 +27,7 @@ if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   bash "$SCRIPT_DIR/smoke-hasar-hakedis.sh"
   bash "$SCRIPT_DIR/smoke-hasar-tahsilat-gelir.sh"
   bash "$SCRIPT_DIR/smoke-acil-supplier-assignment.sh"
+  bash "$SCRIPT_DIR/smoke-liste-gorunum.sh"
 fi
 
 WEB_VERSION="$(printf '%s' "$DEPLOY_TAG" | grep -oE 'v[0-9]+' | head -1 || true)"
@@ -52,6 +53,8 @@ echo "Image: $WEB_IMAGE"
 echo "Compose project: $COMPOSE_PROJECT_NAME (ZORUNLU — 502 önleme)"
 
 if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
+  echo "=== Sunucu disk (kod kopyalamadan önce) ==="
+  run_remote "FREE=\$(df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'); echo \"Disk boş: \${FREE} GB (minimum 5 GB)\"; [ \"\${FREE}\" -ge 5 ] || { echo 'HATA: Sunucuda yeterli disk yok — kod kopyalanmaz. scripts/server-disk-maintenance.sh'; exit 1; }"
   echo "=== rsync apps/web ==="
   rsync -avz --delete \
     --exclude node_modules --exclude .next --exclude dist --exclude .DS_Store --exclude '._*' \

@@ -150,7 +150,7 @@ export function PinnableRowActions({
   return (
     <div
       ref={rootRef}
-      className="relative flex items-center justify-center gap-1"
+      className="relative flex shrink-0 flex-nowrap items-center justify-center gap-1"
       onClick={(e) => e.stopPropagation()}
       data-testid={testId}
     >

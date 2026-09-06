@@ -1,0 +1,31 @@
+---
+description: Liste işlem seçici durur; dosya listesinde harita yok
+alwaysApply: true
+---
+
+# Liste İşlem Ve Harita Kilidi
+
+**Kaynak (Mustafa · 06.09.2026):** İşlemler seçici. Dosya Özeti / Hasar / Acil listesine harita konmamıştı.
+
+**Temel cümle:** Listede **İşlemler seçilir.** Harita **Harita menüsündedir.** Dosya listesinde harita yok.
+
+## Zorunlu
+
+1. Sütunlar yanında İşlemler: işaretli ikon kolonda, kalan üç noktada.
+2. Dosya Özeti, Hasar Dosyaları, Acil Yardım Dosyaları `FieldOperationsMap` basmaz.
+3. Harita `/panel/harita` ve müşteri kartında durur.
+
+## Yasak (açık onay yoksa)
+
+- Listeye harita geri koymak
+- İşlemler seçiciyi kaldırmak
+
+## Durdurma
+
+Liste yine harita veya seçicisiz kalırsa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+bash scripts/smoke-liste-gorunum.sh
+```
