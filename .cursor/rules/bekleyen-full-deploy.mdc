@@ -1,22 +1,22 @@
 ---
-description: Web v572 alındı — sırada yalnız İK personel+zimmet
+description: Web v573 alındı — sırada yalnız İK personel+zimmet
 alwaysApply: true
 ---
 
-# Web v572 (06.09.2026) — alındı
+# Web v573 (06.09.2026) — alındı
 
-Canlı: web **v572** · backend **v571**. Rollback: web **v571** / backend **v571**.
+Canlı: web **v573** · backend **v571**. Rollback: web **v572** / backend **v571**.
 
-## Alınan paket (v572)
+## Alınan paket (v573)
 
-**Liste işlem seçici. Dosya listelerinden harita kalktı.** İK yok.
+**Liste sütunları şişmez.** İşlem seçici ve listede harita yok kilitlendi. İK yok.
 
-1. Sütunlar yanında İşlemler: işaretli ikon kolonda, kalan üç noktada.
-2. Dosya Özeti, Hasar, Acil listesinde harita yok. Harita menüsü durur.
+1. Tablo genişliği piksel. Sütunlar ekrana göre oynamaz.
+2. Canlı alımda liste kilitleri çalışır. Disk 5 GB altındaysa kopya yok.
 
-## v571 durur (bozulmaz)
+## v572 durur (bozulmaz)
 
-Sigorta/asistans Canlı İzle yalnız harita. Şehir listesi yok.
+İşlemler seçilir. Dosya listesinde harita yok.
 
 ## Canlıda yok
 

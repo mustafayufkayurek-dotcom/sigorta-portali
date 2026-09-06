@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (6 Eylül 2026 — web v572 / backend v571)
+## Canlı durum (6 Eylül 2026 — web v573 / backend v571)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v572-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v573-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v571-amd64` | canlı |
-| **Rollback** | Web **v571** / Backend **v571** | manifest `rollbackImages` |
-| **Etiket** | `v572-liste-islem-harita` | |
+| **Rollback** | Web **v572** / Backend **v571** | manifest `rollbackImages` |
+| **Etiket** | `v573-liste-sutun-kilit` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v573 — Web (6 Eylül 2026) — Liste sütun kilidi
+
+- Tablo genişliği piksel; sütunlar ekrana göre şişmez
+- İşlem seçici ve listede harita yok kilitlendi (`smoke-liste-gorunum.sh`)
+- Backend **v571** durur. Rollback web **v572**. İK yok
 
 ### v572 — Web (6 Eylül 2026) — Liste işlem; listeden harita kalktı
 
