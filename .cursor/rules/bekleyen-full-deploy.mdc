@@ -1,15 +1,17 @@
 ---
-description: Canlı web v576 / backend v575 — İK hariç sıra
+description: Canlı web v577 / backend v575 — İK hariç sıra
 alwaysApply: true
 ---
 
 # Canlı (07.09.2026)
 
-Canlı: web **v576** · backend **v575**. Geri alma: web **v575** / backend **v575**.
+Canlı: web **v577** · backend **v575**. Geri alma: web **v576** / backend **v575**.
 
 Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. İK bu sıraya girmez.
 
 ## Alınan
+
+**v577 (yalnız web):** Acil tespit bulgusu ve sunum özeti yazılıp ilerlenince durur.
 
 **v576 (Paket B, yalnız web):** KVKK / gizlilik / çerez kamu metinleri onaylı. «Taslak / avukat bekler» uyarısı yok.
 
@@ -21,6 +23,6 @@ Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. İK bu sıraya g
 
 Oturum kapısı v574’ten beri duruyor. Oturumsuz panel girişe gider.
 
-## Sırada (İK hariç bitti)
+## Sırada (İK hariç)
 
 İK personel özlük ayrı durur. Mail kutusu tespiti düzeltme değil, ayrı iş.

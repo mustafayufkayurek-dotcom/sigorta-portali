@@ -2,26 +2,37 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 6 Eylül 2026
+**Son güncelleme:** 7 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (6 Eylül 2026 — web v573 / backend v571)
+## Canlı durum (7 Eylül 2026 — web v577 / backend v575)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v573-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v571-amd64` | canlı |
-| **Rollback** | Web **v572** / Backend **v571** | manifest `rollbackImages` |
-| **Etiket** | `v573-liste-sutun-kilit` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v577-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v575-amd64` | canlı |
+| **Rollback** | Web **v576** / Backend **v575** | manifest `rollbackImages` |
+| **Etiket** | `v577-acil-tespit-bulgusu` | |
 
 ---
 
 ## Son deploy kronolojisi
 
-### v573 — Web (6 Eylül 2026) — Liste sütun kilidi
+### v577 — Web (7 Eylül 2026) — Acil tespit / sunum yazısı
+
+- Tespit bulgusu ve sunum özeti yazılıp başka adıma geçince silinmez
+- Backend **v575** durur. Rollback web **v576**. İK yok
+
+### v576 — Web (7 Eylül 2026) — KVKK onaylı kamu metni
+
+- KVKK / gizlilik / çerez sayfalarında taslak uyarısı yok
+- Backend **v575** durur. Rollback web **v575**. İK yok
+
+### v575 — Full (7 Eylül 2026) — Acil sigortalı adı; açık dosya kartı
+
 
 - Tablo genişliği piksel; sütunlar ekrana göre şişmez
 - İşlem seçici ve listede harita yok kilitlendi (`smoke-liste-gorunum.sh`)
