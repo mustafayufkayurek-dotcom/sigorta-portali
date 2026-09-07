@@ -41,6 +41,7 @@ export interface EmergencyOperationChain {
     whatsappSentCount: number;
     digitallyApprovedCount: number;
     hasApprovedMatbuEvrak: boolean;
+    hasApprovedAdresHizmetTalep?: boolean;
   };
   finance: {
     invoiceRequestCount: number;

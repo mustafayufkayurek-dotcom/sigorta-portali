@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { resolveAcilInsuredName } from './acil-insured-name.ts';
+import { resolveAcilInsuredName, acilInsuredNamesMatch } from './acil-insured-name.ts';
 
 describe('acil sigortalı adı LOCK', () => {
   it('kişi adını basar; Remed unvanını basmaz', () => {
@@ -39,5 +39,11 @@ describe('acil sigortalı adı LOCK', () => {
       }),
       'Mehmet Demir',
     );
+  });
+
+  it('onay Ad Soyad büyük/küçük harf uyumunu kabul eder; farklı adı uyarır', () => {
+    assert.equal(acilInsuredNamesMatch('mehmet demir', 'Mehmet Demir'), true);
+    assert.equal(acilInsuredNamesMatch('Ayşe Koç', 'Mehmet Demir'), false);
+    assert.equal(acilInsuredNamesMatch('Ali', ''), true);
   });
 });

@@ -19,6 +19,7 @@ import {
   resolveEmergencyMatbuIdentity,
   buildEmergencyMatbuApprovalTrailHtml,
   splitKdvDahil,
+  applyEmergencyFormKind,
 } from './emergency-matbu-form.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -201,5 +202,13 @@ describe('acil servis formu LOCK', () => {
     const konuIdx = EMERGENCY_MATBU_TEMPLATE.indexOf('Dosya Konusu');
     assert.ok(anaIdx < sigortaliIdx && sigortaliIdx < sigortaIdx && sigortaIdx < telIdx);
     assert.ok(telIdx < noIdx && noIdx < adresIdx && adresIdx < konuIdx);
+  });
+
+  it('ihbar formu aynı kabukta Adres Ve Hizmet Talep Onayı olur; ücret kalkar', () => {
+    const out = applyEmergencyFormKind(EMERGENCY_MATBU_TEMPLATE, 'adres_hizmet_talep');
+    assert.match(out, /Adres Ve Hizmet Talep Onayı/);
+    assert.doesNotMatch(out, /Servis Onay Formu/);
+    assert.doesNotMatch(out, /Hizmet Bedeli \(KDV dahil\)/);
+    assert.match(out, /adreste işlem yapılmasını/);
   });
 });

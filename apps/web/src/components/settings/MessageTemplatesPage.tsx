@@ -182,13 +182,6 @@ const DEFINITIONS: TemplateDefinition[] = [
     ],
   },
   {
-    type: 'whatsapp_acil_ilk_bilgilendirme',
-    tab: 'acil',
-    recipient: 'Sigortalı',
-    processStep: 'İlk Bilgilendirme',
-    variables: ACIL_VARIABLES,
-  },
-  {
     type: 'whatsapp_acil_kapanis_anket',
     tab: 'acil',
     recipient: 'Sigortalı',
@@ -225,7 +218,7 @@ const TABS: Array<{
     key: 'acil',
     label: 'Acil Yardım',
     channel: 'WhatsApp',
-    hint: 'Acil Yardım dosyası bilgilendirme ve kapanış WhatsApp metinleri.',
+    hint: 'Acil Yardım dosyası kapanış WhatsApp metinleri.',
   },
   {
     key: 'ozel_musteri',
@@ -274,11 +267,9 @@ const LOCAL_SEED: MessageTemplate[] = DEFINITIONS.map((definition, index) => ({
                 ? 'Onarım Randevusu — Tedarikçi'
                 : definition.type === 'whatsapp_hasar_kapanis_anket'
                   ? 'Hasar Kapanış Anketi'
-            : definition.type === 'whatsapp_acil_ilk_bilgilendirme'
-              ? 'Sigortalıya İlk Bilgilendirme'
-              : definition.type === 'whatsapp_acil_kapanis_anket'
-                ? 'Kapanış / Anket Mesajı'
-                : 'Atama SMS Şablonu',
+                : definition.type === 'whatsapp_acil_kapanis_anket'
+                  ? 'Kapanış / Anket Mesajı'
+                  : 'Atama SMS Şablonu',
   content: '',
   isActive: true,
 }));

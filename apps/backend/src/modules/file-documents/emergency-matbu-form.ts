@@ -713,3 +713,19 @@ export const EMERGENCY_MATBU_TEMPLATE = `<!DOCTYPE html>
 </body>
 </html>`;
 
+const TOTALS_SECTION_RE =
+  /<div class="totals-section">\s*<div class="tutar-box">[\s\S]*?<\/div>\s*<\/div>/i;
+const CONSENT_RE = /<div class="consent-text">[\s\S]*?<\/div>/i;
+
+/** İhbar formu: aynı kabuk, ücret yok, başlık «Adres Ve Hizmet Talep Onayı». */
+export function applyEmergencyFormKind(html: string, kind: string): string {
+  if (!html || kind !== 'adres_hizmet_talep') return html;
+  let out = html.replaceAll('Servis Onay Formu', 'Adres Ve Hizmet Talep Onayı');
+  out = out.replace(TOTALS_SECTION_RE, '');
+  out = out.replace(
+    CONSENT_RE,
+    '<div class="consent-text">Belirtilen adreste hizmet talep edildiğini ve bu adreste işlem yapılmasını onayladığımı beyan ederim. Yazıcı gerekmez; bu sayfadaki Onayla yeterlidir.</div>',
+  );
+  return out;
+}
+

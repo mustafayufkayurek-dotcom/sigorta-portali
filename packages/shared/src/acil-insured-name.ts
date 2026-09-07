@@ -18,6 +18,17 @@ export function foldAcilInsuredLabel(value: string | null | undefined): string {
     .replace(/\s+/g, ' ');
 }
 
+/** Onayda yazılan Ad Soyad dosya kaydıyla aynı mı. Boş kayıtta uyarı yok. */
+export function acilInsuredNamesMatch(
+  typed: string,
+  expected: string | null | undefined,
+): boolean {
+  const a = foldAcilInsuredLabel(typed);
+  const b = foldAcilInsuredLabel(expected);
+  if (!b || EMPTY.has(b)) return true;
+  return a === b;
+}
+
 function isEmptyInsured(value: string | null | undefined): boolean {
   const folded = foldAcilInsuredLabel(value);
   return !folded || EMPTY.has(folded);

@@ -14,7 +14,7 @@ import {
 import { buildAppPath } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
-import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isHasarVendorContractWaived } from '@sigorta/shared';
+import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isHasarVendorContractWaived, ACIL_ADRES_HIZMET_TALEP_KIND, ACIL_SERVIS_ONAY_KIND, acilDigitalFormTitle, isAcilDigitalFormKind } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -36,6 +36,7 @@ import {
   splitKdvDahil,
   HASAR_REPORT_PHOTO_BOX,
   isMatbuImageFile,
+  applyEmergencyFormKind,
 } from './emergency-matbu-form';
 import {
   allowsClaimManualPhysicalKind,
@@ -235,6 +236,15 @@ export class FileDocumentsService {
     return injectDigitalApprovalQrIntoHtml(rendered, qrBlock);
   }
 
+  private async renderEmergencyKindHtml(
+    ec: NonNullable<Awaited<ReturnType<FileDocumentsService['loadEmergencyCaseForMatbu']>>>,
+    publicUrl: string,
+    kind: string,
+  ): Promise<string> {
+    const base = await this.renderEmergencyMatbuHtml(ec, publicUrl);
+    return applyEmergencyFormKind(base, kind);
+  }
+
   /** Onaysız taslak/gönderilmiş formu güncel şablonla yeniler. Onaylı kopyaya dokunulmaz. */
   private async refreshUnapprovedEmergencyMatbu<T extends {
     id: string;
@@ -245,12 +255,12 @@ export class FileDocumentsService {
     publicToken: string | null;
     renderedContent: string;
   }>(doc: T): Promise<T> {
-    if (doc.documentKind !== 'matbu_evrak' || doc.entityType !== 'emergency_case') return doc;
+    if (!isAcilDigitalFormKind(doc.documentKind) || doc.entityType !== 'emergency_case') return doc;
     if (doc.digitallyApprovedAt || !doc.publicToken) return doc;
     const ec = await this.loadEmergencyCaseForMatbu(doc.entityId);
     if (!ec) return doc;
     const publicUrl = buildAppPath(this.config, `/evrak/${doc.publicToken}`);
-    const rendered = await this.renderEmergencyMatbuHtml(ec, publicUrl);
+    const rendered = await this.renderEmergencyKindHtml(ec, publicUrl, doc.documentKind);
     if (rendered === doc.renderedContent) return doc;
     await this.prisma.fileDocument.update({
       where: { id: doc.id },
@@ -332,19 +342,28 @@ export class FileDocumentsService {
     }
 
     if (dto.entityType === 'emergency_case') {
+      const kind = dto.documentKind === ACIL_ADRES_HIZMET_TALEP_KIND
+        ? ACIL_ADRES_HIZMET_TALEP_KIND
+        : ACIL_SERVIS_ONAY_KIND;
+      const existing = await this.prisma.fileDocument.findFirst({
+        where: { entityType: 'emergency_case', entityId: dto.entityId, documentKind: kind },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (existing) return existing;
+
       const ec = await this.loadEmergencyCaseForMatbu(dto.entityId);
       if (!ec) throw new NotFoundException('Acil yardım vakası bulunamadı');
 
       const publicToken = randomUUID();
       const publicTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       const publicUrl = buildAppPath(this.config, `/evrak/${publicToken}`);
-      const rendered = await this.renderEmergencyMatbuHtml(ec, publicUrl);
+      const rendered = await this.renderEmergencyKindHtml(ec, publicUrl, kind);
 
       return this.prisma.fileDocument.create({
         data: {
           entityType: 'emergency_case',
           entityId: dto.entityId,
-          documentKind: 'matbu_evrak',
+          documentKind: kind,
           status: 'draft',
           renderedContent: rendered,
           publicToken,
@@ -479,11 +498,11 @@ export class FileDocumentsService {
     const link = buildAppPath(this.config, `/evrak/${doc.publicToken}`);
 
     const kindLabel =
-      doc.documentKind === 'muvafakatname' ? 'Muvafakatname' : 'Servis Onay Formu';
+      doc.documentKind === 'muvafakatname' ? 'Muvafakatname' : acilDigitalFormTitle(doc.documentKind);
 
     const message =
-      doc.documentKind === 'matbu_evrak'
-        ? `Meridyen Assistance Servis Onay Formu. Yazıcı gerekmez. Aşağıdaki linki telefondan açıp Onayla’ya basın:\n\n${link}\n\nMeridyen Assistance`
+      isAcilDigitalFormKind(doc.documentKind)
+        ? `Meridyen Assistance ${kindLabel}. Yazıcı gerekmez. Aşağıdaki linki telefondan açıp Onayla’ya basın:\n\n${link}\n\nMeridyen Assistance`
         : `Meridyen Assistance tarafından düzenlenen ${kindLabel} belgesini aşağıdaki linkten inceleyebilir ve onaylayabilirsiniz:\n\n${link}\n\nMeridyen Assistance`;
     const waUrl = buildWhatsAppMeUrl(phone, message);
     if (!waUrl) {
@@ -621,7 +640,7 @@ export class FileDocumentsService {
     if (doc.renderedContent?.trim()) {
       const fresh = await this.refreshUnapprovedEmergencyMatbu(doc);
       const html =
-        fresh.documentKind === 'matbu_evrak'
+        isAcilDigitalFormKind(fresh.documentKind)
           ? toInsuredFacingMatbuHtml(fresh.renderedContent)
           : fresh.renderedContent;
       const fileName =
@@ -657,13 +676,22 @@ export class FileDocumentsService {
       throw new BadRequestException('Bu evrak linkinin süresi dolmuştur');
     }
     const fresh = await this.refreshUnapprovedEmergencyMatbu(doc);
-    if (fresh.documentKind === 'matbu_evrak' && fresh.renderedContent) {
+    let expectedFullName: string | null = null;
+    if (fresh.entityType === 'emergency_case') {
+      const ec = await this.loadEmergencyCaseForMatbu(fresh.entityId);
+      if (ec) {
+        const ad = resolveEmergencyMatbuIdentity(ec).sigortaliAd.trim();
+        expectedFullName = !ad || ad === '—' ? null : ad;
+      }
+    }
+    if (isAcilDigitalFormKind(fresh.documentKind) && fresh.renderedContent) {
       return {
         ...fresh,
         renderedContent: toInsuredFacingMatbuHtml(fresh.renderedContent),
+        expectedFullName,
       };
     }
-    return fresh;
+    return { ...fresh, expectedFullName };
   }
 
   async markViewed(token: string, ip?: string) {

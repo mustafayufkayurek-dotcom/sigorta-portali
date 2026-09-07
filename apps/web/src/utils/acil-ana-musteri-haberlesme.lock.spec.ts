@@ -36,7 +36,8 @@ describe('acil ana müşteri haberleşme LOCK', () => {
       'utf8',
     );
     assert.match(steps, /acil-ana-musteri-kanal/);
-    assert.match(steps, /Sigortalı — WhatsApp/);
+    assert.match(steps, /Müşteri WhatsApp/);
+    assert.doesNotMatch(steps, /Sigortalı Bilgilendirme/);
     assert.match(page, /writeAnaMusteriHaberlesme/);
     assert.match(workflow, /customerNotifyChannel/);
     assert.match(workflow, /Kapanış maili \(dosya kapanınca otomatik\)/);

@@ -36,6 +36,7 @@ export function claimManualDocumentLabel(doc: {
 }) {
   if (doc.documentTypeName?.trim()) return doc.documentTypeName.trim();
   if (doc.documentKind === 'muvafakatname') return 'Muvafakatname';
+  if (doc.documentKind === 'adres_hizmet_talep') return 'Adres Ve Hizmet Talep Onayı';
   if (doc.documentKind === 'matbu_evrak') return 'Servis Onay Formu';
   if (doc.documentKind === 'anket_formu') return 'Anket Formu';
   return 'Evrak';
@@ -216,6 +217,7 @@ export function getPublicDocument(token: string): Promise<{
   status: string;
   renderedContent: string;
   digitallyApprovedAt: string | null;
+  expectedFullName?: string | null;
 }> {
   return fetch(`${API}/public/evrak/${token}`).then((r) =>
     handleResponse(r),

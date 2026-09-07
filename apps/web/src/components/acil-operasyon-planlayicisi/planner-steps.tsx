@@ -39,26 +39,26 @@ export const OPERATOR_STEPS: Array<{
   hint: string;
   stageKeys: AcilStageKey[];
 }> = [
-  { key: 'ihbar', label: 'İhbar', hint: 'Mail kaydı, dosya içeriği', stageKeys: ['ihbar'] },
+  { key: 'ihbar', label: 'İhbar', hint: 'Adres Ve Hizmet Talep Onayı Oluştur', stageKeys: ['ihbar'] },
   {
     key: 'tedarikci_maliyet',
     label: 'Tedarikçi Ve Maliyet',
-    hint: 'Atama ve alış/satış',
+    hint: 'Atama Ve Alış/Satış',
     stageKeys: ['tedarikci_atandi', 'maliyet_alindi'],
   },
   {
     key: 'onay',
     label: 'Onay Talep Akışı',
-    hint: 'Bedel sunumu, servis formu, sigortalı haber',
+    hint: 'Bedel Sunumu, Müşteri Onayı',
     stageKeys: ['asistans_onayi_bekleniyor', 'ise_baslama'],
   },
   {
     key: 'kapanis',
     label: 'Kapanış',
-    hint: 'Resim, detay, mail+PDF; anket kapandıktan sonra',
+    hint: 'Servis Onay Formu, Resim, Detay; Anket Kapandıktan Sonra',
     stageKeys: ['hizmet_tamamlandi', 'dosya_kapatildi'],
   },
-  { key: 'finans', label: 'Ödeme Ve Finans', hint: 'Ödeme kaydı, finansa aktarım', stageKeys: ['finansa_aktarildi'] },
+  { key: 'finans', label: 'Ödeme Ve Finans', hint: 'Ödeme Kaydı, Finansa Aktarım', stageKeys: ['finansa_aktarildi'] },
 ];
 
 export type ApprovalChannel = 'email' | 'whatsapp_group';
@@ -103,6 +103,7 @@ export type PlannerStepBodyProps = {
   waLog: WaLogRow[];
   photos: Array<{ url: string; label: string; at: string }>;
   digitalDocsOk?: boolean;
+  addressRequestOk?: boolean;
   vendorPaid?: boolean | null;
   vendorOdeme?: {
     id: string;
@@ -133,7 +134,6 @@ export type PlannerStepBodyProps = {
   /** Admin veya Acil vekaletli finans — dosya sorumlusu görmez */
   canOpenFinancePage?: boolean;
   onVendorPaid?: (v: boolean) => void;
-  onInsuredNotify?: () => void;
   onClosureSurvey?: () => void;
   onApprovalChannel: (v: ApprovalChannel) => void;
   onApprovalState: (v: ApprovalState) => void;
@@ -311,7 +311,7 @@ function VendorPayConfirm(p: PlannerStepBodyProps) {
                 setDraft(null);
               }}
             >
-              Evet, kaydı onayla
+              Evet, Kaydı Onayla
             </Btn>
             <Btn onClick={() => setDraft(null)}>Vazgeç</Btn>
           </div>
@@ -465,7 +465,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
           </p>
           <p className="mt-2 text-xs leading-snug text-slate-700">{p.address}</p>
           <p className="mt-2 text-[11px] text-slate-700" data-testid="acil-ihbar-tarihi">
-            <span className="font-semibold text-slate-800">İhbar tarihi:</span> {p.file.ihbarDate || '—'}
+            <span className="font-semibold text-slate-800">İhbar Tarihi:</span> {p.file.ihbarDate || '—'}
             <span className="mt-0.5 block text-slate-500">Mailin geldiği tarih ve saat</span>
           </p>
           {p.file.appointmentDate && p.file.appointmentDate !== '—' ? (
@@ -490,7 +490,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
               </p>
             </div>
           ) : (
-            <p className="text-xs font-medium text-amber-800">Önce tedarikçiyi atayın. Aşağıdan seçin.</p>
+            <p className="text-xs font-medium text-amber-800">Önce Tedarikçiyi Atayın. Aşağıdan Seçin.</p>
           )}
         </Card>
         {p.skipVendorPicker ? null : (
@@ -570,7 +570,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
               )
             }
           >
-            Dosya bilgilerini gönder
+            Dosya Bilgilerini Gönder
           </WaBtn>
           {p.assignedVendor && !p.assignedVendor.phone ? (
             <p className="mt-1.5 text-[11px] text-slate-500">Tedarikçi numarası yok; sohbeti siz seçersiniz.</p>
@@ -586,7 +586,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
         ? 'Onaylandı'
         : p.approvalState === 'reddedildi'
           ? 'Reddedildi'
-          : 'Onay bekleniyor';
+          : 'Onay Bekleniyor';
     const badgeCls =
       p.approvalState === 'onaylandi'
         ? 'bg-emerald-50 text-emerald-800'
@@ -603,11 +603,11 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             Ana müşteriye göre yöntem değişir. Genel zorunluluk yoktur.
           </p>
           <fieldset className="mt-2 space-y-1.5" data-testid="acil-ana-musteri-kanal">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Bu müşteri için haberleşme</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Bu Müşteri İçin Haberleşme</p>
             {([
               { id: 'whatsapp' as const, label: 'WhatsApp' },
               { id: 'email' as const, label: 'E-posta' },
-              { id: 'both' as const, label: 'WhatsApp ve e-posta' },
+              { id: 'both' as const, label: 'WhatsApp Ve E-Posta' },
             ]).map((opt) => (
               <label key={opt.id} className="flex items-center gap-2 text-xs text-slate-800">
                 <input
@@ -627,7 +627,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             </span>
           </div>
           <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Sunum özeti</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Sunum Özeti</p>
             <p className="mt-1 text-[11px] text-slate-500">Kime: {p.file.customerEmail || p.file.customer}</p>
             <p className="text-[11px] text-slate-500">Talep: {p.approvalRequestedAt}</p>
             <p className="text-[11px] text-slate-500">Karar: {p.approvalDecidedAt ?? 'Bekleniyor'}</p>
@@ -670,37 +670,14 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             ) : null}
           </div>
           <div className="mt-3 flex gap-1.5">
-            <Btn primary disabled={!acilOnayMetinGovde(p.approvalText).trim()} onClick={() => p.onApprovalState('onaylandi')}>Onayı kaydet</Btn>
+            <Btn primary disabled={!acilOnayMetinGovde(p.approvalText).trim()} onClick={() => p.onApprovalState('onaylandi')}>Onayı Kaydet</Btn>
             <Btn onClick={() => p.onApprovalState('reddedildi')}>Red</Btn>
           </div>
         </Card>
         <Card title="Onay Kaydı">
           <p className="text-[11px] text-slate-500" data-testid="acil-onay-dijital-evrak">
-            Acil Yardımda sözleşme uygulanmaz. Müşteri onayı sunum özetinden kaydedilir.
+            Sigortalı dijital onayı İhbar ve Kapanış adımlarında alınır. Müşteri bedel onayı bu adımdan kaydedilir.
           </p>
-        </Card>
-        <Card title="Sigortalı Bilgilendirme">
-          <p className="text-[11px] text-slate-500">Sigortalı hattı WhatsApp. Onay sonrası haber verilir.</p>
-          <div className="mt-2">
-            <WaBtn
-              primary
-              onClick={() => {
-                if (p.onInsuredNotify) p.onInsuredNotify();
-                else {
-                  p.onWhatsApp(
-                    'Sigortalı',
-                    p.file.phone,
-                    `${p.file.fileNo} onay alındı. Operasyon başlıyor.`,
-                  );
-                }
-              }}
-            >
-              Sigortalı — WhatsApp
-            </WaBtn>
-          </div>
-          {p.file.workStartedAt ? (
-            <p className="mt-1.5 text-[11px] text-slate-500">İşe başlama kaydı · {p.file.workStartedAt}</p>
-          ) : null}
         </Card>
       </div>
     );
@@ -749,7 +726,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
               ? `Hizmet kaydı${p.file.serviceDeliveredAt ? ` · ${p.file.serviceDeliveredAt}` : ''} tutuldu.`
               : p.approvalState === 'onaylandi'
                 ? 'Sahada iş bitince işaretleyin. Tarih ve saat dosyaya yazılır.'
-                : 'Önce onay talep akışı tamamlansın.'}
+                : 'Önce Onay Talep Akışı Tamamlansın.'}
           </p>
         </Card>
         <Card title="Dosya Kapanışı">
@@ -759,17 +736,17 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             </p>
           ) : (
             <Btn primary disabled={p.approvalState !== 'onaylandi'} onClick={p.onCloseFile}>
-              Dosyayı kapat
+              Dosyayı Kapat
             </Btn>
           )}
           {p.approvalState !== 'onaylandi' ? (
-            <p className="mt-1 text-[11px] text-amber-700">Önce onay talep akışı tamamlansın.</p>
+            <p className="mt-1 text-[11px] text-amber-700">Önce Onay Talep Akışı Tamamlansın.</p>
           ) : (
             <p className="mt-1 text-[11px] text-slate-500">Kapatınca ana müşteriye kapanış maili otomatik gider.</p>
           )}
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Btn onClick={() => p.onClosureEmail?.()}>
-              <Mail className="h-3 w-3" /> Kapanış e-postasını tekrar gönder
+              <Mail className="h-3 w-3" /> Kapanış E-postasını Tekrar Gönder
             </Btn>
             {anaMusteriAllowsWhatsApp(p.customerNotifyChannel ?? 'both') ? (
               <WaBtn
@@ -802,7 +779,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
                   }
                 }}
               >
-                Anket mesajı
+                Anket Mesajı
               </WaBtn>
             </div>
           </Card>
@@ -844,11 +821,11 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             ) : null}
           </div>
           <div>
-            <p className="text-[10px] text-slate-400">Aktarım saati</p>
+            <p className="text-[10px] text-slate-400">Aktarım Saati</p>
             <p className="font-semibold text-slate-800">{p.financeAt ?? 'Henüz yok'}</p>
           </div>
           <div>
-            <p className="text-[10px] text-slate-400">Hakediş saati</p>
+            <p className="text-[10px] text-slate-400">Hakediş Saati</p>
             <p className="font-semibold text-slate-800">{p.hakedisAt ?? 'Henüz yok'}</p>
           </div>
           <div>
@@ -870,7 +847,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
               disabled={!p.fileClosed || (p.vendorPaid !== true && p.vendorPaid !== false)}
               onClick={p.onFinance}
             >
-              <Wallet className="h-3.5 w-3.5" /> Finansa aktar
+              <Wallet className="h-3.5 w-3.5" /> Finansa Aktar
             </Btn>
           ) : (
             <p className="text-xs font-semibold text-emerald-700">Aktarım kaydedildi.</p>

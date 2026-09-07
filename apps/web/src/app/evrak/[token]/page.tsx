@@ -9,8 +9,13 @@ import {
   markDocumentViewed,
   approveDocumentPublic,
 } from '@/utils/fileDocumentApi';
+import { acilDigitalFormTitle, acilInsuredNamesMatch } from '@sigorta/shared';
 
 type Stage = 'loading' | 'view' | 'approve' | 'done' | 'error' | 'already_approved';
+
+function isAcilInsuredForm(kind?: string) {
+  return kind === 'matbu_evrak' || kind === 'adres_hizmet_talep';
+}
 
 export default function EvrakOnayPage() {
   const params = useParams();
@@ -25,6 +30,7 @@ export default function EvrakOnayPage() {
     status: string;
     renderedContent: string;
     digitallyApprovedAt: string | null;
+    expectedFullName?: string | null;
   } | null>(null);
   const [error, setError] = useState('');
   const [fullName, setFullName] = useState('');
@@ -32,9 +38,10 @@ export default function EvrakOnayPage() {
   const [approvedAt, setApprovedAt] = useState<string | null>(null);
   const [leaveWarn, setLeaveWarn] = useState(false);
   const [kvkkConsent, setKvkkConsent] = useState(false);
+  const [nameMismatchWarn, setNameMismatchWarn] = useState(false);
   const viewedRef = useRef(false);
   const needsInsuredApprove =
-    doc?.documentKind === 'matbu_evrak' &&
+    isAcilInsuredForm(doc?.documentKind) &&
     stage !== 'done' &&
     stage !== 'already_approved' &&
     stage !== 'loading' &&
@@ -83,6 +90,14 @@ export default function EvrakOnayPage() {
 
   const handleApprove = async () => {
     if (!fullName.trim() || !kvkkConsent) return;
+    if (
+      isAcilInsuredForm(doc?.documentKind) &&
+      !acilInsuredNamesMatch(fullName, doc?.expectedFullName) &&
+      !nameMismatchWarn
+    ) {
+      setNameMismatchWarn(true);
+      return;
+    }
     setApproving(true);
     try {
       const res = await approveDocumentPublic(token, fullName.trim());
@@ -98,8 +113,8 @@ export default function EvrakOnayPage() {
   const kindLabel =
     doc?.documentKind === 'muvafakatname'
       ? 'Muvafakatname'
-      : doc?.documentKind === 'matbu_evrak'
-        ? 'Servis Onay Formu'
+      : doc?.documentKind
+        ? acilDigitalFormTitle(doc.documentKind)
         : 'Evrak';
 
   if (stage === 'loading') {
@@ -197,7 +212,7 @@ export default function EvrakOnayPage() {
           )}
         </div>
       </div>
-      {doc?.documentKind === 'matbu_evrak' && (stage === 'view' || stage === 'approve') ? (
+      {isAcilInsuredForm(doc?.documentKind) && (stage === 'view' || stage === 'approve') ? (
         <div
           className="print:hidden max-w-2xl mx-auto mt-4 px-6"
           data-testid="sigortali-onay-uyari"
@@ -236,11 +251,19 @@ export default function EvrakOnayPage() {
             <input
               type="text"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => {
+                setFullName(e.target.value);
+                setNameMismatchWarn(false);
+              }}
               placeholder="Adınızı ve soyadınızı yazın"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
               autoFocus
             />
+            {nameMismatchWarn ? (
+              <p className="text-amber-800 text-xs mb-2" data-testid="ad-soyad-uyusmazlik">
+                Yazdığınız Ad Soyad dosyadaki kayıtla uyuşmuyor. Kontrol edin. Doğruysa Onayla’ya yeniden basın.
+              </p>
+            ) : null}
             {error && (
               <p className="text-status-danger text-xs mb-2">{error}</p>
             )}
@@ -256,7 +279,7 @@ export default function EvrakOnayPage() {
               sayılırsınız. Bu işlem geri alınamaz.
             </p>
             <div className="flex gap-3">
-              {doc?.documentKind === 'matbu_evrak' ? (
+              {isAcilInsuredForm(doc?.documentKind) ? (
                 <button
                   type="button"
                   onClick={() => setLeaveWarn(true)}
@@ -284,7 +307,7 @@ export default function EvrakOnayPage() {
         </div>
       )}
 
-      {doc?.documentKind === 'matbu_evrak' && stage === 'view' ? (
+      {isAcilInsuredForm(doc?.documentKind) && stage === 'view' ? (
         <div className="print:hidden sticky bottom-0 z-20 border-t border-slate-200 bg-white px-4 py-3">
           <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
             <p className="text-sm text-slate-600">Onay vermeden işlem tamamlanmaz.</p>
@@ -302,7 +325,7 @@ export default function EvrakOnayPage() {
       {leaveWarn ? (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-4 print:hidden">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-gray-900">Onay gerekli</h3>
+            <h3 className="text-base font-semibold text-gray-900">Onay Gerekli</h3>
             <p className="mt-2 text-sm text-gray-600">
               Sigortalı onay vermeden bu form kapanmaz. Lütfen adınızı yazıp Onayla düğmesine basın.
             </p>
@@ -314,7 +337,7 @@ export default function EvrakOnayPage() {
               }}
               className="mt-4 w-full rounded-lg bg-brand-600 py-2 text-sm font-medium text-white hover:bg-brand-700"
             >
-              Onaya dön
+              Onaya Dön
             </button>
           </div>
         </div>

@@ -84,7 +84,7 @@ describe('acil canlı netleşen LOCK', () => {
       join(here, '../../../components/acil-operasyon-planlayicisi/planner-steps.tsx'),
       'utf8',
     );
-    assert.match(steps, /Dosya bilgilerini gönder/);
+    assert.match(steps, /Dosya Bilgilerini Gönder/);
     assert.match(steps, /vendorWhatsAppText/);
     assert.doesNotMatch(acilPage, /handleCloseAndFinance/);
     assert.match(acilPage, /openWhatsApp\(null, customerMsgPreview\)/);
@@ -173,8 +173,10 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /satisVatMode: displaySatisVat/);
     assert.match(steps, /Anket \(Tercihli\)/);
     assert.match(acilPage, /data-testid="acil-onay-evrak"/);
-    assert.doesNotMatch(acilPage, /FileDocumentPanel/);
-    assert.doesNotMatch(acilPage, /documentKind="matbu_evrak"/);
+    assert.match(acilPage, /FileDocumentPanel/);
+    assert.match(acilPage, /documentKind="matbu_evrak"/);
+    assert.match(acilPage, /documentKind="adres_hizmet_talep"/);
+    assert.match(acilPage, /acil-ihbar-dijital-onay/);
     assert.match(acilPage, /acil-finans-ozet-serit/);
     assert.doesNotMatch(acilPage, /acil-servis-anket-ozet/);
     assert.match(acilPage, /acil-gider-ozet/);
@@ -190,11 +192,19 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(backend, /serviceDeliveredAt/);
     assert.match(backend, /kapanis-raporu-/);
     assert.match(backend, /sendClosureEmailOnClose/);
-    const approvalBlock = acilPage.slice(acilPage.indexOf('acil-onay-evrak'));
+    const approvalBlock = acilPage.slice(
+      acilPage.indexOf('acil-onay-evrak'),
+      acilPage.indexOf('closingStep'),
+    );
     assert.doesNotMatch(approvalBlock, /<FileDocumentPanel/);
-    assert.match(approvalBlock, /sözleşme uygulanmaz/);
-    const beforeDrawer = acilPage.slice(0, acilPage.indexOf('approvalStep'));
-    assert.doesNotMatch(beforeDrawer, /<FileDocumentPanel/);
+    assert.match(approvalBlock, /İhbar ve Kapanış adımlarında/);
+    const ihbarBlock = acilPage.slice(
+      acilPage.indexOf('acil-ihbar-dijital-onay'),
+      acilPage.indexOf('vendorStep'),
+    );
+    assert.match(ihbarBlock, /<FileDocumentPanel/);
+    assert.match(ihbarBlock, /adres_hizmet_talep/);
+    assert.match(acilPage, /acil-servis-onay-formu/);
   });
 
   it('sunum özeti boşluğu yutmaz; kilit spec durur', () => {

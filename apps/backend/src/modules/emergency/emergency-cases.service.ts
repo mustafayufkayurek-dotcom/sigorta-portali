@@ -398,6 +398,9 @@ export class EmergencyCasesService {
       hasApprovedMatbuEvrak: documents.some(
         (doc) => doc.documentKind === 'matbu_evrak' && !!doc.digitallyApprovedAt,
       ),
+      hasApprovedAdresHizmetTalep: documents.some(
+        (doc) => doc.documentKind === 'adres_hizmet_talep' && !!doc.digitallyApprovedAt,
+      ),
       invoiceRequestCount: invoiceRequests.length,
       latestInvoiceRequestStatus: invoiceRequests[0]?.status ?? null,
       invoiceDraftCount: emergencyCase.invoiceItems.length,

@@ -30,25 +30,30 @@ export function validateOperatorStep(
     approvalState: ApprovalState;
     approvalText: string;
     digitalDocsOk?: boolean;
+    addressRequestOk?: boolean;
     vendorPaid?: boolean | null;
   },
 ): string | null {
+  if (step === 'ihbar') {
+    if (!s.addressRequestOk) return 'Adres Ve Hizmet Talep Onayı Alın.';
+  }
   if (step === 'tedarikci_maliyet') {
-    if (!s.assigned) return 'Tedarikçi atayın.';
-    if (!s.alis.trim() || !s.satis.trim()) return 'Alış ve satış girin.';
+    if (!s.assigned) return 'Tedarikçi Atayın.';
+    if (!s.alis.trim() || !s.satis.trim()) return 'Alış Ve Satış Girin.';
   }
   if (step === 'onay') {
-    if (!acilOnayMetinGovde(s.approvalText).trim()) return 'Riziko adreste açıklamasını yazın.';
-    if (s.approvalState === 'bekliyor') return 'Onayı kaydet veya red verin.';
+    if (!acilOnayMetinGovde(s.approvalText).trim()) return 'Riziko Adreste Açıklamasını Yazın.';
+    if (s.approvalState === 'bekliyor') return 'Onayı Kaydet Veya Red Verin.';
   }
   if (step === 'kapanis') {
-    if (s.approvalState !== 'onaylandi') return 'Önce onay talep akışı tamamlansın.';
-    if (!s.fileClosed) return 'Dosyayı kapatın.';
+    if (s.approvalState !== 'onaylandi') return 'Önce Onay Talep Akışı Tamamlansın.';
+    if (!s.digitalDocsOk) return 'Servis Onay Formu Dijital Onayı Olmadan Dosya Kapanmaz.';
+    if (!s.fileClosed) return 'Dosyayı Kapatın.';
   }
   if (step === 'finans') {
-    if (!s.fileClosed) return 'Önce dosyayı kapatın.';
-    if (s.vendorPaid !== true && s.vendorPaid !== false) return 'Tedarikçi ödemesini ödendi veya ödenmedi olarak onaylayın.';
-    if (!s.financeSent) return 'Finansa aktarın.';
+    if (!s.fileClosed) return 'Önce Dosyayı Kapatın.';
+    if (s.vendorPaid !== true && s.vendorPaid !== false) return 'Tedarikçi Ödemesini Ödendi Veya Ödenmedi Olarak Onaylayın.';
+    if (!s.financeSent) return 'Finansa Aktarın.';
   }
   return null;
 }

@@ -49,11 +49,12 @@ type Props = {
   body: PlannerStepBodyProps;
   /** Kaydet sonrası adım durumunu güncellemek için üst bileşen */
   onSaved?: (step: OperatorStepKey) => void | Promise<void>;
+  /** Canlı: ihbarda adres ve hizmet talep onayı */
+  ihbarStep?: ReactNode;
   /** Canlı: kayıtlı tedarikçi listesi (RecommendedVendorsTabs) bu adımda */
   vendorStep?: ReactNode;
   /** Canlı: dijital onaylı evrak onay adımında */
   approvalStep?: ReactNode;
-  /** Canlı: sigortalı haber + işe başlama */
   operationStep?: ReactNode;
   /** Canlı: kapanış fotoğrafları bu adımda */
   closingStep?: ReactNode;
@@ -149,7 +150,7 @@ function FlowStepDot({
 function approvalLabel(state: ApprovalState): string {
   if (state === 'onaylandi') return 'Onaylandı';
   if (state === 'reddedildi') return 'Reddedildi';
-  return 'Onay bekleniyor';
+  return 'Onay Bekleniyor';
 }
 
 function stepResultLine(key: OperatorStepKey, body: PlannerStepBodyProps): string {
@@ -173,13 +174,13 @@ function stepResultLine(key: OperatorStepKey, body: PlannerStepBodyProps): strin
     if (body.workStartOk) return 'İş bitti, kapanış yok';
     return 'Kapanış yok';
   }
-  if (body.financeSent) return body.hakedisAt ? `Aktarıldı · ${body.hakedisAt}` : 'Finansa aktarıldı';
+  if (body.financeSent) return body.hakedisAt ? `Aktarıldı · ${body.hakedisAt}` : 'Finansa Aktarıldı';
   if (body.fileClosed) return 'Aktarım bekliyor';
   return 'Finans bekliyor';
 }
 
 export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHandle, Props>(
-  function AcilOperasyonPlanlayiciPanel({ stepStatuses, body, onSaved, vendorStep, approvalStep, operationStep, closingStep, onNavigateStep }, ref) {
+  function AcilOperasyonPlanlayiciPanel({ stepStatuses, body, onSaved, ihbarStep, vendorStep, approvalStep, operationStep, closingStep, onNavigateStep }, ref) {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [activeStep, setActiveStep] = useState<OperatorStepKey>('ihbar');
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -222,28 +223,28 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
     const nextStep = steps.find((s) => s.status === 'waiting') ?? steps.find((s) => s.status === 'future');
     const nextJob = body.financeSent
       ? {
-          title: 'Operasyon tamam',
+          title: 'Operasyon Tamam',
           detail: body.hakedisAt
             ? `Hakediş verildi · ${body.hakedisAt}. Vade uygulanmaz.`
-            : 'Finansa aktarım kaydı oluştu.',
+            : 'Finansa Aktarım Kaydı Oluştu.',
           step: 'finans' as OperatorStepKey,
-          cta: 'Finans adımını aç',
+          cta: 'Finans Adımını Aç',
         }
       : nextStep
         ? {
-            title: `Sıradaki iş · ${nextStep.label}`,
+            title: `Sıradaki İş · ${nextStep.label}`,
             detail:
               nextStep.key === 'tedarikci_maliyet' && !body.assignedVendor && !body.assigned
-                ? 'Önce tedarikçiyi atayın.'
+                ? 'Önce Tedarikçiyi Atayın.'
                 : nextStep.hint,
             step: nextStep.key,
-            cta: `${nextStep.label} adımını aç`,
+            cta: `${nextStep.label} Adımını Aç`,
           }
         : {
-            title: 'Operasyon tamam',
-            detail: 'Bu dosyada sıradaki operasyon işi yok.',
+            title: 'Operasyon Tamam',
+            detail: 'Bu Dosyada Sıradaki Operasyon İşi Yok.',
             step: 'finans' as OperatorStepKey,
-            cta: 'Özeti aç',
+            cta: 'Özeti Aç',
           };
 
     async function saveCurrentStep() {
@@ -258,6 +259,7 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
         approvalState: body.approvalState as ApprovalState,
         approvalText: body.approvalText,
         digitalDocsOk: body.digitalDocsOk,
+        addressRequestOk: body.addressRequestOk,
         vendorPaid: body.vendorPaid,
       });
       if (gate) {
@@ -332,7 +334,7 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
           data-testid="acil-siradaki-is"
         >
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sıradaki iş</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sıradaki İş</p>
             <p className="mt-0.5 text-sm font-semibold text-slate-900">{nextJob.title}</p>
             <p className="mt-0.5 text-xs text-slate-500">{nextJob.detail}</p>
           </div>
@@ -442,12 +444,17 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
                         className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-800"
                         data-testid="acil-once-tedarikci"
                       >
-                        Önce tedarikçiyi atayın.
+                        Önce Tedarikçiyi Atayın.
                       </p>
                     ) : null}
                   </div>
                   <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-                    {activeStep === 'tedarikci_maliyet' && vendorStep ? (
+                    {activeStep === 'ihbar' && ihbarStep ? (
+                      <div className="space-y-3">
+                        <PlannerStepBody {...body} step={activeStep} />
+                        {ihbarStep}
+                      </div>
+                    ) : activeStep === 'tedarikci_maliyet' && vendorStep ? (
                       <div className="space-y-3">
                         {vendorStep}
                         <PlannerStepBody {...body} step={activeStep} skipVendorPicker />

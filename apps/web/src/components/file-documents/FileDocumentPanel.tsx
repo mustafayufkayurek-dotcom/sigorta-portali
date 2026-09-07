@@ -10,6 +10,7 @@ import {
   getFileDocuments,
   sendWhatsapp,
 } from '@/utils/fileDocumentApi';
+import { ACIL_ADRES_HIZMET_TALEP_OLUSTUR, ACIL_ADRES_HIZMET_TALEP_TITLE } from '@sigorta/shared';
 
 function CheckIcon({ className = '' }) {
   return (
@@ -88,7 +89,7 @@ function WhatsAppModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h3 className="font-semibold text-gray-900 mb-1">WhatsApp ile Gönder</h3>
+        <h3 className="font-semibold text-gray-900 mb-1">WhatsApp İle Gönder</h3>
         <p className="text-sm text-gray-500 mb-4">Onay linkini aşağıdaki numaraya gönderin.</p>
         <label className="block text-sm font-medium text-gray-700 mb-1">Telefon No</label>
         <input
@@ -148,12 +149,12 @@ export default function FileDocumentPanel({
   const [error, setError] = useState('');
   const [waModal, setWaModal] = useState<FileDocument | null>(null);
 
-  const activeDoc = docs[0] ?? null;
+  const activeDoc = docs.find((d) => d.documentKind === documentKind) ?? null;
 
   const load = async () => {
     try {
       const data = await getFileDocuments(entityType, entityId);
-      setDocs(data);
+      setDocs(data.filter((d) => d.documentKind === documentKind));
     } catch (e: any) {
       setError(e.message ?? 'Yükleme hatası');
     } finally {
@@ -163,7 +164,7 @@ export default function FileDocumentPanel({
 
   useEffect(() => {
     load();
-  }, [entityType, entityId]);
+  }, [entityType, entityId, documentKind]);
 
   useEffect(() => {
     if (!activeDoc) return;
@@ -186,9 +187,19 @@ export default function FileDocumentPanel({
   const kindLabel =
     documentKind === 'muvafakatname'
       ? 'Mutabakat / Muvafakat Formu'
-      : entityType === 'emergency_case'
-        ? 'Servis Onay Formu'
-        : 'Matbu Evrak';
+      : documentKind === 'adres_hizmet_talep'
+        ? ACIL_ADRES_HIZMET_TALEP_TITLE
+        : entityType === 'emergency_case'
+          ? 'Servis Onay Formu'
+          : 'Matbu Evrak';
+  const createLabel =
+    documentKind === 'adres_hizmet_talep' ? ACIL_ADRES_HIZMET_TALEP_OLUSTUR : `${kindLabel} Oluştur`;
+  const emptyLabel =
+    documentKind === 'adres_hizmet_talep'
+      ? 'Henüz Adres Ve Hizmet Talep Onayı Oluşturulmamış.'
+      : documentKind === 'matbu_evrak' && entityType === 'emergency_case'
+        ? 'Henüz Servis Onay Formu Oluşturulmamış.'
+        : `Henüz ${kindLabel.toLowerCase()} oluşturulmamış.`;
   const previewToken = activeDoc?.publicToken;
 
   if (loading) {
@@ -210,13 +221,13 @@ export default function FileDocumentPanel({
 
       {!activeDoc && !readonly && (
         <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
-          <p className="text-sm text-gray-500 mb-3">Henüz {kindLabel.toLowerCase()} oluşturulmamış.</p>
+          <p className="text-sm text-gray-500 mb-3">{emptyLabel}</p>
           <button
             onClick={handleCreate}
             disabled={creating}
             className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
-            {creating ? 'Oluşturuluyor…' : `${kindLabel} Oluştur`}
+            {creating ? 'Oluşturuluyor…' : createLabel}
           </button>
         </div>
       )}
@@ -236,7 +247,7 @@ export default function FileDocumentPanel({
           <div className="px-4 py-3">
             <TimelineRow
               done={!!activeDoc.digitallyApprovedAt}
-              label="Dijital onay"
+              label="Dijital Onay"
               detail={activeDoc.digitallyApprovedAt
                 ? `${activeDoc.approvedFullName ?? ''} · ${new Date(activeDoc.digitallyApprovedAt).toLocaleString('tr-TR')}`
                 : 'Sigortalı linkten onay verince tamamlanır'}
@@ -263,7 +274,7 @@ export default function FileDocumentPanel({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    Müşteri nasıl görür
+                    Müşteri Nasıl Görür
                   </a>
                   <a
                     href={`/evrak/${previewToken}?print=1`}

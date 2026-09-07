@@ -24,6 +24,7 @@ import {
 } from '@/utils/emergencyApi';
 import ClosureConditionsPanel from '@/components/file-documents/ClosureConditionsPanel';
 import ClosurePhotosPanel from '@/components/file-documents/ClosurePhotosPanel';
+import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import { FieldInspectionPhotosPanel } from '@/components/field-survey/FieldInspectionPhotosPanel';
 import {
   AcilOperasyonPlanlayiciPanel,
@@ -760,17 +761,14 @@ export default function AcilDosyaDetayPage() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      axios.get(`${SETTINGS_API}/notifications/sms/templates/whatsapp_acil_ilk_bilgilendirme`, {
-        headers: settingsAuthHeader(),
-      }),
       axios.get(`${SETTINGS_API}/notifications/sms/templates/whatsapp_acil_kapanis_anket`, {
         headers: settingsAuthHeader(),
       }),
     ])
-      .then(([initialRes, closureRes]) => {
+      .then(([closureRes]) => {
         if (cancelled) return;
         setInsuredMessageTemplates({
-          initial: initialRes.data?.isActive ? initialRes.data.content : null,
+          initial: null,
           closureSurvey: closureRes.data?.isActive ? closureRes.data.content : null,
         });
       })
@@ -1699,6 +1697,17 @@ export default function AcilDosyaDetayPage() {
       setConfirmAction(null);
       return;
     }
+    if (!acilDigitalApprovalGateOk(Boolean(vaka?.operationChain?.documents?.hasApprovedMatbuEvrak))) {
+      const firstOk = Boolean(vaka?.operationChain?.documents?.hasApprovedAdresHizmetTalep);
+      setActionFlash(
+        firstOk
+          ? 'Hizmet verildi onayı (servis onay formu) alınmadan dosya kapatılamaz. İhbar onayı tedbir olarak durur.'
+          : 'Servis Onay Formu Dijital Onayı Olmadan Dosya Kapatılamaz.',
+      );
+      plannerRef.current?.openStep('kapanis');
+      setConfirmAction(null);
+      return;
+    }
     if (!requireAssignedVendor()) {
       setConfirmAction(null);
       return;
@@ -1771,7 +1780,7 @@ export default function AcilDosyaDetayPage() {
     const closed =
       flow.fileClosed || vaka?.status === 'COZULDU' || vaka?.status === 'FATURALANDILDI';
     if (!closed) {
-      setActionFlash('Önce dosyayı kapatın.');
+      setActionFlash('Önce Dosyayı Kapatın.');
       return;
     }
     if (flow.vendorPaid !== true && flow.vendorPaid !== false) {
@@ -1897,9 +1906,8 @@ export default function AcilDosyaDetayPage() {
   };
   const stageIdx = deriveAcilStageIndex(stageEngineInput);
   const chainDocs = vaka.operationChain?.documents;
-  const digitalDocsOk = acilDigitalApprovalGateOk(
-    (chainDocs?.digitallyApprovedCount ?? 0) > 0 || Boolean(chainDocs?.hasApprovedMatbuEvrak),
-  );
+  const addressRequestOk = Boolean(chainDocs?.hasApprovedAdresHizmetTalep);
+  const digitalDocsOk = acilDigitalApprovalGateOk(Boolean(chainDocs?.hasApprovedMatbuEvrak));
   const vendorCostDone = (costSummary.totalGider > 0 || flow.costConfirmed || parsePriceInput(alisFiyati) > 0)
     && (parsePriceInput(satisFiyati) > 0 || costSummary.totalGelir > 0);
   const operatorStepStatuses: Record<OperatorStepKey, AcilPlannerStepStatus> = {
@@ -2039,7 +2047,6 @@ export default function AcilDosyaDetayPage() {
 
   const workStartDone = flow.customerApproved;
   const serviceDone = flow.serviceCompleted || fileAlreadyClosed;
-  const initialNotifyDone = requiredOps.insuredInitialNotify;
   const closureSurveyDone = closeGate.surveyDone;
   /** Anket: dosya kapandıktan sonra tercihli */
   const closureSurveyUnlocked = fileAlreadyClosed;
@@ -2366,6 +2373,17 @@ export default function AcilDosyaDetayPage() {
           });
           if (text.trim()) void saveFindingsText(text);
         }}
+        ihbarStep={(
+          <div className="space-y-3" data-testid="acil-ihbar-dijital-onay">
+            <FileDocumentPanel
+              entityType="emergency_case"
+              entityId={vaka.id}
+              documentKind="adres_hizmet_talep"
+              defaultPhone={phone !== '—' ? phone : (vaka.customerPhone || '')}
+              onConditionsMet={() => { void load(); }}
+            />
+          </div>
+        )}
         vendorStep={(
           <div className="space-y-3">
             <OpsFirstRunNotice
@@ -2404,12 +2422,28 @@ export default function AcilDosyaDetayPage() {
         approvalStep={(
           <div className="space-y-3" data-testid="acil-onay-evrak">
             <p className="text-xs text-slate-500">
-              Acil Yardımda sözleşme uygulanmaz. Müşteri onayı sunum özetinden kaydedilir.
+              Sigortalı dijital onayı İhbar ve Kapanış adımlarında alınır. Bu adımda müşteri bedel onayı kaydedilir.
             </p>
           </div>
         )}
         closingStep={(
           <div className="space-y-3">
+            <section
+              className="rounded-xl border border-slate-200 bg-white p-3 space-y-3"
+              data-testid="acil-servis-onay-formu"
+            >
+              <h4 className="text-xs font-semibold text-slate-900">Servis Onay Formu</h4>
+              <p className="text-[11px] text-slate-500">
+                Hizmet verildikten sonra alınır. Sigortalıda hizmet bedeli görünmez.
+              </p>
+              <FileDocumentPanel
+                entityType="emergency_case"
+                entityId={vaka.id}
+                documentKind="matbu_evrak"
+                defaultPhone={phone !== '—' ? phone : (vaka.customerPhone || '')}
+                onConditionsMet={() => { void load(); }}
+              />
+            </section>
             <section
               className="rounded-xl border border-slate-200 bg-white p-3 space-y-3"
               data-testid="acil-saha-tespit"
@@ -2516,6 +2550,7 @@ export default function AcilDosyaDetayPage() {
           serviceDone: Boolean(serviceDeliveredLabel) || flow.serviceCompleted,
           fileClosed: fileAlreadyClosed,
           digitalDocsOk,
+          addressRequestOk,
           vendorPaid: flow.vendorPaid,
           vendorOdeme: vaka.operationChain?.vendorPayment ?? null,
           vendorPaidByName: vaka.operationChain?.vendorPaidByName ?? vaka.operationChain?.vendorPayment?.recordedByName ?? null,
@@ -2567,7 +2602,6 @@ export default function AcilDosyaDetayPage() {
               v ? 'Tedarikçi hakediş: ödendi (onaylı kayıt)' : 'Tedarikçi hakediş: ödenmedi (onaylı kayıt)',
             )).then(() => load());
           },
-          onInsuredNotify: () => requestInsuredWhatsAppSend('initial'),
           onClosureSurvey: () => requestInsuredWhatsAppSend('closure_survey'),
           onCustomerNotifyChannel: (v) => {
             const cid = vaka.customer?.id;
@@ -2631,12 +2665,17 @@ export default function AcilDosyaDetayPage() {
           },
         }}
         onSaved={async (step) => {
+          if (step === 'ihbar') {
+            if (!acilDigitalApprovalGateOk(Boolean(vaka.operationChain?.documents?.hasApprovedAdresHizmetTalep))) {
+              throw new Error('Adres Ve Hizmet Talep Onayı Alın.');
+            }
+          }
           if (step === 'tedarikci_maliyet') {
             setDraftAlis(alisFiyati);
             setDraftSatis(satisFiyati);
             const ok = await savePriceForm();
             if (!ok) throw new Error(priceFormError || 'Fiyat kaydedilemedi.');
-            if (!vaka.assignedVendorId) throw new Error('Tedarikçi atayın.');
+            if (!vaka.assignedVendorId) throw new Error('Tedarikçi Atayın.');
           }
           if (step === 'kapanis') {
             const findingsOk = await saveFindingsText();
@@ -2908,15 +2947,6 @@ export default function AcilDosyaDetayPage() {
                 Manuel gönderim — otomatik mesaj yok. Anket dosya kapandıktan sonra tercihlidir.
               </p>
               <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => requestInsuredWhatsAppSend('initial')}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-status-success bg-emerald-50/80 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
-                  data-testid="whatsapp-ilk-bilgilendirme-btn"
-                >
-                  <WhatsAppBrandIcon className="h-3.5 w-3.5 text-emerald-600" />
-                  {initialNotifyDone ? 'İlk Bilgilendirme (Tekrar)' : 'Sigortalıya İlk Bilgilendirme'}
-                </button>
                 <button
                   type="button"
                   onClick={() => requestInsuredWhatsAppSend('closure_survey')}
@@ -3284,7 +3314,7 @@ export default function AcilDosyaDetayPage() {
               {([
                 { id: 'whatsapp' as const, label: 'WhatsApp' },
                 { id: 'email' as const, label: 'E-posta' },
-                { id: 'both' as const, label: 'WhatsApp ve e-posta' },
+                { id: 'both' as const, label: 'WhatsApp Ve E-Posta' },
               ]).map((opt) => (
                 <label
                   key={opt.id}

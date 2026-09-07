@@ -24,7 +24,7 @@ export function renderDigitalApprovalQrBlock(publicUrl: string): string {
   return `<div class="dijital-onay-qr" data-testid="matbu-dijital-onay-qr">
   <div class="dijital-onay-qr-code">${sized}</div>
   <div class="dijital-onay-qr-label">Dijital Onay</div>
-  <a class="dijital-onay-link" href="${url.replace(/"/g, '&quot;')}">Telefondan onayla</a>
+  <a class="dijital-onay-link" href="${url.replace(/"/g, '&quot;')}">Telefondan Onaylayınız</a>
   <div class="dijital-onay-qr-hint">Yazıcı gerekmez. WhatsApp’taki linki açıp Onayla’ya basın.</div>
 </div>`;
 }

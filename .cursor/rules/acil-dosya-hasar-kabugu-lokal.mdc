@@ -16,13 +16,13 @@ alwaysApply: true
 - Alış/satış kutusunda TL; binlik nokta; kâr/zarar yüzde.
 - Tespit fotoğrafları ve tespit bulguları **Operasyonu Başlat** çekmecesinde, kapanış adımında (sayfa gövdesinde yükleme kutusu yok). Yazılan tespit bulgusu `findingsText` olarak kalır; Kaydet / kapatmadan önce kayda geçer. Dosya Bilgileri → Detay’da okunur. Boş güncelleme mevcut metni silmez.
 - **Operasyon özeti** 5 adım kare (ikon + sonuç satırı) + **Sıradaki iş**; altta tekrarlayan süreç/durum listesi yok. Üstteki 8’li daire şeridi yok. Hasar’daki “İlerleme Özeti / Dosyada Kimler Var?” kopyası değildir.
-- Sıra: **İhbar → Tedarikçi Ve Maliyet → Onay Talep Akışı (sunum özeti + müşteri onayı + sigortalı haber) → Kapanış (anket kapandıktan sonra tercihli) → Ödeme Ve Finans**. Acil Yardımda sözleşme / dijital servis formu uygulanmaz. Kapat ile finansa gönder ayrıdır.
+- Sıra: **İhbar (Adres Ve Hizmet Talep Onayı) → Tedarikçi Ve Maliyet → Onay Talep Akışı (sunum özeti + müşteri onayı) → Kapanış (Servis Onay Formu, ücret görünmez; anket kapandıktan sonra tercihli) → Ödeme Ve Finans**. Acil’de Hasar sözleşmesi / muvafakat uygulanmaz. Kapat ile finansa gönder ayrıdır.
 - Kapanış resimleri **Operasyonu Başlat** çekmecesinde, kapanış adımında (sayfa gövdesinde değil).
 - Tek **Operasyonu Başlat**; durum şeridi / 3 kolon / tekrarlayan aç düğmeleri yok (iş çekmecede).
 - Hasar tipi sekme şeridi yok; Dosya Bütçesi formu ana sayfada yok.
 - İş bitiminde dosya tedarikçisine hakediş; tarih-saat kayıtlı; finans **Ödenecekler** kuyruğuna düşer; **vade yok**. Finansa gittikten sonra **Ödendi** finans personelindedir; işlemi yapan kaydolur.
 - Operasyon Acil listesinde **Ödeme Durumu** durur; personel gizleyemez.
-- Servis onayında yalnız *“Bu onay formunda hizmet bedeli yer almaz.”* Sigortalı onaylamadan kaçamaz (uyarı, yapışık Onayla, “Onay gerekli”). **Acil dosyada sözleşme uygulanmaz.**
+- Servis onayında yalnız *“Bu onay formunda hizmet bedeli yer almaz.”* Sigortalı onaylamadan kaçamaz (uyarı, yapışık Onayla, “Onay gerekli”). İhbarda **Adres Ve Hizmet Talep Onayı** zorunludur. Onay sonrası sigortalıya haber yok. Acil’de Hasar sözleşmesi uygulanmaz.
 - Acil anket: **Acil Yardım Ekibi**; yıldız anlamı; logo+başlık ortada; gönderince dosyaya ve Anket Sonuçları’na düşer; olumsuzda **dosya sorumlusu açıklaması** zorunlu.
 - Dosyada **Konum Tespiti**; tedarikçi WhatsApp’ta pin + *“Konumu sigortalıdan teyit ediniz.”* Alış/satış/kâr gitmez.
 - Dört resmi işlem saati dosyada durur: **ihbar** (mail / `fileDate`), **işe başlama** (`workStartedAt`), **hizmet verilme** (`serviceDeliveredAt`), **kapanış** (`resolvedAt`). Detay ve kapanış PDF iskeleti bunları basar.

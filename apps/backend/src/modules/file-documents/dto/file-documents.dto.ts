@@ -8,7 +8,7 @@ export class CreateFileDocumentDto {
   @IsNotEmpty()
   entityId!: string;
 
-  @IsIn(['muvafakatname', 'matbu_evrak'])
+  @IsIn(['muvafakatname', 'matbu_evrak', 'adres_hizmet_talep'])
   documentKind!: string;
 }
 

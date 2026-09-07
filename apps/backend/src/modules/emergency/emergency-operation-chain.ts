@@ -38,11 +38,12 @@ export interface EmergencyOperationChain {
     hasHistory: boolean;
     lastReceivedAt: string | null;
   };
-  documents: {
+    documents: {
     totalCount: number;
     whatsappSentCount: number;
     digitallyApprovedCount: number;
     hasApprovedMatbuEvrak: boolean;
+    hasApprovedAdresHizmetTalep: boolean;
   };
   finance: {
     invoiceRequestCount: number;
@@ -99,6 +100,7 @@ export function buildEmergencyOperationChain(input: {
   whatsappSentCount: number;
   digitallyApprovedCount: number;
   hasApprovedMatbuEvrak: boolean;
+  hasApprovedAdresHizmetTalep?: boolean;
   invoiceRequestCount: number;
   latestInvoiceRequestStatus: string | null;
   invoiceDraftCount: number;
@@ -184,7 +186,7 @@ export function buildEmergencyOperationChain(input: {
       key: 'onay',
       label: 'Onay',
       state: salePriceCreated ? 'done' : vendorAssigned ? 'current' : 'pending',
-      note: 'Acil Yardımda sözleşme uygulanmaz',
+      note: 'Sigortalı dijital onayı ihbar ve kapanışta alınır',
     },
     {
       key: 'saha',
@@ -287,6 +289,7 @@ export function buildEmergencyOperationChain(input: {
       whatsappSentCount: input.whatsappSentCount,
       digitallyApprovedCount: input.digitallyApprovedCount,
       hasApprovedMatbuEvrak: input.hasApprovedMatbuEvrak,
+      hasApprovedAdresHizmetTalep: Boolean(input.hasApprovedAdresHizmetTalep),
     },
     finance: {
       invoiceRequestCount: input.invoiceRequestCount,

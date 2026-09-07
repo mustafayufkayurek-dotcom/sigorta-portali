@@ -44,11 +44,11 @@ export function anaMusteriAllowsEmail(ch: AnaMusteriHaberlesme): boolean {
 export function anaMusteriHaberlesmeLabel(ch: AnaMusteriHaberlesme): string {
   if (ch === 'whatsapp') return 'WhatsApp';
   if (ch === 'email') return 'E-posta';
-  return 'WhatsApp ve e-posta';
+  return 'WhatsApp Ve E-Posta';
 }
 
 export function anaMusteriClosureLabel(ch: AnaMusteriHaberlesme): string {
   if (ch === 'whatsapp') return 'Müşteri WhatsApp';
-  if (ch === 'email') return 'Kapanış e-postası';
-  return 'Müşteri haberi (WhatsApp veya e-posta)';
+  if (ch === 'email') return 'Kapanış E-Postası';
+  return 'Müşteri Haberi (WhatsApp Veya E-Posta)';
 }

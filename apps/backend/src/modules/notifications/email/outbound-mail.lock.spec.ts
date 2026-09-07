@@ -80,6 +80,40 @@ describe('operasyon giden mail LOCK', () => {
     assert.match(pkg, /"smoke:outbound-mail": "bash scripts\/smoke-outbound-mail\.sh"/);
   });
 
+  it('hoş geldin Kullanıcılar e-postasına gider; kutu yazılmaz (Hasar varsayılan)', () => {
+    const users = readFileSync(join(here, '../../users/users.service.ts'), 'utf8');
+    const welcome = users.slice(users.indexOf('private async sendWelcomeInviteEmail'));
+    const end = welcome.indexOf('\n  private ', 20);
+    const block = welcome.slice(0, end > 0 ? end : undefined);
+    assert.match(block, /sendWelcomeEmail\(params\.email/);
+    assert.doesNotMatch(block, /mailbox:\s*'IHBAR'/);
+    const email = readFileSync(join(here, 'email.service.ts'), 'utf8');
+    const sendWelcome = email.slice(email.indexOf('async sendWelcomeEmail'));
+    const sendWelcomeEnd = sendWelcome.indexOf('\n  async ', 20);
+    const welcomeFn = sendWelcome.slice(0, sendWelcomeEnd > 0 ? sendWelcomeEnd : undefined);
+    assert.doesNotMatch(welcomeFn, /mailbox:\s*'IHBAR'/);
+    assert.match(email, /options\?\.mailbox === 'IHBAR' \? 'IHBAR' : 'HASAR'/);
+  });
+
+  it('Hasar dosya işi Hasar kutusundan; Acil kapanış İhbar kutusundan', () => {
+    const reports = readFileSync(
+      join(here, '../../repair-reports/email/report-email.service.ts'),
+      'utf8',
+    );
+    assert.doesNotMatch(reports, /mailbox:\s*'IHBAR'/);
+    const ext = readFileSync(join(here, '../../external-approvals/external-approvals.service.ts'), 'utf8');
+    assert.match(ext, /mailbox:\s*'HASAR'/);
+    const claims = readFileSync(join(here, '../../claim-files/claim-files.service.ts'), 'utf8');
+    assert.match(claims, /mailbox:\s*'HASAR'/);
+    const emergency = readFileSync(
+      join(here, '../../emergency/emergency-cases.service.ts'),
+      'utf8',
+    );
+    const closure = emergency.slice(emergency.indexOf('async sendClosureEmail'));
+    assert.match(closure, /mailbox:\s*'IHBAR'/);
+    assert.match(emergency, /addEmail\(emergencyCase\.customer\?\.email\)/);
+  });
+
   it('dış onayda rapor durumu mail gittikten sonra yazılır', () => {
     const src = readFileSync(
       join(here, '../../external-approvals/external-approvals.service.ts'),

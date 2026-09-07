@@ -1,0 +1,42 @@
+---
+description: Hoş geldin Kullanıcılar; dosya maili müşteri kartı; Hasar/İhbar kutusu
+alwaysApply: true
+---
+
+# Mail Kutusu — Gönderen Ve Alıcı Kilidi
+
+**Kaynak (Mustafa · 06.09.2026 / netleşme 07.09.2026):** İki adres karışıyordu. Panel yeşili yalnız okumadır. Düşmezse özellik kapalı değildir.
+
+**Temel cümle:** **Kime** ile **hangi kutudan** ayrıdır. Hoş geldin Kullanıcılar kaydına gider. Dosya maili müşteri kartına (ve ihbar gelen adresine) gider.
+
+## Kime
+
+1. Hoş geldin / davet → **Kullanıcılar** e-postası (giriş hesabı). Müşteri kartı değil.
+2. Hasar kapanış / rapor / dış onay → müşteri kartı ve dış taraf iletişim e-postası.
+3. Acil kapanış → ihbar gelen adresi + müşteri kartı e-postası. Meridyen kendi kutusu alıcı olmaz.
+
+## Hangi kutudan (Microsoft 365)
+
+1. Hasar işi (rapor, dış onay, Hasar kapanış, hoş geldin) → **hasar@** kutusu.
+2. Acil kapanış ve Acil yönetici uyarısı → **ihbar@** kutusu.
+3. Ayarlar’daki kutu yeşili **gelen okumadır**. Giden Graph `sendMail` ile gider.
+
+## Yasak (açık onay yoksa)
+
+- Hoş geldini müşteri kartına çevirmek
+- Hasar raporunu İhbar kutusundan göndermek
+- Acil kapanışı Hasar kutusundan göndermek
+- SMTP yeşilini «gitti» saymak
+
+## Durdurma
+
+Hoş geldin yanlış adrese veya dosya maili yanlış kutudan giderse → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/backend/src/modules/notifications/email/outbound-mail.lock.spec.ts \
+ apps/backend/src/modules/notifications/email/file-closure-email.lock.spec.ts
+bash scripts/smoke-outbound-mail.sh
+```

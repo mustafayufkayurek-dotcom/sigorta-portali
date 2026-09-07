@@ -83,33 +83,33 @@ describe('acil dosya akış önizleme LOCK', () => {
     assert.match(livePage, /handlePlannerWorkStart/);
     assert.match(livePage, /assignedVendorId/);
     assert.match(livePanel, /acil-once-tedarikci/);
-    assert.match(livePanel, /Önce tedarikçiyi atayın/);
+    assert.match(livePanel, /Önce Tedarikçiyi Atayın/);
     assert.doesNotMatch(stepsFile, /WaBtn[\s\S]{0,400}Önce tedarikçi atayın/);
   });
 
   it('Kaydet zorunlu kapıyı çalıştırır', () => {
     assert.match(livePanel, /onClick=\{\(\) => void saveCurrentStep\(\)\}/);
     assert.match(livePanel, /data-testid="planlayici-kaydet"/);
-    assert.equal(validateOperatorStep('tedarikci_maliyet', empty), 'Tedarikçi atayın.');
+    assert.equal(validateOperatorStep('tedarikci_maliyet', empty), 'Tedarikçi Atayın.');
     assert.equal(
       validateOperatorStep('tedarikci_maliyet', { ...empty, assigned: 'v1' }),
-      'Alış ve satış girin.',
+      'Alış Ve Satış Girin.',
     );
     assert.equal(
       validateOperatorStep('onay', { ...empty, assigned: 'v1', alis: '1', satis: '2', approvalText: 'Riziko adreste; asansör' }),
-      'Onayı kaydet veya red verin.',
+      'Onayı Kaydet Veya Red Verin.',
     );
     assert.equal(
       validateOperatorStep('onay', { ...empty, assigned: 'v1', alis: '1', satis: '2', approvalText: 'Riziko adreste;' }),
-      'Riziko adreste açıklamasını yazın.',
+      'Riziko Adreste Açıklamasını Yazın.',
     );
     assert.equal(
       validateOperatorStep('kapanis', { ...empty, assigned: 'v1', approvalState: 'bekliyor' }),
-      'Önce onay talep akışı tamamlansın.',
+      'Önce Onay Talep Akışı Tamamlansın.',
     );
     assert.equal(
       validateOperatorStep('finans', { ...empty, fileClosed: false }),
-      'Önce dosyayı kapatın.',
+      'Önce Dosyayı Kapatın.',
     );
     assert.equal(
       validateOperatorStep('finans', {
@@ -123,7 +123,7 @@ describe('acil dosya akış önizleme LOCK', () => {
         approvalState: 'onaylandi',
         approvalText: 'ok',
       }),
-      'Tedarikçi ödemesini ödendi veya ödenmedi olarak onaylayın.',
+      'Tedarikçi Ödemesini Ödendi Veya Ödenmedi Olarak Onaylayın.',
     );
     assert.equal(
       validateOperatorStep('finans', {
@@ -166,7 +166,7 @@ describe('acil dosya akış önizleme LOCK', () => {
     assert.match(stepsFile, /tel:\$\{raw.replace/);
     assert.match(stepsFile, /minimumFractionDigits: 2/);
     assert.match(stepsFile, /WhatsAppIcon/);
-    assert.match(stepsFile, /Dosya bilgilerini gönder/);
+    assert.match(stepsFile, /Dosya Bilgilerini Gönder/);
     assert.match(stepsFile, /vendorWhatsAppText/);
     assert.match(stepsFile, /Onay Talep Akışı/);
     assert.match(stepsFile, /acil-finans-kdv/);

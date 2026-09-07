@@ -45,15 +45,15 @@ describe('acil sunum özeti boşluk LOCK', () => {
     assert.doesNotMatch(wrapFn, /body \? `/);
     assert.doesNotMatch(gates, /\.trim\(\)\.replace\(\/\^Riziko adreste/);
     assert.match(gates, /acilOnayMetinGovde\(s\.approvalText\)\.trim\(\)/);
-    assert.doesNotMatch(gates, /Servis onay formu dijital onayı olmadan/);
+    assert.match(gates, /Servis Onay Formu Dijital Onayı Olmadan/);
     assert.match(steps, /onChange=\{\(e\) => p\.onApprovalText\(withAcilOnayMetinOnEk\(e\.target\.value\)\)\}/);
     assert.match(steps, /acilOnayMetinGovde\(p\.approvalText\)\.trim\(\)/);
   });
 
   it('Riziko adreste sunum kutusunda tekrarlanmaz', () => {
-    assert.match(steps, /Sunum özeti/);
+    assert.match(steps, /Sunum Özeti/);
     assert.match(steps, /acil-onay-metin/);
-    assert.doesNotMatch(steps, /Sunum özeti[\s\S]{0,500}\{p\.approvalText\}/);
+    assert.doesNotMatch(steps, /Sunum Özeti[\s\S]{0,500}\{p\.approvalText\}/);
   });
 
   it('bütçe kutusunda dosya konusu durur', () => {
