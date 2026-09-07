@@ -13,6 +13,18 @@ const UNSAFE_EVENT_ATTRS = /\s+on[a-z0-9_-]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi;
 const UNSAFE_URLS =
   /\s+(href|src|action|formaction|xlink:href)\s*=\s*(['"]?)\s*(javascript:|vbscript:|data\s*:\s*text\s*\/\s*html)[\s\S]*?\2/gi;
 const UNSAFE_SRCDOC = /\s+srcdoc\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi;
+const UNSAFE_CSS =
+  /expression\s*\(|-moz-binding|behavior\s*:|@import|javascript\s*:|url\s*\(\s*['"]?\s*(javascript|data)\s*:/gi;
+
+function sanitizeCss(css: string): string {
+  return String(css || '').replace(UNSAFE_CSS, '');
+}
+
+function cssLooksUnsafe(value: string): boolean {
+  return /expression\s*\(|-moz-binding|behavior\s*:|@import|javascript\s*:|url\s*\(\s*['"]?\s*(javascript|data)\s*:/i.test(
+    value,
+  );
+}
 
 function stripUntilStable(html: string, pass: (input: string) => string): string {
   let cur = html || '';
@@ -30,7 +42,13 @@ function regexSanitize(html: string, tagRe: RegExp): string {
       .replace(tagRe, '')
       .replace(UNSAFE_EVENT_ATTRS, '')
       .replace(UNSAFE_URLS, '')
-      .replace(UNSAFE_SRCDOC, ''),
+      .replace(UNSAFE_SRCDOC, '')
+      .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_m, css: string) => `<style>${sanitizeCss(css)}</style>`)
+      .replace(/\s+style\s*=\s*("([^"]*)"|'([^']*)')/gi, (full, _quoted: string, d?: string, s?: string) => {
+        const css = d ?? s ?? '';
+        if (cssLooksUnsafe(css)) return '';
+        return full;
+      }),
   );
 }
 
@@ -68,6 +86,15 @@ function sanitizeWithDomParser(html: string, allowDocumentChrome: boolean): stri
       }
       if ((name === 'href' || name === 'src' || name === 'action') && isDangerousUrl(attr.value)) {
         el.removeAttribute(attr.name);
+        return;
+      }
+      if (name === 'style') {
+        if (cssLooksUnsafe(attr.value)) {
+          el.removeAttribute(attr.name);
+          return;
+        }
+        const cleaned = sanitizeCss(attr.value);
+        if (cleaned !== attr.value) el.setAttribute('style', cleaned);
       }
     });
   });
@@ -130,7 +157,7 @@ export function prepareTrustedDocumentHtml(html: string): string {
     '$1/meridyen-logo-original.png$3',
   );
 
-  const scopedCss = styles.map(scopeDocumentStyles).join('\n');
+  const scopedCss = styles.map((css) => sanitizeCss(scopeDocumentStyles(css))).join('\n');
   const styleBlock = scopedCss ? `<style>${scopedCss}</style>` : '';
 
   return `${styleBlock}<div class="evrak-document-root">${bodyContent}</div>`;

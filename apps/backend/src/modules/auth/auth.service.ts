@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
+import { assertNewPassword, hashPassword, verifyPassword } from '@/common/security/password-hash';
 import * as https from 'https';
 import * as querystring from 'querystring';
 import { randomUUID } from 'crypto';
@@ -50,7 +50,7 @@ export class AuthService {
       return null;
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    const isPasswordValid = await verifyPassword(password, user.passwordHash);
     if (!isPasswordValid) {
       return null;
     }
@@ -131,7 +131,7 @@ export class AuthService {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+    const hashedPassword = await hashPassword(assertNewPassword(registerDto.password));
 
     // Create user
     const user = await this.prisma.user.create({
@@ -363,7 +363,7 @@ export class AuthService {
       throw new BadRequestException('Token geçersiz veya süresi dolmuş');
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await hashPassword(assertNewPassword(newPassword));
 
     await this.prisma.user.update({
       where: { id: resetToken.userId },
@@ -518,16 +518,12 @@ export class AuthService {
       throw new BadRequestException('Kullanıcı bulunamadı');
     }
 
-    const isCurrentPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash);
+    const isCurrentPasswordValid = await verifyPassword(oldPassword, user.passwordHash);
     if (!isCurrentPasswordValid) {
       throw new BadRequestException('Mevcut şifre hatalı');
     }
 
-    if (newPassword.length < 6) {
-      throw new BadRequestException('Yeni şifre en az 6 karakter olmalıdır');
-    }
-
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await hashPassword(assertNewPassword(newPassword));
     await this.prisma.user.update({
       where: { id: userId },
       data: {

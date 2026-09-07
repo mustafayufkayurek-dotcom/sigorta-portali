@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Get, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsEmail, IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, IsOptional, MaxLength, MinLength } from 'class-validator';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { Public } from '@/common/decorators/public.decorator';
@@ -19,39 +19,49 @@ import {
 
 class LoginDto {
   @IsEmail()
+  @MaxLength(254)
   email!: string;
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(72)
   password!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2048)
   recaptchaToken?: string;
 }
 
 class ForgotPasswordDto {
   @IsEmail()
+  @MaxLength(254)
   email!: string;
 }
 
 class ResetPasswordDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(512)
   token!: string;
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(72)
   newPassword!: string;
 }
 
 class ChangePasswordDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(72)
   oldPassword!: string;
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(72)
   newPassword!: string;
 }
 

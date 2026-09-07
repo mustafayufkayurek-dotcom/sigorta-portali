@@ -36,6 +36,9 @@ describe('panel oturum kapısı LOCK', () => {
     assert.equal(isProtectedAppPath('/'), true);
     assert.equal(isPublicUnauthenticatedPath('/giris'), true);
     assert.equal(isPublicUnauthenticatedPath('/anket/abc'), true);
+    assert.equal(isPublicUnauthenticatedPath('/kvkk'), true);
+    assert.equal(isPublicUnauthenticatedPath('/gizlilik'), true);
+    assert.equal(isPublicUnauthenticatedPath('/cerez-politikasi'), true);
     assert.equal(isPublicUnauthenticatedPath('/panel'), false);
   });
 

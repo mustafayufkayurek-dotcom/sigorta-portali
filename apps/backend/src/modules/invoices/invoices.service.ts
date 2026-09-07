@@ -8,6 +8,7 @@ import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { appendInvoiceEditNote, staffDisplayName } from './invoice-edit-note';
 import { LogoSyncService } from '../logo-integration/services/logo-sync.service';
 import { CacheService } from '../../cache/cache.service';
+import { sanitizeSearchQuery } from '@/common/security/sanitize-search';
 
 @Injectable()
 export class InvoicesService {
@@ -82,7 +83,7 @@ export class InvoicesService {
       if (params.dateFrom) where.invoiceDate.gte = new Date(params.dateFrom);
       if (params.dateTo) where.invoiceDate.lte = new Date(params.dateTo);
     }
-    const search = params.search?.trim();
+    const search = sanitizeSearchQuery(params.search);
     if (search) {
       where.AND = [
         ...(Array.isArray(where.AND) ? where.AND : []),

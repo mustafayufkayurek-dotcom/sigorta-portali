@@ -10,7 +10,7 @@ import {
   claimNavHref,
   claimSearchHref,
   staffLoadHref,
-} from './claim-nav-href.ts';
+} from './claim-nav-href';
 
 assert.equal(
   claimDetailHref('abc-123'),

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsBoolean, IsEmail, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsBoolean, IsEmail, IsOptional, IsString, IsUUID, MaxLength, MinLength, ValidateNested } from 'class-validator';
 
 export class CreateUserDto {
   @ApiPropertyOptional()
@@ -36,6 +36,8 @@ export class CreateUserDto {
 
   @ApiProperty()
   @IsString()
+  @MinLength(8)
+  @MaxLength(72)
   password!: string;
 
   @ApiPropertyOptional()
@@ -82,6 +84,8 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MinLength(8)
+  @MaxLength(72)
   password?: string;
 }
 

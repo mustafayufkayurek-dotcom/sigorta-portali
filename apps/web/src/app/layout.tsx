@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import AuthStorageInit from '@/components/AuthStorageInit';
+import { CookieNotice } from '@/components/legal/CookieNotice';
 import PanelThemeInit from '@/components/panel/PanelThemeInit';
 
 export const viewport: Viewport = {
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthStorageInit />
         <PanelThemeInit />
         {children}
+        <CookieNotice />
       </body>
     </html>
   );

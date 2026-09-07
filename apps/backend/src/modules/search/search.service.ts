@@ -5,6 +5,7 @@ import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
 } from '@/common/utils/file-no-helpers';
+import { sanitizeSearchQuery } from '@/common/security/sanitize-search';
 
 export interface SearchResultItem {
   id: string;
@@ -32,7 +33,7 @@ export class SearchService {
   constructor(private prisma: PrismaService) {}
 
   async globalSearch(query: string, userId: string, roleCode: string): Promise<SearchResults> {
-    const q = (query ?? '').trim();
+    const q = sanitizeSearchQuery(query);
     const empty: SearchResults = {
       dosyalar: [],
       acil_dosyalar: [],

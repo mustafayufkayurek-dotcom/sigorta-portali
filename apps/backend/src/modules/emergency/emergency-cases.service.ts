@@ -15,6 +15,7 @@ import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
 } from '@/common/utils/file-no-helpers';
+import { sanitizeSearchQuery } from '@/common/security/sanitize-search';
 import { buildEmergencyOperationChain } from './emergency-operation-chain';
 import { VendorIntelligenceProfileService } from '@/modules/vendor-intelligence-profile/vendor-intelligence-profile.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
@@ -683,7 +684,10 @@ export class EmergencyCasesService {
     );
     if (filters.status) where.status = filters.status;
     if (filters.search) {
-      const q = filters.search.trim();
+      const q = sanitizeSearchQuery(filters.search);
+      if (!q) {
+        // boş süzgeç yok sayılır
+      } else {
       const digits = q.replace(/[\s\-./]/g, '');
       const or: Array<Record<string, unknown>> = [
         { customerName: { contains: q, mode: 'insensitive' } },
@@ -698,6 +702,7 @@ export class EmergencyCasesService {
       const scoped = mergeWhereAnd(where, { OR: or });
       Object.keys(where).forEach((k) => delete where[k]);
       Object.assign(where, scoped);
+      }
     }
     if (filters.year && filters.month) {
       const start = new Date(filters.year, filters.month - 1, 1);

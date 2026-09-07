@@ -8,7 +8,7 @@ import { WelcomeEmailRole } from '@/modules/notifications/email/welcome-email.te
 import { buildAppPath } from '@/common/utils/app-url';
 import { normalizeEmailAddress } from '@/common/utils/normalize-email';
 import { applyTitleCase } from '@/common/utils/text-helpers';
-import * as bcrypt from 'bcrypt';
+import { assertNewPassword, hashPassword, verifyPassword } from '@/common/security/password-hash';
 import { randomInt } from 'crypto';
 import { pickUserWriteScalars } from './user-update-fields';
 import { ALL_SCREEN_CODES, SCREEN_LABELS, getDefaultScreensForRole } from './screen-permissions.defaults';
@@ -273,9 +273,9 @@ export class UsersService {
     });
 
     const temporaryPassword = typeof password === 'string' && password.trim().length > 0
-      ? password.trim()
+      ? assertNewPassword(password.trim())
       : generateTemporaryPassword();
-    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+    const hashedPassword = await hashPassword(temporaryPassword);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const adjusterId = await this.resolveExpertAdjusterIdForInvite(tx, {
@@ -402,7 +402,7 @@ export class UsersService {
     applyTitleCase(data, ['firstName', 'lastName']);
 
     const temporaryPassword = typeof data.password === 'string' && data.password.trim().length > 0
-      ? data.password.trim()
+      ? assertNewPassword(data.password.trim())
       : generateTemporaryPassword();
 
     const {
@@ -839,15 +839,15 @@ export class UsersService {
 
     if (password) {
       if (oldPassword) {
-        const isCurrentPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash);
+        const isCurrentPasswordValid = await verifyPassword(oldPassword, user.passwordHash);
         if (!isCurrentPasswordValid) {
           throw new BadRequestException('Mevcut şifre hatalı');
         }
-        updateData.passwordHash = await bcrypt.hash(password, 10);
+        updateData.passwordHash = await hashPassword(assertNewPassword(password));
         updateData.mustChangePassword = false;
         updateData.temporaryPasswordIssuedAt = null;
       } else {
-        updateData.passwordHash = await bcrypt.hash(password, 10);
+        updateData.passwordHash = await hashPassword(assertNewPassword(password));
         updateData.mustChangePassword = true;
         updateData.temporaryPasswordIssuedAt = new Date();
       }
@@ -856,7 +856,7 @@ export class UsersService {
     const roleChanged = updateData.roleId !== undefined && updateData.roleId !== user.roleId;
     if (roleChanged && !password) {
       issuedTemporaryPassword = generateTemporaryPassword();
-      updateData.passwordHash = await bcrypt.hash(issuedTemporaryPassword, 10);
+      updateData.passwordHash = await hashPassword(issuedTemporaryPassword);
       updateData.mustChangePassword = true;
       updateData.temporaryPasswordIssuedAt = new Date();
     }
@@ -1135,7 +1135,7 @@ export class UsersService {
     }
 
     const temporaryPassword = generateTemporaryPassword();
-    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    const passwordHash = await hashPassword(temporaryPassword);
     const issuedAt = new Date();
 
     await this.prisma.$transaction(async (tx) => {

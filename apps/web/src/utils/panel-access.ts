@@ -237,17 +237,6 @@ export function hasPanelRouteAccess(
   return roleAllowedForNav(roleCode, [...rule.roles]);
 }
 
-/** @deprecated Eski ad — hasPanelRouteAccess kullanın */
-export function hasRouteAccess(
-  pathname: string,
-  roleCode: string,
-  operationArea: OperationAreaCode = '',
-  operationalAccessGrants?: OperationalAccessGrantSummary[] | null,
-  allowedScreens?: string[] | null,
-): boolean {
-  return hasPanelRouteAccess(pathname, roleCode, operationArea, operationalAccessGrants, allowedScreens);
-}
-
 export function panelShowsFinanceWidgets(roleCode: string): boolean {
   const role = String(roleCode ?? '').trim().toLowerCase();
   if (isFieldStaffRole(role) || isOfficeStaffRole(role) || isFinanceRole(role)) return false;

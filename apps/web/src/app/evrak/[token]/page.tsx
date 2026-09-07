@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { prepareTrustedDocumentHtml } from '@/utils/sanitize-html';
+import { KvkkConsentCheckbox } from '@/components/legal/KvkkConsentCheckbox';
 import {
   getPublicDocument,
   markDocumentViewed,
@@ -30,6 +31,7 @@ export default function EvrakOnayPage() {
   const [approving, setApproving] = useState(false);
   const [approvedAt, setApprovedAt] = useState<string | null>(null);
   const [leaveWarn, setLeaveWarn] = useState(false);
+  const [kvkkConsent, setKvkkConsent] = useState(false);
   const viewedRef = useRef(false);
   const needsInsuredApprove =
     doc?.documentKind === 'matbu_evrak' &&
@@ -80,7 +82,7 @@ export default function EvrakOnayPage() {
   }, [needsInsuredApprove]);
 
   const handleApprove = async () => {
-    if (!fullName.trim()) return;
+    if (!fullName.trim() || !kvkkConsent) return;
     setApproving(true);
     try {
       const res = await approveDocumentPublic(token, fullName.trim());
@@ -242,6 +244,13 @@ export default function EvrakOnayPage() {
             {error && (
               <p className="text-status-danger text-xs mb-2">{error}</p>
             )}
+            <div className="mb-4">
+              <KvkkConsentCheckbox
+                checked={kvkkConsent}
+                onChange={setKvkkConsent}
+                disabled={approving}
+              />
+            </div>
             <p className="text-xs text-gray-400 mb-4">
               Adınızı yazarak yukarıdaki belgeyi elektronik ortamda onaylamış
               sayılırsınız. Bu işlem geri alınamaz.
@@ -265,7 +274,7 @@ export default function EvrakOnayPage() {
               )}
               <button
                 onClick={handleApprove}
-                disabled={!fullName.trim() || approving}
+                disabled={!fullName.trim() || !kvkkConsent || approving}
                 className="flex-1 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
               >
                 {approving ? 'Onaylanıyor…' : 'Onayla'}

@@ -113,7 +113,6 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/finans', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/raporlar', roles: ['admin', 'ADMIN', 'accountant', 'ACCOUNTANT', 'FINANS', 'MANAGER'] },
   { path: '/panel/anketler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
-  { path: '/panel/ayarlar/test-notlari-gorev-takip', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar/is-gruplari', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'finance', 'FINANS', 'accountant', 'ACCOUNTANT', 'MANAGER'] },
   { path: '/panel/ayarlar/yetkilendirme', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'MANAGER'] },
   { path: '/panel/ayarlar', roles: ['admin', 'ADMIN'] },

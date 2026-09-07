@@ -141,8 +141,3 @@ export function BrandSplashLogo({
     </div>
   );
 }
-
-/** @deprecated BrandLogo kullanın */
-export const BrandLogoMark = BrandLogo;
-export type BrandLogoMarkProps = BrandLogoProps;
-export type BrandLogoVariantLegacy = BrandLogoVariant;

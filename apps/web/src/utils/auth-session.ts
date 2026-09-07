@@ -469,44 +469,6 @@ export async function ensureValidSession(apiBase: string): Promise<boolean> {
 }
 
 /**
- * Şifresiz otomatik giriş yalnızca Beni Hatırla açıkken, süre sınırı içinde
- * ve çıkış kilidi yokken.
- */
-export async function attemptAutoLogin(apiBase: string): Promise<boolean> {
-  initAuthStorage();
-
-  if (isPasswordLoginRequired()) {
-    return false;
-  }
-
-  if (!isRememberMePreferred() || !isRememberMeSession()) {
-    return false;
-  }
-
-  if (!hasValidSessionScope()) {
-    clearSessionTokensOnly();
-    return false;
-  }
-
-  if (isRememberMeExpired() || isRememberMeInactive()) {
-    clearSessionTokensOnly();
-    return false;
-  }
-
-  const ok = await ensureValidSession(apiBase);
-  if (!ok) {
-    clearSessionTokensOnly();
-    return false;
-  }
-  const accessToken = getAccessToken();
-  const refreshToken = getRefreshToken();
-  if (accessToken && refreshToken) {
-    await establishWebAuthCookies({ accessToken, refreshToken }, isRememberMePreferred());
-  }
-  return true;
-}
-
-/**
  * Tek çıkış yolu: backend revoke + yerel temizlik + şifre zorunluluğu.
  * Tüm ekranlar bunu kullanmalı.
  */
@@ -548,9 +510,4 @@ export async function logoutAndRedirect(
   }
   requirePasswordLogin();
   redirect(`/giris?reason=${reason}`);
-}
-
-/** @deprecated attemptAutoLogin kullanın */
-export async function tryRestoreSession(apiBase: string): Promise<boolean> {
-  return attemptAutoLogin(apiBase);
 }

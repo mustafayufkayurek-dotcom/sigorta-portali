@@ -578,6 +578,13 @@ export default function LoginPage() {
                   ? '© Meridyen Assistance. Tüm hakları saklıdır.'
                   : `© ${footerYear} Meridyen Assistance. Tüm hakları saklıdır.`}
               </p>
+              <p className="login-footer" style={{ marginTop: 8 }}>
+                <a href="/kvkk">KVKK Aydınlatma</a>
+                {' · '}
+                <a href="/gizlilik">Gizlilik</a>
+                {' · '}
+                <a href="/cerez-politikasi">Çerez Politikası</a>
+              </p>
             </div>
             <div className="login-legal-note">
               <span>Meridyen Asistans</span>

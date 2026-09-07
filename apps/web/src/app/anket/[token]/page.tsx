@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { BrandLogo } from '@/components/brand/BrandLogo';
+import { KvkkConsentCheckbox } from '@/components/legal/KvkkConsentCheckbox';
 import {
   SURVEY_Q6_LABEL,
   SURVEY_Q7_LABEL,
@@ -108,6 +109,7 @@ export default function AnketPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [kvkkConsent, setKvkkConsent] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -145,6 +147,10 @@ export default function AnketPage() {
     }
     if (surveyDissatisfiedCommentMissing(recommend, comment)) {
       setSubmitError(SURVEY_DISSATISFIED_COMMENT_MESSAGE);
+      return;
+    }
+    if (!kvkkConsent) {
+      setSubmitError('Göndermeden önce KVKK aydınlatmasını onaylayın.');
       return;
     }
 
@@ -365,11 +371,19 @@ export default function AnketPage() {
           </div>
         )}
 
+        <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm">
+          <KvkkConsentCheckbox
+            checked={kvkkConsent}
+            onChange={setKvkkConsent}
+            disabled={submitting}
+          />
+        </div>
+
         {/* Gönder */}
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={submitting}
+          disabled={submitting || !kvkkConsent}
           className="w-full py-4 text-sm font-semibold text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           style={{ background: 'linear-gradient(135deg, #1a4080 0%, #1e5aa8 100%)' }}
         >

@@ -20,6 +20,7 @@ describe('Test Notları ekranı kaldırıldı LOCK', () => {
     const layout = readRel('app/panel/layout.tsx');
     assert.doesNotMatch(layout, /title:\s*['"]Test Notları/);
     assert.doesNotMatch(layout, /TestTube2/);
+    assert.doesNotMatch(layout, /test-notlari-gorev-takip/);
 
     const nav = readRel('config/settings-nav.ts');
     assert.doesNotMatch(nav, /Test Notları/);

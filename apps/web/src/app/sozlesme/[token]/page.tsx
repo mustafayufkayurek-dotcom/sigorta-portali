@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { prepareTrustedDocumentHtml } from '@/utils/sanitize-html';
+import { KvkkConsentCheckbox } from '@/components/legal/KvkkConsentCheckbox';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -35,6 +36,7 @@ export default function SozlesmePage() {
   const [signError, setSignError] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [kvkkConsent, setKvkkConsent] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -54,6 +56,10 @@ export default function SozlesmePage() {
       setSignError(contract?.contractKind === 'simple'
         ? 'Onayı işaretlemeniz gerekmektedir'
         : 'Sözleşmeyi okuduğunuzu onaylamanız gerekmektedir');
+      return;
+    }
+    if (!kvkkConsent) {
+      setSignError('KVKK aydınlatmasını onaylamanız gerekmektedir');
       return;
     }
     setSigning(true);
@@ -250,6 +256,12 @@ export default function SozlesmePage() {
                 </span>
               </label>
 
+              <KvkkConsentCheckbox
+                checked={kvkkConsent}
+                onChange={setKvkkConsent}
+                disabled={signing}
+              />
+
               {signError && (
                 <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{signError}</p>
               )}
@@ -257,7 +269,7 @@ export default function SozlesmePage() {
               <button
                 type="button"
                 onClick={handleSign}
-                disabled={signing || !fullName.trim() || !agreed}
+                disabled={signing || !fullName.trim() || !agreed || !kvkkConsent}
                 className="w-full py-3.5 text-sm font-semibold text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: 'linear-gradient(135deg, #1a4080 0%, #1e5aa8 100%)' }}
               >

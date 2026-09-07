@@ -19,6 +19,13 @@ export function hasPanelSessionCookies(getCookie: (name: string) => string | und
 export function isPublicUnauthenticatedPath(pathname: string): boolean {
   if (pathname === '/giris' || pathname.startsWith('/giris/')) return true;
   if (pathname === '/web-auth') return true;
+  if (
+    pathname === '/kvkk' ||
+    pathname === '/gizlilik' ||
+    pathname === '/cerez-politikasi'
+  ) {
+    return true;
+  }
   const prefixes = ['/anket/', '/odeme/', '/onay/', '/sozlesme/', '/evrak/', '/ekstre/'];
   return prefixes.some((p) => pathname === p.slice(0, -1) || pathname.startsWith(p));
 }
