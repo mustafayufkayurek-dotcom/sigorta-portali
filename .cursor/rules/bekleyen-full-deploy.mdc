@@ -1,31 +1,26 @@
 ---
-description: Canlı v575 — önerilen sonraki alımlar
+description: Canlı web v576 / backend v575 — İK hariç sıra
 alwaysApply: true
 ---
 
-# Canlı v575 (07.09.2026)
+# Canlı (07.09.2026)
 
-Canlı: web **v575** · backend **v575**. Geri alma: web **v574** / backend **v574**.
+Canlı: web **v576** · backend **v575**. Geri alma: web **v575** / backend **v575**.
 
-Alım yalnız Mustafa «canlıya al» deyince. Her alımda: kilit, disk ≥5 GB, DB+uploads yedeği, uploads silinmez, şema yoksa migrate boş, rollback image durur.
+Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. İK bu sıraya girmez.
 
-## Alınan paket (v575 — Paket A)
+## Alınan
 
-Acil gerçeklik. İK yok. Veritabanı şeması değişmedi.
+**v576 (Paket B, yalnız web):** KVKK / gizlilik / çerez kamu metinleri onaylı. «Taslak / avukat bekler» uyarısı yok.
 
-- İhbar mailinde sigortalı kişi adı
-- Dosya sorumlusu listesinde aynı ad
-- Kapanış mailinde aynı ad
-- Açık dosya kartı listedeki durumla aynı
+**v575 (Paket A):** Acil sigortalı adı ve açık dosya kartı.
 
-## v574 durur (bozulmaz)
+**v574:** Güvenlik, oturum kapısı, KDV, finans liste, Konut-Yangın, başlık bilgi, KVKK sayfa iskeleti.
 
-Güvenlik, kütüphane, KVKK sayfa/kutu/çerez. Geri alma noktası.
+## Paket C — ayrı alım yok
 
-## Sırada
+Oturum kapısı v574’ten beri duruyor. Oturumsuz panel girişe gider.
 
-**Paket B — KVKK onaylı metin:** Sayfa canlıda (v574). Metin onaylı ve aynıysa bu paket düşer; fark varsa yalnız metin.
+## Sırada (İK hariç bitti)
 
-**Paket C — oturum kapısı:** Kod v574 soyunda duruyor; oturumsuz panel girişe gidiyor. Ayrı alım gerekmez.
-
-**Sonra (karışmaz):** İK personel özlük (Personel Ekle + zimmet; puantaj ayrı).
+İK personel özlük ayrı durur. Mail kutusu tespiti düzeltme değil, ayrı iş.
