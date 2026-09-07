@@ -67,10 +67,10 @@ describe('survey closure UI lock', () => {
     const evrak = read('../app/evrak/[token]/page.tsx');
     assert.match(evrak, /sigortali-onay-uyari/);
     assert.match(evrak, /beforeunload/);
-    assert.match(evrak, /Onay gerekli/);
+    assert.match(evrak, /Onay Gerekli/);
     assert.match(evrak, /sticky bottom-0/);
     assert.match(evrak, /setLeaveWarn\(true\)/);
-    assert.match(evrak, /Onaya dön/);
+    assert.match(evrak, /Onaya Dön/);
     assert.match(evrak, /Bu belgeyi onaylamanız gerekir/);
   });
 
