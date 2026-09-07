@@ -8,7 +8,7 @@ import {
   History,
   Wallet,
 } from 'lucide-react';
-import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk } from '@sigorta/shared';
+import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk, resolveAcilInsuredName } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
 import { PANEL_CARD_BASE, PanelSectionTitle } from '@/components/panel/PanelCard';
@@ -361,22 +361,19 @@ function customerFullLabel(vaka: EmergencyCase): string {
   );
 }
 
-function foldPersonLabel(value: string): string {
-  return value.trim().toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ');
-}
-
 function insuredLabel(vaka: EmergencyCase): string {
-  // Acil: sigortalı kişi adı. Müşteri = asistan/sigorta firması kartı — aynı metin basılmaz.
-  const firm = foldPersonLabel(customerLabel(vaka));
-  const fromField = (vaka.customerName || '').trim();
-  if (fromField && foldPersonLabel(fromField) !== firm) return fromField;
-  const note = (vaka.notes || '').trim();
-  const m = note.match(/sigortal[ıi]\s*[:：]\s*(.+)/i);
-  if (m?.[1]) {
-    const fromNote = m[1].split(/[\n|]/)[0].trim().slice(0, 80);
-    if (fromNote && foldPersonLabel(fromNote) !== firm) return fromNote;
-  }
-  return '—';
+  return (
+    resolveAcilInsuredName({
+      personField: vaka.customerName,
+      notes: vaka.notes,
+      firmNames: [
+        customerLabel(vaka),
+        vaka.customer?.companyName,
+        vaka.customer?.fullName,
+        vaka.customer?.shortName,
+      ],
+    }) || '—'
+  );
 }
 
 function insuredPhoneLabel(vaka: EmergencyCase): string {

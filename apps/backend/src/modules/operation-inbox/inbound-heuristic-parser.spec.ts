@@ -117,4 +117,19 @@ Adres: Sandıklı / Afyon
     expect(fields.fileNo).toBe('RCS-20261854032');
     expect(fields.fileNoWarning).toMatch(/RCS-20261854032/);
   });
+
+  it('Sigortalı Adı Soyadı form alanını kişi adı olarak alır', () => {
+    const fields = extractHeuristicFields({
+      subject: 'Ynt: 1619479924/KARAKOL/RCS-20261877741/KONUT CAM',
+      bodyText: `
+Sigorta Ettiren: Remed Assistance
+Sigortalı Adı Soyadı: Ayşe Yılmaz
+Dosya No: RCS-20261877741
+Adres: Borazanlar 413 Özyıl Apt. No : 4 Daire : 2 Merkez - Türkiye - Bolu
+`.trim(),
+      bodyPreview: null,
+      bodyHtml: null,
+    });
+    expect(fields.customerName).toBe('Ayşe Yılmaz');
+  });
 });

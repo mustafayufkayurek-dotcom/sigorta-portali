@@ -73,7 +73,11 @@ import {
   EMERGENCY_STATUS_PRODUCT_LABELS,
   OPERATION_PRESET_LABELS,
   deriveOperationStage,
+  isAcilWorkloadOpen,
+  istanbulCivilDayRange,
+  resolveAcilInsuredName,
   resolveEmergencyOperationLabel,
+  tallyAcilOperationKpis,
   type OperationPreset,
   type OperationStageMeta,
 } from '@sigorta/shared';
@@ -222,6 +226,7 @@ type UnifiedRow =
       reportId: string | null;
       defaultEmailTo: string | null;
       vendorPaid: boolean | null;
+      workloadOpen: boolean;
     };
 
 function resolveAcilListVendorPaid(c: EmergencyCase): boolean | null {
@@ -483,7 +488,22 @@ function OperasyonPageContent() {
 
   const loadStats = useCallback(async () => {
     try {
-      const stats = await apiClient.get<OpsStats>('/claim-files/operation-stats');
+      let assignedOfficeUserId: string | undefined;
+      try {
+        const u = JSON.parse(localStorage.getItem('user') ?? '{}') as {
+          id?: string;
+          role?: { code?: string };
+          roleCode?: string;
+        };
+        const rc = String(u?.role?.code ?? u?.roleCode ?? '').toLowerCase();
+        if (rc === 'office_staff' && typeof u?.id === 'string' && u.id.trim()) {
+          assignedOfficeUserId = u.id.trim();
+        }
+      } catch { /* oturum yok */ }
+      const stats = await apiClient.get<OpsStats>(
+        '/claim-files/operation-stats',
+        assignedOfficeUserId ? { assignedOfficeUserId } : undefined,
+      );
       setOpsStats(stats);
     } catch { /* ignore */ }
   }, []);
@@ -595,8 +615,9 @@ function OperasyonPageContent() {
 
   const acilRows: UnifiedRow[] = cases
     .filter((c) => {
-      const closed = c.status === 'COZULDU' || c.status === 'FATURALANDILDI';
-      if (opsPreset === 'urgent' || opsPreset === 'open') return !closed;
+      if (opsPreset === 'urgent' || opsPreset === 'open') {
+        return isAcilWorkloadOpen({ status: c.status, notes: c.notes });
+      }
       if (opsPreset === 'opened_today') {
         if (!c.createdAt) return false;
         const created = new Date(c.createdAt);
@@ -614,6 +635,16 @@ function OperasyonPageContent() {
     })
     .map((c) => {
     const customer = resolveOperationCustomer(c.customer);
+    const insuredPerson = resolveAcilInsuredName({
+      personField: c.customerName,
+      notes: c.notes,
+      firmNames: [
+        customer.name,
+        c.customer?.companyName,
+        c.customer?.fullName,
+        c.customer?.shortName,
+      ],
+    });
     return {
       kind: 'acil' as const,
       id: c.id,
@@ -623,7 +654,7 @@ function OperasyonPageContent() {
       customerTitle: customer.title,
       customerSearch: customer.searchText,
       customerHref: customer.customerHref,
-      insuredName: c.customerName ? toTitleCaseTR(c.customerName) : '—',
+      insuredName: insuredPerson ? toTitleCaseTR(insuredPerson) : '—',
       date: c.createdAt,
       subject: resolveClaimDosyaKonusu({ lossType: c.issueType }, dosyaKonusuCatalog),
       statusCode: c.status,
@@ -647,8 +678,18 @@ function OperasyonPageContent() {
       reportId: null,
       defaultEmailTo: null,
       vendorPaid: resolveAcilListVendorPaid(c),
+      workloadOpen: isAcilWorkloadOpen({ status: c.status, notes: c.notes }),
     };
   });
+
+  const acilKpiTally = useMemo(
+    () =>
+      tallyAcilOperationKpis(
+        cases.map((c) => ({ status: c.status, notes: c.notes, createdAt: c.createdAt })),
+        istanbulCivilDayRange(),
+      ),
+    [cases],
+  );
 
   function sortValue(row: UnifiedRow, key: string): string {
     switch (key) {
@@ -704,7 +745,9 @@ function OperasyonPageContent() {
         (row) => row.kind === 'acil' && acilVendorPayMatchesFilter(row.vendorPaid, filterVendorPay),
       );
     }
-    if (filterType === 'acil' && filterAcilStage) {
+    if (filterType === 'acil' && filterAcilStage === '__open__') {
+      rows = rows.filter((row) => row.kind === 'acil' && row.workloadOpen);
+    } else if (filterType === 'acil' && filterAcilStage) {
       const stage = ACIL_PRODUCT_STAGE_FILTERS.find((s) => s.id === filterAcilStage);
       const codes = new Set((stage?.codes ?? []).map((c) => c.toUpperCase()));
       if (codes.size) {
@@ -1000,14 +1043,16 @@ function OperasyonPageContent() {
         <OpsStripKpi
           dense
           label="Açık Dosya"
-          value={opsStats?.openEmergency ?? '—'}
+          value={casesLoading ? '—' : acilKpiTally.openEmergency}
           color="bg-brand-600"
           icon={FolderOpen}
+          active={filterAcilStage === '__open__'}
+          onClick={() => setFilterAcilStage((cur) => (cur === '__open__' ? '' : '__open__'))}
         />
         <OpsStripKpi
           dense
           label="Bugün Açılan"
-          value={opsStats?.openedTodayEmergency ?? '—'}
+          value={casesLoading ? '—' : acilKpiTally.openedTodayEmergency}
           color="bg-emerald-600"
           icon={CalendarPlus}
         />
@@ -1146,6 +1191,7 @@ function OperasyonPageContent() {
               data-testid="acil-asama-filtre"
             >
               <option value="">Tüm Durumlar</option>
+              <option value="__open__">Açık Dosyalar</option>
               {ACIL_PRODUCT_STAGE_FILTERS.map((stage) => (
                 <option key={stage.id} value={stage.id}>
                   {stage.sequenceNo}. {stage.label}

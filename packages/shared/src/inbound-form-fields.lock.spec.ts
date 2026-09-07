@@ -43,4 +43,17 @@ Hasar Türü : Tesisat
     );
     assert.equal(getInboundFormFieldValue(fields, 'Hasar Türü'), 'Tesisat');
   });
+
+  it('Sigortalı Adı Soyadı etiketini okur; adres etiketini adı sanmaz', () => {
+    const text = `
+Sigortalı Adı Soyadı: Ayşe Yılmaz
+Sigortalı Adresi: Borazanlar 413 Özyıl Apt. No : 4 Daire : 2 Merkez - Türkiye - Bolu
+`.trim();
+    const fields = extractInboundFormFields(text);
+    assert.equal(getInboundFormFieldValue(fields, 'Sigortalı Adı Soyadı'), 'Ayşe Yılmaz');
+    assert.equal(
+      getInboundFormFieldValue(fields, 'Sigortalı Adresi'),
+      'Borazanlar 413 Özyıl Apt. No : 4 Daire : 2 Merkez - Türkiye - Bolu',
+    );
+  });
 });

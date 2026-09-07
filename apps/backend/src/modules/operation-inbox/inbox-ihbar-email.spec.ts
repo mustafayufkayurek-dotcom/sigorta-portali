@@ -34,6 +34,32 @@ describe('inbox ihbar email', () => {
     expect(rows[5]?.value).toBe('Caferağa Mah. Moda Cad. No:12 Kadıköy / İstanbul');
   });
 
+  it('renders Acil Yeni İhbar with person name not assistant title', () => {
+    const rows = buildInboxIhbarEmailRows({
+      fileType: 'acil',
+      fileNo: 'RCS-20261877741',
+      notificationAt: new Date('2026-09-07T08:48:00+03:00'),
+      assistantCompanyName: 'Remed Assistance',
+      fileSubject: 'Konut Cam',
+      insuredName: 'Ayşe Yılmaz',
+      city: 'Bolu',
+      district: 'Merkez',
+      address: 'Borazanlar 413 Özyıl Apt. No : 4 Daire : 2 Merkez - Türkiye - Bolu',
+      actionUrl: 'https://app.meridyen-tr.com/panel/acil-yardim/ornek',
+    });
+    expect(rows.map((row) => row.label)).toEqual([
+      'İhbar Tarihi',
+      'Asistan Firması',
+      'Dosya No',
+      'Dosya Konusu',
+      'Sigortalı Adı Soyadı',
+      'Adres',
+    ]);
+    expect(rows[1]?.value).toBe('Remed Assistance');
+    expect(rows[4]?.value).toBe('Ayşe Yılmaz');
+    expect(rows[4]?.value).not.toBe('—');
+  });
+
   it('renders approved Yeni İhbar kartı without Operasyon Bildirimi', () => {
     const html = buildNotificationEmailHtml(
       buildInboxIhbarEmailTemplate({

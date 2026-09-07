@@ -56,6 +56,7 @@ import {
   hoursSince,
   isHasarWorkloadOpenStage,
   tallyHasarOperationKpis,
+  tallyAcilOperationKpis,
   isApproval72hExceeded,
   isApprovalWaitingReport,
   resolveOperationStatusLabel,
@@ -400,10 +401,6 @@ export class ClaimFilesService {
     const from = new Date(`${dateKey}T00:00:00+03:00`);
     const to = new Date(`${dateKey}T23:59:59.999+03:00`);
     return { from, to, dateKey };
-  }
-
-  private closedEmergencyStatuses() {
-    return ['COZULDU', 'FATURALANDILDI'] as const;
   }
 
   private parseSort(sort?: string): Record<string, 'asc' | 'desc'> {
@@ -890,14 +887,12 @@ export class ClaimFilesService {
     return this.prisma.claimFile.count({ where: where as any });
   }
 
-  /** Operasyon / Hasar KPI — hasar kartları liste Durum etiketiyle aynı aşamadan sayılır. */
+  /** Operasyon KPI — Hasar ve Acil kartları listedeki Durum etiketiyle aynı kuraldan sayılır. */
   async getOperationStats(
     requestingUser?: { id: string; roleCode: string; vendorId?: string | null },
     params?: { assignedOfficeUserId?: string },
   ) {
-    const closedEmergency = this.closedEmergencyStatuses();
     const todayRange = this.istanbulDayRange();
-    const { from: todayFrom, to: todayTo } = todayRange;
 
     const extraWhere: Record<string, unknown> = {};
     if (
@@ -927,8 +922,7 @@ export class ClaimFilesService {
       financeTransfer,
       delayRisk,
       approval72h,
-      openEmergency,
-      openedTodayEmergency,
+      emergencyRows,
     ] = await Promise.all([
       this.prisma.claimFile.findMany({
         where: claimScopeWhere as any,
@@ -947,11 +941,9 @@ export class ClaimFilesService {
       this.countForOpsPreset('finance_transfer', requestingUser, extraWhere),
       this.countForOpsPreset('delay_risk', requestingUser, extraWhere),
       this.countForOpsPreset('approval_72h', requestingUser, extraWhere),
-      this.prisma.emergencyCase.count({
-        where: { ...emergencyScope, status: { notIn: [...closedEmergency] } },
-      }),
-      this.prisma.emergencyCase.count({
-        where: { ...emergencyScope, createdAt: { gte: todayFrom, lte: todayTo } },
+      this.prisma.emergencyCase.findMany({
+        where: emergencyScope as any,
+        select: { createdAt: true, status: true, notes: true },
       }),
     ]);
 
@@ -973,6 +965,14 @@ export class ClaimFilesService {
       reportWriting,
       reportApproval,
     } = stageTally;
+    const { openEmergency, openedTodayEmergency } = tallyAcilOperationKpis(
+      emergencyRows.map((row) => ({
+        status: row.status,
+        notes: row.notes,
+        createdAt: row.createdAt,
+      })),
+      todayRange,
+    );
 
     return {
       openClaims,

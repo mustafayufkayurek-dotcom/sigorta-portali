@@ -197,6 +197,58 @@ export function resolveEmergencyOperationLabel(input: {
   return emergencyStatusProductLabel(input.status);
 }
 
+export type AcilKpiFileInput = {
+  status?: string | null;
+  notes?: string | null;
+  verbalDecision?: VerbalManualDecision | null;
+  createdAt?: Date | string | null;
+};
+
+export type AcilOperationKpiTally = {
+  openEmergency: number;
+  openedTodayEmergency: number;
+};
+
+/**
+ * Kart «Açık Dosya» (Acil): listedeki Dosya Durumu ile aynı.
+ * Kapanış, finansa aktarım ve red açık iş sayılmaz. Revizyon açık kalır.
+ */
+export function isAcilWorkloadOpen(input: AcilKpiFileInput): boolean {
+  if (isEmergencyManuallyRejected(input)) return false;
+  if (isEmergencyManuallyRevised(input)) return true;
+  const code = String(input.status ?? '').trim().toUpperCase();
+  if (code === 'COZULDU' || code === 'FATURALANDILDI') return false;
+  return true;
+}
+
+export function istanbulCivilDayRange(now = new Date()): { from: Date; to: Date } {
+  const dateKey = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+  return {
+    from: new Date(`${dateKey}T00:00:00+03:00`),
+    to: new Date(`${dateKey}T23:59:59.999+03:00`),
+  };
+}
+
+export function tallyAcilOperationKpis(
+  files: AcilKpiFileInput[],
+  todayRange: { from: Date; to: Date },
+): AcilOperationKpiTally {
+  const tally: AcilOperationKpiTally = { openEmergency: 0, openedTodayEmergency: 0 };
+  for (const file of files) {
+    if (isAcilWorkloadOpen(file)) tally.openEmergency += 1;
+    if (!file.createdAt) continue;
+    const created = typeof file.createdAt === 'string' ? new Date(file.createdAt) : file.createdAt;
+    if (Number.isNaN(created.getTime())) continue;
+    if (created >= todayRange.from && created <= todayRange.to) tally.openedTodayEmergency += 1;
+  }
+  return tally;
+}
+
 /** ClaimStatus.code → operasyon aşaması */
 const CLAIM_CODE_TO_STAGE: Record<string, OperationStageId> = {
   new: 'ihbar_alindi',

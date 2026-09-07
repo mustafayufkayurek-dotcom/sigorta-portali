@@ -7,6 +7,10 @@ export interface InboundFormField {
 
 export const INBOUND_FORM_FIELD_LABELS: { key: string; label: string }[] = [
   { key: 'insurer', label: 'Sigorta Şirketi' },
+  { key: 'customerNameInsured', label: 'Sigortalı Adı Soyadı' },
+  { key: 'customerNameInsuredAlt', label: 'Sigortalı Ad Soyad' },
+  { key: 'customerNameInsuredAlt2', label: 'Sigortalı Adı' },
+  { key: 'customerNameInsuredAlt3', label: 'Sigortalı' },
   { key: 'customerName', label: 'Sigorta Ettiren Ad-Soyad' },
   { key: 'customerNameAlt', label: 'Sigorta Ettiren' },
   { key: 'fileNo', label: 'Dosya No' },

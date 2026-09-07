@@ -1,35 +1,40 @@
 ---
-description: Web v573 alındı — sıradaki paketler karışmaz
+description: Canlı v574 — önerilen alım sırası
 alwaysApply: true
 ---
 
-# Web v573 (06.09.2026) — alındı
+# Canlı v574 (07.09.2026)
 
-Canlı: web **v573** · backend **v571**. Rollback: web **v572** / backend **v571**.
+Canlı: web **v574** · backend **v574**. Geri alma: web **v573** / backend **v571**.
 
-## Alınan paket (v573)
+Alım yalnız Mustafa «canlıya al» deyince. Sıra ve paketleme asistan önerisidir; sahibinden teknik seçim istenmez.
 
-**Liste sütunları şişmez.** İşlem seçici ve listede harita yok kilitlendi. İK yok.
+## Alınan (v574)
 
-1. Tablo genişliği piksel. Sütunlar ekrana göre oynamaz.
-2. Canlı alımda liste kilitleri çalışır. Disk 5 GB altındaysa kopya yok.
+Güvenlik, kütüphane, KVKK sayfa/kutu/çerez şeridi. İK yok.
 
-## v572 durur (bozulmaz)
+## Önerilen sonraki alım — Paket A (Acil gerçeklik)
 
-İşlemler seçilir. Dosya listesinde harita yok.
+Aynı haftanın şikâyetleri; kardeşler ayrılmaz. Tek alım.
 
-## Canlıda yok
+- Acil ihbar mailinde sigortalı kişi adı (asistan unvanı / boş tire yok)
+- Dosya sorumlusu listesinde aynı ad kuralı
+- Kapanış mailinde aynı ad kuralı
+- Açık dosya kartı listedeki durumla aynı (red, kapanış, finansa aktarım açık sayılmaz)
 
-İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj karışmaz.
+## Sonra — Paket B (KVKK onaylı metin)
 
-## Sırada (karışmaz)
+v574’te sayfa duruyor. Onaylı metin canlıdakiyle aynıysa bu paket düşer; fark varsa yalnız metin gider. Acil paketine karışmaz.
 
-1. **İK personel özlük:** Personel Ekle + zimmet aynı kayıtta. Puantaj ayrı.
-2. **Panel oturum kapısı:** Adres çubuğundan şifresiz panele girilmez.
-3. **Başlık bilgi ikonu:** Sayfa açıklaması başlığın yanındaki bilgide; amatör tanım yok.
-4. **KDV raporu:** Sayfa açılır; tutar biçimi durur. Satış/alış mahsup. Dönem Türkiye saati.
-5. **Finans liste görünümü:** Başlık harfi kesilmez. Sütunlar/İşlemler yan yana; işlem gizle-göster fatura talepleri, tahsilat/ödeme, masraflar, cariler.
-6. **Konut-Yangın yazımı:** Konu etiketi doğru tire ve ı.
-7. **Mail adresi (yalnız tespit):** Hoş geldin Kullanıcılar kaydından; dosya mailleri müşteri kartı kutusundan. Düzeltme ayrı paket.
+## Sonra — Paket C (oturum kapısı)
 
-Alım yalnız Mustafa «canlıya al» deyince.
+Adres çubuğundan şifresiz panele girilmez. Güvenlik; Acil ve İK ile karışmaz.
+
+## Daha sonra (karışmaz)
+
+- İK personel özlük (Personel Ekle + zimmet; puantaj ayrı)
+- Başlık bilgi ikonu
+- KDV raporu
+- Finans liste görünümü
+- Konut-Yangın yazımı
+- Mail adresi (yalnız tespit; düzeltme ayrı)

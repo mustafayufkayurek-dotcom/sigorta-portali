@@ -29,6 +29,7 @@ export * from './hasar-flow-groups';
 export * from './hasar-office-close';
 export * from './emergency-findings-text';
 export * from './file-expense-work-group-audit';
+export * from './acil-insured-name';
 export * from './acil-file-owner-delegation';
 export * from './acil-digital-approval-pause';
 export * from './authorized-person-name';

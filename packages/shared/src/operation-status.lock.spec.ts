@@ -17,9 +17,11 @@ import {
   hasarListStatusQuery,
   isApprovalWaitingReport,
   isHasarWorkloadOpenStage,
+  isAcilWorkloadOpen,
   staffVisibleClaimStatusName,
   resolveEmergencyOperationLabel,
   tallyHasarOperationKpis,
+  tallyAcilOperationKpis,
 } from './operation-status.ts';
 
 describe('dış onay = Onay Bekliyor LOCK', () => {
@@ -240,5 +242,32 @@ describe('hasar dosya sorumlusu KPI kartı LOCK', () => {
     assert.equal(tally.openedTodayClaims, 1);
     assert.equal(isHasarWorkloadOpenStage('rapor_reddedildi'), false);
     assert.equal(isHasarWorkloadOpenStage('rapor_yaziliyor'), true);
+  });
+});
+
+describe('acil dosya sorumlusu KPI kartı LOCK', () => {
+  it('red ve kapanış / finansa aktarım açık iş sayılmaz; revizyon açık kalır', () => {
+    const todayRange = {
+      from: new Date('2026-09-07T00:00:00+03:00'),
+      to: new Date('2026-09-07T23:59:59.999+03:00'),
+    };
+    const tally = tallyAcilOperationKpis(
+      [
+        { status: 'GELEN', createdAt: '2026-09-07T08:00:00+03:00' },
+        { status: 'ATANDI' },
+        { status: 'SAHADA' },
+        { status: 'COZULDU' },
+        { status: 'FATURALANDILDI' },
+        { status: 'GELEN', notes: '[Manuel Red · gerekçe]' },
+        { status: 'COZULDU', notes: '[Manuel Revizyon · gerekçe]' },
+      ],
+      todayRange,
+    );
+    assert.equal(tally.openEmergency, 4);
+    assert.equal(tally.openedTodayEmergency, 1);
+    assert.equal(isAcilWorkloadOpen({ status: 'SAHADA' }), true);
+    assert.equal(isAcilWorkloadOpen({ status: 'FATURALANDILDI' }), false);
+    assert.equal(isAcilWorkloadOpen({ status: 'GELEN', notes: '[Manuel Red · x]' }), false);
+    assert.equal(isAcilWorkloadOpen({ status: 'COZULDU', notes: '[Manuel Revizyon · x]' }), true);
   });
 });

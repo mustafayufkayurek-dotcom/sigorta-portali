@@ -9,6 +9,7 @@ import {
   extractInboundFormFields,
   getInboundFormFieldValue,
   INBOUND_ADDRESS_FIELD_LABELS,
+  INBOUND_INSURED_NAME_FIELD_LABELS,
   resolveInboundFileNo,
 } from '@sigorta/shared';
 import { extractSubjectHints } from './inbound-subject-parser';
@@ -73,7 +74,7 @@ export function extractHeuristicFields(
 
   return {
     customerName:
-      getInboundFormFieldValue(fields, 'Sigorta Ettiren Ad-Soyad', 'Sigorta Ettiren')
+      getInboundFormFieldValue(fields, ...INBOUND_INSURED_NAME_FIELD_LABELS)
       ?? remed?.customerName
       ?? undefined,
     phone: phoneFromFields ?? findInsuredMobilePhoneInText(textForPhone) ?? undefined,

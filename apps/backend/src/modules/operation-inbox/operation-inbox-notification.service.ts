@@ -4,6 +4,7 @@ import { resolveAppUrl } from '@/common/utils/app-url';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { yeniIhbarSubject } from '@/modules/notifications/email/email.template';
+import { resolveAcilInsuredName } from '@sigorta/shared';
 import { buildInboxIhbarEmailTemplate } from './inbox-ihbar-email';
 
 export type InboxNotificationType =
@@ -213,15 +214,25 @@ export class OperationInboxNotificationService {
             createdAt: true,
             issueType: true,
             customerName: true,
+            notes: true,
             address: true,
             city: true,
             district: true,
-            customer: { select: { fullName: true, companyName: true } },
+            customer: { select: { fullName: true, companyName: true, shortName: true } },
           },
         }).catch(() => null);
-        customerLongName = (acil?.customer?.companyName || acil?.customer?.fullName || acil?.customerName || '').trim();
+        customerLongName = (acil?.customer?.companyName || acil?.customer?.fullName || '').trim();
         assistantCompanyName = customerLongName || null;
         fileSubject = acil?.issueType ?? null;
+        insuredName = resolveAcilInsuredName({
+          personField: acil?.customerName,
+          notes: acil?.notes,
+          firmNames: [
+            acil?.customer?.companyName,
+            acil?.customer?.fullName,
+            acil?.customer?.shortName,
+          ],
+        });
         city = acil?.city ?? null;
         district = acil?.district ?? null;
         address = acil?.address ?? null;

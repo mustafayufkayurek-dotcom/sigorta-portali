@@ -34,6 +34,7 @@ import { htmlDocumentToPdf } from '@/common/utils/html-document-to-pdf';
 import {
   resolveInsuredPhoneForInbox,
   resolveEmergencyOperationLabel,
+  resolveAcilInsuredName,
   isAcilVendorQualityWarning,
   shouldReportAcilNegativeVendorStrike,
   nextEmergencyFindingsText,
@@ -1127,10 +1128,16 @@ export class EmergencyCasesService {
     const to = recipients.join(', ');
     const fileNo = emergencyCase.fileNo || emergencyCase.caseNo;
     const insured =
-      (emergencyCase.customerName || '').trim()
-      || [emergencyCase.customer?.firstName, emergencyCase.customer?.lastName].filter(Boolean).join(' ').trim()
-      || emergencyCase.customer?.fullName
-      || '—';
+      resolveAcilInsuredName({
+        personField: emergencyCase.customerName,
+        notes: emergencyCase.notes,
+        firmNames: [
+          assistansName,
+          emergencyCase.customer?.companyName,
+          emergencyCase.customer?.fullName,
+          emergencyCase.customer?.shortName,
+        ],
+      }) || '—';
     const insuredPhone =
       (await this.ensureCustomerPhoneFromInbound(caseId, emergencyCase.customerPhone)) || '—';
     const saleAmount = emergencyCase.costEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0);

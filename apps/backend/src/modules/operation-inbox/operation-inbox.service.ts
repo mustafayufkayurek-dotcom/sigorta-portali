@@ -1203,7 +1203,7 @@ export class OperationInboxService {
     fromAddress: string,
   ): string | undefined {
     const named = explicit?.trim() || extracted.customerName?.trim();
-    if (named) return named;
+    if (named && !/^(belirtilmemiş|belirtilmedi|—|-)$/i.test(named.trim())) return named;
     if (isCorporateInboxSender(fromAddress)) return undefined;
     return fromName?.trim() || undefined;
   }
