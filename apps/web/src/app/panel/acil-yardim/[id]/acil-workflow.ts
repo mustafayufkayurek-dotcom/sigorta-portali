@@ -114,6 +114,10 @@ export type AcilLocalFlow = {
   customerNotifyChannel: AnaMusteriHaberlesme;
   /** WhatsApp / mesaj geçmişi (tür ayrımı) */
   messageLog: MessageLogEntry[];
+  /** Tespit bulgusu taslağı — adım değişince kaybolmaz */
+  findingsDraft: string;
+  /** Sunum özeti — adım değişince kaybolmaz */
+  approvalText: string;
 };
 
 const FLOW_PREFIX = 'emergency-acil-flow:';
@@ -138,6 +142,8 @@ export function emptyAcilLocalFlow(): AcilLocalFlow {
     vendorPaid: null,
     customerNotifyChannel: 'both',
     messageLog: [],
+    findingsDraft: '',
+    approvalText: 'Riziko adreste; ',
   };
 }
 
@@ -156,6 +162,10 @@ export function readAcilLocalFlow(caseId: string): AcilLocalFlow {
       vendorProcess: parsed.vendorProcess ?? null,
       vendorPaid: parsed.vendorPaid === true ? true : parsed.vendorPaid === false ? false : null,
       customerNotifyChannel: parseAnaMusteriHaberlesme(parsed.customerNotifyChannel),
+      findingsDraft: typeof parsed.findingsDraft === 'string' ? parsed.findingsDraft : '',
+      approvalText: typeof parsed.approvalText === 'string' && parsed.approvalText
+        ? parsed.approvalText
+        : 'Riziko adreste; ',
     };
   } catch {
     return emptyAcilLocalFlow();
@@ -169,6 +179,17 @@ export function writeAcilLocalFlow(caseId: string, flow: AcilLocalFlow): void {
   } catch {
     /* ignore */
   }
+}
+
+export function stampAcilLocalDrafts(
+  flow: AcilLocalFlow,
+  drafts: { findingsDraft: string; approvalText: string },
+): AcilLocalFlow {
+  return {
+    ...flow,
+    findingsDraft: drafts.findingsDraft,
+    approvalText: drafts.approvalText,
+  };
 }
 
 export function appendFlowHistory(flow: AcilLocalFlow, text: string): AcilLocalFlow {

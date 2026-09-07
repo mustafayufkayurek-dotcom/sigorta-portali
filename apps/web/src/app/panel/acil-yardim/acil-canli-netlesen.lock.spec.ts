@@ -48,6 +48,7 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /FieldInspectionPhotosPanel/);
     assert.match(acilPage, /tespit-bulgulari-input/);
     assert.match(acilPage, /saveFindingsText/);
+    assert.match(acilPage, /resolveEmergencyFindingsDraft/);
     assert.match(acilPage, /Tespit bulguları kaydedilmeden dosya kapatılamaz/);
     assert.match(acilPage, /tespit-bulgulari-ozet/);
     assert.match(acilPage, /if \(step === 'kapanis'\)/);

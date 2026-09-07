@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { nextEmergencyFindingsText } from './emergency-findings-text.ts';
+import { nextEmergencyFindingsText, resolveEmergencyFindingsDraft } from './emergency-findings-text.ts';
 
 describe('acil tespit bulgusu', () => {
   it('alan yoksa mevcut metne dokunulmaz', () => {
@@ -24,5 +24,32 @@ describe('acil tespit bulgusu', () => {
   it('hiç yoksa boş yazılmaz', () => {
     assert.equal(nextEmergencyFindingsText('', null), undefined);
     assert.equal(nextEmergencyFindingsText(null, ''), undefined);
+  });
+
+  it('yazılan taslak boş sunucu ile silinmez', () => {
+    assert.equal(
+      resolveEmergencyFindingsDraft({
+        server: '',
+        inMemory: 'Tavan ıslak ',
+        stored: '',
+      }),
+      'Tavan ıslak ',
+    );
+    assert.equal(
+      resolveEmergencyFindingsDraft({
+        server: '',
+        inMemory: '',
+        stored: 'Su kaçağı',
+      }),
+      'Su kaçağı',
+    );
+    assert.equal(
+      resolveEmergencyFindingsDraft({
+        server: 'Kayıtlı metin',
+        inMemory: '',
+        stored: '',
+      }),
+      'Kayıtlı metin',
+    );
   });
 });

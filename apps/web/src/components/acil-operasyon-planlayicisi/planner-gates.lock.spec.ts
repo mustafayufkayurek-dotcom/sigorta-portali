@@ -9,6 +9,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   acilOnayMetinGovde,
+  resolveAcilApprovalText,
   withAcilOnayMetinOnEk,
 } from './planner-gates.ts';
 
@@ -68,8 +69,28 @@ describe('acil sunum özeti boşluk LOCK', () => {
       'utf8',
     );
     const panel = readFileSync(join(here, 'AcilOperasyonPlanlayiciPanel.tsx'), 'utf8');
+    const workflow = readFileSync(
+      join(here, '../../app/panel/acil-yardim/[id]/acil-workflow.ts'),
+      'utf8',
+    );
     assert.match(page, /draftFindingsRef/);
     assert.match(page, /onNavigateStep/);
     assert.match(panel, /onNavigateStep\?\./);
+    assert.match(page, /resolveEmergencyFindingsDraft/);
+    assert.match(page, /persistPlannerDrafts/);
+    assert.match(page, /resolveAcilApprovalText/);
+    assert.doesNotMatch(page, /idChanged \? '' : draftFindingsRef/);
+    assert.doesNotMatch(page, /draftFindingsRef\.current = ''/);
+    assert.match(workflow, /findingsDraft/);
+    assert.match(workflow, /approvalText/);
+    assert.match(workflow, /stampAcilLocalDrafts/);
+    assert.equal(
+      resolveAcilApprovalText('', 'Riziko adreste; kilit değişimi yapılmadı'),
+      'Riziko adreste; kilit değişimi yapılmadı',
+    );
+    assert.equal(
+      resolveAcilApprovalText('Riziko adreste; yazılan ', ''),
+      'Riziko adreste; yazılan ',
+    );
   });
 });

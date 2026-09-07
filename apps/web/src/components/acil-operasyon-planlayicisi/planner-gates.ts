@@ -52,3 +52,10 @@ export function validateOperatorStep(
   }
   return null;
 }
+
+/** Sunum özeti adım değişince / yenilemede boş öneke dönmez. Gövde kırpılmaz. */
+export function resolveAcilApprovalText(inMemory: string, stored: string): string {
+  if (acilOnayMetinGovde(inMemory).trim()) return withAcilOnayMetinOnEk(inMemory);
+  if (acilOnayMetinGovde(stored).trim()) return withAcilOnayMetinOnEk(stored);
+  return withAcilOnayMetinOnEk(inMemory || stored || '');
+}

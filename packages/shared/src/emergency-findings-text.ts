@@ -12,3 +12,19 @@ export function nextEmergencyFindingsText(
   const kept = String(current ?? '').trim();
   return kept || undefined;
 }
+
+/**
+ * Ekrandaki / yereldeki yazı, boş sunucu yanıtıyla silinmez.
+ * Adım değişince veya dosya yenilenirken yazılan durur.
+ */
+export function resolveEmergencyFindingsDraft(parts: {
+  server?: string | null;
+  inMemory?: string | null;
+  stored?: string | null;
+}): string {
+  const memory = String(parts.inMemory ?? '');
+  if (memory.trim()) return memory;
+  const stored = String(parts.stored ?? '');
+  if (stored.trim()) return stored;
+  return String(parts.server ?? '');
+}

@@ -8,7 +8,7 @@ import {
   History,
   Wallet,
 } from 'lucide-react';
-import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk, resolveAcilInsuredName } from '@sigorta/shared';
+import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk, resolveAcilInsuredName, resolveEmergencyFindingsDraft } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
 import { PANEL_CARD_BASE, PanelSectionTitle } from '@/components/panel/PanelCard';
@@ -35,6 +35,7 @@ import type {
   ApprovalState as PlannerApprovalState,
   OperatorStepKey,
 } from '@/components/acil-operasyon-planlayicisi/planner-steps';
+import { resolveAcilApprovalText } from '@/components/acil-operasyon-planlayicisi/planner-gates';
 import { InboundEmailCorrespondencePanel } from '@/components/operation-inbox/InboundEmailCorrespondencePanel';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { DelegationBanner } from '@/components/delegation/DelegationBanner';
@@ -76,6 +77,7 @@ import {
   evaluateOperationStartGate,
   isValidVendorPhone,
   readAcilLocalFlow,
+  stampAcilLocalDrafts,
   resolveAcilBudgetAmounts,
   resolveAcilFinanceDisplayKpis,
   hasAcilProcessedFileExpenses,
@@ -539,7 +541,10 @@ export default function AcilDosyaDetayPage() {
   const [closurePhotoCount, setClosurePhotoCount] = useState(0);
   const [plannerApprovalChannel, setPlannerApprovalChannel] = useState<PlannerApprovalChannel>('email');
   const [plannerApprovalText, setPlannerApprovalText] = useState('Riziko adreste; ');
+  const plannerApprovalTextRef = useRef('Riziko adreste; ');
+  plannerApprovalTextRef.current = plannerApprovalText;
   const plannerRef = useRef<AcilOperasyonPlanlayiciHandle | null>(null);
+  const loadGenRef = useRef(0);
 
   useEffect(() => {
     setClosurePhotoCount(0);
@@ -568,7 +573,6 @@ export default function AcilDosyaDetayPage() {
   const [draftFindings, setDraftFindings] = useState('');
   const draftFindingsRef = useRef('');
   draftFindingsRef.current = draftFindings;
-  const lastFindingsFileIdRef = useRef<string | null>(null);
   const [findingsError, setFindingsError] = useState<string | null>(null);
   const [, setFindingsSaving] = useState(false);
   const findingsFormRef = useRef<HTMLDivElement | null>(null);
@@ -590,13 +594,27 @@ export default function AcilDosyaDetayPage() {
     if (marginToastTimerRef.current) clearTimeout(marginToastTimerRef.current);
   }, []);
 
+  const persistPlannerDrafts = useCallback((patch: { findingsDraft?: string; approvalText?: string }) => {
+    if (!id) return;
+    const next = stampAcilLocalDrafts(flowRef.current, {
+      findingsDraft: patch.findingsDraft ?? draftFindingsRef.current,
+      approvalText: patch.approvalText ?? plannerApprovalTextRef.current,
+    });
+    flowRef.current = next;
+    writeAcilLocalFlow(id, next);
+  }, [id]);
+
   const persistFlow = useCallback(async (next: AcilLocalFlow) => {
     const prev = flowRef.current;
-    flowRef.current = next;
-    setFlow(next);
+    const withDrafts = stampAcilLocalDrafts(next, {
+      findingsDraft: draftFindingsRef.current,
+      approvalText: plannerApprovalTextRef.current,
+    });
+    flowRef.current = withDrafts;
+    setFlow(withDrafts);
     if (id) {
-      writeAcilLocalFlow(id, next);
-      const events = diffAcilProcessEvents(prev, next);
+      writeAcilLocalFlow(id, withDrafts);
+      const events = diffAcilProcessEvents(prev, withDrafts);
       if (events.length > 0) {
         const results = await Promise.all(
           events.map((event) =>
@@ -614,40 +632,55 @@ export default function AcilDosyaDetayPage() {
   }, [id]);
 
   const load = useCallback(async () => {
+    const loadId = id;
+    const gen = ++loadGenRef.current;
     setLoading(true);
     try {
-      const caseRes = await getCase(id);
-      const idChanged = lastFindingsFileIdRef.current !== id;
-      if (idChanged) {
-        lastFindingsFileIdRef.current = id;
-        draftFindingsRef.current = '';
-      }
-      const localDraft = idChanged ? '' : draftFindingsRef.current;
-      const serverText = caseRes.data.findingsText ?? '';
+      const caseRes = await getCase(loadId);
+      if (gen !== loadGenRef.current) return;
+      const localFlow = readAcilLocalFlow(loadId);
+      const resolvedFindings = resolveEmergencyFindingsDraft({
+        server: caseRes.data.findingsText,
+        inMemory: draftFindingsRef.current,
+        stored: localFlow.findingsDraft,
+      });
+      const resolvedApproval = resolveAcilApprovalText(
+        plannerApprovalTextRef.current,
+        localFlow.approvalText,
+      );
       setVaka(caseRes.data);
-      if (localDraft.trim() && localDraft.trim() !== (serverText || '').trim()) {
-        setDraftFindings(localDraft);
+      setDraftFindings(resolvedFindings);
+      draftFindingsRef.current = resolvedFindings;
+      setPlannerApprovalText(resolvedApproval);
+      plannerApprovalTextRef.current = resolvedApproval;
+      if (resolvedFindings.trim() && resolvedFindings.trim() !== (caseRes.data.findingsText || '').trim()) {
         try {
-          const saved = await updateCase(id, { findingsText: localDraft } as Partial<EmergencyCase>);
+          const saved = await updateCase(loadId, { findingsText: resolvedFindings } as Partial<EmergencyCase>);
+          if (gen !== loadGenRef.current) return;
           setVaka(saved.data);
-          setDraftFindings(saved.data.findingsText ?? localDraft);
+          const kept = resolveEmergencyFindingsDraft({
+            server: saved.data.findingsText,
+            inMemory: draftFindingsRef.current,
+            stored: resolvedFindings,
+          });
+          setDraftFindings(kept);
+          draftFindingsRef.current = kept;
         } catch {
-          setDraftFindings(localDraft);
+          setDraftFindings(resolvedFindings);
+          draftFindingsRef.current = resolvedFindings;
         }
-      } else {
-        setDraftFindings(serverText);
       }
       setFindingsError(null);
       const [costRes, processRes] = await Promise.all([
-        getCostEntries(id).catch(() => ({
+        getCostEntries(loadId).catch(() => ({
           data: [] as EmergencyCostEntry[],
           summary: { totalGelir: 0, totalGider: 0, netKar: 0 },
         })),
-        listEmergencyProcessEvents(id).catch(() => ({ data: [] })),
+        listEmergencyProcessEvents(loadId).catch(() => ({ data: [] })),
       ]);
+      if (gen !== loadGenRef.current) return;
       setCosts(costRes.data);
       setCostSummary(costRes.summary);
-      const localFlow = readAcilLocalFlow(id);
       const mergedFlow = applyAcilCaseTimestamps(
         mergeAcilFlowWithServerEvents(localFlow, processRes.data ?? []),
         caseRes.data,
@@ -656,13 +689,19 @@ export default function AcilDosyaDetayPage() {
       const channel = customerId
         ? readAnaMusteriHaberlesme(customerId)
         : parseAnaMusteriHaberlesme(mergedFlow.customerNotifyChannel);
-      const withPref: AcilLocalFlow = {
-        ...mergedFlow,
-        customerNotifyChannel: channel,
-        vendorPaid:
-          mergedFlow.vendorPaid === true ? true : mergedFlow.vendorPaid === false ? false : null,
-      };
-      writeAcilLocalFlow(id, withPref);
+      const withPref: AcilLocalFlow = stampAcilLocalDrafts(
+        {
+          ...mergedFlow,
+          customerNotifyChannel: channel,
+          vendorPaid:
+            mergedFlow.vendorPaid === true ? true : mergedFlow.vendorPaid === false ? false : null,
+        },
+        {
+          findingsDraft: draftFindingsRef.current,
+          approvalText: plannerApprovalTextRef.current,
+        },
+      );
+      writeAcilLocalFlow(loadId, withPref);
       flowRef.current = withPref;
       setFlow(withPref);
       setApprovalChannel(channel);
@@ -679,11 +718,12 @@ export default function AcilDosyaDetayPage() {
         if (alisRef.current == null) alisRef.current = resolved.alis;
       }
     } catch (err) {
+      if (gen !== loadGenRef.current) return;
       reportCaughtError(err, 'Dosya yüklenemedi');
       setVaka(null);
       setActionFlash(getApiErrorMessage(err, 'Dosya yüklenemedi'));
     } finally {
-      setLoading(false);
+      if (gen === loadGenRef.current) setLoading(false);
     }
   }, [id]);
 
@@ -707,6 +747,11 @@ export default function AcilDosyaDetayPage() {
     const saved = readAcilLocalFlow(id);
     flowRef.current = saved;
     setFlow(saved);
+    setDraftFindings(saved.findingsDraft ?? '');
+    draftFindingsRef.current = saved.findingsDraft ?? '';
+    const approval = resolveAcilApprovalText(saved.approvalText ?? '', saved.approvalText ?? '');
+    setPlannerApprovalText(approval);
+    plannerApprovalTextRef.current = approval;
     if (saved.detectedCostTl != null) setCostEditDraft(String(saved.detectedCostTl));
     if (saved.vendorProcess === 'reddedildi') setForceAltVendor(true);
   }, [id]);
@@ -2314,6 +2359,10 @@ export default function AcilDosyaDetayPage() {
         ref={plannerRef}
         onNavigateStep={() => {
           const text = draftFindingsRef.current;
+          persistPlannerDrafts({
+            findingsDraft: text,
+            approvalText: plannerApprovalTextRef.current,
+          });
           if (text.trim()) void saveFindingsText(text);
         }}
         vendorStep={(
@@ -2380,8 +2429,11 @@ export default function AcilDosyaDetayPage() {
                       ref={findingsTextareaRef}
                       value={draftFindings}
                       onChange={(e) => {
-                        setDraftFindings(e.target.value);
-                        if (e.target.value.trim()) setFindingsError(null);
+                        const next = e.target.value;
+                        setDraftFindings(next);
+                        draftFindingsRef.current = next;
+                        persistPlannerDrafts({ findingsDraft: next });
+                        if (next.trim()) setFindingsError(null);
                       }}
                       onBlur={() => { void saveFindingsText(); }}
                       rows={5}
@@ -2398,6 +2450,8 @@ export default function AcilDosyaDetayPage() {
                             ? `${draftFindings.trim()} ${text}`
                             : text;
                           setDraftFindings(next);
+                          draftFindingsRef.current = next;
+                          persistPlannerDrafts({ findingsDraft: next });
                           if (next.trim()) setFindingsError(null);
                           void saveFindingsText(next);
                         }}
@@ -2557,7 +2611,11 @@ export default function AcilDosyaDetayPage() {
               }
             })();
           },
-          onApprovalText: setPlannerApprovalText,
+          onApprovalText: (text) => {
+            setPlannerApprovalText(text);
+            plannerApprovalTextRef.current = text;
+            persistPlannerDrafts({ approvalText: text });
+          },
           onWhatsApp: (to, ph, text) => {
             const opened = openWhatsApp(ph, text);
             if (!opened) {
