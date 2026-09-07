@@ -1,30 +1,26 @@
 ---
-description: Canlı web v577 / backend v575 — sıradaki paketler karışmaz
+description: Canlı web v578 / backend v578 — İK ayrı durur
 alwaysApply: true
 ---
 
 # Canlı (07.09.2026)
 
-Canlı: web **v577** · backend **v575**. Geri alma: web **v576** / backend **v575**.
+Canlı: web **v578** · backend **v578**. Geri alma: web **v577** / backend **v575**.
 
 Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karışmaz. Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
 
+**v578 (full):** Acil ihbar Adres Ve Hizmet Talep Onayı; kapanış Servis Onay Formu (ücret yok). Mail kutu kuralı kilitli. İK yok.
+
 **v577 (yalnız web):** Acil tespit bulgusu ve sunum özeti yazılıp ilerlenince durur.
 
-**v576 (Paket B, yalnız web):** KVKK / gizlilik / çerez kamu metinleri onaylı. «Taslak / avukat bekler» uyarısı yok.
+**v576 (Paket B, yalnız web):** KVKK / gizlilik / çerez kamu metinleri onaylı.
 
 **v575 (Paket A):** Acil sigortalı adı ve açık dosya kartı.
 
 **v574:** Güvenlik, oturum kapısı, KDV, finans liste, Konut-Yangın, başlık bilgi, KVKK sayfa iskeleti.
 
-## Paket C — ayrı alım yok
+## Sırada
 
-Oturum kapısı v574’ten beri duruyor. Oturumsuz panel girişe gider.
-
-## Sırada (karışmaz)
-
-1. **Acil dijital onay + yazım** — lokal hazır, canlıda yok. İhbar: Adres Ve Hizmet Talep Onayı. Kapanış: Servis Onay Formu (ücret yok). Hasar muvafakat dokunulmaz. Kayıt/commit ayrı; «canlıya al» deyince gider.
-2. **İK personel özlük** — Personel Ekle + aynı kayıtta zimmet. Puantaj ayrı. Bu sıraya karışmaz.
-3. **Mail kutusu** — kural kilitli; ayrı düzeltme paketi yok. Hoş geldin Kullanıcılar; dosya maili müşteri kartı. Hasar işi Hasar kutusundan, Acil kapanış İhbar kutusundan.
+1. **İK personel özlük** — Personel Ekle + aynı kayıtta zimmet. Puantaj ayrı. Bu alıma karışmaz.

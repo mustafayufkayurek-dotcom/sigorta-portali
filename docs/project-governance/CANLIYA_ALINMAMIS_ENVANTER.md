@@ -7,11 +7,9 @@
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
 **Sıradaki canlı paketler (Mustafa · 07.09.2026 — karışmaz):**
-1. Acil dijital onay + yazım — lokal hazır; canlıda yok.
-2. İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj ayrı.
-3. Mail kutusu — kural kilitli; ayrı düzeltme paketi yok.
+1. İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj ayrı.
 
-v574–v577 alındı (oturum kapısı, KDV, finans liste, Konut-Yangın, başlık, KVKK, Acil kart/tespit). İK ve Acil dijital onay karışmaz.
+v578 alındı (Acil dijital onay + mail kutu kuralı). İK karışmaz.
 
 ---
 

@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (7 Eylül 2026 — web v577 / backend v575)
+## Canlı durum (7 Eylül 2026 — web v578 / backend v578)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v577-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v575-amd64` | canlı |
-| **Rollback** | Web **v576** / Backend **v575** | manifest `rollbackImages` |
-| **Etiket** | `v577-acil-tespit-bulgusu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v578-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v578-amd64` | canlı |
+| **Rollback** | Web **v577** / Backend **v575** | manifest `rollbackImages` |
+| **Etiket** | `v578-acil-dijital-onay` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v578 — Full (7 Eylül 2026) — Acil dijital onay; mail kutusu kilidi
+
+- İhbar: Adres Ve Hizmet Talep Onayı. Kapanış: Servis Onay Formu (ücret yok). Hasar muvafakat durur
+- Hoş geldin Kullanıcılar; Hasar işi Hasar kutusundan, Acil kapanış İhbar kutusundan
+- Migrasyon yok. İK yok. Geri alma web **v577** / backend **v575**
 
 ### v577 — Web (7 Eylül 2026) — Acil tespit / sunum yazısı
 
