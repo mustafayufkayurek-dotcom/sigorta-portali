@@ -691,6 +691,7 @@ export default function AcilDosyaDetayPage() {
         : parseAnaMusteriHaberlesme(mergedFlow.customerNotifyChannel);
       const withPref: AcilLocalFlow = stampAcilLocalDrafts(
         {
+          ...emptyAcilLocalFlow(),
           ...mergedFlow,
           customerNotifyChannel: channel,
           vendorPaid:
