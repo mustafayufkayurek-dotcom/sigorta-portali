@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-07",
-  "label": "v574-guvenlik-kvkk",
-  "description": "Web+backend v574: güvenlik, paket güncellemesi, KVKK. İK yok. Geri alma web v573 / backend v571.",
+  "label": "v575-acil-gerceklik",
+  "description": "Web+backend v575: Acil sigortalı adı (ihbar/liste/kapanış) ve açık dosya kartı listedeki durumla aynı. İK yok. Geri alma web v574 / backend v574.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v574-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v574-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v575-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v575-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v573-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v571-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v574-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v574-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

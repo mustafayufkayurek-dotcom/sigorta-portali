@@ -1,40 +1,31 @@
 ---
-description: Canlı v574 — önerilen alım sırası
+description: Canlı v575 — önerilen sonraki alımlar
 alwaysApply: true
 ---
 
-# Canlı v574 (07.09.2026)
+# Canlı v575 (07.09.2026)
 
-Canlı: web **v574** · backend **v574**. Geri alma: web **v573** / backend **v571**.
+Canlı: web **v575** · backend **v575**. Geri alma: web **v574** / backend **v574**.
 
-Alım yalnız Mustafa «canlıya al» deyince. Sıra ve paketleme asistan önerisidir; sahibinden teknik seçim istenmez.
+Alım yalnız Mustafa «canlıya al» deyince. Her alımda: kilit, disk ≥5 GB, DB+uploads yedeği, uploads silinmez, şema yoksa migrate boş, rollback image durur.
 
-## Alınan (v574)
+## Alınan paket (v575 — Paket A)
 
-Güvenlik, kütüphane, KVKK sayfa/kutu/çerez şeridi. İK yok.
+Acil gerçeklik. İK yok. Veritabanı şeması değişmedi.
 
-## Önerilen sonraki alım — Paket A (Acil gerçeklik)
+- İhbar mailinde sigortalı kişi adı
+- Dosya sorumlusu listesinde aynı ad
+- Kapanış mailinde aynı ad
+- Açık dosya kartı listedeki durumla aynı
 
-Aynı haftanın şikâyetleri; kardeşler ayrılmaz. Tek alım.
+## v574 durur (bozulmaz)
 
-- Acil ihbar mailinde sigortalı kişi adı (asistan unvanı / boş tire yok)
-- Dosya sorumlusu listesinde aynı ad kuralı
-- Kapanış mailinde aynı ad kuralı
-- Açık dosya kartı listedeki durumla aynı (red, kapanış, finansa aktarım açık sayılmaz)
+Güvenlik, kütüphane, KVKK sayfa/kutu/çerez. Geri alma noktası.
 
-## Sonra — Paket B (KVKK onaylı metin)
+## Sırada
 
-v574’te sayfa duruyor. Onaylı metin canlıdakiyle aynıysa bu paket düşer; fark varsa yalnız metin gider. Acil paketine karışmaz.
+**Paket B — KVKK onaylı metin:** Sayfa canlıda (v574). Metin onaylı ve aynıysa bu paket düşer; fark varsa yalnız metin.
 
-## Sonra — Paket C (oturum kapısı)
+**Paket C — oturum kapısı:** Kod v574 soyunda duruyor; oturumsuz panel girişe gidiyor. Ayrı alım gerekmez.
 
-Adres çubuğundan şifresiz panele girilmez. Güvenlik; Acil ve İK ile karışmaz.
-
-## Daha sonra (karışmaz)
-
-- İK personel özlük (Personel Ekle + zimmet; puantaj ayrı)
-- Başlık bilgi ikonu
-- KDV raporu
-- Finans liste görünümü
-- Konut-Yangın yazımı
-- Mail adresi (yalnız tespit; düzeltme ayrı)
+**Sonra (karışmaz):** İK personel özlük (Personel Ekle + zimmet; puantaj ayrı).
