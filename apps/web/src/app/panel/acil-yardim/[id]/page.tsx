@@ -2008,7 +2008,6 @@ export default function AcilDosyaDetayPage() {
     saleReady,
     customerNotifyChannel: flow.customerNotifyChannel,
   });
-  const requiredOps = closeGate.requiredOps;
   const requiredOpsComplete = closeGate.requiredOpsComplete;
   const fileAlreadyClosed =
     flow.fileClosed || vaka.status === 'COZULDU' || vaka.status === 'FATURALANDILDI';
