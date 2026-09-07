@@ -1,7 +1,6 @@
 /**
- * Kamuoyu KVKK / gizlilik / çerez taslakları.
+ * Kamuoyu KVKK / gizlilik / çerez metinleri (onaylı).
  * Personel-içi sözleşme şablonlarından ayrıdır (Ayarlar → Sözleşmeler).
- * Avukat onayı olmadan kesin hüküm sayılmaz.
  */
 
 export const LEGAL_CONTROLLER_NAME = 'Meridyen Assistance';

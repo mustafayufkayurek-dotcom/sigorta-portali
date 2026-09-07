@@ -36,8 +36,7 @@ export function LegalDocumentPage({
           ))}
         </div>
         <p className="mt-8 text-xs leading-relaxed text-slate-400">
-          Bu metin operasyon taslağıdır. Şirket avukatı onaylamadan kesin hüküm sayılmaz. Personel sözleşmeleri
-          Ayarlar → Sözleşmeler’deki kayıtlı metinlerdir.
+          Personel sözleşmeleri Ayarlar → Sözleşmeler’deki kayıtlı metinlerdir.
         </p>
         <nav className="mt-6 flex flex-wrap gap-4 text-sm font-medium text-brand-700">
           <Link href="/kvkk">KVKK Aydınlatma</Link>
