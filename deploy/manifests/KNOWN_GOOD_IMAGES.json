@@ -1,20 +1,23 @@
 {
-  "updatedAt": "2026-09-06",
-  "label": "v573-liste-sutun-kilit",
-  "description": "Web: liste sütunları piksel kilitli; işlem seçici ve listede harita yok durur. Backend v571. Rollback web v572. İK yok.",
+  "updatedAt": "2026-09-07",
+  "label": "v574-guvenlik-kvkk",
+  "description": "Web+backend v574: güvenlik, paket güncellemesi, KVKK. İK yok. Geri alma web v573 / backend v571.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v571-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v573-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v574-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v574-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v572-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v573-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v571-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
+    "/kvkk",
+    "/gizlilik",
+    "/cerez-politikasi",
     "/panel",
     "/panel/musteriler",
     "/panel/kullanicilar",
