@@ -1,15 +1,17 @@
 ---
-description: Canlı web v578 / backend v578 — İK ayrı durur
+description: Canlı web v579 / backend v578 — İK ayrı durur
 alwaysApply: true
 ---
 
-# Canlı (07.09.2026)
+# Canlı (08.09.2026)
 
-Canlı: web **v578** · backend **v578**. Geri alma: web **v577** / backend **v575**.
+Canlı: web **v579** · backend **v578**. Geri alma: web **v578** / backend **v578**.
 
 Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karışmaz. Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v579 (yalnız web):** Dosya üstü üç nokta menüsü tam açılır. Kısa kesintide oturum silinmez.
 
 **v578 (full):** Acil ihbar Adres Ve Hizmet Talep Onayı; kapanış Servis Onay Formu (ücret yok). Mail kutu kuralı kilitli. İK yok.
 

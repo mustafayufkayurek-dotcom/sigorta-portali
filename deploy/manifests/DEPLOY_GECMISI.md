@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (7 Eylül 2026 — web v578 / backend v578)
+## Canlı durum (8 Eylül 2026 — web v579 / backend v578)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v578-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v579-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v578-amd64` | canlı |
-| **Rollback** | Web **v577** / Backend **v575** | manifest `rollbackImages` |
-| **Etiket** | `v578-acil-dijital-onay` | |
+| **Rollback** | Web **v578** / Backend **v578** | manifest `rollbackImages` |
+| **Etiket** | `v579-menu-oturum` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v579 — Web (8 Eylül 2026) — Menü; kesintide oturum
+
+- Dosya üstü üç nokta menüsü kartta kesilmez
+- Kısa sunucu kesintisinde oturum silinmez. Backend **v578** durur. İK yok
+- Geri alma web **v578** / backend **v578**
 
 ### v578 — Full (7 Eylül 2026) — Acil dijital onay; mail kutusu kilidi
 

@@ -6,10 +6,10 @@
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
-**Sıradaki canlı paketler (Mustafa · 07.09.2026 — karışmaz):**
+**Sıradaki canlı paketler (Mustafa · 08.09.2026 — karışmaz):**
 1. İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj ayrı.
 
-v578 alındı (Acil dijital onay + mail kutu kuralı). İK karışmaz.
+v579 alındı (menü + kesintide oturum). İK karışmaz.
 
 ---
 
