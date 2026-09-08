@@ -195,7 +195,7 @@ export default function BankaHesaplariPage() {
             <PanelTableColumnPicker tableColumns={tableColumns} />
           </div>
           <PanelTableScroll>
-          <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+          <table className="text-sm" style={panelTableLayoutStyle(tableColumns)}>
             <PanelTableColGroup />
             <thead className="bg-slate-50 text-xs text-slate-500">
               <tr>

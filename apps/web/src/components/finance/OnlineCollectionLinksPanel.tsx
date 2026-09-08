@@ -5,6 +5,7 @@ import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { useToast } from '@/contexts/ToastContext';
+import { PhoneInput } from '@/components/PhoneInput';
 import {
   FinansActionButton,
   FinansDataTable,
@@ -216,11 +217,9 @@ export function OnlineCollectionLinksPanel({
             </div>
             <div>
               <FinansFieldLabel>Telefon</FinansFieldLabel>
-              <input
-                type="tel"
+              <PhoneInput
                 value={form.payerPhone}
-                onChange={(e) => setForm({ ...form, payerPhone: e.target.value })}
-                className={finansInputClass}
+                onChange={(payerPhone) => setForm({ ...form, payerPhone })}
               />
             </div>
             <div className="sm:col-span-2">

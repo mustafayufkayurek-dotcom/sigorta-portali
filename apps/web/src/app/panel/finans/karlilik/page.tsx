@@ -10,6 +10,8 @@ import {
   TableColumnsProvider,
   PanelTableColumnPicker,
   PanelTableTd,
+  PanelTableColGroup,
+  PanelTableScroll,
   SortablePanelTableTh,
   panelTableLayoutStyle,
   type TableColumnDef,
@@ -179,11 +181,12 @@ export default function KarlilikPage() {
           <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 flex justify-end">
             <PanelTableColumnPicker tableColumns={tableColumns} />
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+          <PanelTableScroll>
+            <table className="text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [32] })}>
+              <PanelTableColGroup leadingWidths={[32]} />
               <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 dark:text-slate-400">
                 <tr>
-                  <th className="text-center px-4 py-3 w-8">#</th>
+                  <th className="box-border px-4 py-3 text-center" style={{ width: 32, minWidth: 32 }}>#</th>
                   {tableColumns.prefs.orderedVisibleColumns.map((col) => (
                     <SortablePanelTableTh
                       key={col.id}
@@ -277,7 +280,7 @@ export default function KarlilikPage() {
                 </tr>
               </tfoot>
             </table>
-          </div>
+          </PanelTableScroll>
           <FinansTablePager
             page={paged.safePage}
             pageSize={pageSize}

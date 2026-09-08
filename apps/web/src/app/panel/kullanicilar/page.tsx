@@ -2154,7 +2154,7 @@ export default function KullanicilarPage() {
         ) : (
           <PanelTableScroll>
             <table
-              className="w-full text-sm"
+              className="text-sm"
               style={panelTableLayoutStyle(tableColumns, {
                 leadingWidths: [TABLE_LEADING_COL_WIDTH],
                 trailingWidths: [TABLE_ACTIONS_COL_WIDTH],
@@ -2217,7 +2217,7 @@ export default function KullanicilarPage() {
                             {u.firstName} {u.lastName}
                           </p>
                           {u.phone && (
-                            <p className="truncate text-xs text-slate-400 tabular-nums tracking-wide">
+                            <p className="truncate text-xs text-slate-400 tabular-nums">
                               {formatPhoneDisplay(u.phone)}
                             </p>
                           )}
@@ -3028,8 +3028,8 @@ export default function KullanicilarPage() {
             )}
 
             {form.userTask && (
-              <>
-                <div className="order-3">
+              <div className="order-3 col-span-2 grid grid-cols-2 gap-3">
+                <div>
                   <FormField label="Ad" required error={formErrors.firstName}>
                     <input
                       type="text"
@@ -3044,7 +3044,7 @@ export default function KullanicilarPage() {
                     />
                   </FormField>
                 </div>
-                <div className="order-3">
+                <div>
                   <FormField label="Soyad" required error={formErrors.lastName}>
                     <input
                       type="text"
@@ -3059,7 +3059,7 @@ export default function KullanicilarPage() {
                     />
                   </FormField>
                 </div>
-                <div className="order-3 col-span-2">
+                <div className="col-span-2">
                   <FormField label="E-posta" required error={formErrors.email}>
                     <input
                       type="email"
@@ -3073,7 +3073,7 @@ export default function KullanicilarPage() {
                     />
                   </FormField>
                 </div>
-                <div className="order-3 col-span-2">
+                <div className="col-span-2">
                   <FormField label="Telefon">
                     <PhoneInput
                       value={form.phone}
@@ -3081,7 +3081,7 @@ export default function KullanicilarPage() {
                     />
                   </FormField>
                 </div>
-              </>
+              </div>
             )}
 
             </div>

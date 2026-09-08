@@ -209,7 +209,7 @@ export default function PortfolyoPLPage() {
         ) : (
           <>
           <PanelTableScroll>
-            <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
+            <table className="text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <PanelTableColGroup />
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-700/50">

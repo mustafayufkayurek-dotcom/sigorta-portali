@@ -125,7 +125,7 @@ export function PhoneContactActions({
           <span className={`w-7 h-7 ${iconBg} rounded-lg flex items-center justify-center transition-colors flex-shrink-0`}>
             <PhoneIcon className="w-3.5 h-3.5" />
           </span>
-          <span className="truncate tabular-nums tracking-wide">{displayPhone}</span>
+          <span className="truncate tabular-nums">{displayPhone}</span>
         </a>
         {waLink && <WhatsAppLinkButton href={waLink} size="md" onOpen={openWa} />}
       </div>
@@ -141,7 +141,7 @@ export function PhoneContactActions({
         className={`${textSize} text-brand-600 hover:underline cursor-pointer flex items-center gap-1 transition-colors min-w-0`}
       >
         <PhoneIcon className="w-3 h-3 flex-shrink-0" />
-        <span className="truncate tabular-nums tracking-wide">{displayPhone}</span>
+        <span className="truncate tabular-nums">{displayPhone}</span>
       </a>
       {waLink && <WhatsAppLinkButton href={waLink} size="sm" onOpen={openWa} />}
     </div>

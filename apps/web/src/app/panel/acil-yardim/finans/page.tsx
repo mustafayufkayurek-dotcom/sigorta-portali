@@ -367,7 +367,7 @@ function FinansPageInner() {
             <PanelTableColumnPicker tableColumns={tableColumns} />
           </div>
           <PanelTableScroll>
-          <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [40] })}>
+          <table className="text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [40] })}>
             <PanelTableColGroup leadingWidths={[40]} />
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-500">

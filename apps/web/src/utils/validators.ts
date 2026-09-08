@@ -136,9 +136,11 @@ export function validatePhone(phone: string, dialCode?: string, phoneLength?: nu
       return { valid: false, error: `Numara ${phoneLength} hane olmalıdır` };
     }
     const intl = `${dialCode ?? '+90'}${localDigits}`;
-    const chunks = localDigits.match(/.{1,3}/g) ?? [localDigits];
-    const formatted = `${dialCode ?? '+90'} ${chunks.join(' ')}`;
-    return { valid: true, formatted, international: intl };
+    return {
+      valid: true,
+      formatted: formatPhoneDisplay(intl),
+      international: intl,
+    };
   }
 
   // Eski davranış (Türkiye varsayımı, geriye dönük uyumluluk)
@@ -161,12 +163,10 @@ export function validatePhone(phone: string, dialCode?: string, phoneLength?: nu
     return { valid: false, error: 'Geçersiz telefon numarası' };
   }
 
-  // Formatlama: +90 532 123 45 67
-  const localPart = normalized.slice(1); // 0 kaldır
-  const formatted = `+90 ${localPart.slice(0, 3)} ${localPart.slice(3, 6)} ${localPart.slice(6, 8)} ${localPart.slice(8, 10)}`;
+  const localPart = normalized.slice(1);
   const international = `+90${localPart}`;
 
-  return { valid: true, formatted, international };
+  return { valid: true, formatted: formatPhoneDisplay(international), international };
 }
 
 export function formatPhone(phone: string): string {
@@ -174,20 +174,11 @@ export function formatPhone(phone: string): string {
   return result.formatted ?? phone;
 }
 
-/** Liste ve kartlarda okunaklı gösterim: 0533 417 44 77 (4-3-2-2) */
+/** Liste ve kartlarda okunaklı gösterim. TR: 532 133 4144 */
 export function formatPhoneGrouped(phone: string): string {
   if (!phone?.trim()) return '';
-  const { country, localDigits, international } = parseInternationalPhone(phone);
-
-  if (country.code === 'TR' && localDigits.length === 10) {
-    const local = `0${localDigits}`;
-    return `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7, 9)} ${local.slice(9, 11)}`;
-  }
-
-  if (international.startsWith('+')) {
-    return formatPhoneDisplay(international);
-  }
-
+  const displayed = formatPhoneDisplay(phone);
+  if (displayed) return displayed;
   const validated = validatePhone(phone);
   return validated.formatted ?? phone.trim();
 }

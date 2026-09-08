@@ -153,7 +153,7 @@ export default function DosyaPLPage() {
               <PanelTableColumnPicker tableColumns={tableColumns} />
             </div>
             <PanelTableScroll>
-              <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [32] })}>
+              <table className="text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [32] })}>
                 <PanelTableColGroup leadingWidths={[32]} />
                 <thead className="bg-slate-50 text-xs text-slate-500">
                   <tr>

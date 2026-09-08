@@ -23,12 +23,12 @@ export function ContactPhoneField({
   onExtensionChange,
   onPhoneBlur,
 }: ContactPhoneFieldProps) {
-  const mainPlaceholder = phoneType === 'landline' ? '0212 123 45 67' : '5XX XXX XX XX';
+  const mainPlaceholder = phoneType === 'landline' ? '212 123 4567' : '532 133 4144';
 
   return (
     <div className="space-y-2 w-full min-w-0">
       <div className="flex flex-wrap gap-1.5 items-stretch w-full min-w-0">
-        <span className="flex-shrink-0 w-8 h-9 flex items-center justify-center rounded-lg bg-slate-50 border border-slate-200 text-slate-400">
+        <span className="flex h-10 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400">
           {phoneType === 'gsm' ? (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <rect x="5" y="2" width="14" height="20" rx="2" strokeWidth={1.8} />
@@ -41,7 +41,7 @@ export function ContactPhoneField({
           )}
         </span>
         <select
-          className="border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors bg-white flex-shrink-0 h-9 w-[6.75rem]"
+          className="h-10 w-[6.75rem] flex-shrink-0 rounded-lg border border-slate-200 bg-white px-2 text-xs transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           value={phoneType}
           onChange={(e) => onPhoneTypeChange(e.target.value as ContactPhoneType)}
           aria-label="Telefon türü"
@@ -67,7 +67,7 @@ export function ContactPhoneField({
             inputMode="numeric"
             maxLength={5}
             placeholder="Örn: 1234"
-            className="w-24 border border-slate-200 rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors h-9"
+            className="h-10 w-24 rounded-lg border border-slate-200 px-2.5 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             value={extensionNo}
             onChange={(e) => onExtensionChange(e.target.value.replace(/\D/g, '').slice(0, 5))}
           />

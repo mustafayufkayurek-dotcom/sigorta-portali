@@ -8,7 +8,7 @@ export interface CountryCode {
 }
 
 export const COUNTRY_CODES: CountryCode[] = [
-  { code: 'TR', dialCode: '+90',  name: 'Türkiye',       flag: '🇹🇷', phoneLength: 10, format: '5XX XXX XX XX' },
+  { code: 'TR', dialCode: '+90',  name: 'Türkiye',       flag: '🇹🇷', phoneLength: 10, format: '5XX XXX XXXX' },
   { code: 'DE', dialCode: '+49',  name: 'Almanya',        flag: '🇩🇪', phoneLength: 11, format: 'XXX XXXX XXXX' },
   { code: 'GB', dialCode: '+44',  name: 'İngiltere',      flag: '🇬🇧', phoneLength: 10, format: 'XXXX XXXXXX' },
   { code: 'US', dialCode: '+1',   name: 'ABD',            flag: '🇺🇸', phoneLength: 10, format: '(XXX) XXX-XXXX' },
@@ -99,14 +99,15 @@ export function parseInternationalPhone(value: string): {
   };
 }
 
-function formatTrLocalDigits(digits: string): string {
-  if (digits.length === 10) {
-    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
-  }
-  return digits.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+/** Türkiye gösterimi: 532 133 4144 — ülke kodu ve baştaki 0 yok; 3-3-4. */
+export function formatTrLocalDigits(digits: string): string {
+  const d = digits.replace(/\D/g, '').replace(/^0+/, '').slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)} ${d.slice(3)}`;
+  return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
 }
 
-function formatLocalDigits(country: CountryCode, digits: string): string {
+export function formatLocalDigits(country: CountryCode, digits: string): string {
   if (country.code === 'TR') return formatTrLocalDigits(digits);
   const chunks = digits.match(/.{1,3}/g) ?? [digits];
   return chunks.join(' ');
@@ -118,10 +119,11 @@ export function toInternationalPhone(dialCode: string, localNumber: string): str
   return `${dialCode}${digits}`;
 }
 
-/** Uluslararası formatı görüntü formatına çevirir: +90 533 417 44 77 */
+/** Ekran gösterimi. TR: 532 133 4144. Diğer ülkeler: +49 30 12345678 */
 export function formatPhoneDisplay(international: string): string {
   if (!international?.trim()) return '';
   const { country, localDigits } = parseInternationalPhone(international);
-  if (!localDigits) return country.dialCode;
+  if (!localDigits) return country.code === 'TR' ? '' : country.dialCode;
+  if (country.code === 'TR') return formatTrLocalDigits(localDigits);
   return `${country.dialCode} ${formatLocalDigits(country, localDigits)}`;
 }

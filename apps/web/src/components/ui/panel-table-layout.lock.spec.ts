@@ -57,4 +57,27 @@ describe('panel tablo genişlik kilidi', () => {
     assert.match(kdv, /import \{ formatTryAmount \} from '@\/utils\/format-try-amount'/);
     assert.match(kdv, /return formatTryAmount\(n, \{ fractionDigits: 2 \}\)/);
   });
+
+  it('finans listeleri tabloyu ekrana yüzdeyle yaymaz', () => {
+    const pages = [
+      '../../app/panel/finans/banka-hesaplari/page.tsx',
+      '../../app/panel/finans/karlilik/page.tsx',
+      '../../app/panel/finans/portfolyo-pl/page.tsx',
+      '../../app/panel/finans/dosya-pl/page.tsx',
+      '../../app/panel/acil-yardim/finans/page.tsx',
+      '../../app/panel/finans/faturalar/page.tsx',
+      '../../app/panel/finans/tahsilatlar/page.tsx',
+      '../../app/panel/finans/masraflar/page.tsx',
+      '../../app/panel/finans/kdv-raporu/page.tsx',
+      '../../app/panel/carilerim/page.tsx',
+    ];
+    for (const rel of pages) {
+      const src = readFileSync(join(here, rel), 'utf8');
+      assert.doesNotMatch(
+        src,
+        /className="w-full text-sm"\s+style=\{panelTableLayoutStyle/,
+        rel,
+      );
+    }
+  });
 });
