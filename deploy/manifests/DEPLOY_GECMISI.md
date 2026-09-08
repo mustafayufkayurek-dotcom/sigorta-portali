@@ -2,24 +2,31 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 7 Eylül 2026
+**Son güncelleme:** 8 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (8 Eylül 2026 — web v579 / backend v578)
+## Canlı durum (8 Eylül 2026 — web v580 / backend v578)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v579-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v580-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v578-amd64` | canlı |
-| **Rollback** | Web **v578** / Backend **v578** | manifest `rollbackImages` |
-| **Etiket** | `v579-menu-oturum` | |
+| **Rollback** | Web **v579** / Backend **v578** | manifest `rollbackImages` |
+| **Etiket** | `v580-telefon-yazim` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v580 — Web (8 Eylül 2026) — Telefon yazımı; finans liste
+
+- Türkiye telefonu **532 133 4144** (+90 ve baştaki 0 yok)
+- Finans listeleri ekrana yüzdeyle yayılmaz
+- Backend **v578** durur. İK yok
+- Geri alma web **v579** / backend **v578**
 
 ### v579 — Web (8 Eylül 2026) — Menü; kesintide oturum
 

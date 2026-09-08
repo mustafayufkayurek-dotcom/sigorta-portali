@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-09-08",
-  "label": "v579-menu-oturum",
-  "description": "Web v579: dosya üstü üç nokta menüsü tam açılır; kısa kesintide oturum silinmez. Backend v578 durur. İK yok. Geri alma web v578 / backend v578.",
+  "label": "v580-telefon-yazim",
+  "description": "Web v580: Türkiye telefonu 532 133 4144; finans listeleri ekrana göre şişmez. Backend v578 durur. İK yok. Geri alma web v579 / backend v578.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v578-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v579-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v580-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v578-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v579-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v578-amd64"
   },
   "mustPassSmokeRoutes": [

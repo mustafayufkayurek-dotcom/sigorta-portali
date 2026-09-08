@@ -1,15 +1,17 @@
 ---
-description: Canlı web v579 / backend v578 — İK ayrı durur
+description: Canlı web v580 / backend v578 — İK ayrı durur
 alwaysApply: true
 ---
 
 # Canlı (08.09.2026)
 
-Canlı: web **v579** · backend **v578**. Geri alma: web **v578** / backend **v578**.
+Canlı: web **v580** · backend **v578**. Geri alma: web **v579** / backend **v578**.
 
 Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karışmaz. Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v580 (yalnız web):** Türkiye telefonu **532 133 4144**. Finans listeleri ekrana göre şişmez.
 
 **v579 (yalnız web):** Dosya üstü üç nokta menüsü tam açılır. Kısa kesintide oturum silinmez.
 
