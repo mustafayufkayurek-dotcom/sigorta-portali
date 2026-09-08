@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (8 Eylül 2026 — web v581 / backend v581)
+## Canlı durum (8 Eylül 2026 — web v582 / backend v581)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v581-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v582-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v581-amd64` | canlı |
-| **Rollback** | Web **v580** / Backend **v578** | manifest `rollbackImages` |
-| **Etiket** | `v581-telefon-mail` | |
+| **Rollback** | Web **v581** / Backend **v581** | manifest `rollbackImages` |
+| **Etiket** | `v582-liste-kart` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v582 — Web (8 Eylül 2026) — Liste kartı dolsun
+
+- Liste tablosu kartın ortasında kesilmez; kartı doldurur. Sütun toplamından daralmaz
+- Kullanıcılar Hasar süzgeci kabuğunda. Kilit: `smoke-liste-gorunum.sh` + `liste-sutun-genislik-kilidi.mdc`
+- Backend **v581** durur. İK yok
+- Geri alma web **v581** / backend **v581**
 
 ### v581 — Full (8 Eylül 2026) — Onaya gönderim; kullanıcı listesi
 

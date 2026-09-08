@@ -1,15 +1,17 @@
 ---
-description: Canlı web v581 / backend v581 — İK ayrı durur
+description: Canlı web v582 / backend v581 — İK ayrı durur
 alwaysApply: true
 ---
 
 # Canlı (08.09.2026)
 
-Canlı: web **v581** · backend **v581**. Geri alma: web **v580** / backend **v578**.
+Canlı: web **v582** · backend **v581**. Geri alma: web **v581** / backend **v581**.
 
 Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karışmaz. Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v582 (yalnız web):** Liste tablosu kartı doldurur; ortadan kesilmez.
 
 **v581 (full):** Onaya Gönder taslak açmaz. Kullanıcı listesi ad+telefon tek satır. Telefon yazımı durur.
 
