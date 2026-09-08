@@ -4,8 +4,7 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   COUNTRY_CODES,
-  CountryCode,
-  DEFAULT_COUNTRY,
+  type CountryCode,
   formatLocalDigits,
   parseInternationalPhone,
   toInternationalPhone,
