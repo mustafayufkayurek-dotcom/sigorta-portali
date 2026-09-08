@@ -860,10 +860,10 @@ export function panelTableLayoutStyle(
       0,
     ) + leading + trailing;
   const totalPx = Math.max(total, 720);
-  /** Tam piksel — %100 olursa sütunlar ekrana göre şişer / daralır. */
+  /** Kartı doldurur; sütun toplamından daralmaz. Ortadan kesilmez. */
   return {
     tableLayout: 'fixed' as const,
-    width: `${totalPx}px`,
+    width: '100%',
     minWidth: `${totalPx}px`,
   };
 }

@@ -12,10 +12,11 @@ import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
-import { Check, Copy, Plus, Search, UserCheck, X } from 'lucide-react';
+import { Check, Copy, Plus, UserCheck, Users, X } from 'lucide-react';
 import { HintIcon } from '@/components/ui/HintIcon';
 import { PhoneInput } from '@/components/PhoneInput';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { GeographicRegionScopePanel } from '@/components/users/GeographicRegionScopePanel';
 import {
@@ -30,6 +31,7 @@ import {
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
 import {
+  PanelListToolbarPickers,
   PanelTableColumnPicker,
   PanelTableColGroup,
   PanelTableScroll,
@@ -641,19 +643,19 @@ function getCurrentUserId(): string | null {
   }
 }
 
-const TABLE_LEADING_COL_WIDTH = 52;
+const TABLE_LEADING_COL_WIDTH = 36;
 const TABLE_ACTIONS_COL_WIDTH = 136;
 
 const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'name', label: 'Ad Soyad', defaultWidth: 280, minWidth: 200 },
-  { id: 'email', label: 'E-posta', defaultWidth: 220, minWidth: 160 },
+  { id: 'name', label: 'Ad Soyad', defaultWidth: 240, minWidth: 180 },
+  { id: 'email', label: 'E-posta', defaultWidth: 240, minWidth: 180 },
   { id: 'role', label: 'Görev', defaultWidth: 220, minWidth: 160 },
   { id: 'status', label: 'Durum', defaultWidth: 110, minWidth: 88 },
   { id: 'lastLogin', label: 'Son Giriş', defaultWidth: 120, minWidth: 96 },
 ];
 
 export default function KullanicilarPage() {
-  const tableColumns = usePanelTableColumns('table-cols:kullanicilar-v2', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:kullanicilar-v4', TABLE_COLUMNS);
   const rowActions = usePortalRowActionPrefs('row-actions:kullanicilar-v1', ADMIN_USER_ROW_ACTIONS);
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -1993,33 +1995,36 @@ export default function KullanicilarPage() {
 
   return (
     <TableColumnsProvider value={tableColumns}>
-    <div className="min-w-0 space-y-6 overflow-x-hidden">
-      <Link
-        href="/panel/ayarlar"
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-700"
-      >
-        ← Ayarlar
-      </Link>
-      {/* Başlık */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="inline-flex items-center gap-1.5 text-xl font-semibold text-slate-950">
-            Kullanıcılar
-            <HintIcon text="Sistem kullanıcılarını görüntüleyin ve yönetin." />
-          </h1>
+    <div className="min-w-0 overflow-x-hidden">
+      <nav className="mb-1 flex items-center gap-1.5 text-xs text-slate-400">
+        <Link href="/panel/ayarlar" className="transition-colors hover:text-brand-600">
+          Ayarlar
+        </Link>
+        <span>/</span>
+        <span className="font-medium text-slate-600">Kullanıcılar</span>
+      </nav>
+      <div className="page-header !mb-3 sm:!mb-4">
+        <div className="flex items-center gap-3">
+          <div className="page-header-icon">
+            <Users className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="page-title inline-flex items-center gap-1.5">
+              Kullanıcılar
+              <HintIcon text="Sistem kullanıcılarını görüntüleyin ve yönetin. Arşivlenen kullanıcılar veri hafızası korunarak saklanır; Arşiv süzgecinden yeniden açılır." />
+            </h2>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={openAdd}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:w-auto"
-        >
-          <Plus className="h-4 w-4" />
-          Kullanıcı Davet Et
-        </button>
+        <div className="page-header-actions">
+          <button type="button" onClick={openAdd} className="btn-primary justify-center">
+            <Plus className="h-4 w-4" />
+            Kullanıcı Davet Et
+          </button>
+        </div>
       </div>
 
       {actionMessage && (
-        <div className={`rounded-xl border px-4 py-3 text-sm ${
+        <div className={`mb-3 rounded-xl border px-4 py-3 text-sm ${
           actionMessage.type === 'success'
             ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
             : 'border-red-200 bg-red-50 text-red-700'
@@ -2028,25 +2033,20 @@ export default function KullanicilarPage() {
         </div>
       )}
 
-      {/* Filtreler */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_150px_180px_auto] sm:items-center">
-          <div className="relative min-w-0">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <Search className="h-4 w-4 text-slate-400" />
-            </div>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+      <div className="filter-bar !mb-3 !w-full !px-3 !py-2.5">
+        <div className="panel-filter-bar">
+          <div className="panel-filter-search-wrap sm:!min-w-[16rem] sm:!flex-[0_0_18rem]">
+            <SearchInput
               placeholder="Ad, e-posta veya rol ara..."
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              value={search}
+              onChange={setSearch}
+              onClear={() => setSearch('')}
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 sm:w-[150px]"
+            className="panel-filter-control"
           >
             <option value="">Tümü</option>
             <option value="active">Aktif</option>
@@ -2056,7 +2056,7 @@ export default function KullanicilarPage() {
           <select
             value={filterRoleId}
             onChange={(e) => setFilterRoleId(e.target.value)}
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 sm:w-[180px]"
+            className="panel-filter-control sm:!flex-[0_0_12rem]"
           >
             <option value="">Tüm Görevler</option>
             {roles.map((r) => (
@@ -2065,7 +2065,7 @@ export default function KullanicilarPage() {
               </option>
             ))}
           </select>
-          <div className="flex justify-start gap-2 sm:justify-end">
+          <PanelListToolbarPickers>
             <PanelTableColumnPicker tableColumns={tableColumns} />
             <PortalRowActionsPicker
               catalog={ADMIN_USER_ROW_ACTIONS}
@@ -2073,15 +2073,10 @@ export default function KullanicilarPage() {
               onToggle={rowActions.toggle}
               onReset={rowActions.reset}
             />
-          </div>
+          </PanelListToolbarPickers>
         </div>
-        <p className="mt-3 text-xs leading-5 text-slate-500">
-          Arşivlenen kullanıcılar veri hafızası korunarak saklanır ve Arşiv filtresinden yeniden aktifleştirilebilir.
-        </p>
-
-        {/* Toplu işlem toolbar */}
         {selected.size > 0 && (
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
             <span className="text-sm font-medium text-slate-700">{selected.size} kullanıcı seçildi</span>
             <button
               type="button"
@@ -2131,7 +2126,7 @@ export default function KullanicilarPage() {
       )}
 
       {/* Tablo */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="table-container ops-queue-table">
         {loading ? (
           <PageLoadingState compact />
         ) : filtered.length === 0 ? (
@@ -2154,7 +2149,7 @@ export default function KullanicilarPage() {
         ) : (
           <PanelTableScroll>
             <table
-              className="text-sm"
+              className="w-full text-sm"
               style={panelTableLayoutStyle(tableColumns, {
                 leadingWidths: [TABLE_LEADING_COL_WIDTH],
                 trailingWidths: [TABLE_ACTIONS_COL_WIDTH],
@@ -2166,11 +2161,11 @@ export default function KullanicilarPage() {
               />
               <thead>
                 <tr className="table-head-row portal-table-head border-b border-slate-200">
-                  <th className="box-border px-4 py-3 text-center" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
+                  <th className="box-border px-2 py-3 text-center" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
                     <button
                       type="button"
                       onClick={selectAll}
-                      className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
+                      className={`mx-auto flex h-4 w-4 items-center justify-center rounded border transition-all ${
                         selected.size === filtered.length && filtered.length > 0
                           ? 'border-brand-600 bg-brand-600'
                           : 'border-slate-300 bg-white hover:border-blue-400'
@@ -2187,7 +2182,11 @@ export default function KullanicilarPage() {
                     sortKey={clientSort?.key ?? null}
                     sortDir={clientSort?.dir ?? 'asc'}
                     onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
-                    thClass="px-4 py-3 text-center text-xs font-semibold tracking-wide text-slate-500"
+                    thClass={(id) =>
+                      id === 'status' || id === 'lastLogin'
+                        ? 'table-th-center'
+                        : 'table-th !text-left'
+                    }
                   />
                   <th
                     className="box-border px-4 py-3 text-right text-xs font-semibold tracking-wide text-slate-500"
@@ -2208,18 +2207,20 @@ export default function KullanicilarPage() {
                       className="px-4 py-2"
                       title={`${u.firstName} ${u.lastName}${u.phone ? ` · ${formatPhoneDisplay(u.phone)}` : ''}`}
                     >
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[11px] font-semibold text-slate-700">
                           {u.firstName[0]}{u.lastName[0]}
                         </div>
-                        <p className="min-w-0 truncate">
-                          <span className="font-medium text-slate-950">{u.firstName} {u.lastName}</span>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-slate-950">
+                            {u.firstName} {u.lastName}
+                          </p>
                           {u.phone ? (
-                            <span className="ml-2 text-xs font-normal text-slate-400 tabular-nums">
+                            <p className="truncate text-[11px] tabular-nums leading-tight text-slate-400">
                               {formatPhoneDisplay(u.phone)}
-                            </span>
+                            </p>
                           ) : null}
-                        </p>
+                        </div>
                       </div>
                     </PanelTableTd>
                     ),
@@ -2269,7 +2270,7 @@ export default function KullanicilarPage() {
                     className={`transition-colors hover:bg-slate-50 ${selected.has(u.id) ? 'bg-blue-50/50' : ''} ${rowStatus !== 'active' ? 'opacity-70' : ''}`}
                   >
                     {/* Checkbox */}
-                    <td className="box-border px-4 py-3" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
+                    <td className="box-border px-2 py-3 text-center" style={{ width: TABLE_LEADING_COL_WIDTH, minWidth: TABLE_LEADING_COL_WIDTH }}>
                       {isProtectedSystemAdmin(u) || u.id === currentUserId ? (
                         <span
                           className="inline-flex h-4 w-4 rounded border border-slate-200 bg-slate-100"
@@ -2279,7 +2280,7 @@ export default function KullanicilarPage() {
                         <button
                           type="button"
                           onClick={() => toggleSelect(u.id)}
-                          className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
+                          className={`mx-auto flex h-4 w-4 items-center justify-center rounded border transition-all ${
                             selected.has(u.id) ? 'border-brand-600 bg-brand-600' : 'border-slate-300 bg-white hover:border-blue-400'
                           }`}
                           aria-label={`${u.firstName} ${u.lastName} seç`}

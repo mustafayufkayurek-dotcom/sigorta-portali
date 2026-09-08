@@ -12,11 +12,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 const picker = readFileSync(join(here, 'TableColumnPicker.tsx'), 'utf8');
 
 describe('panel tablo genişlik kilidi', () => {
-  it('tablo genişliği yüzde değil, sütun toplamı pikseldir', () => {
+  it('tablo kartı doldurur; sütun toplamından daralmaz', () => {
     assert.match(picker, /tableLayout: 'fixed'/);
-    assert.match(picker, /width: `\$\{totalPx\}px`/);
+    assert.match(picker, /width: '100%'/);
     assert.match(picker, /minWidth: `\$\{totalPx\}px`/);
-    assert.doesNotMatch(picker, /width: '100%'/);
+    assert.doesNotMatch(picker, /width: `\$\{totalPx\}px`/);
   });
 
   it('colgroup her sütuna genişlik yazar; flex boş bırakmaz', () => {
@@ -79,5 +79,18 @@ describe('panel tablo genişlik kilidi', () => {
         rel,
       );
     }
+  });
+
+  it('Kullanıcılar listesi Hasar süzgeci ve tablo kabuğunu kullanır; boş telefon sütunu yok', () => {
+    const users = readFileSync(join(here, '../../app/panel/kullanicilar/page.tsx'), 'utf8');
+    assert.match(users, /filter-bar/);
+    assert.match(users, /panel-filter-bar/);
+    assert.match(users, /table-container/);
+    assert.match(users, /TABLE_LEADING_COL_WIDTH = 36/);
+    assert.match(users, /table-th !text-left/);
+    assert.match(users, /formatPhoneDisplay\(u\.phone\)/);
+    assert.doesNotMatch(users, /id: 'phone', label: 'Telefon'/);
+    assert.doesNotMatch(users, /sm:ml-auto/);
+    assert.match(users, /className="w-full text-sm"/);
   });
 });
