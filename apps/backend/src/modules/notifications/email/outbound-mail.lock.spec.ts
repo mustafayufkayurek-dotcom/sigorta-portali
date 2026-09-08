@@ -28,7 +28,7 @@ describe('operasyon giden mail LOCK', () => {
     assert.doesNotMatch(crm, /nodemailer\.createTransport/);
   });
 
-  it('Graph sendMail PDF ekini taşır; büyük ek kutu gönderimini durdurmaz', () => {
+  it('Graph sendMail PDF ekini taşır; taslak ve Mail.ReadWrite personel uyarısı yok', () => {
     const src = readFileSync(
       join(here, '../../operation-inbox/graph/graph-mail-send.service.ts'),
       'utf8',
@@ -36,13 +36,15 @@ describe('operasyon giden mail LOCK', () => {
     assert.match(src, /INLINE_ATTACH_MAX_BYTES/);
     assert.match(src, /fileAttachment/);
     assert.match(src, /contentBytes/);
-    assert.match(src, /createUploadSession/);
     assert.match(src, /users\/\$\{encodedUser\}\/sendMail/);
-    assert.match(src, /messages\/\$\{messageId\}\/send/);
     assert.match(src, /isOutboundReady/);
-    assert.match(src, /Mail\.Send tek başına/);
-    assert.match(src, /if \(!largeAttach\)/);
+    assert.match(src, /Mail\.Send yeter/);
     assert.match(src, /sendMailUrl/);
+    assert.doesNotMatch(src, /createUploadSession/);
+    assert.doesNotMatch(src, /messages\/\$\{messageId\}\/send/);
+    assert.doesNotMatch(src, /Mail\.ReadWrite/);
+    assert.doesNotMatch(src, /Büyük ek için kutuya taslak yazılamadı/);
+    assert.doesNotMatch(src, /yönetici onayı gerekir/);
     assert.doesNotMatch(
       src,
       /E-posta gönderme izni yok\. Azure AD uygulama kaydına Mail\.Send/,

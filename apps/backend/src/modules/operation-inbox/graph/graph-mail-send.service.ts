@@ -94,9 +94,8 @@ export class GraphMailSendService {
     this.logger.log(`Graph ${action} sent from ${mailboxAddress} for message ${graphMessageId}`);
   }
 
-  /** Graph JSON gövdesi ~4MB; üzeri taslak + yükleme oturumu. */
-  static readonly INLINE_ATTACH_MAX_BYTES = 2_500_000;
-  static readonly UPLOAD_CHUNK_BYTES = 3_276_800;
+  /** Graph JSON gövdesi ~4 MB; taban64 ile ham ek tavanı. Taslak yok — Mail.Send yeter. */
+  static readonly INLINE_ATTACH_MAX_BYTES = 3_000_000;
 
   async sendMail(
     mailbox: InboundMailbox,
@@ -139,9 +138,13 @@ export class GraphMailSendService {
     const contentType = this.isHtml(trimmed) ? 'HTML' : 'Text';
     const files = attachments ?? [];
     const attachBytes = files.reduce((n, a) => n + (a.content?.length ?? 0), 0);
-    const largeAttach = files.length > 0 && attachBytes > GraphMailSendService.INLINE_ATTACH_MAX_BYTES;
+    if (files.length > 0 && attachBytes > GraphMailSendService.INLINE_ATTACH_MAX_BYTES) {
+      throw new BadRequestException(
+        'Rapor eki çok büyük. Dış rapor PDF ile gönderilir; fotoğrafı azaltıp raporu yeniden oluşturun.',
+      );
+    }
     const graphAttachments =
-      files.length > 0 && !largeAttach
+      files.length > 0
         ? files.map((a) => ({
             '@odata.type': '#microsoft.graph.fileAttachment',
             name: a.filename,
@@ -159,38 +162,12 @@ export class GraphMailSendService {
       ...(graphAttachments?.length ? { attachments: graphAttachments } : {}),
     };
 
-    // Mail.Send tek başına /sendMail ister. Taslak oluşturmak Mail.ReadWrite ister;
-    // taslak 403’ü “izin yok” diye Mail.Send ekranına düşürüyordu.
-    if (!largeAttach) {
-      const sendMailUrl = `${this.graphBase}/users/${encodedUser}/sendMail`;
-      const sendMailRes = await firstValueFrom(
-        this.http.post(
-          sendMailUrl,
-          { message: messagePayload, saveToSentItems: true },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-            validateStatus: () => true,
-          },
-        ),
-      );
-      if (sendMailRes.status >= 400) {
-        this.logGraphFailure('sendMail', mailboxAddress, sendMailRes.status, sendMailRes.data);
-        throw this.buildSendError(sendMailRes.status, sendMailRes.data);
-      }
-      this.logger.log(`Graph sendMail sent from ${mailboxAddress} to ${recipients.join(', ')}`);
-      return;
-    }
-
-    const createUrl = `${this.graphBase}/users/${encodedUser}/messages`;
-    const createRes = await firstValueFrom(
+    // Mail.Send yeter. Taslak açılmaz.
+    const sendMailUrl = `${this.graphBase}/users/${encodedUser}/sendMail`;
+    const sendMailRes = await firstValueFrom(
       this.http.post(
-        createUrl,
-        messagePayload,
+        sendMailUrl,
+        { message: messagePayload, saveToSentItems: true },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -202,84 +179,11 @@ export class GraphMailSendService {
         },
       ),
     );
-    if (createRes.status >= 400 || !createRes.data?.id) {
-      this.logGraphFailure('draft', mailboxAddress, createRes.status, createRes.data);
-      throw this.buildSendError(createRes.status, createRes.data, 'draft');
+    if (sendMailRes.status >= 400) {
+      this.logGraphFailure('sendMail', mailboxAddress, sendMailRes.status, sendMailRes.data);
+      throw this.buildSendError(sendMailRes.status, sendMailRes.data);
     }
-    const messageId = String(createRes.data.id);
-
-    for (const file of files) {
-      await this.uploadLargeAttachment(encodedUser, token, messageId, file);
-    }
-
-    const sendUrl = `${this.graphBase}/users/${encodedUser}/messages/${messageId}/send`;
-    const sendRes = await firstValueFrom(
-      this.http.post(sendUrl, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-        validateStatus: () => true,
-      }),
-    );
-    if (sendRes.status >= 400) {
-      this.logGraphFailure('send', mailboxAddress, sendRes.status, sendRes.data);
-      throw this.buildSendError(sendRes.status, sendRes.data);
-    }
-
     this.logger.log(`Graph sendMail sent from ${mailboxAddress} to ${recipients.join(', ')}`);
-  }
-
-  private async uploadLargeAttachment(
-    encodedUser: string,
-    token: string,
-    messageId: string,
-    file: { filename: string; content: Buffer; contentType?: string },
-  ): Promise<void> {
-    const sessionUrl = `${this.graphBase}/users/${encodedUser}/messages/${messageId}/attachments/createUploadSession`;
-    const sessionRes = await firstValueFrom(
-      this.http.post(
-        sessionUrl,
-        {
-          AttachmentItem: {
-            attachmentType: 'file',
-            name: file.filename,
-            size: file.content.length,
-            contentType: file.contentType || 'application/octet-stream',
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          validateStatus: () => true,
-        },
-      ),
-    );
-    const uploadUrl = sessionRes.data?.uploadUrl as string | undefined;
-    if (sessionRes.status >= 400 || !uploadUrl) {
-      throw this.buildSendError(sessionRes.status, sessionRes.data);
-    }
-
-    const chunk = GraphMailSendService.UPLOAD_CHUNK_BYTES;
-    let offset = 0;
-    while (offset < file.content.length) {
-      const end = Math.min(offset + chunk, file.content.length);
-      const part = file.content.subarray(offset, end);
-      const putRes = await firstValueFrom(
-        this.http.put(uploadUrl, part, {
-          headers: {
-            'Content-Length': String(part.length),
-            'Content-Range': `bytes ${offset}-${end - 1}/${file.content.length}`,
-          },
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-          validateStatus: () => true,
-        }),
-      );
-      if (putRes.status >= 400) {
-        throw this.buildSendError(putRes.status, putRes.data);
-      }
-      offset = end;
-    }
   }
 
   async isOutboundReady(): Promise<boolean> {
@@ -300,7 +204,7 @@ export class GraphMailSendService {
     );
   }
 
-  private buildSendError(status: number, data: unknown, kind: 'send' | 'draft' = 'send'): BadRequestException {
+  private buildSendError(status: number, data: unknown): BadRequestException {
     const graphErr = (data as { error?: { message?: string; code?: string } })?.error;
     const code = graphErr?.code?.toLowerCase() ?? '';
     const msg = graphErr?.message ?? '';
@@ -313,13 +217,13 @@ export class GraphMailSendService {
       || combined.includes('accessdenied')
       || combined.includes('insufficient')
     ) {
-      if (kind === 'draft') {
-        return new BadRequestException(
-          'Büyük ek için kutuya taslak yazılamadı. Azure’da Mail.ReadWrite (Uygulama) ve yönetici onayı gerekir.',
-        );
-      }
       return new BadRequestException(
         'Microsoft Hasar kutusundan göndermeyi reddetti. Azure’da Mail.Send onayı duruyor; Exchange’te bu uygulamanın hasar kutusuna gönderim izni kapalı olabilir.',
+      );
+    }
+    if (status === 413 || combined.includes('request entity too large') || combined.includes('payload')) {
+      return new BadRequestException(
+        'Rapor eki çok büyük. Dış rapor PDF ile gönderilir; fotoğrafı azaltıp raporu yeniden oluşturun.',
       );
     }
     if (status === 404) {

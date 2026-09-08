@@ -645,15 +645,15 @@ const TABLE_LEADING_COL_WIDTH = 52;
 const TABLE_ACTIONS_COL_WIDTH = 136;
 
 const TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'name', label: 'Ad Soyad', defaultWidth: 220, minWidth: 160 },
-  { id: 'email', label: 'E-posta', defaultWidth: 240, minWidth: 180 },
-  { id: 'role', label: 'Görev', defaultWidth: 240, minWidth: 180 },
+  { id: 'name', label: 'Ad Soyad', defaultWidth: 280, minWidth: 200 },
+  { id: 'email', label: 'E-posta', defaultWidth: 220, minWidth: 160 },
+  { id: 'role', label: 'Görev', defaultWidth: 220, minWidth: 160 },
   { id: 'status', label: 'Durum', defaultWidth: 110, minWidth: 88 },
   { id: 'lastLogin', label: 'Son Giriş', defaultWidth: 120, minWidth: 96 },
 ];
 
 export default function KullanicilarPage() {
-  const tableColumns = usePanelTableColumns('table-cols:kullanicilar', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:kullanicilar-v2', TABLE_COLUMNS);
   const rowActions = usePortalRowActionPrefs('row-actions:kullanicilar-v1', ADMIN_USER_ROW_ACTIONS);
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -2205,23 +2205,21 @@ export default function KullanicilarPage() {
                     <PanelTableTd
                       key="name"
                       colId="name"
-                      className="px-4 py-3"
+                      className="px-4 py-2"
                       title={`${u.firstName} ${u.lastName}${u.phone ? ` · ${formatPhoneDisplay(u.phone)}` : ''}`}
                     >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">
                           {u.firstName[0]}{u.lastName[0]}
                         </div>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-slate-950">
-                            {u.firstName} {u.lastName}
-                          </p>
-                          {u.phone && (
-                            <p className="truncate text-xs text-slate-400 tabular-nums">
+                        <p className="min-w-0 truncate">
+                          <span className="font-medium text-slate-950">{u.firstName} {u.lastName}</span>
+                          {u.phone ? (
+                            <span className="ml-2 text-xs font-normal text-slate-400 tabular-nums">
                               {formatPhoneDisplay(u.phone)}
-                            </p>
-                          )}
-                        </div>
+                            </span>
+                          ) : null}
+                        </p>
                       </div>
                     </PanelTableTd>
                     ),
@@ -2231,36 +2229,18 @@ export default function KullanicilarPage() {
                     </PanelTableTd>
                     ),
                     role: (
-                    <PanelTableTd key="role" colId="role" className="px-4 py-3 align-middle">
+                    <PanelTableTd key="role" colId="role" className="px-4 py-2 align-middle">
                       {u.role ? (() => {
                         const roleLines = displayRoleWithOperation(u);
+                        const full = [roleLines.primary, roleLines.secondary, ...roleLines.extras.map((e) => e.label)]
+                          .filter(Boolean)
+                          .join(' · ');
                         return (
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-medium leading-snug text-blue-800" title={roleLines.primary}>
-                              {roleLines.primary}
-                            </p>
-                            {roleLines.secondary && (
-                              <p
-                                className={`mt-0.5 truncate text-[11px] font-medium leading-snug ${
-                                  roleLines.secondary === 'Kapsam Belirtilmedi'
-                                    ? 'text-amber-700'
-                                    : 'text-slate-600'
-                                }`}
-                                title={roleLines.secondary}
-                              >
-                                {roleLines.secondary}
-                              </p>
-                            )}
-                            {roleLines.extras.map((extra) => (
-                              <p
-                                key={extra.id}
-                                className="mt-0.5 truncate text-[11px] font-medium leading-snug text-violet-700"
-                                title={extra.label}
-                              >
-                                {extra.label}
-                              </p>
-                            ))}
-                          </div>
+                          <p className="truncate text-xs font-medium text-blue-800" title={full}>
+                            {roleLines.secondary
+                              ? `${roleLines.primary} · ${roleLines.secondary}`
+                              : roleLines.primary}
+                          </p>
                         );
                       })() : (
                         <span className="text-slate-400 text-xs">—</span>
