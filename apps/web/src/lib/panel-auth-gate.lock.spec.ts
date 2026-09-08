@@ -61,6 +61,13 @@ describe('panel oturum kapısı LOCK', () => {
     assert.match(panelLayout, /if \(loading \|\| !user\)/);
   });
 
+  it('sunucu kısa kesilince oturum silinmez', () => {
+    assert.match(panelLayout, /transientOutage/);
+    assert.match(panelLayout, /status >= 500/);
+    const axiosAuth = readFileSync(join(here, '../utils/setup-axios-auth.ts'), 'utf8');
+    assert.match(axiosAuth, /error\.response\?\.status !== 401/);
+  });
+
   it('açık yönlendirme yok; çerez adları aynı', () => {
     assert.equal(safePanelNextPath('https://evil.example/panel'), null);
     assert.equal(safePanelNextPath('//evil/panel'), null);

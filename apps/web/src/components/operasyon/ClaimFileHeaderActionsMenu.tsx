@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
   CheckCircle2,
@@ -55,19 +56,59 @@ export function ClaimFileHeaderActionsMenu({
   const [revisionOpen, setRevisionOpen] = useState(false);
   const [manualAction, setManualAction] = useState<ManualDecisionAction | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const hasReportLink = Boolean(reportEditHref);
   const hasRevision = Boolean(reportId);
   const hasAny = hasReportLink || hasRevision || canManual || canStartRevision;
 
+  const updateMenuPos = () => {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const menuWidth = 196;
+    const left = Math.min(Math.max(8, rect.right - menuWidth), window.innerWidth - menuWidth - 8);
+    setMenuPos({ top: rect.bottom + 4, left });
+  };
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    updateMenuPos();
+    const onMove = () => updateMenuPos();
+    window.addEventListener('scroll', onMove, true);
+    window.addEventListener('resize', onMove);
+    return () => {
+      window.removeEventListener('scroll', onMove, true);
+      window.removeEventListener('resize', onMove);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    const timer = window.setTimeout(() => {
+      document.addEventListener('mousedown', onDoc);
+    }, 0);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [open]);
 
   if (!hasAny) return null;
@@ -91,6 +132,7 @@ export function ClaimFileHeaderActionsMenu({
       <div ref={ref} className={`relative shrink-0 ${className}`} data-testid="claim-file-actions-menu">
         <ActionIconButton
           label="İşlemler"
+          buttonRef={btnRef}
           onClick={() => setOpen((v) => !v)}
           testId="claim-file-actions-btn"
           aria-expanded={open}
@@ -100,10 +142,14 @@ export function ClaimFileHeaderActionsMenu({
           <MoreVertical className="h-4 w-4" aria-hidden />
         </ActionIconButton>
 
-        {open ? (
+        {open && menuPos && typeof document !== 'undefined'
+          ? createPortal(
           <div
-            className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-xl border border-slate-200 bg-white py-1 text-xs shadow-lg"
+            ref={menuRef}
+            className="fixed z-[220] min-w-[180px] rounded-xl border border-slate-200 bg-white py-1 text-xs shadow-lg"
+            style={{ top: menuPos.top, left: menuPos.left }}
             data-testid="claim-file-actions-dropdown"
+            onMouseDown={(e) => e.stopPropagation()}
           >
             {(hasReportLink || hasRevision) && (
               <p className="px-3 py-1.5 text-[10px] font-semibold text-content-tertiary">Dosya</p>
@@ -182,8 +228,10 @@ export function ClaimFileHeaderActionsMenu({
                 </button>
               </>
             ) : null}
-          </div>
-        ) : null}
+          </div>,
+          document.body,
+        )
+        : null}
       </div>
 
       {revisionOpen && reportId ? (

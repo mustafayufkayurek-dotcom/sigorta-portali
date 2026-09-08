@@ -1568,6 +1568,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             }
           }
         }
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+        const transientOutage = !status || status >= 500 || status === 429;
+        if (transientOutage) {
+          return;
+        }
         clearAuth({ preserveRememberedEmail: isRememberMePreferred() });
         window.location.replace('/giris?reason=auth');
       })
