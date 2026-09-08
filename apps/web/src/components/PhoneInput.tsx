@@ -58,10 +58,9 @@ export function PhoneInput({ value, onChange, onBlur, className = '', placeholde
   }, [dropdownOpen]);
 
   useEffect(() => {
-    if (dropdownOpen) {
-      const t = setTimeout(() => searchRef.current?.focus(), 50);
-      return () => clearTimeout(t);
-    }
+    if (!dropdownOpen) return undefined;
+    const t = setTimeout(() => searchRef.current?.focus(), 50);
+    return () => clearTimeout(t);
   }, [dropdownOpen]);
 
   const filteredCountries = COUNTRY_CODES.filter((c) => {
