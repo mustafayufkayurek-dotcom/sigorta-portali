@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (8 Eylül 2026 — web v580 / backend v578)
+## Canlı durum (8 Eylül 2026 — web v581 / backend v581)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v580-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v578-amd64` | canlı |
-| **Rollback** | Web **v579** / Backend **v578** | manifest `rollbackImages` |
-| **Etiket** | `v580-telefon-yazim` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v581-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v581-amd64` | canlı |
+| **Rollback** | Web **v580** / Backend **v578** | manifest `rollbackImages` |
+| **Etiket** | `v581-telefon-mail` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v581 — Full (8 Eylül 2026) — Onaya gönderim; kullanıcı listesi
+
+- Onaya Gönder taslak açmaz; kırmızı Azure Mail.ReadWrite uyarısı kalkar
+- Kullanıcılar: ad ve telefon aynı satırda; görev tek satır. Sürüm etiketi **v581**
+- Geri alma web **v580** / backend **v578**. İK yok
 
 ### v580 — Web (8 Eylül 2026) — Telefon yazımı; finans liste
 
