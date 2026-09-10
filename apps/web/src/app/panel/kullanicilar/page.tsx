@@ -85,7 +85,6 @@ import {
   isBrokerCustomer,
   isCustomerCompanyUserTask,
   isHasarExpertCustomer,
-  normalizeRoleCode,
   operationAreaFromDepartmentCodes,
   roleCodesMatch,
   sanitizeFieldOperationServiceBranches,
