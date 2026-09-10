@@ -451,6 +451,7 @@ export class AuthService {
                 id: true,
                 companyName: true,
                 fullName: true,
+                shortName: true,
                 subType: true,
               },
             },
@@ -474,6 +475,7 @@ export class AuthService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      jobTitle: user.jobTitle ?? null,
       phone: user.phone,
       status: user.status,
       adjusterId: user.adjusterId ?? null,
@@ -494,9 +496,12 @@ export class AuthService {
       })),
       assistantCustomerScopes: user.userAssistantCustomerScopes.map((s) => ({
         id: s.customer.id,
-        name: (s.customer.companyName ?? s.customer.fullName ?? '').trim() || 'Asistans Firması',
+        name: (s.customer.companyName ?? s.customer.fullName ?? s.customer.shortName ?? '').trim() || 'Asistans Firması',
+        shortName: (s.customer.shortName ?? '').trim() || null,
         subType: s.customer.subType,
       })),
+      customerShortName:
+        (user.userAssistantCustomerScopes[0]?.customer.shortName ?? '').trim() || null,
       departmentMemberships: user.departmentMemberships.map((m) => ({
         departmentId: m.departmentId,
         isPrimary: m.isPrimary,

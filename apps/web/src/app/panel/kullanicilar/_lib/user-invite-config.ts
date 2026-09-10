@@ -3,6 +3,85 @@ export const FIELD_OPERATION_AREA_OPTIONS = [
   { value: 'acil' as const, label: 'Acil Yardım' },
 ];
 
+/** Sigorta / eksper / broker / asistans — aynı firma altında çoklu davet */
+export const CUSTOMER_COMPANY_USER_TASKS = [
+  'expert',
+  'insurance_company_user',
+  'broker',
+  'assistance_company_user',
+] as const;
+
+export type CustomerCompanyUserTask = (typeof CUSTOMER_COMPANY_USER_TASKS)[number];
+
+export function isCustomerCompanyUserTask(task?: string | null): task is CustomerCompanyUserTask {
+  return CUSTOMER_COMPANY_USER_TASKS.includes(task as CustomerCompanyUserTask);
+}
+
+/**
+ * Ek yetki / izin vekaleti / dosya yönetimi yalnız Meridyen dosya sorumlusunda sorulur.
+ * Görev seçiliyse o esas alınır; boşsa rol office_staff ise gösterilir.
+ */
+export function showsUserOperationalAuthorization(
+  userTask?: string | null,
+  roleCode?: string | null,
+): boolean {
+  if (userTask === 'operations') return true;
+  if (userTask) return false;
+  return roleCodesMatch(roleCode, 'office_staff');
+}
+
+/** Sigorta / eksper / broker / asistans müşteri kartı — portal kullanıcısı buradan açılır */
+export const PORTAL_CUSTOMER_SUB_TYPES = [
+  'eksper_firmasi',
+  'eksper',
+  'sigorta_sirketi',
+  'broker_firmasi',
+  'asistan_firmasi',
+] as const;
+
+export function isPortalCustomerSubType(subType?: string | null): boolean {
+  return PORTAL_CUSTOMER_SUB_TYPES.includes((subType ?? '') as (typeof PORTAL_CUSTOMER_SUB_TYPES)[number]);
+}
+
+export interface InvitePersonDraft {
+  key: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  jobTitle: string;
+}
+
+let invitePersonSeq = 0;
+
+export function emptyInvitePersonDraft(): InvitePersonDraft {
+  invitePersonSeq += 1;
+  return {
+    key: `invite-${invitePersonSeq}`,
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    jobTitle: '',
+  };
+}
+
+export function isInvitePersonBlank(person: InvitePersonDraft) {
+  return (
+    !person.firstName.trim()
+    && !person.lastName.trim()
+    && !person.email.trim()
+    && !person.phone.trim()
+    && !person.jobTitle.trim()
+  );
+}
+
+/** Boş fazla satırları düşürür; en az bir satır kalır. */
+export function invitePeopleToSubmit(people: InvitePersonDraft[]): InvitePersonDraft[] {
+  const filled = people.filter((person) => !isInvitePersonBlank(person));
+  return filled.length > 0 ? filled : people.slice(0, 1);
+}
+
 /** Seed (field_staff) ile Ayarlar → Roller (FIELD_STAFF) kod biçimlerini eşleştirir */
 export function normalizeRoleCode(code?: string | null): string {
   return String(code ?? '')
@@ -13,6 +92,29 @@ export function normalizeRoleCode(code?: string | null): string {
 
 export function roleCodesMatch(a?: string | null, b?: string | null): boolean {
   return normalizeRoleCode(a) === normalizeRoleCode(b);
+}
+
+/** Liste, profil ve üst bant — görev Türkçe adı */
+export function displayUserRoleName(role?: { code?: string | null; name?: string | null } | null): string {
+  if (!role) return '—';
+  const code = normalizeRoleCode(role.code);
+  if (code === 'admin' || code === 'manager') return 'Meridyen Yönetim';
+  if (code === 'office_staff') return 'Meridyen Dosya Sorumlusu';
+  if (code === 'field_staff') return 'Meridyen Saha Operasyonu';
+  if (code === 'expert' || code === 'adjuster') return 'Eksper';
+  if (code === 'insurance_company_user') return 'Sigorta Şirketi Kullanıcısı';
+  if (code === 'broker_user') return 'Broker Kullanıcısı';
+  if (code === 'assistance_company_user') return 'Asistans Firma Kullanıcısı';
+  if (code === 'finance') return 'Finans';
+  return (role.name ?? '').trim() || '—';
+}
+
+export function displayPersonDuty(
+  user?: { jobTitle?: string | null; role?: { code?: string | null; name?: string | null } | null } | null,
+): string {
+  const written = String(user?.jobTitle ?? '').trim();
+  if (written) return written;
+  return displayUserRoleName(user?.role);
 }
 
 export function findRoleByCode<T extends { code: string }>(

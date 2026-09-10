@@ -1,7 +1,14 @@
-/** Tedarikçi kimliği: sözleşme ve kayıt aynı numarayı kullanır. */
+/** Tedarikçi kimliği: sözleşme türüne göre vergi veya T.C. kimlik basar. */
+
+export const VENDOR_VERGI_NO_BLANK = '.....................';
+export const VENDOR_TC_KIMLIK_BLANK = '......................................';
 
 export function digitsOnly(value: string | null | undefined): string {
   return String(value ?? '').replace(/\D/g, '');
+}
+
+export function isCorporateVendor(entityType?: string | null): boolean {
+  return String(entityType ?? '').toLowerCase() === 'corporate';
 }
 
 export function isValidTcKimlikNo(value: string | null | undefined): boolean {
@@ -27,9 +34,22 @@ export function vendorContractIdentityMissing(vendor: {
   identityNo?: string | null;
   taxNumber?: string | null;
 }): boolean {
-  const entity = String(vendor.entityType ?? '').toLowerCase();
-  if (entity === 'corporate') return !isValidVergiNo(vendor.taxNumber);
-  return !isValidTcKimlikNo(vendor.identityNo);
+  if (isCorporateVendor(vendor.entityType)) return !isValidVergiNo(vendor.taxNumber);
+  return false;
+}
+
+/** Sözleşmede basılan satır: şirket vergi, şahıs T.C. kimlik; yoksa noktalı boşluk. */
+export function vendorContractIdentityPrintLine(vendor: {
+  entityType?: string | null;
+  identityNo?: string | null;
+  taxNumber?: string | null;
+}): string {
+  if (isCorporateVendor(vendor.entityType)) {
+    const tax = String(vendor.taxNumber ?? '').trim();
+    return tax ? `Vergi No ${tax}` : `Vergi No ${VENDOR_VERGI_NO_BLANK}`;
+  }
+  const tc = String(vendor.identityNo ?? '').trim();
+  return tc ? `T.C. Kimlik No ${tc}` : `T.C. Kimlik No ${VENDOR_TC_KIMLIK_BLANK}`;
 }
 
 /** Levha/kimlik dosyasının metin katmanından aday numaralar. */
@@ -52,13 +72,12 @@ export function identityMatchesVendor(opts: {
 }): 'ok' | 'mismatch' | 'empty-extract' {
   const { extracted } = opts;
   if (extracted.tc.length === 0 && extracted.vergi.length === 0) return 'empty-extract';
-  const entity = String(opts.entityType ?? '').toLowerCase();
-  if (entity === 'corporate') {
+  if (isCorporateVendor(opts.entityType)) {
     const tax = digitsOnly(opts.taxNumber);
-    if (!tax) return 'mismatch';
+    if (!tax) return 'ok';
     return extracted.vergi.includes(tax) || extracted.tc.includes(tax) ? 'ok' : 'mismatch';
   }
   const tc = digitsOnly(opts.identityNo);
-  if (!tc) return 'mismatch';
+  if (!tc) return 'ok';
   return extracted.tc.includes(tc) ? 'ok' : 'mismatch';
 }

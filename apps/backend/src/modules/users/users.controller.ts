@@ -29,11 +29,14 @@ export class UsersController {
     return { success: true, data };
   }
 
-  @Post()
+  @Post('portal-invite/:customerId')
   @RequirePermissions('user.create')
-  @ApiOperation({ summary: 'Yeni kullanıcı oluştur' })
-  async create(@Body() createUserDto: any) {
-    const data = await this.usersService.create(createUserDto);
+  @ApiOperation({ summary: 'Müşteri kartından portal kullanıcısı davet et' })
+  async inviteFromCustomer(
+    @Param('customerId') customerId: string,
+    @Body() body: { people?: Array<{ firstName?: string; lastName?: string; email?: string; phone?: string; jobTitle?: string }> },
+  ) {
+    const data = await this.usersService.inviteFromCustomer(customerId, body?.people ?? []);
     return { success: true, data };
   }
 

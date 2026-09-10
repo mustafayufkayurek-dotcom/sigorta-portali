@@ -12,7 +12,7 @@ import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
-import { Check, Copy, Plus, UserCheck, Users, X } from 'lucide-react';
+import { Check, Copy, Plus, Trash2, UserCheck, Users, X } from 'lucide-react';
 import { HintIcon } from '@/components/ui/HintIcon';
 import { PhoneInput } from '@/components/PhoneInput';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
@@ -73,12 +73,17 @@ import {
   acilYardimAssistantCustomerName,
   brokerCustomerName,
   departmentCodeMatchesArea,
+  displayPersonDuty,
+  displayUserRoleName,
+  emptyInvitePersonDraft,
   fieldOperationBranchOptions,
   findDepartmentForArea,
   findRoleByCode,
   hasarExpertCustomerName,
+  invitePeopleToSubmit,
   isAcilYardimAssistantCustomer,
   isBrokerCustomer,
+  isCustomerCompanyUserTask,
   isHasarExpertCustomer,
   normalizeRoleCode,
   operationAreaFromDepartmentCodes,
@@ -87,6 +92,8 @@ import {
   showsAcilYardimCustomerScope,
   showsInsuranceCompanyScope,
   showsOperationsServiceAreaScope,
+  showsUserOperationalAuthorization,
+  type InvitePersonDraft,
 } from './_lib/user-invite-config';
 
 async function copyToClipboard(value: string) {
@@ -145,15 +152,23 @@ function CredentialSuccessPanel({
   email,
   temporaryPassword,
   mailMessage,
+  invites,
   onClose,
 }: {
   title: string;
   description: string;
-  email: string;
-  temporaryPassword: string;
+  email?: string;
+  temporaryPassword?: string;
   mailMessage?: string;
+  invites?: Array<{ email: string; temporaryPassword: string; mailMessage?: string }>;
   onClose: () => void;
 }) {
+  const rows = invites && invites.length > 0
+    ? invites
+    : email && temporaryPassword
+      ? [{ email, temporaryPassword, mailMessage }]
+      : [];
+
   return (
     <div className="px-6 py-5 text-sm text-emerald-900">
       <div className="flex items-start justify-between gap-3">
@@ -171,24 +186,29 @@ function CredentialSuccessPanel({
         </span>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1.2fr]">
-        <div className="rounded-xl border border-emerald-200 bg-white p-3 shadow-sm">
-          <p className="text-xs font-semibold tracking-wide text-emerald-600">E-posta</p>
-          <p className="mt-1 break-all font-medium text-slate-800">{email}</p>
-        </div>
-        <div className="rounded-xl border border-slate-800 bg-white p-3 shadow-sm">
-          <p className="text-xs font-semibold tracking-wide text-emerald-600">Geçici Şifre</p>
-          <TemporaryPasswordCopy value={temporaryPassword} />
-        </div>
+      <div className="mt-4 space-y-3">
+        {rows.map((row) => (
+          <div key={row.email} className="rounded-xl border border-emerald-200 bg-white p-3 shadow-sm">
+            <div className="grid gap-3 sm:grid-cols-[1fr_1.2fr]">
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-emerald-600">E-posta</p>
+                <p className="mt-1 break-all font-medium text-slate-800">{row.email}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-emerald-600">Geçici Şifre</p>
+                <TemporaryPasswordCopy value={row.temporaryPassword} />
+              </div>
+            </div>
+            <p className={`mt-3 rounded-xl px-3 py-2 text-xs leading-5 ${
+              (row.mailMessage ?? mailMessage)?.toLowerCase().includes('gönderilemedi')
+                ? 'border border-amber-200 bg-amber-50 text-amber-900'
+                : 'bg-emerald-50 text-slate-700'
+            }`}>
+              {row.mailMessage || mailMessage || 'Hoş geldin maili gönderimi denendi.'}
+            </p>
+          </div>
+        ))}
       </div>
-
-      <p className={`mt-3 rounded-xl px-3 py-2 text-xs leading-5 ${
-        mailMessage?.toLowerCase().includes('gönderilemedi')
-          ? 'border border-amber-200 bg-amber-50 text-amber-900'
-          : 'bg-white/70 text-slate-700'
-      }`}>
-        {mailMessage || 'Hoş geldin maili gönderimi denendi.'}
-      </p>
 
       <div className="mt-5 flex justify-end border-t border-emerald-200/80 pt-4">
         <button
@@ -291,6 +311,7 @@ interface User {
   archivedEmail?: string | null;
   archivedAt?: string | null;
   phone?: string | null;
+  jobTitle?: string | null;
   status: UserStatus;
   role?: Role | null;
   departmentMemberships?: DepartmentMembership[];
@@ -316,7 +337,15 @@ function isProtectedSystemAdmin(user: Pick<User, 'email' | 'archivedEmail'>) {
 type OperationArea = '' | 'hasar' | 'acil' | 'both';
 type UserTaskCode = '' | 'management' | 'operations' | 'field_operations' | 'expert' | 'insurance_company_user' | 'broker' | 'assistance_company_user' | 'finance';
 type ManagementLevel = '' | 'admin' | 'manager';
-type FormErrors = Partial<Record<keyof UserFormState, string>> & { general?: string };
+type FormErrors = Partial<Record<keyof Omit<UserFormState, 'invitePeople' | 'insuranceCompanyIds' | 'acilYardimCustomerIds' | 'serviceAreas' | 'selectedGeographicRegionIds' | 'selectedSubjects'>, string>>
+  & {
+    general?: string;
+    insuranceCompanyIds?: string;
+    acilYardimCustomerIds?: string;
+    selectedGeographicRegionIds?: string;
+    selectedSubjects?: string;
+    invitePeople?: string;
+  };
 type ConfirmAction = {
   title: string;
   description: string;
@@ -330,6 +359,7 @@ interface UserFormState {
   lastName: string;
   email: string;
   phone: string;
+  jobTitle: string;
   userTask: UserTaskCode;
   managementLevel: ManagementLevel;
   operationArea: OperationArea;
@@ -343,6 +373,7 @@ interface UserFormState {
   selectedGeographicRegionIds: string[];
   selectedSubjects: string[];
   otherSubjectNotes: string;
+  invitePeople: InvitePersonDraft[];
 }
 
 const DEFAULT_FORM: UserFormState = {
@@ -350,6 +381,7 @@ const DEFAULT_FORM: UserFormState = {
   lastName: '',
   email: '',
   phone: '',
+  jobTitle: '',
   userTask: '',
   managementLevel: '',
   operationArea: '',
@@ -363,6 +395,7 @@ const DEFAULT_FORM: UserFormState = {
   selectedGeographicRegionIds: [],
   selectedSubjects: [],
   otherSubjectNotes: '',
+  invitePeople: [emptyInvitePersonDraft()],
 };
 
 const USER_TASK_OPTIONS: Array<{ value: UserTaskCode; label: string; description: string }> = [
@@ -426,17 +459,7 @@ function fmtDate(d?: string | null) {
 }
 
 function displayRoleName(role?: Role | null) {
-  if (!role) return '—';
-  const code = normalizeRoleCode(role.code);
-  if (code === 'admin' || code === 'manager') return 'Meridyen Yönetim';
-  if (code === 'office_staff') return 'Meridyen Dosya Sorumlusu';
-  if (code === 'field_staff') return 'Meridyen Saha Operasyonu';
-  if (code === 'expert' || code === 'adjuster') return 'Eksper';
-  if (code === 'insurance_company_user') return 'Sigorta Şirketi Kullanıcısı';
-  if (code === 'broker_user') return 'Broker Kullanıcısı';
-  if (code === 'assistance_company_user') return 'Asistans Firma Kullanıcısı';
-  if (code === 'finance') return 'Finans';
-  return role.name;
+  return displayUserRoleName(role);
 }
 
 function isFieldStaffRole(role?: Role | null) {
@@ -691,12 +714,18 @@ export default function KullanicilarPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [personErrors, setPersonErrors] = useState<Record<string, { firstName?: string; lastName?: string; email?: string; jobTitle?: string }>>({});
   const [inactiveDuplicateUser, setInactiveDuplicateUser] = useState<User | null>(null);
   const [createdCredential, setCreatedCredential] = useState<{
     email: string;
     temporaryPassword: string;
     mailMessage: string;
   } | null>(null);
+  const [createdInvites, setCreatedInvites] = useState<Array<{
+    email: string;
+    temporaryPassword: string;
+    mailMessage: string;
+  }> | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [loadError, setLoadError] = useState('');
 
@@ -1529,8 +1558,10 @@ export default function KullanicilarPage() {
     setDistricts([]);
     setFormError('');
     setFormErrors({});
+    setPersonErrors({});
     setInactiveDuplicateUser(null);
     setCreatedCredential(null);
+    setCreatedInvites(null);
     setEditingUser(null);
     setModal('add');
   };
@@ -1542,6 +1573,7 @@ export default function KullanicilarPage() {
       lastName: u.lastName,
       email: u.email,
       phone: toInternationalFormat(u.phone ?? ''),
+      jobTitle: u.jobTitle ?? '',
       userTask: task.userTask,
       managementLevel: task.managementLevel,
       operationArea: (isFieldStaffRole(u.role) || u.role?.code === 'office_staff') ? operationAreaFromMemberships(u.departmentMemberships) : '',
@@ -1573,13 +1605,16 @@ export default function KullanicilarPage() {
         : [],
       selectedSubjects: [],
       otherSubjectNotes: '',
+      invitePeople: [emptyInvitePersonDraft()],
     });
     setSelectedProvinceId('');
     setDistricts([]);
     setFormError('');
     setFormErrors({});
+    setPersonErrors({});
     setInactiveDuplicateUser(null);
     setCreatedCredential(null);
+    setCreatedInvites(null);
     setEditingUser(u);
     setModal('edit');
   };
@@ -1590,18 +1625,47 @@ export default function KullanicilarPage() {
     setForm(DEFAULT_FORM);
     setFormError('');
     setFormErrors({});
+    setPersonErrors({});
     setInactiveDuplicateUser(null);
     setCreatedCredential(null);
+    setCreatedInvites(null);
     setResetPwdError('');
     setResetCredential(null);
   };
 
   const validateUserForm = () => {
     const nextErrors: FormErrors = {};
-    if (!form.firstName.trim()) nextErrors.firstName = 'Ad zorunludur.';
-    if (!form.lastName.trim()) nextErrors.lastName = 'Soyad zorunludur.';
-    if (!form.email.trim()) nextErrors.email = 'E-posta zorunludur.';
-    else if (!validateEmail(form.email)) nextErrors.email = 'Geçerli bir e-posta adresi girilmelidir.';
+    const nextPersonErrors: Record<string, { firstName?: string; lastName?: string; email?: string; jobTitle?: string }> = {};
+    const multiCustomerInvite = modal === 'add' && isCustomerCompanyUserTask(form.userTask);
+    if (multiCustomerInvite) {
+      const people = invitePeopleToSubmit(form.invitePeople);
+      const seenEmails = new Set<string>();
+      for (const person of people) {
+        const row: { firstName?: string; lastName?: string; email?: string; jobTitle?: string } = {};
+        if (!person.firstName.trim()) row.firstName = 'Ad zorunludur.';
+        if (!person.lastName.trim()) row.lastName = 'Soyad zorunludur.';
+        if (!person.jobTitle.trim()) row.jobTitle = 'Görev yazılmalıdır.';
+        if (!person.email.trim()) row.email = 'E-posta zorunludur.';
+        else if (!validateEmail(person.email)) row.email = 'Geçerli bir e-posta adresi girilmelidir.';
+        else {
+          const normalizedEmail = normalizeEmailAddress(person.email);
+          if (seenEmails.has(normalizedEmail)) row.email = 'Bu e-posta bu davette tekrar ediyor.';
+          seenEmails.add(normalizedEmail);
+          const dupEmail = users.find((u) => userMailbox(u) === normalizedEmail);
+          const dupStatus = dupEmail ? normalizeUserStatus(dupEmail.status) : null;
+          if (dupStatus === 'active') row.email = 'Bu e-posta adresiyle aktif bir kullanıcı zaten mevcut.';
+        }
+        if (Object.keys(row).length > 0) nextPersonErrors[person.key] = row;
+      }
+      if (people.length === 0 || Object.keys(nextPersonErrors).length > 0) {
+        nextErrors.invitePeople = 'Her kişi için ad, soyad, e-posta ve görev doldurulmalıdır.';
+      }
+    } else {
+      if (!form.firstName.trim()) nextErrors.firstName = 'Ad zorunludur.';
+      if (!form.lastName.trim()) nextErrors.lastName = 'Soyad zorunludur.';
+      if (!form.email.trim()) nextErrors.email = 'E-posta zorunludur.';
+      else if (!validateEmail(form.email)) nextErrors.email = 'Geçerli bir e-posta adresi girilmelidir.';
+    }
     if (!form.userTask) nextErrors.userTask = 'Bu kişi kim? seçimi zorunludur.';
     if (form.userTask === 'management' && hasMultipleManagementRoles && !form.managementLevel) {
       nextErrors.managementLevel = 'Yetki seviyesi seçilmelidir.';
@@ -1650,7 +1714,37 @@ export default function KullanicilarPage() {
       nextErrors.selectedGeographicRegionIds = 'En az bir coğrafi bölge seçilmelidir.';
     }
     setFormErrors(nextErrors);
+    setPersonErrors(nextPersonErrors);
     return Object.keys(nextErrors).length === 0;
+  };
+
+  const updateInvitePerson = (key: string, patch: Partial<InvitePersonDraft>) => {
+    setForm((prev) => ({
+      ...prev,
+      invitePeople: prev.invitePeople.map((person) => (person.key === key ? { ...person, ...patch } : person)),
+    }));
+    setPersonErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setFormErrors((prev) => ({ ...prev, invitePeople: undefined, general: undefined }));
+  };
+
+  const addInvitePerson = () => {
+    setForm((prev) => ({
+      ...prev,
+      invitePeople: [...prev.invitePeople, emptyInvitePersonDraft()],
+    }));
+  };
+
+  const removeInvitePerson = (key: string) => {
+    setForm((prev) => ({
+      ...prev,
+      invitePeople: prev.invitePeople.length <= 1
+        ? prev.invitePeople
+        : prev.invitePeople.filter((person) => person.key !== key),
+    }));
   };
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -1669,6 +1763,7 @@ export default function KullanicilarPage() {
         firstName: form.firstName,
         lastName: form.lastName,
         phone: form.phone || undefined,
+        jobTitle: form.jobTitle.trim() || undefined,
         roleId: selectedRole?.id,
       };
 
@@ -1748,47 +1843,83 @@ export default function KullanicilarPage() {
       }
 
       if (modal === 'add') {
-        const normalizedEmail = normalizeEmailAddress(form.email);
-        const dupEmail = users.find((u) => userMailbox(u) === normalizedEmail);
-        const dupStatus = dupEmail ? normalizeUserStatus(dupEmail.status) : null;
+        const people = isCustomerCompanyUserTask(form.userTask)
+          ? invitePeopleToSubmit(form.invitePeople)
+          : [{
+              key: 'single',
+              firstName: form.firstName,
+              lastName: form.lastName,
+              email: form.email,
+              phone: form.phone,
+              jobTitle: form.jobTitle,
+            }];
 
-        if (dupStatus === 'active') {
-          setFormError('Bu e-posta adresiyle aktif bir kullanıcı zaten mevcut!');
-          setSaving(false);
-          return;
+        if (!isCustomerCompanyUserTask(form.userTask) && people[0]) {
+          const normalizedEmail = normalizeEmailAddress(people[0].email);
+          const dupEmail = users.find((u) => userMailbox(u) === normalizedEmail);
+          const dupStatus = dupEmail ? normalizeUserStatus(dupEmail.status) : null;
+          if (dupEmail && dupStatus && canReinviteByEmail(dupStatus)) {
+            setInactiveDuplicateUser(dupEmail);
+          } else {
+            setInactiveDuplicateUser(null);
+          }
         }
 
-        if (dupEmail && dupStatus && canReinviteByEmail(dupStatus)) {
-          setInactiveDuplicateUser(dupEmail);
-        } else {
-          setInactiveDuplicateUser(null);
+        const createdRows: Array<{ email: string; temporaryPassword: string; mailMessage: string }> = [];
+        for (const person of people) {
+          const personPayload = {
+            ...payload,
+            firstName: person.firstName,
+            lastName: person.lastName,
+            phone: person.phone || undefined,
+            jobTitle: person.jobTitle.trim() || undefined,
+            email: normalizeEmailAddress(person.email),
+          };
+          try {
+            const response = await axios.post(
+              `${API}/users`,
+              personPayload,
+              { headers: authHeader() },
+            );
+            const created = response.data?.data;
+            const mailMessage = created?.welcomeEmail?.message ?? 'Hoş geldin maili gönderimi denendi.';
+            const oneTimePassword = created?.temporaryPassword;
+            if (!oneTimePassword) {
+              setFormError('Kullanıcı oluşturuldu ancak geçici şifre oluşturma cevabında görüntülenemedi. Kabul testine devam etmeyin.');
+              if (createdRows.length > 0) {
+                setCreatedInvites(createdRows);
+                setCreatedCredential(createdRows[0] ?? null);
+              }
+              await loadUsers();
+              return;
+            }
+            createdRows.push({
+              email: created.email ?? personPayload.email,
+              temporaryPassword: oneTimePassword,
+              mailMessage: created?.reinvited
+                ? `${mailMessage} Pasif/arşiv kullanıcı yeniden davet edildi.`
+                : mailMessage,
+            });
+          } catch (err: any) {
+            const failedMessage = err?.response?.data?.message
+              || err?.response?.data?.error?.message
+              || 'Davet gönderilemedi.';
+            if (createdRows.length > 0) {
+              setCreatedInvites(createdRows);
+              setCreatedCredential(createdRows[0] ?? null);
+              setFormError(`${createdRows.length} kişi davet edildi. ${person.email} alınamadı: ${failedMessage}`);
+              await loadUsers();
+              return;
+            }
+            throw err;
+          }
         }
 
-        payload.email = normalizedEmail;
-        const response = await axios.post(
-          `${API}/users`,
-          payload,
-          { headers: authHeader() },
-        );
-        const created = response.data?.data;
-        const mailMessage = created?.welcomeEmail?.message ?? 'Hoş geldin maili gönderimi denendi.';
-        const oneTimePassword = created?.temporaryPassword;
-        if (oneTimePassword) {
-          setCreatedCredential({
-            email: created.email ?? payload.email,
-            temporaryPassword: oneTimePassword,
-            mailMessage: created?.reinvited
-              ? `${mailMessage} Pasif/arşiv kullanıcı yeniden davet edildi.`
-              : mailMessage,
-          });
-          setInactiveDuplicateUser(null);
-          await loadUsers();
-          return;
-        } else {
-          setFormError('Kullanıcı oluşturuldu ancak geçici şifre oluşturma cevabında görüntülenemedi. Kabul testine devam etmeyin.');
-          await loadUsers();
-          return;
-        }
+        setCreatedInvites(createdRows);
+        setCreatedCredential(createdRows[0] ?? null);
+        setInactiveDuplicateUser(null);
+        await loadUsers();
+        return;
       } else if (modal === 'edit' && editingUser) {
         const response = await axios.patch(`${API}/users/${editingUser.id}`, payload, {
           headers: authHeader(),
@@ -2231,21 +2362,18 @@ export default function KullanicilarPage() {
                     ),
                     role: (
                     <PanelTableTd key="role" colId="role" className="px-4 py-2 align-middle">
-                      {u.role ? (() => {
-                        const roleLines = displayRoleWithOperation(u);
-                        const full = [roleLines.primary, roleLines.secondary, ...roleLines.extras.map((e) => e.label)]
+                      {(() => {
+                        const duty = displayPersonDuty(u);
+                        const roleLines = u.role ? displayRoleWithOperation(u) : null;
+                        const full = [duty, roleLines?.secondary, ...(roleLines?.extras.map((e) => e.label) ?? [])]
                           .filter(Boolean)
                           .join(' · ');
                         return (
                           <p className="truncate text-xs font-medium text-blue-800" title={full}>
-                            {roleLines.secondary
-                              ? `${roleLines.primary} · ${roleLines.secondary}`
-                              : roleLines.primary}
+                            {duty}
                           </p>
                         );
-                      })() : (
-                        <span className="text-slate-400 text-xs">—</span>
-                      )}
+                      })()}
                     </PanelTableTd>
                     ),
                     status: (
@@ -2363,16 +2491,23 @@ export default function KullanicilarPage() {
               title={
                 modal === 'edit'
                   ? 'Rol değişikliği tamamlandı.'
-                  : 'Kullanıcı daveti tamamlandı.'
+                  : (createdInvites?.length ?? 0) > 1
+                    ? 'Davetler tamamlandı.'
+                    : 'Kullanıcı daveti tamamlandı.'
               }
               description={
                 modal === 'edit'
                   ? 'Kullanıcının rolü güncellendi ve yeni geçici şifre üretildi. Bu şifre yalnızca bir kez görüntülenir.'
-                  : 'Yeni kullanıcı oluşturuldu ve geçici şifre üretildi. Bu şifre yalnızca bir kez görüntülenir.'
+                  : formError && (createdInvites?.length ?? 0) > 0
+                    ? formError
+                    : (createdInvites?.length ?? 0) > 1
+                      ? 'Kullanıcılar oluşturuldu ve geçici şifreler üretildi. Bu şifreler yalnızca bir kez görüntülenir.'
+                      : 'Yeni kullanıcı oluşturuldu ve geçici şifre üretildi. Bu şifre yalnızca bir kez görüntülenir.'
               }
               email={createdCredential.email}
               temporaryPassword={createdCredential.temporaryPassword}
               mailMessage={createdCredential.mailMessage}
+              invites={createdInvites ?? [createdCredential]}
               onClose={closeModal}
             />
           ) : (
@@ -2418,7 +2553,8 @@ export default function KullanicilarPage() {
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-sm font-semibold text-slate-900">Davet bilgileri tek ekranda tamamlanır.</p>
                 <p className="mt-1 text-xs leading-5 text-slate-600">
-                  Önce görev tipini seçin; sigorta şirketi, eksper veya Meridyen personeli ayrımı buna göre açılır. Boş bırakılırsa sistem geçici şifre üretir.
+                  Meridyen iç kullanıcıyı buradan ekleyin. Sigorta, eksper, broker ve asistans kullanıcıları ilgili müşteri kartından eklenir.
+                  Boş bırakılırsa sistem geçici şifre üretir.
                 </p>
               </div>
             )}
@@ -2427,7 +2563,7 @@ export default function KullanicilarPage() {
             <div className="order-1 col-span-2">
               <FormField label="Bu kişi kim?" required error={formErrors.userTask}>
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  {USER_TASK_OPTIONS.map((option) => (
+                {USER_TASK_OPTIONS.filter((option) => modal !== 'add' || !isCustomerCompanyUserTask(option.value)).map((option) => (
                     <button
                       key={option.value}
                       type="button"
@@ -3008,7 +3144,114 @@ export default function KullanicilarPage() {
               </div>
             )}
 
-            {form.userTask && (
+            {form.userTask && modal === 'add' && isCustomerCompanyUserTask(form.userTask) && (
+              <div className="order-3 col-span-2 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Firma kullanıcıları</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Aynı müşteri firmasına birden fazla kişiyi göreviyle ekleyin.
+                  </p>
+                  {formErrors.invitePeople && (
+                    <p className="mt-1.5 text-xs font-medium text-red-600">{formErrors.invitePeople}</p>
+                  )}
+                </div>
+                {form.invitePeople.map((person, index) => (
+                  <div key={person.key} className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-slate-800">{index + 1}. kişi</p>
+                      {form.invitePeople.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeInvitePerson(person.key)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                          aria-label="Kişiyi kaldır"
+                          title="Kişiyi kaldır"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      <div>
+                        <FormField label="Ad" required error={personErrors[person.key]?.firstName}>
+                          <input
+                            type="text"
+                            value={person.firstName}
+                            onChange={(e) => updateInvitePerson(person.key, { firstName: e.target.value })}
+                            onBlur={(e) => {
+                              const v = toTitleCaseTR(e.target.value.trim());
+                              if (v) updateInvitePerson(person.key, { firstName: v });
+                            }}
+                            className={inputCls}
+                            placeholder="Ad"
+                          />
+                        </FormField>
+                      </div>
+                      <div>
+                        <FormField label="Soyad" required error={personErrors[person.key]?.lastName}>
+                          <input
+                            type="text"
+                            value={person.lastName}
+                            onChange={(e) => updateInvitePerson(person.key, { lastName: e.target.value })}
+                            onBlur={(e) => {
+                              const v = toTitleCaseTR(e.target.value.trim());
+                              if (v) updateInvitePerson(person.key, { lastName: v });
+                            }}
+                            className={inputCls}
+                            placeholder="Soyad"
+                          />
+                        </FormField>
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <FormField label="Görev" required error={personErrors[person.key]?.jobTitle}>
+                          <input
+                            type="text"
+                            value={person.jobTitle}
+                            onChange={(e) => updateInvitePerson(person.key, { jobTitle: e.target.value })}
+                            onBlur={(e) => {
+                              const v = toTitleCaseTR(e.target.value.trim());
+                              if (v) updateInvitePerson(person.key, { jobTitle: v });
+                            }}
+                            className={inputCls}
+                            placeholder="Görev"
+                            maxLength={80}
+                          />
+                        </FormField>
+                      </div>
+                      <div className="col-span-2 sm:col-span-3">
+                        <FormField label="E-posta" required error={personErrors[person.key]?.email}>
+                          <input
+                            type="email"
+                            value={person.email}
+                            onChange={(e) => updateInvitePerson(person.key, { email: e.target.value })}
+                            className={inputCls}
+                            placeholder="ornek@sirket.com"
+                          />
+                        </FormField>
+                      </div>
+                      <div className="col-span-2 sm:col-span-3">
+                        <FormField label="Telefon">
+                          <PhoneInput
+                            value={person.phone}
+                            onChange={(v) => updateInvitePerson(person.key, { phone: v })}
+                          />
+                        </FormField>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addInvitePerson}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100"
+                >
+                  <Plus className="h-4 w-4" />
+                  Kişi Ekle
+                </button>
+              </div>
+            )}
+
+            {form.userTask && (modal !== 'add' || !isCustomerCompanyUserTask(form.userTask)) && (
               <div className="order-3 col-span-2 grid grid-cols-2 gap-3">
                 <div>
                   <FormField label="Ad" required error={formErrors.firstName}>
@@ -3037,6 +3280,22 @@ export default function KullanicilarPage() {
                       onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v })); }}
                       className={inputCls}
                       placeholder="Soyad"
+                    />
+                  </FormField>
+                </div>
+                <div className="col-span-2">
+                  <FormField label="Görev">
+                    <input
+                      type="text"
+                      value={form.jobTitle}
+                      onChange={(e) => {
+                        setForm({ ...form, jobTitle: e.target.value });
+                        setFormErrors((prev) => ({ ...prev, jobTitle: undefined, general: undefined }));
+                      }}
+                      onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, jobTitle: v })); }}
+                      className={inputCls}
+                      placeholder="Görev"
+                      maxLength={80}
                     />
                   </FormField>
                 </div>
@@ -3070,7 +3329,8 @@ export default function KullanicilarPage() {
               </>
             )}
 
-            {modal === 'edit' && editingUser && isAdminOrManager && (
+            {modal === 'edit' && editingUser && isAdminOrManager
+              && showsUserOperationalAuthorization(form.userTask, editingUser.role?.code) && (
               <OperationalAccessGrantPanel
                 userId={editingUser.id}
                 compact

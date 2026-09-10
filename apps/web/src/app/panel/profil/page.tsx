@@ -6,11 +6,13 @@ import AgreementConsentModal from '@/components/AgreementConsentModal';
 import { apiClient } from '@/lib/api-client';
 import { formatPhoneDisplay } from '@/data/country-codes';
 import { getAccessToken } from '@/utils/auth-session';
+import { displayPersonDuty } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 
 interface UserProfile {
   id: string;
   firstName: string;
   lastName: string;
+  jobTitle?: string | null;
   email: string;
   phone?: string | null;
   status: string;
@@ -261,8 +263,8 @@ export default function ProfilPage() {
             <p className="mt-0.5 text-sm text-slate-500">{profile.email}</p>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               {profile.role && (
-                <span className="inline-flex items-center rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
-                  {profile.role.name}
+                <span className="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                  {displayPersonDuty(profile)}
                 </span>
               )}
               <span
@@ -292,6 +294,10 @@ export default function ProfilPage() {
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">Soyad</label>
             <input type="text" value={profile.lastName} className={inputCls} disabled readOnly />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Görev</label>
+            <input type="text" value={displayPersonDuty(profile)} className={inputCls} disabled readOnly />
           </div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-slate-500 mb-1.5">E-posta</label>

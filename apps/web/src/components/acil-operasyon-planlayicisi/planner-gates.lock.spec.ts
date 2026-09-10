@@ -50,6 +50,11 @@ describe('acil sunum özeti boşluk LOCK', () => {
     assert.match(steps, /acilOnayMetinGovde\(p\.approvalText\)\.trim\(\)/);
   });
 
+  it('Acil tedarikçi sözleşmesi hizmet alımıdır', () => {
+    assert.match(steps, /AcilVendorServiceContractPanel/);
+    assert.doesNotMatch(steps, /Tedarikçi Onarım Sözleşmesi/);
+  });
+
   it('Riziko adreste sunum kutusunda tekrarlanmaz', () => {
     assert.match(steps, /Sunum Özeti/);
     assert.match(steps, /acil-onay-metin/);

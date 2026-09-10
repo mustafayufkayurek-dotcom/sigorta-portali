@@ -4,6 +4,8 @@ export const HASAR_VENDOR_CONTRACT_DETAILED_MIN_TL = 100_000;
 
 export type HasarVendorContractKind = 'simple' | 'detailed';
 
+export type VendorContractPurpose = 'hasar_onarim' | 'acil_hizmet';
+
 export type VendorContractCorrectionRequest = {
   note: string;
   requestedByUserId: string;
@@ -26,15 +28,34 @@ export function readVendorContractKind(workItems: unknown): HasarVendorContractK
 export function wrapVendorContractWorkItems(
   kind: HasarVendorContractKind,
   items: unknown[],
-  extra?: { correctionRequest?: VendorContractCorrectionRequest | null },
+  extra?: {
+    correctionRequest?: VendorContractCorrectionRequest | null;
+    purpose?: VendorContractPurpose;
+  },
 ): {
   kind: HasarVendorContractKind;
   items: unknown[];
   correctionRequest?: VendorContractCorrectionRequest | null;
+  purpose?: VendorContractPurpose;
 } {
-  return extra?.correctionRequest
+  const out: {
+    kind: HasarVendorContractKind;
+    items: unknown[];
+    correctionRequest?: VendorContractCorrectionRequest | null;
+    purpose?: VendorContractPurpose;
+  } = extra?.correctionRequest
     ? { kind, items, correctionRequest: extra.correctionRequest }
     : { kind, items };
+  if (extra?.purpose) out.purpose = extra.purpose;
+  return out;
+}
+
+export function readVendorContractPurpose(workItems: unknown): VendorContractPurpose {
+  if (workItems && typeof workItems === 'object' && !Array.isArray(workItems)) {
+    const purpose = (workItems as { purpose?: unknown }).purpose;
+    if (purpose === 'acil_hizmet') return 'acil_hizmet';
+  }
+  return 'hasar_onarim';
 }
 
 export function unwrapVendorContractWorkItems(workItems: unknown): unknown[] {

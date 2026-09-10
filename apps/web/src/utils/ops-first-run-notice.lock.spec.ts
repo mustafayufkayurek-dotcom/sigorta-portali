@@ -225,8 +225,23 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.equal(OPS_NOTICE.hasarVendorContractKind.id, 'hasar-vendor-contract-v563');
     assert.match(OPS_NOTICE.hasarVendorContractKind.body, /Onarım Planlama/);
     assert.match(OPS_NOTICE.hasarVendorContractKind.body, /düzeltme/);
-    assert.match(OPS_NOTICE.hasarVendorContractKind.body, /TC veya vergi/);
+    assert.match(OPS_NOTICE.hasarVendorContractKind.body, /Vergi No/);
+    assert.match(OPS_NOTICE.hasarVendorContractKind.body, /T\.C\. Kimlik No/);
     assert.doesNotMatch(OPS_NOTICE.hasarVendorContractKind.body, /Google|API/);
+  });
+
+  it('Acil hizmet alım sözleşme şeridi durur', () => {
+    const panel = readFileSync(
+      join(here, '../components/acil-operasyon-planlayicisi/AcilVendorServiceContractPanel.tsx'),
+      'utf8',
+    );
+    assert.match(panel, /OPS_NOTICE\.acilVendorServiceContract/);
+    assert.match(panel, /acil-hizmet-alim-ilk-kullanim-seridi/);
+    assert.equal(OPS_NOTICE.acilVendorServiceContract.id, 'acil-hizmet-alim-sozlesme-v583');
+    assert.match(OPS_NOTICE.acilVendorServiceContract.body, /hizmet alım sözleşmesi/);
+    assert.match(OPS_NOTICE.acilVendorServiceContract.body, /WhatsApp/);
+    assert.doesNotMatch(OPS_NOTICE.acilVendorServiceContract.body, /Google|API/);
+    assert.doesNotMatch(OPS_NOTICE.acilVendorServiceContract.body, /onarım sözleşmesi/i);
   });
 
   it('Tedarikçi listesinde eksik kimlik ismin yanında durur', () => {
@@ -238,7 +253,7 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(tedarikci, /vendorIdentityGapLabel/);
     assert.doesNotMatch(tedarikci, /tedarikci-kimlik-eksik-seridi/);
     assert.doesNotMatch(tedarikci, /tedarikci-kimlik-eksik-filtre/);
-    assert.match(OPS_NOTICE.tedarikciKimlikEksik.body, /TC/);
+    assert.match(OPS_NOTICE.tedarikciKimlikEksik.body, /T\.C\./);
     assert.match(OPS_NOTICE.tedarikciKimlikEksik.body, /vergi no/);
     assert.match(OPS_NOTICE.tedarikciKimlikEksik.body, /sözleşme çıkmaz/);
     assert.doesNotMatch(OPS_NOTICE.tedarikciKimlikEksik.body, /Google|API/);

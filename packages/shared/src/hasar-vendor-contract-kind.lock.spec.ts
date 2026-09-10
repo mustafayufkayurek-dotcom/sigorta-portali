@@ -48,7 +48,7 @@ describe('hasar tedarikçi sözleşme türü LOCK', () => {
     assert.equal(readVendorContractCorrectionRequest(wrapped)?.note, 'Adres yanlış');
   });
 
-  it('onarım planlama görür; düzeltme yöneticiye gider; TC yoksa sözleşme basılmaz', () => {
+  it('onarım planlama görür; düzeltme yöneticiye gider; şirket vergi yoksa sözleşme basılmaz', () => {
     const ui = readFileSync(
       join(here, '../../../apps/web/src/app/panel/hasar-dosyalari/[id]/_components/tabs/SozlesmelerSection.tsx'),
       'utf8',
@@ -71,9 +71,12 @@ describe('hasar tedarikçi sözleşme türü LOCK', () => {
     assert.match(guide, /yöneticiden düzeltme/);
     assert.doesNotMatch(guide, /HASAR_VENDOR_CONTRACT_DETAILED_MIN_TL/);
     assert.match(svc, /requestCorrection/);
+    assert.match(svc, /vendorContractIdentityPrintLine/);
     assert.match(svc, /vendorContractIdentityMissing/);
     assert.match(svc, /isVendorContractManagerRole/);
-    assert.match(svc, /Tedarikçi kaydında TC veya vergi no yok/);
+    assert.match(svc, /Tedarikçi kaydında vergi no yok/);
+    assert.doesNotMatch(svc, /Tedarikçi TC \/ Vergi/);
+    assert.match(svc, /grid-column:1\/-1/);
     assert.match(vendors, /assertVendorIdentity/);
     assert.match(vendors, /identityGapVendorIds/);
     assert.match(vendors, /identityMissingCount/);
@@ -88,7 +91,8 @@ describe('hasar tedarikçi sözleşme türü LOCK', () => {
 
   it('TC algoritması ve levha metin okuma', () => {
     assert.equal(isValidTcKimlikNo('10000000146'), true);
-    assert.equal(vendorContractIdentityMissing({ entityType: 'individual', identityNo: null }), true);
+    assert.equal(vendorContractIdentityMissing({ entityType: 'individual', identityNo: null }), false);
+    assert.equal(vendorContractIdentityMissing({ entityType: 'corporate', taxNumber: null }), true);
     const found = extractIdentityCandidatesFromText('Vergi No: 1234567890 TC 10000000146');
     assert.ok(found.tc.includes('10000000146'));
   });

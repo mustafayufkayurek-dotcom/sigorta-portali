@@ -2524,6 +2524,7 @@ export default function AcilDosyaDetayPage() {
             appointmentTime: '—',
           },
           address: addressDisplay,
+          emergencyCaseId: vaka.id,
           vendorWhatsAppText,
           vendors: vendorRecs,
           assigned: vaka.assignedVendorId ?? null,

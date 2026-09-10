@@ -79,13 +79,19 @@ export const OPS_NOTICE = {
     id: 'hasar-vendor-contract-v563',
     title: 'Tedarikçi sözleşmesi',
     body:
-      'Onarım Planlama’da sözleşmeyi görürsünüz. Metni dosya sorumlusu değiştirmez; yanlışsa yöneticiden düzeltme ister. Tedarikçi kaydındaki TC veya vergi no sözleşmeye basılır. Gönderim WhatsApp ile onay sayfasına gider.',
+      'Onarım Planlama’da sözleşmeyi görürsünüz. Metni dosya sorumlusu değiştirmez; yanlışsa yöneticiden düzeltme ister. Şirkette Vergi No, şahısta T.C. Kimlik No satırı basılır; şahısta numara yoksa noktalı satır durur. Gönderim WhatsApp ile onay sayfasına gider.',
+  },
+  acilVendorServiceContract: {
+    id: 'acil-hizmet-alim-sozlesme-v583',
+    title: 'Hizmet alım sözleşmesi',
+    body:
+      'Acil Yardım’da tedarikçiye kısa hizmet alım sözleşmesi gider. Başlık onarım değildir. WhatsApp ile onay sayfasına gider. Ad soyad, kutu ve imza Hasar’daki gibi durur; metin daha sadedir.',
   },
   tedarikciKimlikEksik: {
     id: 'tedarikci-kimlik-eksik-v562',
     title: 'Eksik kimlik',
     body:
-      'Şahıs tedarikçide TC, şirket tedarikçide vergi no zorunlu. Listede ismin altında Vergi No Eksik veya TC No Eksik yazar. Düzenle deyip numarayı yazın; yoksa sözleşme çıkmaz.',
+      'Şahıs tedarikçide T.C. kimlik no zorunlu değildir. Şirkette vergi no zorunludur; yoksa listede Vergi No Eksik yazar ve sözleşme çıkmaz. Sözleşmede şirket ise Vergi No, şahıs ise T.C. Kimlik No satırı basılır.',
   },
   hasarOfisDosyaKapat: {
     id: 'hasar-ofis-dosya-kapat-v556',

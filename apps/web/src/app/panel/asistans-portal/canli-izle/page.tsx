@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
   AlertTriangle,
   MapPin,
@@ -34,6 +33,7 @@ import {
 import { fetchPortalEmergencyCases } from '@/utils/portal-api';
 import { hasAssistanceCompanyUserAccess, readAssistancePortalUser } from '@/utils/portal-assistance-scope';
 import { useToast } from '@/contexts/ToastContext';
+import { AsistansPortalRoleGate } from '../_components/AsistansPortalRoleGate';
 
 type StatusGroup = 'all' | 'open' | 'in_repair' | 'approval_pending';
 
@@ -229,20 +229,7 @@ export default function AsistansCanliIzlePage() {
 
   if (accessDenied) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-4">
-        <div className="text-center">
-          <p className="text-base font-semibold text-slate-800">Bu Sayfa Asistans Firma Kullanıcıları İçindir</p>
-          <p className="mt-1 text-sm text-slate-500">
-            Canlı İzle yalnızca asistans firması rolündeki kullanıcılar tarafından kullanılabilir.
-          </p>
-        </div>
-        <Link
-          href="/panel"
-          className="mt-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
-        >
-          Panele Dön
-        </Link>
-      </div>
+      <AsistansPortalRoleGate detail="Canlı İzle yalnızca asistans firması rolündeki kullanıcılar tarafından kullanılabilir." />
     );
   }
 

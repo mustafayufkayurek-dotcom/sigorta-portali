@@ -24,6 +24,7 @@ export * from './backup-health';
 export * from './acil-vendor-quality';
 export * from './hasar-vendor-contract-waiver';
 export * from './hasar-vendor-contract-kind';
+export * from './acil-vendor-service-contract';
 export * from './vendor-identity';
 export * from './hasar-flow-groups';
 export * from './hasar-office-close';

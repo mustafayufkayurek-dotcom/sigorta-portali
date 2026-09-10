@@ -38,6 +38,7 @@ import { PanelHelpDrawer } from '@/components/panel/PanelHelpDrawer';
 import { PanelThemeToggle } from '@/components/panel/PanelThemeToggle';
 import { PanelSystemHealth } from '@/components/panel/PanelSystemHealth';
 import { BrandLogo } from '@/components/brand/BrandLogo';
+import { resolvePanelProfileIdentity } from '@/utils/panel-profile-identity';
 import { PanelUserProvider } from '@/contexts/PanelUserContext';
 import {
   PanelHelpDrawerProvider,
@@ -483,22 +484,18 @@ function Navbar({
       ? canSeeNavItemDynamic(path, allowedScreens, roleCode)
       : canSeeNavItem(path, roleCode);
 
-  /** Üst bant satır 1: sigorta şirketi / kurum (bandı büyütmeden) */
-  const profileContextLabel = (() => {
-    if (isInsuranceCompanyUser) {
-      const scopes = (
-        (user?.assistantCustomerScopes as Array<string | { name?: string }> | undefined)
-        ?? (user?.insuranceCompanyScopes as Array<string | { name?: string }> | undefined)
-      );
-      const fromScope = scopes
-        ?.map((s) => (typeof s === 'string' ? undefined : s?.name?.trim()))
-        .find((n): n is string => Boolean(n));
-      if (fromScope) return fromScope;
-    }
-    if (isExpert) return 'Eksper';
-    const org = typeof _companyName === 'string' ? _companyName.trim() : '';
-    return org || '';
-  })();
+  const identity = resolvePanelProfileIdentity({
+    isAssistanceCompanyUser,
+    isInsuranceCompanyUser,
+    user,
+    organizationName: _companyName,
+  });
+  const profileNameParts = identity.personName.split(/\s+/).filter(Boolean);
+  const profileInitials = (
+    profileNameParts.length >= 2
+      ? `${profileNameParts[0]![0] ?? ''}${profileNameParts[profileNameParts.length - 1]![0] ?? ''}`
+      : `${profileNameParts[0]?.[0] ?? ''}${profileNameParts[0]?.[1] ?? ''}`
+  ).toLocaleUpperCase('tr-TR') || '•';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   /** Mobil alt menü accordion — masaüstü sidebar ile aynı davranış */
@@ -812,27 +809,27 @@ function Navbar({
 
             <PanelThemeToggle />
 
-            {/* Profil Dropdown — satır 1: kurum/bağlam · satır 2: ad soyad (band büyümesin) */}
-            <div className="relative z-[60] min-w-0 max-w-[10rem] sm:max-w-[12rem] lg:max-w-[14rem]" ref={profileDropRef}>
+            {/* Profil — satır 1 müşteri/kurum · satır 2 ad soyad (üçüncü satır bantta yok) */}
+            <div className="relative z-[60] min-w-0 max-w-[11rem] sm:max-w-[13rem]" ref={profileDropRef}>
               <button
                 type="button"
                 onClick={() => setProfileDropOpen((v) => !v)}
                 className="relative z-[60] flex max-w-full items-center gap-2 rounded-xl py-1 pl-1.5 pr-1 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:pr-1.5 dark:hover:bg-slate-800"
-                title={[profileContextLabel, `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()].filter(Boolean).join(' · ') || 'Profil'}
+                title={[identity.customerFull, identity.personName].filter(Boolean).join(' · ') || 'Profil'}
                 aria-expanded={profileDropOpen}
                 aria-haspopup="menu"
               >
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white shadow-sm shadow-blue-200">
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold tracking-wide text-white shadow-sm shadow-blue-200">
+                  {profileInitials}
                 </div>
-                <span className="hidden min-w-0 flex-col items-start leading-tight sm:flex">
-                  {profileContextLabel ? (
-                    <span className="max-w-full truncate text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                      {profileContextLabel}
+                <span className="hidden min-w-0 w-[7.25rem] flex-col items-start justify-center gap-0.5 sm:flex sm:w-[8.5rem]">
+                  {identity.customerChip ? (
+                    <span className="max-w-full truncate text-[11px] font-medium leading-none text-slate-500 dark:text-slate-400">
+                      {identity.customerChip}
                     </span>
                   ) : null}
-                  <span className="max-w-full truncate text-xs font-semibold text-slate-700 dark:text-slate-200">
-                    {user?.firstName} {user?.lastName}
+                  <span className="max-w-full truncate text-[13px] font-semibold leading-none text-slate-800 dark:text-slate-100">
+                    {identity.personName || 'Hesap'}
                   </span>
                 </span>
                 <svg className="hidden h-3 w-3 shrink-0 text-slate-400 sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -843,14 +840,16 @@ function Navbar({
                 <>
                   <div
                     role="menu"
-                    className="absolute right-0 top-full z-[70] mt-1.5 w-56 rounded-2xl border border-slate-100/80 bg-white py-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+                    className="absolute right-0 top-full z-[70] mt-1.5 w-72 rounded-2xl border border-slate-100/80 bg-white py-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900"
                   >
-                    <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-700">
-                      {profileContextLabel ? (
-                        <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">{profileContextLabel}</p>
+                    <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-700">
+                      {identity.customerFull ? (
+                        <p className="break-words text-[11px] font-medium leading-snug text-slate-500 dark:text-slate-400">{identity.customerFull}</p>
                       ) : null}
-                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{user?.firstName} {user?.lastName}</p>
-                      <p className="truncate text-xs text-slate-400">{user?.role?.name ?? roleCode}</p>
+                      <p className="break-words text-sm font-semibold leading-snug text-slate-800 dark:text-slate-100">{identity.personName || 'Hesap'}</p>
+                      {identity.writtenDuty ? (
+                        <p className="mt-0.5 truncate text-xs text-slate-500">{identity.writtenDuty}</p>
+                      ) : null}
                     </div>
                     <Link href="/panel/profil" className="flex items-center gap-2 mx-1 px-3 py-2.5 text-sm text-slate-700 hover:bg-blue-50/60 hover:text-blue-700 rounded-lg transition-colors">
                       <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -25,6 +25,7 @@ import {
   anaMusteriAllowsWhatsApp,
   type AnaMusteriHaberlesme,
 } from '@/utils/acil-ana-musteri-haberlesme';
+import { AcilVendorServiceContractPanel } from './AcilVendorServiceContractPanel';
 
 export type OperatorStepKey =
   | 'ihbar'
@@ -120,6 +121,7 @@ export type PlannerStepBodyProps = {
   satisVatMode?: VatMode;
   inboxPhotoCount?: number;
   skipVendorPicker?: boolean;
+  emergencyCaseId?: string;
   customerNotifyChannel?: AnaMusteriHaberlesme;
   onCustomerNotifyChannel?: (v: AnaMusteriHaberlesme) => void;
   onCustomerEmail?: () => void;
@@ -554,6 +556,14 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
               </div>
             </div>
           </Card>
+        ) : null}
+        {p.assignedVendor && p.emergencyCaseId ? (
+          <AcilVendorServiceContractPanel
+            emergencyCaseId={p.emergencyCaseId}
+            vendorId={p.assignedVendor.id}
+            vendorName={p.assignedVendor.name}
+            vendorPhone={p.assignedVendor.phone ?? ''}
+          />
         ) : null}
         <BudgetCard {...p} />
         <Card title="WhatsApp">

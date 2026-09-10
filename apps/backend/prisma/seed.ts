@@ -446,10 +446,16 @@ async function main() {
   // Demo: Asistans firma portal kullanıcısı
   await prisma.user.upsert({
     where: { email: 'asistans@meridyenasistans.com' },
-    update: { roleId: assistanceCompanyUserRole.id, status: 'active', passwordHash: hashedPassword },
+    update: {
+      firstName: 'Ayşe',
+      lastName: 'Yılmaz',
+      roleId: assistanceCompanyUserRole.id,
+      status: 'active',
+      passwordHash: hashedPassword,
+    },
     create: {
       firstName: 'Ayşe',
-      lastName: 'Asistans',
+      lastName: 'Yılmaz',
       email: 'asistans@meridyenasistans.com',
       passwordHash: hashedPassword,
       roleId: assistanceCompanyUserRole.id,
@@ -1029,7 +1035,7 @@ async function main() {
         title: 'Taraflar',
         content: `<p><strong>İşveren:</strong> Meridyen Assistance — Sigorta Hasar Yönetim Hizmetleri</p>
 <p><strong>Taşeron/Tedarikçi:</strong> {{tedarikci_ad}}</p>
-<p><strong>Vergi No / TC No:</strong> {{tedarikci_vergi_no}}</p>
+<p>{{tedarikci_vergi_no}}</p>
 <p><strong>Adres:</strong> {{tedarikci_adres}}</p>
 <p><strong>Telefon:</strong> {{tedarikci_telefon}}</p>
 <p>Sigortalı adına iş koordinasyonu Meridyen Assistance tarafından yürütülmektedir. Sigorta şirketi: <strong>{{sigorta_sirketi}}</strong></p>`,

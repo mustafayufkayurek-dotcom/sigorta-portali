@@ -16,6 +16,7 @@ import {
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
 import { formatPhoneDisplay } from '@/data/country-codes';
+import { displayPersonDuty, showsUserOperationalAuthorization } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import {
   OperationalAccessGrantPanel,
   resolveDefaultAuthorizationFlow,
@@ -48,9 +49,9 @@ function ProfilTab({ user }: { user: any }) {
   const fields = [
     { label: 'Ad', value: user.firstName },
     { label: 'Soyad', value: user.lastName },
+    { label: 'Görev', value: displayPersonDuty(user) },
     { label: 'E-posta', value: user.email },
     { label: 'Telefon', value: user.phone ? formatPhoneDisplay(user.phone) : '—' },
-    { label: 'Rol', value: user.role?.name ?? '—' },
     { label: 'Şube', value: user.branch?.name ?? '—' },
     { label: 'Durum', value: user.isActive ? 'Aktif' : 'Pasif' },
     { label: 'Kayıt Tarihi', value: fmtDate(user.createdAt) },
@@ -523,8 +524,11 @@ export default function KullaniciDetayPage() {
     );
   }
 
+  const showOperationalAuthorization = showsUserOperationalAuthorization(undefined, user.role?.code);
+
   const visibleTabs = TABS.filter((t) => {
     if (t.id === 'ekranlar') return canManageScreens;
+    if (t.id === 'vekalet') return isAdminOrManager && showOperationalAuthorization;
     if (t.adminOnly) return isAdminOrManager;
     return true;
   });
@@ -541,7 +545,7 @@ export default function KullaniciDetayPage() {
           </button>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-slate-900">{user.firstName} {user.lastName}</h1>
-            <p className="text-xs text-slate-400">{user.role?.name} · {user.email}</p>
+            <p className="text-xs text-slate-400">{displayPersonDuty(user)} · {user.email}</p>
           </div>
           <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
             {user.isActive ? 'Aktif' : 'Pasif'}
@@ -576,7 +580,7 @@ export default function KullaniciDetayPage() {
         {activeTab === 'ekranlar' && canManageScreens && (
           <EkranlarTab userId={id!} roleCode={user?.role?.code ?? ''} />
         )}
-        {activeTab === 'vekalet' && isAdminOrManager && (
+        {activeTab === 'vekalet' && isAdminOrManager && showOperationalAuthorization && (
           <OperationalAccessGrantPanel
             userId={id!}
             defaultFlow={resolveDefaultAuthorizationFlow(user?.role?.code)}

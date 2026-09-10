@@ -42,6 +42,7 @@ describe('acil dijital onay / sözleşme LOCK', () => {
       'utf8',
     );
     assert.match(steps, /Adres Ve Hizmet Talep Onayı Oluştur/);
+    assert.match(steps, /AcilVendorServiceContractPanel/);
     assert.doesNotMatch(steps, /sigortalı haber/);
     assert.doesNotMatch(steps, /Sigortalı Bilgilendirme/);
     const panel = readFileSync(

@@ -319,11 +319,7 @@ export class VendorsService {
     taxNumber?: string | null;
   }) {
     if (vendorContractIdentityMissing(vendor)) {
-      throw new BadRequestException(
-        String(vendor.entityType ?? '').toLowerCase() === 'corporate'
-          ? 'Şirket tedarikçide vergi numarası zorunludur.'
-          : 'Şahıs tedarikçide TC kimlik numarası zorunludur.',
-      );
+      throw new BadRequestException('Şirket tedarikçide vergi numarası zorunludur.');
     }
   }
 

@@ -44,7 +44,7 @@ const CONTRACT_PLACEHOLDERS = [
   { key: '{{hasar_adresi}}', desc: 'Hasar adresi' },
   { key: '{{sigorta_musteri_ad}}', desc: 'Sigortalı adı' },
   { key: '{{tedarikci_ad}}', desc: 'Tedarikçi adı' },
-  { key: '{{tedarikci_vergi_no}}', desc: 'Vergi / TC No' },
+  { key: '{{tedarikci_vergi_no}}', desc: 'Şirket: Vergi No … / Şahıs: T.C. Kimlik No …' },
   { key: '{{tedarikci_adres}}', desc: 'Tedarikçi adresi' },
   { key: '{{toplam_tutar}}', desc: 'Toplam tutar' },
 ];

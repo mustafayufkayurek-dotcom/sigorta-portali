@@ -28,14 +28,15 @@ describe('tedarikçi türü listesi LOCK', () => {
     assert.match(page, /Şahıs/);
     assert.match(page, /Şirket/);
     assert.match(page, /hint: 'TC kimlik no'/);
-    assert.match(page, /hint: 'Vergi no'/);
+    assert.match(page, /form\.identityNo && !isValidTcKimlikNo/);
+    assert.doesNotMatch(page, /Kayıt için TC kimlik doğrulaması gerekir/);
     const formHelper = readFileSync(join(here, 'vendor-form-helpers.ts'), 'utf8');
     assert.match(formHelper, /vendorIdentityCardLine/);
     assert.match(formHelper, /TC Kimlik No/);
     assert.match(formHelper, /Vergi No/);
     assert.match(formHelper, /vendorIdentityGapLabel/);
-    assert.match(formHelper, /TC No Eksik/);
     assert.match(formHelper, /Vergi No Eksik/);
+    assert.doesNotMatch(formHelper, /TC No Eksik/);
     assert.doesNotMatch(formHelper, /No eksik/);
     assert.match(page, /vendorIdentityGapLabel/);
     assert.match(page, /tedarikci-satir-kimlik-eksik/);

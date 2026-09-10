@@ -25,6 +25,13 @@ export class CreateUserDto {
   @IsString()
   lastName!: string;
 
+  /** Firma içinde yazılan görev — koddan gelmez */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  jobTitle?: string;
+
   @ApiProperty()
   @IsEmail()
   email!: string;

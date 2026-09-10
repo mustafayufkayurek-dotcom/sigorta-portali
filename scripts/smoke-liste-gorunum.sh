@@ -7,6 +7,7 @@ echo "=== Liste görünüm kilit ==="
 cd "$REPO_ROOT"
 node --experimental-strip-types --test \
   apps/web/src/components/ui/panel-table-layout.lock.spec.ts \
+  apps/web/src/app/panel/kullanicilar/_lib/user-invite-config.lock.spec.ts \
   apps/web/src/components/portal/portal-row-action-prefs.lock.spec.ts \
   apps/backend/src/modules/user-locations/field-map-files.lock.spec.ts \
   apps/web/src/app/panel/tedarikciler/tedarikci-row-actions.lock.spec.ts \

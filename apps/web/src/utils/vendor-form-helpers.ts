@@ -341,8 +341,8 @@ export function vendorIdentityCardLine(vendor: {
 
 export function vendorIdentityDocumentHint(entityType?: string | null): string {
   return String(entityType ?? '').toLowerCase() === 'individual'
-    ? 'Şahıs kayıtta TC kimlik belgesi yüklenir; sözleşme bu numarayı basar.'
-    : 'Şirket kayıtta vergi levhası yüklenir; sözleşme bu numarayı basar.';
+    ? 'Şahıs kayıtta T.C. kimlik no zorunlu değildir; sözleşmede T.C. Kimlik No satırı basılır.'
+    : 'Şirket kayıtta vergi levhası yüklenir; sözleşme Vergi No satırını basar.';
 }
 
 export function vendorIdentityGapLabel(vendor: {
@@ -351,7 +351,7 @@ export function vendorIdentityGapLabel(vendor: {
   taxNumber?: string | null;
 }): string | null {
   if (!vendorContractIdentityMissing(vendor)) return null;
-  return String(vendor.entityType ?? '').toLowerCase() === 'corporate' ? 'Vergi No Eksik' : 'TC No Eksik';
+  return 'Vergi No Eksik';
 }
 
 export function vendorPhoneRequiredError(

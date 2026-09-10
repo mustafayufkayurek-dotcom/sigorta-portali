@@ -1,4 +1,4 @@
-export type AssistantScopeEntry = string | { id?: string; name?: string };
+export type AssistantScopeEntry = string | { id?: string; name?: string; shortName?: string | null };
 
 export function resolveAssistantCustomerIds(
   scopes: AssistantScopeEntry[] | undefined | null,

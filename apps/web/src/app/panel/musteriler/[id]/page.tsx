@@ -12,6 +12,8 @@ import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
 import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType } from '@/utils/customer-form-helpers';
+import { isPortalCustomerSubType } from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import { CustomerPortalUsersPanel } from '@/components/customers/CustomerPortalUsersPanel';
 import { customerFileCounts } from '@/utils/customer-file-counts';
 import { FieldOperationsMap } from '@/components/operasyon/FieldOperationsMap';
 import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
@@ -301,7 +303,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
 }
 
 // ── Yetkili & İletişim Tab ────────────────────────────────────────────────────
-function YetkiliIletisimTab({ customer }: { customer: any }) {
+function YetkiliIletisimTab({ customer, canInvite }: { customer: any; canInvite: boolean }) {
   const contacts: any[] = customer.contacts || [];
   const contactInfos: any[] = customer.contactInfos || [];
   const [notify, setNotify] = useState<AnaMusteriHaberlesme>(() => readAnaMusteriHaberlesme(customer.id));
@@ -333,7 +335,10 @@ function YetkiliIletisimTab({ customer }: { customer: any }) {
           <p className="mt-2 text-[11px] text-slate-500">Bu müşterinin sonraki Acil dosyalarında Onay ve Kapanış bu tercihe göre açılır.</p>
         </SectionCard>
       ) : null}
-      <SectionCard title="Yetkili Kişiler" subtitle={`${contacts.length} kişi kayıtlı`}>
+      {isPortalCustomerSubType(customer.subType) && (
+        <CustomerPortalUsersPanel customerId={customer.id} canInvite={canInvite} />
+      )}
+      <SectionCard title="Yetkili Kişiler" subtitle={`${contacts.length} kişi kayıtlı · arama ve yazışma, panele giriş yok`}>
         {contacts.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-4">Yetkili Kişi Eklenmemiş.</p>
         ) : (
@@ -940,7 +945,7 @@ export default function CustomerDetailPage() {
 
       {/* ── Tab Content ── */}
       {activeTab === 'profil' && <CustomerProfilTab customer={customer} isFieldStaff={isFieldStaff} onReload={load} onEdit={() => router.push(`/panel/musteriler?edit=${id}`)} />}
-      {activeTab === 'yetkili' && <YetkiliIletisimTab customer={customer} />}
+      {activeTab === 'yetkili' && <YetkiliIletisimTab customer={customer} canInvite={!isFieldStaff} />}
       {activeTab === 'dosyalar' && <CustomerDosyalarTab customerId={id!} />}
       {activeTab === 'harita' && (
         <FieldOperationsMap customerId={id!} compact showNotice />

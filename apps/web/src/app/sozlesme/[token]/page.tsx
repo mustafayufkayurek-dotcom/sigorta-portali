@@ -22,6 +22,7 @@ type ContractData = {
   status: string;
   signedAt: string | null;
   contractKind?: 'simple' | 'detailed';
+  contractPurpose?: 'hasar_onarim' | 'acil_hizmet';
 };
 
 export default function SozlesmePage() {
@@ -110,7 +111,8 @@ export default function SozlesmePage() {
 
   const isAlreadySigned = contract.status === 'vendor_signed';
   const isCancelled = contract.status === 'cancelled';
-  const isSimple = contract.contractKind === 'simple';
+  const isAcilHizmet =
+    contract.contractPurpose === 'acil_hizmet' || contract.contractKind === 'simple';
   const isDeadlinePassed = contract.signDeadlineAt
     ? new Date(contract.signDeadlineAt) < new Date()
     : false;
@@ -130,7 +132,7 @@ export default function SozlesmePage() {
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-500">Meridyen Assistance</p>
-            <p className="text-sm font-bold text-slate-800">{isSimple ? 'Tedarikçi Dijital Onayı' : 'Tedarikçi Onarım Sözleşmesi'}</p>
+            <p className="text-sm font-bold text-slate-800">{isAcilHizmet ? 'Tedarikçi Hizmet Alım Sözleşmesi' : 'Tedarikçi Onarım Sözleşmesi'}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-slate-500">Sözleşme No</p>
@@ -184,12 +186,19 @@ export default function SozlesmePage() {
 
         {/* Contract info */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'Dosya No', value: contract.fileNo },
-            { label: 'Sigorta Şirketi', value: contract.insuranceCompanyName ?? '—' },
-            { label: 'Tarih', value: new Date(contract.contractDate).toLocaleDateString('tr-TR') },
-            { label: 'Tedarikçi', value: contract.vendorName },
-          ].map((item) => (
+          {(isAcilHizmet
+            ? [
+                { label: 'Dosya No', value: contract.fileNo },
+                { label: 'Tarih', value: new Date(contract.contractDate).toLocaleDateString('tr-TR') },
+                { label: 'Tedarikçi', value: contract.vendorName },
+              ]
+            : [
+                { label: 'Dosya No', value: contract.fileNo },
+                { label: 'Sigorta Şirketi', value: contract.insuranceCompanyName ?? '—' },
+                { label: 'Tarih', value: new Date(contract.contractDate).toLocaleDateString('tr-TR') },
+                { label: 'Tedarikçi', value: contract.vendorName },
+              ]
+          ).map((item) => (
             <div key={item.label} className="bg-white border border-slate-200 rounded-xl p-3">
               <p className="text-xs text-slate-400 mb-0.5">{item.label}</p>
               <p className="text-sm font-semibold text-slate-800 truncate">{item.value}</p>
@@ -200,7 +209,7 @@ export default function SozlesmePage() {
         {/* Contract content */}
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{isSimple ? 'Onay Metni' : 'Sözleşme İçeriği'}</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sözleşme İçeriği</p>
           </div>
           <div
             className="p-6 text-sm leading-relaxed"
@@ -213,7 +222,7 @@ export default function SozlesmePage() {
         {/* Sign section */}
         {!isAlreadySigned && !isCancelled && !isDeadlinePassed && !confirmed && (
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-800 mb-4">{isSimple ? 'İşi Onaylayın' : 'Sözleşmeyi Onaylayın'}</h3>
+            <h3 className="text-sm font-bold text-slate-800 mb-4">{isAcilHizmet ? 'Hizmeti Onaylayın' : 'Sözleşmeyi Onaylayın'}</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
@@ -245,8 +254,8 @@ export default function SozlesmePage() {
                   )}
                 </button>
                 <span className="text-sm text-slate-600 leading-relaxed">
-                  {isSimple
-                    ? 'Bu işi kabul ediyorum. Bu onayın dijital imza hükmünde olduğunu kabul ediyorum.'
+                  {isAcilHizmet
+                    ? 'Bu hizmet alım sözleşmesini okudum ve kabul ediyorum. Bu onayın dijital imza hükmünde olduğunu kabul ediyorum.'
                     : (
                       <>
                         Yukarıdaki sözleşmeyi tamamını okudum, anladım ve tüm maddelerini kabul ediyorum.
@@ -273,7 +282,7 @@ export default function SozlesmePage() {
                 className="w-full py-3.5 text-sm font-semibold text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: 'linear-gradient(135deg, #1a4080 0%, #1e5aa8 100%)' }}
               >
-                {signing ? 'İmzalanıyor…' : 'Sözleşmeyi İmzala ve Onayla'}
+                {signing ? 'İmzalanıyor…' : isAcilHizmet ? 'Hizmeti Onayla' : 'Sözleşmeyi İmzala ve Onayla'}
               </button>
 
               <p className="text-xs text-slate-400 text-center">

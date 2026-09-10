@@ -1604,14 +1604,9 @@ export default function VendorsPage() {
         errors.lastName = 'Bu alan zorunludur';
         missingLabels.push('Soyad');
       }
-      if (!isValidTcKimlikNo(form.identityNo)) {
-        errors.identityNo = 'Geçerli TC kimlik no zorunludur';
+      if (form.identityNo && !isValidTcKimlikNo(form.identityNo)) {
+        errors.identityNo = 'TC kimlik no 11 haneli olmalıdır';
         missingLabels.push('TC Kimlik No');
-      }
-      if (nviResult !== true) {
-        showToast('warning', 'Kayıt için TC kimlik doğrulaması gerekir.');
-        setActiveSection(0);
-        return;
       }
     }
     if (form.entityType === 'corporate' && !isValidVergiNo(form.taxNumber)) {
@@ -2936,7 +2931,7 @@ export default function VendorsPage() {
                         <FormField label="Soyad" required error={fieldErrors.lastName}>
                           <input className={fieldErrors.lastName ? inpError : inp} placeholder="Soyad" value={form.lastName} onChange={(e) => { setForm((p) => ({ ...p, lastName: e.target.value, name: `${p.firstName} ${e.target.value}`.trim() })); setFieldErrors((p) => { const n = { ...p }; delete n.lastName; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v, name: `${p.firstName} ${v}`.trim() })); }} />
                         </FormField>
-                        <FormField label="TC Kimlik No" required error={fieldErrors.identityNo}>
+                        <FormField label="TC Kimlik No" error={fieldErrors.identityNo}>
                           <input className={`${inp} ${numericErrors.identityNo ? 'border-red-400 bg-red-50 focus:ring-red-400/30' : ''}`}
                             placeholder="11 Haneli TC" maxLength={11} value={form.identityNo}
                             onChange={(e) => handleNumericChange('identityNo', e.target.value)} />

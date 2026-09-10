@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AsistansPortalRoleGate } from './_components/AsistansPortalRoleGate';
 import { ClipboardCheck, FilePlus2, Hourglass, MapPin } from 'lucide-react';
 import { DashboardShell, DashboardHeader } from '@/app/panel/_components';
 import {
@@ -301,20 +302,7 @@ export default function AsistansPortalPage() {
 
   if (accessDenied) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-4">
-        <div className="text-center">
-          <p className="text-base font-semibold text-slate-800">Bu Sayfa Asistans Firma Kullanıcıları İçindir</p>
-          <p className="mt-1 text-sm text-slate-500">
-            Dosya Takip yalnızca asistans firma rolündeki kullanıcılar tarafından kullanılabilir.
-          </p>
-        </div>
-        <Link
-          href="/panel"
-          className="mt-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
-        >
-          Panele Dön
-        </Link>
-      </div>
+      <AsistansPortalRoleGate detail="Dosya Takip yalnızca asistans firma rolündeki kullanıcılar tarafından kullanılabilir." />
     );
   }
 

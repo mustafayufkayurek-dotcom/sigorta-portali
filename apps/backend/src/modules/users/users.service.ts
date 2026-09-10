@@ -12,6 +12,15 @@ import { assertNewPassword, hashPassword, verifyPassword } from '@/common/securi
 import { randomInt } from 'crypto';
 import { pickUserWriteScalars } from './user-update-fields';
 import { ALL_SCREEN_CODES, SCREEN_LABELS, getDefaultScreensForRole } from './screen-permissions.defaults';
+import {
+  ensureInsuranceCompanyIdForCustomer,
+} from './portal-customer-users';
+import {
+  isPortalCustomerSubType,
+  normalizePortalRoleCode,
+  roleCodesForPortalCustomerSubType,
+} from './portal-customer-subtypes';
+import { resolveInsuranceCompanyIdsForCustomer } from '@/modules/customers/customer-file-stats';
 
 function normalizeUserEmail(email: string): string {
   return normalizeEmailAddress(email);
@@ -87,9 +96,10 @@ export class UsersService {
     private readonly config: ConfigService,
   ) {}
 
-  async findAll(params?: { page?: number; limit?: number; roleId?: string; branchId?: string }) {
+  async findAll(params?: { page?: number; limit?: number; roleId?: string; branchId?: string; customerId?: string }) {
     const page = parseInt(String(params?.page || 1), 10);
-    const limit = parseInt(String(params?.limit || 20), 10);
+    const defaultLimit = params?.customerId ? 100 : 20;
+    const limit = parseInt(String(params?.limit || defaultLimit), 10);
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -98,6 +108,10 @@ export class UsersService {
     }
     if (params?.roleId) where.roleId = params.roleId;
     if (params?.branchId) where.branchId = params.branchId;
+    const customerId = String(params?.customerId ?? '').trim();
+    if (customerId) {
+      where.AND = [...(where.AND ?? []), await this.portalUsersWhereForCustomer(customerId)];
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({
@@ -129,6 +143,9 @@ export class UsersService {
                 select: { id: true, companyName: true, fullName: true },
               },
             },
+          },
+          adjuster: {
+            select: { id: true, name: true, company: true },
           },
           serviceAreas: {
             include: {
@@ -251,7 +268,7 @@ export class UsersService {
       throw new BadRequestException('Bu e-posta adresi zaten kullanılıyor');
     }
 
-    applyTitleCase(data, ['firstName', 'lastName']);
+    applyTitleCase(data, ['firstName', 'lastName', 'jobTitle']);
 
     const {
       password,
@@ -262,6 +279,7 @@ export class UsersService {
       assistantCustomerIds,
       expertCustomerId,
       brokerCustomerId,
+      portalCustomerId: requestedPortalCustomerId,
     } = data;
     const rest: any = pickUserWriteScalars(data);
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
@@ -289,11 +307,18 @@ export class UsersService {
       });
 
       const { expertCustomerId: _expertCustomerId, brokerCustomerId: _brokerCustomerId, ...userData } = rest;
+      const portalCustomerId = this.derivePortalCustomerId({
+        portalCustomerId: requestedPortalCustomerId,
+        expertCustomerId,
+        brokerCustomerId,
+        assistantCustomerIds,
+      });
 
       const createdUser = await tx.user.create({
         data: {
           ...userData,
           adjusterId,
+          portalCustomerId,
           email: normalizedEmail,
           passwordHash: hashedPassword,
           mustChangePassword: true,
@@ -399,7 +424,7 @@ export class UsersService {
     existingUser: { id: string; email: string; status: string; archivedEmail?: string | null },
     data: any,
   ) {
-    applyTitleCase(data, ['firstName', 'lastName']);
+    applyTitleCase(data, ['firstName', 'lastName', 'jobTitle']);
 
     const temporaryPassword = typeof data.password === 'string' && data.password.trim().length > 0
       ? assertNewPassword(data.password.trim())
@@ -653,6 +678,139 @@ export class UsersService {
     }
   }
 
+  private derivePortalCustomerId(params: {
+    portalCustomerId?: string | null;
+    expertCustomerId?: string | null;
+    brokerCustomerId?: string | null;
+    assistantCustomerIds?: string[] | null;
+  }): string | undefined {
+    const value = [
+      params.portalCustomerId,
+      params.expertCustomerId,
+      params.brokerCustomerId,
+      params.assistantCustomerIds?.[0],
+    ]
+      .map((id) => (typeof id === 'string' ? id.trim() : ''))
+      .find(Boolean);
+    return value || undefined;
+  }
+
+  private async portalUsersWhereForCustomer(customerId: string): Promise<Prisma.UserWhereInput> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: {
+        id: true,
+        subType: true,
+        taxNumber: true,
+        companyName: true,
+        fullName: true,
+        shortName: true,
+      },
+    });
+    if (!customer) {
+      return { id: { in: [] } };
+    }
+
+    const or: Prisma.UserWhereInput[] = [
+      { portalCustomerId: customerId },
+      { userAssistantCustomerScopes: { some: { customerId } } },
+    ];
+
+    const insuranceIds = await resolveInsuranceCompanyIdsForCustomer(this.prisma, customer);
+    if (insuranceIds.length > 0) {
+      or.push({
+        userInsuranceCompanyScopes: { some: { insuranceCompanyId: { in: insuranceIds } } },
+      });
+    }
+
+    const companyName = (customer.companyName ?? customer.fullName ?? '').trim();
+    if (companyName && (customer.subType === 'eksper_firmasi' || customer.subType === 'eksper')) {
+      or.push({
+        adjuster: { is: { company: companyName } },
+      });
+    }
+
+    return { OR: or };
+  }
+
+  async inviteFromCustomer(
+    customerId: string,
+    people: Array<{ firstName?: string; lastName?: string; email?: string; phone?: string; jobTitle?: string }>,
+  ) {
+    const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+    if (!customer || customer.status !== 'active') {
+      throw new BadRequestException('Geçerli bir müşteri kartı bulunamadı');
+    }
+    if (customer.entityType !== 'corporate' || !isPortalCustomerSubType(customer.subType)) {
+      throw new BadRequestException('Bu kart için portal kullanıcısı açılamaz. Sigorta, eksper, broker veya asistans kartı gerekir.');
+    }
+
+    const roleCodes = roleCodesForPortalCustomerSubType(customer.subType);
+    const roles = await this.prisma.role.findMany({ select: { id: true, code: true } });
+    const targets = new Set(roleCodes.map((code) => normalizePortalRoleCode(code)));
+    const role = roles.find((row) => targets.has(normalizePortalRoleCode(row.code)));
+    if (!role) {
+      throw new BadRequestException('Bu kart için sistem rolü bulunamadı. Ayarlar → Roller bölümünü kontrol edin.');
+    }
+
+    const rows = (Array.isArray(people) ? people : []).slice(0, 20);
+    if (rows.length === 0) {
+      throw new BadRequestException('En az bir kişi ekleyin.');
+    }
+
+    const subType = customer.subType ?? '';
+    const insuranceCompanyIds = subType === 'sigorta_sirketi'
+      ? [await ensureInsuranceCompanyIdForCustomer(this.prisma, customer)]
+      : undefined;
+    const expertCustomerId = (subType === 'eksper_firmasi' || subType === 'eksper') ? customer.id : undefined;
+    const brokerCustomerId = subType === 'broker_firmasi' ? customer.id : undefined;
+    const assistantCustomerIds = subType === 'asistan_firmasi' ? [customer.id] : undefined;
+
+    const invited: Array<{
+      email: string;
+      firstName: string;
+      lastName: string;
+      jobTitle?: string | null;
+      temporaryPassword: string;
+      welcomeEmail?: { sent: boolean; message: string };
+      reinvited?: boolean;
+    }> = [];
+
+    for (const person of rows) {
+      const firstName = String(person.firstName ?? '').trim();
+      const lastName = String(person.lastName ?? '').trim();
+      const email = String(person.email ?? '').trim();
+      const jobTitle = String(person.jobTitle ?? '').trim();
+      if (!firstName || !lastName || !email || !jobTitle) {
+        throw new BadRequestException('Her kişi için ad, soyad, e-posta ve görev yazılmalıdır.');
+      }
+      const created = await this.create({
+        roleId: role.id,
+        firstName,
+        lastName,
+        email,
+        phone: person.phone,
+        jobTitle,
+        portalCustomerId: customer.id,
+        expertCustomerId,
+        brokerCustomerId,
+        insuranceCompanyIds,
+        assistantCustomerIds,
+      });
+      invited.push({
+        email: created.email,
+        firstName: created.firstName,
+        lastName: created.lastName,
+        jobTitle: created.jobTitle ?? jobTitle,
+        temporaryPassword: created.temporaryPassword,
+        welcomeEmail: created.welcomeEmail,
+        reinvited: 'reinvited' in created ? created.reinvited : undefined,
+      });
+    }
+
+    return { invited };
+  }
+
   private async resolveExpertAdjusterIdForInvite(
     tx: Prisma.TransactionClient,
     params: {
@@ -807,7 +965,7 @@ export class UsersService {
       throw new BadRequestException('Sistem yöneticisi düzenlenemez');
     }
 
-    applyTitleCase(data, ['firstName', 'lastName']);
+    applyTitleCase(data, ['firstName', 'lastName', 'jobTitle']);
 
     const {
       password,
@@ -824,6 +982,13 @@ export class UsersService {
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
 
     const updateData: any = { ...rest };
+    const portalCustomerId = this.derivePortalCustomerId({
+      portalCustomerId: data.portalCustomerId,
+      expertCustomerId,
+      brokerCustomerId,
+      assistantCustomerIds,
+    });
+    if (portalCustomerId) updateData.portalCustomerId = portalCustomerId;
     if (updateData.email !== undefined) {
       const normalizedEmail = normalizeUserEmail(updateData.email);
       if (!normalizedEmail) {

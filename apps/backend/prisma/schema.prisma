@@ -96,6 +96,8 @@ model User {
   adjusterId   String?   @unique @map("adjuster_id")
   firstName    String    @map("first_name")
   lastName     String    @map("last_name")
+  /// Firma içinde yazılan görev (kod listesi değil)
+  jobTitle     String?   @map("job_title")
   email        String    @unique
   phone        String?
   passwordHash String    @map("password_hash")
@@ -109,12 +111,15 @@ model User {
   isMobileUser Boolean   @default(false) @map("is_mobile_user")
   isWebUser    Boolean   @default(true) @map("is_web_user")
   expoPushToken String?  @map("expo_push_token")
+  /// Dış portal kullanıcısının müşteri kartı (eksper / sigorta / broker / asistans)
+  portalCustomerId String? @map("portal_customer_id")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   branch   Branch?   @relation("BranchUsers", fields: [branchId], references: [id])
   role     Role      @relation(fields: [roleId], references: [id])
   adjuster Adjuster? @relation("UserAdjuster", fields: [adjusterId], references: [id])
+  portalCustomer Customer? @relation("UserPortalCustomer", fields: [portalCustomerId], references: [id], onDelete: SetNull)
 
   managedBranches            Branch[]                    @relation("BranchManager")
   userInsuranceCompanyScopes UserInsuranceCompanyScope[]
@@ -229,6 +234,7 @@ model User {
   @@index([email])
   @@index([roleId])
   @@index([branchId])
+  @@index([portalCustomerId])
   @@map("users")
 }
 
@@ -589,6 +595,7 @@ model Customer {
   expertReports RepairReport[]     @relation("ExpertOfficeReports")
   emergencyCases EmergencyCase[]   @relation("EmergencyCustomer")
   assistantUserScopes UserAssistantCustomerScope[]
+  portalUsers User[] @relation("UserPortalCustomer")
 
   @@map("customers")
 }
@@ -2840,6 +2847,7 @@ model EmergencyCase {
   invoiceRequests InvoiceRequest[]
   inboundMessages InboundMessage[]
   vendorEntitlement EmergencyVendorEntitlement?
+  vendorContracts VendorContract[]
   payment           Payment?
   invoices          Invoice[]
   surveyCampaigns SurveyCampaign[]
@@ -2970,7 +2978,8 @@ model VendorContractClause {
 model VendorContract {
   id                   String    @id @default(uuid())
   contractNo           String    @unique @map("contract_no")
-  claimFileId          String    @map("claim_file_id")
+  claimFileId          String?   @map("claim_file_id")
+  emergencyCaseId      String?   @map("emergency_case_id")
   vendorId             String    @map("vendor_id")
   repairReportId       String?   @map("repair_report_id")
   templateId           String    @map("template_id")
@@ -3002,13 +3011,15 @@ model VendorContract {
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  claimFile    ClaimFile              @relation(fields: [claimFileId], references: [id])
-  vendor       Vendor                 @relation(fields: [vendorId], references: [id])
+  claimFile      ClaimFile?             @relation(fields: [claimFileId], references: [id])
+  emergencyCase  EmergencyCase?         @relation(fields: [emergencyCaseId], references: [id], onDelete: Cascade)
+  vendor         Vendor                 @relation(fields: [vendorId], references: [id])
   repairReport RepairReport?          @relation(fields: [repairReportId], references: [id])
   template     VendorContractTemplate @relation(fields: [templateId], references: [id])
   createdBy    User                   @relation("CreatedVendorContracts", fields: [createdByUserId], references: [id])
 
   @@index([claimFileId])
+  @@index([emergencyCaseId])
   @@index([vendorId])
   @@index([status])
   @@index([publicToken])

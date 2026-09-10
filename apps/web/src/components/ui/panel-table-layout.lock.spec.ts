@@ -92,5 +92,7 @@ describe('panel tablo genişlik kilidi', () => {
     assert.doesNotMatch(users, /id: 'phone', label: 'Telefon'/);
     assert.doesNotMatch(users, /sm:ml-auto/);
     assert.match(users, /className="w-full text-sm"/);
+    assert.match(users, /Kişi Ekle/);
+    assert.match(users, /invitePeople/);
   });
 });

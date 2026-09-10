@@ -134,6 +134,11 @@
           font-weight: 700;
           white-space: nowrap;
         }
+        .status-pill.is-closed {
+          background: #fef2f2;
+          border-color: #fecaca;
+          color: #991b1b;
+        }
         .status-dot {
           width: 9px;
           height: 9px;

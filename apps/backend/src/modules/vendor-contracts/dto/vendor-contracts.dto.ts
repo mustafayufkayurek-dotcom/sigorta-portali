@@ -1,8 +1,15 @@
 import { IsString, IsOptional, IsUUID, IsInt, IsBoolean, Min, IsDateString, IsIn } from 'class-validator';
 
 export class CreateVendorContractDto {
-  @IsUUID()
-  claimFileId!: string;
+  /** Hasar dosyası. Acil gönderiminde durmaz; XOR serviste. */
+  @IsOptional()
+  @IsString()
+  claimFileId?: string;
+
+  /** Acil Yardım dosyası. Hasar gönderiminde durmaz; XOR serviste. */
+  @IsOptional()
+  @IsString()
+  emergencyCaseId?: string;
 
   @IsUUID()
   vendorId!: string;

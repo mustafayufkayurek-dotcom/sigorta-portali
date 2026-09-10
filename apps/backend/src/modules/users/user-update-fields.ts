@@ -2,6 +2,7 @@
 export const USER_WRITE_SCALAR_KEYS = [
   'firstName',
   'lastName',
+  'jobTitle',
   'email',
   'phone',
   'status',

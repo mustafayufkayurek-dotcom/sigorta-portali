@@ -271,9 +271,13 @@ export function hasValidSessionScope(): boolean {
  * Oturumu düşür. Şifresiz otomatik giriş engellenir.
  * preserveRememberedEmail: yalnızca form e-posta / kutucuk tercihi (token asla kalmaz).
  */
-export function clearAuth(options?: { preserveRememberedEmail?: boolean }) {
+export function clearAuth(options?: {
+  preserveRememberedEmail?: boolean;
+  forceForgetEmail?: boolean;
+}) {
   const keepEmailPref =
-    options?.preserveRememberedEmail === true || isRememberMePreferred();
+    !options?.forceForgetEmail &&
+    (options?.preserveRememberedEmail === true || isRememberMePreferred());
   const rememberedEmail = keepEmailPref ? localStorage.getItem(REMEMBERED_EMAIL_KEY) : null;
   const rememberFlag = keepEmailPref && isRememberMePreferred() ? '1' : null;
 
@@ -476,6 +480,7 @@ export async function logoutAndRedirect(
   apiBase: string,
   redirect: (url: string) => void,
   reason: 'logout' | 'timeout' | 'session_expired' = 'logout',
+  options?: { forceForgetEmail?: boolean },
 ): Promise<void> {
   const base = apiBase.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
   const { accessToken, refreshToken } = peekStoredTokens();
@@ -502,7 +507,11 @@ export async function logoutAndRedirect(
     }
   }
 
-  clearAuth({ preserveRememberedEmail: true });
+  clearAuth(
+    options?.forceForgetEmail
+      ? { forceForgetEmail: true }
+      : { preserveRememberedEmail: true },
+  );
   try {
     sessionStorage.clear();
   } catch {

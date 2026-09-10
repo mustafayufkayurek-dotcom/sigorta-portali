@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import {
   Controller,
   Get,
@@ -68,7 +69,16 @@ export class VendorContractsController {
   // ── Sözleşmeler ────────────────────────────────────────────────────────────
 
   @Get()
-  async findByClaimFile(@Query('claimFileId') claimFileId: string) {
+  async list(
+    @Query('claimFileId') claimFileId?: string,
+    @Query('emergencyCaseId') emergencyCaseId?: string,
+  ) {
+    if (emergencyCaseId) {
+      return { data: await this.svc.findByEmergencyCase(emergencyCaseId) };
+    }
+    if (!claimFileId) {
+      throw new BadRequestException('claimFileId veya emergencyCaseId gerekli');
+    }
     return { data: await this.svc.findByClaimFile(claimFileId) };
   }
 

@@ -295,6 +295,7 @@ export default function LoginPage() {
   const [showForgot, setShowForgot] = useState(false);
   const [companyName, setCompanyName] = useState<string>('Meridyen Assistance');
   const [footerYear, setFooterYear] = useState<number | null>(null);
+  const [systemReady, setSystemReady] = useState<boolean | null>(null);
   const authHydrated = useRef(false);
 
   useEffect(() => {
@@ -326,9 +327,10 @@ export default function LoginPage() {
       .then((r) => {
         const d = r.data?.data ?? {};
         if (d.name) setCompanyName(d.name);
+        setSystemReady(true);
       })
       .catch(() => {
-        // fallback: keep local logo asset
+        setSystemReady(false);
       });
   }, [router]);
 
@@ -377,8 +379,15 @@ export default function LoginPage() {
       const next = safePanelNextPath(new URLSearchParams(window.location.search).get('next'));
       router.replace(next ?? getLoginHomePath(String(user?.role?.code ?? '')));
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      const msg = axiosErr.response?.data?.message || 'E-posta veya şifre hatalı.';
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      const status = axiosErr.response?.status;
+      const apiMessage = axiosErr.response?.data?.message;
+      const msg =
+        !axiosErr.response || (typeof status === 'number' && status >= 500)
+          ? 'Giriş şu an yapılamıyor. Şifre yanlış değil; sistem kapalı. Biraz sonra tekrar deneyin.'
+          : (typeof apiMessage === 'string' && apiMessage.trim()
+            ? apiMessage
+            : 'E-posta veya şifre hatalı.');
       setError(msg);
     } finally {
       setLoading(false);
@@ -466,9 +475,9 @@ export default function LoginPage() {
                 <div className="login-header">
                   <h2 className="login-heading">Kullanıcı Girişi</h2>
                 </div>
-                <div className="status-pill login-panel-status">
+                <div className={`status-pill login-panel-status${systemReady === false ? ' is-closed' : ''}`}>
                   <span className="status-dot" />
-                  Sistem Aktif
+                  {systemReady === false ? 'Sistem Kapalı' : 'Sistem Aktif'}
                 </div>
               </div>
               <p className="login-sub fade-up-2">Kurumsal bilgilerinizle giriş yapın.</p>

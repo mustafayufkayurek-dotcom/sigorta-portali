@@ -29,6 +29,26 @@ Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karış
 
 **v574:** Güvenlik, oturum kapısı, KDV, finans liste, Konut-Yangın, başlık bilgi, KVKK sayfa iskeleti.
 
-## Sırada
+## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-1. **İK personel özlük** — Personel Ekle + aynı kayıtta zimmet. Puantaj ayrı. Bu alıma karışmaz.
+**Sonraki alım: web + backend.** İK bu pakete karışmaz.
+
+Aynı paket — maddeler birleştirilmez, kısaltılmaz:
+
+1. **Müşteri kartından firma kullanıcıları** — Eksper, sigorta, broker, asistans kişileri müşteri kartından açılır; hoş geldin maili ve geçici şifre aynı şekilde gider. Karttaki yetkili kişiler giriş almaz.
+
+2. **Görev kişiye yazılır** — Hazır görev listesinden seçilmez. Liste ve profilde ismin altında durur.
+
+3. **Kullanıcılar ekranı sadeleşir** — Meridyen iç kullanıcı buradan davet edilir. Firma kullanıcıları buradan şirket seçilerek açılmaz.
+
+4. **Yetkilendirme yalnız dosya sorumlusunda** — Ek yetki, izin vekaleti, Acil/Hasar dosya yönetimi yönetim / saha / finans / dış kullanıcılarda sorulmaz.
+
+5. **Girişte sistem kapalıyken şifre hatası görünmez** — Sistem ayaktaysa şifre; kapalıysa «sistem kapalı» yazısı.
+
+6. **Tedarikçi kimliği** — Şahısta T.C. zorunlu değil. Şirkette vergi no durur. Sözleşmede şirket Vergi No, şahıs T.C. Kimlik No basılır (boşsa noktalı satır).
+
+7. **Acil Yardım — Tedarikçi Hizmet Alım Sözleşmesi** — Başlık onarım değildir. Kısa, bağlayıcı metin. Hasar ifadesi ve sigorta şirketi adı yok. WhatsApp onay sayfası (ad soyad, kutu, imza). Hasar onarım sözleşmesi ayrı durur. Sigortalı tarafı değişmez: ihbarda Adres Ve Hizmet Talep Onayı, kapanışta Servis Onay Formu.
+
+8. **Firma kullanıcısı sağ üst** — Müşteri kısa adı, altında kişinin adı soyadı. Rol yazısı durmaz. Ad soyad uzarsa kutu şişmez; menüde tamı durur.
+
+**Bu alıma karışmaz:** İK personel özlük (Personel Ekle + aynı kayıtta zimmet; puantaj ayrı).

@@ -10,13 +10,29 @@ import { usePanelAccess } from '@/hooks/usePanelAccess';
 import type { VendorContractCorrectionRequest } from '@sigorta/shared';
 
 export type VendorContractPreviewTarget = {
-  claimId: string;
+  claimId?: string;
+  emergencyCaseId?: string;
   vendorId: string;
   vendorName: string;
   vendorPhone: string;
   repairReportId?: string | null;
   existingId?: string | null;
 };
+
+function contractWriteBody(target: VendorContractPreviewTarget) {
+  if (target.emergencyCaseId) {
+    return {
+      emergencyCaseId: target.emergencyCaseId,
+      vendorId: target.vendorId,
+      kind: 'simple' as const,
+    };
+  }
+  return {
+    claimFileId: target.claimId,
+    vendorId: target.vendorId,
+    repairReportId: target.repairReportId || undefined,
+  };
+}
 
 export function VendorContractPreviewModal({
   target,
@@ -56,11 +72,7 @@ export function VendorContractPreviewModal({
       }
       const r = await axios.post(
         `${API}/vendor-contracts/preview`,
-        {
-          claimFileId: target.claimId,
-          vendorId: target.vendorId,
-          repairReportId: target.repairReportId || undefined,
-        },
+        contractWriteBody(target),
         { headers: authHeader() },
       );
       if (cancelled) return;
@@ -69,7 +81,8 @@ export function VendorContractPreviewModal({
       setCorrection(null);
     };
     run().catch((e: unknown) => {
-      const message = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const raw = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+      const message = Array.isArray(raw) ? raw.join(' · ') : raw;
       if (!cancelled) setError(message || 'Önizleme yüklenemedi.');
     }).finally(() => {
       if (!cancelled) setLoading(false);
@@ -99,11 +112,7 @@ export function VendorContractPreviewModal({
       } else {
         const created = await axios.post(
           `${API}/vendor-contracts`,
-          {
-            claimFileId: target.claimId,
-            vendorId: target.vendorId,
-            repairReportId: target.repairReportId || undefined,
-          },
+          contractWriteBody(target),
           { headers: authHeader() },
         );
         id = created.data.data.id;
@@ -143,11 +152,7 @@ export function VendorContractPreviewModal({
       if (!id) {
         const created = await axios.post(
           `${API}/vendor-contracts`,
-          {
-            claimFileId: target.claimId,
-            vendorId: target.vendorId,
-            repairReportId: target.repairReportId || undefined,
-          },
+          contractWriteBody(target),
           { headers: authHeader() },
         );
         id = created.data.data.id;
@@ -178,7 +183,7 @@ export function VendorContractPreviewModal({
         <div className="border-b border-slate-100 px-4 py-3">
           <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
             <FileText className="h-4 w-4 text-slate-500" />
-            Tedarikçi sözleşmesi
+            {target.emergencyCaseId ? 'Tedarikçi Hizmet Alım Sözleşmesi' : 'Tedarikçi sözleşmesi'}
           </p>
           <p className="text-[11px] text-slate-500">{target.vendorName} · Dosya sorumlusu görür; metni yönetici düzeltir</p>
         </div>
