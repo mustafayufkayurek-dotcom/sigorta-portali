@@ -77,7 +77,9 @@ describe('operasyon giden mail LOCK', () => {
   it('full deploy giden mail kilidini çalıştırır', () => {
     const root = join(here, '../../../../../../');
     const src = readFileSync(join(root, 'scripts/deploy-full-production.sh'), 'utf8');
-    assert.match(src, /smoke-outbound-mail\.sh/);
+    const bitmis = readFileSync(join(root, 'scripts/smoke-canli-bitmis-is.sh'), 'utf8');
+    assert.match(src, /smoke-canli-bitmis-is\.sh/);
+    assert.match(bitmis, /smoke-outbound-mail\.sh/);
     const pkg = readFileSync(join(root, 'package.json'), 'utf8');
     assert.match(pkg, /"smoke:outbound-mail": "bash scripts\/smoke-outbound-mail\.sh"/);
   });

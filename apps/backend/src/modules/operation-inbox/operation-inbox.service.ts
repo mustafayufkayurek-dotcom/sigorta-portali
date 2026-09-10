@@ -35,7 +35,7 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
-import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution } from '@sigorta/shared';
+import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution, resolveAcilInboxFileOwnerId } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -868,9 +868,23 @@ export class OperationInboxService {
         .filter(Boolean)
         .join('\n\n') || `Gelen kutusu ihbarı: ${message.subject}`;
 
-    const routing = this.parseRouting(message.aiExtractedJson);
-    const assigneeId =
-      dto.assignedUserId ?? message.assignedUserId ?? routing?.suggestedAssigneeId ?? undefined;
+    const explicitAssigneeId = dto.assignedUserId?.trim() || undefined;
+    let explicitAssigneeName: string | undefined;
+    if (explicitAssigneeId) {
+      const explicitUser = await this.prisma.user.findUnique({
+        where: { id: explicitAssigneeId },
+        select: { firstName: true, lastName: true },
+      });
+      explicitAssigneeName = explicitUser
+        ? `${explicitUser.firstName} ${explicitUser.lastName}`.trim()
+        : undefined;
+    }
+    const assigneeId = resolveAcilInboxFileOwnerId({
+      actorUserId: userId,
+      explicitUserId: explicitAssigneeId,
+      explicitUserName: explicitAssigneeName,
+      insuredName: customerName,
+    });
 
     if (assigneeId) {
       await this.assertAssigneeCoversAssistantCustomer(assigneeId, assistantCustomerId);

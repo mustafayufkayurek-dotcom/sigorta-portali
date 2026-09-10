@@ -1,6 +1,6 @@
 import type { NotificationEmailTemplateData } from '../notifications/email/email.template';
+import { formatEmergencyFileAddress } from '@sigorta/shared';
 import {
-  formatNotificationCityDistrict,
   formatNotificationDateTime,
   notificationDash,
 } from '../notifications/email/email-notification-tone';
@@ -33,15 +33,18 @@ export function buildInboxIhbarEmailRows(
     summary.fileType === 'acil'
       ? notificationDash(summary.assistantCompanyName)
       : notificationDash(summary.insuranceCompanyName);
-  const address = notificationDash(summary.address);
-  const cityDistrict = formatNotificationCityDistrict(summary.city, summary.district);
+  const address = formatEmergencyFileAddress({
+    address: summary.address,
+    district: summary.district,
+    city: summary.city,
+  });
   return [
     { label: 'İhbar Tarihi', value: formatNotificationDateTime(summary.notificationAt) },
     { label: companyLabel, value: companyValue },
     { label: 'Dosya No', value: notificationDash(summary.fileNo) },
     { label: 'Dosya Konusu', value: notificationDash(summary.fileSubject) },
     { label: 'Sigortalı Adı Soyadı', value: notificationDash(summary.insuredName) },
-    { label: 'Adres', value: address !== '—' ? address : cityDistrict },
+    { label: 'Adres', value: address },
   ];
 }
 

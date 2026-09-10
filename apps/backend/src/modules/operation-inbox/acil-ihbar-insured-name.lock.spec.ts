@@ -42,4 +42,41 @@ describe('acil ihbar sigortalı adı LOCK', () => {
       /emergencyCase\.customer\?\.fullName\s*\|\|/,
     );
   });
+
+  it('gelen kutudan Acil açınca dosya sorumlusu işlemi yapandır; öneri sessiz yazılmaz', () => {
+    const openFile = readFileSync(join(here, 'operation-inbox.service.ts'), 'utf8');
+    assert.match(openFile, /resolveAcilInboxFileOwnerId/);
+    const start = openFile.indexOf('async openEmergencyFile');
+    const end = openFile.indexOf('private async assertAssigneeCoversAssistantCustomer', start);
+    assert.ok(start >= 0 && end > start);
+    const body = openFile.slice(start, end);
+    assert.match(body, /resolveAcilInboxFileOwnerId/);
+    assert.doesNotMatch(body, /suggestedAssigneeId/);
+    assert.doesNotMatch(body, /message\.assignedUserId \?\?/);
+  });
+
+  it('Acil açma kutusunda sigortalı Mevcut Müşteri diye dosya sorumlusu gibi durmaz', () => {
+    const modal = readFileSync(
+      join(here, '../../../../web/src/components/operation-inbox/InboxOpenFileModal.tsx'),
+      'utf8',
+    );
+    assert.doesNotMatch(modal, /kind === 'emergency'[\s\S]{0,400}Mevcut Müşteri/);
+    assert.match(modal, /isPlaceholderOfficeUserName/);
+  });
+
+  it('sınıflandırma sigortalı adını dosya sorumlusu yapmaz', () => {
+    const prompt = readFileSync(join(here, 'prompts/inbound-classification.prompt.ts'), 'utf8');
+    assert.match(prompt, /customerName = sigortalı kişinin adı soyadı/);
+  });
+
+  it('Acil gelen kutu önerilen sorumluyu Test Kullanıcıya basmaz', () => {
+    const routing = readFileSync(join(here, 'inbound-routing.service.ts'), 'utf8');
+    assert.match(routing, /isPlaceholderOfficeUser/);
+    const inboxPage = readFileSync(
+      join(here, '../../../../web/src/app/panel/operasyon/gelen-kutusu/page.tsx'),
+      'utf8',
+    );
+    assert.match(inboxPage, /kind === 'emergency' \? 'actor'/);
+    assert.match(inboxPage, /readStoredUserId/);
+  });
 });

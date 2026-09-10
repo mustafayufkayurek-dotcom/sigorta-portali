@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { formatEmergencyFileAddress } from './emergency-file-address.ts';
+import { formatEmergencyFileAddress } from '../../../../packages/shared/src/file-address.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const acilPage = readFileSync(
@@ -47,6 +47,18 @@ describe('acil dosya adresi LOCK', () => {
     );
   });
 
+  it('Atabey - Türkiye - Isparta kuyruğunu sonda ilçe · il yapar', () => {
+    assert.equal(
+      formatEmergencyFileAddress({
+        address:
+          'Yeni Abdullah Aykon Dogan 4 Toki Sit. Toki Dk2 1 Toki Dk2 1 No : 6 /1 Daire : 9 Atabey - Türkiye - Isparta',
+        district: 'Atabey',
+        city: 'Isparta',
+      }),
+      'Yeni Abdullah Aykon Dogan 4 Toki Sit. Toki Dk2 1 Toki Dk2 1 No : 6 /1 Daire : 9 · Atabey · Isparta',
+    );
+  });
+
   it('Hasar İl/İlçe etiketini kaldırır, ili sonda tutar', () => {
     assert.equal(
       formatEmergencyFileAddress({
@@ -83,6 +95,24 @@ describe('acil dosya adresi LOCK', () => {
 
   it('acil dosya üst bant formatEmergencyFileAddress kullanır', () => {
     assert.match(acilPage, /formatEmergencyFileAddress/);
+  });
+
+  it('yeni ihbar maili aynı biçimleyiciyi kullanır', () => {
+    const ihbarEmail = readFileSync(
+      join(here, '../../../backend/src/modules/operation-inbox/inbox-ihbar-email.ts'),
+      'utf8',
+    );
+    assert.match(ihbarEmail, /formatEmergencyFileAddress/);
+    assert.doesNotMatch(ihbarEmail, /address !== '—' \? address : cityDistrict/);
+  });
+
+  it('tespit planlandı maili aynı biçimleyiciyi kullanır', () => {
+    const planned = readFileSync(
+      join(here, '../../../backend/src/modules/notifications/email/claim-event-email.service.ts'),
+      'utf8',
+    );
+    assert.match(planned, /formatEmergencyFileAddress/);
+    assert.match(planned, /onInspectionPlanned/);
   });
 
   it('hasar üst bant etiketleri durur ve detay varsayılan kapalıdır', () => {

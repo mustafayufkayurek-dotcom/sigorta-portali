@@ -1,15 +1,17 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
-**Tarih:** 28 Haziran 2026 (güncelleme 10.09.2026)  
+**Tarih:** 28 Haziran 2026 (güncelleme 11.09.2026)  
 **Referans canlı sürüm:** Web **v583** · backend **v583**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
-**Sıradaki canlı paketler (Mustafa · 10.09.2026 — karışmaz):**
+**Sıradaki canlı paketler (Mustafa · 11.09.2026 — karışmaz):**
 1. İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj ayrı.
+2. İhbar mail adresi — sokak · ilçe · il (Yeni İhbar + Tespit planlandı). İK ile karışmaz.
+3. Acil gelen kutu isim — sigortalı Kimde olmaz; dosya sorumlusu işlemi yapan; Test Kullanıcı otomatik yazılmaz. İK ile karışmaz.
 
-v583 alındı (firma portal + Acil hizmet alım sözleşmesi). İK karışmaz.
+v583 alındı (firma portal + Acil hizmet alım sözleşmesi). Bu üç paket birbirine ve İK’ya karışmaz.
 
 ---
 

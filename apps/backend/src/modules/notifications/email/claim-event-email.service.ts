@@ -8,6 +8,7 @@ import {
   panelRevizyonTalebiPath,
 } from '@/common/utils/panel-url';
 import { EmailService } from './email.service';
+import { formatEmergencyFileAddress } from '@sigorta/shared';
 import {
   buildApprovalReminderEmailHtml,
   buildApprovalReminderEmailSubject,
@@ -459,7 +460,7 @@ export class ClaimEventEmailService {
           { label: 'Müşteri', value: params.customerName },
           { label: 'Sigortalı', value: params.insuredName },
           { label: 'Randevu', value: params.scheduledLabel },
-          { label: 'Adres', value: params.location },
+          { label: 'Adres', value: formatEmergencyFileAddress({ address: params.location }) },
         ],
         actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
         actionLabel: 'Dosyayı Görüntüle',

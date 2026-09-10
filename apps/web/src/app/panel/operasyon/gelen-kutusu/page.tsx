@@ -7,8 +7,7 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
 import { HintIcon } from '@/components/ui/HintIcon';
 import { toTitleCaseTR } from '@/utils/text-helpers';
-import { stripInboundAddressPollution } from '@sigorta/shared';
-import { parseSenderPersonName } from '@/utils/inbox-customer-prefill';
+import { stripInboundAddressPollution, sanitizeInboundPhone, isPlaceholderOfficeUserName } from '@sigorta/shared';
 import {
   InboxLinkFilePickerModal,
   type LinkPickerHasarFile,
@@ -20,7 +19,7 @@ import { InboxMatchCandidates } from '@/components/operation-inbox/InboxMatchCan
 import { InboxDetailModal } from '@/components/operation-inbox/InboxDetailModal';
 import { InboxOpenFileModal } from '@/components/operation-inbox/InboxOpenFileModal';
 import { buildInboxFileOpenDraft, buildInboxFileOpenDraftFromRow, type InboxFileOpenDraft } from '@/utils/inbox-file-open-draft';
-import { sanitizeInboundPhone } from '@sigorta/shared';
+import { parseSenderPersonName } from '@/utils/inbox-customer-prefill';
 import { parseAssigneeAssistantScope } from '@/utils/inbox-assignee-assistant-scope';
 import { ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import type { CustomerType } from '@/utils/customer-form-helpers';
@@ -301,6 +300,18 @@ function StatCard({
       {content}
     </button>
   );
+}
+
+function readStoredUserId(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    const raw = localStorage.getItem('user');
+    if (!raw) return '';
+    const parsed = JSON.parse(raw) as { id?: unknown };
+    return typeof parsed.id === 'string' ? parsed.id : '';
+  } catch {
+    return '';
+  }
 }
 
 function InstructionModal({
@@ -737,9 +748,16 @@ export default function GelenKutusuPage() {
     }
   }, []);
 
-  const applyRoutingFromSuggestion = useCallback((routing: RoutingSuggestion) => {
+  const applyRoutingFromSuggestion = useCallback((
+    routing: RoutingSuggestion,
+    assigneeMode: 'suggested' | 'actor' = 'suggested',
+  ) => {
     setActionRouting(routing);
-    setSelectedAssigneeId(routing.suggestedAssigneeId ?? '');
+    if (assigneeMode === 'actor') {
+      setSelectedAssigneeId(readStoredUserId());
+    } else {
+      setSelectedAssigneeId(routing.suggestedAssigneeId ?? '');
+    }
     if (routing.customerMatch.status === 'found' && routing.customerMatch.customer) {
       setSelectedCustomerId(routing.customerMatch.customer.id);
       setCreateNewCustomer(false);
@@ -786,7 +804,11 @@ export default function GelenKutusuPage() {
     }
   }, [loadAssigneeAssistantScope]);
 
-  const loadActionContext = useCallback(async (messageId: string, rowFallback?: InboundMessageRow) => {
+  const loadActionContext = useCallback(async (
+    messageId: string,
+    rowFallback?: InboundMessageRow,
+    assigneeMode: 'suggested' | 'actor' = 'suggested',
+  ) => {
     setRoutingLoading(true);
     try {
       let message: InboundMessageBrief | null = null;
@@ -844,7 +866,7 @@ export default function GelenKutusuPage() {
       }
 
       if (routing) {
-        applyRoutingFromSuggestion(routing);
+        applyRoutingFromSuggestion(routing, assigneeMode);
         if (!routing.insuranceCompanyId && draft.insurer && insuranceCompanies.length > 0) {
           const match = insuranceCompanies.find(
             (c) => c.name.toLowerCase().includes(draft.insurer!.toLowerCase().slice(0, 6))
@@ -1031,7 +1053,7 @@ export default function GelenKutusuPage() {
     setInstruction('');
     setActionError('');
     setActionRouting(null);
-    setSelectedAssigneeId('');
+    setSelectedAssigneeId(kind === 'emergency' ? readStoredUserId() : '');
     setSelectedCustomerId('');
     setCreateNewCustomer(false);
     setNewCustomerEntityType('individual');
@@ -1076,7 +1098,11 @@ export default function GelenKutusuPage() {
       void (async () => {
         if (kind === 'claim') await loadInsuranceCompanies();
         if (kind === 'emergency') await loadAssistantCompanies();
-        const ctx = await loadActionContext(messageId, row);
+        const ctx = await loadActionContext(
+          messageId,
+          row,
+          kind === 'emergency' ? 'actor' : 'suggested',
+        );
         if (options?.prefillCustomer && ctx?.routing?.customerMatch.status === 'not_found') {
           setCreateNewCustomer(true);
           setNewCustomerEntityType('individual');
@@ -1131,7 +1157,11 @@ export default function GelenKutusuPage() {
 
   const handleAcceptAutoAssign = () => {
     if (!autoAssignPreview) return;
-    applyRoutingFromSuggestion(autoAssignPreview.suggestion);
+    const suggestion = autoAssignPreview.suggestion;
+    const emergencyPlaceholder =
+      actionModal?.kind === 'emergency'
+      && isPlaceholderOfficeUserName(suggestion.suggestedAssigneeName);
+    applyRoutingFromSuggestion(suggestion, emergencyPlaceholder ? 'actor' : 'suggested');
     setAutoAssignPreview(null);
     showToast('success', 'Atama önerisi uygulandı. Bilgileri kontrol edip dosyayı açın.');
   };

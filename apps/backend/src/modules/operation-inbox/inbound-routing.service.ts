@@ -5,6 +5,7 @@ import {
   mapInboundLossTypeToMeridyen,
   resolveInsuredPhoneForInbox,
   resolveInboundFileNo,
+  isPlaceholderOfficeUser,
 } from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ClaimResponsibilitiesService } from '../claim-responsibilities/claim-responsibilities.service';
@@ -366,7 +367,7 @@ export class InboundRoutingService {
         })
       : null;
 
-    if (responsibleUser) {
+    if (responsibleUser && !isPlaceholderOfficeUser(responsibleUser)) {
       const scopeOk = await this.userMatchesInsuranceScope(responsibleUser.id, insuranceCompanyId);
       if (scopeOk) {
         suggestedAssigneeId = responsibleUser.id;
@@ -382,19 +383,20 @@ export class InboundRoutingService {
 
     if (!suggestedAssigneeId && city) {
       const regionCandidates = await this.claimFilesService.suggestAssigneesByRegion(city, district ?? undefined);
+      const realCandidates = regionCandidates.filter((c) => !isPlaceholderOfficeUser(c.user));
       const filtered = insuranceCompanyId
-        ? await this.filterByInsuranceScope(regionCandidates.map((c) => c.user.id), insuranceCompanyId)
-        : regionCandidates.map((c) => c.user.id);
+        ? await this.filterByInsuranceScope(realCandidates.map((c) => c.user.id), insuranceCompanyId)
+        : realCandidates.map((c) => c.user.id);
 
-      const pickId = filtered[0] ?? regionCandidates[0]?.user.id;
-      const pick = regionCandidates.find((c) => c.user.id === pickId);
+      const pickId = filtered[0] ?? realCandidates[0]?.user.id;
+      const pick = realCandidates.find((c) => c.user.id === pickId);
 
       if (pick) {
         suggestedAssigneeId = pick.user.id;
         suggestedAssigneeName = `${pick.user.firstName} ${pick.user.lastName}`.trim();
         reasons.push('Bölge hizmet alanı eşleşmesi');
         confidence += 0.2;
-      } else if (regionCandidates.length > 0 && insuranceCompanyId) {
+      } else if (realCandidates.length > 0 && insuranceCompanyId) {
         warnings.push('Bölgede sigorta kapsamına uygun sorumlu bulunamadı');
       } else if (!city) {
         warnings.push('Bölge eşleşmesi yapılamadı');

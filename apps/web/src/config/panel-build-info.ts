@@ -1,3 +1,3 @@
 /** Canlı panel sürüm etiketi — deploy sonrası manifest ile eşleştir */
-export const PANEL_WEB_VERSION = 'v583';
-export const PANEL_BACKEND_VERSION = 'v583';
+export const PANEL_WEB_VERSION = 'v584';
+export const PANEL_BACKEND_VERSION = 'v584';

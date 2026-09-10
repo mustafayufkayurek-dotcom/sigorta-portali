@@ -58,6 +58,29 @@ describe('inbox ihbar email', () => {
     expect(rows[1]?.value).toBe('Remed Assistance');
     expect(rows[4]?.value).toBe('Ayşe Yılmaz');
     expect(rows[4]?.value).not.toBe('—');
+    expect(rows[5]?.value).toBe(
+      'Borazanlar 413 Özyıl Apt. No : 4 Daire : 2 · Merkez · Bolu',
+    );
+    expect(rows[5]?.value).not.toContain('Türkiye');
+  });
+
+  it('ihbar mailinde adres sonda ilçe ve il ile biter', () => {
+    const rows = buildInboxIhbarEmailRows({
+      fileType: 'acil',
+      fileNo: 'RCS-20261880964',
+      assistantCompanyName: 'Remed Assistance',
+      fileSubject: 'Konut Cam',
+      insuredName: 'Hacer Neşe Gürgen',
+      city: 'Isparta',
+      district: 'Atabey',
+      address:
+        'Yeni Abdullah Aykon Dogan 4 Toki Sit. Toki Dk2 1 Toki Dk2 1 No : 6 /1 Daire : 9 Atabey - Türkiye - Isparta',
+      actionUrl: 'https://app.meridyen-tr.com/panel/acil-yardim/ornek',
+    });
+    expect(rows[5]?.value).toBe(
+      'Yeni Abdullah Aykon Dogan 4 Toki Sit. Toki Dk2 1 Toki Dk2 1 No : 6 /1 Daire : 9 · Atabey · Isparta',
+    );
+    expect(rows[5]?.value).not.toMatch(/Türkiye|Turkiye/i);
   });
 
   it('renders approved Yeni İhbar kartı without Operasyon Bildirimi', () => {

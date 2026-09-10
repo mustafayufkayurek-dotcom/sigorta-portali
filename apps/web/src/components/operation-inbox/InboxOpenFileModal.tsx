@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import type { InboxFileOpenDraft } from '@/utils/inbox-file-open-draft';
 import { fetchInboxFileSubjectNames } from '@/utils/damage-reason-options';
-import { matchCatalogFileSubject } from '@sigorta/shared';
+import { matchCatalogFileSubject, isPlaceholderOfficeUserName } from '@sigorta/shared';
 import { isInsuranceBrandFileNo } from '@/utils/claim-list-column-fields';
 import {
   CUSTOMER_TYPE_OPTIONS,
@@ -220,8 +220,6 @@ export function InboxOpenFileModal({
   usersLoading,
   selectedAssigneeId,
   onAssigneeChange,
-  selectedCustomerId,
-  onCustomerChange,
   createNewCustomer,
   onCreateNewCustomerChange,
   newCustomerEntityType = 'individual',
@@ -664,7 +662,8 @@ export function InboxOpenFileModal({
                 className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
               >
                 <option value="">Sorumlu seçin…</option>
-                {routing?.suggestedAssigneeId && routing.suggestedAssigneeName && (
+                {routing?.suggestedAssigneeId && routing.suggestedAssigneeName
+                  && !isPlaceholderOfficeUserName(routing.suggestedAssigneeName) && (
                   <option value={routing.suggestedAssigneeId}>
                     {routing.suggestedAssigneeName} (Önerilen)
                   </option>
@@ -777,83 +776,6 @@ export function InboxOpenFileModal({
                     />
                   )}
                 </div>
-              )}
-            </div>
-          )}
-
-          {kind === 'emergency' && (routing || onCustomerChange) && onCustomerChange && routing && (
-            <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
-              <p className="text-xs font-medium text-slate-600 mb-2">Müşteri</p>
-              {routing.customerMatch.status === 'found' && routing.customerMatch.customer && (
-                <label className="flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="radio"
-                    checked={!createNewCustomer}
-                    onChange={() => onCreateNewCustomerChange?.(false)}
-                  />
-                  Mevcut Müşteri: {routing.customerMatch.customer.name}
-                </label>
-              )}
-              {routing.customerMatch.status === 'ambiguous' && routing.customerMatch.candidates && (
-                <select
-                  value={selectedCustomerId ?? ''}
-                  onChange={(e) => {
-                    onCreateNewCustomerChange?.(false);
-                    onCustomerChange(e.target.value);
-                  }}
-                  disabled={loading || createNewCustomer}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white mb-2"
-                >
-                  <option value="">Müşteri seçin…</option>
-                  {routing.customerMatch.candidates.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              )}
-              {routing.customerMatch.status === 'not_found' && (
-                <>
-                  <p className="text-sm text-slate-600 mb-2">
-                    Sigortalı müşteri kaydı bulunamadı. Dosyayı müşteri bağlamadan açabilirsiniz.
-                  </p>
-                  <label className="flex items-center gap-2 text-sm text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={!!createNewCustomer}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        onCreateNewCustomerChange?.(checked);
-                        if (checked) {
-                          onNewCustomerEntityTypeChange?.('individual');
-                          onNewCustomerSubTypeChange?.('insured');
-                        }
-                      }}
-                    />
-                    Yeni Müşteri Oluştur ({insuredName || 'sigortalı adı'})
-                  </label>
-                </>
-              )}
-              {(routing.customerMatch.status === 'found' || routing.customerMatch.status === 'ambiguous') && (
-                <label className="flex items-center gap-2 text-sm text-slate-700 mt-2">
-                  <input
-                    type="radio"
-                    checked={!!createNewCustomer}
-                    onChange={() => {
-                      onCreateNewCustomerChange?.(true);
-                      onNewCustomerEntityTypeChange?.('individual');
-                      onNewCustomerSubTypeChange?.('insured');
-                    }}
-                  />
-                  Yeni Müşteri Oluştur
-                </label>
-              )}
-              {showTypeFields && (
-                <NewCustomerTypeFields
-                  entityType={newCustomerEntityType}
-                  subType={newCustomerSubType}
-                  onEntityTypeChange={onNewCustomerEntityTypeChange}
-                  onSubTypeChange={onNewCustomerSubTypeChange}
-                  disabled={loading || usersLoading}
-                />
               )}
             </div>
           )}

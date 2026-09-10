@@ -31,7 +31,9 @@ describe('entity-document stream LOCK', () => {
     assert.match(uploads, /res\.send\(buffer\)/);
     const full = readFileSync(join(here, '../../../../../scripts/deploy-full-production.sh'), 'utf8');
     const web = readFileSync(join(here, '../../../../../scripts/deploy-web-production.sh'), 'utf8');
-    assert.match(full, /smoke-resim-akis\.sh/);
-    assert.match(web, /smoke-resim-akis\.sh/);
+    const bitmis = readFileSync(join(here, '../../../../../scripts/smoke-canli-bitmis-is.sh'), 'utf8');
+    assert.match(full, /smoke-canli-bitmis-is\.sh/);
+    assert.match(web, /smoke-canli-bitmis-is\.sh/);
+    assert.match(bitmis, /smoke-resim-akis\.sh/);
   });
 });

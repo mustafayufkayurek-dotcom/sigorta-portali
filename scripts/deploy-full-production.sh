@@ -15,25 +15,11 @@ run_remote() {
   ssh -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=20 "$REMOTE_HOST" "$@"
 }
 
-if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
+# Laptop: kaynak + bitmiş iş kilitleri. --skip-rsync bunları atlamaz (v583 alımı atladı).
+# Sunucuda git yoksa bu blok düşer.
+if git -C "$PROJECT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   bash "$SCRIPT_DIR/assert-deploy-source.sh"
-  bash "$SCRIPT_DIR/smoke-acil-netlesen.sh"
-  bash "$SCRIPT_DIR/smoke-acil-file-owner.sh"
-  bash "$SCRIPT_DIR/smoke-hasar-rapor-revizyon.sh"
-  bash "$SCRIPT_DIR/smoke-hasar-dijital-onay.sh"
-  bash "$SCRIPT_DIR/smoke-v541-ek.sh"
-  bash "$SCRIPT_DIR/smoke-outbound-mail.sh"
-  bash "$SCRIPT_DIR/smoke-resim-akis.sh"
-  bash "$SCRIPT_DIR/smoke-evrak-v544.sh"
-  bash "$SCRIPT_DIR/smoke-sigorta-evrak.sh"
-  bash "$SCRIPT_DIR/smoke-hasar-hakedis.sh"
-  bash "$SCRIPT_DIR/smoke-hasar-tahsilat-gelir.sh"
-  bash "$SCRIPT_DIR/smoke-acil-supplier-assignment.sh"
-  bash "$SCRIPT_DIR/smoke-liste-gorunum.sh"
-  bash "$SCRIPT_DIR/smoke-panel-auth-gate.sh"
-  bash "$SCRIPT_DIR/smoke-baslik-hint.sh"
-  echo "=== Sunucu disk (kod kopyalamadan önce) ==="
-  run_remote "FREE=\$(df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'); echo \"Disk boş: \${FREE} GB (minimum 5 GB)\"; [ \"\${FREE}\" -ge 5 ] || { echo 'HATA: Sunucuda yeterli disk yok — kod kopyalanmaz. scripts/server-disk-maintenance.sh'; exit 1; }"
+  bash "$SCRIPT_DIR/smoke-canli-bitmis-is.sh"
 fi
 
 WEB_VERSION="$(printf '%s' "$DEPLOY_TAG" | grep -oE 'v[0-9]+' | head -1 || true)"
@@ -56,6 +42,8 @@ echo "Web: $WEB_IMAGE"
 echo "Backend: $BACKEND_IMAGE"
 
 if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
+  echo "=== Sunucu disk (kod kopyalamadan önce) ==="
+  run_remote "FREE=\$(df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'); echo \"Disk boş: \${FREE} GB (minimum 5 GB)\"; [ \"\${FREE}\" -ge 5 ] || { echo 'HATA: Sunucuda yeterli disk yok — kod kopyalanmaz. scripts/server-disk-maintenance.sh'; exit 1; }"
   rsync -avz --delete \
     --exclude node_modules --exclude .next --exclude dist --exclude .DS_Store --exclude '._*' \
     --exclude '.env' --exclude '.env.local' --exclude '.env.*.local' \

@@ -1,5 +1,5 @@
 ---
-description: Canlı web v583 / backend v583 — İK ayrı durur
+description: Canlı web v583 / backend v583 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
@@ -33,6 +33,10 @@ Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karış
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Sonraki alım: İK personel özlük** — Personel Ekle + aynı kayıtta zimmet. Puantaj ayrı.
+Paketler **karışmaz.** Hangisini alacağını Mustafa yazar.
 
-**Bu alıma karışmaz:** başka paket yok; İK tek başına alınır.
+**İK personel özlük** — Personel Ekle + aynı kayıtta zimmet. Puantaj ayrı. Tek başına.
+
+**İhbar mail adresi** — Sokak · ilçe · il. «Atabey - Türkiye - Isparta» kuyruğu kesilir. Yeni İhbar ve Tespit planlandı aynı biçim. İK ile karışmaz.
+
+**Acil gelen kutu isim** — Mailden açılan dosyada sigortalı kişi adı Kimde olmaz. Dosya sorumlusu işlemi yapan ofis kullanıcısıdır. Test Kullanıcı otomatik yazılmaz. İK ile karışmaz.

@@ -26,5 +26,6 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/entity-documents/entity-document-stream.lock.spec.ts \
   apps/web/src/utils/ops-first-run-notice.lock.spec.ts \
   packages/shared/src/emergency-findings-text.lock.spec.ts \
-  apps/backend/src/modules/emergency/acil-tespit-bulgusu.lock.spec.ts
+  apps/backend/src/modules/emergency/acil-tespit-bulgusu.lock.spec.ts \
+  packages/shared/src/acil-vendor-service-contract.lock.spec.ts
 echo "=== Acil netleşen canlı kilit: PASS ==="

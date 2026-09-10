@@ -16,20 +16,10 @@ source "$SCRIPT_DIR/deploy-env.sh"
 DEPLOY_TAG="${1:?Kullanım: deploy-web-production.sh ETİKET [--skip-rsync]}"
 SKIP_RSYNC="${2:-}"
 
-# Laptop rsync: kirli/arşiv/yanlış soy canlıya gitmez. Sunucu --skip-rsync (git yok) atlanır.
-if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
+# Laptop: kaynak + bitmiş iş kilitleri. --skip-rsync bunları atlamaz (v583 alımı atladı).
+if git -C "$PROJECT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   bash "$SCRIPT_DIR/assert-deploy-source.sh"
-  bash "$SCRIPT_DIR/smoke-acil-netlesen.sh"
-  bash "$SCRIPT_DIR/smoke-hasar-rapor-revizyon.sh"
-  bash "$SCRIPT_DIR/smoke-hasar-dijital-onay.sh"
-  bash "$SCRIPT_DIR/smoke-v541-ek.sh"
-  bash "$SCRIPT_DIR/smoke-resim-akis.sh"
-  bash "$SCRIPT_DIR/smoke-hasar-hakedis.sh"
-  bash "$SCRIPT_DIR/smoke-hasar-tahsilat-gelir.sh"
-  bash "$SCRIPT_DIR/smoke-acil-supplier-assignment.sh"
-  bash "$SCRIPT_DIR/smoke-liste-gorunum.sh"
-  bash "$SCRIPT_DIR/smoke-panel-auth-gate.sh"
-  bash "$SCRIPT_DIR/smoke-baslik-hint.sh"
+  bash "$SCRIPT_DIR/smoke-canli-bitmis-is.sh"
 fi
 
 WEB_VERSION="$(printf '%s' "$DEPLOY_TAG" | grep -oE 'v[0-9]+' | head -1 || true)"

@@ -20,7 +20,8 @@ Gelen e-postayı sınıflandır ve YALNIZCA geçerli JSON döndür:
   "suggestedAction": "OPEN_HASAR_FILE" | "OPEN_ACIL_FILE" | "LINK_EXISTING" | "REPLY_ONLY" | "ARCHIVE",
   "suggestedResponsibleRole": "office" | "field" | null
 }
-Kurallar: "vaka" değil "dosya" kullan. ihbar@ → genelde ihbar; hasar@ → hasar/evrak.`;
+Kurallar: "vaka" değil "dosya" kullan. ihbar@ → genelde ihbar; hasar@ → hasar/evrak.
+customerName = sigortalı kişinin adı soyadı. Asistan/sigorta unvanı, gönderen, Test Kullanıcı veya dosya sorumlusu yazma.`;
 
 export interface InboundClassifyResult {
   classification: InboundClassification;
