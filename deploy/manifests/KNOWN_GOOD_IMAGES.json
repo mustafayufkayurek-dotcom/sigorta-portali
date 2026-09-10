@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-09-08",
-  "label": "v582-liste-kart",
-  "description": "Web v582: liste tablosu kartı doldurur, ortadan kesilmez. Backend v581 durur. İK yok. Geri alma web v581 / backend v581.",
+  "updatedAt": "2026-09-10",
+  "label": "v583-firma-portal-acil-sozlesme",
+  "description": "Web+backend v583: firma kullanıcıları müşteri kartından; görev yazılır; kullanıcılar sade; yetki yalnız dosya sorumlusunda; girişte sistem kapalı ayrı; tedarikçi kimliği; Acil hizmet alım sözleşmesi; firma sağ üst kısa ad+ad soyad. İK yok. Geri alma web v582 / backend v581.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v581-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v582-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v583-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v583-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v581-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v582-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v581-amd64"
   },
   "mustPassSmokeRoutes": [

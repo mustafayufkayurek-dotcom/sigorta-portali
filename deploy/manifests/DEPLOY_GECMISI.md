@@ -2,24 +2,32 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 8 Eylül 2026
+**Son güncelleme:** 10 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (8 Eylül 2026 — web v582 / backend v581)
+## Canlı durum (10 Eylül 2026 — web v583 / backend v583)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v582-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v581-amd64` | canlı |
-| **Rollback** | Web **v581** / Backend **v581** | manifest `rollbackImages` |
-| **Etiket** | `v582-liste-kart` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v583-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v583-amd64` | canlı |
+| **Rollback** | Web **v582** / Backend **v581** | manifest `rollbackImages` |
+| **Etiket** | `v583-firma-portal-acil-sozlesme` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v583 — Full (10 Eylül 2026) — Firma portal; Acil hizmet alım sözleşmesi
+
+- Müşteri kartından firma kullanıcıları (hoş geldin + geçici şifre; yetkili kişiler giriş almaz)
+- Görev kişiye yazılır; Kullanıcılar iç davet; yetki yalnız dosya sorumlusunda
+- Girişte sistem kapalı ayrı; tedarikçi kimliği; Acil hizmet alım sözleşmesi Hasar onarımından ayrı
+- Firma kullanıcısı sağ üst: müşteri kısa adı + ad soyad
+- Geri alma web **v582** / backend **v581**. İK yok
 
 ### v582 — Web (8 Eylül 2026) — Liste kartı dolsun
 

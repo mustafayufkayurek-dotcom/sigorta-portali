@@ -1,15 +1,17 @@
 ---
-description: Canlı web v582 / backend v581 — İK ayrı durur
+description: Canlı web v583 / backend v583 — İK ayrı durur
 alwaysApply: true
 ---
 
-# Canlı (08.09.2026)
+# Canlı (10.09.2026)
 
-Canlı: web **v582** · backend **v581**. Geri alma: web **v581** / backend **v581**.
+Canlı: web **v583** · backend **v583**. Geri alma: web **v582** / backend **v581**.
 
 Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karışmaz. Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v583 (full):** Firma kullanıcıları müşteri kartından (hoş geldin + geçici şifre; karttaki yetkili kişiler giriş almaz). Görev kişiye yazılır. Kullanıcılar ekranı iç davet. Yetkilendirme yalnız dosya sorumlusunda. Girişte sistem kapalıyken şifre hatası görünmez. Tedarikçi kimliği (şahıs T.C. zorunlu değil). Acil Tedarikçi Hizmet Alım Sözleşmesi Hasar onarımından ayrı. Firma kullanıcısı sağ üst: müşteri kısa adı + ad soyad.
 
 **v582 (yalnız web):** Liste tablosu kartı doldurur; ortadan kesilmez.
 
@@ -31,24 +33,6 @@ Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karış
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Sonraki alım: web + backend.** İK bu pakete karışmaz.
+**Sonraki alım: İK personel özlük** — Personel Ekle + aynı kayıtta zimmet. Puantaj ayrı.
 
-Aynı paket — maddeler birleştirilmez, kısaltılmaz:
-
-1. **Müşteri kartından firma kullanıcıları** — Eksper, sigorta, broker, asistans kişileri müşteri kartından açılır; hoş geldin maili ve geçici şifre aynı şekilde gider. Karttaki yetkili kişiler giriş almaz.
-
-2. **Görev kişiye yazılır** — Hazır görev listesinden seçilmez. Liste ve profilde ismin altında durur.
-
-3. **Kullanıcılar ekranı sadeleşir** — Meridyen iç kullanıcı buradan davet edilir. Firma kullanıcıları buradan şirket seçilerek açılmaz.
-
-4. **Yetkilendirme yalnız dosya sorumlusunda** — Ek yetki, izin vekaleti, Acil/Hasar dosya yönetimi yönetim / saha / finans / dış kullanıcılarda sorulmaz.
-
-5. **Girişte sistem kapalıyken şifre hatası görünmez** — Sistem ayaktaysa şifre; kapalıysa «sistem kapalı» yazısı.
-
-6. **Tedarikçi kimliği** — Şahısta T.C. zorunlu değil. Şirkette vergi no durur. Sözleşmede şirket Vergi No, şahıs T.C. Kimlik No basılır (boşsa noktalı satır).
-
-7. **Acil Yardım — Tedarikçi Hizmet Alım Sözleşmesi** — Başlık onarım değildir. Kısa, bağlayıcı metin. Hasar ifadesi ve sigorta şirketi adı yok. WhatsApp onay sayfası (ad soyad, kutu, imza). Hasar onarım sözleşmesi ayrı durur. Sigortalı tarafı değişmez: ihbarda Adres Ve Hizmet Talep Onayı, kapanışta Servis Onay Formu.
-
-8. **Firma kullanıcısı sağ üst** — Müşteri kısa adı, altında kişinin adı soyadı. Rol yazısı durmaz. Ad soyad uzarsa kutu şişmez; menüde tamı durur.
-
-**Bu alıma karışmaz:** İK personel özlük (Personel Ekle + aynı kayıtta zimmet; puantaj ayrı).
+**Bu alıma karışmaz:** başka paket yok; İK tek başına alınır.
