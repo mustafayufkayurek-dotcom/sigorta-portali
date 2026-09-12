@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (12 Eylül 2026 — web v587 / backend v586)
+## Canlı durum (12 Eylül 2026 — web v588 / backend v586)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v587-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v588-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v586-amd64` | canlı |
-| **Rollback** | Web **v586** / Backend **v586** | manifest `rollbackImages` |
-| **Etiket** | `v587-sol-menu-simge` | |
+| **Rollback** | Web **v587** / Backend **v586** | manifest `rollbackImages` |
+| **Etiket** | `v588-sol-menu-hover` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v588 — Web (12 Eylül 2026) — Menü üzerine gelince açılır
+
+- Sol menü kapalıyken simge durur. Üzerine gelince yazı açılır; sayfanın üstüne koyu çekmece binmez
+- Liste sıkışmaz. Backend **v586** durur. İK yok
+- Geri alma web **v587** / backend **v586**
 
 ### v587 — Web (12 Eylül 2026) — Kapalı menü simgeleri
 
