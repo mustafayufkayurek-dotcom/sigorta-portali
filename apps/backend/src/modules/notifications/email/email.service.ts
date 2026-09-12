@@ -18,6 +18,7 @@ export type EmailSendResult = {
   errorMsg?: string;
   /** graph = Microsoft 365 Hasar/İhbar kutusu; smtp = kayıtlı SMTP */
   via?: 'graph' | 'smtp';
+  emailLogId?: string;
 };
 
 export type EmailSendOptions = {
@@ -25,6 +26,7 @@ export type EmailSendOptions = {
   attachments?: nodemailer.SendMailOptions['attachments'];
   /** Varsayılan HASAR — rapor/eksper. Acil ihbar kutusundan gitsin diye IHBAR. */
   mailbox?: InboundMailbox;
+  cc?: Array<{ email: string; name?: string }>;
 };
 
 @Injectable()
@@ -136,7 +138,7 @@ export class EmailService {
         where: { id: logEntry.id },
         data: { status: 'failed', errorMsg },
       });
-      return { sent: false, errorMsg };
+      return { sent: false, errorMsg, emailLogId: logEntry.id };
     }
 
     const mailbox: InboundMailbox = options?.mailbox === 'IHBAR' ? 'IHBAR' : 'HASAR';
@@ -150,13 +152,14 @@ export class EmailService {
           subject,
           html,
           graphAttachments,
+          options?.cc,
         );
         await this.prisma.emailLog.update({
           where: { id: logEntry.id },
           data: { status: 'sent', sentAt: new Date() },
         });
         this.logger.log(`Email gönderildi (Microsoft 365 ${mailbox}) → ${recipients.join(', ')} | ${subject}`);
-        return { sent: true, via: 'graph' };
+        return { sent: true, via: 'graph', emailLogId: logEntry.id };
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         await this.prisma.emailLog.update({
@@ -164,7 +167,7 @@ export class EmailService {
           data: { status: 'failed', errorMsg },
         });
         this.logger.error(`Email gönderilemedi (Microsoft 365) → ${recipients.join(', ')} | ${subject} | ${errorMsg}`);
-        return { sent: false, errorMsg, via: 'graph' };
+        return { sent: false, errorMsg, via: 'graph', emailLogId: logEntry.id };
       }
     }
 
@@ -176,7 +179,7 @@ export class EmailService {
         where: { id: logEntry.id },
         data: { status: 'failed', errorMsg },
       });
-      return { sent: false, errorMsg };
+      return { sent: false, errorMsg, emailLogId: logEntry.id };
     }
 
     try {
@@ -186,6 +189,7 @@ export class EmailService {
         subject,
         html,
         text: options?.text,
+        cc: options?.cc?.map((item) => item.email).filter(Boolean).join(', ') || undefined,
         attachments: options?.attachments,
       });
       const rejected = (info.rejected ?? []).map(String).filter(Boolean);
@@ -196,14 +200,14 @@ export class EmailService {
           data: { status: 'failed', errorMsg },
         });
         this.logger.error(`Email gönderilemedi → ${to} | ${subject} | ${errorMsg}`);
-        return { sent: false, errorMsg, via: 'smtp' };
+        return { sent: false, errorMsg, via: 'smtp', emailLogId: logEntry.id };
       }
       await this.prisma.emailLog.update({
         where: { id: logEntry.id },
         data: { status: 'sent', sentAt: new Date() },
       });
       this.logger.log(`Email gönderildi (SMTP) → ${to} | ${subject}`);
-      return { sent: true, via: 'smtp' };
+      return { sent: true, via: 'smtp', emailLogId: logEntry.id };
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       await this.prisma.emailLog.update({
@@ -211,7 +215,7 @@ export class EmailService {
         data: { status: 'failed', errorMsg },
       });
       this.logger.error(`Email gönderilemedi → ${to} | ${subject} | ${errorMsg}`);
-      return { sent: false, errorMsg };
+      return { sent: false, errorMsg, emailLogId: logEntry.id };
     }
   }
 

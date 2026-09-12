@@ -12,11 +12,14 @@ import {
   CalendarClock,
   CheckCircle2,
   FileText,
+  Mail,
   Search,
   UserRound,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { crmMailWatch } from '@sigorta/shared';
+import { CrmMailWatchStrip } from '@/components/crm/CrmMailWatchStrip';
 
 type EntityKind = 'customer' | 'adjuster' | 'vendor';
 type RiskLevel = 'low' | 'medium' | 'high' | 'none';
@@ -318,7 +321,12 @@ function eventLabel(event: CrmActivityEvent) {
   if (event.action === 'crm.follow_up.created') return 'Takip Oluşturuldu';
   if (event.action === 'crm.follow_up.updated') return 'Takip Güncellendi';
   if (event.action === 'crm.status.changed') return 'Durum Değişti';
-  if (event.action === 'crm.email.sent') return 'E-posta Gönderildi';
+  if (event.action === 'crm.email.sent') {
+    const watch = crmMailWatch(event.value);
+    if (watch === 'bounced') return 'E-posta Ulaşmadı';
+    if (watch === 'replied') return 'E-posta Yanıt Geldi';
+    return 'E-posta Gönderildi';
+  }
   return 'CRM Olayı';
 }
 
@@ -803,7 +811,7 @@ export default function CrmPage() {
       });
       await refreshCrmActivity(selected);
       await refreshOperationMemory(selected);
-      setActionSuccess('E-posta gönderildi.');
+      setActionSuccess('E-posta gönderildi. Görünür kopya sizin kutunuza düşer.');
     } catch (err) {
       setActionError(apiErrorMessage(err, 'E-posta gönderilemedi'));
     } finally {
@@ -1225,6 +1233,9 @@ export default function CrmPage() {
                           </select>
                         </label>
                       </div>
+                      <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] leading-5 text-slate-600">
+                        Görünür kopya gönderenin kutusuna düşer. Karşı taraf ve gönderen adresi yazının başında durur. Kesin teyit yanıt geldiğinde yazılır.
+                      </p>
                       <label className="mt-2 grid gap-1 text-xs font-semibold text-slate-500">
                         E-posta İçeriği
                         <textarea
@@ -1328,7 +1339,7 @@ export default function CrmPage() {
                           <div className="rounded-lg border border-slate-200 px-3 py-3 text-sm text-slate-500">Yükleniyor</div>
                         ) : crmActivity?.events?.length ? (
                           crmActivity.events.map((event) => {
-                            const Icon = event.action === 'crm.status.changed' ? CheckCircle2 : event.action.includes('follow_up') ? CalendarClock : FileText;
+                            const Icon = event.action === 'crm.email.sent' ? Mail : event.action === 'crm.status.changed' ? CheckCircle2 : event.action.includes('follow_up') ? CalendarClock : FileText;
                             return (
                               <div key={event.id} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm">
                                 <div className="flex items-center justify-between gap-3">
@@ -1336,8 +1347,18 @@ export default function CrmPage() {
                                   <span className="text-xs text-slate-500">{fmtDateTime(event.value?.occurredAt ?? event.value?.dueAt ?? event.createdAt)}</span>
                                 </div>
                                 <p className="mt-1 font-medium text-slate-800">{eventText(event)}</p>
+                                {event.action === 'crm.email.sent' ? (
+                                  <div className="mt-1.5">
+                                    <CrmMailWatchStrip watch={crmMailWatch(event.value)} />
+                                  </div>
+                                ) : null}
                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                                   <span>{event.value?.ownerName ?? event.user?.name ?? 'Kullanıcı'}</span>
+                                  {event.value?.copyEmail ? (
+                                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-600">
+                                      Görünür kopya: {event.value.copyEmail}
+                                    </span>
+                                  ) : null}
                                   <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-600">
                                     {visibilityLabel(event.value?.visibility)}
                                   </span>

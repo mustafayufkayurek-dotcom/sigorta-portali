@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { outboundMailSignal } from '@sigorta/shared';
+import { OutboundMailSignalStrip } from '@/components/operation-inbox/OutboundMailSignalStrip';
 import {
   InboxLinkFilePickerModal,
   type LinkPickerHasarFile,
@@ -37,6 +39,8 @@ export function InboxComposeModal({
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sentNow, setSentNow] = useState(false);
+  const [failedNow, setFailedNow] = useState(false);
 
   const [linkPickerOpen, setLinkPickerOpen] = useState(false);
   const [linkedClaim, setLinkedClaim] = useState<LinkPickerHasarFile | null>(null);
@@ -51,6 +55,8 @@ export function InboxComposeModal({
     setLinkedClaim(null);
     setLinkedEmergency(null);
     setError('');
+    setSentNow(false);
+    setFailedNow(false);
   }, [open, defaultMailbox]);
 
   if (!open) return null;
@@ -63,9 +69,16 @@ export function InboxComposeModal({
 
   const canSend =
     !loading
+    && !sentNow
     && parseRecipients(toInput).length > 0
     && subject.trim().length > 0
     && body.trim().length >= 3;
+
+  const signal = outboundMailSignal({
+    sending: loading,
+    failed: failedNow,
+    lastReplyAt: sentNow ? new Date().toISOString() : null,
+  });
 
   const handleSend = async () => {
     const to = parseRecipients(toInput);
@@ -82,6 +95,7 @@ export function InboxComposeModal({
 
     setLoading(true);
     setError('');
+    setFailedNow(false);
     try {
       await apiClient.post('/operation-inbox/compose', {
         mailbox,
@@ -91,11 +105,12 @@ export function InboxComposeModal({
         claimFileId: linkedClaim?.id,
         emergencyCaseId: linkedEmergency?.id,
       });
+      setSentNow(true);
       onToast('success', 'E-posta gönderildi');
-      onClose();
       onSuccess();
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'E-posta gönderilemedi';
+      setFailedNow(true);
       setError(msg);
       onToast('error', msg);
     } finally {
@@ -134,9 +149,12 @@ export function InboxComposeModal({
         />
         <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
           <h3 className="text-lg font-bold text-slate-800 mb-1">Yeni E-posta</h3>
-          <p className="text-sm text-slate-500 mb-4">
+          <p className="text-sm text-slate-500 mb-3">
             Paylaşımlı kutudan yeni e-posta gönderin.
           </p>
+          <div className="mb-4">
+            <OutboundMailSignalStrip signal={signal} />
+          </div>
 
           <label className="block text-xs font-medium text-slate-600 mb-1.5">
             Gönderen Kutu
@@ -144,7 +162,7 @@ export function InboxComposeModal({
           <select
             value={mailbox}
             onChange={(e) => setMailbox(e.target.value as InboundMailbox)}
-            disabled={loading}
+            disabled={loading || sentNow}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 mb-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
           >
             {MAILBOX_OPTIONS.map((opt) => (
@@ -160,7 +178,7 @@ export function InboxComposeModal({
             value={toInput}
             onChange={(e) => setToInput(e.target.value)}
             placeholder="ornek@firma.com, diger@firma.com"
-            disabled={loading}
+            disabled={loading || sentNow}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
           />
 
@@ -175,7 +193,7 @@ export function InboxComposeModal({
               const v = toTitleCaseTR(e.target.value.trim());
               if (v) setSubject(v);
             }}
-            disabled={loading}
+            disabled={loading || sentNow}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
           />
 
@@ -187,7 +205,7 @@ export function InboxComposeModal({
             onChange={(e) => setBody(e.target.value)}
             rows={6}
             placeholder="Mesajınızı yazın…"
-            disabled={loading}
+            disabled={loading || sentNow}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
           />
 
@@ -195,7 +213,7 @@ export function InboxComposeModal({
             <button
               type="button"
               onClick={() => setLinkPickerOpen(true)}
-              disabled={loading}
+              disabled={loading || sentNow}
               className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
             >
               Dosya Bağla (İsteğe Bağlı)
@@ -213,6 +231,11 @@ export function InboxComposeModal({
               </button>
             )}
           </div>
+          {(linkedClaim || linkedEmergency) && (
+            <p className="text-[11px] text-slate-500 mt-2">
+              Dosya sorumlusunun adresi görünür kopyaya yazılır. Gizli kopya yok.
+            </p>
+          )}
 
           {error && (
             <p className="text-xs text-red-600 mt-3">{error}</p>
@@ -225,8 +248,9 @@ export function InboxComposeModal({
               disabled={loading}
               className="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors"
             >
-              İptal
+              {sentNow ? 'Kapat' : 'İptal'}
             </button>
+            {!sentNow && (
             <button
               type="button"
               onClick={() => void handleSend()}
@@ -235,6 +259,7 @@ export function InboxComposeModal({
             >
               {loading ? 'Gönderiliyor…' : 'Gönder'}
             </button>
+            )}
           </div>
         </div>
       </div>

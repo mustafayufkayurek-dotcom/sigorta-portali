@@ -35,7 +35,7 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
-import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution, resolveAcilInboxFileOwnerId } from '@sigorta/shared';
+import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution, resolveAcilInboxFileOwnerId, buildInboxReplyHtml, receiptOriginalSubject, buildFileOwnerCopyNotice, prependFileOwnerCopyNotice } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -52,6 +52,7 @@ import { extractSubjectHints } from './inbound-subject-parser';
 import {
   INBOUND_INGEST_QUEUE,
   INGEST_JOB_SYNC_MAILBOX,
+  SHARED_MAILBOXES,
   SYNC_JOB_OPTIONS,
 } from './operation-inbox.constants';
 
@@ -69,6 +70,9 @@ interface AiExtractedFields {
   outboundReplies?: OutboundReplyAudit[];
   lastReplyAt?: string;
   lastReplyPreview?: string;
+  lastReplyReadAt?: string;
+  lastReplyFailedAt?: string;
+  lastCounterpartReplyAt?: string;
 }
 
 interface OutboundReplyAudit {
@@ -167,6 +171,9 @@ export class OperationInboxService {
       ...item,
       lastReplyAt: audit.lastReplyAt,
       lastReplyPreview: audit.lastReplyPreview,
+      lastReplyReadAt: audit.lastReplyReadAt,
+      lastReplyFailedAt: audit.lastReplyFailedAt,
+      lastCounterpartReplyAt: audit.lastCounterpartReplyAt,
       routing,
       isUnowned: this.isUnownedItem(item),
     };
@@ -226,7 +233,60 @@ export class OperationInboxService {
       },
     });
     if (!message) throw new NotFoundException('Gelen mesaj bulunamadı');
-    return message;
+    const fileOwnerCopy = await this.resolveFileOwnerCopy({
+      emergencyCaseId: message.emergencyCaseId,
+      claimFileId: message.claimFileId,
+      inboxAssigneeId: message.assignedUserId,
+      excludeEmails: [message.fromAddress],
+    });
+    return { ...this.enrichMessageListItem(message), fileOwnerCopy };
+  }
+
+  private async resolveFileOwnerCopy(input: {
+    emergencyCaseId?: string | null;
+    claimFileId?: string | null;
+    inboxAssigneeId?: string | null;
+    senderUserId?: string | null;
+    excludeEmails?: Array<string | null | undefined>;
+  }): Promise<{ email: string; name: string } | null> {
+    const blocked = new Set(
+      [SHARED_MAILBOXES.IHBAR, SHARED_MAILBOXES.HASAR, ...(input.excludeEmails ?? [])]
+        .map((value) => String(value ?? '').trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const userIds: string[] = [];
+    if (input.emergencyCaseId) {
+      const row = await this.prisma.emergencyCase.findUnique({
+        where: { id: input.emergencyCaseId },
+        select: { assignedUserId: true },
+      });
+      if (row?.assignedUserId) userIds.push(row.assignedUserId);
+    }
+    if (input.claimFileId) {
+      const row = await this.prisma.claimFile.findUnique({
+        where: { id: input.claimFileId },
+        select: { assignedOfficeUserId: true },
+      });
+      if (row?.assignedOfficeUserId) userIds.push(row.assignedOfficeUserId);
+    }
+    if (input.inboxAssigneeId) userIds.push(input.inboxAssigneeId);
+    if (input.senderUserId) userIds.push(input.senderUserId);
+
+    const seen = new Set<string>();
+    for (const id of userIds) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const user = await this.prisma.user.findUnique({
+        where: { id },
+        select: { firstName: true, lastName: true, email: true },
+      });
+      const email = user?.email?.trim() ?? '';
+      const folded = email.toLowerCase();
+      if (!folded.includes('@') || folded.endsWith('@example.com') || blocked.has(folded)) continue;
+      const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+      return { email, name: name || email };
+    }
+    return null;
   }
 
   async listByClaimFile(claimFileId: string) {
@@ -251,7 +311,7 @@ export class OperationInboxService {
         },
       },
     });
-    return { items, total: items.length };
+    return { items: items.map((item) => this.enrichMessageListItem(item)), total: items.length };
   }
 
   async listByEmergencyCase(emergencyCaseId: string) {
@@ -276,7 +336,7 @@ export class OperationInboxService {
         },
       },
     });
-    return { items, total: items.length };
+    return { items: items.map((item) => this.enrichMessageListItem(item)), total: items.length };
   }
 
   async linkClaimFile(id: string, dto: LinkClaimFileDto) {
@@ -496,11 +556,40 @@ export class OperationInboxService {
     const message = await this.getMessage(id);
     this.assertCanReply(message);
 
+    const fileOwnerCopy = await this.resolveFileOwnerCopy({
+      emergencyCaseId: message.emergencyCaseId,
+      claimFileId: message.claimFileId,
+      inboxAssigneeId: message.assignedUserId,
+      senderUserId: sentByUserId,
+      excludeEmails: [message.fromAddress],
+    });
+    let replyHtml = buildInboxReplyHtml({
+      replyText: dto.body.trim(),
+      fromName: message.fromName,
+      fromAddress: message.fromAddress,
+      receivedAt: message.receivedAt,
+      subject: message.subject,
+      bodyHtml: message.bodyHtml,
+      bodyText: message.bodyText,
+      bodyPreview: message.bodyPreview,
+    });
+    if (fileOwnerCopy) {
+      replyHtml = prependFileOwnerCopyNotice(
+        replyHtml,
+        buildFileOwnerCopyNotice({
+          counterpartName: message.fromName,
+          counterpartAddress: message.fromAddress,
+          owner: fileOwnerCopy,
+        }).html,
+      );
+    }
+
     await this.graphMailSend.sendReply(
       message.mailbox,
       message.graphMessageId,
-      dto.body.trim(),
+      replyHtml,
       dto.replyAll ?? false,
+      fileOwnerCopy ? [fileOwnerCopy] : undefined,
     );
 
     const sentAt = new Date().toISOString();
@@ -555,11 +644,51 @@ export class OperationInboxService {
       if (!emergency) throw new BadRequestException('Acil yardım dosyası bulunamadı');
     }
 
+    const relatedInbound = dto.emergencyCaseId || dto.claimFileId
+      ? await this.prisma.inboundMessage.findFirst({
+          where: dto.emergencyCaseId
+            ? { emergencyCaseId: dto.emergencyCaseId }
+            : { claimFileId: dto.claimFileId },
+          orderBy: { receivedAt: 'desc' },
+        })
+      : null;
+    const fileOwnerCopy = await this.resolveFileOwnerCopy({
+      emergencyCaseId: dto.emergencyCaseId,
+      claimFileId: dto.claimFileId,
+      senderUserId: sentByUserId,
+      excludeEmails: dto.to,
+    });
+    let outboundBody = relatedInbound
+      ? buildInboxReplyHtml({
+          replyText: dto.body.trim(),
+          fromName: relatedInbound.fromName,
+          fromAddress: relatedInbound.fromAddress,
+          receivedAt: relatedInbound.receivedAt,
+          subject: relatedInbound.subject,
+          bodyHtml: relatedInbound.bodyHtml,
+          bodyText: relatedInbound.bodyText,
+          bodyPreview: relatedInbound.bodyPreview,
+        })
+      : dto.body;
+    if (fileOwnerCopy) {
+      const counterpartAddress = relatedInbound?.fromAddress ?? dto.to[0] ?? null;
+      outboundBody = prependFileOwnerCopyNotice(
+        /<[a-z][\s\S]*>/i.test(outboundBody) ? outboundBody : `<div>${outboundBody.replace(/\n/g, '<br>\n')}</div>`,
+        buildFileOwnerCopyNotice({
+          counterpartName: relatedInbound?.fromName ?? null,
+          counterpartAddress,
+          owner: fileOwnerCopy,
+        }).html,
+      );
+    }
+
     await this.graphMailSend.sendMail(
       dto.mailbox,
       dto.to,
       dto.subject,
-      dto.body,
+      outboundBody,
+      undefined,
+      fileOwnerCopy ? [fileOwnerCopy] : undefined,
     );
 
     if (dto.claimFileId) {
@@ -1323,12 +1452,21 @@ export class OperationInboxService {
     );
   }
 
-  private parseOutboundAudit(json: unknown): { lastReplyAt?: string; lastReplyPreview?: string } {
+  private parseOutboundAudit(json: unknown): {
+    lastReplyAt?: string;
+    lastReplyPreview?: string;
+    lastReplyReadAt?: string;
+    lastReplyFailedAt?: string;
+    lastCounterpartReplyAt?: string;
+  } {
     if (!json || typeof json !== 'object' || Array.isArray(json)) return {};
     const raw = json as Record<string, unknown>;
     return {
       lastReplyAt: typeof raw.lastReplyAt === 'string' ? raw.lastReplyAt : undefined,
       lastReplyPreview: typeof raw.lastReplyPreview === 'string' ? raw.lastReplyPreview : undefined,
+      lastReplyReadAt: typeof raw.lastReplyReadAt === 'string' ? raw.lastReplyReadAt : undefined,
+      lastReplyFailedAt: typeof raw.lastReplyFailedAt === 'string' ? raw.lastReplyFailedAt : undefined,
+      lastCounterpartReplyAt: typeof raw.lastCounterpartReplyAt === 'string' ? raw.lastCounterpartReplyAt : undefined,
     };
   }
 
@@ -1347,7 +1485,80 @@ export class OperationInboxService {
     base.outboundReplies = replies.slice(-20);
     base.lastReplyAt = entry.sentAt;
     base.lastReplyPreview = entry.bodyPreview;
+    delete base.lastReplyReadAt;
+    delete base.lastReplyFailedAt;
+    delete base.lastCounterpartReplyAt;
     return base as Prisma.InputJsonValue;
+  }
+
+  async applyOutboundReceipt(input: {
+    conversationId?: string | null;
+    subject: string;
+    kind: 'read' | 'not_read' | 'failed';
+    receivedAt: Date;
+  }): Promise<void> {
+    if (input.kind === 'not_read') return;
+    const stamp = input.receivedAt.toISOString();
+    const originalSubject = receiptOriginalSubject(input.subject);
+    const candidates = await this.prisma.inboundMessage.findMany({
+      where: input.conversationId
+        ? { conversationId: input.conversationId }
+        : originalSubject
+          ? { subject: { contains: originalSubject.slice(0, 80) } }
+          : { id: '__none__' },
+      orderBy: { receivedAt: 'desc' },
+      take: 20,
+      select: { id: true, subject: true, aiExtractedJson: true },
+    });
+    const original = candidates.find((row) => this.parseOutboundAudit(row.aiExtractedJson).lastReplyAt);
+    if (!original) return;
+    const base =
+      original.aiExtractedJson && typeof original.aiExtractedJson === 'object' && !Array.isArray(original.aiExtractedJson)
+        ? { ...(original.aiExtractedJson as Record<string, unknown>) }
+        : {};
+    if (input.kind === 'read') {
+      base.lastReplyReadAt = stamp;
+      delete base.lastReplyFailedAt;
+    } else {
+      base.lastReplyFailedAt = stamp;
+    }
+    await this.prisma.inboundMessage.update({
+      where: { id: original.id },
+      data: { aiExtractedJson: base as Prisma.InputJsonValue },
+    });
+  }
+
+  /** Karşı tarafın gerçek yanıtı — Outlook okundusundan bağımsız teyit. */
+  async applyOutboundCounterpartReply(input: {
+    conversationId?: string | null;
+    subject: string;
+    receivedAt: Date;
+    excludeMessageId: string;
+  }): Promise<void> {
+    const stamp = input.receivedAt.toISOString();
+    const originalSubject = receiptOriginalSubject(input.subject);
+    const candidates = await this.prisma.inboundMessage.findMany({
+      where: input.conversationId
+        ? { conversationId: input.conversationId, NOT: { id: input.excludeMessageId } }
+        : originalSubject
+          ? { subject: { contains: originalSubject.slice(0, 80) }, NOT: { id: input.excludeMessageId } }
+          : { id: '__none__' },
+      orderBy: { receivedAt: 'desc' },
+      take: 20,
+      select: { id: true, aiExtractedJson: true },
+    });
+    const original = candidates.find((row) => this.parseOutboundAudit(row.aiExtractedJson).lastReplyAt);
+    if (!original) return;
+    const base =
+      original.aiExtractedJson && typeof original.aiExtractedJson === 'object' && !Array.isArray(original.aiExtractedJson)
+        ? { ...(original.aiExtractedJson as Record<string, unknown>) }
+        : {};
+    base.lastCounterpartReplyAt = stamp;
+    delete base.lastReplyFailedAt;
+    await this.prisma.inboundMessage.update({
+      where: { id: original.id },
+      data: { aiExtractedJson: base as Prisma.InputJsonValue },
+    });
   }
 
   private async resolveUniqueFileNo(

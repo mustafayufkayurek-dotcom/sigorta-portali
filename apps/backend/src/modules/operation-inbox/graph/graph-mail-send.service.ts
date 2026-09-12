@@ -38,6 +38,7 @@ export class GraphMailSendService {
     graphMessageId: string,
     body: string,
     replyAll = false,
+    cc?: Array<{ email: string; name?: string }>,
   ): Promise<void> {
     const config = await this.loadGraphConfig();
     if (!config.active) {
@@ -64,12 +65,24 @@ export class GraphMailSendService {
 
     const trimmed = body.trim();
     const contentType = this.isHtml(trimmed) ? 'HTML' : 'Text';
+    // Geçmiş panelde eklenir. Graph comment alanı orijinal logolu HTML'i tekrar yapıştırır; kullanılmaz.
     const payload = {
       message: {
         body: {
           contentType,
           content: trimmed,
         },
+        isReadReceiptRequested: true,
+        ...(cc?.length
+          ? {
+              ccRecipients: cc.map((item) => ({
+                emailAddress: {
+                  address: item.email,
+                  ...(item.name?.trim() ? { name: item.name.trim() } : {}),
+                },
+              })),
+            }
+          : {}),
       },
     };
 
@@ -103,6 +116,7 @@ export class GraphMailSendService {
     subject: string,
     body: string,
     attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>,
+    cc?: Array<{ email: string; name?: string }>,
   ): Promise<void> {
     const config = await this.loadGraphConfig();
     if (!config.active) {
@@ -159,6 +173,17 @@ export class GraphMailSendService {
       toRecipients: recipients.map((address) => ({
         emailAddress: { address },
       })),
+      ...(cc?.length
+        ? {
+            ccRecipients: cc.map((item) => ({
+              emailAddress: {
+                address: item.email,
+                ...(item.name?.trim() ? { name: item.name.trim() } : {}),
+              },
+            })),
+          }
+        : {}),
+      isReadReceiptRequested: true,
       ...(graphAttachments?.length ? { attachments: graphAttachments } : {}),
     };
 

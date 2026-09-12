@@ -9,5 +9,6 @@ import { CrmService } from './crm.service';
   imports: [PrismaModule, SystemSettingsModule, NotificationsModule],
   controllers: [CrmController],
   providers: [CrmService],
+  exports: [CrmService],
 })
 export class CrmModule {}

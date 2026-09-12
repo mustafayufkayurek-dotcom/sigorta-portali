@@ -16,7 +16,9 @@ import {
   GraphMailSyncService,
   GraphMessage,
 } from '../graph/graph-mail-sync.service';
+import { classifyMailReceipt } from '@sigorta/shared';
 import { OperationInboxService } from '../operation-inbox.service';
+import { CrmService } from '../../crm/crm.service';
 import {
   CLASSIFY_JOB_MESSAGE,
   CLASSIFY_JOB_OPTIONS,
@@ -41,6 +43,7 @@ export class InboundIngestProcessor {
     private readonly graphAuth: GraphAuthService,
     private readonly graphSync: GraphMailSyncService,
     private readonly inboxService: OperationInboxService,
+    private readonly crmService: CrmService,
     @InjectQueue(INBOUND_INGEST_QUEUE) private readonly ingestQueue: Queue<SyncMailboxJobData>,
     @InjectQueue(INBOUND_CLASSIFY_QUEUE) private readonly classifyQueue: Queue<{ messageId: string }>,
   ) {}
@@ -192,6 +195,43 @@ export class InboundIngestProcessor {
     if (msg.hasAttachments) {
       await this.syncAttachments(token, mailboxAddress, created.id, msg.id);
     }
+    const receipt = classifyMailReceipt({
+      subject: mapped.subject,
+      fromAddress: mapped.fromAddress,
+    });
+    if (receipt) {
+      await this.inboxService.applyOutboundReceipt({
+        conversationId: mapped.conversationId,
+        subject: mapped.subject,
+        kind: receipt,
+        receivedAt: mapped.receivedAt,
+      });
+      if (receipt === 'failed') {
+        await this.applyCrmMailWatch({
+          kind: 'failed',
+          fromAddress: mapped.fromAddress,
+          subject: mapped.subject,
+          receivedAt: mapped.receivedAt,
+        });
+      }
+      await this.prisma.inboundMessage.update({
+        where: { id: created.id },
+        data: { status: 'ACTIONED', processedAt: new Date(), suggestedAction: null },
+      });
+      return 'created';
+    }
+    await this.inboxService.applyOutboundCounterpartReply({
+      conversationId: mapped.conversationId,
+      subject: mapped.subject,
+      receivedAt: mapped.receivedAt,
+      excludeMessageId: created.id,
+    });
+    await this.applyCrmMailWatch({
+      kind: 'replied',
+      fromAddress: mapped.fromAddress,
+      subject: mapped.subject,
+      receivedAt: mapped.receivedAt,
+    });
     await this.inboxService.attemptRuleBasedLink(created.id);
     await this.classifyQueue.add(
       CLASSIFY_JOB_MESSAGE,
@@ -199,6 +239,20 @@ export class InboundIngestProcessor {
       CLASSIFY_JOB_OPTIONS,
     );
     return 'created';
+  }
+
+  private async applyCrmMailWatch(input: {
+    kind: 'failed' | 'replied';
+    fromAddress?: string | null;
+    subject?: string | null;
+    receivedAt: Date;
+  }) {
+    try {
+      await this.crmService.applyOutboundMailWatch(input);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`CRM mail izi güncellenemedi: ${message}`);
+    }
   }
 
   private mapGraphMessage(

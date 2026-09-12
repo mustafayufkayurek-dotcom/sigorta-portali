@@ -25,6 +25,7 @@ describe('operasyon giden mail LOCK', () => {
   it('CRM giden maili SMTP bypass etmez', () => {
     const crm = readFileSync(join(here, '../../crm/crm.service.ts'), 'utf8');
     assert.match(crm, /emailService\.sendEmail/);
+    assert.match(crm, /mailbox:\s*'HASAR'/);
     assert.doesNotMatch(crm, /nodemailer\.createTransport/);
   });
 

@@ -1,0 +1,45 @@
+---
+description: Yazışma yanıtı geçmişi, görünür kopya, gönderildi/ulaşmadı/yanıt geldi — sahte okundu yok
+alwaysApply: true
+---
+
+# Yazışma Maili İzi Kilidi
+
+**Kaynak (Mustafa · 12.09.2026):** Gelen kutu / dosya yanıtında geçmiş kayboluyordu. CRM tanıtım maili «gitti» deyip izlenmiyordu. Okundu bilgisine bağlanılmaz.
+
+**Temel cümle:** Yanıtta **yazışma geçmişi durur.** Dosya mailinde **dosya sorumlusuna görünür kopya** gider. CRM’de **gönderene görünür kopya** gider. Ekranda **Gönderildi / Ulaşmadı / Yanıt geldi.** Sahte okundu iş bitmiş sayılmaz.
+
+## Zorunlu
+
+1. Gelen kutu, Acil ve Hasar İletişim yanıtı `buildInboxReplyHtml` kullanır. Graph `comment` ile logolu HTML yapıştırılmaz.
+2. Yanıt kutusunda «Alıcıda yazışma geçmişi» durur. Logo / tekrar imza kırpılır.
+3. Dosya yazışması: görünür kopya (CC, gizli değil) **dosya sorumlusu**. Ortak `ihbar@` / `hasar@` kopya almaz. Notta «Dosya sorumlusu kopyası» yazar.
+4. CRM tanıtım: görünür kopya **gönderen** (yoksa ilişki sorumlusu). Notta «Gönderen kopyası» yazar; dosya sorumlusu metni yok. Kutusu **Hasar**.
+5. Gelen kutu / dosya rozetleri: Gönderildi, Okunmadı/Okundu (Outlook’a bağlı değil), **Yanıt geldi** kesin teyit. CRM rozetleri: Gönderildi, **Ulaşmadı**, **Yanıt geldi** — CRM’de Okundu yok.
+6. Adres geri çevirisi Hasar/İhbar kutusuna düşünce CRM kartı **Ulaşmadı** olur. Karşı taraf yazınca **Yanıt geldi**.
+7. Rapor / hoş geldin / kapanış bu kopya/iz paketine bağlanmaz (ayrı kilit).
+8. İkinci mail ekranı üretilmez; mevcut Yanıtla kutusu durur. `/dev` maketi yok.
+
+## Yasak (açık onay yoksa)
+
+- Yanıtta geçmişi kesmek veya Graph `comment` ile logolu HTML geri koymak
+- Dosya kopyasını gizli kopyaya çevirmek
+- CRM’i İhbar kutusundan göndermek
+- CRM kartına sahte Okundu basmak
+- Bu kilidi «sadeleştirme» diye kaldırmak
+
+## Durdurma
+
+Geçmiş yine kaybolursa, kopya düşmezse veya CRM Ulaşmadı/Yanıt geldi yazılmazsa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/inbox-reply-quote.lock.spec.ts \
+ packages/shared/src/outbound-mail-signal.lock.spec.ts \
+ packages/shared/src/file-owner-mail-copy.lock.spec.ts \
+ packages/shared/src/crm-mail-watch.lock.spec.ts
+bash scripts/smoke-outbound-mail.sh
+bash scripts/smoke-acil-netlesen.sh
+```

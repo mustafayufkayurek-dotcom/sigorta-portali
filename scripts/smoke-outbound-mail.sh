@@ -13,5 +13,9 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/repair-reports/report-customer-mail-recipients.lock.spec.ts \
   apps/web/src/utils/ops-email-default-to.lock.spec.ts \
   apps/web/src/components/operasyon/operation-send-email-approval.lock.spec.ts \
-  apps/web/src/components/hasar-operasyon-planlayicisi/planner-send-approval-mail.lock.spec.ts
+  apps/web/src/components/hasar-operasyon-planlayicisi/planner-send-approval-mail.lock.spec.ts \
+  packages/shared/src/inbox-reply-quote.lock.spec.ts \
+  packages/shared/src/outbound-mail-signal.lock.spec.ts \
+  packages/shared/src/file-owner-mail-copy.lock.spec.ts \
+  packages/shared/src/crm-mail-watch.lock.spec.ts
 echo "=== Giden mail kilit: PASS ==="

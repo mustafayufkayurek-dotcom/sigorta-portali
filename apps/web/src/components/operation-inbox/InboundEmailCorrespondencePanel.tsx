@@ -5,7 +5,9 @@ import axios from 'axios';
 import { apiClient } from '@/lib/api-client';
 import { API, authHeader } from '@/utils/api';
 import { InboxReplyModal } from '@/components/operation-inbox/InboxReplyModal';
+import { OutboundMailSignalStrip } from '@/components/operation-inbox/OutboundMailSignalStrip';
 import { useToast } from '@/contexts/ToastContext';
+import { outboundMailSignal } from '@sigorta/shared';
 
 interface InboundAttachment {
   id: string;
@@ -24,6 +26,10 @@ interface InboundEmailRow {
   aiSummary: string | null;
   bodyPreview: string | null;
   mailbox: 'IHBAR' | 'HASAR';
+  lastReplyAt?: string | null;
+  lastReplyReadAt?: string | null;
+  lastReplyFailedAt?: string | null;
+  lastCounterpartReplyAt?: string | null;
   attachments: InboundAttachment[];
 }
 
@@ -152,7 +158,20 @@ export function InboundEmailCorrespondencePanel({ claimFileId, emergencyCaseId, 
                 {row.fromName ? `${row.fromName} · ${row.fromAddress}` : row.fromAddress}
               </p>
             </div>
-            <span className="badge badge-blue shrink-0">{MAILBOX_LABELS[row.mailbox]}</span>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <span className="badge badge-blue">{MAILBOX_LABELS[row.mailbox]}</span>
+              {(row.lastReplyAt || row.lastReplyFailedAt) && (
+                <OutboundMailSignalStrip
+                  compact
+                  signal={outboundMailSignal({
+                    lastReplyAt: row.lastReplyAt,
+                    lastReplyReadAt: row.lastReplyReadAt,
+                    lastReplyFailedAt: row.lastReplyFailedAt,
+                    lastCounterpartReplyAt: row.lastCounterpartReplyAt,
+                  })}
+                />
+              )}
+            </div>
           </div>
 
           {row.aiSummary && (

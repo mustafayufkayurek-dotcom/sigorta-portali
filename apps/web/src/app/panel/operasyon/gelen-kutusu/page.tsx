@@ -69,6 +69,9 @@ interface InboundMessageRow {
   assignedUser?: AssignedUser | null;
   lastReplyAt?: string | null;
   lastReplyPreview?: string | null;
+  lastReplyReadAt?: string | null;
+  lastReplyFailedAt?: string | null;
+  lastCounterpartReplyAt?: string | null;
   routing?: RoutingSuggestion | null;
   isUnowned?: boolean;
 }
@@ -1248,6 +1251,7 @@ export default function GelenKutusuPage() {
     status: 'ACTIONED';
     lastReplyAt?: string;
     lastReplyPreview?: string;
+    lastReplyReadAt?: string;
   }) => {
     setItems((prev) =>
       prev.map((row) =>
@@ -1837,8 +1841,24 @@ export default function GelenKutusuPage() {
                   )}
                   {row.lastReplyAt && (
                     <span className="badge badge-green" title={row.lastReplyPreview ?? undefined}>
-                      Yanıt Gönderildi
+                      Gönderildi
                     </span>
+                  )}
+                  {row.lastReplyAt && (
+                    <span className={
+                      row.lastCounterpartReplyAt || row.lastReplyReadAt
+                        ? 'badge badge-green'
+                        : 'badge badge-gray'
+                    }>
+                      {row.lastCounterpartReplyAt
+                        ? 'Yanıt geldi'
+                        : row.lastReplyReadAt
+                          ? 'Okundu'
+                          : 'Okunmadı'}
+                    </span>
+                  )}
+                  {row.lastReplyFailedAt && (
+                    <span className="badge badge-red">Gönderilemedi</span>
                   )}
                   {row.isUnowned && (
                     <span className="badge badge-amber">Sahiplenilmedi</span>

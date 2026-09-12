@@ -4,6 +4,12 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
+import {
+  buildCrmSenderCopyNotice,
+  canSendVisibleCopy,
+  matchCrmEmailWatchLog,
+  prependFileOwnerCopyNotice,
+} from '@sigorta/shared';
 
 type RelationshipKind = 'customer' | 'adjuster' | 'vendor';
 type CrmVisibility = 'everyone' | 'responsible' | 'managers';
@@ -283,8 +289,8 @@ export class CrmService {
         ? await (this.systemSettings as any).getCorporateEmailSignature()
         : { companySignature: '', legalText: '' };
     const userSignature = this.buildUserSignature(user);
-    const html = this.buildCrmEmailHtml(message, userSignature, corporateSignature.companySignature, corporateSignature.legalText);
-    const text = [
+    const htmlBody = this.buildCrmEmailHtml(message, userSignature, corporateSignature.companySignature, corporateSignature.legalText);
+    const textBody = [
       message,
       '',
       userSignature,
@@ -294,7 +300,23 @@ export class CrmService {
       corporateSignature.legalText,
     ].filter(Boolean).join('\n');
 
-    const sent = await this.emailService.sendEmail(to, subject, html, { text });
+    const copy = await this.resolveSenderCopy(user, responsibleUserId, to);
+    const counterpartName = await this.relationshipDisplayName(kind as RelationshipKind, id);
+    const notice = copy
+      ? buildCrmSenderCopyNotice({
+          counterpartName,
+          counterpartAddress: to,
+          sender: copy,
+        })
+      : null;
+    const html = notice ? prependFileOwnerCopyNotice(htmlBody, notice.html) : htmlBody;
+    const text = notice ? `${notice.plain}\n\n${textBody}` : textBody;
+
+    const sent = await this.emailService.sendEmail(to, subject, html, {
+      text,
+      mailbox: 'HASAR',
+      cc: copy ? [{ email: copy.email, name: copy.name }] : undefined,
+    });
     if (!sent.sent) {
       throw new BadRequestException(sent.errorMsg || 'E-posta gönderilemedi');
     }
@@ -312,9 +334,88 @@ export class CrmService {
       responsibleUserId,
       responsibleName,
       sentAt: new Date().toISOString(),
+      deliveryStatus: 'sent',
+      emailLogId: sent.emailLogId ?? null,
+      copyEmail: copy?.email ?? null,
+      copyName: copy?.name ?? null,
     };
     const created = await this.writeLog(entityKey, 'crm.email.sent', payload, user);
     return { success: true, data: this.toEvent(created) };
+  }
+
+  async applyOutboundMailWatch(input: {
+    kind: 'failed' | 'replied';
+    fromAddress?: string | null;
+    subject?: string | null;
+    receivedAt: Date;
+  }) {
+    const logs = await this.prisma.auditLog.findMany({
+      where: { entityType: CRM_ENTITY_TYPE, action: 'crm.email.sent' },
+      orderBy: { createdAt: 'desc' },
+      take: 400,
+    });
+    const mapped = logs.map((log) => ({ id: log.id, payload: this.valueOf(log) }));
+    const logId = matchCrmEmailWatchLog(mapped, input);
+    if (!logId) return;
+    const row = logs.find((item) => item.id === logId);
+    if (!row) return;
+    const current = this.valueOf(row);
+    const receivedAt = input.receivedAt.toISOString();
+    const next =
+      input.kind === 'failed'
+        ? { ...current, deliveryStatus: 'bounced', bouncedAt: receivedAt }
+        : { ...current, deliveryStatus: 'replied', repliedAt: receivedAt, bouncedAt: null };
+    await this.prisma.auditLog.update({
+      where: { id: logId },
+      data: { newValue: next as Prisma.InputJsonValue },
+    });
+  }
+
+  private async resolveSenderCopy(
+    user: any,
+    responsibleUserId: string | null,
+    to: string,
+  ): Promise<{ email: string; name: string } | null> {
+    const candidates: Array<{ email?: string | null; name: string }> = [
+      { email: user?.email, name: this.userName(user) },
+    ];
+    if (responsibleUserId && responsibleUserId !== user?.id) {
+      const responsible = await this.prisma.user.findUnique({
+        where: { id: responsibleUserId },
+        select: { firstName: true, lastName: true, email: true },
+      });
+      if (responsible) {
+        candidates.push({ email: responsible.email, name: this.userName(responsible) });
+      }
+    }
+    for (const item of candidates) {
+      const email = String(item.email ?? '').trim();
+      if (!canSendVisibleCopy(email, [to])) continue;
+      return { email, name: item.name || email };
+    }
+    return null;
+  }
+
+  private async relationshipDisplayName(kind: RelationshipKind, id: string) {
+    if (kind === 'customer') {
+      const row = await this.prisma.customer.findUnique({
+        where: { id },
+        select: { shortName: true, companyName: true, fullName: true, firstName: true, lastName: true },
+      });
+      return (
+        row?.shortName ||
+        row?.companyName ||
+        row?.fullName ||
+        [row?.firstName, row?.lastName].filter(Boolean).join(' ') ||
+        null
+      );
+    }
+    if (kind === 'adjuster') {
+      const row = await this.prisma.adjuster.findUnique({ where: { id }, select: { name: true } });
+      return row?.name ?? null;
+    }
+    const row = await this.prisma.vendor.findUnique({ where: { id }, select: { name: true } });
+    return row?.name ?? null;
   }
 
   private async assertRelationship(kind: string, id: string) {
