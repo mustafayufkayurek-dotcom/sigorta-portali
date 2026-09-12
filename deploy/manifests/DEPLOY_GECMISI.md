@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (12 Eylül 2026 — web v586 / backend v586)
+## Canlı durum (12 Eylül 2026 — web v587 / backend v586)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v586-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v587-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v586-amd64` | canlı |
-| **Rollback** | Web **v585** / Backend **v585** | manifest `rollbackImages` |
-| **Etiket** | `v586-liste-menu-finans-kart` | |
+| **Rollback** | Web **v586** / Backend **v586** | manifest `rollbackImages` |
+| **Etiket** | `v587-sol-menu-simge` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v587 — Web (12 Eylül 2026) — Kapalı menü simgeleri
+
+- Kapalı sol menüde simgeler durur. Açıkken yine listenin üzerine biner; tablo sıkışmaz
+- Backend **v586** durur. İK yok
+- Geri alma web **v586** / backend **v586**
 
 ### v586 — Full (12 Eylül 2026) — Liste Sıra; menü; finans kartları
 

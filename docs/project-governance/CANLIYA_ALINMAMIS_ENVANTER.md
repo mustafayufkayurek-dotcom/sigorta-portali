@@ -1,7 +1,7 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
 **Tarih:** 28 Haziran 2026 (güncelleme 12.09.2026)  
-**Referans canlı sürüm:** Web **v586** · backend **v586**  
+**Referans canlı sürüm:** Web **v587** · backend **v586**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
@@ -9,7 +9,7 @@ Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertele
 **Sıradaki canlı paketler (Mustafa · 12.09.2026 — karışmaz):**
 1. İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj ayrı.
 
-v586 alındı (liste Sıra, menü, finans kartları). İK ayrı durur.
+v587 alındı (kapalı menü simgeleri). İK ayrı durur.
 
 ---
 
