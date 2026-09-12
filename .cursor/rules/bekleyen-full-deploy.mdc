@@ -1,15 +1,17 @@
 ---
-description: Canlı web v583 / backend v583 — sıradaki paketler karışmaz
+description: Canlı web v584 / backend v584 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (10.09.2026)
+# Canlı (12.09.2026)
 
-Canlı: web **v583** · backend **v583**. Geri alma: web **v582** / backend **v581**.
+Canlı: web **v584** · backend **v584**. Geri alma: web **v583** / backend **v583**.
 
 Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karışmaz. Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v584 (full):** İhbar mailinde adres sokak · ilçe · il. Acil gelen kutuda sigortalı Kimde yazılmaz; dosya sorumlusu işlemi yapan ofis kullanıcısıdır; Test Kullanıcı otomatik yazılmaz. Eski açık dosya satırı kendiliğinden düzelmez.
 
 **v583 (full):** Firma kullanıcıları müşteri kartından (hoş geldin + geçici şifre; karttaki yetkili kişiler giriş almaz). Görev kişiye yazılır. Kullanıcılar ekranı iç davet. Yetkilendirme yalnız dosya sorumlusunda. Girişte sistem kapalıyken şifre hatası görünmez. Tedarikçi kimliği (şahıs T.C. zorunlu değil). Acil Tedarikçi Hizmet Alım Sözleşmesi Hasar onarımından ayrı. Firma kullanıcısı sağ üst: müşteri kısa adı + ad soyad.
 
@@ -36,7 +38,3 @@ Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karış
 Paketler **karışmaz.** Hangisini alacağını Mustafa yazar.
 
 **İK personel özlük** — Personel Ekle + aynı kayıtta zimmet. Puantaj ayrı. Tek başına.
-
-**İhbar mail adresi** — Sokak · ilçe · il. «Atabey - Türkiye - Isparta» kuyruğu kesilir. Yeni İhbar ve Tespit planlandı aynı biçim. İK ile karışmaz.
-
-**Acil gelen kutu isim** — Mailden açılan dosyada sigortalı kişi adı Kimde olmaz. Dosya sorumlusu işlemi yapan ofis kullanıcısıdır. Test Kullanıcı otomatik yazılmaz. İK ile karışmaz.

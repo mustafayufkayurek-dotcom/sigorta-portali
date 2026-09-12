@@ -2,24 +2,31 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 10 Eylül 2026
+**Son güncelleme:** 12 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (10 Eylül 2026 — web v583 / backend v583)
+## Canlı durum (12 Eylül 2026 — web v584 / backend v584)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v583-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v583-amd64` | canlı |
-| **Rollback** | Web **v582** / Backend **v581** | manifest `rollbackImages` |
-| **Etiket** | `v583-firma-portal-acil-sozlesme` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v584-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v584-amd64` | canlı |
+| **Rollback** | Web **v583** / Backend **v583** | manifest `rollbackImages` |
+| **Etiket** | `v584-ihbar-adres-acil-kimde` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v584 — Full (12 Eylül 2026) — İhbar adresi; Acil gelen kutu isim
+
+- İhbar mailinde adres sokak · ilçe · il; «Atabey - Türkiye - Isparta» kuyruğu kesilir (Yeni İhbar + Tespit planlandı)
+- Acil mailden açılan dosyada sigortalı kişi adı Kimde olmaz; dosya sorumlusu işlemi yapan ofis kullanıcısıdır; Test Kullanıcı otomatik yazılmaz
+- Bitmiş iş kilitleri `--skip-rsync` ile atlanmaz. Migrasyon yok. İK yok
+- Geri alma web **v583** / backend **v583**. Eski açık `AY-202609-` satırı kendiliğinden düzelmez
 
 ### v583 — Full (10 Eylül 2026) — Firma portal; Acil hizmet alım sözleşmesi
 

@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-09-10",
-  "label": "v583-firma-portal-acil-sozlesme",
-  "description": "Web+backend v583: firma kullanıcıları müşteri kartından; görev yazılır; kullanıcılar sade; yetki yalnız dosya sorumlusunda; girişte sistem kapalı ayrı; tedarikçi kimliği; Acil hizmet alım sözleşmesi; firma sağ üst kısa ad+ad soyad. İK yok. Geri alma web v582 / backend v581.",
+  "updatedAt": "2026-09-12",
+  "label": "v584-ihbar-adres-acil-kimde",
+  "description": "Web+backend v584: ihbar mailinde adres sokak · ilçe · il; Acil gelen kutuda sigortalı Kimde yazılmaz, dosya sorumlusu işlemi yapan ofis kullanıcısıdır, Test Kullanıcı otomatik yazılmaz. İK yok. Geri alma web v583 / backend v583.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v583-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v583-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v584-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v584-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v582-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v581-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v583-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v583-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
