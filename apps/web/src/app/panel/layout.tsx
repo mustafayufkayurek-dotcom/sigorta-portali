@@ -1173,6 +1173,30 @@ function PanelSidebar({
     return () => { cancelled = true; };
   }, [isInsuranceCompanyUser, pathname]);
 
+  const [hoverOpen, setHoverOpen] = useState(false);
+  const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openHover = useCallback(() => {
+    if (hoverLeaveTimer.current) {
+      clearTimeout(hoverLeaveTimer.current);
+      hoverLeaveTimer.current = null;
+    }
+    setHoverOpen(true);
+  }, []);
+
+  const closeHoverSoon = useCallback(() => {
+    if (hoverLeaveTimer.current) clearTimeout(hoverLeaveTimer.current);
+    hoverLeaveTimer.current = setTimeout(() => setHoverOpen(false), 140);
+  }, []);
+
+  useEffect(() => {
+    setHoverOpen(false);
+  }, [pathname]);
+
+  useEffect(() => () => {
+    if (hoverLeaveTimer.current) clearTimeout(hoverLeaveTimer.current);
+  }, []);
+
   if (hidden) return null;
 
   const isOfficeStaff = isOfficeStaffRole(roleCode);
@@ -1222,6 +1246,15 @@ function PanelSidebar({
   });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
+  const iconRail = collapsed && !hoverOpen;
+
+  const handleFooterToggle = () => {
+    if (collapsed && hoverOpen) {
+      setHoverOpen(false);
+      return;
+    }
+    onToggleCollapsed();
+  };
 
   const linkClass = (
     href: string,
@@ -1260,14 +1293,14 @@ function PanelSidebar({
     const toggleGroup = () =>
       setExpandedGroupOverrides((prev) => ({ ...prev, [link.href]: !isExpanded }));
 
-    const sharedClass = `${linkClass(link.href, compact, parentIsActive, link.exactMatch, isFirst)}${collapsed ? ' relative justify-center px-2' : hasChildren ? ' flex-1 min-w-0' : ''}`;
+    const sharedClass = `${linkClass(link.href, compact, parentIsActive, link.exactMatch, isFirst)}${iconRail ? ' relative justify-center px-2' : hasChildren ? ' flex-1 min-w-0' : ''}`;
     const inner = (
       <>
-        <span className={`inline-flex min-w-0 items-center ${collapsed ? 'justify-center w-full' : 'gap-2.5'}`}>
+        <span className={`inline-flex min-w-0 items-center ${iconRail ? 'justify-center w-full' : 'gap-2.5'}`}>
           {link.icon ? <link.icon className="panel-sidebar-nav-icon" strokeWidth={1.75} /> : null}
-          {!collapsed ? <span className="truncate">{link.title}</span> : null}
+          {!iconRail ? <span className="truncate">{link.title}</span> : null}
         </span>
-        {!collapsed && link.alertCount != null && link.alertCount > 0 ? (
+        {!iconRail && link.alertCount != null && link.alertCount > 0 ? (
           <span
             className={`ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums ${
               isExpert
@@ -1280,7 +1313,7 @@ function PanelSidebar({
             {link.alertCount > 99 ? '99+' : link.alertCount}
           </span>
         ) : null}
-        {collapsed && link.alertCount != null && link.alertCount > 0 ? (
+        {iconRail && link.alertCount != null && link.alertCount > 0 ? (
           <span
             className={`absolute right-1.5 top-1.5 h-2 w-2 rounded-full ${isFieldStaff ? 'bg-brand-600' : 'bg-status-danger'}`}
             aria-hidden="true"
@@ -1289,7 +1322,7 @@ function PanelSidebar({
       </>
     );
 
-    const linkNode = link.groupOnly && hasChildren && !collapsed ? (
+    const linkNode = link.groupOnly && hasChildren && !iconRail ? (
       <button
         type="button"
         className={sharedClass}
@@ -1303,7 +1336,7 @@ function PanelSidebar({
       <Link
         href={link.href}
         className={sharedClass}
-        aria-label={collapsed ? tooltipLabel : undefined}
+        aria-label={iconRail ? tooltipLabel : undefined}
         onClick={() => {
           const hrefQueryString = link.href.split('?')[1] ?? '';
           setActiveQueueParam(new URLSearchParams(hrefQueryString).get('queue'));
@@ -1323,11 +1356,11 @@ function PanelSidebar({
         key={link.href}
         className={`panel-sidebar-nav-group space-y-0.5${link.groupStart ? ' panel-sidebar-nav-group--start' : ''}`}
       >
-        <div className={`flex items-stretch gap-1${collapsed ? ' justify-center' : ''}`}>
-          <SidebarNavTooltip label={tooltipLabel} collapsed={collapsed}>
+        <div className={`flex items-stretch gap-1${iconRail ? ' justify-center' : ''}`}>
+          <SidebarNavTooltip label={tooltipLabel} collapsed={iconRail}>
             {linkNode}
           </SidebarNavTooltip>
-          {hasChildren && !collapsed ? (
+          {hasChildren && !iconRail ? (
             <button
               type="button"
               onClick={() =>
@@ -1341,7 +1374,7 @@ function PanelSidebar({
             </button>
           ) : null}
         </div>
-        {hasChildren && isExpanded && !collapsed ? (
+        {hasChildren && isExpanded && !iconRail ? (
           <div className="panel-sidebar-nav-children">
             {visibleChildren.map((child) => renderNavLink(child, true))}
           </div>
@@ -1355,23 +1388,25 @@ function PanelSidebar({
       className="relative z-30 hidden min-h-0 shrink-0 self-stretch overflow-visible md:block"
       style={{ width: 72, minWidth: 72, maxWidth: 72 }}
       data-testid="panel-sidebar-rail"
+      onMouseEnter={openHover}
+      onMouseLeave={closeHoverSoon}
     >
     <aside
       className={`${
-        collapsed
+        iconRail
           ? 'relative h-full min-h-0'
-          : `fixed left-0 z-40 shadow-xl ${PANEL_SIDEBAR_STICKY_TOP} ${PANEL_SIDEBAR_HEIGHT}`
-      } hidden flex-col overflow-hidden border-r border-[#E5E7EB] bg-white text-[#0F172A] shadow-sm transition-[width] duration-200 ease-in-out dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 md:flex ${
-        collapsed ? PANEL_SIDEBAR_WIDTH_COLLAPSED : PANEL_SIDEBAR_WIDTH_EXPANDED
+          : `fixed left-0 z-40 ${PANEL_SIDEBAR_STICKY_TOP} ${PANEL_SIDEBAR_HEIGHT}`
+      } hidden flex-col overflow-hidden border-r border-[#E5E7EB] bg-white text-[#0F172A] transition-[width] duration-200 ease-in-out dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 md:flex ${
+        iconRail ? PANEL_SIDEBAR_WIDTH_COLLAPSED : PANEL_SIDEBAR_WIDTH_EXPANDED
       }`}
       style={
-        collapsed
+        iconRail
           ? { width: 72, minWidth: 72, maxWidth: 72 }
           : { width: 260, minWidth: 260, maxWidth: 260 }
       }
     >
       {/* RC1: sidebar logo yok — marka topbar BrandLogo */}
-      <nav className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pt-3 pb-3 [scrollbar-width:thin] ${collapsed ? 'px-2' : 'px-4'}`}>
+      <nav className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pt-3 pb-3 [scrollbar-width:thin] ${iconRail ? 'px-2' : 'px-4'}`}>
         <div className="flex flex-col">
           {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
         </div>
@@ -1385,8 +1420,8 @@ function PanelSidebar({
           isFinance={isFinance}
           isFieldStaff={isFieldStaff}
           isOfficeStaff={isOfficeStaff}
-          collapsed={collapsed}
-          onToggleCollapsed={onToggleCollapsed}
+          collapsed={iconRail}
+          onToggleCollapsed={handleFooterToggle}
         />
       </div>
     </aside>
@@ -1988,14 +2023,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             onToggleCollapsed={toggleSidebarCollapsed}
             hidden={mustChangePassword}
           />
-          {!sidebarCollapsed && !mustChangePassword ? (
-            <button
-              type="button"
-              className="absolute bottom-0 left-[72px] right-0 top-0 z-20 hidden bg-slate-900/15 md:block"
-              aria-label="Menüyü kapat"
-              onClick={() => setSidebarCollapsed(true)}
-            />
-          ) : null}
           {/* overflow-x-clip: hidden/auto ara scrollport oluşturup sticky thead’i kırmaz (v329) */}
           <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-clip bg-slate-50/90 dark:bg-slate-950">
         <GlobalActivityStrip />
