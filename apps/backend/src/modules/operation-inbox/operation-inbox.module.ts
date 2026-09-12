@@ -8,7 +8,6 @@ import { ClaimFilesModule } from '../claim-files/claim-files.module';
 import { ClaimResponsibilitiesModule } from '../claim-responsibilities/claim-responsibilities.module';
 import { CustomersModule } from '../customers/customers.module';
 import { EmergencyModule } from '../emergency/emergency.module';
-import { CrmModule } from '../crm/crm.module';
 import { NotesModule } from '../notes/notes.module';
 import { OperationalAccessGrantsModule } from '../operational-access-grants/operational-access-grants.module';
 import { SystemSettingsModule } from '../system-settings/system-settings.module';
@@ -39,7 +38,6 @@ import { OperationInboxScheduler } from './operation-inbox.scheduler';
     ClaimResponsibilitiesModule,
     forwardRef(() => CustomersModule),
     EmergencyModule,
-    CrmModule,
     OperationalAccessGrantsModule,
     NotesModule,
     HttpModule.register({ timeout: 60_000, maxRedirects: 3 }),

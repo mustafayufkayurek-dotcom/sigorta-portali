@@ -95,7 +95,15 @@ describe('CRM tanıtım maili izi LOCK', () => {
       ),
       'utf8',
     );
-    assert.match(ingest, /applyOutboundMailWatch/);
+    assert.match(ingest, /matchCrmEmailWatchLog/);
     assert.match(ingest, /mapped\.receivedAt instanceof Date/);
+    const inboxMod = readFileSync(
+      new URL(
+        '../../../apps/backend/src/modules/operation-inbox/operation-inbox.module.ts',
+        import.meta.url,
+      ),
+      'utf8',
+    );
+    assert.doesNotMatch(inboxMod, /CrmModule/);
   });
 });

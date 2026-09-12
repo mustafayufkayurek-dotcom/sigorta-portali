@@ -16,9 +16,8 @@ import {
   GraphMailSyncService,
   GraphMessage,
 } from '../graph/graph-mail-sync.service';
-import { classifyMailReceipt } from '@sigorta/shared';
+import { classifyMailReceipt, matchCrmEmailWatchLog } from '@sigorta/shared';
 import { OperationInboxService } from '../operation-inbox.service';
-import { CrmService } from '../../crm/crm.service';
 import {
   CLASSIFY_JOB_MESSAGE,
   CLASSIFY_JOB_OPTIONS,
@@ -43,7 +42,6 @@ export class InboundIngestProcessor {
     private readonly graphAuth: GraphAuthService,
     private readonly graphSync: GraphMailSyncService,
     private readonly inboxService: OperationInboxService,
-    private readonly crmService: CrmService,
     @InjectQueue(INBOUND_INGEST_QUEUE) private readonly ingestQueue: Queue<SyncMailboxJobData>,
     @InjectQueue(INBOUND_CLASSIFY_QUEUE) private readonly classifyQueue: Queue<{ messageId: string }>,
   ) {}
@@ -250,7 +248,35 @@ export class InboundIngestProcessor {
     receivedAt: Date;
   }) {
     try {
-      await this.crmService.applyOutboundMailWatch(input);
+      const logs = await this.prisma.auditLog.findMany({
+        where: { entityType: 'crm_relationship', action: 'crm.email.sent' },
+        orderBy: { createdAt: 'desc' },
+        take: 400,
+      });
+      const mapped = logs.map((log) => ({
+        id: log.id,
+        payload:
+          log.newValue && typeof log.newValue === 'object' && !Array.isArray(log.newValue)
+            ? (log.newValue as Record<string, unknown>)
+            : {},
+      }));
+      const logId = matchCrmEmailWatchLog(mapped, input);
+      if (!logId) return;
+      const row = logs.find((item) => item.id === logId);
+      if (!row) return;
+      const current =
+        row.newValue && typeof row.newValue === 'object' && !Array.isArray(row.newValue)
+          ? (row.newValue as Record<string, unknown>)
+          : {};
+      const receivedAt = input.receivedAt.toISOString();
+      const next =
+        input.kind === 'failed'
+          ? { ...current, deliveryStatus: 'bounced', bouncedAt: receivedAt }
+          : { ...current, deliveryStatus: 'replied', repliedAt: receivedAt, bouncedAt: null };
+      await this.prisma.auditLog.update({
+        where: { id: logId },
+        data: { newValue: next as Prisma.InputJsonValue },
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(`CRM mail izi güncellenemedi: ${message}`);
