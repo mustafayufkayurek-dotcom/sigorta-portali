@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (12 Eylül 2026 — web v585 / backend v585)
+## Canlı durum (12 Eylül 2026 — web v586 / backend v586)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v585-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v585-amd64` | canlı |
-| **Rollback** | Web **v584** / Backend **v584** | manifest `rollbackImages` |
-| **Etiket** | `v585-yazisma-mail-izi` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v586-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v586-amd64` | canlı |
+| **Rollback** | Web **v585** / Backend **v585** | manifest `rollbackImages` |
+| **Etiket** | `v586-liste-menu-finans-kart` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v586 — Full (12 Eylül 2026) — Liste Sıra; menü; finans kartları
+
+- Hasar / Operasyon / Acil listesinde Sıra kalkar; son sütun İşlemler
+- Sol menü dar rayda durur; açılınca tabloyu sıkıştırmaz
+- Finans üst kartları kuyruk kaydını okur (bekleyen fatura / tahsilat / dönem)
+- Migrasyon yok. İK yok. Geri alma web **v585** / backend **v585**
 
 ### v585 — Full (12 Eylül 2026) — Yazışma geçmişi; görünür kopya; CRM izi
 

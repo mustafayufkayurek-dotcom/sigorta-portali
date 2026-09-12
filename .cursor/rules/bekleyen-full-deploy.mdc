@@ -1,15 +1,17 @@
 ---
-description: Canlı web v585 / backend v585 — sıradaki paketler karışmaz
+description: Canlı web v586 / backend v586 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
 # Canlı (12.09.2026)
 
-Canlı: web **v585** · backend **v585**. Geri alma: web **v584** / backend **v584**.
+Canlı: web **v586** · backend **v586**. Geri alma: web **v585** / backend **v585**.
 
 Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karışmaz. Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v586 (full):** Liste Sıra kalkar; son sütun İşlemler. Sol menü tabloyu sıkıştırmaz. Finans kartları kuyruk kaydını okur.
 
 **v585 (full):** Yazışma yanıtında geçmiş durur. Dosya mailinde dosya sorumlusuna görünür kopya. CRM tanıtımda gönderene görünür kopya; gönderildi / ulaşmadı / yanıt geldi. Sahte okundu yok.
 
