@@ -33,14 +33,22 @@ export function FinanceFlowStrip({ year, month }: FinanceFlowStripProps) {
   const bottlenecks = bottlenecksQuery.data;
   const pl = plQuery.data;
   const overhead = overheadQuery.data;
-  const pendingCount = Array.isArray(bottlenecks?.pendingPayments) ? bottlenecks.pendingPayments.length : 0;
+  const pendingCount = bottlenecks?.pendingIncomingCount
+    ?? (Array.isArray(bottlenecks?.pendingPayments) ? bottlenecks.pendingPayments.length : 0);
   const overdueInvoices = bottlenecks?.overdueInvoices ?? 0;
+  const pendingInvoiceRequests = bottlenecks?.pendingInvoiceRequestCount ?? 0;
+  const faturaValue = pendingInvoiceRequests || overdueInvoices;
+  const faturaDetail = pendingInvoiceRequests > 0
+    ? `${pendingInvoiceRequests} onay bekleyen talep`
+    : overdueInvoices > 0
+      ? 'Geciken fatura'
+      : 'Fatura takibi';
   const overheadEntries = overhead?.entryCount ?? 0;
 
   const items: FlowItem[] = [
     {
       title: 'Tahsilatlar',
-      value: formatCurrency(bottlenecks?.totalPendingAmount ?? 0),
+      value: formatCurrency(Number(bottlenecks?.totalPendingAmount) || 0),
       detail: pendingCount > 0 ? `${pendingCount} bekleyen kuyruk` : 'Tahsilat kuyruğu',
       icon: Banknote,
       iconClassName: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
@@ -48,16 +56,16 @@ export function FinanceFlowStrip({ year, month }: FinanceFlowStripProps) {
     },
     {
       title: 'Faturalar',
-      value: overdueInvoices,
-      detail: overdueInvoices > 0 ? 'Geciken fatura' : 'Fatura takibi',
+      value: faturaValue,
+      detail: faturaDetail,
       icon: FileText,
       iconClassName: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
-      path: '/panel/finans/faturalar',
+      path: '/panel/finans/faturalar?tab=talepler',
     },
     {
       title: 'Masraflar',
-      value: pl ? formatCurrency(pl.totalVariableCost) : '—',
-      detail: pl ? `${pl.fileCount} dosya gider özeti` : 'Dosya masrafları',
+      value: pl ? formatCurrency(pl.totalCost) : '—',
+      detail: pl ? `${pl.fileCount} kayıt gider özeti` : 'Dosya masrafları',
       icon: Receipt,
       iconClassName: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
       path: '/panel/finans/masraflar',

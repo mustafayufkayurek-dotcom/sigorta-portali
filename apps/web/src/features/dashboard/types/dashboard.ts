@@ -93,6 +93,11 @@ export type FinanceBottlenecksResponse = {
   pendingPayments: FinanceItem[];
   totalPendingAmount: number;
   overdueInvoices: number;
+  pendingIncomingCount?: number;
+  pendingOutgoingAmount?: number;
+  pendingOutgoingCount?: number;
+  pendingInvoiceRequestCount?: number;
+  pendingInvoiceRequestAmount?: number;
 };
 
 export type ActivityItem = {

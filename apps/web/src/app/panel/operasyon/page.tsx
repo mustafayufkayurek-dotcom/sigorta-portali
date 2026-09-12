@@ -55,7 +55,6 @@ import {
   readOpsListPageSize,
   type OpsListPageSize,
 } from '@/utils/ops-list-page-size';
-import { opsListRowNumber } from '@/utils/ops-list-sira';
 import { acilVendorPayLabel, acilVendorPayMatchesFilter, acilVendorPayMatchesQuery, acilVendorPayTone, type AcilVendorPayFilter } from '@/utils/acil-vendor-pay';
 import { readAcilLocalFlow } from '@/app/panel/acil-yardim/[id]/acil-workflow';
 import { API, authHeader } from '@/utils/api';
@@ -259,7 +258,6 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'reportCost', label: 'Tedarikçi Maliyet Toplamı', defaultWidth: 140, minWidth: 110 },
   { id: 'reportProfit', label: 'Beklenen Kar', defaultWidth: 110, minWidth: 88 },
   { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
-  { id: 'sira', label: 'Sıra', defaultWidth: 56, minWidth: 48, alwaysVisible: true, pin: 'end', resizable: false },
 ];
 
 /** Acil kuyruk — Hasar listesi ölçüleri; para Sütunlar’da; Ödeme Durumu durur. */
@@ -290,20 +288,19 @@ const ACIL_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'reportCost', label: 'Tedarikçi Maliyet Toplamı', defaultWidth: 140, minWidth: 110, defaultVisible: false },
   { id: 'reportProfit', label: 'Beklenen Kar', defaultWidth: 110, minWidth: 88, defaultVisible: false },
   { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
-  { id: 'sira', label: 'Sıra', defaultWidth: 56, minWidth: 48, alwaysVisible: true, pin: 'end', resizable: false },
 ];
 
 const PAGE_SIZE = 50;
 
 /**
  * Sütun genişlikleri sayfa/filtre bazında ayrılır — Hasar ve Acil birbirini etkilemez.
- * v18: Sıra sütunu listenin sonunda.
- * v13 Hasar/all: Sıra sütunu listenin sonunda.
+ * v19: Sıra sütunu kalktı; İşlemler sonda.
+ * v14 Hasar/all: Sıra yok.
  */
 const OPS_COLS_KEY_BY_FILTER: Record<'all' | 'hasar' | 'acil', string> = {
-  all: 'table-cols:operasyon-all-v13',
-  hasar: 'table-cols:operasyon-hasar-v13',
-  acil: 'table-cols:operasyon-acil-v18',
+  all: 'table-cols:operasyon-all-v14',
+  hasar: 'table-cols:operasyon-hasar-v14',
+  acil: 'table-cols:operasyon-acil-v19',
 };
 
 function resolveOpsColumnsStorageKey(filterType: 'all' | 'hasar' | 'acil' = 'all'): string {
@@ -864,7 +861,6 @@ function OperasyonPageContent() {
       if (row.expectedProfit) samples.reportProfit?.push(row.expectedProfit);
       samples.vendorPay?.push(acilVendorPayLabel(row.vendorPaid));
       samples.actions?.push('İşlemler');
-      samples.sira?.push('Sıra');
     }
     return samples;
   }, [filteredRows, tableColumnDefs]);
@@ -880,16 +876,7 @@ function OperasyonPageContent() {
           const insertAt = statusAt >= 0 ? statusAt + 1 : withoutKind.length;
           return [...withoutKind.slice(0, insertAt), payCol, ...withoutKind.slice(insertAt)];
         })();
-    const siraCol = withPay.find((c) => c.id === 'sira') ?? {
-      id: 'sira',
-      label: 'Sıra',
-      defaultWidth: 56,
-      minWidth: 48,
-      alwaysVisible: true,
-      pin: 'end' as const,
-      resizable: false,
-    };
-    return [...withPay.filter((c) => c.id !== 'sira'), siraCol];
+    return withPay.filter((c) => c.id !== 'sira');
   }, [filterType, tableColumns.prefs.orderedVisibleColumns]);
 
   const opsTableStyle = useMemo(() => panelTableLayoutStyle(tableColumns), [tableColumns]);
@@ -1378,7 +1365,7 @@ function OperasyonPageContent() {
               <p className="py-8 text-center text-sm text-slate-400">
                 {casesError ? 'Liste alınamadı.' : 'Kayıt yok.'}
               </p>
-            ) : pagedRows.map((row, rowIdx) => (
+            ) : pagedRows.map((row) => (
               <button
                 key={`${row.kind}-${row.id}`}
                 type="button"
@@ -1480,12 +1467,6 @@ function OperasyonPageContent() {
                       </p>
                     </div>
                   ) : null}
-                  <div>
-                    <p className="text-slate-400">Sıra</p>
-                    <p className="mt-0.5 font-semibold tabular-nums text-slate-700">
-                      {opsListRowNumber(page, isAcilListMode ? acilPageSize : PAGE_SIZE, rowIdx)}
-                    </p>
-                  </div>
                 </div>
               </button>
             ))}
@@ -1496,7 +1477,7 @@ function OperasyonPageContent() {
               <thead className="table-head-row portal-table-head">
                 <tr>
                   {visibleOpsColumns.map((col) =>
-                    col.id === 'actions' || col.id === 'sira' ? (
+                    col.id === 'actions' ? (
                       <PanelTableTh
                         key={col.id}
                         colId={col.id}
@@ -1536,7 +1517,7 @@ function OperasyonPageContent() {
                       {casesError ? 'Liste alınamadı.' : 'Kayıt yok.'}
                     </td>
                   </tr>
-                ) : pagedRows.map((row, rowIdx) => (
+                ) : pagedRows.map((row) => (
                   <tr
                     key={`${row.kind}-${row.id}`}
                     title={row.approval72hExceeded ? 'Onay süresi 72 saati aştı' : undefined}
@@ -1686,12 +1667,6 @@ function OperasyonPageContent() {
                               }`}
                             >
                               {row.expectedProfit ?? <span className="text-slate-300">—</span>}
-                            </PanelTableTd>
-                          );
-                        case 'sira':
-                          return (
-                            <PanelTableTd key={col.id} colId="sira" align="center" className={`${isAcilListMode ? 'table-td-center' : queueTdCenterClass} tabular-nums font-semibold text-slate-700`}>
-                              {opsListRowNumber(page, isAcilListMode ? acilPageSize : PAGE_SIZE, rowIdx)}
                             </PanelTableTd>
                           );
                         case 'actions':

@@ -50,6 +50,8 @@ import { PortalWhatsAppLiveSupport } from '@/components/panel/portal-whatsapp-li
 import {
   PANEL_MAIN_TOP,
   PANEL_NAVBAR_HEIGHT,
+  PANEL_SIDEBAR_HEIGHT,
+  PANEL_SIDEBAR_STICKY_TOP,
   PANEL_SIDEBAR_WIDTH_COLLAPSED,
   PANEL_SIDEBAR_WIDTH_EXPANDED,
 } from '@/config/panel-layout-spacing';
@@ -579,11 +581,7 @@ function Navbar({
       <div className={`flex ${PANEL_NAVBAR_HEIGHT} w-full min-w-0 shrink-0 items-center`}>
         {/* Marka rayı — sidebar genişliği ile aynı; arama içerik sol kenarına hizalanır */}
         <div
-          className={`hidden h-full shrink-0 items-center border-r border-transparent md:flex ${
-            sidebarCollapsed
-              ? 'w-[72px] min-w-[72px] max-w-[72px] justify-center px-1'
-              : 'w-[260px] min-w-[260px] max-w-[260px] gap-3 px-4'
-          }`}
+          className="hidden h-full w-[72px] min-w-[72px] max-w-[72px] shrink-0 items-center justify-center border-r border-transparent px-1 md:flex"
         >
           {onToggleSidebar ? (
             <button
@@ -597,16 +595,6 @@ function Navbar({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-          ) : null}
-          {!sidebarCollapsed ? (
-            <Link
-              href={isExpert ? '/panel/eksper-portal' : isInsuranceCompanyUser ? '/panel/sigorta-portal' : isAssistanceCompanyUser ? '/panel/asistans-portal' : '/panel'}
-              className="inline-flex min-w-0 items-center"
-              title="Panel Ana Sayfa"
-              aria-label="Meridyen Panel"
-            >
-              <BrandLogo alt="Meridyen Assistance" variant="topbar" />
-            </Link>
           ) : null}
         </div>
 
@@ -1363,8 +1351,17 @@ function PanelSidebar({
   };
 
   return (
+    <div
+      className="relative z-30 hidden h-full shrink-0 self-stretch overflow-visible md:block"
+      style={{ width: 72, minWidth: 72, maxWidth: 72 }}
+      data-testid="panel-sidebar-rail"
+    >
     <aside
-      className={`z-30 hidden h-full flex-col self-stretch overflow-hidden border-r border-[#E5E7EB] bg-white text-[#0F172A] shadow-sm transition-[width] duration-200 ease-in-out dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 md:flex ${
+      className={`${
+        collapsed
+          ? 'absolute left-0 top-0 z-40 h-full'
+          : `fixed left-0 z-40 shadow-xl ${PANEL_SIDEBAR_STICKY_TOP} ${PANEL_SIDEBAR_HEIGHT}`
+      } hidden flex-col overflow-hidden border-r border-[#E5E7EB] bg-white text-[#0F172A] shadow-sm transition-[width] duration-200 ease-in-out dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 md:flex ${
         collapsed ? PANEL_SIDEBAR_WIDTH_COLLAPSED : PANEL_SIDEBAR_WIDTH_EXPANDED
       }`}
       style={
@@ -1393,6 +1390,7 @@ function PanelSidebar({
         />
       </div>
     </aside>
+    </div>
   );
 }
 
@@ -1885,15 +1883,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   });
 
   const contextBackLink = isSettingsPath(pathname) ? null : getContextBackLink(pathname);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   useEffect(() => {
-    try {
-      setSidebarCollapsed(localStorage.getItem('panel-sidebar-collapsed') === 'true');
-    } catch {
-      /* localStorage kullanılamıyorsa varsayılan geniş menü */
-    }
-  }, []);
+    setSidebarCollapsed(true);
+  }, [pathname]);
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((value) => {
@@ -1978,7 +1972,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       <NavigationGuardProvider tryNavigateRef={tryNavigateRef}>
       <div className="min-h-screen bg-slate-50 flex flex-col dark:bg-slate-950" ref={mainRef}>
         <Navbar {...navbarProps} />
-        <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
           <PanelSidebar
             pathname={pathname}
             roleCode={roleCode}
@@ -1994,6 +1988,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             onToggleCollapsed={toggleSidebarCollapsed}
             hidden={mustChangePassword}
           />
+          {!sidebarCollapsed && !mustChangePassword ? (
+            <button
+              type="button"
+              className="absolute bottom-0 left-[72px] right-0 top-0 z-20 hidden bg-slate-900/15 md:block"
+              aria-label="Menüyü kapat"
+              onClick={() => setSidebarCollapsed(true)}
+            />
+          ) : null}
           {/* overflow-x-clip: hidden/auto ara scrollport oluşturup sticky thead’i kırmaz (v329) */}
           <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-clip bg-slate-50/90 dark:bg-slate-950">
         <GlobalActivityStrip />

@@ -28,11 +28,14 @@ export function FinanceKpiGroup({ year, month, staggerIndex = 0 }: FinanceKpiGro
 
   const pl = plQuery.data;
   const bottlenecks = bottlenecksQuery.data;
-  const pendingCount = Array.isArray(bottlenecks?.pendingPayments) ? bottlenecks.pendingPayments.length : 0;
-
   const isLoading = plQuery.isLoading && bottlenecksQuery.isLoading;
   const plFailed = plQuery.isError;
   const bottlenecksFailed = bottlenecksQuery.isError;
+  const pendingCount = bottlenecks?.pendingIncomingCount
+    ?? (Array.isArray(bottlenecks?.pendingPayments) ? bottlenecks.pendingPayments.length : 0);
+  const pendingAmount = bottlenecksFailed
+    ? (pl?.outstandingBalance ?? 0)
+    : (Number(bottlenecks?.totalPendingAmount) || Number(pl?.outstandingBalance) || 0);
 
   const period = periodLabel(year, month);
   const netProfit = pl?.netProfit ?? 0;
@@ -89,7 +92,7 @@ export function FinanceKpiGroup({ year, month, staggerIndex = 0 }: FinanceKpiGro
             <KpiCard
               icon={Clock}
               label="Bekleyen Tahsilat"
-              value={formatCurrency(bottlenecksFailed ? 0 : (bottlenecks?.totalPendingAmount ?? pl?.outstandingBalance ?? 0))}
+              value={formatCurrency(pendingAmount)}
               color="bg-amber-600"
               subtext={pendingCount > 0 ? `${pendingCount} kuyruk kaydı` : 'Tahsilat kuyruğu'}
               emptyHint="Bekleyen tahsilat kaydı görünmüyor."

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { vatReportPeriodBounds } from './vat-report-period';
 
 /**
  * Bir hasar dosyasının tüm P&L bileşenlerini yeniden hesaplayarak
@@ -174,52 +175,72 @@ export class FinancialSummaryService {
      * eski dosyaların dönem cirosu da görünmez.
      */
     if (filters?.year) {
-      const periodStart = new Date(
+      const { from: periodStart, to: periodEnd } = vatReportPeriodBounds(
         filters.year,
-        filters.month ? filters.month - 1 : 0,
-        1,
+        filters.month,
       );
-      const periodEnd = new Date(
-        filters.year,
-        filters.month ? filters.month : 12,
-        0,
-        23,
-        59,
-        59,
-        999,
-      );
+      const inPeriod = { gte: periodStart, lte: periodEnd };
 
-      const invoices = await this.prisma.invoice.findMany({
-        where: {
-          invoiceDate: { gte: periodStart, lte: periodEnd },
-          status: { not: 'cancelled' },
-        },
-        select: {
-          invoiceType: true,
-          totalAmount: true,
-          claimFileId: true,
-          status: true,
-        },
-      });
+      const [invoices, collectedAgg, expenseAgg] = await Promise.all([
+        this.prisma.invoice.findMany({
+          where: {
+            invoiceDate: inPeriod,
+            status: { not: 'cancelled' },
+          },
+          select: {
+            id: true,
+            invoiceType: true,
+            totalAmount: true,
+            claimFileId: true,
+            emergencyCaseId: true,
+            status: true,
+          },
+        }),
+        this.prisma.payment.aggregate({
+          where: {
+            paymentType: 'incoming',
+            status: 'completed',
+            paymentDate: inPeriod,
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.expense.aggregate({
+          where: {
+            date: inPeriod,
+            approvalStatus: { not: 'REJECTED' },
+          },
+          _sum: { amount: true },
+        }),
+      ]);
 
       const fileIds = new Set<string>();
+      const claimFileIds = new Set<string>();
       let totalRevenue = 0;
-      let totalCost = 0;
-      let totalCollected = 0;
+      let purchaseCost = 0;
       for (const inv of invoices) {
-        if (inv.claimFileId) fileIds.add(inv.claimFileId);
+        if (inv.claimFileId) {
+          fileIds.add(`c:${inv.claimFileId}`);
+          claimFileIds.add(inv.claimFileId);
+        } else if (inv.emergencyCaseId) {
+          fileIds.add(`e:${inv.emergencyCaseId}`);
+        } else {
+          fileIds.add(`i:${inv.id}`);
+        }
         const amount = Number(inv.totalAmount) || 0;
         if (inv.invoiceType === 'sales') {
           totalRevenue += amount;
-          if (inv.status === 'paid') totalCollected += amount;
         } else {
-          totalCost += amount;
+          purchaseCost += amount;
         }
       }
 
-      const summaries = fileIds.size
+      const expenseCost = Number(expenseAgg._sum.amount ?? 0);
+      const totalCollected = Number(collectedAgg._sum.amount ?? 0);
+      const totalCost = purchaseCost + expenseCost;
+
+      const summaries = claimFileIds.size
         ? await this.prisma.claimFinancialSummary.findMany({
-            where: { claimFileId: { in: [...fileIds] } },
+            where: { claimFileId: { in: [...claimFileIds] } },
             select: {
               fileFeeRevenue: true,
               extraWorkRevenue: true,
@@ -231,8 +252,9 @@ export class FinancialSummaryService {
 
       const fileFeeRevenue = summaries.reduce((s, r) => s + (r.fileFeeRevenue ?? 0), 0);
       const extraWorkRevenue = summaries.reduce((s, r) => s + (r.extraWorkRevenue ?? 0), 0);
-      const totalVariableCost = summaries.reduce((s, r) => s + (r.totalVariableCost ?? 0), 0);
+      const summaryVariable = summaries.reduce((s, r) => s + (r.totalVariableCost ?? 0), 0);
       const overheadShare = summaries.reduce((s, r) => s + (r.overheadShare ?? 0), 0);
+      const totalVariableCost = summaryVariable > 0 ? summaryVariable : totalCost;
       const netProfit = totalRevenue - totalCost;
       const netMarginPct = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 

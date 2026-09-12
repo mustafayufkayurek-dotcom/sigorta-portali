@@ -83,7 +83,7 @@ export class DashboardService {
 
   async getOperationsKpis(scopeUserId?: string) {
     const cacheKey = this.cache.buildKey({
-      resource: 'dashboard:operations',
+      resource: 'dashboard:operations-v2',
       role: scopeUserId ? 'office_staff' : 'shared',
       userId: scopeUserId,
     });
@@ -122,6 +122,7 @@ export class DashboardService {
       pendingTasks,
       slaViolationCount,
       overdueAgg,
+      overduePayAgg,
     ] = await Promise.all([
         this.prisma.claimFile.count({ where: scopeWhere }),
         this.prisma.claimFile.count({
@@ -146,8 +147,12 @@ export class DashboardService {
           },
         }),
         this.prisma.invoice.aggregate({
-          where: { dueDate: { lt: now }, status: { notIn: ['paid', 'cancelled'] } },
+          where: { invoiceType: 'sales', dueDate: { lt: now }, status: { notIn: ['paid', 'cancelled'] } },
           _sum: { totalAmount: true },
+        }),
+        this.prisma.payment.aggregate({
+          where: { paymentType: 'incoming', status: 'pending', dueDate: { lt: now } },
+          _sum: { amount: true },
         }),
       ]);
 
@@ -162,7 +167,8 @@ export class DashboardService {
       openOperationalFiles: openClaims + openEmergencyCases,
       pendingTasks,
       slaViolationCount,
-      overdueCollectionAmount: overdueAgg._sum.totalAmount ?? 0,
+      overdueCollectionAmount:
+        Number(overduePayAgg._sum.amount ?? 0) || Number(overdueAgg._sum.totalAmount ?? 0),
     };
     this.cache.set(cacheKey, result, DASHBOARD_OPS_TTL_SEC).catch(() => {});
     return result;
@@ -1616,7 +1622,7 @@ export class DashboardService {
 
   async getFinanceBottlenecks() {
     const cacheKey = this.cache.buildKey({
-      resource: 'dashboard:finance-bottlenecks',
+      resource: 'dashboard:finance-bottlenecks-v2',
       role: 'shared',
     });
     const cached = await this.cache.get<{
@@ -1629,31 +1635,70 @@ export class DashboardService {
       }>;
       totalPendingAmount: number;
       overdueInvoices: number;
+      pendingIncomingCount: number;
+      pendingOutgoingAmount: number;
+      pendingOutgoingCount: number;
+      pendingInvoiceRequestCount: number;
+      pendingInvoiceRequestAmount: number;
     }>(cacheKey);
     if (cached !== null) return cached;
 
-    const paymentFiles = await this.prisma.claimFile.findMany({
-      where: { currentStatus: { code: { in: ['payment_pending', 'finance_pending'] } } },
-      select: { id: true, fileNo: true, updatedAt: true, invoicedAmount: true, actualCostAmount: true, insuranceCompany: { select: { name: true } } },
-      orderBy: { updatedAt: 'asc' },
-      take: 20,
-    });
-
     const now = new Date();
-    const pendingPayments = paymentFiles.map((f) => ({
-      id: f.id, fileNo: f.fileNo,
-      amount: (f as any).invoicedAmount ?? (f as any).actualCostAmount ?? 0,
-      daysPending: Math.round((now.getTime() - new Date(f.updatedAt).getTime()) / (1000 * 60 * 60 * 24)),
-      insuranceCompany: f.insuranceCompany?.name ?? null,
-    }));
+    const incomingWhere = { paymentType: 'incoming', status: 'pending' } as const;
+    const [
+      incomingPending,
+      incomingAgg,
+      outgoingAgg,
+      overdueInvoices,
+      pendingRequests,
+    ] = await Promise.all([
+      this.prisma.payment.findMany({
+        where: incomingWhere,
+        select: {
+          id: true,
+          amount: true,
+          updatedAt: true,
+          claimFile: { select: { fileNo: true, insuranceCompany: { select: { name: true } } } },
+          emergencyCase: { select: { fileNo: true, caseNo: true } },
+        },
+        orderBy: { updatedAt: 'asc' },
+        take: 20,
+      }),
+      this.prisma.payment.aggregate({
+        where: incomingWhere,
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.payment.aggregate({
+        where: { paymentType: 'outgoing', status: 'pending' },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.invoice.count({ where: { status: 'overdue' } }),
+      this.prisma.invoiceRequest.aggregate({
+        where: { status: 'pending' },
+        _sum: { totalAmount: true },
+        _count: true,
+      }),
+    ]);
 
-    let overdueInvoices = 0;
-    try { overdueInvoices = await this.prisma.invoice.count({ where: { status: 'overdue' } }); } catch {}
+    const pendingPayments = incomingPending.map((p) => ({
+      id: p.id,
+      fileNo: p.claimFile?.fileNo ?? p.emergencyCase?.fileNo ?? p.emergencyCase?.caseNo ?? '—',
+      amount: p.amount || 0,
+      daysPending: Math.round((now.getTime() - new Date(p.updatedAt).getTime()) / (1000 * 60 * 60 * 24)),
+      insuranceCompany: p.claimFile?.insuranceCompany?.name ?? null,
+    }));
 
     const result = {
       pendingPayments,
-      totalPendingAmount: pendingPayments.reduce((s, p) => s + (p.amount || 0), 0),
+      totalPendingAmount: Number(incomingAgg._sum.amount ?? 0),
       overdueInvoices,
+      pendingIncomingCount: incomingAgg._count,
+      pendingOutgoingAmount: Number(outgoingAgg._sum.amount ?? 0),
+      pendingOutgoingCount: outgoingAgg._count,
+      pendingInvoiceRequestCount: pendingRequests._count,
+      pendingInvoiceRequestAmount: Number(pendingRequests._sum.totalAmount ?? 0),
     };
     this.cache.set(cacheKey, result, DASHBOARD_FINANCE_BOTTLENECKS_TTL_SEC).catch(() => {});
     return result;

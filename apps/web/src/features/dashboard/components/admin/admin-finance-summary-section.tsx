@@ -78,16 +78,16 @@ export function AdminFinanceSummarySection({
                 compact
                 icon={FileText}
                 label="Bekleyen Fatura"
-                value={formatCurrency(bottlenecks?.totalPendingAmount ?? 0)}
+                value={bottlenecks?.pendingInvoiceRequestCount ?? 0}
                 color="bg-amber-600"
                 subtext={
-                  overdueInvoices > 0
-                    ? `${overdueInvoices} fatura`
-                    : (bottlenecks?.pendingPayments?.length
-                        ? `${bottlenecks.pendingPayments.length} bekleyen`
-                        : 'Bekleyen yok')
+                  (bottlenecks?.pendingInvoiceRequestCount ?? 0) > 0
+                    ? formatCurrency(bottlenecks?.pendingInvoiceRequestAmount ?? 0)
+                    : overdueInvoices > 0
+                      ? `${overdueInvoices} geciken fatura`
+                      : 'Bekleyen talep yok'
                 }
-                href="/panel/finans/faturalar"
+                href="/panel/finans/faturalar?tab=talepler"
               />
               <KpiCard
                 compact

@@ -230,7 +230,7 @@ export class DashboardController {
       return { success: true, data: await this.dashboardService.getFinanceBottlenecks() };
     } catch (e) {
       this.logger.error('getFinanceBottlenecks başarısız, boş veri döndürüldü', e as Error);
-      return { success: true, data: { pendingPayments: [], totalPendingAmount: 0, overdueInvoices: 0 } };
+      return { success: true, data: { pendingPayments: [], totalPendingAmount: 0, overdueInvoices: 0, pendingIncomingCount: 0, pendingOutgoingAmount: 0, pendingOutgoingCount: 0, pendingInvoiceRequestCount: 0, pendingInvoiceRequestAmount: 0 } };
     }
   }
 

@@ -50,6 +50,7 @@ describe('dashboard data delivery lock', () => {
   it('finans KPI biri hata verse diğer kartları gizlemez', () => {
     const kpi = read('../components/finance/finance-kpi-group.tsx');
     assert.match(kpi, /plFailed && bottlenecksFailed/);
+    assert.match(kpi, /pendingIncomingCount/);
     assert.doesNotMatch(kpi, /const isError = plQuery\.isError/);
   });
 

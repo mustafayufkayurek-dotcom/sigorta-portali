@@ -30,7 +30,6 @@ import {
   readOpsListPageSize,
   type OpsListPageSize,
 } from '@/utils/ops-list-page-size';
-import { opsListRowNumber } from '@/utils/ops-list-sira';
 import { resolveClaimSupplierDisplayName } from '@/utils/claim-supplier-display';
 import { OperationRowActions } from '@/components/operasyon/OperationRowActions';
 import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
@@ -220,7 +219,6 @@ const TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'priority', label: 'Öncelik', defaultWidth: 100, minWidth: 80, defaultVisible: false },
   { id: 'revision', label: 'Revizyon', defaultWidth: 120, minWidth: 96, defaultVisible: false },
   { id: 'actions', label: 'İşlemler', defaultWidth: 188, minWidth: 160, pin: 'end', resizable: false },
-  { id: 'sira', label: 'Sıra', defaultWidth: 56, minWidth: 48, alwaysVisible: true, pin: 'end', resizable: false },
 ];
 
 export default function ClaimFilesPage() {
@@ -272,7 +270,7 @@ function ClaimFilesPageContent() {
     setLimit(readOpsListPageSize(OPS_LIST_PAGE_SIZE_KEYS.hasar, 20));
   }, []);
   /** v6: iş kuyruğu varsayılan sütun — para Sütunlar’da */
-  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v9', TABLE_COLUMNS);
+  const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v10', TABLE_COLUMNS);
   const rowActions = usePortalRowActionPrefs('row-actions:hasar-dosyalari-v1', OPS_ROW_ACTIONS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
@@ -794,7 +792,7 @@ function ClaimFilesPageContent() {
       ) : (
         <div className="table-container ops-queue-table">
           <div className={`grid gap-3 p-3 ${isFieldStaff ? '' : 'lg:hidden'}`}>
-            {visibleClaims.map((claim: any, rowIdx: number) => {
+            {visibleClaims.map((claim: any) => {
               if (isFieldStaff) {
                 const insuredName = fieldStaffInsuredName(claim);
                 const phone = fieldStaffPhone(claim);
@@ -975,10 +973,6 @@ function ClaimFilesPageContent() {
                       <p className="text-slate-400">Beklenen Kar</p>
                       <p className="mt-0.5 font-semibold text-slate-700">{rapor ? fmtAmount(rapor.grossProfit) : '—'}</p>
                     </div>
-                    <div>
-                      <p className="text-slate-400">Sıra</p>
-                      <p className="mt-0.5 font-semibold tabular-nums text-slate-700">{opsListRowNumber(page, limit, rowIdx)}</p>
-                    </div>
                   </div>
                   <div className="mt-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                     <OperationRowActions
@@ -1039,7 +1033,7 @@ function ClaimFilesPageContent() {
                 </tr>
               </thead>
               <tbody className="table-body">
-                {visibleClaims.map((claim: any, rowIdx: number) => {
+                {visibleClaims.map((claim: any) => {
                   const customer = resolveHasarOperationCustomer(claim.customer, claim.insuranceCompany);
                   const insuredName = resolveHasarInsuredName(claim);
                   const revCount = pendingRevisionMap[claim.id] ?? 0;
@@ -1208,11 +1202,6 @@ function ClaimFilesPageContent() {
                             }
                           />
                         </div>
-                      </PanelTableTd>
-                    ),
-                    sira: (
-                      <PanelTableTd key="sira" colId="sira" align="center" className="table-td-center tabular-nums font-semibold text-slate-700">
-                        {opsListRowNumber(page, limit, rowIdx)}
                       </PanelTableTd>
                     ),
                   };

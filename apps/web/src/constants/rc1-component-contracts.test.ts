@@ -48,15 +48,15 @@ assert(layoutSrc.includes("panel-sidebar-collapsed"), 'sidebar localStorage key'
 assert(layoutSrc.includes('PANEL_SIDEBAR_WIDTH_EXPANDED'), 'layout uses expanded const');
 assert(layoutSrc.includes('PANEL_SIDEBAR_WIDTH_COLLAPSED'), 'layout uses collapsed const');
 
-// Persistence: setItem on toggle
+assert(
+  layoutSrc.includes('[sidebarCollapsed, setSidebarCollapsed] = useState(true)'),
+  'sidebar default collapsed',
+);
 assert(
   layoutSrc.includes("localStorage.setItem('panel-sidebar-collapsed'"),
   'sidebar persistence setItem',
 );
-assert(
-  layoutSrc.includes("localStorage.getItem('panel-sidebar-collapsed')"),
-  'sidebar persistence getItem',
-);
+assert(layoutSrc.includes('data-testid="panel-sidebar-rail"'), 'sidebar rail 72');
 
 // --- Günün Akışı render / grid ---
 const flowSrc = readFileSync(
