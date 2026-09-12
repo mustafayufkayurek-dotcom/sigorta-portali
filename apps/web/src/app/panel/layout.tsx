@@ -1341,8 +1341,8 @@ function PanelSidebar({
             </button>
           ) : null}
         </div>
-        {hasChildren && (isExpanded || collapsed) ? (
-          <div className={collapsed ? 'space-y-0.5' : 'panel-sidebar-nav-children'}>
+        {hasChildren && isExpanded && !collapsed ? (
+          <div className="panel-sidebar-nav-children">
             {visibleChildren.map((child) => renderNavLink(child, true))}
           </div>
         ) : null}
@@ -1352,14 +1352,14 @@ function PanelSidebar({
 
   return (
     <div
-      className="relative z-30 hidden h-full shrink-0 self-stretch overflow-visible md:block"
+      className="relative z-30 hidden min-h-0 shrink-0 self-stretch overflow-visible md:block"
       style={{ width: 72, minWidth: 72, maxWidth: 72 }}
       data-testid="panel-sidebar-rail"
     >
     <aside
       className={`${
         collapsed
-          ? 'absolute left-0 top-0 z-40 h-full'
+          ? 'relative h-full min-h-0'
           : `fixed left-0 z-40 shadow-xl ${PANEL_SIDEBAR_STICKY_TOP} ${PANEL_SIDEBAR_HEIGHT}`
       } hidden flex-col overflow-hidden border-r border-[#E5E7EB] bg-white text-[#0F172A] shadow-sm transition-[width] duration-200 ease-in-out dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 md:flex ${
         collapsed ? PANEL_SIDEBAR_WIDTH_COLLAPSED : PANEL_SIDEBAR_WIDTH_EXPANDED
@@ -1371,7 +1371,7 @@ function PanelSidebar({
       }
     >
       {/* RC1: sidebar logo yok — marka topbar BrandLogo */}
-      <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pt-3 pb-3 [scrollbar-width:thin]">
+      <nav className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pt-3 pb-3 [scrollbar-width:thin] ${collapsed ? 'px-2' : 'px-4'}`}>
         <div className="flex flex-col">
           {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
         </div>

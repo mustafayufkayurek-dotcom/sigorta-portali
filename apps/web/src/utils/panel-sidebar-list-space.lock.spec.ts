@@ -19,6 +19,8 @@ describe('panel sol menü liste boşluğu LOCK', () => {
     assert.match(layout, /fixed left-0 z-40 shadow-xl/);
     assert.match(layout, /left-\[72px\]/);
     assert.match(layout, /aria-label="Menüyü kapat"/);
+    assert.match(layout, /panel-sidebar-nav-icon/);
+    assert.match(layout, /hasChildren && isExpanded && !collapsed/);
     assert.doesNotMatch(layout, /getItem\('panel-sidebar-collapsed'\) === 'true'/);
   });
 });
