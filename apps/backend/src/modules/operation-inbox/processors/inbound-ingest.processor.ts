@@ -195,6 +195,8 @@ export class InboundIngestProcessor {
     if (msg.hasAttachments) {
       await this.syncAttachments(token, mailboxAddress, created.id, msg.id);
     }
+    const receivedAt =
+      mapped.receivedAt instanceof Date ? mapped.receivedAt : new Date(String(mapped.receivedAt ?? ''));
     const receipt = classifyMailReceipt({
       subject: mapped.subject,
       fromAddress: mapped.fromAddress,
@@ -204,14 +206,14 @@ export class InboundIngestProcessor {
         conversationId: mapped.conversationId,
         subject: mapped.subject,
         kind: receipt,
-        receivedAt: mapped.receivedAt,
+        receivedAt,
       });
       if (receipt === 'failed') {
         await this.applyCrmMailWatch({
           kind: 'failed',
           fromAddress: mapped.fromAddress,
           subject: mapped.subject,
-          receivedAt: mapped.receivedAt,
+          receivedAt,
         });
       }
       await this.prisma.inboundMessage.update({
@@ -223,14 +225,14 @@ export class InboundIngestProcessor {
     await this.inboxService.applyOutboundCounterpartReply({
       conversationId: mapped.conversationId,
       subject: mapped.subject,
-      receivedAt: mapped.receivedAt,
+      receivedAt,
       excludeMessageId: created.id,
     });
     await this.applyCrmMailWatch({
       kind: 'replied',
       fromAddress: mapped.fromAddress,
       subject: mapped.subject,
-      receivedAt: mapped.receivedAt,
+      receivedAt,
     });
     await this.inboxService.attemptRuleBasedLink(created.id);
     await this.classifyQueue.add(

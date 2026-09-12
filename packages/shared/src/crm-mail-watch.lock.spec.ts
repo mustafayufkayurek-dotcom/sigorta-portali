@@ -96,5 +96,6 @@ describe('CRM tanıtım maili izi LOCK', () => {
       'utf8',
     );
     assert.match(ingest, /applyOutboundMailWatch/);
+    assert.match(ingest, /mapped\.receivedAt instanceof Date/);
   });
 });
