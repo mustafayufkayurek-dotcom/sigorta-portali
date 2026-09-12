@@ -1,15 +1,17 @@
 ---
-description: Canlı web v584 / backend v584 — sıradaki paketler karışmaz
+description: Canlı web v585 / backend v585 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
 # Canlı (12.09.2026)
 
-Canlı: web **v584** · backend **v584**. Geri alma: web **v583** / backend **v583**.
+Canlı: web **v585** · backend **v585**. Geri alma: web **v584** / backend **v584**.
 
 Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karışmaz. Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v585 (full):** Yazışma yanıtında geçmiş durur. Dosya mailinde dosya sorumlusuna görünür kopya. CRM tanıtımda gönderene görünür kopya; gönderildi / ulaşmadı / yanıt geldi. Sahte okundu yok.
 
 **v584 (full):** İhbar mailinde adres sokak · ilçe · il. Acil gelen kutuda sigortalı Kimde yazılmaz; dosya sorumlusu işlemi yapan ofis kullanıcısıdır; Test Kullanıcı otomatik yazılmaz. Eski açık dosya satırı kendiliğinden düzelmez.
 

@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (12 Eylül 2026 — web v584 / backend v584)
+## Canlı durum (12 Eylül 2026 — web v585 / backend v585)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v584-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v584-amd64` | canlı |
-| **Rollback** | Web **v583** / Backend **v583** | manifest `rollbackImages` |
-| **Etiket** | `v584-ihbar-adres-acil-kimde` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v585-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v585-amd64` | canlı |
+| **Rollback** | Web **v584** / Backend **v584** | manifest `rollbackImages` |
+| **Etiket** | `v585-yazisma-mail-izi` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v585 — Full (12 Eylül 2026) — Yazışma geçmişi; görünür kopya; CRM izi
+
+- Gelen kutu / dosya yanıtında yazışma geçmişi durur; logo yığını kırpılır
+- Dosya mailinde dosya sorumlusuna görünür kopya. CRM tanıtımda gönderene görünür kopya; Hasar kutusundan gider
+- Durum: Gönderildi / Ulaşmadı / Yanıt geldi. CRM’de sahte Okundu yok
+- Kilit: `yazisma-mail-izi-kilidi.mdc` + `smoke-outbound-mail.sh` / `smoke-acil-netlesen.sh`. Migrasyon yok. İK yok
+- Geri alma web **v584** / backend **v584**
 
 ### v584 — Full (12 Eylül 2026) — İhbar adresi; Acil gelen kutu isim
 

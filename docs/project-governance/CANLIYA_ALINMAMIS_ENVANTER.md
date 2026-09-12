@@ -1,7 +1,7 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
 **Tarih:** 28 Haziran 2026 (güncelleme 12.09.2026)  
-**Referans canlı sürüm:** Web **v584** · backend **v584**  
+**Referans canlı sürüm:** Web **v585** · backend **v585**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
@@ -9,7 +9,7 @@ Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertele
 **Sıradaki canlı paketler (Mustafa · 12.09.2026 — karışmaz):**
 1. İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj ayrı.
 
-v584 alındı (ihbar adresi + Acil gelen kutu isim). İK ayrı durur.
+v585 alındı (yazışma geçmişi, görünür kopya, CRM izi). İK ayrı durur.
 
 ---
 
