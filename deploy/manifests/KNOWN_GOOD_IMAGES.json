@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-09-12",
-  "label": "v588-sol-menu-hover",
-  "description": "Web v588: sol menü üzerine gelince yazı açılır; sayfanın üstüne çekmece binmez. Backend v586 durur. İK yok. Geri alma web v587 / backend v586.",
+  "updatedAt": "2026-09-13",
+  "label": "v589-sol-menu-tikla",
+  "description": "Web v589: sol menü tıklayınca açılır/kapanır; verinin üstünü kapatmaz. Backend v586 durur. İK yok. Geri alma web v588 / backend v586.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v586-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v588-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v589-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v587-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v588-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v586-amd64"
   },
   "mustPassSmokeRoutes": [

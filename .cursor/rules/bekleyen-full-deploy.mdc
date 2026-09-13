@@ -1,15 +1,23 @@
 ---
-description: Canlı web v588 / backend v586 — sıradaki paketler karışmaz
+description: Canlı web v589 / backend v586 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (12.09.2026)
+# Canlı (13.09.2026)
 
-Canlı: web **v588** · backend **v586**. Geri alma: web **v587** / backend **v586**.
+Canlı: web **v589** · backend **v586**. Geri alma: web **v588** / backend **v586**.
 
-Her alımda: kilit, disk, DB+uploads yedeği, uploads silinmez. Paketler karışmaz. Alım yalnız Mustafa «canlıya al» deyince.
+Her alımda üç önlem birlikte:
+
+1. **Güvenlik** — kaynak kapısı, disk, oturum kapısı, kilitli paketler karışmaz.
+2. **Tasarım** — liste/menü/Hasar kabuğu kilitleri; onaylı ekran geriye dönmez; canlıda geri alma görüntüsü durur.
+3. **Veri** — DB yedeği, uploads yedeği (canlı uploads silinmez), yedek gzip sağlam, rapor fotoğrafları yerinde.
+
+Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v589 (yalnız web):** Sol menü tıklayınca açılır/kapanır; verinin üstünü kapatmaz.
 
 **v588 (yalnız web):** Sol menü üzerine gelince yazı açılır; sayfanın üstüne çekmece binmez.
 

@@ -2,24 +2,30 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 12 Eylül 2026
+**Son güncelleme:** 13 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (12 Eylül 2026 — web v588 / backend v586)
+## Canlı durum (13 Eylül 2026 — web v589 / backend v586)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v588-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v589-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v586-amd64` | canlı |
-| **Rollback** | Web **v587** / Backend **v586** | manifest `rollbackImages` |
-| **Etiket** | `v588-sol-menu-hover` | |
+| **Rollback** | Web **v588** / Backend **v586** | manifest `rollbackImages` |
+| **Etiket** | `v589-sol-menu-tikla` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v589 — Web (13 Eylül 2026) — Menü tıklayınca açılır
+
+- Sol menü tıklayınca açılır / kapanır. Üzerine gelince açılmaz
+- Açıkken yazılar listenin üstünü kapatmaz; sayfa yana kayar. Kapalıyken simgeler durur
+- Backend **v586** durur. İK yok. Geri alma web **v588** / backend **v586**
 
 ### v588 — Web (12 Eylül 2026) — Menü üzerine gelince açılır
 
