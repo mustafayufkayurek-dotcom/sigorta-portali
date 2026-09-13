@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (13 Eylül 2026 — web v593 / backend v593)
+## Canlı durum (13 Eylül 2026 — web v594 / backend v594)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v593-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v593-amd64` | canlı |
-| **Rollback** | Web **v592** / Backend **v590** | manifest `rollbackImages` |
-| **Etiket** | `v593-kenar-mail-kopya` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v594-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v594-amd64` | canlı |
+| **Rollback** | Web **v593** / Backend **v593** | manifest `rollbackImages` |
+| **Etiket** | `v594-finans-kart-uyum` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v594 — Full (13 Eylül 2026) — Finans kartı liste ile uyumlu
+
+- Finans Merkezi kartı tıklanınca karttaki işin listesi açılır (tahsilat kuyruğu, dönemin tahsilatı, masraf, net sonuç, bekleyen fatura talebi)
+- Bekleyen tahsilat kuyruk tutarını basar; dönem bakiyesi kuyruk yerine yazılmaz
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, geri alma görüntüleri durur (web v593 / backend v593). Canlı uploads silinmedi
+- Geri alma web **v593** / backend **v593**
 
 ### v593 — Full (13 Eylül 2026) — Kenar; Platform Mail Kopyası; Türkçe okundu
 

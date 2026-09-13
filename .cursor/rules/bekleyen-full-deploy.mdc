@@ -1,11 +1,11 @@
 ---
-description: Canlı web v593 / backend v593 — sıradaki paketler karışmaz
+description: Canlı web v594 / backend v594 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
 # Canlı (13.09.2026)
 
-Canlı: web **v593** · backend **v593**. Geri alma: web **v592** / backend **v590**.
+Canlı: web **v594** · backend **v594**. Geri alma: web **v593** / backend **v593**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v594 (full):** Finans kartı tıklanınca karttaki işin listesi açılır. Bekleyen tahsilat kuyruk tutarını basar. Geri alma web v593 / backend v593.
 
 **v593 (full):** Sol menü kapalıyken sayfa kenarı dolar. Platform Mail Kopyası maili atana gider; asıl yazıyla aynı anda. Okundu Türkçe. Geri alma web v592 / backend v590.
 
