@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 import { SidebarNavTooltip } from '@/components/ui/SidebarNavTooltip';
 import { PANEL_BACKEND_VERSION, PANEL_WEB_VERSION } from '@/config/panel-build-info';
 import {
@@ -12,18 +12,15 @@ import { usePanelHelpDrawerOptional } from '@/contexts/PanelHelpDrawerContext';
 
 type PanelSidebarGuideFooterProps = PanelGuideContext & {
   collapsed: boolean;
-  onToggleCollapsed?: () => void;
 };
 
 /**
- * Sidebar alt — daralt + Yardım (aynı Help Drawer).
- * Sürüm satırı tüm panel rolleri / ekranlarda aynı konumda kalır.
+ * Sidebar alt — Yardım. Menü aç/kapa yalnız üst hamburger.
  */
 export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
-  const { collapsed, onToggleCollapsed, ...ctx } = props;
+  const { collapsed, ...ctx } = props;
   const guide = resolvePanelUserGuide(ctx);
   const helpDrawer = usePanelHelpDrawerOptional();
-  const toggleLabel = collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt';
 
   const openHelp = () => {
     helpDrawer?.setOpen(true);
@@ -61,33 +58,9 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
     </SidebarNavTooltip>
   );
 
-  const collapseControl = onToggleCollapsed ? (
-    <SidebarNavTooltip label={toggleLabel} collapsed={collapsed}>
-      <button
-        type="button"
-        onClick={onToggleCollapsed}
-        aria-label={toggleLabel}
-        title={toggleLabel}
-        className={`flex items-center rounded-lg border border-[#E5E7EB] bg-white text-[#64748B] shadow-sm transition hover:border-slate-300 hover:bg-[#F3F4F6] hover:text-[#0F172A] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 ${
-          collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-2.5 px-3 py-2.5 text-[15px] font-medium'
-        }`}
-      >
-        {collapsed ? (
-          <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
-        ) : (
-          <>
-            <ChevronLeft className="h-5 w-5 shrink-0" strokeWidth={1.75} />
-            <span>Menüyü Daralt</span>
-          </>
-        )}
-      </button>
-    </SidebarNavTooltip>
-  ) : null;
-
   return (
     <div className={`shrink-0 space-y-2 border-t border-[#E5E7EB] bg-white py-3 dark:border-slate-800 dark:bg-slate-950 ${collapsed ? 'px-2' : 'px-4'}`}>
       {helpControl}
-      {collapseControl}
       {versionLine}
     </div>
   );

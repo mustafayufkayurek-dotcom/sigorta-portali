@@ -152,17 +152,33 @@ export default function AnketSonuclariPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-3 px-3 py-2.5 md:px-4 md:py-3">
-      <div className="flex flex-col gap-1.5 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex min-w-0 items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] text-slate-500">
             Anketler <span className="mx-1 text-slate-300">&gt;</span> Anket Sonuçları
           </p>
-          <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-slate-900 md:text-[22px] md:leading-7">
+          <h1 className="mt-0.5 whitespace-nowrap text-xl font-semibold tracking-tight text-slate-900 md:text-[22px] md:leading-7">
             Anket Sonuçları
           </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+          <QuickDatePresets active={quickPreset} onSelect={applyQuickPreset} />
+          <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-700 shadow-sm">
+            <CalendarRange className="h-3.5 w-3.5 text-slate-400" />
+            <TrDateInput
+              value={filters.dateFrom}
+              onChange={(dateFrom) => setFilters((f) => ({ ...f, dateFrom }))}
+              className="w-[100px] border-0 bg-transparent p-0 text-xs focus:ring-0 md:text-sm"
+            />
+            <span className="text-slate-300">-</span>
+            <TrDateInput
+              value={filters.dateTo}
+              onChange={(dateTo) => setFilters((f) => ({ ...f, dateTo }))}
+              className="w-[100px] border-0 bg-transparent p-0 text-xs focus:ring-0 md:text-sm"
+            />
+            <span className="sr-only">{dateRangeLabel}</span>
+          </div>
           <button
             type="button"
             onClick={() => setMeetingOpen(true)}
@@ -206,25 +222,6 @@ export default function AnketSonuclariPage() {
       </div>
 
       <MonthlySurveyReportAskCard />
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <QuickDatePresets active={quickPreset} onSelect={applyQuickPreset} />
-        <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-700 shadow-sm">
-          <CalendarRange className="h-3.5 w-3.5 text-slate-400" />
-          <TrDateInput
-            value={filters.dateFrom}
-            onChange={(dateFrom) => setFilters((f) => ({ ...f, dateFrom }))}
-            className="w-[100px] border-0 bg-transparent p-0 text-xs focus:ring-0 md:text-sm"
-          />
-          <span className="text-slate-300">-</span>
-          <TrDateInput
-            value={filters.dateTo}
-            onChange={(dateTo) => setFilters((f) => ({ ...f, dateTo }))}
-            className="w-[100px] border-0 bg-transparent p-0 text-xs focus:ring-0 md:text-sm"
-          />
-          <span className="sr-only">{dateRangeLabel}</span>
-        </div>
-      </div>
 
       {error ? (
         <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">

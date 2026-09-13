@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/TableColumnPicker';
 import { FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
 import { formatTryAmount } from '@/utils/format-try-amount';
-import { HintIcon } from '@/components/ui/HintIcon';
 
 const KDV_LINE_COLUMNS: TableColumnDef[] = [
   { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 80 },
@@ -220,9 +219,8 @@ export default function KdvRaporuPage() {
       <FinansSubpageBreadcrumb current="KDV Raporu" />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="inline-flex items-center gap-1.5 text-xl font-bold text-slate-900 dark:text-white">
+          <h1 className="whitespace-nowrap text-xl font-bold text-slate-900 dark:text-white">
             KDV Raporu
-            <HintIcon text="Satış KDV eksi alış KDV’dir. Seçilen ayda fatura yoksa sıfır doğrudur; ayı Faturalar’dan bakın. Resmi beyanname değildir." />
           </h1>
           <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             {report?.period.label ?? 'Dönem seçin'}

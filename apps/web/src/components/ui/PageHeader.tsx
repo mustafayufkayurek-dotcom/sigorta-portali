@@ -19,7 +19,7 @@ export interface PageHeaderProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(
-  ({ title, subtitle, breadcrumbs, lastUpdated, action, actions, className, ...props }, ref) => {
+  ({ title, breadcrumbs, lastUpdated, action, actions, className, ...props }, ref) => {
     const resolvedActions = actions ?? action;
 
     return (
@@ -44,16 +44,15 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(
           ))}
         </nav>
       )}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <PageTitleWithHint
             title={title}
-            hint={subtitle}
-            titleClassName="text-2xl font-bold tracking-tight text-content-primary"
+            titleClassName="whitespace-nowrap text-2xl font-bold tracking-tight text-content-primary"
           />
           {lastUpdated && <p className="mt-1 text-xs text-content-tertiary">Son Güncelleme: {lastUpdated}</p>}
         </div>
-        {resolvedActions && <div className="flex shrink-0 flex-wrap items-center gap-2">{resolvedActions}</div>}
+        {resolvedActions && <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">{resolvedActions}</div>}
       </div>
     </div>
     );

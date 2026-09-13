@@ -114,12 +114,12 @@ export function AdminManagementKpiBand({ staggerIndex = 0 }: AdminManagementKpiB
       aria-label="Şirket Yönetimi"
       data-testid="management-kpi-band"
     >
-      <div className="mb-1.5 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xs font-semibold text-slate-700 dark:text-slate-200 sm:text-sm">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <h2 className="whitespace-nowrap text-xs font-semibold text-slate-700 dark:text-slate-200 sm:text-sm">
           Şirket Yönetimi
         </h2>
         <div
-          className="inline-flex max-w-full min-w-0 overflow-x-auto rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/80 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="ml-auto inline-flex max-w-full min-w-0 overflow-x-auto rounded-md border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/80 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="tablist"
           aria-label="Yönetim Dönemi"
         >

@@ -1,5 +1,5 @@
 /**
- * Başlık açıklaması bilgi ikonunda durur.
+ * Başlık yanında i yok. Dönem tuşları sağda, başlık tek satır.
  * Çalıştır: node --experimental-strip-types --test apps/web/src/components/ui/title-hint.lock.spec.ts
  */
 import assert from 'node:assert/strict';
@@ -25,19 +25,17 @@ const acilList = readFileSync(join(here, '../../app/panel/operasyon/page.tsx'), 
 const tedarikciList = readFileSync(join(here, '../../app/panel/tedarikciler/page.tsx'), 'utf8');
 
 describe('başlık bilgi ikonu LOCK', () => {
-  it('bilgi ikonu durur; üzerine gelince metin okunur', () => {
+  it('i ikonu çizilmez', () => {
     assert.match(hint, /export function HintIcon/);
-    assert.match(hint, /group-hover:block/);
-    assert.match(hint, /text-brand-600/);
-    assert.match(hint, /strokeWidth=\{2\.75\}/);
-    assert.doesNotMatch(hint, /bg-slate-700/);
+    assert.match(hint, /return null/);
+    assert.doesNotMatch(hint, /group-hover:block/);
   });
 
-  it('Yönetim Paneli açıklaması başlık altında cümle değildir', () => {
-    assert.match(mgmtHeader, /HintIcon/);
-    assert.match(mgmtHeader, /Üstteki dönem tüm kartları ve tabloları değiştirir/);
-    assert.doesNotMatch(mgmtHeader, /Kurumsal finans, operasyon ve personel/);
-    assert.doesNotMatch(mgmtHeader, /tek ekranda izleyin/);
+  it('Yönetim Paneli tek satır; dönem sağda; i yok', () => {
+    assert.doesNotMatch(mgmtHeader, /HintIcon/);
+    assert.match(mgmtHeader, /whitespace-nowrap/);
+    assert.match(mgmtHeader, /ml-auto flex min-w-0 flex-wrap items-center justify-end/);
+    assert.doesNotMatch(mgmtHeader, /flex-col gap-3 lg:flex-row/);
   });
 
   it('liste başlığı başlığı tekrarlayan i metni taşımaz', () => {
@@ -48,10 +46,10 @@ describe('başlık bilgi ikonu LOCK', () => {
     assert.doesNotMatch(tedarikciList, /Kayıtlı tedarikçi ve alt yüklenici listesi/);
   });
 
-  it('sayfa ve kart başlıkları açıklamayı ikona alır', () => {
+  it('sayfa başlığı i ile açıklama basmaz', () => {
     assert.match(pageHeader, /PageTitleWithHint/);
-    assert.match(dashHeader, /HintIcon text=\{subtitle\}/);
+    assert.doesNotMatch(dashHeader, /HintIcon/);
     assert.doesNotMatch(dashHeader, /line-clamp-1/);
-    assert.match(widget, /HintIcon text=\{subtitle\}/);
+    assert.match(widget, /subtitle/);
   });
 });

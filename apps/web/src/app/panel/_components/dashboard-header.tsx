@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Activity, CalendarDays, ChevronRight } from 'lucide-react';
 import { ReactNode, useEffect, useState } from 'react';
-import { HintIcon } from '@/components/ui/HintIcon';
 import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
 
 interface DashboardHeaderProps {
@@ -24,7 +23,6 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({
   title = 'Operasyon Merkezi',
-  subtitle = '',
   actions,
   hideDefaultActions = false,
   showAcilAction = true,
@@ -71,12 +69,11 @@ export function DashboardHeader({
           </span>
         </nav>
       ) : null}
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:items-center">
-        <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="inline-flex items-center gap-1.5 text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
+            <h1 className="whitespace-nowrap text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">
               {title}
-              {subtitle ? <HintIcon text={subtitle} /> : null}
             </h1>
             {isManagement ? (
               <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
@@ -99,7 +96,7 @@ export function DashboardHeader({
             </span>
           </div>
         </div>
-        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+        <div className="ml-auto flex w-auto shrink-0 flex-row flex-wrap items-center justify-end gap-2 sm:gap-3">
           {actions}
           {!hideDefaultActions && (
             <>

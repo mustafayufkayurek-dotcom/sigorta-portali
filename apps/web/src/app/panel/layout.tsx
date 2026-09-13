@@ -72,8 +72,6 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   FileText,
   GitBranch,
@@ -311,7 +309,6 @@ interface PanelSidebarProps {
   pendingRevisionCount: number;
   allowedScreens: string[] | null;
   collapsed: boolean;
-  onToggleCollapsed: () => void;
   hidden?: boolean;
 }
 
@@ -466,7 +463,6 @@ interface NavbarProps {
   showAcilYardim: boolean;
   userGuide?: ReturnType<typeof resolvePanelUserGuide>;
   onToggleSidebar?: () => void;
-  sidebarCollapsed?: boolean;
 }
 
 function Navbar({
@@ -476,7 +472,7 @@ function Navbar({
   onNotifClick, relativeTime, notifTypeColor, notifTypeBorder, notifTypeIcon,
   allowedScreens, companyLogo: _companyLogo, companyName: _companyName,
   isFinance, isFieldStaff, showAcilYardim, userGuide,
-  onToggleSidebar, sidebarCollapsed = false,
+  onToggleSidebar,
 }: NavbarProps & { companyLogo: string | null; companyName: string }) {
   // Yetki kontrolü: DB izinleri varsa öncelikli, yoksa role-default
   const canSee = (path: string) =>
@@ -584,10 +580,10 @@ function Navbar({
           {onToggleSidebar ? (
             <button
               type="button"
+              data-testid="panel-sidebar-toggle"
               onClick={onToggleSidebar}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800"
-              title={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
-              aria-label={sidebarCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+              aria-label="Menü"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -1085,7 +1081,6 @@ function PanelSidebar({
   pendingRevisionCount,
   allowedScreens,
   collapsed,
-  onToggleCollapsed,
   hidden = false,
 }: PanelSidebarProps) {
   const [expandedGroupOverrides, setExpandedGroupOverrides] = useState<Record<string, boolean>>({});
@@ -1368,30 +1363,6 @@ function PanelSidebar({
           : { width: 260, minWidth: 260, maxWidth: 260 }
       }
     >
-      <div className={`shrink-0 border-b border-[#E5E7EB] dark:border-slate-800 ${collapsed ? 'px-2 py-2' : 'px-3 py-2'}`}>
-        <SidebarNavTooltip label={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'} collapsed={collapsed}>
-          <button
-            type="button"
-            data-testid="panel-sidebar-toggle"
-            onClick={onToggleCollapsed}
-            aria-label={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
-            title={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
-            className={`flex items-center rounded-lg border border-[#E5E7EB] bg-white text-[#64748B] shadow-sm transition hover:border-slate-300 hover:bg-[#F3F4F6] hover:text-[#0F172A] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 ${
-              collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-2.5 px-3 py-2 text-[15px] font-medium'
-            }`}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
-            ) : (
-              <>
-                <ChevronLeft className="h-5 w-5 shrink-0" strokeWidth={1.75} />
-                <span>Menüyü Daralt</span>
-              </>
-            )}
-          </button>
-        </SidebarNavTooltip>
-      </div>
-      {/* RC1: sidebar logo yok — marka topbar BrandLogo */}
       <nav className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pt-3 pb-3 [scrollbar-width:thin] ${collapsed ? 'px-2' : 'px-4'}`}>
         <div className="flex flex-col">
           {visibleMainLinks.map((link, index) => renderNavLink(link, false, index === 0))}
@@ -1407,7 +1378,6 @@ function PanelSidebar({
           isFieldStaff={isFieldStaff}
           isOfficeStaff={isOfficeStaff}
           collapsed={collapsed}
-          onToggleCollapsed={onToggleCollapsed}
         />
       </div>
     </aside>
@@ -1931,7 +1901,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     isFinance, isFieldStaff, showAcilYardim,
     userGuide,
     onToggleSidebar: toggleSidebarCollapsed,
-    sidebarCollapsed,
   };
 
   if (loading || !user) {
@@ -2002,7 +1971,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             pendingRevisionCount={operationBadgeCount}
             allowedScreens={allowedScreens}
             collapsed={sidebarCollapsed}
-            onToggleCollapsed={toggleSidebarCollapsed}
             hidden={mustChangePassword}
           />
           {/* overflow-x-clip: hidden/auto ara scrollport oluşturup sticky thead’i kırmaz (v329) */}

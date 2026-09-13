@@ -1,7 +1,6 @@
 'use client';
 
 import { Presentation } from 'lucide-react';
-import { HintIcon } from '@/components/ui/HintIcon';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   PERIOD_LABELS,
@@ -29,16 +28,12 @@ export function MgmtHeader({
   onOpenMeeting: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div className="min-w-0">
-        <h1 className="inline-flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-[#0F172A] md:text-[24px]">
-          Yönetim Paneli
-          <HintIcon text="Üstteki dönem tüm kartları ve tabloları değiştirir." />
-        </h1>
-      </div>
+    <div className="flex min-w-0 items-center justify-between gap-3">
+      <h1 className="shrink-0 whitespace-nowrap text-[22px] font-semibold tracking-tight text-[#0F172A] md:text-[24px]">
+        Yönetim Paneli
+      </h1>
 
-      <div className="flex w-full min-w-0 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5">
+      <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
         {PRESETS.map((preset) => {
           const active = activePreset === preset || (preset === 'ozel' && customOpen);
           return (
@@ -84,7 +79,6 @@ export function MgmtHeader({
           <Presentation className="h-3.5 w-3.5" />
           Yönetim Özeti
         </button>
-        </div>
       </div>
     </div>
   );

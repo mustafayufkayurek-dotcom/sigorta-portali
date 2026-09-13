@@ -234,10 +234,10 @@
 
 /* Sayfa Header */
 .page-header {
-  @apply mb-5 flex flex-col items-stretch gap-3 sm:mb-7 sm:flex-row sm:items-start sm:justify-between sm:gap-4;
+  @apply mb-5 flex flex-row items-center justify-between gap-3 sm:mb-7;
 }
 .page-header-actions {
-  @apply flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center;
+  @apply ml-auto flex shrink-0 flex-row flex-wrap items-center justify-end gap-2;
 }
 .page-header-icon {
   @apply w-10 h-10 rounded-xl bg-brand-600/10 flex items-center justify-center
@@ -248,7 +248,7 @@
          text-emerald-600 flex-shrink-0;
 }
 .page-title {
-  @apply text-xl font-bold text-slate-900 tracking-tight;
+  @apply whitespace-nowrap text-xl font-bold text-slate-900 tracking-tight;
 }
 .page-subtitle {
   @apply text-sm text-slate-400 mt-0.5;

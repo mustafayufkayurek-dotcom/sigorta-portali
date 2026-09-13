@@ -17,8 +17,9 @@ describe('panel sol menü liste boşluğu LOCK', () => {
     assert.match(layout, /data-testid="panel-sidebar-rail"/);
     assert.match(layout, /onToggleSidebar/);
     assert.match(layout, /data-testid="panel-sidebar-toggle"/);
-    assert.match(layout, /Menüyü Genişlet/);
-    assert.match(layout, /Menüyü Daralt/);
+    assert.match(layout, /aria-label="Menü"/);
+    assert.doesNotMatch(layout, /Menüyü Genişlet/);
+    assert.doesNotMatch(layout, /Menüyü Daralt/);
     assert.doesNotMatch(layout, /Anket Sonuçları', href: '\/panel\/anketler\/sonuclar'/);
     assert.match(layout, /panel-sidebar-nav-icon/);
     assert.match(layout, /hasChildren && isExpanded && !collapsed/);
