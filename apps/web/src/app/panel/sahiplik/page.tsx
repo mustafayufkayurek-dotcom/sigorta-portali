@@ -2,7 +2,6 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { useApiQuery } from '@/hooks/useApi';
-import { HintIcon } from '@/components/ui/HintIcon';
 import {
   PanelTableColumnPicker,
   PanelTableTd,
@@ -145,9 +144,8 @@ export default function OwnershipPage() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="inline-flex items-center gap-1.5 text-2xl font-bold text-slate-800">
+        <h2 className="text-2xl font-bold text-slate-800">
           Dosya Sahipliği Paneli
-          <HintIcon text="Kişi bazlı dosya yükü ve bekleyen aksiyonlar." />
         </h2>
       </div>
 

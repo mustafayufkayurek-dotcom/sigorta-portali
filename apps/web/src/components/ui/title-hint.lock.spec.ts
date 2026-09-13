@@ -20,6 +20,9 @@ const widget = readFileSync(
   join(here, '../../features/dashboard/components/widget-frame/widget-frame.tsx'),
   'utf8',
 );
+const hasarList = readFileSync(join(here, '../../app/panel/hasar-dosyalari/page.tsx'), 'utf8');
+const acilList = readFileSync(join(here, '../../app/panel/operasyon/page.tsx'), 'utf8');
+const tedarikciList = readFileSync(join(here, '../../app/panel/tedarikciler/page.tsx'), 'utf8');
 
 describe('başlık bilgi ikonu LOCK', () => {
   it('bilgi ikonu durur; üzerine gelince metin okunur', () => {
@@ -32,8 +35,17 @@ describe('başlık bilgi ikonu LOCK', () => {
 
   it('Yönetim Paneli açıklaması başlık altında cümle değildir', () => {
     assert.match(mgmtHeader, /HintIcon/);
+    assert.match(mgmtHeader, /Üstteki dönem tüm kartları ve tabloları değiştirir/);
     assert.doesNotMatch(mgmtHeader, /Kurumsal finans, operasyon ve personel/);
     assert.doesNotMatch(mgmtHeader, /tek ekranda izleyin/);
+  });
+
+  it('liste başlığı başlığı tekrarlayan i metni taşımaz', () => {
+    assert.doesNotMatch(hasarList, /Hasar dosyası listesi/);
+    assert.doesNotMatch(hasarList, /Size atanan hasar işleri/);
+    assert.doesNotMatch(acilList, /Acil yardım dosyası listesi/);
+    assert.doesNotMatch(acilList, /Dosya durumu, sorumluluk ve gecikme süresi/);
+    assert.doesNotMatch(tedarikciList, /Kayıtlı tedarikçi ve alt yüklenici listesi/);
   });
 
   it('sayfa ve kart başlıkları açıklamayı ikona alır', () => {

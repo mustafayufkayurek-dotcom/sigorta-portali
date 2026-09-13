@@ -12,7 +12,6 @@ import { useToast } from '@/contexts/ToastContext';
 import { listSurveyCampaigns, type SurveyCampaign } from '@/utils/surveyApi';
 import { SURVEY_MONTH_END_CUSTOMER_NOTICE } from '@/utils/survey-form';
 import { TrDateInput } from '@/components/ui/TrDateInput';
-import { HintIcon } from '@/components/ui/HintIcon';
 import { KpiCards } from './_components/KpiCards';
 import { ManagerSummaryCard } from './_components/ManagerSummaryCard';
 import { ParticipationTrendChart } from './_components/ParticipationTrendChart';
@@ -158,9 +157,8 @@ export default function AnketSonuclariPage() {
           <p className="text-[11px] text-slate-500">
             Anketler <span className="mx-1 text-slate-300">&gt;</span> Anket Sonuçları
           </p>
-          <h1 className="mt-0.5 inline-flex items-center gap-1.5 text-xl font-semibold tracking-tight text-slate-900 md:text-[22px] md:leading-7">
+          <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-slate-900 md:text-[22px] md:leading-7">
             Anket Sonuçları
-            <HintIcon text="Yapılan anketlerin sonuçlarını görüntüleyin ve analiz edin." />
           </h1>
         </div>
 

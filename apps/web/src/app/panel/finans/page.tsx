@@ -41,7 +41,6 @@ export default function FinansDashboard() {
     <DashboardShell>
       <DashboardHeader
         title="Finans Merkezi"
-        subtitle="Gelir-gider, tahsilat ve fatura kuyruğu — ana iş akışınız"
         hideDefaultActions
         showAcilAction={false}
         actions={

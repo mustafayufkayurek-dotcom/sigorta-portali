@@ -2141,7 +2141,7 @@ export default function KullanicilarPage() {
           <div>
             <h2 className="page-title inline-flex items-center gap-1.5">
               Kullanıcılar
-              <HintIcon text="Sistem kullanıcılarını görüntüleyin ve yönetin. Arşivlenen kullanıcılar veri hafızası korunarak saklanır; Arşiv süzgecinden yeniden açılır." />
+              <HintIcon text="Arşivlenen kullanıcılar veri hafızası korunarak saklanır; Arşiv süzgecinden yeniden açılır." />
             </h2>
           </div>
         </div>

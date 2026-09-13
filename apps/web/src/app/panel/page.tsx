@@ -93,15 +93,9 @@ export default function PanelPage() {
           : 'Operasyon Merkezi';
 
   const subtitle =
-    layout.layoutId === 'field_staff'
-      ? 'Atanan Dosyalar ve Tamamlanan Tespitler'
-      : showOfficeLayout
-        ? scopeLabel
-          ? `${scopeLabel} kapsamındaki dosyalar, onay gecikmeleri ve bekleyen işler.`
-          : 'Hasar ve Acil Yardım dosyalarında bekleyen işler.'
-        : layout.layoutId === 'management'
-          ? 'Finans, operasyon ve personel performansının kurumsal özeti.'
-          : 'Açık dosya akışı, mali durum ve bekleyen işler';
+    showOfficeLayout && scopeLabel
+      ? `${scopeLabel} kapsamındaki dosyalar, onay gecikmeleri ve bekleyen işler.`
+      : '';
 
   const hideAcil = !layout.showAcilInFlow;
 

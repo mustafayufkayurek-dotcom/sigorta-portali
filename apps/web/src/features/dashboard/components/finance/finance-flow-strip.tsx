@@ -8,7 +8,6 @@ import {
   usePortfolioPL,
 } from '../../hooks/use-dashboard-data';
 import { formatCurrency } from '../../utils/formatters';
-import { HintIcon } from '@/components/ui/HintIcon';
 
 type FlowItem = {
   title: string;
@@ -91,9 +90,8 @@ export function FinanceFlowStrip({ year, month }: FinanceFlowStripProps) {
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="inline-flex items-center gap-1.5 text-base font-semibold text-slate-950 dark:text-white">
+          <h2 className="text-base font-semibold text-slate-950 dark:text-white">
             Finans Akışı
-            <HintIcon text="Tahsilat, fatura, masraf ve sabit gider hareketlerini tek sırada izleyin." />
           </h2>
         </div>
         {isFetching && <span className="text-xs font-medium text-slate-400">Güncelleniyor</span>}

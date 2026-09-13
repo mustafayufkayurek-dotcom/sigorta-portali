@@ -24,7 +24,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({
   title = 'Operasyon Merkezi',
-  subtitle = 'Açık dosya akışı, mali durum ve bekleyen işler',
+  subtitle = '',
   actions,
   hideDefaultActions = false,
   showAcilAction = true,

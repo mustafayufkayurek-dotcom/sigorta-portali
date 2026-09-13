@@ -9,7 +9,6 @@ import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { TrDateInput } from '@/components/ui/TrDateInput';
-import { HintIcon } from '@/components/ui/HintIcon';
 import {
   PanelTableColumnPicker,
   PanelListToolbarPickers,
@@ -491,15 +490,8 @@ function ClaimFilesPageContent() {
             </svg>
           </div>
           <div>
-            <h2 className="inline-flex items-center gap-1.5 page-title">
+            <h2 className="page-title">
               {isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}
-              <HintIcon
-                text={
-                  isFieldStaff
-                    ? 'Size atanan hasar işleri.'
-                    : 'Hasar dosyası listesi.'
-                }
-              />
             </h2>
             {!loading && (
               <p className="page-subtitle">

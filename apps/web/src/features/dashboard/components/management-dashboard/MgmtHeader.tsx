@@ -33,7 +33,7 @@ export function MgmtHeader({
       <div className="min-w-0">
         <h1 className="inline-flex items-center gap-1.5 text-[22px] font-semibold tracking-tight text-[#0F172A] md:text-[24px]">
           Yönetim Paneli
-          <HintIcon text="Finans, operasyon ve personel performansının kurumsal özeti." />
+          <HintIcon text="Üstteki dönem tüm kartları ve tabloları değiştirir." />
         </h1>
       </div>
 

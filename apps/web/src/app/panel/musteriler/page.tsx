@@ -1969,7 +1969,7 @@ export default function MusterilerPage() {
                   ? 'Eksper firması kayıtları ve hasar ihbar cari hesapları.'
                   : subTypeFilter === 'asistan_firmasi'
                     ? 'Asistans müşteri ve görüşme kartları. Operasyon seçimi müşteri kartındandır.'
-                    : 'Bireysel ve kurumsal müşteri kayıtları.'
+                    : ''
               }
             />
             </div>

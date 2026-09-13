@@ -13,7 +13,6 @@ import {
   FolderOpen,
   Hourglass,
 } from 'lucide-react';
-import { HintIcon } from '@/components/ui/HintIcon';
 import { EmergencyCase } from '@/utils/emergencyApi';
 import { asList } from '@/utils/emergency-list-unwrap';
 import { apiClient } from '@/lib/api-client';
@@ -946,9 +945,8 @@ function OperasyonPageContent() {
           <div>
             {isAcilListMode ? (
               <>
-                <h2 className="inline-flex items-center gap-1.5 page-title">
+                <h2 className="page-title">
                   Acil Yardım Dosyaları
-                  <HintIcon text="Acil yardım dosyası listesi." />
                 </h2>
                 {!isLoading && (
                   <p className="page-subtitle">
@@ -980,9 +978,8 @@ function OperasyonPageContent() {
               </>
             ) : (
               <>
-                <h2 className="inline-flex items-center gap-1.5 page-title">
+                <h2 className="page-title">
                   Dosya Özeti
-                  <HintIcon text="Dosya durumu, sorumluluk ve gecikme süresi." />
                 </h2>
               </>
             )}

@@ -8,10 +8,7 @@ export default function GuvenlikPage() {
     <div className="min-w-0 space-y-4 overflow-x-hidden">
       <div className="page-header">
         <div className="min-w-0">
-          <PageTitleWithHint
-            title="Güvenlik"
-            hint="Erişim kayıtları ve güvenlik kontrolleri."
-          />
+          <PageTitleWithHint title="Güvenlik" />
         </div>
       </div>
       <div className="flex flex-col gap-2">
