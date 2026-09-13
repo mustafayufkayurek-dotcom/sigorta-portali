@@ -1,11 +1,11 @@
 ---
-description: Canlı web v590 / backend v590 — sıradaki paketler karışmaz
+description: Canlı web v591 / backend v590 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
 # Canlı (13.09.2026)
 
-Canlı: web **v590** · backend **v590**. Geri alma: web **v589** / backend **v586**.
+Canlı: web **v591** · backend **v590**. Geri alma: web **v590** / backend **v586**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v591 (yalnız web):** Başlık yanındaki i yalnız konu kuralı varsa durur. «Hasar dosyası listesi» gibi tekrar kalktı.
 
 **v590 (full):** İK personel kadrosu açık. Menü tuşu, i açıklama, liste 10, Anketler tek tık.
 

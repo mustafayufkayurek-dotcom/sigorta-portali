@@ -1,12 +1,12 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
 **Tarih:** 28 Haziran 2026 (güncelleme 13.09.2026)  
-**Referans canlı sürüm:** Web **v590** · backend **v590**  
+**Referans canlı sürüm:** Web **v591** · backend **v590**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
-v590 alındı (İK + menü tuşu + i açıklama + liste 10). Sıradaki paket Mustafa yazar.
+v591 alındı (boş başlık i kalktı). Sıradaki paket Mustafa yazar.
 
 ---
 
@@ -34,7 +34,7 @@ v590 alındı (İK + menü tuşu + i açıklama + liste 10). Sıradaki paket Mus
 | B8 | **Liste Sıra sütunu** | Mustafa 26.08.2026 | v541. Hasar ve Acil birikim listesinin son sütunu. |
 | B9 | **Test Notları kaldırıldı** | Mustafa 26.08.2026 | v541. Menü, Ayarlar ve yetkiden kalktı; eski adres panele gider. |
 | B11 | **Panel oturum kapısı** | Mustafa 06.09.2026 | Adres çubuğundan şifresiz panele girilmez. Kod + kilit hazır. Canlıya alınmadı. |
-| B12 | **Başlık bilgi ikonu** | Mustafa 06.09.2026 | Sayfa açıklaması başlık yanındaki bilgide. Amatör tanım yok. Canlıya alınmadı. |
+| B12 | **Başlık bilgi ikonu** | Mustafa 06.09.2026 | v590 alındı. v591: başlığı tekrarlayan boş i kalktı. |
 | B13 | **KDV raporu düzeltmesi** | Mustafa 06.09.2026 | Açılmazdı (`formatTryAmount`). Satış/alış, dönem, yerleşim. Canlıya alınmadı. |
 | B14 | **Finans liste görünümü** | Mustafa 06.09.2026 | Başlık kesilmez. İşlem gizle-göster talepler, tahsilat/ödeme, masraf, cari. Canlıya alınmadı. |
 | B15 | **Konut-Yangın yazımı** | Mustafa 06.09.2026 | Konu etiketi. Canlıya alınmadı. |

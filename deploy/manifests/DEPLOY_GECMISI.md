@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (13 Eylül 2026 — web v590 / backend v590)
+## Canlı durum (13 Eylül 2026 — web v591 / backend v590)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v590-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v591-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v590-amd64` | canlı |
-| **Rollback** | Web **v589** / Backend **v586** | manifest `rollbackImages` |
-| **Etiket** | `v590-ik-panel` | |
+| **Rollback** | Web **v590** / Backend **v586** | manifest `rollbackImages` |
+| **Etiket** | `v591-baslik-hint` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v591 — Web (13 Eylül 2026) — Boş başlık açıklaması kalktı
+
+- Başlık yanındaki i yalnız konu kuralı varsa durur
+- «Hasar dosyası listesi» gibi başlığı tekrarlayan metin kalktı
+- Backend **v590** durur. Geri alma web **v590** / backend **v586**
 
 ### v590 — Full (13 Eylül 2026) — İK ve panel düzeltmeleri
 
