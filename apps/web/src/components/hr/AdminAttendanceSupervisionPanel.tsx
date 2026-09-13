@@ -501,8 +501,11 @@ export function AdminAttendanceSupervisionPanel({
         {addOpen ? (
           <PersonelEklePanel
             open={addOpen}
-            userId={editUserId}
-            onClose={() => setAddOpen(false)}
+            initialUserId={editUserId}
+            onClose={() => {
+              setAddOpen(false);
+              setEditUserId(null);
+            }}
             onSaved={() => {
               setAddOpen(false);
               reload();
