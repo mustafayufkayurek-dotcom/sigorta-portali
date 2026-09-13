@@ -1,12 +1,12 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
 **Tarih:** 28 Haziran 2026 (güncelleme 13.09.2026)  
-**Referans canlı sürüm:** Web **v592** · backend **v590**  
+**Referans canlı sürüm:** Web **v593** · backend **v593**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
-v592 alındı (i kalktı, hamburger menü). Sıradaki paket Mustafa yazar.
+v593 alındı (kenar, Platform Mail Kopyası, Türkçe okundu). Sıradaki paket Mustafa yazar.
 
 ---
 

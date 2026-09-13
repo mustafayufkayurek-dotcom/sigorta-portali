@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (13 Eylül 2026 — web v592 / backend v590)
+## Canlı durum (13 Eylül 2026 — web v593 / backend v593)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v592-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v590-amd64` | canlı |
-| **Rollback** | Web **v591** / Backend **v586** | manifest `rollbackImages` |
-| **Etiket** | `v592-baslik-menu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v593-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v593-amd64` | canlı |
+| **Rollback** | Web **v592** / Backend **v590** | manifest `rollbackImages` |
+| **Etiket** | `v593-kenar-mail-kopya` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v593 — Full (13 Eylül 2026) — Kenar; Platform Mail Kopyası; Türkçe okundu
+
+- Sol menü kapalıyken sayfa kenarı dolar; kart ortadan kesilmez
+- Platform Mail Kopyası maili atana gider (finans / müdür / yönetici / dosya sorumlusu). Asıl yazı ile aynı gönderim; gitmezse kopya da gitmez
+- Okundu bilgisi gelir; İngilizce «was read on» Türkçe Okundu olur. Gönderim tarih-saat, kalın Karşı Taraf / kopya satırı
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, geri alma görüntüleri durur (web v592 / backend v590). Canlı uploads silinmedi
+- Geri alma web **v592** / backend **v590**
 
 ### v592 — Web (13 Eylül 2026) — i kalktı; hamburger menü
 

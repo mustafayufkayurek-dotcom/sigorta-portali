@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-13",
-  "label": "v592-baslik-menu",
-  "description": "Web v592: başlık i yok; dönem sağda; menü hamburger. Geri alma web v591 / backend v586.",
+  "label": "v593-kenar-mail-kopya",
+  "description": "Full v593: kenar doldurur; Platform Mail Kopyası maili atana, asıl yazıyla birlikte. Okundu Türkçe. Geri alma web v592 / backend v590.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v590-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v592-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v593-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v593-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v591-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v586-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v592-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v590-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
