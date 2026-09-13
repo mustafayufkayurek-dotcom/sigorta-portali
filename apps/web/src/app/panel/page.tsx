@@ -93,9 +93,11 @@ export default function PanelPage() {
           : 'Operasyon Merkezi';
 
   const subtitle =
-    showOfficeLayout && scopeLabel
-      ? `${scopeLabel} kapsamındaki dosyalar, onay gecikmeleri ve bekleyen işler.`
-      : '';
+    layout.layoutId === 'field_staff'
+      ? 'Atanan Dosyalar ve Tamamlanan Tespitler'
+      : showOfficeLayout && scopeLabel
+        ? `${scopeLabel} kapsamındaki dosyalar, onay gecikmeleri ve bekleyen işler.`
+        : '';
 
   const hideAcil = !layout.showAcilInFlow;
 
