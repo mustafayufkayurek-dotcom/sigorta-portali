@@ -58,7 +58,7 @@ export default function BankaHesaplariPage() {
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.banka, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.banka, 10),
   );
   const tableColumns = usePanelTableColumns('table-cols:finans-banka-hesaplari', BANK_ACCOUNT_TABLE_COLUMNS);
 

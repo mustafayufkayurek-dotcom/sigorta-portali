@@ -16,8 +16,10 @@ describe('panel sol menü liste boşluğu LOCK', () => {
     assert.match(layout, /\[sidebarCollapsed, setSidebarCollapsed\] = useState\(true\)/);
     assert.match(layout, /data-testid="panel-sidebar-rail"/);
     assert.match(layout, /onToggleSidebar/);
+    assert.match(layout, /data-testid="panel-sidebar-toggle"/);
     assert.match(layout, /Menüyü Genişlet/);
     assert.match(layout, /Menüyü Daralt/);
+    assert.doesNotMatch(layout, /Anket Sonuçları', href: '\/panel\/anketler\/sonuclar'/);
     assert.match(layout, /panel-sidebar-nav-icon/);
     assert.match(layout, /hasChildren && isExpanded && !collapsed/);
     assert.match(layout, /relative h-full min-h-0 hidden flex-col/);
@@ -25,6 +27,6 @@ describe('panel sol menü liste boşluğu LOCK', () => {
     assert.doesNotMatch(layout, /fixed left-0 z-40/);
     assert.doesNotMatch(layout, /aria-label="Menüyü kapat"/);
     assert.doesNotMatch(layout, /bg-slate-900\/15/);
-    assert.doesNotMatch(layout, /getItem\('panel-sidebar-collapsed'\) === 'true'/);
+    assert.match(layout, /AttendancePanelGate/);
   });
 });

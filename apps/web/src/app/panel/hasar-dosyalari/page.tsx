@@ -267,7 +267,7 @@ function ClaimFilesPageContent() {
   const [toast, setToast] = useState<string | null>(null);
   const [limit, setLimit] = useState<OpsListPageSize>(20);
   useEffect(() => {
-    setLimit(readOpsListPageSize(OPS_LIST_PAGE_SIZE_KEYS.hasar, 20));
+    setLimit(readOpsListPageSize(OPS_LIST_PAGE_SIZE_KEYS.hasar, 10));
   }, []);
   /** v6: iş kuyruğu varsayılan sütun — para Sütunlar’da */
   const tableColumns = usePanelTableColumns('table-cols:hasar-dosyalari-v10', TABLE_COLUMNS);
@@ -1224,7 +1224,7 @@ function ClaimFilesPageContent() {
             <div className="flex flex-wrap items-center gap-3">
               <OpsListPageSizeSelect
                 value={limit}
-                fallback={20}
+                fallback={10}
                 storageKey={OPS_LIST_PAGE_SIZE_KEYS.hasar}
                 onChange={(next) => {
                   setLimit(next);

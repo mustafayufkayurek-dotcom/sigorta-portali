@@ -38,16 +38,19 @@ describe('finans-table-page lock', () => {
 
   it('sayfa dilimi taşan sayfayı sona çeker', () => {
     const rows = Array.from({ length: 45 }, (_, i) => i + 1);
-    const first = sliceFinansPage(rows, 1, 20);
-    assert.deepEqual(first.slice, rows.slice(0, 20));
+    const first = sliceFinansPage(rows, 1, 10);
+    assert.deepEqual(first.slice, rows.slice(0, 10));
     assert.equal(first.total, 45);
     assert.equal(first.safePage, 1);
-    const last = sliceFinansPage(rows, 9, 20);
-    assert.equal(last.safePage, 3);
+    const last = sliceFinansPage(rows, 9, 10);
+    assert.equal(last.safePage, 5);
     assert.deepEqual(last.slice, rows.slice(40, 45));
     const util = read('./finans-table-page.ts');
     assert.match(util, /function sliceFinansPage/);
     assert.match(util, /function finansPageNumbers/);
+    const pageSize = read('./ops-list-page-size.ts');
+    assert.match(pageSize, /\[10, 20, 50, 100, 150\]/);
+    assert.match(pageSize, /DEFAULT_OPS_LIST_PAGE_SIZE: OpsListPageSize = 10/);
   });
 
   it('sekiz finans sayfası pager ve Faturalar dar İşlemler kullanır', () => {
@@ -60,6 +63,7 @@ describe('finans-table-page lock', () => {
       '../app/panel/finans/banka-hesaplari/page.tsx',
       '../app/panel/finans/kdv-raporu/page.tsx',
       '../app/panel/finans/masraflar/page.tsx',
+      '../app/panel/finans/tahsilatlar/page.tsx',
       '../app/panel/raporlar/finansal/page.tsx',
     ];
     for (const rel of pages) {

@@ -255,7 +255,7 @@ export default function MasraflarPage() {
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.masraflar, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.masraflar, 10),
   );
 
   const sortedExpenses = useMemo(

@@ -17,10 +17,14 @@ export type HrEmployeeRowActionsProps = {
   companyGsm?: string | null;
   canEdit?: boolean;
   canOpenAttendance?: boolean;
+  canArchive?: boolean;
+  canPermanentDelete?: boolean;
   onOpenDossier: () => void;
   onOpenDocuments: () => void;
   onEdit?: () => void;
   onOpenAttendance?: () => void;
+  onArchive?: () => void;
+  onPermanentDelete?: () => void;
 };
 
 const iconBtnClass =
@@ -40,10 +44,14 @@ export function HrEmployeeRowActions({
   companyGsm,
   canEdit = false,
   canOpenAttendance = false,
+  canArchive = false,
+  canPermanentDelete = false,
   onOpenDossier,
   onOpenDocuments,
   onEdit,
   onOpenAttendance,
+  onArchive,
+  onPermanentDelete,
 }: HrEmployeeRowActionsProps) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -144,7 +152,19 @@ export function HrEmployeeRowActions({
                   onOpenAttendance?.();
                 })
               : null}
-            {!canEdit && !canOpenAttendance ? (
+            {canArchive
+              ? menuItem('Arşive Gönder', () => {
+                  setOpen(false);
+                  onArchive?.();
+                })
+              : null}
+            {canPermanentDelete
+              ? menuItem('Kalıcı Sil', () => {
+                  setOpen(false);
+                  onPermanentDelete?.();
+                })
+              : null}
+            {!canEdit && !canOpenAttendance && !canArchive && !canPermanentDelete ? (
               <p className="px-3 py-2 text-content-tertiary">Başka işlem yok</p>
             ) : null}
           </div>,

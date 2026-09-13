@@ -18,6 +18,7 @@ export const FINANS_TABLE_PAGE_KEYS = {
   banka: 'finans-table-page:banka-hesaplari',
   kdv: 'finans-table-page:kdv-raporu',
   masraflar: 'finans-table-page:masraflar',
+  tahsilatlar: 'finans-table-page:tahsilatlar',
   finansal: 'finans-table-page:rapor-finansal',
   finansalOverdue: 'finans-table-page:rapor-finansal-overdue',
   finansalTrend: 'finans-table-page:rapor-finansal-trend',

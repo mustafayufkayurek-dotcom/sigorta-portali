@@ -34,6 +34,20 @@ import {
 import { DAY_END_SUPERVISION_PREVIEW } from '@/components/hr/attendance-day-end.preview';
 import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
 
+function sessionHasPermission(code: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const u = JSON.parse(localStorage.getItem('user') ?? '{}') as {
+      permissions?: Array<string | { code?: string }>;
+      role?: { permissions?: Array<string | { code?: string }> };
+    };
+    const raw = u.permissions ?? u.role?.permissions ?? [];
+    return raw.some((p) => (typeof p === 'string' ? p : p.code) === code);
+  } catch {
+    return false;
+  }
+}
+
 function readSessionUserLabel(): { name: string; email: string } {
   if (typeof window === 'undefined') return { name: 'Personel', email: '' };
   try {
@@ -338,6 +352,8 @@ export default function PersonelOzlukPage() {
     canApproveByRole;
 
   const isAdminRole = roleCode === 'admin';
+  const canArchivePersonnel = designPreview || isAdminRole || sessionHasPermission('user.delete');
+  const canPermanentDeletePersonnel = designPreview || isAdminRole;
   const isFinanceRole =
     roleCode === 'finance' || roleCode === 'finans' || roleCode === 'accountant';
   const canSeePerformance =
@@ -917,6 +933,8 @@ export default function PersonelOzlukPage() {
                   <AdminAttendanceSupervisionPanel
                     preview={designPreview}
                     canAddEmployee={designPreview || isAdminRole || roleCode === 'manager'}
+                    canArchive={canArchivePersonnel}
+                    canPermanentDelete={canPermanentDeletePersonnel}
                     canManageDocuments={canManagePersonnelDocuments || designPreview}
                     onOpenEmployeeAttendance={(employee) => {
                       if (designPreview) return;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Banknote } from 'lucide-react';
 import { FinanceRowActions, printFinanceSlip, vendorEkstreHref } from '@/components/finance/FinanceRowActions';
 import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
 import { FINANS_TAHSILAT_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
@@ -35,6 +35,12 @@ import { formatTryAmount } from '@/utils/format-try-amount';
 import { HASAR_AVANS_YARI_USTU_ETIKET, isAvansYariUstuNote } from '@sigorta/shared';
 import { isOfficeStaffRole, usePanelRoleCode } from '@/hooks/usePanelRole';
 import { HintIcon } from '@/components/ui/HintIcon';
+import { FinansTablePager } from '@/components/finance/FinansTablePager';
+import {
+  FINANS_TABLE_PAGE_KEYS,
+  readFinansTablePageSize,
+  type FinansTablePageSize,
+} from '@/utils/finans-table-page';
 
 const PAYMENT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'paymentDate', label: 'Tarih / Vade', defaultWidth: 148, minWidth: 128 },
@@ -107,7 +113,11 @@ export default function TahsilatlarPage() {
   const isFileOwner = isOfficeStaffRole(roleCode);
   const claimFileId = searchParams.get('claimFileId') ?? '';
   const [myFilesOnly, setMyFilesOnly] = useState(false);
-  const [filters, setFilters] = useState({ method: '', page: 1, limit: 20 });
+  const [filters, setFilters] = useState({
+    method: '',
+    page: 1,
+    limit: readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.tahsilatlar, 10),
+  });
   const [summary, setSummary] = useState<Summary>({
     totalIncoming: 0, totalOutgoing: 0, pendingIncoming: 0, pendingIncomingCount: 0,
     pendingOutgoing: 0, dueOutgoing: 0, pendingOutgoingCount: 0, dueOutgoingCount: 0, pendingOnlineLinks: 0,
@@ -235,13 +245,12 @@ export default function TahsilatlarPage() {
       <div>
         <h2 className="inline-flex items-center gap-1.5 text-xl font-bold text-slate-900 dark:text-white">
           Tahsilatlar ve Ödemeler
-          <HintIcon text="Tedarikçi ödemesi ayrı sayfa değildir. Tedarikçi Ödeme Kuyruğu sekmesinde durur." />
+          <HintIcon text={
+            queue === 'payable'
+              ? 'Tedarikçi hakediş ve avans bu sekmede durur. Ayrı sayfa değildir.'
+              : 'Tedarikçi ödemesi ayrı sayfa değildir. Tedarikçi Ödeme Kuyruğu sekmesinde durur.'
+          } />
         </h2>
-        {queue === 'payable' ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Tedarikçi hakediş ve avans bu sekmede durur.
-          </p>
-        ) : null}
       </div>
 
       {/* Kompakt özet şeridi — tek satır, alacak/borç ayrımı */}
@@ -275,7 +284,7 @@ export default function TahsilatlarPage() {
           ))}
         </div>
         {isFileOwner ? (
-          <p className="text-xs text-slate-500">Dosya Sorumlusu — yalnızca kendi dosyalarının tedarikçi ödemeleri</p>
+          <HintIcon text="Dosya sorumlusu yalnız kendi dosyalarının tedarikçi ödemelerini görür." />
         ) : (
           <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
             <input
@@ -310,7 +319,7 @@ export default function TahsilatlarPage() {
           <option value="cash">Nakit</option>
         </select>
         {(search || filters.method) && (
-          <button type="button" onClick={() => { setSearch(''); setFilters({ method: '', page: 1, limit: 20 }); }} className="text-sm text-slate-500 underline">
+          <button type="button" onClick={() => { setSearch(''); setFilters({ method: '', page: 1, limit: filters.limit }); }} className="text-sm text-slate-500 underline">
             Temizle
           </button>
         )}
@@ -321,7 +330,28 @@ export default function TahsilatlarPage() {
       ) : error ? (
         <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{error}</div>
       ) : payments.length === 0 ? (
-        <EmptyState msg="Bu kuyrukta kayıt bulunmuyor." />
+        <EmptyState
+          title={
+            myFilesOnly || isFileOwner
+              ? 'Bu süzgeçte kayıt yok'
+              : queue === 'due'
+                ? 'Vadesi gelen ödeme yok'
+                : queue === 'collection'
+                  ? 'Tahsilat kuyruğu boş'
+                  : queue === 'payable'
+                    ? 'Tedarikçi ödeme kuyruğu boş'
+                    : queue === 'completed'
+                      ? 'Tamamlanan kayıt yok'
+                      : 'Bu kuyrukta kayıt yok'
+          }
+          hint={
+            myFilesOnly || isFileOwner
+              ? 'Yalnızca sizin dosyalarınıza bağlı tahsilat ve ödemeler burada durur.'
+              : queue === 'due'
+                ? 'Vadesi gelen tedarikçi ödemesi oluşunca bu sekmede görünür.'
+                : 'Kayıt gelince liste burada durur. Üstteki sekmelerden kuyruk değiştirebilirsiniz.'
+          }
+        />
       ) : (
         <TableColumnsProvider value={tableColumns}>
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
@@ -478,13 +508,14 @@ export default function TahsilatlarPage() {
                 </tbody>
               </table>
             </PanelTableScroll>
-            <div className="px-4 py-3 border-t flex justify-between items-center text-xs text-slate-400">
-              <span>{total} kayıt · sayfa {filters.page}</span>
-              <div className="flex gap-2">
-                <button type="button" disabled={filters.page <= 1} onClick={() => setFilters((p) => ({ ...p, page: p.page - 1 }))} className="px-3 py-1.5 border rounded-lg disabled:opacity-40">← Önceki</button>
-                <button type="button" disabled={payments.length < filters.limit} onClick={() => setFilters((p) => ({ ...p, page: p.page + 1 }))} className="px-3 py-1.5 border rounded-lg disabled:opacity-40">Sonraki →</button>
-              </div>
-            </div>
+            <FinansTablePager
+              page={filters.page}
+              pageSize={filters.limit as FinansTablePageSize}
+              total={total}
+              storageKey={FINANS_TABLE_PAGE_KEYS.tahsilatlar}
+              onPageChange={(page) => setFilters((p) => ({ ...p, page }))}
+              onPageSizeChange={(limit) => setFilters((p) => ({ ...p, page: 1, limit }))}
+            />
           </div>
         </TableColumnsProvider>
       )}
@@ -792,10 +823,16 @@ function TableSkeleton() {
   return <div className="bg-white dark:bg-slate-800 rounded-xl border animate-pulse h-64" />;
 }
 
-function EmptyState({ msg }: { msg: string }) {
+function EmptyState({ title, hint }: { title: string; hint: string }) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-dashed py-16 text-center text-sm text-slate-400">
-      {msg}
+    <div className="rounded-xl border border-slate-100 bg-white px-6 py-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-500 dark:bg-slate-900">
+        <Banknote className="h-6 w-6" strokeWidth={1.75} aria-hidden />
+      </div>
+      <p className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-slate-800 dark:text-white">
+        {title}
+        <HintIcon text={hint} />
+      </p>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { installAxiosAuthInterceptors } from '@/utils/setup-axios-auth';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { FinansOncelikliGorevModal } from '@/components/finance/FinansOncelikliGorevModal';
 import { WorkHoursPanelGate, type WorkHoursPanelGateHandle } from '@/components/hr/WorkHoursPanelGate';
+import { AttendancePanelGate } from '@/components/hr/AttendancePanelGate';
 import { NavigationGuardProvider } from '@/contexts/NavigationGuardContext';
 import { RightPanelDockHost } from '@/components/ui/right-panel-dock-host';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
@@ -71,6 +72,8 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   FileText,
   GitBranch,
@@ -363,7 +366,6 @@ function getPanelMainLinks({
               title: 'Anketler',
               href: '/panel/anketler/sonuclar',
               icon: MessageSquareText,
-              children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
             },
             { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList },
             { title: 'Yetkilendirme', href: '/panel/ayarlar/yetkilendirme', icon: KeyRound },
@@ -404,7 +406,6 @@ function getPanelMainLinks({
               title: 'Anketler',
               href: '/panel/anketler/sonuclar',
               icon: MessageSquareText,
-              children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
             },
             { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList },
           ]
@@ -431,7 +432,6 @@ function getPanelMainLinks({
             href: '/panel/anketler/sonuclar',
             icon: MessageSquareText,
             groupStart: true,
-            children: [{ title: 'Anket Sonuçları', href: '/panel/anketler/sonuclar' }],
           },
           { title: 'Ayarlar', href: '/panel/ayarlar', icon: Settings },
         ];
@@ -1368,6 +1368,29 @@ function PanelSidebar({
           : { width: 260, minWidth: 260, maxWidth: 260 }
       }
     >
+      <div className={`shrink-0 border-b border-[#E5E7EB] dark:border-slate-800 ${collapsed ? 'px-2 py-2' : 'px-3 py-2'}`}>
+        <SidebarNavTooltip label={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'} collapsed={collapsed}>
+          <button
+            type="button"
+            data-testid="panel-sidebar-toggle"
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+            title={collapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+            className={`flex items-center rounded-lg border border-[#E5E7EB] bg-white text-[#64748B] shadow-sm transition hover:border-slate-300 hover:bg-[#F3F4F6] hover:text-[#0F172A] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 ${
+              collapsed ? 'mx-auto h-9 w-9 justify-center' : 'w-full gap-2.5 px-3 py-2 text-[15px] font-medium'
+            }`}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
+            ) : (
+              <>
+                <ChevronLeft className="h-5 w-5 shrink-0" strokeWidth={1.75} />
+                <span>Menüyü Daralt</span>
+              </>
+            )}
+          </button>
+        </SidebarNavTooltip>
+      </div>
       {/* RC1: sidebar logo yok — marka topbar BrandLogo */}
       <nav className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pt-3 pb-3 [scrollbar-width:thin] ${collapsed ? 'px-2' : 'px-4'}`}>
         <div className="flex flex-col">
@@ -2083,6 +2106,16 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </Suspense>
         <WorkHoursPanelGate
           ref={workHoursGateRef}
+          enabled={
+            !loading
+            && authChecked
+            && Boolean(user)
+            && !isPortalUser
+            && !mustChangePassword
+            && !isFieldStaff
+          }
+        />
+        <AttendancePanelGate
           enabled={
             !loading
             && authChecked

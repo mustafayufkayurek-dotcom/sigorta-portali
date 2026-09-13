@@ -41,7 +41,7 @@ export function FinansTablePager({
           value={pageSize}
           aria-label="Sayfada gösterilecek kayıt sayısı"
           onChange={(e) => {
-            const next = parseFinansTablePageSize(e.target.value, 20);
+            const next = parseFinansTablePageSize(e.target.value, 10);
             writeFinansTablePageSize(storageKey, next);
             onPageSizeChange(next);
             onPageChange(1);

@@ -1,6 +1,8 @@
-export const OPS_LIST_PAGE_SIZE_OPTIONS = [20, 50, 100, 150] as const;
+export const OPS_LIST_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 150] as const;
 
 export type OpsListPageSize = (typeof OPS_LIST_PAGE_SIZE_OPTIONS)[number];
+
+export const DEFAULT_OPS_LIST_PAGE_SIZE: OpsListPageSize = 10;
 
 export const OPS_LIST_PAGE_SIZE_KEYS = {
   hasar: 'ops-list-page-size:hasar-dosyalari',

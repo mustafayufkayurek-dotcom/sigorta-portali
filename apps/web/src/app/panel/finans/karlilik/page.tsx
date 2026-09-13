@@ -51,7 +51,7 @@ export default function KarlilikPage() {
   const tableColumns = usePanelTableColumns('table-cols:finans-karlilik', PROFIT_TABLE_COLUMNS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.karlilik, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.karlilik, 10),
   );
 
   const groupLabel = groupBy === 'expert' ? 'Eksper' : groupBy === 'company' ? 'Sigorta Şirketi' : 'Dosya No';

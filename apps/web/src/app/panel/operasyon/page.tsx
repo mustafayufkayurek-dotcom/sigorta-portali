@@ -409,7 +409,7 @@ function OperasyonPageContent() {
   const [acilCreatedNotice, setAcilCreatedNotice] = useState('');
 
   useEffect(() => {
-    setAcilPageSize(readOpsListPageSize(OPS_LIST_PAGE_SIZE_KEYS.acil, 50));
+    setAcilPageSize(readOpsListPageSize(OPS_LIST_PAGE_SIZE_KEYS.acil, 10));
   }, []);
 
   useEffect(() => {
@@ -1713,7 +1713,7 @@ function OperasyonPageContent() {
             {isAcilListMode ? (
               <OpsListPageSizeSelect
                 value={acilPageSize}
-                fallback={50}
+                fallback={10}
                 storageKey={OPS_LIST_PAGE_SIZE_KEYS.acil}
                 onChange={(next) => {
                   setAcilPageSize(next);

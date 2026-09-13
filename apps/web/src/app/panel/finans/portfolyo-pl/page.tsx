@@ -66,7 +66,7 @@ export default function PortfolyoPLPage() {
   const tableColumns = usePanelTableColumns('table-cols:finans-portfolyo-pl', PORTFOLIO_PL_TABLE_COLUMNS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.portfolyo, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.portfolyo, 10),
   );
 
   const sortedRows = useMemo(

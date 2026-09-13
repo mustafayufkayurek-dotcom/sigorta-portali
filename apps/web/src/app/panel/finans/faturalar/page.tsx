@@ -128,7 +128,7 @@ function FaturalarPageContent() {
     invoiceType: '',
     status: '',
     page: 1,
-    limit: readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.faturalar, 20),
+    limit: readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.faturalar, 10),
   });
   const [sortKey, setSortKey] = useState<SortKey>('invoiceDate');
   const [sortDir, setSortDir] = useState<SortDir>('desc');

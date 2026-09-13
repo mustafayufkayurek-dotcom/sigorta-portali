@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowRight, ArrowUpRight, FileText } from 'lucide-react';
+import { HintIcon } from '@/components/ui/HintIcon';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useApiQuery } from '@/hooks/useApi';
@@ -52,6 +53,7 @@ export function FinanceQueuesStrip() {
   const payableCount = pay?.pendingOutgoingCount ?? 0;
   const payableAmount = pay?.pendingOutgoing ?? 0;
   const duePayableCount = pay?.dueOutgoingCount ?? 0;
+  const duePayableAmount = pay?.dueOutgoing ?? 0;
 
   return (
     <section
@@ -60,10 +62,10 @@ export function FinanceQueuesStrip() {
     >
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-950 dark:text-white">Finans İş Kuyrukları</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Kapanan dosyalardan gelen satış fatura talepleri ve biriken tedarikçi / avans ödemeleri.
-          </p>
+          <h2 className="inline-flex items-center gap-1.5 text-base font-semibold text-slate-950 dark:text-white">
+            Finans İş Kuyrukları
+            <HintIcon text="Kapanan dosyalardan gelen satış fatura talepleri ve biriken tedarikçi / avans ödemeleri." />
+          </h2>
         </div>
         {(invoiceQuery.isFetching || paymentsQuery.isFetching) && (
           <span className="text-xs font-medium text-slate-400">Güncelleniyor</span>
@@ -82,8 +84,10 @@ export function FinanceQueuesStrip() {
                 <FileText className="h-5 w-5" />
               </span>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Satış Fatura Talepleri</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Hasar, acil yardım ve özel müşteri kapanışları</p>
+                <h3 className="inline-flex items-center gap-1 text-sm font-semibold text-slate-900 dark:text-white">
+                  Satış Fatura Talepleri
+                  <HintIcon text="Hasar, acil yardım ve özel müşteri kapanışları." />
+                </h3>
               </div>
             </div>
             <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-500" />
@@ -118,8 +122,10 @@ export function FinanceQueuesStrip() {
                 <ArrowUpRight className="h-5 w-5" />
               </span>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Tedarikçi Ödeme Kuyruğu</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Hakediş, avans ve kapanan dosya ödemeleri</p>
+                <h3 className="inline-flex items-center gap-1 text-sm font-semibold text-slate-900 dark:text-white">
+                  Tedarikçi Ödeme Kuyruğu
+                  <HintIcon text="Hakediş, avans ve kapanan dosya ödemeleri." />
+                </h3>
               </div>
             </div>
             <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-rose-500" />
@@ -138,7 +144,7 @@ export function FinanceQueuesStrip() {
               <div>
                 <p className="text-xs text-slate-500">Vadesi Gelen</p>
                 <p className="text-xl font-semibold text-rose-700 dark:text-rose-300">{duePayableCount}</p>
-                <p className="text-xs text-slate-400">Acil ödeme takibi</p>
+                <p className="text-xs text-slate-400">{formatCurrency(duePayableAmount)}</p>
               </div>
             </div>
           )}

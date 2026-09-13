@@ -110,19 +110,19 @@ export default function FinansalRaporPage() {
   const [clientSortProfit, setClientSortProfit] = useState<ClientSortState>(null);
   const [overduePage, setOverduePage] = useState(1);
   const [overduePageSize, setOverduePageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalOverdue, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalOverdue, 10),
   );
   const [trendPage, setTrendPage] = useState(1);
   const [trendPageSize, setTrendPageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalTrend, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalTrend, 10),
   );
   const [collectionsPage, setCollectionsPage] = useState(1);
   const [collectionsPageSize, setCollectionsPageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalCollections, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalCollections, 10),
   );
   const [profitPage, setProfitPage] = useState(1);
   const [profitPageSize, setProfitPageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalProfit, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.finansalProfit, 10),
   );
 
   const sortedOverdueInvoices = useMemo(

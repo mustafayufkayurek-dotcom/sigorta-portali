@@ -43,6 +43,8 @@ import {
 import { apiClient } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
 import { isoToTrDateDisplay } from '@/utils/tr-date-input';
+import { HintIcon } from '@/components/ui/HintIcon';
+import { HintIcon } from '@/components/ui/HintIcon';
 
 type FilterKey = 'all' | 'ok' | 'missing' | 'leave';
 type AttendanceDetailKind = 'lateStart' | 'earlyLeave';
@@ -258,6 +260,8 @@ type Props = {
   preview?: boolean;
   canAddEmployee?: boolean;
   canManageDocuments?: boolean;
+  canArchive?: boolean;
+  canPermanentDelete?: boolean;
   onOpenEmployeeAttendance?: (employee: { id: string; fullName: string }) => void;
   /** Personel adına tıklanınca izin / işlem arşivi */
   onOpenEmployeeArchive?: (employee: { id: string; fullName: string }) => void;
@@ -270,6 +274,8 @@ export function AdminAttendanceSupervisionPanel({
   preview = false,
   canAddEmployee = true,
   canManageDocuments = true,
+  canArchive = false,
+  canPermanentDelete = false,
   onOpenEmployeeAttendance,
   onOpenEmployeeArchive,
 }: Props) {
@@ -475,26 +481,35 @@ export function AdminAttendanceSupervisionPanel({
   if (!preview && (loadError || !data)) {
     // API yoksa / hata: sıfır kadro — kırmızı hata yerine enterprise boş durum
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[
-            { label: 'Toplam Personel', value: 0 },
-            { label: 'İzinli', value: 0 },
-            { label: 'Devamı Onaylayan', value: 0 },
-            { label: 'Devamı Onaylamayan', value: 0 },
-          ].map((card) => (
-            <div
-              key={card.label}
-              className="rounded-xl border border-slate-100 bg-slate-50/70 p-4"
-            >
-              <p className="text-2xl font-bold tabular-nums text-content-primary">{card.value}</p>
-              <p className="mt-1 text-xs font-medium text-content-tertiary">{card.label}</p>
-            </div>
-          ))}
-        </div>
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-content-tertiary">
-          Kadro listesinde personel yok.
-        </div>
+      <div className="rounded-xl border border-slate-100 bg-white px-6 py-12 text-center shadow-sm">
+        <p className="text-sm font-semibold text-content-primary">Kadro henüz dolu değil</p>
+        <p className="mt-1 text-sm text-content-tertiary">
+          Personel kartı oluşunca özet burada durur. Personel Ekle ile kayıt açılır.
+        </p>
+        {canAddEmployee ? (
+          <button
+            type="button"
+            onClick={() => {
+              setEditUserId(null);
+              setAddOpen(true);
+            }}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            <UserPlus className="h-4 w-4" />
+            Personel Ekle
+          </button>
+        ) : null}
+        {addOpen ? (
+          <PersonelEklePanel
+            open={addOpen}
+            userId={editUserId}
+            onClose={() => setAddOpen(false)}
+            onSaved={() => {
+              setAddOpen(false);
+              reload();
+            }}
+          />
+        ) : null}
       </div>
     );
   }
@@ -563,6 +578,34 @@ export function AdminAttendanceSupervisionPanel({
   const openAdd = () => {
     setEditUserId(null);
     setAddOpen(true);
+  };
+
+  const archiveEmployee = (row: RosterEmployee) => {
+    if (preview || !row.userId) return;
+    if (!window.confirm(`${row.fullName} arşive gönderilsin mi? Giriş kapanır; kayıt durur.`)) return;
+    apiClient
+      .delete(`users/${row.userId}`)
+      .then(() => {
+        showToast('success', 'Personel arşive alındı.');
+        reload();
+      })
+      .catch((err: { message?: string }) => {
+        showToast('error', err?.message ?? 'Arşivlenemedi.');
+      });
+  };
+
+  const permanentlyDeleteEmployee = (row: RosterEmployee) => {
+    if (preview || !row.userId) return;
+    if (!window.confirm(`${row.fullName} kalıcı silinsin mi? Bu işlem geri alınamaz.`)) return;
+    apiClient
+      .delete(`users/${row.userId}/permanent`)
+      .then(() => {
+        showToast('success', 'Personel kalıcı silindi.');
+        reload();
+      })
+      .catch((err: { message?: string }) => {
+        showToast('error', err?.message ?? 'Silinemedi.');
+      });
   };
 
   const openEdit = (userId?: string) => {
@@ -687,6 +730,8 @@ export function AdminAttendanceSupervisionPanel({
               companyGsm={row.companyGsm}
               canEdit={canAddEmployee}
               canOpenAttendance={Boolean(onOpenEmployeeAttendance)}
+              canArchive={canArchive && Boolean(row.userId) && !preview}
+              canPermanentDelete={canPermanentDelete && Boolean(row.userId) && !preview}
               onOpenDossier={() => openDossier(row.id, 'summary')}
               onOpenDocuments={() => openDossier(row.id, 'documents')}
               onEdit={
@@ -701,6 +746,12 @@ export function AdminAttendanceSupervisionPanel({
                         id: row.id,
                         fullName: row.fullName,
                       })
+                  : undefined
+              }
+              onArchive={canArchive && row.userId ? () => archiveEmployee(row) : undefined}
+              onPermanentDelete={
+                canPermanentDelete && row.userId
+                  ? () => permanentlyDeleteEmployee(row)
                   : undefined
               }
             />
@@ -762,10 +813,17 @@ export function AdminAttendanceSupervisionPanel({
             const tone = TONE_CLASS[card.tone];
             const active = filter === card.key;
             return (
-              <button
+              <div
                 key={card.key}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => setFilter(card.key)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setFilter(card.key);
+                  }
+                }}
                 className={`rounded-xl border bg-white p-4 text-left transition-colors ${tone.wrap} ${
                   active ? 'ring-2 ring-brand-600 ring-offset-1' : ''
                 }`}
@@ -780,9 +838,11 @@ export function AdminAttendanceSupervisionPanel({
                     {card.value}
                   </p>
                 </div>
-                <p className="mt-3 text-sm font-semibold text-content-primary">{card.label}</p>
-                <p className="mt-0.5 text-xs text-content-tertiary">{card.hint}</p>
-              </button>
+                <p className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-content-primary">
+                  {card.label}
+                  <HintIcon text={card.hint} />
+                </p>
+              </div>
             );
           })}
         </div>

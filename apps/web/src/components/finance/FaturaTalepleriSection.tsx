@@ -168,7 +168,7 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange }: FaturaT
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.talepler, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.talepler, 10),
   );
   const tableColumns = usePanelTableColumns('table-cols:finans-fatura-talepleri-v4', INVOICE_REQUEST_TABLE_COLUMNS);
   const rowActions = usePortalRowActionPrefs('row-actions:finans-fatura-talepleri-v1', FINANS_FATURA_TALEP_ROW_ACTIONS);

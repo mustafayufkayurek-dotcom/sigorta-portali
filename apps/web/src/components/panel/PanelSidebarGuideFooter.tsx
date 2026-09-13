@@ -85,7 +85,7 @@ export function PanelSidebarGuideFooter(props: PanelSidebarGuideFooterProps) {
   ) : null;
 
   return (
-    <div className="shrink-0 space-y-2 border-t border-[#E5E7EB] bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+    <div className={`shrink-0 space-y-2 border-t border-[#E5E7EB] bg-white py-3 dark:border-slate-800 dark:bg-slate-950 ${collapsed ? 'px-2' : 'px-4'}`}>
       {helpControl}
       {collapseControl}
       {versionLine}

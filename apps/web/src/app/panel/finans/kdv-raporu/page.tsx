@@ -535,7 +535,7 @@ function LinesTable({
   );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.kdv, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.kdv, 10),
   );
   const paged = sliceFinansPage(lines, page, pageSize);
 

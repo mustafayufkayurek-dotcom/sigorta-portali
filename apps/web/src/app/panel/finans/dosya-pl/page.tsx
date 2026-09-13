@@ -43,7 +43,7 @@ export default function DosyaPLPage() {
   const tableColumns = usePanelTableColumns('table-cols:finans-dosya-pl', DOSYA_PL_COLUMNS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
-    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.dosyaPl, 20),
+    readFinansTablePageSize(FINANS_TABLE_PAGE_KEYS.dosyaPl, 10),
   );
 
   const load = useCallback(async () => {
