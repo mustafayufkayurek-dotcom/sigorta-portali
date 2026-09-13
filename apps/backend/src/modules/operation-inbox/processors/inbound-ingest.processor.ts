@@ -16,7 +16,12 @@ import {
   GraphMailSyncService,
   GraphMessage,
 } from '../graph/graph-mail-sync.service';
-import { classifyMailReceipt, matchCrmEmailWatchLog } from '@sigorta/shared';
+import {
+  buildMailReceiptDisplay,
+  classifyMailReceipt,
+  isReadableMailReceiptHtml,
+  matchCrmEmailWatchLog,
+} from '@sigorta/shared';
 import { OperationInboxService } from '../operation-inbox.service';
 import {
   CLASSIFY_JOB_MESSAGE,
@@ -158,6 +163,30 @@ export class InboundIngestProcessor {
     if (msg['@removed'] || !msg.id) return 'skipped';
 
     const mapped = this.mapGraphMessage(msg, mailbox);
+    const receipt = classifyMailReceipt({
+      subject: mapped.subject,
+      fromAddress: mapped.fromAddress,
+      bodyPreview: mapped.bodyPreview,
+      bodyText: mapped.bodyText,
+      bodyHtml: mapped.bodyHtml,
+    });
+    const receivedAt =
+      mapped.receivedAt instanceof Date ? mapped.receivedAt : new Date(String(mapped.receivedAt ?? ''));
+    if (receipt && !isReadableMailReceiptHtml(mapped.bodyHtml)) {
+      const display = buildMailReceiptDisplay({
+        kind: receipt,
+        originalSubject: mapped.subject,
+        seenAt: receivedAt,
+      });
+      mapped.subject = display.subject;
+      mapped.bodyPreview = display.preview;
+      mapped.bodyHtml = display.html;
+      mapped.bodyText = display.plain;
+      await this.graphSync.rewriteMessageDisplay(token, mailboxAddress, msg.id, {
+        subject: display.subject,
+        html: display.html,
+      });
+    }
     const existing = await this.prisma.inboundMessage.findUnique({
       where: { graphMessageId: msg.id },
     });
@@ -193,12 +222,6 @@ export class InboundIngestProcessor {
     if (msg.hasAttachments) {
       await this.syncAttachments(token, mailboxAddress, created.id, msg.id);
     }
-    const receivedAt =
-      mapped.receivedAt instanceof Date ? mapped.receivedAt : new Date(String(mapped.receivedAt ?? ''));
-    const receipt = classifyMailReceipt({
-      subject: mapped.subject,
-      fromAddress: mapped.fromAddress,
-    });
     if (receipt) {
       await this.inboxService.applyOutboundReceipt({
         conversationId: mapped.conversationId,

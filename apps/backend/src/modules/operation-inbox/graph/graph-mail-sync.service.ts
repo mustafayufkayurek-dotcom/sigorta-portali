@@ -208,4 +208,35 @@ export class GraphMailSyncService {
       return null;
     }
   }
+
+  async rewriteMessageDisplay(
+    token: string,
+    mailboxAddress: string,
+    graphMessageId: string,
+    input: { subject: string; html: string },
+  ): Promise<void> {
+    const encodedUser = encodeURIComponent(mailboxAddress);
+    const url = `${this.graphBase}/users/${encodedUser}/messages/${graphMessageId}`;
+    const res = await firstValueFrom(
+      this.http.patch(
+        url,
+        {
+          subject: input.subject,
+          body: { contentType: 'HTML', content: input.html },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          validateStatus: () => true,
+        },
+      ),
+    );
+    if (res.status >= 400) {
+      this.logger.warn(
+        `Okundu metni kutuda güncellenemedi (${graphMessageId}): HTTP ${res.status}`,
+      );
+    }
+  }
 }

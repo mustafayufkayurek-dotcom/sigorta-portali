@@ -35,7 +35,7 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
-import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution, resolveAcilInboxFileOwnerId, buildInboxReplyHtml, receiptOriginalSubject, buildFileOwnerCopyNotice, prependFileOwnerCopyNotice } from '@sigorta/shared';
+import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution, resolveAcilInboxFileOwnerId, buildInboxReplyHtml, receiptOriginalSubject, buildPlatformMailCopyNotice, canSendVisibleCopy, prependFileOwnerCopyNotice } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -222,7 +222,7 @@ export class OperationInboxService {
     return { candidates: result.candidates.slice(0, 5) };
   }
 
-  async getMessage(id: string) {
+  async getMessage(id: string, viewerUserId?: string) {
     const message = await this.prisma.inboundMessage.findUnique({
       where: { id },
       include: {
@@ -233,60 +233,39 @@ export class OperationInboxService {
       },
     });
     if (!message) throw new NotFoundException('Gelen mesaj bulunamadı');
-    const fileOwnerCopy = await this.resolveFileOwnerCopy({
-      emergencyCaseId: message.emergencyCaseId,
-      claimFileId: message.claimFileId,
-      inboxAssigneeId: message.assignedUserId,
+    const platformMailCopy = await this.resolveSenderMailCopy({
+      senderUserId: viewerUserId,
       excludeEmails: [message.fromAddress],
     });
-    return { ...this.enrichMessageListItem(message), fileOwnerCopy };
+    return { ...this.enrichMessageListItem(message), fileOwnerCopy: platformMailCopy, platformMailCopy };
   }
 
-  private async resolveFileOwnerCopy(input: {
-    emergencyCaseId?: string | null;
-    claimFileId?: string | null;
-    inboxAssigneeId?: string | null;
+  private async resolveSenderMailCopy(input: {
     senderUserId?: string | null;
     excludeEmails?: Array<string | null | undefined>;
-  }): Promise<{ email: string; name: string } | null> {
-    const blocked = new Set(
-      [SHARED_MAILBOXES.IHBAR, SHARED_MAILBOXES.HASAR, ...(input.excludeEmails ?? [])]
-        .map((value) => String(value ?? '').trim().toLowerCase())
-        .filter(Boolean),
-    );
-    const userIds: string[] = [];
-    if (input.emergencyCaseId) {
-      const row = await this.prisma.emergencyCase.findUnique({
-        where: { id: input.emergencyCaseId },
-        select: { assignedUserId: true },
-      });
-      if (row?.assignedUserId) userIds.push(row.assignedUserId);
+  }): Promise<{ email: string; name: string; roleCode: string | null } | null> {
+    const senderUserId = input.senderUserId?.trim();
+    if (!senderUserId) return null;
+    const user = await this.prisma.user.findUnique({
+      where: { id: senderUserId },
+      select: {
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: { select: { code: true } },
+      },
+    });
+    const email = user?.email?.trim() ?? '';
+    if (!canSendVisibleCopy(email, input.excludeEmails)) return null;
+    const folded = email.toLowerCase();
+    if (
+      folded === SHARED_MAILBOXES.IHBAR.toLowerCase() ||
+      folded === SHARED_MAILBOXES.HASAR.toLowerCase()
+    ) {
+      return null;
     }
-    if (input.claimFileId) {
-      const row = await this.prisma.claimFile.findUnique({
-        where: { id: input.claimFileId },
-        select: { assignedOfficeUserId: true },
-      });
-      if (row?.assignedOfficeUserId) userIds.push(row.assignedOfficeUserId);
-    }
-    if (input.inboxAssigneeId) userIds.push(input.inboxAssigneeId);
-    if (input.senderUserId) userIds.push(input.senderUserId);
-
-    const seen = new Set<string>();
-    for (const id of userIds) {
-      if (seen.has(id)) continue;
-      seen.add(id);
-      const user = await this.prisma.user.findUnique({
-        where: { id },
-        select: { firstName: true, lastName: true, email: true },
-      });
-      const email = user?.email?.trim() ?? '';
-      const folded = email.toLowerCase();
-      if (!folded.includes('@') || folded.endsWith('@example.com') || blocked.has(folded)) continue;
-      const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
-      return { email, name: name || email };
-    }
-    return null;
+    const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+    return { email, name: name || email, roleCode: user?.role?.code ?? null };
   }
 
   async listByClaimFile(claimFileId: string) {
@@ -556,10 +535,7 @@ export class OperationInboxService {
     const message = await this.getMessage(id);
     this.assertCanReply(message);
 
-    const fileOwnerCopy = await this.resolveFileOwnerCopy({
-      emergencyCaseId: message.emergencyCaseId,
-      claimFileId: message.claimFileId,
-      inboxAssigneeId: message.assignedUserId,
+    const senderCopy = await this.resolveSenderMailCopy({
       senderUserId: sentByUserId,
       excludeEmails: [message.fromAddress],
     });
@@ -573,13 +549,16 @@ export class OperationInboxService {
       bodyText: message.bodyText,
       bodyPreview: message.bodyPreview,
     });
-    if (fileOwnerCopy) {
+    const sentAt = new Date();
+    if (senderCopy) {
       replyHtml = prependFileOwnerCopyNotice(
         replyHtml,
-        buildFileOwnerCopyNotice({
+        buildPlatformMailCopyNotice({
           counterpartName: message.fromName,
           counterpartAddress: message.fromAddress,
-          owner: fileOwnerCopy,
+          sender: senderCopy,
+          roleCode: senderCopy.roleCode,
+          sentAt,
         }).html,
       );
     }
@@ -589,13 +568,13 @@ export class OperationInboxService {
       message.graphMessageId,
       replyHtml,
       dto.replyAll ?? false,
-      fileOwnerCopy ? [fileOwnerCopy] : undefined,
+      senderCopy ? [{ email: senderCopy.email, name: senderCopy.name }] : undefined,
     );
 
-    const sentAt = new Date().toISOString();
+    const sentAtIso = sentAt.toISOString();
     const bodyPreview = dto.body.trim().slice(0, 200);
     const aiExtractedJson = this.appendOutboundReplyAudit(message.aiExtractedJson, {
-      sentAt,
+      sentAt: sentAtIso,
       bodyPreview,
       replyAll: dto.replyAll ?? false,
       sentByUserId: sentByUserId ?? 'unknown',
@@ -652,9 +631,7 @@ export class OperationInboxService {
           orderBy: { receivedAt: 'desc' },
         })
       : null;
-    const fileOwnerCopy = await this.resolveFileOwnerCopy({
-      emergencyCaseId: dto.emergencyCaseId,
-      claimFileId: dto.claimFileId,
+    const senderCopy = await this.resolveSenderMailCopy({
       senderUserId: sentByUserId,
       excludeEmails: dto.to,
     });
@@ -670,14 +647,17 @@ export class OperationInboxService {
           bodyPreview: relatedInbound.bodyPreview,
         })
       : dto.body;
-    if (fileOwnerCopy) {
+    const sentAt = new Date();
+    if (senderCopy) {
       const counterpartAddress = relatedInbound?.fromAddress ?? dto.to[0] ?? null;
       outboundBody = prependFileOwnerCopyNotice(
         /<[a-z][\s\S]*>/i.test(outboundBody) ? outboundBody : `<div>${outboundBody.replace(/\n/g, '<br>\n')}</div>`,
-        buildFileOwnerCopyNotice({
+        buildPlatformMailCopyNotice({
           counterpartName: relatedInbound?.fromName ?? null,
           counterpartAddress,
-          owner: fileOwnerCopy,
+          sender: senderCopy,
+          roleCode: senderCopy.roleCode,
+          sentAt,
         }).html,
       );
     }
@@ -688,7 +668,7 @@ export class OperationInboxService {
       dto.subject,
       outboundBody,
       undefined,
-      fileOwnerCopy ? [fileOwnerCopy] : undefined,
+      senderCopy ? [{ email: senderCopy.email, name: senderCopy.name }] : undefined,
     );
 
     if (dto.claimFileId) {

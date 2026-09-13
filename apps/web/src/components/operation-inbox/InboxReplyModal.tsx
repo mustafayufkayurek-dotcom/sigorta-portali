@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { apiClient, ApiError } from '@/lib/api-client';
-import { buildInboxReplyQuotePreview, outboundMailSignal } from '@sigorta/shared';
+import { buildInboxReplyQuotePreview, outboundMailSignal, platformMailCopyLineLabel } from '@sigorta/shared';
 import { OutboundMailSignalStrip } from '@/components/operation-inbox/OutboundMailSignalStrip';
 
 interface ReplyMessageDetail {
@@ -17,7 +17,8 @@ interface ReplyMessageDetail {
   lastReplyReadAt?: string | null;
   lastReplyFailedAt?: string | null;
   lastCounterpartReplyAt?: string | null;
-  fileOwnerCopy?: { email: string; name: string } | null;
+  fileOwnerCopy?: { email: string; name: string; roleCode?: string | null } | null;
+  platformMailCopy?: { email: string; name: string; roleCode?: string | null } | null;
 }
 
 interface InboxReplyModalProps {
@@ -157,14 +158,18 @@ export function InboxReplyModal({
           Konu: {subject}
         </p>
 
-        {detail?.fileOwnerCopy && (
+        {(detail?.platformMailCopy || detail?.fileOwnerCopy) && (
           <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <p className="text-xs font-medium text-slate-700">Görünür kopya</p>
+            <p className="text-xs font-medium text-slate-700">Platform Mail Kopyası</p>
             <p className="text-sm text-slate-800 mt-0.5">
-              {detail.fileOwnerCopy.name} · {detail.fileOwnerCopy.email}
+              {platformMailCopyLineLabel(
+                (detail.platformMailCopy || detail.fileOwnerCopy)?.roleCode,
+              )}{' '}
+              · {(detail.platformMailCopy || detail.fileOwnerCopy)?.name} ·{' '}
+              {(detail.platformMailCopy || detail.fileOwnerCopy)?.email}
             </p>
             <p className="text-[11px] text-slate-500 mt-1">
-              Dosya sorumlusunun kendi kutusuna da gider. Gizli kopya yok; adresi mailde görünür.
+              Sizin kutunuza asıl yazı ile birlikte gider. Asıl yazı gitmezse kopya da gitmez. Gizli kopya yok.
             </p>
           </div>
         )}

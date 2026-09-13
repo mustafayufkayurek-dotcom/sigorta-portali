@@ -19,7 +19,7 @@ describe('CRM tanıtım maili izi LOCK', () => {
       counterpartAddress: 'iletisim@aday.example',
       sender: { name: 'Ayşe Ofis', email: 'ayse@meridyen-tr.com' },
     });
-    assert.match(notice.plain, /Gönderen kopyası: Ayşe Ofis \(ayse@meridyen-tr.com\)/);
+    assert.match(notice.plain, /Gönderen Kopyası: Ayşe Ofis \(ayse@meridyen-tr.com\)/);
     assert.match(notice.plain, /Alındı/);
     assert.doesNotMatch(notice.plain, /Dosya sorumlusu/);
   });

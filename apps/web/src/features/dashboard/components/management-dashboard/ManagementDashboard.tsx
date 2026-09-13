@@ -163,7 +163,7 @@ export function ManagementDashboard() {
   };
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden pb-6">
+    <div className="w-full min-w-0 space-y-4 overflow-x-hidden pb-6">
       <MgmtHeader
         activePreset={activePreset}
         range={range}

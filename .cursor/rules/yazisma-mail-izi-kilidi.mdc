@@ -7,30 +7,34 @@ alwaysApply: true
 
 **Kaynak (Mustafa · 12.09.2026):** Gelen kutu / dosya yanıtında geçmiş kayboluyordu. CRM tanıtım maili «gitti» deyip izlenmiyordu. Okundu bilgisine bağlanılmaz.
 
-**Temel cümle:** Yanıtta **yazışma geçmişi durur.** Dosya mailinde **dosya sorumlusuna görünür kopya** gider. CRM’de **gönderene görünür kopya** gider. Ekranda **Gönderildi / Ulaşmadı / Yanıt geldi.** Sahte okundu iş bitmiş sayılmaz.
+**Temel cümle:** Yanıtta **yazışma geçmişi durur.** Dosya / gelen kutu / CRM mailinde **Platform Mail Kopyası** gider; satır **maili atana** göredir. Kopya **asıl yazı ile aynı gönderimdedir.** Asıl yazı gitmezse kopya da gitmez. Ekranda **Gönderildi / Ulaşmadı / Yanıt geldi.** Sahte okundu iş bitmiş sayılmaz.
 
 ## Zorunlu
 
 1. Gelen kutu, Acil ve Hasar İletişim yanıtı `buildInboxReplyHtml` kullanır. Graph `comment` ile logolu HTML yapıştırılmaz.
 2. Yanıt kutusunda «Alıcıda yazışma geçmişi» durur. Logo / tekrar imza kırpılır.
-3. Dosya yazışması: görünür kopya (CC, gizli değil) **dosya sorumlusu**. Ortak `ihbar@` / `hasar@` kopya almaz. Notta «Dosya sorumlusu kopyası» yazar.
-4. CRM tanıtım: görünür kopya **gönderen** (yoksa ilişki sorumlusu). Notta «Gönderen kopyası» yazar; dosya sorumlusu metni yok. Kutusu **Hasar**.
-5. Gelen kutu / dosya rozetleri: Gönderildi, Okunmadı/Okundu (Outlook’a bağlı değil), **Yanıt geldi** kesin teyit. CRM rozetleri: Gönderildi, **Ulaşmadı**, **Yanıt geldi** — CRM’de Okundu yok.
-6. Adres geri çevirisi Hasar/İhbar kutusuna düşünce CRM kartı **Ulaşmadı** olur. Karşı taraf yazınca **Yanıt geldi**.
-7. Rapor / hoş geldin / kapanış bu kopya/iz paketine bağlanmaz (ayrı kilit).
-8. İkinci mail ekranı üretilmez; mevcut Yanıtla kutusu durur. `/dev` maketi yok.
+3. Yazışma kopyası: görünür kopya (CC, gizli değil) **maili atan** (finans, müdür, yönetici, dosya sorumlusu). Ortak `ihbar@` / `hasar@` kopya almaz. Başlık **Platform Mail Kopyası**. Satır kalın: **Karşı Taraf**, **Dosya Sorumlusu Kopyası** (veya Finans / Müdür / Yönetici / Gönderen Kopyası), **Gönderim Tarihi**.
+4. CRM tanıtım: aynı başlık; satır gönderene (veya görevine) göredir. Kutusu **Hasar**.
+5. Gelen kutu / dosya rozetleri: Gönderildi, **Okunmadı / Okundu**, **Yanıt geldi**. Graph `isReadReceiptRequested` açık. Gelen İngilizce «Read: / was read on» belgesi Türkçe **Okundu** metnine çevrilir. CRM rozetleri: Gönderildi, **Ulaşmadı**, **Yanıt geldi** — CRM’de Okundu yok. İş bitmiş sayılmaz.
+6. Kopya ayrı mail değildir. Graph `sendReply` / `sendMail` içinde `ccRecipients`. Asıl yazı gitmezse kopya düşmez.
+7. Adres geri çevirisi Hasar/İhbar kutusuna düşünce CRM kartı **Ulaşmadı** olur. Karşı taraf yazınca **Yanıt geldi**.
+8. Rapor / hoş geldin / kapanış bu kopya/iz paketine bağlanmaz (ayrı kilit).
+9. İkinci mail ekranı üretilmez; mevcut Yanıtla kutusu durur. `/dev` maketi yok.
 
 ## Yasak (açık onay yoksa)
 
 - Yanıtta geçmişi kesmek veya Graph `comment` ile logolu HTML geri koymak
 - Dosya kopyasını gizli kopyaya çevirmek
+- Kopyayı asıl yazıdan ayrı ikinci mail olarak göndermek
 - CRM’i İhbar kutusundan göndermek
 - CRM kartına sahte Okundu basmak
+- Okundu talebini kapatmak
+- İngilizce «Your message / was read on» belgesini olduğu gibi bırakmak
 - Bu kilidi «sadeleştirme» diye kaldırmak
 
 ## Durdurma
 
-Geçmiş yine kaybolursa, kopya düşmezse veya CRM Ulaşmadı/Yanıt geldi yazılmazsa → **dur, aynı gün geri koy**.
+Geçmiş yine kaybolursa, kopya asıl yazı gitmeden düşerse, okundu bilgisi gelmezse veya İngilizce okundu belgesi durursa → **dur, aynı gün geri koy**.
 
 Regresyon:
 

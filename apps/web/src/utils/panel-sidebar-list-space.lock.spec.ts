@@ -29,5 +29,14 @@ describe('panel sol menü liste boşluğu LOCK', () => {
     assert.doesNotMatch(layout, /aria-label="Menüyü kapat"/);
     assert.doesNotMatch(layout, /bg-slate-900\/15/);
     assert.match(layout, /AttendancePanelGate/);
+    assert.match(layout, /mx-auto min-w-0 w-full px-3 sm:px-4/);
+    assert.doesNotMatch(layout, /max-w-screen-2xl px-3 sm:px-4/);
+    const shell = readFileSync(join(here, '../app/panel/_components/dashboard-shell.tsx'), 'utf8');
+    assert.doesNotMatch(shell, /max-w-\[1600px\]/);
+    const mgmt = readFileSync(
+      join(here, '../features/dashboard/components/management-dashboard/ManagementDashboard.tsx'),
+      'utf8',
+    );
+    assert.doesNotMatch(mgmt, /max-w-\[1600px\]/);
   });
 });

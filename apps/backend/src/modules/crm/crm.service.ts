@@ -302,11 +302,14 @@ export class CrmService {
 
     const copy = await this.resolveSenderCopy(user, responsibleUserId, to);
     const counterpartName = await this.relationshipDisplayName(kind as RelationshipKind, id);
+    const sentAt = new Date();
     const notice = copy
       ? buildCrmSenderCopyNotice({
           counterpartName,
           counterpartAddress: to,
           sender: copy,
+          roleCode: copy.roleCode,
+          sentAt,
         })
       : null;
     const html = notice ? prependFileOwnerCopyNotice(htmlBody, notice.html) : htmlBody;
@@ -375,23 +378,27 @@ export class CrmService {
     user: any,
     responsibleUserId: string | null,
     to: string,
-  ): Promise<{ email: string; name: string } | null> {
-    const candidates: Array<{ email?: string | null; name: string }> = [
-      { email: user?.email, name: this.userName(user) },
-    ];
-    if (responsibleUserId && responsibleUserId !== user?.id) {
-      const responsible = await this.prisma.user.findUnique({
-        where: { id: responsibleUserId },
-        select: { firstName: true, lastName: true, email: true },
+  ): Promise<{ email: string; name: string; roleCode: string | null } | null> {
+    const candidateIds = [user?.id, responsibleUserId].filter(
+      (id, index, list): id is string => Boolean(id) && list.indexOf(id) === index,
+    );
+    for (const id of candidateIds) {
+      const row = await this.prisma.user.findUnique({
+        where: { id },
+        select: {
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: { select: { code: true } },
+        },
       });
-      if (responsible) {
-        candidates.push({ email: responsible.email, name: this.userName(responsible) });
-      }
-    }
-    for (const item of candidates) {
-      const email = String(item.email ?? '').trim();
+      const email = String(row?.email ?? '').trim();
       if (!canSendVisibleCopy(email, [to])) continue;
-      return { email, name: item.name || email };
+      return {
+        email,
+        name: this.userName(row) || email,
+        roleCode: row?.role?.code ?? null,
+      };
     }
     return null;
   }

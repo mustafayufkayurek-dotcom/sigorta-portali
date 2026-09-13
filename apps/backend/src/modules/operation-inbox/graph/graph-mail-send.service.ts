@@ -66,6 +66,7 @@ export class GraphMailSendService {
     const trimmed = body.trim();
     const contentType = this.isHtml(trimmed) ? 'HTML' : 'Text';
     // Geçmiş panelde eklenir. Graph comment alanı orijinal logolu HTML'i tekrar yapıştırır; kullanılmaz.
+    // Görünür kopya ayrı mail değildir; aynı Graph yanıtının ccRecipients alanıdır. Asıl yazı gitmezse kopya da gitmez.
     const payload = {
       message: {
         body: {
@@ -187,7 +188,7 @@ export class GraphMailSendService {
       ...(graphAttachments?.length ? { attachments: graphAttachments } : {}),
     };
 
-    // Mail.Send yeter. Taslak açılmaz.
+    // Mail.Send yeter. Taslak yok. Kopya aynı sendMail gövdesinin ccRecipients alanıdır; ayrı gönderim yok.
     const sendMailUrl = `${this.graphBase}/users/${encodedUser}/sendMail`;
     const sendMailRes = await firstValueFrom(
       this.http.post(

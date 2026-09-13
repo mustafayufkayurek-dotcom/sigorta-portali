@@ -184,7 +184,7 @@ assert(!insurancePortalSrc.includes('PortalCompactHeader'), 'sigorta no PortalCo
 assert(layoutSrc.includes('BrandLogo'), 'layout BrandLogo');
 assert(layoutSrc.includes("variant=\"topbar\""), 'BrandLogo topbar variant');
 assert(layoutSrc.includes("isExpert ? '/panel/eksper-portal'"), 'portal BrandLogo home link');
-assert(layoutSrc.includes('max-w-screen-2xl px-3 sm:px-4'), 'portal main padding matches admin');
+assert(layoutSrc.includes('w-full px-3 sm:px-4'), 'portal main padding matches admin');
 assert(!layoutSrc.includes('max-w-none px-2 sm:px-3'), 'no portal-only max-w-none padding');
 
 // --- Yardım tek drawer ---

@@ -142,8 +142,8 @@ export class OperationInboxController {
 
   @Get('messages/:id')
   @RequirePermissions('operation_inbox.view')
-  getMessage(@Param('id') id: string) {
-    return this.inboxService.getMessage(id);
+  getMessage(@Param('id') id: string, @Request() req: { user?: { id?: string } }) {
+    return this.inboxService.getMessage(id, req.user?.id);
   }
 
   @Post('messages/:id/archive')

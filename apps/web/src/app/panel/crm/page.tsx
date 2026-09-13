@@ -811,7 +811,7 @@ export default function CrmPage() {
       });
       await refreshCrmActivity(selected);
       await refreshOperationMemory(selected);
-      setActionSuccess('E-posta gönderildi. Görünür kopya sizin kutunuza düşer.');
+      setActionSuccess('E-posta gönderildi. Platform Mail Kopyası sizin kutunuza asıl yazı ile birlikte düşer.');
     } catch (err) {
       setActionError(apiErrorMessage(err, 'E-posta gönderilemedi'));
     } finally {
@@ -1234,7 +1234,7 @@ export default function CrmPage() {
                         </label>
                       </div>
                       <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] leading-5 text-slate-600">
-                        Görünür kopya gönderenin kutusuna düşer. Karşı taraf ve gönderen adresi yazının başında durur. Kesin teyit yanıt geldiğinde yazılır.
+                        Platform Mail Kopyası gönderenin kutusuna asıl yazı ile birlikte düşer. Asıl yazı gitmezse kopya da gitmez. Kesin teyit yanıt geldiğinde yazılır.
                       </p>
                       <label className="mt-2 grid gap-1 text-xs font-semibold text-slate-500">
                         E-posta İçeriği

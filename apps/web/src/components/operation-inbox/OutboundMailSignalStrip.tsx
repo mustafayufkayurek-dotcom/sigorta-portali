@@ -43,7 +43,12 @@ export function OutboundMailSignalStrip({ signal, compact = false }: Props) {
       </div>
       {!compact && signal === 'sent' && (
         <p className="text-[11px] text-slate-500 mt-1.5">
-          Kesin teyit: karşı tarafın Alındı yazması. Outlook okundu bilgisine bağlı değiliz.
+          Henüz okunmadı. Kesin teyit: karşı tarafın Alındı yazması.
+        </p>
+      )}
+      {!compact && signal === 'read' && (
+        <p className="text-[11px] text-emerald-800 mt-1.5">
+          Karşı taraf yazıyı gördü. İş bitmiş sayılmaz.
         </p>
       )}
       {!compact && signal === 'replied' && (
