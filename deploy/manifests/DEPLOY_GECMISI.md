@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (13 Eylül 2026 — web v589 / backend v586)
+## Canlı durum (13 Eylül 2026 — web v590 / backend v590)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v589-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v586-amd64` | canlı |
-| **Rollback** | Web **v588** / Backend **v586** | manifest `rollbackImages` |
-| **Etiket** | `v589-sol-menu-tikla` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v590-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v590-amd64` | canlı |
+| **Rollback** | Web **v589** / Backend **v586** | manifest `rollbackImages` |
+| **Etiket** | `v590-ik-panel` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v590 — Full (13 Eylül 2026) — İK ve panel düzeltmeleri
+
+- İK personel kadrosu açık (Personel Ekle, zimmet aynı kayıtta, puantaj kapısı)
+- Sol menü üstünde aç/kapa tuşu. Anketler tek tık. Liste 10’dan başlar
+- Açıklamalar başlıktaki i ikonunda. Tahsilat boş hali düzgün
+- Geri alma web **v589** / backend **v586**
 
 ### v589 — Web (13 Eylül 2026) — Menü tıklayınca açılır
 

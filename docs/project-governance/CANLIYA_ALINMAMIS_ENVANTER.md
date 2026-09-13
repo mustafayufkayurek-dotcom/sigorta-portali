@@ -1,15 +1,12 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
 **Tarih:** 28 Haziran 2026 (güncelleme 13.09.2026)  
-**Referans canlı sürüm:** Web **v589** · backend **v586**  
+**Referans canlı sürüm:** Web **v590** · backend **v590**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
-**Sıradaki canlı paketler (Mustafa · 12.09.2026 — karışmaz):**
-1. İK personel özlük (Personel Ekle + aynı kayıtta zimmet). Puantaj ayrı.
-
-v589 alındı (menü tıklayınca açılır). İK ayrı durur.
+v590 alındı (İK + menü tuşu + i açıklama + liste 10). Sıradaki paket Mustafa yazar.
 
 ---
 
@@ -30,7 +27,7 @@ v589 alındı (menü tıklayınca açılır). İK ayrı durur.
 | B1 | **D276 Finans UX olgunlaştırması** | ARCHIV envanter | Finans rotaları var; D276'daki özel UX ayrı paket |
 | B2 | **D278 MinIO canlıya alma** | ARCHIV | Hazır denmiş, deploy yok |
 | B3 | **D255 Sahip ekranları CRUD standardı** | ARCHIV | Tek tip şablon henüz kapanmadı |
-| B4 | **Personel / demirbaş pod tam entegrasyonu** | agreement-hr dalga | İK zimmet — v541’den **sonra**. Bu alıma karışmaz. |
+| B4 | **Personel / demirbaş pod tam entegrasyonu** | agreement-hr dalga | **v590 alındı** (personel kadrosu). Demirbaş pod ayrı kalabilir. |
 | B5 | **CRM tam kapsam** | Kurtarma Paketi 1 | Route var; "kısmen geri kazanıldı" — derinlik eksik olabilir |
 | B6 | **Hasar dijital onay WhatsApp** | Mustafa 26.08.2026 | **Sıradaki canlı paket (v541)** parçası. Kod + kilit hazır. Sunucu kopyası bekliyor. |
 | B7 | **Hasar / Acil ürün durum dili** | Mustafa 26.08.2026 | v541. Eski adlar (Eksper Atandı, Bütçe…) düşer. Dosya İptal Edildi. Acil: Hizmet Verildi, tespit yok. |
