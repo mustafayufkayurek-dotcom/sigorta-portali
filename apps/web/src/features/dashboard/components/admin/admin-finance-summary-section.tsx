@@ -72,7 +72,7 @@ export function AdminFinanceSummarySection({
                 label="Geciken Tahsilat"
                 value={formatCurrency(ops?.overdueCollectionAmount ?? 0)}
                 color="bg-rose-600"
-                href="/panel/finans/tahsilatlar?paymentType=incoming&status=pending"
+                href="/panel/finans/tahsilatlar?queue=collection"
               />
               <KpiCard
                 compact

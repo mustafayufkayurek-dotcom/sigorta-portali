@@ -10,6 +10,7 @@ import { API, authHeader } from '@/utils/api';
 import { formatCurrency } from '../../utils/formatters';
 import { unwrapApiData } from '@/utils/invoice-request-envelope';
 import { asInvoiceDashboardSummary, type InvoiceDashboardSummary } from '@/utils/invoiceRequestApi';
+import { FINANS_KART_YOL } from '@/utils/finans-merkez-kart';
 
 type PaymentSummary = {
   pendingOutgoing?: number;
@@ -74,7 +75,7 @@ export function FinanceQueuesStrip() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Link
-          href="/panel/finans/faturalar?tab=talepler"
+          href={FINANS_KART_YOL.faturaTalepleri}
           data-testid="finans-fatura-talepleri-kuyruk"
           className="group flex min-h-[140px] flex-col justify-between rounded-lg border border-indigo-200 bg-indigo-50/40 p-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/40"
         >
@@ -113,7 +114,7 @@ export function FinanceQueuesStrip() {
         </Link>
 
         <Link
-          href="/panel/finans/tahsilatlar?queue=payable"
+          href={FINANS_KART_YOL.tedarikciOdeme}
           className="group flex min-h-[140px] flex-col justify-between rounded-lg border border-rose-200 bg-rose-50/40 p-4 transition-colors hover:border-rose-300 hover:bg-rose-50 dark:border-rose-900/50 dark:bg-rose-950/20 dark:hover:bg-rose-950/40"
         >
           <div className="flex items-start justify-between gap-3">

@@ -12,6 +12,7 @@ import {
   asInvoiceRequestList,
   faturaListTabHref,
   resolveFaturaListTab,
+  resolveFaturaTalepFilter,
   unwrapApiData,
 } from './invoice-request-envelope.ts';
 
@@ -37,6 +38,8 @@ describe('invoice-request-list lock', () => {
     assert.equal(resolveFaturaListTab(null, false), 'kesilen');
     assert.equal(faturaListTabHref('kesilen'), '/panel/finans/faturalar?tab=kesilen');
     assert.equal(faturaListTabHref('talepler'), '/panel/finans/faturalar?tab=talepler');
+    assert.equal(resolveFaturaTalepFilter('pending'), 'pending');
+    assert.equal(resolveFaturaTalepFilter(null), 'tumu');
   });
 
   it('getInvoiceRequests zarfı çözer; boş query zorunlu ? eklemez', () => {
@@ -58,7 +61,7 @@ describe('invoice-request-list lock', () => {
     const strip = read('../features/dashboard/components/finance/finance-queues-strip.tsx');
     assert.match(strip, /data-testid="finans-is-kuyruklari"/);
     assert.match(strip, /data-testid="finans-fatura-talepleri-kuyruk"/);
-    assert.match(strip, /href="\/panel\/finans\/faturalar\?tab=talepler"/);
+    assert.match(strip, /FINANS_KART_YOL\.faturaTalepleri/);
     assert.doesNotMatch(strip, /invoiceQuery\.isError \|\| paymentsQuery\.isError/);
     assert.doesNotMatch(strip, /Kuyruk verileri yüklenemedi/);
     assert.match(strip, /invoiceQuery\.isError/);

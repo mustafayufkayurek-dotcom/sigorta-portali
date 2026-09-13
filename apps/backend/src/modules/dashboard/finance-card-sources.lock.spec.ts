@@ -50,7 +50,10 @@ describe('finans kart kaynakları LOCK', () => {
 
   it('Finans Merkezi kartları kuyruk ve talep sayılarını kullanır', () => {
     assert.match(kpi, /pendingIncomingCount/);
+    assert.match(kpi, /pendingTahsilatKartTutari/);
+    assert.match(kpi, /FINANS_KART_YOL\.tahsilatKuyrugu/);
     assert.match(flow, /pendingInvoiceRequestCount/);
+    assert.match(flow, /FINANS_KART_YOL\.faturaBekleyen/);
     assert.match(adminFin, /pendingInvoiceRequestCount/);
     assert.match(adminFin, /faturalar\?tab=talepler/);
   });

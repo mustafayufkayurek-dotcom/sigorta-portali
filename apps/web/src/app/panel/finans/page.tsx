@@ -20,6 +20,7 @@ import { ActivityFeedWidget } from '@/features/dashboard/components/activity';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { FINANS_KART_YOL } from '@/utils/finans-merkez-kart';
 
 export default function FinansDashboard() {
   const router = useRouter();
@@ -60,7 +61,7 @@ export default function FinansDashboard() {
               Finans Modülleri
             </button>
             <Link
-              href="/panel/finans/tahsilatlar?paymentType=incoming&status=pending"
+              href={FINANS_KART_YOL.tahsilatKuyrugu}
               className="inline-flex items-center gap-2 rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
             >
               <Banknote className="h-4 w-4" />

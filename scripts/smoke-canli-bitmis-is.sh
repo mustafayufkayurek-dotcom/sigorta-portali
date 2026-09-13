@@ -42,5 +42,6 @@ bash "$SCRIPT_DIR/smoke-acil-supplier-assignment.sh"
 bash "$SCRIPT_DIR/smoke-liste-gorunum.sh"
 bash "$SCRIPT_DIR/smoke-panel-auth-gate.sh"
 bash "$SCRIPT_DIR/smoke-baslik-hint.sh"
+bash "$SCRIPT_DIR/smoke-finans-kart.sh"
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

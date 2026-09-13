@@ -1,3 +1,5 @@
+import { FINANS_KART_YOL } from '@/utils/finans-merkez-kart';
+
 export type FinanceModuleItem = {
   title: string;
   href: string;
@@ -8,13 +10,13 @@ export type FinanceModuleItem = {
 export const FINANCE_MODULES: FinanceModuleItem[] = [
   {
     title: 'Satış Fatura Talepleri',
-    href: '/panel/finans/faturalar?tab=talepler',
+    href: FINANS_KART_YOL.faturaTalepleri,
     purpose: 'Dosya kapanışından gelen kesilecek satış talebi. Kesilmiş fatura burada durmaz.',
     action: 'Onaylayıp kesin; kesilen kayıt Kesilen Faturalar sekmesine geçer.',
   },
   {
     title: 'Tedarikçi Ödeme Kuyruğu',
-    href: '/panel/finans/tahsilatlar?queue=payable',
+    href: FINANS_KART_YOL.tedarikciOdeme,
     purpose: 'Tedarikçi hakediş ve avans. Ayrı sayfa değildir; Tahsilatlar içindeki Tedarikçi Ödeme Kuyruğu sekmesidir.',
     action: 'Bekleyen ve vadesi gelen ödemeyi bu sekmede işaretleyin.',
   },

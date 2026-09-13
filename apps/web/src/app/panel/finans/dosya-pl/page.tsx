@@ -2,6 +2,7 @@
 
 import { API, authHeader } from '@/utils/api';
 import { useEffect, useState, useCallback, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
@@ -34,12 +35,21 @@ function fmtCurrency(n: number | null | undefined) {
 }
 
 export default function DosyaPLPage() {
+  const searchParams = useSearchParams();
   const [portfolioPL, setPortfolioPL] = useState<any>(null);
   const [ranking, setRanking] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(0); // 0 = tüm yıl
+  const [year, setYear] = useState(() => {
+    const q = Number(searchParams.get('year'));
+    return q > 0 ? q : new Date().getFullYear();
+  });
+  const [month, setMonth] = useState(() => {
+    const q = searchParams.get('month');
+    if (q == null || q === '') return 0;
+    const n = Number(q);
+    return Number.isFinite(n) ? n : 0;
+  });
   const tableColumns = usePanelTableColumns('table-cols:finans-dosya-pl', DOSYA_PL_COLUMNS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<FinansTablePageSize>(() =>
@@ -64,6 +74,13 @@ export default function DosyaPLPage() {
   }, [year, month]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const qYear = searchParams.get('year');
+    const qMonth = searchParams.get('month');
+    if (qYear) setYear(Number(qYear));
+    if (qMonth != null && qMonth !== '') setMonth(Number(qMonth));
+  }, [searchParams]);
 
   const months = [
     { v: 0, l: 'Tüm Yıl' }, { v: 1, l: 'Ocak' }, { v: 2, l: 'Şubat' }, { v: 3, l: 'Mart' },

@@ -8,6 +8,11 @@ import {
   usePortfolioPL,
 } from '../../hooks/use-dashboard-data';
 import { formatCurrency } from '../../utils/formatters';
+import {
+  FINANS_KART_YOL,
+  masrafYol,
+  sabitGiderYol,
+} from '@/utils/finans-merkez-kart';
 
 type FlowItem = {
   title: string;
@@ -52,7 +57,7 @@ export function FinanceFlowStrip({ year, month }: FinanceFlowStripProps) {
       detail: pendingCount > 0 ? `${pendingCount} bekleyen kuyruk` : 'Tahsilat kuyruğu',
       icon: Banknote,
       iconClassName: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
-      path: '/panel/finans/tahsilatlar?paymentType=incoming&status=pending',
+      path: FINANS_KART_YOL.tahsilatKuyrugu,
     },
     {
       title: 'Faturalar',
@@ -60,7 +65,7 @@ export function FinanceFlowStrip({ year, month }: FinanceFlowStripProps) {
       detail: faturaDetail,
       icon: FileText,
       iconClassName: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
-      path: '/panel/finans/faturalar?tab=talepler',
+      path: FINANS_KART_YOL.faturaBekleyen,
     },
     {
       title: 'Masraflar',
@@ -68,7 +73,7 @@ export function FinanceFlowStrip({ year, month }: FinanceFlowStripProps) {
       detail: pl ? `${pl.fileCount} kayıt gider özeti` : 'Dosya masrafları',
       icon: Receipt,
       iconClassName: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
-      path: '/panel/finans/masraflar',
+      path: masrafYol(year, month),
     },
     {
       title: 'Sabit Giderler',
@@ -80,7 +85,7 @@ export function FinanceFlowStrip({ year, month }: FinanceFlowStripProps) {
           : 'Yönetim gideri havuzu',
       icon: Building2,
       iconClassName: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
-      path: `/panel/finans/sabit-giderler?year=${periodYear}&month=${periodMonth}`,
+      path: sabitGiderYol(year, month),
     },
   ];
 

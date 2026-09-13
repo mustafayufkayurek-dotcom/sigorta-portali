@@ -23,6 +23,7 @@ import {
 } from '@/modules/emergency/acil-vendor-entitlement';
 import { EMERGENCY_PROCESS_ENTITY_TYPE } from '@/modules/emergency/emergency-process-events';
 import { sanitizeAuditValue } from '@/modules/audit-logs/audit-log.sanitizer';
+import { vatReportPeriodBounds } from '@/modules/finance/vat-report-period';
 
 /** Varsayılan vade — tedarikçi kartında seçim yoksa (geçici geri uyumluluk) */
 export const VENDOR_HAKEDIS_DUE_DAYS_DEFAULT = 30;
@@ -46,6 +47,10 @@ export type PaymentListParams = {
   responsibleUserId?: string;
   dueBefore?: string;
   dueOverdue?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  year?: string | number;
+  month?: string | number;
   page?: number;
   limit?: number;
 };
@@ -93,6 +98,21 @@ export class PaymentsService {
       where.dueDate = { lte: new Date() };
     } else if (params.dueBefore) {
       where.dueDate = { lte: new Date(params.dueBefore) };
+    }
+
+    const year = Number(params.year);
+    if (Number.isFinite(year) && year > 0) {
+      const month = Number(params.month);
+      const { from, to } = vatReportPeriodBounds(
+        year,
+        Number.isFinite(month) && month > 0 ? month : undefined,
+      );
+      where.paymentDate = { gte: from, lte: to };
+    } else if (params.dateFrom || params.dateTo) {
+      const paymentDate: Prisma.DateTimeFilter = {};
+      if (params.dateFrom) paymentDate.gte = new Date(params.dateFrom);
+      if (params.dateTo) paymentDate.lte = new Date(params.dateTo);
+      where.paymentDate = paymentDate;
     }
 
     const role = String(requestingUser?.roleCode ?? '').trim().toLowerCase().replace(/-/g, '_');

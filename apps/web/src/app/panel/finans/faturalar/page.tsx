@@ -12,7 +12,7 @@ import {
   type TalepOzet,
 } from '@/components/finance/FaturaTalepleriSection';
 import { fileOwnerNotifyToast, getInvoiceRequests } from '@/utils/invoiceRequestApi';
-import { faturaListTabHref, resolveFaturaListTab, type FaturaListTab } from '@/utils/invoice-request-envelope';
+import { faturaListTabHref, resolveFaturaListTab, resolveFaturaTalepFilter, type FaturaListTab } from '@/utils/invoice-request-envelope';
 import { isFinanceRole, usePanelRoleCode } from '@/hooks/usePanelRole';
 import {
   usePanelTableColumns,
@@ -105,6 +105,7 @@ function FaturalarPageContent() {
   const isFinance = isFinanceRole(roleCode);
   const tabParam = searchParams.get('tab');
   const activeTab: FaturaListTab = resolveFaturaListTab(tabParam, isFinance);
+  const talepFilter = resolveFaturaTalepFilter(searchParams.get('status'));
 
   const setTab = (tab: FaturaListTab) => {
     router.replace(faturaListTabHref(tab), { scroll: false });
@@ -360,7 +361,12 @@ function FaturalarPageContent() {
       </div>
 
       {activeTab === 'talepler' ? (
-        <FaturaTalepleriSection onOzetChange={setTalepOzet} onIssuedChange={load} />
+        <FaturaTalepleriSection
+          key={talepFilter}
+          initialFilter={talepFilter}
+          onOzetChange={setTalepOzet}
+          onIssuedChange={load}
+        />
       ) : (
         <>
       {/* Tahsilat Oranı Bar — yalnızca kesilen faturalar */}

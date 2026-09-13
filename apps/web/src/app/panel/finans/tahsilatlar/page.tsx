@@ -41,6 +41,10 @@ import {
   readFinansTablePageSize,
   type FinansTablePageSize,
 } from '@/utils/finans-table-page';
+import {
+  queueTabFromFinanceSearch,
+  type FinansTahsilatQueueTab,
+} from '@/utils/finans-tahsilat-queue';
 
 const PAYMENT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'paymentDate', label: 'Tarih / Vade', defaultWidth: 148, minWidth: 128 },
@@ -71,7 +75,7 @@ const CHANNEL_LABEL: Record<string, string> = {
   manuel_onay: 'Manuel',
 };
 
-type QueueTab = 'all' | 'collection' | 'payable' | 'completed' | 'due';
+type QueueTab = FinansTahsilatQueueTab;
 
 type Summary = {
   totalIncoming: number;
@@ -108,7 +112,14 @@ export default function TahsilatlarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
-  const [queue, setQueue] = useState<QueueTab>((searchParams.get('queue') as QueueTab) || 'all');
+  const [queue, setQueue] = useState<QueueTab>(() =>
+    queueTabFromFinanceSearch({
+      queue: searchParams.get('queue'),
+      paymentType: searchParams.get('paymentType'),
+      status: searchParams.get('status'),
+      dueOverdue: searchParams.get('dueOverdue'),
+    }),
+  );
   const roleCode = usePanelRoleCode();
   const isFileOwner = isOfficeStaffRole(roleCode);
   const claimFileId = searchParams.get('claimFileId') ?? '';
@@ -125,6 +136,17 @@ export default function TahsilatlarPage() {
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const tableColumns = usePanelTableColumns('table-cols:finans-tahsilatlar', PAYMENT_TABLE_COLUMNS);
   const rowActions = usePortalRowActionPrefs('row-actions:finans-tahsilatlar-v1', FINANS_TAHSILAT_ROW_ACTIONS);
+
+  useEffect(() => {
+    setQueue(
+      queueTabFromFinanceSearch({
+        queue: searchParams.get('queue'),
+        paymentType: searchParams.get('paymentType'),
+        status: searchParams.get('status'),
+        dueOverdue: searchParams.get('dueOverdue'),
+      }),
+    );
+  }, [searchParams]);
 
   const sortedPayments = useMemo(
     () =>
@@ -164,6 +186,16 @@ export default function TahsilatlarPage() {
       params.queue = 'payable';
       params.dueOverdue = 'true';
     }
+    const paymentTypeParam = searchParams.get('paymentType');
+    if (paymentTypeParam && (queue === 'completed' || queue === 'all')) {
+      params.paymentType = paymentTypeParam;
+    }
+    const yearParam = searchParams.get('year');
+    if (yearParam) {
+      params.year = yearParam;
+      const monthParam = searchParams.get('month');
+      if (monthParam) params.month = monthParam;
+    }
     if (filters.method) params.method = filters.method;
     if (search.trim()) params.search = search.trim();
     if (claimFileId) params.claimFileId = claimFileId;
@@ -196,7 +228,7 @@ export default function TahsilatlarPage() {
         setTotal(0);
       })
       .finally(() => setLoading(false));
-  }, [filters, search, queue, myFilesOnly, claimFileId, isFileOwner, router]);
+  }, [filters, search, queue, myFilesOnly, claimFileId, isFileOwner, router, searchParams]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -219,6 +251,20 @@ export default function TahsilatlarPage() {
   const switchQueue = (tab: QueueTab) => {
     setQueue(tab);
     setFilters((f) => ({ ...f, page: 1 }));
+    const params = new URLSearchParams();
+    if (claimFileId) params.set('claimFileId', claimFileId);
+    if (tab === 'collection') {
+      params.set('paymentType', 'incoming');
+      params.set('status', 'pending');
+    } else if (tab === 'payable') {
+      params.set('queue', 'payable');
+    } else if (tab === 'due') {
+      params.set('queue', 'due');
+    } else if (tab === 'completed') {
+      params.set('status', 'completed');
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/panel/finans/tahsilatlar?${qs}` : '/panel/finans/tahsilatlar');
   };
 
   const queueTabs: { key: QueueTab; label: string; badge?: number }[] = [

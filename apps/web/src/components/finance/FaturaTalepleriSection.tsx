@@ -154,15 +154,16 @@ export function computeTalepOzet(talepler: InvoiceRequest[]): TalepOzet {
 interface FaturaTalepleriSectionProps {
   onOzetChange?: (ozet: TalepOzet) => void;
   onIssuedChange?: () => void;
+  initialFilter?: FilterKey;
 }
 
-export function FaturaTalepleriSection({ onOzetChange, onIssuedChange }: FaturaTalepleriSectionProps) {
+export function FaturaTalepleriSection({ onOzetChange, onIssuedChange, initialFilter = 'tumu' }: FaturaTalepleriSectionProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [talepler, setTalepler] = useState<InvoiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState<FilterKey>('tumu');
+  const [filter, setFilter] = useState<FilterKey>(initialFilter);
   const [invoicing, setInvoicing] = useState<InvoiceRequest | null>(null);
   const [invoiceNoDraft, setInvoiceNoDraft] = useState('');
   const [saving, setSaving] = useState(false);

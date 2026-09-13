@@ -34,3 +34,17 @@ export function resolveFaturaListTab(
 export function faturaListTabHref(tab: FaturaListTab): string {
   return `/panel/finans/faturalar?tab=${tab}`;
 }
+
+const TALEP_STATUS = ['pending', 'approved', 'invoiced', 'cancelled'] as const;
+export type FaturaTalepFilter = 'tumu' | (typeof TALEP_STATUS)[number];
+
+/** Akış kartı 55 onay bekleyen → Bekliyor süzgeci. */
+export function resolveFaturaTalepFilter(
+  statusParam: string | null | undefined,
+): FaturaTalepFilter {
+  const status = String(statusParam ?? '').trim();
+  if ((TALEP_STATUS as readonly string[]).includes(status)) {
+    return status as (typeof TALEP_STATUS)[number];
+  }
+  return 'tumu';
+}

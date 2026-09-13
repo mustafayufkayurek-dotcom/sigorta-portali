@@ -69,7 +69,7 @@ export function WeeklyPerformanceWidget({ staggerIndex = 0 }: WeeklyPerformanceW
     bottlenecks && bottlenecks.totalPendingAmount > 0
       ? {
           label: `Bekleyen Tahsilat ${formatCurrency(bottlenecks.totalPendingAmount)}`,
-          href: '/panel/finans/tahsilatlar?paymentType=incoming&status=pending',
+          href: '/panel/finans/tahsilatlar?queue=collection',
         }
       : null,
     staffItems.some((s) => s.criticalFiles > 0)

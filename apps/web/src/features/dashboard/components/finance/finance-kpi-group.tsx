@@ -5,6 +5,13 @@ import { WidgetBoundary } from '../widget-frame';
 import { KpiCard } from '../kpi';
 import { useFinanceBottlenecks, usePortfolioPL } from '../../hooks/use-dashboard-data';
 import { formatCurrency } from '../../utils/formatters';
+import {
+  FINANS_KART_YOL,
+  masrafYol,
+  netSonucYol,
+  pendingTahsilatKartTutari,
+  tahsilEdilenYol,
+} from '@/utils/finans-merkez-kart';
 
 interface FinanceKpiGroupProps {
   year: number;
@@ -33,9 +40,11 @@ export function FinanceKpiGroup({ year, month, staggerIndex = 0 }: FinanceKpiGro
   const bottlenecksFailed = bottlenecksQuery.isError;
   const pendingCount = bottlenecks?.pendingIncomingCount
     ?? (Array.isArray(bottlenecks?.pendingPayments) ? bottlenecks.pendingPayments.length : 0);
-  const pendingAmount = bottlenecksFailed
-    ? (pl?.outstandingBalance ?? 0)
-    : (Number(bottlenecks?.totalPendingAmount) || Number(pl?.outstandingBalance) || 0);
+  const pendingAmount = pendingTahsilatKartTutari({
+    bottlenecksFailed,
+    totalPendingAmount: bottlenecks?.totalPendingAmount,
+    outstandingBalance: pl?.outstandingBalance,
+  });
 
   const period = periodLabel(year, month);
   const netProfit = pl?.netProfit ?? 0;
@@ -87,7 +96,7 @@ export function FinanceKpiGroup({ year, month, staggerIndex = 0 }: FinanceKpiGro
               color="bg-emerald-600"
               subtext={pl && !plFailed ? `${period} · ${pl.fileCount} dosya` : period}
               emptyHint="Seçili dönemde tahsilat kaydı bulunmuyor."
-              href="/panel/finans/tahsilatlar?paymentType=incoming&status=completed"
+              href={tahsilEdilenYol(year, month)}
             />
             <KpiCard
               icon={Clock}
@@ -96,7 +105,7 @@ export function FinanceKpiGroup({ year, month, staggerIndex = 0 }: FinanceKpiGro
               color="bg-amber-600"
               subtext={pendingCount > 0 ? `${pendingCount} kuyruk kaydı` : 'Tahsilat kuyruğu'}
               emptyHint="Bekleyen tahsilat kaydı görünmüyor."
-              href="/panel/finans/tahsilatlar?paymentType=incoming&status=pending"
+              href={FINANS_KART_YOL.tahsilatKuyrugu}
             />
             <KpiCard
               icon={TrendingDown}
@@ -109,7 +118,7 @@ export function FinanceKpiGroup({ year, month, staggerIndex = 0 }: FinanceKpiGro
                   : period
               }
               emptyHint="Seçili dönemde gider kaydı bulunmuyor."
-              href="/panel/finans/masraflar"
+              href={masrafYol(year, month)}
             />
             <KpiCard
               icon={TrendingUp}
@@ -118,7 +127,7 @@ export function FinanceKpiGroup({ year, month, staggerIndex = 0 }: FinanceKpiGro
               color={!plFailed && netProfit >= 0 ? 'bg-slate-700' : 'bg-red-600'}
               subtext={pl && !plFailed && pl.totalRevenue > 0 ? `Marj %${pl.netMarginPct}` : period}
               emptyHint="Net sonuç hesaplanacak dosya özeti yok."
-              href="/panel/finans/karlilik"
+              href={netSonucYol(year, month)}
             />
               </>
             )}

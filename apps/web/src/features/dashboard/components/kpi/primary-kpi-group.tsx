@@ -118,7 +118,7 @@ export function PrimaryKpiGroup({ staggerIndex = 0, hideFinance = false, hideAci
               value={opsFailed ? '—' : (ops ? formatCurrency(ops.overdueCollectionAmount) : '—')}
               color="bg-rose-600"
               emptyHint="Gecikmiş tahsilat kaydı bulunmuyor."
-              href="/panel/finans/tahsilatlar?paymentType=incoming&status=pending"
+              href="/panel/finans/tahsilatlar?queue=collection"
             />
             )}
           </>

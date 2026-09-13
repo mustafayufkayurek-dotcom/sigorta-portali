@@ -136,7 +136,7 @@ describe('finans-table-page lock', () => {
     const modules = read('../features/dashboard/components/finance/finance-modules.constants.ts');
     assert.match(tahsilat, /Tedarikçi Ödeme Kuyruğu/);
     assert.match(tahsilat, /ayrı sayfa değildir/);
-    assert.match(modules, /queue=payable/);
+    assert.match(modules, /FINANS_KART_YOL\.tedarikciOdeme/);
     assert.match(modules, /Resmi beyanname değildir/);
   });
 });

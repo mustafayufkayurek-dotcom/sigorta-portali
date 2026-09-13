@@ -94,7 +94,7 @@ export function OperationFlowStrip({
       detail: 'Finans takibi',
       icon: Banknote,
       iconClassName: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
-      path: '/panel/finans/tahsilatlar?paymentType=incoming&status=pending',
+      path: '/panel/finans/tahsilatlar?queue=collection',
     }]),
   ];
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';
 import { TrDateInput } from '@/components/ui/TrDateInput';
@@ -35,7 +36,7 @@ import {
   sortRowsByClientSort,
   type ClientSortState,
 } from '@/utils/panel-table-sort';
-import { normalizeTrDateValue, isCompleteTrDateValue } from '@/utils/tr-date-input';
+import { normalizeTrDateValue, isCompleteTrDateValue, isoToTrDateDisplay } from '@/utils/tr-date-input';
 import { parseTrAmountInput, numberToTrAmountInput } from '@/utils/tr-amount-input';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authHeader } from '@/utils/api';
@@ -46,6 +47,7 @@ import {
   FileWorkGroupExpenseFields,
   type FileWorkGroupAuditLine,
 } from '@/components/finance/FileWorkGroupExpenseFields';
+import { financeIsoPeriod } from '@/utils/finans-merkez-kart';
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmt = (n: number | string | null | undefined) =>
@@ -240,6 +242,7 @@ const getFileDescription = (file: Record<string, unknown>) => {
 
 // ── Bileşen ───────────────────────────────────────────────────────────────────
 export default function MasraflarPage() {
+  const searchParams = useSearchParams();
   // Veriler
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [files,    setFiles]    = useState<FileOption[]>([]);
@@ -308,10 +311,29 @@ export default function MasraflarPage() {
   // Filtreler
   const [fPlan,     setFPlan]     = useState('');
   const [fFile,     setFFile]     = useState('');
-  const [fDateFrom, setFDateFrom] = useState('');
-  const [fDateTo,   setFDateTo]   = useState('');
+  const [fDateFrom, setFDateFrom] = useState(() => {
+    const y = Number(searchParams.get('year'));
+    const m = Number(searchParams.get('month') ?? '0');
+    if (!y) return '';
+    return isoToTrDateDisplay(financeIsoPeriod(y, m).dateFrom);
+  });
+  const [fDateTo,   setFDateTo]   = useState(() => {
+    const y = Number(searchParams.get('year'));
+    const m = Number(searchParams.get('month') ?? '0');
+    if (!y) return '';
+    return isoToTrDateDisplay(financeIsoPeriod(y, m).dateTo);
+  });
 
   // ── Dosyaları yükle ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const y = Number(searchParams.get('year'));
+    const m = Number(searchParams.get('month') ?? '0');
+    if (!y) return;
+    const period = financeIsoPeriod(y, m);
+    setFDateFrom(isoToTrDateDisplay(period.dateFrom));
+    setFDateTo(isoToTrDateDisplay(period.dateTo));
+  }, [searchParams]);
+
   const loadFiles = useCallback(async (search = '') => {
     if (!getAccessToken()) return;
     try {
