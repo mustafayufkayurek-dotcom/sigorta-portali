@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (13 Eylül 2026 — web v591 / backend v590)
+## Canlı durum (13 Eylül 2026 — web v592 / backend v590)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v591-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v592-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v590-amd64` | canlı |
-| **Rollback** | Web **v590** / Backend **v586** | manifest `rollbackImages` |
-| **Etiket** | `v591-baslik-hint` | |
+| **Rollback** | Web **v591** / Backend **v586** | manifest `rollbackImages` |
+| **Etiket** | `v592-baslik-menu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v592 — Web (13 Eylül 2026) — i kalktı; hamburger menü
+
+- Başlık yanındaki i ve çift açıklama kalktı
+- Yönetim Paneli tek satır; Bugün / Bu Hafta sağda
+- Sol menü yalnız hamburger; «Menüyü Daralt» yok
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, offsite B2 (v591 kaçığı kapatıldı), baseline, geri alma görüntüleri durur
+- Backend **v590** durur. Geri alma web **v591** / backend **v586**
 
 ### v591 — Web (13 Eylül 2026) — Boş başlık açıklaması kalktı
 

@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-09-13",
-  "label": "v591-baslik-hint",
-  "description": "Web v591: başlık i ikonu yalnız konu kuralı. Geri alma web v590 / backend v586.",
+  "label": "v592-baslik-menu",
+  "description": "Web v592: başlık i yok; dönem sağda; menü hamburger. Geri alma web v591 / backend v586.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v590-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v591-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v592-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v590-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v591-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v586-amd64"
   },
   "mustPassSmokeRoutes": [
