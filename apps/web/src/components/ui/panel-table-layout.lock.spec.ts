@@ -32,7 +32,7 @@ describe('panel tablo genişlik kilidi', () => {
     assert.doesNotMatch(hasar, /w-full flex-shrink-0 sm:ml-auto sm:w-auto/);
     const faturalar = readFileSync(join(here, '../../app/panel/finans/faturalar/page.tsx'), 'utf8');
     const tahsilat = readFileSync(join(here, '../../app/panel/finans/tahsilatlar/page.tsx'), 'utf8');
-    const talepler = readFileSync(join(here, '../../components/finance/FaturaTalepleriSection.tsx'), 'utf8');
+    const talepler = readFileSync(join(here, '../../components/finance/FaturaTalepListeKart.tsx'), 'utf8');
     assert.match(faturalar, /PanelListToolbarPickers/);
     assert.match(tahsilat, /PanelListToolbarPickers/);
     assert.match(talepler, /PanelListToolbarPickers/);
@@ -92,7 +92,7 @@ describe('panel tablo genişlik kilidi', () => {
     assert.doesNotMatch(users, /id: 'phone', label: 'Telefon'/);
     assert.doesNotMatch(users, /sm:ml-auto/);
     assert.match(users, /className="w-full text-sm"/);
-    assert.match(users, /Kişi Ekle/);
+    assert.match(users, /Kullanıcı Ekle/);
     assert.match(users, /invitePeople/);
   });
 });
