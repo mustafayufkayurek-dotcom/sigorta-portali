@@ -2,24 +2,32 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 13 Eylül 2026
+**Son güncelleme:** 14 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (13 Eylül 2026 — web v594 / backend v594)
+## Canlı durum (14 Eylül 2026 — web v595 / backend v595)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v594-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v594-amd64` | canlı |
-| **Rollback** | Web **v593** / Backend **v593** | manifest `rollbackImages` |
-| **Etiket** | `v594-finans-kart-uyum` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v595-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v595-amd64` | canlı |
+| **Rollback** | Web **v594** / Backend **v594** | manifest `rollbackImages` |
+| **Etiket** | `v595-satis-fatura-kullanici-hosgeldin` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v595 — Full (14 Eylül 2026) — Satış fatura talepleri; Kullanıcılar Ekle; hoş geldin kopyası
+
+- Satış Fatura Talepleri Hasar ve Acil ayrı listelenir. Acil’de çoklu seçim, hesap ve aynı resmi faturaya toplu yazım
+- Faturalar yalnız kesilen belgedir. Kullanıcılar Ekle durur; ekspertiz firması popup; ofis personeli seçilince form dolar
+- Yeni hoş geldin Kullanıcılar e-postasına gider; Platform Mail Kopyası ve okundu yöneticiye aynı gönderimde düşer. Ekli kullanıcılar yenilenmez
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, geri alma görüntüleri durur (web v594 / backend v594). Canlı uploads silinmedi. Yeni migration yok
+- Geri alma web **v594** / backend **v594**
 
 ### v594 — Full (13 Eylül 2026) — Finans kartı liste ile uyumlu
 

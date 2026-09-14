@@ -1,11 +1,11 @@
 ---
-description: Canlı web v594 / backend v594 — sıradaki paketler karışmaz
+description: Canlı web v595 / backend v595 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (13.09.2026)
+# Canlı (14.09.2026)
 
-Canlı: web **v594** · backend **v594**. Geri alma: web **v593** / backend **v593**.
+Canlı: web **v595** · backend **v595**. Geri alma: web **v594** / backend **v594**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v595 (full):** Satış fatura talepleri Hasar ve Acil ayrı. Acil’de çoklu seçim ve aynı resmi faturaya toplu yazım. Kullanıcılar Ekle durur; eksper ofisi karttan seçilir. Yeni hoş geldinde kopya ve okundu yöneticiye gider; ekli kullanıcılar yenilenmez. Geri alma web v594 / backend v594.
 
 **v594 (full):** Finans kartı tıklanınca karttaki işin listesi açılır. Bekleyen tahsilat kuyruk tutarını basar. Geri alma web v593 / backend v593.
 
@@ -62,7 +64,3 @@ Alım yalnız Mustafa «canlıya al» deyince.
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
 Paketler **karışmaz.** Hangisini alacağını Mustafa yazar.
-
-- Satış fatura talepleri: Hasar ve Acil ayrı listelenir. Acil’de çoklu seçim, hesap ve aynı resmi faturaya toplu yazım.
-- Kullanıcılar: Ekle geri gelir. Eksper ofisi müşteri kartındandır; aynı ofise birden fazla personel bağlanır. Ekspertiz firması popup’tan seçilir; seçimin altında ofis personeli listelenir; kişi seçilince ad, soyad, görev, e-posta ve cep dolar.
-- Kullanıcı eklenince hoş geldin asıl yazıyla gider; Platform Mail Kopyası ve okundu bilgisi yönetici kutusuna da aynı gönderimde düşer. Asıl yazı gitmezse kopya da gitmez.
