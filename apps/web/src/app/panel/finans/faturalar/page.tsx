@@ -87,11 +87,12 @@ type SortDir = 'asc' | 'desc';
 
 export default function FaturalarPage() {
   return (
-    <Suspense fallback={(
-      <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )}
+    <Suspense
+      fallback={(
+        <div className="flex items-center justify-center h-64">
+          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
     >
       <FaturalarPageContent />
     </Suspense>
@@ -282,14 +283,6 @@ function FaturalarPageContent() {
 
   const collectionRate = stats.total > 0 ? Math.round((stats.paid / stats.total) * 100) : 0;
 
-  if (activeTab === 'talepler') {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   const typeChip = (value: string, label: string) => {
     const active = filters.invoiceType === value;
     return (
@@ -306,6 +299,14 @@ function FaturalarPageContent() {
       </button>
     );
   };
+
+  if (activeTab === 'talepler') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
