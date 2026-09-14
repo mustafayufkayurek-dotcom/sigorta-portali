@@ -793,7 +793,7 @@ export default function KullanicilarPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [personErrors, setPersonErrors] = useState<Record<string, { firstName?: string; lastName?: string; email?: string; jobTitle?: string }>>({});
+  const [, setPersonErrors] = useState<Record<string, { firstName?: string; lastName?: string; email?: string; jobTitle?: string }>>({});
   const [inactiveDuplicateUser, setInactiveDuplicateUser] = useState<User | null>(null);
   const [createdCredential, setCreatedCredential] = useState<{
     email: string;

@@ -72,20 +72,6 @@ const DURUM_LABEL: Record<InvoiceRequestStatus, string> = {
   cancelled: 'İptal',
 };
 
-const DURUM_COLOR: Record<InvoiceRequestStatus, string> = {
-  pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400',
-  approved: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
-  invoiced: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400',
-  cancelled: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400',
-};
-
-const DURUM_DOT: Record<InvoiceRequestStatus, string> = {
-  pending: 'bg-yellow-400',
-  approved: 'bg-blue-500',
-  invoiced: 'bg-green-500',
-  cancelled: 'bg-status-danger',
-};
-
 type FilterKey = 'tumu' | InvoiceRequestStatus;
 
 function workItemsDescription(req: InvoiceRequest): string {
