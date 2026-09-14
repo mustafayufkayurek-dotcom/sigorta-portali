@@ -87,7 +87,7 @@ export function AdminFinanceSummarySection({
                       ? `${overdueInvoices} geciken fatura`
                       : 'Bekleyen talep yok'
                 }
-                href="/panel/finans/faturalar?tab=talepler"
+                href="/panel/finans/fatura-talepleri"
               />
               <KpiCard
                 compact

@@ -5,7 +5,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { resolveFileFeeCollectionSource, resolveClaimRevenueVat, shouldCreateApprovedFileFee } from '@sigorta/shared';
+import {
+  resolveFileFeeCollectionSource,
+  resolveClaimRevenueVat,
+  shouldCreateApprovedFileFee,
+  STANDARD_SALES_VAT_RATE,
+} from '@sigorta/shared';
 import { CreateClaimFileRevenueDto } from './dto/create-claim-file-revenue.dto';
 
 @Injectable()
@@ -187,7 +192,7 @@ export class ClaimFileRevenueService {
           }),
           description: `Dosya Bedeli — ${report.reportNo}`,
           amount: Number(report.totalSalesAmount),
-          vatRate: 0,
+          vatRate: STANDARD_SALES_VAT_RATE,
           entryDate: (report.updatedAt ?? new Date()).toISOString().slice(0, 10),
           repairReportId: report.id,
           status: 'confirmed',

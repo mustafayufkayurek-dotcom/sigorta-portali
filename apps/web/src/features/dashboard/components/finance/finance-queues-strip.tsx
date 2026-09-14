@@ -48,9 +48,7 @@ export function FinanceQueuesStrip() {
   })();
   const pay = paymentsQuery.data;
   const pendingTalep = inv?.counts?.pendingCount ?? 0;
-  const approvedTalep = inv?.counts?.approvedCount ?? 0;
   const pendingTalepAmount = inv?.amounts?.pendingAmount ?? 0;
-  const approvedTalepAmount = inv?.amounts?.approvedAmount ?? 0;
   const payableCount = pay?.pendingOutgoingCount ?? 0;
   const payableAmount = pay?.pendingOutgoing ?? 0;
   const duePayableCount = pay?.dueOutgoingCount ?? 0;
@@ -87,7 +85,7 @@ export function FinanceQueuesStrip() {
               <div>
                 <h3 className="inline-flex items-center gap-1 text-sm font-semibold text-slate-900 dark:text-white">
                   Satış Fatura Talepleri
-                  <HintIcon text="Hasar, acil yardım ve özel müşteri kapanışları." />
+                  <HintIcon text="Resmi fatura başka programda kesilir. Burada numarası yazılınca iş Faturalandı görünür." />
                 </h3>
               </div>
             </div>
@@ -98,17 +96,10 @@ export function FinanceQueuesStrip() {
           ) : invoiceQuery.isError ? (
             <p className="mt-4 text-sm text-rose-700 dark:text-rose-300">Fatura Talepleri Yüklenemedi</p>
           ) : (
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-slate-500">Onay Bekleyen</p>
-                <p className="text-xl font-semibold text-slate-950 dark:text-white">{pendingTalep}</p>
-                <p className="text-xs text-slate-400">{formatCurrency(pendingTalepAmount)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Kesilecek (Onaylı)</p>
-                <p className="text-xl font-semibold text-indigo-700 dark:text-indigo-300">{approvedTalep}</p>
-                <p className="text-xs text-slate-400">{formatCurrency(approvedTalepAmount)}</p>
-              </div>
+            <div className="mt-4">
+              <p className="text-xs text-slate-500">Fatura bilgisi bekleyen</p>
+              <p className="text-xl font-semibold text-slate-950 dark:text-white">{pendingTalep}</p>
+              <p className="text-xs text-slate-400">{formatCurrency(pendingTalepAmount)}</p>
             </div>
           )}
         </Link>

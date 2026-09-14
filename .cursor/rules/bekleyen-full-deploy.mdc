@@ -62,3 +62,7 @@ Alım yalnız Mustafa «canlıya al» deyince.
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
 Paketler **karışmaz.** Hangisini alacağını Mustafa yazar.
+
+- Satış fatura talepleri: Hasar ve Acil ayrı listelenir. Acil’de çoklu seçim, hesap ve aynı resmi faturaya toplu yazım.
+- Kullanıcılar: Ekle geri gelir. Eksper ofisi müşteri kartındandır; aynı ofise birden fazla personel bağlanır. Ekspertiz firması popup’tan seçilir; seçimin altında ofis personeli listelenir; kişi seçilince ad, soyad, görev, e-posta ve cep dolar.
+- Kullanıcı eklenince hoş geldin asıl yazıyla gider; Platform Mail Kopyası ve okundu bilgisi yönetici kutusuna da aynı gönderimde düşer. Asıl yazı gitmezse kopya da gitmez.

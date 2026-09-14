@@ -10,6 +10,20 @@ import { LogoSyncService } from '../logo-integration/services/logo-sync.service'
 import { CacheService } from '../../cache/cache.service';
 import { sanitizeSearchQuery } from '@/common/security/sanitize-search';
 
+function parseIssuedInvoiceDate(value?: string | Date | null): Date {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  const raw = String(value ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const parsed = new Date(`${raw}T12:00:00`);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  if (raw) {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
 @Injectable()
 export class InvoicesService {
   private readonly logger = new Logger(InvoicesService.name);
@@ -323,9 +337,14 @@ export class InvoicesService {
     emergencyCaseId?: string | null;
     invoiceNo: string;
     totalAmount: number;
+    subtotalAmount?: number | null;
+    vatAmount?: number | null;
+    invoiceDate?: string | Date | null;
     insuranceCompanyId?: string | null;
     notes?: string | null;
     userId: string;
+    additionalEmergencyCaseIds?: string[];
+    allowAdditionalEmergencyFiles?: boolean;
   }): Promise<{ id: string; invoiceNo: string }> {
     const invoiceNo = params.invoiceNo.trim();
     if (!invoiceNo) {
@@ -336,17 +355,28 @@ export class InvoicesService {
     if (Boolean(claimFileId) === Boolean(emergencyCaseId)) {
       throw new BadRequestException('Fatura ya hasar ya acil dosyaya bağlanır');
     }
+    const extraCaseIds = [...new Set((params.additionalEmergencyCaseIds ?? []).map((id) => id.trim()).filter(Boolean))]
+      .filter((id) => id !== emergencyCaseId);
+    const invoiceDate = parseIssuedInvoiceDate(params.invoiceDate);
+    const subtotalAmount = Number(params.subtotalAmount ?? params.totalAmount) || 0;
+    const vatAmount = Number(params.vatAmount ?? 0) || 0;
+    const totalAmount = Number(params.totalAmount) || 0;
 
     const existing = await this.prisma.invoice.findUnique({ where: { invoiceNo } });
     if (existing) {
+      if (existing.invoiceType !== 'sales') {
+        throw new BadRequestException('Bu fatura numarası alış faturasında kayıtlı');
+      }
       if (claimFileId && existing.claimFileId !== claimFileId) {
         throw new BadRequestException('Bu fatura numarası başka bir dosyada kayıtlı');
       }
-      if (emergencyCaseId && existing.emergencyCaseId !== emergencyCaseId) {
+      const sameEmergency = Boolean(emergencyCaseId) && existing.emergencyCaseId === emergencyCaseId;
+      const bulkEmergency = Boolean(params.allowAdditionalEmergencyFiles) && Boolean(existing.emergencyCaseId) && !existing.claimFileId;
+      if (emergencyCaseId && !sameEmergency && !bulkEmergency) {
         throw new BadRequestException('Bu fatura numarası başka bir dosyada kayıtlı');
       }
-      if (existing.invoiceType !== 'sales') {
-        throw new BadRequestException('Bu fatura numarası alış faturasında kayıtlı');
+      if (bulkEmergency || extraCaseIds.length > 0) {
+        await this.markEmergencyCasesInvoiced([existing.emergencyCaseId, emergencyCaseId, ...extraCaseIds]);
       }
       return { id: existing.id, invoiceNo: existing.invoiceNo };
     }
@@ -364,23 +394,20 @@ export class InvoicesService {
           emergencyCaseId,
           invoiceType: 'sales',
           invoiceNo,
-          invoiceDate: new Date(),
+          invoiceDate,
           counterpartyType: 'customer',
           counterpartyId: emergencyCase.customerId ?? null,
           currency: 'TRY',
-          subtotalAmount: params.totalAmount,
-          vatAmount: 0,
+          subtotalAmount,
+          vatAmount,
           withholdingAmount: 0,
-          totalAmount: params.totalAmount,
+          totalAmount,
           status: 'sent',
           notes: params.notes ?? emergencyCase.customerName,
           createdByUserId: params.userId,
         },
       });
-      await this.prisma.emergencyCase.update({
-        where: { id: emergencyCaseId },
-        data: { invoicedAt: new Date() },
-      }).catch(() => {});
+      await this.markEmergencyCasesInvoiced([emergencyCaseId, ...extraCaseIds]);
       await this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
       this.triggerLogoInvoiceSync(invoice.id, invoice.invoiceType).catch(() => {});
       return { id: invoice.id, invoiceNo: invoice.invoiceNo };
@@ -412,14 +439,14 @@ export class InvoicesService {
         emergencyCaseId: null,
         invoiceType: 'sales',
         invoiceNo,
-        invoiceDate: new Date(),
+        invoiceDate,
         counterpartyType,
         counterpartyId,
         currency: 'TRY',
-        subtotalAmount: params.totalAmount,
-        vatAmount: 0,
+        subtotalAmount,
+        vatAmount,
         withholdingAmount: 0,
-        totalAmount: params.totalAmount,
+        totalAmount,
         status: 'sent',
         notes: params.notes ?? (counterpartyType === 'insured' ? (claimFile.insuredName ?? null) : null),
         createdByUserId: params.userId,
@@ -555,5 +582,14 @@ export class InvoicesService {
     } catch (err) {
       this.logger.warn(`Logo fatura senkron kuyruğu hatası: ${(err as Error).message}`);
     }
+  }
+
+  private async markEmergencyCasesInvoiced(ids: Array<string | null | undefined>): Promise<void> {
+    const unique = [...new Set(ids.map((id) => String(id ?? '').trim()).filter(Boolean))];
+    if (unique.length === 0) return;
+    await this.prisma.emergencyCase.updateMany({
+      where: { id: { in: unique }, invoicedAt: null },
+      data: { invoicedAt: new Date() },
+    }).catch(() => {});
   }
 }

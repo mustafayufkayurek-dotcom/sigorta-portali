@@ -31,11 +31,19 @@ describe('müşteri kartı portal kullanıcısı LOCK', () => {
     assert.deepEqual(roleCodesForPortalCustomerSubType('asistan_firmasi'), ['assistance_company_user']);
   });
 
-  it('davet müşteri kartından gider; Kullanıcılar eklemede dış firma seçilmez', () => {
+  it('çoklu davet müşteri kartındadır; Kullanıcılar ofisteki personeli listeler', () => {
     const controller = readFileSync(join(here, 'users.controller.ts'), 'utf8');
+    assert.match(controller, /@Post\(\)/);
+    assert.match(controller, /usersService\.create\(createUserDto\)/);
     assert.match(controller, /portal-invite\/:customerId/);
     const usersPage = readFileSync(join(here, '../../../../web/src/app/panel/kullanicilar/page.tsx'), 'utf8');
-    assert.match(usersPage, /modal !== 'add' \|\| !isCustomerCompanyUserTask/);
+    assert.match(usersPage, /eksper-ofisi-personel-listesi/);
+    assert.match(usersPage, /ekspertiz-firma-secim-popup/);
+    assert.doesNotMatch(usersPage, /name="expert-firm"/);
+    const service = readFileSync(join(here, 'users.service.ts'), 'utf8');
+    assert.match(service, /listedUserPhone/);
+    assert.match(service, /adjuster\?\.phone/);
+    assert.doesNotMatch(usersPage, /Aynı müşteri firmasına birden fazla kişiyi göreviyle ekleyin/);
     const customerPage = readFileSync(join(here, '../../../../web/src/app/panel/musteriler/[id]/page.tsx'), 'utf8');
     assert.match(customerPage, /CustomerPortalUsersPanel/);
     const panel = readFileSync(join(here, '../../../../web/src/components/customers/CustomerPortalUsersPanel.tsx'), 'utf8');

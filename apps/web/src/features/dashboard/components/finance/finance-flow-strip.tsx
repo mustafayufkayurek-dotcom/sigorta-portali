@@ -44,7 +44,7 @@ export function FinanceFlowStrip({ year, month }: FinanceFlowStripProps) {
   const pendingInvoiceRequests = bottlenecks?.pendingInvoiceRequestCount ?? 0;
   const faturaValue = pendingInvoiceRequests || overdueInvoices;
   const faturaDetail = pendingInvoiceRequests > 0
-    ? `${pendingInvoiceRequests} onay bekleyen talep`
+    ? `${pendingInvoiceRequests} fatura bilgisi bekleyen`
     : overdueInvoices > 0
       ? 'Geciken fatura'
       : 'Fatura takibi';
@@ -60,7 +60,7 @@ export function FinanceFlowStrip({ year, month }: FinanceFlowStripProps) {
       path: FINANS_KART_YOL.tahsilatKuyrugu,
     },
     {
-      title: 'Faturalar',
+      title: 'Satış Fatura Talepleri',
       value: faturaValue,
       detail: faturaDetail,
       icon: FileText,

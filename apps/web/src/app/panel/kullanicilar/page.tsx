@@ -12,7 +12,7 @@ import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
-import { Check, Copy, Plus, Trash2, UserCheck, Users, X } from 'lucide-react';
+import { Check, Copy, Plus, UserCheck, Users, X } from 'lucide-react';
 import { HintIcon } from '@/components/ui/HintIcon';
 import { PhoneInput } from '@/components/PhoneInput';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
@@ -77,16 +77,19 @@ import {
   displayUserRoleName,
   emptyInvitePersonDraft,
   fieldOperationBranchOptions,
+  filterOfficeFirmsByQuery,
   findDepartmentForArea,
   findRoleByCode,
   hasarExpertCustomerName,
-  invitePeopleToSubmit,
   isAcilYardimAssistantCustomer,
   isBrokerCustomer,
   isCustomerCompanyUserTask,
   isHasarExpertCustomer,
+  officePersonToFormFields,
   operationAreaFromDepartmentCodes,
   roleCodesMatch,
+  resolveOfficePersonPhone,
+  selectedPortalOfficeCustomerId,
   sanitizeFieldOperationServiceBranches,
   showsAcilYardimCustomerScope,
   showsInsuranceCompanyScope,
@@ -320,6 +323,8 @@ interface User {
   userAssistantCustomerScopes?: Array<{ customerId: string; customer?: { id: string; companyName?: string | null; fullName?: string | null } | null }>;
   lastLoginAt?: string | null;
   createdAt: string;
+  portalCustomerId?: string | null;
+  adjuster?: { id?: string; name?: string | null; company?: string | null; phone?: string | null } | null;
 }
 
 const PROTECTED_SYSTEM_EMAILS = new Set([
@@ -651,6 +656,76 @@ function FormField({
 const inputCls =
   'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
 
+function FirmPickerOverlay({
+  title,
+  search,
+  onSearch,
+  items,
+  selectedId,
+  onSelect,
+  onClose,
+}: {
+  title: string;
+  search: string;
+  onSearch: (value: string) => void;
+  items: PortalOrganizationOption[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const filtered = useMemo(() => filterOfficeFirmsByQuery(items, search), [items, search]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[10050] flex items-center justify-center p-4" data-testid="ekspertiz-firma-secim-popup">
+      <div className="absolute inset-0 bg-slate-950/50" onClick={onClose} aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="relative flex max-h-[calc(100vh-4rem)] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-900/10"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-base font-semibold text-slate-900">{title}</p>
+            <p className="mt-1 text-xs text-slate-500">Firmayı seçince ofisteki personel altta listelenir.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Kapat">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="border-b border-slate-100 px-5 py-3">
+          <SearchInput placeholder="Firma adı ara" value={search} onChange={onSearch} />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-6 text-center text-sm text-slate-500">Eşleşen firma yok.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {filtered.map((company) => {
+                const selected = selectedId === company.id;
+                return (
+                  <li key={company.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(company.id)}
+                      className={`w-full px-3 py-2.5 text-left text-sm transition-colors ${
+                        selected ? 'bg-blue-50 font-medium text-blue-800' : 'text-slate-800 hover:bg-slate-50'
+                      }`}
+                    >
+                      {company.name}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // ── Ana Sayfa ────────────────────────────────────────────────────────────────
 
 function getCurrentUserId(): string | null {
@@ -710,6 +785,11 @@ export default function KullanicilarPage() {
   const [modal, setModal] = useState<'add' | 'edit' | 'resetPwd' | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<UserFormState>(DEFAULT_FORM);
+  const [officeUsers, setOfficeUsers] = useState<User[]>([]);
+  const [officeUsersLoading, setOfficeUsersLoading] = useState(false);
+  const [selectedOfficeUserId, setSelectedOfficeUserId] = useState('');
+  const [expertFirmPickerOpen, setExpertFirmPickerOpen] = useState(false);
+  const [expertFirmSearch, setExpertFirmSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -1003,6 +1083,80 @@ export default function KullanicilarPage() {
     geographicRegions,
     provinces,
   ]);
+
+  const selectedOfficeId = selectedPortalOfficeCustomerId(form);
+  const selectedExpertFirmName = hasarExpertCustomers.find((company) => company.id === form.expertCustomerId)?.name ?? '';
+
+  useEffect(() => {
+    if ((modal !== 'add' && modal !== 'edit') || !isCustomerCompanyUserTask(form.userTask) || !selectedOfficeId) {
+      setOfficeUsers([]);
+      setOfficeUsersLoading(false);
+      setSelectedOfficeUserId('');
+      return;
+    }
+    setSelectedOfficeUserId('');
+    let cancelled = false;
+    setOfficeUsersLoading(true);
+    void (async () => {
+      try {
+        const r = await axios.get(`${API}/users`, {
+          headers: authHeader(),
+          params: {
+            customerId: selectedOfficeId,
+            limit: 200,
+            includeInactive: 'true',
+            page: 1,
+          },
+        });
+        const list = r.data?.data ?? r.data ?? [];
+        let contacts: Array<{ name?: string | null; email?: string | null; phone?: string | null }> = [];
+        try {
+          const office = await axios.get(`${API}/customers/${selectedOfficeId}`, { headers: authHeader() });
+          contacts = office.data?.data?.contacts ?? office.data?.contacts ?? [];
+        } catch {
+          contacts = [];
+        }
+        if (!cancelled) {
+          const people = (Array.isArray(list) ? list.map(normalizeUser) : []).map((person: User) => ({
+            ...person,
+            phone: resolveOfficePersonPhone(person, { contacts }) || person.phone,
+          }));
+          setOfficeUsers(people);
+          if (modal === 'edit' && editingUser?.id) {
+            setSelectedOfficeUserId(editingUser.id);
+          }
+        }
+      } catch {
+        if (!cancelled) setOfficeUsers([]);
+      } finally {
+        if (!cancelled) setOfficeUsersLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [modal, form.userTask, selectedOfficeId, editingUser?.id]);
+
+  const selectOfficePerson = (person: User) => {
+    const fields = officePersonToFormFields(person);
+    setSelectedOfficeUserId(person.id);
+    setForm((prev) => ({
+      ...prev,
+      firstName: fields.firstName,
+      lastName: fields.lastName,
+      email: fields.email,
+      phone: fields.phone,
+      jobTitle: fields.jobTitle,
+    }));
+    setFormErrors((prev) => ({
+      ...prev,
+      firstName: undefined,
+      lastName: undefined,
+      email: undefined,
+      jobTitle: undefined,
+      general: undefined,
+    }));
+  };
 
   // ── Filtreli liste ────────────────────────────────────────────────────────
 
@@ -1335,6 +1489,10 @@ export default function KullanicilarPage() {
       selectedGeographicRegionIds: value === 'operations' ? prev.selectedGeographicRegionIds : [],
       selectedSubjects: value === 'field_operations' ? prev.selectedSubjects : [],
     }));
+    if (value !== 'expert') {
+      setExpertFirmPickerOpen(false);
+      setExpertFirmSearch('');
+    }
     setFormErrors((prev) => ({
       ...prev,
       userTask: undefined,
@@ -1562,6 +1720,8 @@ export default function KullanicilarPage() {
     setCreatedCredential(null);
     setCreatedInvites(null);
     setEditingUser(null);
+    setExpertFirmPickerOpen(false);
+    setExpertFirmSearch('');
     setModal('add');
   };
 
@@ -1571,7 +1731,7 @@ export default function KullanicilarPage() {
       firstName: u.firstName,
       lastName: u.lastName,
       email: u.email,
-      phone: toInternationalFormat(u.phone ?? ''),
+      phone: toInternationalFormat(u.phone ?? u.adjuster?.phone ?? ''),
       jobTitle: u.jobTitle ?? '',
       userTask: task.userTask,
       managementLevel: task.managementLevel,
@@ -1579,10 +1739,10 @@ export default function KullanicilarPage() {
       insuranceCompanyIds: task.userTask === 'insurance_company_user'
         ? (u.userInsuranceCompanyScopes ?? []).map((scope) => scope.insuranceCompanyId).filter(Boolean).slice(0, 1)
         : (u.userInsuranceCompanyScopes ?? []).map((scope) => scope.insuranceCompanyId).filter(Boolean),
-      expertCustomerId: '',
-      brokerCustomerId: '',
+      expertCustomerId: task.userTask === 'expert' ? (u.portalCustomerId ?? '') : '',
+      brokerCustomerId: task.userTask === 'broker' ? (u.portalCustomerId ?? '') : '',
       assistantCustomerId: task.userTask === 'assistance_company_user'
-        ? ((u.userAssistantCustomerScopes ?? []).map((scope) => scope.customerId).filter(Boolean)[0] ?? '')
+        ? ((u.userAssistantCustomerScopes ?? []).map((scope) => scope.customerId).filter(Boolean)[0] ?? u.portalCustomerId ?? '')
         : '',
       acilYardimCustomerIds: [],
       countrywide: (u.serviceAreas ?? []).length === 0,
@@ -1615,6 +1775,8 @@ export default function KullanicilarPage() {
     setCreatedCredential(null);
     setCreatedInvites(null);
     setEditingUser(u);
+    setExpertFirmPickerOpen(false);
+    setExpertFirmSearch('');
     setModal('edit');
   };
 
@@ -1630,41 +1792,17 @@ export default function KullanicilarPage() {
     setCreatedInvites(null);
     setResetPwdError('');
     setResetCredential(null);
+    setExpertFirmPickerOpen(false);
+    setExpertFirmSearch('');
   };
 
   const validateUserForm = () => {
     const nextErrors: FormErrors = {};
     const nextPersonErrors: Record<string, { firstName?: string; lastName?: string; email?: string; jobTitle?: string }> = {};
-    const multiCustomerInvite = modal === 'add' && isCustomerCompanyUserTask(form.userTask);
-    if (multiCustomerInvite) {
-      const people = invitePeopleToSubmit(form.invitePeople);
-      const seenEmails = new Set<string>();
-      for (const person of people) {
-        const row: { firstName?: string; lastName?: string; email?: string; jobTitle?: string } = {};
-        if (!person.firstName.trim()) row.firstName = 'Ad zorunludur.';
-        if (!person.lastName.trim()) row.lastName = 'Soyad zorunludur.';
-        if (!person.jobTitle.trim()) row.jobTitle = 'Görev yazılmalıdır.';
-        if (!person.email.trim()) row.email = 'E-posta zorunludur.';
-        else if (!validateEmail(person.email)) row.email = 'Geçerli bir e-posta adresi girilmelidir.';
-        else {
-          const normalizedEmail = normalizeEmailAddress(person.email);
-          if (seenEmails.has(normalizedEmail)) row.email = 'Bu e-posta bu davette tekrar ediyor.';
-          seenEmails.add(normalizedEmail);
-          const dupEmail = users.find((u) => userMailbox(u) === normalizedEmail);
-          const dupStatus = dupEmail ? normalizeUserStatus(dupEmail.status) : null;
-          if (dupStatus === 'active') row.email = 'Bu e-posta adresiyle aktif bir kullanıcı zaten mevcut.';
-        }
-        if (Object.keys(row).length > 0) nextPersonErrors[person.key] = row;
-      }
-      if (people.length === 0 || Object.keys(nextPersonErrors).length > 0) {
-        nextErrors.invitePeople = 'Her kişi için ad, soyad, e-posta ve görev doldurulmalıdır.';
-      }
-    } else {
-      if (!form.firstName.trim()) nextErrors.firstName = 'Ad zorunludur.';
-      if (!form.lastName.trim()) nextErrors.lastName = 'Soyad zorunludur.';
-      if (!form.email.trim()) nextErrors.email = 'E-posta zorunludur.';
-      else if (!validateEmail(form.email)) nextErrors.email = 'Geçerli bir e-posta adresi girilmelidir.';
-    }
+    if (!form.firstName.trim()) nextErrors.firstName = 'Ad zorunludur.';
+    if (!form.lastName.trim()) nextErrors.lastName = 'Soyad zorunludur.';
+    if (!form.email.trim()) nextErrors.email = 'E-posta zorunludur.';
+    else if (!validateEmail(form.email)) nextErrors.email = 'Geçerli bir e-posta adresi girilmelidir.';
     if (!form.userTask) nextErrors.userTask = 'Bu kişi kim? seçimi zorunludur.';
     if (form.userTask === 'management' && hasMultipleManagementRoles && !form.managementLevel) {
       nextErrors.managementLevel = 'Yetki seviyesi seçilmelidir.';
@@ -1715,35 +1853,6 @@ export default function KullanicilarPage() {
     setFormErrors(nextErrors);
     setPersonErrors(nextPersonErrors);
     return Object.keys(nextErrors).length === 0;
-  };
-
-  const updateInvitePerson = (key: string, patch: Partial<InvitePersonDraft>) => {
-    setForm((prev) => ({
-      ...prev,
-      invitePeople: prev.invitePeople.map((person) => (person.key === key ? { ...person, ...patch } : person)),
-    }));
-    setPersonErrors((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-    setFormErrors((prev) => ({ ...prev, invitePeople: undefined, general: undefined }));
-  };
-
-  const addInvitePerson = () => {
-    setForm((prev) => ({
-      ...prev,
-      invitePeople: [...prev.invitePeople, emptyInvitePersonDraft()],
-    }));
-  };
-
-  const removeInvitePerson = (key: string) => {
-    setForm((prev) => ({
-      ...prev,
-      invitePeople: prev.invitePeople.length <= 1
-        ? prev.invitePeople
-        : prev.invitePeople.filter((person) => person.key !== key),
-    }));
   };
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -1842,80 +1951,33 @@ export default function KullanicilarPage() {
       }
 
       if (modal === 'add') {
-        const people = isCustomerCompanyUserTask(form.userTask)
-          ? invitePeopleToSubmit(form.invitePeople)
-          : [{
-              key: 'single',
-              firstName: form.firstName,
-              lastName: form.lastName,
-              email: form.email,
-              phone: form.phone,
-              jobTitle: form.jobTitle,
-            }];
-
-        if (!isCustomerCompanyUserTask(form.userTask) && people[0]) {
-          const normalizedEmail = normalizeEmailAddress(people[0].email);
-          const dupEmail = users.find((u) => userMailbox(u) === normalizedEmail);
-          const dupStatus = dupEmail ? normalizeUserStatus(dupEmail.status) : null;
-          if (dupEmail && dupStatus && canReinviteByEmail(dupStatus)) {
-            setInactiveDuplicateUser(dupEmail);
-          } else {
-            setInactiveDuplicateUser(null);
-          }
+        payload.email = normalizeEmailAddress(form.email);
+        const dupEmail = users.find((u) => userMailbox(u) === payload.email);
+        const dupStatus = dupEmail ? normalizeUserStatus(dupEmail.status) : null;
+        if (dupEmail && dupStatus && canReinviteByEmail(dupStatus)) {
+          setInactiveDuplicateUser(dupEmail);
+        } else {
+          setInactiveDuplicateUser(null);
         }
 
-        const createdRows: Array<{ email: string; temporaryPassword: string; mailMessage: string }> = [];
-        for (const person of people) {
-          const personPayload = {
-            ...payload,
-            firstName: person.firstName,
-            lastName: person.lastName,
-            phone: person.phone || undefined,
-            jobTitle: person.jobTitle.trim() || undefined,
-            email: normalizeEmailAddress(person.email),
-          };
-          try {
-            const response = await axios.post(
-              `${API}/users`,
-              personPayload,
-              { headers: authHeader() },
-            );
-            const created = response.data?.data;
-            const mailMessage = created?.welcomeEmail?.message ?? 'Hoş geldin maili gönderimi denendi.';
-            const oneTimePassword = created?.temporaryPassword;
-            if (!oneTimePassword) {
-              setFormError('Kullanıcı oluşturuldu ancak geçici şifre oluşturma cevabında görüntülenemedi. Kabul testine devam etmeyin.');
-              if (createdRows.length > 0) {
-                setCreatedInvites(createdRows);
-                setCreatedCredential(createdRows[0] ?? null);
-              }
-              await loadUsers();
-              return;
-            }
-            createdRows.push({
-              email: created.email ?? personPayload.email,
-              temporaryPassword: oneTimePassword,
-              mailMessage: created?.reinvited
-                ? `${mailMessage} Pasif/arşiv kullanıcı yeniden davet edildi.`
-                : mailMessage,
-            });
-          } catch (err: any) {
-            const failedMessage = err?.response?.data?.message
-              || err?.response?.data?.error?.message
-              || 'Davet gönderilemedi.';
-            if (createdRows.length > 0) {
-              setCreatedInvites(createdRows);
-              setCreatedCredential(createdRows[0] ?? null);
-              setFormError(`${createdRows.length} kişi davet edildi. ${person.email} alınamadı: ${failedMessage}`);
-              await loadUsers();
-              return;
-            }
-            throw err;
-          }
+        const response = await axios.post(`${API}/users`, payload, { headers: authHeader() });
+        const created = response.data?.data;
+        const mailMessage = created?.welcomeEmail?.message ?? 'Hoş geldin maili gönderimi denendi.';
+        const oneTimePassword = created?.temporaryPassword;
+        if (!oneTimePassword) {
+          setFormError('Kullanıcı oluşturuldu ancak geçici şifre oluşturma cevabında görüntülenemedi. Kabul testine devam etmeyin.');
+          await loadUsers();
+          return;
         }
-
-        setCreatedInvites(createdRows);
-        setCreatedCredential(createdRows[0] ?? null);
+        const row = {
+          email: created.email ?? payload.email,
+          temporaryPassword: oneTimePassword,
+          mailMessage: created?.reinvited
+            ? `${mailMessage} Pasif/arşiv kullanıcı yeniden açıldı.`
+            : mailMessage,
+        };
+        setCreatedInvites([row]);
+        setCreatedCredential(row);
         setInactiveDuplicateUser(null);
         await loadUsers();
         return;
@@ -2148,7 +2210,7 @@ export default function KullanicilarPage() {
         <div className="page-header-actions">
           <button type="button" onClick={openAdd} className="btn-primary justify-center">
             <Plus className="h-4 w-4" />
-            Kullanıcı Davet Et
+            Kullanıcı Ekle
           </button>
         </div>
       </div>
@@ -2462,16 +2524,16 @@ export default function KullanicilarPage() {
         )}
       </div>
 
-      {/* ── Kullanıcı Davet Et / Düzenle Modal ────────────────────────────── */}
+      {/* ── Kullanıcı Ekle / Düzenle Modal ────────────────────────────── */}
       {(modal === 'add' || modal === 'edit') && (
         <Modal
           title={
             createdCredential
               ? modal === 'edit'
                 ? 'Rol Değişikliği Tamamlandı'
-                : 'Davet Tamamlandı'
+                : 'Kullanıcı Eklendi'
               : modal === 'add'
-                ? 'Kullanıcı Davet Et'
+                ? 'Kullanıcı Ekle'
                 : editingUser
                   ? `Kullanıcıyı Düzenle — ${editingUser.firstName} ${editingUser.lastName}`
                   : 'Kullanıcıyı Düzenle'
@@ -2491,8 +2553,8 @@ export default function KullanicilarPage() {
                 modal === 'edit'
                   ? 'Rol değişikliği tamamlandı.'
                   : (createdInvites?.length ?? 0) > 1
-                    ? 'Davetler tamamlandı.'
-                    : 'Kullanıcı daveti tamamlandı.'
+                    ? 'Kullanıcılar eklendi.'
+                    : 'Kullanıcı eklendi.'
               }
               description={
                 modal === 'edit'
@@ -2522,8 +2584,8 @@ export default function KullanicilarPage() {
                 <p className="font-semibold">Pasif veya arşiv kullanıcı bulundu</p>
                 <p className="mt-1 text-xs leading-5 text-amber-800">
                   {inactiveDuplicateUser.firstName} {inactiveDuplicateUser.lastName} ({userMailbox(inactiveDuplicateUser)}) bu e-posta ile kayıtlı.
-                  Yeni kayıt açmak yerine mevcut kullanıcı yeniden davet edilecek.
-                  Davet Gönder ile aynı e-posta yeniden aktifleştirilir; yeni geçici şifre üretilir.
+                  Yeni kayıt açmak yerine mevcut kullanıcı yeniden açılır.
+                  Kaydet ile aynı e-posta yeniden aktifleştirilir; yeni geçici şifre üretilir.
                 </p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <button
@@ -2550,10 +2612,9 @@ export default function KullanicilarPage() {
               <>
             {modal === 'add' && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-sm font-semibold text-slate-900">Davet bilgileri tek ekranda tamamlanır.</p>
+                <p className="text-sm font-semibold text-slate-900">Firma kartı Müşteriler’dedir.</p>
                 <p className="mt-1 text-xs leading-5 text-slate-600">
-                  Meridyen iç kullanıcıyı buradan ekleyin. Sigorta, eksper, broker ve asistans kullanıcıları ilgili müşteri kartından eklenir.
-                  Boş bırakılırsa sistem geçici şifre üretir.
+                  Eksper ofisi, sigorta, broker ve asistans firması Müşteriler kaydıdır. Ofis seçilince o karttaki personel burada durur. Yeni kişi bu ekrandan tek tek eklenir.
                 </p>
               </div>
             )}
@@ -2562,7 +2623,7 @@ export default function KullanicilarPage() {
             <div className="order-1 col-span-2">
               <FormField label="Bu kişi kim?" required error={formErrors.userTask}>
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                {USER_TASK_OPTIONS.filter((option) => modal !== 'add' || !isCustomerCompanyUserTask(option.value)).map((option) => (
+                {USER_TASK_OPTIONS.map((option) => (
                     <button
                       key={option.value}
                       type="button"
@@ -2644,7 +2705,7 @@ export default function KullanicilarPage() {
             )}
 
             {form.userTask === 'expert' && (
-              <div className="order-2 col-span-2">
+              <div className="order-2 col-span-2 space-y-3">
                 <FormField label="Ekspertiz Firması" required error={formErrors.expertCustomerId}>
                   {hasarExpertCustomers.length === 0 ? (
                     <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -2655,28 +2716,87 @@ export default function KullanicilarPage() {
                       {' '}üzerinden ekspertiz firması kaydı oluşturun.
                     </p>
                   ) : (
-                    <div className="grid max-h-48 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
-                      {hasarExpertCustomers.map((company) => (
-                        <label key={company.id} className="flex items-center gap-2 text-sm text-slate-700">
-                          <input
-                            type="radio"
-                            name="expert-firm"
-                            checked={form.expertCustomerId === company.id}
-                            onChange={() => {
-                              setForm((prev) => ({ ...prev, expertCustomerId: company.id }));
-                              setFormErrors((prev) => ({ ...prev, expertCustomerId: undefined, general: undefined }));
-                            }}
-                            className="border-slate-300 text-brand-600"
-                          />
-                          {company.name}
-                        </label>
-                      ))}
-                    </div>
+                    <button
+                      type="button"
+                      data-testid="ekspertiz-firma-secim"
+                      onClick={() => {
+                        setExpertFirmSearch('');
+                        setExpertFirmPickerOpen(true);
+                      }}
+                      className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm hover:border-blue-300"
+                    >
+                      <span className={selectedExpertFirmName ? 'font-medium text-slate-900' : 'text-slate-400'}>
+                        {selectedExpertFirmName || 'Ekspertiz firması seç'}
+                      </span>
+                      <span className="shrink-0 text-xs font-semibold text-blue-700">
+                        {selectedExpertFirmName ? 'Değiştir' : 'Aç'}
+                      </span>
+                    </button>
                   )}
                   <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-700">
                     Portal kullanıcısı seçilen ekspertiz firmasına bağlanır; hoş geldin mailinde firma adı bu kayıttan gelir.
                   </p>
                 </FormField>
+                {selectedOfficeId ? (
+                  <div className="space-y-2" data-testid="eksper-ofisi-personel-listesi">
+                    <p className="text-sm font-semibold text-slate-800">Bu ofiste kayıtlı personel</p>
+                    <p className="text-xs leading-5 text-slate-500">
+                      {modal === 'add'
+                        ? 'Kişiyi seçince ad, soyad, görev, e-posta ve telefon dolar.'
+                        : 'Seçilen ekspertiz ofisinde tanımlı kişiler.'}
+                    </p>
+                    {officeUsersLoading ? (
+                      <p className="text-xs text-slate-500">Yükleniyor…</p>
+                    ) : officeUsers.length === 0 ? (
+                      <p className="text-xs text-slate-500">Bu ofiste henüz personel yok.</p>
+                    ) : (
+                      <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+                        {officeUsers.map((person) => {
+                          const selected = selectedOfficeUserId === person.id;
+                          const canFill = modal === 'add';
+                          return (
+                            <li key={person.id}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (canFill) selectOfficePerson(person);
+                                }}
+                                aria-pressed={selected}
+                                className={`w-full px-3 py-2 text-left transition-colors ${
+                                  selected ? 'bg-blue-50' : canFill ? 'hover:bg-slate-50' : ''
+                                }`}
+                              >
+                                <p className="text-sm font-medium text-slate-900">
+                                  {person.firstName} {person.lastName}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {displayPersonDuty(person)}
+                                  {person.email ? ` · ${person.email}` : ''}
+                                  {person.phone ? ` · ${formatPhoneDisplay(person.phone)}` : ''}
+                                </p>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                ) : null}
+                {expertFirmPickerOpen ? (
+                  <FirmPickerOverlay
+                    title="Ekspertiz firması seç"
+                    search={expertFirmSearch}
+                    onSearch={setExpertFirmSearch}
+                    items={hasarExpertCustomers}
+                    selectedId={form.expertCustomerId}
+                    onSelect={(id) => {
+                      setForm((prev) => ({ ...prev, expertCustomerId: id }));
+                      setFormErrors((prev) => ({ ...prev, expertCustomerId: undefined, general: undefined }));
+                      setExpertFirmPickerOpen(false);
+                    }}
+                    onClose={() => setExpertFirmPickerOpen(false)}
+                  />
+                ) : null}
               </div>
             )}
 
@@ -3143,114 +3263,50 @@ export default function KullanicilarPage() {
               </div>
             )}
 
-            {form.userTask && modal === 'add' && isCustomerCompanyUserTask(form.userTask) && (
-              <div className="order-3 col-span-2 space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">Firma kullanıcıları</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Aynı müşteri firmasına birden fazla kişiyi göreviyle ekleyin.
-                  </p>
-                  {formErrors.invitePeople && (
-                    <p className="mt-1.5 text-xs font-medium text-red-600">{formErrors.invitePeople}</p>
-                  )}
-                </div>
-                {form.invitePeople.map((person, index) => (
-                  <div key={person.key} className="rounded-xl border border-slate-200 bg-white p-3">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-slate-800">{index + 1}. kişi</p>
-                      {form.invitePeople.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeInvitePerson(person.key)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                          aria-label="Kişiyi kaldır"
-                          title="Kişiyi kaldır"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                      <div>
-                        <FormField label="Ad" required error={personErrors[person.key]?.firstName}>
-                          <input
-                            type="text"
-                            value={person.firstName}
-                            onChange={(e) => updateInvitePerson(person.key, { firstName: e.target.value })}
-                            onBlur={(e) => {
-                              const v = toTitleCaseTR(e.target.value.trim());
-                              if (v) updateInvitePerson(person.key, { firstName: v });
-                            }}
-                            className={inputCls}
-                            placeholder="Ad"
-                          />
-                        </FormField>
-                      </div>
-                      <div>
-                        <FormField label="Soyad" required error={personErrors[person.key]?.lastName}>
-                          <input
-                            type="text"
-                            value={person.lastName}
-                            onChange={(e) => updateInvitePerson(person.key, { lastName: e.target.value })}
-                            onBlur={(e) => {
-                              const v = toTitleCaseTR(e.target.value.trim());
-                              if (v) updateInvitePerson(person.key, { lastName: v });
-                            }}
-                            className={inputCls}
-                            placeholder="Soyad"
-                          />
-                        </FormField>
-                      </div>
-                      <div className="col-span-2 sm:col-span-1">
-                        <FormField label="Görev" required error={personErrors[person.key]?.jobTitle}>
-                          <input
-                            type="text"
-                            value={person.jobTitle}
-                            onChange={(e) => updateInvitePerson(person.key, { jobTitle: e.target.value })}
-                            onBlur={(e) => {
-                              const v = toTitleCaseTR(e.target.value.trim());
-                              if (v) updateInvitePerson(person.key, { jobTitle: v });
-                            }}
-                            className={inputCls}
-                            placeholder="Görev"
-                            maxLength={80}
-                          />
-                        </FormField>
-                      </div>
-                      <div className="col-span-2 sm:col-span-3">
-                        <FormField label="E-posta" required error={personErrors[person.key]?.email}>
-                          <input
-                            type="email"
-                            value={person.email}
-                            onChange={(e) => updateInvitePerson(person.key, { email: e.target.value })}
-                            className={inputCls}
-                            placeholder="ornek@sirket.com"
-                          />
-                        </FormField>
-                      </div>
-                      <div className="col-span-2 sm:col-span-3">
-                        <FormField label="Telefon">
-                          <PhoneInput
-                            value={person.phone}
-                            onChange={(v) => updateInvitePerson(person.key, { phone: v })}
-                          />
-                        </FormField>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addInvitePerson}
-                  className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100"
-                >
-                  <Plus className="h-4 w-4" />
-                  Kişi Ekle
-                </button>
+            {modal === 'add' && isCustomerCompanyUserTask(form.userTask) && form.userTask !== 'expert' && selectedOfficeId ? (
+              <div className="order-3 col-span-2 space-y-2" data-testid="eksper-ofisi-personel-listesi">
+                <p className="text-sm font-semibold text-slate-800">Bu ofiste kayıtlı personel</p>
+                <p className="text-xs leading-5 text-slate-500">
+                  Kişiyi seçince ad, soyad, görev, e-posta ve telefon dolar.
+                </p>
+                {officeUsersLoading ? (
+                  <p className="text-xs text-slate-500">Yükleniyor…</p>
+                ) : officeUsers.length === 0 ? (
+                  <p className="text-xs text-slate-500">Bu ofiste henüz personel yok.</p>
+                ) : (
+                  <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+                    {officeUsers.map((person) => {
+                      const selected = selectedOfficeUserId === person.id;
+                      return (
+                        <li key={person.id}>
+                          <button
+                            type="button"
+                            onClick={() => selectOfficePerson(person)}
+                            aria-pressed={selected}
+                            className={`w-full px-3 py-2 text-left transition-colors ${
+                              selected
+                                ? 'bg-blue-50'
+                                : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <p className="text-sm font-medium text-slate-900">
+                              {person.firstName} {person.lastName}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {displayPersonDuty(person)}
+                              {person.email ? ` · ${person.email}` : ''}
+                              {person.phone ? ` · ${formatPhoneDisplay(person.phone)}` : ''}
+                            </p>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
-            )}
+            ) : null}
 
-            {form.userTask && (modal !== 'add' || !isCustomerCompanyUserTask(form.userTask)) && (
+            {form.userTask && (
               <div className="order-3 col-span-2 grid grid-cols-2 gap-3">
                 <div>
                   <FormField label="Ad" required error={formErrors.firstName}>
@@ -3351,7 +3407,7 @@ export default function KullanicilarPage() {
                 disabled={saving}
                 className="h-10 flex-1 rounded-lg bg-brand-600 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
               >
-                {saving ? 'Kaydediliyor...' : modal === 'add' ? 'Davet Gönder' : 'Değişiklikleri Kaydet'}
+                {saving ? 'Kaydediliyor...' : modal === 'add' ? 'Kullanıcı Ekle' : 'Değişiklikleri Kaydet'}
               </button>
             </div>
           </div>

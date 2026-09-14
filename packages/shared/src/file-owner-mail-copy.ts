@@ -133,6 +133,25 @@ export function prependFileOwnerCopyNotice(bodyHtml: string, noticeHtml: string)
   return `${noticeHtml}\n${trimmed}`;
 }
 
+/** Hoş geldin: kopya yeni kullanıcının kendisine gitmez. */
+export function welcomeInviteAdminCopies(
+  admins: FileOwnerMailCopy[],
+  recipientEmail: string,
+): FileOwnerMailCopy[] {
+  const dest = recipientEmail.trim().toLowerCase();
+  const seen = new Set<string>();
+  const copies: FileOwnerMailCopy[] = [];
+  for (const admin of admins) {
+    const email = String(admin.email ?? '').trim();
+    const key = email.toLowerCase();
+    if (!email.includes('@') || key === dest || seen.has(key)) continue;
+    if (key.includes('ihbar@') || key.includes('hasar@')) continue;
+    seen.add(key);
+    copies.push({ email, name: String(admin.name ?? '').trim() });
+  }
+  return copies;
+}
+
 function formatPlatformMailSentAt(value?: Date | string | null): string {
   if (!value) return '';
   const date = value instanceof Date ? value : new Date(value);

@@ -11,8 +11,8 @@ export const FINANCE_MODULES: FinanceModuleItem[] = [
   {
     title: 'Satış Fatura Talepleri',
     href: FINANS_KART_YOL.faturaTalepleri,
-    purpose: 'Dosya kapanışından gelen kesilecek satış talebi. Kesilmiş fatura burada durmaz.',
-    action: 'Onaylayıp kesin; kesilen kayıt Kesilen Faturalar sekmesine geçer.',
+    purpose: 'Dosya kapanışından gelen kesilecek satış işi. Resmi fatura başka programda kesilir.',
+    action: 'Resmi fatura numarasını yazın; iş Faturalandı görünür ve Faturalar sayfasına geçer.',
   },
   {
     title: 'Tedarikçi Ödeme Kuyruğu',
@@ -29,8 +29,8 @@ export const FINANCE_MODULES: FinanceModuleItem[] = [
   {
     title: 'Faturalar',
     href: '/panel/finans/faturalar',
-    purpose: 'Kesilen fatura kayıttır. Fatura Talepleri kapanıştan gelen kesilecek iştir.',
-    action: 'İki sekmeyi karıştırmayın; talebi kesin, kayıt Kesilen Faturalar’da durur.',
+    purpose: 'Kesilmiş satış ve alış belgesi. Satış Fatura Talepleri ayrı sayfadır.',
+    action: 'Satış veya alış süzgeciyle kesin kaydı açın. Tedarikçi ödemesi burada değildir.',
   },
   {
     title: 'Masraflar',

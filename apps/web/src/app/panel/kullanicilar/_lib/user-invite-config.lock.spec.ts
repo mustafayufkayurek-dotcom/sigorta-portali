@@ -10,9 +10,14 @@ import { fileURLToPath } from 'node:url';
 import {
   displayPersonDuty,
   emptyInvitePersonDraft,
+  filterOfficeFirmsByQuery,
   invitePeopleToSubmit,
   isCustomerCompanyUserTask,
   isInvitePersonBlank,
+  officePersonPhone,
+  officePersonToFormFields,
+  resolveOfficePersonPhone,
+  selectedPortalOfficeCustomerId,
   showsUserOperationalAuthorization,
 } from './user-invite-config.ts';
 
@@ -41,7 +46,7 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.equal(invitePeopleToSubmit([emptyInvitePersonDraft()]).length, 1);
   });
 
-  it('davet kutusu aynı firmaya birden fazla kişiyi göreviyle ekler', () => {
+  it('davet kutusu müşteri kartında durur; Kullanıcılar ofisteki personeli listeler', () => {
     const customerPage = readFileSync(join(here, '../../musteriler/[id]/page.tsx'), 'utf8');
     assert.match(customerPage, /CustomerPortalUsersPanel/);
     const panel = readFileSync(join(here, '../../../../components/customers/CustomerPortalUsersPanel.tsx'), 'utf8');
@@ -51,15 +56,85 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.match(panel, /jobTitle/);
     assert.doesNotMatch(panel, /Görev seçin/);
     const page = readFileSync(join(here, '../page.tsx'), 'utf8');
-    assert.match(page, /modal !== 'add' \|\| !isCustomerCompanyUserTask/);
+    assert.match(page, /eksper-ofisi-personel-listesi/);
+    assert.match(page, /Bu ofiste kayıtlı personel/);
+    assert.match(page, /selectOfficePerson/);
+    assert.match(page, /officePersonToFormFields/);
+    assert.match(page, /resolveOfficePersonPhone/);
+    assert.match(page, /label: 'Eksper'/);
+    assert.match(page, /Ekspertiz Firması/);
+    assert.match(page, /ekspertiz-firma-secim/);
+    assert.match(page, /ekspertiz-firma-secim-popup/);
+    assert.match(page, /Ekspertiz firması seç/);
+    assert.doesNotMatch(page, /name="expert-firm"/);
+    assert.match(page, /portalCustomerId/);
+    assert.match(page, /Kullanıcı Ekle/);
+    assert.doesNotMatch(page, /Aynı müşteri firmasına birden fazla kişiyi göreviyle ekleyin/);
+    assert.doesNotMatch(page, /USER_TASK_OPTIONS\.filter\(\(option\) => modal !== 'add'/);
+    assert.doesNotMatch(page, /Kullanıcı Davet Et/);
+    assert.doesNotMatch(page, /Sigorta, eksper, broker ve asistans kullanıcıları ilgili müşteri kartından eklenir/);
     const profil = readFileSync(join(here, '../../profil/page.tsx'), 'utf8');
     assert.match(profil, />Görev</);
     assert.match(profil, /displayPersonDuty/);
   });
 
+  it('seçilen ekspertiz ofisi müşteri kartı kimliğidir', () => {
+    assert.equal(
+      selectedPortalOfficeCustomerId({ userTask: 'expert', expertCustomerId: 'ofis-1' }),
+      'ofis-1',
+    );
+    assert.equal(
+      selectedPortalOfficeCustomerId({ userTask: 'broker', brokerCustomerId: 'br-1' }),
+      'br-1',
+    );
+    assert.equal(
+      selectedPortalOfficeCustomerId({ userTask: 'assistance_company_user', assistantCustomerId: 'as-1' }),
+      'as-1',
+    );
+    assert.equal(selectedPortalOfficeCustomerId({ userTask: 'operations', expertCustomerId: 'ofis-1' }), '');
+  });
+
+  it('ekspertiz firması popup’ta ada göre süzülür', () => {
+    const firms = [
+      { id: '1', name: 'Andaçlar Sigorta Ekspertiz Hizmetleri' },
+      { id: '2', name: 'Bağdat Eksperlik' },
+      { id: '3', name: 'Meba Sigorta Ekspertizlik Hizmetleri Ltd. Şti.' },
+    ];
+    assert.equal(filterOfficeFirmsByQuery(firms, 'andaç').length, 1);
+    assert.equal(filterOfficeFirmsByQuery(firms, 'eksper').length, 3);
+    assert.equal(filterOfficeFirmsByQuery(firms, '').length, 3);
+  });
+
   it('yazılan görev kod listesinin üstünde durur', () => {
     assert.equal(displayPersonDuty({ jobTitle: 'Hasar Müdürü', role: { code: 'expert', name: 'Expert' } }), 'Hasar Müdürü');
     assert.equal(displayPersonDuty({ jobTitle: '', role: { code: 'expert', name: 'Expert' } }), 'Eksper');
+  });
+
+  it('ofis personeli seçilince ad soyad görev e-posta telefon dolar', () => {
+    const fields = officePersonToFormFields({
+      firstName: 'Test',
+      lastName: 'Eksper Bir',
+      email: 'test.eksper.bir@meridyen-lokal.test',
+      phone: '5321334144',
+      jobTitle: 'Eksper',
+    });
+    assert.equal(fields.firstName, 'Test');
+    assert.equal(fields.lastName, 'Eksper Bir');
+    assert.equal(fields.email, 'test.eksper.bir@meridyen-lokal.test');
+    assert.equal(fields.phone, '+905321334144');
+    assert.equal(fields.jobTitle, 'Eksper');
+    assert.equal(officePersonPhone('0532 133 4144'), '+905321334144');
+    assert.equal(
+      resolveOfficePersonPhone(
+        { firstName: 'Turgut', lastName: 'Andaç', email: 'info@andaclarekspertiz.com', phone: '' },
+        { contacts: [{ name: 'Turgut Andaç', email: 'info@andaclarekspertiz.com', phone: '532 133 4144' }] },
+      ),
+      '+905321334144',
+    );
+    assert.equal(
+      resolveOfficePersonPhone({ firstName: 'Ayşe', lastName: 'Yılmaz', phone: '', adjuster: { phone: '05321112233' } }),
+      '+905321112233',
+    );
   });
 
   it('yetkilendirme yalnız Meridyen dosya sorumlusunda sorulur', () => {

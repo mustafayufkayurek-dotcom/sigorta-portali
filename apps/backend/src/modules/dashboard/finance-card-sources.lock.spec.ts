@@ -55,6 +55,6 @@ describe('finans kart kaynakları LOCK', () => {
     assert.match(flow, /pendingInvoiceRequestCount/);
     assert.match(flow, /FINANS_KART_YOL\.faturaBekleyen/);
     assert.match(adminFin, /pendingInvoiceRequestCount/);
-    assert.match(adminFin, /faturalar\?tab=talepler/);
+    assert.match(adminFin, /fatura-talepleri/);
   });
 });

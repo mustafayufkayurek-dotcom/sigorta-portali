@@ -4,7 +4,7 @@ import {
   unwrapApiData,
 } from './invoice-request-envelope';
 
-export { unwrapApiData, faturaListTabHref, resolveFaturaListTab } from './invoice-request-envelope';
+export { unwrapApiData, faturaListTabHref, faturaTalepleriHref, resolveFaturaListTab } from './invoice-request-envelope';
 export type { FaturaListTab } from './invoice-request-envelope';
 
 async function handleResponse<T>(res: Response): Promise<T> {
@@ -142,13 +142,39 @@ export function getInvoiceRequest(id: string): Promise<InvoiceRequest> {
 export function updateInvoiceRequestStatus(
   id: string,
   status: InvoiceRequestStatus,
-  extras?: { invoiceId?: string; notes?: string; salesInvoiceNo?: string; cancelReason?: string },
+  extras?: {
+    invoiceId?: string;
+    notes?: string;
+    salesInvoiceNo?: string;
+    cancelReason?: string;
+    invoiceDate?: string;
+    documentDate?: string;
+    subtotalAmount?: number;
+    vatAmount?: number;
+    totalAmount?: number;
+  },
 ): Promise<InvoiceRequest> {
   return authFetch(`${API}/invoice-requests/${id}/status`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status, ...extras }),
   }).then((r) => handleResponse<unknown>(r).then(asInvoiceRequest));
+}
+
+export function bulkMarkInvoiceRequestsInvoiced(body: {
+  ids: string[];
+  salesInvoiceNo: string;
+  invoiceDate?: string;
+  documentDate?: string;
+  subtotalAmount?: number;
+  vatAmount?: number;
+  totalAmount?: number;
+}): Promise<InvoiceRequest[]> {
+  return authFetch(`${API}/invoice-requests/bulk-invoiced`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then((r) => handleResponse<unknown>(r).then(asInvoiceRequestList));
 }
 
 export function notifyInvoiceRequestOwner(id: string): Promise<{

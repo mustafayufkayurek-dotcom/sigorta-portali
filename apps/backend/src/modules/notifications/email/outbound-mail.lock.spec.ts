@@ -98,6 +98,10 @@ describe('operasyon giden mail LOCK', () => {
     const welcomeFn = sendWelcome.slice(0, sendWelcomeEnd > 0 ? sendWelcomeEnd : undefined);
     assert.doesNotMatch(welcomeFn, /mailbox:\s*'IHBAR'/);
     assert.match(email, /options\?\.mailbox === 'IHBAR' \? 'IHBAR' : 'HASAR'/);
+    assert.match(users, /welcomeInviteAdminCopies/);
+    assert.match(users, /readReceiptTo/);
+    assert.match(email, /copyNoticeHtml/);
+    assert.match(email, /Disposition-Notification-To/);
   });
 
   it('Hasar dosya işi Hasar kutusundan; Acil kapanış İhbar kutusundan', () => {

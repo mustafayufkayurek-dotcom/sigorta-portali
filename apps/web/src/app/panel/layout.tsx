@@ -385,7 +385,7 @@ function getPanelMainLinks({
       : isFinance
         ? [
             { title: 'Finans Merkezi', href: '/panel/finans', icon: MonitorCheck, exactMatch: true },
-            { title: 'Fatura Talepleri', href: '/panel/finans/faturalar?tab=talepler', icon: FileText },
+            { title: 'Satış Fatura Talepleri', href: '/panel/finans/fatura-talepleri', icon: FileText },
             { title: 'Tedarikçi Ödeme Kuyruğu', href: '/panel/finans/tahsilatlar?queue=payable', icon: Receipt },
             {
               title: 'Operasyon',
@@ -1749,7 +1749,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       return;
     }
     if (notif.relatedEntityType === 'invoice_request') {
-      router.push('/panel/finans/faturalar?tab=talepler');
+      router.push('/panel/finans/fatura-talepleri');
     }
   };
 

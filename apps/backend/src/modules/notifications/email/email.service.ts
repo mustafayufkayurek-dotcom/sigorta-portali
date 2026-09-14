@@ -12,6 +12,7 @@ import {
 } from './email.template';
 import { WelcomeEmailService } from './welcome-email.service';
 import { WelcomeEmailData, WelcomeEmailRole } from './welcome-email.template';
+import { prependFileOwnerCopyNotice } from '@sigorta/shared';
 
 export type EmailSendResult = {
   sent: boolean;
@@ -27,6 +28,10 @@ export type EmailSendOptions = {
   /** Varsayılan HASAR — rapor/eksper. Acil ihbar kutusundan gitsin diye IHBAR. */
   mailbox?: InboundMailbox;
   cc?: Array<{ email: string; name?: string }>;
+  /** Okundu belgesi bu adreslere de düşer (hoş geldin yönetici kopyası). */
+  readReceiptTo?: string[];
+  copyNoticeHtml?: string;
+  copyNoticeText?: string;
 };
 
 @Injectable()
@@ -153,6 +158,7 @@ export class EmailService {
           html,
           graphAttachments,
           options?.cc,
+          options?.readReceiptTo,
         );
         await this.prisma.emailLog.update({
           where: { id: logEntry.id },
@@ -191,6 +197,9 @@ export class EmailService {
         text: options?.text,
         cc: options?.cc?.map((item) => item.email).filter(Boolean).join(', ') || undefined,
         attachments: options?.attachments,
+        headers: options?.readReceiptTo?.length
+          ? { 'Disposition-Notification-To': options.readReceiptTo.join(', ') }
+          : undefined,
       });
       const rejected = (info.rejected ?? []).map(String).filter(Boolean);
       if (rejected.length) {
@@ -257,11 +266,20 @@ export class EmailService {
     to: string,
     role: WelcomeEmailRole,
     params: WelcomeEmailData,
+    options?: Pick<EmailSendOptions, 'cc' | 'readReceiptTo' | 'copyNoticeHtml' | 'copyNoticeText'>,
   ): Promise<EmailSendResult> {
     const rendered = this.welcomeEmailService.generateWelcomeEmail(role, params);
-    return this.sendEmail(to, rendered.subject, rendered.html, {
-      text: rendered.text,
+    const html = options?.copyNoticeHtml
+      ? prependFileOwnerCopyNotice(rendered.html, options.copyNoticeHtml)
+      : rendered.html;
+    const text = options?.copyNoticeText
+      ? `${options.copyNoticeText}\n\n${rendered.text}`
+      : rendered.text;
+    return this.sendEmail(to, rendered.subject, html, {
+      text,
       attachments: rendered.attachments,
+      cc: options?.cc,
+      readReceiptTo: options?.readReceiptTo,
     });
   }
 

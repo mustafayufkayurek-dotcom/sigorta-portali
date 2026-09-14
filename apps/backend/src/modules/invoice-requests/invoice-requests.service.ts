@@ -13,6 +13,7 @@ import { InvoicesService } from '@/modules/invoices/invoices.service';
 import { staffDisplayName } from '@/modules/invoices/invoice-edit-note';
 import { isAcilDigitalApprovalRequired } from '@sigorta/shared';
 import {
+  BulkInvoiceRequestsDto,
   CreateInvoiceRequestDto,
   UpdateInvoiceRequestStatusDto,
 } from './dto/invoice-requests.dto';
@@ -375,13 +376,21 @@ export class InvoiceRequestsService {
       if (dto.invoiceId) {
         updateData.invoiceId = dto.invoiceId;
       } else if (!current.invoiceId && salesInvoiceNo && (current.claimFileId || current.emergencyCaseId)) {
+        const officialTotal = dto.totalAmount != null ? Number(dto.totalAmount) : current.totalAmount;
         const linked = await this.invoicesService.linkOrCreateIssuedSalesInvoice({
           claimFileId: current.claimFileId,
           emergencyCaseId: current.emergencyCaseId,
           invoiceNo: salesInvoiceNo,
-          totalAmount: current.totalAmount,
+          totalAmount: officialTotal,
+          subtotalAmount: dto.subtotalAmount,
+          vatAmount: dto.vatAmount,
+          invoiceDate: dto.invoiceDate,
+          notes: issuedSalesNotes({
+            requestNo: current.requestNo,
+            fileNo: current.fileNo,
+            documentDate: dto.documentDate,
+          }),
           insuranceCompanyId: current.insuranceCompanyId,
-          notes: `Fatura talebi ${current.requestNo}`,
           userId,
         });
         updateData.invoiceId = linked.id;
@@ -420,6 +429,71 @@ export class InvoiceRequestsService {
     }
 
     return result;
+  }
+
+  async bulkMarkEmergencyInvoiced(dto: BulkInvoiceRequestsDto, userId: string) {
+    const ids = [...new Set((dto.ids ?? []).map((id) => String(id).trim()).filter(Boolean))];
+    if (ids.length < 1) {
+      throw new BadRequestException('Dosya seçin');
+    }
+    const salesInvoiceNo = (dto.salesInvoiceNo ?? '').trim();
+    if (!salesInvoiceNo) {
+      throw new BadRequestException('Satış fatura numarası gerekli');
+    }
+
+    const rows = await this.prisma.invoiceRequest.findMany({
+      where: { id: { in: ids } },
+    });
+    if (rows.length !== ids.length) {
+      throw new NotFoundException('Seçilen talep bulunamadı');
+    }
+    if (rows.some((row) => row.serviceType !== 'emergency' || !row.emergencyCaseId)) {
+      throw new BadRequestException('Toplu fatura yalnız Acil Yardım dosyalarında yapılır');
+    }
+    if (rows.some((row) => row.status === 'invoiced' || row.status === 'cancelled')) {
+      throw new BadRequestException('Faturalanmış veya iptal iş seçilemez');
+    }
+
+    const netSum = rows.reduce((sum, row) => sum + Number(row.totalAmount ?? 0), 0);
+    const totalAmount = dto.totalAmount != null ? Number(dto.totalAmount) : netSum;
+    const subtotalAmount = dto.subtotalAmount != null ? Number(dto.subtotalAmount) : netSum;
+    const vatAmount = dto.vatAmount != null ? Number(dto.vatAmount) : 0;
+    const primary = rows[0];
+    const extraIds = rows
+      .slice(1)
+      .map((row) => row.emergencyCaseId)
+      .filter((id): id is string => Boolean(id));
+    const linked = await this.invoicesService.linkOrCreateIssuedSalesInvoice({
+      claimFileId: null,
+      emergencyCaseId: primary.emergencyCaseId,
+      invoiceNo: salesInvoiceNo,
+      totalAmount,
+      subtotalAmount,
+      vatAmount,
+      invoiceDate: dto.invoiceDate,
+      insuranceCompanyId: primary.insuranceCompanyId,
+      notes: issuedSalesNotes({
+        requestNo: rows.map((row) => row.requestNo).join(', '),
+        fileNo: rows.map((row) => row.fileNo).join(', '),
+        documentDate: dto.documentDate,
+        bulk: true,
+      }),
+      userId,
+      additionalEmergencyCaseIds: extraIds,
+      allowAdditionalEmergencyFiles: true,
+    });
+
+    const updated = [];
+    for (const row of rows) {
+      updated.push(
+        await this.updateStatus(
+          row.id,
+          { status: 'invoiced', invoiceId: linked.id, salesInvoiceNo },
+          userId,
+        ),
+      );
+    }
+    return updated;
   }
 
   async notifyFileOwner(id: string): Promise<{ notified: number; alreadyNotified: boolean; recipients: string[] }> {
@@ -633,6 +707,20 @@ export class InvoiceRequestsService {
       monthlyInvoiced,
     };
   }
+}
+
+function issuedSalesNotes(input: {
+  requestNo: string;
+  fileNo: string;
+  documentDate?: string | null;
+  bulk?: boolean;
+}): string {
+  const parts = [
+    input.bulk ? `Toplu satış: ${input.fileNo}` : `Fatura talebi ${input.requestNo}`,
+    input.bulk ? `Talepler ${input.requestNo}` : `Dosya ${input.fileNo}`,
+    input.documentDate?.trim() ? `İşlem tarihi: ${input.documentDate.trim()}` : '',
+  ].filter(Boolean);
+  return parts.join(' · ');
 }
 
 function withCancelNote(notes: string | null | undefined, reason: string): string {

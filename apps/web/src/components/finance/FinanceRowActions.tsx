@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, Eye, MoreVertical, Pencil, Printer, ScrollText, Send, XCircle } from 'lucide-react';
+import { CheckCircle2, Eye, FileText, MoreVertical, Pencil, Printer, ScrollText, Send, XCircle } from 'lucide-react';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { PinnableRowActions } from '@/components/portal/PinnableRowActions';
 import { defaultPinnedActionIds, FINANS_FATURA_ROW_ACTIONS, FINANS_FATURA_TALEP_ROW_ACTIONS, FINANS_TAHSILAT_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
@@ -331,24 +331,24 @@ export function InvoiceRowActions({
   );
 }
 
-/** Fatura talebi satırı — Kesilen Faturalar ile aynı işlem seçici. */
+/** Fatura talebi satırı — resmi fatura başka programda kesilir; burada bilgisi yazılır. */
 export function InvoiceRequestRowActions({
   rowId,
   pinnedIds,
   status: _status,
+  onInvoice,
   onView,
   onPrint,
   onNotifyOwner,
-  onEdit,
   onCancel,
 }: {
   rowId?: string;
   pinnedIds?: string[];
   status: string;
+  onInvoice?: () => void;
   onView: () => void;
   onPrint: () => void;
   onNotifyOwner?: () => void;
-  onEdit?: () => void;
   onCancel?: () => void;
 }) {
   const uid = useId();
@@ -362,6 +362,14 @@ export function InvoiceRequestRowActions({
       moreTestId="finans-fatura-talep-more"
       pinnedIds={pins}
       items={[
+        {
+          id: 'invoice',
+          label: 'Resmi Fatura Gir',
+          onClick: () => onInvoice?.(),
+          hidden: !onInvoice,
+          testId: 'fatura-talep-fatura-kes',
+          icon: <FileText className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
         {
           id: 'view',
           label: 'Görüntüle',
@@ -381,13 +389,6 @@ export function InvoiceRequestRowActions({
           onClick: () => onNotifyOwner?.(),
           hidden: !onNotifyOwner,
           icon: <Send className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
-        },
-        {
-          id: 'edit',
-          label: 'Düzenle',
-          onClick: () => onEdit?.(),
-          hidden: !onEdit,
-          icon: <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
         },
         {
           id: 'cancel',

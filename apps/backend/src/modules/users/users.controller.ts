@@ -29,6 +29,14 @@ export class UsersController {
     return { success: true, data };
   }
 
+  @Post()
+  @RequirePermissions('user.create')
+  @ApiOperation({ summary: 'Yeni kullanıcı oluştur' })
+  async create(@Body() createUserDto: any) {
+    const data = await this.usersService.create(createUserDto);
+    return { success: true, data };
+  }
+
   @Post('portal-invite/:customerId')
   @RequirePermissions('user.create')
   @ApiOperation({ summary: 'Müşteri kartından portal kullanıcısı davet et' })

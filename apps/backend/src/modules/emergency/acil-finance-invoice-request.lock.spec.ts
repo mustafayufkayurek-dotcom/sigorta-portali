@@ -87,10 +87,11 @@ describe('acil satış fatura talebi LOCK', () => {
     assert.doesNotMatch(transfer, /insuranceCompanyId:\s*emergencyCase\.customerId/);
     const ir = read('../invoice-requests/invoice-requests.service.ts');
     assert.match(ir, /syncMissingEmergencySalesRequests/);
+    assert.match(ir, /bulkMarkEmergencyInvoiced/);
     assert.match(ir, /emergencyCaseId: current.emergencyCaseId/);
     const invoices = read('../invoices/invoices.service.ts');
     assert.match(invoices, /emergencyCaseId/);
-    assert.match(invoices, /Fatura ya hasar ya acil dosyaya bağlanır/);
+    assert.match(invoices, /allowAdditionalEmergencyFiles/);
     assert.match(invoices, /touchClaimFinance/);
     const smoke = read('../../../../../scripts/smoke-acil-netlesen.sh');
     assert.match(smoke, /acil-finance-invoice-request\.lock\.spec/);

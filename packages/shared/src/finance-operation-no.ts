@@ -14,14 +14,32 @@ export function financeOperationNo(
   return `${kind}-${y}-${raw.slice(-6).toUpperCase()}`;
 }
 
+/** Satış KDV oranı — Hasar onay / Acil kapanış esası. */
+export const STANDARD_SALES_VAT_RATE = 20;
+
+/** Hasar: satış KDV, onarım raporu onaylanınca esas alınır. */
+export function isHasarSalesVatBasis(reportStatus?: string | null): boolean {
+  const status = String(reportStatus ?? '').trim().toLowerCase();
+  return status === 'approved' || status === 'externally_approved';
+}
+
+/** Acil: satış KDV, dosya kapanınca esas alınır. */
+export function isAcilSalesVatBasis(input: {
+  status?: string | null;
+  resolvedAt?: Date | string | null;
+}): boolean {
+  if (input.resolvedAt) return true;
+  const status = String(input.status ?? '').trim().toUpperCase();
+  return status === 'COZULDU' || status === 'FATURALANDILDI';
+}
+
 export function shouldCreateApprovedFileFee(input: {
   hasFileFee: boolean;
   reportStatus?: string | null;
   salesAmount?: number | null;
 }): boolean {
   if (input.hasFileFee) return false;
-  const status = String(input.reportStatus ?? '').trim().toLowerCase();
-  if (status !== 'approved' && status !== 'externally_approved') return false;
+  if (!isHasarSalesVatBasis(input.reportStatus)) return false;
   return Number(input.salesAmount ?? 0) > 0;
 }
 

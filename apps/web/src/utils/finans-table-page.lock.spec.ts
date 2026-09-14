@@ -56,7 +56,7 @@ describe('finans-table-page lock', () => {
   it('sekiz finans sayfası pager ve Faturalar dar İşlemler kullanır', () => {
     const pages = [
       '../app/panel/finans/faturalar/page.tsx',
-      '../components/finance/FaturaTalepleriSection.tsx',
+      '../components/finance/FaturaTalepListeKart.tsx',
       '../app/panel/finans/karlilik/page.tsx',
       '../app/panel/finans/portfolyo-pl/page.tsx',
       '../app/panel/finans/dosya-pl/page.tsx',
@@ -72,7 +72,6 @@ describe('finans-table-page lock', () => {
     }
     const withActions = [
       '../app/panel/finans/faturalar/page.tsx',
-      '../components/finance/FaturaTalepleriSection.tsx',
       '../app/panel/finans/banka-hesaplari/page.tsx',
       '../app/panel/finans/masraflar/page.tsx',
     ];
@@ -83,8 +82,11 @@ describe('finans-table-page lock', () => {
     }
     const faturalar = read('../app/panel/finans/faturalar/page.tsx');
     const talepler = read('../components/finance/FaturaTalepleriSection.tsx');
+    const talepKart = read('../components/finance/FaturaTalepListeKart.tsx');
+    assert.match(talepler, /FINANS_ACTIONS_COLUMN/);
+    assert.match(talepKart, /colId="actions"/);
     assert.match(faturalar, /orderedVisibleColumns\.map/);
-    assert.match(talepler, /orderedVisibleColumns\.map/);
+    assert.match(talepKart, /orderedVisibleColumns\.map/);
     assert.match(faturalar, /editReason/);
     assert.match(faturalar, /Düzenleme nedeni/);
     assert.match(faturalar, /fileOwnerNotifyToast/);
@@ -109,8 +111,8 @@ describe('finans-table-page lock', () => {
     const modal = read('../components/finance/FinansOncelikliGorevModal.tsx');
     assert.match(modal, /finans-oncelikli-gorev/);
     assert.match(modal, /Sayfaya git/);
-    assert.match(modal, /\/panel\/finans\/faturalar\?tab=talepler/);
-    assert.match(modal, /tab'\) === 'talepler'/);
+    assert.match(modal, /\/panel\/finans\/fatura-talepleri/);
+    assert.match(modal, /fatura-talepleri/);
     const layout = read('../app/panel/layout.tsx');
     assert.match(layout, /FinansOncelikliGorevModal/);
     assert.match(layout, /<Suspense fallback=\{null\}>/);

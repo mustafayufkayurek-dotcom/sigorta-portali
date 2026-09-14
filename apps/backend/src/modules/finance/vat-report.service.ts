@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { isAcilSalesVatBasis, STANDARD_SALES_VAT_RATE } from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 import { toGrossAmount, toNetAmount } from './overhead.constants';
 import { VAT_COUNTED_INVOICE_STATUSES, vatReportPeriodBounds } from './vat-report-period';
@@ -145,7 +146,8 @@ const METHOD_META: Record<VatReportMethod, { title: string; description: string;
   },
   operational: {
     title: 'Operasyonel Fişler',
-    description: 'Masraf izleme, sabit giderler ve dosya maliyetlerinden türetilen KDV. Fatura kesilmeden önce operasyonel kontrol için.',
+    description:
+      'Satış KDV Hasar’da onaylı rapor, Acil’de kapanış esasıdır. Masraf KDV her masraf satırındandır. Resmi beyan için fatura mahsupu ayrı durur.',
     formula: 'Tahmini mahsup = operasyonel gelir KDV − operasyonel gider KDV',
   },
   compare: {
@@ -306,7 +308,7 @@ export class VatReportService {
 
     const notes: string[] = [
       'Fatura mahsupunda iptal dışındaki satış ve alış faturaları (taslak dahil) döneme göre alınır.',
-      'Operasyonel kayıtlar fiş ve masraf girişlerinden türetilir; resmi beyan için fatura mahsupu esas alınmalıdır.',
+      'Operasyonel satış KDV: Hasar’da onaylı rapor geliri, Acil’de kapanış geliri. Masraf KDV her masraf satırından. Resmi beyan için fatura mahsupu esas alınmalıdır.',
       'Net KDV pozisyonu bilgilendirme amaçlıdır — beyanname için mali müşavirin onayı gerekir.',
     ];
 
@@ -546,6 +548,44 @@ export class VatReportService {
         status: r.status,
         netAmount: net,
         vatRate: r.vatRate,
+        vatAmount: vat,
+        grossAmount: gross,
+        direction: 'output',
+      });
+    }
+
+    const acilGelir = await this.prisma.emergencyCostEntry.findMany({
+      where: {
+        entryType: 'gelir',
+        amount: { gt: 0 },
+        case: {
+          resolvedAt: { gte: from, lte: to },
+        },
+      },
+      include: {
+        case: { select: { caseNo: true, fileNo: true, status: true, resolvedAt: true } },
+      },
+      orderBy: { entryDate: 'asc' },
+    });
+
+    for (const g of acilGelir) {
+      if (!isAcilSalesVatBasis({ status: g.case.status, resolvedAt: g.case.resolvedAt })) {
+        continue;
+      }
+      const { net, vat, gross } = splitFromStoredAmount(g.amount, STANDARD_SALES_VAT_RATE, false);
+      lines.push({
+        id: g.id,
+        source: 'revenue',
+        date: (g.case.resolvedAt ?? g.entryDate).toISOString(),
+        description: g.description,
+        category: 'Acil Satış',
+        group: 'Operasyonel Gelir',
+        fileNo: g.case.fileNo ?? g.case.caseNo,
+        documentNo: null,
+        counterparty: null,
+        status: g.case.status,
+        netAmount: net,
+        vatRate: STANDARD_SALES_VAT_RATE,
         vatAmount: vat,
         grossAmount: gross,
         direction: 'output',

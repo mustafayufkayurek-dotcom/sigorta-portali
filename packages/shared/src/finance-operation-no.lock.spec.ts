@@ -4,7 +4,14 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { financeOperationNo, resolveClaimRevenueVat, shouldCreateApprovedFileFee } from './finance-operation-no.ts';
+import {
+  financeOperationNo,
+  isAcilSalesVatBasis,
+  isHasarSalesVatBasis,
+  resolveClaimRevenueVat,
+  shouldCreateApprovedFileFee,
+  STANDARD_SALES_VAT_RATE,
+} from './finance-operation-no.ts';
 
 describe('finans işlem no + onay gelir kapısı', () => {
   it('masraf ve gelir no üretir', () => {
@@ -43,6 +50,16 @@ describe('finans işlem no + onay gelir kapısı', () => {
       }),
       false,
     );
+  });
+
+  it('satış KDV Hasar’da onayda, Acil’de kapanışta esas alınır', () => {
+    assert.equal(STANDARD_SALES_VAT_RATE, 20);
+    assert.equal(isHasarSalesVatBasis('approved'), true);
+    assert.equal(isHasarSalesVatBasis('externally_approved'), true);
+    assert.equal(isHasarSalesVatBasis('draft'), false);
+    assert.equal(isAcilSalesVatBasis({ status: 'SAHADA' }), false);
+    assert.equal(isAcilSalesVatBasis({ status: 'COZULDU', resolvedAt: '2026-09-13' }), true);
+    assert.equal(isAcilSalesVatBasis({ status: 'FATURALANDILDI', resolvedAt: '2026-09-13' }), true);
   });
 
   it('faturasız gelirde KDV sıfırlanır; tutar net kalır', () => {

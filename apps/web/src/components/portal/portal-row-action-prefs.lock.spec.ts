@@ -38,7 +38,9 @@ test('iç listelerde önerilen işlemler kolona düşer', () => {
   assert.ok(defaultPinnedActionIds(OPS_ROW_ACTIONS).includes('note'));
   assert.ok(defaultPinnedActionIds(FINANS_FATURA_ROW_ACTIONS).includes('notify'));
   assert.ok(defaultPinnedActionIds(FINANS_TAHSILAT_ROW_ACTIONS).includes('ekstre'));
+  assert.ok(defaultPinnedActionIds(FINANS_FATURA_TALEP_ROW_ACTIONS).includes('invoice'));
   assert.ok(defaultPinnedActionIds(FINANS_FATURA_TALEP_ROW_ACTIONS).includes('view'));
+  assert.ok(!defaultPinnedActionIds(FINANS_FATURA_TALEP_ROW_ACTIONS).includes('approve'));
   assert.ok(!defaultPinnedActionIds(FINANS_FATURA_TALEP_ROW_ACTIONS).includes('cancel'));
   assert.ok(defaultPinnedActionIds(FINANS_MASRAF_ROW_ACTIONS).includes('edit'));
   assert.ok(!defaultPinnedActionIds(FINANS_MASRAF_ROW_ACTIONS).includes('delete'));

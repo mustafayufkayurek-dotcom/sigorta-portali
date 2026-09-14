@@ -81,4 +81,60 @@ export class UpdateInvoiceRequestStatusDto {
   @IsString()
   @IsOptional()
   cancelReason?: string;
+
+  @IsOptional()
+  @IsString()
+  invoiceDate?: string;
+
+  @IsOptional()
+  @IsString()
+  documentDate?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  subtotalAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  vatAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  totalAmount?: number;
+}
+
+export class BulkInvoiceRequestsDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+
+  @IsString()
+  @IsNotEmpty()
+  salesInvoiceNo!: string;
+
+  @IsOptional()
+  @IsString()
+  invoiceDate?: string;
+
+  @IsOptional()
+  @IsString()
+  documentDate?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  subtotalAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  vatAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  totalAmount?: number;
 }

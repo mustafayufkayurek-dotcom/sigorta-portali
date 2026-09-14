@@ -15,6 +15,11 @@ import {
   resolveFaturaTalepFilter,
   unwrapApiData,
 } from './invoice-request-envelope.ts';
+import {
+  canSelectAcilInvoiceRequest,
+  partitionInvoiceRequests,
+  selectedAcilInvoiceTotals,
+} from './invoice-request-official.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(join(here, rel), 'utf8');
@@ -30,16 +35,37 @@ describe('invoice-request-list lock', () => {
     assert.equal(unwrapApiData({ success: true, data: { counts: { pendingCount: 3 } } }).counts.pendingCount, 3);
   });
 
-  it('finans sekmesi tab yoksa talepler, açık kesilen korunur', () => {
-    assert.equal(resolveFaturaListTab(null, true), 'talepler');
-    assert.equal(resolveFaturaListTab('', true), 'talepler');
+  it('Hasar ve Acil listeleri ayrılır; Acil seçiminde fatura hesabı çıkar', () => {
+    const rows = [
+      { id: 'h', serviceType: 'claim' as const, status: 'pending' as const, totalAmount: 1000 },
+      { id: 'a1', serviceType: 'emergency' as const, status: 'pending' as const, totalAmount: 1000 },
+      { id: 'a2', serviceType: 'emergency' as const, status: 'invoiced' as const, totalAmount: 500 },
+    ];
+    const parts = partitionInvoiceRequests(rows);
+    assert.equal(parts.hasar.length, 1);
+    assert.equal(parts.acil.length, 2);
+    assert.equal(canSelectAcilInvoiceRequest(rows[1]), true);
+    assert.equal(canSelectAcilInvoiceRequest(rows[2]), false);
+    assert.deepEqual(selectedAcilInvoiceTotals([rows[1], { totalAmount: 500 }]), {
+      fileCount: 2,
+      net: 1500,
+      vat: 300,
+      gross: 1800,
+    });
+  });
+
+  it('Faturalar kesilen belgedir; talepler ayrı sayfadır', () => {
+    assert.equal(resolveFaturaListTab(null, true), 'kesilen');
+    assert.equal(resolveFaturaListTab('', true), 'kesilen');
     assert.equal(resolveFaturaListTab('kesilen', true), 'kesilen');
     assert.equal(resolveFaturaListTab('talepler', false), 'talepler');
     assert.equal(resolveFaturaListTab(null, false), 'kesilen');
-    assert.equal(faturaListTabHref('kesilen'), '/panel/finans/faturalar?tab=kesilen');
-    assert.equal(faturaListTabHref('talepler'), '/panel/finans/faturalar?tab=talepler');
+    assert.equal(faturaListTabHref('kesilen'), '/panel/finans/faturalar');
+    assert.equal(faturaListTabHref('talepler'), '/panel/finans/fatura-talepleri');
     assert.equal(resolveFaturaTalepFilter('pending'), 'pending');
-    assert.equal(resolveFaturaTalepFilter(null), 'tumu');
+    assert.equal(resolveFaturaTalepFilter(null), 'pending');
+    assert.equal(resolveFaturaTalepFilter('tumu'), 'tumu');
+    assert.equal(resolveFaturaTalepFilter('invoiced'), 'invoiced');
   });
 
   it('getInvoiceRequests zarfı çözer; boş query zorunlu ? eklemez', () => {
@@ -68,19 +94,27 @@ describe('invoice-request-list lock', () => {
     assert.match(strip, /paymentsQuery\.isError/);
   });
 
-  it('finans menüsü ve sayfa talepler sekmesini açık tutar', () => {
+  it('finans menüsü Satış Fatura Talepleri sayfasını açar', () => {
     const layout = read('../app/panel/layout.tsx');
-    assert.match(layout, /title: 'Fatura Talepleri', href: '\/panel\/finans\/faturalar\?tab=talepler'/);
+    assert.match(layout, /title: 'Satış Fatura Talepleri', href: '\/panel\/finans\/fatura-talepleri'/);
     assert.match(layout, /relatedEntityType === 'invoice_request'/);
-    assert.match(layout, /\/panel\/finans\/faturalar\?tab=talepler/);
+    assert.match(layout, /\/panel\/finans\/fatura-talepleri/);
     assert.match(layout, /normalizedHref === '\/panel\/finans\/faturalar'/);
     assert.match(layout, /activeTabParam === hrefTab/);
 
     const page = read('../app/panel/finans/faturalar/page.tsx');
     assert.match(page, /resolveFaturaListTab/);
-    assert.match(page, /faturaListTabHref\(tab\)/);
+    assert.match(page, /faturaListTabHref\('talepler'\)/);
+    assert.match(page, /faturaTalepleriHref/);
     assert.match(page, /Suspense/);
     assert.doesNotMatch(page, /tab === 'talepler' \? '\?tab=talepler' : ''/);
+    assert.doesNotMatch(page, /<FaturaTalepleriSection/);
+
+    const taleplerPage = read('../app/panel/finans/fatura-talepleri/page.tsx');
+    assert.match(taleplerPage, /Satış Fatura Talepleri/);
+    assert.match(taleplerPage, /FaturaTalepleriSection/);
+    assert.doesNotMatch(taleplerPage, /Kesilen Toplam/);
+    assert.doesNotMatch(taleplerPage, /router\.replace\('\/panel\/finans\/faturalar/);
   });
 
   it('FINANS rolü varsayılan finans ekranlarını alır', () => {
@@ -105,29 +139,40 @@ describe('invoice-request-list lock', () => {
     assert.match(service, /Satış fatura numarası gerekli/);
     assert.match(service, /İptal açıklaması zorunlu/);
     assert.match(service, /linkOrCreateIssuedSalesInvoice/);
-    assert.match(service, /notifyFileOwner/);
-    assert.match(service, /sales_invoice_issued/);
-    assert.match(service, /assignedOfficeUserId/);
-
     const controller = read('../../../backend/src/modules/invoice-requests/invoice-requests.controller.ts');
     assert.match(controller, /:id\/notify-owner/);
+    assert.match(controller, /bulk-invoiced/);
 
     const api = read('./invoiceRequestApi.ts');
     assert.match(api, /salesInvoiceNo/);
     assert.match(api, /notifyInvoiceRequestOwner/);
+    assert.match(api, /bulkMarkInvoiceRequestsInvoiced/);
     assert.match(api, /invoice-requests\/\$\{id\}\/notify-owner/);
 
     const section = read('../components/finance/FaturaTalepleriSection.tsx');
-    assert.match(section, /InvoiceRequestRowActions/);
-    assert.match(section, /PortalRowActionsPicker/);
+    const kart = read('../components/finance/FaturaTalepListeKart.tsx');
+    assert.match(kart, /InvoiceRequestRowActions/);
+    assert.match(kart, /PortalRowActionsPicker/);
     assert.match(section, /FINANS_FATURA_TALEP_ROW_ACTIONS/);
     assert.match(section, /fatura-talep-satis-no-modal/);
-    assert.match(section, /Satış fatura numarası/);
+    assert.match(section, /Resmi fatura numarası/);
+    assert.match(section, /Fatura tarihi/);
+    assert.match(section, /Bu yazılım resmi fatura kesmez/);
     assert.match(section, /FINANS_ACTIONS_COLUMN/);
-    assert.match(section, /orderedVisibleColumns/);
+    assert.match(kart, /orderedVisibleColumns/);
     assert.match(section, /notifyInvoiceRequestOwner/);
     assert.match(section, /fatura-talep-icerik/);
-    assert.match(section, /onView/);
+    assert.match(kart, /onInvoice/);
+    assert.match(section, /Resmi Fatura Gir/);
+    assert.match(section, /Hasar Onarım/);
+    assert.match(section, /Acil Yardım/);
+    assert.match(section, /fatura-talep-hasar-liste/);
+    assert.match(section, /fatura-talep-acil-liste/);
+    assert.match(section, /fatura-talep-acil-secim/);
+    assert.match(section, /bulkMarkInvoiceRequestsInvoiced/);
+    assert.match(section, /selectedAcilInvoiceTotals/);
+    assert.doesNotMatch(section, /onApprove/);
+    assert.doesNotMatch(section, /fatura-talep-icerik-onayla/);
     assert.match(section, /Yapılan İş Kalemi/);
     assert.match(section, /fatura-talep-iptal-modal/);
     assert.match(section, /İptal açıklaması zorunlu/);
@@ -140,12 +185,12 @@ describe('invoice-request-list lock', () => {
     assert.match(actions, /PinnableRowActions/);
     assert.match(actions, /label: 'Yazdır'/);
     assert.match(actions, /label: 'Dosya Sorumlusuna Bildir'/);
-    assert.match(actions, /label: 'Düzenle'/);
-    assert.match(actions, /label: 'İptal Et'/);
-    assert.match(actions, /<Printer /);
-    assert.match(actions, /<Send /);
-    assert.match(actions, /<Pencil /);
-    assert.match(actions, /<XCircle /);
+    assert.match(actions, /label: 'Resmi Fatura Gir'/);
+    assert.match(actions, /<FileText /);
+    const talepActions = actions.slice(actions.indexOf('export function InvoiceRequestRowActions'));
+    assert.doesNotMatch(talepActions, /label: 'Onayla'/);
+    assert.doesNotMatch(talepActions, /label: 'Fatura Kes'/);
+    assert.doesNotMatch(talepActions, /label: 'Düzenle'/);
     assert.doesNotMatch(actions, /Kesilen faturalar dosya sorumlusuna bildirilsin/);
     assert.match(actions, /InvoiceRequestRowActions/);
     assert.match(actions, /fatura-talep-islemler/);
@@ -160,7 +205,6 @@ describe('invoice-request-list lock', () => {
     assert.match(faturalar, /summary\.totalAmount/);
     assert.match(faturalar, /metaTotal/);
     assert.match(faturalar, /invoiceIssuedFileHref/);
-    assert.match(faturalar, /onIssuedChange/);
     assert.match(faturalar, /FINANS_ACTIONS_COLUMN/);
     assert.match(faturalar, /FinansTablePager/);
     assert.match(faturalar, /faturaTalepleriTabPulseClass/);
@@ -169,6 +213,8 @@ describe('invoice-request-list lock', () => {
     assert.doesNotMatch(faturalar, /label: 'Eksper'/);
     assert.match(faturalar, /orderedVisibleColumns/);
     assert.match(faturalar, /editReason/);
+    assert.match(faturalar, /Satış Faturaları/);
+    assert.match(faturalar, /Alış Faturaları/);
     assert.match(api, /fileOwnerNotifyToast/);
     assert.match(api, /recipients/);
     assert.match(section, /onIssuedChange/);

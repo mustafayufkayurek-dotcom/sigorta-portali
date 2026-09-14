@@ -35,8 +35,8 @@ export function pendingTahsilatKartTutari(input: {
 export const FINANS_KART_YOL = {
   tahsilatKuyrugu: '/panel/finans/tahsilatlar?queue=collection',
   tedarikciOdeme: '/panel/finans/tahsilatlar?queue=payable',
-  faturaTalepleri: '/panel/finans/faturalar?tab=talepler',
-  faturaBekleyen: '/panel/finans/faturalar?tab=talepler&status=pending',
+  faturaTalepleri: '/panel/finans/fatura-talepleri',
+  faturaBekleyen: '/panel/finans/fatura-talepleri',
 } as const;
 
 export function tahsilEdilenYol(year: number, month: number): string {

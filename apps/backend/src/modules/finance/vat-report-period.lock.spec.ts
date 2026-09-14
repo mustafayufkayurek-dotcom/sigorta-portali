@@ -22,4 +22,16 @@ describe('KDV raporu dönem LOCK', () => {
     assert.match(svc, /vatReportPeriodBounds/);
     assert.doesNotMatch(svc, /COUNTED_INVOICE_STATUSES = \['sent'/);
   });
+
+  it('operasyonel satış KDV Hasar onayında ve Acil kapanışında durur', () => {
+    const svc = readFileSync(join(here, 'vat-report.service.ts'), 'utf8');
+    assert.match(svc, /billed: true/);
+    assert.match(svc, /emergencyCostEntry/);
+    assert.match(svc, /resolvedAt: \{ gte: from, lte: to \}/);
+    assert.match(svc, /isAcilSalesVatBasis/);
+    assert.match(svc, /STANDARD_SALES_VAT_RATE/);
+    const fee = readFileSync(join(here, 'claim-file-revenue.service.ts'), 'utf8');
+    assert.match(fee, /STANDARD_SALES_VAT_RATE/);
+    assert.doesNotMatch(fee, /vatRate: 0,/);
+  });
 });

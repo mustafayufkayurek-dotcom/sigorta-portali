@@ -1,18 +1,18 @@
 'use client';
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { useToast } from '@/contexts/ToastContext';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
 import {
-  FaturaTalepleriSection,
   computeTalepOzet,
   type TalepOzet,
 } from '@/components/finance/FaturaTalepleriSection';
 import { fileOwnerNotifyToast, getInvoiceRequests } from '@/utils/invoiceRequestApi';
-import { faturaListTabHref, resolveFaturaListTab, resolveFaturaTalepFilter, type FaturaListTab } from '@/utils/invoice-request-envelope';
+import { faturaListTabHref, faturaTalepleriHref, resolveFaturaListTab, resolveFaturaTalepFilter } from '@/utils/invoice-request-envelope';
 import { isFinanceRole, usePanelRoleCode } from '@/hooks/usePanelRole';
 import {
   usePanelTableColumns,
@@ -104,20 +104,13 @@ function FaturalarPageContent() {
   const roleCode = usePanelRoleCode();
   const isFinance = isFinanceRole(roleCode);
   const tabParam = searchParams.get('tab');
-  const activeTab: FaturaListTab = resolveFaturaListTab(tabParam, isFinance);
+  const activeTab = resolveFaturaListTab(tabParam, isFinance);
   const talepFilter = resolveFaturaTalepFilter(searchParams.get('status'));
 
-  const setTab = (tab: FaturaListTab) => {
-    router.replace(faturaListTabHref(tab), { scroll: false });
-  };
-
   useEffect(() => {
-    if (!roleCode) return;
-    if (tabParam === 'talepler' || tabParam === 'kesilen') return;
-    if (isFinance) {
-      router.replace(faturaListTabHref('talepler'), { scroll: false });
-    }
-  }, [roleCode, isFinance, tabParam, router]);
+    if (activeTab !== 'talepler') return;
+    router.replace(faturaTalepleriHref(talepFilter));
+  }, [activeTab, talepFilter, router]);
 
   const { showToast } = useToast();
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -289,6 +282,31 @@ function FaturalarPageContent() {
 
   const collectionRate = stats.total > 0 ? Math.round((stats.paid / stats.total) * 100) : 0;
 
+  if (activeTab === 'talepler') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const typeChip = (value: string, label: string) => {
+    const active = filters.invoiceType === value;
+    return (
+      <button
+        type="button"
+        onClick={() => setFilters({ ...filters, invoiceType: value, page: 1 })}
+        className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+          active
+            ? 'bg-brand-600 border-brand-600 text-white'
+            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+        }`}
+      >
+        {label}
+      </button>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
       <FinansSubpageBreadcrumb current="Faturalar" />
@@ -296,8 +314,18 @@ function FaturalarPageContent() {
       <div>
         <h2 className="inline-flex items-center gap-1.5 text-xl font-bold text-slate-900 dark:text-white">
           Faturalar
-          <HintIcon text="Kesilen Faturalar kayıttır. Fatura Talepleri kapanıştan gelen kesilecek iştir; kesilince diğer sekmeye geçer." />
+          <HintIcon text="Kesilen Faturalar kayıttır. Satış Fatura Talepleri kapanıştan gelen kesilecek iştir; kesilince bu sayfaya geçer." />
         </h2>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Satış ve alış kesilmiş belgeler.{' '}
+          <Link
+            href={faturaListTabHref('talepler')}
+            className={`font-medium text-brand-700 hover:underline ${faturaTalepleriTabPulseClass(talepOzet.pendingCount, unseenInvoiceRequestIds(talepOzet.pendingIds).length)}`}
+          >
+            Satış Fatura Talepleri
+            {talepOzet.pendingCount > 0 ? ` (${talepOzet.pendingCount})` : ''}
+          </Link>
+        </p>
       </div>
 
       <FinansKpiStrip
@@ -314,11 +342,6 @@ function FaturalarPageContent() {
             accent: stats.paid > 0 ? 'text-emerald-400' : 'text-slate-400',
           },
           {
-            label: 'Bekleyen Talep',
-            value: talepOzet.pendingCount > 0 ? String(talepOzet.pendingCount) : '—',
-            accent: talepOzet.pendingCount > 0 ? 'text-amber-400' : 'text-slate-400',
-          },
-          {
             label: 'Vadesi Geçmiş',
             value: fmtCurrency(stats.overdue),
             accent: stats.overdue > 0 ? 'text-red-400' : 'text-slate-400',
@@ -326,51 +349,8 @@ function FaturalarPageContent() {
         ]}
       />
 
-      {/* Sekmeler */}
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
-        <button
-          type="button"
-          onClick={() => setTab('kesilen')}
-          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-            activeTab === 'kesilen'
-              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-          }`}
-        >
-          Kesilen Faturalar
-          {stats.totalCount > 0 && (
-            <span className="ml-1.5 text-xs font-bold text-slate-400">{stats.totalCount}</span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('talepler')}
-          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-            activeTab === 'talepler'
-              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-          } ${activeTab !== 'talepler' ? faturaTalepleriTabPulseClass(talepOzet.pendingCount, unseenInvoiceRequestIds(talepOzet.pendingIds).length) : ''}`}
-        >
-          Fatura Talepleri
-          {talepOzet.pendingCount > 0 && (
-            <span className={`ml-1.5 px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 text-xs font-bold ${faturaTalepleriTabPulseClass(talepOzet.pendingCount, unseenInvoiceRequestIds(talepOzet.pendingIds).length)}`}>
-              {talepOzet.pendingCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {activeTab === 'talepler' ? (
-        <FaturaTalepleriSection
-          key={talepFilter}
-          initialFilter={talepFilter}
-          onOzetChange={setTalepOzet}
-          onIssuedChange={load}
-        />
-      ) : (
-        <>
       {/* Tahsilat Oranı Bar — yalnızca kesilen faturalar */}
-      {activeTab === 'kesilen' && stats.total > 0 && (
+      {stats.total > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm px-5 py-3">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Tahsilat Oranı</span>
@@ -391,15 +371,11 @@ function FaturalarPageContent() {
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
         />
-        <select
-          value={filters.invoiceType}
-          onChange={(e) => setFilters({ ...filters, invoiceType: e.target.value, page: 1 })}
-          className="border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 focus:outline-none"
-        >
-          <option value="">Tüm Tipler</option>
-          <option value="sales">Satış</option>
-          <option value="purchase">Alış</option>
-        </select>
+        <div className="flex flex-wrap gap-1.5">
+          {typeChip('', 'Tümü')}
+          {typeChip('sales', 'Satış Faturaları')}
+          {typeChip('purchase', 'Alış Faturaları')}
+        </div>
         <select
           value={filters.status}
           onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
@@ -434,19 +410,15 @@ function FaturalarPageContent() {
             title={search || filters.invoiceType || filters.status ? 'Aramaya uyan kesilen fatura yok.' : 'Kesilen fatura yok.'}
             description={
               talepOzet.pendingCount > 0
-                ? `${talepOzet.pendingCount} talep Fatura Talepleri sekmesinde bekliyor.`
+                ? `${talepOzet.pendingCount} satış fatura talebi ayrı sayfada bekliyor.`
                 : 'Dosya kapanışında kesilen fatura burada durur.'
             }
           />
           {talepOzet.pendingCount > 0 && !search && !filters.invoiceType && !filters.status && (
             <div className="mt-3 text-center">
-              <button
-                type="button"
-                onClick={() => setTab('talepler')}
-                className="text-sm font-medium text-brand-600 hover:underline"
-              >
-                Fatura Talepleri’ne geç
-              </button>
+              <Link href={faturaListTabHref('talepler')} className="text-sm font-medium text-brand-600 hover:underline">
+                Satış Fatura Talepleri
+              </Link>
             </div>
           )}
         </FinansPanelCard>

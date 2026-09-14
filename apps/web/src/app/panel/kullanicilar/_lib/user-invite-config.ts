@@ -17,6 +17,30 @@ export function isCustomerCompanyUserTask(task?: string | null): task is Custome
   return CUSTOMER_COMPANY_USER_TASKS.includes(task as CustomerCompanyUserTask);
 }
 
+/** Kullanıcılar ekranı: seçilen ofis müşteri kartıdır; personel o karttan listelenir. */
+export function selectedPortalOfficeCustomerId(input: {
+  userTask?: string | null;
+  expertCustomerId?: string | null;
+  brokerCustomerId?: string | null;
+  assistantCustomerId?: string | null;
+}): string {
+  const task = String(input.userTask ?? '');
+  if (task === 'expert') return String(input.expertCustomerId ?? '').trim();
+  if (task === 'broker') return String(input.brokerCustomerId ?? '').trim();
+  if (task === 'assistance_company_user') return String(input.assistantCustomerId ?? '').trim();
+  return '';
+}
+
+/** Popup’ta ekspertiz / broker / asistans firması araması */
+export function filterOfficeFirmsByQuery(
+  firms: Array<{ id: string; name: string }>,
+  query: string,
+): Array<{ id: string; name: string }> {
+  const q = query.trim().toLocaleLowerCase('tr-TR');
+  if (!q) return firms;
+  return firms.filter((firm) => firm.name.toLocaleLowerCase('tr-TR').includes(q));
+}
+
 /**
  * Ek yetki / izin vekaleti / dosya yönetimi yalnız Meridyen dosya sorumlusunda sorulur.
  * Görev seçiliyse o esas alınır; boşsa rol office_staff ise gösterilir.
@@ -115,6 +139,69 @@ export function displayPersonDuty(
   const written = String(user?.jobTitle ?? '').trim();
   if (written) return written;
   return displayUserRoleName(user?.role);
+}
+
+/** Telefon kutusunun beklediği uluslararası yazım: +905321334144 */
+export function officePersonPhone(raw?: string | null): string {
+  const compact = String(raw ?? '').trim();
+  if (!compact) return '';
+  let digits = compact.replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (compact.startsWith('+')) return `+${digits}`;
+  if (digits.startsWith('90') && digits.length >= 12) return `+${digits}`;
+  digits = digits.replace(/^0+/, '');
+  return digits ? `+90${digits}` : '';
+}
+
+export function resolveOfficePersonPhone(
+  person: {
+    phone?: string | null;
+    email?: string | null;
+    archivedEmail?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    adjuster?: { phone?: string | null } | null;
+  },
+  office?: {
+    contacts?: Array<{ name?: string | null; email?: string | null; phone?: string | null }>;
+  },
+): string {
+  const email = String(person.email ?? person.archivedEmail ?? '').trim().toLowerCase();
+  const fullName = `${person.firstName ?? ''} ${person.lastName ?? ''}`.trim().toLocaleLowerCase('tr-TR');
+  const fromContact = (office?.contacts ?? []).find((contact) => {
+    const contactEmail = String(contact.email ?? '').trim().toLowerCase();
+    const contactName = String(contact.name ?? '').trim().toLocaleLowerCase('tr-TR');
+    const emailMatch = Boolean(email && contactEmail && email === contactEmail);
+    const nameMatch = Boolean(fullName && contactName && fullName === contactName);
+    return (emailMatch || nameMatch) && String(contact.phone ?? '').trim();
+  });
+  return officePersonPhone(person.phone)
+    || officePersonPhone(person.adjuster?.phone)
+    || officePersonPhone(fromContact?.phone);
+}
+
+/** Ofis personeli seçilince Kullanıcı Ekle alanları bu kayıttan dolar. */
+export function officePersonToFormFields(person: {
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  archivedEmail?: string | null;
+  phone?: string | null;
+  jobTitle?: string | null;
+  role?: { code?: string | null; name?: string | null } | null;
+  adjuster?: { phone?: string | null } | null;
+}, office?: {
+  contacts?: Array<{ name?: string | null; email?: string | null; phone?: string | null }>;
+}) {
+  const jobTitle = String(person.jobTitle ?? '').trim();
+  return {
+    firstName: String(person.firstName ?? '').trim(),
+    lastName: String(person.lastName ?? '').trim(),
+    email: String(person.archivedEmail ?? person.email ?? '').trim(),
+    phone: resolveOfficePersonPhone(person, office),
+    jobTitle: jobTitle || displayPersonDuty(person),
+  };
 }
 
 export function findRoleByCode<T extends { code: string }>(

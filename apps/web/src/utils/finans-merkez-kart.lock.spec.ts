@@ -48,8 +48,9 @@ describe('finans merkez kart yolları LOCK', () => {
     assert.match(netSonucYol(2026, 9), /dosya-pl\?year=2026&month=9/);
     assert.equal(
       FINANS_KART_YOL.faturaBekleyen,
-      '/panel/finans/faturalar?tab=talepler&status=pending',
+      '/panel/finans/fatura-talepleri',
     );
+    assert.equal(FINANS_KART_YOL.faturaTalepleri, '/panel/finans/fatura-talepleri');
   });
 
   it('Finans Merkezi ve listeler bu yolları okur', () => {

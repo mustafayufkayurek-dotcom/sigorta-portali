@@ -10,6 +10,10 @@ import { normalizeEmailAddress } from '@/common/utils/normalize-email';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import { assertNewPassword, hashPassword, verifyPassword } from '@/common/security/password-hash';
 import { randomInt } from 'crypto';
+import {
+  buildPlatformMailCopyNotice,
+  welcomeInviteAdminCopies,
+} from '@sigorta/shared';
 import { pickUserWriteScalars } from './user-update-fields';
 import { ALL_SCREEN_CODES, SCREEN_LABELS, getDefaultScreensForRole } from './screen-permissions.defaults';
 import {
@@ -34,6 +38,35 @@ function isInactiveUserStatus(status: string | null | undefined): boolean {
 function isArchivedUserStatus(status: string | null | undefined): boolean {
   const normalized = String(status ?? '').trim().toLowerCase();
   return normalized === 'archived' || normalized === 'arsiv' || normalized === 'arşiv';
+}
+
+function listedUserPhone(
+  user: {
+    phone?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    archivedEmail?: string | null;
+    adjuster?: { phone?: string | null } | null;
+  },
+  contacts: Array<{ name: string | null; email: string | null; phone: string | null }>,
+): string | null {
+  const own = String(user.phone ?? '').trim();
+  if (own) return own;
+  const fromAdjuster = String(user.adjuster?.phone ?? '').trim();
+  if (fromAdjuster) return fromAdjuster;
+  const email = String(user.archivedEmail ?? user.email ?? '').trim().toLowerCase();
+  const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim().toLocaleLowerCase('tr-TR');
+  for (const contact of contacts) {
+    const phone = String(contact.phone ?? '').trim();
+    if (!phone) continue;
+    const contactEmail = String(contact.email ?? '').trim().toLowerCase();
+    const contactName = String(contact.name ?? '').trim().toLocaleLowerCase('tr-TR');
+    if ((email && contactEmail === email) || (fullName && contactName === fullName)) {
+      return phone;
+    }
+  }
+  return user.phone ?? null;
 }
 
 function generateTemporaryPassword(length = 12): string {
@@ -113,7 +146,7 @@ export class UsersService {
       where.AND = [...(where.AND ?? []), await this.portalUsersWhereForCustomer(customerId)];
     }
 
-    const [data, total] = await Promise.all([
+    const [data, total, officeContacts] = await Promise.all([
       this.prisma.user.findMany({
         where,
         skip,
@@ -145,7 +178,7 @@ export class UsersService {
             },
           },
           adjuster: {
-            select: { id: true, name: true, company: true },
+            select: { id: true, name: true, company: true, phone: true },
           },
           serviceAreas: {
             include: {
@@ -157,6 +190,12 @@ export class UsersService {
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.user.count({ where }),
+      customerId
+        ? this.prisma.customerContact.findMany({
+            where: { customerId },
+            select: { name: true, email: true, phone: true },
+          })
+        : Promise.resolve([]),
     ]);
 
     const grantRows = data.length > 0
@@ -189,6 +228,7 @@ export class UsersService {
         const grants = grantsByUserId.get(u.id) ?? [];
         return {
           ...user,
+          phone: listedUserPhone(u, officeContacts),
           operationalAccessGrants: grants.map((grant) => ({
             id: grant.id,
             scopeType: grant.scopeType,
@@ -758,6 +798,11 @@ export class UsersService {
       throw new BadRequestException('En az bir kişi ekleyin.');
     }
 
+    const officeContacts = await this.prisma.customerContact.findMany({
+      where: { customerId },
+      select: { name: true, email: true, phone: true },
+    });
+
     const subType = customer.subType ?? '';
     const insuranceCompanyIds = subType === 'sigorta_sirketi'
       ? [await ensureInsuranceCompanyIdForCustomer(this.prisma, customer)]
@@ -789,7 +834,7 @@ export class UsersService {
         firstName,
         lastName,
         email,
-        phone: person.phone,
+        phone: listedUserPhone({ firstName, lastName, email, phone: person.phone }, officeContacts),
         jobTitle,
         portalCustomerId: customer.id,
         expertCustomerId,
@@ -914,6 +959,24 @@ export class UsersService {
     return adjuster.id;
   }
 
+  private async resolveActiveAdminMailCopies(): Promise<Array<{ email: string; name: string }>> {
+    const rows = await this.prisma.user.findMany({
+      where: { status: 'active' },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: { select: { code: true } },
+      },
+    });
+    return rows
+      .filter((row) => normalizePortalRoleCode(row.role?.code) === 'admin')
+      .map((row) => ({
+        email: row.email,
+        name: [row.firstName, row.lastName].map((part) => part?.trim()).filter(Boolean).join(' '),
+      }));
+  }
+
   private async sendWelcomeInviteEmail(params: {
     email: string;
     firstName: string;
@@ -930,6 +993,21 @@ export class UsersService {
       .filter(Boolean)
       .join(' ');
 
+    const adminCopies = welcomeInviteAdminCopies(
+      await this.resolveActiveAdminMailCopies(),
+      params.email,
+    );
+    const leadAdmin = adminCopies[0];
+    const copyNotice = leadAdmin
+      ? buildPlatformMailCopyNotice({
+          counterpartName: recipientName || params.email,
+          counterpartAddress: params.email,
+          sender: leadAdmin,
+          roleCode: 'admin',
+          sentAt: new Date(),
+        })
+      : null;
+
     const result = await this.emailService.sendWelcomeEmail(params.email, role, {
       recipientName: recipientName || undefined,
       organizationName: params.organizationName?.trim() || undefined,
@@ -938,7 +1016,14 @@ export class UsersService {
       accountEmail: params.email,
       temporaryPassword: params.temporaryPassword,
       forcePasswordChange: true,
-    });
+    }, leadAdmin
+      ? {
+          cc: adminCopies,
+          readReceiptTo: adminCopies.map((copy) => copy.email),
+          copyNoticeHtml: copyNotice?.html,
+          copyNoticeText: copyNotice?.plain,
+        }
+      : undefined);
 
     if (!result.sent) {
       return {

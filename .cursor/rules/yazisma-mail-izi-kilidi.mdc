@@ -18,7 +18,7 @@ alwaysApply: true
 5. Gelen kutu / dosya rozetleri: Gönderildi, **Okunmadı / Okundu**, **Yanıt geldi**. Graph `isReadReceiptRequested` açık. Gelen İngilizce «Read: / was read on» belgesi Türkçe **Okundu** metnine çevrilir. CRM rozetleri: Gönderildi, **Ulaşmadı**, **Yanıt geldi** — CRM’de Okundu yok. İş bitmiş sayılmaz.
 6. Kopya ayrı mail değildir. Graph `sendReply` / `sendMail` içinde `ccRecipients`. Asıl yazı gitmezse kopya düşmez.
 7. Adres geri çevirisi Hasar/İhbar kutusuna düşünce CRM kartı **Ulaşmadı** olur. Karşı taraf yazınca **Yanıt geldi**.
-8. Rapor / hoş geldin / kapanış bu kopya/iz paketine bağlanmaz (ayrı kilit).
+8. Rapor / kapanış bu kopya/iz paketine bağlanmaz (ayrı kilit). Hoş geldin / kullanıcı ekleme: asıl yazı Kullanıcılar e-postasına gider; **Platform Mail Kopyası** ve okundu **yönetici kutusuna** aynı gönderimde düşer.
 9. İkinci mail ekranı üretilmez; mevcut Yanıtla kutusu durur. `/dev` maketi yok.
 
 ## Yasak (açık onay yoksa)

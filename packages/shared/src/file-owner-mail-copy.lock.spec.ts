@@ -11,6 +11,7 @@ import {
   buildPlatformMailCopyNotice,
   platformMailCopyLineLabel,
   prependFileOwnerCopyNotice,
+  welcomeInviteAdminCopies,
 } from './file-owner-mail-copy.ts';
 
 describe('platform mail kopyası LOCK', () => {
@@ -61,6 +62,28 @@ describe('platform mail kopyası LOCK', () => {
     assert.match(notice.plain, /Platform Mail Kopyası/);
     assert.match(notice.plain, /Gönderen Kopyası/);
     assert.doesNotMatch(notice.plain, /Dosya sorumlusu kopyası/);
+  });
+
+  it('hoş geldin kopyası yöneticiye gider; yeni kullanıcıya kopya düşmez', () => {
+    const copies = welcomeInviteAdminCopies(
+      [
+        { name: 'Sistem Yöneticisi', email: 'admin@meridyenassistance.com' },
+        { name: 'Yeni Kişi', email: 'yeni@firma.com' },
+        { name: 'Hasar Kutu', email: 'hasar@meridyen-tr.com' },
+      ],
+      'yeni@firma.com',
+    );
+    assert.equal(copies.length, 1);
+    assert.equal(copies[0]?.email, 'admin@meridyenassistance.com');
+    const users = readFileSync(
+      new URL('../../../apps/backend/src/modules/users/users.service.ts', import.meta.url),
+      'utf8',
+    );
+    const welcome = users.slice(users.indexOf('private async sendWelcomeInviteEmail'));
+    assert.match(welcome, /welcomeInviteAdminCopies/);
+    assert.match(welcome, /readReceiptTo/);
+    assert.match(welcome, /copyNoticeHtml/);
+    assert.doesNotMatch(welcome, /bccRecipients/);
   });
 
   it('kopya ayrı mail değil; aynı gönderimin görünür kopyasıdır', () => {

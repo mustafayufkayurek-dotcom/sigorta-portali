@@ -13,7 +13,7 @@ import {
 
 export { faturaTalepleriTabPulseClass } from '@/utils/invoice-request-alert';
 
-const TALEPLER_HREF = '/panel/finans/faturalar?tab=talepler';
+const TALEPLER_HREF = '/panel/finans/fatura-talepleri';
 
 export function FinansOncelikliGorevModal({ enabled }: { enabled: boolean }) {
   const router = useRouter();
@@ -49,7 +49,8 @@ export function FinansOncelikliGorevModal({ enabled }: { enabled: boolean }) {
 
   const pendingIds = pending.map((r) => r.id);
   const unseen = unseenInvoiceRequestIds(pendingIds);
-  const onTalepler = pathname.startsWith('/panel/finans/faturalar') && searchParams.get('tab') === 'talepler';
+  const onTalepler = pathname.startsWith('/panel/finans/fatura-talepleri')
+    || (pathname.startsWith('/panel/finans/faturalar') && searchParams.get('tab') === 'talepler');
 
   useEffect(() => {
     if (!enabled || pending.length === 0) {

@@ -21,30 +21,38 @@ export function asInvoiceRequestList(raw: unknown): unknown[] {
 
 export type FaturaListTab = 'kesilen' | 'talepler';
 
-/** Finans menüsü Fatura Talepleri; tab yoksa finans kullanıcısı talepler listesini görür. */
+export const SATIS_FATURA_TALEPLERI_YOL = '/panel/finans/fatura-talepleri';
+
+/** Faturalar sayfası kesilen belgedir. Eski ?tab=talepler ayrı talepler sayfasına gider. */
 export function resolveFaturaListTab(
   tabParam: string | null | undefined,
-  isFinance: boolean,
+  _isFinance?: boolean,
 ): FaturaListTab {
   if (tabParam === 'talepler') return 'talepler';
-  if (tabParam === 'kesilen') return 'kesilen';
-  return isFinance ? 'talepler' : 'kesilen';
+  return 'kesilen';
 }
 
 export function faturaListTabHref(tab: FaturaListTab): string {
-  return `/panel/finans/faturalar?tab=${tab}`;
+  if (tab === 'talepler') return SATIS_FATURA_TALEPLERI_YOL;
+  return '/panel/finans/faturalar';
 }
 
 const TALEP_STATUS = ['pending', 'approved', 'invoiced', 'cancelled'] as const;
 export type FaturaTalepFilter = 'tumu' | (typeof TALEP_STATUS)[number];
 
-/** Akış kartı 55 onay bekleyen → Bekliyor süzgeci. */
+/** Satış Fatura Talepleri iş kuyruğu: tab yoksa Bekliyor. Faturalandı varsayılan listede durmaz. */
 export function resolveFaturaTalepFilter(
   statusParam: string | null | undefined,
 ): FaturaTalepFilter {
   const status = String(statusParam ?? '').trim();
+  if (status === 'tumu') return 'tumu';
   if ((TALEP_STATUS as readonly string[]).includes(status)) {
     return status as (typeof TALEP_STATUS)[number];
   }
-  return 'tumu';
+  return 'pending';
+}
+
+export function faturaTalepleriHref(filter: FaturaTalepFilter = 'pending'): string {
+  if (filter === 'pending') return SATIS_FATURA_TALEPLERI_YOL;
+  return `${SATIS_FATURA_TALEPLERI_YOL}?status=${filter}`;
 }

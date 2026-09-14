@@ -12,6 +12,7 @@ import {
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { InvoiceRequestsService } from './invoice-requests.service';
 import {
+  BulkInvoiceRequestsDto,
   CreateInvoiceRequestDto,
   UpdateInvoiceRequestStatusDto,
 } from './dto/invoice-requests.dto';
@@ -48,6 +49,12 @@ export class InvoiceRequestsController {
   @Get('emergency-case/:emergencyCaseId')
   async findByEmergencyCase(@Param('emergencyCaseId') emergencyCaseId: string) {
     const data = await this.service.findByEmergencyCase(emergencyCaseId);
+    return { success: true, data };
+  }
+
+  @Post('bulk-invoiced')
+  async bulkMarkInvoiced(@Body() dto: BulkInvoiceRequestsDto, @Request() req: any) {
+    const data = await this.service.bulkMarkEmergencyInvoiced(dto, req.user.id);
     return { success: true, data };
   }
 

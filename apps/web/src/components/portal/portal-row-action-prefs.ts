@@ -63,10 +63,10 @@ export const FINANS_TAHSILAT_ROW_ACTIONS: PortalRowActionDef[] = [
 ];
 
 export const FINANS_FATURA_TALEP_ROW_ACTIONS: PortalRowActionDef[] = [
+  { id: 'invoice', label: 'Resmi Fatura Gir', defaultPinned: true },
   { id: 'view', label: 'Görüntüle', defaultPinned: true },
-  { id: 'print', label: 'Yazdır', defaultPinned: true },
-  { id: 'notify', label: 'Dosya Sorumlusuna Bildir', defaultPinned: true, suggested: true },
-  { id: 'edit', label: 'Düzenle', defaultPinned: false },
+  { id: 'print', label: 'Yazdır', defaultPinned: false },
+  { id: 'notify', label: 'Dosya Sorumlusuna Bildir', defaultPinned: false, suggested: true },
   { id: 'cancel', label: 'İptal Et', defaultPinned: false },
 ];
 

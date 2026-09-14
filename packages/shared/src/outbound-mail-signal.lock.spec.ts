@@ -74,6 +74,7 @@ describe('giden mail gönderildi/okundu LOCK', () => {
     );
     assert.match(send, /isReadReceiptRequested:\s*true/);
     assert.doesNotMatch(send, /isReadReceiptRequested:\s*false/);
+    assert.match(send, /Disposition-Notification-To/);
     const modal = readFileSync(
       new URL('../../../apps/web/src/components/operation-inbox/InboxReplyModal.tsx', import.meta.url),
       'utf8',

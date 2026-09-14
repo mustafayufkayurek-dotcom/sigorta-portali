@@ -383,7 +383,7 @@ export default function KdvRaporuPage() {
           )}
 
           <p className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-200 dark:border-slate-700 pt-3">
-            {report.methodology.formula}. Taslak fatura girer; iptal girmez. Bu sayfa bilgi içindir, resmi KDV beyannamesi değildir.
+            {report.methodology.formula}. Taslak fatura girer; iptal girmez. Resmi beyanname değildir.
           </p>
         </>
       ) : null}

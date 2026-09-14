@@ -11,7 +11,7 @@ alwaysApply: true
 
 ## Kime
 
-1. Hoş geldin / davet → **Kullanıcılar** e-postası (giriş hesabı). Müşteri kartı değil.
+1. Hoş geldin / davet → **Kullanıcılar** e-postası (giriş hesabı). Müşteri kartı değil. Yönetici **görünür kopya** (CC) alır; kime kullanıcıdır.
 2. Hasar kapanış / rapor / dış onay → müşteri kartı ve dış taraf iletişim e-postası.
 3. Acil kapanış → ihbar gelen adresi + müşteri kartı e-postası. Meridyen kendi kutusu alıcı olmaz.
 
