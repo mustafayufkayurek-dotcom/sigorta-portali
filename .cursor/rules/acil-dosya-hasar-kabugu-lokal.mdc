@@ -27,6 +27,7 @@ alwaysApply: true
 - Dosyada **Konum Tespiti**; tedarikçi WhatsApp’ta pin + *“Konumu sigortalıdan teyit ediniz.”* Alış/satış/kâr gitmez.
 - Dört resmi işlem saati dosyada durur: **ihbar** (mail / `fileDate`), **işe başlama** (`workStartedAt`), **hizmet verilme** (`serviceDeliveredAt`), **kapanış** (`resolvedAt`). Detay ve kapanış PDF iskeleti bunları basar.
 - Onay Talep Akışı **Sunum özeti**: yazarken boşluk durur. «Riziko adreste;» sabit; gövde her tuşta kırpılmaz.
+- Kapanış çekmecesi yenilemede sökülmez (`acil-kapanis-cekmece-kilidi.mdc`). Kaydet dosyayı kapatmaz.
 - Hasar hakediş / 15-30 vade yoluna dokunulmaz.
 
 ## Yasak (açık onay yoksa)

@@ -387,7 +387,37 @@ export class OperationInboxService {
       }
     }
 
+    await this.applyInboundAssistanceIfLinked({
+      id: updated.id,
+      emergencyCaseId: emergency.id,
+      subject: message.subject,
+      bodyText: message.bodyText,
+      bodyPreview: message.bodyPreview,
+    });
+
     return { emergencyCase: emergency, message: updated };
+  }
+
+  private async applyInboundAssistanceIfLinked(message: {
+    id: string;
+    emergencyCaseId?: string | null;
+    subject?: string | null;
+    bodyText?: string | null;
+    bodyPreview?: string | null;
+  }) {
+    if (!message.emergencyCaseId) return;
+    try {
+      await this.emergencyCasesService.applyInboundAssistanceDecision({
+        emergencyCaseId: message.emergencyCaseId,
+        subject: message.subject,
+        bodyText: message.bodyText,
+        bodyPreview: message.bodyPreview,
+        inboundMessageId: message.id,
+      });
+    } catch (err: unknown) {
+      const text = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Asistans mail kararı işlenemedi: ${text}`);
+    }
   }
 
   /**
@@ -418,6 +448,15 @@ export class OperationInboxService {
         },
       });
       this.logger.log(`Kural tabanlı otomatik bağlama: ${messageId}`);
+      if (result.emergencyCaseId) {
+        await this.applyInboundAssistanceIfLinked({
+          id: messageId,
+          emergencyCaseId: result.emergencyCaseId,
+          subject: message.subject,
+          bodyText: message.bodyText,
+          bodyPreview: message.bodyPreview,
+        });
+      }
       return true;
     }
 
@@ -477,6 +516,15 @@ export class OperationInboxService {
           processedAt: new Date(),
         },
       });
+      if (result.emergencyCaseId) {
+        await this.applyInboundAssistanceIfLinked({
+          id: messageId,
+          emergencyCaseId: result.emergencyCaseId,
+          subject: message.subject,
+          bodyText: message.bodyText,
+          bodyPreview: message.bodyPreview,
+        });
+      }
       return;
     }
 

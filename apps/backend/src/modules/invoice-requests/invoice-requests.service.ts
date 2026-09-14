@@ -380,6 +380,7 @@ export class InvoiceRequestsService {
         const linked = await this.invoicesService.linkOrCreateIssuedSalesInvoice({
           claimFileId: current.claimFileId,
           emergencyCaseId: current.emergencyCaseId,
+          allowAdditionalEmergencyFiles: Boolean(current.emergencyCaseId),
           invoiceNo: salesInvoiceNo,
           totalAmount: officialTotal,
           subtotalAmount: dto.subtotalAmount,

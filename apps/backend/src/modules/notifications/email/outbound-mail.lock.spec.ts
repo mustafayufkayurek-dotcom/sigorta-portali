@@ -121,6 +121,9 @@ describe('operasyon giden mail LOCK', () => {
     const closure = emergency.slice(emergency.indexOf('async sendClosureEmail'));
     assert.match(closure, /mailbox:\s*'IHBAR'/);
     assert.match(emergency, /addEmail\(emergencyCase\.customer\?\.email\)/);
+    const approval = emergency.slice(emergency.indexOf('async sendAssistanceApprovalReport'));
+    assert.match(approval, /mailbox:\s*'IHBAR'/);
+    assert.match(emergency, /applyInboundAssistanceDecision/);
   });
 
   it('dış onayda rapor durumu mail gittikten sonra yazılır', () => {

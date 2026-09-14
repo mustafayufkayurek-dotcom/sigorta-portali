@@ -1612,10 +1612,6 @@ export default function VendorsPage() {
       errors.taxNumber = 'Vergi numarası zorunludur';
       missingLabels.push('Vergi No');
     }
-    if (!editVendor && pendingDocs.length === 0) {
-      showToast('warning', 'TC kimlik veya vergi levhası yükleyin. Sözleşme kayıttaki numarayı basar.');
-      return;
-    }
 
     const resolvedPhone = resolveVendorPrimaryPhone(form.phone, contacts, contactInfos);
     const phoneErr = vendorPhoneRequiredError(resolvedPhone, form.phoneType);

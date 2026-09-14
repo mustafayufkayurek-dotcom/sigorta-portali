@@ -2821,6 +2821,10 @@ model EmergencyCase {
   assignedUserId   String?          @map("assigned_user_id")
   notes            String?
   findingsText     String?          @map("findings_text")
+  reportWorkGroup        String? @map("report_work_group")
+  reportMahal            String? @map("report_mahal")
+  reportJobDescription   String? @map("report_job_description")
+  reportItemDescription  String? @map("report_item_description")
   fileDate            DateTime  @default(now()) @map("file_date")
   workStartedAt       DateTime? @map("work_started_at")
   serviceDeliveredAt  DateTime? @map("service_delivered_at")

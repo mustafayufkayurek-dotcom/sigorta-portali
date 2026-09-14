@@ -32,6 +32,14 @@ export function validateOperatorStep(
     digitalDocsOk?: boolean;
     addressRequestOk?: boolean;
     vendorPaid?: boolean | null;
+    isLocksmith?: boolean;
+    findingsText?: string;
+    reportWorkGroup?: string;
+    reportMahal?: string;
+    reportJobDescription?: string;
+    reportItemDescription?: string;
+    photoCount?: number;
+    approvalRequested?: boolean;
   },
 ): string | null {
   if (step === 'ihbar') {
@@ -42,8 +50,19 @@ export function validateOperatorStep(
     if (!s.alis.trim() || !s.satis.trim()) return 'Alış Ve Satış Girin.';
   }
   if (step === 'onay') {
-    if (!acilOnayMetinGovde(s.approvalText).trim()) return 'Riziko Adreste Açıklamasını Yazın.';
-    if (s.approvalState === 'bekliyor') return 'Onayı Kaydet Veya Red Verin.';
+    if (s.isLocksmith === false) {
+      if (!String(s.findingsText ?? '').trim()) return 'Tespit Bulgusu Yazın.';
+      if ((s.photoCount ?? 0) < 1) return 'Tespit Resmi Ekleyin.';
+      if (!String(s.reportWorkGroup ?? '').trim()) return 'İş Grubunu Yazın.';
+      if (!String(s.reportMahal ?? '').trim()) return 'Mahal/Bölge Yazın.';
+      if (!String(s.reportJobDescription ?? '').trim()) return 'İşin Tanımını Yazın.';
+      if (!String(s.reportItemDescription ?? '').trim()) return 'Açıklamayı Yazın.';
+      if (!s.approvalRequested) return 'Raporu Asistansa Gönderin.';
+      if (s.approvalState === 'bekliyor') return 'Asistans Onayını Bekleyin.';
+    } else {
+      if (!acilOnayMetinGovde(s.approvalText).trim()) return 'Riziko Adreste Açıklamasını Yazın.';
+      if (s.approvalState === 'bekliyor') return 'Onayı Kaydet Veya Red Verin.';
+    }
   }
   if (step === 'kapanis') {
     if (s.approvalState !== 'onaylandi') return 'Önce Onay Talep Akışı Tamamlansın.';
@@ -56,6 +75,25 @@ export function validateOperatorStep(
     if (!s.financeSent) return 'Finansa Aktarın.';
   }
   return null;
+}
+
+/** Alt Kaydet: raporu taslak kaydeder. Resim ve asistans gönderimi adım bitirme kapısındadır. */
+export function validateOperatorDraftSave(
+  step: OperatorStepKey,
+  s: Parameters<typeof validateOperatorStep>[1],
+): string | null {
+  if (step === 'onay' && s.isLocksmith === false) {
+    if (!String(s.findingsText ?? '').trim()) return 'Tespit Bulgusu Yazın.';
+    if (!String(s.reportWorkGroup ?? '').trim()) return 'İş Grubunu Yazın.';
+    if (!String(s.reportMahal ?? '').trim()) return 'Mahal/Bölge Yazın.';
+    if (!String(s.reportJobDescription ?? '').trim()) return 'İşin Tanımını Yazın.';
+    if (!String(s.reportItemDescription ?? '').trim()) return 'Açıklamayı Yazın.';
+    return null;
+  }
+  if (step === 'kapanis') {
+    return null;
+  }
+  return validateOperatorStep(step, s);
 }
 
 /** Sunum özeti adım değişince / yenilemede boş öneke dönmez. Gövde kırpılmaz. */

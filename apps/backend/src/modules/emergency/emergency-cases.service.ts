@@ -38,6 +38,13 @@ import {
   isAcilVendorQualityWarning,
   shouldReportAcilNegativeVendorStrike,
   nextEmergencyFindingsText,
+  isAcilLocksmithIssue,
+  parseAssistanceMailDecision,
+  canSendVisibleCopy,
+  buildPlatformMailCopyNotice,
+  prependFileOwnerCopyNotice,
+  formatEmergencyFileAddress,
+  matchAcilReportPhrases,
 } from '@sigorta/shared';
 import { VendorRecommendationService } from '@/modules/vendors/vendor-recommendation.service';
 import {
@@ -64,6 +71,11 @@ import { SurveysService } from '@/modules/surveys/surveys.service';
 import { EmergencyFinanceService } from './emergency-finance.service';
 import { acilHakedisActorName, acilHakedisPaidDescription } from './acil-vendor-entitlement';
 import { buildAcilClosureReportPdf } from './acil-closure-report-pdf';
+import { buildAcilAssistanceApprovalReportHtml } from './acil-approval-report-html';
+import {
+  buildTransactionalEmailHtml,
+  formatSnPersonGreeting,
+} from '@/modules/notifications/email/email.template';
 import {
   buildAcilOperationTimestamps,
   nextAcilOperationStamps,
@@ -882,6 +894,10 @@ export class EmergencyCasesService {
         ...(dto.assignedUserId !== undefined && { assignedUserId: dto.assignedUserId }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
         ...(nextFindings !== undefined && { findingsText: nextFindings }),
+        ...(dto.reportWorkGroup !== undefined && { reportWorkGroup: dto.reportWorkGroup }),
+        ...(dto.reportMahal !== undefined && { reportMahal: dto.reportMahal }),
+        ...(dto.reportJobDescription !== undefined && { reportJobDescription: dto.reportJobDescription }),
+        ...(dto.reportItemDescription !== undefined && { reportItemDescription: dto.reportItemDescription }),
         ...(dto.vendorPaid !== undefined && { vendorPaid: dto.vendorPaid }),
         ...(dto.latitude !== undefined && { latitude: dto.latitude }),
         ...(dto.longitude !== undefined && { longitude: dto.longitude }),
@@ -1288,6 +1304,397 @@ export class EmergencyCasesService {
       fileNo,
       caseStatus: emergencyCase.status,
     };
+  }
+
+  private async buildAssistanceApprovalPdf(
+    caseId: string,
+    mode: 'preview' | 'send',
+  ): Promise<{
+    pdf: Buffer | null;
+    html: string;
+    fileNo: string;
+    fileSubject: string;
+    saleLabel: string;
+    orgName: string;
+    emergencyCase: {
+      issueType: string;
+      customer: {
+        email?: string | null;
+        shortName?: string | null;
+        companyName?: string | null;
+        fullName?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        contactFirstName?: string | null;
+        contactLastName?: string | null;
+        contacts?: Array<{ email: string | null; isPrimary: boolean | null }>;
+      } | null;
+      assignedUser: {
+        id: string;
+        email: string | null;
+        firstName: string;
+        lastName: string;
+        role: { code: string } | null;
+      } | null;
+      notes: string | null;
+      customerName: string;
+      address: string;
+    };
+  }> {
+    const emergencyCase = await this.prisma.emergencyCase.findUnique({
+      where: { id: caseId },
+      include: {
+        customer: {
+          select: {
+            email: true,
+            shortName: true,
+            companyName: true,
+            fullName: true,
+            firstName: true,
+            lastName: true,
+            contactFirstName: true,
+            contactLastName: true,
+            contacts: { select: { email: true, isPrimary: true }, take: 10 },
+          },
+        },
+        assignedUser: {
+          select: { id: true, email: true, firstName: true, lastName: true, role: { select: { code: true } } },
+        },
+        costEntries: { select: { entryType: true, amount: true } },
+      },
+    });
+    if (!emergencyCase) throw new NotFoundException('Acil yardım dosyası bulunamadı.');
+    if (isAcilLocksmithIssue(emergencyCase.issueType)) {
+      throw new BadRequestException('Çilingir dosyasında bu rapor yolu yoktur.');
+    }
+    const findingsWritten = (emergencyCase.findingsText || '').trim();
+    if (mode === 'send' && !findingsWritten) {
+      throw new BadRequestException('Tespit bulgusu yazılmadan rapor gönderilmez.');
+    }
+    if (
+      mode === 'send'
+      && (
+        !(emergencyCase.reportWorkGroup || '').trim()
+        || !(emergencyCase.reportMahal || '').trim()
+        || !(emergencyCase.reportJobDescription || '').trim()
+        || !(emergencyCase.reportItemDescription || '').trim()
+      )
+    ) {
+      throw new BadRequestException('Rapor kalemi (iş grubu, mahal, tanım, açıklama) yazılmadan gönderilmez.');
+    }
+    const gelir = emergencyCase.costEntries
+      .filter((e) => e.entryType === 'gelir')
+      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    if (mode === 'send' && !(gelir > 0)) {
+      throw new BadRequestException('Satış bedeli girilmeden rapor gönderilmez.');
+    }
+    const photoDocs = await this.prisma.entityDocument.findMany({
+      where: {
+        entityType: 'emergency_case',
+        entityId: caseId,
+        mimeType: { startsWith: 'image/' },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 24,
+    });
+    if (mode === 'send' && !photoDocs.length) {
+      throw new BadRequestException('Tespit resmi eklenmeden rapor gönderilmez.');
+    }
+    const photos: Array<{ dataUrl: string; caption?: string }> = [];
+    for (const doc of photoDocs) {
+      try {
+        const buf = await this.storage.download(doc.storageKey);
+        const mime = doc.mimeType || 'image/jpeg';
+        photos.push({
+          dataUrl: `data:${mime};base64,${buf.toString('base64')}`,
+          caption: `Tespit ${photos.length + 1}`,
+        });
+      } catch {
+        this.logger.warn(`Tespit resmi okunamadı: ${doc.id}`);
+      }
+    }
+    if (mode === 'send' && !photos.length) {
+      throw new BadRequestException('Tespit resmi açılamadı. Rapor gönderilmedi.');
+    }
+
+    const fileNo = emergencyCase.fileNo || emergencyCase.caseNo;
+    const fileSubject = (await settingsDefinedFileSubjectName(this.prisma, emergencyCase.issueType))
+      || emergencyCase.issueType;
+    const saleLabel = gelir > 0
+      ? `${gelir.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL +KDV`
+      : '—';
+    const orgName =
+      emergencyCase.customer?.shortName || emergencyCase.customer?.companyName || emergencyCase.customerName;
+    const insuredPhone =
+      (await this.ensureCustomerPhoneFromInbound(caseId, emergencyCase.customerPhone)) || '';
+    const inspectorName = emergencyCase.assignedUser
+      ? `${emergencyCase.assignedUser.firstName || ''} ${emergencyCase.assignedUser.lastName || ''}`.trim()
+      : '';
+    const htmlReport = buildAcilAssistanceApprovalReportHtml({
+      fileNo,
+      customer: orgName,
+      insured:
+        resolveAcilInsuredName({
+          personField: emergencyCase.customerName,
+          notes: emergencyCase.notes,
+          firmNames: [orgName, emergencyCase.customer?.companyName, emergencyCase.customer?.fullName],
+        }) || '—',
+      insuredPhone,
+      address: formatEmergencyFileAddress({
+        address: emergencyCase.address,
+        district: emergencyCase.district,
+        city: emergencyCase.city,
+      }),
+      subject: fileSubject,
+      location: (emergencyCase.reportMahal || '').trim()
+        || [emergencyCase.district, emergencyCase.city].filter(Boolean).join(' / '),
+      workGroup: (emergencyCase.reportWorkGroup || '').trim(),
+      jobDescription: (emergencyCase.reportJobDescription || '').trim(),
+      itemDescription: (emergencyCase.reportItemDescription || '').trim(),
+      findings: findingsWritten || 'Henüz tespit yazılmadı.',
+      saleAmount: gelir,
+      saleLabel,
+      reportDate: emergencyCase.fileDate,
+      inspectorName,
+      photos,
+    });
+    if (/(alış|ali[sş]\s*fiyat|kâr\s*\(?%|kar\s*\(?%|hakedi[sş])/i.test(htmlReport)) {
+      throw new BadRequestException('Rapor güvenlik kontrolünden geçemedi.');
+    }
+    const pdf = await htmlDocumentToPdf(htmlReport);
+    if (!pdf) {
+      throw new BadRequestException('Rapor PDF üretilemedi.');
+    }
+    return { pdf, html: htmlReport, fileNo, fileSubject, saleLabel, orgName, emergencyCase };
+  }
+
+  async listReportLinePhrases(field?: string, q?: string): Promise<{ data: string[] }> {
+    const rows = await this.prisma.emergencyCase.findMany({
+      select: {
+        reportMahal: true,
+        reportJobDescription: true,
+        reportItemDescription: true,
+      },
+      take: 400,
+      orderBy: { updatedAt: 'desc' },
+    });
+    const phrases = rows.map((row) => {
+      if (field === 'jobDescription') return (row.reportJobDescription || '').trim();
+      if (field === 'itemDescription') return (row.reportItemDescription || '').trim();
+      return (row.reportMahal || '').trim();
+    }).filter(Boolean);
+    return { data: matchAcilReportPhrases(q || '', phrases, 8) };
+  }
+
+  async previewAssistanceApprovalReport(caseId: string) {
+    const built = await this.buildAssistanceApprovalPdf(caseId, 'preview');
+    return { pdf: built.pdf, html: built.html, fileNo: built.fileNo };
+  }
+
+  async sendAssistanceApprovalReport(
+    caseId: string,
+    actor?: { id?: string; email?: string | null; roleCode?: string | null; role?: { code?: string } },
+  ) {
+    const built = await this.buildAssistanceApprovalPdf(caseId, 'send');
+    const { pdf, fileNo, fileSubject, saleLabel, orgName, emergencyCase } = built;
+    if (!pdf) {
+      throw new BadRequestException('Rapor PDF üretilemedi.');
+    }
+    const to = resolveCustomerReminderEmail(emergencyCase.customer);
+    if (!to) {
+      throw new BadRequestException('Asistans e-postası müşteri kartında yok.');
+    }
+    const greeting = formatSnPersonGreeting(
+      emergencyCase.customer?.contactFirstName || emergencyCase.customer?.firstName,
+      emergencyCase.customer?.contactLastName || emergencyCase.customer?.lastName,
+      emergencyCase.customer?.fullName,
+      emergencyCase.customer?.companyName,
+    );
+    let mailHtml = buildTransactionalEmailHtml({
+      title: 'Onay Talep',
+      organizationName: orgName,
+      greeting,
+      intro: 'Acil yardım tespit raporu onay ve görüşleriniz beklemektedir. Rapor PDF ektedir.',
+      bodyHtml: `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
+<tr><td colspan="2" style="padding:14px 16px;background:#F8FAFC;font-size:13px;font-weight:800;color:#123A63;">Dosya Özeti</td></tr>
+<tr><td style="width:34%;padding:13px 16px;font-size:13px;font-weight:700;color:#64748B;">Dosya No</td><td style="padding:13px 16px;font-size:14px;color:#0F172A;">${fileNo}</td></tr>
+<tr><td style="padding:13px 16px;font-size:13px;font-weight:700;color:#64748B;background:#F8FAFC;">Konu</td><td style="padding:13px 16px;font-size:14px;color:#0F172A;background:#F8FAFC;">${fileSubject || emergencyCase.issueType}</td></tr>
+<tr><td style="padding:13px 16px;font-size:13px;font-weight:700;color:#64748B;">Hizmet Bedeli</td><td style="padding:13px 16px;font-size:14px;color:#0F172A;">${saleLabel}</td></tr>
+</table>`,
+    });
+    const ownerEmail = (emergencyCase.assignedUser?.email || '').trim();
+    const ownerName = `${emergencyCase.assignedUser?.firstName ?? ''} ${emergencyCase.assignedUser?.lastName ?? ''}`.trim();
+    const cc: Array<{ email: string; name?: string }> = [];
+    if (canSendVisibleCopy(ownerEmail, [to])) {
+      cc.push({ email: ownerEmail, name: ownerName || undefined });
+      const notice = buildPlatformMailCopyNotice({
+        counterpartName: orgName,
+        counterpartAddress: to,
+        sender: { email: ownerEmail, name: ownerName || ownerEmail },
+        roleCode: emergencyCase.assignedUser?.role?.code || 'office_staff',
+        sentAt: new Date(),
+      });
+      mailHtml = prependFileOwnerCopyNotice(mailHtml, notice.html);
+    }
+    const subject = `${orgName}-${fileNo}-Onay Talep`;
+    const result = await this.emailService.sendEmail(to, subject, mailHtml, {
+      attachments: [
+        {
+          filename: `acil-rapor-DIS-${String(fileNo).replace(/[^\w.-]+/g, '_')}.pdf`,
+          content: pdf,
+          contentType: 'application/pdf',
+        },
+      ],
+      mailbox: 'IHBAR',
+      cc: cc.length ? cc : undefined,
+    });
+    if (!result.sent || result.via !== 'graph') {
+      throw new BadRequestException(result.errorMsg || 'Onay raporu İhbar kutusundan gitmedi.');
+    }
+
+    const actorId = actor?.id;
+    await this.prisma.auditLog.create({
+      data: {
+        entityType: EMERGENCY_PROCESS_ENTITY_TYPE,
+        entityId: caseId,
+        action: 'EMERGENCY_CUSTOMER_APPROVAL_PENDING',
+        newValue: sanitizeAuditValue({
+          description: emergencyProcessDescription('EMERGENCY_CUSTOMER_APPROVAL_PENDING'),
+          channel: 'email',
+        }) as Prisma.InputJsonValue,
+        userId: actorId ?? null,
+        userEmail: actor?.email ?? null,
+      },
+    });
+
+    return {
+      data: {
+        sent: true,
+        to,
+        subject,
+      },
+    };
+  }
+
+  async applyInboundAssistanceDecision(input: {
+    emergencyCaseId: string;
+    subject?: string | null;
+    bodyText?: string | null;
+    bodyPreview?: string | null;
+    inboundMessageId?: string;
+  }): Promise<{ applied: boolean; decision: 'approve' | 'reject' | null }> {
+    const emergencyCase = await this.prisma.emergencyCase.findUnique({
+      where: { id: input.emergencyCaseId },
+      select: {
+        id: true,
+        caseNo: true,
+        fileNo: true,
+        issueType: true,
+        status: true,
+        assignedUserId: true,
+        createdByUserId: true,
+        assignedUser: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        createdBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+      },
+    });
+    if (!emergencyCase) return { applied: false, decision: null };
+    if (isAcilLocksmithIssue(emergencyCase.issueType)) {
+      return { applied: false, decision: null };
+    }
+    const decision = parseAssistanceMailDecision(
+      input.subject,
+      [input.bodyText, input.bodyPreview].filter(Boolean).join('\n'),
+    );
+    if (!decision) return { applied: false, decision: null };
+
+    const pending = await this.prisma.auditLog.findFirst({
+      where: {
+        entityType: EMERGENCY_PROCESS_ENTITY_TYPE,
+        entityId: emergencyCase.id,
+        action: 'EMERGENCY_CUSTOMER_APPROVAL_PENDING',
+      },
+      select: { id: true },
+    });
+    if (!pending) return { applied: false, decision };
+
+    const processAction: EmergencyProcessAction =
+      decision === 'approve' ? 'EMERGENCY_CUSTOMER_APPROVED' : 'EMERGENCY_CUSTOMER_REJECTED';
+    const existing = await this.prisma.auditLog.findFirst({
+      where: {
+        entityType: EMERGENCY_PROCESS_ENTITY_TYPE,
+        entityId: emergencyCase.id,
+        action: processAction,
+      },
+      select: { id: true },
+    });
+    if (existing) return { applied: false, decision };
+
+    await this.prisma.auditLog.create({
+      data: {
+        entityType: EMERGENCY_PROCESS_ENTITY_TYPE,
+        entityId: emergencyCase.id,
+        action: processAction,
+        newValue: sanitizeAuditValue({
+          description: emergencyProcessDescription(processAction),
+          source: 'inbound_mail',
+          inboundMessageId: input.inboundMessageId ?? null,
+        }) as Prisma.InputJsonValue,
+      },
+    });
+
+    if (decision === 'approve' && (emergencyCase.status === 'GELEN' || emergencyCase.status === 'ATANDI')) {
+      await this.prisma.emergencyCase.update({
+        where: { id: emergencyCase.id },
+        data: { status: 'SAHADA' },
+      });
+    }
+
+    const owner = emergencyCase.assignedUser || emergencyCase.createdBy;
+    const fileNo = emergencyCase.fileNo || emergencyCase.caseNo;
+    const title = decision === 'approve' ? 'Asistans Onayı Geldi' : 'Asistans Reddi Geldi';
+    const body =
+      decision === 'approve'
+        ? `${fileNo} dosyasında asistans onayı geldi. İşe devam edebilirsiniz.`
+        : `${fileNo} dosyasında asistans reddi geldi.`;
+    if (owner?.id) {
+      await this.prisma.notification.create({
+        data: {
+          userId: owner.id,
+          type: 'emergency_assistance_decision',
+          title,
+          body,
+          channel: 'in_app',
+          status: 'pending',
+          relatedEntityType: 'emergency_case',
+          relatedEntityId: emergencyCase.id,
+        },
+      });
+    }
+    const ownerEmail = (owner?.email || '').trim();
+    if (ownerEmail.includes('@')) {
+      const greeting = formatSnPersonGreeting(owner?.firstName, owner?.lastName, null, null);
+      const mailHtml = buildTransactionalEmailHtml({
+        title,
+        greeting,
+        intro: body,
+        bodyHtml: `<p style="margin:0;font-size:14px;color:#0F172A;">Dosya No: ${fileNo}</p>`,
+      });
+      const mailed = await this.emailService.sendEmail(
+        ownerEmail,
+        `${fileNo} — ${title}`,
+        mailHtml,
+        { mailbox: 'IHBAR' },
+      );
+      if (!mailed.sent || mailed.via !== 'graph') {
+        this.logger.warn(`Dosya sorumlusu onay maili gitmedi: ${mailed.errorMsg || 'İhbar kutusu'}`);
+      }
+    }
+
+    return { applied: true, decision };
   }
 
   async previewClosureEmail(caseId: string) {

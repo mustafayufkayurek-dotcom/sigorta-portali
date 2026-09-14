@@ -8,11 +8,13 @@ import {
   Param,
   Query,
   Request,
+  Res,
   HttpCode,
   HttpStatus,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { EmergencyCasesService } from './emergency-cases.service';
 import { CreateEmergencyCaseDto } from './dto/create-emergency-case.dto';
 import { UpdateEmergencyCaseDto } from './dto/update-emergency-case.dto';
@@ -69,6 +71,15 @@ export class EmergencyCasesController {
       }
     }
     return this.service.create(dto, req.user?.id ?? 'system');
+  }
+
+  @Get('report-line-phrases')
+  @RequirePermissions('claim_file.view')
+  async reportLinePhrases(
+    @Query('field') field?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.service.listReportLinePhrases(field, q);
   }
 
   @Get()
@@ -215,6 +226,34 @@ export class EmergencyCasesController {
     const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
     await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
     return this.service.sendClosureEmail(id);
+  }
+
+  /** Çilingir dışı — tespit raporu PDF inceleme (oturumla bayt) */
+  @Get(':id/approval-report')
+  @RequirePermissions('claim_file.view')
+  async previewAssistanceApprovalReport(
+    @Param('id') id: string,
+    @Res() res: Response,
+    @CurrentUser() user?: any,
+  ) {
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
+    const { pdf, fileNo } = await this.service.previewAssistanceApprovalReport(id);
+    const safe = String(fileNo).replace(/[^\w.-]+/g, '_');
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="acil-rapor-${safe}.pdf"`,
+    });
+    return res.send(pdf);
+  }
+
+  /** Çilingir dışı — tespit raporu PDF ile asistans onayı */
+  @Post(':id/approval-email')
+  @RequirePermissions('claim_file.status_change')
+  async sendAssistanceApprovalReport(@Param('id') id: string, @CurrentUser() user?: any) {
+    const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds, assistantCustomerIds);
+    return this.service.sendAssistanceApprovalReport(id, user);
   }
 
   @Delete(':id')

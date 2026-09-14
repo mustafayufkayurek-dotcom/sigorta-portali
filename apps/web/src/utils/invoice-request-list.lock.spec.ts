@@ -155,8 +155,10 @@ describe('invoice-request-list lock', () => {
     assert.match(kart, /PortalRowActionsPicker/);
     assert.match(section, /FINANS_FATURA_TALEP_ROW_ACTIONS/);
     assert.match(section, /fatura-talep-satis-no-modal/);
-    assert.match(section, /Resmi fatura numarası/);
-    assert.match(section, /Fatura tarihi/);
+    assert.match(section, /Resmi Fatura Numarası Giriniz/);
+    assert.match(section, /Resmi Fatura Numarası/);
+    assert.match(section, /Acil Yardım’da aynı resmi fatura birden fazla dosyaya yazılır/);
+    assert.match(section, /Fatura Tarihi/);
     assert.match(section, /Bu yazılım resmi fatura kesmez/);
     assert.match(section, /FINANS_ACTIONS_COLUMN/);
     assert.match(kart, /orderedVisibleColumns/);

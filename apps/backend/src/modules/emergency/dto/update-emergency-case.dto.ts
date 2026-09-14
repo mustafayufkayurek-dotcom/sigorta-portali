@@ -54,6 +54,22 @@ export class UpdateEmergencyCaseDto {
   @IsOptional()
   findingsText?: string;
 
+  @IsString()
+  @IsOptional()
+  reportWorkGroup?: string;
+
+  @IsString()
+  @IsOptional()
+  reportMahal?: string;
+
+  @IsString()
+  @IsOptional()
+  reportJobDescription?: string;
+
+  @IsString()
+  @IsOptional()
+  reportItemDescription?: string;
+
   @IsBoolean()
   @IsOptional()
   vendorPaid?: boolean;

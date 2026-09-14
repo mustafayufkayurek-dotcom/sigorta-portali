@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import {
   acilOnayMetinGovde,
   resolveAcilApprovalText,
+  validateOperatorDraftSave,
   withAcilOnayMetinOnEk,
 } from './planner-gates.ts';
 
@@ -97,5 +98,48 @@ describe('acil sunum özeti boşluk LOCK', () => {
       resolveAcilApprovalText('Riziko adreste; yazılan ', ''),
       'Riziko adreste; yazılan ',
     );
+  });
+
+  it('Kaydet raporu taslak tutar; İncele resim istemez', () => {
+    const base = {
+      assigned: 'v1',
+      alis: '100',
+      satis: '200',
+      workStartOk: true,
+      fileClosed: false,
+      financeSent: false,
+      approvalState: 'bekliyor' as const,
+      approvalText: '',
+      isLocksmith: false,
+      findingsText: 'Riziko adreste; cam kırık',
+      reportWorkGroup: 'duvar işleri',
+      reportMahal: 'salon',
+      reportJobDescription: 'lamine cam yenileme',
+      reportItemDescription: 'çerçeve sağlam, cam kırık',
+      photoCount: 0,
+      approvalRequested: false,
+    };
+    assert.equal(validateOperatorDraftSave('onay', base), null);
+  });
+
+  it('Çilingir Onayı Kaydet durur; diğerlerinde rapor gönderilir', () => {
+    assert.match(steps, />Onayı Kaydet</);
+    assert.match(steps, /Raporu Asistansa Gönder/);
+    assert.match(steps, /Raporu İncele/);
+    assert.match(steps, /acil-raporu-incele/);
+    assert.match(steps, /Önce tespit bulgusunu yazın/);
+    assert.match(gates, /Mahal\/Bölge Yazın/);
+    assert.match(steps, /Önce iş grubu, mahal, işin tanımı ve açıklamayı yazın/);
+    assert.match(gates, /isLocksmith === false/);
+    assert.match(gates, /validateOperatorDraftSave/);
+    assert.match(steps, /reportWritten/);
+    assert.match(steps, /Göndermek için tespit resmi ekleyin/);
+    assert.doesNotMatch(steps, /disabled=\{p\.openingApprovalReport \|\| !reportReady\}/);
+    const panel = readFileSync(join(here, 'AcilOperasyonPlanlayiciPanel.tsx'), 'utf8');
+    assert.match(panel, /validateOperatorDraftSave/);
+    assert.match(panel, /writeAcilPlannerUi/);
+    assert.match(panel, /readAcilPlannerUi/);
+    const onayMount = panel.slice(panel.indexOf("activeStep === 'onay'"), panel.indexOf("activeStep === 'kapanis'"));
+    assert.ok(onayMount.indexOf('{approvalStep}') < onayMount.indexOf('<PlannerStepBody'));
   });
 });

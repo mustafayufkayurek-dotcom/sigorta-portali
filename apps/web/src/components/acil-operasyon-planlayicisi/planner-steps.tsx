@@ -5,7 +5,7 @@
  */
 
 import { useState, type ReactNode } from 'react';
-import { Phone, TrendingDown, TrendingUp, UserRound, Wallet, Mail } from 'lucide-react';
+import { Phone, TrendingDown, TrendingUp, UserRound, Wallet, Mail, FileText } from 'lucide-react';
 import { calcAlisSatisKar, formatTryAmount, parseTrAmount } from '@/utils/format-try-amount';
 import { WhatsAppIcon } from '@/components/ui/PhoneContactActions';
 import type { VendorRecommendation } from '@/utils/emergencyApi';
@@ -50,7 +50,7 @@ export const OPERATOR_STEPS: Array<{
   {
     key: 'onay',
     label: 'Onay Talep Akışı',
-    hint: 'Bedel Sunumu, Müşteri Onayı',
+    hint: 'Tespit Raporu Veya Sunum Özeti',
     stageKeys: ['asistans_onayi_bekleniyor', 'ise_baslama'],
   },
   {
@@ -122,9 +122,21 @@ export type PlannerStepBodyProps = {
   inboxPhotoCount?: number;
   skipVendorPicker?: boolean;
   emergencyCaseId?: string;
+  isLocksmith?: boolean;
+  findingsText?: string;
+  reportWorkGroup?: string;
+  reportMahal?: string;
+  reportJobDescription?: string;
+  reportItemDescription?: string;
+  photoCount?: number;
+  approvalRequested?: boolean;
+  sendingApprovalReport?: boolean;
+  openingApprovalReport?: boolean;
   customerNotifyChannel?: AnaMusteriHaberlesme;
   onCustomerNotifyChannel?: (v: AnaMusteriHaberlesme) => void;
   onCustomerEmail?: () => void;
+  onSendApprovalReport?: () => void;
+  onOpenApprovalReport?: () => void;
   onClosureEmail?: () => void;
   onAssign: (id: string) => void;
   onAlis: (v: string) => void;
@@ -603,6 +615,65 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
         : p.approvalState === 'reddedildi'
           ? 'bg-red-50 text-red-800'
           : 'bg-amber-50 text-amber-800';
+    const locksmith = p.isLocksmith !== false;
+    if (!locksmith) {
+      const reportWritten = Boolean(String(p.findingsText ?? '').trim())
+        && Boolean(String(p.reportWorkGroup ?? '').trim())
+        && Boolean(String(p.reportMahal ?? '').trim())
+        && Boolean(String(p.reportJobDescription ?? '').trim())
+        && Boolean(String(p.reportItemDescription ?? '').trim());
+      const reportSendReady = reportWritten && (p.photoCount ?? 0) >= 1;
+      return (
+        <div className="space-y-3">
+          <Card title="Raporu Gönder">
+            <p className="text-[11px] text-slate-500">
+              Yukarıda tespit ve resmi yazın. Satış bedeli önceki adımdan rapora işlenir. Rapor asistansa gider; onay gelen kutudan düşer.
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeCls}`}>{badge}</span>
+              <span className="text-[11px] text-slate-500">Bedel: {p.satis || '—'} TL</span>
+            </div>
+            {!String(p.findingsText ?? '').trim() ? (
+              <p className="mt-2 text-[11px] text-amber-700">Önce tespit bulgusunu yazın.</p>
+            ) : !String(p.reportWorkGroup ?? '').trim()
+              || !String(p.reportMahal ?? '').trim()
+              || !String(p.reportJobDescription ?? '').trim()
+              || !String(p.reportItemDescription ?? '').trim() ? (
+              <p className="mt-2 text-[11px] text-amber-700">Önce iş grubu, mahal, işin tanımı ve açıklamayı yazın.</p>
+            ) : (p.photoCount ?? 0) < 1 ? (
+              <p className="mt-2 text-[11px] text-amber-700">Göndermek için tespit resmi ekleyin.</p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <Btn
+                disabled={p.openingApprovalReport || !reportWritten}
+                onClick={() => p.onOpenApprovalReport?.()}
+                testId="acil-raporu-incele"
+              >
+                <FileText className="h-3 w-3" /> Raporu İncele
+              </Btn>
+              <Btn
+                primary
+                disabled={
+                  p.sendingApprovalReport
+                  || p.approvalState === 'onaylandi'
+                  || !reportSendReady
+                }
+                onClick={() => p.onSendApprovalReport?.()}
+              >
+                <Mail className="h-3 w-3" /> Raporu Asistansa Gönder
+              </Btn>
+              {p.approvalState === 'bekliyor' && p.approvalRequested ? (
+                <span className="self-center text-[11px] text-amber-800">Asistans onayı bekleniyor.</span>
+              ) : null}
+            </div>
+            <div className="mt-3 flex gap-1.5">
+              <Btn onClick={() => p.onApprovalState('onaylandi')}>Elle Onay Kaydet</Btn>
+              <Btn onClick={() => p.onApprovalState('reddedildi')}>Red</Btn>
+            </div>
+          </Card>
+        </div>
+      );
+    }
     const ch = p.customerNotifyChannel ?? 'both';
     const showWa = anaMusteriAllowsWhatsApp(ch);
     const showMail = anaMusteriAllowsEmail(ch);

@@ -8,7 +8,7 @@ import {
   History,
   Wallet,
 } from 'lucide-react';
-import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk, resolveAcilInsuredName, resolveEmergencyFindingsDraft } from '@sigorta/shared';
+import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk, resolveAcilInsuredName, resolveEmergencyFindingsDraft, isAcilLocksmithIssue } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
 import { PANEL_CARD_BASE, PanelSectionTitle } from '@/components/panel/PanelCard';
@@ -17,7 +17,7 @@ import type { ManualDecisionAction } from '@/components/operasyon/ManualDecision
 import {
   getCase, updateCase, updateCaseStatus, recordEmergencyManualDecision, addCostEntry, getCostEntries, deleteCostEntry, updateCostEntry,
   getEmergencyVendors, getRecommendedVendors, promoteVendorToPool,
-  previewClosureEmail, sendClosureEmail,
+  previewClosureEmail, sendClosureEmail, sendAssistanceApprovalEmail, openAssistanceApprovalReport,
   listEmergencyProcessEvents, recordEmergencyProcessEvent,
   EmergencyCase, EmergencyCostEntry, EmergencyStatus, VendorRecommendation,
   type ClosureEmailPreview, type EmergencyUrgency,
@@ -26,6 +26,7 @@ import ClosureConditionsPanel from '@/components/file-documents/ClosureCondition
 import ClosurePhotosPanel from '@/components/file-documents/ClosurePhotosPanel';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import { FieldInspectionPhotosPanel } from '@/components/field-survey/FieldInspectionPhotosPanel';
+import { AcilReportPhraseInput } from '@/components/acil-operasyon-planlayicisi/AcilReportPhraseInput';
 import {
   AcilOperasyonPlanlayiciPanel,
   type AcilOperasyonPlanlayiciHandle,
@@ -53,6 +54,7 @@ import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import SpeechToText from '@/components/SpeechToText';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { API, authHeader } from '@/utils/api';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { openWhatsAppChat } from '@/utils/date-helpers';
 import {
@@ -483,6 +485,8 @@ export default function AcilDosyaDetayPage() {
   const canSeeOpsCost = canSeeAcilOpsCostFields(roleCode);
 
   const [vaka, setVaka] = useState<EmergencyCase | null>(null);
+  const vakaRef = useRef<EmergencyCase | null>(null);
+  vakaRef.current = vaka;
   const [costs, setCosts] = useState<EmergencyCostEntry[]>([]);
   const [costSummary, setCostSummary] = useState({ totalGelir: 0, totalGider: 0, netKar: 0 });
   const [loading, setLoading] = useState(true);
@@ -540,6 +544,9 @@ export default function AcilDosyaDetayPage() {
   const [altTab, setAltTab] = useState<AltBolumTab>('belgeler');
   /** Dosya Kapanış Resimleri — Fotoğraflar kapısı ile senkron */
   const [closurePhotoCount, setClosurePhotoCount] = useState(0);
+  const [inspectionPhotoCount, setInspectionPhotoCount] = useState(0);
+  const [sendingApprovalReport, setSendingApprovalReport] = useState(false);
+  const [openingApprovalReport, setOpeningApprovalReport] = useState(false);
   const [plannerApprovalChannel, setPlannerApprovalChannel] = useState<PlannerApprovalChannel>('email');
   const [plannerApprovalText, setPlannerApprovalText] = useState('Riziko adreste; ');
   const plannerApprovalTextRef = useRef('Riziko adreste; ');
@@ -574,6 +581,11 @@ export default function AcilDosyaDetayPage() {
   const [draftFindings, setDraftFindings] = useState('');
   const draftFindingsRef = useRef('');
   draftFindingsRef.current = draftFindings;
+  const [reportWorkGroup, setReportWorkGroup] = useState('');
+  const [reportMahal, setReportMahal] = useState('');
+  const [reportJobDescription, setReportJobDescription] = useState('');
+  const [reportItemDescription, setReportItemDescription] = useState('');
+  const [workGroupNames, setWorkGroupNames] = useState<string[]>([]);
   const [findingsError, setFindingsError] = useState<string | null>(null);
   const [, setFindingsSaving] = useState(false);
   const findingsFormRef = useRef<HTMLDivElement | null>(null);
@@ -635,7 +647,7 @@ export default function AcilDosyaDetayPage() {
   const load = useCallback(async () => {
     const loadId = id;
     const gen = ++loadGenRef.current;
-    setLoading(true);
+    if (!vakaRef.current) setLoading(true);
     try {
       const caseRes = await getCase(loadId);
       if (gen !== loadGenRef.current) return;
@@ -650,6 +662,10 @@ export default function AcilDosyaDetayPage() {
         localFlow.approvalText,
       );
       setVaka(caseRes.data);
+      setReportWorkGroup(caseRes.data.reportWorkGroup || '');
+      setReportMahal(caseRes.data.reportMahal || '');
+      setReportJobDescription(caseRes.data.reportJobDescription || '');
+      setReportItemDescription(caseRes.data.reportItemDescription || '');
       setDraftFindings(resolvedFindings);
       draftFindingsRef.current = resolvedFindings;
       setPlannerApprovalText(resolvedApproval);
@@ -730,6 +746,18 @@ export default function AcilDosyaDetayPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void axios.get(`${API}/work-groups`, { headers: authHeader() }).then((res) => {
+      if (cancelled) return;
+      const rows = (res.data?.data ?? res.data ?? []) as Array<{ name?: string }>;
+      setWorkGroupNames(
+        rows.map((row) => String(row.name || '').trim()).filter(Boolean),
+      );
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -936,6 +964,7 @@ export default function AcilDosyaDetayPage() {
   }
 
   function focusFindingsForm() {
+    plannerRef.current?.openStep(isLocksmith ? 'kapanis' : 'onay');
     requestAnimationFrame(() => {
       findingsFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       findingsTextareaRef.current?.focus();
@@ -983,6 +1012,27 @@ export default function AcilDosyaDetayPage() {
       return false;
     } finally {
       setFindingsSaving(false);
+    }
+  }
+
+  async function saveReportLine(patch?: {
+    reportWorkGroup?: string;
+    reportMahal?: string;
+    reportJobDescription?: string;
+    reportItemDescription?: string;
+  }): Promise<void> {
+    if (!id || isAcilLocksmithIssue(vaka?.issueType)) return;
+    const body = {
+      reportWorkGroup: (patch?.reportWorkGroup ?? reportWorkGroup).trim(),
+      reportMahal: (patch?.reportMahal ?? reportMahal).trim(),
+      reportJobDescription: (patch?.reportJobDescription ?? reportJobDescription).trim(),
+      reportItemDescription: (patch?.reportItemDescription ?? reportItemDescription).trim(),
+    };
+    try {
+      const res = await updateCase(id, body as Partial<EmergencyCase>);
+      setVaka(res.data);
+    } catch {
+      /* sonraki kayıt */
     }
   }
 
@@ -1688,6 +1738,43 @@ export default function AcilDosyaDetayPage() {
     }
   }
 
+  async function handleSendAssistanceApproval() {
+    if (!vaka) return;
+    setSendingApprovalReport(true);
+    try {
+      const findingsOk = await saveFindingsText();
+      if (!findingsOk) throw new Error('Tespit bulgusu kaydedilemedi.');
+      await saveReportLine();
+      const res = await sendAssistanceApprovalEmail(id);
+      await persistFlow(appendFlowHistory(
+        { ...flow, approvalRequested: true },
+        `Asistans onay raporu gönderildi → ${res.data.to}`,
+      ));
+      setActionFlash(`Rapor asistansa gitti (${res.data.to}). Onay gelen kutudan düşer.`);
+      await load();
+    } catch (err: unknown) {
+      setActionFlash(getApiErrorMessage(err, 'Rapor gönderilemedi.'));
+    } finally {
+      setSendingApprovalReport(false);
+    }
+  }
+
+  async function handleOpenAssistanceApprovalReport() {
+    if (!vaka) return;
+    const previewWin = window.open('about:blank', '_blank');
+    setOpeningApprovalReport(true);
+    try {
+      await saveFindingsText();
+      await saveReportLine();
+      await openAssistanceApprovalReport(id, previewWin);
+    } catch (err: unknown) {
+      try { previewWin?.close(); } catch { /* pencere yok */ }
+      setActionFlash(getApiErrorMessage(err, 'Rapor açılamadı.'));
+    } finally {
+      setOpeningApprovalReport(false);
+    }
+  }
+
   async function handleCloseFile(allowIncomplete = false) {
     if (closeSubmitRef.current || closeBusy) return;
     const findingsOk = await saveFindingsText();
@@ -1884,7 +1971,7 @@ export default function AcilDosyaDetayPage() {
     }
   }
 
-  if (loading) {
+  if (loading && !vaka) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -1896,6 +1983,7 @@ export default function AcilDosyaDetayPage() {
   }
 
   const isHistorical = isHistoricalEmergencyFile(vaka.createdAt, vaka.fileDate);
+  const isLocksmith = isAcilLocksmithIssue(vaka.issueType);
   const historicalExempt = isHistorical && !financeOptIn;
   const hasAlis = costSummary.totalGider > 0 || flow.costConfirmed || parsePriceInput(alisFiyati) > 0;
   const stageEngineInput = {
@@ -2071,6 +2159,14 @@ export default function AcilDosyaDetayPage() {
         body={OPS_NOTICE.acilDosyaSonDegisiklik.body}
         testId="acil-dosya-ilk-kullanim-seridi"
       />
+      {!isLocksmith ? (
+        <OpsFirstRunNotice
+          noticeId={OPS_NOTICE.acilAsistansRaporOnay.id}
+          title={OPS_NOTICE.acilAsistansRaporOnay.title}
+          body={OPS_NOTICE.acilAsistansRaporOnay.body}
+          testId="acil-asistans-rapor-ilk-kullanim-seridi"
+        />
+      ) : null}
       <div className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="dosya-basligi">
         <div className="flex items-center px-4 pt-2.5">
           <button
@@ -2420,9 +2516,138 @@ export default function AcilDosyaDetayPage() {
         )}
         approvalStep={(
           <div className="space-y-3" data-testid="acil-onay-evrak">
-            <p className="text-xs text-slate-500">
-              Sigortalı dijital onayı İhbar ve Kapanış adımlarında alınır. Bu adımda müşteri bedel onayı kaydedilir.
-            </p>
+            {isLocksmith ? (
+              <p className="text-xs text-slate-500">
+                Sigortalı dijital onayı İhbar ve Kapanış adımlarında alınır. Bu adımda müşteri bedel onayı kaydedilir.
+              </p>
+            ) : (
+              <section className="space-y-3" data-testid="acil-onay-tespit" ref={findingsFormRef}>
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <h4 className="text-xs font-semibold text-slate-900">Tespit Bulguları *</h4>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Rapor buradan yazılır. Satış bedeli Tedarikçi Ve Maliyet adımından işlenir.
+                  </p>
+                  <div className={`mt-2 overflow-hidden rounded-lg border ${findingsError ? 'border-red-400 ring-1 ring-red-400' : 'border-slate-200'}`}>
+                    <div className="border-b border-slate-100 bg-slate-50 px-3 pb-0.5 pt-2.5">
+                      <span className="select-none text-sm font-bold italic text-slate-800">
+                        Riziko adreste yapılan incelemeler sonucunda;
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <textarea
+                        ref={findingsTextareaRef}
+                        value={draftFindings}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setDraftFindings(next);
+                          draftFindingsRef.current = next;
+                          persistPlannerDrafts({ findingsDraft: next });
+                          if (next.trim()) setFindingsError(null);
+                        }}
+                        onBlur={() => { void saveFindingsText(); }}
+                        rows={5}
+                        placeholder="bulgular buraya yazılır..."
+                        className="w-full resize-y bg-white px-3 py-2 pr-12 text-sm text-slate-800 focus:outline-none"
+                        data-testid="tespit-bulgulari-onay-input"
+                        aria-invalid={Boolean(findingsError)}
+                      />
+                      <div className="absolute bottom-2 right-2">
+                        <SpeechToText
+                          size="sm"
+                          onTranscript={(text) => {
+                            const next = draftFindings.trim()
+                              ? `${draftFindings.trim()} ${text}`
+                              : text;
+                            setDraftFindings(next);
+                            draftFindingsRef.current = next;
+                            persistPlannerDrafts({ findingsDraft: next });
+                            if (next.trim()) setFindingsError(null);
+                            void saveFindingsText(next);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {findingsError ? (
+                    <p className="mt-1 text-xs text-status-danger" data-testid="tespit-bulgulari-error">{findingsError}</p>
+                  ) : null}
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <h4 className="text-xs font-semibold text-slate-900">Tespit Fotoğrafları *</h4>
+                  <p className="mb-2 mt-1 text-[11px] text-slate-500">Rapora eklenir. Sürükleyip bırakabilirsiniz.</p>
+                  <FieldInspectionPhotosPanel
+                    entityType="emergency_case"
+                    entityId={vaka.id}
+                    onCountChange={setInspectionPhotoCount}
+                  />
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3" data-testid="acil-rapor-kalem">
+                  <h4 className="text-xs font-semibold text-slate-900">Rapor kalemi</h4>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    İş grubu, mahal, işin tanımı ve açıklama rapora sizin yazdığınız gibi gider. Mahal, tanım ve açıklamada daha önce yazılan cümleler önerilir.
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-[10px] font-semibold text-slate-500">İş Grubu</span>
+                      <input
+                        type="text"
+                        list="acil-rapor-is-grubu"
+                        value={reportWorkGroup}
+                        onChange={(e) => setReportWorkGroup(e.target.value)}
+                        onBlur={() => { void saveReportLine({ reportWorkGroup }); }}
+                        placeholder="Örn. duvar işleri"
+                        data-testid="acil-rapor-is-grubu"
+                        className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <datalist id="acil-rapor-is-grubu">
+                        {workGroupNames.map((name) => (
+                          <option key={name} value={name} />
+                        ))}
+                      </datalist>
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-semibold text-slate-500">Mahal/Bölge</span>
+                      <div className="mt-1">
+                        <AcilReportPhraseInput
+                          field="mahal"
+                          value={reportMahal}
+                          onChange={setReportMahal}
+                          onCommit={(v) => { void saveReportLine({ reportMahal: v }); }}
+                          placeholder="Örn. salon"
+                          testId="acil-rapor-mahal"
+                        />
+                      </div>
+                    </label>
+                    <label className="block sm:col-span-2">
+                      <span className="text-[10px] font-semibold text-slate-500">İşin Tanımı</span>
+                      <div className="mt-1">
+                        <AcilReportPhraseInput
+                          field="jobDescription"
+                          value={reportJobDescription}
+                          onChange={setReportJobDescription}
+                          onCommit={(v) => { void saveReportLine({ reportJobDescription: v }); }}
+                          placeholder="Örn. lamine cam yenileme"
+                          testId="acil-rapor-is-tanimi"
+                        />
+                      </div>
+                    </label>
+                    <label className="block sm:col-span-2">
+                      <span className="text-[10px] font-semibold text-slate-500">Açıklama</span>
+                      <div className="mt-1">
+                        <AcilReportPhraseInput
+                          field="itemDescription"
+                          value={reportItemDescription}
+                          onChange={setReportItemDescription}
+                          onCommit={(v) => { void saveReportLine({ reportItemDescription: v }); }}
+                          placeholder="Örn. çerçeve sağlam, cam kırık"
+                          testId="acil-rapor-aciklama"
+                        />
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </section>
+            )}
           </div>
         )}
         closingStep={(
@@ -2449,12 +2674,14 @@ export default function AcilDosyaDetayPage() {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="text-xs font-semibold text-slate-900">İşlem detayı ve resimler</h4>
-                <p className="text-[11px] text-slate-500">Tedarikçiden gelince dosyaya işlenir</p>
+                <p className="text-[11px] text-slate-500">
+                  {isLocksmith ? 'Tedarikçiden gelince dosyaya işlenir' : 'Rapor Onay Talep adımında yazılır; burada durur.'}
+                </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2" ref={findingsFormRef}>
                 <div>
                   <p className="mb-1.5 text-[11px] font-semibold text-slate-600">Tespit Fotoğrafları</p>
-                  <FieldInspectionPhotosPanel entityType="emergency_case" entityId={vaka.id} />
+                  <FieldInspectionPhotosPanel entityType="emergency_case" entityId={vaka.id} onCountChange={setInspectionPhotoCount} />
                 </div>
                 <div>
                   <p className="mb-1.5 text-[11px] font-semibold text-slate-600">Tespit Bulguları</p>
@@ -2578,6 +2805,16 @@ export default function AcilDosyaDetayPage() {
           approvalText: plannerApprovalText,
           waLog: [],
           photos: [],
+          isLocksmith,
+          findingsText: draftFindings,
+          reportWorkGroup,
+          reportMahal,
+          reportJobDescription,
+          reportItemDescription,
+          photoCount: inspectionPhotoCount,
+          approvalRequested: flow.approvalRequested,
+          sendingApprovalReport,
+          openingApprovalReport,
           customerNotifyChannel: flow.customerNotifyChannel,
           onAssign: (vid) => { void handleAssignVendor(vid); },
           onAlis: (v) => {
@@ -2621,6 +2858,8 @@ export default function AcilDosyaDetayPage() {
             window.open(`mailto:${to}?subject=${subj}&body=${body}`, '_self');
             persistFlow(appendFlowHistory(flow, `Onay e-postası açıldı → ${to}`));
           },
+          onSendApprovalReport: () => { void handleSendAssistanceApproval(); },
+          onOpenApprovalReport: () => { void handleOpenAssistanceApprovalReport(); },
           onClosureEmail: () => { void openClosureEmailModal(); },
           onApprovalChannel: setPlannerApprovalChannel,
           onApprovalState: (st) => {
@@ -2677,12 +2916,14 @@ export default function AcilDosyaDetayPage() {
             if (!ok) throw new Error(priceFormError || 'Fiyat kaydedilemedi.');
             if (!vaka.assignedVendorId) throw new Error('Tedarikçi Atayın.');
           }
+          if (step === 'onay' && !isLocksmith) {
+            const findingsOk = await saveFindingsText();
+            if (!findingsOk) throw new Error('Tespit bulgusu yazın.');
+            await saveReportLine();
+          }
           if (step === 'kapanis') {
             const findingsOk = await saveFindingsText();
             if (!findingsOk) throw new Error(findingsError || 'Tespit bulguları kaydedilemedi.');
-            if (!fileAlreadyClosed) {
-              await handleCloseFile();
-            }
           }
           if (step === 'finans' && !financeDone) {
             await handleSendToFinance();

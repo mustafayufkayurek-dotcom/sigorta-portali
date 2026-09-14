@@ -367,17 +367,16 @@ export class InvoicesService {
       if (existing.invoiceType !== 'sales') {
         throw new BadRequestException('Bu fatura numarası alış faturasında kayıtlı');
       }
-      if (claimFileId && existing.claimFileId !== claimFileId) {
+      if (claimFileId) {
+        if (existing.claimFileId !== claimFileId) {
+          throw new BadRequestException('Bu fatura numarası başka bir dosyada kayıtlı');
+        }
+        return { id: existing.id, invoiceNo: existing.invoiceNo };
+      }
+      if (!existing.emergencyCaseId || existing.claimFileId) {
         throw new BadRequestException('Bu fatura numarası başka bir dosyada kayıtlı');
       }
-      const sameEmergency = Boolean(emergencyCaseId) && existing.emergencyCaseId === emergencyCaseId;
-      const bulkEmergency = Boolean(params.allowAdditionalEmergencyFiles) && Boolean(existing.emergencyCaseId) && !existing.claimFileId;
-      if (emergencyCaseId && !sameEmergency && !bulkEmergency) {
-        throw new BadRequestException('Bu fatura numarası başka bir dosyada kayıtlı');
-      }
-      if (bulkEmergency || extraCaseIds.length > 0) {
-        await this.markEmergencyCasesInvoiced([existing.emergencyCaseId, emergencyCaseId, ...extraCaseIds]);
-      }
+      await this.markEmergencyCasesInvoiced([existing.emergencyCaseId, emergencyCaseId, ...extraCaseIds]);
       return { id: existing.id, invoiceNo: existing.invoiceNo };
     }
 

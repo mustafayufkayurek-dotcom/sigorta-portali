@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-14",
-  "label": "v595-satis-fatura-kullanici-hosgeldin",
-  "description": "Full v595: Satış fatura talepleri Hasar/Acil ayrı; Kullanıcılar Ekle; hoş geldin yönetici kopyası. Geri alma web v594 / backend v594.",
+  "label": "v596-acil-rapor-fatura-kapanis-tedarikci",
+  "description": "Full v596: Tedarikçi T.C. kaydı; Acil Çilingir-dışı rapor PDF; aynı resmi fatura çoklu dosya; kapanış çekmecesi durur. Geri alma web v595 / backend v595.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v595-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v595-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v596-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v596-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v594-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v594-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v595-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v595-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

@@ -123,6 +123,12 @@ export const OPS_NOTICE = {
     body:
       'Operasyon dijital onaylı servis formu olmadan ilerlemez. Anket kapandıktan sonra kapanış tercihlidir. Konum tespiti durur; tedarikçiye pin gider. Dört işlem saati kayıtlıdır. Resimler oturumla görünür.',
   },
+  acilAsistansRaporOnay: {
+    id: 'acil-asistans-rapor-onay-v596',
+    title: 'Tespit raporu',
+    body:
+      'Çilingir dışında rapor Onay Talep adımında yazılır: tespit, resim, satış. Raporu İncele, sonra Asistansa Gönder. Onay gelen kutudan düşer. Çilingir eski yoldadır.',
+  },
   sagPanelKaydir: {
     id: 'sag-panel-kaydir-v556',
     title: 'Sağ panel',

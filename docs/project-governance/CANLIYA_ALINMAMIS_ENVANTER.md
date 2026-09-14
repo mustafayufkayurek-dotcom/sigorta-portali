@@ -1,12 +1,12 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
 **Tarih:** 28 Haziran 2026 (güncelleme 14.09.2026)  
-**Referans canlı sürüm:** Web **v595** · backend **v595**  
+**Referans canlı sürüm:** Web **v596** · backend **v596**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
-v595 alındı (satış fatura talepleri, Kullanıcılar Ekle, hoş geldin yönetici kopyası). Sıradaki paket Mustafa yazar.
+v596 alındı. Sırada bekleyen toplu paket yok.
 
 ---
 
@@ -39,6 +39,8 @@ v595 alındı (satış fatura talepleri, Kullanıcılar Ekle, hoş geldin yönet
 | B14 | **Finans liste görünümü** | Mustafa 06.09.2026 | Başlık kesilmez. İşlem gizle-göster talepler, tahsilat/ödeme, masraf, cari. Canlıya alınmadı. |
 | B15 | **Konut-Yangın yazımı** | Mustafa 06.09.2026 | Konu etiketi. Canlıya alınmadı. |
 | B16 | **Mail kutusu tespiti** | Mustafa 06.09.2026 | 07.09 kilit: hoş geldin Kullanıcılar; dosya müşteri kartı. Hasar→hasar@, Acil kapanış→ihbar@. Ayrı düzeltme yok. |
+| B17 | **Acil rapor kalemi ve taslak Kaydet** | Mustafa 14.09.2026 | Çilingir hariç paketle birlikte. Örnek **duvar işleri**. Kaydet taslak. İncele yazı bitince; resim gönderimde. Canlıya alınmadı. |
+| B18 | **Acil kapanış çekmecesi kaybolma** | Mustafa 14.09.2026 | Kapanış Adımını Aç bir saniye görünüp gidiyordu. Sayfa yenilemesi planlayıcıyı söküyordu. Kod + kilit hazır. Canlıya alınmadı. |
 
 ---
 

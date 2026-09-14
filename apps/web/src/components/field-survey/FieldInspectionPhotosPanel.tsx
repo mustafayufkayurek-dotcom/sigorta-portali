@@ -36,11 +36,13 @@ export function FieldInspectionPhotosPanel({
   entityType = 'claim_file',
   entityId,
   readOnly = false,
+  onCountChange,
 }: {
   claimId?: string;
   entityType?: string;
   entityId?: string;
   readOnly?: boolean;
+  onCountChange?: (count: number) => void;
 }) {
   const resolvedId = entityId || claimId || '';
   const [docs, setDocs] = useState<PhotoDoc[]>([]);
@@ -65,13 +67,15 @@ export function FieldInspectionPhotosPanel({
       });
       const rows = ((r.data?.data ?? []) as PhotoDoc[]).filter(isInspectionPhoto);
       setDocs(rows);
+      onCountChange?.(rows.length);
     } catch (err) {
       reportCaughtError(err, 'Tespit fotoğrafları yüklenemedi.', { toast: false });
       setDocs([]);
+      onCountChange?.(0);
     } finally {
       setLoading(false);
     }
-  }, [entityType, resolvedId]);
+  }, [entityType, resolvedId, onCountChange]);
 
   useEffect(() => {
     void load();

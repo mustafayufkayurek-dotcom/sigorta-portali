@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { Receipt } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/contexts/ToastContext';
 import {
@@ -676,7 +677,7 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange, initialFi
           className="fixed inset-0 z-[200] flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="Resmi fatura bilgisi"
+          aria-label="Resmi Fatura Numarası Giriniz"
           data-testid="fatura-talep-satis-no-modal"
         >
           <button
@@ -687,14 +688,41 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange, initialFi
               if (!saving) resetInvoiceDraft();
             }}
           />
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-xl dark:bg-slate-800">
-            <h2 className="text-[15px] font-medium text-slate-900 dark:text-white">Resmi fatura bilgisi</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Bu yazılım resmi fatura kesmez. Başka programda kesilen faturanın bilgilerini yazın.
-              {invoicing.length === 1
-                ? ` ${invoicing[0].fileNo} · ${fmtCurrency(invoicing[0].totalAmount)}`
-                : ` ${invoicing.length} Acil dosya aynı faturada.`}
-            </p>
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-start gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 dark:border-slate-700 dark:bg-slate-800">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:ring-slate-600">
+                <Receipt className="h-4 w-4" strokeWidth={2} />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Resmi Fatura Numarası Giriniz</h2>
+                <p className="mt-0.5 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
+                  Resmi fatura başka programda kesilir. Buraya o belgenin numarası yazılır; iş Faturalandı görünür.
+                </p>
+              </div>
+            </div>
+            <div className="max-h-[calc(90vh-5.5rem)] overflow-y-auto px-5 py-4">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-3 text-xs dark:border-slate-700 dark:bg-slate-700/40">
+              <div>
+                <dt className="text-slate-500">Dosya No</dt>
+                <dd className="mt-0.5 font-mono font-medium text-slate-800 dark:text-slate-100">
+                  {invoicing.length === 1 ? invoicing[0].fileNo : `${invoicing.length} Acil dosya`}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Tutar</dt>
+                <dd className="mt-0.5 font-semibold text-slate-800 dark:text-slate-100">
+                  {fmtCurrency(selectedAcilInvoiceTotals(invoicing).gross)}
+                </dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-slate-500">Müşteri</dt>
+                <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-100">
+                  {invoicing.length === 1
+                    ? talepMusteri(invoicing[0])
+                    : [...new Set(invoicing.map((row) => talepMusteri(row)))].join(' · ')}
+                </dd>
+              </div>
+            </dl>
             {invoicing.length > 1 ? (
               <ul className="mt-3 max-h-28 overflow-y-auto rounded-lg border border-slate-100 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">
                 {invoicing.map((row) => (
@@ -705,19 +733,24 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange, initialFi
                 ))}
               </ul>
             ) : null}
+            {invoicing.some((row) => row.serviceType === 'emergency') ? (
+              <p className="mt-3 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
+                Acil Yardım’da aynı resmi fatura birden fazla dosyaya yazılır. Numara çakışması olmaz.
+              </p>
+            ) : null}
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <FinansFieldLabel required>Resmi fatura numarası</FinansFieldLabel>
+                <FinansFieldLabel required>Resmi Fatura Numarası</FinansFieldLabel>
                 <input
                   autoFocus
                   value={invoiceNoDraft}
                   onChange={(e) => setInvoiceNoDraft(e.target.value)}
-                  placeholder="Resmi fatura numarası"
+                  placeholder="Örn. SFE…"
                   className={finansInputClass}
                 />
               </div>
               <div>
-                <FinansFieldLabel required>Fatura tarihi</FinansFieldLabel>
+                <FinansFieldLabel required>Fatura Tarihi</FinansFieldLabel>
                 <input
                   type="date"
                   value={invoiceDateDraft}
@@ -726,7 +759,7 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange, initialFi
                 />
               </div>
               <div>
-                <FinansFieldLabel>İşlem tarihi</FinansFieldLabel>
+                <FinansFieldLabel>İşlem Tarihi</FinansFieldLabel>
                 <input
                   type="date"
                   value={documentDateDraft}
@@ -753,7 +786,7 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange, initialFi
                 />
               </div>
               <div className="sm:col-span-2">
-                <FinansFieldLabel>Genel toplam</FinansFieldLabel>
+                <FinansFieldLabel>Genel Toplam</FinansFieldLabel>
                 <input
                   inputMode="decimal"
                   value={grossDraft}
@@ -762,10 +795,10 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange, initialFi
                 />
               </div>
             </div>
-            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-3 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
               Seçilen dosya hesabı: matrah {fmtCurrency(selectedAcilInvoiceTotals(invoicing).net)}, KDV {fmtCurrency(selectedAcilInvoiceTotals(invoicing).vat)}, genel toplam {fmtCurrency(selectedAcilInvoiceTotals(invoicing).gross)}.
             </p>
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-700">
               <button
                 type="button"
                 disabled={saving}
@@ -782,6 +815,7 @@ export function FaturaTalepleriSection({ onOzetChange, onIssuedChange, initialFi
               >
                 Faturalandı
               </button>
+            </div>
             </div>
           </div>
         </div>

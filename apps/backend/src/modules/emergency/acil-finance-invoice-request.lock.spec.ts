@@ -92,6 +92,9 @@ describe('acil satış fatura talebi LOCK', () => {
     const invoices = read('../invoices/invoices.service.ts');
     assert.match(invoices, /emergencyCaseId/);
     assert.match(invoices, /allowAdditionalEmergencyFiles/);
+    assert.match(invoices, /existing\.emergencyCaseId/);
+    assert.match(invoices, /markEmergencyCasesInvoiced\(\[existing\.emergencyCaseId, emergencyCaseId/);
+    assert.match(ir, /allowAdditionalEmergencyFiles: Boolean\(current\.emergencyCaseId\)/);
     assert.match(invoices, /touchClaimFinance/);
     const smoke = read('../../../../../scripts/smoke-acil-netlesen.sh');
     assert.match(smoke, /acil-finance-invoice-request\.lock\.spec/);

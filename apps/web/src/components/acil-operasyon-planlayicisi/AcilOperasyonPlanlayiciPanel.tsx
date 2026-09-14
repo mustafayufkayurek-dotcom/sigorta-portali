@@ -29,7 +29,7 @@ import {
   type OperatorStepKey,
   type PlannerStepBodyProps,
 } from './planner-steps';
-import { validateOperatorStep, type ApprovalState } from './planner-gates';
+import { validateOperatorDraftSave, type ApprovalState } from './planner-gates';
 import { formatTryAmount, parseTrAmount } from '@/utils/format-try-amount';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
@@ -153,6 +153,32 @@ function approvalLabel(state: ApprovalState): string {
   return 'Onay Bekleniyor';
 }
 
+export function acilPlannerUiStorageKey(fileNo: string): string {
+  return `acil-planner-ui:${fileNo}`;
+}
+
+export function readAcilPlannerUi(fileNo: string): { step: OperatorStepKey; open: boolean } | null {
+  if (typeof sessionStorage === 'undefined' || !fileNo.trim()) return null;
+  try {
+    const raw = sessionStorage.getItem(acilPlannerUiStorageKey(fileNo));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { step?: string; open?: boolean };
+    if (!OPERATOR_STEPS.some((s) => s.key === parsed.step)) return null;
+    return { step: parsed.step as OperatorStepKey, open: Boolean(parsed.open) };
+  } catch {
+    return null;
+  }
+}
+
+export function writeAcilPlannerUi(fileNo: string, ui: { step: OperatorStepKey; open: boolean }): void {
+  if (typeof sessionStorage === 'undefined' || !fileNo.trim()) return;
+  try {
+    sessionStorage.setItem(acilPlannerUiStorageKey(fileNo), JSON.stringify(ui));
+  } catch {
+    /* kota */
+  }
+}
+
 function stepResultLine(key: OperatorStepKey, body: PlannerStepBodyProps): string {
   if (key === 'ihbar') return body.file.insured || body.file.fileNo || 'Kayıt alındı';
   if (key === 'tedarikci_maliyet') {
@@ -181,16 +207,22 @@ function stepResultLine(key: OperatorStepKey, body: PlannerStepBodyProps): strin
 
 export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHandle, Props>(
   function AcilOperasyonPlanlayiciPanel({ stepStatuses, body, onSaved, ihbarStep, vendorStep, approvalStep, operationStep, closingStep, onNavigateStep }, ref) {
-    const [drawerOpen, setDrawerOpen] = useState(false);
-    const [activeStep, setActiveStep] = useState<OperatorStepKey>('ihbar');
+    const fileNo = body.file.fileNo;
+    const [drawerOpen, setDrawerOpen] = useState(() => readAcilPlannerUi(fileNo)?.open ?? false);
+    const [activeStep, setActiveStep] = useState<OperatorStepKey>(() => readAcilPlannerUi(fileNo)?.step ?? 'ihbar');
     const [saveError, setSaveError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const panelRef = useRef<HTMLElement | null>(null);
+    const activeStepRef = useRef(activeStep);
+    activeStepRef.current = activeStep;
     const { docked, dock, expand } = useRightPanelDock(drawerOpen, { title: 'Operasyon' });
     const { requestClose } = useRightPanelUnsavedGuard({
       open: drawerOpen,
       expand,
-      close: () => setDrawerOpen(false),
+      close: () => {
+        setDrawerOpen(false);
+        writeAcilPlannerUi(fileNo, { step: activeStepRef.current, open: false });
+      },
       onSave: () => saveCurrentStep(),
       panelRef,
     });
@@ -200,6 +232,7 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
       setActiveStep(step);
       setDrawerOpen(true);
       setSaveError(null);
+      writeAcilPlannerUi(fileNo, { step, open: true });
     }
 
     useImperativeHandle(ref, () => ({
@@ -249,7 +282,7 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
 
     async function saveCurrentStep() {
       setSaveError(null);
-      const gate = validateOperatorStep(activeStep, {
+      const gate = validateOperatorDraftSave(activeStep, {
         assigned: body.assigned,
         alis: body.alis,
         satis: body.satis,
@@ -261,6 +294,14 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
         digitalDocsOk: body.digitalDocsOk,
         addressRequestOk: body.addressRequestOk,
         vendorPaid: body.vendorPaid,
+        isLocksmith: body.isLocksmith,
+        findingsText: body.findingsText,
+        reportWorkGroup: body.reportWorkGroup,
+        reportMahal: body.reportMahal,
+        reportJobDescription: body.reportJobDescription,
+        reportItemDescription: body.reportItemDescription,
+        photoCount: body.photoCount,
+        approvalRequested: body.approvalRequested,
       });
       if (gate) {
         setSaveError(gate);
@@ -461,8 +502,8 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
                       </div>
                     ) : activeStep === 'onay' && (approvalStep || operationStep) ? (
                       <div className="space-y-3">
-                        <PlannerStepBody {...body} step={activeStep} />
                         {approvalStep}
+                        <PlannerStepBody {...body} step={activeStep} />
                         {operationStep}
                       </div>
                     ) : activeStep === 'kapanis' && closingStep ? (

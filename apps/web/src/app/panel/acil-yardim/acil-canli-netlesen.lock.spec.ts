@@ -97,6 +97,9 @@ describe('acil canlı netleşen LOCK', () => {
     assert.doesNotMatch(acilPage, /operasyon-iki-kolon/);
     assert.doesNotMatch(acilPage, /1 · Operasyon başlangıç/);
     assert.doesNotMatch(acilPage, /Süreci Aç/);
+    assert.match(acilPage, /sendAssistanceApprovalEmail/);
+    assert.match(acilPage, /openAssistanceApprovalReport/);
+    assert.match(acilPage, /isAcilLocksmithIssue/);
     assert.doesNotMatch(acilPage, /PanelPillTabs/);
   });
 
@@ -183,6 +186,15 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /Buradan gider eklenmez/);
     assert.doesNotMatch(acilPage, /handleAddGider/);
     assert.match(acilPage, /closingStep/);
+    assert.match(acilPage, /vakaRef\.current/);
+    assert.match(acilPage, /if \(!vakaRef\.current\) setLoading\(true\)/);
+    assert.match(acilPage, /if \(loading && !vaka\)/);
+    const kapanisSaved = acilPage.slice(
+      acilPage.indexOf("if (step === 'kapanis')"),
+      acilPage.indexOf("if (step === 'finans'"),
+    );
+    assert.match(kapanisSaved, /saveFindingsText/);
+    assert.doesNotMatch(kapanisSaved, /handleCloseFile/);
     assert.match(workflow, /const closeReady = requiredOps.photos;/);
     assert.match(workflow, /evaluateOperationStartGate/);
     assert.match(workflow, /isAcilDigitalApprovalRequired/);
@@ -198,6 +210,14 @@ describe('acil canlı netleşen LOCK', () => {
     );
     assert.doesNotMatch(approvalBlock, /<FileDocumentPanel/);
     assert.match(approvalBlock, /İhbar ve Kapanış adımlarında/);
+    assert.match(approvalBlock, /tespit-bulgulari-onay-input/);
+    assert.match(approvalBlock, /acil-onay-tespit/);
+    assert.match(approvalBlock, /acil-rapor-kalem/);
+    assert.match(approvalBlock, /acil-rapor-mahal/);
+    assert.match(approvalBlock, /AcilReportPhraseInput/);
+    assert.match(approvalBlock, /Örn\. duvar işleri/);
+    assert.doesNotMatch(approvalBlock, /uppercase tracking-wide/);
+    assert.doesNotMatch(acilPage, /Raporu Asistansa Gönderin\./);
     const ihbarBlock = acilPage.slice(
       acilPage.indexOf('acil-ihbar-dijital-onay'),
       acilPage.indexOf('vendorStep'),

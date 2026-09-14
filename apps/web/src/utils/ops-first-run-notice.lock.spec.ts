@@ -45,6 +45,14 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(OPS_NOTICE.acilKayitliTedarikci.body, /Kapalı/);
   });
 
+  it('Çilingir dışı asistans rapor şeridi durur', () => {
+    assert.match(acilPage, /OPS_NOTICE\.acilAsistansRaporOnay/);
+    assert.match(acilPage, /acil-asistans-rapor-ilk-kullanim-seridi/);
+    assert.equal(OPS_NOTICE.acilAsistansRaporOnay.id, 'acil-asistans-rapor-onay-v596');
+    assert.match(OPS_NOTICE.acilAsistansRaporOnay.body, /Onay Talep adımında yazılır/);
+    assert.doesNotMatch(OPS_NOTICE.acilAsistansRaporOnay.body, /Google/);
+  });
+
   it('Acil hakediş şeridi durur', () => {
     assert.match(acilPage, /OPS_NOTICE\.acilTedarikciHakedis/);
     assert.match(acilPage, /acil-hakedis-ilk-kullanim-seridi/);

@@ -91,6 +91,10 @@ export interface EmergencyCase {
   assignedUserId?: string | null;
   notes?: string | null;
   findingsText?: string | null;
+  reportWorkGroup?: string | null;
+  reportMahal?: string | null;
+  reportJobDescription?: string | null;
+  reportItemDescription?: string | null;
   vendorPaid?: boolean | null;
   createdByUserId: string;
   createdAt: string;
@@ -321,6 +325,68 @@ export async function sendClosureEmail(
       errorMsg: string | null;
     }>(data),
   };
+}
+
+export async function sendAssistanceApprovalEmail(
+  id: string,
+): Promise<{ data: { sent: boolean; to: string; subject: string } }> {
+  const data = await apiClient.post<unknown>(`/emergency/cases/${id}/approval-email`, {});
+  return {
+    data: asEntity<{ sent: boolean; to: string; subject: string }>(data),
+  };
+}
+
+export async function openAssistanceApprovalReport(id: string, previewWin?: Window | null): Promise<void> {
+  const { API, authHeader } = await import('@/utils/api');
+  const axios = (await import('axios')).default;
+  let res;
+  try {
+    res = await axios.get(`${API}/emergency/cases/${id}/approval-report`, {
+      headers: authHeader(),
+      responseType: 'blob',
+    });
+  } catch (err: unknown) {
+    const data = axios.isAxiosError(err) ? err.response?.data : null;
+    if (data instanceof Blob) {
+      try {
+        const parsed = JSON.parse(await data.text()) as { message?: string | string[] };
+        const msg = Array.isArray(parsed.message) ? parsed.message.join(', ') : parsed.message;
+        if (msg) throw new Error(msg);
+      } catch (inner) {
+        if (inner instanceof Error && inner.message && inner.message !== 'Rapor açılamadı.') throw inner;
+      }
+    }
+    throw err instanceof Error ? err : new Error('Rapor açılamadı.');
+  }
+  const contentType = String(res.headers['content-type'] || '');
+  const blob = new Blob([res.data], {
+    type: contentType.includes('html') ? 'text/html;charset=utf-8' : 'application/pdf',
+  });
+  if (blob.size < 32) throw new Error('Rapor oluşmadı.');
+  const head = await blob.slice(0, 8).text();
+  if (head.startsWith('{') || contentType.includes('json')) {
+    let msg = 'Rapor açılamadı.';
+    try {
+      const parsed = JSON.parse(await blob.text()) as { message?: string | string[] };
+      msg = Array.isArray(parsed.message) ? parsed.message.join(', ') : (parsed.message ?? msg);
+    } catch {
+      /* ham */
+    }
+    throw new Error(msg);
+  }
+  const url = URL.createObjectURL(blob);
+  if (previewWin && !previewWin.closed) {
+    previewWin.location.replace(url);
+    return;
+  }
+  const opened = window.open(url, '_blank', 'noopener');
+  if (!opened) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.click();
+  }
 }
 
 export async function updateCase(

@@ -1,0 +1,37 @@
+---
+description: Acil kapanış çekmecesi yenilemede sökülmez
+alwaysApply: true
+---
+
+# Acil Kapanış Çekmecesi Kilidi
+
+**Kaynak (Mustafa · 14.09.2026):** Canlıda Kapanış Adımını Aç bir saniye görünüp kayboluyordu. Servis onay paneli onaylı kaydı görünce dosyayı baştan yüklüyor; yükleme planlayıcıyı söküyordu.
+
+**Temel cümle:** Dosya zaten açıksa **yenileme sayfayı boşaltmaz.** Kapanış çekmecesi durur. Kaydet dosyayı kapatmaz.
+
+## Zorunlu
+
+1. `load()` yalnız ilk açılışta `setLoading(true)`. `vaka` duruyorsa sessiz yeniler.
+2. Spinner `loading && !vaka`. Planlayıcı sökülmez.
+3. `FileDocumentPanel` onaylı evrakı ilk görünce `onConditionsMet` çağırmaz. Yalnız yeni onayda çağırır.
+4. Çekmece adımı `sessionStorage` (`acil-planner-ui:`) ile durur.
+5. Alt **Kaydet** kapanışta tespit yazar; `handleCloseFile` çalışmaz. Kapatma **Dosyayı Kapat** tuşundadır.
+
+## Yasak (açık onay yoksa)
+
+- Onaylı servis formu görünce dosyayı spinner’a almak
+- Kaydet ile dosyayı kapatmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Kapanış yine bir saniye görünüp kaybolursa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/web/src/app/panel/acil-yardim/acil-canli-netlesen.lock.spec.ts \
+ apps/web/src/components/acil-operasyon-planlayicisi/planner-gates.lock.spec.ts \
+ apps/web/src/components/file-documents/file-document-parent-refresh.lock.spec.ts
+```

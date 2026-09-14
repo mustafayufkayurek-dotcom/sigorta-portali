@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { WhatsAppIcon } from '@/components/ui/PhoneContactActions';
 import { openWhatsAppChat } from '@/utils/date-helpers';
 import {
@@ -148,6 +148,7 @@ export default function FileDocumentPanel({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [waModal, setWaModal] = useState<FileDocument | null>(null);
+  const seenApprovalStampRef = useRef<string | null | undefined>(undefined);
 
   const activeDoc = docs.find((d) => d.documentKind === documentKind) ?? null;
 
@@ -167,9 +168,16 @@ export default function FileDocumentPanel({
   }, [entityType, entityId, documentKind]);
 
   useEffect(() => {
-    if (!activeDoc) return;
-    if (activeDoc.digitallyApprovedAt) onConditionsMet?.();
-  }, [activeDoc?.digitallyApprovedAt]);
+    if (loading) return;
+    const stamp = activeDoc?.digitallyApprovedAt ?? null;
+    if (seenApprovalStampRef.current === undefined) {
+      seenApprovalStampRef.current = stamp;
+      return;
+    }
+    const prev = seenApprovalStampRef.current;
+    seenApprovalStampRef.current = stamp;
+    if (stamp && stamp !== prev) onConditionsMet?.();
+  }, [loading, activeDoc?.digitallyApprovedAt, onConditionsMet]);
 
   const handleCreate = async () => {
     setCreating(true);

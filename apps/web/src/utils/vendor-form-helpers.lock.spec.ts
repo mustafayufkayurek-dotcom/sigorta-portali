@@ -39,6 +39,8 @@ describe('tedarikçi türü listesi LOCK', () => {
     assert.doesNotMatch(formHelper, /TC No Eksik/);
     assert.doesNotMatch(formHelper, /No eksik/);
     assert.match(page, /vendorIdentityGapLabel/);
+    assert.doesNotMatch(page, /TC kimlik veya vergi levhası yükleyin/);
+    assert.doesNotMatch(page, /pendingDocs\.length === 0/);
     assert.match(page, /tedarikci-satir-kimlik-eksik/);
     assert.doesNotMatch(page, /tedarikci-kimlik-eksik-filtre/);
     assert.doesNotMatch(page, /tedarikci-kimlik-eksik-banner/);

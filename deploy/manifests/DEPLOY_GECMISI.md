@@ -8,18 +8,28 @@
 
 ---
 
-## Canlı durum (14 Eylül 2026 — web v595 / backend v595)
+## Canlı durum (14 Eylül 2026 — web v596 / backend v596)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v595-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v595-amd64` | canlı |
-| **Rollback** | Web **v594** / Backend **v594** | manifest `rollbackImages` |
-| **Etiket** | `v595-satis-fatura-kullanici-hosgeldin` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v596-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v596-amd64` | canlı |
+| **Rollback** | Web **v595** / Backend **v595** | manifest `rollbackImages` |
+| **Etiket** | `v596-acil-rapor-fatura-kapanis-tedarikci` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v596 — Full (14 Eylül 2026) — Acil rapor; çoklu resmi fatura; kapanış çekmecesi; tedarikçi T.C.
+
+- Tedarikçi şahısta T.C. kaydı durur; turuncu evrak uyarısı kaydı kesmez. Şirkette vergi numarası durur
+- Acil (Çilingir hariç) Hasar benzeri tespit raporu; İhbar kutusundan PDF; asistans onayı gelen kutudan dosyaya düşer
+- Rapor kalemini dosya sorumlusu yazar; örnek duvar işleri. Kaydet taslak. Raporu İncele yazı bitince açılır
+- Aynı resmi fatura numarası birden fazla Acil dosyaya yazılır. Pencere: Resmi Fatura Numarası Giriniz
+- Kapanış çekmecesi yenilemede kaybolmaz. Kaydet dosyayı kapatmaz
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, geri alma görüntüleri durur (web v595 / backend v595). Canlı uploads silinmedi. Migration: emergency_report_line
+- Geri alma web **v595** / backend **v595**
 
 ### v595 — Full (14 Eylül 2026) — Satış fatura talepleri; Kullanıcılar Ekle; hoş geldin kopyası
 
