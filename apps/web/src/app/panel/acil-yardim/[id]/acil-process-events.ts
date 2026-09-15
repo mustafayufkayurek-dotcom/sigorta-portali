@@ -36,7 +36,16 @@ type AcilLocalFlow = {
   messageLog: { at: string; kind: MessageLogKind; text: string }[];
   vendorPaid?: boolean | null;
   customerNotifyChannel?: 'whatsapp' | 'email' | 'both';
-  reportArchives?: Array<{ at: string; kind: 'revise' | 'delete'; actorName?: string }>;
+  reportArchives?: Array<{
+    at: string;
+    kind: 'revise' | 'delete';
+    actorName?: string;
+    findingsText?: string;
+    reportWorkGroup?: string;
+    reportMahal?: string;
+    reportJobDescription?: string;
+    reportItemDescription?: string;
+  }>;
 };
 
 export const ACIL_PROCESS_ACTIONS = [

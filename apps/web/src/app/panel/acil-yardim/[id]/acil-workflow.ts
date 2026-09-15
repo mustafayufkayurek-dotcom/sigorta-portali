@@ -91,11 +91,11 @@ export type AcilReportArchive = {
   at: string;
   kind: AcilReportArchiveKind;
   actorName?: string;
-  findingsText: string;
-  reportWorkGroup: string;
-  reportMahal: string;
-  reportJobDescription: string;
-  reportItemDescription: string;
+  findingsText?: string;
+  reportWorkGroup?: string;
+  reportMahal?: string;
+  reportJobDescription?: string;
+  reportItemDescription?: string;
 };
 
 export type AcilLocalFlow = {
