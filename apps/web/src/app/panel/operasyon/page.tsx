@@ -710,7 +710,7 @@ function OperasyonPageContent() {
     const month = istanbulMonthRange();
     const bySubject = acilSubject ? acilRows.filter((row) => row.subject === acilSubject) : acilRows;
     return {
-      openEmergency: acilScopedRows.filter((row) => row.workloadOpen).length,
+      openEmergency: acilScopedRows.filter((row) => row.kind === 'acil' && row.workloadOpen).length,
       openedTodayEmergency: acilScopedRows.filter((row) => istanbulYmd(new Date(row.date)) === today).length,
       fileCount: acilScopedRows.length,
       weekCount: bySubject.filter((row) => inYmdRange(row.date, week.from, week.to)).length,
