@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '@/utils/api-error';
 import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
 import { entityDocumentFileUrl } from '@/utils/protected-image';
 import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
+import { ACIL_AFTER_SERVICE_PHOTO_NOTE, isAcilAfterServicePhotoNotes } from '@sigorta/shared';
 
 type ClosurePhotoDoc = {
   id: string;
@@ -15,6 +16,7 @@ type ClosurePhotoDoc = {
   mimeType: string;
   fileSize: number;
   createdAt: string;
+  notes?: string | null;
 };
 
 type Props = {
@@ -51,8 +53,8 @@ export default function ClosurePhotosPanel({
         headers: authHeader(),
         params: { entityType: 'emergency_case', entityId },
       });
-      const rows = ((r.data?.data ?? []) as ClosurePhotoDoc[]).filter((d) =>
-        isImageMime(d.mimeType),
+      const rows = ((r.data?.data ?? []) as ClosurePhotoDoc[]).filter(
+        (d) => isImageMime(d.mimeType) && isAcilAfterServicePhotoNotes(d.notes),
       );
       setDocs(rows);
       onCountRef.current?.(rows.length);
@@ -83,7 +85,7 @@ export default function ClosurePhotosPanel({
         fd.append('file', file);
         fd.append('entityType', 'emergency_case');
         fd.append('entityId', entityId);
-        fd.append('notes', 'Dosya Kapanış Resmi');
+        fd.append('notes', ACIL_AFTER_SERVICE_PHOTO_NOTE);
         await axios.post(`${API}/entity-documents`, fd, {
           headers: authHeader(),
         });
@@ -163,7 +165,7 @@ export default function ClosurePhotosPanel({
             aria-hidden
           />
           <p className="text-xs font-semibold text-slate-800 truncate">
-            Dosya Kapanış Resimleri
+            Hizmet Sonrası Resimleri
           </p>
         </div>
         <span
@@ -181,7 +183,7 @@ export default function ClosurePhotosPanel({
       </div>
 
       <p className="text-[10px] text-slate-500 leading-snug">
-        Kapanış öncesi saha / hizmet fotoğraflarını buraya yükleyin. Belgeler sekmesinden ayrıdır.
+        Hizmet bittikten sonraki saha resimleri. Kapanış raporuna yazılır. Belgeler sekmesinden ayrıdır.
         {!readonly ? (
           <>
             {' '}

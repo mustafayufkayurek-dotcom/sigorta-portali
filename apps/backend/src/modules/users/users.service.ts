@@ -115,6 +115,7 @@ type WelcomeOrgParams = {
 
 type InvitePortalContext = {
   expertCustomerId?: string | null;
+  insuranceCustomerId?: string | null;
   brokerCustomerId?: string | null;
   insuranceCompanyIds?: string[] | null;
   assistantCustomerIds?: string[] | null;
@@ -318,15 +319,21 @@ export class UsersService {
       insuranceCompanyIds,
       assistantCustomerIds,
       expertCustomerId,
+      insuranceCustomerId,
       brokerCustomerId,
       portalCustomerId: requestedPortalCustomerId,
     } = data;
     const rest: any = pickUserWriteScalars(data);
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
+    const resolvedInsuranceCompanyIds = await this.resolveInviteInsuranceCompanyIds({
+      insuranceCustomerId,
+      insuranceCompanyIds,
+    });
     await this.validatePortalInviteContext(rest.roleId, {
       expertCustomerId,
+      insuranceCustomerId,
       brokerCustomerId,
-      insuranceCompanyIds,
+      insuranceCompanyIds: resolvedInsuranceCompanyIds,
       assistantCustomerIds,
     });
 
@@ -350,6 +357,7 @@ export class UsersService {
       const portalCustomerId = this.derivePortalCustomerId({
         portalCustomerId: requestedPortalCustomerId,
         expertCustomerId,
+        insuranceCustomerId,
         brokerCustomerId,
         assistantCustomerIds,
       });
@@ -415,9 +423,9 @@ export class UsersService {
         });
       }
 
-      if (Array.isArray(insuranceCompanyIds) && insuranceCompanyIds.length > 0) {
+      if (Array.isArray(resolvedInsuranceCompanyIds) && resolvedInsuranceCompanyIds.length > 0) {
         await tx.userInsuranceCompanyScope.createMany({
-          data: insuranceCompanyIds.map((insuranceCompanyId: string) => ({
+          data: resolvedInsuranceCompanyIds.map((insuranceCompanyId: string) => ({
             userId: createdUser.id,
             insuranceCompanyId,
           })),
@@ -441,7 +449,8 @@ export class UsersService {
     const { passwordHash, ...result } = user;
     const organizationName = await this.resolveWelcomeOrganizationNameForUser(result, {
       brokerCustomerId,
-      insuranceCompanyIds,
+      insuranceCustomerId,
+      insuranceCompanyIds: resolvedInsuranceCompanyIds,
       assistantCustomerIds,
     });
     const welcomeEmail = await this.sendWelcomeInviteEmail({
@@ -479,6 +488,7 @@ export class UsersService {
       insuranceCompanyIds,
       assistantCustomerIds,
       expertCustomerId,
+      insuranceCustomerId,
       brokerCustomerId,
       ...rest
     } = data;
@@ -494,6 +504,7 @@ export class UsersService {
 
     await this.validatePortalInviteContext(rest.roleId, {
       expertCustomerId,
+      insuranceCustomerId,
       brokerCustomerId,
       insuranceCompanyIds,
       assistantCustomerIds,
@@ -512,6 +523,7 @@ export class UsersService {
       insuranceCompanyIds,
       assistantCustomerIds,
       expertCustomerId,
+      insuranceCustomerId,
       brokerCustomerId,
     });
 
@@ -610,13 +622,21 @@ export class UsersService {
     context: InvitePortalContext,
   ): Promise<string | undefined> {
     const insuranceFromUser = user.userInsuranceCompanyScopes?.[0]?.insuranceCompany?.name;
+    const insuranceFromCatalog = context.insuranceCompanyIds?.[0]
+      ? (await this.prisma.insuranceCompany.findUnique({
+          where: { id: context.insuranceCompanyIds[0] },
+          select: { name: true },
+        }))?.name
+      : undefined;
+    const insuranceFromCustomer = context.insuranceCustomerId
+      ? (await this.prisma.customer.findUnique({
+          where: { id: context.insuranceCustomerId },
+          select: { companyName: true, fullName: true, shortName: true },
+        }))
+      : undefined;
     const insuranceCompanyName = insuranceFromUser
-      ?? (context.insuranceCompanyIds?.[0]
-        ? (await this.prisma.insuranceCompany.findUnique({
-            where: { id: context.insuranceCompanyIds[0] },
-            select: { name: true },
-          }))?.name
-        : undefined);
+      ?? insuranceFromCatalog
+      ?? (insuranceFromCustomer?.companyName ?? insuranceFromCustomer?.fullName ?? insuranceFromCustomer?.shortName ?? undefined);
 
     return this.resolveWelcomeOrganizationName({
       roleCode: user.role?.code,
@@ -666,7 +686,7 @@ export class UsersService {
       if (role.code === 'broker_user' && !context.brokerCustomerId) {
         throw new BadRequestException('Broker firması seçilmelidir');
       }
-      if (role.code === 'insurance_company_user' && (!context.insuranceCompanyIds || context.insuranceCompanyIds.length !== 1)) {
+      if (role.code === 'insurance_company_user' && !context.insuranceCustomerId && (!context.insuranceCompanyIds || context.insuranceCompanyIds.length !== 1)) {
         throw new BadRequestException('Sigorta şirketi seçilmelidir');
       }
       if (role.code === 'assistance_company_user' && (!context.assistantCustomerIds || context.assistantCustomerIds.length !== 1)) {
@@ -689,6 +709,16 @@ export class UsersService {
       }
       if (!customer.subType || !HASAR_EXPERT_CUSTOMER_SUB_TYPES.has(customer.subType)) {
         throw new BadRequestException('Seçilen kayıt ekspertiz firması değil');
+      }
+    }
+
+    if (context.insuranceCustomerId) {
+      const customer = await this.prisma.customer.findUnique({ where: { id: context.insuranceCustomerId } });
+      if (!customer || customer.status !== 'active' || customer.entityType !== 'corporate') {
+        throw new BadRequestException('Geçerli bir sigorta şirketi kartı seçilmelidir');
+      }
+      if (customer.subType !== 'sigorta_sirketi') {
+        throw new BadRequestException('Seçilen kayıt sigorta şirketi değil');
       }
     }
 
@@ -721,18 +751,38 @@ export class UsersService {
   private derivePortalCustomerId(params: {
     portalCustomerId?: string | null;
     expertCustomerId?: string | null;
+    insuranceCustomerId?: string | null;
     brokerCustomerId?: string | null;
     assistantCustomerIds?: string[] | null;
   }): string | undefined {
     const value = [
       params.portalCustomerId,
       params.expertCustomerId,
+      params.insuranceCustomerId,
       params.brokerCustomerId,
       params.assistantCustomerIds?.[0],
     ]
       .map((id) => (typeof id === 'string' ? id.trim() : ''))
       .find(Boolean);
     return value || undefined;
+  }
+
+  private async resolveInviteInsuranceCompanyIds(params: {
+    insuranceCustomerId?: string | null;
+    insuranceCompanyIds?: string[] | null;
+  }): Promise<string[] | undefined> {
+    if (params.insuranceCustomerId) {
+      const customer = await this.prisma.customer.findUnique({ where: { id: params.insuranceCustomerId } });
+      if (!customer || customer.status !== 'active' || customer.entityType !== 'corporate' || customer.subType !== 'sigorta_sirketi') {
+        throw new BadRequestException('Geçerli bir sigorta şirketi kartı seçilmelidir');
+      }
+      const insuranceCompanyId = await ensureInsuranceCompanyIdForCustomer(this.prisma, customer);
+      return [insuranceCompanyId];
+    }
+    if (Array.isArray(params.insuranceCompanyIds) && params.insuranceCompanyIds.length > 0) {
+      return [...new Set(params.insuranceCompanyIds.filter(Boolean))];
+    }
+    return undefined;
   }
 
   private async portalUsersWhereForCustomer(customerId: string): Promise<Prisma.UserWhereInput> {
@@ -826,8 +876,9 @@ export class UsersService {
       const lastName = String(person.lastName ?? '').trim();
       const email = String(person.email ?? '').trim();
       const jobTitle = String(person.jobTitle ?? '').trim();
-      if (!firstName || !lastName || !email || !jobTitle) {
-        throw new BadRequestException('Her kişi için ad, soyad, e-posta ve görev yazılmalıdır.');
+      const phone = String(person.phone ?? '').trim();
+      if (!firstName || !lastName || !email || !jobTitle || !phone) {
+        throw new BadRequestException('Her kişi için ad, soyad, e-posta, görev ve telefon yazılmalıdır.');
       }
       const created = await this.create({
         roleId: role.id,
@@ -1061,15 +1112,23 @@ export class UsersService {
       insuranceCompanyIds,
       assistantCustomerIds,
       expertCustomerId,
+      insuranceCustomerId,
       brokerCustomerId,
     } = data;
     const rest: any = pickUserWriteScalars(data);
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
+    const resolvedInsuranceCompanyIds = (insuranceCustomerId || Array.isArray(insuranceCompanyIds))
+      ? await this.resolveInviteInsuranceCompanyIds({
+          insuranceCustomerId,
+          insuranceCompanyIds,
+        })
+      : undefined;
 
     const updateData: any = { ...rest };
     const portalCustomerId = this.derivePortalCustomerId({
       portalCustomerId: data.portalCustomerId,
       expertCustomerId,
+      insuranceCustomerId,
       brokerCustomerId,
       assistantCustomerIds,
     });
@@ -1116,7 +1175,7 @@ export class UsersService {
       Array.isArray(departmentMemberships) ||
       Array.isArray(responsibilityAssignments) ||
       Array.isArray(serviceAreas) ||
-      Array.isArray(insuranceCompanyIds) ||
+      Array.isArray(resolvedInsuranceCompanyIds) ||
       Array.isArray(assistantCustomerIds);
 
     const include = {
@@ -1162,8 +1221,9 @@ export class UsersService {
     const roleIdForInvite = updateData.roleId ?? user.roleId;
     await this.validatePortalInviteContext(roleIdForInvite, {
       expertCustomerId,
+      insuranceCustomerId,
       brokerCustomerId,
-      insuranceCompanyIds,
+      insuranceCompanyIds: resolvedInsuranceCompanyIds,
       assistantCustomerIds,
     }, 'update', { existingAdjusterId: user.adjusterId });
 
@@ -1194,7 +1254,7 @@ export class UsersService {
           if (roleChanged || Array.isArray(responsibilityAssignments)) {
             await tx.claimResponsibilityAssignment.deleteMany({ where: { userId: id } });
           }
-          if (roleChanged || Array.isArray(insuranceCompanyIds)) {
+          if (roleChanged || Array.isArray(resolvedInsuranceCompanyIds)) {
             await tx.userInsuranceCompanyScope.deleteMany({ where: { userId: id } });
           }
           if (roleChanged || Array.isArray(assistantCustomerIds)) {
@@ -1263,9 +1323,9 @@ export class UsersService {
             }
           }
 
-          if (Array.isArray(insuranceCompanyIds) && insuranceCompanyIds.length > 0) {
+          if (Array.isArray(resolvedInsuranceCompanyIds) && resolvedInsuranceCompanyIds.length > 0) {
             await tx.userInsuranceCompanyScope.createMany({
-              data: insuranceCompanyIds.map((insuranceCompanyId: string) => ({
+              data: resolvedInsuranceCompanyIds.map((insuranceCompanyId: string) => ({
                 userId: id,
                 insuranceCompanyId,
               })),

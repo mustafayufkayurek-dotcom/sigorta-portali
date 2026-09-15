@@ -1,8 +1,8 @@
 /**
- * Kapanış e-postası PDF iskeleti — Helvetica (ASCII).
- * Nihai rapor görünümü sonraki turda sıkılaşır; ek boş gitmez.
+ * Kapanış PDF yedeği (Puppeteer yoksa). Asıl HTML kabuk:
+ * buildAcilAssistanceApprovalReportHtml({ kind: 'kapanis' })
+ * — başlık Dosya Kapanış Raporu, Hizmet Sonrası Resimleri.
  */
-
 function pdfEscape(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
@@ -33,18 +33,20 @@ export function buildAcilClosureReportPdf(input: {
   workStartedAt: string;
   serviceDeliveredAt: string;
   closedAt: string;
+  slaDuration?: string;
   summary: string;
 }): Buffer {
   const lines = [
-    'Meridyen Assistance — Kapanis Raporu',
+    'Meridyen Assistance — Dosya Kapanis Raporu',
     '',
     `Dosya No: ${toPdfAscii(input.fileNo)}`,
     `Sigortali: ${toPdfAscii(input.insured)}`,
     `Konu: ${toPdfAscii(input.subject)}`,
     `Ihbar tarihi: ${toPdfAscii(input.ihbarAt)}`,
     `Ise baslama: ${toPdfAscii(input.workStartedAt)}`,
-    `Hizmet verilme: ${toPdfAscii(input.serviceDeliveredAt)}`,
+    `Hizmet bitis: ${toPdfAscii(input.serviceDeliveredAt)}`,
     `Kapanis tarihi: ${toPdfAscii(input.closedAt)}`,
+    `SLA suresi: ${toPdfAscii(input.slaDuration || '')}`,
     `Islem ozeti: ${toPdfAscii(input.summary)}`,
   ];
   const contentParts = ['BT', '/F1 12 Tf', '50 800 Td', '16 TL'];

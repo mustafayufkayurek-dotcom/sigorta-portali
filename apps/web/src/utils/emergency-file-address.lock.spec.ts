@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { formatEmergencyFileAddress } from '../../../../packages/shared/src/file-address.ts';
+import { formatEmergencyFileAddress, formatIhbarMailAddress } from '../../../../packages/shared/src/file-address.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const acilPage = readFileSync(
@@ -67,7 +67,7 @@ describe('acil dosya adresi LOCK', () => {
         city: 'Muğla',
         district: 'Bodrum',
       }),
-      'Yokuşbaşı Mh. Emin Anter Bulvarı No:25b D:4 Bodrum · Muğla',
+      'Yokuşbaşı Mh. Emin Anter Bulvarı No:25b D:4 · Bodrum · Muğla',
     );
   });
 
@@ -78,7 +78,7 @@ describe('acil dosya adresi LOCK', () => {
         city: 'Muğla',
         district: 'Bodrum',
       }),
-      'Yokuşbaşı Mh. No:25b D:4 Bodrum · Muğla',
+      'Yokuşbaşı Mh. No:25b D:4 · Bodrum · Muğla',
     );
   });
 
@@ -97,13 +97,29 @@ describe('acil dosya adresi LOCK', () => {
     assert.match(acilPage, /formatEmergencyFileAddress/);
   });
 
-  it('yeni ihbar maili aynı biçimleyiciyi kullanır', () => {
+  it('yeni ihbar maili sonda İlçe-İL yazar', () => {
     const ihbarEmail = readFileSync(
       join(here, '../../../backend/src/modules/operation-inbox/inbox-ihbar-email.ts'),
       'utf8',
     );
-    assert.match(ihbarEmail, /formatEmergencyFileAddress/);
+    assert.match(ihbarEmail, /formatIhbarMailAddress/);
     assert.doesNotMatch(ihbarEmail, /address !== '—' \? address : cityDistrict/);
+    assert.equal(
+      formatIhbarMailAddress({
+        address: 'Samsun İlkadım Merkez Ataköy Mah. 1088. Sok. C2-1 No: 17 A Daire: 15',
+        district: 'İlkadım',
+        city: 'Samsun',
+      }),
+      'Merkez Ataköy Mah. 1088. Sok. C2-1 No: 17 A Daire: 15 İlkadım-SAMSUN',
+    );
+    assert.equal(
+      formatIhbarMailAddress({
+        address: 'Güney Mah. No: 1',
+        district: 'Çukurova',
+        city: 'Adana',
+      }),
+      'Güney Mah. No: 1 Çukurova-ADANA',
+    );
   });
 
   it('tespit planlandı maili aynı biçimleyiciyi kullanır', () => {

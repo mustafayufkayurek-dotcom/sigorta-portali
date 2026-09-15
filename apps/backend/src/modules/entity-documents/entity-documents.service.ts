@@ -198,24 +198,45 @@ export class EntityDocumentsService {
       let fileSize = file.size;
 
       if (isImage) {
-        // Optimize et → WebP
-        const { buffer: optimized, mimeType: optimizedMime, extension } =
-          await this.imageOptimizer.optimizeImage(file.buffer);
+        try {
+          const { buffer: optimized, mimeType: optimizedMime, extension } =
+            await this.imageOptimizer.optimizeImage(file.buffer);
 
-        const baseName = `${uuid}-optimized${extension}`;
-        storageKey = this.storage.buildKey(entityType, entityId, baseName);
-        await this.storage.upload(optimized, storageKey, optimizedMime);
+          const baseName = `${uuid}-optimized${extension}`;
+          storageKey = this.storage.buildKey(entityType, entityId, baseName);
+          await this.storage.upload(optimized, storageKey, optimizedMime);
 
-        mimeType = optimizedMime;
-        fileSize = optimized.length;
+          mimeType = optimizedMime;
+          fileSize = optimized.length;
 
-        // Thumbnail
-        const { buffer: thumb, mimeType: thumbMime, extension: thumbExt } =
-          await this.imageOptimizer.generateThumbnail(file.buffer);
-
-        const thumbName = `${uuid}-thumb${thumbExt}`;
-        thumbnailKey = this.storage.buildKey(entityType, entityId, thumbName);
-        await this.storage.upload(thumb, thumbnailKey, thumbMime);
+          try {
+            const { buffer: thumb, mimeType: thumbMime, extension: thumbExt } =
+              await this.imageOptimizer.generateThumbnail(file.buffer);
+            const thumbName = `${uuid}-thumb${thumbExt}`;
+            thumbnailKey = this.storage.buildKey(entityType, entityId, thumbName);
+            await this.storage.upload(thumb, thumbnailKey, thumbMime);
+          } catch (thumbErr) {
+            this.logger.warn(
+              `entity-documents thumb skipped (${entityType}/${entityId}): ${
+                thumbErr instanceof Error ? thumbErr.message : String(thumbErr)
+              }`,
+            );
+            thumbnailKey = null;
+          }
+        } catch (procErr) {
+          this.logger.warn(
+            `entity-documents image process fallback (${entityType}/${entityId}): ${
+              procErr instanceof Error ? procErr.message : String(procErr)
+            }`,
+          );
+          const ext = path.extname(file.originalname) || '';
+          const baseName = `${uuid}${ext}`;
+          storageKey = this.storage.buildKey(entityType, entityId, baseName);
+          await this.storage.upload(file.buffer, storageKey, file.mimetype);
+          mimeType = file.mimetype;
+          fileSize = file.size;
+          thumbnailKey = null;
+        }
       } else {
         // PDF, DOCX, HEIC vb. — direkt yükle
         const ext = path.extname(file.originalname) || '';
@@ -295,16 +316,32 @@ export class EntityDocumentsService {
     if (!this.imageOptimizer.isImage(doc.mimeType, doc.fileName)) {
       return { buffer: downloaded, fileName: doc.fileName, mimeType: doc.mimeType || 'application/octet-stream' };
     }
-    const oriented = await orientPhotoBuffer(downloaded);
-    if (preferThumb) {
-      const thumb = await sharp(oriented.buffer)
-        .resize(360, 360, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 78 })
-        .toBuffer();
-      return { buffer: thumb, fileName: doc.fileName, mimeType: 'image/jpeg' };
+    if (preferThumb && doc.thumbnailKey) {
+      try {
+        const storedThumb = await this.storage.download(doc.thumbnailKey);
+        return { buffer: storedThumb, fileName: doc.fileName, mimeType: 'image/webp' };
+      } catch {
+        /* üretilmiş kare yoksa aşağıda çevir */
+      }
     }
-    const full = await sharp(oriented.buffer).jpeg({ quality: 84 }).toBuffer();
-    return { buffer: full, fileName: doc.fileName, mimeType: 'image/jpeg' };
+    try {
+      const oriented = await orientPhotoBuffer(downloaded);
+      if (preferThumb) {
+        const thumb = await sharp(oriented.buffer)
+          .resize(360, 360, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 78 })
+          .toBuffer();
+        return { buffer: thumb, fileName: doc.fileName, mimeType: 'image/jpeg' };
+      }
+      const full = await sharp(oriented.buffer).jpeg({ quality: 84 }).toBuffer();
+      return { buffer: full, fileName: doc.fileName, mimeType: 'image/jpeg' };
+    } catch {
+      return {
+        buffer: downloaded,
+        fileName: doc.fileName,
+        mimeType: doc.mimeType || 'image/jpeg',
+      };
+    }
   }
 
   async getThumbnailSignedUrl(

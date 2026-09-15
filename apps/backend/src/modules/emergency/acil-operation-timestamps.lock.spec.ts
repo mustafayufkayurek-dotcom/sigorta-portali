@@ -35,6 +35,7 @@ describe('acil işlem saatleri LOCK', () => {
     const schema = readFileSync(join(here, '../../../prisma/schema.prisma'), 'utf8');
     const svc = readFileSync(join(here, 'emergency-cases.service.ts'), 'utf8');
     const pdf = readFileSync(join(here, 'acil-closure-report-pdf.ts'), 'utf8');
+    const html = readFileSync(join(here, 'acil-approval-report-html.ts'), 'utf8');
     assert.match(schema, /workStartedAt/);
     assert.match(schema, /serviceDeliveredAt/);
     assert.match(svc, /nextAcilOperationStamps/);
@@ -43,5 +44,13 @@ describe('acil işlem saatleri LOCK', () => {
     assert.match(pdf, /workStartedAt/);
     assert.match(pdf, /serviceDeliveredAt/);
     assert.match(pdf, /closedAt/);
+    assert.match(pdf, /SLA suresi/);
+    assert.match(html, /Hizmet Sonrası Resimleri/);
+    assert.match(html, /İşe Başlama/);
+    assert.match(html, /Hizmet Bitiş/);
+    assert.match(html, /SLA Süresi/);
+    assert.match(html, /formatAcilSlaDuration/);
+    assert.doesNotMatch(html, /İhbar Tarihi \$\{/);
+    assert.match(svc, /kind:\s*'kapanis'/);
   });
 });

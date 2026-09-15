@@ -73,6 +73,24 @@ export class CreateUserDto {
   @IsUUID()
   expertCustomerId?: string;
 
+  /** Sigorta şirketi daveti — müşteri kaydı (sigorta_sirketi) */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  insuranceCustomerId?: string;
+
+  /** Portal ofis bağları — müşteri kartı */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  portalCustomerId?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  insuranceCompanyIds?: string[];
+
   /** Broker daveti — müşteri kaydı (broker_firmasi); mail kurum adı için */
   @ApiPropertyOptional()
   @IsOptional()

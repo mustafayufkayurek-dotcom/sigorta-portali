@@ -11,10 +11,11 @@ import {
   isInboxReplyAttachmentAllowed,
   isInboxReplyImageAttachment,
   outboundMailSignal,
+  parseMailAddressList,
   platformMailCopyLineLabel,
   sanitizeInboxReplyAttachmentName,
 } from '@sigorta/shared';
-import { OutboundMailSignalStrip } from '@/components/operation-inbox/OutboundMailSignalStrip';
+import { shrinkInboxReplyAttachment } from '@/utils/inbox-reply-image';
 
 interface ReplyMessageDetail {
   fromAddress: string;
@@ -82,6 +83,10 @@ export function InboxReplyModal({
   const [sentNow, setSentNow] = useState(false);
   const [failedNow, setFailedNow] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingAttach[]>([]);
+  const [addingFiles, setAddingFiles] = useState(false);
+  const [extraTo, setExtraTo] = useState<string[]>([]);
+  const [kimeDraft, setKimeDraft] = useState('');
+  const [cardReminder, setCardReminder] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -101,6 +106,9 @@ export function InboxReplyModal({
     setDetail(null);
     setSentNow(false);
     setFailedNow(false);
+    setExtraTo([]);
+    setKimeDraft('');
+    setCardReminder('');
     setPendingFiles((prev) => {
       prev.forEach((item) => {
         if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
@@ -151,40 +159,70 @@ export function InboxReplyModal({
     [detail, body, subject],
   );
 
+  useEffect(() => {
+    if (!open || !messageId) return;
+    const emails = parseMailAddressList(
+      [detail?.fromAddress, ...extraTo, kimeDraft].filter(Boolean).join(' '),
+    );
+    if (!emails.length) {
+      setCardReminder('');
+      return;
+    }
+    const t = window.setTimeout(() => {
+      void apiClient
+        .post<{ reminder: string | null }>('/operation-inbox/recipient-card-hints', {
+          emails,
+          messageId,
+        })
+        .then((res) => setCardReminder(res.reminder || ''))
+        .catch(() => setCardReminder(''));
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [open, messageId, extraTo, kimeDraft, detail?.fromAddress]);
+
   if (!open || !messageId) return null;
 
-  const locked = loading || sentNow || signal === 'read' || signal === 'replied' || signal === 'failed';
+  const locked = loading || addingFiles || sentNow || signal === 'read' || signal === 'replied' || signal === 'failed';
   const canSend = !locked && body.trim().length >= 3;
 
-  const addFiles = (list: File[]) => {
+  const addFiles = async (list: File[]) => {
     if (locked || list.length === 0) return;
     setError('');
-    setPendingFiles((prev) => {
-      const next = [...prev];
+    setAddingFiles(true);
+    try {
+      const current = pendingFiles;
+      const next = [...current];
       let used = next.reduce((n, item) => n + item.file.size, 0);
+      let limitHit = false;
       for (const file of list) {
         if (next.length >= INBOX_REPLY_ATTACH_MAX_FILES) {
-          setError(`En fazla ${INBOX_REPLY_ATTACH_MAX_FILES} ek ekleyebilirsiniz.`);
+          limitHit = true;
           break;
         }
         if (!isInboxReplyAttachmentAllowed(file.name, file.type)) {
           setError('Bu dosya türü eklenemez. Fotoğraf, PDF veya Word / Excel belgesi seçin.');
           continue;
         }
-        if (used + file.size > INBOX_REPLY_ATTACH_MAX_BYTES) {
+        const ready = await shrinkInboxReplyAttachment(file, INBOX_REPLY_ATTACH_MAX_BYTES - used);
+        if (used + ready.size > INBOX_REPLY_ATTACH_MAX_BYTES) {
           setError('Ek çok büyük. Fotoğraf veya belgeyi küçültüp tekrar deneyin.');
           continue;
         }
-        used += file.size;
-        const image = isInboxReplyImageAttachment(file.name, file.type);
+        used += ready.size;
+        const image = isInboxReplyImageAttachment(ready.name, ready.type);
         next.push({
-          id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
-          file,
-          previewUrl: image ? URL.createObjectURL(file) : null,
+          id: `${ready.name}-${ready.size}-${ready.lastModified}-${Math.random().toString(36).slice(2)}`,
+          file: ready,
+          previewUrl: image ? URL.createObjectURL(ready) : null,
         });
       }
-      return next;
-    });
+      if (limitHit) {
+        setError(`En fazla ${INBOX_REPLY_ATTACH_MAX_FILES} ek ekleyebilirsiniz.`);
+      }
+      setPendingFiles(next);
+    } finally {
+      setAddingFiles(false);
+    }
   };
 
   const removeFile = (id: string) => {
@@ -228,6 +266,7 @@ export function InboxReplyModal({
       }>(`/operation-inbox/messages/${messageId}/reply`, {
         body: trimmed,
         replyAll,
+        ...(extraTo.length ? { extraTo } : {}),
         ...(attachments?.length ? { attachments } : {}),
       });
       setSentNow(true);
@@ -251,6 +290,65 @@ export function InboxReplyModal({
         <p className="text-sm text-slate-500 mb-3 truncate" title={subject}>
           Konu: {subject}
         </p>
+
+        <label className="block text-xs font-medium text-slate-600 mb-1.5">Kime</label>
+        <div className="mb-3 rounded-xl border border-slate-200 bg-white px-2 py-2">
+          <div className="flex flex-wrap gap-1.5">
+            {detail?.fromAddress && (
+              <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                {detail.fromAddress}
+              </span>
+            )}
+            {extraTo.map((email) => (
+              <span
+                key={email}
+                className="inline-flex items-center gap-1 rounded-lg bg-brand-50 px-2 py-1 text-xs text-slate-800"
+              >
+                {email}
+                {!locked && (
+                  <button
+                    type="button"
+                    className="text-slate-500 hover:text-slate-800"
+                    aria-label="Adresi kaldır"
+                    onClick={() => setExtraTo((prev) => prev.filter((item) => item !== email))}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </span>
+            ))}
+            <input
+              type="text"
+              value={kimeDraft}
+              disabled={locked}
+              placeholder="Adres ekle"
+              className="min-w-[10rem] flex-1 border-0 bg-transparent px-1 py-1 text-sm text-slate-800 outline-none"
+              onChange={(e) => setKimeDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ',') return;
+                e.preventDefault();
+                const added = parseMailAddressList(kimeDraft);
+                if (!added.length) return;
+                setExtraTo((prev) => [...new Set([...prev, ...added])]);
+                setKimeDraft('');
+              }}
+              onBlur={() => {
+                const added = parseMailAddressList(kimeDraft);
+                if (!added.length) return;
+                setExtraTo((prev) => [...new Set([...prev, ...added])]);
+                setKimeDraft('');
+              }}
+            />
+          </div>
+          <p className="mt-1 px-1 text-[11px] text-slate-500">
+            Birden fazla adres yazabilirsiniz. Enter veya virgül ile eklenir.
+          </p>
+        </div>
+        {cardReminder && (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <p className="text-sm text-amber-950">{cardReminder}</p>
+          </div>
+        )}
 
         {(detail?.platformMailCopy || detail?.fileOwnerCopy) && (
           <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
@@ -287,7 +385,7 @@ export function InboxReplyModal({
         <div className="mt-3">
           <p className="text-xs font-medium text-slate-600">Fotoğraf Veya Belge</p>
           <p className="text-[11px] text-slate-500 mt-0.5 mb-1.5">
-            Ek, asıl yazı ile birlikte gider. Kopyaya da düşer.
+            Ek, asıl yazı ile birlikte gider. Fotoğraflar gönderime uygun küçültülür.
           </p>
           <input
             ref={fileInputRef}
@@ -297,7 +395,7 @@ export function InboxReplyModal({
             className="sr-only"
             disabled={locked}
             onChange={(e) => {
-              addFiles(Array.from(e.target.files ?? []));
+              void addFiles(Array.from(e.target.files ?? []));
               e.target.value = '';
             }}
           />
@@ -313,7 +411,7 @@ export function InboxReplyModal({
               e.preventDefault();
               e.stopPropagation();
               if (locked) return;
-              addFiles(Array.from(e.dataTransfer.files ?? []));
+              void addFiles(Array.from(e.dataTransfer.files ?? []));
             }}
             className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50 flex items-center justify-center gap-2"
           >

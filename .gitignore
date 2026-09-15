@@ -77,3 +77,4 @@ apps/web/public/local-demo/
 
 # Local email HTML previews — not product, never rsync
 .preview/
+.tmp-kapanis-preview/

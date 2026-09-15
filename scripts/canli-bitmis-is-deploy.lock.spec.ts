@@ -39,7 +39,9 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
     assert.match(src, /smoke-liste-gorunum\.sh/);
     assert.match(src, /smoke-panel-auth-gate\.sh/);
     assert.match(src, /smoke-outbound-mail\.sh/);
-    assert.match(src, /skip-rsync/);
+    assert.match(src, /smoke-finans-kart\.sh/);
+    assert.match(src, /customer-form-identity\.lock\.spec/);
+    assert.match(src, /eksper-sigorta-matrix-removed\.lock\.spec/);
     const outbound = readFileSync(join(here, 'smoke-outbound-mail.sh'), 'utf8');
     assert.match(outbound, /crm-mail-watch\.lock\.spec/);
     assert.match(outbound, /inbox-reply-quote\.lock\.spec/);
@@ -47,5 +49,6 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
     const acil = readFileSync(join(here, 'smoke-acil-netlesen.sh'), 'utf8');
     assert.match(acil, /outbound-mail-signal\.lock\.spec/);
     assert.match(acil, /yazisma|inbox-reply-quote/);
+    assert.match(acil, /acil-photo-kind\.lock\.spec/);
   });
 });

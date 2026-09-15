@@ -14,6 +14,7 @@ import {
   invitePeopleToSubmit,
   isCustomerCompanyUserTask,
   isInvitePersonBlank,
+  isCompleteOfficePersonPhone,
   officePersonPhone,
   officePersonToFormFields,
   resolveOfficePersonPhone,
@@ -54,11 +55,14 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.match(panel, /Kişi Ekle/);
     assert.match(panel, /placeholder="Görev"/);
     assert.match(panel, /jobTitle/);
+    assert.match(panel, /Telefon zorunludur/);
     assert.doesNotMatch(panel, /Görev seçin/);
     const page = readFileSync(join(here, '../page.tsx'), 'utf8');
     assert.match(page, /eksper-ofisi-personel-listesi/);
     assert.match(page, /Bu ofiste kayıtlı personel/);
     assert.match(page, /selectOfficePerson/);
+    assert.match(page, /Telefon zorunludur/);
+    assert.match(page, /label="Telefon"/);
     assert.match(page, /officePersonToFormFields/);
     assert.match(page, /resolveOfficePersonPhone/);
     assert.match(page, /label: 'Eksper'/);
@@ -66,7 +70,13 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.match(page, /ekspertiz-firma-secim/);
     assert.match(page, /ekspertiz-firma-secim-popup/);
     assert.match(page, /Ekspertiz firması seç/);
+    assert.match(page, /sigorta-firma-secim/);
+    assert.match(page, /broker-firma-secim/);
+    assert.match(page, /asistans-firma-secim/);
     assert.doesNotMatch(page, /name="expert-firm"/);
+    assert.doesNotMatch(page, /name="insurance-company-user-company"/);
+    assert.doesNotMatch(page, /name="broker-firm"/);
+    assert.doesNotMatch(page, /name="assistant-firm"/);
     assert.match(page, /portalCustomerId/);
     assert.match(page, /Kullanıcı Ekle/);
     assert.doesNotMatch(page, /Aynı müşteri firmasına birden fazla kişiyi göreviyle ekleyin/);
@@ -82,6 +92,10 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.equal(
       selectedPortalOfficeCustomerId({ userTask: 'expert', expertCustomerId: 'ofis-1' }),
       'ofis-1',
+    );
+    assert.equal(
+      selectedPortalOfficeCustomerId({ userTask: 'insurance_company_user', insuranceCustomerId: 'sg-1' }),
+      'sg-1',
     );
     assert.equal(
       selectedPortalOfficeCustomerId({ userTask: 'broker', brokerCustomerId: 'br-1' }),
@@ -124,6 +138,9 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.equal(fields.phone, '+905321334144');
     assert.equal(fields.jobTitle, 'Eksper');
     assert.equal(officePersonPhone('0532 133 4144'), '+905321334144');
+    assert.equal(isCompleteOfficePersonPhone('+905321334144'), true);
+    assert.equal(isCompleteOfficePersonPhone('+90'), false);
+    assert.equal(isCompleteOfficePersonPhone(''), false);
     assert.equal(
       resolveOfficePersonPhone(
         { firstName: 'Turgut', lastName: 'Andaç', email: 'info@andaclarekspertiz.com', phone: '' },

@@ -11,14 +11,10 @@ const TURKEY_TAIL = /\s+([^\s,]+)\s*[-–]\s*T[uü]rkiye\s*[-–]\s*([^\s,]+)\s*
 const INBOUND_ADDRESS_PHONE =
   /\s*(?:Tel(?:efon)?|GSM|Cep)\s*[:：]\s*\+?\d[\d\s()]{6,}\d/gi;
 
-function foldTr(value: string): string {
-  return value.trim().toLocaleLowerCase('tr-TR');
-}
+const PLACE_SEP = /[\s,./·\-–]+/;
 
-function alreadyInStreet(street: string, piece: string): boolean {
-  const p = piece.trim();
-  if (!p) return true;
-  return foldTr(street).includes(foldTr(p));
+function foldTr(value: string): string {
+  return value.toLocaleLowerCase('tr-TR');
 }
 
 function normalizeCityName(value: string): string {
@@ -39,15 +35,83 @@ function stripStreet(value?: string | null): string {
     .trim();
 }
 
-/**
- * Sokak + ilçe + il (sonda, «İl / İlçe» etiketi yok).
- * Mail kuyruğu (… Atabey - Türkiye - Isparta) sokaktan kesilir, sonda eklenir.
- */
-export function formatEmergencyFileAddress(input: {
+function originalIndexAfterFolded(street: string, foldedPrefix: string): number {
+  let folded = '';
+  for (let i = 0; i < street.length; i++) {
+    folded = foldTr(street.slice(0, i + 1));
+    if (folded === foldedPrefix) return i + 1;
+    if (!foldedPrefix.startsWith(folded)) return -1;
+  }
+  return -1;
+}
+
+/** İl / ilçe sokaktan başta veya sonda kesilir; mahalle içinde durur. */
+function stripPlaceEdge(street: string, place: string): string {
+  const p = place.trim();
+  if (!p || !street) return street;
+  const fp = foldTr(p);
+  const fs = foldTr(street);
+  if (fs === fp) return '';
+
+  if (fs.startsWith(fp)) {
+    const end = originalIndexAfterFolded(street, fp);
+    if (end > 0) {
+      const rest = street.slice(end);
+      if (!rest || PLACE_SEP.test(rest[0] ?? '')) {
+        return rest.replace(PLACE_SEP, ' ').replace(/^\s+/, '').trim();
+      }
+    }
+  }
+
+  if (fs.endsWith(fp)) {
+    const startFold = fs.slice(0, fs.length - fp.length);
+    let start = -1;
+    let folded = '';
+    for (let i = 0; i < street.length; i++) {
+      folded = foldTr(street.slice(0, i + 1));
+      if (folded === startFold) {
+        start = i + 1;
+        break;
+      }
+    }
+    if (start >= 0) {
+      const before = street.slice(0, start);
+      const gap = street.slice(start);
+      const restFold = foldTr(gap);
+      if (restFold === fp && (!before || PLACE_SEP.test(before[before.length - 1] ?? ''))) {
+        return before.replace(/[\s,./·\-–]+$/, '').trim();
+      }
+    }
+  }
+
+  return street;
+}
+
+function stripCityDistrictFromStreet(street: string, district: string, city: string): string {
+  let out = street;
+  if (city && district) {
+    const pairStart = `${foldTr(city)} ${foldTr(district)}`;
+    if (foldTr(out).startsWith(pairStart)) {
+      out = stripPlaceEdge(out, city);
+      out = stripPlaceEdge(out, district);
+    }
+    const pairEnd = `${foldTr(district)} ${foldTr(city)}`;
+    const folded = foldTr(out);
+    if (folded.endsWith(pairEnd) || folded.endsWith(`${foldTr(district)} / ${foldTr(city)}`)) {
+      out = stripPlaceEdge(out, city);
+      out = stripPlaceEdge(out, district);
+    }
+  }
+  out = stripPlaceEdge(out, city);
+  out = stripPlaceEdge(out, district);
+  return out.replace(/\s{2,}/g, ' ').trim();
+}
+
+function resolveStreetCityDistrict(input: {
   address?: string | null;
   district?: string | null;
   city?: string | null;
-}): string {
+}): { street: string; district: string; city: string } {
   let street = stripStreet(input.address);
   let district = input.district?.trim() || '';
   let city = input.city?.trim() || '';
@@ -68,10 +132,45 @@ export function formatEmergencyFileAddress(input: {
 
   city = city ? normalizeCityName(city) : '';
   district = district ? normalizeCityName(district) : '';
+  street = stripCityDistrictFromStreet(street, district, city);
+  return { street, district, city };
+}
 
+/** Yeni ihbar maili: İlçe-İL (Çukurova-ADANA). */
+export function formatIhbarMailPlaceTail(district?: string | null, city?: string | null): string {
+  const d = district?.trim() || '';
+  const c = city?.trim() ? normalizeCityName(city).toLocaleUpperCase('tr-TR') : '';
+  if (d && c) return `${d}-${c}`;
+  if (d) return d;
+  if (c) return c;
+  return '';
+}
+
+/**
+ * Sokak + ilçe + il (sonda, «İl / İlçe» etiketi yok).
+ * Mail kuyruğu (… Atabey - Türkiye - Isparta) sokaktan kesilir, sonda eklenir.
+ */
+export function formatEmergencyFileAddress(input: {
+  address?: string | null;
+  district?: string | null;
+  city?: string | null;
+}): string {
+  const { street, district, city } = resolveStreetCityDistrict(input);
   const parts: string[] = [];
   if (street) parts.push(street);
-  if (district && !alreadyInStreet(street, district)) parts.push(district);
-  if (city && !alreadyInStreet(street, city)) parts.push(city);
+  if (district) parts.push(district);
+  if (city) parts.push(city);
   return parts.join(' · ') || '—';
+}
+
+/** Yeni ihbar maili adresi: sokak, sonda Çukurova-ADANA. */
+export function formatIhbarMailAddress(input: {
+  address?: string | null;
+  district?: string | null;
+  city?: string | null;
+}): string {
+  const { street, district, city } = resolveStreetCityDistrict(input);
+  const tail = formatIhbarMailPlaceTail(district, city);
+  const parts = [street, tail].filter(Boolean);
+  return parts.join(' ') || '—';
 }

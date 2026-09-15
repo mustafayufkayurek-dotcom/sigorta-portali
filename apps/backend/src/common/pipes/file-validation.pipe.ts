@@ -14,6 +14,8 @@ export class FileValidationPipe implements PipeTransform {
 
   private static readonly DEFAULT_MIME = new Set([
     'image/jpeg',
+    'image/jpg',
+    'image/pjpeg',
     'image/png',
     'image/gif',
     'image/webp',
@@ -82,6 +84,7 @@ export class FileValidationPipe implements PipeTransform {
     switch (ext) {
       case 'jpg':
       case 'jpeg':
+      case 'jpe':
         return 'image/jpeg';
       case 'png':
         return 'image/png';

@@ -2555,42 +2555,27 @@ export default function VendorsPage() {
       <SlidePanel open={showModal} onClose={() => setShowModal(false)} width={640} scrollContent={false}>
         <div className="grid h-full min-h-0 grid-rows-[auto_auto_auto_minmax(0,1fr)_auto] overflow-hidden">
             {/* Panel Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-indigo-700 flex-shrink-0">
-              <div>
-                <h3 className="text-base font-semibold text-white">{editVendor ? 'Tedarikçi Düzenle' : 'Yeni Tedarikçi'}</h3>
-                <p className="text-indigo-200 text-xs mt-0.5">{editVendor ? editVendor.name : 'Tüm Bilgileri Eksiksiz Doldurun'}</p>
-              </div>
-              <button type="button" onClick={() => setShowModal(false)} className="text-indigo-200 hover:text-white transition-colors">{Icon.x}</button>
-            </div>
-
-            {/* Kimlik Bandı */}
             {(() => {
               const displayName = form.entityType === 'individual'
                 ? `${form.firstName} ${form.lastName}`.trim()
                 : form.name.trim();
               const typeLabel = form.entityType === 'individual' ? 'Şahıs tedarikçi' : 'Şirket tedarikçi';
-              return displayName ? (
+              const extra = [form.phone?.trim(), form.taxNumber?.trim() || form.identityNo?.trim()].filter(Boolean).join(' · ');
+              return (
                 <>
-                <div className="flex items-center gap-2 px-6 py-2.5 bg-indigo-50 border-b border-indigo-100">
-                  <svg className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span className="text-sm font-semibold text-indigo-800">{displayName}</span>
-                  <span className="text-xs text-indigo-500 font-medium">— {typeLabel}</span>
-                </div>
-                {editVendor && vendorIdentityGapLabel(form) ? (
+            <div className="flex items-center justify-between px-6 py-5 border-b border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-indigo-700 flex-shrink-0" data-testid="tedarikci-form-kimlik-bandi">
+              <div className="min-w-0 pr-3">
+                <h3 className="text-base font-semibold text-white truncate">{displayName || (editVendor ? 'Tedarikçi Düzenle' : 'Yeni Tedarikçi')}</h3>
+                <p className="text-indigo-100 text-xs mt-0.5 truncate">{displayName ? [typeLabel, extra].filter(Boolean).join(' · ') : (editVendor ? editVendor.name : 'Tüm Bilgileri Eksiksiz Doldurun')}</p>
+              </div>
+              <button type="button" onClick={() => setShowModal(false)} className="text-indigo-200 hover:text-white transition-colors">{Icon.x}</button>
+            </div>
+            {editVendor && vendorIdentityGapLabel(form) ? (
                   <div className="border-b border-amber-200 bg-amber-50 px-6 py-2 text-xs font-medium text-amber-900">
                     {vendorIdentityGapLabel(form)}. Sözleşme bu kayıt tamamlanmadan çıkmaz.
                   </div>
                 ) : null}
                 </>
-              ) : (
-                <div className="flex items-center gap-2 px-6 py-2.5 bg-slate-50 border-b border-slate-100">
-                  <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span className="text-xs text-slate-400 italic">İsim girilmedi</span>
-                </div>
               );
             })()}
 

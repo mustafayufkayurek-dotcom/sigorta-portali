@@ -384,28 +384,36 @@ export function PersonelEklePanel({
         onClick={onClose}
       />
       <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l border-border bg-white shadow-xl">
-        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+        {(() => {
+          const selected = candidates.find((c) => c.id === userId);
+          const roleName = roles.find((r) => r.id === roleId)?.name ?? '';
+          const title = selected ? `${selected.firstName} ${selected.lastName}`.trim() : '';
+          const extra = [personnelNo.trim() ? `Sicil ${personnelNo.trim()}` : '', personalGsm.trim() || companyGsm.trim()].filter(Boolean).join(' · ');
+          return (
+        <div className="flex items-start justify-between gap-3 border-b border-emerald-500/30 bg-gradient-to-r from-emerald-600 to-emerald-700 px-5 py-4" data-testid="personel-form-kimlik-bandi">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50">
-              <UserPlus className="h-5 w-5 text-brand-600" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+              <UserPlus className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-content-primary">
-                {isUpdate ? 'Personel Kartını Güncelle' : 'Personel Ekle'}
+              <p className="truncate text-sm font-semibold text-white">
+                {title || (isUpdate ? 'Personel Kartını Güncelle' : 'Personel Ekle')}
               </p>
-              <p className="mt-0.5 text-xs text-content-tertiary">
-                Operasyonel özlük kartı
+              <p className="mt-0.5 truncate text-xs text-emerald-100">
+                {title ? [roleName, extra].filter(Boolean).join(' · ') || 'Operasyonel özlük kartı' : 'Operasyonel özlük kartı'}
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-border p-2 text-content-secondary hover:bg-slate-50"
+            className="rounded-xl border border-white/20 p-2 text-emerald-100 hover:bg-white/10"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
+          );
+        })()}
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

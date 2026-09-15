@@ -543,7 +543,7 @@ export default function AcilDosyaDetayPage() {
 
   const [whatsAppTab, setWhatsAppTab] = useState<WhatsAppPanelTab>('sigortali');
   const [altTab, setAltTab] = useState<AltBolumTab>('belgeler');
-  /** Dosya Kapanış Resimleri — Fotoğraflar kapısı ile senkron */
+  /** Dosya Kapanış / Hizmet Sonrası Resimleri — Fotoğraflar kapısı ile senkron */
   const [closurePhotoCount, setClosurePhotoCount] = useState(0);
   const [inspectionPhotoCount, setInspectionPhotoCount] = useState(0);
   const [sendingApprovalReport, setSendingApprovalReport] = useState(false);
@@ -2761,11 +2761,20 @@ export default function AcilDosyaDetayPage() {
                 </div>
               </div>
             </section>
-            <ClosurePhotosPanel
-              entityId={vaka.id}
-              onPhotoCountChange={setClosurePhotoCount}
-              readonly={fileAlreadyClosed}
-            />
+            <section
+              className="rounded-xl border border-slate-200 bg-white p-3 space-y-3"
+              data-testid="acil-hizmet-sonrasi-resimler"
+            >
+              <h4 className="text-xs font-semibold text-slate-900">Hizmet Sonrası Resimleri</h4>
+              <p className="text-[11px] text-slate-500">
+                Hizmet bittikten sonraki saha resimleri. Kapanış raporuna yazılır.
+              </p>
+              <ClosurePhotosPanel
+                entityId={vaka.id}
+                onPhotoCountChange={setClosurePhotoCount}
+                readonly={fileAlreadyClosed}
+              />
+            </section>
           </div>
         )}
         stepStatuses={operatorStepStatuses}

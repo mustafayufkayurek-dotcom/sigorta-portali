@@ -142,15 +142,6 @@ export interface FieldInspectionBranch {
   sortOrder: number;
 }
 
-export interface ExpertInsuranceLink {
-  expertCustomerId: string;
-  insuranceCompanyId: string;
-}
-
-export interface ExpertInsuranceLinksConfig {
-  links: ExpertInsuranceLink[];
-}
-
 export interface TespitAlaniEntry {
   id: string;
   name: string;
@@ -1133,21 +1124,6 @@ export class SystemSettingsService {
     list.push(entry);
     await this.set('tespit_alanlari', list);
     return entry;
-  }
-
-  async getExpertInsuranceLinks(): Promise<ExpertInsuranceLinksConfig> {
-    const value = await this.get('eksper_sigorta_baglantilari');
-    const raw = value as ExpertInsuranceLinksConfig | null;
-    return { links: Array.isArray(raw?.links) ? raw.links : [] };
-  }
-
-  async setExpertInsuranceLinks(config: ExpertInsuranceLinksConfig): Promise<ExpertInsuranceLinksConfig> {
-    const links = (config.links ?? []).filter(
-      (l) => typeof l.expertCustomerId === 'string' && typeof l.insuranceCompanyId === 'string',
-    );
-    const normalized = { links };
-    await this.set('eksper_sigorta_baglantilari', normalized);
-    return normalized;
   }
 
   // ── Pazartesi Toplantısı ───────────────────────────────────────────────────

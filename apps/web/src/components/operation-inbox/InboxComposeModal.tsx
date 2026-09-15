@@ -171,7 +171,7 @@ export function InboxComposeModal({
           </select>
 
           <label className="block text-xs font-medium text-slate-600 mb-1.5">
-            Alıcı
+            Kime
           </label>
           <input
             type="text"

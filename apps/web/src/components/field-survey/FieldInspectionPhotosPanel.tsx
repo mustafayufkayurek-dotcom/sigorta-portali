@@ -8,6 +8,7 @@ import { reportCaughtError } from '@/utils/report-caught-error';
 import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
 import { entityDocumentFileUrl } from '@/utils/protected-image';
 import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
+import { isAcilInspectionPhotoNotes } from '@sigorta/shared';
 
 type PhotoDoc = {
   id: string;
@@ -24,10 +25,7 @@ function isImageMime(mime: string) {
 
 function isInspectionPhoto(doc: PhotoDoc) {
   if (!isImageMime(doc.mimeType)) return false;
-  const notes = (doc.notes ?? '').toLowerCase();
-  // Eski yüklemeler notes’suz kalabilir — claim_file altındaki tüm görselleri göster
-  if (!notes.trim()) return true;
-  return notes.includes('tespit') || notes.includes('kapanış') || notes.includes('kapanis');
+  return isAcilInspectionPhotoNotes(doc.notes);
 }
 
 /** Saha — ortak tespit fotoğrafları (ofis evrak yaşam döngüsü yok) */

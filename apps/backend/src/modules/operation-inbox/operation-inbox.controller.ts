@@ -10,7 +10,7 @@ import { GraphSubscriptionService } from './graph/graph-subscription.service';
 import { OperationInboxService } from './operation-inbox.service';
 import { LinkClaimFileDto } from './dto/link-claim-file.dto';
 import { LinkEmergencyFileDto } from './dto/link-emergency-file.dto';
-import { ReplyMessageDto } from './dto/reply-message.dto';
+import { ReplyMessageDto, RecipientCardHintsDto } from './dto/reply-message.dto';
 import { ComposeMessageDto } from './dto/compose-message.dto';
 
 @Controller('operation-inbox')
@@ -160,6 +160,17 @@ export class OperationInboxController {
     @Request() req: { user?: { id?: string } },
   ) {
     return this.inboxService.replyMessage(id, dto, req.user?.id);
+  }
+
+  @Post('recipient-card-hints')
+  @RequirePermissions('operation_inbox.manage')
+  recipientCardHints(@Body() dto: RecipientCardHintsDto) {
+    return this.inboxService.recipientCardHints({
+      emails: dto.emails ?? [],
+      messageId: dto.messageId,
+      claimFileId: dto.claimFileId,
+      emergencyCaseId: dto.emergencyCaseId,
+    });
   }
 
   @Post('compose')

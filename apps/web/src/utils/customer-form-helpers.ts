@@ -149,6 +149,39 @@ export function customerDisplayName(c: {
   return personal || '—';
 }
 
+export function customerFormHasIdentity(form: Parameters<typeof customerDisplayName>[0]): boolean {
+  return customerDisplayName(form) !== '—';
+}
+
+/** Tip seçildi, cari adı henüz yok — yönlendirme durur. Ad yazılınca kalkar. */
+export function customerSubTypeHintForForm(
+  subType: string | null | undefined,
+  form: Parameters<typeof customerDisplayName>[0],
+): string | null {
+  if (customerFormHasIdentity(form)) return null;
+  return customerSubTypeHint(subType);
+}
+
+export function customerFormIdentityBand(form: {
+  customerType?: string | null;
+  subType?: string | null;
+  shortName?: string | null;
+  companyName?: string | null;
+  fullName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  city?: string | null;
+}): { empty: boolean; title: string; side: string; extra: string } {
+  const title = customerDisplayName(form);
+  const empty = title === '—';
+  const typeLabel = form.customerType === 'individual' ? 'Bireysel' : 'Kurumsal';
+  const subLabel = customerSubTypeLabel(form.subType);
+  const side = [typeLabel, subLabel].filter(Boolean).join(' · ');
+  const extra = [String(form.phone ?? '').trim(), String(form.city ?? '').trim()].filter(Boolean).join(' · ');
+  return { empty, title: empty ? '' : title, side, extra };
+}
+
 export function normalizeCustomerRow<T extends Record<string, unknown>>(
   c: T,
 ): T & { customerType: CustomerType; entityType: CustomerType } {

@@ -21,11 +21,13 @@ export function isCustomerCompanyUserTask(task?: string | null): task is Custome
 export function selectedPortalOfficeCustomerId(input: {
   userTask?: string | null;
   expertCustomerId?: string | null;
+  insuranceCustomerId?: string | null;
   brokerCustomerId?: string | null;
   assistantCustomerId?: string | null;
 }): string {
   const task = String(input.userTask ?? '');
   if (task === 'expert') return String(input.expertCustomerId ?? '').trim();
+  if (task === 'insurance_company_user') return String(input.insuranceCustomerId ?? '').trim();
   if (task === 'broker') return String(input.brokerCustomerId ?? '').trim();
   if (task === 'assistance_company_user') return String(input.assistantCustomerId ?? '').trim();
   return '';
@@ -154,6 +156,15 @@ export function officePersonPhone(raw?: string | null): string {
   return digits ? `+90${digits}` : '';
 }
 
+/** Kutuda yalnız ülke kodu durmaz; Türkiye 10 hane. */
+export function isCompleteOfficePersonPhone(raw?: string | null): boolean {
+  const intl = officePersonPhone(raw);
+  if (!intl) return false;
+  const digits = intl.replace(/\D/g, '');
+  if (intl.startsWith('+90')) return digits.length >= 12;
+  return digits.length >= 8;
+}
+
 export function resolveOfficePersonPhone(
   person: {
     phone?: string | null;
@@ -195,11 +206,12 @@ export function officePersonToFormFields(person: {
   contacts?: Array<{ name?: string | null; email?: string | null; phone?: string | null }>;
 }) {
   const jobTitle = String(person.jobTitle ?? '').trim();
+  const phone = resolveOfficePersonPhone(person, office);
   return {
     firstName: String(person.firstName ?? '').trim(),
     lastName: String(person.lastName ?? '').trim(),
     email: String(person.archivedEmail ?? person.email ?? '').trim(),
-    phone: resolveOfficePersonPhone(person, office),
+    phone: isCompleteOfficePersonPhone(phone) ? phone : '',
     jobTitle: jobTitle || displayPersonDuty(person),
   };
 }
@@ -323,6 +335,28 @@ export function isHasarExpertCustomer(customer: HasarExpertCustomerRecord) {
   if (customer.status && customer.status !== 'active') return false;
   if (customer.entityType && customer.entityType !== 'corporate') return false;
   return customer.subType === HASAR_EXPERT_CUSTOMER_SUB_TYPE || customer.subType === 'eksper';
+}
+
+/** Müşteriler → kurumsal → alt tip Sigorta Şirketi */
+export const SIGORTA_CUSTOMER_SUB_TYPE = 'sigorta_sirketi';
+
+export interface SigortaCustomerRecord {
+  id: string;
+  entityType?: string;
+  subType?: string | null;
+  status?: string | null;
+  companyName?: string | null;
+  fullName?: string | null;
+}
+
+export function sigortaCustomerName(customer: SigortaCustomerRecord) {
+  return (customer.companyName ?? customer.fullName ?? '').trim();
+}
+
+export function isSigortaCustomer(customer: SigortaCustomerRecord) {
+  if (customer.status && customer.status !== 'active') return false;
+  if (customer.entityType && customer.entityType !== 'corporate') return false;
+  return customer.subType === SIGORTA_CUSTOMER_SUB_TYPE;
 }
 
 /** Müşteriler → kurumsal → alt tip Broker Firması */

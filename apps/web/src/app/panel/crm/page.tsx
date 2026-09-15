@@ -19,7 +19,9 @@ import {
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { crmMailWatch } from '@sigorta/shared';
+import type { FileRecognizedPartner } from '@sigorta/shared';
 import { CrmMailWatchStrip } from '@/components/crm/CrmMailWatchStrip';
+import { FileRecognizedPartners } from '@/components/customers/FileRecognizedPartners';
 
 type EntityKind = 'customer' | 'adjuster' | 'vendor';
 type RiskLevel = 'low' | 'medium' | 'high' | 'none';
@@ -49,6 +51,7 @@ type CrmEntity = {
   specialties: string[];
   source: any;
   detail?: any;
+  filePartners?: FileRecognizedPartner[];
 };
 
 type CrmSummary = {
@@ -376,6 +379,7 @@ function normalizeCustomer(customer: any): CrmEntity {
     satisfaction,
     specialties: Array.isArray(customer.serviceBranches) ? customer.serviceBranches : [],
     source: customer,
+    filePartners: Array.isArray(customer.filePartners) ? customer.filePartners : [],
   };
 }
 
@@ -729,6 +733,24 @@ export default function CrmPage() {
     });
     refreshCrmActivity(selected);
     refreshOperationMemory(selected);
+    if (selected.kind === 'customer') {
+      void (async () => {
+        try {
+          const data = await apiClient.get<any>(`/customers/${selected.id}`);
+          const partners = Array.isArray(data?.filePartners) ? data.filePartners : [];
+          setSelected((prev) => {
+            if (!prev || prev.id !== selected.id || prev.kind !== 'customer') return prev;
+            return {
+              ...prev,
+              filePartners: partners,
+              source: { ...prev.source, subType: data?.subType ?? prev.source?.subType },
+            };
+          });
+        } catch {
+          /* dosya yoksa hap basılmaz */
+        }
+      })();
+    }
   }, [selected?.kind, selected?.id]);
 
   async function saveStatus() {
@@ -996,6 +1018,9 @@ export default function CrmPage() {
                       <p className="text-xs font-semibold text-brand-600">{kindLabels[selected.kind]} · {selected.typeLabel}</p>
                       <h2 className="mt-0.5 text-base font-bold text-slate-950">{selected.name}</h2>
                       <p className="mt-0.5 text-xs text-slate-500">{[selected.city, selected.district].filter(Boolean).join(' / ') || 'Konum yok'}</p>
+                      {selected.kind === 'customer' ? (
+                        <FileRecognizedPartners subType={selected.source?.subType} partners={selected.filePartners} />
+                      ) : null}
                     </div>
                     <StatusBadge label={crmStatusLabels[selectedCrmStatus]} variant={selectedCrmStatus === 'active' ? 'success' : selectedCrmStatus === 'waiting' || selectedCrmStatus === 'proposal_sent' ? 'warning' : selectedCrmStatus === 'lost' || selectedCrmStatus === 'passive' ? 'neutral' : 'info'} />
                   </div>

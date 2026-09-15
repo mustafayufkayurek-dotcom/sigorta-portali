@@ -38,7 +38,9 @@ import {
   isAcilVendorQualityWarning,
   shouldReportAcilNegativeVendorStrike,
   nextEmergencyFindingsText,
-  isAcilLocksmithIssue,
+    isAcilLocksmithIssue,
+    isAcilInspectionPhotoNotes,
+    isAcilAfterServicePhotoNotes,
   parseAssistanceMailDecision,
   canSendVisibleCopy,
   buildPlatformMailCopyNotice,
@@ -73,7 +75,7 @@ import { SurveysService } from '@/modules/surveys/surveys.service';
 import { EmergencyFinanceService } from './emergency-finance.service';
 import { acilHakedisActorName, acilHakedisPaidDescription } from './acil-vendor-entitlement';
 import { buildAcilClosureReportPdf } from './acil-closure-report-pdf';
-import { buildAcilAssistanceApprovalReportHtml } from './acil-approval-report-html';
+import { buildAcilAssistanceApprovalReportHtml, formatAcilSlaDuration } from './acil-approval-report-html';
 import { embedOrientedAcilReportPhoto } from '../storage/orient-photo';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
 import {
@@ -169,6 +171,49 @@ export class EmergencyCasesService {
       this.logger.warn(`[VendorIntelligenceProfile] Acil kapanış hook: ${err?.message}`),
     );
     return { autoClosureEmail };
+  }
+
+  private async embedAcilCasePhotos(
+    caseId: string,
+    prefer: 'inspection' | 'after-service',
+  ): Promise<{
+    photos: Array<{ dataUrl: string; caption?: string; width?: number; height?: number }>;
+    usedAfterService: boolean;
+  }> {
+    const photoDocs = await this.prisma.entityDocument.findMany({
+      where: {
+        entityType: 'emergency_case',
+        entityId: caseId,
+        mimeType: { startsWith: 'image/' },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 24,
+    });
+    const after = photoDocs.filter((doc) => isAcilAfterServicePhotoNotes(doc.notes));
+    const inspect = photoDocs.filter((doc) => isAcilInspectionPhotoNotes(doc.notes));
+    const useAfter = prefer === 'after-service' && after.length > 0;
+    const chosen = prefer === 'inspection' ? inspect : (useAfter ? after : inspect);
+    const captionBase = prefer === 'inspection' || !useAfter ? 'Tespit' : 'Hizmet sonrası';
+    const photos: Array<{ dataUrl: string; caption?: string; width?: number; height?: number }> = [];
+    for (const doc of chosen) {
+      try {
+        const buf = await this.storage.download(doc.storageKey);
+        const oriented = await embedOrientedAcilReportPhoto(buf);
+        if (!oriented) {
+          this.logger.warn(`Acil rapor resmi döndürülemedi: ${doc.id}`);
+          continue;
+        }
+        photos.push({
+          dataUrl: oriented.dataUrl,
+          caption: `${captionBase} ${photos.length + 1}`,
+          width: oriented.width,
+          height: oriented.height,
+        });
+      } catch (err: any) {
+        this.logger.warn(`Acil rapor resmi okunamadı (${doc.id}): ${err?.message}`);
+      }
+    }
+    return { photos, usedAfterService: useAfter };
   }
 
   /** EPIC-04: Finansa aktarım entegrasyon noktası (onay sonrası finance modülü bağlanacak). */
@@ -1108,6 +1153,14 @@ export class EmergencyCasesService {
             subType: true,
           },
         },
+        assignedUser: {
+          select: {
+            firstName: true,
+            lastName: true,
+            employeeCode: true,
+            hrEmployeeProfile: { select: { personnelNo: true } },
+          },
+        },
         costEntries: {
           where: { entryType: 'gelir' },
           orderBy: { entryDate: 'desc' },
@@ -1164,19 +1217,22 @@ export class EmergencyCasesService {
     const insuredPhone =
       (await this.ensureCustomerPhoneFromInbound(caseId, emergencyCase.customerPhone)) || '—';
     const saleAmount = emergencyCase.costEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
-    const closedAt = (emergencyCase.resolvedAt || new Date()).toLocaleString('tr-TR');
-    const inboundAt = inbound[0]?.receivedAt
-      ? inbound[0].receivedAt.toLocaleString('tr-TR')
-      : emergencyCase.fileDate
-        ? emergencyCase.fileDate.toLocaleString('tr-TR')
-        : '—';
+    const inboundAtDate = inbound[0]?.receivedAt || emergencyCase.fileDate || null;
+    const inboundAt = inboundAtDate
+      ? inboundAtDate.toLocaleString('tr-TR')
+      : '—';
     const workStartedAt = emergencyCase.workStartedAt
       ? emergencyCase.workStartedAt.toLocaleString('tr-TR')
       : '—';
     const serviceDeliveredAt = emergencyCase.serviceDeliveredAt
       ? emergencyCase.serviceDeliveredAt.toLocaleString('tr-TR')
       : '—';
-    const summary = (emergencyCase.notes || '').trim().slice(0, 160) || 'Hizmet tamamlandı';
+    const closedAtDate = emergencyCase.resolvedAt || new Date();
+    const closedAt = closedAtDate.toLocaleString('tr-TR');
+    const findingsWritten = (emergencyCase.findingsText || '').trim()
+      || (emergencyCase.notes || '').trim().slice(0, 160)
+      || 'Hizmet tamamlandı';
+    const summary = findingsWritten;
     const subject = `Dosya Kapanışı – ${fileNo}`;
     const customerSubType = String(emergencyCase.customer?.subType || '').trim();
     const audience: FileClosureAudience =
@@ -1217,18 +1273,91 @@ export class EmergencyCasesService {
     const attachments: NonNullable<SendMailOptions['attachments']> = [];
     const attachmentNames: string[] = [];
     const reportFile = `kapanis-raporu-${String(fileNo).replace(/[^\w.-]+/g, '_')}.pdf`;
+    const { photos: afterPhotos, usedAfterService } = await this.embedAcilCasePhotos(caseId, 'after-service');
+    const orgName =
+      emergencyCase.customer?.shortName || emergencyCase.customer?.companyName || emergencyCase.customerName;
+    const reporterName = emergencyCase.assignedUser
+      ? toTitleCaseTR(
+          `${emergencyCase.assignedUser.firstName || ''} ${emergencyCase.assignedUser.lastName || ''}`.trim(),
+        )
+      : '';
+    const reporterSicilNo =
+      (emergencyCase.assignedUser?.hrEmployeeProfile?.personnelNo || '').trim()
+      || (emergencyCase.assignedUser?.employeeCode || '').trim()
+      || null;
+    const preWorkDocs = await this.prisma.fileDocument.findMany({
+      where: {
+        emergencyCaseId: caseId,
+        documentKind: ACIL_ADRES_HIZMET_TALEP_KIND,
+        digitallyApprovedAt: { not: null },
+      },
+      orderBy: { digitallyApprovedAt: 'asc' },
+      select: {
+        documentKind: true,
+        approvedFullName: true,
+        digitallyApprovedAt: true,
+      },
+    });
+    const saleLabel = saleAmount > 0
+      ? `${saleAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL+KDV`
+      : '—';
+    const htmlReport = buildAcilAssistanceApprovalReportHtml({
+      kind: 'kapanis',
+      fileNo,
+      customer: orgName,
+      insured,
+      insuredPhone: insuredPhone === '—' ? '' : insuredPhone,
+      address: formatEmergencyFileAddress({
+        address: emergencyCase.address,
+        district: emergencyCase.district,
+        city: emergencyCase.city,
+      }),
+      subject: fileSubject || String(emergencyCase.issueType || ''),
+      location: (emergencyCase.reportMahal || '').trim()
+        || [emergencyCase.district, emergencyCase.city].filter(Boolean).join(' / '),
+      workGroup: (emergencyCase.reportWorkGroup || '').trim(),
+      jobDescription: (emergencyCase.reportJobDescription || '').trim(),
+      itemDescription: (emergencyCase.reportItemDescription || '').trim(),
+      findings: findingsWritten,
+      saleAmount,
+      saleLabel,
+      reportDate: emergencyCase.fileDate,
+      city: toTitleCaseTR((emergencyCase.city || '').trim()) || emergencyCase.city,
+      reporterName,
+      reporterSicilNo,
+      ihbarAt: inboundAtDate,
+      workStartedAt: emergencyCase.workStartedAt,
+      serviceDeliveredAt: emergencyCase.serviceDeliveredAt,
+      closedAt: closedAtDate,
+      photoSectionTitle: usedAfterService ? 'Hizmet Sonrası Resimleri' : 'Tespit Resimleri (Rapor Eki)',
+      preWorkApprovals: preWorkDocs.map((doc) => ({
+        title: acilDigitalFormTitle(doc.documentKind),
+        approvedFullName: doc.approvedFullName,
+        approvedAt: doc.digitallyApprovedAt,
+      })),
+      photos: afterPhotos,
+    });
+    if (forbidden.test(htmlReport)) {
+      throw new BadRequestException('Kapanış raporu güvenlik kontrolünden geçemedi');
+    }
+    const closureReport = {
+      fileNo,
+      insured,
+      subject: fileSubject || String(emergencyCase.issueType || ''),
+      ihbarAt,
+      workStartedAt,
+      serviceDeliveredAt,
+      closedAt,
+      slaDuration: formatAcilSlaDuration(
+        emergencyCase.workStartedAt,
+        emergencyCase.serviceDeliveredAt || closedAtDate,
+      ),
+      summary,
+    };
+    const htmlPdf = await htmlDocumentToPdf(htmlReport);
     attachments.push({
       filename: reportFile,
-      content: buildAcilClosureReportPdf({
-        fileNo,
-        insured,
-        subject: fileSubject || String(emergencyCase.issueType || ''),
-        ihbarAt: inboundAt,
-        workStartedAt,
-        serviceDeliveredAt,
-        closedAt,
-        summary,
-      }),
+      content: htmlPdf ?? buildAcilClosureReportPdf(closureReport),
       contentType: 'application/pdf',
     });
     attachmentNames.push(reportFile);
@@ -1400,39 +1529,9 @@ export class EmergencyCasesService {
     if (mode === 'send' && !(gelir > 0)) {
       throw new BadRequestException('Satış bedeli girilmeden rapor gönderilmez.');
     }
-    const photoDocs = await this.prisma.entityDocument.findMany({
-      where: {
-        entityType: 'emergency_case',
-        entityId: caseId,
-        mimeType: { startsWith: 'image/' },
-      },
-      orderBy: { createdAt: 'asc' },
-      take: 24,
-    });
-    if (mode === 'send' && !photoDocs.length) {
-      throw new BadRequestException('Tespit resmi eklenmeden rapor gönderilmez.');
-    }
-    const photos: Array<{ dataUrl: string; caption?: string; width?: number; height?: number }> = [];
-    for (const doc of photoDocs) {
-      try {
-        const buf = await this.storage.download(doc.storageKey);
-        const oriented = await embedOrientedAcilReportPhoto(buf);
-        if (!oriented) {
-          this.logger.warn(`Tespit resmi döndürülemedi: ${doc.id}`);
-          continue;
-        }
-        photos.push({
-          dataUrl: oriented.dataUrl,
-          caption: `Tespit ${photos.length + 1}`,
-          width: oriented.width,
-          height: oriented.height,
-        });
-      } catch {
-        this.logger.warn(`Tespit resmi okunamadı: ${doc.id}`);
-      }
-    }
+    const { photos } = await this.embedAcilCasePhotos(caseId, 'inspection');
     if (mode === 'send' && !photos.length) {
-      throw new BadRequestException('Tespit resmi açılamadı. Rapor gönderilmedi.');
+      throw new BadRequestException('Tespit resmi eklenmeden rapor gönderilmez.');
     }
 
     const fileNo = emergencyCase.fileNo || emergencyCase.caseNo;

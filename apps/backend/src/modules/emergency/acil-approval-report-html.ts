@@ -22,10 +22,16 @@ function fmtDate(d: Date | string | null | undefined): string {
   return date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function fmtDateTime(d: Date | string | null | undefined): string {
-  if (!d) return '—';
+function parseReportDate(d: Date | string | null | undefined): Date | null {
+  if (!d) return null;
   const date = d instanceof Date ? d : new Date(d);
-  if (Number.isNaN(date.getTime())) return '—';
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
+
+function fmtDateTime(d: Date | string | null | undefined): string {
+  const date = parseReportDate(d);
+  if (!date) return '—';
   return date.toLocaleString('tr-TR', {
     day: '2-digit',
     month: '2-digit',
@@ -33,6 +39,24 @@ function fmtDateTime(d: Date | string | null | undefined): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+export function formatAcilSlaDuration(
+  from?: Date | string | null,
+  to?: Date | string | null,
+): string {
+  const start = parseReportDate(from);
+  const end = parseReportDate(to);
+  if (!start || !end) return '—';
+  let ms = end.getTime() - start.getTime();
+  if (ms < 0) ms = 0;
+  const totalMin = Math.round(ms / 60_000);
+  const hours = Math.floor(totalMin / 60);
+  const mins = totalMin % 60;
+  if (hours <= 0 && mins <= 0) return '0 dk';
+  if (hours <= 0) return `${mins} dk`;
+  if (mins === 0) return `${hours} saat`;
+  return `${hours} saat ${mins} dk`;
 }
 
 function fmtCurrency(n: number): string {
@@ -108,6 +132,12 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
   city?: string | null;
   reporterName?: string | null;
   reporterSicilNo?: string | null;
+  kind?: 'tespit' | 'kapanis';
+  ihbarAt?: Date | string | null;
+  workStartedAt?: Date | string | null;
+  serviceDeliveredAt?: Date | string | null;
+  closedAt?: Date | string | null;
+  photoSectionTitle?: string | null;
   preWorkApprovals?: Array<{
     title: string;
     approvedFullName?: string | null;
@@ -132,6 +162,34 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
         sicil ? ` <span class="reporter-sicil">(Sicil No ${escapeHtml(sicil)})</span>` : ''
       }`
     : '—';
+  const isClosure = input.kind === 'kapanis';
+  const headerTitle = isClosure ? 'Acil Yardım Dosya Kapanış Raporu' : 'Acil Yardım Tespit Raporu';
+  const findingsTitle = isClosure ? 'Hizmet Özeti' : FINDINGS_SECTION_TITLE;
+  const findingsLead = isClosure ? 'Riziko adreste verilen hizmet sonucunda;' : FINDINGS_LEAD;
+  const photoHeader = (input.photoSectionTitle || '').trim()
+    || (isClosure ? 'Hizmet Sonrası Resimleri' : 'Tespit Resimleri (Rapor Eki)');
+  const legalLead = isClosure
+    ? 'Bu rapor, Acil Yardım dosyasının kapanışı üzerine hazırlanmıştır.'
+    : 'Bu rapor, Acil Yardım sahasında yapılan tespit sonucunda hazırlanmıştır.';
+  const headerDate = isClosure ? (input.closedAt || input.reportDate) : input.reportDate;
+  const slaEnd = input.serviceDeliveredAt || input.closedAt;
+  const slaLine = isClosure
+    ? formatAcilSlaDuration(input.workStartedAt, slaEnd)
+    : '';
+  const processFields = isClosure
+    ? `<div class="info-field">
+      <span class="info-label">İşe Başlama</span>
+      <span class="info-value">${escapeHtml(fmtDateTime(input.workStartedAt))}</span>
+    </div>
+    <div class="info-field">
+      <span class="info-label">Hizmet Bitiş</span>
+      <span class="info-value">${escapeHtml(fmtDateTime(input.serviceDeliveredAt))}</span>
+    </div>
+    <div class="info-field info-field-wide">
+      <span class="info-label">SLA Süresi</span>
+      <span class="info-value">${escapeHtml(slaLine)}</span>
+    </div>`
+    : '';
   const approvals = (input.preWorkApprovals ?? []).filter((row) => String(row.title ?? '').trim());
   const approvalRows = approvals.length
     ? approvals
@@ -167,7 +225,7 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
     .join('');
   const gallery = input.photos.length
     ? `<div class="appendix-block">
-        <div class="section-header">Tespit Resimleri (Rapor Eki)</div>
+        <div class="section-header">${photoHeader}</div>
         <table class="photo-gallery">
           <colgroup>
             <col style="width:16.66%"/><col style="width:16.66%"/><col style="width:16.66%"/>
@@ -545,9 +603,9 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
 <div class="report-header">
   ${headerBrand}
   <div class="header-title-block">
-    <div class="header-title">Acil Yardım Tespit Raporu</div>
+    <div class="header-title">${headerTitle}</div>
     <div class="header-usage-badge header-usage-external">Dış Kullanım</div>
-    <div class="header-date"><span class="header-date-label">Tarih</span>${fmtDate(input.reportDate)}</div>
+    <div class="header-date"><span class="header-date-label">Tarih</span>${fmtDate(headerDate)}</div>
   </div>
 </div>
 
@@ -573,16 +631,17 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
       <span class="info-label">Dosya Konusu</span>
       <span class="info-value">${dash(input.subject)}</span>
     </div>
-    <div class="info-field info-field-wide">
+    <div class="info-field${isClosure ? ' info-field-address' : ' info-field-wide info-field-address'}">
       <span class="info-label">Sigortalı Adres</span>
       <span class="info-value">${dash(input.address)}</span>
     </div>
+    ${processFields}
   </div>
 </div>
 
-<div class="section-header">${FINDINGS_SECTION_TITLE}</div>
+<div class="section-header">${findingsTitle}</div>
 <div class="findings-box">
-  <div class="findings-lead">${FINDINGS_LEAD}</div>
+  <div class="findings-lead">${findingsLead}</div>
   <div class="findings-text">${escapeHtml(findingsBody)}</div>
 </div>
 
@@ -606,7 +665,7 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
       <td class="job-desc-cell">${dash(input.jobDescription)}</td>
       <td class="desc-cell">${dash(input.itemDescription)}</td>
       <td class="text-center">1</td>
-      <td class="text-center">Hizmet</td>
+      <td class="text-center">Maktuen</td>
       <td class="text-right amount-cell">${saleText}</td>
       <td class="text-right amount-cell">${saleText}</td>
     </tr>
@@ -638,7 +697,7 @@ ${gallery}
   <div class="legal-closing">
     <div class="legal-title">Yasal Uyarılar Ve Açıklamalar</div>
     <ul class="legal-list">
-      <li><span class="legal-num">1.</span>Bu rapor, Acil Yardım sahasında yapılan tespit sonucunda hazırlanmıştır.</li>
+      <li><span class="legal-num">1.</span>${legalLead}</li>
       <li><span class="legal-num">2.</span>Belirtilen hizmet bedeli KDV hariçtir; yürürlükteki vergi mevzuatına göre KDV ayrıca hesaplanır.</li>
       <li><span class="legal-num">3.</span>Bu belge dış kullanımdır.</li>
       <li><span class="legal-num">4.</span>Bu rapor yalnız bu dosyanın tarafları içindir. İzinsiz çoğaltılamaz ve dağıtılamaz.</li>

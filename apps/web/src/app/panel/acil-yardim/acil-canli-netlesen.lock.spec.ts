@@ -46,6 +46,9 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /AcilOperasyonPlanlayiciPanel/);
     assert.match(acilPage, /acil-saha-tespit/);
     assert.match(acilPage, /FieldInspectionPhotosPanel/);
+    assert.match(acilPage, /ClosurePhotosPanel/);
+    assert.match(acilPage, /acil-hizmet-sonrasi-resimler/);
+    assert.match(acilPage, /Hizmet Sonrası Resimleri/);
     assert.match(acilPage, /tespit-bulgulari-input/);
     assert.match(acilPage, /saveFindingsText/);
     assert.match(acilPage, /resolveEmergencyFindingsDraft/);
@@ -138,6 +141,7 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(photos, /entityDocumentFileUrl|entity-documents\/\$\{id\}\/file/);
     assert.match(photos, /onDrop=\{readOnly \? undefined : onDropFiles\}/);
     assert.match(photos, /sürükleyip bırakarak/);
+    assert.match(photos, /axios\.post\(`\$\{API\}\/entity-documents`/);
     assert.match(acilPage, /FieldInspectionPhotosPanel entityType="emergency_case"/);
     assert.doesNotMatch(acilPage, /FieldInspectionPhotosPanel entityType="emergency_case" entityId=\{vaka.id\} readOnly/);
     const closure = readFileSync(
@@ -146,7 +150,8 @@ describe('acil canlı netleşen LOCK', () => {
     );
     assert.match(closure, /onDrop=\{onDropFiles\}/);
     assert.match(closure, /dosya-kapanis-surukle-birak/);
-    assert.match(closure, /sürükleyip bırakarak/);
+    assert.match(closure, /Hizmet Sonrası Resimleri/);
+    assert.match(closure, /ACIL_AFTER_SERVICE_PHOTO_NOTE/);
   });
 
   it('önizleme canlıda açılmaz; canlı planlayıcı paneli durur', () => {
@@ -206,6 +211,9 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(workflow, /isAcilDigitalApprovalRequired/);
     assert.doesNotMatch(workflow, /surveyDone &&/);
     assert.match(backend, /buildAcilClosureReportPdf/);
+    assert.match(backend, /kind:\s*'kapanis'/);
+    assert.match(backend, /buildAcilAssistanceApprovalReportHtml/);
+    assert.match(backend, /isAcilAfterServicePhotoNotes/);
     assert.match(backend, /ihbarAt:/);
     assert.match(backend, /serviceDeliveredAt/);
     assert.match(backend, /kapanis-raporu-/);

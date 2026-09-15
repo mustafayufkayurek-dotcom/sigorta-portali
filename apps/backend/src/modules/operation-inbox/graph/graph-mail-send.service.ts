@@ -40,6 +40,8 @@ export class GraphMailSendService {
     replyAll = false,
     cc?: Array<{ email: string; name?: string }>,
     attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>,
+    extraTo?: string[],
+    originTo?: string[],
   ): Promise<void> {
     const config = await this.loadGraphConfig();
     if (!config.active) {
@@ -70,6 +72,16 @@ export class GraphMailSendService {
       attachments,
       'Ek çok büyük. Fotoğraf veya belgeyi küçültüp tekrar deneyin.',
     );
+    const extra = (extraTo ?? []).map((e) => e.trim()).filter(Boolean);
+    const origin = (originTo ?? []).map((e) => e.trim()).filter(Boolean);
+    const toList: string[] = [];
+    const seenTo = new Set<string>();
+    for (const address of [...origin, ...extra]) {
+      const key = address.toLowerCase();
+      if (!address.includes('@') || seenTo.has(key)) continue;
+      seenTo.add(key);
+      toList.push(address);
+    }
     // Geçmiş panelde eklenir. Graph comment alanı orijinal logolu HTML'i tekrar yapıştırır; kullanılmaz.
     // Görünür kopya ayrı mail değildir; aynı Graph yanıtının ccRecipients alanıdır. Asıl yazı gitmezse kopya da gitmez.
     const payload = {
@@ -79,6 +91,13 @@ export class GraphMailSendService {
           content: trimmed,
         },
         isReadReceiptRequested: true,
+        ...(toList.length
+          ? {
+              toRecipients: toList.map((address) => ({
+                emailAddress: { address },
+              })),
+            }
+          : {}),
         ...(cc?.length
           ? {
               ccRecipients: cc.map((item) => ({

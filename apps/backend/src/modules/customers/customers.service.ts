@@ -11,6 +11,7 @@ import {
 } from '@sigorta/shared';
 import * as ExcelJS from 'exceljs';
 import { classifyAuthorizedPersonNamesWithAi } from './authorized-person-ai.util';
+import { resolveFileRecognizedPartners } from './customer-file-partners';
 import {
   applyCustomerFileStats,
   attachCustomerFileStats,
@@ -439,7 +440,7 @@ export class CustomersService {
     const claimWhere = insuranceIds.length
       ? { OR: [{ customerId: id }, { insuranceCompanyId: { in: insuranceIds } }] }
       : { customerId: id };
-    const [claimFiles, emergencyCases] = await Promise.all([
+    const [claimFiles, emergencyCases, filePartners] = await Promise.all([
       this.prisma.claimFile.findMany({
         where: claimWhere,
         orderBy: { updatedAt: 'desc' },
@@ -466,9 +467,11 @@ export class CustomersService {
           status: true,
         },
       }),
+      resolveFileRecognizedPartners(this.prisma, customer),
     ]);
     return {
       ...withStats,
+      filePartners,
       claimFiles: claimFiles.map((f) => ({
         ...f,
         fileNumber: f.fileNo,
@@ -720,21 +723,6 @@ export class CustomersService {
       }
     }
 
-    const expertLinkCount = await this.countExpertInsuranceLinksForCustomer(id);
-    if (expertLinkCount > 0) {
-      throw new BadRequestException(
-        'Bu müşteri eksper-sigorta bağlantı ayarlarında kullanılıyor. Önce ayarlardan bağlantıyı kaldırın.',
-      );
-    }
-  }
-
-  private async countExpertInsuranceLinksForCustomer(customerId: string): Promise<number> {
-    const setting = await this.prisma.systemSetting.findUnique({
-      where: { key: 'eksper_sigorta_baglantilari' },
-    });
-    const raw = setting?.value as { links?: { expertCustomerId?: string }[] } | null;
-    const links = Array.isArray(raw?.links) ? raw.links : [];
-    return links.filter((l) => l.expertCustomerId === customerId).length;
   }
 
   async archive(id: string) {

@@ -23,6 +23,14 @@ describe('tespit resmi duruş LOCK', () => {
     const kept = await orientPhotoBuffer(uprightLand);
     assert.ok(kept.width > kept.height);
   });
+
+  it('bozuk baytta düşmez; yükleme yolunu kilitlemez', async () => {
+    const junk = Buffer.from('bu-resim-degil');
+    const out = await orientPhotoBuffer(junk);
+    assert.equal(out.buffer, junk);
+    assert.equal(out.width, 0);
+    assert.equal(out.height, 0);
+  });
 });
 
 async function stripeJpeg(kind: 'vertical' | 'horizontal'): Promise<Buffer> {

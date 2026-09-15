@@ -17,7 +17,7 @@ describe('gelen kutu yanıt eki LOCK', () => {
     assert.equal(isInboxReplyAttachmentAllowed('cam.jpg', 'image/jpeg'), true);
     assert.equal(isInboxReplyAttachmentAllowed('teklif.pdf', 'application/pdf'), true);
     assert.equal(isInboxReplyAttachmentAllowed('virus.exe', 'application/octet-stream'), false);
-    assert.equal(INBOX_REPLY_ATTACH_MAX_FILES, 5);
+    assert.equal(INBOX_REPLY_ATTACH_MAX_FILES, 25);
     assert.equal(INBOX_REPLY_ATTACH_MAX_BYTES, 3_000_000);
   });
 
@@ -46,11 +46,20 @@ describe('gelen kutu yanıt eki LOCK', () => {
       new URL('../../../apps/web/src/components/operation-inbox/InboxReplyModal.tsx', import.meta.url),
       'utf8',
     );
+    assert.match(modal, /\/operation-inbox\/messages\/\$\{messageId\}\/reply/);
     assert.match(modal, /Fotoğraf Veya Belge/);
     assert.match(modal, /contentBase64/);
     assert.match(modal, /attachments/);
     assert.match(modal, /Alıcıda yazışma geçmişi/);
-    assert.match(modal, /\/operation-inbox\/messages\/\$\{messageId\}\/reply/);
+    assert.match(modal, /shrinkInboxReplyAttachment/);
+    assert.doesNotMatch(modal, /En fazla 5 ek/);
+    const shrink = readFileSync(
+      new URL('../../../apps/web/src/utils/inbox-reply-image.ts', import.meta.url),
+      'utf8',
+    );
+    assert.match(shrink, /shrinkInboxReplyAttachment/);
+    assert.match(shrink, /image\/jpeg/);
+    assert.doesNotMatch(shrink, /createUploadSession/);
     const dto = readFileSync(
       new URL('../../../apps/backend/src/modules/operation-inbox/dto/reply-message.dto.ts', import.meta.url),
       'utf8',

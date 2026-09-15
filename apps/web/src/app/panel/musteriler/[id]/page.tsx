@@ -11,10 +11,11 @@ import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
-import { customerSubTypeLabel, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType } from '@/utils/customer-form-helpers';
+import { customerSubTypeLabel, customerDisplayName, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType } from '@/utils/customer-form-helpers';
 import { isPortalCustomerSubType } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { CustomerPortalUsersPanel } from '@/components/customers/CustomerPortalUsersPanel';
 import { customerFileCounts } from '@/utils/customer-file-counts';
+import { FileRecognizedPartners } from '@/components/customers/FileRecognizedPartners';
 import { FieldOperationsMap } from '@/components/operasyon/FieldOperationsMap';
 import { CardNotesDisplay } from '@/components/card-notes/CardNotesDisplay';
 import {
@@ -781,9 +782,7 @@ export default function CustomerDetailPage() {
   if (!customer) return <div className="text-center py-16 text-slate-400">Müşteri Bulunamadı.</div>;
 
   const isCorporate = (customer.customerType ?? customer.entityType) === 'corporate';
-  const displayName = isCorporate
-    ? customer.companyName ?? '—'
-    : `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || '—';
+  const displayName = customerDisplayName(customer);
   const subTypeLabel = customerSubTypeLabel(customer.subType);
   const contactCount = customer.contacts?.length ?? 0;
   const isOverdue = customer.followUpDate && new Date(customer.followUpDate) < new Date();
@@ -826,6 +825,7 @@ export default function CustomerDetailPage() {
                 {customer.city && (
                   <p className="text-xs text-slate-400 mt-0.5">📍 {customer.city}</p>
                 )}
+                <FileRecognizedPartners subType={customer.subType} partners={customer.filePartners} />
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {!isFieldStaff && customer.status !== 'passive' && (

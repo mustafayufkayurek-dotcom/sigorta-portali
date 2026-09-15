@@ -8,7 +8,6 @@ export interface SettingsBreadcrumb {
 
 const DEFINITION_PAGE_LABELS: Record<string, string> = {
   '/panel/ayarlar/musteri-tipleri': 'Müşteri Tipleri',
-  '/panel/ayarlar/eksper-sigorta-iliskileri': 'Eksper–Sigorta İlişkileri',
   '/panel/ayarlar/departmanlar': 'Departmanlar',
   '/panel/ayarlar/iliski-turleri': 'İlişki Türleri',
   '/panel/ayarlar/dosya-konulari': 'Dosya Konuları',
@@ -47,9 +46,7 @@ export function getSettingsBreadcrumbs(pathname: string, pageTitle?: string): Se
 
   if (definitionPaths.has(normalized)) {
     const label = pageTitle ?? DEFINITION_PAGE_LABELS[normalized] ?? 'Tanım';
-    const viaTanimlar = normalized === '/panel/ayarlar/eksper-sigorta-iliskileri'
-      ? false
-      : DEFINITION_PAGE_LABELS[normalized] !== undefined;
+    const viaTanimlar = DEFINITION_PAGE_LABELS[normalized] !== undefined;
     if (viaTanimlar) {
       return [
         ayarlarRoot,

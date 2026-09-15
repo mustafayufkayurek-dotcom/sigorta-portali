@@ -1,5 +1,5 @@
 import type { NotificationEmailTemplateData } from '../notifications/email/email.template';
-import { formatEmergencyFileAddress } from '@sigorta/shared';
+import { formatIhbarMailAddress } from '@sigorta/shared';
 import {
   formatNotificationDateTime,
   notificationDash,
@@ -33,7 +33,7 @@ export function buildInboxIhbarEmailRows(
     summary.fileType === 'acil'
       ? notificationDash(summary.assistantCompanyName)
       : notificationDash(summary.insuranceCompanyName);
-  const address = formatEmergencyFileAddress({
+  const address = formatIhbarMailAddress({
     address: summary.address,
     district: summary.district,
     city: summary.city,

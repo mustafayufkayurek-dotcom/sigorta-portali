@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-15",
-  "label": "v597-acil-rapor-foto-yanit-ozet",
-  "description": "Full v597: Acil rapor yerleşimi ve fotoğraf yönü; lightbox yakınlaştır/çevir; yanıt eki; özet dönem; rapor tarihçesi; Hasar kartı liste. Alımda oturum düşmez. Geri alma web v596 / backend v596.",
+  "label": "v598-acil-kapanis-yanit-kime-kart",
+  "description": "Full v598: Acil kapanış raporu ve resmi yükleme; Hasar yanıt eki; Yanıt Kime; müşteri kartı kullanıcıları; üst bant; eksper–sigorta tanıma; ihbar adresi İlçe-İL. Alımda oturum düşmez. Geri alma web v597 / backend v597.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v597-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v597-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v598-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v598-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v596-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v596-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v597-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v597-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

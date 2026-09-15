@@ -1,6 +1,6 @@
 /** Graph JSON gövdesi ~4 MB; taban64 ile ham ek tavanı. Yanıt taslak açmaz. */
 export const INBOX_REPLY_ATTACH_MAX_BYTES = 3_000_000;
-export const INBOX_REPLY_ATTACH_MAX_FILES = 5;
+export const INBOX_REPLY_ATTACH_MAX_FILES = 25;
 
 export const INBOX_REPLY_ATTACH_ACCEPT =
   'image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.pdf,.doc,.docx,.xls,.xlsx';

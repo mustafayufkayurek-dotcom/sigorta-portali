@@ -35,7 +35,8 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
-import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution, resolveAcilInboxFileOwnerId, buildInboxReplyHtml, receiptOriginalSubject, buildPlatformMailCopyNotice, canSendVisibleCopy, prependFileOwnerCopyNotice, INBOX_REPLY_ATTACH_MAX_BYTES, INBOX_REPLY_ATTACH_MAX_FILES, isInboxReplyAttachmentAllowed, sanitizeInboxReplyAttachmentName } from '@sigorta/shared';
+import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution, resolveAcilInboxFileOwnerId, buildInboxReplyHtml, receiptOriginalSubject, buildPlatformMailCopyNotice, canSendVisibleCopy, prependFileOwnerCopyNotice, INBOX_REPLY_ATTACH_MAX_BYTES, INBOX_REPLY_ATTACH_MAX_FILES, isInboxReplyAttachmentAllowed, sanitizeInboxReplyAttachmentName, parseMailAddressList, missingCustomerCardUserEmails, customerCardUserReminder } from '@sigorta/shared';
+import { isMeridyenInternalMailbox } from '@/modules/notifications/email/file-closure-email.template';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -611,6 +612,12 @@ export class OperationInboxService {
       );
     }
 
+    const extraTo = parseMailAddressList((dto.extraTo ?? []).join(' '));
+    const originTo = extraTo.length
+      ? [message.fromAddress, ...(dto.replyAll ? message.toAddresses ?? [] : [])].filter(
+          (e) => e && !isMeridyenInternalMailbox(e),
+        )
+      : [];
     await this.graphMailSend.sendReply(
       message.mailbox,
       message.graphMessageId,
@@ -618,6 +625,8 @@ export class OperationInboxService {
       dto.replyAll ?? false,
       senderCopy ? [{ email: senderCopy.email, name: senderCopy.name }] : undefined,
       this.decodeReplyAttachments(dto.attachments),
+      extraTo,
+      originTo,
     );
 
     const sentAtIso = sentAt.toISOString();
@@ -649,6 +658,77 @@ export class OperationInboxService {
       sent: true,
       message: this.enrichMessageListItem(updated),
     };
+  }
+
+  async recipientCardHints(input: {
+    emails: string[];
+    messageId?: string;
+    claimFileId?: string;
+    emergencyCaseId?: string;
+  }): Promise<{ reminder: string | null; missing: string[] }> {
+    const recipients = parseMailAddressList(input.emails.join(' '));
+    const customerId = await this.resolveHintCustomerId(input);
+    if (!customerId || !recipients.length) {
+      return { reminder: null, missing: [] };
+    }
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: {
+        email: true,
+        contacts: { select: { email: true }, take: 40 },
+        portalUsers: { select: { email: true }, take: 80 },
+      },
+    });
+    if (!customer) return { reminder: null, missing: [] };
+    const scopedUsers = await this.prisma.user.findMany({
+      where: { userAssistantCustomerScopes: { some: { customerId } } },
+      select: { email: true },
+      take: 80,
+    });
+    const registered = [
+      customer.email,
+      ...customer.contacts.map((row) => row.email),
+      ...customer.portalUsers.map((row) => row.email),
+      ...scopedUsers.map((row) => row.email),
+    ].filter((e): e is string => Boolean(e && e.includes('@')));
+    const missing = missingCustomerCardUserEmails({
+      recipients,
+      registeredEmails: registered,
+      skip: (email) => isMeridyenInternalMailbox(email),
+    });
+    return { reminder: customerCardUserReminder(missing), missing };
+  }
+
+  private async resolveHintCustomerId(input: {
+    messageId?: string;
+    claimFileId?: string;
+    emergencyCaseId?: string;
+  }): Promise<string | null> {
+    if (input.messageId) {
+      const message = await this.prisma.inboundMessage.findUnique({
+        where: { id: input.messageId },
+        select: {
+          claimFile: { select: { customerId: true } },
+          emergencyCase: { select: { customerId: true } },
+        },
+      });
+      return message?.claimFile?.customerId || message?.emergencyCase?.customerId || null;
+    }
+    if (input.claimFileId) {
+      const claim = await this.prisma.claimFile.findUnique({
+        where: { id: input.claimFileId },
+        select: { customerId: true },
+      });
+      return claim?.customerId || null;
+    }
+    if (input.emergencyCaseId) {
+      const emergency = await this.prisma.emergencyCase.findUnique({
+        where: { id: input.emergencyCaseId },
+        select: { customerId: true },
+      });
+      return emergency?.customerId || null;
+    }
+    return null;
   }
 
   async composeMessage(dto: ComposeMessageDto, sentByUserId: string) {

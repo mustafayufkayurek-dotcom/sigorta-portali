@@ -8,18 +8,31 @@
 
 ---
 
-## Canlı durum (15 Eylül 2026 — web v597 / backend v597)
+## Canlı durum (15 Eylül 2026 — web v598 / backend v598)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v597-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v597-amd64` | canlı |
-| **Rollback** | Web **v596** / Backend **v596** | manifest `rollbackImages` |
-| **Etiket** | `v597-acil-rapor-foto-yanit-ozet` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v598-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v598-amd64` | canlı |
+| **Rollback** | Web **v597** / Backend **v597** | manifest `rollbackImages` |
+| **Etiket** | `v598-acil-kapanis-yanit-kime-kart` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v598 — Full (15 Eylül 2026) — Acil kapanış; yanıt; Kime; kart; ihbar adresi; resim yükleme
+
+- Acil kapanış raporu tespit kabuğunda; başlık/SLA/saat kapanışı işaret eder; SLA yalnız süre; hizmet sonrası resim; Çilingir dahil mail eki PDF
+- Hasar yanıt ekinde 5 fotoğraf kesmesi kalktı; gönderime küçülür; taslak açılmaz
+- Yanıt Kime çoklu adres; kartta kullanıcı olmayan alan adı adresinde personele hatırlatma
+- Sigorta / broker / asistans / eksper kullanıcıları müşteri kartından; kişi seçilince ad soyad görev e-posta telefon dolar
+- Müşteri / Tedarikçi / Personel Ekle üst bantta yazılan ad; eksper uyarısı ad yazılınca kalkar
+- Eksper–sigorta kare kutu kalktı; ilişki Hasar dosyasından müşteri kartı ve CRM’de
+- Yeni ihbar mailinde adres sonda İlçe-İL (Çukurova-ADANA)
+- Acil kapanış Galeriden/Kameradan kaydı durur; çevirme yüklemeyi düşürmez
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, geri alma web v597 / backend v597. Canlı uploads silinmedi. Yeni migration yok. Alımda backend ve web birden stop edilmez; JWT ve Redis silinmez
+- Geri alma web **v597** / backend **v597**
 
 ### v597 — Full (15 Eylül 2026) — Acil rapor fotoğraf; lightbox; yanıt eki; özet dönem
 

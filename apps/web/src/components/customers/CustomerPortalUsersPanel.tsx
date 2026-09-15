@@ -7,6 +7,7 @@ import { API, authHeader } from '@/utils/api';
 import { PhoneInput } from '@/components/PhoneInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import {
+  isCompleteOfficePersonPhone,
   displayPersonDuty,
   emptyInvitePersonDraft,
   invitePeopleToSubmit,
@@ -46,7 +47,7 @@ export function CustomerPortalUsersPanel({
   const [people, setPeople] = useState<InvitePersonDraft[]>([emptyInvitePersonDraft()]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [personErrors, setPersonErrors] = useState<Record<string, { firstName?: string; lastName?: string; email?: string; jobTitle?: string }>>({});
+  const [personErrors, setPersonErrors] = useState<Record<string, { firstName?: string; lastName?: string; email?: string; jobTitle?: string; phone?: string }>>({});
   const [invites, setInvites] = useState<InviteResult[] | null>(null);
 
   const load = useCallback(() => {
@@ -72,13 +73,14 @@ export function CustomerPortalUsersPanel({
 
   const submit = async () => {
     const rows = invitePeopleToSubmit(people);
-    const nextErrors: Record<string, { firstName?: string; lastName?: string; email?: string; jobTitle?: string }> = {};
+    const nextErrors: Record<string, { firstName?: string; lastName?: string; email?: string; jobTitle?: string; phone?: string }> = {};
     const seen = new Set<string>();
     for (const person of rows) {
-      const row: { firstName?: string; lastName?: string; email?: string; jobTitle?: string } = {};
+      const row: { firstName?: string; lastName?: string; email?: string; jobTitle?: string; phone?: string } = {};
       if (!person.firstName.trim()) row.firstName = 'Ad zorunludur.';
       if (!person.lastName.trim()) row.lastName = 'Soyad zorunludur.';
       if (!person.jobTitle.trim()) row.jobTitle = 'Görev yazılmalıdır.';
+      if (!isCompleteOfficePersonPhone(person.phone)) row.phone = 'Telefon zorunludur.';
       if (!person.email.trim()) row.email = 'E-posta zorunludur.';
       else {
         const email = person.email.trim().toLowerCase();
@@ -89,7 +91,7 @@ export function CustomerPortalUsersPanel({
     }
     setPersonErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
-      setError('Her kişi için ad, soyad, e-posta ve görev doldurulmalıdır.');
+      setError('Her kişi için ad, soyad, e-posta, görev ve telefon doldurulmalıdır.');
       return;
     }
     setSaving(true);
@@ -270,6 +272,9 @@ export function CustomerPortalUsersPanel({
                   <div className="col-span-2 sm:col-span-3">
                     <label className="mb-1 block text-xs font-medium text-slate-600">Telefon</label>
                     <PhoneInput value={person.phone} onChange={(v) => updatePerson(person.key, { phone: v })} />
+                    {personErrors[person.key]?.phone && (
+                      <p className="mt-1 text-xs text-red-600">{personErrors[person.key]?.phone}</p>
+                    )}
                   </div>
                 </div>
               </div>

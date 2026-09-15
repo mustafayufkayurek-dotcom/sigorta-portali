@@ -6,7 +6,6 @@ export const DEFINITION_SETTINGS_PAGES = [
   '/panel/ayarlar/personel',
   '/panel/ayarlar/musteri-tipleri',
   '/panel/ayarlar/sigorta-sirketleri',
-  '/panel/ayarlar/eksper-sigorta-iliskileri',
   '/panel/ayarlar/departmanlar',
   '/panel/ayarlar/iliski-turleri',
   '/panel/ayarlar/dosya-konulari',
@@ -24,5 +23,4 @@ export const DEFINITION_SETTINGS_PAGES = [
   '/panel/ayarlar/musteri-gruplari/broker-firmalari',
   '/panel/ayarlar/musteri-gruplari/eksper-firmalari',
   '/panel/ayarlar/musteri-gruplari/asistans-firmalar',
-  '/panel/ayarlar/musteri-gruplari/eksper-sigorta-iliskileri',
 ] as const;

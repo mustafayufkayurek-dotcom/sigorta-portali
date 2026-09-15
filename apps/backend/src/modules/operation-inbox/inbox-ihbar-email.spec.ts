@@ -31,7 +31,7 @@ describe('inbox ihbar email', () => {
     ]);
     expect(rows[1]?.value).toBe('Ray Sigorta');
     expect(rows[2]?.value).toBe('RCS-20261868899');
-    expect(rows[5]?.value).toBe('Caferağa Mah. Moda Cad. No:12 Kadıköy / İstanbul');
+    expect(rows[5]?.value).toBe('Caferağa Mah. Moda Cad. No:12 Kadıköy-İSTANBUL');
   });
 
   it('renders Acil Yeni İhbar with person name not assistant title', () => {
@@ -59,7 +59,7 @@ describe('inbox ihbar email', () => {
     expect(rows[4]?.value).toBe('Ayşe Yılmaz');
     expect(rows[4]?.value).not.toBe('—');
     expect(rows[5]?.value).toBe(
-      'Borazanlar 413 Özyıl Apt. No : 4 Daire : 2 · Merkez · Bolu',
+      'Borazanlar 413 Özyıl Apt. No : 4 Daire : 2 Merkez-BOLU',
     );
     expect(rows[5]?.value).not.toContain('Türkiye');
   });
@@ -78,7 +78,7 @@ describe('inbox ihbar email', () => {
       actionUrl: 'https://app.meridyen-tr.com/panel/acil-yardim/ornek',
     });
     expect(rows[5]?.value).toBe(
-      'Yeni Abdullah Aykon Dogan 4 Toki Sit. Toki Dk2 1 Toki Dk2 1 No : 6 /1 Daire : 9 · Atabey · Isparta',
+      'Yeni Abdullah Aykon Dogan 4 Toki Sit. Toki Dk2 1 Toki Dk2 1 No : 6 /1 Daire : 9 Atabey-ISPARTA',
     );
     expect(rows[5]?.value).not.toMatch(/Türkiye|Turkiye/i);
   });

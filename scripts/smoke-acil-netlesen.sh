@@ -35,5 +35,7 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/emergency/acil-assistance-approval.lock.spec.ts \
   apps/backend/src/modules/emergency/acil-report-photo-layout.lock.spec.ts \
   apps/backend/src/modules/storage/orient-photo.lock.spec.ts \
-  packages/shared/src/acil-vendor-service-contract.lock.spec.ts
+  apps/backend/src/modules/storage/image-optimizer-upload.lock.spec.ts \
+  packages/shared/src/acil-vendor-service-contract.lock.spec.ts \
+  packages/shared/src/acil-photo-kind.lock.spec.ts
 echo "=== Acil netleşen canlı kilit: PASS ==="

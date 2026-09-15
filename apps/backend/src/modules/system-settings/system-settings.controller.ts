@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, Get, Put, Post, Body, Patch, Param, Delete, UseGuards, Inject, forwardRef, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { SystemSettingsService, MailConfig, TurmobConfig, FieldRequirementsConfig, CustomerSubType, RelationshipType, IhbarKonulari, DocumentReportTemplate, ContractTemplate, NotificationSettings, CompanyInfo, SystemConfig, SmsConfig, IntegrationConfig, M365GraphConfig, FieldInspectionBranch, ExpertInsuranceLinksConfig, MondayMeetingTemplate } from './system-settings.service';
+import { SystemSettingsService, MailConfig, TurmobConfig, FieldRequirementsConfig, CustomerSubType, RelationshipType, IhbarKonulari, DocumentReportTemplate, ContractTemplate, NotificationSettings, CompanyInfo, SystemConfig, SmsConfig, IntegrationConfig, M365GraphConfig, FieldInspectionBranch, MondayMeetingTemplate } from './system-settings.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { Public } from '@/common/decorators/public.decorator';
@@ -414,22 +414,6 @@ export class SystemSettingsController {
   @ApiOperation({ summary: 'Yeni tespit alanı tanımı ekle' })
   async appendTespitAlani(@Body() body: { name: string }) {
     const data = await this.service.appendTespitAlani(body?.name ?? '');
-    return { success: true, data };
-  }
-
-  @Get('eksper-sigorta-baglantilari')
-  @RequirePermissions('settings.view')
-  @ApiOperation({ summary: 'Eksper–sigorta ilişkilerini getir' })
-  async getExpertInsuranceLinks() {
-    const data = await this.service.getExpertInsuranceLinks();
-    return { success: true, data };
-  }
-
-  @Put('eksper-sigorta-baglantilari')
-  @RequirePermissions('settings.manage')
-  @ApiOperation({ summary: 'Eksper–sigorta ilişkilerini güncelle' })
-  async setExpertInsuranceLinks(@Body() body: ExpertInsuranceLinksConfig) {
-    const data = await this.service.setExpertInsuranceLinks(body);
     return { success: true, data };
   }
 

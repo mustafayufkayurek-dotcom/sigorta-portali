@@ -7,21 +7,29 @@ export async function orientPhotoBuffer(buf: Buffer): Promise<{
   width: number;
   height: number;
 }> {
-  const exifFixed = await sharp(buf, { failOn: 'none' }).rotate().toBuffer();
-  const meta = await sharp(exifFixed).metadata();
-  let buffer = exifFixed;
-  let width = meta.width ?? 0;
-  let height = meta.height ?? 0;
-  if (width > height) {
-    const ratio = await edgeRatio(buffer);
-    if (ratio >= SIDEWAYS_RATIO) {
-      buffer = await sharp(buffer).rotate(90).toBuffer();
-      const next = await sharp(buffer).metadata();
-      width = next.width ?? height;
-      height = next.height ?? width;
+  try {
+    const exifFixed = await sharp(buf, { failOn: 'none' }).rotate().toBuffer();
+    const meta = await sharp(exifFixed).metadata();
+    let buffer = exifFixed;
+    let width = meta.width ?? 0;
+    let height = meta.height ?? 0;
+    if (width > height) {
+      try {
+        const ratio = await edgeRatio(buffer);
+        if (ratio >= SIDEWAYS_RATIO) {
+          buffer = await sharp(buffer).rotate(90).toBuffer();
+          const next = await sharp(buffer).metadata();
+          width = next.width ?? height;
+          height = next.height ?? width;
+        }
+      } catch {
+        /* yatay kestirme düşmesin; EXIF düzelmiş kalsın */
+      }
     }
+    return { buffer, width, height };
+  } catch {
+    return { buffer: buf, width: 0, height: 0 };
   }
-  return { buffer, width, height };
 }
 
 export async function embedOrientedAcilReportPhoto(

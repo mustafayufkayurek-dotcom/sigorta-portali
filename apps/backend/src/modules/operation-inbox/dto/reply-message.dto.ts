@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsEmail,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -27,6 +28,25 @@ export class ReplyAttachmentDto {
   contentBase64!: string;
 }
 
+export class RecipientCardHintsDto {
+  @IsOptional()
+  @IsArray()
+  @IsEmail({}, { each: true, message: 'Geçerli e-posta girin' })
+  emails?: string[];
+
+  @IsOptional()
+  @IsString()
+  messageId?: string;
+
+  @IsOptional()
+  @IsString()
+  claimFileId?: string;
+
+  @IsOptional()
+  @IsString()
+  emergencyCaseId?: string;
+}
+
 export class ReplyMessageDto {
   @IsString()
   @IsNotEmpty({ message: 'Yanıt metni zorunludur' })
@@ -36,6 +56,11 @@ export class ReplyMessageDto {
   @IsOptional()
   @IsBoolean()
   replyAll?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsEmail({}, { each: true, message: 'Kime için geçerli e-posta girin' })
+  extraTo?: string[];
 
   @IsOptional()
   @IsArray()

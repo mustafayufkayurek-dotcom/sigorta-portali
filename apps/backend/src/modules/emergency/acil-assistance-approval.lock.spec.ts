@@ -66,8 +66,32 @@ describe('acil asistans rapor onay LOCK', () => {
     assert.match(ctrl, /report-line-phrases/);
     assert.match(html, /input\.workGroup/);
     assert.match(html, /input\.jobDescription/);
+    assert.match(html, />Maktuen</);
+    assert.doesNotMatch(html, /<td class="text-center">Hizmet<\/td>/);
     assert.doesNotMatch(ctrl, /res\.redirect\(302\)/);
     assert.match(svc, /previewAssistanceApprovalReport/);
+  });
+
+  it('kapanış PDF tespit kabuğunu kullanır; Çilingir dahil İhbar kutusundan gider', () => {
+    assert.match(html, /kind === 'kapanis'/);
+    assert.match(html, /Acil Yardım Dosya Kapanış Raporu/);
+    assert.match(html, /Hizmet Sonrası Resimleri/);
+    assert.match(html, /Hizmet Özeti/);
+    assert.match(html, /dosyasının kapanışı üzerine/);
+    assert.match(html, /SLA Süresi/);
+    assert.match(html, /Hizmet Bitiş/);
+    assert.doesNotMatch(html, /İhbar Tarihi \$\{/);
+    const closure = svc.slice(svc.indexOf('private async buildClosureEmailPayload'));
+    assert.match(closure, /buildAcilAssistanceApprovalReportHtml/);
+    assert.match(closure, /kind:\s*'kapanis'/);
+    assert.match(closure, /embedAcilCasePhotos/);
+    assert.doesNotMatch(closure.slice(0, 3500), /isAcilLocksmithIssue/);
+    const send = svc.slice(svc.indexOf('async sendClosureEmail('));
+    assert.match(send, /mailbox:\s*'IHBAR'/);
+    assert.doesNotMatch(send.slice(0, 1200), /isAcilLocksmithIssue/);
+    assert.match(svc, /formatAcilSlaDuration/);
+    const ascii = readFileSync(join(here, 'acil-closure-report-pdf.ts'), 'utf8');
+    assert.match(ascii, /SLA suresi/);
   });
 
   it('manuel onay red revize sil dosyada tarihçeye düşer', () => {

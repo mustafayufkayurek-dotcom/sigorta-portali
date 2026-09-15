@@ -41,6 +41,8 @@ import {
   formatCustomerUpdatedMeta,
   customerServiceTypeLabel,
   customerDisplayName,
+  customerFormHasIdentity,
+  customerFormIdentityBand,
   isHasarCustomerServiceType,
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
@@ -155,7 +157,8 @@ const emptyForm = () => ({
 const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-status-success/30 focus:border-emerald-400 transition-colors';
 const inpError = 'w-full border border-red-400 ring-2 ring-status-danger/20 rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-status-danger/30 focus:border-red-400 transition-colors bg-red-50';
 
-function CustomerSubTypeHintBanner({ subType }: { subType: string }) {
+function CustomerSubTypeHintBanner({ subType, identityFilled }: { subType: string; identityFilled: boolean }) {
+  if (identityFilled) return null;
   const hint = customerSubTypeHint(subType);
   if (!hint) return null;
   return (
@@ -171,6 +174,7 @@ function CustomerSubTypePicker({
   selectedSubType,
   required,
   hasError,
+  identityFilled,
   onToggle,
 }: {
   customerType: 'individual' | 'corporate';
@@ -178,6 +182,7 @@ function CustomerSubTypePicker({
   selectedSubType: string;
   required: boolean;
   hasError: boolean;
+  identityFilled: boolean;
   onToggle: (value: string) => void;
 }) {
   const filtered = customerSubTypesForPicker(subTypes, customerType);
@@ -208,7 +213,7 @@ function CustomerSubTypePicker({
         ))}
       </div>
       {hasError && <p className="text-xs text-status-danger mt-1.5">Müşteri tipi seçimi zorunludur</p>}
-      {selectedSubType && <CustomerSubTypeHintBanner subType={selectedSubType} />}
+      {selectedSubType && <CustomerSubTypeHintBanner subType={selectedSubType} identityFilled={identityFilled} />}
     </div>
   );
 }
@@ -2668,21 +2673,28 @@ export default function MusterilerPage() {
 
       <SlidePanel open={showModal} onClose={() => { setShowModal(false); resetForm(); }} width={640} scrollContent={false}>
         <div className="flex flex-col h-full min-h-0">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex-shrink-0">
-              <div>
-                <h3 className="text-base font-semibold text-white">
-                  {editingCustomerId
-                    ? 'Müşteri Düzenle'
-                    : settingsReturn
-                      ? `${settingsReturn.returnLabel} Ekle`
-                      : 'Yeni Müşteri Ekle'}
+            {(() => {
+              const band = customerFormIdentityBand(form);
+              return (
+            <div className="flex items-center justify-between px-6 py-5 border-b border-emerald-500/30 bg-gradient-to-r from-emerald-600 to-emerald-700 flex-shrink-0" data-testid="musteri-form-kimlik-bandi">
+              <div className="min-w-0 pr-3">
+                <h3 className="text-base font-semibold text-white truncate">
+                  {band.empty
+                    ? (editingCustomerId
+                      ? 'Müşteri Düzenle'
+                      : settingsReturn
+                        ? `${settingsReturn.returnLabel} Ekle`
+                        : 'Yeni Müşteri Ekle')
+                    : band.title}
                 </h3>
-                <p className="text-emerald-200 text-xs mt-0.5">
-                  {editingCustomerId
-                    ? 'Kayıt türü ve alt tip dahil tüm alanları güncelleyebilirsiniz'
-                    : settingsReturn
-                      ? 'Kurumsal cari kaydı tamamlayın; kayıttan sonra gruba dönebilirsiniz'
-                      : 'Tüm Bilgileri Eksiksiz Doldurun'}
+                <p className="text-emerald-100 text-xs mt-0.5 truncate">
+                  {band.empty
+                    ? (editingCustomerId
+                      ? 'Kayıt türü ve alt tip dahil tüm alanları güncelleyebilirsiniz'
+                      : settingsReturn
+                        ? 'Kurumsal cari kaydı tamamlayın; kayıttan sonra gruba dönebilirsiniz'
+                        : 'Tüm Bilgileri Eksiksiz Doldurun')
+                    : [band.side, band.extra].filter(Boolean).join(' · ')}
                 </p>
                 {editingCustomerId && editingCustomerMeta && formatCustomerUpdatedMeta(editingCustomerMeta) && (
                   <p className="text-emerald-100 text-xs mt-1">
@@ -2702,28 +2714,6 @@ export default function MusterilerPage() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-
-            {/* Kimlik Bandı */}
-            {(() => {
-              const displayName = form.customerType === 'individual'
-                ? `${form.firstName} ${form.lastName}`.trim()
-                : form.companyName.trim();
-              const typeLabel = form.customerType === 'individual' ? 'Bireysel' : 'Kurumsal';
-              return displayName ? (
-                <div className="flex items-center gap-2 px-6 py-2.5 bg-emerald-50 border-b border-emerald-100">
-                  <svg className="w-3.5 h-3.5 text-status-success flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span className="text-sm font-semibold text-emerald-800">{displayName}</span>
-                  <span className="text-xs text-status-success font-medium">— {typeLabel}</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 px-6 py-2.5 bg-slate-50 border-b border-slate-100">
-                  <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span className="text-xs text-slate-400 italic">İsim girilmedi</span>
-                </div>
               );
             })()}
 
@@ -2780,6 +2770,7 @@ export default function MusterilerPage() {
                     selectedSubType={form.subType}
                     required={requiresCustomerSubType(form.customerType)}
                     hasError={!!fieldErrors.subType}
+                    identityFilled={customerFormHasIdentity(form)}
                     onToggle={(value) => {
                       if (value === ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE && !canSelectAsistanFirmasi) return;
                       setForm((p) => {

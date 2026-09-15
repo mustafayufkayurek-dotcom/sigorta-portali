@@ -1,12 +1,12 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
-**Tarih:** 28 Haziran 2026 (güncelleme 14.09.2026)  
-**Referans canlı sürüm:** Web **v596** · backend **v596**  
+**Tarih:** 28 Haziran 2026 (güncelleme 15.09.2026)  
+**Referans canlı sürüm:** Web **v598** · backend **v598**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
-v596 alındı. Sırada bekleyen toplu paket yok.
+v598 alındı. Sırada bekleyen toplu paket yok.
 
 ---
 
