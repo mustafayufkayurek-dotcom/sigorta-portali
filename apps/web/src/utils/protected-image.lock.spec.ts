@@ -31,11 +31,18 @@ describe('protected-image LOCK', () => {
     assert.match(lightbox, /document\.body/);
     assert.match(lightbox, /foto-lightbox-onceki/);
     assert.match(lightbox, /foto-lightbox-sonraki/);
+    assert.match(lightbox, /PhotoViewToolbar/);
     assert.match(lightbox, /flex w-full items-center justify-center gap-3/);
     assert.doesNotMatch(lightbox, /absolute left-2 top-1\/2/);
+    const toolbar = read('../components/ui/PhotoViewToolbar.tsx');
+    assert.match(toolbar, /Yakınlaştır/);
+    assert.match(toolbar, /Sola Çevir/);
+    assert.match(toolbar, /Sağa Çevir/);
+    assert.match(toolbar, /Sıfırla/);
     const gallery = read('../components/damage-reports/ReportImageGallery.tsx');
     assert.match(gallery, /rapor-foto-onceki/);
     assert.match(gallery, /rapor-foto-sonraki/);
+    assert.match(gallery, /PhotoViewToolbar/);
     assert.match(gallery, /wrapReadyIndex/);
     const closure = read('../components/file-documents/ClosurePhotosPanel.tsx');
     assert.match(closure, /AuthBlobImg/);

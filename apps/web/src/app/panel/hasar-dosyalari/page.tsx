@@ -54,6 +54,7 @@ import { formatTryAmount } from '@/utils/format-try-amount';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
 import { resolveOperationStatusLabel, HASAR_PRODUCT_STAGE_FILTERS, hasarProductStageFilterValue } from '@sigorta/shared';
+import { istanbulYmd } from '@/utils/istanbul-period';
 import {
   cycleClientSort,
   sortRowsByClientSort,
@@ -586,6 +587,16 @@ function ClaimFilesPageContent() {
             value={opsStats?.approvalPending ?? '—'}
             color="bg-status-warning"
             icon={Hourglass}
+            active={statusFilter === hasarProductStageFilterValue('onay_bekliyor')}
+            onClick={() => {
+              const val = hasarProductStageFilterValue('onay_bekliyor');
+              setPendingReportFilter(false);
+              setRepairReportStatusFilter('');
+              setDateFrom('');
+              setDateTo('');
+              setStatusFilter((s) => (s === val ? '' : val));
+              setPage(1);
+            }}
           />
           <OpsStripKpi
             dense
@@ -593,6 +604,16 @@ function ClaimFilesPageContent() {
             value={opsStats?.reportWriting ?? '—'}
             color="bg-orange-500"
             icon={FileEdit}
+            active={statusFilter === hasarProductStageFilterValue('rapor_yazim')}
+            onClick={() => {
+              const val = hasarProductStageFilterValue('rapor_yazim');
+              setPendingReportFilter(false);
+              setRepairReportStatusFilter('');
+              setDateFrom('');
+              setDateTo('');
+              setStatusFilter((s) => (s === val ? '' : val));
+              setPage(1);
+            }}
           />
           <OpsStripKpi
             dense
@@ -609,6 +630,21 @@ function ClaimFilesPageContent() {
             value={opsStats?.openedTodayClaims ?? '—'}
             color="bg-emerald-600"
             icon={CalendarPlus}
+            active={dateFrom === istanbulYmd() && dateTo === istanbulYmd()}
+            onClick={() => {
+              const day = istanbulYmd();
+              const on = dateFrom === day && dateTo === day;
+              setPendingReportFilter(false);
+              setRepairReportStatusFilter('');
+              if (on) {
+                setDateFrom('');
+                setDateTo('');
+              } else {
+                setDateFrom(day);
+                setDateTo(day);
+              }
+              setPage(1);
+            }}
           />
         </div>
       )}

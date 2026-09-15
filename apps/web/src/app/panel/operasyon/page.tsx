@@ -12,6 +12,7 @@ import {
   FolderInput,
   FolderOpen,
   Hourglass,
+  Banknote,
 } from 'lucide-react';
 import { EmergencyCase } from '@/utils/emergencyApi';
 import { asList } from '@/utils/emergency-list-unwrap';
@@ -30,6 +31,9 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { fmtDate } from '@/utils/date-helpers';
+import { istanbulMonthRange, istanbulWeekRange, istanbulYmd, inYmdRange } from '@/utils/istanbul-period';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 import { resolveClaimDosyaKonusu, toTitleCaseTR } from '@/utils/text-helpers';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import {
@@ -60,7 +64,6 @@ import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
 import { SlidePanel } from '@/components/SlidePanel';
 import { EmergencyCaseNewForm } from '@/components/emergency/EmergencyCaseNewForm';
-import { SearchInput } from '@/components/ui/SearchInput';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
@@ -72,10 +75,8 @@ import {
   OPERATION_PRESET_LABELS,
   deriveOperationStage,
   isAcilWorkloadOpen,
-  istanbulCivilDayRange,
   resolveAcilInsuredName,
   resolveEmergencyOperationLabel,
-  tallyAcilOperationKpis,
   type OperationPreset,
   type OperationStageMeta,
 } from '@sigorta/shared';
@@ -196,6 +197,7 @@ type UnifiedRow =
       reportId: string | null;
       defaultEmailTo: string | null;
       vendorPaid: boolean | null;
+      amountValue?: number;
     }
   | {
       kind: 'acil';
@@ -225,6 +227,7 @@ type UnifiedRow =
       defaultEmailTo: string | null;
       vendorPaid: boolean | null;
       workloadOpen: boolean;
+      amountValue?: number;
     };
 
 function resolveAcilListVendorPaid(c: EmergencyCase): boolean | null {
@@ -282,7 +285,7 @@ const ACIL_TABLE_COLUMNS: TableColumnDef[] = [
   ...ACIL_QUEUE_COLUMNS,
   VENDOR_PAY_COL,
   { id: 'invoice', label: 'Fatura', defaultWidth: 110, minWidth: 88, defaultVisible: false },
-  { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88, defaultVisible: false },
+  { id: 'amount', label: 'Dosya Bedeli (KDV Hariç)', defaultWidth: 150, minWidth: 120 },
   { id: 'reportSales', label: 'Beklenen Ciro', defaultWidth: 110, minWidth: 88, defaultVisible: false },
   { id: 'reportCost', label: 'Tedarikçi Maliyet Toplamı', defaultWidth: 140, minWidth: 110, defaultVisible: false },
   { id: 'reportProfit', label: 'Beklenen Kar', defaultWidth: 110, minWidth: 88, defaultVisible: false },
@@ -393,6 +396,10 @@ function OperasyonPageContent() {
   const [filterInvoice, setFilterInvoice] = useState('');
   const [filterVendorPay, setFilterVendorPay] = useState<AcilVendorPayFilter>('');
   const [filterAcilStage, setFilterAcilStage] = useState('');
+  const [acilSubject, setAcilSubject] = useState('');
+  const [acilDateFrom, setAcilDateFrom] = useState('');
+  const [acilDateTo, setAcilDateTo] = useState('');
+  const [acilPeriod, setAcilPeriod] = useState<'' | 'today' | 'week' | 'month' | 'custom'>('');
   const [opsPreset, setOpsPreset] = useState<OperationPreset | ''>('');
   const tableColumnDefs = filterType === 'acil' ? ACIL_TABLE_COLUMNS : TABLE_COLUMNS;
   const tableColumns = usePanelTableColumns(colsStorageKey, tableColumnDefs);
@@ -549,7 +556,7 @@ function OperasyonPageContent() {
 
   useEffect(() => {
     setPage(1);
-  }, [opsPreset, filterInvoice, filterType, acilPageSize, customerQuery, filterVendorPay, filterAcilStage]);
+  }, [opsPreset, filterInvoice, filterType, acilPageSize, customerQuery, filterVendorPay, filterAcilStage, acilSubject, acilDateFrom, acilDateTo]);
 
   const hasarRows: UnifiedRow[] = claims.map((claim) => {
     const invStatus = deriveInvoiceStatus(claim.invoices ?? []);
@@ -641,6 +648,7 @@ function OperasyonPageContent() {
         c.customer?.shortName,
       ],
     });
+    const gelir = c.totalGelir != null ? Number(c.totalGelir) : 0;
     return {
       kind: 'acil' as const,
       id: c.id,
@@ -657,9 +665,10 @@ function OperasyonPageContent() {
       statusLabel: c.operationStatusLabel
         ?? resolveEmergencyOperationLabel({ status: c.status, notes: c.notes }),
       invoiceStatus: c.status === 'FATURALANDILDI' ? 'paid' : 'none',
-      amount: null,
+      amount: gelir > 0 ? formatTryAmount(gelir, { fractionDigits: 0 }) : null,
+      amountValue: gelir > 0 ? gelir : 0,
       expectedSales:
-        c.totalGelir != null ? formatTryAmount(Number(c.totalGelir), { fractionDigits: 0 }) : null,
+        gelir > 0 ? formatTryAmount(gelir, { fractionDigits: 0 }) : null,
       supplierCostTotal:
         c.totalGider != null ? formatTryAmount(Number(c.totalGider), { fractionDigits: 0 }) : null,
       expectedProfit:
@@ -678,14 +687,57 @@ function OperasyonPageContent() {
     };
   });
 
-  const acilKpiTally = useMemo(
-    () =>
-      tallyAcilOperationKpis(
-        cases.map((c) => ({ status: c.status, notes: c.notes, createdAt: c.createdAt })),
-        istanbulCivilDayRange(),
-      ),
-    [cases],
-  );
+  const acilSubjectOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const row of acilRows) {
+      if (row.subject && row.subject !== '—') names.add(row.subject);
+    }
+    return [...names].sort((a, b) => a.localeCompare(b, 'tr'));
+  }, [acilRows]);
+
+  const acilScopedRows = useMemo(() => {
+    let rows = acilRows;
+    if (acilSubject) rows = rows.filter((row) => row.subject === acilSubject);
+    if (acilDateFrom && acilDateTo) {
+      rows = rows.filter((row) => inYmdRange(row.date, acilDateFrom, acilDateTo));
+    }
+    return rows;
+  }, [acilRows, acilSubject, acilDateFrom, acilDateTo]);
+
+  const acilKpiTally = useMemo(() => {
+    const today = istanbulYmd();
+    const week = istanbulWeekRange();
+    const month = istanbulMonthRange();
+    const bySubject = acilSubject ? acilRows.filter((row) => row.subject === acilSubject) : acilRows;
+    return {
+      openEmergency: acilScopedRows.filter((row) => row.workloadOpen).length,
+      openedTodayEmergency: acilScopedRows.filter((row) => istanbulYmd(new Date(row.date)) === today).length,
+      fileCount: acilScopedRows.length,
+      weekCount: bySubject.filter((row) => inYmdRange(row.date, week.from, week.to)).length,
+      monthCount: bySubject.filter((row) => inYmdRange(row.date, month.from, month.to)).length,
+      bedel: acilScopedRows.reduce((n, row) => n + (row.amountValue ?? 0), 0),
+    };
+  }, [acilScopedRows, acilRows, acilSubject]);
+
+  function applyAcilPeriod(next: '' | 'today' | 'week' | 'month' | 'custom') {
+    setAcilPeriod(next);
+    if (next === 'today') {
+      const day = istanbulYmd();
+      setAcilDateFrom(day);
+      setAcilDateTo(day);
+    } else if (next === 'week') {
+      const range = istanbulWeekRange();
+      setAcilDateFrom(range.from);
+      setAcilDateTo(range.to);
+    } else if (next === 'month') {
+      const range = istanbulMonthRange();
+      setAcilDateFrom(range.from);
+      setAcilDateTo(range.to);
+    } else if (next === '') {
+      setAcilDateFrom('');
+      setAcilDateTo('');
+    }
+  }
 
   function sortValue(row: UnifiedRow, key: string): string {
     switch (key) {
@@ -736,6 +788,12 @@ function OperasyonPageContent() {
           return false;
         })
       : [...merged];
+    if (filterType === 'acil' && acilSubject) {
+      rows = rows.filter((row) => row.kind === 'acil' && row.subject === acilSubject);
+    }
+    if (filterType === 'acil' && acilDateFrom && acilDateTo) {
+      rows = rows.filter((row) => row.kind === 'acil' && inYmdRange(row.date, acilDateFrom, acilDateTo));
+    }
     if (filterType === 'acil' && filterVendorPay) {
       rows = rows.filter(
         (row) => row.kind === 'acil' && acilVendorPayMatchesFilter(row.vendorPaid, filterVendorPay),
@@ -1039,6 +1097,33 @@ function OperasyonPageContent() {
           value={casesLoading ? '—' : acilKpiTally.openedTodayEmergency}
           color="bg-emerald-600"
           icon={CalendarPlus}
+          active={acilPeriod === 'today'}
+          onClick={() => applyAcilPeriod(acilPeriod === 'today' ? '' : 'today')}
+        />
+        <OpsStripKpi
+          dense
+          label="Bu Hafta"
+          value={casesLoading ? '—' : acilKpiTally.weekCount}
+          color="bg-orange-500"
+          icon={FileEdit}
+          active={acilPeriod === 'week'}
+          onClick={() => applyAcilPeriod(acilPeriod === 'week' ? '' : 'week')}
+        />
+        <OpsStripKpi
+          dense
+          label="Bu Ay"
+          value={casesLoading ? '—' : acilKpiTally.monthCount}
+          color="bg-amber-600"
+          icon={ClipboardCheck}
+          active={acilPeriod === 'month'}
+          onClick={() => applyAcilPeriod(acilPeriod === 'month' ? '' : 'month')}
+        />
+        <OpsStripKpi
+          dense
+          label="Toplam Bedel (KDV Hariç)"
+          value={casesLoading ? '—' : formatTryAmount(acilKpiTally.bedel, { fractionDigits: 0 })}
+          color="bg-violet-600"
+          icon={Banknote}
         />
       </div>
       ) : (
@@ -1210,6 +1295,58 @@ function OperasyonPageContent() {
             </select>
             <select
               className="panel-filter-control"
+              value={acilSubject}
+              onChange={(e) => setAcilSubject(e.target.value)}
+              data-testid="acil-konu-filtre"
+            >
+              <option value="">Tüm Konular</option>
+              {acilSubjectOptions.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+            <select
+              className="panel-filter-control"
+              value={acilPeriod === 'custom' ? 'custom' : acilPeriod}
+              onChange={(e) => {
+                const v = e.target.value as '' | 'today' | 'week' | 'month' | 'custom';
+                applyAcilPeriod(v);
+              }}
+              data-testid="acil-donem-filtre"
+            >
+              <option value="">Tüm Tarihler</option>
+              <option value="today">Bugün</option>
+              <option value="week">Bu Hafta</option>
+              <option value="month">Bu Ay</option>
+              <option value="custom">Özel Tarih</option>
+            </select>
+            {(acilPeriod === 'custom' || acilDateFrom || acilDateTo) && (
+              <>
+                <div className="relative flex-[1_1_calc(50%-0.25rem)] sm:flex-[0_0_8.75rem] min-w-[7.25rem]">
+                  <TrDateInput
+                    className="input-base-sm w-full"
+                    value={acilDateFrom}
+                    onChange={(v) => {
+                      setAcilPeriod('custom');
+                      setAcilDateFrom(v);
+                    }}
+                    placeholder="Başlangıç"
+                  />
+                </div>
+                <div className="relative flex-[1_1_calc(50%-0.25rem)] sm:flex-[0_0_8.75rem] min-w-[7.25rem]">
+                  <TrDateInput
+                    className="input-base-sm w-full"
+                    value={acilDateTo}
+                    onChange={(v) => {
+                      setAcilPeriod('custom');
+                      setAcilDateTo(v);
+                    }}
+                    placeholder="Bitiş"
+                  />
+                </div>
+              </>
+            )}
+            <select
+              className="panel-filter-control"
               value={sort}
               onChange={(e) => setSort(e.target.value)}
               title="Sıralama"
@@ -1219,7 +1356,7 @@ function OperasyonPageContent() {
               <option value="updatedAt:desc">Son Güncelleme</option>
               <option value="fileNo:asc">Dosya No A-Z</option>
             </select>
-            {customerQuery.trim() || filterInvoice || filterVendorPay || filterAcilStage ? (
+            {customerQuery.trim() || filterInvoice || filterVendorPay || filterAcilStage || acilSubject || acilDateFrom || acilDateTo ? (
               <button
                 type="button"
                 onClick={() => {
@@ -1227,6 +1364,8 @@ function OperasyonPageContent() {
                   setFilterInvoice('');
                   setFilterVendorPay('');
                   setFilterAcilStage('');
+                  setAcilSubject('');
+                  applyAcilPeriod('');
                 }}
                 className="text-xs text-slate-500 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-xl hover:border-red-200 transition-colors whitespace-nowrap"
               >

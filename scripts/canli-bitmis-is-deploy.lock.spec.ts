@@ -24,6 +24,15 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
     lockOrder(readFileSync(join(here, 'deploy-web-production.sh'), 'utf8'));
   });
 
+  it('full alım iki konteyneri birden durdurmaz; JWT ve Redis silinmez', () => {
+    const full = readFileSync(join(here, 'deploy-full-production.sh'), 'utf8');
+    assert.doesNotMatch(full, /docker stop sigorta-backend sigorta-web/);
+    assert.match(full, /eski web ayakta/);
+    assert.match(full, /JWT_SECRET/);
+    assert.doesNotMatch(full, /redis-cli\s+.*FLUSH/);
+    assert.match(full, /exclude '\.env'/);
+  });
+
   it('toplu kilit listesi kendi kapısını doğrular', () => {
     const src = readFileSync(join(here, 'smoke-canli-bitmis-is.sh'), 'utf8');
     assert.match(src, /smoke-acil-netlesen\.sh/);

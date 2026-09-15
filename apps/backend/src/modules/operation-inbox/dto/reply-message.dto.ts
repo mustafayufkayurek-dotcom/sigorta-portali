@@ -1,4 +1,31 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
+import { INBOX_REPLY_ATTACH_MAX_FILES } from '@sigorta/shared';
+
+export class ReplyAttachmentDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Ek dosya adı zorunludur' })
+  @MaxLength(180, { message: 'Ek dosya adı çok uzun' })
+  filename!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  contentType?: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Ek içeriği zorunludur' })
+  contentBase64!: string;
+}
 
 export class ReplyMessageDto {
   @IsString()
@@ -9,4 +36,13 @@ export class ReplyMessageDto {
   @IsOptional()
   @IsBoolean()
   replyAll?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(INBOX_REPLY_ATTACH_MAX_FILES, {
+    message: `En fazla ${INBOX_REPLY_ATTACH_MAX_FILES} ek ekleyebilirsiniz`,
+  })
+  @ValidateNested({ each: true })
+  @Type(() => ReplyAttachmentDto)
+  attachments?: ReplyAttachmentDto[];
 }

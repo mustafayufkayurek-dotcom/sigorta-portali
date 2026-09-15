@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { packAcilReportPhotoRows, type AcilReportPhoto } from './acil-report-photo-layout';
 
 function escapeHtml(text: string): string {
   return text
@@ -21,8 +22,11 @@ function fmtDate(d: Date | string | null | undefined): string {
   return date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function fmtDateTime(d: Date): string {
-  return d.toLocaleString('tr-TR', {
+function fmtDateTime(d: Date | string | null | undefined): string {
+  if (!d) return '—';
+  const date = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('tr-TR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -32,7 +36,22 @@ function fmtDateTime(d: Date): string {
 }
 
 function fmtCurrency(n: number): string {
-  return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '\u00a0TL';
+  return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
+}
+
+export function formatAcilAmountVat(n: number): string {
+  return `${fmtCurrency(n)}+KDV`;
+}
+
+export function formatAcilCityNetwork(city?: string | null): string {
+  const t = String(city ?? '').trim();
+  if (!t) return '—';
+  return `${t} Network`;
+}
+
+export function formatAcilSicilNo(raw?: string | null): string | null {
+  const t = String(raw ?? '').trim();
+  return t || null;
 }
 
 function fmtPhone(raw?: string | null): string {
@@ -67,12 +86,6 @@ function resolveLogoDataUrl(): string | null {
   return null;
 }
 
-function chunk<T>(items: T[], size: number): T[][] {
-  const rows: T[][] = [];
-  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size));
-  return rows;
-}
-
 const FINDINGS_SECTION_TITLE = 'Tespit Bulguları';
 const FINDINGS_LEAD = 'Riziko adreste yapılan incelemeler sonucunda;';
 const GRAND_TOTAL_LABEL = 'Rapor Genel Toplam';
@@ -92,8 +105,15 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
   saleAmount: number;
   saleLabel: string;
   reportDate?: Date | string | null;
-  inspectorName?: string | null;
-  photos: Array<{ dataUrl: string; caption?: string }>;
+  city?: string | null;
+  reporterName?: string | null;
+  reporterSicilNo?: string | null;
+  preWorkApprovals?: Array<{
+    title: string;
+    approvedFullName?: string | null;
+    approvedAt?: Date | string | null;
+  }>;
+  photos: AcilReportPhoto[];
 }): string {
   const logo = resolveLogoDataUrl();
   const headerBrand = logo
@@ -102,29 +122,62 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
   const generatedAt = new Date();
   const saleAmount = Number.isFinite(input.saleAmount) ? input.saleAmount : 0;
   const saleText = saleAmount > 0 ? fmtCurrency(saleAmount) : dash(input.saleLabel);
+  const saleVatText = saleAmount > 0 ? formatAcilAmountVat(saleAmount) : dash(input.saleLabel);
   const findingsBody = (input.findings || '').trim() || '—';
-  const inspector = (input.inspectorName || '').trim();
-  const photoRows = chunk(input.photos, 3)
-    .map((row) => {
-      const cells = [0, 1, 2]
-        .map((idx) => {
-          const img = row[idx];
-          if (!img) return '<td class="photo-cell photo-cell-empty"></td>';
-          const caption = (img.caption ?? '').trim();
-          return `<td class="photo-cell"><img src="${img.dataUrl}" class="photo-img" alt="Tespit"/>${
-            caption ? `<div class="photo-caption">${escapeHtml(caption)}</div>` : ''
-          }</td>`;
+  const cityNetwork = formatAcilCityNetwork(input.city);
+  const reporterName = (input.reporterName || '').trim();
+  const sicil = formatAcilSicilNo(input.reporterSicilNo);
+  const reporterHtml = reporterName
+    ? `${escapeHtml(reporterName)}${
+        sicil ? ` <span class="reporter-sicil">(Sicil No ${escapeHtml(sicil)})</span>` : ''
+      }`
+    : '—';
+  const approvals = (input.preWorkApprovals ?? []).filter((row) => String(row.title ?? '').trim());
+  const approvalRows = approvals.length
+    ? approvals
+        .map((row) => {
+          const when = row.approvedAt ? fmtDateTime(row.approvedAt instanceof Date ? row.approvedAt : new Date(row.approvedAt)) : '—';
+          const who = (row.approvedFullName || '').trim() || '—';
+          return `<tr>
+            <td>${dash(row.title)}</td>
+            <td>${escapeHtml(who)}</td>
+            <td class="text-center">${escapeHtml(when)}</td>
+          </tr>`;
         })
-        .join('');
-      return `<tr>${cells}</tr>`;
+        .join('')
+    : '<tr><td colspan="3">İşlem öncesi dijital onay kaydı yok.</td></tr>';
+  const photoRows = packAcilReportPhotoRows(input.photos)
+    .map((row) => {
+      const itemSpan = row.kind === 'landscape' ? (row.items.length === 1 ? 6 : 3) : 2;
+      const cells = row.items.map((img) => {
+        const caption = (img.caption ?? '').trim();
+        const full = row.kind === 'landscape' && row.items.length === 1;
+        return `<td class="photo-cell photo-cell-${row.kind}${full ? ' photo-cell-full' : ''}" colspan="${itemSpan}">` +
+          `<img src="${img.dataUrl}" class="photo-img" alt="Tespit"/>` +
+          (caption ? `<div class="photo-caption">${escapeHtml(caption)}</div>` : '') +
+        `</td>`;
+      });
+      let filled = itemSpan * row.items.length;
+      while (filled < 6) {
+        cells.push('<td class="photo-cell photo-cell-empty" colspan="2"></td>');
+        filled += 2;
+      }
+      return `<tr>${cells.join('')}</tr>`;
     })
     .join('');
   const gallery = input.photos.length
     ? `<div class="appendix-block">
         <div class="section-header">Tespit Resimleri (Rapor Eki)</div>
-        <table class="photo-gallery">${photoRows}</table>
+        <table class="photo-gallery">
+          <colgroup>
+            <col style="width:16.66%"/><col style="width:16.66%"/><col style="width:16.66%"/>
+            <col style="width:16.66%"/><col style="width:16.66%"/><col style="width:16.66%"/>
+          </colgroup>
+          ${photoRows}
+        </table>
       </div>`
     : '';
+  const closingClass = input.photos.length ? 'closing-block closing-block-next' : 'closing-block';
 
   return `<!DOCTYPE html>
 <html lang="tr">
@@ -197,8 +250,10 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
   .info-block {
     border: 1px solid #e2e8f0;
     border-top: none;
-    padding: 8px 22px;
+    padding: 8px 22px 10px;
     background: #f8fafc;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .info-id-grid {
     display: grid;
@@ -208,14 +263,14 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
   }
   .info-field {
     display: grid;
-    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-columns: 128px minmax(0, 1fr);
     align-items: start;
     gap: 2px 8px;
     padding: 4px 0;
     border-bottom: 1px solid #e9edf2;
     min-width: 0;
   }
-  .info-field-address { grid-row: span 2; align-self: stretch; }
+  .info-field-wide { grid-column: 1 / -1; }
   .info-label {
     font-size: 7.5pt;
     color: #64748b;
@@ -355,25 +410,8 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
   }
   .legal-list li:last-child { border-bottom: none; }
   .legal-num { font-weight: 700; color: #475569; margin-right: 3px; }
-  .signature-section {
-    display: flex;
-    justify-content: space-around;
-    gap: 24px;
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 2px solid #e2e8f0;
-  }
-  .signature-box { flex: 1; text-align: center; max-width: 200px; }
-  .signature-label {
-    font-size: 8.5pt;
-    font-weight: 700;
-    color: #374151;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 32px;
-  }
-  .signature-line { border-top: 1.5px solid #374151; width: 80%; margin: 0 auto 6px; }
-  .signature-name { font-size: 9pt; font-weight: 600; color: #1e293b; }
+  .reporter-sicil { font-style: italic; font-weight: 500; color: #475569; }
+  .approval-table { margin-top: 0; }
   .appendix-block { margin-top: 12px; }
   .photo-gallery {
     width: 100%;
@@ -385,22 +423,30 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
     border-top: none;
     background: #fafafa;
   }
+  .photo-gallery tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .photo-cell {
-    width: 33.33%;
     vertical-align: top;
     background: white;
     border: 1px solid #e2e8f0;
     border-radius: 4px;
     overflow: hidden;
   }
+  .photo-cell-portrait { width: 33.33%; }
+  .photo-cell-landscape { width: 50%; }
   .photo-cell-empty { background: transparent; border: none; }
   .photo-img {
     width: 100%;
-    height: 156px;
     object-fit: contain;
     background: #f8fafc;
     display: block;
+    image-orientation: none;
   }
+  .photo-cell-landscape .photo-img { height: 178px; }
+  .photo-cell-landscape.photo-cell-full .photo-img { height: 240px; }
+  .photo-cell-portrait .photo-img { height: 232px; }
   .photo-caption {
     font-size: 7.5pt;
     color: #475569;
@@ -409,24 +455,86 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
     border-top: 1px solid #e2e8f0;
     background: #f8fafc;
   }
-  .report-footer {
-    margin-top: 14px;
-    padding: 12px 16px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 0 0 4px 4px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: end;
-    column-gap: 12px;
+  .closing-block {
+    margin-top: 18px;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
-  .footer-generated { font-size: 7.5pt; color: #64748b; text-align: left; line-height: 1.35; }
-  .footer-affiliation {
+  .closing-block-next {
+    page-break-before: always;
+    break-before: page;
+  }
+  .legal-closing {
+    padding: 14px 18px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+  .legal-closing .legal-title { margin-bottom: 10px; }
+  .legal-closing .legal-list li {
+    border-bottom: none;
+    padding: 3px 0;
+  }
+  .signature-section {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 22px;
+    table-layout: fixed;
+  }
+  .signature-section td {
+    width: 50%;
+    text-align: center;
+    vertical-align: top;
+    padding: 8px 24px 4px;
+  }
+  .signature-label {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: #374151;
+    letter-spacing: 0.4px;
+    margin-bottom: 28px;
+  }
+  .signature-line {
+    border-top: 1.5px solid #334155;
+    width: 78%;
+    margin: 0 auto 8px;
+  }
+  .signature-name {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.35;
+  }
+  .signature-stamp {
+    margin-top: 6px;
+    font-size: 8.5pt;
+    font-weight: 700;
+    font-style: italic;
+    color: #047857;
+  }
+  .report-footer {
+    margin-top: 16px;
+    padding: 0;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .footer-meta {
+    width: 100%;
+    border-collapse: collapse;
+    background: #e2e8f0;
+  }
+  .footer-meta td {
+    padding: 8px 16px;
+    vertical-align: middle;
     font-size: 7.5pt;
     color: #475569;
+    line-height: 1.35;
+  }
+  .footer-generated { text-align: left; }
+  .footer-affiliation {
     text-align: right;
     font-weight: 600;
-    line-height: 1.35;
   }
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -465,7 +573,7 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
       <span class="info-label">Dosya Konusu</span>
       <span class="info-value">${dash(input.subject)}</span>
     </div>
-    <div class="info-field info-field-address">
+    <div class="info-field info-field-wide">
       <span class="info-label">Sigortalı Adres</span>
       <span class="info-value">${dash(input.address)}</span>
     </div>
@@ -508,33 +616,59 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
 <div class="repair-totals-stack">
   <div class="repair-total-band repair-total-band-grand">
     <div class="repair-total-label">${GRAND_TOTAL_LABEL}</div>
-    <div class="repair-total-value">${saleText} +KDV</div>
+    <div class="repair-total-value">${saleVatText}</div>
   </div>
 </div>
 
-<div class="legal-section">
-  <div class="legal-title">Yasal Uyarılar Ve Açıklamalar</div>
-  <ul class="legal-list">
-    <li><span class="legal-num">1.</span>Bu rapor, Acil Yardım sahasında yapılan tespit sonucunda hazırlanmıştır.</li>
-    <li><span class="legal-num">2.</span>Belirtilen hizmet bedeli KDV hariçtir; yürürlükteki vergi mevzuatına göre KDV ayrıca hesaplanır.</li>
-    <li><span class="legal-num">3.</span>Bu belge dış kullanımdır.</li>
-  </ul>
-</div>
-
-<div class="signature-section">
-  <div class="signature-box">
-    <div class="signature-label">Tespiti Yapan</div>
-    <div class="signature-line"></div>
-    <div class="signature-name">${dash(inspector)}</div>
-  </div>
-</div>
+<div class="section-header">İşlem Öncesi Dijital Onaylar</div>
+<table class="items-table approval-table">
+  <thead>
+    <tr>
+      <th style="width:44%">Belge</th>
+      <th style="width:28%">Onaylayan</th>
+      <th style="width:28%">Tarih Saat</th>
+    </tr>
+  </thead>
+  <tbody>${approvalRows}</tbody>
+</table>
 
 ${gallery}
 
+<div class="${closingClass}">
+  <div class="legal-closing">
+    <div class="legal-title">Yasal Uyarılar Ve Açıklamalar</div>
+    <ul class="legal-list">
+      <li><span class="legal-num">1.</span>Bu rapor, Acil Yardım sahasında yapılan tespit sonucunda hazırlanmıştır.</li>
+      <li><span class="legal-num">2.</span>Belirtilen hizmet bedeli KDV hariçtir; yürürlükteki vergi mevzuatına göre KDV ayrıca hesaplanır.</li>
+      <li><span class="legal-num">3.</span>Bu belge dış kullanımdır.</li>
+      <li><span class="legal-num">4.</span>Bu rapor yalnız bu dosyanın tarafları içindir. İzinsiz çoğaltılamaz ve dağıtılamaz.</li>
+    </ul>
+  </div>
+  <table class="signature-section">
+    <tr>
+      <td>
+        <div class="signature-label">Tespiti Yapan</div>
+        <div class="signature-line"></div>
+        <div class="signature-name">${dash(cityNetwork)}</div>
+        <div class="signature-stamp">Dijital Onaylı</div>
+      </td>
+      <td>
+        <div class="signature-label">Raporlayan</div>
+        <div class="signature-line"></div>
+        <div class="signature-name">${reporterHtml}</div>
+        <div class="signature-stamp">Dijital Onaylı</div>
+      </td>
+    </tr>
+  </table>
+</div>
+
 <div class="report-footer">
-  <div class="footer-generated">Pdf Oluşturma: ${escapeHtml(fmtDateTime(generatedAt))}<br/>Dış Kullanım</div>
-  <div></div>
-  <div class="footer-affiliation">Meridyen Assistance Safran Birleşik Hizmetler Yan Kuruluşudur</div>
+  <table class="footer-meta">
+    <tr>
+      <td class="footer-generated">Pdf Oluşturma: ${escapeHtml(fmtDateTime(generatedAt))}<br/>Dış Kullanım</td>
+      <td class="footer-affiliation">Meridyen Assistance Safran Birleşik Hizmetler Yan Kuruluşudur</td>
+    </tr>
+  </table>
 </div>
 </body>
 </html>`;

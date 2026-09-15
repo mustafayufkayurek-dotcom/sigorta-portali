@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { orientPhotoBuffer } from './orient-photo';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const sharp = require('sharp') as (input: Buffer) => import('sharp').Sharp;
 
@@ -50,10 +51,10 @@ export class ImageOptimizerService {
       format = 'webp',
     } = options;
 
-    const sharpInstance = sharp(buffer);
-    const metadata = await sharpInstance.metadata();
+    const oriented = await orientPhotoBuffer(buffer);
+    const metadata = await sharp(oriented.buffer).metadata();
 
-    let pipeline = sharpInstance;
+    let pipeline = sharp(oriented.buffer);
 
     // Genişlik kısıtlaması (orantılı)
     if (metadata.width && metadata.width > maxWidth) {
@@ -104,8 +105,9 @@ export class ImageOptimizerService {
   ): Promise<{ buffer: Buffer; mimeType: string; extension: string }> {
     const { width = 300, height = 300, quality = 70 } = options;
 
-    const outputBuffer = await sharp(buffer)
-      .resize(width, height, { fit: 'cover', position: 'centre' })
+    const oriented = await orientPhotoBuffer(buffer);
+    const outputBuffer = await sharp(oriented.buffer)
+      .resize(width, height, { fit: 'inside', withoutEnlargement: true })
       .webp({ quality })
       .toBuffer();
 

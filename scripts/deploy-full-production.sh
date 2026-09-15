@@ -102,17 +102,27 @@ services:
   web:
     image: $WEB_IMAGE
 EOF
-docker stop sigorta-backend sigorta-web 2>/dev/null || true
-docker rm sigorta-backend sigorta-web 2>/dev/null || true
-bash scripts/restart-web-production.sh
+# Oturum: .env.production / JWT_SECRET / Redis bellek silinmez.
+# İki konteyner birden stop edilmez — kısa kesintide personel girişe düşmez.
+echo '=== Yeni backend (eski web ayakta) ==='
 docker compose -p $COMPOSE_PROJECT_NAME --env-file .env.production -f docker-compose.prod.yml -f docker-compose.override.yml up -d --no-deps backend
-sleep 70
+ok=0
+for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+  if docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health >/dev/null 2>&1; then
+    ok=1
+    break
+  fi
+  sleep 6
+done
+[ \"\$ok\" = 1 ] || { echo 'HATA: yeni backend sağlık vermedi'; exit 1; }
 docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health
 echo '=== prisma migrate deploy ==='
 docker exec sigorta-backend sh -c 'cd /app/apps/backend && npx prisma migrate deploy' || {
   echo 'UYARI: prisma migrate deploy başarısız — backend loglarını kontrol edin'
 }
 docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health
+echo '=== Yeni web (backend sağlık sonrası) ==='
+bash scripts/restart-web-production.sh
 docker exec sigorta-nginx nginx -s reload 2>/dev/null || true
 sleep 2
 bash scripts/verify-nginx-web-routing.sh

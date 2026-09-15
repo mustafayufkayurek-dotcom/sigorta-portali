@@ -26,9 +26,9 @@ async function bootstrap() {
     bodyParser: true,
   });
 
-  // Logo (base64) gibi ayar kayıtları için varsayılan 100kb limitini yükselt
-  app.useBodyParser('json', { limit: '5mb' });
-  app.useBodyParser('urlencoded', { limit: '5mb', extended: true });
+  // Logo (base64) ve yanıt eki için varsayılan 100kb limitini yükselt
+  app.useBodyParser('json', { limit: '8mb' });
+  app.useBodyParser('urlencoded', { limit: '8mb', extended: true });
 
   const jwt = app.get(JwtService);
   const tokenBlacklist = app.get(TokenBlacklistService);

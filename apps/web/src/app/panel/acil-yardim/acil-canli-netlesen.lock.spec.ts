@@ -98,7 +98,13 @@ describe('acil canlı netleşen LOCK', () => {
     assert.doesNotMatch(acilPage, /1 · Operasyon başlangıç/);
     assert.doesNotMatch(acilPage, /Süreci Aç/);
     assert.match(acilPage, /sendAssistanceApprovalEmail/);
-    assert.match(acilPage, /openAssistanceApprovalReport/);
+    assert.match(acilPage, /archiveAcilReport/);
+    assert.match(acilPage, /currentOperator/);
+    assert.match(acilPage, /customerRejected: true/);
+    assert.match(acilPage, /h\.actorName/);
+    assert.match(acilPage, /rapor-surumleri/);
+    assert.match(acilPage, /onReviseApprovalReport/);
+    assert.match(acilPage, /onDeleteApprovalReport/);
     assert.match(acilPage, /isAcilLocksmithIssue/);
     assert.doesNotMatch(acilPage, /PanelPillTabs/);
   });
@@ -216,6 +222,13 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(approvalBlock, /acil-rapor-mahal/);
     assert.match(approvalBlock, /AcilReportPhraseInput/);
     assert.match(approvalBlock, /Örn\. duvar işleri/);
+    assert.doesNotMatch(approvalBlock, /datalist/);
+    assert.doesNotMatch(acilPage, /\/work-groups/);
+    assert.doesNotMatch(acilPage, /Raporu Asistansa Gönder/);
+    assert.match(
+      readFileSync(join(here, '../../../components/acil-operasyon-planlayicisi/planner-steps.tsx'), 'utf8'),
+      /Müşteri Onayına Gönder/,
+    );
     assert.doesNotMatch(approvalBlock, /uppercase tracking-wide/);
     assert.doesNotMatch(acilPage, /Raporu Asistansa Gönderin\./);
     const ihbarBlock = acilPage.slice(

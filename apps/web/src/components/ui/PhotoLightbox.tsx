@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
+import { PhotoViewToolbar, usePhotoViewTransform } from '@/components/ui/PhotoViewToolbar';
 
 type Props = {
   srcs: string[];
@@ -23,12 +24,25 @@ export function PhotoLightbox({ srcs, index, onIndex, onClose, alt = 'Fotoğraf'
   const total = srcs.length;
   const src = srcs[index];
   const canNav = total > 1;
+  const view = usePhotoViewTransform(src ?? index);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
+      }
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        view.zoomIn();
+      }
+      if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        view.zoomOut();
+      }
+      if (e.key === '0') {
+        e.preventDefault();
+        view.reset();
       }
       if (!canNav) return;
       if (e.key === 'ArrowLeft') {
@@ -42,7 +56,7 @@ export function PhotoLightbox({ srcs, index, onIndex, onClose, alt = 'Fotoğraf'
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [canNav, index, onClose, onIndex, total]);
+  }, [canNav, index, onClose, onIndex, total, view.reset, view.zoomIn, view.zoomOut]);
 
   if (typeof document === 'undefined' || !src) return null;
 
@@ -87,11 +101,15 @@ export function PhotoLightbox({ srcs, index, onIndex, onClose, alt = 'Fotoğraf'
               <ChevronLeft className="h-6 w-6" strokeWidth={1.75} />
             </button>
           ) : null}
-          <div className="flex min-h-[200px] min-w-0 flex-1 items-center justify-center">
+          <div
+            className="flex min-h-[200px] min-w-0 flex-1 items-center justify-center overflow-auto"
+            onWheel={view.onWheel}
+          >
             <AuthBlobImg
               url={src}
               alt={alt}
               className="max-h-[72vh] max-w-full rounded-lg object-contain shadow-2xl"
+              style={view.style}
             />
           </div>
           {canNav ? (
@@ -111,6 +129,14 @@ export function PhotoLightbox({ srcs, index, onIndex, onClose, alt = 'Fotoğraf'
           <span className="text-xs tabular-nums text-slate-200">
             {index + 1} / {total}
           </span>
+          <PhotoViewToolbar
+            testIdPrefix="foto-lightbox"
+            onZoomIn={view.zoomIn}
+            onZoomOut={view.zoomOut}
+            onRotateLeft={view.rotateLeft}
+            onRotateRight={view.rotateRight}
+            onReset={view.reset}
+          />
           <button
             type="button"
             onClick={onClose}

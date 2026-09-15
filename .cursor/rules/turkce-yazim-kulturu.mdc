@@ -7,14 +7,14 @@ alwaysApply: true
 
 **Kaynak (Mustafa · 14.09.2026):** Rapor kaleminde «Örn. Cam işleri» gibi her kelime büyük duruyordu. Örnek **duvar işleri** gibi olmalı. Tekrar tarif edilmez.
 
-**Temel cümle:** Ekran adı Title Case. Örnek ve yazılan cümle her kelime büyük olmaz. CSS `uppercase` yok.
+**Temel cümle:** Ekran adı Title Case. Örnek küçük kalır. Personel büyük harfle yazsa da kayıt **Mustafa Yufkayürek** biçimine çekilir. CSS `uppercase` yok.
 
 ## Zorunlu
 
 1. Menü, başlık, buton, alan etiketi: Title Case (`İş Grubu`, `Raporu İncele`, `Mahal/Bölge`).
 2. Etiket `uppercase` / `tracking-wide` ile İŞ GRUBU yapılmaz.
 3. Placeholder ve örnek: `Örn. duvar işleri` — `Örn. Cam İşleri` / `Örn. Cam işleri` yok.
-4. Personelin yazdığı mahal, tanım, açıklama, tespit cümlesi Title Case’e çevrilmez.
+4. Personelin yazdığı mahal, tanım, açıklama, ad: odaktan çıkınca `toTitleCaseTR` — `ALÇIPAN` → `Alçıpan`, `MUSTAFA YUFKAYÜREK` → `Mustafa Yufkayürek`. Placeholder örnekleri küçük kalır (`Örn. duvar işleri`).
 
 ## Yasak (açık onay yoksa)
 

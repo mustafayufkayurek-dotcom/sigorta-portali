@@ -35,7 +35,7 @@ import {
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
-import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution, resolveAcilInboxFileOwnerId, buildInboxReplyHtml, receiptOriginalSubject, buildPlatformMailCopyNotice, canSendVisibleCopy, prependFileOwnerCopyNotice } from '@sigorta/shared';
+import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution, resolveAcilInboxFileOwnerId, buildInboxReplyHtml, receiptOriginalSubject, buildPlatformMailCopyNotice, canSendVisibleCopy, prependFileOwnerCopyNotice, INBOX_REPLY_ATTACH_MAX_BYTES, INBOX_REPLY_ATTACH_MAX_FILES, isInboxReplyAttachmentAllowed, sanitizeInboxReplyAttachmentName } from '@sigorta/shared';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -617,6 +617,7 @@ export class OperationInboxService {
       replyHtml,
       dto.replyAll ?? false,
       senderCopy ? [{ email: senderCopy.email, name: senderCopy.name }] : undefined,
+      this.decodeReplyAttachments(dto.attachments),
     );
 
     const sentAtIso = sentAt.toISOString();
@@ -1678,5 +1679,46 @@ export class OperationInboxService {
       mailboxes,
       jobIds,
     };
+  }
+
+  private decodeReplyAttachments(
+    items?: Array<{ filename: string; contentType?: string; contentBase64: string }>,
+  ): Array<{ filename: string; content: Buffer; contentType?: string }> | undefined {
+    if (!items?.length) return undefined;
+    if (items.length > INBOX_REPLY_ATTACH_MAX_FILES) {
+      throw new BadRequestException(`En fazla ${INBOX_REPLY_ATTACH_MAX_FILES} ek ekleyebilirsiniz.`);
+    }
+    const files: Array<{ filename: string; content: Buffer; contentType?: string }> = [];
+    let total = 0;
+    for (const item of items) {
+      const filename = sanitizeInboxReplyAttachmentName(item.filename);
+      const contentType = item.contentType?.trim() || undefined;
+      if (!isInboxReplyAttachmentAllowed(filename, contentType)) {
+        throw new BadRequestException(
+          'Bu dosya türü eklenemez. Fotoğraf, PDF veya Word / Excel belgesi seçin.',
+        );
+      }
+      const raw = (item.contentBase64 ?? '').replace(/^data:[^;]+;base64,/i, '').replace(/\s/g, '');
+      if (!raw) {
+        throw new BadRequestException('Ek içeriği boş.');
+      }
+      let content: Buffer;
+      try {
+        content = Buffer.from(raw, 'base64');
+      } catch {
+        throw new BadRequestException('Ek okunamadı.');
+      }
+      if (!content.length) {
+        throw new BadRequestException('Ek içeriği boş.');
+      }
+      total += content.length;
+      if (total > INBOX_REPLY_ATTACH_MAX_BYTES) {
+        throw new BadRequestException(
+          'Ek çok büyük. Fotoğraf veya belgeyi küçültüp tekrar deneyin.',
+        );
+      }
+      files.push({ filename, content, contentType });
+    }
+    return files;
   }
 }

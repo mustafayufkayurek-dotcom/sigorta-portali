@@ -85,10 +85,24 @@ export type MessageLogEntry = {
   text: string;
 };
 
+export type AcilReportArchiveKind = 'revise' | 'delete';
+
+export type AcilReportArchive = {
+  at: string;
+  kind: AcilReportArchiveKind;
+  actorName?: string;
+  findingsText: string;
+  reportWorkGroup: string;
+  reportMahal: string;
+  reportJobDescription: string;
+  reportItemDescription: string;
+};
+
 export type AcilLocalFlow = {
   costConfirmed: boolean;
   approvalRequested: boolean;
   customerApproved: boolean;
+  customerRejected: boolean;
   workStartPrepared: boolean;
   serviceCompleted: boolean;
   fileClosed: boolean;
@@ -103,7 +117,7 @@ export type AcilLocalFlow = {
   detectedCostTl: number | null;
   /** Onay algısı kartı gösterilsin */
   approvalDetected: boolean;
-  history: { at: string; text: string }[];
+  history: { at: string; text: string; actorName?: string }[];
   /** Tedarikçi süreç durumu */
   vendorProcess: VendorProcessKey | null;
   /** Alış/satış değişiklik günlüğü */
@@ -118,6 +132,8 @@ export type AcilLocalFlow = {
   findingsDraft: string;
   /** Sunum özeti — adım değişince kaybolmaz */
   approvalText: string;
+  /** Revize / silinen rapor sürümleri — Dosya Geçmişi */
+  reportArchives: AcilReportArchive[];
 };
 
 const FLOW_PREFIX = 'emergency-acil-flow:';
@@ -127,6 +143,7 @@ export function emptyAcilLocalFlow(): AcilLocalFlow {
     costConfirmed: false,
     approvalRequested: false,
     customerApproved: false,
+    customerRejected: false,
     workStartPrepared: false,
     serviceCompleted: false,
     fileClosed: false,
@@ -144,6 +161,7 @@ export function emptyAcilLocalFlow(): AcilLocalFlow {
     messageLog: [],
     findingsDraft: '',
     approvalText: 'Riziko adreste; ',
+    reportArchives: [],
   };
 }
 
@@ -157,6 +175,7 @@ export function readAcilLocalFlow(caseId: string): AcilLocalFlow {
       ...emptyAcilLocalFlow(),
       ...parsed,
       history: parsed.history ?? [],
+      reportArchives: Array.isArray(parsed.reportArchives) ? parsed.reportArchives : [],
       priceChangeLog: parsed.priceChangeLog ?? [],
       messageLog: parsed.messageLog ?? [],
       vendorProcess: parsed.vendorProcess ?? null,
@@ -192,10 +211,28 @@ export function stampAcilLocalDrafts(
   };
 }
 
-export function appendFlowHistory(flow: AcilLocalFlow, text: string): AcilLocalFlow {
+export function appendFlowHistory(flow: AcilLocalFlow, text: string, actorName?: string): AcilLocalFlow {
   return {
     ...flow,
-    history: [{ at: new Date().toISOString(), text }, ...flow.history].slice(0, 40),
+    history: [{ at: new Date().toISOString(), text, actorName }, ...flow.history].slice(0, 40),
+  };
+}
+
+export function archiveAcilReport(
+  flow: AcilLocalFlow,
+  kind: AcilReportArchiveKind,
+  snapshot: Omit<AcilReportArchive, 'at' | 'kind'>,
+  actorName?: string,
+): AcilLocalFlow {
+  const at = new Date().toISOString();
+  const entry: AcilReportArchive = { at, kind, actorName, ...snapshot };
+  const label = kind === 'revise' ? 'Rapor revize edildi' : 'Rapor silindi';
+  return {
+    ...flow,
+    reportArchives: [entry, ...flow.reportArchives].slice(0, 30),
+    history: [{ at, text: label, actorName }, ...flow.history].slice(0, 40),
+    approvalRequested: kind === 'delete' ? false : flow.approvalRequested,
+    customerApproved: false,
   };
 }
 

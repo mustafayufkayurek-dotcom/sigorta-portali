@@ -2,24 +2,34 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 14 Eylül 2026
+**Son güncelleme:** 15 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (14 Eylül 2026 — web v596 / backend v596)
+## Canlı durum (15 Eylül 2026 — web v597 / backend v597)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v596-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v596-amd64` | canlı |
-| **Rollback** | Web **v595** / Backend **v595** | manifest `rollbackImages` |
-| **Etiket** | `v596-acil-rapor-fatura-kapanis-tedarikci` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v597-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v597-amd64` | canlı |
+| **Rollback** | Web **v596** / Backend **v596** | manifest `rollbackImages` |
+| **Etiket** | `v597-acil-rapor-foto-yanit-ozet` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v597 — Full (15 Eylül 2026) — Acil rapor fotoğraf; lightbox; yanıt eki; özet dönem
+
+- Acil tespit raporu: resimler ayrı sayfa, imza en altta (Tespiti Yapan / Raporlayan, Dijital Onaylı); yan duran fotoğraf düzelir
+- Resim büyütünce yakınlaştır, uzaklaştır, sola/sağa çevir (Acil tespit ve Hasar rapor resmi)
+- Gelen kutu / dosya yanıtına ek
+- Dosya özeti Bugün / Bu Hafta / Bu Ay İstanbul takvimi; Hasar kartı ilgili listeyi açar
+- Acil raporda manuel onay / revizyon / silme tarihçesi
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, geri alma web v596 / backend v596. Canlı uploads silinmedi. Yeni migration yok. Alımda backend ve web birden stop edilmez; JWT ve Redis silinmez
+- Geri alma web **v596** / backend **v596**
 
 ### v596 — Full (14 Eylül 2026) — Acil rapor; çoklu resmi fatura; kapanış çekmecesi; tedarikçi T.C.
 

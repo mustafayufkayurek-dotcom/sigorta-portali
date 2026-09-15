@@ -8,6 +8,7 @@ export * from './agreement-templates';
 export * from './inbound-mail-terminology';
 export * from './inbound-form-fields';
 export * from './inbox-reply-quote';
+export * from './inbox-reply-attachment';
 export * from './outbound-mail-signal';
 export * from './file-owner-mail-copy';
 export * from './crm-mail-watch';

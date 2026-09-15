@@ -15,6 +15,7 @@ node --experimental-strip-types --test \
   apps/web/src/components/operasyon/operation-send-email-approval.lock.spec.ts \
   apps/web/src/components/hasar-operasyon-planlayicisi/planner-send-approval-mail.lock.spec.ts \
   packages/shared/src/inbox-reply-quote.lock.spec.ts \
+  packages/shared/src/inbox-reply-attachment.lock.spec.ts \
   packages/shared/src/outbound-mail-signal.lock.spec.ts \
   packages/shared/src/file-owner-mail-copy.lock.spec.ts \
   packages/shared/src/crm-mail-watch.lock.spec.ts

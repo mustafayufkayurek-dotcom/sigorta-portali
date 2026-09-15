@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { API, authHeader, ensureValidSession } from '@/utils/api';
 import {
   normalizeReportImageCategory,
@@ -10,6 +10,7 @@ import {
 import { formatReportImageFrameLabel } from '@/utils/report-image-frame-label';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getReportImageStreamUrl, getReportImageUrl } from '@/utils/upload-url';
+import { PhotoViewToolbar, usePhotoViewTransform } from '@/components/ui/PhotoViewToolbar';
 
 type ReportImage = {
   id: string;
@@ -362,83 +363,159 @@ export default function ReportImageGallery({
       </div>
 
       {active && activeReadyIdx !== null && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4"
-          onClick={closeLightbox}
-          role="dialog"
-          aria-modal
-        >
-          <div
-            className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex w-full items-center justify-center gap-3">
-              {readyImages.length > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setActiveReadyIdx((i) => wrapReadyIndex(i ?? 0, -1, readyImages.length))}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg hover:bg-slate-100"
-                  aria-label="Önceki"
-                  data-testid="rapor-foto-onceki"
-                >
-                  <ChevronLeft className="h-6 w-6" strokeWidth={1.75} />
-                </button>
-              ) : null}
-              <div className="flex min-w-0 flex-1 items-center justify-center">
-                <LightboxImage image={active} fileNo={fileNo} />
-              </div>
-              {readyImages.length > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setActiveReadyIdx((i) => wrapReadyIndex(i ?? 0, 1, readyImages.length))}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg hover:bg-slate-100"
-                  aria-label="Sonraki"
-                  data-testid="rapor-foto-sonraki"
-                >
-                  <ChevronRight className="h-6 w-6" strokeWidth={1.75} />
-                </button>
-              ) : null}
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-              <span className="text-xs text-slate-300 tabular-nums">
-                {activeReadyIdx + 1} / {readyImages.length}
-                {' · '}
-                {formatReportImageFrameLabel(fileNo, active.category)}
-              </span>
-              {isEditable && onAnnotate && (
-                <button
-                  type="button"
-                  onClick={() => { onAnnotate(active); closeLightbox(); }}
-                  className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700"
-                >
-                  İşaretle
-                </button>
-              )}
-              {isEditable && onDelete && (
-                <button
-                  type="button"
-                  onClick={() => { onDelete(active.id); closeLightbox(); }}
-                  className="rounded-lg bg-status-danger px-4 py-2 text-sm text-white hover:opacity-90"
-                >
-                  Sil
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={closeLightbox}
-                className="rounded-lg border border-white/30 px-4 py-2 text-sm text-white hover:bg-white/10"
-              >
-                Kapat
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReportLightboxOverlay
+          active={active}
+          activeReadyIdx={activeReadyIdx}
+          readyCount={readyImages.length}
+          fileNo={fileNo}
+          isEditable={isEditable}
+          onPrev={() => setActiveReadyIdx((i) => wrapReadyIndex(i ?? 0, -1, readyImages.length))}
+          onNext={() => setActiveReadyIdx((i) => wrapReadyIndex(i ?? 0, 1, readyImages.length))}
+          onClose={closeLightbox}
+          onAnnotate={onAnnotate ? () => { onAnnotate(active); closeLightbox(); } : undefined}
+          onDelete={onDelete ? () => { onDelete(active.id); closeLightbox(); } : undefined}
+        />
       )}
     </>
   );
 }
 
-function LightboxImage({ image, fileNo }: { image: ReportImage; fileNo?: string | null }) {
+function ReportLightboxOverlay({
+  active,
+  activeReadyIdx,
+  readyCount,
+  fileNo,
+  isEditable,
+  onPrev,
+  onNext,
+  onClose,
+  onAnnotate,
+  onDelete,
+}: {
+  active: ReportImage;
+  activeReadyIdx: number;
+  readyCount: number;
+  fileNo?: string | null;
+  isEditable: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+  onClose: () => void;
+  onAnnotate?: () => void;
+  onDelete?: () => void;
+}) {
+  const view = usePhotoViewTransform(active.id);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        view.zoomIn();
+      }
+      if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        view.zoomOut();
+      }
+      if (e.key === '0') {
+        e.preventDefault();
+        view.reset();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [view.reset, view.zoomIn, view.zoomOut]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal
+    >
+      <div
+        className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex w-full items-center justify-center gap-3">
+          {readyCount > 1 ? (
+            <button
+              type="button"
+              onClick={onPrev}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg hover:bg-slate-100"
+              aria-label="Önceki"
+              data-testid="rapor-foto-onceki"
+            >
+              <ChevronLeft className="h-6 w-6" strokeWidth={1.75} />
+            </button>
+          ) : null}
+          <div className="flex min-w-0 flex-1 items-center justify-center overflow-auto" onWheel={view.onWheel}>
+            <LightboxImage image={active} fileNo={fileNo} style={view.style} />
+          </div>
+          {readyCount > 1 ? (
+            <button
+              type="button"
+              onClick={onNext}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg hover:bg-slate-100"
+              aria-label="Sonraki"
+              data-testid="rapor-foto-sonraki"
+            >
+              <ChevronRight className="h-6 w-6" strokeWidth={1.75} />
+            </button>
+          ) : null}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+          <span className="text-xs text-slate-300 tabular-nums">
+            {activeReadyIdx + 1} / {readyCount}
+            {' · '}
+            {formatReportImageFrameLabel(fileNo, active.category)}
+          </span>
+          <PhotoViewToolbar
+            testIdPrefix="rapor-foto"
+            onZoomIn={view.zoomIn}
+            onZoomOut={view.zoomOut}
+            onRotateLeft={view.rotateLeft}
+            onRotateRight={view.rotateRight}
+            onReset={view.reset}
+          />
+          {isEditable && onAnnotate && (
+            <button
+              type="button"
+              onClick={onAnnotate}
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700"
+            >
+              İşaretle
+            </button>
+          )}
+          {isEditable && onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="rounded-lg bg-status-danger px-4 py-2 text-sm text-white hover:opacity-90"
+            >
+              Sil
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-white/30 px-4 py-2 text-sm text-white hover:bg-white/10"
+          >
+            Kapat
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LightboxImage({
+  image,
+  fileNo,
+  style,
+}: {
+  image: ReportImage;
+  fileNo?: string | null;
+  style?: CSSProperties;
+}) {
   const [src, setSrc] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const alt = formatReportImageFrameLabel(fileNo, image.category);
@@ -490,6 +567,7 @@ function LightboxImage({ image, fileNo }: { image: ReportImage; fileNo?: string 
           src={src}
           alt={image.caption ?? alt}
           className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl"
+          style={style}
           onError={() => setStatus('error')}
         />
       )}

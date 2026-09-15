@@ -20,6 +20,8 @@ export const EMERGENCY_PROCESS_ACTIONS = [
   'EMERGENCY_PRICE_CHANGED',
   'EMERGENCY_MESSAGE_RECORDED',
   'EMERGENCY_VENDOR_PAYMENT_RECORDED',
+  'EMERGENCY_REPORT_REVISED',
+  'EMERGENCY_REPORT_DELETED',
 ] as const;
 
 export type EmergencyProcessAction = (typeof EMERGENCY_PROCESS_ACTIONS)[number];
@@ -27,8 +29,6 @@ export type EmergencyProcessAction = (typeof EMERGENCY_PROCESS_ACTIONS)[number];
 export const EMERGENCY_PROCESS_SINGLETON_ACTIONS = new Set<string>([
   'EMERGENCY_VENDOR_COST_RECEIVED',
   'EMERGENCY_CUSTOMER_APPROVAL_PENDING',
-  'EMERGENCY_CUSTOMER_APPROVED',
-  'EMERGENCY_CUSTOMER_REJECTED',
   'EMERGENCY_WORK_START_READY',
   'EMERGENCY_VENDOR_ON_THE_WAY',
   'EMERGENCY_VENDOR_ARRIVED',
@@ -52,6 +52,8 @@ export const EMERGENCY_PROCESS_ACTION_LABELS: Record<EmergencyProcessAction, str
   EMERGENCY_PRICE_CHANGED: 'Fiyat değişti',
   EMERGENCY_MESSAGE_RECORDED: 'Mesaj kaydedildi',
   EMERGENCY_VENDOR_PAYMENT_RECORDED: 'Tedarikçi ödemesi kaydedildi',
+  EMERGENCY_REPORT_REVISED: 'Rapor revize edildi',
+  EMERGENCY_REPORT_DELETED: 'Rapor silindi',
 };
 
 export function isEmergencyProcessAction(value: string): value is EmergencyProcessAction {

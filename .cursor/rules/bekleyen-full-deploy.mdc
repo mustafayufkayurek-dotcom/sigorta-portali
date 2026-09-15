@@ -1,11 +1,11 @@
 ---
-description: Canlı web v596 / backend v596 — sıradaki paketler karışmaz
+description: Canlı web v597 / backend v597 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (14.09.2026)
+# Canlı (15.09.2026)
 
-Canlı: web **v596** · backend **v596**. Geri alma: web **v595** / backend **v595**.
+Canlı: web **v597** · backend **v597**. Geri alma: web **v596** / backend **v596**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v597 (full):** Acil tespit raporu (imza altta, resim sayfası, yan duran fotoğraf düzelir). Resim büyütünce yakınlaştır/çevir (Acil + Hasar). Yanıta ek. Dosya özeti Bugün/Hafta/Ay İstanbul. Acil rapor tarihçesi. Hasar kartı liste açar. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v596 / backend v596.
 
 **v596 (full):** Tedarikçi şahısta T.C. kaydı durur; turuncu evrak uyarısı kaydı kesmez. Acil (Çilingir hariç) Hasar benzeri tespit raporu, İhbar PDF, gelen kutu onayı. Rapor kalemi yazılır; örnek duvar işleri. Kaydet taslak; İncele yazı bitince. Aynı resmi fatura birden fazla Acil dosyaya yazılır. Kapanış çekmecesi yenilemede kaybolmaz. Geri alma web v595 / backend v595.
 

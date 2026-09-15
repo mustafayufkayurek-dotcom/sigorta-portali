@@ -39,6 +39,7 @@ export class GraphMailSendService {
     body: string,
     replyAll = false,
     cc?: Array<{ email: string; name?: string }>,
+    attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>,
   ): Promise<void> {
     const config = await this.loadGraphConfig();
     if (!config.active) {
@@ -65,6 +66,10 @@ export class GraphMailSendService {
 
     const trimmed = body.trim();
     const contentType = this.isHtml(trimmed) ? 'HTML' : 'Text';
+    const graphAttachments = this.toGraphFileAttachments(
+      attachments,
+      'Ek çok büyük. Fotoğraf veya belgeyi küçültüp tekrar deneyin.',
+    );
     // Geçmiş panelde eklenir. Graph comment alanı orijinal logolu HTML'i tekrar yapıştırır; kullanılmaz.
     // Görünür kopya ayrı mail değildir; aynı Graph yanıtının ccRecipients alanıdır. Asıl yazı gitmezse kopya da gitmez.
     const payload = {
@@ -84,6 +89,7 @@ export class GraphMailSendService {
               })),
             }
           : {}),
+        ...(graphAttachments?.length ? { attachments: graphAttachments } : {}),
       },
     };
 
@@ -93,6 +99,8 @@ export class GraphMailSendService {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
         validateStatus: () => true,
       }),
     );
@@ -152,22 +160,10 @@ export class GraphMailSendService {
     const encodedUser = encodeURIComponent(mailboxAddress);
     const trimmed = body.trim();
     const contentType = this.isHtml(trimmed) ? 'HTML' : 'Text';
-    const files = attachments ?? [];
-    const attachBytes = files.reduce((n, a) => n + (a.content?.length ?? 0), 0);
-    if (files.length > 0 && attachBytes > GraphMailSendService.INLINE_ATTACH_MAX_BYTES) {
-      throw new BadRequestException(
-        'Rapor eki çok büyük. Dış rapor PDF ile gönderilir; fotoğrafı azaltıp raporu yeniden oluşturun.',
-      );
-    }
-    const graphAttachments =
-      files.length > 0
-        ? files.map((a) => ({
-            '@odata.type': '#microsoft.graph.fileAttachment',
-            name: a.filename,
-            contentType: a.contentType || 'application/octet-stream',
-            contentBytes: a.content.toString('base64'),
-          }))
-        : undefined;
+    const graphAttachments = this.toGraphFileAttachments(
+      attachments,
+      'Rapor eki çok büyük. Dış rapor PDF ile gönderilir; fotoğrafı azaltıp raporu yeniden oluşturun.',
+    );
 
     const messagePayload = {
       subject: subject.trim(),
@@ -234,6 +230,29 @@ export class GraphMailSendService {
     return /<[a-z][\s\S]*>/i.test(text);
   }
 
+  private toGraphFileAttachments(
+    attachments: Array<{ filename: string; content: Buffer; contentType?: string }> | undefined,
+    tooLargeMessage: string,
+  ): Array<{
+    '@odata.type': string;
+    name: string;
+    contentType: string;
+    contentBytes: string;
+  }> | undefined {
+    const files = attachments ?? [];
+    if (!files.length) return undefined;
+    const attachBytes = files.reduce((n, a) => n + (a.content?.length ?? 0), 0);
+    if (attachBytes > GraphMailSendService.INLINE_ATTACH_MAX_BYTES) {
+      throw new BadRequestException(tooLargeMessage);
+    }
+    return files.map((a) => ({
+      '@odata.type': '#microsoft.graph.fileAttachment',
+      name: a.filename,
+      contentType: a.contentType || 'application/octet-stream',
+      contentBytes: a.content.toString('base64'),
+    }));
+  }
+
   private logGraphFailure(op: string, mailboxAddress: string, status: number, data: unknown): void {
     const graphErr = (data as { error?: { message?: string; code?: string } })?.error;
     this.logger.warn(
@@ -260,7 +279,7 @@ export class GraphMailSendService {
     }
     if (status === 413 || combined.includes('request entity too large') || combined.includes('payload')) {
       return new BadRequestException(
-        'Rapor eki çok büyük. Dış rapor PDF ile gönderilir; fotoğrafı azaltıp raporu yeniden oluşturun.',
+        'Ek çok büyük. Fotoğraf veya belgeyi küçültüp tekrar deneyin.',
       );
     }
     if (status === 404) {

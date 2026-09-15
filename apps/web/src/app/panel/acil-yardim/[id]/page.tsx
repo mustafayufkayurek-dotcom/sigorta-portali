@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk, resolveAcilInsuredName, resolveEmergencyFindingsDraft, isAcilLocksmithIssue } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
 import { PANEL_CARD_BASE, PanelSectionTitle } from '@/components/panel/PanelCard';
 import { FILE_STATUS_BADGE_BASE, FILE_STATUS_TONE } from '@/components/panel/file-status-tone';
@@ -54,7 +55,6 @@ import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import SpeechToText from '@/components/SpeechToText';
 import { getApiErrorMessage } from '@/utils/api-error';
-import { API, authHeader } from '@/utils/api';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { openWhatsAppChat } from '@/utils/date-helpers';
 import {
@@ -66,6 +66,7 @@ import {
   ACIL_STAGES,
   AcilLocalFlow,
   appendFlowHistory,
+  archiveAcilReport,
   appendMessageLog,
   appendPriceChange,
   approvalBudgetReady,
@@ -585,7 +586,6 @@ export default function AcilDosyaDetayPage() {
   const [reportMahal, setReportMahal] = useState('');
   const [reportJobDescription, setReportJobDescription] = useState('');
   const [reportItemDescription, setReportItemDescription] = useState('');
-  const [workGroupNames, setWorkGroupNames] = useState<string[]>([]);
   const [findingsError, setFindingsError] = useState<string | null>(null);
   const [, setFindingsSaving] = useState(false);
   const findingsFormRef = useRef<HTMLDivElement | null>(null);
@@ -746,18 +746,6 @@ export default function AcilDosyaDetayPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void axios.get(`${API}/work-groups`, { headers: authHeader() }).then((res) => {
-      if (cancelled) return;
-      const rows = (res.data?.data ?? res.data ?? []) as Array<{ name?: string }>;
-      setWorkGroupNames(
-        rows.map((row) => String(row.name || '').trim()).filter(Boolean),
-      );
-    }).catch(() => undefined);
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -987,7 +975,7 @@ export default function AcilDosyaDetayPage() {
   }
 
   async function saveFindingsText(override?: string): Promise<boolean> {
-    const text = (override ?? draftFindings).trim() || (vaka?.findingsText || '').trim();
+    const text = toTitleCaseTR((override ?? draftFindings).trim() || (vaka?.findingsText || '').trim());
     if (!text) {
       setFindingsError('Tespit Bulguları zorunludur.');
       return false;
@@ -1023,11 +1011,15 @@ export default function AcilDosyaDetayPage() {
   }): Promise<void> {
     if (!id || isAcilLocksmithIssue(vaka?.issueType)) return;
     const body = {
-      reportWorkGroup: (patch?.reportWorkGroup ?? reportWorkGroup).trim(),
-      reportMahal: (patch?.reportMahal ?? reportMahal).trim(),
-      reportJobDescription: (patch?.reportJobDescription ?? reportJobDescription).trim(),
-      reportItemDescription: (patch?.reportItemDescription ?? reportItemDescription).trim(),
+      reportWorkGroup: toTitleCaseTR((patch?.reportWorkGroup ?? reportWorkGroup).trim()),
+      reportMahal: toTitleCaseTR((patch?.reportMahal ?? reportMahal).trim()),
+      reportJobDescription: toTitleCaseTR((patch?.reportJobDescription ?? reportJobDescription).trim()),
+      reportItemDescription: toTitleCaseTR((patch?.reportItemDescription ?? reportItemDescription).trim()),
     };
+    setReportWorkGroup(body.reportWorkGroup);
+    setReportMahal(body.reportMahal);
+    setReportJobDescription(body.reportJobDescription);
+    setReportItemDescription(body.reportItemDescription);
     try {
       const res = await updateCase(id, body as Partial<EmergencyCase>);
       setVaka(res.data);
@@ -1748,9 +1740,9 @@ export default function AcilDosyaDetayPage() {
       const res = await sendAssistanceApprovalEmail(id);
       await persistFlow(appendFlowHistory(
         { ...flow, approvalRequested: true },
-        `Asistans onay raporu gönderildi → ${res.data.to}`,
+        `Müşteri onay raporu gönderildi → ${res.data.to}`,
       ));
-      setActionFlash(`Rapor asistansa gitti (${res.data.to}). Onay gelen kutudan düşer.`);
+      setActionFlash(`Rapor müşteri onayına gitti (${res.data.to}). PDF ektedir.`);
       await load();
     } catch (err: unknown) {
       setActionFlash(getApiErrorMessage(err, 'Rapor gönderilemedi.'));
@@ -1764,7 +1756,9 @@ export default function AcilDosyaDetayPage() {
     const previewWin = window.open('about:blank', '_blank');
     setOpeningApprovalReport(true);
     try {
-      await saveFindingsText();
+      if ((draftFindings || '').trim()) {
+        await saveFindingsText();
+      }
       await saveReportLine();
       await openAssistanceApprovalReport(id, previewWin);
     } catch (err: unknown) {
@@ -1773,6 +1767,53 @@ export default function AcilDosyaDetayPage() {
     } finally {
       setOpeningApprovalReport(false);
     }
+  }
+
+  async function handleReviseAssistanceReport() {
+    if (!vaka) return;
+    const snapshot = {
+      findingsText: (draftFindings || vaka.findingsText || '').trim(),
+      reportWorkGroup: reportWorkGroup.trim(),
+      reportMahal: reportMahal.trim(),
+      reportJobDescription: reportJobDescription.trim(),
+      reportItemDescription: reportItemDescription.trim(),
+    };
+    if (!snapshot.findingsText && !snapshot.reportWorkGroup && !snapshot.reportMahal) return;
+    await persistFlow(archiveAcilReport(flow, 'revise', snapshot, currentOperator().name));
+    setActionFlash('Önceki rapor Dosya Geçmişinde durur. Yeni raporu yazıp inceleyin.');
+    plannerRef.current?.openStep('onay');
+  }
+
+  async function handleDeleteAssistanceReport() {
+    if (!vaka || !id) return;
+    const snapshot = {
+      findingsText: (draftFindings || vaka.findingsText || '').trim(),
+      reportWorkGroup: reportWorkGroup.trim(),
+      reportMahal: reportMahal.trim(),
+      reportJobDescription: reportJobDescription.trim(),
+      reportItemDescription: reportItemDescription.trim(),
+    };
+    if (!snapshot.findingsText && !snapshot.reportWorkGroup && !snapshot.reportMahal) return;
+    await persistFlow(archiveAcilReport(flow, 'delete', snapshot, currentOperator().name));
+    setReportWorkGroup('');
+    setReportMahal('');
+    setReportJobDescription('');
+    setReportItemDescription('');
+    setDraftFindings('');
+    draftFindingsRef.current = '';
+    try {
+      const res = await updateCase(id, {
+        findingsText: '',
+        reportWorkGroup: '',
+        reportMahal: '',
+        reportJobDescription: '',
+        reportItemDescription: '',
+      } as Partial<EmergencyCase>);
+      setVaka(res.data);
+    } catch {
+      /* geçmiş durur */
+    }
+    setActionFlash('Rapor silindi. Önceki sürüm Dosya Geçmişinde durur.');
   }
 
   async function handleCloseFile(allowIncomplete = false) {
@@ -2584,26 +2625,21 @@ export default function AcilDosyaDetayPage() {
                 <div className="rounded-xl border border-slate-200 bg-white p-3" data-testid="acil-rapor-kalem">
                   <h4 className="text-xs font-semibold text-slate-900">Rapor kalemi</h4>
                   <p className="mt-1 text-[11px] text-slate-500">
-                    İş grubu, mahal, işin tanımı ve açıklama rapora sizin yazdığınız gibi gider. Mahal, tanım ve açıklamada daha önce yazılan cümleler önerilir.
+                    İş grubu, mahal, işin tanımı ve açıklama elle yazılır. Hasar iş kalemi listesi buraya düşmez.
                   </p>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     <label className="block">
                       <span className="text-[10px] font-semibold text-slate-500">İş Grubu</span>
                       <input
                         type="text"
-                        list="acil-rapor-is-grubu"
                         value={reportWorkGroup}
                         onChange={(e) => setReportWorkGroup(e.target.value)}
                         onBlur={() => { void saveReportLine({ reportWorkGroup }); }}
                         placeholder="Örn. duvar işleri"
+                        autoComplete="off"
                         data-testid="acil-rapor-is-grubu"
                         className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                      <datalist id="acil-rapor-is-grubu">
-                        {workGroupNames.map((name) => (
-                          <option key={name} value={name} />
-                        ))}
-                      </datalist>
                     </label>
                     <label className="block">
                       <span className="text-[10px] font-semibold text-slate-500">Mahal/Bölge</span>
@@ -2860,14 +2896,18 @@ export default function AcilDosyaDetayPage() {
           },
           onSendApprovalReport: () => { void handleSendAssistanceApproval(); },
           onOpenApprovalReport: () => { void handleOpenAssistanceApprovalReport(); },
+          onReviseApprovalReport: () => { void handleReviseAssistanceReport(); },
+          onDeleteApprovalReport: () => { void handleDeleteAssistanceReport(); },
           onClosureEmail: () => { void openClosureEmailModal(); },
           onApprovalChannel: setPlannerApprovalChannel,
           onApprovalState: (st) => {
             void (async () => {
               if (st === 'onaylandi') {
+                const actor = currentOperator().name;
                 await persistFlow(appendFlowHistory(
-                  { ...flow, customerApproved: true, approvalDetected: false, approvalRequested: true, workStartPrepared: true },
-                  'Müşteri onayı (planlayıcı)',
+                  { ...flow, customerApproved: true, customerRejected: false, approvalDetected: false, approvalRequested: true, workStartPrepared: true },
+                  'Manuel onay',
+                  actor,
                 ));
                 if (vaka.status !== 'SAHADA' && vaka.status !== 'COZULDU' && vaka.status !== 'FATURALANDILDI') {
                   try {
@@ -2878,9 +2918,11 @@ export default function AcilDosyaDetayPage() {
                   }
                 }
               } else if (st === 'reddedildi') {
+                const actor = currentOperator().name;
                 await persistFlow(appendFlowHistory(
-                  { ...flow, customerApproved: false, approvalDetected: false, approvalRequested: true },
-                  'Müşteri red (planlayıcı)',
+                  { ...flow, customerApproved: false, customerRejected: true, approvalDetected: false, approvalRequested: true },
+                  'Red',
+                  actor,
                 ));
               }
             })();
@@ -3339,11 +3381,53 @@ export default function AcilDosyaDetayPage() {
             >
               <SectionTitle icon={History} title="Dosya Geçmişi" iconClassName="text-slate-600" />
               <div className="space-y-3 text-sm" data-testid="sekme-gecmis-icerik">
+                {flow.reportArchives.length > 0 ? (
+                  <div data-testid="rapor-surumleri">
+                    <p className="text-xs font-semibold text-slate-800">Rapor Sürümleri</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">
+                      Revize veya silinen rapor burada durur. Güncel yazı Onay Talep adımındadır.
+                    </p>
+                    <ul className="mt-2 space-y-2 max-h-64 overflow-auto">
+                      {flow.reportArchives.map((item) => (
+                        <li
+                          key={`${item.at}-${item.kind}`}
+                          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                        >
+                          <p className="text-[11px] text-slate-500">
+                            {fmtDateTime(item.at)}
+                            {item.actorName ? ` · ${item.actorName}` : ''}
+                            {' · '}
+                            {item.kind === 'revise' ? 'Revize' : 'Silindi'}
+                          </p>
+                          <p className="mt-1 text-xs font-medium text-slate-800">
+                            {[item.reportWorkGroup, item.reportMahal].filter(Boolean).join(' · ') || 'Rapor kalemi yok'}
+                          </p>
+                          {item.reportJobDescription ? (
+                            <p className="mt-0.5 text-[11px] text-slate-600">{item.reportJobDescription}</p>
+                          ) : null}
+                          {item.reportItemDescription ? (
+                            <p className="mt-0.5 text-[11px] text-slate-600">{item.reportItemDescription}</p>
+                          ) : null}
+                          {item.findingsText ? (
+                            <p className="mt-1 text-[11px] text-slate-700 whitespace-pre-wrap">{item.findingsText}</p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400">
+                    Rapor revize edilince veya silinince önceki yazı burada durur.
+                  </p>
+                )}
                 {flow.history.length > 0 ? (
                   <ul className="space-y-2 max-h-64 overflow-auto" data-testid="islem-gecmisi-listesi">
                     {flow.history.map((h, i) => (
                       <li key={`${h.at}-${i}`} className="text-xs text-slate-600 border-b border-slate-50 pb-2">
-                        <span className="text-slate-400">{fmtDateTime(h.at)}</span>
+                        <span className="text-slate-400">
+                          {fmtDateTime(h.at)}
+                          {h.actorName ? ` · ${h.actorName}` : ''}
+                        </span>
                         <p className="mt-0.5 font-medium text-slate-800">{h.text}</p>
                       </li>
                     ))}

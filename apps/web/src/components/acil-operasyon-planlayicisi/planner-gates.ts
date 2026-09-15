@@ -57,7 +57,7 @@ export function validateOperatorStep(
       if (!String(s.reportMahal ?? '').trim()) return 'Mahal/Bölge Yazın.';
       if (!String(s.reportJobDescription ?? '').trim()) return 'İşin Tanımını Yazın.';
       if (!String(s.reportItemDescription ?? '').trim()) return 'Açıklamayı Yazın.';
-      if (!s.approvalRequested) return 'Raporu Asistansa Gönderin.';
+      if (!s.approvalRequested) return 'Müşteri Onayına Gönderin.';
       if (s.approvalState === 'bekliyor') return 'Asistans Onayını Bekleyin.';
     } else {
       if (!acilOnayMetinGovde(s.approvalText).trim()) return 'Riziko Adreste Açıklamasını Yazın.';

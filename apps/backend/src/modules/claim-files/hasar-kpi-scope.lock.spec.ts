@@ -23,5 +23,8 @@ describe('hasar KPI kapsam LOCK', () => {
   it('dosya sorumlusu kartı kendi atanan dosyasıyla sayılır', () => {
     assert.match(PAGE, /assignedOfficeUserId: officeStaffUserId/);
     assert.match(PAGE, /claim-files-operation-stats/);
+    assert.match(PAGE, /hasarProductStageFilterValue\('onay_bekliyor'\)/);
+    assert.match(PAGE, /hasarProductStageFilterValue\('rapor_yazim'\)/);
+    assert.match(PAGE, /istanbulYmd/);
   });
 });

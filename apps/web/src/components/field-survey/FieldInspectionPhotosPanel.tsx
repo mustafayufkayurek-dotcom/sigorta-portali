@@ -258,7 +258,7 @@ export function FieldInspectionPhotosPanel({
                 <AuthBlobImg
                   url={entityDocumentFileUrl(doc.id, 'thumb')}
                   alt={doc.fileName}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain bg-slate-50"
                 />
               </button>
               {readOnly ? null : (

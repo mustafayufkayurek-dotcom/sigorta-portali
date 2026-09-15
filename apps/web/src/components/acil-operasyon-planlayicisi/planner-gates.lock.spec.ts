@@ -85,8 +85,12 @@ describe('acil sunum özeti boşluk LOCK', () => {
     assert.match(page, /resolveEmergencyFindingsDraft/);
     assert.match(page, /persistPlannerDrafts/);
     assert.match(page, /resolveAcilApprovalText/);
-    assert.doesNotMatch(page, /idChanged \? '' : draftFindingsRef/);
-    assert.doesNotMatch(page, /draftFindingsRef\.current = ''/);
+    const withoutDelete = page.replace(
+      /async function handleDeleteAssistanceReport[\s\S]*?setActionFlash\('Rapor silindi[\s\S]*?\n  \}/,
+      '',
+    );
+    assert.doesNotMatch(withoutDelete, /idChanged \? '' : draftFindingsRef/);
+    assert.doesNotMatch(withoutDelete, /draftFindingsRef\.current = ''/);
     assert.match(workflow, /findingsDraft/);
     assert.match(workflow, /approvalText/);
     assert.match(workflow, /stampAcilLocalDrafts/);
@@ -124,7 +128,12 @@ describe('acil sunum özeti boşluk LOCK', () => {
 
   it('Çilingir Onayı Kaydet durur; diğerlerinde rapor gönderilir', () => {
     assert.match(steps, />Onayı Kaydet</);
-    assert.match(steps, /Raporu Asistansa Gönder/);
+    assert.match(steps, />Manuel Onay Ver</);
+    assert.match(steps, /Revize Et/);
+    assert.match(steps, /Raporu Sil/);
+    assert.doesNotMatch(steps, /Elle Onay/);
+    assert.match(steps, /Müşteri Onayına Gönder/);
+    assert.doesNotMatch(steps, /Raporu Asistansa Gönder/);
     assert.match(steps, /Raporu İncele/);
     assert.match(steps, /acil-raporu-incele/);
     assert.match(steps, /Önce tespit bulgusunu yazın/);
@@ -134,7 +143,8 @@ describe('acil sunum özeti boşluk LOCK', () => {
     assert.match(gates, /validateOperatorDraftSave/);
     assert.match(steps, /reportWritten/);
     assert.match(steps, /Göndermek için tespit resmi ekleyin/);
-    assert.doesNotMatch(steps, /disabled=\{p\.openingApprovalReport \|\| !reportReady\}/);
+    assert.doesNotMatch(steps, /disabled=\{p\.openingApprovalReport \|\| !reportWritten\}/);
+    assert.match(steps, /disabled=\{p\.openingApprovalReport\}/);
     const panel = readFileSync(join(here, 'AcilOperasyonPlanlayiciPanel.tsx'), 'utf8');
     assert.match(panel, /validateOperatorDraftSave/);
     assert.match(panel, /writeAcilPlannerUi/);

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 import {
   emptyAcilReportPhraseStore,
   matchAcilReportPhrases,
@@ -85,10 +86,12 @@ export function AcilReportPhraseInput({
   );
 
   function commit(next = value) {
-    const nextStore = rememberAcilReportPhrase(readStore(), field, next);
+    const formatted = toTitleCaseTR(next.trim()) || next;
+    if (formatted !== value) onChange(formatted);
+    const nextStore = rememberAcilReportPhrase(readStore(), field, formatted);
     writeStore(nextStore);
     setLocalPhrases(nextStore[field]);
-    onCommit?.(next);
+    onCommit?.(formatted);
   }
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { fetchAuthImageBlob } from '@/utils/protected-image';
 
 type Props = {
@@ -8,10 +8,11 @@ type Props = {
   alt: string;
   className?: string;
   fallback?: string;
+  style?: CSSProperties;
 };
 
 /** Oturumlu API akışını blob ile gösterir. img src’de imzalı URL kullanılmaz. */
-export function AuthBlobImg({ url, alt, className, fallback }: Props) {
+export function AuthBlobImg({ url, alt, className, fallback, style }: Props) {
   const [src, setSrc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,5 +40,5 @@ export function AuthBlobImg({ url, alt, className, fallback }: Props) {
   }
 
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={alt} className={className} />;
+  return <img src={src} alt={alt} className={className} style={style} />;
 }

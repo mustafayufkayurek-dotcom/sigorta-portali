@@ -45,6 +45,8 @@ import {
   prependFileOwnerCopyNotice,
   formatEmergencyFileAddress,
   matchAcilReportPhrases,
+  acilDigitalFormTitle,
+  ACIL_ADRES_HIZMET_TALEP_KIND,
 } from '@sigorta/shared';
 import { VendorRecommendationService } from '@/modules/vendors/vendor-recommendation.service';
 import {
@@ -72,6 +74,8 @@ import { EmergencyFinanceService } from './emergency-finance.service';
 import { acilHakedisActorName, acilHakedisPaidDescription } from './acil-vendor-entitlement';
 import { buildAcilClosureReportPdf } from './acil-closure-report-pdf';
 import { buildAcilAssistanceApprovalReportHtml } from './acil-approval-report-html';
+import { embedOrientedAcilReportPhoto } from '../storage/orient-photo';
+import { toTitleCaseTR } from '@/common/utils/text-helpers';
 import {
   buildTransactionalEmailHtml,
   formatSnPersonGreeting,
@@ -1358,7 +1362,15 @@ export class EmergencyCasesService {
           },
         },
         assignedUser: {
-          select: { id: true, email: true, firstName: true, lastName: true, role: { select: { code: true } } },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            employeeCode: true,
+            role: { select: { code: true } },
+            hrEmployeeProfile: { select: { personnelNo: true } },
+          },
         },
         costEntries: { select: { entryType: true, amount: true } },
       },
@@ -1400,14 +1412,20 @@ export class EmergencyCasesService {
     if (mode === 'send' && !photoDocs.length) {
       throw new BadRequestException('Tespit resmi eklenmeden rapor gönderilmez.');
     }
-    const photos: Array<{ dataUrl: string; caption?: string }> = [];
+    const photos: Array<{ dataUrl: string; caption?: string; width?: number; height?: number }> = [];
     for (const doc of photoDocs) {
       try {
         const buf = await this.storage.download(doc.storageKey);
-        const mime = doc.mimeType || 'image/jpeg';
+        const oriented = await embedOrientedAcilReportPhoto(buf);
+        if (!oriented) {
+          this.logger.warn(`Tespit resmi döndürülemedi: ${doc.id}`);
+          continue;
+        }
         photos.push({
-          dataUrl: `data:${mime};base64,${buf.toString('base64')}`,
+          dataUrl: oriented.dataUrl,
           caption: `Tespit ${photos.length + 1}`,
+          width: oriented.width,
+          height: oriented.height,
         });
       } catch {
         this.logger.warn(`Tespit resmi okunamadı: ${doc.id}`);
@@ -1421,15 +1439,34 @@ export class EmergencyCasesService {
     const fileSubject = (await settingsDefinedFileSubjectName(this.prisma, emergencyCase.issueType))
       || emergencyCase.issueType;
     const saleLabel = gelir > 0
-      ? `${gelir.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL +KDV`
+      ? `${gelir.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL+KDV`
       : '—';
     const orgName =
       emergencyCase.customer?.shortName || emergencyCase.customer?.companyName || emergencyCase.customerName;
     const insuredPhone =
       (await this.ensureCustomerPhoneFromInbound(caseId, emergencyCase.customerPhone)) || '';
-    const inspectorName = emergencyCase.assignedUser
-      ? `${emergencyCase.assignedUser.firstName || ''} ${emergencyCase.assignedUser.lastName || ''}`.trim()
+    const reporterName = emergencyCase.assignedUser
+      ? toTitleCaseTR(
+          `${emergencyCase.assignedUser.firstName || ''} ${emergencyCase.assignedUser.lastName || ''}`.trim(),
+        )
       : '';
+    const reporterSicilNo =
+      (emergencyCase.assignedUser?.hrEmployeeProfile?.personnelNo || '').trim()
+      || (emergencyCase.assignedUser?.employeeCode || '').trim()
+      || null;
+    const preWorkDocs = await this.prisma.fileDocument.findMany({
+      where: {
+        emergencyCaseId: caseId,
+        documentKind: ACIL_ADRES_HIZMET_TALEP_KIND,
+        digitallyApprovedAt: { not: null },
+      },
+      orderBy: { digitallyApprovedAt: 'asc' },
+      select: {
+        documentKind: true,
+        approvedFullName: true,
+        digitallyApprovedAt: true,
+      },
+    });
     const htmlReport = buildAcilAssistanceApprovalReportHtml({
       fileNo,
       customer: orgName,
@@ -1455,7 +1492,14 @@ export class EmergencyCasesService {
       saleAmount: gelir,
       saleLabel,
       reportDate: emergencyCase.fileDate,
-      inspectorName,
+      city: toTitleCaseTR((emergencyCase.city || '').trim()) || emergencyCase.city,
+      reporterName,
+      reporterSicilNo,
+      preWorkApprovals: preWorkDocs.map((doc) => ({
+        title: acilDigitalFormTitle(doc.documentKind),
+        approvedFullName: doc.approvedFullName,
+        approvedAt: doc.digitallyApprovedAt,
+      })),
       photos,
     });
     if (/(alış|ali[sş]\s*fiyat|kâr\s*\(?%|kar\s*\(?%|hakedi[sş])/i.test(htmlReport)) {
@@ -1826,45 +1870,50 @@ export class EmergencyCasesService {
       data: { notes: nextNotes },
     });
 
-    const processAction: EmergencyProcessAction | null =
+    const processAction: EmergencyProcessAction =
       input.action === 'approve'
         ? 'EMERGENCY_CUSTOMER_APPROVED'
         : input.action === 'reject'
           ? 'EMERGENCY_CUSTOMER_REJECTED'
-          : null;
-    if (processAction) {
-      const existingRows = await this.prisma.auditLog.findMany({
-        where: {
+          : 'EMERGENCY_REPORT_REVISED';
+    const processDescription =
+      input.action === 'approve'
+        ? 'Manuel onay'
+        : input.action === 'reject'
+          ? 'Red'
+          : 'Rapor revize edildi';
+    const existingRows = await this.prisma.auditLog.findMany({
+      where: {
+        entityType: EMERGENCY_PROCESS_ENTITY_TYPE,
+        entityId: caseId,
+        action: processAction,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 4,
+    });
+    const existing = existingRows.map((row) => ({
+      action: row.action,
+      createdAt: row.createdAt,
+      metadata: parseEmergencyProcessPayload(row.newValue).metadata,
+    }));
+    const incomingMetadata = { reason, actorName, actorUserId: actorId ?? null };
+    if (!isEmergencyProcessDuplicate({ action: processAction, incomingMetadata, existing })) {
+      await this.prisma.auditLog.create({
+        data: {
           entityType: EMERGENCY_PROCESS_ENTITY_TYPE,
           entityId: caseId,
           action: processAction,
+          newValue: sanitizeAuditValue({
+            description: processDescription,
+            ...incomingMetadata,
+            ...(actorId
+              ? await this.operationalAccessGrants.getFunctionDelegationStamp(actorId, 'acil_yardim') ?? {}
+              : {}),
+          }) as Prisma.InputJsonValue,
+          userId: actorId ?? null,
+          userEmail: (actor as { email?: string | null })?.email ?? null,
         },
-        orderBy: { createdAt: 'desc' },
-        take: 4,
       });
-      const existing = existingRows.map((row) => ({
-        action: row.action,
-        createdAt: row.createdAt,
-        metadata: parseEmergencyProcessPayload(row.newValue).metadata,
-      }));
-      if (!isEmergencyProcessDuplicate({ action: processAction, incomingMetadata: { reason }, existing })) {
-        await this.prisma.auditLog.create({
-          data: {
-            entityType: EMERGENCY_PROCESS_ENTITY_TYPE,
-            entityId: caseId,
-            action: processAction,
-            newValue: sanitizeAuditValue({
-              description: emergencyProcessDescription(processAction),
-              reason,
-              ...(actorId
-                ? await this.operationalAccessGrants.getFunctionDelegationStamp(actorId, 'acil_yardim') ?? {}
-                : {}),
-            }) as Prisma.InputJsonValue,
-            userId: actorId ?? null,
-            userEmail: (actor as { email?: string | null })?.email ?? null,
-          },
-        });
-      }
     }
 
     const managers = await this.prisma.user.findMany({
@@ -1937,8 +1986,17 @@ export class EmergencyCasesService {
       throw new BadRequestException('Geçersiz acil süreç olayı');
     }
     const action: EmergencyProcessAction = dto.action;
+    const actorUser = actor.id
+      ? await this.prisma.user.findUnique({
+          where: { id: actor.id },
+          select: { firstName: true, lastName: true },
+        })
+      : null;
+    const actorName = acilHakedisActorName(actorUser);
     let metadata: Record<string, unknown> =
       dto.metadata && typeof dto.metadata === 'object' ? { ...dto.metadata } : {};
+    if (actorName) metadata.actorName = actorName;
+    if (actor.id) metadata.actorUserId = actor.id;
     if (action === 'EMERGENCY_VENDOR_PAYMENT_RECORDED') {
       const currentCase = await this.prisma.emergencyCase.findUnique({
         where: { id: caseId },
@@ -1949,17 +2007,10 @@ export class EmergencyCasesService {
           'Finansa aktarıldıktan sonra ödendi işlemini finans personeli yapar.',
         );
       }
-      const actorUser = actor.id
-        ? await this.prisma.user.findUnique({
-            where: { id: actor.id },
-            select: { firstName: true, lastName: true },
-          })
-        : null;
-      const recordedByName = acilHakedisActorName(actorUser);
       metadata = {
         ...metadata,
         recordedByUserId: actor.id ?? null,
-        recordedByName,
+        recordedByName: actorName,
         source: metadata.source === 'finance_queue' ? 'finance_queue' : 'file',
       };
     }

@@ -30,12 +30,13 @@ type AcilLocalFlow = {
   insuredClosureSurveyWhatsAppSent: boolean;
   detectedCostTl: number | null;
   approvalDetected: boolean;
-  history: { at: string; text: string }[];
+  history: { at: string; text: string; actorName?: string }[];
   vendorProcess: VendorProcessKey | null;
   priceChangeLog: { at: string; field: 'alis' | 'satis'; oldValue: number | null; newValue: number }[];
   messageLog: { at: string; kind: MessageLogKind; text: string }[];
   vendorPaid?: boolean | null;
   customerNotifyChannel?: 'whatsapp' | 'email' | 'both';
+  reportArchives?: Array<{ at: string; kind: 'revise' | 'delete'; actorName?: string }>;
 };
 
 export const ACIL_PROCESS_ACTIONS = [
@@ -51,6 +52,8 @@ export const ACIL_PROCESS_ACTIONS = [
   'EMERGENCY_PRICE_CHANGED',
   'EMERGENCY_MESSAGE_RECORDED',
   'EMERGENCY_VENDOR_PAYMENT_RECORDED',
+  'EMERGENCY_REPORT_REVISED',
+  'EMERGENCY_REPORT_DELETED',
 ] as const;
 
 export type AcilProcessAction = (typeof ACIL_PROCESS_ACTIONS)[number];
@@ -110,13 +113,13 @@ export function diffAcilProcessEvents(
   if (!prev.customerApproved && next.customerApproved) {
     events.push({
       action: 'EMERGENCY_CUSTOMER_APPROVED',
-      description: 'Müşteri onayı kaydedildi',
+      description: 'Manuel onay',
     });
   }
   if (!prev.customerRejected && next.customerRejected) {
     events.push({
       action: 'EMERGENCY_CUSTOMER_REJECTED',
-      description: 'Müşteri reddi kaydedildi',
+      description: 'Red',
     });
   }
   if (!prev.workStartPrepared && next.workStartPrepared) {
@@ -186,6 +189,16 @@ export function diffAcilProcessEvents(
       metadata: { paid: next.vendorPaid },
     });
   }
+  const prevArchiveAts = new Set((prev.reportArchives ?? []).map((e) => e.at));
+  for (const entry of next.reportArchives ?? []) {
+    if (prevArchiveAts.has(entry.at)) continue;
+    const revised = entry.kind === 'revise';
+    events.push({
+      action: revised ? 'EMERGENCY_REPORT_REVISED' : 'EMERGENCY_REPORT_DELETED',
+      description: revised ? 'Rapor revize edildi' : 'Rapor silindi',
+      metadata: { at: entry.at, kind: entry.kind, actorName: entry.actorName ?? null },
+    });
+  }
   return events;
 }
 
@@ -204,7 +217,7 @@ export function mergeAcilFlowWithServerEvents(
     messageLog: [...local.messageLog],
   };
   let vendorFromServer: VendorProcessKey | null = null;
-  const historyTexts = new Set(merged.history.map((h) => h.text));
+  const historyKeys = new Set(merged.history.map((h) => `${h.at}|${h.text}|${h.actorName ?? ''}`));
   const priceKeys = new Set(
     merged.priceChangeLog.map((e) => `${e.field}:${e.newValue}:${e.at}`),
   );
@@ -230,13 +243,22 @@ export function mergeAcilFlowWithServerEvents(
     const vendorKey = vendorProcessFromAction(event.action);
     if (vendorKey) vendorFromServer = vendorKey;
 
+    const meta = event.metadata ?? {};
     const at = event.createdAt || new Date().toISOString();
-    if (event.description && !historyTexts.has(event.description)) {
-      historyTexts.add(event.description);
-      merged.history.push({ at, text: event.description });
+    const actorName = typeof meta.actorName === 'string' ? meta.actorName : undefined;
+    if (event.description) {
+      const recentDup = merged.history.some((h) => {
+        if (h.text !== event.description) return false;
+        if ((h.actorName ?? '') !== (actorName ?? '')) return false;
+        return Math.abs(new Date(h.at).getTime() - new Date(at).getTime()) < 120_000;
+      });
+      const key = `${at}|${event.description}|${actorName ?? ''}`;
+      if (!recentDup && !historyKeys.has(key)) {
+        historyKeys.add(key);
+        merged.history.push({ at, text: event.description, actorName });
+      }
     }
 
-    const meta = event.metadata ?? {};
     if (event.action === 'EMERGENCY_PRICE_CHANGED') {
       const field = meta.field === 'alis' || meta.field === 'satis' ? meta.field : null;
       const newValue = Number(meta.newValue);

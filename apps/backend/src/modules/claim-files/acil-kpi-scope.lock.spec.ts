@@ -20,9 +20,12 @@ describe('acil KPI kapsam LOCK', () => {
   });
 
   it('dosya sorumlusu Acil listesi kartı yüklenen dosyadan sayılır; Açık Dosyalar süzgeci durur', () => {
-    assert.match(PAGE, /tallyAcilOperationKpis/);
     assert.match(PAGE, /acilKpiTally\.openEmergency/);
+    assert.match(PAGE, /workloadOpen/);
     assert.match(PAGE, /filterAcilStage === '__open__'/);
     assert.match(PAGE, /assignedOfficeUserId/);
+    assert.match(PAGE, /Dosya Bedeli \(KDV Hariç\)/);
+    assert.match(PAGE, /acil-konu-filtre/);
+    assert.match(PAGE, /acil-donem-filtre/);
   });
 });

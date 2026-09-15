@@ -137,6 +137,8 @@ export type PlannerStepBodyProps = {
   onCustomerEmail?: () => void;
   onSendApprovalReport?: () => void;
   onOpenApprovalReport?: () => void;
+  onReviseApprovalReport?: () => void;
+  onDeleteApprovalReport?: () => void;
   onClosureEmail?: () => void;
   onAssign: (id: string) => void;
   onAlis: (v: string) => void;
@@ -627,7 +629,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
         <div className="space-y-3">
           <Card title="Raporu Gönder">
             <p className="text-[11px] text-slate-500">
-              Yukarıda tespit ve resmi yazın. Satış bedeli önceki adımdan rapora işlenir. Rapor asistansa gider; onay gelen kutudan düşer.
+              Yukarıda tespit ve resmi yazın. Satış bedeli önceki adımdan rapora işlenir. Müşteri onayına PDF ekli gider.
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeCls}`}>{badge}</span>
@@ -645,7 +647,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
             ) : null}
             <div className="mt-3 flex flex-wrap gap-1.5">
               <Btn
-                disabled={p.openingApprovalReport || !reportWritten}
+                disabled={p.openingApprovalReport}
                 onClick={() => p.onOpenApprovalReport?.()}
                 testId="acil-raporu-incele"
               >
@@ -660,14 +662,30 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
                 }
                 onClick={() => p.onSendApprovalReport?.()}
               >
-                <Mail className="h-3 w-3" /> Raporu Asistansa Gönder
+                <Mail className="h-3 w-3" /> Müşteri Onayına Gönder
               </Btn>
               {p.approvalState === 'bekliyor' && p.approvalRequested ? (
-                <span className="self-center text-[11px] text-amber-800">Asistans onayı bekleniyor.</span>
+                <span className="self-center text-[11px] text-amber-800">Müşteri onayı bekleniyor.</span>
               ) : null}
             </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <Btn
+                disabled={!reportWritten}
+                onClick={() => p.onReviseApprovalReport?.()}
+                testId="acil-raporu-revize"
+              >
+                Revize Et
+              </Btn>
+              <Btn
+                disabled={!reportWritten}
+                onClick={() => p.onDeleteApprovalReport?.()}
+                testId="acil-raporu-sil"
+              >
+                Raporu Sil
+              </Btn>
+            </div>
             <div className="mt-3 flex gap-1.5">
-              <Btn onClick={() => p.onApprovalState('onaylandi')}>Elle Onay Kaydet</Btn>
+              <Btn onClick={() => p.onApprovalState('onaylandi')}>Manuel Onay Ver</Btn>
               <Btn onClick={() => p.onApprovalState('reddedildi')}>Red</Btn>
             </div>
           </Card>

@@ -28,6 +28,8 @@ describe('report-image-gallery LOCK', () => {
     assert.doesNotMatch(gallery, /function FrameLabel/);
     assert.doesNotMatch(gallery, /reportImageCategoryColor/);
     assert.match(gallery, /ONARIM_FOTOGRAF_KATEGORI_KILIT/);
+    assert.match(gallery, /PhotoViewToolbar/);
+    assert.match(gallery, /testIdPrefix="rapor-foto"/);
     assert.match(gallery, /Kayıp Kayıtları Temizle/);
     assert.match(gallery, /onDeleteMany/);
     assert.match(gallery, /res\.status === 404/);

@@ -10,6 +10,8 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { StorageService } from '@/modules/storage/storage.service';
 import { ImageOptimizerService } from '@/modules/storage/image-optimizer.service';
+import { orientPhotoBuffer } from '@/modules/storage/orient-photo';
+import sharp from 'sharp';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 import {
@@ -288,13 +290,21 @@ export class EntityDocumentsService {
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
     await this.assertEntityAccess(doc.entityType, doc.entityId, user, insuranceCompanyIds);
 
-    const useThumb = preferThumb && Boolean(doc.thumbnailKey);
-    const key = useThumb ? doc.thumbnailKey! : doc.storageKey;
-    const buffer = await this.storage.download(key);
-    const mimeType = useThumb
-      ? 'image/webp'
-      : doc.mimeType || 'application/octet-stream';
-    return { buffer, fileName: doc.fileName, mimeType };
+    const key = doc.storageKey;
+    const downloaded = await this.storage.download(key);
+    if (!this.imageOptimizer.isImage(doc.mimeType, doc.fileName)) {
+      return { buffer: downloaded, fileName: doc.fileName, mimeType: doc.mimeType || 'application/octet-stream' };
+    }
+    const oriented = await orientPhotoBuffer(downloaded);
+    if (preferThumb) {
+      const thumb = await sharp(oriented.buffer)
+        .resize(360, 360, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 78 })
+        .toBuffer();
+      return { buffer: thumb, fileName: doc.fileName, mimeType: 'image/jpeg' };
+    }
+    const full = await sharp(oriented.buffer).jpeg({ quality: 84 }).toBuffer();
+    return { buffer: full, fileName: doc.fileName, mimeType: 'image/jpeg' };
   }
 
   async getThumbnailSignedUrl(
