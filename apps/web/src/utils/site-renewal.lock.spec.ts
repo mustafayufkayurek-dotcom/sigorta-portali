@@ -92,6 +92,8 @@ describe('şirket sitesi yenileme LOCK', () => {
     assert.match(middleware, /isCompanyWebsiteHost/);
     assert.match(middleware, /pathname = '\/yenileniyoruz'/);
     assert.match(middleware, /app\.meridyen-tr\.com/);
+    const nginx = readFileSync(join(here, '../../../nginx/nginx.conf'), 'utf8');
+    assert.match(nginx, /server_name app\.meridyen-tr\.com www\.app\.meridyen-tr\.com meridyen-tr\.com/);
     assert.equal(isPublicUnauthenticatedPath('/yenileniyoruz'), true);
     assert.match(gate, /\/yenileniyoruz/);
   });
