@@ -16,6 +16,7 @@ import {
   sanitizeInboxReplyAttachmentName,
 } from '@sigorta/shared';
 import { shrinkInboxReplyAttachment } from '@/utils/inbox-reply-image';
+import { OutboundMailSignalStrip } from '@/components/operation-inbox/OutboundMailSignalStrip';
 
 interface ReplyMessageDetail {
   fromAddress: string;
