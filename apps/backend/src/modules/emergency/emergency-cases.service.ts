@@ -1344,7 +1344,7 @@ export class EmergencyCasesService {
       fileNo,
       insured,
       subject: fileSubject || String(emergencyCase.issueType || ''),
-      ihbarAt,
+      ihbarAt: inboundAt,
       workStartedAt,
       serviceDeliveredAt,
       closedAt,
