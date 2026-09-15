@@ -1,12 +1,12 @@
 # Canlıya Alınmamış / Yarım Kalan İşler Envanteri
 
-**Tarih:** 28 Haziran 2026 (güncelleme 15.09.2026)  
-**Referans canlı sürüm:** Web **v598** · backend **v598**  
+**Tarih:** 28 Haziran 2026 (güncelleme 16.09.2026)  
+**Referans canlı sürüm:** Web **v599** · backend **v599**  
 **Güvenlik protokolü:** `DEPLOY_GUVENLIK_PROTOKOLU.md`
 
 Bu liste yalnızca **henüz ürün olarak kapanmamış** veya **bilinçli ertelenmiş** işleri içerir.
 
-v598 alındı. Sırada bekleyen toplu paket yok.
+v599 alındı. Şirket sitesi haritası ve meridyen-tr.com isim kaydı yerelde / bekliyor. Sırada bekleyen toplu paket yok.
 
 ---
 

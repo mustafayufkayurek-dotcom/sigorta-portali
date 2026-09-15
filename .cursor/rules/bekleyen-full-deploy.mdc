@@ -1,11 +1,11 @@
 ---
-description: Canlı web v598 / backend v598 — sıradaki paketler karışmaz
+description: Canlı web v599 / backend v599 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (15.09.2026)
+# Canlı (16.09.2026)
 
-Canlı: web **v598** · backend **v598**. Geri alma: web **v597** / backend **v597**.
+Canlı: web **v599** · backend **v599**. Geri alma: web **v598** / backend **v598**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v599 (full):** Şirket sitesi Yenileniyoruz (sayaç, kartlar, Kullanıcı Girişi yazılıma gider). Panel şirket adresinde açılmaz. Harita alınmadı. meridyen-tr.com genel isim kaydı henüz yok; sayfa yazılımdadır. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v598 / backend v598.
 
 **v598 (full):** Acil kapanış raporu (tespit kabuğu, SLA süre, hizmet sonrası resim, Çilingir dahil PDF). Hasar yanıt eki küçülür; 5 kesmesi yok. Yanıt Kime çoklu + kartta olmayan kullanıcı hatırlatması. Müşteri firma kullanıcıları karttan (telefon dolar). Kart üst bant koyu yeşil. Eksper–sigorta kare kutu kalktı; ilişki dosyadan kart/CRM. Yeni ihbar adresi sonda İlçe-İL. Kapanış resmi yükleme düşmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v597 / backend v597.
 

@@ -1,20 +1,21 @@
 {
-  "updatedAt": "2026-09-15",
-  "label": "v598-acil-kapanis-yanit-kime-kart",
-  "description": "Full v598: Acil kapanış raporu ve resmi yükleme; Hasar yanıt eki; Yanıt Kime; müşteri kartı kullanıcıları; üst bant; eksper–sigorta tanıma; ihbar adresi İlçe-İL. Alımda oturum düşmez. Geri alma web v597 / backend v597.",
+  "updatedAt": "2026-09-16",
+  "label": "v599-sirket-sitesi-yenileniyoruz",
+  "description": "Full v599: Şirket sitesi Yenileniyoruz; giriş yazılıma gider; panel şirket adresinde açılmaz. Harita alınmadı. Alımda oturum düşmez. Geri alma web v598 / backend v598.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v598-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v598-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v599-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v599-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v597-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v597-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v598-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v598-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
+    "/yenileniyoruz",
     "/kvkk",
     "/gizlilik",
     "/cerez-politikasi",

@@ -2,24 +2,33 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 15 Eylül 2026
+**Son güncelleme:** 16 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (15 Eylül 2026 — web v598 / backend v598)
+## Canlı durum (16 Eylül 2026 — web v599 / backend v599)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v598-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v598-amd64` | canlı |
-| **Rollback** | Web **v597** / Backend **v597** | manifest `rollbackImages` |
-| **Etiket** | `v598-acil-kapanis-yanit-kime-kart` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v599-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v599-amd64` | canlı |
+| **Rollback** | Web **v598** / Backend **v598** | manifest `rollbackImages` |
+| **Etiket** | `v599-sirket-sitesi-yenileniyoruz` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v599 — Full (16 Eylül 2026) — Şirket sitesi Yenileniyoruz
+
+- meridyen-tr.com / app aynı yazılım; Yenileniyoruz sayacı ve kartlar (harita yok)
+- Kullanıcı Girişi durur; şirket adresinden giriş yazılıma düşer; panel şirket adresinde açılmaz
+- Çerez şeridinde Çerezleri Yönet
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, yabancı siteden yazma kesilir, şirket sitesi origin’i yazılıma bağlı. Canlı uploads silinmedi. Alımda backend ve web birden stop edilmez; JWT ve Redis silinmez
+- meridyen-tr.com genel isim kaydı henüz yok; sayfa yazılımdadır (`/yenileniyoruz`)
+- Geri alma web **v598** / backend **v598**
 
 ### v598 — Full (15 Eylül 2026) — Acil kapanış; yanıt; Kime; kart; ihbar adresi; resim yükleme
 
