@@ -31,10 +31,13 @@ describe('panel oturum kapısı LOCK', () => {
     assert.match(middleware, /isProtectedAppPath/);
     assert.match(middleware, /hasPanelSessionCookies/);
     assert.match(middleware, /girisRedirectUrl/);
+    assert.match(middleware, /isCompanyWebsiteHost/);
+    assert.match(middleware, /app\.meridyen-tr\.com/);
     assert.equal(isProtectedAppPath('/panel'), true);
     assert.equal(isProtectedAppPath('/panel/hasar-dosyalari'), true);
     assert.equal(isProtectedAppPath('/'), true);
     assert.equal(isPublicUnauthenticatedPath('/giris'), true);
+    assert.equal(isPublicUnauthenticatedPath('/yenileniyoruz'), true);
     assert.equal(isPublicUnauthenticatedPath('/anket/abc'), true);
     assert.equal(isPublicUnauthenticatedPath('/kvkk'), true);
     assert.equal(isPublicUnauthenticatedPath('/gizlilik'), true);

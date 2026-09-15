@@ -28,20 +28,28 @@ export function CookieNotice() {
           </Link>
           ’ndadır.
         </p>
-        <button
-          type="button"
-          className="shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-          onClick={() => {
-            try {
-              window.localStorage.setItem(STORAGE_KEY, '1');
-            } catch {
-              /* yok say */
-            }
-            setVisible(false);
-          }}
-        >
-          Anladım
-        </button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Link
+            href="/cerez-politikasi"
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Çerezleri Yönet
+          </Link>
+          <button
+            type="button"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+            onClick={() => {
+              try {
+                window.localStorage.setItem(STORAGE_KEY, '1');
+              } catch {
+                /* yok say */
+              }
+              setVisible(false);
+            }}
+          >
+            Anladım
+          </button>
+        </div>
       </div>
     </div>
   );

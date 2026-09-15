@@ -12,7 +12,7 @@ import { logger } from './common/logger/winston.logger';
 import { getUploadsRootDir } from './modules/repair-reports/report-image-paths';
 import { TokenBlacklistService } from './modules/auth/token-blacklist.service';
 import { createUploadsAuthMiddleware } from './common/middleware/uploads-auth.middleware';
-import { csrfOriginGuard } from './common/security/csrf-origin';
+import { csrfOriginGuard, parseAllowedOrigins } from './common/security/csrf-origin';
 
 // Sentry initialization (disabled if SENTRY_DSN is empty)
 if (process.env.SENTRY_DSN) {
@@ -62,8 +62,15 @@ async function bootstrap() {
   app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   }));
+  const corsOrigins = parseAllowedOrigins();
   app.enableCors({
-    origin: process.env.WEB_URL || 'http://localhost:3001',
+    origin: (origin, callback) => {
+      if (!origin || corsOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     credentials: true,
   });
   app.use(csrfOriginGuard);

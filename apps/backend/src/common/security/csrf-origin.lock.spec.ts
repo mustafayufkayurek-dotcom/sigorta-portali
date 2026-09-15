@@ -10,6 +10,17 @@ describe('CSRF origin LOCK', () => {
     assert.equal(isAllowedRequestOrigin(undefined, allowed), true);
   });
 
+  it('şirket sitesi yazılım origin’i ile aynı kapıdadır; yabancı origin yazamaz', () => {
+    const allowed = parseAllowedOrigins({
+      WEB_URL: 'https://app.meridyen-tr.com',
+      NODE_ENV: 'production',
+    } as NodeJS.ProcessEnv);
+    assert.equal(isAllowedRequestOrigin('https://app.meridyen-tr.com', allowed), true);
+    assert.equal(isAllowedRequestOrigin('https://meridyen-tr.com', allowed), true);
+    assert.equal(isAllowedRequestOrigin('https://www.meridyen-tr.com', allowed), true);
+    assert.equal(isAllowedRequestOrigin('https://evil.example', allowed), false);
+  });
+
   it('lokal girişte localhost ve 127.0.0.1 aynı kapıdır', () => {
     const allowed = parseAllowedOrigins({ WEB_URL: 'http://localhost:3001', NODE_ENV: 'development' } as NodeJS.ProcessEnv);
     assert.equal(isAllowedRequestOrigin('http://localhost:3001', allowed), true);

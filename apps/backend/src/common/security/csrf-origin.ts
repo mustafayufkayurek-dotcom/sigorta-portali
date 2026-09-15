@@ -4,6 +4,12 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 /** Lokal panel: localhost ve 127.0.0.1 aynı giriş kapısıdır. */
 const LOCAL_PANEL_ORIGINS = ['http://localhost:3001', 'http://127.0.0.1:3001'];
 
+const COMPANY_SITE_ORIGINS = [
+  'https://meridyen-tr.com',
+  'https://www.meridyen-tr.com',
+  'https://app.meridyen-tr.com',
+];
+
 function withLocalhostTwin(origin: string): string[] {
   const normalized = origin.trim().replace(/\/$/, '');
   const twins = [normalized];
@@ -15,6 +21,12 @@ function withLocalhostTwin(origin: string): string[] {
     } else if (url.hostname === '127.0.0.1') {
       url.hostname = 'localhost';
       twins.push(url.origin);
+    } else if (
+      url.hostname === 'app.meridyen-tr.com' ||
+      url.hostname === 'meridyen-tr.com' ||
+      url.hostname === 'www.meridyen-tr.com'
+    ) {
+      twins.push(...COMPANY_SITE_ORIGINS);
     }
   } catch {
     /* ignore */

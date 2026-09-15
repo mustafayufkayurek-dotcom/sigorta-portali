@@ -1,0 +1,215 @@
+.hero-section.renewal-hero {
+  position: relative;
+  min-height: calc(100dvh - var(--login-nav-h) - var(--login-strip-h));
+}
+
+.renewal-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
+}
+
+.renewal-hero-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.renewal-overlay-card {
+  flex: 0 0 280px;
+  width: 280px;
+  padding: 16px 16px 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow: 0 12px 32px rgba(11, 31, 58, 0.16);
+  text-align: center;
+}
+
+.renewal-title {
+  margin: 0;
+  font-family: var(--login-font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: 0;
+}
+
+.renewal-sub {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--slate);
+}
+
+.renewal-clock {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(48px, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.renewal-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  border-radius: 10px;
+  background: var(--ice);
+  border: 1px solid rgba(24, 82, 160, 0.12);
+}
+
+.renewal-unit-value {
+  font-family: var(--login-font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1;
+}
+
+.renewal-unit-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.renewal-hero a.feature-card {
+  text-decoration: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+.renewal-feature-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 28px 32px 40px;
+  background: linear-gradient(150deg, var(--navy) 0%, var(--navy-mid) 55%, var(--blue) 100%);
+  color: #fff;
+}
+
+.giris-font-scope:has(.renewal-feature-page-map) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.giris-font-scope:has(.renewal-feature-page-map) .login-root {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.renewal-top-nav {
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) minmax(0, 1fr) minmax(7rem, auto);
+  align-items: center;
+  gap: 12px;
+}
+
+.renewal-top-nav .nav-right {
+  margin-left: 0;
+  justify-self: end;
+}
+
+.renewal-top-band {
+  min-width: 0;
+  text-align: center;
+}
+
+.renewal-top-band-title {
+  margin: 0;
+  font-family: var(--login-font-display);
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0;
+}
+
+.renewal-top-band-teaser {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #9ec5ff;
+}
+
+.renewal-feature-page-map {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  align-items: stretch;
+  height: calc(100dvh - var(--login-nav-h, 80px));
+  max-height: calc(100dvh - var(--login-nav-h, 80px));
+  min-height: 0;
+  padding: 8px 10px 10px;
+  overflow: hidden;
+}
+
+.renewal-feature-map {
+  width: 100%;
+  flex: 1 1 auto;
+  height: 100%;
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #0f172a;
+  text-align: left;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.renewal-feature-kicker {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.renewal-feature-title {
+  margin: 0;
+  font-family: var(--login-font-display);
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.renewal-feature-teaser {
+  margin: 16px 0 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #9ec5ff;
+}
+
+@media (max-width: 900px) {
+  .hero-section.renewal-hero {
+    flex-direction: row;
+    overflow: hidden;
+  }
+
+  .hero-section.renewal-hero .login-panel {
+    order: 0;
+    flex: 0 0 42%;
+    width: 42%;
+    display: flex;
+  }
+
+  .renewal-hero-top {
+    flex-direction: column;
+  }
+
+  .renewal-overlay-card {
+    width: 100%;
+    flex-basis: auto;
+  }
+
+  .hero-section.renewal-hero .marketing-panel .feature-grid,
+  .hero-section.renewal-hero .marketing-panel .stats-band {
+    display: none;
+  }
+}

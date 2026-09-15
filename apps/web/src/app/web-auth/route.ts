@@ -14,12 +14,24 @@ function cookieSecure(request: Request): boolean {
   return proto === 'https' || process.env.NODE_ENV === 'production';
 }
 
-function cookieBase(secure: boolean) {
+function cookieDomain(request: Request): string | undefined {
+  const host = (request.headers.get('x-forwarded-host') || request.headers.get('host') || '')
+    .split(':')[0]
+    .trim()
+    .toLowerCase();
+  if (host === 'meridyen-tr.com' || host === 'www.meridyen-tr.com' || host === 'app.meridyen-tr.com') {
+    return '.meridyen-tr.com';
+  }
+  return undefined;
+}
+
+function cookieBase(secure: boolean, domain?: string) {
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
     path: '/',
     secure,
+    ...(domain ? { domain } : {}),
   };
 }
 
@@ -53,7 +65,7 @@ export async function POST(request: Request) {
   const remember = body.remember === true;
   const secure = cookieSecure(request);
   const response = NextResponse.json({ ok: true });
-  const base = cookieBase(secure);
+  const base = cookieBase(secure, cookieDomain(request));
   response.cookies.set(ACCESS_COOKIE_NAME, accessToken, {
     ...base,
     ...(remember ? { maxAge: 15 * 60 } : {}),
@@ -68,7 +80,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const secure = cookieSecure(request);
   const response = NextResponse.json({ ok: true });
-  const base = cookieBase(secure);
+  const base = cookieBase(secure, cookieDomain(request));
   response.cookies.set(ACCESS_COOKIE_NAME, '', { ...base, maxAge: 0 });
   response.cookies.set(REFRESH_COOKIE_NAME, '', { ...base, maxAge: 0 });
   return response;

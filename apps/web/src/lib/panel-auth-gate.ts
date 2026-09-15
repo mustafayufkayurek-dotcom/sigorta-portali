@@ -18,6 +18,7 @@ export function hasPanelSessionCookies(getCookie: (name: string) => string | und
 
 export function isPublicUnauthenticatedPath(pathname: string): boolean {
   if (pathname === '/giris' || pathname.startsWith('/giris/')) return true;
+  if (pathname === '/yenileniyoruz' || pathname.startsWith('/yenileniyoruz/')) return true;
   if (pathname === '/web-auth') return true;
   if (
     pathname === '/kvkk' ||

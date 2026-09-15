@@ -38,6 +38,7 @@ describe('kamuoyu KVKK LOCK', () => {
 
   it('çerez şeridi kök yerleşimde durur', () => {
     assert.match(read('app/layout.tsx'), /CookieNotice/);
+    assert.match(read('components/legal/CookieNotice.tsx'), /Çerezleri Yönet/);
   });
 
   it('kamu sayfasında taslak / avukat bekler uyarısı yok', () => {

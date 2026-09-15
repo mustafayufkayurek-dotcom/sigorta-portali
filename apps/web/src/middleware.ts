@@ -6,6 +6,7 @@ import {
   isProtectedAppPath,
   isPublicUnauthenticatedPath,
 } from '@/lib/panel-auth-gate';
+import { isCompanyWebsiteHost } from '@/utils/site-renewal';
 
 /**
  * Panel ve kök adres oturumsuz açılmaz.
@@ -15,6 +16,20 @@ import {
  */
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const host = request.headers.get('host');
+
+  if (isCompanyWebsiteHost(host)) {
+    if (pathname === '/' || pathname === '' || pathname === '/giris') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/yenileniyoruz';
+      return NextResponse.rewrite(url);
+    }
+    if (isPublicUnauthenticatedPath(pathname)) {
+      return NextResponse.next();
+    }
+    const dest = new URL(`https://app.meridyen-tr.com${pathname}${search}`);
+    return NextResponse.redirect(dest);
+  }
 
   const legacyClaimMatch = pathname.match(
     /^\/claim-files\/([^/]+)(?:\/reports\/([^/]+))?\/?$/,
@@ -58,5 +73,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/panel/:path*', '/claim-files/:path*', '/giris', '/giris/:path*'],
+  matcher: ['/', '/panel/:path*', '/claim-files/:path*', '/giris', '/giris/:path*', '/yenileniyoruz', '/yenileniyoruz/:path*'],
 };
