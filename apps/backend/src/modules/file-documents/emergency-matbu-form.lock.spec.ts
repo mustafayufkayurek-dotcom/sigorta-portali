@@ -18,6 +18,7 @@ import {
   meridyenLogoDataUri,
   resolveEmergencyMatbuIdentity,
   buildEmergencyMatbuApprovalTrailHtml,
+  splitKdvHaric,
   splitKdvDahil,
   applyEmergencyFormKind,
 } from './emergency-matbu-form.ts';
@@ -122,6 +123,10 @@ describe('acil servis formu LOCK', () => {
     assert.equal(kdv.toplam, '3.200,00');
     assert.match(kdv.matrah, /2\.666,67/);
     assert.match(kdv.kdv, /533,33/);
+    const haric = splitKdvHaric(3000);
+    assert.equal(haric.matrah, '3.000,00');
+    assert.equal(haric.kdv, '600,00');
+    assert.equal(haric.toplam, '3.600,00');
   });
 
   it('dijital onay izi bekler / onaylayınca yazar', () => {
@@ -152,7 +157,7 @@ describe('acil servis formu LOCK', () => {
     assert.match(svc, /findingsText/);
     assert.doesNotMatch(svc, /matbu_evrak_template/);
     assert.doesNotMatch(svc, /toTitleCaseTR\(notes\)/);
-    assert.match(svc, /splitKdvDahil/);
+    assert.match(svc, /splitKdvHaric/);
     assert.match(svc, /shortName: true/);
     assert.match(svc, /inboundAttachment/);
     assert.match(svc, /fit: 'inside'/);

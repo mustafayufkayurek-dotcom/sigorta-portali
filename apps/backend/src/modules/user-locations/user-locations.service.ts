@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { PrismaService } from '@/prisma/prisma.service';
 import { resolveProvinceCoords } from '@sigorta/shared';
 
@@ -221,6 +223,7 @@ export class UserLocationsService {
   async getFieldMap(opts?: {
     customerId?: string;
     ownerUserId?: string;
+    includeAllClosed?: boolean;
   }): Promise<FieldMapPoint[]> {
     const personnel = await this.getLatestAll();
     const points: FieldMapPoint[] = personnel.map((p) => {
@@ -243,13 +246,16 @@ export class UserLocationsService {
       };
     });
 
+    const allClosed = Boolean(opts?.includeAllClosed);
     const closedSince = new Date();
     closedSince.setDate(closedSince.getDate() - 180);
+    const fileTake = allClosed ? 5000 : 600;
+    const closedTake = allClosed ? 5000 : 300;
 
     const [openClaims, closedClaims, emergencyCases] = await Promise.all([
       this.prisma.claimFile.findMany({
         where: { currentStatus: { isClosedState: false } },
-        take: 600,
+        take: fileTake,
         orderBy: { updatedAt: 'desc' },
         select: {
           id: true,
@@ -267,9 +273,9 @@ export class UserLocationsService {
       this.prisma.claimFile.findMany({
         where: {
           currentStatus: { isClosedState: true },
-          updatedAt: { gte: closedSince },
+          ...(allClosed ? {} : { updatedAt: { gte: closedSince } }),
         },
-        take: 300,
+        take: closedTake,
         orderBy: { updatedAt: 'desc' },
         select: {
           id: true,
@@ -288,13 +294,15 @@ export class UserLocationsService {
         where: {
           OR: [
             { status: { in: ['GELEN', 'ATANDI', 'SAHADA'] } },
-            {
-              status: { in: ['COZULDU', 'FATURALANDILDI'] },
-              updatedAt: { gte: closedSince },
-            },
+            allClosed
+              ? { status: { in: ['COZULDU', 'FATURALANDILDI'] } }
+              : {
+                  status: { in: ['COZULDU', 'FATURALANDILDI'] },
+                  updatedAt: { gte: closedSince },
+                },
           ],
         },
-        take: 600,
+        take: fileTake,
         orderBy: { updatedAt: 'desc' },
         select: {
           id: true,
@@ -388,6 +396,39 @@ export class UserLocationsService {
       });
     }
     return out;
+  }
+
+  /** Şirket sitesi: yalnız Hasar ve Acil dosya pinleri. Personel ve panel linki yok. */
+  async getPublicFileMap(): Promise<FieldMapPoint[]> {
+    if (process.env.NODE_ENV !== 'production') {
+      const candidates = [
+        join(process.cwd(), '.local/live-public-file-map.json'),
+        join(process.cwd(), 'apps/backend/.local/live-public-file-map.json'),
+      ];
+      const snap = candidates.find((p) => existsSync(p));
+      if (snap) {
+        return JSON.parse(readFileSync(snap, 'utf8')) as FieldMapPoint[];
+      }
+    }
+    const data = await this.getFieldMap({ includeAllClosed: true });
+    return data
+      .filter((p) => p.actorType === 'file_hasar' || p.actorType === 'file_acil')
+      .map((p) => {
+        const label = p.actorType === 'file_hasar' ? 'Hasar' : 'Acil Yardım';
+        return {
+          actorType: p.actorType,
+          id: p.id,
+          name: label,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          timestamp: p.timestamp,
+          locationKind: 'job' as const,
+          jobStage: p.jobStage,
+          jobStageLabel: p.jobStageLabel,
+          city: p.city,
+          activeJob: { label },
+        };
+      });
   }
 
   async cleanOldLocations(): Promise<number> {

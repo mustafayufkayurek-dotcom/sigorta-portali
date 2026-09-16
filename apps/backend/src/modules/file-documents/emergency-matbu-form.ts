@@ -157,6 +157,16 @@ export function splitKdvDahil(gross: number): { matrah: string; kdv: string; top
     x.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return { matrah: fmt(net), kdv: fmt(vat), toplam: fmt(n) };
 }
+
+/** Acil gelir KDV hariçtir; kapanış raporu «TL +KDV» ile aynı. */
+export function splitKdvHaric(net: number): { matrah: string; kdv: string; toplam: string } {
+  const n = Number.isFinite(net) ? Math.max(0, net) : 0;
+  const vat = Math.round(n * 0.2 * 100) / 100;
+  const gross = Math.round((n + vat) * 100) / 100;
+  const fmt = (x: number) =>
+    x.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return { matrah: fmt(n), kdv: fmt(vat), toplam: fmt(gross) };
+}
 export const HASAR_REPORT_PHOTO_BOX = { width: 240, height: 156 } as const;
 
 export function isMatbuImageFile(mime: string | null | undefined, fileName: string | null | undefined): boolean {

@@ -69,17 +69,17 @@ describe('şirket sitesi yenileme LOCK', () => {
     assert.doesNotMatch(page, /text-transform:\s*uppercase/);
   });
 
-  it('kartlar yenileniyoruz sayfası açar; Türkiye haritası yerelde durur, sayfada yok', () => {
+  it('kartlar yenileniyoruz sayfası açar; Türkiye haritası Tüm Türkiye sayfasındadır', () => {
     const feature = readFileSync(join(here, '../app/yenileniyoruz/[slug]/page.tsx'), 'utf8');
     const slugs = readFileSync(join(here, '../app/yenileniyoruz/site-feature-pages.ts'), 'utf8');
     assert.match(page, /\/yenileniyoruz\/turkiye/);
     assert.match(slugs, /Yenileniyoruz \.\.\./);
     assert.match(slugs, /Tüm Türkiye'deyiz/);
     assert.doesNotMatch(slugs, /Hazırlanıyoruz/);
-    assert.match(slugs, /map: false/);
+    assert.match(slugs, /map: true/);
+    assert.match(feature, /FieldOperationsMap/);
+    assert.match(feature, /publicFilesOnly/);
     assert.match(feature, /page\.teaser/);
-    assert.doesNotMatch(feature, /FieldOperationsMap/);
-    assert.doesNotMatch(feature, /publicFilesOnly/);
     const chrome = readFileSync(join(here, '../app/yenileniyoruz/yenileniyoruz-chrome.tsx'), 'utf8');
     assert.match(chrome, /renewal-top-band/);
   });
@@ -93,7 +93,8 @@ describe('şirket sitesi yenileme LOCK', () => {
     assert.match(middleware, /pathname = '\/yenileniyoruz'/);
     assert.match(middleware, /app\.meridyen-tr\.com/);
     const nginx = readFileSync(join(here, '../../../../nginx/nginx.conf'), 'utf8');
-    assert.match(nginx, /server_name app\.meridyen-tr\.com www\.app\.meridyen-tr\.com meridyen-tr\.com/);
+    assert.match(nginx, /server_name meridyen-tr\.com www\.meridyen-tr\.com/);
+    assert.match(nginx, /server_name app\.meridyen-tr\.com www\.app\.meridyen-tr\.com;/);
     assert.equal(isPublicUnauthenticatedPath('/yenileniyoruz'), true);
     assert.match(gate, /\/yenileniyoruz/);
   });

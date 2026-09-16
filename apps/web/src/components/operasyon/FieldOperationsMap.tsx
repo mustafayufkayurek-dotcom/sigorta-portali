@@ -18,6 +18,7 @@ import { TrDateInput } from '@/components/ui/TrDateInput';
 import { getAccessToken } from '@/utils/auth-session';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { provinceMapBounds, resolveProvinceCoords } from '@/data/turkey-province-coords';
 import { buildPanelFileMarkerHtml, ensureHaritaPinSignalCss } from '@/utils/harita-pin-signal';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
@@ -126,17 +127,22 @@ function fileColor(point: FieldMapPoint): string {
   return point.jobStage === 'yeni' ? '#FB923C' : '#EA580C';
 }
 
-function fileMarkerHtml(point: FieldMapPoint, letter: string): string {
+function fileMarkerHtml(point: FieldMapPoint, letter: string, publicMode: boolean): string {
+  const label = publicMode
+    ? point.actorType === 'file_hasar' || point.actorType === 'vendor_hasar'
+      ? point.activeJob?.label || point.name
+      : 'Acil Yardım'
+    : point.activeJob?.fileNo || point.name;
   return buildPanelFileMarkerHtml({
     letter,
     color: fileColor(point),
-    label: point.activeJob?.fileNo || point.name,
-    stage: point.jobStageLabel,
+    label,
+    stage: publicMode ? undefined : point.jobStageLabel,
     signal: point.jobStage !== 'kapandi',
   });
 }
 
-function buildMarkerHtml(point: FieldMapPoint): string {
+function buildMarkerHtml(point: FieldMapPoint, publicMode: boolean): string {
   const label = esc(point.name);
 
   if (point.actorType === 'personel') {
@@ -150,15 +156,20 @@ function buildMarkerHtml(point: FieldMapPoint): string {
   }
 
   if (point.actorType === 'file_hasar' || point.actorType === 'vendor_hasar') {
-    return fileMarkerHtml(point, 'H');
+    return fileMarkerHtml(point, 'H', publicMode);
   }
 
-  return fileMarkerHtml(point, 'A');
+  return fileMarkerHtml(point, 'A', publicMode);
 }
 
-function buildPopupHtml(point: FieldMapPoint): string {
+function buildPopupHtml(point: FieldMapPoint, publicMode: boolean): string {
   const locationKindLabel =
     point.locationKind === 'live' ? 'Personel telefonu' : 'İş adresi';
+  const title = publicMode
+    ? point.actorType === 'file_hasar' || point.actorType === 'vendor_hasar'
+      ? point.activeJob?.label || point.name
+      : 'Acil Yardım'
+    : point.activeJob?.fileNo || point.name;
   const jobLabel =
     point.activeJob?.label && APPOINTMENT_TYPE[point.activeJob.label]
       ? APPOINTMENT_TYPE[point.activeJob.label]
@@ -166,7 +177,7 @@ function buildPopupHtml(point: FieldMapPoint): string {
 
   return `
     <div class="font-sans text-[13px] text-slate-800">
-      <strong>${esc(point.activeJob?.fileNo || point.name)}</strong>
+      <strong>${esc(title)}</strong>
       <div class="mt-1 text-slate-500">${ACTOR_LABEL[point.actorType]}</div>
       <hr class="my-2 border-slate-100">
       <div>Konum: ${locationKindLabel}</div>
@@ -176,7 +187,10 @@ function buildPopupHtml(point: FieldMapPoint): string {
           : ''
       }
       ${point.city ? `<div>Bölge: ${esc(point.city)}</div>` : ''}
-      <div>Son Güncelleme: ${formatRelative(point.timestamp)}</div>
+      ${
+        publicMode
+          ? ''
+          : `<div>Son Güncelleme: ${formatRelative(point.timestamp)}</div>
       ${
         point.activeJob?.fileNo
           ? `<hr class="my-2 border-slate-100">
@@ -188,12 +202,21 @@ function buildPopupHtml(point: FieldMapPoint): string {
                  : ''
              }`
           : ''
+      }`
       }
     </div>`;
 }
 
 function cityKey(city?: string | null): string {
   return (city ?? '').trim().toLocaleLowerCase('tr-TR');
+}
+
+function sameProvince(a?: string | null, b?: string | null): boolean {
+  if (!a?.trim() || !b?.trim()) return false;
+  const ca = resolveProvinceCoords(a);
+  const cb = resolveProvinceCoords(b);
+  if (ca && cb) return ca.lat === cb.lat && ca.lng === cb.lng;
+  return cityKey(a) === cityKey(b);
 }
 
 function MapKpiCard({
@@ -255,6 +278,8 @@ export type FieldOperationsMapProps = {
   customerId?: string;
   ownerOnly?: boolean;
   compact?: boolean;
+  embed?: boolean;
+  publicFilesOnly?: boolean;
   showPersonnelRoute?: boolean;
   showNotice?: boolean;
   defaultFilter?: FieldMapFilterTab;
@@ -264,6 +289,8 @@ export function FieldOperationsMap({
   customerId,
   ownerOnly = false,
   compact = false,
+  embed = false,
+  publicFilesOnly = false,
   showPersonnelRoute = false,
   showNotice = false,
   defaultFilter = 'all',
@@ -283,6 +310,7 @@ export function FieldOperationsMap({
   const [rota, setRota] = useState<RotaNoktasi[]>([]);
   const [rotaPanel, setRotaPanel] = useState(false);
   const [yukleniyor, setYukleniyor] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
 
   const token = () => getAccessToken() ?? '';
 
@@ -291,7 +319,8 @@ export function FieldOperationsMap({
     for (const p of points) {
       const raw = (p.city ?? '').trim();
       if (!raw) continue;
-      const key = cityKey(raw);
+      const coords = resolveProvinceCoords(raw);
+      const key = coords ? `${coords.lat},${coords.lng}` : cityKey(raw);
       if (!seen.has(key)) seen.set(key, raw);
     }
     return [...seen.values()].sort((a, b) => a.localeCompare(b, 'tr'));
@@ -299,9 +328,15 @@ export function FieldOperationsMap({
 
   const regionPoints = points.filter((p) => {
     if (p.actorType === 'personel') return false;
-    if (seciliBolge && cityKey(p.city) !== cityKey(seciliBolge)) return false;
+    if (seciliBolge && !sameProvince(p.city, seciliBolge)) return false;
     return true;
   });
+
+  const regionViewKey = useMemo(
+    () =>
+      `${seciliBolge}::${regionPoints.map((p) => `${p.id}:${p.latitude}:${p.longitude}`).join('|')}`,
+    [seciliBolge, regionPoints],
+  );
 
   const filteredPoints = regionPoints.filter((p) => {
     if (filter === 'hasar') return isHasarPoint(p);
@@ -320,42 +355,61 @@ export function FieldOperationsMap({
     markersRef.current = [];
 
     data.forEach((point) => {
+      const filePin =
+        point.actorType === 'file_hasar' ||
+        point.actorType === 'file_acil' ||
+        point.actorType === 'vendor_hasar' ||
+        point.actorType === 'vendor_acil';
       const icon = L.divIcon({
-        className: '',
-        html: buildMarkerHtml(point),
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
+        className: 'harita-dosya-pin',
+        html: buildMarkerHtml(point, publicFilesOnly),
+        iconSize: filePin ? [48, 64] : [36, 36],
+        iconAnchor: filePin ? [24, 18] : [18, 18],
       });
 
-      const popup = L.popup({ maxWidth: 280 }).setContent(buildPopupHtml(point));
+      const popup = L.popup({ maxWidth: 280 }).setContent(buildPopupHtml(point, publicFilesOnly));
       const marker = L.marker([point.latitude, point.longitude], { icon })
         .bindPopup(popup)
         .addTo(mapRef.current);
       markersRef.current.push(marker);
     });
-  }, []);
+  }, [publicFilesOnly]);
 
   const fetchFieldMap = useCallback(async () => {
     setYukleniyor(true);
     try {
-      const res = await axios.get(`${API}/user-locations/field-map`, {
-        headers: { Authorization: `Bearer ${token()}` },
-        params: {
-          ...(customerId ? { customerId } : {}),
-          ...(ownerOnly ? { ownerOnly: '1' } : {}),
-        },
-      });
-      const data: FieldMapPoint[] = res.data.data ?? [];
+      const data: FieldMapPoint[] = publicFilesOnly
+        ? await (async () => {
+            const res = await fetch('/api/v1/user-locations/public-file-map');
+            const json = await res.json();
+            return (json.data ?? []) as FieldMapPoint[];
+          })()
+        : ((
+            await axios.get(`${API}/user-locations/field-map`, {
+              headers: { Authorization: `Bearer ${token()}` },
+              params: {
+                ...(customerId ? { customerId } : {}),
+                ...(ownerOnly ? { ownerOnly: '1' } : {}),
+              },
+            })
+          ).data.data ?? []);
       setPoints(data);
     } catch (e) {
       console.error('Harita verileri yüklenemedi', e);
     } finally {
       setYukleniyor(false);
+      window.setTimeout(() => mapRef.current?.invalidateSize?.(), 80);
     }
-  }, [customerId, ownerOnly]);
+  }, [customerId, ownerOnly, publicFilesOnly]);
 
   useEffect(() => {
+    void fetchFieldMap();
+  }, [fetchFieldMap]);
+
+  useEffect(() => {
+    let cancelled = false;
     import('leaflet').then((L) => {
+      if (cancelled) return;
       leafletRef.current = L.default ?? L;
       ensureHaritaPinSignalCss();
       if (!document.getElementById('leaflet-css')) {
@@ -367,30 +421,69 @@ export function FieldOperationsMap({
       }
       if (!mapRef.current && mapContainerRef.current) {
         const leaflet = leafletRef.current;
-        mapRef.current = leaflet.map(mapContainerRef.current).setView([39.0, 35.0], 6);
+        mapRef.current = leaflet.map(mapContainerRef.current).setView([39.15, 35.15], 6.4);
         leaflet
           .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap Katkıda Bulunanları',
           })
           .addTo(mapRef.current);
-        fetchFieldMap();
+        setMapReady(true);
+        window.setTimeout(() => mapRef.current?.invalidateSize?.(), 80);
       }
     });
-  }, [fetchFieldMap]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = mapContainerRef.current;
+    if (!el || !mapReady) return;
+    const resize = () => mapRef.current?.invalidateSize?.();
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(el);
+    window.addEventListener('resize', resize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', resize);
+    };
+  }, [mapReady]);
 
   useEffect(() => {
     renderMarkers(filteredPoints);
+  }, [filteredPoints, renderMarkers]);
+
+  useEffect(() => {
     const L = leafletRef.current;
-    if (!mapRef.current || !L || filteredPoints.length === 0) return;
-    if (seciliBolge) {
-      const bounds = L.latLngBounds(
-        filteredPoints.map((p) => [p.latitude, p.longitude] as [number, number]),
+    const map = mapRef.current;
+    if (!map || !L) return;
+
+    if (!seciliBolge) {
+      map.setMinZoom(5);
+      const turkey = L.latLngBounds(
+        [36.05, 26.15] as [number, number],
+        [42.12, 44.85] as [number, number],
       );
-      mapRef.current.fitBounds(bounds, { padding: [36, 36], maxZoom: 8 });
-    } else {
-      mapRef.current.setView([39.0, 35.0], 6);
+      map.setMaxBounds(turkey.pad(0.12));
+      map.fitBounds(turkey, { padding: [8, 24], maxZoom: 6.6, animate: true });
+      return;
     }
-  }, [filteredPoints, renderMarkers, seciliBolge]);
+
+    const box = provinceMapBounds(seciliBolge);
+    let bounds = box ? L.latLngBounds(box[0], box[1]) : null;
+    if (regionPoints.length > 0) {
+      const pinBounds = L.latLngBounds(
+        regionPoints.map((p) => [p.latitude, p.longitude] as [number, number]),
+      );
+      bounds = bounds ? bounds.extend(pinBounds) : pinBounds;
+    }
+    if (!bounds) return;
+    const padded = bounds.pad(0.08);
+    map.setMinZoom(7);
+    map.setMaxBounds(padded);
+    map.fitBounds(padded, { padding: [28, 28], maxZoom: 11, animate: true });
+  }, [seciliBolge, regionViewKey, mapReady]);
 
   useEffect(() => {
     const interval = setInterval(fetchFieldMap, 60_000);
@@ -452,15 +545,21 @@ export function FieldOperationsMap({
 
   const seciliPersonelAdi = personelPoints.find((p) => p.id === seciliPersonel)?.name;
 
-  const shellClass = compact
-    ? 'flex min-h-0 flex-col gap-3'
-    : 'flex h-[calc(100dvh-3.5rem-1rem)] min-h-[360px] flex-col gap-3 overflow-hidden sm:h-[calc(100vh-130px)]';
+  const shellClass = embed
+    ? 'flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden'
+    : compact
+      ? 'flex min-h-0 flex-col gap-3'
+      : 'flex h-[calc(100dvh-3.5rem-1rem)] min-h-[360px] flex-col gap-3 overflow-hidden sm:h-[calc(100vh-130px)]';
 
-  const mapHeightClass = compact ? 'h-[320px] min-h-[240px]' : 'h-full w-full min-h-[240px]';
+  const mapHeightClass = embed
+    ? 'h-full w-full min-h-[420px]'
+    : compact
+      ? 'h-[320px] min-h-[240px]'
+      : 'h-full w-full min-h-[240px]';
 
   return (
     <div className={shellClass}>
-      {!compact ? (
+      {!compact && !embed ? (
         <div className="page-header !mb-0">
           <div className="flex items-center gap-3">
             <div className="page-header-icon">
@@ -486,7 +585,10 @@ export function FieldOperationsMap({
         />
       ) : null}
 
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4" data-testid="harita-ozet-kartlari">
+      <div
+        className={embed ? 'grid grid-cols-4 gap-2' : 'grid grid-cols-2 gap-2 lg:grid-cols-4'}
+        data-testid="harita-ozet-kartlari"
+      >
         {FILTER_CARDS.map((card) => (
           <MapKpiCard
             key={card.key}
@@ -507,7 +609,11 @@ export function FieldOperationsMap({
             <select
               aria-label="Bölge seç"
               value={seciliBolge}
-              onChange={(e) => setSeciliBolge(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setSeciliBolge(next);
+                if (next) setFilter('all');
+              }}
               className="block w-full min-h-[2.5rem] rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-8 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="">Bölge seç</option>
@@ -583,8 +689,23 @@ export function FieldOperationsMap({
         ) : null}
       </div>
 
-      <div className={`relative overflow-hidden rounded-xl border border-slate-200 ${compact ? '' : 'min-h-[240px] flex-1'}`}>
-        <div ref={mapContainerRef} className={mapHeightClass} />
+      <div
+        className={`relative min-h-0 overflow-hidden rounded-xl border border-slate-200 ${
+          compact ? '' : 'flex-1'
+        }`}
+      >
+        {seciliBolge ? (
+          <div className="pointer-events-none absolute right-3 top-3 z-[400] rounded-lg border border-slate-200 bg-white/95 px-3 py-2 shadow-sm">
+            <p className="text-sm font-semibold text-slate-900">{seciliBolge} İl Haritası</p>
+            <p className="mt-0.5 text-[11px] font-medium text-slate-500">
+              Devam eden ve tamamlanan dosyalar
+            </p>
+          </div>
+        ) : null}
+        <div
+          ref={mapContainerRef}
+          className={compact ? mapHeightClass : 'absolute inset-0 h-full w-full'}
+        />
         {!yukleniyor && filteredPoints.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/70">
             <div className="mx-3 rounded-lg border border-slate-200 bg-white px-4 py-4 text-center shadow-sm sm:px-6">

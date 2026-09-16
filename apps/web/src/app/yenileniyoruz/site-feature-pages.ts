@@ -17,7 +17,7 @@ export const SITE_FEATURE_PAGES = {
   turkiye: {
     title: "Tüm Türkiye'deyiz",
     teaser: 'Yenileniyoruz ...',
-    map: false,
+    map: true,
   },
 } as const;
 

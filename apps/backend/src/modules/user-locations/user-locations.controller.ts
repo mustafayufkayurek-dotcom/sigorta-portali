@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UserLocationsService, LocationPoint } from './user-locations.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
+import { Public } from '@/common/decorators/public.decorator';
 
 @ApiTags('user-locations')
 @ApiBearerAuth()
@@ -42,6 +43,14 @@ export class UserLocationsController {
       customerId: customerId?.trim() || undefined,
       ownerUserId,
     });
+    return { success: true, data };
+  }
+
+  @Get('public-file-map')
+  @Public()
+  @ApiOperation({ summary: 'Şirket sitesi: Hasar ve Acil dosya pinleri' })
+  async getPublicFileMap() {
+    const data = await this.service.getPublicFileMap();
     return { success: true, data };
   }
 

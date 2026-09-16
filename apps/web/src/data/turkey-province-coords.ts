@@ -1,1 +1,5 @@
-export { TURKEY_PROVINCE_COORDS, resolveProvinceCoords } from '@sigorta/shared';
+export {
+  TURKEY_PROVINCE_COORDS,
+  provinceMapBounds,
+  resolveProvinceCoords,
+} from '@sigorta/shared';

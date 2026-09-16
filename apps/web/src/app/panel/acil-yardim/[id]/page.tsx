@@ -2290,6 +2290,14 @@ export default function AcilDosyaDetayPage() {
                 >
                   {guncelDurum}
                 </span>
+                {fileAlreadyClosed ? (
+                  <span
+                    className={`${FILE_STATUS_BADGE_BASE} ${FILE_STATUS_TONE.gray}`}
+                    data-testid="acil-dosya-kapanmistir"
+                  >
+                    Dosya Kapanmıştır
+                  </span>
+                ) : null}
                 {URGENCY_OZET[vaka.urgency] ? (
                   <span
                     className={`${FILE_STATUS_BADGE_BASE} ${URGENCY_BADGE[vaka.urgency] ?? URGENCY_BADGE.NORMAL}`}

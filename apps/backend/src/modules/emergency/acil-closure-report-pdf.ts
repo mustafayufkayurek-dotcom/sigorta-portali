@@ -38,6 +38,7 @@ export function buildAcilClosureReportPdf(input: {
 }): Buffer {
   const lines = [
     'Meridyen Assistance — Dosya Kapanis Raporu',
+    'Dosya Kapanmistir',
     '',
     `Dosya No: ${toPdfAscii(input.fileNo)}`,
     `Sigortali: ${toPdfAscii(input.insured)}`,

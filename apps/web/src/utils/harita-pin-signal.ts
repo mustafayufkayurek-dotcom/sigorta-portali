@@ -18,6 +18,11 @@ export function ensureHaritaPinSignalCss(): void {
       animation: harita-pin-sinyal 1.35s ease-in-out infinite;
       transform-origin: center center;
     }
+    .leaflet-div-icon.harita-dosya-pin {
+      background: transparent !important;
+      border: none !important;
+      overflow: visible !important;
+    }
   `;
   document.head.appendChild(style);
 }

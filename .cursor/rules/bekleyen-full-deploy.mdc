@@ -71,4 +71,10 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Bekleyen paket yok.
+**Servis onay bedeli = kapanış raporu (KDV hariç +KDV).** Form geliri KDV dahil bölmüyor; 3.000 TL +KDV → matrah 3.000 / KDV 600 / toplam 3.600. Eski onaylı formlar yeniden yazılmaz.
+
+**Acil kapanış «Dosya Kapanmıştır».** Kapalı dosyada (tüm konular, Çilingir dahil) kapanış PDF başlığında ve dosya ekranında ifade durur. Yerel gösterim önce; canlıya alınmadı.
+
+**Şirket sitesi haritası** yerelde durur; canlıya alınmadı.
+
+**meridyen-tr.com HTTPS** IHS ikinci isim sunucusu (dijkstra) boş; sertifika bekliyor.

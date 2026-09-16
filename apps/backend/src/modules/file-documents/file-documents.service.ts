@@ -33,7 +33,7 @@ import {
   formatWorkSummaryHtml,
   meridyenLogoDataUri,
   resolveEmergencyMatbuIdentity,
-  splitKdvDahil,
+  splitKdvHaric,
   HASAR_REPORT_PHOTO_BOX,
   isMatbuImageFile,
   applyEmergencyFormKind,
@@ -184,7 +184,7 @@ export class FileDocumentsService {
       .reduce((s, c) => s + c.amount, 0);
 
     const identity = resolveEmergencyMatbuIdentity(ec);
-    const kdvSplit = splitKdvDahil(gelirTotal);
+    const kdvSplit = splitKdvHaric(gelirTotal);
     const konuLabel =
       mapInboundLossTypeToMeridyen(ec.issueType)
       ?? toTitleCaseTR(ec.issueType)

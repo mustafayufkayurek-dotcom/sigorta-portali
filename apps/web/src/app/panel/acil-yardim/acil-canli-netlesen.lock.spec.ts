@@ -110,6 +110,8 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /onDeleteApprovalReport/);
     assert.match(acilPage, /isAcilLocksmithIssue/);
     assert.doesNotMatch(acilPage, /PanelPillTabs/);
+    assert.match(acilPage, /acil-dosya-kapanmistir/);
+    assert.match(acilPage, /Dosya Kapanmıştır/);
   });
 
   it('finans personeli hakediş listesini görür; vade yok', () => {

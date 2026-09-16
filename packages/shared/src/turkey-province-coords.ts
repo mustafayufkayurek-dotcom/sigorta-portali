@@ -108,3 +108,42 @@ export function resolveProvinceCoords(cityName?: string | null): { lat: number; 
   }
   return null;
 }
+
+const WIDE_PROVINCE = new Set([
+  'ankara',
+  'antalya',
+  'balikesir',
+  'diyarbakir',
+  'erzurum',
+  'istanbul',
+  'kayseri',
+  'konya',
+  'mugla',
+  'sanliurfa',
+  'sivas',
+  'van',
+]);
+
+/** İl seçilince ülke haritası yerine o ilin görünümü. [güney-batı, kuzey-doğu] */
+export function provinceMapBounds(
+  cityName?: string | null,
+): [[number, number], [number, number]] | null {
+  const raw = cityName?.trim();
+  if (!raw) return null;
+  const key = normalizeProvinceKey(raw);
+  if (key === 'istanbul') {
+    return [
+      [40.72, 27.85],
+      [41.48, 29.95],
+    ];
+  }
+  const c = resolveProvinceCoords(raw);
+  if (!c) return null;
+  const wide = WIDE_PROVINCE.has(key);
+  const dLat = wide ? 0.82 : 0.52;
+  const dLng = wide ? 1.08 : 0.72;
+  return [
+    [c.lat - dLat, c.lng - dLng],
+    [c.lat + dLat, c.lng + dLng],
+  ];
+}

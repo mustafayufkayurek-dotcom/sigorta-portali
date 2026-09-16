@@ -79,6 +79,8 @@ describe('acil asistans rapor onay LOCK', () => {
     assert.match(html, /Hizmet Özeti/);
     assert.match(html, /dosyasının kapanışı üzerine/);
     assert.match(html, /SLA Süresi/);
+    assert.match(html, /header-closed-stamp/);
+    assert.match(html, /Dosya Kapanmıştır/);
     assert.match(html, /Hizmet Bitiş/);
     assert.doesNotMatch(html, /İhbar Tarihi \$\{/);
     const closure = svc.slice(svc.indexOf('private async buildClosureEmailPayload'));
@@ -92,6 +94,7 @@ describe('acil asistans rapor onay LOCK', () => {
     assert.match(svc, /formatAcilSlaDuration/);
     const ascii = readFileSync(join(here, 'acil-closure-report-pdf.ts'), 'utf8');
     assert.match(ascii, /SLA suresi/);
+    assert.match(ascii, /Dosya Kapanmistir/);
   });
 
   it('manuel onay red revize sil dosyada tarihçeye düşer', () => {

@@ -164,6 +164,9 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
     : '—';
   const isClosure = input.kind === 'kapanis';
   const headerTitle = isClosure ? 'Acil Yardım Dosya Kapanış Raporu' : 'Acil Yardım Tespit Raporu';
+  const closedStamp = isClosure
+    ? '<div class="header-closed-stamp">Dosya Kapanmıştır</div>'
+    : '';
   const findingsTitle = isClosure ? 'Hizmet Özeti' : FINDINGS_SECTION_TITLE;
   const findingsLead = isClosure ? 'Riziko adreste verilen hizmet sonucunda;' : FINDINGS_LEAD;
   const photoHeader = (input.photoSectionTitle || '').trim()
@@ -290,6 +293,18 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
     letter-spacing: 0.6px;
   }
   .header-usage-external { background: #ecfdf5; color: #047857; }
+  .header-closed-stamp {
+    display: inline-block;
+    margin-top: 6px;
+    margin-left: 6px;
+    border: 1px solid #94a3b8;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 9pt;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 3px;
+  }
   .header-date {
     margin-top: 8px;
     font-size: 9pt;
@@ -604,6 +619,7 @@ export function buildAcilAssistanceApprovalReportHtml(input: {
   ${headerBrand}
   <div class="header-title-block">
     <div class="header-title">${headerTitle}</div>
+    ${closedStamp}
     <div class="header-usage-badge header-usage-external">Dış Kullanım</div>
     <div class="header-date"><span class="header-date-label">Tarih</span>${fmtDate(headerDate)}</div>
   </div>

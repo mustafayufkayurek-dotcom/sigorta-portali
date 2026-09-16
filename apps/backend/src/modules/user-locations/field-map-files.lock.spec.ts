@@ -41,7 +41,14 @@ describe('saha haritası dosya iş adresi LOCK', () => {
     assert.match(service, /hasarJobStage/);
     assert.match(service, /acilJobStage/);
     assert.match(service, /resolveProvinceCoords/);
-    assert.match(service, /resolveJobPlot/);
+    assert.match(service, /live-public-file-map\.json/);
+    assert.match(service, /getPublicFileMap/);
+    const pub = service.slice(
+      service.indexOf('async getPublicFileMap'),
+      service.indexOf('async cleanOldLocations'),
+    );
+    assert.doesNotMatch(pub, /fileNo/);
+    assert.doesNotMatch(mapUi, /publicHasarPins/);
     assert.doesNotMatch(service, /hasarByVendor/);
     assert.doesNotMatch(service, /latestLiveByUserIds/);
   });
@@ -61,6 +68,8 @@ describe('saha haritası dosya iş adresi LOCK', () => {
     assert.match(mapUi, /iş adresi/);
     assert.match(mapUi, /MapFilterField/);
     assert.match(mapUi, /Bölge seç/);
+    assert.match(mapUi, /provinceMapBounds/);
+    assert.match(mapUi, /İl Haritası/);
     assert.match(mapUi, /Rota başlangıç/);
     assert.match(mapUi, /Rota bitiş/);
     assert.match(mapUi, /filter-bar/);
@@ -72,12 +81,15 @@ describe('saha haritası dosya iş adresi LOCK', () => {
   });
 
   it('harita yalnız Harita menüsü ve müşteri kartında durur; dosya listesinde yok', () => {
-    assert.match(controller, /ownerOnly/);
+    assert.match(controller, /public-file-map/);
+    assert.match(controller, /@Public\(\)/);
     assert.match(controller, /customerId/);
     assert.match(musteri, /FieldOperationsMap/);
     assert.match(musteri, /customerId=\{id!\}/);
     assert.match(harita, /FieldOperationsMap/);
     assert.match(harita, /ownerOnly=\{!isAdmin\}/);
+    assert.match(harita, /showNotice/);
+    assert.match(harita, /showPersonnelRoute/);
     assert.doesNotMatch(hasarListe, /FieldOperationsMap/);
     assert.doesNotMatch(operasyon, /FieldOperationsMap/);
   });

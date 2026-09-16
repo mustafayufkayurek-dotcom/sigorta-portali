@@ -1216,7 +1216,9 @@ export class EmergencyCasesService {
       }) || '—';
     const insuredPhone =
       (await this.ensureCustomerPhoneFromInbound(caseId, emergencyCase.customerPhone)) || '—';
-    const saleAmount = emergencyCase.costEntries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const saleAmount = emergencyCase.costEntries
+      .filter((e) => e.entryType === 'gelir')
+      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
     const inboundAtDate = inbound[0]?.receivedAt || emergencyCase.fileDate || null;
     const inboundAt = inboundAtDate
       ? inboundAtDate.toLocaleString('tr-TR')
