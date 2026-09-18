@@ -22,7 +22,7 @@ import {
 } from './hasar-templates';
 import { normalizeTrDateValue } from '@/utils/tr-date-input';
 import { buildSupplierTaskMapFromNotes } from '@/utils/hasar-supplier-tasks';
-import { isLegacyOpsCatchupBypassActive } from '@/utils/whatsapp-sent-confirm-gate';
+import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { hasarCancelReasonOk } from '@sigorta/shared';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { getMandatoryChecks, missingMandatoryLabels } from './mandatory-fields';
@@ -211,7 +211,7 @@ export function PlannerProvider({
       randevuTarih: claim.appointmentDate,
       randevuSaat: claim.appointmentTime,
       tahminiSure: claim.durationMinutes ? `${claim.durationMinutes} Dakika` : '',
-      isTanimi: claim.lossType,
+      isTanimi: resolveClaimDosyaKonusu({ lossType: claim.lossType }),
     }),
     [claim],
   );
@@ -267,7 +267,7 @@ export function PlannerProvider({
       return interpolateHasarTemplate(t.content, {
         ...baseVars,
         tedarikciAdi: vendorName,
-        isTanimi: task || claim.lossType,
+        isTanimi: resolveClaimDosyaKonusu({ lossType: task || claim.lossType }),
       });
     },
     [templates, baseVars, claim.lossType],

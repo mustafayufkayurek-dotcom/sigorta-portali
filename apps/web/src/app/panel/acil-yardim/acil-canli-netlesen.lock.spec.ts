@@ -67,22 +67,27 @@ describe('acil canlı netleşen LOCK', () => {
     assert.match(acilPage, /acil-konum-tespit/);
     assert.match(acilPage, /LocationPickerModal/);
     assert.match(acilPage, /vendorWhatsAppText/);
+    assert.match(acilPage, /latitude: vaka\.latitude/);
     const workflow = readFileSync(join(here, '[id]/acil-workflow.ts'), 'utf8');
-    assert.match(workflow, /Konumu sigortalıdan teyit ediniz/);
-    assert.match(workflow, /latitude/);
-    const vendorStart = workflow.indexOf('export function buildVendorWhatsAppText');
-    const vendorEnd = workflow.indexOf('\n}\n\n/**', vendorStart);
-    assert.ok(vendorStart >= 0 && vendorEnd > vendorStart);
-    const vendorMsg = workflow.slice(vendorStart, vendorEnd + 2);
-    assert.ok(vendorMsg.length > 80);
-    assert.match(vendorMsg, /Dosya No:/);
-    assert.match(vendorMsg, /Hizmet:/);
-    assert.match(vendorMsg, /Sigortalı Telefon:/);
-    assert.match(vendorMsg, /VENDOR_LOCATION_CONFIRM_LINE/);
-    assert.doesNotMatch(vendorMsg, /Alış/);
-    assert.doesNotMatch(vendorMsg, /Satış/);
-    assert.doesNotMatch(vendorMsg, /kâr/i);
-    assert.doesNotMatch(vendorMsg, /formatTryAmount/);
+    const vendorStart = workflow.indexOf('export { buildVendorWhatsAppText');
+    assert.ok(vendorStart >= 0);
+    const sharedWa = readFileSync(
+      join(here, '../../../../../../packages/shared/src/acil-vendor-whatsapp.ts'),
+      'utf8',
+    );
+    assert.match(sharedWa, /whatsappField\('Dosya No'/);
+    assert.match(sharedWa, /whatsappField\('Dosya Konusu'/);
+    assert.match(sharedWa, /whatsappField\('Sigortalı Telefon'/);
+    assert.match(sharedWa, /Meridyen Acil Yardım \(Tedarikçi\)/);
+    assert.match(sharedWa, /VENDOR_LOCATION_WARNING_LINES/);
+    assert.match(sharedWa, /VENDOR_LOCATION_CONFIRM_LINE/);
+    assert.match(sharedWa, /formatEmergencyFileAddress/);
+    assert.match(sharedWa, /buildEmergencyMapsUrl/);
+    assert.doesNotMatch(sharedWa, /encodeURIComponent\(fullAddress\)/);
+    assert.doesNotMatch(sharedWa, /Alış/);
+    assert.doesNotMatch(sharedWa, /Satış/);
+    assert.doesNotMatch(sharedWa, /kâr/i);
+    assert.doesNotMatch(sharedWa, /formatTryAmount/);
     const steps = readFileSync(
       join(here, '../../../components/acil-operasyon-planlayicisi/planner-steps.tsx'),
       'utf8',

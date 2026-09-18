@@ -2553,7 +2553,7 @@ export default function VendorsPage() {
 
       {/* ── Tedarikçi Formu (Sağ Drawer) ── */}
       <SlidePanel open={showModal} onClose={() => setShowModal(false)} width={640} scrollContent={false}>
-        <div className="grid h-full min-h-0 grid-rows-[auto_auto_auto_minmax(0,1fr)_auto] overflow-hidden">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
             {/* Panel Header */}
             {(() => {
               const displayName = form.entityType === 'individual'
@@ -2610,7 +2610,7 @@ export default function VendorsPage() {
               ))}
             </div>
 
-            <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
               {/* ── Section 0: Temel Bilgiler ── */}
               {activeSection === 0 && (
                 <div>

@@ -1226,6 +1226,7 @@ export default function AcilDosyaDetayPage() {
       city: vaka.city,
       district: vaka.district,
       notes: vaka.notes,
+      findingsText: vaka.findingsText,
       latitude: vaka.latitude,
       longitude: vaka.longitude,
     });
@@ -2105,6 +2106,7 @@ export default function AcilDosyaDetayPage() {
     city: vaka.city,
     district: vaka.district,
     notes: vaka.notes,
+    findingsText: vaka.findingsText,
     latitude: vaka.latitude,
     longitude: vaka.longitude,
   });

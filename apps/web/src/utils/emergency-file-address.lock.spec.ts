@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { formatEmergencyFileAddress, formatIhbarMailAddress } from '../../../../packages/shared/src/file-address.ts';
+import { formatEmergencyFileAddress, formatIhbarMailAddress, formatEmergencyMapsQuery, buildEmergencyMapsUrl } from '../../../../packages/shared/src/file-address.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const acilPage = readFileSync(
@@ -33,6 +33,37 @@ describe('acil dosya adresi LOCK', () => {
       }),
       'Gazi Mah. İlhan Akgün Cad. Sarıgelin Apt A Blok No: 72 Daire: 10 · Anamur · Mersin',
     );
+  });
+
+  it('harita sorgusu il/ilçeyi tekrar etmez; pin koordinat kullanır', () => {
+    const query = formatEmergencyMapsQuery({
+      address: 'Muğla Bodrum Merkez Dirmil Mah. Balyek Cad. Balyek Sitesi No: 7 /36, Bodrum, Muğla',
+      district: 'Bodrum',
+      city: 'Muğla',
+    });
+    assert.match(query, /Dirmil Mahallesi/);
+    assert.match(query, /Balyek Caddesi/);
+    assert.match(query, /Bodrum/);
+    assert.match(query, /Muğla/);
+    assert.match(query, /Türkiye/);
+    assert.equal((query.match(/Bodrum/g) || []).length, 1);
+    assert.equal((query.match(/Muğla/g) || []).length, 1);
+    const pin = buildEmergencyMapsUrl({
+      latitude: 37.03412,
+      longitude: 27.43045,
+      address: 'x',
+      city: 'Muğla',
+      district: 'Bodrum',
+    });
+    assert.equal(pin, 'https://www.google.com/maps?q=37.034120,27.430450&z=17');
+    const fromAddress = buildEmergencyMapsUrl({
+      address: 'Dirmil Mah. Balyek Cad. No: 7',
+      district: 'Bodrum',
+      city: 'Muğla',
+    });
+    assert.match(fromAddress || '', /maps\/search\/\?api=1/);
+    assert.match(fromAddress || '', /Caddesi/);
+    assert.match(decodeURIComponent(fromAddress || ''), /Türkiye/);
   });
 
   it('mail kuyruğunu keser, ilçe ve ili sonda yazar', () => {

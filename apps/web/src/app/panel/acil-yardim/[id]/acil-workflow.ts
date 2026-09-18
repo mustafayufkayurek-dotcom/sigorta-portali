@@ -333,39 +333,7 @@ export function validateVendorMessageGuard(input: {
   return errors.length ? { ok: false, errors } : { ok: true };
 }
 
-export const VENDOR_LOCATION_CONFIRM_LINE = 'Konumu sigortalıdan teyit ediniz.';
-
-export function buildVendorWhatsAppText(input: {
-  fileNo: string;
-  issueType: string;
-  insuredLabel: string;
-  phone: string;
-  address: string;
-  city?: string | null;
-  district?: string | null;
-  notes?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-}): string {
-  const fullAddress = [input.address, input.district, input.city].filter(Boolean).join(', ');
-  const mapsUrl =
-    input.latitude != null && input.longitude != null
-      ? `https://maps.google.com/?q=${input.latitude},${input.longitude}`
-      : `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}`;
-  const shortNote = (input.notes || '').trim().slice(0, 160) || 'Acil yardım talebi';
-  return [
-    `Meridyen Acil Yardım`,
-    `Dosya No: ${input.fileNo}`,
-    `Hizmet: ${meridyenIssueTypeLabel(input.issueType)}`,
-    `Sigortalı: ${input.insuredLabel}`,
-    `Sigortalı Telefon: ${input.phone || '—'}`,
-    `Adres: ${fullAddress || '—'}`,
-    `Konum: ${mapsUrl}`,
-    `Açıklama: ${shortNote}`,
-    '',
-    VENDOR_LOCATION_CONFIRM_LINE,
-  ].join('\n');
-}
+export { buildVendorWhatsAppText, VENDOR_LOCATION_CONFIRM_LINE } from '@sigorta/shared';
 
 /**
  * Müşteri grubu mesajı — satış / dosya bilgisi OK.
@@ -385,7 +353,7 @@ export function buildCustomerGroupWhatsAppText(input: {
   const text = [
     `Meridyen Acil Yardım — Bilgilendirme`,
     `Dosya No: ${input.fileNo}`,
-    `Hizmet: ${meridyenIssueTypeLabel(input.issueType)}`,
+    `Dosya Konusu: ${meridyenIssueTypeLabel(input.issueType)}`,
     `Sigortalı: ${input.insuredLabel}`,
     `Durum: ${input.statusLabel}`,
     `Onaylı Hizmet Bedeli: ${sale}`,
@@ -425,7 +393,7 @@ export function buildWorkStartWhatsAppText(fileNo: string, issueType: string): s
   return [
     `Meridyen — İşe Başlama Onayı`,
     `Dosya No: ${fileNo}`,
-    `Hizmet: ${meridyenIssueTypeLabel(issueType)}`,
+    `Dosya Konusu: ${meridyenIssueTypeLabel(issueType)}`,
     `Müşteri onayı alındı. Lütfen işe başlayın ve tamamlandığında bildirin.`,
   ].join('\n');
 }

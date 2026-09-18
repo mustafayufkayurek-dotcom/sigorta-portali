@@ -52,6 +52,7 @@ import {
   plannerApprovalPartyLabel,
   resolvePlannerApprovalParty,
 } from './planner-approval-party';
+import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import {
   HASAR_WA_TEMPLATE_TYPES,
   interpolateHasarTemplate,
@@ -1022,7 +1023,7 @@ export function StepWhatsApp({
                   randevuTarih: claim.appointmentDate,
                   randevuSaat: claim.appointmentTime,
                   tahminiSure: `${claim.durationMinutes} Dakika`,
-                  isTanimi: claim.lossType,
+                  isTanimi: resolveClaimDosyaKonusu({ lossType: claim.lossType }),
                 }),
               );
             }}

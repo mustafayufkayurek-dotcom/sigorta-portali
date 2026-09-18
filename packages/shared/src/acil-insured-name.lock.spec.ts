@@ -39,6 +39,14 @@ describe('acil sigortalı adı LOCK', () => {
       }),
       'Mehmet Demir',
     );
+    assert.equal(
+      resolveAcilInsuredName({
+        notes:
+          'Gelen kutusu ihbarı: 2599291318/RUHSAR ALKAN/ RCS-20261887742/TESİSAT\nRuhsar Alkan adına yapılan konut hasar ihbarı ile ilgili bilgi.',
+        firmNames: ['Remed Assistance'],
+      }),
+      'Ruhsar Alkan',
+    );
   });
 
   it('onay Ad Soyad büyük/küçük harf uyumunu kabul eder; farklı adı uyarır', () => {

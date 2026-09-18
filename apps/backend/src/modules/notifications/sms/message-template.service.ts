@@ -33,7 +33,7 @@ const TEMPLATE_NAMES: Record<string, string> = {
 };
 
 const DEFAULT_VENDOR_ASSIGNMENT_TEMPLATE =
-  'Meridyen Assistance — Tedarikçi Ataması\nDosya No: {dosyaNo}\nSigortalı: {musteriAdi}\nİş: {isTanimi}\nKonum: {hasarAdresi}\n\nLütfen dosyayı panelden kontrol ediniz.';
+  '*Meridyen Hasar (Tedarikçi)*\n*Dosya No:* {dosyaNo}\n*Sigortalı:* {musteriAdi}\n*Dosya Konusu:* {isTanimi}\n*Konum:* {hasarAdresi}\n\n⚠️ Lütfen konumu kontrol ediniz. Yanlış adrese gitmeyiniz.\nAdres veya harita linkini doğruladıktan sonra hareket ediniz.\nKonumu sigortalıdan teyit ediniz.';
 
 const DEFAULT_HASAR_APPOINTMENT_INSURED_TEMPLATE =
   'Sayın {musteriAdi}, {dosyaNo} numaralı hasar dosyanız için tespit randevunuz {randevuTarih} günü saat {randevuSaat} olarak planlanmıştır. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
@@ -42,13 +42,13 @@ const DEFAULT_HASAR_APPOINTMENT_ADJUSTER_TEMPLATE =
   '{dosyaNo} numaralı dosya için tespit randevusu: {randevuTarih} {randevuSaat}. Sigortalı: {musteriAdi}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
 
 const DEFAULT_HASAR_APPOINTMENT_VENDOR_TEMPLATE =
-  '{dosyaNo} numaralı dosya için hizmet randevusu: {randevuTarih} {randevuSaat}. İş: {isTanimi}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
+  '{dosyaNo} numaralı dosya için hizmet randevusu: {randevuTarih} {randevuSaat}. Dosya Konusu: {isTanimi}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.';
 
 const DEFAULT_HASAR_REPAIR_INSURED_TEMPLATE =
   'Sayın {musteriAdi}, {dosyaNo} numaralı dosyanız için onarım randevunuz {randevuTarih} günü saat {randevuSaat} olarak planlanmıştır. Adres: {hasarAdresi}.';
 
 const DEFAULT_HASAR_REPAIR_VENDOR_TEMPLATE =
-  '{dosyaNo} numaralı dosya için onarım randevusu: {randevuTarih} {randevuSaat}. İş: {isTanimi}. Adres: {hasarAdresi}.';
+  '{dosyaNo} numaralı dosya için onarım randevusu: {randevuTarih} {randevuSaat}. Dosya Konusu: {isTanimi}. Adres: {hasarAdresi}.';
 
 const DEFAULT_HASAR_CLOSURE_SURVEY_TEMPLATE =
   'Değerli {musteriAdi}, {dosyaNo} numaralı hasar dosyanız kapanışa hazırdır. Deneyiminizi değerlendirmenizi rica ederiz.';

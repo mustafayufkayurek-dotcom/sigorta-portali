@@ -42,12 +42,12 @@ const DEFAULTS: Record<string, { name: string; content: string }> = {
   [HASAR_WA_TEMPLATE_TYPES.vendorAppointment]: {
     name: 'Tedarikçi Randevu Bilgilendirme',
     content:
-      '{dosyaNo} numaralı dosya için hizmet randevusu: {randevuTarih} {randevuSaat}. İş: {isTanimi}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.',
+      '{dosyaNo} numaralı dosya için hizmet randevusu: {randevuTarih} {randevuSaat}. Dosya Konusu: {isTanimi}. Adres: {hasarAdresi}. Tahmini süre: {tahminiSure}.',
   },
   [HASAR_WA_TEMPLATE_TYPES.vendorAssignment]: {
     name: 'Tedarikçi Atama WhatsApp Şablonu',
     content:
-      'Meridyen Assistance — Tedarikçi Ataması\nDosya No: {dosyaNo}\nSigortalı: {musteriAdi}\nİş: {isTanimi}\nKonum: {hasarAdresi}\n\nLütfen dosyayı panelden kontrol ediniz.',
+      '*Meridyen Hasar (Tedarikçi)*\n*Dosya No:* {dosyaNo}\n*Sigortalı:* {musteriAdi}\n*Dosya Konusu:* {isTanimi}\n*Konum:* {hasarAdresi}\n\n⚠️ Lütfen konumu kontrol ediniz. Yanlış adrese gitmeyiniz.\nAdres veya harita linkini doğruladıktan sonra hareket ediniz.\nKonumu sigortalıdan teyit ediniz.',
   },
   [HASAR_WA_TEMPLATE_TYPES.repairInsured]: {
     name: 'Onarım Randevusu — Sigortalı',
@@ -57,7 +57,7 @@ const DEFAULTS: Record<string, { name: string; content: string }> = {
   [HASAR_WA_TEMPLATE_TYPES.repairVendor]: {
     name: 'Onarım Randevusu — Tedarikçi',
     content:
-      '{dosyaNo} numaralı dosya için onarım randevusu: {randevuTarih} {randevuSaat}. İş: {isTanimi}. Adres: {hasarAdresi}.',
+      '{dosyaNo} numaralı dosya için onarım randevusu: {randevuTarih} {randevuSaat}. Dosya Konusu: {isTanimi}. Adres: {hasarAdresi}.',
   },
   [HASAR_WA_TEMPLATE_TYPES.closureSurvey]: {
     name: 'Hasar Kapanış Anketi',
@@ -80,7 +80,11 @@ export type TemplateVars = {
 };
 
 export function interpolateHasarTemplate(template: string, vars: TemplateVars): string {
-  return template
+  const normalized = template.replace(
+    /(^|\n)(\*)?(?:Hizmet|Hasar|İş):(\*)?/g,
+    '$1$2Dosya Konusu:$3',
+  );
+  return normalized
     .replace(/\{musteriAdi\}/g, vars.musteriAdi ?? '')
     .replace(/\{dosyaNo\}/g, vars.dosyaNo ?? '')
     .replace(/\{sirketAdi\}/g, vars.sirketAdi ?? '')

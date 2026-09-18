@@ -42,13 +42,39 @@ function sameAsFirm(person: string, firmNames: Array<string | null | undefined>)
   });
 }
 
+function titleName(value: string): string {
+  return value
+    .trim()
+    .split(/\s+/)
+    .map((w) => {
+      const lower = w.toLocaleLowerCase('tr-TR');
+      return lower.charAt(0).toLocaleUpperCase('tr-TR') + lower.slice(1);
+    })
+    .join(' ');
+}
+
+function pickInsured(candidate: string | null | undefined, firmNames: Array<string | null | undefined>): string | null {
+  const name = titleName(String(candidate ?? '')).slice(0, 80);
+  if (isEmptyInsured(name) || sameAsFirm(name, firmNames)) return null;
+  return name;
+}
+
 function fromNotes(notes: string | null | undefined, firmNames: Array<string | null | undefined>): string | null {
   const note = String(notes ?? '').trim();
-  const m = note.match(/sigortal[ıi]\s*[:：]\s*(.+)/i);
-  if (!m?.[1]) return null;
-  const fromNote = m[1].split(/[\n|]/)[0].trim().slice(0, 80);
-  if (isEmptyInsured(fromNote) || sameAsFirm(fromNote, firmNames)) return null;
-  return fromNote;
+  const labeled = note.match(/sigortal[ıi]\s*[:：]\s*(.+)/i);
+  const fromLabel = pickInsured(labeled?.[1]?.split(/[\n|]/)[0], firmNames);
+  if (fromLabel) return fromLabel;
+
+  const adina = note.match(/(?:^|\n)([^\n]{2,80}?)\s+adına yapılan/i);
+  const fromAdina = pickInsured(adina?.[1], firmNames);
+  if (fromAdina) return fromAdina;
+
+  const ihbar = note.match(/gelen kutusu ihbarı:\s*([^\n]+)/i);
+  const slashName = ihbar?.[1]
+    ?.split('/')
+    .map((p) => p.trim())
+    .find((p) => p && !/^\d+$/.test(p) && !/^RCS-/i.test(p) && /\s/.test(p));
+  return pickInsured(slashName, firmNames);
 }
 
 export function resolveAcilInsuredName(input: {

@@ -25,6 +25,13 @@ describe('tedarikçi satır işlemleri LOCK', () => {
     assert.doesNotMatch(page, /toggleSelectAll/);
   });
 
+  it('ekleme çekmecesinde ilk adımda Sonraki altta durur', () => {
+    assert.match(page, /flex h-full min-h-0 flex-col overflow-hidden/);
+    assert.match(page, /flex-1 overflow-y-auto/);
+    assert.match(page, /Sonraki →/);
+    assert.doesNotMatch(page, /grid-rows-\[auto_auto_auto_minmax\(0,1fr\)_auto\]/);
+  });
+
   it('KPI şeridi müşteri kartıdır; konum ortalanır', () => {
     assert.match(page, /OpsStripKpi/);
     assert.match(page, /OpsKpiSegmentBand/);

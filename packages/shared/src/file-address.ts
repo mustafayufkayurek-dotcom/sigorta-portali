@@ -17,6 +17,10 @@ function foldTr(value: string): string {
   return value.toLocaleLowerCase('tr-TR');
 }
 
+function escapeReg(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function normalizeCityName(value: string): string {
   const t = value.trim();
   if (/^usak$/i.test(t)) return 'Uşak';
@@ -161,6 +165,61 @@ export function formatEmergencyFileAddress(input: {
   if (district) parts.push(district);
   if (city) parts.push(city);
   return parts.join(' · ') || '—';
+}
+
+/**
+ * Harita araması: sokak, ilçe, il, Türkiye.
+ * İl/ilçe sokakta tekrar etmez. Cad./Mah. haritada açılır.
+ */
+export function formatEmergencyMapsQuery(input: {
+  address?: string | null;
+  district?: string | null;
+  city?: string | null;
+}): string {
+  const { street, district, city } = resolveStreetCityDistrict(input);
+  let streetMaps = street;
+  if (district && city) {
+    streetMaps = streetMaps.replace(
+      new RegExp(`,\\s*${escapeReg(district)}\\s*,\\s*${escapeReg(city)}\\s*$`, 'i'),
+      '',
+    );
+  }
+  streetMaps = streetMaps
+    .replace(/\bCad\./gi, 'Caddesi')
+    .replace(/\bSk\./gi, 'Sokak')
+    .replace(/\bSok\./gi, 'Sokak')
+    .replace(/\bMh\./gi, 'Mahallesi')
+    .replace(/\bMah\./gi, 'Mahallesi')
+    .replace(/\s+,/g, ',')
+    .trim();
+  const parts = [streetMaps, district, city, 'Türkiye'].filter((p) => p && p !== '—');
+  return parts.join(', ');
+}
+
+export function isUsableMapCoord(lat?: number | null, lng?: number | null): boolean {
+  if (lat == null || lng == null) return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (Math.abs(lat) < 0.01 && Math.abs(lng) < 0.01) return false;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+  return true;
+}
+
+/** Pin varsa koordinat; yoksa temiz adres araması. */
+export function buildEmergencyMapsUrl(input: {
+  address?: string | null;
+  district?: string | null;
+  city?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}): string | null {
+  if (isUsableMapCoord(input.latitude, input.longitude)) {
+    const lat = Number(input.latitude).toFixed(6);
+    const lng = Number(input.longitude).toFixed(6);
+    return `https://www.google.com/maps?q=${lat},${lng}&z=17`;
+  }
+  const query = formatEmergencyMapsQuery(input);
+  if (!query || query === 'Türkiye') return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 /** Yeni ihbar maili adresi: sokak, sonda Çukurova-ADANA. */
