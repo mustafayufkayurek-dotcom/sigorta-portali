@@ -1,11 +1,11 @@
 ---
-description: Canlı web v601 / backend v601 — sıradaki paketler karışmaz
+description: Canlı web v601 / backend v602 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
 # Canlı (18.09.2026)
 
-Canlı: web **v601** · backend **v601**. Geri alma: web **v600** / backend **v600**.
+Canlı: web **v601** · backend **v602**. Geri alma: web **v601** / backend **v601**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v602 (yalnız backend):** Hasar 72 saat onay maili, dosyada onay alınmışsa kesilir. Onarım, fatura veya kapalı dosyada gitmez. Ekran aynı kaldı (web v601). Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma backend v601.
 
 **v601 (full):** Acil ve Hasar tedarikçi WhatsApp yazısı Dosya Konusu; konum pin veya açık adres; uyarı ve teyit satırı. Tedarikçi ekleme çekmecesinde ilk adımda Sonraki altta durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v600 / backend v600.
 
