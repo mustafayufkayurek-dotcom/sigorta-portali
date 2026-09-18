@@ -1,11 +1,11 @@
 ---
-description: Canlı web v599 / backend v599 — sıradaki paketler karışmaz
+description: Canlı web v601 / backend v601 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (16.09.2026)
+# Canlı (18.09.2026)
 
-Canlı: web **v599** · backend **v599**. Geri alma: web **v598** / backend **v598**.
+Canlı: web **v601** · backend **v601**. Geri alma: web **v600** / backend **v600**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,10 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v601 (full):** Acil ve Hasar tedarikçi WhatsApp yazısı Dosya Konusu; konum pin veya açık adres; uyarı ve teyit satırı. Tedarikçi ekleme çekmecesinde ilk adımda Sonraki altta durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v600 / backend v600.
+
+**v600 (full):** Servis onay bedeli kapanış raporu ile aynı (KDV hariç +KDV). Kapalı dosyada Dosya Kapanmıştır. Şirket sitesi haritası. meridyen-tr.com HTTP kapısı (HTTPS henüz yok). Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v599 / backend v599.
 
 **v599 (full):** Şirket sitesi Yenileniyoruz (sayaç, kartlar, Kullanıcı Girişi yazılıma gider). Panel şirket adresinde açılmaz. Harita alınmadı. meridyen-tr.com genel isim kaydı henüz yok; sayfa yazılımdadır. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v598 / backend v598.
 
@@ -70,11 +74,5 @@ Alım yalnız Mustafa «canlıya al» deyince.
 **v574:** Güvenlik, oturum kapısı, KDV, finans liste, Konut-Yangın, başlık bilgi, KVKK sayfa iskeleti.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
-
-**Servis onay bedeli = kapanış raporu (KDV hariç +KDV).** Form geliri KDV dahil bölmüyor; 3.000 TL +KDV → matrah 3.000 / KDV 600 / toplam 3.600. Eski onaylı formlar yeniden yazılmaz.
-
-**Acil kapanış «Dosya Kapanmıştır».** Kapalı dosyada (tüm konular, Çilingir dahil) kapanış PDF başlığında ve dosya ekranında ifade durur. Yerel gösterim önce; canlıya alınmadı.
-
-**Şirket sitesi haritası** yerelde durur; canlıya alınmadı.
 
 **meridyen-tr.com HTTPS** IHS ikinci isim sunucusu (dijkstra) boş; sertifika bekliyor.
