@@ -2,24 +2,33 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 16 Eylül 2026
+**Son güncelleme:** 18 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (16 Eylül 2026 — web v599 / backend v599)
+## Canlı durum (18 Eylül 2026 — web v604 / backend v604)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v599-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v599-amd64` | canlı |
-| **Rollback** | Web **v598** / Backend **v598** | manifest `rollbackImages` |
-| **Etiket** | `v599-sirket-sitesi-yenileniyoruz` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v604-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v604-amd64` | canlı |
+| **Rollback** | Web **v603** / Backend **v603** | manifest `rollbackImages` |
+| **Etiket** | `v604-puantaj-hatirlatma-nabiz` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v604 — Full (18 Eylül 2026) — Personel hatırlatma ve puantaj nabzı
+
+- Gün sonu onaylamayana mail + yönetici çanı (hafta içi 18:05, Cumartesi 13:05)
+- Ay sonu mali müşavire toplu puantaj (son gün 17:10; kaçtıysa 1’i 09:20)
+- Panel açıkken mesai giriş/bitiş puantaja düşer
+- Çandaki puantaj/izin yazısı Personel sayfasını açar
+- Güvenlik: kaynak kapısı, disk bakımı (eski v600 imaj), DB+uploads yedek gzip, canlı uploads silinmedi. Alımda backend ve web birden stop edilmez; JWT ve Redis silinmez
+- Geri alma web **v603** / backend **v603**
 
 ### v599 — Full (16 Eylül 2026) — Şirket sitesi Yenileniyoruz
 
