@@ -6,6 +6,64 @@ import {
 
 export const APPROVAL_72H_NOTIFY_TYPE = 'approval_72h_exceeded';
 
+/** Dosya onayı alınmış / iş onarıma geçmiş — eksper hatırlatması kesilir. */
+export const CLAIM_CODES_APPROVAL_ALREADY_TAKEN = [
+  'budget_approved',
+  'repair_planning',
+  'repair_in_progress',
+  'repair_completed',
+  'invoice_pending',
+  'invoice_submitted',
+  'payment_pending',
+  'partially_collected',
+  'closed',
+  'completed',
+  'cancelled',
+] as const;
+
+export type Approval72hReportSnapshot = {
+  id: string;
+  status: string;
+  versionNo: number;
+  createdAt: Date | string;
+  latestExternalApprovalStatus?: string | null;
+};
+
+export function pickNewestRepairReport<T extends { versionNo: number; createdAt: Date | string }>(
+  reports: T[],
+): T | null {
+  if (!reports.length) return null;
+  return [...reports].sort((a, b) => {
+    if (b.versionNo !== a.versionNo) return b.versionNo - a.versionNo;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  })[0];
+}
+
+/**
+ * Hatırlatma yalnız gerçekten onay bekleyen açık işe gider.
+ * Eski bekleyen satır, kapalı dosya veya alınmış onay maili düşürmez.
+ */
+export function shouldSendApproval72hReminder(input: {
+  claimClosed?: boolean;
+  claimStatusCode?: string | null;
+  reports: Approval72hReportSnapshot[];
+}): boolean {
+  const code = String(input.claimStatusCode ?? '').trim().toLowerCase();
+  if (input.claimClosed) return false;
+  if ((CLAIM_CODES_APPROVAL_ALREADY_TAKEN as readonly string[]).includes(code)) {
+    return false;
+  }
+
+  const newest = pickNewestRepairReport(input.reports);
+  if (!newest) return false;
+  if (!isWaitingReportStatus(newest.status)) return false;
+
+  const ext = String(newest.latestExternalApprovalStatus ?? '').trim().toLowerCase();
+  if (ext === 'approved') return false;
+
+  return true;
+}
+
 export type Approval72hCandidate = {
   claimFileId: string;
   fileNo: string;

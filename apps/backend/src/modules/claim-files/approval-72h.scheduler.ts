@@ -7,7 +7,9 @@ import {
   buildApproval72hNotification,
   filterExceededCandidates,
   isWaitingReportStatus,
+  pickNewestRepairReport,
   resolveNotifyUserIds,
+  shouldSendApproval72hReminder,
   type Approval72hCandidate,
 } from './approval-72h.rule';
 import { resolveApproval72hCustomerEmailPayload } from './approval-72h-customer-email.rule';
@@ -52,7 +54,10 @@ export class Approval72hScheduler {
     customerEmailSkipped: number;
   }> {
     const waitingReports = await this.prisma.repairReport.findMany({
-      where: { status: { in: [...APPROVAL_WAITING_REPORT_STATUSES] } },
+      where: {
+        status: { in: [...APPROVAL_WAITING_REPORT_STATUSES] },
+        claimFile: { currentStatus: { isClosedState: false } },
+      },
       select: {
         id: true,
         reportNo: true,
@@ -67,6 +72,7 @@ export class Approval72hScheduler {
             assignedOfficeUserId: true,
             assignedFieldUserId: true,
             currentResponsibleUserId: true,
+            currentStatus: { select: { code: true, isClosedState: true } },
             propertyAddress: {
               select: { city: true, district: true },
             },
@@ -101,9 +107,58 @@ export class Approval72hScheduler {
 
     const candidates: Approval72hCandidate[] = [];
     const claimSourceById = new Map<string, (typeof waitingReports)[number]['claimFile']>();
+    const claimIds = [...new Set(waitingReports.map((r) => r.claimFile.id))];
+    const allReports = claimIds.length
+      ? await this.prisma.repairReport.findMany({
+          where: { claimFileId: { in: claimIds } },
+          select: {
+            id: true,
+            claimFileId: true,
+            status: true,
+            versionNo: true,
+            createdAt: true,
+            externalApprovals: {
+              orderBy: { sentAt: 'desc' },
+              take: 20,
+              select: { status: true },
+            },
+          },
+        })
+      : [];
+    const reportsByClaim = new Map<string, typeof allReports>();
+    for (const row of allReports) {
+      const list = reportsByClaim.get(row.claimFileId) ?? [];
+      list.push(row);
+      reportsByClaim.set(row.claimFileId, list);
+    }
+    const waitingById = new Map(waitingReports.map((r) => [r.id, r]));
 
-    for (const report of waitingReports) {
-      if (!isWaitingReportStatus(report.status)) continue;
+    for (const claimId of claimIds) {
+      const sample = waitingReports.find((r) => r.claimFile.id === claimId);
+      const claim = sample?.claimFile;
+      if (!claim) continue;
+      const snapshots = (reportsByClaim.get(claimId) ?? []).map((r) => ({
+        id: r.id,
+        status: r.status,
+        versionNo: r.versionNo,
+        createdAt: r.createdAt,
+        latestExternalApprovalStatus: r.externalApprovals.some((a) => a.status === 'approved')
+          ? 'approved'
+          : (r.externalApprovals[0]?.status ?? null),
+      }));
+      if (
+        !shouldSendApproval72hReminder({
+          claimClosed: Boolean(claim.currentStatus?.isClosedState),
+          claimStatusCode: claim.currentStatus?.code,
+          reports: snapshots,
+        })
+      ) {
+        continue;
+      }
+      const newest = pickNewestRepairReport(snapshots);
+      const report = newest ? waitingById.get(newest.id) : undefined;
+      if (!report || !isWaitingReportStatus(report.status)) continue;
+
       const awaitingHistory = await this.prisma.reportApprovalHistory.findFirst({
         where: { reportId: report.id, action: { in: ['pending_approval', 'submitted'] } },
         orderBy: { createdAt: 'desc' },

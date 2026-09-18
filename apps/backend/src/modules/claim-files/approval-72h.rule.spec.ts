@@ -2,6 +2,7 @@ import {
   filterExceededCandidates,
   resolveNotifyUserIds,
   buildApproval72hNotification,
+  shouldSendApproval72hReminder,
 } from './approval-72h.rule';
 import { APPROVAL_72H_MS } from '@sigorta/shared';
 
@@ -41,5 +42,17 @@ describe('approval-72h.rule', () => {
     expect(n.title).toContain('72 Saat');
     expect(n.body).toContain('Onay Talep Et');
     expect(n.body).toContain('H-99');
+  });
+
+  it('does not remind when newest report is already approved', () => {
+    expect(
+      shouldSendApproval72hReminder({
+        claimStatusCode: 'budget_submitted',
+        reports: [
+          { id: 'old', status: 'pending_approval', versionNo: 0, createdAt: '2026-01-01' },
+          { id: 'new', status: 'approved', versionNo: 1, createdAt: '2026-02-01' },
+        ],
+      }),
+    ).toBe(false);
   });
 });
