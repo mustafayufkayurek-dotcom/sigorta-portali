@@ -74,6 +74,10 @@ import {
   FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
+import { FieldAcilAssignmentCard } from '@/components/field-survey/FieldAcilAssignmentCard';
+import { useFieldAssignedAcilCases } from '@/hooks/useFieldAssignedAcilCases';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
+import { fieldStaffIncludesAcil } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
@@ -274,6 +278,20 @@ function ClaimFilesPageContent() {
   const rowActions = usePortalRowActionPrefs('row-actions:hasar-dosyalari-v1', OPS_ROW_ACTIONS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
+  const { operationArea } = usePanelAccess();
+  const fieldAcilQuery = useFieldAssignedAcilCases(isFieldStaff && fieldStaffIncludesAcil(operationArea));
+  const fieldAcilRows = useMemo(() => {
+    const rows = fieldAcilQuery.data ?? [];
+    const q = search.trim().toLocaleLowerCase('tr-TR');
+    if (!q) return rows;
+    return rows.filter((row) => {
+      const hay = [row.fileNo, row.caseNo, row.customerName, row.issueType, row.city, row.district]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('tr-TR');
+      return hay.includes(q);
+    });
+  }, [fieldAcilQuery.data, search]);
 
   // --- TanStack Query: Insurance Companies ---
   const { data: insuranceCompaniesResponse } = useApiQuery<unknown>(
@@ -781,7 +799,7 @@ function ClaimFilesPageContent() {
             </table>
           </PanelTableScroll>
         </div>
-      ) : visibleClaims.length === 0 ? (
+      ) : visibleClaims.length === 0 && fieldAcilRows.length === 0 ? (
         <div className="table-container">
           <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
             <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
@@ -820,6 +838,9 @@ function ClaimFilesPageContent() {
       ) : (
         <div className="table-container ops-queue-table">
           <div className={`grid gap-3 p-3 ${isFieldStaff ? '' : 'lg:hidden'}`}>
+            {isFieldStaff
+              ? fieldAcilRows.map((row) => <FieldAcilAssignmentCard key={row.id} item={row} showLastActivity={false} />)
+              : null}
             {visibleClaims.map((claim: any) => {
               if (isFieldStaff) {
                 const insuredName = fieldStaffInsuredName(claim);

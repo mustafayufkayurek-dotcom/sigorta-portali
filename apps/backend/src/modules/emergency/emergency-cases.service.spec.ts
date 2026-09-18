@@ -19,6 +19,8 @@ describe('EmergencyCasesService', () => {
         findUnique: jest.fn(),
       },
       claimFile: { findFirst: jest.fn() },
+      user: { findUnique: jest.fn().mockResolvedValue(null) },
+      vendor: { findMany: jest.fn().mockResolvedValue([]) },
       inboundMessage: { findMany: jest.fn().mockResolvedValue([]) },
       fileDocument: { findMany: jest.fn().mockResolvedValue([]) },
       invoiceRequest: { findMany: jest.fn().mockResolvedValue([]) },
@@ -119,6 +121,20 @@ describe('EmergencyCasesService', () => {
         }),
       );
     });
+
+    it('saha listesine kendi atanan dosyası girer', async () => {
+      await service.findAll({}, { id: 'field-user', roleCode: 'field_staff' });
+      expect(prisma.emergencyCase.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([
+              { assignedFieldUserId: 'field-user' },
+              { assignedUserId: 'field-user' },
+            ]),
+          }),
+        }),
+      );
+    });
   });
 
   describe('findOne', () => {
@@ -126,6 +142,7 @@ describe('EmergencyCasesService', () => {
       prisma.emergencyCase.findUnique.mockResolvedValue({
         id: 'case-1',
         assignedUserId: 'other-user',
+        assignedFieldUserId: null,
         customerId: 'cust-a',
         assignedVendor: null,
         assignedUser: null,

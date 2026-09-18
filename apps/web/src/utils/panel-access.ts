@@ -192,6 +192,10 @@ export function canAccessAcilYardimRoute(
     }
   }
 
+  if (isAcilYardimDetailPath(pathname) && isFieldStaffRole(roleCode)) {
+    return true;
+  }
+
   const role = String(roleCode ?? '').trim().toLowerCase();
   if (isFinanceRole(role) && hasActiveFunctionDelegation(operationalAccessGrants, 'acil_yardim')) {
     return true;

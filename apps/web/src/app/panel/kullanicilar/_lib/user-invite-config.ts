@@ -1,7 +1,21 @@
 export const FIELD_OPERATION_AREA_OPTIONS = [
   { value: 'hasar' as const, label: 'Hasar Onarım' },
   { value: 'acil' as const, label: 'Acil Yardım' },
+  { value: 'both' as const, label: 'Her İkisi' },
 ];
+
+export function fieldStaffIncludesAcil(area?: string | null): boolean {
+  return area === 'acil' || area === 'both';
+}
+
+export function fieldStaffIncludesHasar(area?: string | null): boolean {
+  return area === 'hasar' || area === 'both';
+}
+
+/** Saha sorumlusunda Hasar ve Acil’de hizmet kolu aranmaz. Bölge yeter. */
+export function fieldStaffUsesServiceBranches(_area?: string | null): boolean {
+  return false;
+}
 
 /** Sigorta / eksper / broker / asistans — aynı firma altında çoklu davet */
 export const CUSTOMER_COMPANY_USER_TASKS = [

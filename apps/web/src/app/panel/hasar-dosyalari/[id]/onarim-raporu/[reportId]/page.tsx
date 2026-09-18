@@ -4427,11 +4427,11 @@ function EmergencyReportEditor({
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Tedarikçi Maliyeti</span>
-                  <span className="font-medium text-slate-800">{fmtCurrency(report.totalSupplierCost ?? totalSupplierCost)}</span>
+                  <span className="font-medium text-slate-800">{fmtCurrency(totalSupplierCost)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Toplam Satış</span>
-                  <span className="font-medium text-slate-800">{fmtCurrency(report.totalSalesAmount ?? totalSalesAmount)}</span>
+                  <span className="font-medium text-slate-800">{fmtCurrency(totalSalesAmount)}</span>
                 </div>
                 <div className="border-t border-slate-100 pt-3">
                   <div className="flex justify-between text-sm">
@@ -5278,6 +5278,7 @@ export default function RepairReportPage() {
         const share = currentTotal > 0 ? itemSupplier / currentTotal : 1 / unitItems.length;
         const newItemTotal = Math.round(quoteTotal * share * 100) / 100;
         const qty = Number(item.quantity) || 1;
+        const unitCost = Math.round((newItemTotal / qty) * 100) / 100;
         await handleUpdateItemMain(item.id, {
           workGroupId: item.workGroupId || undefined,
           location: item.location ? normalizeLocationLabel(item.location) : undefined,
@@ -5286,7 +5287,7 @@ export default function RepairReportPage() {
           quantity: qty,
           unit: item.unit,
           salesUnitPrice: Number(item.salesUnitPrice ?? 0),
-          supplierUnitPrice: newItemTotal,
+          supplierUnitPrice: unitCost,
           pricingType: item.pricingType,
           damageCategory: item.damageCategory,
           damageTypeId: item.damageTypeId || undefined,
@@ -5628,6 +5629,7 @@ export default function RepairReportPage() {
   const isFieldStaff = normalizedRoleCode === 'field_staff';
   // Saha personeli her zaman dış görünüm görsün
   const effectiveViewMode = isFieldStaff ? 'external' : viewMode;
+  const kalemToplamlari = recomputeReportTotals(report?.items ?? []);
 
   // Acil Yardım raporu ise ayrı editörü kullan
   const isEditable = (report.status === 'draft' || report.status === 'rejected') && !isFieldStaff;
@@ -6385,10 +6387,10 @@ export default function RepairReportPage() {
             {effectiveViewMode === 'internal' && !isFieldStaff && (
               <FinancialSummaryBar
                 tone="light"
-                totalSupplierCost={report.totalSupplierCost}
-                totalSalesAmount={report.totalSalesAmount}
-                grossProfit={report.grossProfit}
-                grossMarginPct={report.grossMarginPct}
+                totalSupplierCost={kalemToplamlari.totalSupplierCost}
+                totalSalesAmount={kalemToplamlari.totalSalesAmount}
+                grossProfit={kalemToplamlari.grossProfit}
+                grossMarginPct={kalemToplamlari.grossMarginPct}
               />
             )}
           </div>

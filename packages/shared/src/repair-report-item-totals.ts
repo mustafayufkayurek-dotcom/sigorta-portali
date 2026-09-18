@@ -1,4 +1,4 @@
-/** Onarım raporu kalem tutarları — satış birim×miktar; maliyet girilen rakam (m² ile çarpılmaz). */
+/** Onarım raporu kalem tutarları — satış ve birim maliyet miktar ile çarpılır. Satır tutarı gibi duran maliyet tekrar çarpılmaz. */
 
 export type RepairItemTotalsInput = {
   pricingType?: string | null;
@@ -14,20 +14,45 @@ export function repairItemSalesTotal(item: RepairItemTotalsInput): number {
   return (Number(item.quantity) || 0) * (Number(item.salesUnitPrice) || 0);
 }
 
-/** Yeni kayıt: maliyet alanına girilen tutar (m² ile çarpılmaz). */
-export function repairItemSupplierTotal(item: RepairItemTotalsInput): number {
-  if (item.pricingType === 'lumpsum') return Number(item.lumpSumPrice) || 0;
-  return Number(item.supplierUnitPrice) || 0;
+function money(n: number | null | undefined): number {
+  const v = Number(n);
+  return Number.isFinite(v) ? v : 0;
 }
 
 /**
- * Eski formül miktar×maliyet yazmış ve sonuç satışın katı şişmişse düzelt.
- * Birim fiyatı gerçekten m² fiyatı olan kayıtlar (maliyet ≈ satış) dokunulmaz.
+ * Kutu satır tutarıysa (eski şişme / götürü yazım) çarpılmaz.
+ * Satış birimiyle aynı duran rakam birim maliyettir; miktar ile çarpılır.
+ */
+export function repairItemSupplierCellIsLineTotal(item: RepairItemTotalsInput): boolean {
+  if (item.pricingType === 'lumpsum') return false;
+  const qty = money(item.quantity);
+  const cell = money(item.supplierUnitPrice);
+  const salesUnit = money(item.salesUnitPrice);
+  if (!(qty > 1) || !(cell > 0)) return false;
+  if (salesUnit > 0 && cell > salesUnit * 3) return true;
+  const salesLine = repairItemSalesTotal(item);
+  if (salesLine > 0 && Math.abs(cell - salesLine) / salesLine <= 0.15) return true;
+  return false;
+}
+
+/** Birim maliyet × miktar. Satır tutarı kutusu çarpılmaz. */
+export function repairItemSupplierTotal(item: RepairItemTotalsInput): number {
+  if (item.pricingType === 'lumpsum') return money(item.lumpSumPrice);
+  const cell = money(item.supplierUnitPrice);
+  if (!(cell > 0)) return 0;
+  const qty = money(item.quantity);
+  if (!(qty > 1) || repairItemSupplierCellIsLineTotal(item)) return cell;
+  return qty * cell;
+}
+
+/**
+ * Eski formül miktar×satır-tutarı yazmış ve sonuç satışın katı şişmişse düzelt.
+ * Birim fiyatı gerçekten m² fiyatı olan kayıtlar dokunulmaz.
  */
 export function repairItemSupplierNeedsHeal(item: RepairItemTotalsInput): boolean {
   if (item.pricingType === 'lumpsum') return false;
-  const qty = Number(item.quantity) || 0;
-  const unit = Number(item.supplierUnitPrice) || 0;
+  const qty = money(item.quantity);
+  const unit = money(item.supplierUnitPrice);
   const stored = Number(item.supplierTotal);
   if (!(qty > 1) || !(unit > 0) || !Number.isFinite(stored)) return false;
   const oldProduct = qty * unit;
@@ -42,10 +67,11 @@ export function repairItemResolvedSupplierTotal(item: RepairItemTotalsInput): nu
   const stored = Number(item.supplierTotal);
   if (item.pricingType === 'lumpsum') {
     if (Number.isFinite(stored) && stored > 0) return stored;
-    return Number(item.lumpSumPrice) || 0;
+    return money(item.lumpSumPrice);
   }
-  if (repairItemSupplierNeedsHeal(item)) return repairItemSupplierTotal(item);
-  if (Number.isFinite(stored) && stored > 0) return stored;
+  if (repairItemSupplierNeedsHeal(item)) {
+    return money(item.supplierUnitPrice);
+  }
   return repairItemSupplierTotal(item);
 }
 

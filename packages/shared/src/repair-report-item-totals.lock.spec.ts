@@ -27,16 +27,40 @@ const pdfSrc = readFileSync(
 );
 
 describe('onarım raporu maliyet m² LOCK', () => {
-  it('maliyet girilen tutardır; m² ile çarpılmaz', () => {
+  it('birim maliyet miktar ile çarpılır; satış ile aynı kural', () => {
     const item = {
       pricingType: 'unit',
+      quantity: 6,
+      salesUnitPrice: 1100,
+      supplierUnitPrice: 1000,
+      supplierTotal: 1000,
+    };
+    assert.equal(repairItemSalesTotal(item), 6600);
+    assert.equal(repairItemSupplierTotal(item), 6000);
+    assert.equal(repairItemResolvedSupplierTotal(item), 6000);
+  });
+
+  it('eski şişmiş kayıt tekrar m² ile çarpılmaz', () => {
+    const item = {
       quantity: 167,
       salesUnitPrice: 138.68,
       supplierUnitPrice: 3860,
+      supplierTotal: 167 * 3860,
     };
-    assert.equal(repairItemSupplierTotal(item), 3860);
-    assert.ok(Math.abs(repairItemSalesTotal(item) - 167 * 138.68) < 0.01);
-    assert.notEqual(repairItemSupplierTotal(item), 167 * 3860);
+    assert.equal(repairItemSupplierNeedsHeal(item), true);
+    assert.equal(repairItemResolvedSupplierTotal(item), 3860);
+    assert.notEqual(repairItemResolvedSupplierTotal(item), 167 * 3860);
+  });
+
+  it('kutuya satır tutarı yazılmışsa çarpılmaz', () => {
+    const item = {
+      pricingType: 'unit',
+      quantity: 6,
+      salesUnitPrice: 1100,
+      supplierUnitPrice: 6600,
+      supplierTotal: 6600,
+    };
+    assert.equal(repairItemResolvedSupplierTotal(item), 6600);
   });
 
   it('götürü kalemde her iki tutar götürü bedeldir', () => {
@@ -55,16 +79,16 @@ describe('onarım raporu maliyet m² LOCK', () => {
     assert.equal(repairItemResolvedSupplierTotal(item), 15000);
   });
 
-  it('kâr satış eksi girilen maliyettir', () => {
+  it('kâr satış eksi satır maliyetidir', () => {
     const pct = repairItemMarginPct({
-      quantity: 100,
-      salesUnitPrice: 200,
-      supplierUnitPrice: 5000,
+      quantity: 6,
+      salesUnitPrice: 1100,
+      supplierUnitPrice: 1000,
     });
-    assert.ok(Math.abs(pct - ((20000 - 5000) / 20000) * 100) < 0.01);
+    assert.ok(Math.abs(pct - ((6600 - 6000) / 6600) * 100) < 0.01);
   });
 
-  it('panel ve kayıt aynı kuralı kullanır; maliyet m² ile çarpılmaz', () => {
+  it('panel ve kayıt aynı kuralı kullanır', () => {
     assert.match(page, /repairItemResolvedSupplierTotal/);
     assert.match(page, /repairItemSalesTotal/);
     assert.match(service, /repairItemSupplierTotal\(priced\)/);
@@ -91,15 +115,6 @@ describe('onarım raporu maliyet m² LOCK', () => {
       true,
     );
     assert.equal(
-      repairItemResolvedSupplierTotal({
-        quantity: 167,
-        salesUnitPrice: 138.68,
-        supplierUnitPrice: 3860,
-        supplierTotal: 167 * 3860,
-      }),
-      3860,
-    );
-    assert.equal(
       repairItemSupplierNeedsHeal({
         quantity: 167,
         supplierUnitPrice: 3860,
@@ -123,5 +138,9 @@ describe('onarım raporu maliyet m² LOCK', () => {
     assert.match(page, /cellCls\(rowIdx, 'quantity', true\)\} text-center/);
     assert.match(page, /tdCls\(rowIdx, 'salesUnitPrice'\)\} text-center/);
     assert.match(page, /cellCls\(rowIdx, 'salesUnitPrice', true\)\} text-center/);
+  });
+
+  it('finans özeti kalemlerden yeniden toplanır', () => {
+    assert.match(page, /recomputeReportTotals\(report\?\.items/);
   });
 });

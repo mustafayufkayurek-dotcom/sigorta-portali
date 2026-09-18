@@ -77,7 +77,7 @@ import {
   displayPersonDuty,
   displayUserRoleName,
   emptyInvitePersonDraft,
-  fieldOperationBranchOptions,
+  fieldStaffUsesServiceBranches,
   filterOfficeFirmsByQuery,
   findDepartmentForArea,
   findRoleByCode,
@@ -93,7 +93,6 @@ import {
   roleCodesMatch,
   resolveOfficePersonPhone,
   selectedPortalOfficeCustomerId,
-  sanitizeFieldOperationServiceBranches,
   showsAcilYardimCustomerScope,
   showsInsuranceCompanyScope,
   showsOperationsServiceAreaScope,
@@ -262,14 +261,6 @@ interface AcilYardimCustomer {
 interface PortalOrganizationOption {
   id: string;
   name: string;
-}
-
-interface ServiceBranch {
-  id: string;
-  name: string;
-  type: 'hasar' | 'acil_yardim' | string;
-  isActive?: boolean;
-  sortOrder?: number;
 }
 
 interface GeographicRegion {
@@ -769,7 +760,6 @@ export default function KullanicilarPage() {
   const [hasarExpertCustomers, setHasarExpertCustomers] = useState<PortalOrganizationOption[]>([]);
   const [insuranceCustomers, setInsuranceCustomers] = useState<PortalOrganizationOption[]>([]);
   const [brokerCustomers, setBrokerCustomers] = useState<PortalOrganizationOption[]>([]);
-  const [serviceBranches, setServiceBranches] = useState<ServiceBranch[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [geographicRegions, setGeographicRegions] = useState<GeographicRegion[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -1025,23 +1015,6 @@ export default function KullanicilarPage() {
     }
   }, []);
 
-  const loadServiceBranches = useCallback(async () => {
-    try {
-      const acil = await axios.get(`${API}/service-branches?type=acil_yardim&scope=meridyen`, { headers: authHeader() });
-      const normalize = (response: any): ServiceBranch[] => {
-        const list = response.data?.data ?? response.data ?? [];
-        return Array.isArray(list) ? list : [];
-      };
-      const acilBranches = normalize(acil);
-      setServiceBranches(
-        sanitizeFieldOperationServiceBranches(acilBranches, 'acil_yardim')
-          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name, 'tr')),
-      );
-    } catch {
-      setServiceBranches([]);
-    }
-  }, []);
-
   const loadProvinces = useCallback(async () => {
     try {
       const r = await axios.get(`${API}/locations/provinces`, { headers: authHeader() });
@@ -1094,10 +1067,9 @@ export default function KullanicilarPage() {
     loadHasarExpertCustomers();
     loadInsuranceCustomers();
     loadBrokerCustomers();
-    loadServiceBranches();
     loadProvinces();
     loadGeographicRegions();
-  }, [loadUsers, loadRoles, loadDepartments, loadInsuranceCompanies, loadAcilYardimCustomers, loadHasarExpertCustomers, loadInsuranceCustomers, loadBrokerCustomers, loadServiceBranches, loadProvinces, loadGeographicRegions]);
+  }, [loadUsers, loadRoles, loadDepartments, loadInsuranceCompanies, loadAcilYardimCustomers, loadHasarExpertCustomers, loadInsuranceCustomers, loadBrokerCustomers, loadProvinces, loadGeographicRegions]);
 
   useEffect(() => {
     if (modal !== 'edit' || form.userTask !== 'operations' || form.countrywide) return;
@@ -1346,9 +1318,6 @@ export default function KullanicilarPage() {
     return undefined;
   })();
   const selectedRoleIsFieldStaff = form.userTask === 'field_operations';
-  const selectedServiceBranches = form.operationArea === 'acil'
-    ? fieldOperationBranchOptions(serviceBranches, 'acil')
-    : [];
 
   const taskFromRole = (role?: Role | null): { userTask: UserTaskCode; managementLevel: ManagementLevel } => {
     if (roleCodesMatch(role?.code, 'admin')) return { userTask: 'management', managementLevel: 'admin' };
@@ -1657,19 +1626,6 @@ export default function KullanicilarPage() {
     }));
   };
 
-  const toggleSelectedSubject = (value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      selectedSubjects: prev.selectedSubjects.includes(value)
-        ? prev.selectedSubjects.filter((item) => item !== value)
-        : [...prev.selectedSubjects, value],
-      otherSubjectNotes: value === FIELD_OTHER_SUBJECT_LABEL && prev.selectedSubjects.includes(value)
-        ? ''
-        : prev.otherSubjectNotes,
-    }));
-    setFormErrors((prev) => ({ ...prev, selectedSubjects: undefined, otherSubjectNotes: undefined, general: undefined }));
-  };
-
   const toggleOperationsDistrict = (
     provinceId: string,
     districtId: string,
@@ -1941,9 +1897,9 @@ export default function KullanicilarPage() {
         'Seçilen görev için sistem rolü bulunamadı. Ayarlar → Roller bölümünden ilgili rol tanımını kontrol edin.';
     }
     if (selectedRoleIsFieldStaff && !form.operationArea) {
-      nextErrors.operationArea = 'Hasar Onarım veya Acil Yardım seçilmelidir.';
+      nextErrors.operationArea = 'Hasar Onarım, Acil Yardım veya Her İkisi seçilmelidir.';
     }
-    if (selectedRoleIsFieldStaff && form.operationArea === 'acil') {
+    if (selectedRoleIsFieldStaff && fieldStaffUsesServiceBranches(form.operationArea)) {
       if (form.selectedSubjects.length === 0) {
         nextErrors.selectedSubjects = 'En az bir hizmet kolu seçilmelidir.';
       }
@@ -2075,9 +2031,9 @@ export default function KullanicilarPage() {
           form.operationArea,
           form.serviceAreas,
           form.countrywide,
-          form.selectedSubjects,
+          fieldStaffUsesServiceBranches(form.operationArea) ? form.selectedSubjects : [],
           [],
-          form.otherSubjectNotes,
+          fieldStaffUsesServiceBranches(form.operationArea) ? form.otherSubjectNotes : '',
         );
       }
 
@@ -3146,12 +3102,12 @@ export default function KullanicilarPage() {
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Meridyen Saha Operasyonu Kapsamı</p>
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Önce Hasar Onarım mı Acil Yardım mı çalışacağını seçin; ardından bölge kapsamını belirleyin.
+                    Hasar tespit, Acil saha veya her ikisi. Aynı kayıtta durur; tedarikçi kartı ayrıdır.
                   </p>
                 </div>
 
                 <FormField label="Çalışma Alanı" required error={formErrors.operationArea}>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {FIELD_OPERATION_AREA_OPTIONS.map((option) => (
                       <button
                         key={option.value}
@@ -3168,47 +3124,9 @@ export default function KullanicilarPage() {
                     ))}
                   </div>
                   <p className="mt-2 text-xs leading-5 text-slate-500">
-                    Bu kişi Eksper değildir ve Tedarikçi değildir. Tedarikçiler ayrı kayıt olarak yönetilir.
+                    Bu kişi eksper değildir. Tedarikçiler ayrı kayıttır. Hasar ve Acil’de hizmet kolu aranmaz.
                   </p>
                 </FormField>
-
-                {form.operationArea === 'acil' && (
-                  <FormField
-                    label="Acil Yardım — Hizmet Kolları"
-                    required
-                    error={formErrors.selectedSubjects}
-                  >
-                    {selectedServiceBranches.length === 0 ? (
-                      <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
-                        Bu çalışma alanı için aktif hizmet kolu bulunamadı.
-                      </p>
-                    ) : (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {selectedServiceBranches.map((branch) => (
-                          <label
-                            key={branch.id}
-                            className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
-                              form.selectedSubjects.includes(branch.name)
-                                ? 'border-blue-500 bg-blue-50 text-blue-800'
-                                : 'border-slate-200 bg-white text-slate-700'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={form.selectedSubjects.includes(branch.name)}
-                              onChange={() => toggleSelectedSubject(branch.name)}
-                              className="mt-0.5 rounded border-slate-300 text-brand-600"
-                            />
-                            <span>{branch.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Acil yardım saha operasyonu için tanımlı hizmet kolları.
-                    </p>
-                  </FormField>
-                )}
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="mb-2 flex items-center justify-between gap-3">

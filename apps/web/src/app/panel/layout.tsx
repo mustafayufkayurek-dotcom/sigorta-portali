@@ -63,7 +63,8 @@ import {
   type InsurancePortalNavCounts,
 } from '@/config/portal-nav';
 import { countExpertQueues, normalizeExpertQueueParam } from '@/utils/expert-portal-queues';
-import { fieldStaffInspectionStatus, FIELD_STAFF_ASSIGNMENTS_HREF, FIELD_STAFF_ASSIGNMENTS_LABEL, FIELD_STAFF_CLAIMS_CHANGED_EVENT, FIELD_STAFF_COMPLETED_INSPECTIONS_HREF, FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL } from '@/utils/field-staff-claim-view';
+import { fieldStaffInspectionStatus, fieldStaffAcilIsOpen, FIELD_STAFF_ASSIGNMENTS_HREF, FIELD_STAFF_ASSIGNMENTS_LABEL, FIELD_STAFF_CLAIMS_CHANGED_EVENT, FIELD_STAFF_COMPLETED_INSPECTIONS_HREF, FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL } from '@/utils/field-staff-claim-view';
+import { fieldStaffIncludesAcil } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -256,13 +257,34 @@ function useFieldAssignedNavCount(enabled: boolean, pathname: string): number {
     };
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/claim-files?limit=80&statusCode=open`, { headers });
-        const json = res.ok ? await res.json() : null;
-        const files = Array.isArray(json?.data) ? json.data : [];
+        let includeAcil = false;
+        try {
+          const raw = localStorage.getItem('user');
+          const stored = raw ? JSON.parse(raw) : null;
+          includeAcil = fieldStaffIncludesAcil(userOperationArea(stored));
+        } catch {
+          includeAcil = false;
+        }
+        const claimRes = await fetch(`${API_BASE}/claim-files?limit=80&statusCode=open`, { headers });
+        const claimJson = claimRes.ok ? await claimRes.json() : null;
+        const files = Array.isArray(claimJson?.data) ? claimJson.data : [];
         const pending = files.filter((claim: { inspectionDone?: boolean | null; currentStatus?: { code?: string | null } | null }) =>
           !fieldStaffInspectionStatus(claim).done,
         ).length;
-        if (!cancelled) setCount(pending);
+        let acilOpen = 0;
+        if (includeAcil) {
+          const acilRes = await fetch(`${API_BASE}/emergency/cases`, { headers });
+          const acilJson = acilRes.ok ? await acilRes.json() : null;
+          const acilRaw = Array.isArray(acilJson?.data)
+            ? acilJson.data
+            : Array.isArray(acilJson)
+              ? acilJson
+              : [];
+          acilOpen = acilRaw.filter((row: { status?: string | null }) =>
+            fieldStaffAcilIsOpen(row.status),
+          ).length;
+        }
+        if (!cancelled) setCount(pending + acilOpen);
       } catch {
         if (!cancelled) setCount(0);
       }

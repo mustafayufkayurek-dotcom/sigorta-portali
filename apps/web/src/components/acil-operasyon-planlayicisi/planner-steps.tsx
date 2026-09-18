@@ -497,7 +497,7 @@ export function PlannerStepBody(p: PlannerStepBodyProps) {
   if (p.step === 'tedarikci_maliyet') {
     return (
       <div className="space-y-3">
-        <Card title="Atanan">
+        <Card title="Atanan Tedarikçi">
           {p.assignedVendor ? (
             <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 px-3 py-2">
               <p className="text-sm font-semibold text-emerald-950">{p.assignedVendor.name}</p>

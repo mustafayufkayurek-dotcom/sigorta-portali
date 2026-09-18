@@ -89,6 +89,7 @@ export interface EmergencyCase {
   invoicedAt?: string | null;
   assignedVendorId?: string | null;
   assignedUserId?: string | null;
+  assignedFieldUserId?: string | null;
   notes?: string | null;
   findingsText?: string | null;
   reportWorkGroup?: string | null;
@@ -115,6 +116,13 @@ export interface EmergencyCase {
   // relations
   assignedVendor?: { id: string; name: string; phone?: string | null; notes?: string | null } | null;
   assignedUser?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone?: string | null;
+    email?: string | null;
+  } | null;
+  assignedFieldUser?: {
     id: string;
     firstName: string;
     lastName: string;

@@ -27,6 +27,7 @@ import ClosureConditionsPanel from '@/components/file-documents/ClosureCondition
 import ClosurePhotosPanel from '@/components/file-documents/ClosurePhotosPanel';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
 import { FieldInspectionPhotosPanel } from '@/components/field-survey/FieldInspectionPhotosPanel';
+import { AcilSahaAssignCard } from '@/components/field-survey/AcilSahaAssignCard';
 import { AcilReportPhraseInput } from '@/components/acil-operasyon-planlayicisi/AcilReportPhraseInput';
 import {
   AcilOperasyonPlanlayiciPanel,
@@ -2485,6 +2486,11 @@ export default function AcilDosyaDetayPage() {
         )}
       </div>
 
+      <AcilSahaAssignCard
+        vaka={vaka}
+        onAssigned={(next) => setVaka(next)}
+      />
+
       <div
         className={`${PANEL_CARD_BASE} px-4 py-2.5`}
         data-testid="acil-finans-ozet-serit"
@@ -2532,6 +2538,10 @@ export default function AcilDosyaDetayPage() {
         )}
         vendorStep={(
           <div className="space-y-3">
+            <AcilSahaAssignCard
+              vaka={vaka}
+              onAssigned={(next) => setVaka(next)}
+            />
             <OpsFirstRunNotice
               noticeId={OPS_NOTICE.acilKayitliTedarikci.id}
               title={OPS_NOTICE.acilKayitliTedarikci.title}

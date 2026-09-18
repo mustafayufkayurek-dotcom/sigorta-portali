@@ -32,7 +32,13 @@ import {
   FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL,
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
+import { FieldAcilAssignmentCard } from '@/components/field-survey/FieldAcilAssignmentCard';
 import { InspectionReminderBanner } from '@/components/field-survey/InspectionReminderBanner';
+import { usePanelAccess } from '@/hooks/usePanelAccess';
+import { fieldStaffIncludesAcil } from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { useFieldAssignedAcilCases } from '@/hooks/useFieldAssignedAcilCases';
 
 type FieldClaimRow = {
   id: string;
@@ -374,6 +380,8 @@ function toFieldTask(
 }
 
 export function FieldOperationsHome() {
+  const { operationArea } = usePanelAccess();
+  const showAcilAssignments = fieldStaffIncludesAcil(operationArea);
   const [me, setMe] = useState<{ id?: string; firstName?: string; lastName?: string } | null>(null);
 
   useEffect(() => {
@@ -385,6 +393,8 @@ export function FieldOperationsHome() {
   const openClaimsQuery = useFieldAssignedClaims(false, true, 40);
   const closedClaimsQuery = useFieldAssignedClaims(true, true, 80);
   const tasksQuery = useMyOpenTasks(me?.id);
+  const acilQuery = useFieldAssignedAcilCases(showAcilAssignments);
+  const acilRows = acilQuery.data ?? [];
 
   const openClaims = openClaimsQuery.data?.items ?? [];
   const { pendingInspection } = useMemo(
@@ -468,9 +478,10 @@ export function FieldOperationsHome() {
     () => fieldStaffCompletedInspectionFiles([openClaims, closedClaimsQuery.data?.items ?? []]),
     [openClaims, closedClaimsQuery.data?.items],
   );
-  const openCount = pendingInspection.length;
+  const openCount = pendingInspection.length + acilRows.length;
   const completedCount = completedInspections.length;
   const previewAssigned = pendingInspection.slice(0, 8);
+  const previewAcil = acilRows.slice(0, 8);
   const previewCompleted = completedInspections.slice(0, 5);
 
   const recentOwn = useMemo(() => {
@@ -488,7 +499,7 @@ export function FieldOperationsHome() {
       }));
   }, [openClaims]);
 
-  const loading = openClaimsQuery.isLoading || (!!me?.id && tasksQuery.isLoading);
+  const loading = openClaimsQuery.isLoading || acilQuery.isLoading || (!!me?.id && tasksQuery.isLoading);
   const kpisFailed = openClaimsQuery.isError;
 
   const inspectionReminder = useMemo(
@@ -498,6 +509,13 @@ export function FieldOperationsHome() {
 
   return (
     <div className="space-y-4">
+      <OpsFirstRunNotice
+        compact
+        noticeId={OPS_NOTICE.acilSahaAtanan.id}
+        title={OPS_NOTICE.acilSahaAtanan.title}
+        body={OPS_NOTICE.acilSahaAtanan.body}
+        testId="acil-saha-atanan-ilk-kullanim-seridi"
+      />
       {!loading && inspectionReminder.pendingCount > 0 ? (
         <InspectionReminderBanner
           message={inspectionReminder.message}
@@ -548,7 +566,7 @@ export function FieldOperationsHome() {
               <h2 className="text-base font-semibold text-slate-950">
                 {FIELD_STAFF_ASSIGNMENTS_LABEL}
               </h2>
-              <p className="text-xs text-slate-500">Tespit bekleyen atanmış dosyalar</p>
+              <p className="text-xs text-slate-500">Size atanan açık dosyalar</p>
             </div>
             <Link
               href={FIELD_STAFF_ASSIGNMENTS_HREF}
@@ -565,12 +583,17 @@ export function FieldOperationsHome() {
                 <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100" />
               ))}
             </div>
-          ) : openClaimsQuery.isError ? (
+          ) : openClaimsQuery.isError && previewAcil.length === 0 ? (
             <EmptyState text="Dosyalar yüklenemedi. Lütfen sayfayı yenileyin." />
-          ) : previewAssigned.length === 0 ? (
-            <EmptyState text="Tespit bekleyen atanmış dosya yok." />
+          ) : previewAssigned.length === 0 && previewAcil.length === 0 ? (
+            <EmptyState text="Atanmış açık dosya yok." />
           ) : (
             <ul className="space-y-3">
+              {previewAcil.map((row) => (
+                <li key={row.id}>
+                  <FieldAcilAssignmentCard item={row} />
+                </li>
+              ))}
               {previewAssigned.map((claim) => {
                 const insured = fieldStaffInsuredName(claim);
                 const phone = fieldStaffPhone(claim);

@@ -125,6 +125,7 @@ model User {
   userInsuranceCompanyScopes UserInsuranceCompanyScope[]
   userAssistantCustomerScopes UserAssistantCustomerScope[]
   assignedFieldClaimFiles    ClaimFile[]                 @relation("AssignedFieldUser")
+  assignedEmergencyCases     EmergencyCase[]             @relation("EmergencyAssignedFieldUser")
   assignedOfficeClaimFiles   ClaimFile[]                 @relation("AssignedOfficeUser")
   assignedAdjusterClaimFiles ClaimFile[]                 @relation("AssignedAdjuster")
   responsibleClaimFiles      ClaimFile[]                 @relation("CurrentResponsibleUser")
@@ -2817,8 +2818,9 @@ model EmergencyCase {
   issueType        String           @map("issue_type")
   urgency          EmergencyUrgency @default(NORMAL)
   status           EmergencyStatus  @default(GELEN)
-  assignedVendorId String?          @map("assigned_vendor_id")
-  assignedUserId   String?          @map("assigned_user_id")
+  assignedVendorId     String?          @map("assigned_vendor_id")
+  assignedUserId       String?          @map("assigned_user_id")
+  assignedFieldUserId  String?          @map("assigned_field_user_id")
   notes            String?
   findingsText     String?          @map("findings_text")
   reportWorkGroup        String? @map("report_work_group")
@@ -2839,9 +2841,10 @@ model EmergencyCase {
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
   customer       Customer?  @relation("EmergencyCustomer", fields: [customerId], references: [id])
-  assignedVendor Vendor?    @relation("EmergencyVendor", fields: [assignedVendorId], references: [id])
-  assignedUser   User?      @relation("EmergencyAssignedUser", fields: [assignedUserId], references: [id])
-  createdBy      User       @relation("EmergencyCreatedBy", fields: [createdByUserId], references: [id])
+  assignedVendor    Vendor?    @relation("EmergencyVendor", fields: [assignedVendorId], references: [id])
+  assignedUser      User?      @relation("EmergencyAssignedUser", fields: [assignedUserId], references: [id])
+  assignedFieldUser User?      @relation("EmergencyAssignedFieldUser", fields: [assignedFieldUserId], references: [id])
+  createdBy         User       @relation("EmergencyCreatedBy", fields: [createdByUserId], references: [id])
   vendorPaidBy   User?      @relation("EmergencyVendorPaidBy", fields: [vendorPaidByUserId], references: [id])
   costEntries         EmergencyCostEntry[]
   invoiceItems        EmergencyInvoiceItem[]
@@ -2860,6 +2863,7 @@ model EmergencyCase {
   @@index([urgency])
   @@index([fileDate])
   @@index([createdAt])
+  @@index([assignedFieldUserId])
   @@map("emergency_cases")
 }
 

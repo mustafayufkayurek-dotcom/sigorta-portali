@@ -39,6 +39,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(util, /notifyFieldStaffClaimsChanged/);
     assert.match(util, /Tamamlanan Tespitler/);
     assert.match(util, /Atanan Dosyalar/);
+    assert.match(util, /fieldStaffAcilIsOpen/);
+    assert.match(util, /fieldStaffAcilHref/);
     assert.match(util, /fieldStaffCompletedInspectionFiles/);
     assert.match(util, /OFFICE_COMPLETED_INSPECTIONS_HREF/);
     assert.match(util, /OFFICE_COMPLETED_INSPECTIONS_LABEL/);
@@ -63,6 +65,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(list, /fieldStaffInspectionStatus/);
     assert.match(list, /FieldInsuredContactActions/);
     assert.match(list, /if \(isFieldStaff\)/);
+    assert.match(list, /FieldAcilAssignmentCard/);
+    assert.match(list, /useFieldAssignedAcilCases/);
     assert.match(list, /Atanan Dosyalar/);
     assert.match(list, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
     assert.match(list, /Tamamlanan Tespitler/);
@@ -118,6 +122,14 @@ describe('field-staff-claim-view lock', () => {
     assert.match(home, /from-brand-50/);
     assert.match(home, /compact/);
     assert.match(home, /saha-merkez-dosya-karti/);
+    assert.match(home, /FieldAcilAssignmentCard/);
+    assert.match(home, /fieldStaffIncludesAcil/);
+    assert.match(home, /usePanelAccess/);
+    assert.match(home, /acil-saha-atanan-ilk-kullanim-seridi/);
+    const acilCard = read('../components/field-survey/FieldAcilAssignmentCard.tsx');
+    assert.match(acilCard, /saha-acil-dosya-karti/);
+    const access = read('./panel-access.ts');
+    assert.match(access, /isAcilYardimDetailPath\(pathname\) && isFieldStaffRole/);
     assert.match(home, /saha-merkez-tamamlanan-kart/);
     assert.match(home, /saha-merkez-yaklasan-kart/);
     assert.doesNotMatch(home, /Benden İstenenler/);
@@ -281,6 +293,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(layout, /FIELD_STAFF_CLAIMS_CHANGED_EVENT/);
     assert.match(layout, /alertCount: fieldAssignedCount/);
     assert.match(layout, /useFieldAssignedNavCount/);
+    assert.match(layout, /emergency\/cases/);
+    assert.match(layout, /fieldStaffAcilIsOpen/);
     assert.doesNotMatch(layout, /Bekleyen Tespitler/);
     const officeNav = layout.slice(layout.indexOf(': isOfficeStaff'), layout.indexOf(': isFieldStaff'));
     assert.match(officeNav, /Dosya Merkezi/);

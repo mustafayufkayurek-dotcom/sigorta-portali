@@ -109,6 +109,14 @@ const MERIDYEN_ROLE_CODES = new Set([
   'FIELD_STAFF',
 ]);
 
+const EMERGENCY_STAFF_USER_SELECT = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  phone: true,
+  email: true,
+} as const;
+
 @Injectable()
 export class EmergencyCasesService {
   private readonly logger = new Logger(EmergencyCasesService.name);
@@ -555,7 +563,7 @@ export class EmergencyCasesService {
         findingsText: dto.findingsText.trim(),
         createdByUserId: userId,
       },
-      include: { assignedVendor: true, assignedUser: true, costEntries: true },
+      include: { assignedVendor: true, assignedUser: true, assignedFieldUser: true, costEntries: true },
     });
     const delegationStamp = await this.operationalAccessGrants.getFunctionDelegationStamp(
       userId,
@@ -618,12 +626,8 @@ export class EmergencyCasesService {
 
     if (requestingUser && isFieldStaff(requestingUser.roleCode)) {
       where.OR = [
+        { assignedFieldUserId: requestingUser.id },
         { assignedUserId: requestingUser.id },
-        {
-          customer: {
-            claimFiles: { some: { assignedFieldUserId: requestingUser.id } },
-          },
-        },
       ];
     }
 
@@ -651,10 +655,21 @@ export class EmergencyCasesService {
     return where;
   }
 
+  private async assertAssignableFieldUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: { select: { code: true } } },
+    });
+    if (!user || !isFieldStaff(user.role?.code)) {
+      throw new BadRequestException('Saha Operasyonu için Meridyen saha kaydı seçilmelidir.');
+    }
+  }
+
   private async assertCaseAccess(
     emergencyCase: {
       id: string;
       assignedUserId?: string | null;
+      assignedFieldUserId?: string | null;
       customerId?: string | null;
       createdByUserId?: string | null;
     },
@@ -665,17 +680,8 @@ export class EmergencyCasesService {
     if (!requestingUser) return;
 
     if (isFieldStaff(requestingUser.roleCode)) {
+      if (emergencyCase.assignedFieldUserId === requestingUser.id) return;
       if (emergencyCase.assignedUserId === requestingUser.id) return;
-      if (emergencyCase.customerId) {
-        const linked = await this.prisma.claimFile.findFirst({
-          where: {
-            customerId: emergencyCase.customerId,
-            assignedFieldUserId: requestingUser.id,
-          },
-          select: { id: true },
-        });
-        if (linked) return;
-      }
       throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
     }
 
@@ -793,6 +799,7 @@ export class EmergencyCasesService {
         status: true,
         assignedVendorId: true,
         assignedUserId: true,
+        assignedFieldUserId: true,
         notes: true,
         findingsText: true,
         fileDate: true,
@@ -802,7 +809,8 @@ export class EmergencyCasesService {
         createdAt: true,
         updatedAt: true,
         assignedVendor: { select: { id: true, name: true, phone: true, notes: true } },
-        assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
+        assignedUser: { select: EMERGENCY_STAFF_USER_SELECT },
+        assignedFieldUser: { select: EMERGENCY_STAFF_USER_SELECT },
         customer: {
           select: {
             id: true,
@@ -838,7 +846,8 @@ export class EmergencyCasesService {
       where: { id },
       include: {
         assignedVendor: { select: { id: true, name: true, phone: true, notes: true } },
-        assignedUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
+        assignedUser: { select: EMERGENCY_STAFF_USER_SELECT },
+        assignedFieldUser: { select: EMERGENCY_STAFF_USER_SELECT },
         createdBy: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
         customer: {
           select: {
@@ -927,6 +936,10 @@ export class EmergencyCasesService {
 
     const nextFindings = nextEmergencyFindingsText(dto.findingsText, existing.data?.findingsText);
 
+    if (dto.assignedFieldUserId) {
+      await this.assertAssignableFieldUser(dto.assignedFieldUserId);
+    }
+
     const updated = await this.prisma.emergencyCase.update({
       where: { id },
       data: {
@@ -941,6 +954,9 @@ export class EmergencyCasesService {
         ...(dto.urgency && { urgency: dto.urgency }),
         ...(dto.assignedVendorId !== undefined && { assignedVendorId: dto.assignedVendorId }),
         ...(dto.assignedUserId !== undefined && { assignedUserId: dto.assignedUserId }),
+        ...(dto.assignedFieldUserId !== undefined && {
+          assignedFieldUserId: dto.assignedFieldUserId ? dto.assignedFieldUserId : null,
+        }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
         ...(nextFindings !== undefined && { findingsText: nextFindings }),
         ...(dto.reportWorkGroup !== undefined && { reportWorkGroup: dto.reportWorkGroup }),
@@ -951,7 +967,7 @@ export class EmergencyCasesService {
         ...(dto.latitude !== undefined && { latitude: dto.latitude }),
         ...(dto.longitude !== undefined && { longitude: dto.longitude }),
       },
-      include: { assignedVendor: true, assignedUser: true, costEntries: true },
+      include: { assignedVendor: true, assignedUser: true, assignedFieldUser: true, costEntries: true },
     });
     const nextVendorId = dto.assignedVendorId;
     const prevVendorId = existing.data?.assignedVendorId ?? null;

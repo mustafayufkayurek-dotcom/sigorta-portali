@@ -48,6 +48,10 @@ export class UpdateEmergencyCaseDto {
 
   @IsString()
   @IsOptional()
+  assignedFieldUserId?: string | null;
+
+  @IsString()
+  @IsOptional()
   notes?: string;
 
   @IsString()

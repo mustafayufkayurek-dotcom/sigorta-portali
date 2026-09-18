@@ -62,6 +62,11 @@ describe('acil sunum özeti boşluk LOCK', () => {
     assert.doesNotMatch(steps, /Sunum Özeti[\s\S]{0,500}\{p\.approvalText\}/);
   });
 
+  it('Tedarikçi adımında Atanan Tedarikçi saha ile karışmaz', () => {
+    assert.match(steps, /Atanan Tedarikçi/);
+    assert.doesNotMatch(steps, /<Card title="Atanan">/);
+  });
+
   it('bütçe kutusunda dosya konusu durur', () => {
     assert.match(steps, /acil-butce-dosya-konusu/);
     assert.match(steps, /Dosya Konusu/);

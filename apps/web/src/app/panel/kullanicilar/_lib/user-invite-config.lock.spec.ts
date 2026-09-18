@@ -19,6 +19,8 @@ import {
   officePersonToFormFields,
   resolveOfficePersonPhone,
   selectedPortalOfficeCustomerId,
+  fieldStaffIncludesAcil,
+  fieldStaffUsesServiceBranches,
   showsUserOperationalAuthorization,
 } from './user-invite-config.ts';
 
@@ -161,7 +163,19 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.equal(showsUserOperationalAuthorization('field_operations', 'field_staff'), false);
     assert.equal(showsUserOperationalAuthorization('expert', 'expert'), false);
     assert.equal(showsUserOperationalAuthorization('finance', 'finance'), false);
+    assert.equal(fieldStaffIncludesAcil('acil'), true);
+    assert.equal(fieldStaffIncludesAcil('both'), true);
+    assert.equal(fieldStaffIncludesAcil('hasar'), false);
+    assert.equal(fieldStaffUsesServiceBranches('hasar'), false);
+    assert.equal(fieldStaffUsesServiceBranches('acil'), false);
+    assert.equal(fieldStaffUsesServiceBranches('both'), false);
     const page = readFileSync(join(here, '../page.tsx'), 'utf8');
+    assert.match(page, /Her İkisi/);
+    assert.match(page, /FIELD_OPERATION_AREA_OPTIONS/);
+    assert.match(page, /sm:grid-cols-3/);
+    assert.match(page, /fieldStaffUsesServiceBranches/);
+    assert.match(page, /Hasar ve Acil’de hizmet kolu aranmaz/);
+    assert.doesNotMatch(page, /Acil Yardım — Hizmet Kolları/);
     assert.match(page, /showsUserOperationalAuthorization\(form\.userTask/);
     const detail = readFileSync(join(here, '../[id]/page.tsx'), 'utf8');
     assert.match(detail, /showsUserOperationalAuthorization\(undefined, user\.role\?\.code\)/);

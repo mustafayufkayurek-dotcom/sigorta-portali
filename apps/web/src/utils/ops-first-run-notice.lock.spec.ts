@@ -224,6 +224,27 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.doesNotMatch(OPS_NOTICE.sahaTespitSonlandir.body, /Google|API/);
   });
 
+  it('Saha Acil atanan dosya şeridi durur', () => {
+    const home = readFileSync(
+      join(here, '../features/dashboard/components/admin/field-operations-home.tsx'),
+      'utf8',
+    );
+    assert.match(home, /OPS_NOTICE\.acilSahaAtanan/);
+    assert.match(home, /acil-saha-atanan-ilk-kullanim-seridi/);
+    assert.equal(OPS_NOTICE.acilSahaAtanan.id, 'acil-saha-atanan-v603');
+    assert.match(OPS_NOTICE.acilSahaAtanan.body, /Her İkisi/);
+    assert.match(OPS_NOTICE.acilSahaAtanan.body, /Kullanıcılar/);
+    assert.match(OPS_NOTICE.acilSahaAtanan.body, /Saha Operasyonu/);
+    assert.doesNotMatch(OPS_NOTICE.acilSahaAtanan.body, /Google|API/);
+    assert.equal(OPS_NOTICE.acilSahaDosyaAtama.id, 'acil-saha-dosya-atama-v604');
+    const acilCard = readFileSync(
+      join(here, '../components/field-survey/AcilSahaAssignCard.tsx'),
+      'utf8',
+    );
+    assert.match(acilCard, /OPS_NOTICE\.acilSahaDosyaAtama/);
+    assert.match(acilCard, /acil-saha-dosya-atama-ilk-kullanim-seridi/);
+  });
+
   it('Hasar tedarikçi onay maliyeti şeridi durur', () => {
     const vendorGuide = readFileSync(
       join(here, '../components/hasar-operasyon-planlayicisi/PlannerVendorContractGuide.tsx'),

@@ -3,6 +3,18 @@
 export const OPS_FIRST_RUN_STORAGE_PREFIX = 'meridyen-ops-notice:';
 
 export const OPS_NOTICE = {
+  acilSahaAtanan: {
+    id: 'acil-saha-atanan-v603',
+    title: 'Acil dosyanız burada',
+    body:
+      'Kullanıcılar’da çalışma alanı Hasar Onarım, Acil Yardım veya Her İkisi seçilir. Acil dosyada Saha Operasyonu seçilince iş Atanan Dosyalar’da durur. Tedarikçi kaydı ayrıdır.',
+  },
+  acilSahaDosyaAtama: {
+    id: 'acil-saha-dosya-atama-v604',
+    title: 'Saha Operasyonu',
+    body:
+      'Bu dosyada Saha Operasyonu seçilir. Kişi Atanan Dosyalar sayfasında görür. Tedarikçi ayrıdır.',
+  },
   sahaTespitSonlandir: {
     id: 'saha-tespit-sonlandir-v551',
     title: 'Tespiti sonlandır',

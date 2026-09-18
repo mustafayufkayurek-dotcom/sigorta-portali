@@ -88,6 +88,17 @@ export const FIELD_STAFF_COMPLETED_INSPECTIONS_HREF = '/panel/saha/tespiti-tamam
 export const FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL = 'Tamamlanan Tespitler';
 export const FIELD_STAFF_ASSIGNMENTS_HREF = '/panel/hasar-dosyalari';
 export const FIELD_STAFF_ASSIGNMENTS_LABEL = 'Atanan Dosyalar';
+export const FIELD_STAFF_ACIL_HREF = '/panel/acil-yardim';
+export const FIELD_STAFF_OPEN_ACIL_STATUSES = ['GELEN', 'ATANDI', 'SAHADA'] as const;
+
+export function fieldStaffAcilIsOpen(status?: string | null): boolean {
+  const s = String(status ?? '').toUpperCase();
+  return (FIELD_STAFF_OPEN_ACIL_STATUSES as readonly string[]).includes(s);
+}
+
+export function fieldStaffAcilHref(id: string): string {
+  return `/panel/acil-yardim/${encodeURIComponent(id)}`;
+}
 export const FIELD_STAFF_END_INSPECTION_LABEL = 'Tespiti Sonlandır';
 export const FIELD_STAFF_END_INSPECTION_CONFIRM =
   'Tespiti sonlandırmak istediğinize emin misiniz?\n\nDosya dosya sorumlusuna iletilir. Dosya kapanmaz.';
