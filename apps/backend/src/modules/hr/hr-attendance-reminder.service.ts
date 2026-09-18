@@ -345,7 +345,7 @@ export class HrAttendanceReminderService {
       message: 'Ay sonu otomatik gönderim (elektronik onaylı puantaj ve onaylı izin özeti).',
     });
 
-    if (!result.sent) {
+    if (!result.success) {
       this.logger.warn(`Ay sonu mali müşavir raporu gitmedi: ${result.message}`);
       return { sent: false, reason: result.message };
     }
