@@ -23,6 +23,7 @@ import {
 import { normalizeTrDateValue } from '@/utils/tr-date-input';
 import { buildSupplierTaskMapFromNotes } from '@/utils/hasar-supplier-tasks';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
+import { isLegacyOpsCatchupBypassActive } from '@/utils/whatsapp-sent-confirm-gate';
 import { hasarCancelReasonOk } from '@sigorta/shared';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { getMandatoryChecks, missingMandatoryLabels } from './mandatory-fields';
