@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-09-16",
-  "label": "v599-sirket-sitesi-yenileniyoruz",
-  "description": "Full v599: Şirket sitesi Yenileniyoruz; giriş yazılıma gider; panel şirket adresinde açılmaz. Harita alınmadı. Alımda oturum düşmez. Geri alma web v598 / backend v598.",
+  "updatedAt": "2026-09-18",
+  "label": "v603-acil-saha-onarim-maliyet",
+  "description": "Full v603: Acil Saha Operasyonu ataması ve onarım maliyeti. Alımda oturum düşmez. Geri alma web v601 / backend v602.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v599-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v599-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v603-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v603-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v598-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v598-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v601-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v602-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
