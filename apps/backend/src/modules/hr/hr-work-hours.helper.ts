@@ -126,6 +126,14 @@ export function isWithinStaffNotifyWindow(now: Date = new Date()): boolean {
   return mins >= startMin && mins <= endMin;
 }
 
+/** Mesai bitiminden sonra gün sonu puantaj hatırlatması. Pazar / tatil yok. */
+export function shouldRunDayEndAttendanceReminder(now: Date = new Date()): boolean {
+  const dateKey = istanbulDateKey(now);
+  const window = expectedWorkWindow(dateKey);
+  if (!window) return false;
+  return istanbulMinutesOfDay(now) >= parseHmToMinutes(window.end);
+}
+
 /**
  * Panel giriş kararı:
  * - Pazar / resmi tatil → kapalı

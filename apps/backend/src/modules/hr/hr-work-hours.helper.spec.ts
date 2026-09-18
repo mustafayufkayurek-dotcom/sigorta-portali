@@ -6,6 +6,7 @@ import {
   getWorkHoursSchedule,
   istanbulMinutesOfDay,
   isWithinStaffNotifyWindow,
+  shouldRunDayEndAttendanceReminder,
 } from './hr-work-hours.helper';
 
 describe('hr-work-hours.helper', () => {
@@ -53,6 +54,12 @@ describe('hr-work-hours.helper', () => {
     const s = getWorkHoursSchedule();
     expect(s.labels.summary).toContain('08:30–18:00');
     expect(s.labels.summary).toContain('08:30–13:00');
+  });
+
+  it('hafta içi 18:00 sonrası gün sonu; Pazar yok', () => {
+    expect(shouldRunDayEndAttendanceReminder(new Date('2026-09-18T14:50:00.000Z'))).toBe(false);
+    expect(shouldRunDayEndAttendanceReminder(new Date('2026-09-18T15:05:00.000Z'))).toBe(true);
+    expect(shouldRunDayEndAttendanceReminder(new Date('2026-09-20T12:00:00.000Z'))).toBe(false);
   });
 
   it('hafta içi geç girişte masum bildirim, giriş açık', () => {

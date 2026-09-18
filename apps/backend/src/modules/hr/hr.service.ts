@@ -32,7 +32,10 @@ import {
   getWorkHoursSchedule,
   istanbulDateKey,
 } from './hr-work-hours.helper';
+import { applyActivityBeat } from './hr-activity-beat.helper';
+import { roleReceivesAttendanceReminders } from './hr-attendance-reminder.helper';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
+import { RecordActivityBeatDto } from './dto/record-activity-beat.dto';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 
 type AuthUser = {
@@ -464,6 +467,24 @@ export class HrService {
   /** Özet Ve Denetim ekranı — gün sonu puantaj onay durumu (gerçek veri). */
   async getDayEndSupervisionSummary(user: AuthUser) {
     this.assertCanSupervise(user);
+    const [roster, mySummary] = await Promise.all([
+      this.buildDayEndRoster(),
+      this.getSummary(user),
+    ]);
+    return {
+      ...roster,
+      myLeaveBalance: {
+        leaveTypeLabel: mySummary.leaveBalance.leaveTypeLabel,
+        year: mySummary.leaveBalance.year,
+        remainingDays: mySummary.leaveBalance.remainingDays,
+        totalDays: mySummary.leaveBalance.totalDays,
+        usedDays: mySummary.leaveBalance.usedDays,
+        pendingDays: mySummary.leaveBalance.pendingDays,
+      },
+    };
+  }
+
+  async buildDayEndRoster() {
     const todayKey = this.todayKeyInIstanbul();
     const targetDate = this.toDateOnly(todayKey);
     const schedule = getWorkHoursSchedule();
@@ -475,26 +496,23 @@ export class HrService {
       timeZone: 'UTC',
     });
 
-    const [profiles, mySummary] = await Promise.all([
-      this.prisma.hrEmployeeProfile.findMany({
-        where: { status: 'active' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              role: { select: { name: true } },
-            },
+    const profiles = await this.prisma.hrEmployeeProfile.findMany({
+      where: { status: 'active' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: { select: { name: true, code: true } },
           },
-          department: { select: { id: true, name: true } },
-          leaveBalances: { where: { leaveType: HR_LEAVE_TYPE.ANNUAL, year: targetDate.getUTCFullYear() }, take: 1 },
         },
-        orderBy: [{ user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
-      }),
-      this.getSummary(user),
-    ]);
+        department: { select: { id: true, name: true } },
+        leaveBalances: { where: { leaveType: HR_LEAVE_TYPE.ANNUAL, year: targetDate.getUTCFullYear() }, take: 1 },
+      },
+      orderBy: [{ user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
+    });
 
     const activities = await this.prisma.activitySession.findMany({
       where: {
@@ -549,7 +567,7 @@ export class HrService {
           onLeave += 1;
         } else if (entry?.employeeConfirmedAt) {
           status = 'ok';
-          lastConfirmedDate = this.dateKeyFromUtcDate(entry.employeeConfirmedAt);
+          lastConfirmedDate = this.dateKeyFromUtcDate(entry.workDate);
           approved += 1;
         } else if (
           auto?.status === HR_ATTENDANCE_STATUS.WEEKLY_REST
@@ -581,10 +599,12 @@ export class HrService {
 
         return {
           id: profile.id,
+          userId: profile.userId,
           fullName: `${profile.user.firstName ?? ''} ${profile.user.lastName ?? ''}`.trim(),
           email: profile.user.email,
           department: profile.department?.name ?? '—',
           roleLabel: profile.user.role?.name ?? '—',
+          roleCode: profile.user.role?.code ?? null,
           remainingLeaveDays,
           missingDates,
           lastConfirmedDate,
@@ -615,14 +635,6 @@ export class HrService {
         lateStart,
         earlyLeave,
       },
-      myLeaveBalance: {
-        leaveTypeLabel: mySummary.leaveBalance.leaveTypeLabel,
-        year: mySummary.leaveBalance.year,
-        remainingDays: mySummary.leaveBalance.remainingDays,
-        totalDays: mySummary.leaveBalance.totalDays,
-        usedDays: mySummary.leaveBalance.usedDays,
-        pendingDays: mySummary.leaveBalance.pendingDays,
-      },
       employees,
     };
   }
@@ -630,7 +642,24 @@ export class HrService {
   /** "Onaylamayanlara Mail Gönder" — gün sonu puantajı onaylanmayan personele hatırlatma alıcı listesi. */
   async getMissingAttendanceRecipients(user: AuthUser) {
     const data = await this.getDayEndSupervisionSummary(user);
-    return data.employees.filter((e) => e.status === 'missing' && e.email);
+    return this.filterMissingAttendanceRecipients(data.employees);
+  }
+
+  /** Cron: yönetici oturumu olmadan aynı onaylamayan liste. */
+  async listMissingAttendanceToday() {
+    const data = await this.buildDayEndRoster();
+    return this.filterMissingAttendanceRecipients(data.employees);
+  }
+
+  private filterMissingAttendanceRecipients<
+    T extends { status: string; email?: string | null; roleCode?: string | null },
+  >(employees: T[]) {
+    return employees.filter(
+      (e) =>
+        e.status === 'missing'
+        && Boolean(e.email)
+        && roleReceivesAttendanceReminders(e.roleCode),
+    );
   }
 
   async upsertEmployeeProfile(user: AuthUser, dto: UpsertEmployeeProfileDto) {
@@ -896,6 +925,40 @@ export class HrService {
       return { status: HR_ATTENDANCE_STATUS.LEAVE, label: 'Onaylı İzin' };
     }
     return null;
+  }
+
+  /** Panel açıkken İstanbul gününe nabız — mesai giriş/bitiş ve önerilen süre. */
+  async recordActivityBeat(user: AuthUser, dto: RecordActivityBeatDto) {
+    const userId = this.authUserId(user);
+    const now = new Date();
+    const sessionDate = this.toDateOnly(istanbulDateKey(now));
+    const lastRoute = dto.lastRoute?.trim() ? dto.lastRoute.trim().slice(0, 200) : null;
+
+    const existing = await this.prisma.activitySession.findUnique({
+      where: { userId_sessionDate: { userId, sessionDate } },
+    });
+    const next = applyActivityBeat(existing, now);
+
+    return this.prisma.activitySession.upsert({
+      where: { userId_sessionDate: { userId, sessionDate } },
+      create: {
+        userId,
+        sessionDate,
+        startedAt: next.startedAt,
+        lastBeatAt: next.lastBeatAt,
+        activeMs: next.activeMs,
+        idleMs: next.idleMs,
+        beatCount: next.beatCount,
+        lastRoute,
+      },
+      update: {
+        lastBeatAt: next.lastBeatAt,
+        activeMs: next.activeMs,
+        idleMs: next.idleMs,
+        beatCount: next.beatCount,
+        lastRoute,
+      },
+    });
   }
 
   async listAttendance(user: AuthUser, year: number, month: number) {

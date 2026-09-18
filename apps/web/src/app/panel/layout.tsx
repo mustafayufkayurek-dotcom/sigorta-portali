@@ -14,6 +14,7 @@ import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { FinansOncelikliGorevModal } from '@/components/finance/FinansOncelikliGorevModal';
 import { WorkHoursPanelGate, type WorkHoursPanelGateHandle } from '@/components/hr/WorkHoursPanelGate';
 import { AttendancePanelGate } from '@/components/hr/AttendancePanelGate';
+import { PanelActivityHeartbeat } from '@/components/hr/PanelActivityHeartbeat';
 import { NavigationGuardProvider } from '@/contexts/NavigationGuardContext';
 import { RightPanelDockHost } from '@/components/ui/right-panel-dock-host';
 import { TopProgressBar } from '@/components/ui/TopProgressBar';
@@ -1772,6 +1773,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     }
     if (notif.relatedEntityType === 'invoice_request') {
       router.push('/panel/finans/fatura-talepleri');
+      return;
+    }
+    if (
+      notif.relatedEntityType === 'hr_attendance_period'
+      || notif.relatedEntityType === 'hr_leave_request'
+      || (typeof notif.type === 'string' && notif.type.startsWith('hr_'))
+    ) {
+      const leave = notif.type === 'hr_leave_approved' || notif.type === 'hr_leave_rejected';
+      router.push(leave ? '/panel/personel-ozluk?tab=leaves' : '/panel/personel-ozluk?tab=attendance');
     }
   };
 
@@ -2113,6 +2123,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             && !isPortalUser
             && !mustChangePassword
             && !isFieldStaff
+          }
+        />
+        <PanelActivityHeartbeat
+          enabled={
+            !loading
+            && authChecked
+            && Boolean(user)
+            && !isPortalUser
+            && !mustChangePassword
           }
         />
       </div>

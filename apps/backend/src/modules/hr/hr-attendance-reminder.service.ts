@@ -4,6 +4,14 @@ import { PlatformModulesService, PLATFORM_MODULE_CODES } from '@/modules/platfor
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { HrService } from './hr.service';
+import { HrAttendanceExportService } from './hr-attendance-export.service';
+import {
+  isIstanbulLastCalendarDay,
+  istanbulYmd,
+  previousIstanbulMonth,
+  roleReceivesAttendanceReminders,
+} from './hr-attendance-reminder.helper';
+import { shouldRunDayEndAttendanceReminder } from './hr-work-hours.helper';
 
 type AuthUser = {
   id?: string;
@@ -57,6 +65,7 @@ export class HrAttendanceReminderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly hrService: HrService,
+    private readonly attendanceExport: HrAttendanceExportService,
     private readonly platformModules: PlatformModulesService,
     private readonly systemSettings: SystemSettingsService,
     private readonly email: EmailService,
@@ -185,6 +194,193 @@ export class HrAttendanceReminderService {
 
     this.logger.log(`Puantaj hatırlatma: personel=${employeeSent}, finans/denetim=${financeSent}`);
     return { employeeSent, financeSent };
+  }
+
+  /**
+   * Mesai bitiminde: onaylamayan personele mail + çan; yöneticiye çan.
+   * Aynı gün tekrar etmez.
+   */
+  async processDayEndReminders(): Promise<{ employeeSent: number; managerNotified: number }> {
+    const enabled = await this.platformModules.isEnabled(PLATFORM_MODULE_CODES.PERSONNEL);
+    if (!enabled) {
+      return { employeeSent: 0, managerNotified: 0 };
+    }
+    if (!shouldRunDayEndAttendanceReminder(new Date())) {
+      return { employeeSent: 0, managerNotified: 0 };
+    }
+    if (!(await this.isSignalRuleActive('hr_attendance_day_end'))) {
+      this.logger.log('Gün sonu puantaj sinyali kapalı — atlandı');
+      return { employeeSent: 0, managerNotified: 0 };
+    }
+
+    const roster = await this.hrService.buildDayEndRoster();
+    const missing = roster.employees.filter(
+      (e) =>
+        e.status === 'missing'
+        && roleReceivesAttendanceReminders(e.roleCode)
+        && Boolean(e.userId),
+    );
+    const periodKey = roster.workDate;
+    let employeeSent = 0;
+
+    for (const person of missing) {
+      const already = await this.alreadyNotified(
+        person.userId,
+        'hr_attendance_day_end_employee',
+        periodKey,
+        20,
+      );
+      if (already) continue;
+
+      await this.createInAppNotification(
+        person.userId,
+        'hr_attendance_day_end_employee',
+        periodKey,
+        'Puantaj Onayı Bekliyor',
+        `${roster.workDateLabel} puantajınız henüz onaylanmadı. Personel → Devam’dan onaylayın.`,
+      );
+
+      if (person.email && (await this.shouldSendEmail('hr_attendance_day_end'))) {
+        const result = await this.email.sendEmail(
+          person.email,
+          'Puantaj Onayı Bekliyor',
+          `
+            <p>Merhaba ${this.escapeHtml(person.fullName)},</p>
+            <p>Bugünkü (${this.escapeHtml(roster.workDateLabel)}) puantaj onayınız henüz tamamlanmadı.
+            Lütfen Personel → Devam sayfasından onaylayın.</p>
+            <p style="font-size:12px;color:#64748b;">Bu e-posta mesai bitiminde otomatik gönderilmiştir.</p>
+          `,
+          {
+            text: `${person.fullName} — bugünkü puantaj onayınız bekliyor. Personel → Devam sayfasından onaylayın.`,
+          },
+        );
+        if (!result.sent) {
+          this.logger.warn(`Gün sonu puantaj maili gitmedi (${person.email}): ${result.errorMsg}`);
+        }
+      }
+      employeeSent += 1;
+    }
+
+    let managerNotified = 0;
+    if (missing.length > 0) {
+      const names = missing.map((m) => m.fullName).filter(Boolean).slice(0, 8);
+      const extra = missing.length > names.length ? ` ve ${missing.length - names.length} kişi daha` : '';
+      const body =
+        `${roster.workDateLabel} — ${missing.length} personel gün sonu puantajını onaylamadı`
+        + (names.length ? `: ${names.join(', ')}${extra}.` : '.');
+
+      const financeUsers = await this.findFinanceAndAuditUsers();
+      for (const fu of financeUsers) {
+        const already = await this.alreadyNotified(
+          fu.id,
+          'hr_attendance_day_end_finance',
+          periodKey,
+          20,
+        );
+        if (already) continue;
+        await this.createInAppNotification(
+          fu.id,
+          'hr_attendance_day_end_finance',
+          periodKey,
+          'Gün Sonu Puantaj Eksik',
+          body,
+        );
+        managerNotified += 1;
+      }
+    }
+
+    this.logger.log(`Gün sonu puantaj: personel=${employeeSent}, yönetici=${managerNotified}`);
+    return { employeeSent, managerNotified };
+  }
+
+  /**
+   * Ayın son günü (kaçtıysa ertesi gün 1’i) mali müşavire toplu puantaj + izin özeti.
+   */
+  async processMonthEndAccountantSend(): Promise<{ sent: boolean; reason?: string }> {
+    const enabled = await this.platformModules.isEnabled(PLATFORM_MODULE_CODES.PERSONNEL);
+    if (!enabled) return { sent: false, reason: 'module_off' };
+    if (!(await this.isSignalRuleActive('hr_attendance_accountant_auto'))) {
+      return { sent: false, reason: 'signal_off' };
+    }
+
+    const now = new Date();
+    const ymd = istanbulYmd(now);
+    let year = ymd.year;
+    let month = ymd.month;
+    if (!isIstanbulLastCalendarDay(now)) {
+      if (ymd.day !== 1) return { sent: false, reason: 'not_window' };
+      const prev = previousIstanbulMonth(ymd.year, ymd.month);
+      year = prev.year;
+      month = prev.month;
+    }
+
+    const periodKey = this.periodKey(year, month);
+    const company = await this.systemSettings.getCompanyInfo();
+    const to = company.accountantEmail?.trim() ?? '';
+    if (!to) {
+      this.logger.log('Mali müşavir e-postası boş — ay sonu toplu rapor atlandı');
+      return { sent: false, reason: 'no_accountant_email' };
+    }
+
+    const actor = await this.findSuperviseActor();
+    if (!actor) {
+      return { sent: false, reason: 'no_actor' };
+    }
+
+    const already = await this.alreadyNotifiedAny(
+      'hr_attendance_accountant_auto',
+      periodKey,
+      24 * 40,
+    );
+    if (already) return { sent: false, reason: 'already' };
+
+    if (!(await this.shouldSendEmail('hr_attendance_accountant_auto'))) {
+      return { sent: false, reason: 'email_off' };
+    }
+
+    const result = await this.attendanceExport.sendBulkToAccountant(actor, {
+      to,
+      year,
+      month,
+      message: 'Ay sonu otomatik gönderim (elektronik onaylı puantaj ve onaylı izin özeti).',
+    });
+
+    if (!result.sent) {
+      this.logger.warn(`Ay sonu mali müşavir raporu gitmedi: ${result.message}`);
+      return { sent: false, reason: result.message };
+    }
+
+    await this.createInAppNotification(
+      actor.id,
+      'hr_attendance_accountant_auto',
+      periodKey,
+      'Puantaj Mali Müşavire Gitti',
+      `${this.periodLabel(year, month)} toplu puantaj raporu mali müşavire gönderildi.`,
+    );
+
+    this.logger.log(`Ay sonu mali müşavir raporu gitti: ${periodKey} → ${to}`);
+    return { sent: true };
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  private async findSuperviseActor(): Promise<{ id: string; roleCode?: string } | null> {
+    const row = await this.prisma.user.findFirst({
+      where: {
+        status: 'active',
+        role: { code: { in: ['admin', 'ADMIN', 'finance', 'FINANS', 'manager', 'MANAGER'] } },
+      },
+      select: { id: true, role: { select: { code: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!row) return null;
+    return { id: row.id, roleCode: row.role?.code ?? 'admin' };
   }
 
   private buildEmployeeReminder(
@@ -366,22 +562,23 @@ export class HrAttendanceReminderService {
     });
   }
 
-  private async isSignalRuleActive(): Promise<boolean> {
+  private async isSignalRuleActive(key = 'hr_attendance_month_close'): Promise<boolean> {
     try {
       const settings = await this.systemSettings.getNotificationSettings();
-      const rule = settings.signalRules?.find((r) => r.key === 'hr_attendance_month_close');
+      const rule = settings.signalRules?.find((r) => r.key === key);
       return rule?.active !== false;
     } catch {
       return true;
     }
   }
 
-  private async shouldSendEmail(): Promise<boolean> {
+  private async shouldSendEmail(key = 'hr_attendance_month_close'): Promise<boolean> {
     try {
       const settings = await this.systemSettings.getNotificationSettings();
       if (!settings.emailEnabled) return false;
-      const rule = settings.signalRules?.find((r) => r.key === 'hr_attendance_month_close');
-      return rule?.channels?.email === true;
+      const rule = settings.signalRules?.find((r) => r.key === key);
+      if (!rule) return true;
+      return rule.channels?.email === true;
     } catch {
       return false;
     }
@@ -418,6 +615,22 @@ export class HrAttendanceReminderService {
     const count = await this.prisma.notification.count({
       where: {
         userId,
+        type,
+        relatedEntityId: periodKey,
+        createdAt: { gte: since },
+      },
+    });
+    return count > 0;
+  }
+
+  private async alreadyNotifiedAny(
+    type: string,
+    periodKey: string,
+    withinHours: number,
+  ): Promise<boolean> {
+    const since = new Date(Date.now() - withinHours * 60 * 60 * 1000);
+    const count = await this.prisma.notification.count({
+      where: {
         type,
         relatedEntityId: periodKey,
         createdAt: { gte: since },

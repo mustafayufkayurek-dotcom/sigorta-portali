@@ -25,6 +25,7 @@ import {
   ConfirmPendingAttendanceDto,
 } from './dto/confirm-attendance.dto';
 import { SendAttendanceAccountantDto } from './dto/send-attendance-accountant.dto';
+import { RecordActivityBeatDto } from './dto/record-activity-beat.dto';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
 import { CreateHrAssetDto } from './dto/create-hr-asset.dto';
 import { HrAttendanceExportService } from './hr-attendance-export.service';
@@ -127,6 +128,17 @@ export class HrController {
   ) {
     const data = await this.hrAttendanceExport.notifyMissingAttendance(user);
     return { data };
+  }
+
+  @Post('activity/beat')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.view')
+  async activityBeat(
+    @CurrentUser() user: { id: string },
+    @Body() dto: RecordActivityBeatDto,
+  ) {
+    const data = await this.hrService.recordActivityBeat(user, dto ?? {});
+    return { data: { ok: true, beatCount: data.beatCount } };
   }
 
   @Get('attendance')
