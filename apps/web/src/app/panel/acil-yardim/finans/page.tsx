@@ -81,7 +81,7 @@ function FinansPageInner() {
 
   const sortedRows = useMemo(
     () =>
-      sortRowsByClientSort(rows, clientSort, (row, key) => {
+      sortRowsByClientSort(rows ?? [], clientSort, (row, key) => {
         switch (key) {
           case 'date':
             return row.fileDate ?? row.createdAt ?? '';
@@ -114,12 +114,12 @@ function FinansPageInner() {
         getMonthlySummary(year, month),
         getAcilVendorEntitlements().catch(() => ({ data: [] as AcilVendorEntitlementRow[] })),
       ]);
-      setRows(listRes.data);
-      setListSummary(listRes.summary);
-      setMonthly(monthRes.data);
-      setEntitlements(entitlementRes.data);
+      setRows(listRes.data ?? []);
+      setListSummary(listRes.summary ?? { totalCases: 0, totalGelir: 0, totalGider: 0, netKar: 0 });
+      setMonthly(monthRes.data ?? null);
+      setEntitlements(entitlementRes.data ?? []);
       if (focusCaseId) {
-        const focused = listRes.data.find((row) => row.id === focusCaseId);
+        const focused = (listRes.data ?? []).find((row) => row.id === focusCaseId);
         if (focused && !focused.isFaturalandildi) {
           setSelected(new Set([focused.id]));
           setBulkCustomerName(focused.customerName);
@@ -148,7 +148,7 @@ function FinansPageInner() {
     });
   }
   function toggleAll() {
-    const unfatured = rows.filter((r) => !r.isFaturalandildi).map((r) => r.id);
+    const unfatured = (rows ?? []).filter((r) => !r.isFaturalandildi).map((r) => r.id);
     if (selected.size === unfatured.length) setSelected(new Set());
     else setSelected(new Set(unfatured));
   }
@@ -173,10 +173,11 @@ function FinansPageInner() {
   }
 
   const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
-  const unfaturedCount = rows.filter((r) => !r.isFaturalandildi).length;
+  const financeRows = rows ?? [];
+  const unfaturedCount = financeRows.filter((r) => !r.isFaturalandildi).length;
   const shownEntitlements = vendorPaidFilter
-    ? entitlements.filter((row) => acilVendorPayMatchesFilter(row.vendorPaid, vendorPaidFilter))
-    : entitlements;
+    ? (entitlements ?? []).filter((row) => acilVendorPayMatchesFilter(row.vendorPaid, vendorPaidFilter))
+    : (entitlements ?? []);
 
   return (
     <div className="space-y-5">
@@ -358,7 +359,7 @@ function FinansPageInner() {
         <div className="flex items-center justify-center h-40">
           <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : rows.length === 0 ? (
+      ) : financeRows.length === 0 ? (
         <div className="text-center py-16 text-slate-400 text-sm">Bu döneme ait kayıt bulunamadı.</div>
       ) : (
         <TableColumnsProvider value={tableColumns}>

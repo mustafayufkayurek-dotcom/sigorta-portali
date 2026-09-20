@@ -80,6 +80,12 @@ describe('acil tedarikçi ödemesi liste LOCK', () => {
     assert.match(finans, /Tedarikçi Ödemesi/);
     assert.match(finans, /acil-finans-odeme-filtre/);
     assert.match(finans, /acil-finans-odenecekler/);
+    assert.match(finans, /entitlementRes\.data \?\? \[\]/);
+    assert.match(finans, /entitlements \?\? \[\]/);
+    const emergencyApi = readFileSync(join(here, 'emergencyApi.ts'), 'utf8');
+    assert.match(emergencyApi, /vendor-entitlements/);
+    assert.match(emergencyApi, /asList<AcilVendorEntitlementRow>/);
+    assert.match(emergencyApi, /asList<FinanceRow>/);
     const payments = readFileSync(
       join(here, '../../../backend/src/modules/payments/payments.service.ts'),
       'utf8',

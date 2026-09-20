@@ -476,6 +476,8 @@ export async function updateCostEntry(
 
 // ─── Finance ──────────────────────────────────────────────────────────────────
 
+const EMPTY_FINANCE_SUMMARY = { totalCases: 0, totalGelir: 0, totalGider: 0, netKar: 0 };
+
 export async function getFinanceList(params?: {
   month?: number;
   year?: number;
@@ -484,10 +486,20 @@ export async function getFinanceList(params?: {
   invoiceStatus?: string;
   vendorPaid?: string;
 }): Promise<{ data: FinanceRow[]; summary: { totalCases: number; totalGelir: number; totalGider: number; netKar: number } }> {
-  return apiClient.get<{ data: FinanceRow[]; summary: { totalCases: number; totalGelir: number; totalGider: number; netKar: number } }>(
-    '/emergency/finance/list',
-    params,
-  );
+  const raw = await apiClient.get<unknown>('/emergency/finance/list', params);
+  const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const summaryRaw = record.summary && typeof record.summary === 'object'
+    ? (record.summary as typeof EMPTY_FINANCE_SUMMARY)
+    : EMPTY_FINANCE_SUMMARY;
+  return {
+    data: asList<FinanceRow>(record.data ?? raw),
+    summary: {
+      totalCases: Number(summaryRaw.totalCases) || 0,
+      totalGelir: Number(summaryRaw.totalGelir) || 0,
+      totalGider: Number(summaryRaw.totalGider) || 0,
+      netKar: Number(summaryRaw.netKar) || 0,
+    },
+  };
 }
 
 export type AcilVendorEntitlementRow = {
@@ -508,7 +520,8 @@ export type AcilVendorEntitlementRow = {
 };
 
 export async function getAcilVendorEntitlements(): Promise<{ data: AcilVendorEntitlementRow[] }> {
-  return apiClient.get<{ data: AcilVendorEntitlementRow[] }>('/emergency/finance/vendor-entitlements');
+  const data = await apiClient.get<unknown>('/emergency/finance/vendor-entitlements');
+  return { data: asList<AcilVendorEntitlementRow>(data) };
 }
 
 export async function getMonthlySummary(
