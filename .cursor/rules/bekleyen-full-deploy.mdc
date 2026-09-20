@@ -1,11 +1,11 @@
 ---
-description: Canlı web v605 / backend v605 — sıradaki paketler karışmaz
+description: Canlı web v606 / backend v605 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
 # Canlı (20.09.2026)
 
-Canlı: web **v605** · backend **v605**. Geri alma: web **v604** / backend **v604**.
+Canlı: web **v606** · backend **v605**. Geri alma: web **v605** / backend **v605**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v606 (yalnız web):** Acil finans sayfası boş kayıtta kırılmaz. Hakediş listesi durur. Backend **v605**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v605 / backend v605.
 
 **v605 (full):** Yönetici/finans giriş kodu ve ayrılan hesap. Sabah bakışı (Bekleyen İş, 5 Dosya çekmecesi, Hasar işlemleri). Ofiste unutulan ekran (30 dk; Beni Hatırla açık ekranı bırakmaz; kısa kesinti oturumu silmez). Disk dolunca haber (uploads silinmez). Yedek ikinci yer doğrulanmadan gitti sayılmaz. Fiş okunur, kayıt personelde. Ödendi finans personelinde; işlemi yapan kaydolur. Şirket sitesi kilitli adres durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v604 / backend v604.
 

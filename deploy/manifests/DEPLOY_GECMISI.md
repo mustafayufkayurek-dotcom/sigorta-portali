@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (20 Eylül 2026 — web v605 / backend v605)
+## Canlı durum (20 Eylül 2026 — web v606 / backend v605)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v605-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v606-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v605-amd64` | canlı |
-| **Rollback** | Web **v604** / Backend **v604** | manifest `rollbackImages` |
-| **Etiket** | `v605-yonetici-kod-yedek-odeme` | |
+| **Rollback** | Web **v605** / Backend **v605** | manifest `rollbackImages` |
+| **Etiket** | `v606-acil-finans-sayfa` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v606 — Yalnız web (20 Eylül 2026) — Acil finans sayfası
+
+- Acil finans sayfası boş kayıtta kırılmaz; hakediş listesi durur
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, canlı uploads silinmedi. Alımda backend durmaz; JWT ve Redis silinmez
+- Geri alma web **v605** / backend **v605**
 
 ### v605 — Full (20 Eylül 2026) — Giriş kodu, sabah bakışı, yedek ve ödeme ikinci göz
 
