@@ -13,6 +13,7 @@ import {
 import { getLoginHomePath } from '@/utils/panel-access';
 import { safePanelNextPath } from '@/lib/panel-auth-gate';
 import { isCompanyWebsiteHost } from '@/utils/site-renewal';
+import { extractLoginEmailCode } from '@/utils/login-email-code-fill';
 
 const API_URL = API;
 
@@ -123,10 +124,13 @@ export function GirisLoginPanel() {
   const [formReady, setFormReady] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [challengeId, setChallengeId] = useState('');
   const [emailCode, setEmailCode] = useState('');
+  const [cookieLabel, setCookieLabel] = useState('Çerez Politikası');
+  const codeInputRef = useRef<HTMLInputElement>(null);
   const [footerYear, setFooterYear] = useState<number | null>(null);
   const [systemReady, setSystemReady] = useState<boolean | null>(null);
   const authHydrated = useRef(false);
@@ -154,7 +158,56 @@ export function GirisLoginPanel() {
     axios.get(`${API_URL}/system-settings/company-info`)
       .then(() => setSystemReady(true))
       .catch(() => setSystemReady(false));
+    if (isCompanyWebsiteHost(window.location.host)) {
+      setCookieLabel('Çerezleri Yönet');
+    }
   }, []);
+
+  useEffect(() => {
+    if (!challengeId) return;
+    let cancelled = false;
+
+    const applyCode = (code: string) => {
+      if (cancelled || !code) return;
+      setEmailCode((current) => (current.length === 6 ? current : code));
+    };
+
+    const fillFromClipboard = async () => {
+      if (!navigator.clipboard?.readText) return;
+      try {
+        const text = await navigator.clipboard.readText();
+        const code = extractLoginEmailCode(text);
+        if (code) applyCode(code);
+      } catch {
+        /* İzin yoksa sessiz; yapıştırma yine çalışır. */
+      }
+    };
+
+    const onPaste = (event: ClipboardEvent) => {
+      const text = event.clipboardData?.getData('text') ?? '';
+      const code = extractLoginEmailCode(text);
+      if (!code) return;
+      event.preventDefault();
+      applyCode(code);
+    };
+
+    const onTabBack = () => {
+      if (document.visibilityState === 'visible') void fillFromClipboard();
+    };
+
+    window.addEventListener('focus', onTabBack);
+    document.addEventListener('visibilitychange', onTabBack);
+    document.addEventListener('paste', onPaste);
+    codeInputRef.current?.focus();
+    void fillFromClipboard();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', onTabBack);
+      document.removeEventListener('visibilitychange', onTabBack);
+      document.removeEventListener('paste', onPaste);
+    };
+  }, [challengeId]);
 
   const handleRememberChange = (checked: boolean) => {
     setRememberMe(checked);
@@ -193,6 +246,7 @@ export function GirisLoginPanel() {
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+    setNotice('');
     setLoading(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
@@ -218,6 +272,7 @@ export function GirisLoginPanel() {
   const handleEmailCode = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+    setNotice('');
     setLoading(true);
     try {
       const response = await axios.post(
@@ -238,6 +293,7 @@ export function GirisLoginPanel() {
 
   const handleResendCode = async () => {
     setError('');
+    setNotice('');
     setLoading(true);
     try {
       const response = await axios.post(
@@ -247,13 +303,28 @@ export function GirisLoginPanel() {
       );
       const payload = response.data?.data ?? response.data;
       if (payload?.challengeId) setChallengeId(String(payload.challengeId));
+      setEmailCode('');
+      setNotice('Yeni kod gönderildi.');
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      const status = axiosErr.response?.status;
       const apiMessage = axiosErr.response?.data?.message;
-      setError(typeof apiMessage === 'string' && apiMessage.trim() ? apiMessage : 'Kod yeniden gönderilemedi.');
+      if (status === 429) {
+        setError('Biraz sonra yeniden deneyin.');
+      } else {
+        setError(typeof apiMessage === 'string' && apiMessage.trim() ? apiMessage : 'Kod yeniden gönderilemedi.');
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const backToPassword = () => {
+    setChallengeId('');
+    setEmailCode('');
+    setError('');
+    setNotice('');
+    setLoading(false);
   };
 
   return (
@@ -276,42 +347,66 @@ export function GirisLoginPanel() {
               <p className="error-text">{error}</p>
             </div>
           )}
+          {notice && !error && (
+            <p className="login-sub fade-up-2" style={{ marginTop: 0 }}>{notice}</p>
+          )}
           {challengeId ? (
-          <form onSubmit={handleEmailCode} noValidate>
+          <div>
             <p className="login-sub fade-up-2" style={{ marginTop: 0 }}>
-              Kayıtlı e-postanıza 6 haneli kod gönderildi. Açık ekranınız durur; bu adım yalnızca yeni giriş içindir.
+              Mailinize 6 haneli kod gönderildi. Kodu kopyalayıp bu ekrana dönün; kutu dolar.
             </p>
-            <label className="form-label" htmlFor="renewal-email-code">Giriş Kodu</label>
+            <form onSubmit={handleEmailCode} noValidate>
+            <label className="form-label" htmlFor="one-time-code">Giriş Kodu</label>
             <div className="form-input-wrap">
               <input
-                id="renewal-email-code"
+                ref={codeInputRef}
+                id="one-time-code"
+                name="one-time-code"
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                autoFocus
                 value={emailCode}
                 onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                onFocus={scrollFieldIntoView}
+                onFocus={(e) => {
+                  scrollFieldIntoView(e);
+                  if (navigator.clipboard?.readText) {
+                    void navigator.clipboard.readText().then((text) => {
+                      const code = extractLoginEmailCode(text);
+                      if (code) setEmailCode((current) => (current.length === 6 ? current : code));
+                    }).catch(() => {});
+                  }
+                }}
                 placeholder="000000"
                 className="form-input scroll-input-safe"
                 required
                 maxLength={6}
+                pattern="[0-9]{6}"
               />
             </div>
             <button type="submit" className="submit-btn" disabled={loading || emailCode.length !== 6}>
               {loading ? 'Kontrol Ediliyor...' : 'Kodu Onayla'}
             </button>
+            </form>
             <button type="button" className="forgot-link" style={{ marginTop: 12 }} onClick={() => void handleResendCode()} disabled={loading}>
-              Kodu yeniden gönder
+              Kodu Yeniden Gönder
             </button>
             <button
               type="button"
               className="forgot-link"
               style={{ marginTop: 8, display: 'block' }}
-              onClick={() => { setChallengeId(''); setEmailCode(''); setError(''); }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                backToPassword();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                backToPassword();
+              }}
             >
-              Şifre ekranına dön
+              Şifre Ekranına Dön
             </button>
-          </form>
+          </div>
           ) : (
           <form onSubmit={handleLogin} noValidate>
             <label className="form-label" htmlFor="renewal-email">E-posta Adresi</label>
@@ -389,7 +484,7 @@ export function GirisLoginPanel() {
             {' · '}
             <a href="/gizlilik">Gizlilik</a>
             {' · '}
-            <a href="/cerez-politikasi">Çerezleri Yönet</a>
+            <a href="/cerez-politikasi">{cookieLabel}</a>
           </p>
         </div>
         <div className="login-legal-note">

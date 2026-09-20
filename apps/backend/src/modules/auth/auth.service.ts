@@ -300,15 +300,15 @@ export class AuthService {
     const html = buildTransactionalEmailHtml({
       title: 'Giriş Kodu',
       greeting: formatSnPersonGreeting(user.firstName, user.lastName),
-      intro: 'Yönetici veya finans girişi için 6 haneli kod. Kod 10 dakika geçerlidir. Bu talebi siz oluşturmadıysanız yok sayın.',
-      bodyHtml: `<p style="margin:0 0 12px;font-size:28px;line-height:1.2;letter-spacing:0.18em;font-weight:800;">${code}</p>`,
+      intro: 'Giriş için 6 haneli kod. Kodu kopyalayıp giriş ekranına dönün; kutu dolar. 10 dakika geçerlidir. Bu talebi siz oluşturmadıysanız yok sayın.',
+      bodyHtml: `<p style="margin:0 0 12px;font-size:28px;line-height:1.2;letter-spacing:0.18em;font-weight:800;">Kod ${code}</p>`,
       portalUrl: buildAppPath(this.config, '/giris'),
     });
     const result = await this.email.sendEmail(
       user.email,
       'Giriş Kodu — Meridyen Assistance',
       html,
-      { text: `Giriş kodunuz (10 dakika geçerli): ${code}`, mailbox: 'HASAR' },
+      { text: `Giriş kodunuz (10 dakika geçerli): ${code}\nKodu kopyalayıp giriş ekranına dönün.`, mailbox: 'HASAR' },
     );
     if (!result.sent) {
       await this.prisma.loginEmailChallenge.update({

@@ -119,6 +119,7 @@ describe('buildTransactionalEmailHtml (dış onay / şifre sıfırlama)', () => 
 describe('formatSnPersonGreeting', () => {
   it('uses first and last name, not company or Kullanıcı', () => {
     expect(formatSnPersonGreeting('Ayşe', 'Yılmaz')).toBe('Sn. Ayşe Yılmaz,');
+    expect(formatSnPersonGreeting('MUSTAFA', 'YUFKAYÜREK')).toBe('Sn. Mustafa Yufkayürek,');
     expect(formatSnPersonGreeting('', '', 'Kullanıcı')).toBe('Sn. Yetkili,');
     expect(formatSnPersonGreeting('', '', 'Ray Sigorta', 'Ray Sigorta')).toBe('Sn. Yetkili,');
     expect(formatSnPersonGreeting('', '', 'Sayın Ayşe Yılmaz')).toBe('Sn. Ayşe Yılmaz,');

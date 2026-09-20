@@ -13,8 +13,14 @@ describe('giriş kodu ekranı LOCK', () => {
     assert.match(panel, /requiresEmailCode/);
     assert.match(panel, /login\/verify-email-code/);
     assert.match(panel, /Giriş Kodu/);
-    assert.match(panel, /Kodu yeniden gönder/);
+    assert.match(panel, /Kodu Yeniden Gönder/);
+    assert.match(panel, /Şifre Ekranına Dön/);
+    assert.match(panel, /backToPassword/);
+    assert.match(panel, /resend-email-code/);
+    assert.match(panel, /autoComplete="one-time-code"/);
+    assert.match(panel, /extractLoginEmailCode/);
     assert.doesNotMatch(panel, /Google/);
+    assert.doesNotMatch(panel, /Açık ekranınız durur/);
   });
 
   it('yazılım giriş sayfası aynı kod kutusunu kullanır', () => {

@@ -22,6 +22,8 @@ describe('giriş e-posta kodu kaynak LOCK', () => {
     assert.match(auth, /if \(!result\.sent\)/);
     assert.match(auth, /return null/);
     assert.match(auth, /owner\.status !== 'active'/);
+    assert.match(auth, /Kodu kopyalayıp giriş ekranına dönün/);
+    assert.match(auth, /Kod \$\{code\}/);
   });
 
   it('pasifte açık oturum kapanır', () => {

@@ -1,4 +1,5 @@
 import { resolveWelcomeEmailLogoUrl } from './email-brand.util';
+import { toTitleCaseTR } from '@/common/utils/text-helpers';
 
 /** Şifre / davet ve geriye uyumlu basit şablon verisi */
 export interface EmailTemplateData {
@@ -76,7 +77,7 @@ export function formatSnPersonGreeting(
   if (!name || /^(yetkili|kullanıcı|kullanici)$/i.test(name)) {
     return 'Sn. Yetkili,';
   }
-  return `Sn. ${name},`;
+  return `Sn. ${toTitleCaseTR(name)},`;
 }
 
 export function formatTrDateTime(date: Date): string {
