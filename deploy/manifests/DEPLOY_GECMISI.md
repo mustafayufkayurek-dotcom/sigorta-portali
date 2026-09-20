@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (20 Eylül 2026 — web v606 / backend v605)
+## Canlı durum (20 Eylül 2026 — web v607 / backend v605)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v606-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v607-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v605-amd64` | canlı |
-| **Rollback** | Web **v605** / Backend **v605** | manifest `rollbackImages` |
-| **Etiket** | `v606-acil-finans-sayfa` | |
+| **Rollback** | Web **v606** / Backend **v605** | manifest `rollbackImages` |
+| **Etiket** | `v607-giris-kodu-kutusu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v607 — Yalnız web (20 Eylül 2026) — Giriş kodu kutusu
+
+- Yönetici/finans girişinde kırmızı sistem kapalı yazısı kalkar; 6 haneli kod kutusu açılır
+- Güvenlik: kaynak kapısı, oturum kapısı. Alımda backend durmaz; JWT ve Redis silinmez
+- Geri alma web **v606** / backend **v605**
 
 ### v606 — Yalnız web (20 Eylül 2026) — Acil finans sayfası
 
