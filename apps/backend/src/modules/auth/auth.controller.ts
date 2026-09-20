@@ -52,6 +52,26 @@ class ResetPasswordDto {
   newPassword!: string;
 }
 
+class LoginEmailCodeDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  challengeId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(6)
+  @MaxLength(8)
+  code!: string;
+}
+
+class LoginEmailCodeResendDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  challengeId!: string;
+}
+
 class ChangePasswordDto {
   @IsString()
   @IsNotEmpty()
@@ -84,9 +104,40 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.authService.login(loginDto);
+    if (result && 'tokens' in result && result.tokens?.accessToken && result.tokens?.refreshToken) {
+      setAuthCookies(request, response, result.tokens);
+    }
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 300000 } })
+  @Post('login/verify-email-code')
+  @ApiOperation({ summary: 'Yönetici/finans giriş kodu' })
+  async verifyLoginEmailCode(
+    @Body() dto: LoginEmailCodeDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.verifyLoginEmailCode(dto.challengeId, dto.code);
     if (result?.tokens?.accessToken && result?.tokens?.refreshToken) {
       setAuthCookies(request, response, result.tokens);
     }
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 8, ttl: 300000 } })
+  @Post('login/resend-email-code')
+  @ApiOperation({ summary: 'Giriş kodunu yeniden gönder' })
+  async resendLoginEmailCode(@Body() dto: LoginEmailCodeResendDto) {
+    const result = await this.authService.resendLoginEmailCode(dto.challengeId);
     return {
       success: true,
       data: result,

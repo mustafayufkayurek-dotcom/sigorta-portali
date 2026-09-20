@@ -335,4 +335,25 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(guide, /Acil tedarikçisine vade uygulanmaz/);
     assert.doesNotMatch(guide, /Google Places/);
   });
+
+  it('Kullanıcılar ekranında ayrılan giriş kapanır şeridi durur', () => {
+    const page = readFileSync(join(here, '../app/panel/kullanicilar/page.tsx'), 'utf8');
+    assert.match(page, /OpsFirstRunNotice/);
+    assert.match(page, /OPS_NOTICE\.kullaniciGirisKapat/);
+    assert.match(page, /kullanici-giris-kapat-seridi/);
+    assert.equal(OPS_NOTICE.kullaniciGirisKapat.id, 'kullanici-giris-kapat-v605');
+    assert.match(OPS_NOTICE.kullaniciGirisKapat.body, /Pasif Yap veya Arşivle/);
+    assert.match(page, /Girişi kapat/);
+  });
+
+  it('Yönetim panelinde sabah bakışı şeridi durur', () => {
+    const dash = readFileSync(
+      join(here, '../features/dashboard/components/management-dashboard/ManagementDashboard.tsx'),
+      'utf8',
+    );
+    assert.match(dash, /MgmtMorningBriefing/);
+    assert.equal(OPS_NOTICE.yoneticiSabahBakisi.id, 'yonetici-sabah-bakisi-v607');
+    assert.match(OPS_NOTICE.yoneticiSabahBakisi.body, /çekmecede durur/);
+    assert.match(OPS_NOTICE.yoneticiSabahBakisi.title, /Bekleyen İş/);
+  });
 });

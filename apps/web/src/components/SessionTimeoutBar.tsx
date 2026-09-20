@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { clearAuth, ensureValidSession, getAccessToken, isRememberMeSession, logoutAndRedirect } from '@/utils/auth-session';
+import { clearAuth, ensureValidSession, getAccessToken, logoutAndRedirect } from '@/utils/auth-session';
 import { useNavigationGuardOptional } from '@/contexts/NavigationGuardContext';
 import { API } from '@/utils/api';
 
-/** Beni Hatırla kapalı oturumlarda hareketsizlik süresi */
+/** Canlıda hareketsizlik süresi — Beni Hatırla açık ekranı bırakmaz */
 const SESSION_DURATION_MS = 30 * 60 * 1000;
 const LOCAL_SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // lokal geliştirme: 12 saat
 const WARN_BEFORE_MS = 5 * 60 * 1000;
@@ -21,7 +21,6 @@ function isLocalDevHost(): boolean {
 export default function SessionTimeoutBar() {
   const router = useRouter();
   const navigationGuard = useNavigationGuardOptional();
-  const rememberMe = isRememberMeSession();
   const localDev = isLocalDevHost();
   const sessionDurationMs = localDev ? LOCAL_SESSION_DURATION_MS : SESSION_DURATION_MS;
   const [remainingMs, setRemainingMs] = useState(sessionDurationMs);
@@ -63,8 +62,6 @@ export default function SessionTimeoutBar() {
   }, [router, navigationGuard]);
 
   useEffect(() => {
-    if (rememberMe) return;
-
     const scheduleTokenRefresh = () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       refreshTimerRef.current = setTimeout(() => {
@@ -83,11 +80,10 @@ export default function SessionTimeoutBar() {
       events.forEach((ev) => window.removeEventListener(ev, onActivity));
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     };
-  }, [resetActivity, rememberMe]);
+  }, [resetActivity]);
 
   useEffect(() => {
-    if (rememberMe) return;
-    // Lokal geliştirmede idle çıkışı yok; yalnızca token yenileme aktivitesi yeterlidir.
+    // Lokal geliştirmede idle çıkışı yok; kısa kesinti ve yerelde deneme düşmez.
     if (localDev) return;
     intervalRef.current = setInterval(() => {
       const elapsed = Date.now() - lastActivityRef.current;
@@ -104,9 +100,9 @@ export default function SessionTimeoutBar() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [doLogout, rememberMe, localDev, sessionDurationMs]);
+  }, [doLogout, localDev, sessionDurationMs]);
 
-  if (rememberMe || localDev || !visible) return null;
+  if (localDev || !visible) return null;
 
   const pct = (remainingMs / WARN_BEFORE_MS) * 100;
   const minutes = Math.floor(remainingMs / 60000);

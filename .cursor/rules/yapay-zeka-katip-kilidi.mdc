@@ -1,0 +1,34 @@
+---
+description: Yapay zeka okur; tutar ve gönderim personeldedir
+alwaysApply: true
+---
+
+# Yapay Zeka Kâtip Kilidi
+
+**Kaynak (Mustafa · 19.09.2026):** Okusun, doldursun. Tutarı ve gönderimi imzalamasın.
+
+**Temel cümle:** Yazılım **okur.** Kayıt ve dışarı yazı **personeldedir.**
+
+## Zorunlu
+
+1. Fiş/fatura okuma kutuyu doldurur; `scan-receipt` masraf kaydı açmaz. Kaydet personeldedir.
+2. Gelen kutu sınıflandırması mail atmaz. Yanıt personel gönderir.
+3. Personel ekranında «kontrol edip kaydedin» durur.
+
+## Yasak (açık onay yoksa)
+
+- Okunan tutarı sessizce masrafa/yazıya basmak
+- Sınıflandırma sonrası dışarı otomatik mail
+- «Ben yapay zekâyım» yazısı
+
+## Durdurma
+
+Tutar veya gönderim kendiliğinden işlerse → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/backend/src/modules/expenses/receipt-scan-human.lock.spec.ts \
+ apps/backend/src/modules/operation-inbox/inbound-classify-human.lock.spec.ts
+```

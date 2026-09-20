@@ -1170,7 +1170,9 @@ export class UsersService {
       updateData.temporaryPasswordIssuedAt = new Date();
     }
 
-    const shouldRevokeSessions = Boolean(password) || roleChanged;
+    const nextStatus = String(updateData.status ?? user.status ?? '');
+    const closingAccount = !isInactiveUserStatus(user.status) && isInactiveUserStatus(nextStatus);
+    const shouldRevokeSessions = Boolean(password) || roleChanged || closingAccount;
     const hasNestedUpdates =
       Array.isArray(departmentMemberships) ||
       Array.isArray(responsibilityAssignments) ||
@@ -1278,6 +1280,14 @@ export class UsersService {
               where: { userId: id, revokedAt: null },
               data: { revokedAt: new Date() },
             });
+            await tx.passwordResetToken.updateMany({
+              where: { userId: id, usedAt: null },
+              data: { usedAt: new Date() },
+            });
+            await tx.loginEmailChallenge.updateMany({
+              where: { userId: id, consumedAt: null },
+              data: { consumedAt: new Date() },
+            });
           }
 
           await tx.user.update(updateArgs);
@@ -1350,6 +1360,14 @@ export class UsersService {
             await tx.refreshToken.updateMany({
               where: { userId: id, revokedAt: null },
               data: { revokedAt: new Date() },
+            });
+            await tx.passwordResetToken.updateMany({
+              where: { userId: id, usedAt: null },
+              data: { usedAt: new Date() },
+            });
+            await tx.loginEmailChallenge.updateMany({
+              where: { userId: id, consumedAt: null },
+              data: { consumedAt: new Date() },
             });
           }
           return tx.user.update(updateArgs);
@@ -1542,6 +1560,14 @@ export class UsersService {
         where: { userId: id, revokedAt: null },
         data: { revokedAt: archivedAt },
       });
+      await tx.passwordResetToken.updateMany({
+        where: { userId: id, usedAt: null },
+        data: { usedAt: archivedAt },
+      });
+      await tx.loginEmailChallenge.updateMany({
+        where: { userId: id, consumedAt: null },
+        data: { consumedAt: archivedAt },
+      });
       await tx.user.update({
         where: { id },
         data: {
@@ -1699,6 +1725,14 @@ export class UsersService {
         await tx.refreshToken.updateMany({
           where: { userId: user.id, revokedAt: null },
           data: { revokedAt: archivedAt },
+        });
+        await tx.passwordResetToken.updateMany({
+          where: { userId: user.id, usedAt: null },
+          data: { usedAt: archivedAt },
+        });
+        await tx.loginEmailChallenge.updateMany({
+          where: { userId: user.id, consumedAt: null },
+          data: { consumedAt: archivedAt },
         });
         await tx.user.update({
           where: { id: user.id },

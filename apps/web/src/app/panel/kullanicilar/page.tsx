@@ -14,6 +14,8 @@ import Link from 'next/link';
 import axios from 'axios';
 import { Check, Copy, Plus, UserCheck, Users, X } from 'lucide-react';
 import { HintIcon } from '@/components/ui/HintIcon';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { PhoneInput } from '@/components/PhoneInput';
 import { PageLoadingState } from '@/components/ui/PageLoadingState';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -2161,7 +2163,7 @@ export default function KullanicilarPage() {
     if (u.status === 'active') {
       setConfirmAction({
         title: 'Kullanıcıyı arşivle',
-        description: `${u.firstName} ${u.lastName} (${u.email}) arşivlenecek. E-posta adresi serbest kalır; gerekirse kalıcı silinebilir.`,
+        description: `${u.firstName} ${u.lastName} (${u.email}) arşivlenecek. Bu kişi yazılıma giremez; açık ekranı kapanır. Diğer çalışanların işi durur.`,
         confirmLabel: 'Arşivle',
         variant: 'danger',
         onConfirm: async () => {
@@ -2209,6 +2211,24 @@ export default function KullanicilarPage() {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
 
+    if (newStatus === 'inactive') {
+      setConfirmAction({
+        title: 'Girişi kapat',
+        description: `Seçilen ${ids.length} kişi yazılıma giremez. Açık ekranları kapanır. Diğer çalışanların işi durur.`,
+        confirmLabel: 'Pasif Yap',
+        variant: 'danger',
+        onConfirm: async () => {
+          setConfirmAction(null);
+          await applyBulkStatus(ids, 'inactive');
+        },
+      });
+      return;
+    }
+
+    await applyBulkStatus(ids, newStatus);
+  };
+
+  const applyBulkStatus = async (ids: string[], newStatus: 'active' | 'inactive') => {
     setBulkDeleting(true);
     setActionMessage(null);
     try {
@@ -2290,7 +2310,7 @@ export default function KullanicilarPage() {
           <div>
             <h2 className="page-title inline-flex items-center gap-1.5">
               Kullanıcılar
-              <HintIcon text="Arşivlenen kullanıcılar veri hafızası korunarak saklanır; Arşiv süzgecinden yeniden açılır." />
+              <HintIcon text="Arşivle veya Pasif Yap deyince o kişi yazılıma giremez; açık ekranı kapanır. Diğer çalışanlar etkilenmez." />
             </h2>
           </div>
         </div>
@@ -2301,6 +2321,13 @@ export default function KullanicilarPage() {
           </button>
         </div>
       </div>
+
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.kullaniciGirisKapat.id}
+        title={OPS_NOTICE.kullaniciGirisKapat.title}
+        body={OPS_NOTICE.kullaniciGirisKapat.body}
+        testId="kullanici-giris-kapat-seridi"
+      />
 
       {actionMessage && (
         <div className={`mb-3 rounded-xl border px-4 py-3 text-sm ${

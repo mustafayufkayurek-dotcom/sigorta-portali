@@ -19,6 +19,7 @@ describe('AuthService', () => {
       { signAsync: jest.fn(), decode: jest.fn() } as any,
       { get: jest.fn() } as any,
       { getGrantSummaryForUser: jest.fn().mockResolvedValue([]) } as any,
+      { sendEmail: jest.fn().mockResolvedValue({ sent: true }) } as any,
     );
   });
 

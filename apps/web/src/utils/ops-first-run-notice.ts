@@ -75,6 +75,18 @@ export const OPS_NOTICE = {
     body:
       'Aynı tedarikçinin her iş grubu ayrı Finansa Aktar ile ödeme kuyruğuna düşer. Bütçelenen fiyatı Düzenle ile değiştirirsiniz. Aynı evrakı yeniden yüklemezsiniz.',
   },
+  kullaniciGirisKapat: {
+    id: 'kullanici-giris-kapat-v605',
+    title: 'Ayrılan kişi',
+    body:
+      'Pasif Yap veya Arşivle deyince o kişi yazılıma giremez; açık ekranı kapanır. Diğer çalışanların işi durur. Yönetici ve finans yeni girişte e-postadaki kodu yazar.',
+  },
+  yoneticiSabahBakisi: {
+    id: 'yonetici-sabah-bakisi-v607',
+    title: 'Bekleyen İş',
+    body:
+      'Tıklayınca dosyalar çekmecede durur. Satıra basınca dosya açılır. Sağdaki dönem tuşu ciroyu değiştirir; burayı değiştirmez.',
+  },
   hasarSigortaliOdemeli: {
     id: 'hasar-satis-faturasi-talebi-v548',
     title: 'Satış faturası talebi',

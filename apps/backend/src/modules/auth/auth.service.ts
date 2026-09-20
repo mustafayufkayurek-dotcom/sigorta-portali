@@ -8,7 +8,8 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { normalizeEmailAddress } from '@/common/utils/normalize-email';
 import { buildAppPath } from '@/common/utils/app-url';
-import { AuthTokens, RegisterDto, mergeAcilFileOwnerPermissions } from '@sigorta/shared';
+import { createHash, randomInt } from 'crypto';
+import { AuthTokens, RegisterDto, mergeAcilFileOwnerPermissions, roleRequiresLoginEmailCode } from '@sigorta/shared';
 import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { buildTransactionalEmailHtml, formatSnPersonGreeting, isMeridyenStaffRole, organizationLineForMail } from '@/modules/notifications/email/email.template';
@@ -71,7 +72,10 @@ export class AuthService {
     return result;
   }
 
-  async login(loginDto: { email: string; password: string; recaptchaToken?: string }): Promise<{ user: any; tokens: AuthTokens }> {
+  async login(loginDto: { email: string; password: string; recaptchaToken?: string }): Promise<
+    | { user: any; tokens: AuthTokens }
+    | { requiresEmailCode: true; challengeId: string }
+  > {
     const normalizedEmail = normalizeAuthEmail(loginDto.email);
     if (normalizedEmail.endsWith('@example.com')) {
       throw new UnauthorizedException(
@@ -92,23 +96,14 @@ export class AuthService {
       throw new UnauthorizedException('E-posta veya şifre hatalı');
     }
 
-    // Update last login
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
+    if (roleRequiresLoginEmailCode(user.role?.code)) {
+      const challenge = await this.startLoginEmailChallenge(user);
+      if (challenge) {
+        return challenge;
+      }
+    }
 
-    const tokens = await this.generateTokens(user.id, user.email);
-
-    // Save refresh token
-    await this.saveRefreshToken(user.id, tokens.refreshToken);
-
-    const userData = await this.getUserWithPermissions(user.id);
-
-    return {
-      user: userData,
-      tokens,
-    };
+    return this.issueLoginSession(user.id, user.email);
   }
 
   async register(registerDto: RegisterDto): Promise<{ user: any; tokens: AuthTokens }> {
@@ -177,7 +172,19 @@ export class AuthService {
         throw new UnauthorizedException('Refresh token süresi dolmuş');
       }
 
-      const tokens = await this.generateTokens(payload.sub, payload.email);
+      const owner = await this.prisma.user.findUnique({
+        where: { id: storedToken.userId },
+        select: { id: true, email: true, status: true },
+      });
+      if (!owner || owner.status !== 'active') {
+        await this.prisma.refreshToken.update({
+          where: { id: storedToken.id },
+          data: { revokedAt: new Date() },
+        });
+        throw new UnauthorizedException('Hesabınız aktif değil');
+      }
+
+      const tokens = await this.generateTokens(owner.id, owner.email);
 
       // Revoke old token and save new one
       await this.prisma.refreshToken.update({
@@ -207,6 +214,116 @@ export class AuthService {
 
   async getMe(userId: string): Promise<any> {
     return this.getUserWithPermissions(userId);
+  }
+
+  async verifyLoginEmailCode(challengeId: string, code: string): Promise<{ user: any; tokens: AuthTokens }> {
+    const challenge = await this.prisma.loginEmailChallenge.findUnique({
+      where: { id: challengeId },
+      include: { user: { include: { role: true } } },
+    });
+    if (!challenge || challenge.consumedAt) {
+      throw new UnauthorizedException('Kod geçersiz veya süresi doldu');
+    }
+    if (new Date() > challenge.expiresAt) {
+      throw new UnauthorizedException('Kod geçersiz veya süresi doldu');
+    }
+    if (challenge.user.status !== 'active') {
+      throw new UnauthorizedException('Hesabınız aktif değil');
+    }
+    if (challenge.attemptCount >= 5) {
+      throw new UnauthorizedException('Kod çok kez denendi. Yeniden giriş yapın.');
+    }
+
+    const expected = this.hashLoginEmailCode(code);
+    if (expected !== challenge.codeHash) {
+      await this.prisma.loginEmailChallenge.update({
+        where: { id: challenge.id },
+        data: { attemptCount: { increment: 1 } },
+      });
+      throw new UnauthorizedException('Kod hatalı');
+    }
+
+    await this.prisma.loginEmailChallenge.update({
+      where: { id: challenge.id },
+      data: { consumedAt: new Date() },
+    });
+
+    return this.issueLoginSession(challenge.userId, challenge.user.email);
+  }
+
+  async resendLoginEmailCode(challengeId: string): Promise<{ requiresEmailCode: true; challengeId: string }> {
+    const challenge = await this.prisma.loginEmailChallenge.findUnique({
+      where: { id: challengeId },
+      include: { user: { include: { role: true } } },
+    });
+    if (!challenge || challenge.consumedAt || challenge.user.status !== 'active') {
+      throw new UnauthorizedException('Kod yeniden gönderilemedi. Şifre ile tekrar deneyin.');
+    }
+    const next = await this.startLoginEmailChallenge(challenge.user);
+    if (!next) {
+      throw new BadRequestException('Kod gönderilemedi. Biraz sonra tekrar deneyin.');
+    }
+    return next;
+  }
+
+  private async issueLoginSession(userId: string, email: string): Promise<{ user: any; tokens: AuthTokens }> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date() },
+    });
+    const tokens = await this.generateTokens(userId, email);
+    await this.saveRefreshToken(userId, tokens.refreshToken);
+    const userData = await this.getUserWithPermissions(userId);
+    return { user: userData, tokens };
+  }
+
+  private async startLoginEmailChallenge(user: {
+    id: string;
+    email: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    role?: { code?: string | null } | null;
+  }): Promise<{ requiresEmailCode: true; challengeId: string } | null> {
+    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await this.prisma.loginEmailChallenge.updateMany({
+      where: { userId: user.id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+    const row = await this.prisma.loginEmailChallenge.create({
+      data: {
+        userId: user.id,
+        codeHash: this.hashLoginEmailCode(code),
+        expiresAt,
+      },
+    });
+    const html = buildTransactionalEmailHtml({
+      title: 'Giriş Kodu',
+      greeting: formatSnPersonGreeting(user.firstName, user.lastName),
+      intro: 'Yönetici veya finans girişi için 6 haneli kod. Kod 10 dakika geçerlidir. Bu talebi siz oluşturmadıysanız yok sayın.',
+      bodyHtml: `<p style="margin:0 0 12px;font-size:28px;line-height:1.2;letter-spacing:0.18em;font-weight:800;">${code}</p>`,
+      portalUrl: buildAppPath(this.config, '/giris'),
+    });
+    const result = await this.email.sendEmail(
+      user.email,
+      'Giriş Kodu — Meridyen Assistance',
+      html,
+      { text: `Giriş kodunuz (10 dakika geçerli): ${code}`, mailbox: 'HASAR' },
+    );
+    if (!result.sent) {
+      await this.prisma.loginEmailChallenge.update({
+        where: { id: row.id },
+        data: { consumedAt: new Date() },
+      });
+      this.logger.error(`Giriş kodu gönderilemedi → ${user.email} | ${result.errorMsg}`);
+      return null;
+    }
+    return { requiresEmailCode: true, challengeId: row.id };
+  }
+
+  private hashLoginEmailCode(code: string): string {
+    const secret = this.config.get<string>('JWT_SECRET') || 'login-email-code';
+    return createHash('sha256').update(`${String(code).trim()}|${secret}`).digest('hex');
   }
 
   private async generateTokens(userId: string, email: string): Promise<AuthTokens> {

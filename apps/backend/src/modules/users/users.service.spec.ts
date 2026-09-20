@@ -16,6 +16,9 @@ describe('UsersService', () => {
       department: {
         findMany: jest.fn(),
       },
+      role: {
+        findUnique: jest.fn().mockResolvedValue({ code: 'office_staff' }),
+      },
       refreshToken: {
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
@@ -65,7 +68,11 @@ describe('UsersService', () => {
         userDepartmentMembership: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
         claimResponsibilityAssignment: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
         userInsuranceCompanyScope: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        userAssistantCustomerScope: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        role: { findUnique: jest.fn().mockResolvedValue({ code: 'office_staff' }) },
         refreshToken: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+        passwordResetToken: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+        loginEmailChallenge: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
         user: {
           update: jest.fn().mockResolvedValue(updatedUser),
           findUnique: jest.fn().mockResolvedValue(updatedUser),
@@ -133,6 +140,32 @@ describe('UsersService', () => {
       await expect(service.update('missing', { roleId: 'role-new' })).rejects.toThrow(
         new NotFoundException('Kullanıcı bulunamadı'),
       );
+    });
+
+    it('closes open access when status becomes inactive', async () => {
+      const user = { id: 'user-1', roleId: 'role-old', status: 'active', email: 'user@test.com' };
+      const updatedUser = { ...user, status: 'inactive', passwordHash: 'hash' };
+      const tx = {
+        refreshToken: { updateMany: jest.fn().mockResolvedValue({ count: 2 }) },
+        passwordResetToken: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+        loginEmailChallenge: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+        user: {
+          update: jest.fn().mockResolvedValue(updatedUser),
+          findUniqueOrThrow: jest.fn().mockResolvedValue(updatedUser),
+        },
+      };
+
+      prisma.user.findUnique.mockResolvedValue(user);
+      prisma.$transaction.mockImplementation(async (callback: any) => callback(tx));
+
+      await service.update('user-1', { status: 'inactive' });
+
+      expect(tx.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(tx.passwordResetToken.updateMany).toHaveBeenCalled();
+      expect(tx.loginEmailChallenge.updateMany).toHaveBeenCalled();
     });
   });
 });

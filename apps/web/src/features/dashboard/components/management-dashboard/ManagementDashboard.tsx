@@ -8,6 +8,7 @@ import { MgmtDepartmentTable } from './MgmtDepartmentTable';
 import { MgmtExecutiveSummary } from './MgmtExecutiveSummary';
 import { MgmtHeader } from './MgmtHeader';
 import { MgmtKpiRow } from './MgmtKpiRow';
+import { MgmtMorningBriefing } from './MgmtMorningBriefing';
 import { MgmtMeetingDrawer } from './MgmtMeetingDrawer';
 import { MgmtSideRail } from './MgmtSideRail';
 import { MgmtStaffTable } from './MgmtStaffTable';
@@ -172,6 +173,9 @@ export function ManagementDashboard() {
         onRangeChange={onRangeChange}
         onOpenMeeting={() => setMeetingOpen(true)}
       />
+
+      {/* Dönem tuşuna bağlanmaz; KPI/özet range ile değişir. Bakış kabuğu MgmtHeader + MgmtKpiRow durur. */}
+      <MgmtMorningBriefing />
 
       <MgmtKpiRow items={kpis} loading={loading} />
       <MgmtExecutiveSummary cells={summary} />

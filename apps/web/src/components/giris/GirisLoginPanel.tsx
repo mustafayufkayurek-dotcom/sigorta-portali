@@ -113,6 +113,8 @@ export function GirisLoginPanel() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [challengeId, setChallengeId] = useState('');
+  const [emailCode, setEmailCode] = useState('');
   const [footerYear, setFooterYear] = useState<number | null>(null);
   const [systemReady, setSystemReady] = useState<boolean | null>(null);
   const authHydrated = useRef(false);
@@ -143,6 +145,27 @@ export function GirisLoginPanel() {
     }, 280);
   };
 
+  const finishLogin = async (payload: { tokens?: { accessToken?: string; refreshToken?: string }; user?: { role?: { code?: string } } }) => {
+    const tokens = payload?.tokens;
+    const user = payload?.user;
+    if (!tokens?.accessToken || !user) {
+      throw new Error('Giriş yanıtı beklenen formatta değil.');
+    }
+    const normalizedEmail = email.trim().toLowerCase();
+    storeAuthAfterLogin(tokens, rememberMe, normalizedEmail);
+    await establishWebAuthCookies(tokens, rememberMe);
+    setRememberMePreference(rememberMe, normalizedEmail);
+    localStorage.setItem('user', JSON.stringify(user));
+    window.dispatchEvent(new Event('meridyen:user-updated'));
+    const next = safePanelNextPath(new URLSearchParams(window.location.search).get('next'));
+    const home = next ?? getLoginHomePath(String(user?.role?.code ?? ''));
+    if (isCompanyWebsiteHost(window.location.host)) {
+      window.location.assign(`https://app.meridyen-tr.com${home}`);
+      return;
+    }
+    router.replace(home);
+  };
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
@@ -155,23 +178,12 @@ export function GirisLoginPanel() {
         { withCredentials: true },
       );
       const payload = response.data?.data ?? response.data;
-      const tokens = payload?.tokens;
-      const user = payload?.user;
-      if (!tokens?.accessToken || !user) {
-        throw new Error('Giriş yanıtı beklenen formatta değil.');
-      }
-      storeAuthAfterLogin(tokens, rememberMe, normalizedEmail);
-      await establishWebAuthCookies(tokens, rememberMe);
-      setRememberMePreference(rememberMe, normalizedEmail);
-      localStorage.setItem('user', JSON.stringify(user));
-      window.dispatchEvent(new Event('meridyen:user-updated'));
-      const next = safePanelNextPath(new URLSearchParams(window.location.search).get('next'));
-      const home = next ?? getLoginHomePath(String(user?.role?.code ?? ''));
-      if (isCompanyWebsiteHost(window.location.host)) {
-        window.location.assign(`https://app.meridyen-tr.com${home}`);
+      if (payload?.requiresEmailCode && payload?.challengeId) {
+        setChallengeId(String(payload.challengeId));
+        setEmailCode('');
         return;
       }
-      router.replace(home);
+      await finishLogin(payload);
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
       const status = axiosErr.response?.status;
@@ -181,6 +193,47 @@ export function GirisLoginPanel() {
           ? 'Giriş şu an yapılamıyor. Şifre yanlış değil; sistem kapalı. Biraz sonra tekrar deneyin.'
           : (typeof apiMessage === 'string' && apiMessage.trim() ? apiMessage : 'E-posta veya şifre hatalı.'),
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailCode = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        `${API_URL}/auth/login/verify-email-code`,
+        { challengeId, code: emailCode.trim() },
+        { withCredentials: true },
+      );
+      const payload = response.data?.data ?? response.data;
+      await finishLogin(payload);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const apiMessage = axiosErr.response?.data?.message;
+      setError(typeof apiMessage === 'string' && apiMessage.trim() ? apiMessage : 'Kod hatalı.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        `${API_URL}/auth/login/resend-email-code`,
+        { challengeId },
+        { withCredentials: true },
+      );
+      const payload = response.data?.data ?? response.data;
+      if (payload?.challengeId) setChallengeId(String(payload.challengeId));
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const apiMessage = axiosErr.response?.data?.message;
+      setError(typeof apiMessage === 'string' && apiMessage.trim() ? apiMessage : 'Kod yeniden gönderilemedi.');
     } finally {
       setLoading(false);
     }
@@ -206,6 +259,43 @@ export function GirisLoginPanel() {
               <p className="error-text">{error}</p>
             </div>
           )}
+          {challengeId ? (
+          <form onSubmit={handleEmailCode} noValidate>
+            <p className="login-sub fade-up-2" style={{ marginTop: 0 }}>
+              Kayıtlı e-postanıza 6 haneli kod gönderildi. Açık ekranınız durur; bu adım yalnızca yeni giriş içindir.
+            </p>
+            <label className="form-label" htmlFor="renewal-email-code">Giriş Kodu</label>
+            <div className="form-input-wrap">
+              <input
+                id="renewal-email-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={emailCode}
+                onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onFocus={scrollFieldIntoView}
+                placeholder="000000"
+                className="form-input scroll-input-safe"
+                required
+                maxLength={6}
+              />
+            </div>
+            <button type="submit" className="submit-btn" disabled={loading || emailCode.length !== 6}>
+              {loading ? 'Kontrol Ediliyor...' : 'Kodu Onayla'}
+            </button>
+            <button type="button" className="forgot-link" style={{ marginTop: 12 }} onClick={() => void handleResendCode()} disabled={loading}>
+              Kodu yeniden gönder
+            </button>
+            <button
+              type="button"
+              className="forgot-link"
+              style={{ marginTop: 8, display: 'block' }}
+              onClick={() => { setChallengeId(''); setEmailCode(''); setError(''); }}
+            >
+              Şifre ekranına dön
+            </button>
+          </form>
+          ) : (
           <form onSubmit={handleLogin} noValidate>
             <label className="form-label" htmlFor="renewal-email">E-posta Adresi</label>
             <div className="form-input-wrap">
@@ -271,6 +361,7 @@ export function GirisLoginPanel() {
               {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
             </button>
           </form>
+          )}
           <p className="login-footer">
             {footerYear == null
               ? '© Meridyen Assistance. Tüm hakları saklıdır.'

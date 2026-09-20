@@ -1,5 +1,6 @@
 export * from './types';
 export * from './auth-cookie-names';
+export * from './login-email-code';
 export * from './display-label';
 export * from './turkey-province-coords';
 export * from './enums';

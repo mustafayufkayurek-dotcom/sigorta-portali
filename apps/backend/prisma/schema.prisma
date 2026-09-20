@@ -140,6 +140,7 @@ model User {
   notifications              Notification[]
   refreshTokens              RefreshToken[]
   passwordResetTokens        PasswordResetToken[]
+  loginEmailChallenges       LoginEmailChallenge[]
   createdRepairReports       RepairReport[]              @relation("CreatedRepairReports")
   revisedRepairReports       RepairReport[]              @relation("RevisedRepairReports")
   uploadedVendorDocuments    VendorDocument[]
@@ -294,6 +295,21 @@ model PasswordResetToken {
   @@index([userId])
   @@index([token])
   @@map("password_reset_tokens")
+}
+
+model LoginEmailChallenge {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  codeHash     String    @map("code_hash")
+  expiresAt    DateTime  @map("expires_at")
+  consumedAt   DateTime? @map("consumed_at")
+  attemptCount Int       @default(0) @map("attempt_count")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("login_email_challenges")
 }
 
 model ClaimFile {

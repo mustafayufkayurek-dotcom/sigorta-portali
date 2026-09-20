@@ -1,0 +1,32 @@
+---
+description: Ödendi finans personelindedir; dosya sorumlusu basamaz
+alwaysApply: true
+---
+
+# Ödeme İkinci Göz Kilidi
+
+**Kaynak (Mustafa · 19.09.2026):** Büyük para hareketinde ikinci göz; günlük iş yavaşlamasın.
+
+**Temel cümle:** Hakedişi dosya düşer. **Ödendi finans personelindedir.** İşlemi yapan kaydolur.
+
+## Zorunlu
+
+1. Ofis (`office_staff`) ödeme durumunu `completed` yapamaz.
+2. Acil’de Ödendi finans tarafındadır; işlemi yapan adıyla durur.
+3. Vade Acil’de yok.
+
+## Yasak (açık onay yoksa)
+
+- Dosya sorumlusuna Ödendi vermek
+- İşlemi yapanı silmek
+
+## Durdurma
+
+Ofis Ödendi basarsa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/backend/src/modules/payments/payment-second-eye.lock.spec.ts
+```
