@@ -2,24 +2,34 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 18 Eylül 2026
+**Son güncelleme:** 20 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (18 Eylül 2026 — web v604 / backend v604)
+## Canlı durum (20 Eylül 2026 — web v605 / backend v605)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v604-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v604-amd64` | canlı |
-| **Rollback** | Web **v603** / Backend **v603** | manifest `rollbackImages` |
-| **Etiket** | `v604-puantaj-hatirlatma-nabiz` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v605-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v605-amd64` | canlı |
+| **Rollback** | Web **v604** / Backend **v604** | manifest `rollbackImages` |
+| **Etiket** | `v605-yonetici-kod-yedek-odeme` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v605 — Full (20 Eylül 2026) — Giriş kodu, sabah bakışı, yedek ve ödeme ikinci göz
+
+- Yönetici/finans yeni girişte e-posta kodu; Pasif/Arşiv yalnız o kişiyi keser
+- Yönetim panelinde Bekleyen İş ve 5 Dosya çekmecesi; dönem tuşu ve ciro kartları durur
+- Canlıda 30 dakika dokunulmazsa giriş; Beni Hatırla açık ekranı bırakmaz; kısa kesinti oturumu silmez
+- Disk 8/5 GB haber; uploads ve yedek silinmez. Yedek ikinci yer doğrulanmadan gitti sayılmaz
+- Fiş okunur, kutu dolar; Kaydet personeldedir. Ödendi finans personelindedir
+- Güvenlik: kaynak kapısı, oturum kapısı, giriş kodu hız sınırı, disk bakımı (eski v603 imaj), DB+uploads yedek gzip, canlı uploads silinmedi. Alımda backend ve web birden stop edilmez; JWT ve Redis silinmez
+- Geri alma web **v604** / backend **v604**
 
 ### v604 — Full (18 Eylül 2026) — Personel hatırlatma ve puantaj nabzı
 

@@ -1,11 +1,11 @@
 ---
-description: Canlı web v604 / backend v604 — sıradaki paketler karışmaz
+description: Canlı web v605 / backend v605 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (18.09.2026)
+# Canlı (20.09.2026)
 
-Canlı: web **v604** · backend **v604**. Geri alma: web **v603** / backend **v603**.
+Canlı: web **v605** · backend **v605**. Geri alma: web **v604** / backend **v604**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v605 (full):** Yönetici/finans giriş kodu ve ayrılan hesap. Sabah bakışı (Bekleyen İş, 5 Dosya çekmecesi, Hasar işlemleri). Ofiste unutulan ekran (30 dk; Beni Hatırla açık ekranı bırakmaz; kısa kesinti oturumu silmez). Disk dolunca haber (uploads silinmez). Yedek ikinci yer doğrulanmadan gitti sayılmaz. Fiş okunur, kayıt personelde. Ödendi finans personelinde; işlemi yapan kaydolur. Şirket sitesi kilitli adres durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v604 / backend v604.
 
 **v604 (full):** Personel hatırlatma ve puantaj nabzı. Gün sonu onaylamayana mail + yönetici çanı (hafta içi 18:05, Cumartesi 13:05). Ay sonu mali müşavire toplu puantaj (son gün 17:10; kaçtıysa 1’i 09:20). Panel açıkken mesai giriş/bitiş puantaja düşer. Çandaki puantaj/izin yazısı Personel sayfasını açar. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v603 / backend v603.
 
@@ -83,16 +85,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Yönetici/finans giriş kodu ve ayrılan hesap:** Yerelde duruyor; canlı değil. Yeni girişte yönetici ve finans e-posta kodu yazar. Pasif/Arşiv yalnız o kişinin girişini keser.
-
-**Yönetici sabah bakışı:** Yerelde duruyor; canlı değil. Yönetim panelinde Bekleyen İş (tahsilat, 72 saat, puantaj, dosyasız mail). **5 Dosya** aynı ekranda çekmece açar; dosya no, sigortalı, durum ve Hasar işlemleri (Görüntüle, PDF, E-posta, WhatsApp, Not) durur. Dönem tuşu ve ciro kartları durur; yeni sayfa yok.
-
-**Ofiste unutulan ekran:** Yerelde duruyor; canlı değil. Canlıda 30 dakika dokunulmazsa giriş istenir. Beni Hatırla açık ekranı bırakmaz. Kısa kesinti oturumu silmez.
-
-**Disk dolunca susmama:** Yerelde duruyor; canlı değil. Boş alan 8 GB altına inince uyarı, 5 GB altına inince kritik haber. Uploads ve yedek silinmez. Alım kapısı 5 GB durur.
-
-**Yedek ikinci yer:** Yerelde duruyor; canlı değil. Dosya ve resim yedeği gece ikinci yere gider; doğrulanmadan gitti sayılmaz. 24 saati aşınca haber. Şifre ve kutu ayarı yazılımda durmaz; felakette elinizdeki kasadadır.
-
-**Yapay zeka okur, personel kaydeder:** Yerelde kilitlendi; canlıya alımda kilit gider. Fiş okunur, kutu dolar; Kaydet personeldedir. Gelen kutu sınıflandırır; dışarı yazı personel gönderir.
-
-**Ödeme ikinci göz:** Yerelde kilitlendi; canlıya alımda kilit gider. Hakediş dosyada durur. Ödendi’yi finans personeli basar; dosya sorumlusu basamaz. İşlemi yapan kaydolur.
+Şu an bekleyen canlı paket yok.

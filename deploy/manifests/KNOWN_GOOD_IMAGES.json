@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-09-18",
-  "label": "v604-puantaj-hatirlatma-nabiz",
-  "description": "Full v604: Personel gün sonu/ay sonu hatırlatma, puantaj nabzı, çan Personel sayfasını açar. Alımda oturum düşmez. Geri alma web v603 / backend v603.",
+  "updatedAt": "2026-09-20",
+  "label": "v605-yonetici-kod-yedek-odeme",
+  "description": "Full v605: Giriş kodu, sabah bakışı, unutulan ekran, disk/yedek uyarısı, fiş okuma personelde, ödeme ikinci göz. Alımda oturum düşmez. Geri alma web v604 / backend v604.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v604-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v604-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v605-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v605-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v603-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v603-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v604-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v604-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
