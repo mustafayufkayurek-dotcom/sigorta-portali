@@ -19,10 +19,10 @@
 }
 
 .renewal-overlay-card {
-  flex: 0 0 280px;
-  width: 280px;
-  padding: 16px 16px 14px;
-  border-radius: 16px;
+  flex: 0 0 340px;
+  width: 340px;
+  padding: 22px 20px 18px;
+  border-radius: 18px;
   background: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.95);
   box-shadow: 0 12px 32px rgba(11, 31, 58, 0.16);
@@ -32,47 +32,47 @@
 .renewal-title {
   margin: 0;
   font-family: var(--login-font-display);
-  font-size: 1.15rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--navy);
   letter-spacing: 0;
 }
 
 .renewal-sub {
-  margin: 6px 0 0;
-  font-size: 0.78rem;
+  margin: 8px 0 0;
+  font-size: 0.86rem;
   font-weight: 500;
   color: var(--slate);
 }
 
 .renewal-clock {
   display: grid;
-  grid-template-columns: repeat(4, minmax(48px, 1fr));
-  gap: 6px;
-  margin-top: 12px;
+  grid-template-columns: repeat(4, minmax(58px, 1fr));
+  gap: 8px;
+  margin-top: 16px;
 }
 
 .renewal-unit {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 4px 6px;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 12px 4px 8px;
+  border-radius: 12px;
   background: var(--ice);
   border: 1px solid rgba(24, 82, 160, 0.12);
 }
 
 .renewal-unit-value {
   font-family: var(--login-font-display);
-  font-size: 1.15rem;
+  font-size: 1.45rem;
   font-weight: 700;
   color: var(--navy);
   line-height: 1;
 }
 
 .renewal-unit-label {
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--blue);
 }

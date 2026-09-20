@@ -25,9 +25,9 @@ const middleware = readFileSync(join(here, '../middleware.ts'), 'utf8');
 const cookieNotice = readFileSync(join(here, '../components/legal/CookieNotice.tsx'), 'utf8');
 
 describe('şirket sitesi yenileme LOCK', () => {
-  it('15 gün sonrası 30 Eylül 2026 İstanbul gecesidir', () => {
-    assert.equal(SITE_RENEWAL_UNTIL_ISO, '2026-09-30T23:59:59+03:00');
-    const start = Date.parse('2026-09-15T12:00:00+03:00');
+  it('15 gün sonrası 6 Ekim 2026 İstanbul gecesidir', () => {
+    assert.equal(SITE_RENEWAL_UNTIL_ISO, '2026-10-06T23:59:59+03:00');
+    const start = Date.parse('2026-09-21T12:00:00+03:00');
     const parts = siteRenewalParts(start);
     assert.equal(parts.expired, false);
     assert.equal(parts.days, 15);
@@ -39,7 +39,7 @@ describe('şirket sitesi yenileme LOCK', () => {
   });
 
   it('süre dolunca sıfır kalır', () => {
-    const parts = siteRenewalParts(Date.parse('2026-10-01T00:00:00+03:00'));
+    const parts = siteRenewalParts(Date.parse('2026-10-07T00:00:00+03:00'));
     assert.equal(parts.expired, true);
     assert.equal(parts.days, 0);
     assert.equal(parts.hours, 0);

@@ -1,8 +1,8 @@
 /**
  * Şirket sitesi yenileme sayacı.
- * 15.09.2026 + 15 gün → 30.09.2026 23:59 İstanbul.
+ * 21.09.2026 + 15 gün → 06.10.2026 23:59 İstanbul.
  */
-export const SITE_RENEWAL_UNTIL_ISO = '2026-09-30T23:59:59+03:00';
+export const SITE_RENEWAL_UNTIL_ISO = '2026-10-06T23:59:59+03:00';
 export const SITE_RENEWAL_UNTIL_MS = Date.parse(SITE_RENEWAL_UNTIL_ISO);
 
 export const SOFTWARE_LOGIN_URL = 'https://app.meridyen-tr.com/giris';
