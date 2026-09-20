@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-21",
-  "label": "v608-giris-kodu-dolsun",
-  "description": "Full v608: Giriş kodu kutuya dolar, Şifre Ekranına Dön çalışır, mail selamı Mustafa Yufkayürek. Alımda oturum düşmez. Geri alma web v607 / backend v605.",
+  "label": "v609-sirket-giris-tek-sifre",
+  "description": "Yalnız web v609: Şirket sitesinde şifre kutusu yok; Giriş Yap yazılıma gider. Backend v608 durur. Alımda oturum düşmez. Geri alma web v608 / backend v608.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v608-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v608-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v609-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v607-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v605-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v608-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v608-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
