@@ -148,12 +148,13 @@ export function GirisLoginPanel() {
   const finishLogin = async (payload: { tokens?: { accessToken?: string; refreshToken?: string }; user?: { role?: { code?: string } } }) => {
     const tokens = payload?.tokens;
     const user = payload?.user;
-    if (!tokens?.accessToken || !user) {
+    if (!tokens?.accessToken || !tokens.refreshToken || !user) {
       throw new Error('Giriş yanıtı beklenen formatta değil.');
     }
+    const sessionTokens = { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
     const normalizedEmail = email.trim().toLowerCase();
-    storeAuthAfterLogin(tokens, rememberMe, normalizedEmail);
-    await establishWebAuthCookies(tokens, rememberMe);
+    storeAuthAfterLogin(sessionTokens, rememberMe, normalizedEmail);
+    await establishWebAuthCookies(sessionTokens, rememberMe);
     setRememberMePreference(rememberMe, normalizedEmail);
     localStorage.setItem('user', JSON.stringify(user));
     window.dispatchEvent(new Event('meridyen:user-updated'));
