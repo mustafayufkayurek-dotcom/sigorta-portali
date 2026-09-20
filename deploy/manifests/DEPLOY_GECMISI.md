@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (21 Eylül 2026 — web v609 / backend v608)
+## Canlı durum (21 Eylül 2026 — web v610 / backend v608)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v609-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v610-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v608-amd64` | durur |
-| **Rollback** | Web **v608** / Backend **v608** | manifest `rollbackImages` |
-| **Etiket** | `v609-sirket-giris-tek-sifre` | |
+| **Rollback** | Web **v609** / Backend **v608** | manifest `rollbackImages` |
+| **Etiket** | `v610-yenileniyoruz-sayac` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v610 — Yalnız web (21 Eylül 2026) — Yenileniyoruz kutusu ve 15 gün sayaç
+
+- Yenileniyoruz alanı büyüdü
+- Sayaç 21 Eylül’den 15 gün geri sayar; süre 6 Ekim gece dolacak
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, canlı uploads silinmedi. Alımda backend durmaz; JWT ve Redis silinmez
+- Geri alma web **v609** / backend **v608**
 
 ### v609 — Yalnız web (21 Eylül 2026) — Şirket sitesinde tek giriş
 
