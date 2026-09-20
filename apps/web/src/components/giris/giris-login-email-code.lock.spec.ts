@@ -25,6 +25,7 @@ describe('giriş kodu ekranı LOCK', () => {
 
   it('yazılım giriş sayfası aynı kod kutusunu kullanır', () => {
     assert.match(girisPage, /GirisLoginPanel/);
+    assert.doesNotMatch(girisPage, /handoffToSoftware/);
     assert.doesNotMatch(girisPage, /auth\/login/);
   });
 });

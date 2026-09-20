@@ -208,7 +208,7 @@ export default function YenileniyoruzPage() {
           {mounted && <StatsBand />}
         </div>
 
-        <GirisLoginPanel />
+        <GirisLoginPanel handoffToSoftware />
       </div>
 
       <div className="insurers-strip">

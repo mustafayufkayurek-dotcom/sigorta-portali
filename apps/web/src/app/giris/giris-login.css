@@ -526,6 +526,8 @@
           gap: 8px;
           transition: opacity 0.2s, transform 0.15s;
           letter-spacing: 0.01em;
+          text-decoration: none;
+          box-sizing: border-box;
         }
         .submit-btn:hover:not(:disabled) {
           opacity: 0.92;

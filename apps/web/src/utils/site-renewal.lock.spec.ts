@@ -56,14 +56,17 @@ describe('şirket sitesi yenileme LOCK', () => {
     assert.match(page, /Yenileniyoruz/);
     assert.match(page, /Hasar Platformu/);
     assert.match(page, /GirisLoginPanel/);
+    assert.match(page, /handoffToSoftware/);
     assert.match(page, /setShowClock\(false\)/);
     assert.doesNotMatch(page, /Yazılıma Giriş/);
     assert.doesNotMatch(page, /CalendarFlipUnit/);
     assert.match(loginPanel, /Kullanıcı Girişi/);
+    assert.match(loginPanel, /handoffToSoftware/);
+    assert.match(loginPanel, /softwareLoginHref/);
+    assert.match(loginPanel, /SOFTWARE_LOGIN_URL/);
     assert.match(loginPanel, /getLoginHomePath/);
     assert.match(loginPanel, /router\.replace/);
     assert.match(loginPanel, /isCompanyWebsiteHost/);
-    assert.match(loginPanel, /app\.meridyen-tr\.com/);
     assert.match(css, /renewal-hero-top/);
     assert.doesNotMatch(css, /calendar-leaf-fold/);
     assert.doesNotMatch(page, /text-transform:\s*uppercase/);

@@ -12,7 +12,7 @@ import {
 } from '@/utils/auth-session';
 import { getLoginHomePath } from '@/utils/panel-access';
 import { safePanelNextPath } from '@/lib/panel-auth-gate';
-import { isCompanyWebsiteHost } from '@/utils/site-renewal';
+import { isCompanyWebsiteHost, softwareLoginHref, SOFTWARE_LOGIN_URL } from '@/utils/site-renewal';
 import { extractLoginEmailCode } from '@/utils/login-email-code-fill';
 
 const API_URL = API;
@@ -116,7 +116,7 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function GirisLoginPanel() {
+export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftware?: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -133,35 +133,41 @@ export function GirisLoginPanel() {
   const codeInputRef = useRef<HTMLInputElement>(null);
   const [footerYear, setFooterYear] = useState<number | null>(null);
   const [systemReady, setSystemReady] = useState<boolean | null>(null);
+  const [softwareHref, setSoftwareHref] = useState('');
   const authHydrated = useRef(false);
 
   useEffect(() => {
     setFooterYear(new Date().getFullYear());
-    if (!authHydrated.current) {
+    if (handoffToSoftware) {
+      setSoftwareHref(softwareLoginHref(window.location.host));
+    }
+    if (!handoffToSoftware && !authHydrated.current) {
       authHydrated.current = true;
       const saved = loadRememberedLoginForm();
       if (saved.email) setEmail(saved.email);
       setRememberMe(saved.remember);
       setFormReady(true);
     }
-    const reason = new URLSearchParams(window.location.search).get('reason');
-    if (reason === 'session_expired') {
-      setError('Oturum süreniz doldu. Lütfen tekrar giriş yapın.');
-    } else if (reason === 'timeout') {
-      setError('Hareketsizlik nedeniyle oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın.');
-    } else if (reason === 'logout') {
-      setError('Çıkış yapıldı. Devam etmek için şifrenizle giriş yapın.');
-    } else if (reason === 'auth') {
-      setError('Devam etmek için e-posta ve şifrenizle giriş yapın.');
+    if (!handoffToSoftware) {
+      const reason = new URLSearchParams(window.location.search).get('reason');
+      if (reason === 'session_expired') {
+        setError('Oturum süreniz doldu. Lütfen tekrar giriş yapın.');
+      } else if (reason === 'timeout') {
+        setError('Hareketsizlik nedeniyle oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın.');
+      } else if (reason === 'logout') {
+        setError('Çıkış yapıldı. Devam etmek için şifrenizle giriş yapın.');
+      } else if (reason === 'auth') {
+        setError('Devam etmek için e-posta ve şifrenizle giriş yapın.');
+      }
     }
 
     axios.get(`${API_URL}/system-settings/company-info`)
       .then(() => setSystemReady(true))
       .catch(() => setSystemReady(false));
-    if (isCompanyWebsiteHost(window.location.host)) {
+    if (handoffToSoftware || isCompanyWebsiteHost(window.location.host)) {
       setCookieLabel('Çerezleri Yönet');
     }
-  }, []);
+  }, [handoffToSoftware]);
 
   useEffect(() => {
     if (!challengeId) return;
@@ -236,10 +242,6 @@ export function GirisLoginPanel() {
     window.dispatchEvent(new Event('meridyen:user-updated'));
     const next = safePanelNextPath(new URLSearchParams(window.location.search).get('next'));
     const home = next ?? getLoginHomePath(String(user?.role?.code ?? ''));
-    if (isCompanyWebsiteHost(window.location.host)) {
-      window.location.assign(`https://app.meridyen-tr.com${home}`);
-      return;
-    }
     router.replace(home);
   };
 
@@ -342,6 +344,19 @@ export function GirisLoginPanel() {
             </div>
           </div>
           <p className="login-sub fade-up-2">Kurumsal bilgilerinizle giriş yapın.</p>
+          {handoffToSoftware ? (
+          <a
+            className="submit-btn"
+            href={softwareHref || SOFTWARE_LOGIN_URL}
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.assign(softwareLoginHref(window.location.host));
+            }}
+          >
+            Giriş Yap
+          </a>
+          ) : (
+          <>
           {error && (
             <div className="error-box">
               <p className="error-text">{error}</p>
@@ -473,6 +488,8 @@ export function GirisLoginPanel() {
               {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
             </button>
           </form>
+          )}
+          </>
           )}
           <p className="login-footer">
             {footerYear == null
