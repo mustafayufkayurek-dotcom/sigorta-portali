@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const panel = readFileSync(join(here, 'GirisLoginPanel.tsx'), 'utf8');
+const girisPage = readFileSync(join(here, '../../app/giris/page.tsx'), 'utf8');
 
 describe('giriş kodu ekranı LOCK', () => {
   it('kod kutusu ve yeniden gönder durur; Google yok', () => {
@@ -14,5 +15,10 @@ describe('giriş kodu ekranı LOCK', () => {
     assert.match(panel, /Giriş Kodu/);
     assert.match(panel, /Kodu yeniden gönder/);
     assert.doesNotMatch(panel, /Google/);
+  });
+
+  it('yazılım giriş sayfası aynı kod kutusunu kullanır', () => {
+    assert.match(girisPage, /GirisLoginPanel/);
+    assert.doesNotMatch(girisPage, /auth\/login/);
   });
 });

@@ -24,9 +24,11 @@ describe('kamuoyu KVKK LOCK', () => {
 
   it('girişte link vardır; personel kutusu girişte zorunlu değildir', () => {
     const giris = read('app/giris/page.tsx');
-    assert.match(giris, /href="\/kvkk"/);
-    assert.match(giris, /href="\/gizlilik"/);
-    assert.match(giris, /href="\/cerez-politikasi"/);
+    const panel = read('components/giris/GirisLoginPanel.tsx');
+    assert.match(giris, /GirisLoginPanel/);
+    assert.match(panel, /href="\/kvkk"/);
+    assert.match(panel, /href="\/gizlilik"/);
+    assert.match(panel, /href="\/cerez-politikasi"/);
     assert.doesNotMatch(giris, /KvkkConsentCheckbox/);
   });
 

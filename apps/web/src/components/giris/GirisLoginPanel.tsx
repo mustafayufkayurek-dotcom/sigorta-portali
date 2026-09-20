@@ -16,6 +16,18 @@ import { isCompanyWebsiteHost } from '@/utils/site-renewal';
 
 const API_URL = API;
 
+function loginErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
+    const apiMessage = err.response?.data?.message;
+    if (!err.response || (typeof status === 'number' && status >= 500)) {
+      return 'Giriş şu an yapılamıyor. Şifre yanlış değil; sistem kapalı. Biraz sonra tekrar deneyin.';
+    }
+    return typeof apiMessage === 'string' && apiMessage.trim() ? apiMessage : 'E-posta veya şifre hatalı.';
+  }
+  return 'E-posta veya şifre hatalı.';
+}
+
 function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
   const [fpEmail, setFpEmail] = useState('');
   const [fpLoading, setFpLoading] = useState(false);
@@ -128,6 +140,17 @@ export function GirisLoginPanel() {
       setRememberMe(saved.remember);
       setFormReady(true);
     }
+    const reason = new URLSearchParams(window.location.search).get('reason');
+    if (reason === 'session_expired') {
+      setError('Oturum süreniz doldu. Lütfen tekrar giriş yapın.');
+    } else if (reason === 'timeout') {
+      setError('Hareketsizlik nedeniyle oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın.');
+    } else if (reason === 'logout') {
+      setError('Çıkış yapıldı. Devam etmek için şifrenizle giriş yapın.');
+    } else if (reason === 'auth') {
+      setError('Devam etmek için e-posta ve şifrenizle giriş yapın.');
+    }
+
     axios.get(`${API_URL}/system-settings/company-info`)
       .then(() => setSystemReady(true))
       .catch(() => setSystemReady(false));
@@ -186,14 +209,7 @@ export function GirisLoginPanel() {
       }
       await finishLogin(payload);
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
-      const status = axiosErr.response?.status;
-      const apiMessage = axiosErr.response?.data?.message;
-      setError(
-        !axiosErr.response || (typeof status === 'number' && status >= 500)
-          ? 'Giriş şu an yapılamıyor. Şifre yanlış değil; sistem kapalı. Biraz sonra tekrar deneyin.'
-          : (typeof apiMessage === 'string' && apiMessage.trim() ? apiMessage : 'E-posta veya şifre hatalı.'),
-      );
+      setError(loginErrorMessage(err));
     } finally {
       setLoading(false);
     }
