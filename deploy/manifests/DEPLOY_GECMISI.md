@@ -2,24 +2,32 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 20 Eylül 2026
+**Son güncelleme:** 21 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (20 Eylül 2026 — web v607 / backend v605)
+## Canlı durum (21 Eylül 2026 — web v608 / backend v608)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v607-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v605-amd64` | canlı |
-| **Rollback** | Web **v606** / Backend **v605** | manifest `rollbackImages` |
-| **Etiket** | `v607-giris-kodu-kutusu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v608-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v608-amd64` | canlı |
+| **Rollback** | Web **v607** / Backend **v605** | manifest `rollbackImages` |
+| **Etiket** | `v608-giris-kodu-dolsun` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v608 — Full (21 Eylül 2026) — Giriş kodu kutuya dolar
+
+- Windows’ta kopyalanan kod kutuya yazılır; Mac önerisi durur
+- Şifre Ekranına Dön çalışır; Kodu Yeniden Gönder yeni kod yollar
+- Mail selamı Sn. Mustafa Yufkayürek biçiminde
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, canlı uploads silinmedi. Alımda backend ve web birden stop edilmez; JWT ve Redis silinmez
+- Geri alma web **v607** / backend **v605**
 
 ### v607 — Yalnız web (20 Eylül 2026) — Giriş kodu kutusu
 

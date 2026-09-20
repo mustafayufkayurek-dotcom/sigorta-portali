@@ -1,11 +1,11 @@
 ---
-description: Canlı web v607 / backend v605 — sıradaki paketler karışmaz
+description: Canlı web v608 / backend v608 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (20.09.2026)
+# Canlı (21.09.2026)
 
-Canlı: web **v607** · backend **v605**. Geri alma: web **v606** / backend **v605**.
+Canlı: web **v608** · backend **v608**. Geri alma: web **v607** / backend **v605**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v608 (full):** Giriş kodu kutuya dolar. Şifre Ekranına Dön çalışır. Kodu Yeniden Gönder yeni kod yollar. Mail selamı Mustafa Yufkayürek. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v607 / backend v605.
 
 **v607 (yalnız web):** Yönetici girişinde kod kutusu açılır. Kırmızı sistem kapalı yazısı bu adımı gizlemez. Backend **v605**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v606 / backend v605.
 
