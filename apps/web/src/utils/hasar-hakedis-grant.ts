@@ -145,7 +145,11 @@ export function buildHasarHakedisGrantLines(source: {
 }): HasarHakedisGrantLine[] {
   const grouped = new Map<string, HasarHakedisGrantLine>();
   for (const item of source.reportItems ?? []) {
-    const add = repairItemResolvedSupplierTotal(item);
+    let add = repairItemResolvedSupplierTotal(item);
+    if (!(add > 0)) {
+      const stored = Number(item.supplierTotal);
+      if (Number.isFinite(stored) && stored > 0) add = stored;
+    }
     if (!(add > 0)) continue;
     const wgId = item.workGroupId ?? item.workGroup?.id ?? '__diger__';
     const label = workGroupJobsLabel(item.workGroup?.name);
