@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { API } from '@/utils/api';
 import { LoginBrandLogo } from '@/components/brand/LoginBrandLogo';
