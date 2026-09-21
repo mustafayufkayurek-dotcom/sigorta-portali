@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (21 Eylül 2026 — web v612 / backend v612)
+## Canlı durum (21 Eylül 2026 — web v613 / backend v612)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v612-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v613-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v612-amd64` | canlı |
-| **Rollback** | Web **v611** / Backend **v608** | manifest `rollbackImages` |
-| **Etiket** | `v612-yazisma-teyid` | |
+| **Rollback** | Web **v612** / Backend **v608** | manifest `rollbackImages` |
+| **Etiket** | `v613-pdf-onizleme` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v613 — Yalnız web (21 Eylül 2026) — Dosya önizlemesi
+
+- Hasar Müşteri Görünümü ve Tam Görünüm raporu açar; pencere kesilirse sayfada durur
+- Evrak, sözleşme, ölçüm ve fiş aynı kapıdan açılır
+- Aynı kırılma her canlı alımda kesilir
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, canlı uploads silinmedi. Alımda backend durmaz; JWT ve Redis silinmez
+- Geri alma web **v612** / backend **v608**
 
 ### v612 — Full (21 Eylül 2026) — Yazışma teyit cümlesi
 

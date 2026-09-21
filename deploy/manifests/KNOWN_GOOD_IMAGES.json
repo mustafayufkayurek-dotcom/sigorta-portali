@@ -1,16 +1,16 @@
 {
   "updatedAt": "2026-09-21",
-  "label": "v612-yazisma-teyid",
-  "description": "Full v612: Yazışma teyit cümlesi «Bu Yazışma Tarafınıza Ulaştığında Lütfen Teyid Ediniz.» Alımda oturum düşmez. Geri alma web v611 / backend v608.",
+  "label": "v613-pdf-onizleme",
+  "description": "Yalnız web v613: Hazır rapor ve evrak açılır; pencere kesilirse sayfada durur. Aynı kırılma her alımda kesilir. Backend v612. Geri alma web v612 / backend v608.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v612-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v612-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v613-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v611-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v612-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v608-amd64"
   },
   "mustPassSmokeRoutes": [
