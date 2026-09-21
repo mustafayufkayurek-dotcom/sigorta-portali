@@ -21,6 +21,7 @@ import {
 import { cycleClientSort, sortRowsByClientSort, type ClientSortState } from '@/utils/panel-table-sort';
 import { useToast } from '@/contexts/ToastContext';
 import { API, authHeader } from '@/utils/api';
+import { presentPdfPreview, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
@@ -135,9 +136,10 @@ async function openDosyaSozlesmePdf(id: string) {
     headers: authHeader(),
     responseType: 'blob',
   });
-  const url = URL.createObjectURL(res.data);
-  window.open(url, '_blank', 'noopener,noreferrer');
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+  if (failure) throw new Error(failure);
+  const opened = await presentPdfPreview(res.data as Blob, 'Sözleşme');
+  if (!opened) throw new Error('PDF önizleme açılamadı.');
 }
 
 type StatementRow = {

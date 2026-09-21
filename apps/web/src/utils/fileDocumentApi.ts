@@ -1,4 +1,5 @@
 import { authFetch, API } from './api';
+import { openSessionBlob } from './pdf-preview-open';
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -168,20 +169,8 @@ async function openFileDocumentBlob(path: string, print = false): Promise<void> 
     throw new Error(msg);
   }
   const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const w = window.open(url, '_blank', 'noopener,noreferrer');
-  if (print && w) {
-    const runPrint = () => {
-      try {
-        w.focus();
-        w.print();
-      } catch {
-        /* tarayıcı yazdırmayı kesti */
-      }
-    };
-    w.addEventListener('load', runPrint);
-    window.setTimeout(runPrint, 500);
-  }
+  const opened = await openSessionBlob(blob, 'Evrak', { print });
+  if (!opened) throw new Error('Evrak açılamadı');
 }
 
 export async function openFileDocumentPhysical(id: string): Promise<void> {

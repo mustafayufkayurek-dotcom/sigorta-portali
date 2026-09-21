@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, Eye, FileText, MoreVertical, Pencil, Printer, ScrollText, Send, XCircle } from 'lucide-react';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import { openSessionBlob } from '@/utils/pdf-preview-open';
 import { PinnableRowActions } from '@/components/portal/PinnableRowActions';
 import { defaultPinnedActionIds, FINANS_FATURA_ROW_ACTIONS, FINANS_FATURA_TALEP_ROW_ACTIONS, FINANS_TAHSILAT_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
 
@@ -15,7 +16,7 @@ function escapeHtml(value: string) {
     .replace(/"/g, '&quot;');
 }
 
-export function printFinanceSlip(row: {
+export async function printFinanceSlip(row: {
   title: string;
   fileNo?: string;
   party?: string;
@@ -57,13 +58,7 @@ export function printFinanceSlip(row: {
 <script>window.addEventListener('load',function(){window.focus();window.print();});</script>
 </body></html>`;
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const w = window.open(url, '_blank');
-  if (!w) {
-    URL.revokeObjectURL(url);
-    return;
-  }
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  await openSessionBlob(blob, row.title || 'Fiş');
 }
 
 export function vendorEkstreHref(source: {

@@ -1,0 +1,120 @@
+/**
+ * Kilit: Hasar PDF önizlemesi blob adresini noopener ile açmaz.
+ * Çalıştır: node --experimental-strip-types --test apps/web/src/utils/pdf-preview-open.lock.spec.ts
+ */
+import assert from 'node:assert/strict';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { openBlobUrlWithoutNoopener, readPdfPreviewFailure } from './pdf-preview-open.ts';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const reportPage = readFileSync(
+  join(here, '../app/panel/hasar-dosyalari/[id]/onarim-raporu/[reportId]/page.tsx'),
+  'utf8',
+);
+const helper = readFileSync(join(here, 'pdf-preview-open.ts'), 'utf8');
+
+describe('hasar pdf önizleme LOCK', () => {
+  it('rapor sayfası önizlemeyi yardımcıdan açar; noopener yok', () => {
+    assert.match(reportPage, /presentPdfPreview\(/);
+    assert.match(reportPage, /readPdfPreviewFailure\(/);
+    assert.doesNotMatch(reportPage, /window\.open\(url, '_blank', 'noopener,noreferrer'\)/);
+  });
+
+  it('yardımcı blob adresine noopener vermez; kesilince sayfada Kapat durur', () => {
+    assert.match(helper, /window\.open\(targetUrl, target\)/);
+    assert.doesNotMatch(helper, /window\.open\([^)]*noopener/);
+    assert.match(helper, /textContent = 'Kapat'/);
+  });
+
+  it('noopener fırlatan tarayıcıda üçüncü argümansız açılır', () => {
+    let featuresSeen = false;
+    const opened = openBlobUrlWithoutNoopener('blob:rapor', ((url, target, features) => {
+      if (features && String(features).includes('noopener')) {
+        featuresSeen = true;
+        throw new Error('Unable to open a window with invalid URL');
+      }
+      assert.equal(url, 'blob:rapor');
+      assert.equal(target, '_blank');
+      return { opener: {} } as Window;
+    }) as (url: string, target: string) => Window | null);
+    assert.equal(featuresSeen, false);
+    assert.ok(opened);
+    assert.equal(opened?.opener, null);
+  });
+
+  it('içerik türü pdf yazmasa da %PDF gövdeyi kabul eder', async () => {
+    const blob = new Blob(['%PDF-1.4 örnek'], { type: 'application/octet-stream' });
+    assert.equal(await readPdfPreviewFailure(blob, 'application/octet-stream'), null);
+  });
+
+  it('sunucu hata yazısını olduğu gibi bırakır', async () => {
+    const blob = new Blob([JSON.stringify({ message: 'PDF oluşturulamadı.' })], { type: 'application/json' });
+    assert.equal(await readPdfPreviewFailure(blob, 'application/json'), 'PDF oluşturulamadı.');
+  });
+
+  it('oturum dosyası açan yerler aynı kapıyı kullanır', () => {
+    const mustUse = [
+      ['utils/fileDocumentApi.ts', /openSessionBlob\(/],
+      ['utils/emergencyApi.ts', /openSessionBlob\(/],
+      ['components/smart-measures/open-smart-measure-pdf.ts', /openSessionBlob\(/],
+      ['components/eksper-portal/ExpertFileModals.tsx', /presentPdfPreview\(/],
+      ['components/finance/HasarFileHakedisPanel.tsx', /presentPdfPreview\(/],
+      ['components/EntityDocumentsTab.tsx', /openSessionBlob\(/],
+      ['components/finance/FinanceRowActions.tsx', /openSessionBlob\(/],
+    ] as const;
+    for (const [rel, pattern] of mustUse) {
+      const src = readFileSync(join(here, '..', rel), 'utf8');
+      assert.match(src, pattern, rel);
+    }
+  });
+
+  it('blob adresine noopener ile pencere açan kod kalmaz', () => {
+    const hits = blobNoopenerHits(join(here, '..'));
+    assert.deepEqual(hits, []);
+  });
+
+  it('canlı alım bu kilidi atlayamaz', () => {
+    const smoke = readFileSync(join(here, '../../../../scripts/smoke-canli-bitmis-is.sh'), 'utf8');
+    assert.match(smoke, /pdf-preview-open\.lock\.spec\.ts/);
+  });
+});
+
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+}
+
+function blobNoopenerHits(dir: string, acc: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    if (name === 'node_modules' || name.endsWith('.lock.spec.ts')) continue;
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) {
+      blobNoopenerHits(path, acc);
+      continue;
+    }
+    if (!name.endsWith('.ts') && !name.endsWith('.tsx')) continue;
+    if (name === 'pdf-preview-open.ts') continue;
+    const src = stripComments(readFileSync(path, 'utf8'));
+    if (/URL\.createObjectURL[\s\S]{0,500}?\.rel\s*=\s*['"]noopener/.test(src)) {
+      acc.push(path);
+      continue;
+    }
+    const callRe = /window\.open\(([^)]*)\)/g;
+    let match: RegExpExecArray | null;
+    while ((match = callRe.exec(src))) {
+      const args = match[1] ?? '';
+      if (!args.includes('noopener')) continue;
+      const arg = args.split(',')[0]?.trim() ?? '';
+      if (!/^[A-Za-z_$][\w$]*$/.test(arg)) continue;
+      const before = src.slice(Math.max(0, match.index - 900), match.index);
+      const assigned = new RegExp(`(?:const|let|var)\\s+${arg}\\s*=\\s*URL\\.createObjectURL|${arg}\\s*=\\s*URL\\.createObjectURL`);
+      if (assigned.test(before)) {
+        acc.push(path);
+        break;
+      }
+    }
+  }
+  return acc;
+}

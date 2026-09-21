@@ -1,3 +1,5 @@
+import { openSessionBlob } from '@/utils/pdf-preview-open';
+
 /** Akıllı Ölçüm PDF blob açıcı — FieldSurvey’den bağımsız */
 
 export async function openSmartMeasurePdfBlob(
@@ -34,22 +36,7 @@ export async function openSmartMeasurePdfBlob(
   }
 
   const pdfBlob = new Blob([blob], { type: 'application/pdf' });
-  const url = URL.createObjectURL(pdfBlob);
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.rel = 'noopener';
-  if (!isMobile) a.target = '_blank';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  if (!isMobile) {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
-
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  const opened = await openSessionBlob(pdfBlob, filename.replace(/\.pdf$/i, '') || 'Ölçüm');
+  if (!opened) return { ok: false, message: 'Pdf açılamadı.' };
   return { ok: true };
 }

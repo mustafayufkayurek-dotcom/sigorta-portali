@@ -16,6 +16,7 @@ import {
   fetchAuthImageBlob,
   vendorDocumentFileUrl,
 } from '@/utils/protected-image';
+import { openSessionBlob } from '@/utils/pdf-preview-open';
 
 const DwgDxfViewerModal = dynamic(
   () => import('./DwgDxfViewerModal').then((m) => m.DwgDxfViewerModal),
@@ -325,14 +326,8 @@ export function EntityDocumentsTab({
       showToast('error', 'Yazdırma açılamadı');
       return;
     }
-    const url = URL.createObjectURL(blob);
-    const printWindow = window.open(url, '_blank');
-    if (printWindow) {
-      printWindow.onload = () => {
-        printWindow.focus();
-        printWindow.print();
-      };
-    }
+    const opened = await openSessionBlob(blob, 'Evrak', { print: true });
+    if (!opened) showToast('error', 'Yazdırma açılamadı');
   };
 
   const openCad = async (doc: Doc) => {

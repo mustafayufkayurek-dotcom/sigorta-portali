@@ -1,0 +1,35 @@
+---
+description: Oturumla gelen dosya noopener ile açılmaz; açılmazsa aynı sayfada durur
+alwaysApply: true
+---
+
+# Dosya Önizleme Açılma Kilidi
+
+**Kaynak (Mustafa · 21.09.2026):** Hasar dosyasında Müşteri Görünümü «PDF önizleme açılamadı» yazdı. Rapor hazırdı; ekran açamadı. Aynı kırılma evrak, sözleşme ve ölçümde de duruyordu.
+
+**Temel cümle:** Personelin açtığı dosya **açılır.** Pencere kesilirse dosya **aynı sayfada** durur. Hata yazısı, dosya gerçekten gelmediyse çıkar.
+
+## Zorunlu
+
+1. Onarım raporu, evrak, sözleşme, ölçüm ve fiş `openSessionBlob` / `presentPdfPreview` kullanır.
+2. Yeni pencere `window.open(adres, '_blank')` — üçüncü argüman yok.
+3. Pencere gelmezse sayfada başlık ve **Kapat** durur.
+4. `%PDF` gövde, içerik türü yazmasa da önizlemedir. Sunucu hata cümlesi olduğu gibi gösterilir.
+5. Her canlı alım `pdf-preview-open.lock.spec.ts` çalıştırır (`smoke-canli-bitmis-is.sh`).
+
+## Yasak (açık onay yoksa)
+
+- `createObjectURL` sonrası `window.open(..., 'noopener')`
+- Blob bağlantısına `rel="noopener"` verip yeni pencere açmak
+- Bu kilidi «sadeleştirme» diye kaldırmak
+
+## Durdurma
+
+Hazır dosyada yine «açılamadı» çıkarsa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+  apps/web/src/utils/pdf-preview-open.lock.spec.ts
+```

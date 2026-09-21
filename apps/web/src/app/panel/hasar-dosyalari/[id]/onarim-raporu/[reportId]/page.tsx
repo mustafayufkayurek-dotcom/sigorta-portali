@@ -1,6 +1,7 @@
 'use client';
 
 import { API, authHeader, authAxios, ensureSessionBeforeMutation } from '@/utils/api';
+import { presentPdfPreview, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
 import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, X } from 'lucide-react';
@@ -4251,10 +4252,23 @@ function EmergencyReportEditor({
   const openPdfPreview = async (view: 'internal' | 'external') => {
     try {
       const res = await axios.get(`${API}/repair-reports/${reportId}/pdf?view=${view}`, { headers: authHeader(), responseType: 'blob' });
-      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-      window.open(url, '_blank', 'noopener,noreferrer');
-      setTimeout(() => URL.revokeObjectURL(url), 120_000);
-    } catch (e) { console.error(e); }
+      const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+      if (failure) {
+        notify('error', failure);
+        return;
+      }
+      const opened = await presentPdfPreview(
+        res.data as Blob,
+        view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü',
+      );
+      if (!opened) notify('error', 'PDF önizleme açılamadı.');
+      else if (opened === 'tab') {
+        notify('success', view === 'internal' ? 'Tam görünüm önizlemesi açıldı.' : 'Müşteri görünümü önizlemesi açıldı.');
+      }
+    } catch (e) {
+      notify('error', 'PDF önizleme açılamadı.');
+      console.error(e);
+    }
   };
 
   const handleSubmitReport = async () => {
@@ -5593,18 +5607,22 @@ export default function RepairReportPage() {
         url: `${API}/repair-reports/${reportId}/pdf?view=${view}`,
         responseType: 'blob',
       });
-      const contentType = String(res.headers['content-type'] ?? '');
-      if (!contentType.includes('pdf')) {
-        const text = await (res.data as Blob).text();
-        let message = 'PDF önizleme açılamadı.';
-        try { message = JSON.parse(text)?.message ?? message; } catch { /* ignore */ }
-        notify('error', message);
+      const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+      if (failure) {
+        notify('error', failure);
         return;
       }
-      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-      window.open(url, '_blank', 'noopener,noreferrer');
-      setTimeout(() => URL.revokeObjectURL(url), 120_000);
-      notify('success', view === 'internal' ? 'Tam görünüm önizlemesi açıldı.' : 'Müşteri görünümü önizlemesi açıldı.');
+      const opened = await presentPdfPreview(
+        res.data as Blob,
+        view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü',
+      );
+      if (!opened) {
+        notify('error', 'PDF önizleme açılamadı.');
+        return;
+      }
+      if (opened === 'tab') {
+        notify('success', view === 'internal' ? 'Tam görünüm önizlemesi açıldı.' : 'Müşteri görünümü önizlemesi açıldı.');
+      }
     } catch (e: any) {
       let message = 'PDF önizleme açılamadı.';
       if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {

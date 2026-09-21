@@ -45,6 +45,7 @@ bash "$SCRIPT_DIR/smoke-baslik-hint.sh"
 bash "$SCRIPT_DIR/smoke-finans-kart.sh"
 
 node --experimental-strip-types --test \
+  apps/web/src/utils/pdf-preview-open.lock.spec.ts \
   apps/web/src/utils/customer-form-identity.lock.spec.ts \
   apps/web/src/utils/eksper-sigorta-matrix-removed.lock.spec.ts \
   packages/shared/src/file-recognized-partners.lock.spec.ts \

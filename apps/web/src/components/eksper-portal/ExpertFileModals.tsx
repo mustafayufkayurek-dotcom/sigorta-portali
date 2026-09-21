@@ -12,6 +12,7 @@ import {
   openFileDocumentView,
   type FileDocument,
 } from '@/utils/fileDocumentApi';
+import { presentPdfPreview, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = API_BASE.endsWith('/api/v1') ? API_BASE : `${API_BASE}/api/v1`;
@@ -521,13 +522,10 @@ export function ExpertFileReportPreviewModal({ open, claimFileId, fileNo, onClos
       });
       if (!res.ok) throw new Error('Rapor önizlemesi açılamadı.');
       const blob = await res.blob();
-      const contentType = res.headers.get('content-type') ?? '';
-      if (contentType.includes('json') || contentType.includes('text/')) {
-        throw new Error('Rapor PDF olarak hazır değil.');
-      }
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      const failure = await readPdfPreviewFailure(blob, res.headers.get('content-type') ?? '');
+      if (failure) throw new Error(failure === 'PDF önizleme açılamadı.' ? 'Rapor önizlemesi açılamadı.' : failure);
+      const opened = await presentPdfPreview(blob, 'Rapor Önizleme');
+      if (!opened) throw new Error('Rapor önizlemesi açılamadı.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Rapor önizlemesi açılamadı.');
     } finally {

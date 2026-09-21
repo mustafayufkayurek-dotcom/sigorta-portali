@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api-client';
+import { openSessionBlob } from '@/utils/pdf-preview-open';
 import { ACIL_POOL_VENDOR_NOTE } from '@/utils/acil-vendor-pool';
 import { asList } from '@/utils/emergency-list-unwrap';
 
@@ -382,19 +383,14 @@ export async function openAssistanceApprovalReport(id: string, previewWin?: Wind
     }
     throw new Error(msg);
   }
-  const url = URL.createObjectURL(blob);
   if (previewWin && !previewWin.closed) {
+    const url = URL.createObjectURL(blob);
     previewWin.location.replace(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
     return;
   }
-  const opened = window.open(url, '_blank', 'noopener');
-  if (!opened) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    a.click();
-  }
+  const opened = await openSessionBlob(blob, 'Rapor');
+  if (!opened) throw new Error('Rapor açılamadı.');
 }
 
 export async function updateCase(
