@@ -8,18 +8,24 @@
 
 ---
 
-## Canlı durum (21 Eylül 2026 — web v611 / backend v608)
+## Canlı durum (21 Eylül 2026 — web v612 / backend v612)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v611-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v608-amd64` | durur |
-| **Rollback** | Web **v610** / Backend **v608** | manifest `rollbackImages` |
-| **Etiket** | `v611-sirket-cep-gorunum` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v612-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v612-amd64` | canlı |
+| **Rollback** | Web **v611** / Backend **v608** | manifest `rollbackImages` |
+| **Etiket** | `v612-yazisma-teyid` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v612 — Full (21 Eylül 2026) — Yazışma teyit cümlesi
+
+- Giden yazışmada: Bu Yazışma Tarafınıza Ulaştığında Lütfen Teyid Ediniz.
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, canlı uploads silinmedi. Alımda backend ve web birden stop edilmez; JWT ve Redis silinmez
+- Geri alma web **v611** / backend **v608**
 
 ### v611 — Yalnız web (21 Eylül 2026) — Şirket sitesi cep görünümü
 
