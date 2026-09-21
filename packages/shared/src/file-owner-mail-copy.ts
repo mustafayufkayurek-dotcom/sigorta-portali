@@ -122,7 +122,7 @@ export function buildCrmSenderCopyNotice(input: {
     counterpartAddress: input.counterpartAddress,
     sender: input.sender,
     roleCode: input.roleCode,
-    extraLine: 'Gördüğünüzde lütfen Alındı yazarak yanıtlayın.',
+    extraLine: 'Bu Yazışma Tarafınıza Ulaştığında Lütfen Teyid Ediniz.',
     sentAt: input.sentAt,
   });
 }

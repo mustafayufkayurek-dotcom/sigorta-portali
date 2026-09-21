@@ -47,7 +47,7 @@ describe('gelen kutu yanıt yazışma geçmişi LOCK', () => {
       bodyHtml: SAFRAN_PILE,
     });
     assert.match(html, /Onaylandı, ekibi yönlendiriyoruz/);
-    assert.match(html, /Gördüğünüzde lütfen Alındı yazarak yanıtlayın/);
+    assert.match(html, /Bu Yazışma Tarafınıza Ulaştığında Lütfen Teyid Ediniz/);
     assert.match(html, /Yazışma geçmişi/);
     assert.match(html, /7200tl\+kdv dir/i);
     assert.match(html, /Cam değişimi/);

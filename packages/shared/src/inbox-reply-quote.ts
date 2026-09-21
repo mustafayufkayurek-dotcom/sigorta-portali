@@ -124,7 +124,7 @@ function escapeHtml(value: string): string {
 
 /** Giden yazının altında teyit cümlesi — Outlook okundusuna bağlı değiliz. */
 export const INBOX_REPLY_CONFIRM_LINE =
-  'Gördüğünüzde lütfen Alındı yazarak yanıtlayın.';
+  'Bu Yazışma Tarafınıza Ulaştığında Lütfen Teyid Ediniz.';
 export function buildInboxReplyHtml(input: InboxReplyQuoteInput): string {
   const reply = escapeHtml(input.replyText.trim()).replace(/\r\n/g, '\n').replace(/\n/g, '<br>\n');
   const preview = buildInboxReplyQuotePreview(input);

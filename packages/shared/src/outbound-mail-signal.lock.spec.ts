@@ -93,6 +93,6 @@ describe('giden mail gönderildi/okundu LOCK', () => {
       new URL('./inbox-reply-quote.ts', import.meta.url),
       'utf8',
     );
-    assert.match(quote, /Gördüğünüzde lütfen Alındı yazarak yanıtlayın/);
+    assert.match(quote, /Bu Yazışma Tarafınıza Ulaştığında Lütfen Teyid Ediniz/);
   });
 });
