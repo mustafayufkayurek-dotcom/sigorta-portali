@@ -68,6 +68,10 @@ describe('şirket sitesi yenileme LOCK', () => {
     assert.match(loginPanel, /router\.replace/);
     assert.match(loginPanel, /isCompanyWebsiteHost/);
     assert.match(css, /renewal-hero-top/);
+    assert.match(css, /flex-direction:\s*column/);
+    assert.doesNotMatch(css, /flex:\s*0 0 42%/);
+    assert.match(css, /renewal-top-nav/);
+    assert.match(css, /harita-ozet-kartlari/);
     assert.doesNotMatch(css, /calendar-leaf-fold/);
     assert.doesNotMatch(page, /text-transform:\s*uppercase/);
   });
