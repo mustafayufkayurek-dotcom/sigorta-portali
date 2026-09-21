@@ -20,7 +20,7 @@ describe('CRM tanıtım maili izi LOCK', () => {
       sender: { name: 'Ayşe Ofis', email: 'ayse@meridyen-tr.com' },
     });
     assert.match(notice.plain, /Gönderen Kopyası: Ayşe Ofis \(ayse@meridyen-tr.com\)/);
-    assert.match(notice.plain, /Alındı/);
+    assert.match(notice.plain, /Bu Yazışma Tarafınıza Ulaştığında Lütfen Teyid Ediniz/);
     assert.doesNotMatch(notice.plain, /Dosya sorumlusu/);
   });
 
