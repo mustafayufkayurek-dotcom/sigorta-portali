@@ -16,9 +16,9 @@ describe('panel cep düzen LOCK', () => {
   it('Yönetim Paneli başlık ve dönem tuşları alta alta durur', () => {
     const header = read('features/dashboard/components/management-dashboard/MgmtHeader.tsx');
     assert.match(header, /flex-col/);
-    assert.match(header, /whitespace-normal/);
+    assert.match(header, /whitespace-nowrap/);
     assert.match(header, /Yönetim Paneli/);
-    assert.doesNotMatch(header, /whitespace-nowrap/);
+    assert.doesNotMatch(header, /whitespace-normal/);
     const kpi = read('features/dashboard/components/management-dashboard/MgmtKpiRow.tsx');
     assert.match(kpi, /break-words/);
     const dash = read('features/dashboard/components/management-dashboard/ManagementDashboard.tsx');

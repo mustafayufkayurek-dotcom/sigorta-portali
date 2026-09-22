@@ -1,5 +1,5 @@
 /**
- * Başlık yanında i yok. Dönem tuşları sağda, başlık tek satır.
+ * Başlık yanında i yok. Telefonda dönem tuşları altta; genişte sağda.
  * Çalıştır: node --experimental-strip-types --test apps/web/src/components/ui/title-hint.lock.spec.ts
  */
 import assert from 'node:assert/strict';
@@ -31,10 +31,11 @@ describe('başlık bilgi ikonu LOCK', () => {
     assert.doesNotMatch(hint, /group-hover:block/);
   });
 
-  it('Yönetim Paneli tek satır; dönem sağda; i yok', () => {
+  it('Yönetim Paneli tek satır; telefonda dönem alta, genişte sağda; i yok', () => {
     assert.doesNotMatch(mgmtHeader, /HintIcon/);
     assert.match(mgmtHeader, /whitespace-nowrap/);
-    assert.match(mgmtHeader, /ml-auto flex min-w-0 flex-wrap items-center justify-end/);
+    assert.match(mgmtHeader, /ml-auto flex min-w-0 flex-wrap items-center/);
+    assert.match(mgmtHeader, /flex-col gap-3 sm:flex-row/);
     assert.doesNotMatch(mgmtHeader, /flex-col gap-3 lg:flex-row/);
   });
 

@@ -29,11 +29,11 @@ export function MgmtHeader({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <h1 className="min-w-0 whitespace-normal text-[22px] font-semibold tracking-tight text-[#0F172A] md:text-[24px]">
+      <h1 className="min-w-0 shrink-0 whitespace-nowrap text-[22px] font-semibold tracking-tight text-[#0F172A] md:text-[24px]">
         Yönetim Paneli
       </h1>
 
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:ml-auto sm:justify-end">
+      <div className="ml-auto flex min-w-0 flex-wrap items-center justify-start gap-1.5 sm:justify-end">
         {PRESETS.map((preset) => {
           const active = activePreset === preset || (preset === 'ozel' && customOpen);
           return (

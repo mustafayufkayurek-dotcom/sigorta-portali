@@ -251,7 +251,7 @@
          text-emerald-600 flex-shrink-0;
 }
 .page-title {
-  @apply text-xl font-bold text-slate-900 tracking-tight;
+  @apply whitespace-nowrap text-xl font-bold text-slate-900 tracking-tight;
 }
 .page-subtitle {
   @apply text-sm text-slate-400 mt-0.5;
