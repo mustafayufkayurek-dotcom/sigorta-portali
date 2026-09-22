@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (22 Eylül 2026 — web v615 / backend v615)
+## Canlı durum (22 Eylül 2026 — web v616 / backend v616)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v615-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v615-amd64` | canlı |
-| **Rollback** | Web **v614** / Backend **v614** | manifest `rollbackImages` |
-| **Etiket** | `v615-yeni-yazi-eki` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v616-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v616-amd64` | canlı |
+| **Rollback** | Web **v615** / Backend **v615** | manifest `rollbackImages` |
+| **Etiket** | `v616-puantaj-yetkili` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v616 — Full (22 Eylül 2026) — Puantaj onayı ve yetkili kişiler
+
+- Mail giden hesap kendi gününü Devam’dan onaylar. Saha personeli kadroya girince aynı onaya alınır; müşteri ve tedarikçi girmez
+- Eksper işaretli ilişki türü eksper kartında listelenir. Kurumsal kartta Görev / Ünvan her iki adımda durur
+- Yetkili kişiler tek listededir; kaydet ikinci kişiyi silmez
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v615** / backend **v615**
 
 ### v615 — Full (22 Eylül 2026) — Yeni yazıya dosya ekleme
 
