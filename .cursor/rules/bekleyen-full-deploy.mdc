@@ -1,11 +1,11 @@
 ---
-description: Canlı web v616 / backend v616 — sıradaki paketler karışmaz
+description: Canlı web v617 / backend v616 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
 # Canlı (22.09.2026)
 
-Canlı: web **v616** · backend **v616**. Geri alma: web **v615** / backend **v615**.
+Canlı: web **v617** · backend **v616**. Geri alma: web **v616** / backend **v616**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v617 (yalnız web):** Telefonda puantaj Onayla ve liste işlemleri kesilmez. Hasar dosyası yüklerken kabuk durur. Puantajda hata ile boş ay ayrılır. Onay ve Hasar işlem 10 saniyede cevap yoksa kutu kapanır. Bu haller kilitli; geriye dönmez. Backend **v616**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v616 / backend v616.
 
 **v616 (full):** Puantaj onayı (mail giden hesap Devam’dan onaylar). Saha personeli kadroya girince aynı onaya alınır; müşteri ve tedarikçi girmez. Eksper işaretli ilişki türü eksper kartında listelenir. Kurumsal kartta Görev / Ünvan her iki adımda durur. Yetkili kişiler tek listededir; kaydet ikinci kişiyi silmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v615 / backend v615.
 
@@ -107,4 +109,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Sıradaki paket (yalnız web):** Telefon kırpılması (puantaj Onayla, liste işlemleri, alt tuşlar). Hasar dosyasında yüklerken kabuk durur, gri şerit. Puantajda hata ile boş ay ayrılır. Onay ve Hasar işlem 10 saniyede cevap yoksa kutu kapanır; «İşlem zaman aşımına uğradı…» uyarısı. Geri alma web v616 / backend v616.
+**Sıradaki paket:** Yok. Yeni iş Mustafa söyleyince yazılır.

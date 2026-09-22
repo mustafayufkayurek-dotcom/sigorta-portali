@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (22 Eylül 2026 — web v616 / backend v616)
+## Canlı durum (22 Eylül 2026 — web v617 / backend v616)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v616-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v617-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v616-amd64` | canlı |
-| **Rollback** | Web **v615** / Backend **v615** | manifest `rollbackImages` |
-| **Etiket** | `v616-puantaj-yetkili` | |
+| **Rollback** | Web **v616** / Backend **v616** | manifest `rollbackImages` |
+| **Etiket** | `v617-mobil-yukleme-zamanasimi` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v617 — Yalnız web (22 Eylül 2026) — Telefon, yükleme kabuğu, 10 saniye
+
+- Telefonda puantaj Onayla ve liste işlemleri kesilmez
+- Hasar dosyası yüklerken kabuk durur; Puantajda hata ile boş ay ayrılır
+- Onay ve Hasar işlem 10 saniyede cevap yoksa kutu kapanır. Bu haller kilitli
+- Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda backend durmaz; JWT ve Redis silinmez
+- Geri alma web **v616** / backend **v616**
 
 ### v616 — Full (22 Eylül 2026) — Puantaj onayı ve yetkili kişiler
 

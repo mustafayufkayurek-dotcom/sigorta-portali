@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-22",
-  "label": "v616-puantaj-yetkili",
-  "description": "Full v616: Puantaj onayı, saha kadrosu, eksper listesi, Görev her iki adım, yetkili kişiler tek liste. Geri alma web v615 / backend v615.",
+  "label": "v617-mobil-yukleme-zamanasimi",
+  "description": "Yalnız web v617: telefon tuşları, Hasar yükleme kabuğu, Puantaj hata ayrımı, 10 sn işlem kalkanı. Backend v616. Geri alma web v616 / backend v616.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v616-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v616-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v617-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v615-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v615-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v616-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v616-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
