@@ -1,11 +1,11 @@
 ---
-description: Canlı web v617 / backend v616 — sıradaki paketler karışmaz
+description: Canlı web v618 / backend v616 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
 # Canlı (22.09.2026)
 
-Canlı: web **v617** · backend **v616**. Geri alma: web **v616** / backend **v616**.
+Canlı: web **v618** · backend **v616**. Geri alma: web **v617** / backend **v616**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v618 (yalnız web):** Telefonda giriş kodu Yapıştır ile dolar; sahte 000000 durmaz. Yönetim Paneli başlığı ve dönem tuşları üst üste binmez; kart yazıları kesilmez. Sol menü tam yazılır. Hasar şeridi kartların üstüne binmez. Bu haller kilitli; geriye dönmez. Backend **v616**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v617 / backend v616.
 
 **v617 (yalnız web):** Telefonda puantaj Onayla ve liste işlemleri kesilmez. Hasar dosyası yüklerken kabuk durur. Puantajda hata ile boş ay ayrılır. Onay ve Hasar işlem 10 saniyede cevap yoksa kutu kapanır. Bu haller kilitli; geriye dönmez. Backend **v616**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v616 / backend v616.
 
@@ -109,11 +111,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Sıradaki paket (yalnız web):** Cep telefonu düzensizlikleri + giriş kodu.
-
-1. **Giriş kodu.** Telefonda kod kutuya Yapıştır ile dolar. Sahte `000000` durmaz. Hangi kutuya gittiği (kullanıcı e-postası, hasar@ değil) ekranda durur. Kod yazıldı, canlıya alınmadı.
-2. **Yönetim Paneli.** Telefonda başlık kesilir; Bugün / Bu Hafta / Bu Yıl üst üste biner; kılavuz tuşu ve kart yazıları (Toplam Gelir, Kâr Marjı) kesilir; alt sayılar Safari çubuğunun altında kalır.
-3. **Sol menü.** Telefonda menü açılınca yazılar soldan kesilir (Dashboard → “board”, Operasyon → “asyon”).
-4. **Hasar Dosyaları.** İlk kullanım şeridi kartların ve «Rapor Onay Bekleyen» tuşunun üstüne biner; Anladım yazısı metnin içinde kalır.
-
-Alım yalnız Mustafa «canlıya al» deyince. Backend v616 durur. Geri alma web v617 / backend v616.
+**Sıradaki paket:** Yok. Yeni iş Mustafa söyleyince yazılır.

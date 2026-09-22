@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (22 Eylül 2026 — web v617 / backend v616)
+## Canlı durum (22 Eylül 2026 — web v618 / backend v616)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v617-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v618-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v616-amd64` | canlı |
-| **Rollback** | Web **v616** / Backend **v616** | manifest `rollbackImages` |
-| **Etiket** | `v617-mobil-yukleme-zamanasimi` | |
+| **Rollback** | Web **v617** / Backend **v616** | manifest `rollbackImages` |
+| **Etiket** | `v618-cep-giris-kodu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v618 — Yalnız web (22 Eylül 2026) — Cep düzeni ve giriş kodu
+
+- Telefonda giriş kodu Yapıştır ile dolar; sahte 000000 durmaz; kutu kullanıcı e-postası
+- Yönetim Paneli dönem tuşları başlığın üstüne binmez; kart yazıları kesilmez
+- Sol menü yazıları tam görünür; Hasar ilk şerit kartların üstüne binmez
+- Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda backend durmaz; JWT ve Redis silinmez
+- Geri alma web **v617** / backend **v616**
 
 ### v617 — Yalnız web (22 Eylül 2026) — Telefon, yükleme kabuğu, 10 saniye
 
