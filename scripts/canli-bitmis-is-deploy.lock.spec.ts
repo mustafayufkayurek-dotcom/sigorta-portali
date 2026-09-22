@@ -76,5 +76,8 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
     assert.match(acil, /outbound-mail-signal\.lock\.spec/);
     assert.match(acil, /yazisma|inbox-reply-quote/);
     assert.match(acil, /acil-photo-kind\.lock\.spec/);
+    const rule = readFileSync(join(here, '../.cursor/rules/bitmis-is-dusmesin.mdc'), 'utf8');
+    assert.match(rule, /smoke-canli-bitmis-is\.sh/);
+    assert.match(rule, /Düşmesini bekleme/);
   });
 });

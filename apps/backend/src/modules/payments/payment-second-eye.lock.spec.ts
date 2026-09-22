@@ -18,5 +18,13 @@ describe('ödeme ikinci göz LOCK', () => {
     assert.match(controller, /Ödendi işlemini finans personeli yapar/);
     assert.match(service, /vendorPaidByUserId/);
     assert.match(service, /createdByUserId/);
+
+    const planner = readFileSync(
+      join(here, '../../../../web/src/components/acil-operasyon-planlayicisi/planner-steps.tsx'),
+      'utf8',
+    );
+    assert.match(planner, /financeSent/);
+    assert.match(planner, /Finansa gittikten sonra Ödendi işlemini finans personeli yapar/);
+    assert.match(planner, /disabled=\{locked\}/);
   });
 });

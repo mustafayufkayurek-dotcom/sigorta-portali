@@ -1,0 +1,33 @@
+---
+description: Bitmiş iş düşünce beklenmez; her alım bu kapıdan geçer
+alwaysApply: true
+---
+
+# Bitmiş İş Düşmesin
+
+**Kaynak (Mustafa · 22.09.2026):** Fatura ekleme yeni yazıda yoktu. Kilit yalnız yanıt kutusuna bakıyordu. Düşmesini beklemek yok.
+
+**Temel cümle:** Aşağıdaki işler **personel ekranında durur.** Her canlı alım bunları keser. Eksik görünce alım durur.
+
+## Zorunlu
+
+1. Giriş kodu: yönetici ve finans. Kutu dolar. Şifre Ekranına Dön ve Kodu Yeniden Gönder durur.
+2. Ofiste unutulan ekran: 30 dakika. Beni Hatırla açık ekranı bırakmaz. Kısa kesinti oturumu silmez.
+3. Sabah bakışı: Bekleyen İş, 5 Dosya, Hasar işlemleri.
+4. Şirket sitesi: şifre kutusu yok. Sayaç 6 Ekim 2026 gece. Telefonda alta alta.
+5. Disk daralınca güvenli temizlik. Fotoğraf silinmez.
+6. Yedek ikinci yer doğrulanmadan gitti sayılmaz.
+7. Fiş okunur. Kayıt personeldedir. Gelen kutu sınıflandırması mail atmaz.
+8. Ödendi finans personelindedir. İşlemi yapan kaydolur.
+9. Puantaj: gün sonu mail, yönetici çanı, mesai nabzı.
+10. Acil saha atama dosya sorumlusunda. Tedarikçiden ayrı.
+11. 72 saat onay maili, onay alınmış dosyada kesilir.
+12. Tedarikçi WhatsApp: Dosya Konusu, konum, teyit.
+13. Satış fatura listesi: Hasar ve Acil ayrı.
+14. Gelen kutuda yeni yazı da dosya ekler.
+
+`scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
+
+## Durdurma
+
+Personel ekranında biri yoksa → **dur, aynı gün geri koy.** Düşmesini bekleme.
