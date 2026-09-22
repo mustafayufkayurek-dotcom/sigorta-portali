@@ -67,4 +67,26 @@ describe('gelen kutu yanıt eki LOCK', () => {
     assert.match(dto, /contentBase64/);
     assert.match(dto, /attachments/);
   });
+
+  it('yeni yazıda da Fotoğraf Veya Belge eklenir; ek aynı gönderimdedir', () => {
+    const modal = readFileSync(
+      new URL('../../../apps/web/src/components/operation-inbox/InboxComposeModal.tsx', import.meta.url),
+      'utf8',
+    );
+    assert.match(modal, /\/operation-inbox\/compose/);
+    assert.match(modal, /Fotoğraf Veya Belge Ekle/);
+    assert.match(modal, /contentBase64/);
+    assert.match(modal, /attachments/);
+    const service = readFileSync(
+      new URL('../../../apps/backend/src/modules/operation-inbox/operation-inbox.service.ts', import.meta.url),
+      'utf8',
+    );
+    const compose = service.slice(service.indexOf('async composeMessage'), service.indexOf('async assignMessage'));
+    assert.match(compose, /decodeReplyAttachments\(dto\.attachments\)/);
+    const dto = readFileSync(
+      new URL('../../../apps/backend/src/modules/operation-inbox/dto/compose-message.dto.ts', import.meta.url),
+      'utf8',
+    );
+    assert.match(dto, /attachments\?: ReplyAttachmentDto\[\]/);
+  });
 });

@@ -1,9 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { FileText, ImagePlus } from 'lucide-react';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { toTitleCaseTR } from '@/utils/text-helpers';
-import { outboundMailSignal } from '@sigorta/shared';
+import { shrinkInboxReplyAttachment } from '@/utils/inbox-reply-image';
+import {
+  INBOX_REPLY_ATTACH_ACCEPT,
+  INBOX_REPLY_ATTACH_MAX_BYTES,
+  INBOX_REPLY_ATTACH_MAX_FILES,
+  isInboxReplyAttachmentAllowed,
+  isInboxReplyImageAttachment,
+  outboundMailSignal,
+  sanitizeInboxReplyAttachmentName,
+} from '@sigorta/shared';
 import { OutboundMailSignalStrip } from '@/components/operation-inbox/OutboundMailSignalStrip';
 import {
   InboxLinkFilePickerModal,
@@ -26,6 +36,25 @@ const MAILBOX_OPTIONS: { value: InboundMailbox; label: string }[] = [
   { value: 'HASAR', label: 'Hasar (hasar@)' },
 ];
 
+type PendingAttach = {
+  id: string;
+  file: File;
+  previewUrl: string | null;
+};
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? '');
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(new Error('Dosya okunamadı'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function InboxComposeModal({
   open,
   defaultMailbox = 'HASAR',
@@ -45,6 +74,9 @@ export function InboxComposeModal({
   const [linkPickerOpen, setLinkPickerOpen] = useState(false);
   const [linkedClaim, setLinkedClaim] = useState<LinkPickerHasarFile | null>(null);
   const [linkedEmergency, setLinkedEmergency] = useState<EmergencyCase | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<PendingAttach[]>([]);
+  const [addingFiles, setAddingFiles] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -54,6 +86,13 @@ export function InboxComposeModal({
     setBody('');
     setLinkedClaim(null);
     setLinkedEmergency(null);
+    setPendingFiles((prev) => {
+      prev.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
+      return [];
+    });
+    setAddingFiles(false);
     setError('');
     setSentNow(false);
     setFailedNow(false);
@@ -67,12 +106,60 @@ export function InboxComposeModal({
       .map((s) => s.trim())
       .filter(Boolean);
 
+  const locked = loading || addingFiles || sentNow;
+
   const canSend =
-    !loading
-    && !sentNow
+    !locked
     && parseRecipients(toInput).length > 0
     && subject.trim().length > 0
     && body.trim().length >= 3;
+
+  const addFiles = async (list: File[]) => {
+    if (locked || list.length === 0) return;
+    setError('');
+    setAddingFiles(true);
+    try {
+      const next = [...pendingFiles];
+      let used = next.reduce((n, item) => n + item.file.size, 0);
+      let limitHit = false;
+      for (const file of list) {
+        if (next.length >= INBOX_REPLY_ATTACH_MAX_FILES) {
+          limitHit = true;
+          break;
+        }
+        if (!isInboxReplyAttachmentAllowed(file.name, file.type)) {
+          setError('Bu dosya türü eklenemez. Fotoğraf, PDF veya Word / Excel belgesi seçin.');
+          continue;
+        }
+        const ready = await shrinkInboxReplyAttachment(file, INBOX_REPLY_ATTACH_MAX_BYTES - used);
+        if (used + ready.size > INBOX_REPLY_ATTACH_MAX_BYTES) {
+          setError('Ek çok büyük. Fotoğraf veya belgeyi küçültüp tekrar deneyin.');
+          continue;
+        }
+        used += ready.size;
+        const image = isInboxReplyImageAttachment(ready.name, ready.type);
+        next.push({
+          id: `${ready.name}-${ready.size}-${ready.lastModified}-${Math.random().toString(36).slice(2)}`,
+          file: ready,
+          previewUrl: image ? URL.createObjectURL(ready) : null,
+        });
+      }
+      if (limitHit) {
+        setError(`En fazla ${INBOX_REPLY_ATTACH_MAX_FILES} ek ekleyebilirsiniz.`);
+      }
+      setPendingFiles(next);
+    } finally {
+      setAddingFiles(false);
+    }
+  };
+
+  const removeFile = (id: string) => {
+    setPendingFiles((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+  };
 
   const signal = outboundMailSignal({
     sending: loading,
@@ -97,6 +184,16 @@ export function InboxComposeModal({
     setError('');
     setFailedNow(false);
     try {
+      const attachments =
+        pendingFiles.length === 0
+          ? undefined
+          : await Promise.all(
+              pendingFiles.map(async (item) => ({
+                filename: sanitizeInboxReplyAttachmentName(item.file.name),
+                contentType: item.file.type || undefined,
+                contentBase64: await readFileAsBase64(item.file),
+              })),
+            );
       await apiClient.post('/operation-inbox/compose', {
         mailbox,
         to,
@@ -104,6 +201,7 @@ export function InboxComposeModal({
         body: trimmedBody,
         claimFileId: linkedClaim?.id,
         emergencyCaseId: linkedEmergency?.id,
+        ...(attachments?.length ? { attachments } : {}),
       });
       setSentNow(true);
       onToast('success', 'E-posta gönderildi');
@@ -208,6 +306,66 @@ export function InboxComposeModal({
             disabled={loading || sentNow}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
           />
+
+          <div className="mt-3">
+            <p className="text-xs font-medium text-slate-600">Fotoğraf Veya Belge</p>
+            <p className="text-[11px] text-slate-500 mt-0.5 mb-1.5">
+              Ek, asıl yazı ile birlikte gider. Fotoğraflar gönderime uygun küçültülür.
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={INBOX_REPLY_ATTACH_ACCEPT}
+              multiple
+              className="sr-only"
+              disabled={locked}
+              onChange={(e) => {
+                void addFiles(Array.from(e.target.files ?? []));
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              disabled={locked}
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <ImagePlus className="h-4 w-4 text-slate-500" aria-hidden />
+              Fotoğraf Veya Belge Ekle
+            </button>
+            {pendingFiles.length > 0 && (
+              <ul className="mt-2 space-y-1.5">
+                {pendingFiles.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5"
+                  >
+                    {item.previewUrl ? (
+                      <img
+                        src={item.previewUrl}
+                        alt={item.file.name}
+                        className="h-12 w-12 rounded-lg object-cover shrink-0"
+                      />
+                    ) : (
+                      <span className="h-12 w-12 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                        <FileText className="h-5 w-5 text-slate-500" aria-hidden />
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{item.file.name}</span>
+                    {!locked && (
+                      <button
+                        type="button"
+                        className="text-xs text-slate-400 hover:text-status-danger"
+                        onClick={() => removeFile(item.id)}
+                      >
+                        Kaldır
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button

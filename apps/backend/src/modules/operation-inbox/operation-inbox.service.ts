@@ -796,7 +796,7 @@ export class OperationInboxService {
       dto.to,
       dto.subject,
       outboundBody,
-      undefined,
+      this.decodeReplyAttachments(dto.attachments),
       senderCopy ? [{ email: senderCopy.email, name: senderCopy.name }] : undefined,
     );
 

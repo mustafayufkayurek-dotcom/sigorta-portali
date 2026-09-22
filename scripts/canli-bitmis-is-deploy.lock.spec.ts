@@ -46,6 +46,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
     const outbound = readFileSync(join(here, 'smoke-outbound-mail.sh'), 'utf8');
     assert.match(outbound, /crm-mail-watch\.lock\.spec/);
     assert.match(outbound, /inbox-reply-quote\.lock\.spec/);
+    assert.match(outbound, /inbox-reply-attachment\.lock\.spec/);
     assert.match(outbound, /file-owner-mail-copy\.lock\.spec/);
     const acil = readFileSync(join(here, 'smoke-acil-netlesen.sh'), 'utf8');
     assert.match(acil, /outbound-mail-signal\.lock\.spec/);

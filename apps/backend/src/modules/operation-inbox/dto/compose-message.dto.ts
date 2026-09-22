@@ -1,4 +1,6 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsEmail,
@@ -7,8 +9,11 @@ import {
   IsOptional,
   IsString,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import { InboundMailbox } from '@prisma/client';
+import { INBOX_REPLY_ATTACH_MAX_FILES } from '@sigorta/shared';
+import { ReplyAttachmentDto } from './reply-message.dto';
 
 export class ComposeMessageDto {
   @IsEnum(InboundMailbox, { message: 'Geçerli bir paylaşımlı kutu seçin (IHBAR veya HASAR)' })
@@ -36,4 +41,13 @@ export class ComposeMessageDto {
   @IsString()
   @IsOptional()
   emergencyCaseId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(INBOX_REPLY_ATTACH_MAX_FILES, {
+    message: `En fazla ${INBOX_REPLY_ATTACH_MAX_FILES} ek ekleyebilirsiniz`,
+  })
+  @ValidateNested({ each: true })
+  @Type(() => ReplyAttachmentDto)
+  attachments?: ReplyAttachmentDto[];
 }

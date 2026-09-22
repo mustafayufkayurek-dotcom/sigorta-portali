@@ -1,0 +1,32 @@
+---
+description: Gelen kutuda yeni yazıya da dosya eklenir
+alwaysApply: true
+---
+
+# Gelen Kutu Yeni Yazı Eki Kilidi
+
+**Kaynak (Mustafa · 22.09.2026):** Canlıda fatura mailinde dosya ekleme yoktu. Yanıt kutusunda duruyordu. Yeni yazı ayrı kalmıştı.
+
+**Temel cümle:** Gelen kutuda **yeni yazı** da **yanıt** da dosya ekler. Ek, asıl yazı ile birlikte gider.
+
+## Zorunlu
+
+1. `InboxComposeModal` içinde **Fotoğraf Veya Belge Ekle**.
+2. `POST /operation-inbox/compose` eki `sendMail` içine koyar. Ayrı ikinci mail yok.
+3. Her canlı alım `inbox-reply-attachment.lock.spec.ts` çalıştırır (`smoke-outbound-mail.sh`).
+
+## Yasak (açık onay yoksa)
+
+- Eki yalnız yanıta bırakıp yeni yazıdan kesmek
+- Dosya Bağla’yı ek sanmak
+
+## Durdurma
+
+Yeni yazıda ekleme yoksa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/inbox-reply-attachment.lock.spec.ts
+```
