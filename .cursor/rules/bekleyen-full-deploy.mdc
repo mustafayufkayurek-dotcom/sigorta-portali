@@ -1,11 +1,11 @@
 ---
-description: Canlı web v613 / backend v612 — sıradaki paketler karışmaz
+description: Canlı web v614 / backend v614 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (21.09.2026)
+# Canlı (22.09.2026)
 
-Canlı: web **v613** · backend **v612**. Geri alma: web **v612** / backend **v608**.
+Canlı: web **v614** · backend **v614**. Geri alma: web **v613** / backend **v612**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v614 (full):** Rapor indirme, puantaj yazdırma, dekont ve eksper belgesi açılır. Pencere kesilirse dosya sayfada durur. Disk daralınca güvenli temizlik kendiliğinden başlar; fotoğraflar silinmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v613 / backend v612.
 
 **v613 (yalnız web):** Hasar rapor önizlemesi açılır. Pencere kesilirse rapor sayfada durur. Evrak, sözleşme ve ölçüm aynı kapıdan açılır. Bu kırılma her alımda kesilir. Backend **v612**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v612 / backend v608.
 

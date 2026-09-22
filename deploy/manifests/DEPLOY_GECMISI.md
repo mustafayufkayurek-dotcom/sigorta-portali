@@ -2,24 +2,31 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 21 Eylül 2026
+**Son güncelleme:** 22 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (21 Eylül 2026 — web v613 / backend v612)
+## Canlı durum (22 Eylül 2026 — web v614 / backend v614)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v613-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v612-amd64` | canlı |
-| **Rollback** | Web **v612** / Backend **v608** | manifest `rollbackImages` |
-| **Etiket** | `v613-pdf-onizleme` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v614-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v614-amd64` | canlı |
+| **Rollback** | Web **v613** / Backend **v612** | manifest `rollbackImages` |
+| **Etiket** | `v614-dosya-acilma` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v614 — Full (22 Eylül 2026) — Dosya açılması
+
+- Rapor indirme, puantaj yazdırma, dekont ve eksper belgesi açılır; pencere kesilirse sayfada durur
+- Disk daralınca güvenli temizlik kendiliğinden başlar; fotoğraflar silinmez
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v613** / backend **v612**
 
 ### v613 — Yalnız web (21 Eylül 2026) — Dosya önizlemesi
 
