@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import AgreementConsentModal from '@/components/AgreementConsentModal';
@@ -897,20 +898,26 @@ function Navbar({
         </div>
       </div>
 
-        {/* MOBILE_SHELL_LOCK: menü h-14 DIŞINDA + fixed — header yüksekliği sabit kalsın */}
-        {mobileMenuOpen ? (
+        {/* MOBILE_SHELL_LOCK: menü h-14 DIŞINDA + body portal — yazı kesilmesin */}
+        {mobileMenuOpen && typeof document !== 'undefined'
+          ? createPortal(
           <>
             <div
-              className="fixed inset-0 top-14 z-40 bg-black/30 md:hidden"
+              className="fixed inset-0 top-14 z-[60] bg-black/30 md:hidden"
               aria-hidden
               onClick={() => setMobileMenuOpen(false)}
             />
             <div
-              className="fixed left-0 right-0 top-14 z-50 max-h-[min(70vh,calc(100dvh-3.5rem))] w-full overflow-x-hidden overflow-y-auto overscroll-contain border-b border-slate-100 bg-white py-3 shadow-lg md:hidden dark:border-slate-800 dark:bg-slate-950"
+              className="fixed inset-x-0 top-14 z-[61] max-h-[min(70vh,calc(100dvh-3.5rem))] w-full max-w-full overflow-y-auto overscroll-contain border-b border-slate-100 bg-white py-3 shadow-lg md:hidden dark:border-slate-800 dark:bg-slate-950"
+              style={{
+                paddingLeft: 'max(0.75rem, env(safe-area-inset-left))',
+                paddingRight: 'max(0.75rem, env(safe-area-inset-right))',
+              }}
               role="navigation"
               aria-label="Mobil Menü"
+              data-testid="panel-mobile-nav"
             >
-              <div className="space-y-0.5 px-1">
+              <div className="space-y-0.5">
                 {!isPortalUser
                   ? visibleMainLinks.map((link) => {
                       const visibleChildren = (link.children ?? []).filter((child) => canSee(child.href));
@@ -931,7 +938,7 @@ function Navbar({
                         <>
                           <span className="inline-flex min-w-0 items-center gap-2">
                             {link.icon ? <link.icon className="h-4 w-4 shrink-0 text-slate-400" /> : null}
-                            <span className="truncate">{link.title}</span>
+                            <span className="min-w-0 whitespace-normal break-words">{link.title}</span>
                           </span>
                           {link.alertCount && link.alertCount > 0 ? (
                             <span className={`inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
@@ -1011,7 +1018,7 @@ function Navbar({
                                     }`}
                                     onClick={() => setMobileMenuOpen(false)}
                                   >
-                                    <span className="truncate">{child.title}</span>
+                                    <span className="min-w-0 whitespace-normal break-words">{child.title}</span>
                                   </Link>
                                 );
                               })}
@@ -1074,8 +1081,10 @@ function Navbar({
                 </div>
               </div>
             </div>
-          </>
-        ) : null}
+          </>,
+          document.body,
+        )
+        : null}
     </header>
   );
 }

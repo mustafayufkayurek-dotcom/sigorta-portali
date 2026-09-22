@@ -14,6 +14,7 @@ import { getLoginHomePath } from '@/utils/panel-access';
 import { safePanelNextPath } from '@/lib/panel-auth-gate';
 import { isCompanyWebsiteHost, softwareLoginHref, SOFTWARE_LOGIN_URL } from '@/utils/site-renewal';
 import { extractLoginEmailCode } from '@/utils/login-email-code-fill';
+import { maskLoginMailbox } from '@sigorta/shared';
 
 const API_URL = API;
 
@@ -368,11 +369,12 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
           {challengeId ? (
           <div>
             <p className="login-sub fade-up-2" style={{ marginTop: 0 }}>
-              Mailinize 6 haneli kod gönderildi. Kodu kopyalayıp bu ekrana dönün; kutu dolar.
+              Kod {maskLoginMailbox(email)} kutusuna gitti. Gelenlerde yoksa gereksiz klasörüne bakın.
+              Kodu kopyalayıp Yapıştır deyin; kutu dolar.
             </p>
             <form onSubmit={handleEmailCode} noValidate>
             <label className="form-label" htmlFor="one-time-code">Giriş Kodu</label>
-            <div className="form-input-wrap">
+            <div className="form-input-wrap" style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
               <input
                 ref={codeInputRef}
                 id="one-time-code"
@@ -380,9 +382,19 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 autoFocus
                 value={emailCode}
                 onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onPaste={(e) => {
+                  const text = e.clipboardData?.getData('text') ?? '';
+                  const code = extractLoginEmailCode(text);
+                  if (!code) return;
+                  e.preventDefault();
+                  setEmailCode(code);
+                }}
                 onFocus={(e) => {
                   scrollFieldIntoView(e);
                   if (navigator.clipboard?.readText) {
@@ -392,12 +404,36 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
                     }).catch(() => {});
                   }
                 }}
-                placeholder="000000"
+                placeholder=""
                 className="form-input scroll-input-safe"
                 required
                 maxLength={6}
                 pattern="[0-9]{6}"
+                aria-label="Giriş Kodu"
               />
+              <button
+                type="button"
+                className="forgot-link"
+                style={{
+                  marginTop: 0,
+                  flexShrink: 0,
+                  minHeight: 44,
+                  padding: '0 14px',
+                  border: '1px solid #dbe3ee',
+                  borderRadius: 12,
+                  background: '#fff',
+                  fontWeight: 600,
+                }}
+                onClick={() => {
+                  if (!navigator.clipboard?.readText) return;
+                  void navigator.clipboard.readText().then((text) => {
+                    const code = extractLoginEmailCode(text);
+                    if (code) setEmailCode(code);
+                  }).catch(() => {});
+                }}
+              >
+                Yapıştır
+              </button>
             </div>
             <button type="submit" className="submit-btn" disabled={loading || emailCode.length !== 6}>
               {loading ? 'Kontrol Ediliyor...' : 'Kodu Onayla'}

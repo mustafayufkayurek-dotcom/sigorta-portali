@@ -78,6 +78,7 @@ node --experimental-strip-types --test \
   apps/web/src/app/panel/hasar-dosyalari/hasar-dosya-yukleme.lock.spec.ts \
   apps/web/src/components/hr/attendance-load-error.lock.spec.ts \
   apps/web/src/utils/ui-action-timeout.lock.spec.ts \
-  apps/web/src/utils/panel-table-scroll.lock.spec.ts
+  apps/web/src/utils/panel-table-scroll.lock.spec.ts \
+  apps/web/src/utils/panel-cep-duzen.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

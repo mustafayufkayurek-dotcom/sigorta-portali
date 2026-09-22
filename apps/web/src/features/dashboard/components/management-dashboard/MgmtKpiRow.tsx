@@ -51,15 +51,15 @@ export function MgmtKpiRow({ items, loading }: { items: MgmtKpiItem[]; loading?:
           <div
             key={item.id}
             className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white px-3 pb-3 pt-2.5 transition duration-200 hover:z-10 hover:border-slate-300 hover:shadow-md"
-            style={{ height: MGMT.kpiH, boxShadow: MGMT.shadow }}
+            style={{ minHeight: MGMT.kpiH, height: 'auto', boxShadow: MGMT.shadow }}
           >
             <span
               className={`absolute right-2.5 top-2.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition group-hover:scale-110 ${item.iconClass}`}
             >
               <Icon className="h-4 w-4" strokeWidth={1.75} />
             </span>
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 px-6 text-center">
-              <p className="w-full text-[12px] font-medium leading-tight text-[#64748B]">{item.title}</p>
+            <div className="flex min-h-0 flex-1 flex-col items-start justify-center gap-1.5 pr-10 text-left">
+              <p className="w-full break-words text-[12px] font-medium leading-tight text-[#64748B]">{item.title}</p>
               <p className="w-full text-[20px] font-bold leading-none tracking-tight text-[#0F172A]">
                 {item.value}
               </p>

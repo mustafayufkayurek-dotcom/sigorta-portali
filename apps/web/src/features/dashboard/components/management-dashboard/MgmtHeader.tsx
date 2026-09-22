@@ -28,12 +28,12 @@ export function MgmtHeader({
   onOpenMeeting: () => void;
 }) {
   return (
-    <div className="flex min-w-0 items-center justify-between gap-3">
-      <h1 className="shrink-0 whitespace-nowrap text-[22px] font-semibold tracking-tight text-[#0F172A] md:text-[24px]">
+    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <h1 className="min-w-0 whitespace-normal text-[22px] font-semibold tracking-tight text-[#0F172A] md:text-[24px]">
         Yönetim Paneli
       </h1>
 
-      <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:ml-auto sm:justify-end">
         {PRESETS.map((preset) => {
           const active = activePreset === preset || (preset === 'ozel' && customOpen);
           return (
@@ -74,7 +74,7 @@ export function MgmtHeader({
         <button
           type="button"
           onClick={onOpenMeeting}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-1.5 text-[12px] font-medium text-white shadow-sm transition hover:scale-[1.03] hover:bg-blue-700"
+          className="inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-1.5 text-[12px] font-medium text-white shadow-sm transition hover:scale-[1.03] hover:bg-blue-700 sm:w-auto"
         >
           <Presentation className="h-3.5 w-3.5" />
           Yönetim Özeti

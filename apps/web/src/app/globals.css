@@ -235,12 +235,12 @@
   @apply inline-flex items-center justify-center text-center;
 }
 
-/* Sayfa Header */
+/* Sayfa Header — telefonda alta alta; tuş başlığın üstüne binmez */
 .page-header {
-  @apply mb-5 flex flex-row items-center justify-between gap-3 sm:mb-7;
+  @apply mb-5 flex flex-col items-stretch gap-3 sm:mb-7 sm:flex-row sm:items-start sm:justify-between;
 }
 .page-header-actions {
-  @apply ml-auto flex shrink-0 flex-row flex-wrap items-center justify-end gap-2;
+  @apply flex w-full min-w-0 flex-row flex-wrap items-center justify-start gap-2 sm:ml-auto sm:w-auto sm:shrink-0 sm:justify-end;
 }
 .page-header-icon {
   @apply w-10 h-10 rounded-xl bg-brand-600/10 flex items-center justify-center
@@ -251,7 +251,7 @@
          text-emerald-600 flex-shrink-0;
 }
 .page-title {
-  @apply whitespace-nowrap text-xl font-bold text-slate-900 tracking-tight;
+  @apply text-xl font-bold text-slate-900 tracking-tight;
 }
 .page-subtitle {
   @apply text-sm text-slate-400 mt-0.5;

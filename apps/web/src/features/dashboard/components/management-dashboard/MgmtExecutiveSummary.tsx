@@ -57,14 +57,14 @@ export function MgmtExecutiveSummary({ cells }: { cells: MgmtSummaryCell[] }) {
           return (
             <div
               key={cell.id}
-              className="flex min-h-[88px] min-w-0 flex-col justify-between overflow-hidden rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2"
+              className="flex min-h-[88px] min-w-0 flex-col justify-between rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2"
             >
               <div className="min-w-0 overflow-hidden">
                 <p
                   className={`inline-flex max-w-full items-center gap-1 text-[11px] font-semibold ${tone}`}
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{cell.title}</span>
+                  <span className="break-words">{cell.title}</span>
                 </p>
                 <div className="mt-1 flex min-w-0 items-start gap-1.5 overflow-hidden">
                   {cell.showAvatar ? (

@@ -536,18 +536,6 @@ function ClaimFilesPageContent() {
                 {invoiceStatusFilter === 'pending' && <span className="ml-2 text-status-warning font-semibold">· Bekleyen tahsilat</span>}
               </p>
             )}
-            {!isFieldStaff && (
-              <div className="mt-1.5 space-y-2">
-                <MissingShortNameBanner />
-                <OpsFirstRunNotice
-                  compact
-                  noticeId={OPS_NOTICE.hasarListeSonDegisiklik.id}
-                  title={OPS_NOTICE.hasarListeSonDegisiklik.title}
-                  body={OPS_NOTICE.hasarListeSonDegisiklik.body}
-                  testId="hasar-liste-ilk-kullanim-seridi"
-                />
-              </div>
-            )}
           </div>
         </div>
         <div className="page-header-actions">
@@ -587,6 +575,19 @@ function ClaimFilesPageContent() {
           )}
         </div>
       </div>
+
+      {!isFieldStaff && (
+        <div className="space-y-2">
+          <MissingShortNameBanner />
+          <OpsFirstRunNotice
+            compact
+            noticeId={OPS_NOTICE.hasarListeSonDegisiklik.id}
+            title={OPS_NOTICE.hasarListeSonDegisiklik.title}
+            body={OPS_NOTICE.hasarListeSonDegisiklik.body}
+            testId="hasar-liste-ilk-kullanim-seridi"
+          />
+        </div>
+      )}
 
       {!isFieldStaff && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" data-testid="hasar-kpi-band">

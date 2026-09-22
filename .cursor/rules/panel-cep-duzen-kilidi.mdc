@@ -1,0 +1,34 @@
+---
+description: Cep telefonu panel düzeni — başlık, menü, şerit kesilmez
+alwaysApply: true
+---
+
+# Panel Cep Düzeni Kilidi
+
+**Kaynak (Mustafa · 22.09.2026):** Telefondan yazılıma girince Yönetim Paneli, sol menü ve Hasar şeridi düzensizdi.
+
+**Temel cümle:** Telefonda yazı **kesilmez.** Tuş başlığın üstüne binmez. Şerit kartın üstüne binmez.
+
+## Zorunlu
+
+1. Yönetim Paneli: başlık kendi satırında; Bugün / Bu Hafta / Bu Yıl alta alta durabilir. Kart başlığı (`Toplam Gelir`) kırpılmaz.
+2. Sol menü: Dashboard, Operasyon tam yazılır. `createPortal` + `break-words`.
+3. Hasar listesi ilk şerit kartların **üstünde tam genişlikte**; Anladım metnin içinde değil.
+4. Giriş kodu: **Yapıştır**; sahte `000000` yok; kutu kullanıcı e-postası.
+
+## Yasak (açık onay yoksa)
+
+- Menü yazısını `truncate` ile soldan kesmek
+- Şeridi başlık ile tuşun arasına sıkıştırmak
+
+## Durdurma
+
+Yazı yine `board` / `asyon` olursa veya şerit kartın üstüne binerse → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/web/src/utils/panel-cep-duzen.lock.spec.ts \
+ apps/web/src/components/giris/giris-login-email-code.lock.spec.ts
+```

@@ -164,7 +164,7 @@ export function ManagementDashboard() {
   };
 
   return (
-    <div className="w-full min-w-0 space-y-4 overflow-x-hidden pb-6">
+    <div className="w-full min-w-0 space-y-4 overflow-x-hidden pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <MgmtHeader
         activePreset={activePreset}
         range={range}

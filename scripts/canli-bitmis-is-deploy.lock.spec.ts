@@ -70,6 +70,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'attendance-load-error.lock.spec',
       'ui-action-timeout.lock.spec',
       'panel-table-scroll.lock.spec',
+      'panel-cep-duzen.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

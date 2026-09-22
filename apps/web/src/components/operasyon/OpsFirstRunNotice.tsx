@@ -31,17 +31,17 @@ export function OpsFirstRunNotice({
   if (compact) {
     return (
       <div
-        className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${className}`.trim()}
+        className={`flex flex-col gap-2 ${className}`.trim()}
         role="status"
         data-testid={testId}
       >
-        <p className="min-w-0 flex-1 text-xs leading-snug text-slate-600">
+        <p className="min-w-0 w-full text-xs leading-snug text-slate-600">
           <span className="font-semibold text-slate-800">{title}. </span>
           {body}
         </p>
         <button
           type="button"
-          className="shrink-0 text-[11px] font-semibold text-brand-700 hover:underline"
+          className="self-start shrink-0 text-[11px] font-semibold text-brand-700 hover:underline"
           data-testid={`${testId}-anladim`}
           onClick={() => {
             dismissOpsNotice(noticeId);

@@ -13,6 +13,7 @@ describe('giriş kodu kutuya dolsun LOCK', () => {
     assert.equal(extractLoginEmailCode('  847291  '), '847291');
     assert.equal(extractLoginEmailCode('Giriş kodunuz (10 dakika geçerli): 847291'), '847291');
     assert.equal(extractLoginEmailCode('Kod 847291'), '847291');
+    assert.equal(extractLoginEmailCode('Kod 8 4 7 2 9 1'), '847291');
     assert.equal(extractLoginEmailCode('532 133 4144'), null);
     assert.equal(extractLoginEmailCode(''), null);
   });
@@ -23,6 +24,9 @@ describe('giriş kodu kutuya dolsun LOCK', () => {
     assert.match(panel, /autoComplete="one-time-code"/);
     assert.match(panel, /name="one-time-code"/);
     assert.match(panel, /clipboard/);
+    assert.match(panel, /Yapıştır/);
+    assert.match(panel, /maskLoginMailbox/);
+    assert.doesNotMatch(panel, /placeholder="000000"/);
     assert.doesNotMatch(panel, /Google/);
   });
 });

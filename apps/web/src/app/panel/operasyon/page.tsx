@@ -1014,25 +1014,6 @@ function OperasyonPageContent() {
                     ) : null}
                   </p>
                 )}
-                <div className="mt-1.5 space-y-2">
-                  <MissingShortNameBanner />
-                  <OpsFirstRunNotice
-                    compact
-                    noticeId={OPS_NOTICE.acilListeSonDegisiklik.id}
-                    title={OPS_NOTICE.acilListeSonDegisiklik.title}
-                    body={OPS_NOTICE.acilListeSonDegisiklik.body}
-                    testId="acil-liste-ilk-kullanim-seridi"
-                  />
-                  {showFinanceExtraAccessAcil ? (
-                    <OpsFirstRunNotice
-                      compact
-                      noticeId={OPS_NOTICE.acilVekaletKuyruk.id}
-                      title={OPS_NOTICE.acilVekaletKuyruk.title}
-                      body={OPS_NOTICE.acilVekaletKuyruk.body}
-                      testId="acil-vekalet-kuyruk-seridi"
-                    />
-                  ) : null}
-                </div>
               </>
             ) : (
               <>
@@ -1078,6 +1059,28 @@ function OperasyonPageContent() {
           ) : null}
         </div>
       </div>
+
+      {isAcilListMode ? (
+        <div className="space-y-2">
+          <MissingShortNameBanner />
+          <OpsFirstRunNotice
+            compact
+            noticeId={OPS_NOTICE.acilListeSonDegisiklik.id}
+            title={OPS_NOTICE.acilListeSonDegisiklik.title}
+            body={OPS_NOTICE.acilListeSonDegisiklik.body}
+            testId="acil-liste-ilk-kullanim-seridi"
+          />
+          {showFinanceExtraAccessAcil ? (
+            <OpsFirstRunNotice
+              compact
+              noticeId={OPS_NOTICE.acilVekaletKuyruk.id}
+              title={OPS_NOTICE.acilVekaletKuyruk.title}
+              body={OPS_NOTICE.acilVekaletKuyruk.body}
+              testId="acil-vekalet-kuyruk-seridi"
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Dosya Özeti KPI — Acil listesinde yalnız acil sayıları */}
       {isAcilListMode ? (
