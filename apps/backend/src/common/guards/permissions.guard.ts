@@ -18,6 +18,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'location.view',
     'operation_inbox.view', 'operation_inbox.manage',
     'role.view', 'role.manage',
+    'hr.view', 'hr.leave.request',
   ],
   FIELD_STAFF: [
     'customer.view',
@@ -36,6 +37,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'report.view',
     'dashboard.view',
     'operation_inbox.view', 'operation_inbox.manage',
+    'hr.view', 'hr.supervise', 'hr.leave.approve', 'hr.attendance.manage',
   ],
   ACCOUNTANT: [
     'customer.view', 'claim_file.view',
@@ -45,6 +47,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'report.view',
     'dashboard.view',
     'operation_inbox.view',
+    'hr.view', 'hr.leave.request',
   ],
   MANAGER: [
     'claim_file.view', 'claim_file.create', 'claim_file.update', 'claim_file.assign', 'claim_file.status_change',
@@ -61,6 +64,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'user.create', 'user.update', 'user.view',
     'bank_account.create', 'bank_account.delete', 'bank_account.update', 'bank_account.view',
     'operation_inbox.view', 'operation_inbox.manage',
+    'hr.view', 'hr.supervise', 'hr.leave.approve', 'hr.attendance.manage',
   ],
   ADJUSTER: [
     'claim_file.view', 'claim_file.update', 'claim_file.status_change',

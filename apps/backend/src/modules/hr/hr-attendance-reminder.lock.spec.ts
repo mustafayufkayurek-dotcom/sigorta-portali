@@ -15,6 +15,28 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe('puantaj hatırlatma LOCK', () => {
+  it('mail giden hesap kendi gününü Devam’dan onaylar', () => {
+    const guard = readFileSync(
+      join(here, '../../common/guards/permissions.guard.ts'),
+      'utf8',
+    );
+    const office = guard.slice(guard.indexOf('OFFICE_STAFF:'), guard.indexOf('FIELD_STAFF:'));
+    const finans = guard.slice(guard.indexOf('FINANS:'), guard.indexOf('ACCOUNTANT:'));
+    const accountant = guard.slice(guard.indexOf('ACCOUNTANT:'), guard.indexOf('MANAGER:'));
+    const manager = guard.slice(guard.indexOf('MANAGER:'), guard.indexOf('ADJUSTER:'));
+    for (const block of [office, finans, accountant, manager]) {
+      assert.match(block, /hr\.view/);
+    }
+    assert.match(office, /hr\.leave\.request/);
+    assert.doesNotMatch(office, /hr\.supervise/);
+    const controller = readFileSync(join(here, 'hr.controller.ts'), 'utf8');
+    const confirm = controller.slice(
+      controller.indexOf("@Post('attendance/confirm-day')"),
+      controller.indexOf("@Post('attendance/confirm-month')"),
+    );
+    assert.match(confirm, /hr\.view/);
+  });
+
   it('admin ve saha günlük puantaj maili almaz', () => {
     assert.equal(roleReceivesAttendanceReminders('admin'), false);
     assert.equal(roleReceivesAttendanceReminders('field_staff'), false);
