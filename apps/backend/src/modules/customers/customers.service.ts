@@ -8,6 +8,8 @@ import { applyTitleCase } from '@/common/utils/text-helpers';
 import {
   AUTHORIZED_PERSON_DIRTY_MESSAGE,
   isDirtyAuthorizedPersonName,
+  mergePrimaryIntoCustomerContacts,
+  shouldReplaceCustomerContacts,
 } from '@sigorta/shared';
 import * as ExcelJS from 'exceljs';
 import { classifyAuthorizedPersonNamesWithAi } from './authorized-person-ai.util';
@@ -542,20 +544,23 @@ export class CustomersService {
       throw err;
     });
 
-    if (contacts?.length) {
-      const valid = contacts.filter((c: any) => c.name?.trim());
-      if (valid.length) {
-        await this.prisma.customerContact.createMany({
-          data: valid.map((c: any) => ({
-            customerId: customer.id,
-            name: c.name,
-            role: c.role ?? null,
-            phone: c.phone ?? null,
-            email: c.email ?? null,
-            isPrimary: c.isPrimary ?? false,
-          })),
-        });
-      }
+    const createdContacts = mergePrimaryIntoCustomerContacts(contacts, {
+      firstName: rest.contactFirstName,
+      lastName: rest.contactLastName,
+      phone: rest.phone,
+      email: rest.email,
+    });
+    if (shouldReplaceCustomerContacts(createdContacts)) {
+      await this.prisma.customerContact.createMany({
+        data: createdContacts.map((c) => ({
+          customerId: customer.id,
+          name: c.name ?? '',
+          role: c.role ?? null,
+          phone: c.phone ?? null,
+          email: c.email ?? null,
+          isPrimary: c.isPrimary ?? false,
+        })),
+      });
     }
 
     if (contactInfos?.length) {
@@ -618,13 +623,18 @@ export class CustomersService {
     });
 
     if (contacts !== undefined) {
-      await this.prisma.customerContact.deleteMany({ where: { customerId: id } });
-      const valid = contacts.filter((c: any) => c.name?.trim());
-      if (valid.length) {
+      const merged = mergePrimaryIntoCustomerContacts(contacts, {
+        firstName: rest.contactFirstName ?? existing.contactFirstName,
+        lastName: rest.contactLastName ?? existing.contactLastName,
+        phone: rest.phone ?? existing.phone,
+        email: rest.email ?? existing.email,
+      });
+      if (shouldReplaceCustomerContacts(merged)) {
+        await this.prisma.customerContact.deleteMany({ where: { customerId: id } });
         await this.prisma.customerContact.createMany({
-          data: valid.map((c: any) => ({
+          data: merged.map((c) => ({
             customerId: id,
-            name: c.name,
+            name: c.name ?? '',
             role: c.role ?? null,
             phone: c.phone ?? null,
             email: c.email ?? null,

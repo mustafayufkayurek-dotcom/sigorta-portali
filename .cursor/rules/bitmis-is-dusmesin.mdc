@@ -31,6 +31,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 12. Tedarikçi WhatsApp: Dosya Konusu, konum, teyit.
 13. Satış fatura listesi: Hasar ve Acil ayrı.
 14. Gelen kutuda yeni yazı da dosya ekler.
+15. Müşteri kartında yetkili kişiler tek listededir. Karttaki ad listeden düşmez. Kaydet ikinci kişiyi silmez.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

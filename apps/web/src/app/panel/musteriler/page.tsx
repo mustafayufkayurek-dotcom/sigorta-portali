@@ -94,6 +94,7 @@ import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import {
   AUTHORIZED_PERSON_DIRTY_MESSAGE,
   isDirtyAuthorizedPersonName,
+  mergePrimaryIntoCustomerContacts,
 } from '@sigorta/shared';
 import {
   emptyCardNoteEntries,
@@ -1084,22 +1085,12 @@ export default function MusterilerPage() {
       updatedByUser: customer.updatedByUser ?? null,
     });
     setForm(mapCustomerRecordToForm(customer, STATIC_PROVINCES));
-    const mappedContacts = mapCustomerContactsToForm(customer.contacts ?? []);
-    const primaryFirst = String(customer.contactFirstName ?? '').trim();
-    const primaryLast = String(customer.contactLastName ?? '').trim();
-    if (
-      (primaryFirst || primaryLast)
-      && !(mappedContacts[0]?.firstName?.trim() || mappedContacts[0]?.lastName?.trim())
-    ) {
-      mappedContacts[0] = {
-        ...mappedContacts[0],
-        firstName: primaryFirst || mappedContacts[0]?.firstName || '',
-        lastName: primaryLast || mappedContacts[0]?.lastName || '',
-        phone: String(customer.phone ?? mappedContacts[0]?.phone ?? ''),
-        email: String(customer.email ?? mappedContacts[0]?.email ?? ''),
-      };
-    }
-    setContacts(mappedContacts);
+    setContacts(mapCustomerContactsToForm(customer.contacts ?? [], {
+      firstName: customer.contactFirstName,
+      lastName: customer.contactLastName,
+      phone: customer.phone,
+      email: customer.email,
+    }));
     setContactInfos(mapCustomerContactInfosToForm(customer.contactInfos ?? []));
     setLocationCoords(
       customer.latitude != null && customer.longitude != null
@@ -1798,13 +1789,21 @@ export default function MusterilerPage() {
               ? 'hasar'
               : null,
         serviceBranches: form.subType === 'sigorta_sirketi' ? form.serviceBranches : [],
-        contacts: contacts
-          .filter((c) => c.firstName.trim() || c.lastName.trim())
-          .map((c) => ({
-            ...c,
-            name: `${c.firstName} ${c.lastName}`.trim(),
-            role: c.role === '__other__' ? '' : c.role,
-          })),
+        contacts: mergePrimaryIntoCustomerContacts(
+          contacts
+            .filter((c) => c.firstName.trim() || c.lastName.trim())
+            .map((c) => ({
+              ...c,
+              name: `${c.firstName} ${c.lastName}`.trim(),
+              role: c.role === '__other__' ? '' : c.role,
+            })),
+          {
+            firstName: form.contactFirstName,
+            lastName: form.contactLastName,
+            phone: form.phone,
+            email: form.email,
+          },
+        ),
         contactInfos: contactInfos.filter((ci) => ci.value.trim()),
       };
       if (form.customerType === 'individual') {

@@ -44,6 +44,7 @@ export * from './acil-inbox-file-owner';
 export * from './acil-file-owner-delegation';
 export * from './acil-digital-approval-pause';
 export * from './authorized-person-name';
+export * from './customer-contacts-merge';
 export * from './acil-locksmith-issue';
 export * from './acil-photo-kind';
 export * from './file-recognized-partners';

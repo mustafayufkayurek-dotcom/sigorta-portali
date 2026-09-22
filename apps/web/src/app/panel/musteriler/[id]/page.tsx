@@ -12,6 +12,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
 import { customerSubTypeLabel, customerDisplayName, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType } from '@/utils/customer-form-helpers';
+import { mergePrimaryIntoCustomerContacts } from '@sigorta/shared';
 import { isPortalCustomerSubType } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { CustomerPortalUsersPanel } from '@/components/customers/CustomerPortalUsersPanel';
 import { customerFileCounts } from '@/utils/customer-file-counts';
@@ -305,7 +306,12 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
 
 // ── Yetkili & İletişim Tab ────────────────────────────────────────────────────
 function YetkiliIletisimTab({ customer, canInvite }: { customer: any; canInvite: boolean }) {
-  const contacts: any[] = customer.contacts || [];
+  const contacts: any[] = mergePrimaryIntoCustomerContacts(customer.contacts || [], {
+    firstName: customer.contactFirstName,
+    lastName: customer.contactLastName,
+    phone: customer.phone,
+    email: customer.email,
+  });
   const contactInfos: any[] = customer.contactInfos || [];
   const [notify, setNotify] = useState<AnaMusteriHaberlesme>(() => readAnaMusteriHaberlesme(customer.id));
 
@@ -784,7 +790,7 @@ export default function CustomerDetailPage() {
   const isCorporate = (customer.customerType ?? customer.entityType) === 'corporate';
   const displayName = customerDisplayName(customer);
   const subTypeLabel = customerSubTypeLabel(customer.subType);
-  const contactCount = customer.contacts?.length ?? 0;
+  const contactCount = contacts.length;
   const isOverdue = customer.followUpDate && new Date(customer.followUpDate) < new Date();
 
   return (

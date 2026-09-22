@@ -6,6 +6,7 @@ import {
 import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import { cardNotesToFormEntries } from '@/utils/card-notes';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { mergePrimaryIntoCustomerContacts } from '@sigorta/shared';
 
 export type CustomerType = 'individual' | 'corporate';
 
@@ -253,29 +254,63 @@ export function normalizeCustomerAddressFields(form: {
   };
 }
 
-export function mapCustomerContactsToForm(contacts: Array<{
-  id?: string;
-  name?: string;
-  role?: string | null;
-  phone?: string | null;
-  email?: string | null;
-}> = []) {
-  if (!contacts.length) {
-    return [{ firstName: '', lastName: '', role: '', phone: '', phoneType: 'gsm' as const, extensionNo: '', email: '' }];
-  }
-  return contacts.map((contact) => {
-    const parts = String(contact.name ?? '').trim().split(/\s+/);
-    const firstName = parts[0] ?? '';
-    const lastName = parts.slice(1).join(' ');
+export function mapCustomerContactsToForm(
+  contacts: Array<{
+    id?: string;
+    name?: string;
+    role?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  }> = [],
+  primary?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  },
+) {
+  const mapped = contacts.length
+    ? contacts.map((contact) => {
+        const parts = String(contact.name ?? '').trim().split(/\s+/);
+        const firstName = parts[0] ?? '';
+        const lastName = parts.slice(1).join(' ');
+        return {
+          id: contact.id,
+          firstName,
+          lastName,
+          role: contact.role ?? '',
+          phone: contact.phone ?? '',
+          phoneType: 'gsm' as const,
+          extensionNo: '',
+          email: contact.email ?? '',
+        };
+      })
+    : [{ firstName: '', lastName: '', role: '', phone: '', phoneType: 'gsm' as const, extensionNo: '', email: '' }];
+
+  if (!primary) return mapped;
+
+  const merged = mergePrimaryIntoCustomerContacts(
+    mapped.map((row) => ({
+      name: `${row.firstName} ${row.lastName}`.trim(),
+      firstName: row.firstName,
+      lastName: row.lastName,
+      role: row.role,
+      phone: row.phone,
+      email: row.email,
+    })),
+    primary,
+  );
+  if (!merged.length) return mapped;
+  return merged.map((row) => {
+    const parts = String(row.name ?? '').trim().split(/\s+/);
     return {
-      id: contact.id,
-      firstName,
-      lastName,
-      role: contact.role ?? '',
-      phone: contact.phone ?? '',
+      firstName: String(row.firstName ?? parts[0] ?? ''),
+      lastName: String(row.lastName ?? parts.slice(1).join(' ')),
+      role: String(row.role ?? ''),
+      phone: String(row.phone ?? ''),
       phoneType: 'gsm' as const,
       extensionNo: '',
-      email: contact.email ?? '',
+      email: String(row.email ?? ''),
     };
   });
 }
