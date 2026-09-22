@@ -1084,7 +1084,22 @@ export default function MusterilerPage() {
       updatedByUser: customer.updatedByUser ?? null,
     });
     setForm(mapCustomerRecordToForm(customer, STATIC_PROVINCES));
-    setContacts(mapCustomerContactsToForm(customer.contacts ?? []));
+    const mappedContacts = mapCustomerContactsToForm(customer.contacts ?? []);
+    const primaryFirst = String(customer.contactFirstName ?? '').trim();
+    const primaryLast = String(customer.contactLastName ?? '').trim();
+    if (
+      (primaryFirst || primaryLast)
+      && !(mappedContacts[0]?.firstName?.trim() || mappedContacts[0]?.lastName?.trim())
+    ) {
+      mappedContacts[0] = {
+        ...mappedContacts[0],
+        firstName: primaryFirst || mappedContacts[0]?.firstName || '',
+        lastName: primaryLast || mappedContacts[0]?.lastName || '',
+        phone: String(customer.phone ?? mappedContacts[0]?.phone ?? ''),
+        email: String(customer.email ?? mappedContacts[0]?.email ?? ''),
+      };
+    }
+    setContacts(mappedContacts);
     setContactInfos(mapCustomerContactInfosToForm(customer.contactInfos ?? []));
     setLocationCoords(
       customer.latitude != null && customer.longitude != null
@@ -1485,6 +1500,8 @@ export default function MusterilerPage() {
 
   useEffect(() => {
     if (!showModal || !inboxPrefillFocusRole) return;
+    setActiveSection(0);
+    setContactsOpen(true);
     const t = setTimeout(() => {
       firstContactRoleRef.current?.focus();
       setInboxPrefillFocusRole(false);
@@ -1583,6 +1600,13 @@ export default function MusterilerPage() {
 
   const upC = (i: number, f: keyof ContactPerson, v: string) => setContacts((p) => p.map((c, j) => j === i ? { ...c, [f]: v } : c));
   const upContact = (i: number, patch: Partial<ContactPerson>) => setContacts((p) => p.map((c, j) => j === i ? { ...c, ...patch } : c));
+  /** Kurumsal 1. adım yetkilisi ile Yetkili Kişiler #1 aynı kayıt kalsın. */
+  const syncPrimaryContact = (patch: Partial<ContactPerson>) => {
+    setContacts((prev) => {
+      const list = prev.length > 0 ? prev : [emptyContact()];
+      return list.map((c, i) => (i === 0 ? { ...c, ...patch } : c));
+    });
+  };
   const upCI = (i: number, f: keyof ContactInfoItem, v: string) => setContactInfos((p) => p.map((ci, j) => j === i ? { ...ci, [f]: v } : ci));
   const addTag = () => {
     const t = toTitleCaseTR(tagInput.trim());
@@ -2961,12 +2985,17 @@ export default function MusterilerPage() {
                             <FormField label="Yetkili Kişi Adı" error={fieldErrors.contactFirstName}>
                               <input className={fieldErrors.contactFirstName ? inpError : inp} placeholder="Ad" value={form.contactFirstName}
                                 onChange={(e) => {
-                                  setForm((p) => ({ ...p, contactFirstName: e.target.value }));
+                                  const value = e.target.value;
+                                  setForm((p) => ({ ...p, contactFirstName: value }));
+                                  syncPrimaryContact({ firstName: value });
                                   setFieldErrors((prev) => { const n = { ...prev }; delete n.contactFirstName; return n; });
                                 }}
                                 onBlur={(e) => {
                                   const v = toTitleCaseTR(e.target.value.trim());
-                                  if (v) setForm((p) => ({ ...p, contactFirstName: v }));
+                                  if (v) {
+                                    setForm((p) => ({ ...p, contactFirstName: v }));
+                                    syncPrimaryContact({ firstName: v });
+                                  }
                                   const first = v || form.contactFirstName;
                                   if (
                                     isDirtyAuthorizedPersonName({
@@ -2983,12 +3012,17 @@ export default function MusterilerPage() {
                             <FormField label="Yetkili Kişi Soyadı" error={fieldErrors.contactFirstName}>
                               <input className={fieldErrors.contactFirstName ? inpError : inp} placeholder="Soyad" value={form.contactLastName}
                                 onChange={(e) => {
-                                  setForm((p) => ({ ...p, contactLastName: e.target.value }));
+                                  const value = e.target.value;
+                                  setForm((p) => ({ ...p, contactLastName: value }));
+                                  syncPrimaryContact({ lastName: value });
                                   setFieldErrors((prev) => { const n = { ...prev }; delete n.contactFirstName; return n; });
                                 }}
                                 onBlur={(e) => {
                                   const v = toTitleCaseTR(e.target.value.trim());
-                                  if (v) setForm((p) => ({ ...p, contactLastName: v }));
+                                  if (v) {
+                                    setForm((p) => ({ ...p, contactLastName: v }));
+                                    syncPrimaryContact({ lastName: v });
+                                  }
                                   const last = v || form.contactLastName;
                                   if (
                                     isDirtyAuthorizedPersonName({
@@ -3004,6 +3038,39 @@ export default function MusterilerPage() {
                             </FormField>
                           </div>
                         </div>
+                        <FormField label="Görev / Ünvan">
+                          <select
+                            ref={firstContactRoleRef}
+                            className={inp}
+                            value={
+                              contacts[0]?.role === '' || contacts[0]?.role == null
+                                ? ''
+                                : (relationshipTypes.includes(contacts[0].role) ? contacts[0].role : '__other__')
+                            }
+                            onChange={(e) => {
+                              if (e.target.value === '__other__') syncPrimaryContact({ role: '__other__' });
+                              else syncPrimaryContact({ role: e.target.value });
+                            }}
+                          >
+                            <option value="">Görevini seçin...</option>
+                            {relationshipTypes.filter((rt) => rt !== 'Diğer').map((rt) => (
+                              <option key={rt} value={rt}>{rt}</option>
+                            ))}
+                            <option value="__other__">Diğer</option>
+                          </select>
+                          {(contacts[0]?.role === '__other__'
+                            || (Boolean(contacts[0]?.role)
+                              && contacts[0]?.role !== ''
+                              && !relationshipTypes.includes(contacts[0]?.role ?? '')
+                              && contacts[0]?.role !== '__other__')) && (
+                            <input
+                              className={`${inp} mt-1.5`}
+                              placeholder="Görevi / Ünvanı girin..."
+                              value={contacts[0]?.role === '__other__' ? '' : (contacts[0]?.role ?? '')}
+                              onChange={(e) => syncPrimaryContact({ role: e.target.value || '__other__' })}
+                            />
+                          )}
+                        </FormField>
                         <div className="col-span-1 sm:col-span-2">
                         <FormField label="Telefon" error={phoneError ?? undefined}>
                           <ContactPhoneField
@@ -3012,12 +3079,19 @@ export default function MusterilerPage() {
                             extensionNo={form.extensionNo}
                             onPhoneChange={(v) => {
                               setForm((p) => ({ ...p, phone: v }));
+                              syncPrimaryContact({ phone: v });
                               setPhoneError(null);
                               setPhoneWarn(null);
                               setDuplicateConflicts((p) => { const n = { ...p }; delete n.phone; return n; });
                             }}
-                            onPhoneTypeChange={(t) => setForm((p) => ({ ...p, phoneType: t, extensionNo: '' }))}
-                            onExtensionChange={(v) => setForm((p) => ({ ...p, extensionNo: v }))}
+                            onPhoneTypeChange={(t) => {
+                              setForm((p) => ({ ...p, phoneType: t, extensionNo: '' }));
+                              syncPrimaryContact({ phoneType: t, extensionNo: '' });
+                            }}
+                            onExtensionChange={(v) => {
+                              setForm((p) => ({ ...p, extensionNo: v }));
+                              syncPrimaryContact({ extensionNo: v });
+                            }}
                             onPhoneBlur={handlePhoneBlur}
                           />
                           {!phoneError && phoneWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {phoneWarn}</p>}
@@ -3025,7 +3099,14 @@ export default function MusterilerPage() {
                         </div>
                         <FormField label="E-posta">
                           <input type="email" className={inp} placeholder="ornek@mail.com" value={form.email}
-                            onChange={(e) => { setForm((p) => ({ ...p, email: e.target.value })); setEmailError(null); setEmailWarn(null); setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; }); }}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setForm((p) => ({ ...p, email: value }));
+                              syncPrimaryContact({ email: value });
+                              setEmailError(null);
+                              setEmailWarn(null);
+                              setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; });
+                            }}
                             onBlur={() => { handleEmailBlur(); handleEmailDuplicateCheck(form.email); }} />
                           {emailError && <p className="text-xs text-status-danger mt-1.5">{emailError}</p>}
                           {!emailError && emailWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {emailWarn}</p>}
@@ -3197,7 +3278,6 @@ export default function MusterilerPage() {
                               </div>
                               <FormField label="Görev / Ünvan">
                                 <select
-                                  ref={idx === 0 ? firstContactRoleRef : undefined}
                                   className={inp}
                                   value={c.role === '' ? '' : (relationshipTypes.includes(c.role) ? c.role : '__other__')}
                                   onChange={(e) => {

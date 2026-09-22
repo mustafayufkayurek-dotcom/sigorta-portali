@@ -34,4 +34,22 @@ describe('ilişki türü kullanım alanı LOCK', () => {
     assert.match(page, /relationshipTypeLabelsForArea/);
     assert.doesNotMatch(page, /\.includes\('musteri'\)/);
   });
+
+  it('kurumsal Müşteri Bilgileri ve Yetkili adımında Görev durur', () => {
+    const page = readFileSync(join(here, '../app/panel/musteriler/page.tsx'), 'utf8');
+    const step1 = page.slice(
+      page.indexOf('{activeSection === 0 && ('),
+      page.indexOf('{activeSection === 1 && ('),
+    );
+    assert.match(step1, /Yetkili Kişi Adı/);
+    assert.match(step1, /label="Görev \/ Ünvan"/);
+    assert.match(step1, /Görevini seçin/);
+    assert.match(step1, /syncPrimaryContact/);
+    const step2 = page.slice(
+      page.indexOf('{activeSection === 1 && ('),
+      page.indexOf('{activeSection === 2 && ('),
+    );
+    assert.match(step2, /label="Görev \/ Ünvan"/);
+    assert.match(step2, /Görevini seçin/);
+  });
 });
