@@ -790,7 +790,12 @@ export default function CustomerDetailPage() {
   const isCorporate = (customer.customerType ?? customer.entityType) === 'corporate';
   const displayName = customerDisplayName(customer);
   const subTypeLabel = customerSubTypeLabel(customer.subType);
-  const contactCount = contacts.length;
+  const contactCount = mergePrimaryIntoCustomerContacts(customer.contacts || [], {
+    firstName: customer.contactFirstName,
+    lastName: customer.contactLastName,
+    phone: customer.phone,
+    email: customer.email,
+  }).length;
   const isOverdue = customer.followUpDate && new Date(customer.followUpDate) < new Date();
 
   return (

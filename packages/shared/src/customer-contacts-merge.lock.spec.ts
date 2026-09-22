@@ -74,5 +74,7 @@ describe('müşteri yetkili kişiler LOCK', () => {
       'utf8',
     );
     assert.match(detail, /mergePrimaryIntoCustomerContacts/);
+    assert.match(detail, /const contactCount = mergePrimaryIntoCustomerContacts/);
+    assert.doesNotMatch(detail, /const contactCount = contacts\.length/);
   });
 });
