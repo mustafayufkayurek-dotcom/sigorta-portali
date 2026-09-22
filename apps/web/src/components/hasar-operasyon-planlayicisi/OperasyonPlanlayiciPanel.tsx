@@ -353,7 +353,7 @@ function PlanlayiciInner({
                   <div className="mt-3">{renderStepContent(activeStep)}</div>
                 </div>
 
-                <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3">
+                <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 safe-area-pb">
                   {saveNotice ? (
                     <p
                       className={`mb-2 rounded-lg px-3 py-2 text-xs ${

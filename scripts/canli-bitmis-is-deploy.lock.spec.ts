@@ -66,6 +66,10 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'invoice-request-list.lock.spec',
       'relationship-type-usage.lock.spec',
       'customer-contacts-merge.lock.spec',
+      'hasar-dosya-yukleme.lock.spec',
+      'attendance-load-error.lock.spec',
+      'ui-action-timeout.lock.spec',
+      'panel-table-scroll.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

@@ -26,6 +26,8 @@ import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { isLegacyOpsCatchupBypassActive } from '@/utils/whatsapp-sent-confirm-gate';
 import { hasarCancelReasonOk } from '@sigorta/shared';
 import { reportCaughtError } from '@/utils/report-caught-error';
+import { getApiErrorMessage } from '@/utils/api-error';
+import { UI_ACTION_TIMEOUT_MS } from '@/utils/ui-action-timeout';
 import { getMandatoryChecks, missingMandatoryLabels } from './mandatory-fields';
 import type { StepId } from './types';
 import {
@@ -342,7 +344,7 @@ export function PlannerProvider({
             result: input?.status === 'sent' ? 'WhatsApp gönderildi' : 'WhatsApp açıldı',
             purpose: input?.purpose,
           },
-          { headers: authHeader() },
+          { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
         );
         await refreshClaim();
         return { ok: true, message: 'WhatsApp kaydı yazıldı.' };
@@ -485,7 +487,7 @@ export function PlannerProvider({
                   : null,
                 notes: apptNote.trim() || null,
               },
-              { headers: authHeader() },
+              { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
             );
             await refreshClaim();
             return { ok: true, message: 'Ana randevu kaydedildi.' };
@@ -499,13 +501,13 @@ export function PlannerProvider({
               await axios.post(
                 `${API}/claim-files/${claimId}/assign`,
                 { assignedFieldUserId: assignedInspectorId },
-                { headers: authHeader() },
+                { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
               );
             } else {
               await axios.post(
                 `${API}/claim-files/${claimId}/assign-inspector-vendor`,
                 { vendorId: assignedInspectorId, note: inspectorNote || undefined },
-                { headers: authHeader() },
+                { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
               );
             }
             await refreshClaim();
@@ -531,7 +533,7 @@ export function PlannerProvider({
                 supplierNotes,
                 note: Object.values(supplierNotes).join(' | ') || undefined,
               },
-              { headers: authHeader() },
+              { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
             );
             await refreshClaim();
             if (assignedInspectorId && assignedSupplierIds.includes(assignedInspectorId)) {
@@ -565,7 +567,7 @@ export function PlannerProvider({
                 message: waBody,
                 status: 'ready',
               },
-              { headers: authHeader() },
+              { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
             );
             await refreshClaim();
             return {
@@ -615,7 +617,7 @@ export function PlannerProvider({
             await axios.post(
               `${API}/claim-operation-center/${claimId}/complete-repair`,
               {},
-              { headers: authHeader() },
+              { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
             );
             await refreshClaim();
             return { ok: true, message: 'Onarım bitti. Yönetici ve finansa mail gitti. Fatura için dosya kapanmaz.' };
@@ -632,7 +634,7 @@ export function PlannerProvider({
                 message: waBody || 'Kapanış anketi',
                 status: 'ready',
               },
-              { headers: authHeader() },
+              { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
             );
             await refreshClaim();
             return { ok: true, message: 'Kapanış anketi WhatsApp kaydı yazıldı.' };
@@ -662,7 +664,7 @@ export function PlannerProvider({
             await axios.post(
               `${API}/claim-files/${claimId}/office-close`,
               {},
-              { headers: authHeader() },
+              { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
             );
             await refreshClaim();
             return { ok: true, message: 'Dosya kapatıldı. Kapanış maili dış firmalara gider.' };
@@ -670,14 +672,8 @@ export function PlannerProvider({
           default:
             return { ok: false, message: 'Bu adım için kayıt tanımlı değil.' };
         }
-      } catch (error: any) {
-        const msg =
-          error?.response?.data?.message ??
-          (Array.isArray(error?.response?.data?.message)
-            ? error.response.data.message.join(', ')
-            : null) ??
-          'Kayıt başarısız.';
-        return { ok: false, message: typeof msg === 'string' ? msg : 'Kayıt başarısız.' };
+      } catch (error: unknown) {
+        return { ok: false, message: getApiErrorMessage(error, 'Kayıt başarısız.') };
       } finally {
         saveLock.current = false;
         setSaving(false);
@@ -734,18 +730,12 @@ export function PlannerProvider({
         await axios.post(
           `${API}/claim-files/${claimId}/office-cancel`,
           { reason: reason.trim() },
-          { headers: authHeader() },
+          { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
         );
         await refreshClaim();
         return { ok: true, message: 'Dosya iptal edildi.' };
-      } catch (error: any) {
-        const msg =
-          error?.response?.data?.message ??
-          (Array.isArray(error?.response?.data?.message)
-            ? error.response.data.message.join(', ')
-            : null) ??
-          'İptal kaydedilemedi.';
-        return { ok: false, message: typeof msg === 'string' ? msg : 'İptal kaydedilemedi.' };
+      } catch (error: unknown) {
+        return { ok: false, message: getApiErrorMessage(error, 'İptal kaydedilemedi.') };
       } finally {
         saveLock.current = false;
         setSaving(false);

@@ -2007,7 +2007,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             hidden={mustChangePassword}
           />
           {/* overflow-x-clip: hidden/auto ara scrollport oluşturup sticky thead’i kırmaz (v329) */}
-          <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-clip bg-slate-50/90 dark:bg-slate-950">
+          <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-clip bg-slate-50/90 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:bg-slate-950">
         <GlobalActivityStrip />
         {maintenanceMode && (
           <div className="border-b border-yellow-300 bg-yellow-50 px-4 py-2.5">
@@ -2063,7 +2063,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
         )}
-        <main className={`min-w-0 flex-1 overflow-x-clip ${isPortalUser ? 'pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}>
+        <main className={`min-w-0 flex-1 overflow-x-clip ${isPortalUser ? 'pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0' : 'pb-[env(safe-area-inset-bottom)]'}`}>
           <div className={`mx-auto min-w-0 w-full px-3 sm:px-4 ${PANEL_MAIN_TOP}`}>
             <TopProgressBar />
             {contextBackLink && (

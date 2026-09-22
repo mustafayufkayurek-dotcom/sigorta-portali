@@ -49,6 +49,8 @@ describe('panel table scroll lock', () => {
     const picker = read('components/ui/TableColumnPicker.tsx');
     assert.match(picker, /export function PanelTableScroll/);
     assert.match(picker, /min-w-0 w-full max-w-full overflow-x-auto/);
+    assert.match(picker, /Yana Kaydırın — İşlemler Sağda/);
+    assert.match(picker, /bg-gradient-to-l from-white to-transparent/);
     assert.match(picker, /export function PanelOrderedHeaderRow/);
   });
 

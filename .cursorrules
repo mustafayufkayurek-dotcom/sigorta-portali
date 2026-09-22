@@ -15,5 +15,8 @@ Kart kuru yazı yığını değildir. Anlamlı ikon durur. Tıklanacak şeyin ta
 ## Yasak
 Bitmiş ekranı “yenileme” diye bozmak. Her sayfaya ayrı tarza KPI duvarı. Küçük işte her şeyi baştan çizmek. Canlıya alma denmeden canlıya sürmek.
 
+## Kilit — Puantaj / Hasar yükleme ve süre (v617)
+Puantaj takvimi mobil ✓ dönüşümü, Hasar dosyası skeleton loading ekranları, hata ayrım mantığı ve API 10 saniye timeout kalkanı kilitli ve kalıcı mimarilerdir. Gelecekteki hiçbir prompt veya geliştirme talebinde bu CSS kuralları ve loading/error state yapıları değiştirilemez, silinemez veya eski sürüme döndürülemez.
+
 İş kuralı, silme, para, canlıya alma — yalnız bunları sor.
 Türkçe.

@@ -955,9 +955,61 @@ export function PanelTableScroll({
   children: ReactNode;
   className?: string;
 }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canScroll, setCanScroll] = useState(false);
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(false);
+
+  const updateHints = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const overflow = el.scrollWidth > el.clientWidth + 2;
+    setCanScroll(overflow);
+    setShowLeft(overflow && el.scrollLeft > 4);
+    setShowRight(overflow && el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    updateHints();
+    const ro = new ResizeObserver(() => updateHints());
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    el.addEventListener('scroll', updateHints, { passive: true });
+    window.addEventListener('resize', updateHints);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('scroll', updateHints);
+      window.removeEventListener('resize', updateHints);
+    };
+  }, [updateHints, children]);
+
   return (
-    <div className={`min-w-0 w-full max-w-full overflow-x-auto ${className}`.trim()}>
-      {children}
+    <div className={`relative min-w-0 w-full max-w-full ${className}`.trim()}>
+      {canScroll ? (
+        <p className="pointer-events-none absolute -top-6 right-0 z-10 text-[11px] font-medium text-slate-400">
+          Yana Kaydırın — İşlemler Sağda
+        </p>
+      ) : null}
+      {showLeft ? (
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-8 bg-gradient-to-r from-white to-transparent"
+          aria-hidden
+        />
+      ) : null}
+      {showRight ? (
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-10 bg-gradient-to-l from-white to-transparent"
+          aria-hidden
+        />
+      ) : null}
+      <div
+        ref={scrollerRef}
+        className="min-w-0 w-full max-w-full overflow-x-auto"
+      >
+        {children}
+      </div>
     </div>
   );
 }

@@ -67,9 +67,11 @@ import {
 import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, hasarCancelActorName, isExpertFirmCustomer, isInsuredCollectionParty, pickHasarCancelHistory, staffVisibleClaimStatusName } from '@sigorta/shared';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { isUiActionTimeout, UI_ACTION_TIMEOUT_MESSAGE, UI_ACTION_TIMEOUT_MS } from '@/utils/ui-action-timeout';
 import { fmtDateTime } from '@/utils/date-helpers';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
+import { HasarDosyaKabukSkeleton } from '@/components/ui/skeletons/HasarDosyaKabukSkeleton';
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
   if (!roleCode) return null;
@@ -268,7 +270,7 @@ function FieldStaffVisitCard({
       await axios.post(
         `${API}/claim-files/${claim.id}/inspection`,
         { note: 'Saha tespiti tamamlandı.' },
-        { headers: authHeader() },
+        { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
       );
       const nowIso = new Date().toISOString();
       onClaimUpdated?.({
@@ -665,7 +667,7 @@ function DosyadaKimlerVarCard({
   useEffect(() => {
     if (!claim?.id) return;
     setOfficeSuggLoading(true);
-    axios.get(`${API}/claim-files/${claim.id}/suggest-responsible`, { headers: authHeader() })
+    axios.get(`${API}/claim-files/${claim.id}/suggest-responsible`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS })
       .then((r) => setOfficeSuggestions(r.data.data || []))
       .catch(() => setOfficeSuggestions([]))
       .finally(() => setOfficeSuggLoading(false));
@@ -674,7 +676,7 @@ function DosyadaKimlerVarCard({
   useEffect(() => {
     if (!claim?.id) return;
     setFieldSuggLoading(true);
-    axios.get(`${API}/claim-files/${claim.id}/suggest-responsible?role=field_staff`, { headers: authHeader() })
+    axios.get(`${API}/claim-files/${claim.id}/suggest-responsible?role=field_staff`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS })
       .then((r) => setFieldSuggestions(r.data.data || []))
       .catch(() => setFieldSuggestions([]))
       .finally(() => setFieldSuggLoading(false));
@@ -684,7 +686,7 @@ function DosyadaKimlerVarCard({
     if (!canAssign || !activePanel || activePanel === 'supplier') return;
     const role = activePanel === 'field' ? 'field_staff' : 'office_staff';
     axios
-      .get(`${API}/claim-files/assignable-staff?role=${role}`, { headers: authHeader() })
+      .get(`${API}/claim-files/assignable-staff?role=${role}`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS })
       .then((r) => {
         const list = r.data?.data ?? [];
         const users = Array.isArray(list) ? list : [];
@@ -706,7 +708,7 @@ function DosyadaKimlerVarCard({
     setVendorsLoading(true);
     setVendorSuggLoading(true);
     const loadAllActive = () =>
-      axios.get(`${API}/vendors?status=active&limit=100`, { headers: authHeader() })
+      axios.get(`${API}/vendors?status=active&limit=100`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS })
         .then((r2) => {
           const list = r2.data.data?.vendors ?? r2.data.data ?? [];
           setVendors(Array.isArray(list) ? list : []);
@@ -718,8 +720,8 @@ function DosyadaKimlerVarCard({
         });
 
     Promise.all([
-      axios.get(`${API}/claim-files/${claim.id}/vendors/nearby?purpose=supplier`, { headers: authHeader() }),
-      axios.get(`${API}/claim-files/${claim.id}/vendors/recommended?limit=3`, { headers: authHeader() }),
+      axios.get(`${API}/claim-files/${claim.id}/vendors/nearby?purpose=supplier`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS }),
+      axios.get(`${API}/claim-files/${claim.id}/vendors/recommended?limit=3`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS }),
     ])
       .then(async ([nearbyRes, recommendRes]) => {
         const nearby = nearbyRes.data.data ?? [];
@@ -747,7 +749,7 @@ function DosyadaKimlerVarCard({
   useEffect(() => {
     if (!canAssign || activePanel !== 'field' || !claim?.id) return;
     setInspectorVendorsLoading(true);
-    axios.get(`${API}/claim-files/${claim.id}/vendors/nearby?purpose=inspector`, { headers: authHeader() })
+    axios.get(`${API}/claim-files/${claim.id}/vendors/nearby?purpose=inspector`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS })
       .then((r) => setInspectorVendors(r.data.data ?? []))
       .catch(() => setInspectorVendors([]))
       .finally(() => setInspectorVendorsLoading(false));
@@ -772,7 +774,7 @@ function DosyadaKimlerVarCard({
     setAssignError('');
     setAssignSuccess('');
     try {
-      const r = await axios.post(`${API}/claim-files/${claim.id}/assign`, { assignedOfficeUserId: userId }, { headers: authHeader() });
+      const r = await axios.post(`${API}/claim-files/${claim.id}/assign`, { assignedOfficeUserId: userId }, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS });
       const updated = r.data?.data ?? r.data;
       const assigned = updated?.assignedOfficeUser
         ?? officeSuggestions.find((s) => s.user.id === userId)?.user
@@ -782,7 +784,7 @@ function DosyadaKimlerVarCard({
       setActivePanel(null);
       setAssignSuccess('Dosya sorumlusu güncellendi.');
     } catch (e: any) {
-      setAssignError(e?.response?.data?.message ?? 'Atama başarısız.');
+      setAssignError(getApiErrorMessage(e, 'Atama başarısız.'));
     } finally {
       setAssigningOffice(null);
     }
@@ -793,7 +795,7 @@ function DosyadaKimlerVarCard({
     setAssignError('');
     setAssignSuccess('');
     try {
-      const r = await axios.post(`${API}/claim-files/${claim.id}/assign`, { assignedFieldUserId: userId }, { headers: authHeader() });
+      const r = await axios.post(`${API}/claim-files/${claim.id}/assign`, { assignedFieldUserId: userId }, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS });
       const updated = r.data?.data ?? r.data;
       const assigned = updated?.assignedFieldUser
         ?? fieldSuggestions.find((s) => s.user.id === userId)?.user
@@ -803,7 +805,7 @@ function DosyadaKimlerVarCard({
       setActivePanel(null);
       setAssignSuccess('Saha tespitçisi güncellendi.');
     } catch (e: any) {
-      setAssignError(e?.response?.data?.message ?? 'Atama başarısız.');
+      setAssignError(getApiErrorMessage(e, 'Atama başarısız.'));
     } finally {
       setAssigningField(null);
     }
@@ -822,7 +824,7 @@ function DosyadaKimlerVarCard({
       const r = await axios.post(
         `${API}/claim-files/${claim.id}/assign-inspector-vendor`,
         { vendorId: selectedInspectorVendorId, note: assignNote },
-        { headers: authHeader() },
+        { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
       );
       const updated = r.data?.data ?? r.data;
       const vendor = updated?.assignedInspectorVendor ?? inspectorVendors.find((v) => v.id === selectedInspectorVendorId);
@@ -840,7 +842,7 @@ function DosyadaKimlerVarCard({
       setActivePanel(null);
       setAssignSuccess('Tespitçi (tedarikçi) güncellendi.');
     } catch (e: any) {
-      setAssignError(e?.response?.data?.message ?? 'Tespitçi atanamadı.');
+      setAssignError(getApiErrorMessage(e, 'Tespitçi atanamadı.'));
     } finally {
       setAssigningInspectorVendor(false);
     }
@@ -865,7 +867,7 @@ function DosyadaKimlerVarCard({
       const r = await axios.post(
         `${API}/claim-files/${claim.id}/assign-supplier`,
         { supplierIds: toAssign, note: assignNote },
-        { headers: authHeader() },
+        { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
       );
       const updated = r.data?.data ?? r.data;
       const suppliers: any[] = Array.isArray(updated?.assignedSuppliers) && updated.assignedSuppliers.length > 0
@@ -895,7 +897,7 @@ function DosyadaKimlerVarCard({
           : `${toAssign.length} tedarikçi atandı.`,
       );
     } catch (e: any) {
-      setAssignError(e?.response?.data?.message ?? 'Tedarikçi atanamadı.');
+      setAssignError(getApiErrorMessage(e, 'Tedarikçi atanamadı.'));
     } finally {
       setAssigningSupplier(false);
     }
@@ -909,7 +911,7 @@ function DosyadaKimlerVarCard({
     try {
       const r = await axios.delete(
         `${API}/claim-files/${claim.id}/suppliers/${vendorId}`,
-        { headers: authHeader() },
+        { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
       );
       const updated = r.data?.data ?? r.data;
       const suppliers: any[] = Array.isArray(updated?.assignedSuppliers)
@@ -925,7 +927,7 @@ function DosyadaKimlerVarCard({
       });
       setAssignSuccess('Tedarikçi kaldırıldı.');
     } catch (e: any) {
-      setAssignError(e?.response?.data?.message ?? 'Tedarikçi kaldırılamadı.');
+      setAssignError(getApiErrorMessage(e, 'Tedarikçi kaldırılamadı.'));
     } finally {
       setRemovingSupplierId(null);
     }
@@ -1462,7 +1464,7 @@ function GenelTab({
           ),
         },
       };
-      await axios.patch(`${API}/claim-files/${claim.id}`, payload, { headers: authHeader() });
+      await axios.patch(`${API}/claim-files/${claim.id}`, payload, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS });
       onClaimUpdated?.({
         financialVisibilityConfig: payload.financialVisibilityConfig,
         hideFinancialFromAssignees: false,
@@ -1609,9 +1611,14 @@ export default function ClaimFileDetailPage() {
   useEffect(() => {
     if (!id) return;
     setLoadError(null);
-    axios.get(`${API}/claim-files/${id}`, { headers: authHeader() })
+    axios.get(`${API}/claim-files/${id}`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS })
       .then((r) => setClaim(r.data.data))
       .catch((err) => {
+        if (isUiActionTimeout(err)) {
+          setLoadError(UI_ACTION_TIMEOUT_MESSAGE);
+          setClaim(null);
+          return;
+        }
         const status = err?.response?.status;
         const msg = err?.response?.data?.message;
         setLoadError(status === 403
@@ -1624,14 +1631,33 @@ export default function ClaimFileDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <div className="text-slate-400 py-16 text-center">Yükleniyor...</div>;
+  if (loading) {
+    return <HasarDosyaKabukSkeleton />;
+  }
   if (!claim) {
+    const isNotFoundOrForbidden = loadError === 'Bu dosyaya erişim izniniz yok.' || loadError === 'Dosya bulunamadı.';
     return (
       <div className="py-16 text-center space-y-3">
-        <p className="text-slate-500">{loadError ?? 'Dosya Bulunamadı.'}</p>
-        <button type="button" onClick={() => router.push('/panel/operasyon')} className="text-sm text-brand-600 hover:underline">
-          Operasyon sayfasına dön
-        </button>
+        <p className="text-slate-500">
+          {isNotFoundOrForbidden
+            ? (loadError ?? 'Dosya Bulunamadı.')
+            : (loadError === UI_ACTION_TIMEOUT_MESSAGE
+              ? loadError
+              : 'Bağlantı hatası oluştu, lütfen tekrar deneyin')}
+        </p>
+        {isNotFoundOrForbidden ? (
+          <button type="button" onClick={() => router.push('/panel/operasyon')} className="text-sm text-brand-600 hover:underline">
+            Operasyon sayfasına dön
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="min-h-11 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            Tekrar Dene
+          </button>
+        )}
       </div>
     );
   }
@@ -1832,7 +1858,7 @@ export default function ClaimFileDetailPage() {
                     }}
                     onClaimUpdated={() => {
                       axios
-                        .get(`${API}/claim-files/${id}`, { headers: authHeader() })
+                        .get(`${API}/claim-files/${id}`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS })
                         .then((r) => setClaim(r.data.data))
                         .catch(() => undefined);
                     }}

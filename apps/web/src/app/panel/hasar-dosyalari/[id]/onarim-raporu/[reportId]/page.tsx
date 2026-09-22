@@ -4280,7 +4280,7 @@ function EmergencyReportEditor({
   };
 
   return (
-    <div className="space-y-5 pb-28">
+    <div className="space-y-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <button type="button" onClick={() => router.push(claimPath)} className="text-slate-400 hover:text-slate-700 text-sm">← Geri</button>
@@ -4493,7 +4493,7 @@ function EmergencyReportEditor({
       </div>
 
       {/* Sticky Bottom Bar — Emergency */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg px-4 sm:px-6 py-3 z-30">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-3 shadow-lg safe-area-pb sm:px-6">
         <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
           <div className="hidden lg:block" />
           <div className="flex items-center justify-center min-w-0">
@@ -5788,7 +5788,7 @@ export default function RepairReportPage() {
   );
 
   return (
-    <div className="space-y-5 pb-28">
+    <div className="space-y-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {/* Header — sol kimlik · sağ durum + aşamalar + işlemler */}
       <div className="flex items-start gap-3 flex-wrap">
         <button type="button" onClick={() => {
@@ -6368,7 +6368,7 @@ export default function RepairReportPage() {
           readOnly={!isEditable}
         />
       </SectionCard>
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t-2 border-status-success/35 bg-white/95 backdrop-blur-md shadow-[0_-8px_32px_rgba(15,23,42,0.12)] px-4 sm:px-6 lg:px-8 py-3">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t-2 border-status-success/35 bg-white/95 px-4 py-3 shadow-[0_-8px_32px_rgba(15,23,42,0.12)] backdrop-blur-md safe-area-pb sm:px-6 lg:px-8">
         <div className="w-full grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-3 lg:gap-4">
           <div className="hidden lg:flex flex-col gap-0.5 min-w-0 justify-self-start max-w-[280px]">
             <p className="text-[10px] font-semibold text-slate-600 tracking-wide">Rapor Oluşturma Analizi</p>

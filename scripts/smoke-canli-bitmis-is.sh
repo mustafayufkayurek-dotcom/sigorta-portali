@@ -74,6 +74,10 @@ node --experimental-strip-types --test \
   apps/web/src/utils/claim-whatsapp-message.lock.spec.ts \
   apps/web/src/utils/invoice-request-list.lock.spec.ts \
   apps/web/src/utils/relationship-type-usage.lock.spec.ts \
-  packages/shared/src/customer-contacts-merge.lock.spec.ts
+  packages/shared/src/customer-contacts-merge.lock.spec.ts \
+  apps/web/src/app/panel/hasar-dosyalari/hasar-dosya-yukleme.lock.spec.ts \
+  apps/web/src/components/hr/attendance-load-error.lock.spec.ts \
+  apps/web/src/utils/ui-action-timeout.lock.spec.ts \
+  apps/web/src/utils/panel-table-scroll.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

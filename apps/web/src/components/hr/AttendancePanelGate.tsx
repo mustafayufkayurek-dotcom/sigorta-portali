@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api-client';
+import { getApiErrorMessage } from '@/utils/api-error';
+import { withUiActionTimeout, UI_ACTION_TIMEOUT_MESSAGE } from '@/utils/ui-action-timeout';
 import { AttendanceAccessGate } from './AttendanceAccessGate';
 
 type SummaryGate = {
@@ -24,6 +26,7 @@ export function AttendancePanelGate({ enabled }: Props) {
   const [pending, setPending] = useState(false);
   const [workDateLabel, setWorkDateLabel] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const load = useCallback(() => {
     if (!enabled) return;
@@ -47,14 +50,16 @@ export function AttendancePanelGate({ enabled }: Props) {
   const confirmToday = useCallback(() => {
     const now = new Date();
     setSaving(true);
-    apiClient
-      .post('hr/attendance/confirm-pending', {
+    setSaveError('');
+    withUiActionTimeout(
+      apiClient.post('hr/attendance/confirm-pending', {
         year: now.getFullYear(),
         month: now.getMonth() + 1,
-      })
+      }),
+    )
       .then(() => setPending(false))
-      .catch(() => {
-        /* kapı açık kalır */
+      .catch((err: unknown) => {
+        setSaveError(getApiErrorMessage(err, UI_ACTION_TIMEOUT_MESSAGE));
       })
       .finally(() => setSaving(false));
   }, []);
@@ -62,13 +67,18 @@ export function AttendancePanelGate({ enabled }: Props) {
   if (!enabled || !pending) return null;
 
   return (
-    <div className="fixed inset-0 z-[76] flex items-center justify-center bg-slate-100/90 p-4 dark:bg-slate-950/90">
+    <div className="fixed inset-0 z-[76] flex items-end justify-center bg-slate-100/90 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:bg-slate-950/90 sm:items-center">
       <div className="w-full max-w-lg">
         <AttendanceAccessGate
           mode="blocked"
           workDateLabel={workDateLabel || undefined}
           onConfirmAttendance={saving ? undefined : confirmToday}
         />
+        {saveError ? (
+          <p className="mt-3 text-center text-sm text-amber-800" data-testid="puantaj-islem-zaman-asimi">
+            {saveError}
+          </p>
+        ) : null}
       </div>
     </div>
   );

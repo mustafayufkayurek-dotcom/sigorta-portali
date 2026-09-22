@@ -62,6 +62,17 @@ function confirmedAtTime(iso: string | null | undefined) {
   });
 }
 
+function clockRange(clockInAt: string | null, clockOutAt: string | null) {
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleTimeString('tr-TR', {
+      timeZone: 'Europe/Istanbul',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  return `${clockInAt ? fmt(clockInAt) : '—'} – ${clockOutAt ? fmt(clockOutAt) : '—'}`;
+}
+
 type Props = {
   days: CalendarDay[];
   year: number;
@@ -69,7 +80,21 @@ type Props = {
   isLocked?: boolean;
   onConfirmDay?: (date: string) => void;
   confirmingDate?: string | null;
+  /** İlk yükleme: günler yokken ızgara durur */
+  waiting?: boolean;
+  /** Onay / yenileme: tuşlar silinmez, yerinde soluk şerit */
+  busy?: boolean;
 };
+
+function ConfirmSlotSkeleton() {
+  return (
+    <div
+      className="mt-auto h-7 w-full shrink-0 animate-pulse rounded-md bg-slate-200 sm:h-6"
+      aria-hidden
+      data-testid="puantaj-onay-yukleme"
+    />
+  );
+}
 
 export function AttendanceCalendar({
   days,
@@ -78,28 +103,44 @@ export function AttendanceCalendar({
   isLocked = false,
   onConfirmDay,
   confirmingDate,
+  waiting = false,
+  busy = false,
 }: Props) {
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const blanks = Array.from({ length: firstWeekday }, (_, i) => i);
   const dayMap = new Map(days.map((d) => [d.dayOfMonth, d]));
+  const daysInMonth = waiting
+    ? new Date(Date.UTC(year, month, 0)).getUTCDate()
+    : (days.length > 0 ? Math.max(...days.map((d) => d.dayOfMonth)) : 0);
 
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+    <div className="rounded-xl border border-slate-200 bg-white" aria-busy={waiting || busy || Boolean(confirmingDate)}>
       <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50">
         {WEEKDAY_LABELS.map((label) => (
-          <div key={label} className="py-2 text-center text-xs font-semibold text-slate-500">
+          <div key={label} className="px-0.5 py-2 text-center text-[10px] font-semibold text-slate-500 sm:text-xs">
             {label}
           </div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-px bg-slate-100">
         {blanks.map((i) => (
-          <div key={`blank-${i}`} className="min-h-[88px] bg-white" />
+          <div key={`blank-${i}`} className="min-h-[4.75rem] bg-white sm:min-h-[88px]" />
         ))}
-        {Array.from({ length: days.length > 0 ? Math.max(...days.map((d) => d.dayOfMonth)) : 0 }, (_, i) => i + 1).map((dom) => {
+        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((dom) => {
+          if (waiting) {
+            return (
+              <div
+                key={`wait-${dom}`}
+                className="flex min-h-[4.75rem] min-w-0 flex-col overflow-visible bg-white p-1 sm:min-h-[88px] sm:p-1.5"
+              >
+                <div className="h-3 w-4 animate-pulse rounded bg-slate-200" />
+                <ConfirmSlotSkeleton />
+              </div>
+            );
+          }
           const day = dayMap.get(dom);
           if (!day) {
-            return <div key={dom} className="min-h-[88px] bg-white" />;
+            return <div key={dom} className="min-h-[4.75rem] bg-white sm:min-h-[88px]" />;
           }
 
           const isSpecialStatus =
@@ -118,14 +159,15 @@ export function AttendanceCalendar({
             ? ''
             : day.statusLabel
               ?? (isPending ? 'Bekliyor' : day.attendanceStatus ? day.attendanceStatus : '—');
+          const confirming = confirmingDate === day.date;
 
           return (
             <div
               key={day.date}
-              className={`min-h-[88px] bg-white p-1.5 flex flex-col border ${style}`}
+              className={`flex min-h-[4.75rem] min-w-0 flex-col overflow-visible bg-white p-1 sm:min-h-[88px] sm:p-1.5 border ${style}`}
             >
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-xs font-bold">{dom}</span>
+              <div className="flex items-center justify-between gap-0.5">
+                <span className="text-[11px] font-bold sm:text-xs">{dom}</span>
                 {day.employeeConfirmedAt && (
                   <span
                     className="text-[10px] text-emerald-600"
@@ -136,25 +178,23 @@ export function AttendanceCalendar({
                 )}
               </div>
               {shortLabel && (
-                <p className="text-[10px] leading-tight mt-1 font-medium truncate">
+                <p className="mt-0.5 hidden text-[10px] font-medium leading-tight sm:block sm:truncate">
                   {shortLabel}
                 </p>
               )}
               {(day.minutesWorked ?? day.suggestedMinutes) != null && (
-                <p className="text-[10px] text-slate-500 mt-auto">
+                <p className="mt-auto hidden text-[10px] text-slate-500 sm:block">
                   {minutesLabel(day.minutesWorked ?? day.suggestedMinutes)}
                 </p>
               )}
               {(day.clockInAt || day.clockOutAt) && (
-                <p className="text-[10px] text-slate-500 leading-tight">
-                  {day.clockInAt ? new Date(day.clockInAt).toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
-                  {' – '}
-                  {day.clockOutAt ? new Date(day.clockOutAt).toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
+                <p className="hidden text-[10px] leading-tight text-slate-500 sm:block" title={clockRange(day.clockInAt, day.clockOutAt)}>
+                  {clockRange(day.clockInAt, day.clockOutAt)}
                 </p>
               )}
               {(day.isLateStart || day.isEarlyLeave) && (
                 <p
-                  className="text-[10px] font-semibold text-status-warning leading-tight"
+                  className="hidden text-[10px] font-semibold leading-tight text-status-warning sm:block"
                   title={[
                     day.isLateStart ? `Geç +${day.lateStartMinutes ?? 0} dk` : '',
                     day.isEarlyLeave ? `Erken −${day.earlyLeaveMinutes ?? 0} dk` : '',
@@ -165,21 +205,25 @@ export function AttendanceCalendar({
                   {day.isEarlyLeave ? 'Erken' : ''}
                 </p>
               )}
-              {canConfirm && (
+              {canConfirm && (busy || confirming) ? (
+                <ConfirmSlotSkeleton />
+              ) : canConfirm ? (
                 <button
                   type="button"
-                  disabled={confirmingDate === day.date}
-                  onClick={() => onConfirmDay(day.date)}
-                  className="mt-1 text-[10px] rounded-md bg-brand-600 text-white py-0.5 px-1 hover:bg-brand-700 disabled:opacity-50"
+                  disabled={confirming}
+                  onClick={() => onConfirmDay?.(day.date)}
+                  aria-label={`${dom} Onayla`}
+                  className="mt-auto min-h-7 w-full shrink-0 rounded-md bg-brand-600 px-0.5 py-1 text-[10px] font-semibold leading-none text-white hover:bg-brand-700 disabled:opacity-50 sm:mt-1 sm:min-h-0 sm:py-0.5 sm:px-1"
                 >
-                  {confirmingDate === day.date ? '…' : 'Onayla'}
+                  <span className="sm:hidden">✓</span>
+                  <span className="hidden sm:inline">Onayla</span>
                 </button>
-              )}
+              ) : null}
             </div>
           );
         })}
       </div>
-      <div className="flex flex-wrap items-center gap-3 px-3 py-2 border-t border-slate-100 bg-slate-50/60">
+      <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 bg-slate-50/60 px-3 py-2">
         {LEGEND_ITEMS.map((item) => (
           <span key={item.label} className="flex items-center gap-1.5 text-[11px] text-slate-500">
             <span className={`h-2 w-2 rounded-full ${item.dot}`} />

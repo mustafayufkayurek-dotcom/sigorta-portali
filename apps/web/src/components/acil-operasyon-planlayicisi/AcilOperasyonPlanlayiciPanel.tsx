@@ -515,7 +515,7 @@ export const AcilOperasyonPlanlayiciPanel = forwardRef<AcilOperasyonPlanlayiciHa
                       <PlannerStepBody {...body} step={activeStep} />
                     )}
                   </div>
-                  <div className="shrink-0 border-t border-slate-200 px-4 py-3">
+                  <div className="shrink-0 border-t border-slate-200 px-4 py-3 safe-area-pb">
                     {saveError ? (
                       <p className="mb-2 text-[11px] text-amber-800" data-testid="planlayici-kaydet-hata">
                         {saveError}

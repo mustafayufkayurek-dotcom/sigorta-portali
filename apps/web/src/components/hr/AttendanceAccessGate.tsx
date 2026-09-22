@@ -56,22 +56,8 @@ export function AttendanceAccessGate({
 
   if (mode === 'on_leave') {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-surface">
-        <div
-          className="pointer-events-none select-none opacity-40 blur-[1px] p-4 space-y-3"
-          aria-hidden
-        >
-          <div className="h-8 w-48 rounded-lg bg-slate-200" />
-          <div className="grid grid-cols-3 gap-3">
-            <div className="h-20 rounded-xl bg-slate-100" />
-            <div className="h-20 rounded-xl bg-slate-100" />
-            <div className="h-20 rounded-xl bg-slate-100" />
-          </div>
-          <div className="h-28 rounded-xl bg-slate-100" />
-        </div>
-
-        <div className="absolute inset-0 flex items-center justify-center bg-white/75 backdrop-blur-[2px] p-4">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-surface shadow-lg p-5">
+      <div className="rounded-2xl border border-slate-200 bg-surface p-4">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-lg">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50">
                 <Plane className="h-5 w-5 text-brand-600" />
@@ -97,7 +83,6 @@ export function AttendanceAccessGate({
                 </p>
               </div>
             </div>
-          </div>
         </div>
       </div>
     );
@@ -140,22 +125,8 @@ export function AttendanceAccessGate({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-surface">
-      <div
-        className="pointer-events-none select-none opacity-40 blur-[1px] p-4 space-y-3"
-        aria-hidden
-      >
-        <div className="h-8 w-48 rounded-lg bg-slate-200" />
-        <div className="grid grid-cols-3 gap-3">
-          <div className="h-20 rounded-xl bg-slate-100" />
-          <div className="h-20 rounded-xl bg-slate-100" />
-          <div className="h-20 rounded-xl bg-slate-100" />
-        </div>
-        <div className="h-28 rounded-xl bg-slate-100" />
-      </div>
-
-      <div className="absolute inset-0 flex items-center justify-center bg-white/75 backdrop-blur-[2px] p-4">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-surface shadow-lg p-5">
+    <div className="rounded-2xl border border-slate-200 bg-surface p-4">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-lg">
           <div className="flex items-start gap-3">
             <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 ring-2 ring-amber-200">
               <AlertTriangle className="h-6 w-6 text-status-warning" aria-hidden />
@@ -182,14 +153,13 @@ export function AttendanceAccessGate({
               <button
                 type="button"
                 onClick={onConfirmAttendance}
-                className="mt-4 w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                className="mt-4 min-h-11 w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
               >
                 Puantaja Git Ve Onayla
               </button>
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 }

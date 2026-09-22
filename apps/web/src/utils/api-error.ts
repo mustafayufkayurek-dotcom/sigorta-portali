@@ -1,11 +1,13 @@
 import { ApiError } from '@/lib/api-client';
 import { SESSION_EXPIRED_USER_MESSAGE } from '@/utils/api';
+import { isUiActionTimeout, UI_ACTION_TIMEOUT_MESSAGE } from '@/utils/ui-action-timeout';
 
 /**
  * Dalga 1 — ortak API hata metni.
  * Axios / ApiError / Error / string[] Nest validation tek kanaldan okunur.
  */
 export function getApiErrorMessage(error: unknown, fallback = 'İşlem başarısız. Lütfen tekrar deneyin.'): string {
+  if (isUiActionTimeout(error)) return UI_ACTION_TIMEOUT_MESSAGE;
   if (error instanceof ApiError) {
     if (error.status === 401) return SESSION_EXPIRED_USER_MESSAGE;
     if (error.status === 403) return 'Bu işlem için yetkiniz yok.';

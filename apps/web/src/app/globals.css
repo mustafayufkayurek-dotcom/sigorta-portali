@@ -16,6 +16,9 @@
   .safe-area-pb {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
+  .safe-area-pad {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
   .scroll-input-safe {
     scroll-margin-top: 5rem;
     scroll-margin-bottom: 8rem;

@@ -1,0 +1,37 @@
+---
+description: Puantaj mobil Onayla, Hasar yükleme kabuğu, hata ayrımı, 10 sn kalkan düşmesin
+alwaysApply: true
+---
+
+# Puantaj / Hasar Yükleme Ve Süre Kilidi
+
+**Kaynak (Mustafa · 22.09.2026):** Telefonda tuş kırpılması, Hasar beyaz ekran, Puantaj hata/boş karışması, asılı onay kutusu. Canlı v617.
+
+**Temel cümle:** Puantaj takvimi mobil ✓ dönüşümü, Hasar dosyası yükleme kabuğu, hata ayrım mantığı ve 10 saniye süre kalkanı **kilitli ve kalıcıdır.** Silinmez, eski sürüme dönmez.
+
+## Zorunlu
+
+1. Puantaj takviminde hücre `overflow-hidden` ile Onayla kesilmez. Telefonda Onayla **✓**; genişte **Onayla**.
+2. Hasar dosyası yüklerken sayfa boşalmaz. `HasarDosyaKabukSkeleton` durur.
+3. Puantajda bağlantı hatası «Bu ay için devam kaydı yok» değildir. Hata: «Bağlantı hatası oluştu, lütfen tekrar deneyin» + **Tekrar Dene**. Boş ay eski metin.
+4. Puantaj onay ve Hasar dosya işlemleri 10 saniyede cevap yoksa kutu kapanır. Metin: «İşlem zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edip tekrar deneyiniz». Tüm API’ye süre konmaz.
+
+## Yasak (açık onay yoksa)
+
+- Bu CSS ve yükleme/hata hallerini “sadeleştirme” diye kaldırmak
+- Hata ile boş ayı tek mesajda birleştirmek
+- 10 saniye kalkanını tüm isteklere yaymak veya tamamen silmek
+
+## Durdurma
+
+Takvim tuşu yine kesilirse, Hasar beyaz ekran olursa, hata boş ay yazarsa veya kutu asılı kalırsa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/web/src/app/panel/hasar-dosyalari/hasar-dosya-yukleme.lock.spec.ts \
+ apps/web/src/components/hr/attendance-load-error.lock.spec.ts \
+ apps/web/src/utils/ui-action-timeout.lock.spec.ts \
+ apps/web/src/utils/panel-table-scroll.lock.spec.ts
+```

@@ -2196,7 +2196,7 @@ export default function AcilDosyaDetayPage() {
   }
 
   return (
-    <div className="w-full min-w-0 space-y-2 pb-24 sm:pb-8 overflow-x-hidden" data-testid="acil-dosya-detay">
+    <div className="w-full min-w-0 space-y-2 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:pb-8 overflow-x-hidden" data-testid="acil-dosya-detay">
       <OpsFirstRunNotice
         noticeId={OPS_NOTICE.acilDosyaSonDegisiklik.id}
         title={OPS_NOTICE.acilDosyaSonDegisiklik.title}
@@ -3623,7 +3623,7 @@ export default function AcilDosyaDetayPage() {
 
       {/* Mobil: tek operasyon kapısı + WhatsApp */}
       <div
-        className="sm:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur px-3 py-2 flex gap-2 safe-area-pb"
+        className="sm:hidden sticky bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur px-3 py-2 flex gap-2 safe-area-pb"
         data-testid="mobil-alt-cubuk"
       >
         <button

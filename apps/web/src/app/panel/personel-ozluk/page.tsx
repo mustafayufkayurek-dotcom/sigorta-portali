@@ -8,6 +8,7 @@ import { usePanelRoleCode } from '@/hooks/usePanelRole';
 import { useToast } from '@/contexts/ToastContext';
 import { isoToTrDateDisplay } from '@/utils/tr-date-input';
 import { apiClient, getBaseUrl } from '@/lib/api-client';
+import { withUiActionTimeout } from '@/utils/ui-action-timeout';
 import { getAccessToken } from '@/utils/auth-session';
 import { AttendanceCalendar } from '@/components/hr/AttendanceCalendar';
 import { AttendanceAccountantPanel } from '@/components/hr/AttendanceAccountantPanel';
@@ -402,7 +403,9 @@ export default function PersonelOzlukPage() {
   const {
     data: attendanceRaw,
     isLoading: attendanceLoading,
+    isFetching: attendanceFetching,
     isError: attendanceError,
+    refetch: refetchAttendance,
   } = useApiQuery<AttendanceResponse>(
     ['hr-attendance', year, month, selectedEmployeeId, mustConfirmOwnAttendance],
     'hr/attendance',
@@ -599,7 +602,7 @@ export default function PersonelOzlukPage() {
     }
     setConfirmingDate(date);
     try {
-      await apiClient.post('hr/attendance/confirm-day', { workDate: date });
+      await withUiActionTimeout(apiClient.post('hr/attendance/confirm-day', { workDate: date }));
       showToast('success', 'Gün Onaylandı');
       queryClient.invalidateQueries({ queryKey: ['hr-attendance'] });
       queryClient.invalidateQueries({ queryKey: ['hr-summary'] });
@@ -617,10 +620,12 @@ export default function PersonelOzlukPage() {
     }
     setBulkConfirmLoading(true);
     try {
-      const result = await apiClient.post<{ confirmedCount: number }>('hr/attendance/confirm-pending', {
-        year,
-        month,
-      });
+      const result = await withUiActionTimeout(
+        apiClient.post<{ confirmedCount: number }>('hr/attendance/confirm-pending', {
+          year,
+          month,
+        }),
+      );
       showToast(
         'success',
         result.confirmedCount > 0 ? `${result.confirmedCount} Gün Onaylandı` : 'Onaylanacak Bekleyen Gün Yok',
@@ -646,15 +651,17 @@ export default function PersonelOzlukPage() {
     setMonthConfirmLoading(true);
     try {
       if (signatureModal === 'month') {
-        await apiClient.post('hr/attendance/confirm-month', { year, month, signature });
+        await withUiActionTimeout(apiClient.post('hr/attendance/confirm-month', { year, month, signature }));
         showToast('success', 'Aylık Devam Onaylandı');
       } else if (signatureModal === 'lock') {
-        await apiClient.post('hr/attendance/lock-month', {
-          year,
-          month,
-          signature,
-          employeeProfileId: selectedEmployeeId || undefined,
-        });
+        await withUiActionTimeout(
+          apiClient.post('hr/attendance/lock-month', {
+            year,
+            month,
+            signature,
+            employeeProfileId: selectedEmployeeId || undefined,
+          }),
+        );
         showToast('success', 'Devam Onaylandı Ve Ay Kilitlendi');
       }
       setSignatureModal(null);
@@ -1356,9 +1363,30 @@ export default function PersonelOzlukPage() {
 
               {canSupervise && <AttendanceBulkAccountantPanel year={year} month={month} />}
 
-              {attendanceLoading ? (
-                <div className="animate-pulse h-64 bg-slate-100 rounded-xl" />
-              ) : attendanceError || (attendance?.days ?? []).length === 0 ? (
+              {attendanceLoading && !attendance ? (
+                <AttendanceCalendar
+                  days={[]}
+                  year={year}
+                  month={month}
+                  waiting
+                />
+              ) : attendanceError ? (
+                <div
+                  className="rounded-xl border border-amber-200 bg-amber-50 p-8 text-center"
+                  data-testid="puantaj-baglanti-hatasi"
+                >
+                  <p className="text-sm font-medium text-amber-900">
+                    Bağlantı hatası oluştu, lütfen tekrar deneyin
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void refetchAttendance()}
+                    className="mt-4 min-h-11 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                  >
+                    Tekrar Dene
+                  </button>
+                </div>
+              ) : (attendance?.days ?? []).length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
                   Bu ay için devam kaydı yok.
                 </div>
@@ -1371,6 +1399,7 @@ export default function PersonelOzlukPage() {
                     isLocked={isViewingOther || attendance?.periodLock?.isLocked}
                     onConfirmDay={isViewingOther ? undefined : handleConfirmDay}
                     confirmingDate={confirmingDate}
+                    busy={attendanceFetching || Boolean(confirmingDate) || bulkConfirmLoading}
                   />
                   <div className="overflow-x-auto rounded-xl border border-slate-100">
                     <p className="px-4 py-2 text-xs text-slate-500 border-b border-slate-100 bg-slate-50/50">

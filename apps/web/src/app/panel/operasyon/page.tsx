@@ -1502,9 +1502,10 @@ function OperasyonPageContent() {
                 {casesError ? 'Liste alınamadı.' : 'Kayıt yok.'}
               </p>
             ) : pagedRows.map((row) => (
-              <button
+              <div
                 key={`${row.kind}-${row.id}`}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() =>
                   router.push(
                     row.kind === 'hasar'
@@ -1512,6 +1513,16 @@ function OperasyonPageContent() {
                       : `/panel/acil-yardim/${row.id}`,
                   )
                 }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    router.push(
+                      row.kind === 'hasar'
+                        ? `/panel/hasar-dosyalari/${row.id}?grup=operasyon`
+                        : `/panel/acil-yardim/${row.id}`,
+                    );
+                  }
+                }}
                 className={`rounded-2xl border bg-white p-4 text-left shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50/40 ${
                   row.approval72hExceeded
                     ? 'ops-row-approval-72h border-red-200'
@@ -1604,7 +1615,32 @@ function OperasyonPageContent() {
                     </div>
                   ) : null}
                 </div>
-              </button>
+                <div className="mt-3 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                  <OperationRowActions
+                    kind={row.kind}
+                    id={row.id}
+                    fileNo={row.fileNo}
+                    pinnedIds={rowActions.pinnedIds}
+                    reportId={row.reportId}
+                    defaultEmailTo={row.defaultEmailTo}
+                    onAddNote={
+                      row.kind === 'hasar' ? () => setNoteFileId(row.id) : undefined
+                    }
+                    onEmailRequest={() =>
+                      setEmailTarget({
+                        claimId: row.id,
+                        fileNo: row.fileNo,
+                        reportId: row.reportId,
+                        defaultTo: row.defaultEmailTo ?? undefined,
+                      })
+                    }
+                    onDeleteRequest={() => {
+                      setDeleteError('');
+                      setDeleteTarget({ kind: row.kind, id: row.id, fileNo: row.fileNo });
+                    }}
+                  />
+                </div>
+              </div>
             ))}
           </div>
           <PanelTableScroll className="hidden lg:block">
