@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (22 Eylül 2026 — web v614 / backend v614)
+## Canlı durum (22 Eylül 2026 — web v615 / backend v615)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v614-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v614-amd64` | canlı |
-| **Rollback** | Web **v613** / Backend **v612** | manifest `rollbackImages` |
-| **Etiket** | `v614-dosya-acilma` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v615-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v615-amd64` | canlı |
+| **Rollback** | Web **v614** / Backend **v614** | manifest `rollbackImages` |
+| **Etiket** | `v615-yeni-yazi-eki` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v615 — Full (22 Eylül 2026) — Yeni yazıya dosya ekleme
+
+- Gelen kutuda yeni yazıya da Fotoğraf Veya Belge Ekle durur. Fatura yazıyla birlikte gider
+- Aynı eksik her canlı alımda kesilir
+- Güvenlik: kaynak kapısı, oturum kapısı, DB+uploads yedek gzip, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v614** / backend **v614**
 
 ### v614 — Full (22 Eylül 2026) — Dosya açılması
 
