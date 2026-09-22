@@ -5,11 +5,17 @@ alwaysApply: true
 
 # Bitmiş İş Düşmesin
 
-**Kaynak (Mustafa · 22.09.2026):** Fatura ekleme yeni yazıda yoktu. Kilit yalnız yanıt kutusuna bakıyordu. Düşmesini beklemek yok.
+**Kaynak (Mustafa · 22.09.2026):** Bitmiş işe aksaklıkla dönülmez. Fatura eki, puantaj duvarı örnek sınıftır; kural bütün üründür.
 
-**Temel cümle:** Aşağıdaki işler **personel ekranında durur.** Her canlı alım bunları keser. Eksik görünce alım durur.
+**Temel cümle:** Onaylı iş **bitti.** Personelin o işi bitirdiği **her yüz** durur. Kilit yalnız bir ekrana bakmaz. Eksik görünce alım durur. Sahibi aynı işe geri çağrılmaz.
 
-## Zorunlu
+## Zorunlu (her bitmiş iş)
+
+- Personelin kullandığı her yüz aynı kapıdadır (yanıt ve yeni yazı; iki form adımı; işaret ve o işareti okuyan kart; mail ve onay tuşu).
+- Yeni iş, bitmiş ekranın yanından geçmez.
+- Kırılırsa aynı gün geri konur; düşmesi beklenmez.
+
+Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 
 1. Giriş kodu: yönetici ve finans. Kutu dolar. Şifre Ekranına Dön ve Kodu Yeniden Gönder durur.
 2. Ofiste unutulan ekran: 30 dakika. Beni Hatırla açık ekranı bırakmaz. Kısa kesinti oturumu silmez.
