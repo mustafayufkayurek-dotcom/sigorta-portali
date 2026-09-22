@@ -46,6 +46,11 @@ import {
   isHasarCustomerServiceType,
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
+import {
+  relationshipTypeLabelsForArea,
+  relationshipUsageAreaForCustomerSubType,
+  type RelationshipTypeRow,
+} from '@/utils/relationship-type-usage';
 import { customerFileCounts } from '@/utils/customer-file-counts';
 import { useRestoreRightPanelSession } from '@/components/ui/right-panel-session-hook';
 import {
@@ -824,7 +829,12 @@ export default function MusterilerPage() {
     () => visibleCustomerSubTypes.some((t) => t.value === ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE),
     [visibleCustomerSubTypes],
   );
-  const [relationshipTypes, setRelationshipTypes] = useState<string[]>([]); // sadece aktif olanların label listesi
+  const [relationshipCatalog, setRelationshipCatalog] = useState<RelationshipTypeRow[]>([]);
+  const relationshipArea = relationshipUsageAreaForCustomerSubType(form.subType);
+  const relationshipTypes = useMemo(
+    () => relationshipTypeLabelsForArea(relationshipCatalog, relationshipArea),
+    [relationshipCatalog, relationshipArea],
+  );
   const [addingNewRelType, setAddingNewRelType] = useState(false);
   const [newRelTypeValue, setNewRelTypeValue] = useState('');
   const [savingRelType, setSavingRelType] = useState(false);
@@ -1487,13 +1497,9 @@ export default function MusterilerPage() {
       .then((r) => {
         const data = r.data.data ?? [];
         if (data.length > 0 && typeof data[0] === 'string') {
-          setRelationshipTypes([]);
+          setRelationshipCatalog([]);
         } else {
-          setRelationshipTypes(
-            (data as { label: string; active: boolean; usageAreas?: string[] }[])
-              .filter((t) => t.active !== false && (t.usageAreas ?? []).includes('musteri'))
-              .map((t) => t.label)
-          );
+          setRelationshipCatalog(data as RelationshipTypeRow[]);
         }
       })
       .catch(() => { /* use empty fallback */ });
@@ -1512,19 +1518,19 @@ export default function MusterilerPage() {
     try {
       const res = await axios.get(`${API}/system-settings/relationship-types`, { headers: authHeader() });
       const existing = res.data.data ?? [];
-      type RelType = { label: string; active: boolean; usageAreas?: Array<'musteri' | 'eksper' | 'tedarikci' | 'dosya'> };
+      type RelType = RelationshipTypeRow & { usageAreas?: Array<'musteri' | 'eksper' | 'tedarikci' | 'dosya'> };
       const full: RelType[] = existing.length > 0 && typeof existing[0] === 'string'
-        ? (existing as string[]).map((l) => ({ label: l, active: true, usageAreas: ['musteri'] }))
+        ? (existing as string[]).map((l) => ({ label: l, active: true, usageAreas: [relationshipArea] }))
         : (existing as RelType[]);
       const found = full.find((t) => t.label === val);
       if (!found) {
-        full.push({ label: val, active: true, usageAreas: ['musteri'] });
+        full.push({ label: val, active: true, usageAreas: [relationshipArea] });
         await axios.put(`${API}/system-settings/relationship-types`, { values: full }, { headers: authHeader() });
-      } else if (!(found.usageAreas ?? []).includes('musteri')) {
-        found.usageAreas = [...(found.usageAreas ?? []), 'musteri'];
+      } else if (!(found.usageAreas ?? []).includes(relationshipArea)) {
+        found.usageAreas = [...(found.usageAreas ?? []), relationshipArea];
         await axios.put(`${API}/system-settings/relationship-types`, { values: full }, { headers: authHeader() });
       }
-      setRelationshipTypes((prev) => prev.includes(val) ? prev : [...prev, val]);
+      setRelationshipCatalog(full);
       onSelect?.(val);
     } catch { /* ignore */ } finally {
       setSavingRelType(false);

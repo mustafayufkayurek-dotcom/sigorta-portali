@@ -72,6 +72,7 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/claim-files/approval-72h.lock.spec.ts \
   packages/shared/src/acil-vendor-whatsapp.lock.spec.ts \
   apps/web/src/utils/claim-whatsapp-message.lock.spec.ts \
-  apps/web/src/utils/invoice-request-list.lock.spec.ts
+  apps/web/src/utils/invoice-request-list.lock.spec.ts \
+  apps/web/src/utils/relationship-type-usage.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

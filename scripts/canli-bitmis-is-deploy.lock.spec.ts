@@ -64,6 +64,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'acil-vendor-whatsapp.lock.spec',
       'claim-whatsapp-message.lock.spec',
       'invoice-request-list.lock.spec',
+      'relationship-type-usage.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }
