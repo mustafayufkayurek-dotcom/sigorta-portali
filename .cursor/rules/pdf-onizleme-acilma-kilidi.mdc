@@ -11,16 +11,18 @@ alwaysApply: true
 
 ## Zorunlu
 
-1. Onarım raporu, evrak, sözleşme, ölçüm ve fiş `openSessionBlob` / `presentPdfPreview` kullanır.
+1. Onarım raporu, evrak, sözleşme, ölçüm, fiş, puantaj yazdırma, dekont ve eksper evrakı `openSessionBlob` / `presentPdfPreview` kullanır.
 2. Yeni pencere `window.open(adres, '_blank')` — üçüncü argüman yok.
 3. Pencere gelmezse sayfada başlık ve **Kapat** durur.
-4. `%PDF` gövde, içerik türü yazmasa da önizlemedir. Sunucu hata cümlesi olduğu gibi gösterilir.
-5. Her canlı alım `pdf-preview-open.lock.spec.ts` çalıştırır (`smoke-canli-bitmis-is.sh`).
+4. `%PDF` gövde, içerik türü yazmasa da önizleme ve indirmedir. Sunucu hata cümlesi olduğu gibi gösterilir.
+5. Dekont ve depodaki evrak oturumla bayt açılır. Kısa süreli dış adres yok.
+6. Her canlı alım `pdf-preview-open.lock.spec.ts` çalıştırır (`smoke-canli-bitmis-is.sh`).
 
 ## Yasak (açık onay yoksa)
 
 - `createObjectURL` sonrası `window.open(..., 'noopener')`
 - Blob bağlantısına `rel="noopener"` verip yeni pencere açmak
+- Dekontu veya depodaki evrakı kısa süreli dış adresle açmak
 - Bu kilidi «sadeleştirme» diye kaldırmak
 
 ## Durdurma

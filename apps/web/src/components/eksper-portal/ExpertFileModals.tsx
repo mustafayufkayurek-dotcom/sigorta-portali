@@ -12,11 +12,10 @@ import {
   openFileDocumentView,
   type FileDocument,
 } from '@/utils/fileDocumentApi';
-import { presentPdfPreview, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
+import { presentPdfPreview, readPdfPreviewFailure, openSessionBlob } from '@/utils/pdf-preview-open';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = API_BASE.endsWith('/api/v1') ? API_BASE : `${API_BASE}/api/v1`;
-const UPLOADS_ORIGIN = API.replace(/\/api\/v1$/, '');
 
 function authHeaders() {
   const token = getAccessToken();
@@ -339,24 +338,22 @@ export function ExpertFileDocumentsModal({
     }
     try {
       const res = await fetch(
-        `${API}/uploads/signed-url?storageKey=${encodeURIComponent(storageKey)}`,
+        `${API}/uploads/file?storageKey=${encodeURIComponent(storageKey)}`,
         { headers: authHeaders() },
       );
       if (!res.ok) throw new Error('Dosya açılamadı');
-      const body = await res.json();
-      const url = body?.data?.url ?? body?.url;
-      if (!url) throw new Error('Bağlantı yok');
-      const abs = String(url).startsWith('http') ? url : `${UPLOADS_ORIGIN}${url}`;
+      const blob = await res.blob();
       if (download) {
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = abs;
+        a.href = url;
         a.download = doc.fileName ?? 'belge';
-        a.target = '_blank';
-        a.rel = 'noopener';
         a.click();
-      } else {
-        window.open(abs, '_blank', 'noopener,noreferrer');
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        return;
       }
+      const opened = await openSessionBlob(blob, doc.fileName || 'Belge');
+      if (!opened) throw new Error('Belge açılamadı.');
     } catch {
       setError('Belge açılamadı.');
     }

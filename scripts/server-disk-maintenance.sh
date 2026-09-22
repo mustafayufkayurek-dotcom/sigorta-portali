@@ -48,10 +48,11 @@ done < <(manifest_collect_protected_images)
 log "=== Korunan image doğrulama ==="
 manifest_verify_protected_images "$LOG_TAG" || true
 
-# Docker build cache: önce 24 saatten eski. 5 GB hâlâ yoksa bugünün cache'i de gider (image tag'leri durur).
+# Docker build cache: önce 24 saatten eski. Hedefin altındaysa bugünün cache'i de gider (image tag'leri durur).
+TARGET_FREE_GB="${TARGET_FREE_GB:-$MIN_FREE_GB}"
 docker builder prune -af --filter 'until=24h' 2>/dev/null || true
-if [ "$(free_gb)" -lt "${MIN_FREE_GB}" ]; then
-  log "Boş alan yetersiz — bugünün build cache'i de temizlenir (çalışan image durur)"
+if [ "$(free_gb)" -lt "${TARGET_FREE_GB}" ]; then
+  log "Boş alan ${TARGET_FREE_GB} GB altında — bugünün build cache'i de temizlenir (çalışan image durur)"
   docker builder prune -af 2>/dev/null || true
 fi
 

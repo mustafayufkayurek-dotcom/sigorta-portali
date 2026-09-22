@@ -1,0 +1,33 @@
+---
+description: Disk daralınca güvenli temizlik kendiliğinden yapılır
+alwaysApply: true
+---
+
+# Disk Otomatik Temizlik Kilidi
+
+**Kaynak (Mustafa · 22.09.2026):** Telegram’da kırmızı disk uyarısı geldi. Temizlik, haber beklenmeden yapılmalı.
+
+**Temel cümle:** Disk daralınca **güvenli temizlik kendiliğinden başlar.** Fotoğraflar ve uploads silinmez. Haber, temizlik yetmezse gider.
+
+## Zorunlu
+
+1. `disk-watchdog.sh` uyarı çizgisinin (8 GB) altında `server-disk-maintenance.sh` çalıştırır, sonra yeniden ölçer. 15 dakikalık eski alarm da aynı bekçiyi çalıştırır.
+2. Aynı daralmada Telegram tekrarlanmaz. Kırmızı haber yalnız temizlikten sonra hâlâ 5 GB altındaysa gider.
+3. Toparlanırsa yeşil haber bir kez gider. Metin: sizin işleminiz gerekmez.
+4. Uploads, yedek arşivi ve çalışan / geri alma image’ı durur. `docker image prune -af` yok.
+
+## Yasak (açık onay yoksa)
+
+- Yalnız uyarıp temizliği sahibine bırakmak
+- Uploads veya fotoğraf yedeğini silerek yer açmak
+
+## Durdurma
+
+Uyarı yine «scripti çalıştırın» deyip beklerse → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ scripts/disk-watchdog.lock.spec.ts
+```

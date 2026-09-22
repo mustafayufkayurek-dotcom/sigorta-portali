@@ -24,6 +24,7 @@ import {
 import { useToast } from '@/contexts/ToastContext';
 import SpeechToText from '@/components/SpeechToText';
 import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
+import { openSessionBlob } from '@/utils/pdf-preview-open';
 import { VendorSuggestPanel } from '../VendorSuggestPanel';
 import { fetchVendorQuoteComparison } from '@/utils/vendor-intelligence-profile';
 import { withAvansNote } from '@sigorta/shared';
@@ -1138,9 +1139,13 @@ export function TahsilatlarTab({ claimId, claim }: { claimId: string; claim?: an
 
   const openReceipt = async (paymentId: string) => {
     try {
-      const res = await axios.get(`${API}/payments/${paymentId}/receipt/download`, { headers: authHeader() });
-      const url = res.data?.data?.url;
-      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      const res = await fetch(`${API}/payments/${paymentId}/receipt/file`, { headers: authHeader() });
+      if (!res.ok) {
+        showToast('error', 'Dekont açılamadı');
+        return;
+      }
+      const opened = await openSessionBlob(await res.blob(), 'Dekont');
+      if (!opened) showToast('error', 'Dekont açılamadı');
     } catch {
       showToast('error', 'Dekont açılamadı');
     }

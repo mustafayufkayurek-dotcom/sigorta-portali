@@ -76,6 +76,36 @@ describe('hasar pdf önizleme LOCK', () => {
     assert.deepEqual(hits, []);
   });
 
+  it('indirme, puantaj, dekont ve eksper evrakı aynı kapıdadır', () => {
+    assert.doesNotMatch(reportPage, /!contentType\.includes\('pdf'\)/);
+    const puantaj = readFileSync(join(here, '../components/hr/AttendanceAccountantPanel.tsx'), 'utf8');
+    assert.match(puantaj, /openSessionBlob\(blob, 'Puantaj'\)/);
+    assert.doesNotMatch(puantaj, /window\.open\(''/);
+    const finans = readFileSync(
+      join(here, '../app/panel/hasar-dosyalari/[id]/_components/tabs/finans-subtabs.tsx'),
+      'utf8',
+    );
+    const tedarikci = readFileSync(join(here, '../app/panel/tedarikciler/[id]/page.tsx'), 'utf8');
+    for (const src of [finans, tedarikci]) {
+      assert.match(src, /payments\/\$\{paymentId\}\/receipt\/file/);
+      assert.match(src, /openSessionBlob\(/);
+      assert.doesNotMatch(src, /receipt\/download/);
+    }
+    const eksper = readFileSync(join(here, '../components/eksper-portal/ExpertFileModals.tsx'), 'utf8');
+    const drawer = readFileSync(join(here, '../components/eksper-portal/ExpertFileDetailDrawer.tsx'), 'utf8');
+    for (const src of [eksper, drawer]) {
+      assert.match(src, /uploads\/file\?storageKey=/);
+      assert.match(src, /openSessionBlob\(/);
+      assert.doesNotMatch(src, /uploads\/signed-url/);
+    }
+    const pay = readFileSync(
+      join(here, '../../../../apps/backend/src/modules/payments/payments.controller.ts'),
+      'utf8',
+    );
+    assert.match(pay, /payments\/:id\/receipt\/file/);
+    assert.match(pay, /res\.send\(buffer\)/);
+  });
+
   it('canlı alım bu kilidi atlayamaz', () => {
     const smoke = readFileSync(join(here, '../../../../scripts/smoke-canli-bitmis-is.sh'), 'utf8');
     assert.match(smoke, /pdf-preview-open\.lock\.spec\.ts/);

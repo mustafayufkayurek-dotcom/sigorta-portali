@@ -44,6 +44,10 @@ echo "=== Web-only deploy: $DEPLOY_TAG ==="
 echo "Image: $WEB_IMAGE"
 echo "Compose project: $COMPOSE_PROJECT_NAME (ZORUNLU — 502 önleme)"
 
+echo "=== Alım sırasında disk temizliği bekler ==="
+run_remote "mkdir -p $REMOTE_APP/logs && touch $REMOTE_APP/logs/disk-watchdog.hold"
+trap 'run_remote "rm -f $REMOTE_APP/logs/disk-watchdog.hold" || true' EXIT
+
 if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   echo "=== Sunucu disk (kod kopyalamadan önce) ==="
   run_remote "FREE=\$(df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'); echo \"Disk boş: \${FREE} GB (minimum 5 GB)\"; [ \"\${FREE}\" -ge 5 ] || { echo 'HATA: Sunucuda yeterli disk yok — kod kopyalanmaz. scripts/server-disk-maintenance.sh'; exit 1; }"

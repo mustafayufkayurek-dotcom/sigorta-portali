@@ -5566,12 +5566,9 @@ export default function RepairReportPage() {
         url: `${API}/repair-reports/${reportId}/pdf?view=${view}`,
         responseType: 'blob',
       });
-      const contentType = String(res.headers['content-type'] ?? '');
-      if (!contentType.includes('pdf')) {
-        const text = await (res.data as Blob).text();
-        let message = 'PDF indirilemedi.';
-        try { message = JSON.parse(text)?.message ?? message; } catch { /* ignore */ }
-        notify('error', message);
+      const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+      if (failure) {
+        notify('error', failure === 'PDF önizleme açılamadı.' ? 'PDF indirilemedi.' : failure);
         return;
       }
       const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));

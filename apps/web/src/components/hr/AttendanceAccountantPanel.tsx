@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
+import { openSessionBlob } from '@/utils/pdf-preview-open';
 import { apiClient } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -92,13 +93,9 @@ export function AttendanceAccountantPanel({
       const res = await fetch(exportUrl('print'), { headers: authHeader() });
       if (!res.ok) throw new Error('Yazdırma sayfası açılamadı');
       const html = await res.text();
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        showToast('warning', 'Açılır Pencere Engellendi — Tarayıcı İzinlerini Kontrol Edin');
-        return;
-      }
-      printWindow.document.write(html);
-      printWindow.document.close();
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const opened = await openSessionBlob(blob, 'Puantaj');
+      if (!opened) showToast('error', 'Yazdırma sayfası açılamadı');
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Yazdırma Başarısız');
     } finally {

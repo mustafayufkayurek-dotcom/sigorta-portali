@@ -48,6 +48,7 @@ import {
 import { mergeClaimFileNotes } from '@/utils/merge-claim-file-notes';
 import { formatActivityAction } from '@/features/dashboard/utils/format-activity-action';
 import { getReportImageUrl } from '@/utils/upload-url';
+import { openSessionBlob } from '@/utils/pdf-preview-open';
 import ClosurePhotosPanel from '@/components/file-documents/ClosurePhotosPanel';
 import { emergencyStatusLabel } from '@/utils/assistance-portal-stages';
 
@@ -616,29 +617,30 @@ export function ExpertFileDetailDrawer({
     setPreviewBusyId(doc.id);
     setDocPreviewError(null);
     try {
+      if (doc.storageKey) {
+        const res = await fetch(
+          `${API}/uploads/file?storageKey=${encodeURIComponent(doc.storageKey)}`,
+          { headers: authHeaders() },
+        );
+        if (!res.ok) {
+          setDocPreviewError('Evrak açılamadı, lütfen tekrar deneyin.');
+          return;
+        }
+        const opened = await openSessionBlob(await res.blob(), doc.fileName || 'Evrak');
+        if (!opened) setDocPreviewError('Evrak açılamadı, lütfen tekrar deneyin.');
+        return;
+      }
       if (doc.url) {
-        window.open(doc.url, '_blank', 'noopener,noreferrer');
+        const res = await fetch(doc.url);
+        if (!res.ok) {
+          setDocPreviewError('Evrak açılamadı, lütfen tekrar deneyin.');
+          return;
+        }
+        const opened = await openSessionBlob(await res.blob(), doc.fileName || 'Evrak');
+        if (!opened) setDocPreviewError('Evrak açılamadı, lütfen tekrar deneyin.');
         return;
       }
-      if (!doc.storageKey) {
-        setDocPreviewError('Bu evrak için görüntüleme bağlantısı bulunamadı.');
-        return;
-      }
-      const res = await fetch(
-        `${API}/uploads/signed-url?storageKey=${encodeURIComponent(doc.storageKey)}`,
-        { headers: authHeaders() },
-      );
-      if (!res.ok) {
-        setDocPreviewError('Evrak açılamadı, lütfen tekrar deneyin.');
-        return;
-      }
-      const body = await res.json();
-      const url = body?.data?.url ?? body?.url;
-      if (url) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      } else {
-        setDocPreviewError('Evrak açılamadı, lütfen tekrar deneyin.');
-      }
+      setDocPreviewError('Bu evrak için görüntüleme bağlantısı bulunamadı.');
     } catch {
       setDocPreviewError('Evrak açılamadı, lütfen tekrar deneyin.');
     } finally {

@@ -1,6 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
+import { openSessionBlob } from '@/utils/pdf-preview-open';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -1632,9 +1633,13 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
 
   const openReceipt = async (paymentId: string) => {
     try {
-      const res = await axios.get(`${API}/payments/${paymentId}/receipt/download`, { headers: authHeader() });
-      const url = res.data?.data?.url;
-      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      const res = await fetch(`${API}/payments/${paymentId}/receipt/file`, { headers: authHeader() });
+      if (!res.ok) {
+        showToast('error', 'Dekont Açılamadı');
+        return;
+      }
+      const opened = await openSessionBlob(await res.blob(), 'Dekont');
+      if (!opened) showToast('error', 'Dekont Açılamadı');
     } catch {
       showToast('error', 'Dekont Açılamadı');
     }

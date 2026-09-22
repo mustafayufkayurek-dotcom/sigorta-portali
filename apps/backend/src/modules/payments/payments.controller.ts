@@ -7,11 +7,13 @@ import {
   Param,
   Body,
   Query,
+  Res,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   ForbiddenException,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -92,6 +94,27 @@ export class PaymentsController {
     await this.service.findOne(id, requestingUser, insuranceCompanyIds);
     const data = await this.service.getReceiptDownloadUrl(id);
     return { success: true, data };
+  }
+
+  @Get('payments/:id/receipt/file')
+  @RequirePermissions('payment.view')
+  @ApiOperation({ summary: 'Ödeme dekontunu oturumla aç' })
+  async streamReceipt(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Res() res: Response,
+  ) {
+    const { requestingUser, insuranceCompanyIds } = await this.resolveScope(user);
+    await this.service.findOne(id, requestingUser, insuranceCompanyIds);
+    const { buffer, mimeType, fileName } = await this.service.getReceiptFile(id);
+    const ascii = fileName
+      .replace(/[^\x20-\x7E]/g, '_')
+      .replace(/["\\]/g, '_')
+      .slice(0, 120) || 'dekont';
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${ascii}"`);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.send(buffer);
   }
 
   @Post('payments')

@@ -543,6 +543,22 @@ export class PaymentsService {
     return { url, fileName: payment.receiptFileName };
   }
 
+  async getReceiptFile(paymentId: string): Promise<{ buffer: Buffer; mimeType: string; fileName: string }> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      select: { receiptStorageKey: true, receiptFileName: true, receiptMimeType: true },
+    });
+    if (!payment?.receiptStorageKey) {
+      throw new NotFoundException('Bu ödeme için dekont bulunamadı');
+    }
+    const buffer = await this.storage.download(payment.receiptStorageKey);
+    return {
+      buffer,
+      mimeType: payment.receiptMimeType || 'application/octet-stream',
+      fileName: payment.receiptFileName || 'dekont',
+    };
+  }
+
   /**
    * PayTR webhook sonrası online kart tahsilatını kaydeder (idempotent — aynı link tekrar işlenmez).
    */
