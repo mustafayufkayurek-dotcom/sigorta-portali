@@ -25,13 +25,57 @@ export function previousIstanbulMonth(year: number, month: number): { year: numb
   return { year, month: month - 1 };
 }
 
-/** Admin, saha ve portal günlük puantaj maili almaz. */
+/** Günlük puantaj onayı: kadrodaki ofis, saha, finans, mali müşavir, müdür. */
+const ATTENDANCE_ROSTER_ROLES = new Set([
+  'OFFICE_STAFF',
+  'FIELD_STAFF',
+  'FINANCE',
+  'FINANS',
+  'ACCOUNTANT',
+  'MANAGER',
+]);
+
+/** Personel Ekle. Yönetici kadroya girer; günlük onay maili almaz. */
+const PERSONNEL_ADD_ROLES = new Set([
+  ...ATTENDANCE_ROSTER_ROLES,
+  'ADMIN',
+  'SUPER_ADMIN',
+]);
+
+export const CUSTOMER_VENDOR_ROLE_CODES = [
+  'expert',
+  'EXPERT',
+  'insurance_company_user',
+  'INSURANCE_COMPANY_USER',
+  'assistance_company_user',
+  'ASSISTANCE_COMPANY_USER',
+  'broker_user',
+  'BROKER_USER',
+] as const;
+
+export function isCustomerOrVendorRole(roleCode?: string | null): boolean {
+  const r = (roleCode ?? '').trim().toUpperCase();
+  if (!r) return false;
+  if (r.includes('PORTAL')) return true;
+  if (r.includes('VENDOR') || r.includes('SUPPLIER') || r.includes('TEDARIK')) return true;
+  if (r.includes('CUSTOMER') || r.includes('MUSTERI')) return true;
+  return (
+    r === 'EXPERT'
+    || r === 'INSURANCE_COMPANY_USER'
+    || r === 'ASSISTANCE_COMPANY_USER'
+    || r === 'BROKER_USER'
+  );
+}
+
+/** Admin, müşteri ve tedarikçi günlük puantaj maili almaz. Saha, kadroya eklenince alır. */
 export function roleReceivesAttendanceReminders(roleCode?: string | null): boolean {
-  const r = (roleCode ?? '').toUpperCase();
-  if (!r) return true;
-  if (r === 'ADMIN' || r === 'SUPER_ADMIN') return false;
-  if (r === 'FIELD_STAFF') return false;
-  if (r.includes('PORTAL')) return false;
-  if (r === 'EXPERT' || r === 'INSURANCE_COMPANY_USER' || r === 'ASSISTANCE_COMPANY_USER') return false;
-  return true;
+  const r = (roleCode ?? '').trim().toUpperCase();
+  if (!r || isCustomerOrVendorRole(r)) return false;
+  return ATTENDANCE_ROSTER_ROLES.has(r);
+}
+
+export function roleCanBeAddedAsPersonnel(roleCode?: string | null): boolean {
+  const r = (roleCode ?? '').trim().toUpperCase();
+  if (!r || isCustomerOrVendorRole(r)) return false;
+  return PERSONNEL_ADD_ROLES.has(r);
 }

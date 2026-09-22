@@ -26,6 +26,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'report.view', 'report.create',
     'budget.view', 'budget.create',
     'task.view', 'task.update',
+    'hr.view', 'hr.leave.request',
   ],
   FINANS: [
     'customer.view',

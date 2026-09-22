@@ -19,7 +19,7 @@ alwaysApply: true
 6. Yedek ikinci yer doğrulanmadan gitti sayılmaz.
 7. Fiş okunur. Kayıt personeldedir. Gelen kutu sınıflandırması mail atmaz.
 8. Ödendi finans personelindedir. İşlemi yapan kaydolur.
-9. Puantaj: gün sonu mail, yönetici çanı, mesai nabzı. Mail giden hesap kendi gününü Devam’dan onaylar.
+9. Puantaj: gün sonu mail, yönetici çanı, mesai nabzı. Mail giden hesap kendi gününü Devam’dan onaylar. Saha personeli kadroya eklenince aynı onaya girer. Müşteri ve tedarikçi girmez.
 10. Acil saha atama dosya sorumlusunda. Tedarikçiden ayrı.
 11. 72 saat onay maili, onay alınmış dosyada kesilir.
 12. Tedarikçi WhatsApp: Dosya Konusu, konum, teyit.

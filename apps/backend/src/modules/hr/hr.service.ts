@@ -33,7 +33,12 @@ import {
   istanbulDateKey,
 } from './hr-work-hours.helper';
 import { applyActivityBeat } from './hr-activity-beat.helper';
-import { roleReceivesAttendanceReminders } from './hr-attendance-reminder.helper';
+import {
+  CUSTOMER_VENDOR_ROLE_CODES,
+  isCustomerOrVendorRole,
+  roleCanBeAddedAsPersonnel,
+  roleReceivesAttendanceReminders,
+} from './hr-attendance-reminder.helper';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
 import { RecordActivityBeatDto } from './dto/record-activity-beat.dto';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
@@ -220,6 +225,32 @@ export class HrService {
     });
   }
 
+  /**
+   * Kendi puantajı. Saha, Personel Ekle ile kadroya girmeden kayıt açmaz.
+   * Müşteri ve tedarikçi hiç girmez.
+   */
+  private async profileForOwnAttendance(user: AuthUser) {
+    const userId = this.authUserId(user);
+    const account = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { portalCustomerId: true, role: { select: { code: true } } },
+    });
+    const roleCode = account?.role?.code ?? user.roleCode;
+    if (account?.portalCustomerId || isCustomerOrVendorRole(roleCode)) {
+      throw new ForbiddenException('Müşteri ve tedarikçi puantaj onayına girmez');
+    }
+    if ((roleCode ?? '').toUpperCase() === 'FIELD_STAFF') {
+      const existing = await this.prisma.hrEmployeeProfile.findUnique({
+        where: { userId },
+        select: { id: true, status: true },
+      });
+      if (!existing || existing.status !== 'active') {
+        throw new ForbiddenException('Personel kaydı yok');
+      }
+    }
+    return this.ensureEmployeeProfile(userId);
+  }
+
   private async ensureAnnualBalance(
     employeeProfileId: string,
     year: number,
@@ -270,7 +301,13 @@ export class HrService {
     this.assertCanSupervise(user);
     const year = new Date().getFullYear();
     const profiles = await this.prisma.hrEmployeeProfile.findMany({
-      where: { status: 'active' },
+      where: {
+        status: 'active',
+        user: {
+          portalCustomerId: null,
+          role: { code: { notIn: [...CUSTOMER_VENDOR_ROLE_CODES] } },
+        },
+      },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, email: true } },
         department: { select: { id: true, name: true } },
@@ -318,6 +355,7 @@ export class HrService {
       where: {
         id: { notIn: linkedIds.length ? linkedIds : ['__none__'] },
         status: 'active',
+        portalCustomerId: null,
         role: {
           code: {
             in: [
@@ -376,7 +414,13 @@ export class HrService {
   async listActiveEmployeeProfilesForPeriod(user: AuthUser) {
     this.assertCanSupervise(user);
     return this.prisma.hrEmployeeProfile.findMany({
-      where: { status: 'active' },
+      where: {
+        status: 'active',
+        user: {
+          portalCustomerId: null,
+          role: { code: { notIn: [...CUSTOMER_VENDOR_ROLE_CODES] } },
+        },
+      },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, email: true } },
         department: { select: { id: true, name: true } },
@@ -505,6 +549,7 @@ export class HrService {
             firstName: true,
             lastName: true,
             email: true,
+            portalCustomerId: true,
             role: { select: { name: true, code: true } },
           },
         },
@@ -514,9 +559,15 @@ export class HrService {
       orderBy: [{ user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
     });
 
+    const rosterProfiles = profiles.filter(
+      (profile) =>
+        !profile.user.portalCustomerId
+        && !isCustomerOrVendorRole(profile.user.role?.code),
+    );
+
     const activities = await this.prisma.activitySession.findMany({
       where: {
-        userId: { in: profiles.map((p) => p.userId) },
+        userId: { in: rosterProfiles.map((p) => p.userId) },
         sessionDate: targetDate,
       },
       select: { userId: true, startedAt: true, lastBeatAt: true },
@@ -530,7 +581,7 @@ export class HrService {
     let earlyLeave = 0;
 
     const employees = await Promise.all(
-      profiles.map(async (profile) => {
+      rosterProfiles.map(async (profile) => {
         const [entry, approvedLeaves] = await Promise.all([
           this.prisma.hrAttendanceEntry.findFirst({
             where: {
@@ -628,7 +679,7 @@ export class HrService {
       workDate: todayKey,
       workHours: schedule,
       totals: {
-        totalEmployees: profiles.length,
+        totalEmployees: rosterProfiles.length,
         approved,
         notApproved,
         onLeave,
@@ -667,9 +718,19 @@ export class HrService {
 
     const targetUser = await this.prisma.user.findUnique({
       where: { id: dto.userId },
-      select: { id: true, firstName: true, lastName: true, email: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        portalCustomerId: true,
+        role: { select: { code: true } },
+      },
     });
     if (!targetUser) throw new NotFoundException('Kullanıcı bulunamadı');
+    if (targetUser.portalCustomerId || !roleCanBeAddedAsPersonnel(targetUser.role?.code)) {
+      throw new ForbiddenException('Müşteri ve tedarikçi personel kadrosuna alınamaz');
+    }
 
     const hireDate =
       dto.hireDate === null
@@ -746,7 +807,7 @@ export class HrService {
   }
 
   async getSummary(user: AuthUser) {
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const profile = await this.profileForOwnAttendance(user);
     const year = new Date().getFullYear();
     const balance = await this.ensureAnnualBalance(profile.id, year, profile.hireDate);
 
@@ -962,7 +1023,7 @@ export class HrService {
   }
 
   async listAttendance(user: AuthUser, year: number, month: number) {
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const profile = await this.profileForOwnAttendance(user);
     return this.listAttendanceForProfile(profile.id, profile.userId, year, month);
   }
 
@@ -1183,7 +1244,7 @@ export class HrService {
 
   /** Personel günlük puantaj onayı — "bugün çalıştım" dijital teyit */
   async confirmAttendanceDay(user: AuthUser, dto: ConfirmAttendanceDayDto) {
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const profile = await this.profileForOwnAttendance(user);
     return this.confirmDayForProfile(profile.id, this.authUserId(user), dto.workDate, {
       minutesWorked: dto.minutesWorked,
       notes: dto.notes,
@@ -1194,7 +1255,7 @@ export class HrService {
 
   /** Ay içindeki tüm bekleyen (onaysız) günleri tek adımda onaylar. */
   async confirmPendingAttendanceDays(user: AuthUser, year: number, month: number) {
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const profile = await this.profileForOwnAttendance(user);
     const periodLock = await this.getPeriodLock(profile.id, year, month);
     this.assertPeriodNotLocked(periodLock?.lockedAt);
 
@@ -1294,7 +1355,7 @@ export class HrService {
 
   /** Personel aylık puantaj onayı */
   async confirmAttendanceMonth(user: AuthUser, dto: ConfirmAttendanceMonthDto) {
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const profile = await this.profileForOwnAttendance(user);
     const periodLock = await this.getPeriodLock(profile.id, dto.year, dto.month);
     this.assertPeriodNotLocked(periodLock?.lockedAt);
 
@@ -1355,7 +1416,7 @@ export class HrService {
       }
       employeeProfileId = target.id;
     } else {
-      const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+      const profile = await this.profileForOwnAttendance(user);
       employeeProfileId = profile.id;
     }
 
@@ -1406,7 +1467,7 @@ export class HrService {
   }
 
   async upsertAttendance(user: AuthUser, dto: UpsertAttendanceDto) {
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const profile = await this.profileForOwnAttendance(user);
     const workDate = this.toDateOnly(dto.workDate);
     const periodLock = await this.getPeriodLock(
       profile.id,
@@ -1460,7 +1521,7 @@ export class HrService {
   }
 
   async listMyLeaveRequests(user: AuthUser) {
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const profile = await this.profileForOwnAttendance(user);
     return this.prisma.hrLeaveRequest.findMany({
       where: { employeeProfileId: profile.id },
       orderBy: [{ createdAt: 'desc' }],
@@ -1478,7 +1539,7 @@ export class HrService {
 
   async createLeaveRequest(user: AuthUser, dto: CreateLeaveRequestDto) {
     await this.assertValidLeaveType(dto.leaveType);
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const profile = await this.profileForOwnAttendance(user);
     const startDate = this.toDateOnly(dto.startDate);
     const endDate = this.toDateOnly(dto.endDate);
     if (endDate < startDate) {
@@ -1515,7 +1576,7 @@ export class HrService {
   }
 
   async submitLeaveRequest(user: AuthUser, id: string) {
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const profile = await this.profileForOwnAttendance(user);
     const request = await this.prisma.hrLeaveRequest.findFirst({
       where: { id, employeeProfileId: profile.id },
     });
@@ -1782,7 +1843,7 @@ export class HrService {
 
   async listAssignedAssets(user: AuthUser, employeeProfileId?: string) {
     const canManage = this.canSupervise(user) || this.canApprove(user);
-    const myProfile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const myProfile = await this.profileForOwnAttendance(user);
     const targetId = employeeProfileId || myProfile.id;
     if (!canManage && targetId !== myProfile.id) {
       throw new ForbiddenException('Başka personelin zimmetini görme yetkiniz yok');
@@ -1866,7 +1927,7 @@ export class HrService {
   }
 
   async getLeaveBalances(user: AuthUser) {
-    const profile = await this.ensureEmployeeProfile(this.authUserId(user));
+    const profile = await this.profileForOwnAttendance(user);
     const year = new Date().getFullYear();
     const balance = await this.ensureAnnualBalance(profile.id, year, profile.hireDate);
     return [balance];

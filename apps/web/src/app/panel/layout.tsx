@@ -106,7 +106,7 @@ const NAV_ITEM_ACCESS: NavItemAccess[] = [
   { path: '/panel/saha/bekleyen-tespitler', roles: ['field_staff', 'FIELD_STAFF'] },
   { path: '/panel/revizyon-talepleri', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/sahiplik', roles: ['admin', 'ADMIN', 'MANAGER'] },
-  { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT'] },
+  { path: '/panel/personel-ozluk', roles: ['admin', 'ADMIN', 'MANAGER', 'office_staff', 'OFFICE_STAFF', 'field_staff', 'FIELD_STAFF', 'FINANS', 'finance', 'accountant', 'ACCOUNTANT'] },
   { path: '/panel/personel-yonetimi', roles: ['admin', 'ADMIN', 'MANAGER'] },
   { path: '/panel/musteriler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
   { path: '/panel/tedarikciler', roles: ['admin', 'ADMIN', 'office_staff', 'OFFICE_STAFF', 'FINANS', 'MANAGER'] },
@@ -404,6 +404,7 @@ function getPanelMainLinks({
               href: FIELD_STAFF_COMPLETED_INSPECTIONS_HREF,
               icon: CheckCircle2,
             },
+            { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList },
           ]
       : isFinance
         ? [
@@ -2122,7 +2123,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             && Boolean(user)
             && !isPortalUser
             && !mustChangePassword
-            && !isFieldStaff
           }
         />
         <PanelActivityHeartbeat
