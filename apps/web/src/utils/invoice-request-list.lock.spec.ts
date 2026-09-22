@@ -222,7 +222,8 @@ describe('invoice-request-list lock', () => {
     assert.match(section, /onIssuedChange/);
     assert.doesNotMatch(section, /invoiced' && prev.claimFileId/);
     assert.match(section, /label: 'Müşteri'/);
-    assert.match(actions, /createObjectURL/);
+    assert.match(actions, /openSessionBlob/);
+    assert.doesNotMatch(actions, /createObjectURL/);
   });
 
   it('asistans faturalar kesilen özetten okur; acil kesilen hasar dosyasına bağlanmaz', () => {

@@ -50,6 +50,28 @@ node --experimental-strip-types --test \
   apps/web/src/utils/eksper-sigorta-matrix-removed.lock.spec.ts \
   packages/shared/src/file-recognized-partners.lock.spec.ts \
   packages/shared/src/inbox-recipient-card.lock.spec.ts \
-  apps/backend/src/modules/users/portal-customer-users.lock.spec.ts
+  apps/backend/src/modules/users/portal-customer-users.lock.spec.ts \
+  packages/shared/src/login-email-code.lock.spec.ts \
+  apps/backend/src/modules/auth/login-email-code.lock.spec.ts \
+  apps/web/src/components/giris/giris-login-email-code.lock.spec.ts \
+  apps/web/src/utils/login-email-code-fill.lock.spec.ts \
+  apps/web/src/components/session-timeout-idle.lock.spec.ts \
+  apps/web/src/utils/auth-session-refresh.lock.spec.ts \
+  apps/web/src/features/dashboard/components/management-dashboard/morning-briefing.lock.spec.ts \
+  apps/web/src/utils/site-renewal.lock.spec.ts \
+  scripts/disk-watchdog.lock.spec.ts \
+  scripts/offsite-status.lock.spec.ts \
+  apps/backend/src/modules/expenses/receipt-scan-human.lock.spec.ts \
+  apps/backend/src/modules/operation-inbox/inbound-classify-human.lock.spec.ts \
+  apps/backend/src/modules/payments/payment-second-eye.lock.spec.ts \
+  apps/backend/src/modules/hr/hr-attendance-reminder.lock.spec.ts \
+  apps/backend/src/modules/hr/hr-activity-beat.lock.spec.ts \
+  apps/web/src/components/hr/panel-activity-heartbeat.lock.spec.ts \
+  apps/backend/src/modules/emergency/acil-saha-atama.lock.spec.ts \
+  apps/web/src/app/panel/acil-yardim/acil-saha-atama.lock.spec.ts \
+  apps/backend/src/modules/claim-files/approval-72h.lock.spec.ts \
+  packages/shared/src/acil-vendor-whatsapp.lock.spec.ts \
+  apps/web/src/utils/claim-whatsapp-message.lock.spec.ts \
+  apps/web/src/utils/invoice-request-list.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

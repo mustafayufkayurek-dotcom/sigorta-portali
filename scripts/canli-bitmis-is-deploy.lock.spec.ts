@@ -43,6 +43,30 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
     assert.match(src, /pdf-preview-open\.lock\.spec/);
     assert.match(src, /customer-form-identity\.lock\.spec/);
     assert.match(src, /eksper-sigorta-matrix-removed\.lock\.spec/);
+    for (const lock of [
+      'login-email-code.lock.spec',
+      'giris-login-email-code.lock.spec',
+      'login-email-code-fill.lock.spec',
+      'session-timeout-idle.lock.spec',
+      'auth-session-refresh.lock.spec',
+      'morning-briefing.lock.spec',
+      'site-renewal.lock.spec',
+      'disk-watchdog.lock.spec',
+      'offsite-status.lock.spec',
+      'receipt-scan-human.lock.spec',
+      'inbound-classify-human.lock.spec',
+      'payment-second-eye.lock.spec',
+      'hr-attendance-reminder.lock.spec',
+      'hr-activity-beat.lock.spec',
+      'panel-activity-heartbeat.lock.spec',
+      'acil-saha-atama.lock.spec',
+      'approval-72h.lock.spec',
+      'acil-vendor-whatsapp.lock.spec',
+      'claim-whatsapp-message.lock.spec',
+      'invoice-request-list.lock.spec',
+    ]) {
+      assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
+    }
     const outbound = readFileSync(join(here, 'smoke-outbound-mail.sh'), 'utf8');
     assert.match(outbound, /crm-mail-watch\.lock\.spec/);
     assert.match(outbound, /inbox-reply-quote\.lock\.spec/);
