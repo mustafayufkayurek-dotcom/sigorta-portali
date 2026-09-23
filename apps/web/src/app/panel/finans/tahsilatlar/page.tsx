@@ -245,6 +245,8 @@ export default function TahsilatlarPage() {
       showToast('error', typeof msg === 'string' ? msg : 'İşlem başarısız.');
     }
   };
+
+  const markPaid = async (id: string) => {
     try {
       await axios.patch(`${API}/payments/${id}`, {
         status: 'completed',
