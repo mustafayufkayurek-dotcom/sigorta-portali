@@ -12,7 +12,7 @@ alwaysApply: true
 ## Zorunlu
 
 1. Gelen kutu, Acil ve Hasar İletişim yanıtı `buildInboxReplyHtml` kullanır. Graph `comment` ile logolu HTML yapıştırılmaz.
-2. Yanıt kutusunda «Alıcıda yazışma geçmişi» durur. Logo / tekrar imza kırpılır.
+2. Yanıt kutusunda «Alıcıda yazışma geçmişi» durur. Logo / tekrar imza kırpılır. Giden HTML **Dosya Yazışmaları**; tarih+saat; kartlar arasında ------. Karşı taraf img yok. Meridyen başlık logosu yalnız meridyen adresinden.
 3. Yazışma kopyası: görünür kopya (CC, gizli değil) **maili atan** (finans, müdür, yönetici, dosya sorumlusu). Ortak `ihbar@` / `hasar@` kopya almaz. Başlık **Platform Mail Kopyası**. Satır kalın: **Karşı Taraf**, **Dosya Sorumlusu Kopyası** (veya Finans / Müdür / Yönetici / Gönderen Kopyası), **Gönderim Tarihi**.
 4. CRM tanıtım: aynı başlık; satır gönderene (veya görevine) göredir. Kutusu **Hasar**.
 5. Gelen kutu / dosya rozetleri: Gönderildi, **Okunmadı / Okundu**, **Yanıt geldi**. Graph `isReadReceiptRequested` açık. Gelen İngilizce «Read: / was read on» belgesi Türkçe **Okundu** metnine çevrilir. CRM rozetleri: Gönderildi, **Ulaşmadı**, **Yanıt geldi** — CRM’de Okundu yok. İş bitmiş sayılmaz.

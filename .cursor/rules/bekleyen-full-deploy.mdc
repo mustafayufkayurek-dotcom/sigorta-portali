@@ -1,11 +1,11 @@
 ---
-description: Canlı web v621 / backend v621 — sıradaki paketler karışmaz
+description: Canlı web v622 / backend v622 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
 # Canlı (23.09.2026)
 
-Canlı: web **v621** · backend **v621**. Geri alma: web **v620** / backend **v620**.
+Canlı: web **v622** · backend **v622**. Geri alma: web **v621** / backend **v621**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v622 (full):** Gelen kutu yanıtı Dosya Yazışmaları yüzü. Yeni yazı üstte; teyit cümlesi; tarih ve saat; kartlar arasında ------. Outlook yığını ve karşı taraf logosu gitmez. Dış onay v621 durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v621 / backend v621.
 
 **v621 (full):** Dış onay linki 7 gün; onay/imza/red sonrası kapanır. Yeniden tıklayana «Bu belge zaten işleme alınmıştır ve erişime kapatılmıştır». WhatsApp ve evrak oluşturma aynı. Finans v620 durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v620 / backend v620.
 

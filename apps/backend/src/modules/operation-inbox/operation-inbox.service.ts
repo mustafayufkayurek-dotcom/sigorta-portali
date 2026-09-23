@@ -37,6 +37,7 @@ import {
 } from '@/common/helpers/ihbar-konusu.helper';
 import { isExpertFirmCustomer, resolveInsuredPhoneForInbox, resolveInboundFileNo, isInsuranceBrandFileNo, isSameInboundNumber, INBOUND_FILE_NO_BRAND_WARNING, INBOUND_FILE_NO_POLICY_WARNING, stripInboundAddressPollution, resolveAcilInboxFileOwnerId, buildInboxReplyHtml, receiptOriginalSubject, buildPlatformMailCopyNotice, canSendVisibleCopy, prependFileOwnerCopyNotice, INBOX_REPLY_ATTACH_MAX_BYTES, INBOX_REPLY_ATTACH_MAX_FILES, isInboxReplyAttachmentAllowed, sanitizeInboxReplyAttachmentName, parseMailAddressList, missingCustomerCardUserEmails, customerCardUserReminder } from '@sigorta/shared';
 import { isMeridyenInternalMailbox } from '@/modules/notifications/email/file-closure-email.template';
+import { resolveWelcomeEmailLogoUrl } from '@/modules/notifications/email/email-brand.util';
 import { isCorporateInboxSender, splitPersonName } from './inbound-sender-profile';
 import {
   resolveInsuredEmailForInbox,
@@ -588,7 +589,7 @@ export class OperationInboxService {
       senderUserId: sentByUserId,
       excludeEmails: [message.fromAddress],
     });
-    let replyHtml = buildInboxReplyHtml({
+    let replyHtml = this.buildFileCorrespondenceHtml({
       replyText: dto.body.trim(),
       fromName: message.fromName,
       fromAddress: message.fromAddress,
@@ -597,6 +598,7 @@ export class OperationInboxService {
       bodyHtml: message.bodyHtml,
       bodyText: message.bodyText,
       bodyPreview: message.bodyPreview,
+      fileNo: message.claimFile?.fileNo ?? message.emergencyCase?.caseNo ?? null,
     });
     const sentAt = new Date();
     if (senderCopy) {
@@ -764,18 +766,16 @@ export class OperationInboxService {
       senderUserId: sentByUserId,
       excludeEmails: dto.to,
     });
-    let outboundBody = relatedInbound
-      ? buildInboxReplyHtml({
-          replyText: dto.body.trim(),
-          fromName: relatedInbound.fromName,
-          fromAddress: relatedInbound.fromAddress,
-          receivedAt: relatedInbound.receivedAt,
-          subject: relatedInbound.subject,
-          bodyHtml: relatedInbound.bodyHtml,
-          bodyText: relatedInbound.bodyText,
-          bodyPreview: relatedInbound.bodyPreview,
-        })
-      : dto.body;
+    let outboundBody = this.buildFileCorrespondenceHtml({
+      replyText: dto.body.trim(),
+      fromName: relatedInbound?.fromName,
+      fromAddress: relatedInbound?.fromAddress,
+      receivedAt: relatedInbound?.receivedAt,
+      subject: relatedInbound?.subject ?? dto.subject,
+      bodyHtml: relatedInbound?.bodyHtml,
+      bodyText: relatedInbound?.bodyText,
+      bodyPreview: relatedInbound?.bodyPreview,
+    });
     const sentAt = new Date();
     if (senderCopy) {
       const counterpartAddress = relatedInbound?.fromAddress ?? dto.to[0] ?? null;
@@ -1759,6 +1759,23 @@ export class OperationInboxService {
       mailboxes,
       jobIds,
     };
+  }
+
+  private buildFileCorrespondenceHtml(input: {
+    replyText: string;
+    fromName?: string | null;
+    fromAddress?: string | null;
+    receivedAt?: Date | string | null;
+    subject?: string | null;
+    bodyHtml?: string | null;
+    bodyText?: string | null;
+    bodyPreview?: string | null;
+    fileNo?: string | null;
+  }) {
+    return buildInboxReplyHtml({
+      ...input,
+      logoUrl: resolveWelcomeEmailLogoUrl(),
+    });
   }
 
   private decodeReplyAttachments(

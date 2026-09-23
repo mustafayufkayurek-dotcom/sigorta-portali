@@ -8,24 +8,34 @@
 
 ---
 
-## Canlı durum (23 Eylül 2026 — web v621 / backend v621)
+## Canlı durum (23 Eylül 2026 — web v622 / backend v622)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v621-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v621-amd64` | canlı |
-| **Rollback** | Web **v620** / Backend **v620** | manifest `rollbackImages` |
-| **Etiket** | `v621-dis-onay-link-kilidi` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v622-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v622-amd64` | canlı |
+| **Rollback** | Web **v621** / Backend **v621** | manifest `rollbackImages` |
+| **Etiket** | `v622-yazisma-mail-yuzu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v622 — Full (23 Eylül 2026) — Yazışma mail yüzü
+
+- Gelen kutu ve dosya yanıtı **Dosya Yazışmaları** düzeninde gider
+- Yeni yazı üstte; teyit cümlesi durur; tarih ve saat; kartlar arasında ------
+- Outlook başlık yığını (Sent/From/Android) düşer; karşı taraf logosu gitmez
+- Meridyen başlık logosu aynı ailede; WhatsApp ve evrak oluşturma aynı
+- Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v621** / backend **v621**
 
 ### v621 — Full (23 Eylül 2026) — Dış onay linki kilidi
 
 - Dış `/evrak/…` ve `/sozlesme/…` linki 7 gün işlem görmezse düşer
 - Onay, imza, iptal veya red sonrası link belgeyi açmaz
 - Yeniden tıklayana: «Bu belge zaten işleme alınmıştır ve erişime kapatılmıştır»
+- Kapalı linkte belge metni dönmez; tarayıcı eski açık sayfayı saklamaz
 - WhatsApp ve evrak oluşturma yolu aynı; personel panelden evrakı görmeye devam eder
 - Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
 - Geri alma web **v620** / backend **v620**
