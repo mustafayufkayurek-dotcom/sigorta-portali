@@ -36,6 +36,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 17. Telefonda Yönetim Paneli, sol menü ve Hasar şeridi kesilmez. Giriş kodu Yapıştır ile dolar.
 18. Acil dosya sırayla ilerler. Atlama veya geri sıçrama «Bu işlem sırasıyla yapılmalıdır» der; sistem kilitlenmez.
 19. Saha yalnız atandığı Hasar veya Acil dosyanın evrak ve fotoğrafını açar. Depodan yetkisiz indirme sessizce durur.
+20. Acil finans yalnız yönetici veya yetkili finans hesabına açıktır. Ofis başka dosyanın ödemesini veya dekontunu açamaz. Aynı Hasar dosyası ve tedarikçide aynı iş grubu ikinci hakediş açmaz. Ödenmiş kayıt izsiz değişmez.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

@@ -89,16 +89,22 @@ export class InvoicesController {
   @Patch('invoices/:id')
   @RequirePermissions('invoice.update')
   @ApiOperation({ summary: 'Fatura güncelle' })
-  async update(@Param('id') id: string, @Body() dto: UpdateInvoiceDto) {
-    const data = await this.service.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateInvoiceDto, @CurrentUser() user: any) {
+    const data = await this.service.update(id, dto, {
+      userId: user?.id,
+      actorIsAdmin: this.resolveRoleCode(user) === 'admin',
+    });
     return { success: true, data };
   }
 
   @Patch('invoices/:id/status')
   @RequirePermissions('invoice.update')
   @ApiOperation({ summary: 'Fatura durumu güncelle' })
-  async updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
-    const data = await this.service.updateStatus(id, body.status);
+  async updateStatus(@Param('id') id: string, @Body() body: { status: string }, @CurrentUser() user: any) {
+    const data = await this.service.updateStatus(id, body.status, {
+      userId: user?.id,
+      actorIsAdmin: this.resolveRoleCode(user) === 'admin',
+    });
     return { success: true, data };
   }
 

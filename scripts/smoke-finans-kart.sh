@@ -7,5 +7,6 @@ echo "=== Finans kart kilit ==="
 node --experimental-strip-types --test \
   apps/web/src/utils/finans-merkez-kart.lock.spec.ts \
   apps/web/src/utils/finans-tahsilat-queue.lock.spec.ts \
-  apps/backend/src/modules/dashboard/finance-card-sources.lock.spec.ts
+  apps/backend/src/modules/dashboard/finance-card-sources.lock.spec.ts \
+  packages/shared/src/financial-record-freeze.lock.spec.ts
 echo "=== Finans kart kilit: PASS ==="

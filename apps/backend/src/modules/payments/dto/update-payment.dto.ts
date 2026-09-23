@@ -22,9 +22,9 @@ export class UpdatePaymentDto {
   @IsString()
   referenceNo?: string;
 
-  @ApiPropertyOptional({ enum: ['pending', 'completed', 'cancelled'] })
+  @ApiPropertyOptional({ enum: ['pending', 'completed', 'cancelled', 'correction_needed'] })
   @IsOptional()
-  @IsIn(['pending', 'completed', 'cancelled'])
+  @IsIn(['pending', 'completed', 'cancelled', 'correction_needed'])
   status?: string;
 
   @ApiPropertyOptional()

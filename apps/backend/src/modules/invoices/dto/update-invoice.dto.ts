@@ -47,9 +47,9 @@ export class UpdateInvoiceDto {
   @IsNumber()
   totalAmount?: number;
 
-  @ApiPropertyOptional({ enum: ['draft', 'sent', 'paid', 'partial', 'cancelled', 'overdue'] })
+  @ApiPropertyOptional({ enum: ['draft', 'sent', 'paid', 'partial', 'cancelled', 'overdue', 'correction_needed'] })
   @IsOptional()
-  @IsIn(['draft', 'sent', 'paid', 'partial', 'cancelled', 'overdue'])
+  @IsIn(['draft', 'sent', 'paid', 'partial', 'cancelled', 'overdue', 'correction_needed'])
   status?: string;
 
   @ApiPropertyOptional()

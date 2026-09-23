@@ -10,7 +10,13 @@ import {
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@/prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
-import { hakedisMahsupReference, netHakedisAfterAvans, resolveHasarAvansHesap, scaleAmountsToNet } from '@sigorta/shared';
+import {
+  hakedisMahsupReference,
+  netHakedisAfterAvans,
+  pickReusableHasarHakedisStatement,
+  resolveHasarAvansHesap,
+  scaleAmountsToNet,
+} from '@sigorta/shared';
 import { CreateStatementDto, CreateStatementItemDto, GrantHasarHakedisDto } from './dto/create-statement.dto';
 import { buildAppPath } from '@/common/utils/app-url';
 
@@ -176,6 +182,28 @@ export class VendorStatementsService {
     ]);
     if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
     if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+
+    const priorForReuse = await this.prisma.vendorPaymentStatement.findMany({
+      where: {
+        vendorId: dto.vendorId,
+        status: { not: 'DRAFT' },
+        items: { some: { claimFileId: dto.claimFileId } },
+      },
+      select: {
+        id: true,
+        vendorId: true,
+        status: true,
+        items: { select: { claimFileId: true, workGroupId: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const reuse = pickReusableHasarHakedisStatement(priorForReuse, {
+      vendorId: dto.vendorId,
+      claimFileId: dto.claimFileId,
+      workGroupIds: items.map((item) => item.workGroupId),
+    });
+    if (reuse) return this.findOne(reuse.id);
+
     if (vendor.paymentDueDays !== 15 && vendor.paymentDueDays !== 30) {
       throw new BadRequestException(
         `${vendor.name} kartında hakediş ödeme vadesi (15 veya 30 gün) seçili değil.`,

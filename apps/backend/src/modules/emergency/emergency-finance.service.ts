@@ -1,3 +1,4 @@
+import { isPaidOrApprovedFinanceStatus } from '@sigorta/shared';
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateInvoiceDraftDto } from './dto/create-invoice-draft.dto';
@@ -301,8 +302,8 @@ export class EmergencyFinanceService {
     });
     const status = acilHakedisOutgoingStatus(input.vendorPaid);
     if (existing) {
-      if (existing.status === 'completed' && status === 'pending') {
-        if (input.vendorPaid !== true) {
+      if (isPaidOrApprovedFinanceStatus(existing.status)) {
+        if (existing.status === 'completed' && status === 'pending' && input.vendorPaid !== true) {
           await this.prisma.emergencyCase.update({
             where: { id: input.caseId },
             data: { vendorPaid: true },

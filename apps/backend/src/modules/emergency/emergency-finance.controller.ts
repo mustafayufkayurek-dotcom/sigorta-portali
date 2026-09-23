@@ -9,11 +9,14 @@ import {
   Request,
   DefaultValuePipe,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { EmergencyFinanceService } from './emergency-finance.service';
 import { CreateInvoiceDraftDto } from './dto/create-invoice-draft.dto';
+import { AcilFinanceAccessGuard } from './acil-finance-access.guard';
 
 @Controller('emergency/finance')
+@UseGuards(AcilFinanceAccessGuard)
 export class EmergencyFinanceController {
   constructor(private readonly service: EmergencyFinanceService) {}
 

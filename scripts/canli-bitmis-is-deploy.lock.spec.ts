@@ -73,6 +73,10 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'panel-cep-duzen.lock.spec',
       'acil-status-transition.lock.spec',
       'document-download-access.lock.spec',
+      'acil-finance-access.lock.spec',
+      'payment-record-access.lock.spec',
+      'hasar-hakedis-once.lock.spec',
+      'financial-record-freeze.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

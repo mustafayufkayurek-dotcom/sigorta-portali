@@ -96,6 +96,7 @@ export function hakedisDurumEtiket(input: {
 }): string {
   const status = String(input.status ?? '').toUpperCase();
   const odeme = String(input.odemeDurumu ?? '').toLowerCase();
+  if (odeme === 'correction_needed') return 'Düzeltme Gerekli';
   if (odeme === 'completed') return 'Ödendi';
   if (status === 'DRAFT') return 'Taslak';
   if (odeme === 'pending') return 'Ödeme Bekliyor';
@@ -496,6 +497,7 @@ export function buildOdemePlani(input: {
   const mapDurum = (status?: string) => {
     if (status === 'completed') return 'Ödendi';
     if (status === 'pending') return 'Ödeme Bekliyor';
+    if (status === 'correction_needed') return 'Düzeltme Gerekli';
     return status ?? '—';
   };
 

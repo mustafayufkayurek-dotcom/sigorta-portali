@@ -86,12 +86,14 @@ export function FinanceRowActions({
   onPrint,
   ekstreHref,
   onMarkPaid,
+  onRequestCorrection,
 }: {
   rowId?: string;
   pinnedIds?: string[];
   onPrint: () => void;
   ekstreHref?: string | null;
   onMarkPaid?: () => void;
+  onRequestCorrection?: () => void;
 }) {
   const uid = useId();
   const pins = pinnedIds ?? defaultPinnedActionIds(FINANS_TAHSILAT_ROW_ACTIONS);
@@ -125,6 +127,13 @@ export function FinanceRowActions({
           onClick: () => onMarkPaid?.(),
           hidden: !onMarkPaid,
           icon: <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} />,
+        },
+        {
+          id: 'correction',
+          label: 'Düzeltme Gerekli',
+          onClick: () => onRequestCorrection?.(),
+          hidden: !onRequestCorrection,
+          icon: <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />,
         },
       ]}
     />
@@ -264,6 +273,7 @@ export function InvoiceRowActions({
   onEdit,
   onCancel,
   onMarkPaid,
+  onRequestCorrection,
 }: {
   rowId?: string;
   pinnedIds?: string[];
@@ -273,9 +283,11 @@ export function InvoiceRowActions({
   onEdit?: () => void;
   onCancel?: () => void;
   onMarkPaid?: () => void;
+  onRequestCorrection?: () => void;
 }) {
   const uid = useId();
-  const canPay = status === 'sent';
+  const canPay = status === 'sent' || status === 'correction_needed';
+  const frozen = status === 'paid';
   const pins = pinnedIds ?? defaultPinnedActionIds(FINANS_FATURA_ROW_ACTIONS);
   return (
     <PinnableRowActions
@@ -303,7 +315,7 @@ export function InvoiceRowActions({
           id: 'edit',
           label: 'Düzenle',
           onClick: () => onEdit?.(),
-          hidden: !onEdit,
+          hidden: !onEdit || frozen,
           icon: <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
         },
         {
@@ -314,10 +326,17 @@ export function InvoiceRowActions({
           icon: <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
         },
         {
+          id: 'correction',
+          label: 'Düzeltme Gerekli',
+          onClick: () => onRequestCorrection?.(),
+          hidden: !onRequestCorrection,
+          icon: <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
+        },
+        {
           id: 'cancel',
           label: 'İptal Et',
           onClick: () => onCancel?.(),
-          hidden: !onCancel,
+          hidden: !onCancel || frozen,
           danger: true,
           icon: <XCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />,
         },

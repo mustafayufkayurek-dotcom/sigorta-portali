@@ -27,7 +27,7 @@ import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
 import { openSessionBlob } from '@/utils/pdf-preview-open';
 import { VendorSuggestPanel } from '../VendorSuggestPanel';
 import { fetchVendorQuoteComparison } from '@/utils/vendor-intelligence-profile';
-import { withAvansNote } from '@sigorta/shared';
+import { PAYMENT_RECORD_ACCESS_MESSAGE, withAvansNote } from '@sigorta/shared';
 import {
   defaultInvoiceCounterpartyType,
   defaultPaymentPayerType,
@@ -1141,7 +1141,10 @@ export function TahsilatlarTab({ claimId, claim }: { claimId: string; claim?: an
     try {
       const res = await fetch(`${API}/payments/${paymentId}/receipt/file`, { headers: authHeader() });
       if (!res.ok) {
-        showToast('error', 'Dekont açılamadı');
+        showToast(
+          'error',
+          res.status === 403 ? PAYMENT_RECORD_ACCESS_MESSAGE : 'Dekont açılamadı',
+        );
         return;
       }
       const opened = await openSessionBlob(await res.blob(), 'Dekont');

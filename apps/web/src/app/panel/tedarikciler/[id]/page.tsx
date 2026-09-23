@@ -1,6 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
+import { PAYMENT_RECORD_ACCESS_MESSAGE } from '@sigorta/shared';
 import { openSessionBlob } from '@/utils/pdf-preview-open';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
@@ -1635,7 +1636,10 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
     try {
       const res = await fetch(`${API}/payments/${paymentId}/receipt/file`, { headers: authHeader() });
       if (!res.ok) {
-        showToast('error', 'Dekont Açılamadı');
+        showToast(
+          'error',
+          res.status === 403 ? PAYMENT_RECORD_ACCESS_MESSAGE : 'Dekont Açılamadı',
+        );
         return;
       }
       const opened = await openSessionBlob(await res.blob(), 'Dekont');

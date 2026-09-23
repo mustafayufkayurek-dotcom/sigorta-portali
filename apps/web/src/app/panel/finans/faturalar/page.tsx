@@ -72,6 +72,7 @@ function invoiceCustomerOf(inv: any): string {
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Taslak', sent: 'Gönderildi', paid: 'Ödendi', partial: 'Kısmi', cancelled: 'İptal', overdue: 'Vadesi Geçti',
+  correction_needed: 'Düzeltme Gerekli',
 };
 const STATUS_COLOR: Record<string, string> = {
   draft:     'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600',
@@ -80,6 +81,7 @@ const STATUS_COLOR: Record<string, string> = {
   partial:   'bg-yellow-50 text-yellow-700 border-yellow-100 dark:bg-yellow-900/40 dark:text-yellow-400 dark:border-yellow-800',
   cancelled: 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/40 dark:text-red-400 dark:border-red-800',
   overdue:   'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/60 dark:text-red-300 dark:border-red-700',
+  correction_needed: 'bg-amber-50 text-amber-800 border-amber-100 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800',
 };
 
 type SortKey = 'invoiceDate' | 'totalAmount' | 'invoiceNo' | 'status' | 'customer' | 'fileNo' | 'invoiceType';
@@ -104,6 +106,7 @@ function FaturalarPageContent() {
   const searchParams = useSearchParams();
   const roleCode = usePanelRoleCode();
   const isFinance = isFinanceRole(roleCode);
+  const isAdmin = String(roleCode ?? '').toLowerCase() === 'admin';
   const tabParam = searchParams.get('tab');
   const activeTab = resolveFaturaListTab(tabParam, isFinance);
   const talepFilter = resolveFaturaTalepFilter(searchParams.get('status'));
@@ -528,6 +531,9 @@ function FaturalarPageContent() {
                                 onNotifyOwner={() => handleNotifyOwner(inv.id)}
                                 onEdit={() => openEdit(inv)}
                                 onMarkPaid={() => handleStatusChange(inv, 'paid', 'Ödendi')}
+                                onRequestCorrection={isAdmin && inv.status === 'paid'
+                                  ? () => handleStatusChange(inv, 'correction_needed', 'Düzeltme Gerekli')
+                                  : undefined}
                                 onCancel={() => handleStatusChange(inv, 'cancelled', 'İptal')}
                               />
                             </PanelTableTd>

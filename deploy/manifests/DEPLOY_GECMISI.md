@@ -8,18 +8,27 @@
 
 ---
 
-## Canlı durum (23 Eylül 2026 — web v619 / backend v619)
+## Canlı durum (23 Eylül 2026 — web v620 / backend v620)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v619-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v619-amd64` | canlı |
-| **Rollback** | Web **v618** / Backend **v616** | manifest `rollbackImages` |
-| **Etiket** | `v619-acil-basamak-ve-evrak-guvenligi` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v620-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v620-amd64` | canlı |
+| **Rollback** | Web **v619** / Backend **v619** | manifest `rollbackImages` |
+| **Etiket** | `v620-finansal-yetki-ve-iz-kalkanı` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v620 — Full (23 Eylül 2026) — Finans yetki ve iz kalkanı
+
+- Acil finans yalnız yönetici veya yetkili finans hesabına açık; adres yazılsa da yetkisiz istek kesilir
+- Ofis başka dosyanın ödemesini veya dekontunu açamaz; «Bu kayda erişiminiz yok.»
+- Aynı Hasar dosyası ve tedarikçide aynı iş grubu ikinci hakediş açmaz; mevcut kayıt döner
+- Ödenmiş / onaylı satır izsiz değişmez; düzeltme yönetici Düzeltme Gerekli kapısından; tarihçede kim, eski tutar, yeni tutar durur
+- Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v619** / backend **v619**
 
 ### v619 — Full (23 Eylül 2026) — Acil basamak ve evrak sahipliği
 

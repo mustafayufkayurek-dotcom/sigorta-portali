@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, Optional, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { FinancialSummaryService } from '../invoices/financial-summary.service';
@@ -16,7 +16,19 @@ import {
   mergeWhereAnd,
   RequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
-import { AVANS_REF_PREFIX, coerceIncomingPayerType, isAvansPayment, isInsuredCollectionParty } from '@sigorta/shared';
+import {
+  AVANS_REF_PREFIX,
+  coerceIncomingPayerType,
+  isAvansPayment,
+  isInsuredCollectionParty,
+  PAYMENT_RECORD_ACCESS_MESSAGE,
+  canViewPaymentRecord,
+  evaluateFrozenFinanceUpdate,
+  financeAdjustAuditPayload,
+  FINANCIAL_CORRECTION_NEEDED,
+  isPaidOrApprovedFinanceStatus,
+  paymentTouchesFrozenMoneyFields,
+} from '@sigorta/shared';
 import {
   acilHakedisActorName,
   acilHakedisPaidDescription,
@@ -388,7 +400,16 @@ export class PaymentsService {
             fileNo: true,
             insuranceCompanyId: true,
             assignedFieldUserId: true,
+            assignedOfficeUserId: true,
+            currentResponsibleUserId: true,
             closedAt: true,
+          },
+        },
+        emergencyCase: {
+          select: {
+            id: true,
+            assignedUserId: true,
+            assignedFieldUserId: true,
           },
         },
         invoice: true,
@@ -399,6 +420,18 @@ export class PaymentsService {
     if (!payment) throw new NotFoundException('Ödeme bulunamadı');
     if (payment.claimFile) {
       assertClaimFileAccess(payment.claimFile, requestingUser, insuranceCompanyIds);
+    }
+    if (requestingUser) {
+      const allowed = canViewPaymentRecord({
+        roleCode: requestingUser.roleCode,
+        userId: requestingUser.id,
+        insuranceCompanyIds,
+        claimFile: payment.claimFile,
+        emergencyCase: payment.emergencyCase,
+      });
+      if (!allowed) {
+        throw new ForbiddenException(PAYMENT_RECORD_ACCESS_MESSAGE);
+      }
     }
     return payment;
   }
@@ -678,10 +711,25 @@ export class PaymentsService {
     }
   }
 
-  async update(id: string, dto: UpdatePaymentDto, userId?: string) {
+  async update(id: string, dto: UpdatePaymentDto, userId?: string, actorIsAdmin = false) {
     const payment = await this.prisma.payment.findUnique({ where: { id } });
     if (!payment) throw new NotFoundException('Ödeme bulunamadı');
+    const freeze = evaluateFrozenFinanceUpdate({
+      currentStatus: payment.status,
+      nextStatus: dto.status,
+      touchesMoneyFields: paymentTouchesFrozenMoneyFields(dto),
+      actorIsAdmin,
+    });
+    if (!freeze.ok) {
+      throw new BadRequestException(freeze.message);
+    }
     const wasPending = payment.status === 'pending';
+    const nextAmount = dto.amount !== undefined ? dto.amount : payment.amount;
+    const nextMethod = dto.method ?? payment.method;
+    const nextDate = dto.paymentDate ? new Date(dto.paymentDate) : payment.paymentDate;
+    const moneyChanged = dto.amount !== undefined
+      || Boolean(dto.paymentDate)
+      || Boolean(dto.method);
     const updated = await this.prisma.payment.update({
       where: { id },
       data: {
@@ -697,6 +745,38 @@ export class PaymentsService {
           : {}),
       },
     });
+
+    if (dto.status === FINANCIAL_CORRECTION_NEEDED && userId) {
+      this.auditLogsService.log({
+        entityType: 'Payment',
+        entityId: id,
+        action: 'FINANCE_CORRECTION_OPENED',
+        oldValue: { status: payment.status, amount: payment.amount },
+        newValue: { status: updated.status, amount: updated.amount },
+        userId,
+      });
+    }
+
+    if (moneyChanged && userId) {
+      this.auditLogsService.log({
+        entityType: 'Payment',
+        entityId: id,
+        action: 'FINANCE_ADJUST',
+        oldValue: financeAdjustAuditPayload({
+          amountFrom: payment.amount,
+          dateFrom: payment.paymentDate,
+          methodFrom: payment.method,
+          statusFrom: payment.status,
+        }),
+        newValue: financeAdjustAuditPayload({
+          amountTo: nextAmount,
+          dateTo: nextDate,
+          methodTo: nextMethod,
+          statusTo: updated.status,
+        }),
+        userId,
+      });
+    }
 
     if (dto.status === 'completed' && wasPending && userId) {
       this.auditLogsService.log({

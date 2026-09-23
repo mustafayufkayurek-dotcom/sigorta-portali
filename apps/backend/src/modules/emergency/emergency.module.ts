@@ -3,6 +3,7 @@ import { EmergencyCasesController } from './emergency-cases.controller';
 import { EmergencyFinanceController } from './emergency-finance.controller';
 import { EmergencyCasesService } from './emergency-cases.service';
 import { EmergencyFinanceService } from './emergency-finance.service';
+import { AcilFinanceAccessGuard } from './acil-finance-access.guard';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ClaimFilesModule } from '@/modules/claim-files/claim-files.module';
 import { OperationalAccessGrantsModule } from '@/modules/operational-access-grants/operational-access-grants.module';
@@ -29,7 +30,7 @@ import { SurveysModule } from '@/modules/surveys/surveys.module';
     SurveysModule,
   ],
   controllers: [EmergencyCasesController, EmergencyFinanceController],
-  providers: [EmergencyCasesService, EmergencyFinanceService],
+  providers: [EmergencyCasesService, EmergencyFinanceService, AcilFinanceAccessGuard],
   exports: [EmergencyCasesService, EmergencyFinanceService],
 })
 export class EmergencyModule {}

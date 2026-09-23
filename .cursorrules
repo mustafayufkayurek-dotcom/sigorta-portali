@@ -21,5 +21,8 @@ Puantaj takvimi mobil ✓ dönüşümü, Hasar dosyası skeleton loading ekranla
 ## Kilit — Acil basamak ve evrak indirme
 Acil durum basamak geçiş mantığı, saha personeli evrak/fotoğraf sahiplik kontrol filtreleri ve genel indirme kapısı güvenlik sınırları kilitli kurallardır. Gelecekteki hiçbir talepte bu yapılar silinemez, esnetilemez veya eski sürüme döndürülemez.
 
+## Kilit — Finans yetki ve iz kalkanı (v620)
+Acil finans rol kontrolü, tekil ödeme/dekont sahiplik denetimleri, Hasar çift hakediş kontrolü, ödenmiş kayıt dondurma sistemi ve finansal tarihçe (audit log) iz notları kalıcı ve kilitli kurallardır. Gelecekteki hiçbir talepte bu yapılar silinemez, esnetilemez veya eski sürüme döndürülemez.
+
 İş kuralı, silme, para, canlıya alma — yalnız bunları sor.
 Türkçe.

@@ -53,6 +53,7 @@ export const FINANS_FATURA_ROW_ACTIONS: PortalRowActionDef[] = [
   { id: 'notify', label: 'Dosya Sorumlusuna Bildir', defaultPinned: true, suggested: true },
   { id: 'edit', label: 'Düzenle', defaultPinned: true },
   { id: 'pay', label: 'Ödendi', defaultPinned: true },
+  { id: 'correction', label: 'Düzeltme Gerekli', defaultPinned: false },
   { id: 'cancel', label: 'İptal Et', defaultPinned: false },
 ];
 
@@ -60,6 +61,7 @@ export const FINANS_TAHSILAT_ROW_ACTIONS: PortalRowActionDef[] = [
   { id: 'print', label: 'Yazdır', defaultPinned: true },
   { id: 'ekstre', label: 'Cari Hesap Ekstresi', defaultPinned: true, suggested: true },
   { id: 'pay', label: 'Ödendi İşaretle', defaultPinned: true },
+  { id: 'correction', label: 'Düzeltme Gerekli', defaultPinned: false },
 ];
 
 export const FINANS_FATURA_TALEP_ROW_ACTIONS: PortalRowActionDef[] = [

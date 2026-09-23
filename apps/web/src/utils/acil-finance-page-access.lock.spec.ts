@@ -48,4 +48,12 @@ describe('acil finans sayfası erişim LOCK', () => {
     assert.match(live, /canOpenFinancePage: showAcilFinancePage/);
     assert.match(live, /usePanelAccess/);
   });
+
+  it('arka kapı da aynı kuraldadır', () => {
+    const controller = readFileSync(
+      join(here, '../../../backend/src/modules/emergency/emergency-finance.controller.ts'),
+      'utf8',
+    );
+    assert.match(controller, /AcilFinanceAccessGuard/);
+  });
 });

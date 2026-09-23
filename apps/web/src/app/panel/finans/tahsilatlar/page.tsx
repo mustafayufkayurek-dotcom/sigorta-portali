@@ -32,7 +32,7 @@ import {
   type ClientSortState,
 } from '@/utils/panel-table-sort';
 import { formatTryAmount } from '@/utils/format-try-amount';
-import { HASAR_AVANS_YARI_USTU_ETIKET, isAvansYariUstuNote } from '@sigorta/shared';
+import { HASAR_AVANS_YARI_USTU_ETIKET, isAvansYariUstuNote, financePaymentStatusLabel } from '@sigorta/shared';
 import { isOfficeStaffRole, usePanelRoleCode } from '@/hooks/usePanelRole';
 import { HintIcon } from '@/components/ui/HintIcon';
 import { FinansTablePager } from '@/components/finance/FinansTablePager';
@@ -122,6 +122,7 @@ export default function TahsilatlarPage() {
   );
   const roleCode = usePanelRoleCode();
   const isFileOwner = isOfficeStaffRole(roleCode);
+  const isAdmin = String(roleCode ?? '').toLowerCase() === 'admin';
   const claimFileId = searchParams.get('claimFileId') ?? '';
   const [myFilesOnly, setMyFilesOnly] = useState(false);
   const [filters, setFilters] = useState({
@@ -232,7 +233,18 @@ export default function TahsilatlarPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const markPaid = async (id: string) => {
+  const markCorrectionNeeded = async (id: string) => {
+    try {
+      await axios.patch(`${API}/payments/${id}`, {
+        status: 'correction_needed',
+      }, { headers: authHeader() });
+      showToast('success', 'Kayıt düzeltmeye açıldı.');
+      load();
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e) ? e.response?.data?.message : 'İşlem başarısız.';
+      showToast('error', typeof msg === 'string' ? msg : 'İşlem başarısız.');
+    }
+  };
     try {
       await axios.patch(`${API}/payments/${id}`, {
         status: 'completed',
@@ -496,9 +508,10 @@ export default function TahsilatlarPage() {
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
                             p.status === 'completed' ? 'bg-green-50 text-green-700 border-green-100'
                               : p.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-100'
+                              : p.status === 'correction_needed' ? 'bg-amber-50 text-amber-800 border-amber-100'
                               : 'bg-red-50 text-red-600 border-red-100'
                           }`}>
-                            {p.status === 'completed' ? 'Tamamlandı' : p.status === 'pending' ? 'Bekliyor' : 'İptal'}
+                            {financePaymentStatusLabel(p.status)}
                           </span>
                           {p.queueSource === 'acil_hakedis' && p.status === 'completed' && (p.emergencyCase?.vendorPaidBy?.firstName || p.emergencyCase?.vendorPaidBy?.lastName) ? (
                             <div className="mt-0.5 text-[10px] text-slate-500">
@@ -532,7 +545,7 @@ export default function TahsilatlarPage() {
                               party: p.vendorName,
                               date: fmtDate(p.paymentDate ?? p.dueDate),
                               amount: Number(p.amount ?? 0),
-                              status: p.status === 'completed' ? 'Tamamlandı' : p.status === 'pending' ? 'Bekliyor' : 'İptal',
+                              status: financePaymentStatusLabel(p.status),
                               note: p.note,
                             })}
                             ekstreHref={p.payerType === 'vendor'
@@ -543,8 +556,11 @@ export default function TahsilatlarPage() {
                                 fileNo: p.claimFile?.fileNo,
                               })
                               : null}
-                            onMarkPaid={!isFileOwner && p.status === 'pending' && p.paymentType === 'outgoing'
+                            onMarkPaid={!isFileOwner && (p.status === 'pending' || p.status === 'correction_needed') && p.paymentType === 'outgoing'
                               ? () => void markPaid(p.id)
+                              : undefined}
+                            onRequestCorrection={isAdmin && p.status === 'completed'
+                              ? () => void markCorrectionNeeded(p.id)
                               : undefined}
                           />
                         </td>

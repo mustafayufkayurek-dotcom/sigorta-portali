@@ -1,0 +1,41 @@
+---
+description: Finans Acil kapısı, ödeme sahipliği, Hasar çift hakediş
+alwaysApply: true
+---
+
+# Finans Emniyet Kilitleri
+
+**Kaynak (Mustafa · 23.09.2026):** Acil finans adresten açılıyordu. Ofis başka dosyanın ödemesini açabiliyordu. Hasar’da aynı tuş ikinci hakediş doğuruyordu.
+
+**Temel cümle:** Acil finans **yalnız yönetici / yetkili finans.** Ofis **kendi dosyasının** ödemesini açar. Aynı Hasar dosyası ve tedarikçide aynı iş grubu **ikinci kez hakediş açmaz.**
+
+## Zorunlu
+
+1. `emergency/finance` bekçisi `canOpenAcilFinanceAccess` — yetkisiz istek bulunamadı döner.
+2. Ödeme / dekont `canViewPaymentRecord`. Ofis başka dosyada «Bu kayda erişiminiz yok.»
+3. `grantHasarHakedis` aynı dosya + tedarikçi + iş grubunda mevcut kaydı döner. İkinci iş grubu durur.
+4. Ödenmiş / onaylı ödeme ve fatura satırı dondurulur. Tutar, tarih, yöntem ancak yönetici **Düzeltme Gerekli** açtıktan sonra değişir. Değişince tarihçeye kim, eski tutar, yeni tutar yazılır.
+
+## Yasak (açık onay yoksa)
+
+- Acil finansı her oturuma açmak
+- Ofise tüm ödeme kayıtlarını açmak
+- Aynı iş grubunda ikinci onaylı ekstre
+- Ödenmiş satırı izsiz düzeltmek
+
+## Durdurma
+
+Yetkisiz Acil finans, yabancı ödeme, çift hakediş veya ödenmiş tutarın izsiz değişmesi geçerse → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/acil-finance-access.lock.spec.ts \
+ packages/shared/src/payment-record-access.lock.spec.ts \
+ packages/shared/src/hasar-hakedis-once.lock.spec.ts \
+ packages/shared/src/financial-record-freeze.lock.spec.ts
+pnpm smoke:acil-netlesen
+bash scripts/smoke-hasar-hakedis.sh
+bash scripts/smoke-finans-kart.sh
+```

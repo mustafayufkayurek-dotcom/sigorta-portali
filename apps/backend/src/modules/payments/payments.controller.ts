@@ -159,8 +159,11 @@ export class PaymentsController {
     if (role === 'office_staff' && dto.status === 'completed') {
       throw new ForbiddenException('Ödendi işlemini finans personeli yapar.');
     }
+    if (role === 'office_staff' && dto.status === 'correction_needed') {
+      throw new ForbiddenException('Düzeltme Gerekli durumunu yalnız yönetici verir.');
+    }
     await this.service.findOne(id, requestingUser, insuranceCompanyIds);
-    const data = await this.service.update(id, dto, user?.id);
+    const data = await this.service.update(id, dto, user?.id, role === 'admin');
     return { success: true, data };
   }
 

@@ -81,6 +81,10 @@ node --experimental-strip-types --test \
   apps/web/src/utils/panel-table-scroll.lock.spec.ts \
   apps/web/src/utils/panel-cep-duzen.lock.spec.ts \
   packages/shared/src/acil-status-transition.lock.spec.ts \
-  apps/backend/src/common/helpers/document-download-access.lock.spec.ts
+  apps/backend/src/common/helpers/document-download-access.lock.spec.ts \
+  packages/shared/src/acil-finance-access.lock.spec.ts \
+  packages/shared/src/payment-record-access.lock.spec.ts \
+  packages/shared/src/hasar-hakedis-once.lock.spec.ts \
+  packages/shared/src/financial-record-freeze.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

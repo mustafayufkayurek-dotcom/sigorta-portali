@@ -2,12 +2,13 @@ import { BadRequestException, Injectable, Logger, NotFoundException, Optional, F
 import { canViewFileFinancials } from '@/common/helpers/financial-visibility.helper';
 import { PrismaService } from '@/prisma/prisma.service';
 import { FinancialSummaryService } from './financial-summary.service';
-import { coerceSalesInvoiceCounterparty, isInsuredCollectionParty } from '@sigorta/shared';
+import { coerceSalesInvoiceCounterparty, evaluateFrozenFinanceUpdate, financeAdjustAuditPayload, FINANCIAL_CORRECTION_NEEDED, invoiceTouchesFrozenMoneyFields, isInsuredCollectionParty } from '@sigorta/shared';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { appendInvoiceEditNote, staffDisplayName } from './invoice-edit-note';
 import { LogoSyncService } from '../logo-integration/services/logo-sync.service';
 import { CacheService } from '../../cache/cache.service';
+import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { sanitizeSearchQuery } from '@/common/security/sanitize-search';
 
 function parseIssuedInvoiceDate(value?: string | Date | null): Date {
@@ -32,6 +33,7 @@ export class InvoicesService {
     private prisma: PrismaService,
     private financialSummary: FinancialSummaryService,
     private readonly cache: CacheService,
+    private readonly auditLogs: AuditLogsService,
     @Optional() private readonly logoSync?: LogoSyncService,
   ) {}
 
@@ -285,8 +287,17 @@ export class InvoicesService {
     return invoice;
   }
 
-  async update(id: string, dto: UpdateInvoiceDto) {
+  async update(id: string, dto: UpdateInvoiceDto, actor?: { userId?: string; actorIsAdmin?: boolean }) {
     const invoice = await this.findOne(id);
+    const freeze = evaluateFrozenFinanceUpdate({
+      currentStatus: invoice.status,
+      nextStatus: dto.status,
+      touchesMoneyFields: invoiceTouchesFrozenMoneyFields(dto),
+      actorIsAdmin: actor?.actorIsAdmin === true,
+    });
+    if (!freeze.ok) {
+      throw new BadRequestException(freeze.message);
+    }
     const editReason = dto.editReason?.trim() ?? '';
     if (!editReason) {
       throw new BadRequestException('Düzenleme nedeni zorunludur.');
@@ -320,14 +331,64 @@ export class InvoicesService {
 
     await this.touchClaimFinance(invoice.claimFileId);
     await this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
+    if (actor?.userId) {
+      const moneyChanged = invoiceTouchesFrozenMoneyFields(dto);
+      if (dto.status === FINANCIAL_CORRECTION_NEEDED) {
+        this.auditLogs.log({
+          entityType: 'Invoice',
+          entityId: id,
+          action: 'FINANCE_CORRECTION_OPENED',
+          oldValue: { status: invoice.status, amount: invoice.totalAmount },
+          newValue: { status: updated.status, amount: updated.totalAmount },
+          userId: actor.userId,
+        });
+      }
+      if (moneyChanged) {
+        this.auditLogs.log({
+          entityType: 'Invoice',
+          entityId: id,
+          action: 'FINANCE_ADJUST',
+          oldValue: financeAdjustAuditPayload({
+            amountFrom: invoice.totalAmount,
+            dateFrom: invoice.invoiceDate,
+            statusFrom: invoice.status,
+          }),
+          newValue: financeAdjustAuditPayload({
+            amountTo: updated.totalAmount,
+            dateTo: updated.invoiceDate,
+            statusTo: updated.status,
+          }),
+          userId: actor.userId,
+        });
+      }
+    }
     return updated;
   }
 
-  async updateStatus(id: string, status: string) {
+  async updateStatus(id: string, status: string, actor?: { userId?: string; actorIsAdmin?: boolean }) {
     const invoice = await this.findOne(id);
+    const freeze = evaluateFrozenFinanceUpdate({
+      currentStatus: invoice.status,
+      nextStatus: status,
+      touchesMoneyFields: false,
+      actorIsAdmin: actor?.actorIsAdmin === true,
+    });
+    if (!freeze.ok) {
+      throw new BadRequestException(freeze.message);
+    }
     const updated = await this.prisma.invoice.update({ where: { id }, data: { status } });
     await this.touchClaimFinance(invoice.claimFileId);
     await this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
+    if (actor?.userId && status === FINANCIAL_CORRECTION_NEEDED) {
+      this.auditLogs.log({
+        entityType: 'Invoice',
+        entityId: id,
+        action: 'FINANCE_CORRECTION_OPENED',
+        oldValue: { status: invoice.status, amount: invoice.totalAmount },
+        newValue: { status: updated.status, amount: updated.totalAmount },
+        userId: actor.userId,
+      });
+    }
     return updated;
   }
 
