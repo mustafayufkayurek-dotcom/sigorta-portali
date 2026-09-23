@@ -2,24 +2,32 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 22 Eylül 2026
+**Son güncelleme:** 23 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (22 Eylül 2026 — web v618 / backend v616)
+## Canlı durum (23 Eylül 2026 — web v619 / backend v619)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v618-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v616-amd64` | canlı |
-| **Rollback** | Web **v617** / Backend **v616** | manifest `rollbackImages` |
-| **Etiket** | `v618-cep-giris-kodu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v619-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v619-amd64` | canlı |
+| **Rollback** | Web **v618** / Backend **v616** | manifest `rollbackImages` |
+| **Etiket** | `v619-acil-basamak-ve-evrak-guvenligi` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v619 — Full (23 Eylül 2026) — Acil basamak ve evrak sahipliği
+
+- Acil dosya sırayla ilerler; atlama veya geri sıçrama «Bu işlem sırasıyla yapılmalıdır»
+- Saha yalnız atandığı Hasar veya Acil dosyanın evrak ve fotoğrafını açar; depodan yetkisiz indirme sessizce durur
+- Cep v618 yüzü durur. Kilit `.cursorrules` ve bitmiş iş kapısında
+- Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v618** / backend **v616**
 
 ### v618 — Yalnız web (22 Eylül 2026) — Cep düzeni ve giriş kodu
 

@@ -1,11 +1,11 @@
 ---
-description: Canlı web v618 / backend v616 — sıradaki paketler karışmaz
+description: Canlı web v619 / backend v619 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (22.09.2026)
+# Canlı (23.09.2026)
 
-Canlı: web **v618** · backend **v616**. Geri alma: web **v617** / backend **v616**.
+Canlı: web **v619** · backend **v619**. Geri alma: web **v618** / backend **v616**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v619 (full):** Acil dosya sırayla ilerler; atlama «Bu işlem sırasıyla yapılmalıdır». Saha yalnız atandığı Hasar/Acil evrak ve fotoğrafını açar; depodan yetkisiz indirme sessizce durur. Cep v618 yüzü durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v618 / backend v616.
 
 **v618 (yalnız web):** Telefonda giriş kodu Yapıştır ile dolar; sahte 000000 durmaz. Yönetim Paneli başlığı ve dönem tuşları üst üste binmez; kart yazıları kesilmez. Sol menü tam yazılır. Hasar şeridi kartların üstüne binmez. Bu haller kilitli; geriye dönmez. Backend **v616**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v617 / backend v616.
 

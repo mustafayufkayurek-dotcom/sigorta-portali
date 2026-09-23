@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-09-22",
-  "label": "v618-cep-giris-kodu",
-  "description": "Yalnız web v618: telefon giriş kodu Yapıştır, Yönetim Paneli/menü/Hasar şerit düzeni. Backend v616. Geri alma web v617 / backend v616.",
+  "updatedAt": "2026-09-23",
+  "label": "v619-acil-basamak-ve-evrak-guvenligi",
+  "description": "Full v619: Acil basamak kilidi ve evrak/fotoğraf sahiplik. Cep v618 durur. Geri alma web v618 / backend v616.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v616-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v618-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v619-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v619-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v617-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v618-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v616-amd64"
   },
   "mustPassSmokeRoutes": [
