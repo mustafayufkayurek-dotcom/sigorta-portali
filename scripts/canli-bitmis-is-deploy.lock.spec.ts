@@ -71,6 +71,8 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'ui-action-timeout.lock.spec',
       'panel-table-scroll.lock.spec',
       'panel-cep-duzen.lock.spec',
+      'acil-status-transition.lock.spec',
+      'document-download-access.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

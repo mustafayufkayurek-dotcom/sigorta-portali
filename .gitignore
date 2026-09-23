@@ -79,3 +79,7 @@ apps/web/public/local-demo/
 # Local email HTML previews — not product, never rsync
 .preview/
 .tmp-kapanis-preview/
+
+# Sahip kasası — şifre ve anahtar GitHub’a gitmez; yalnız bu bilgisayarda durur
+/KASA/
+SISTEM_KURULUM_REHBERI.txt

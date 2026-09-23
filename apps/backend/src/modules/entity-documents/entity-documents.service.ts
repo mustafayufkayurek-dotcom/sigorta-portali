@@ -14,12 +14,11 @@ import { orientPhotoBuffer } from '@/modules/storage/orient-photo';
 import sharp from 'sharp';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
+import { normalizeRequestUser } from '@/common/helpers/claim-file-scope.helper';
 import {
-  assertClaimFileAccess,
-  isInsuranceCompanyUser,
-  normalizeRequestUser,
-} from '@/common/helpers/claim-file-scope.helper';
-import { isFieldStaff } from '@/common/helpers/field-staff.helper';
+  assertScopedFileEntityAccess,
+  rethrowDownloadAccess,
+} from '@/common/helpers/document-download-access';
 
 @Injectable()
 export class EntityDocumentsService {
@@ -40,52 +39,11 @@ export class EntityDocumentsService {
     const requestingUser = normalizeRequestUser(user);
     if (!requestingUser) return;
 
-    if (entityType === 'customer') {
-      if (isFieldStaff(requestingUser.roleCode)) {
-        const assigned = await this.prisma.claimFile.findFirst({
-          where: { customerId: entityId, assignedFieldUserId: requestingUser.id },
-          select: { id: true },
-        });
-        if (!assigned) {
-          throw new ForbiddenException('Bu müşteriye erişim izniniz bulunmamaktadır');
-        }
-      }
-      if (isInsuranceCompanyUser(requestingUser.roleCode) && insuranceCompanyIds?.length) {
-        const linked = await this.prisma.claimFile.findFirst({
-          where: {
-            customerId: entityId,
-            insuranceCompanyId: { in: insuranceCompanyIds },
-          },
-          select: { id: true },
-        });
-        if (!linked) {
-          throw new ForbiddenException('Bu müşteriye erişim izniniz bulunmamaktadır');
-        }
-      }
-      return;
-    }
-
-    if (entityType === 'claim_file' || entityType === 'claim-file') {
-      const claimFile = await this.prisma.claimFile.findUnique({
-        where: { id: entityId },
-        select: {
-          insuranceCompanyId: true,
-          assignedFieldUserId: true,
-          closedAt: true,
-        },
-      });
-      if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
-      assertClaimFileAccess(claimFile, requestingUser, insuranceCompanyIds);
-      return;
-    }
-
-    if (entityType === 'emergency_case') {
-      const emergencyCase = await this.prisma.emergencyCase.findUnique({
-        where: { id: entityId },
-        select: { id: true },
-      });
-      if (!emergencyCase) throw new NotFoundException('Dosya bulunamadı');
-    }
+    await assertScopedFileEntityAccess(this.prisma, entityType, entityId, {
+      ...requestingUser,
+      insuranceCompanyScopes: insuranceCompanyIds ?? user?.insuranceCompanyScopes,
+      assistantCustomerScopes: user?.assistantCustomerScopes,
+    });
 
     if (entityType === 'hr_leave_request') {
       const leaveRequest = await this.prisma.hrLeaveRequest.findUnique({
@@ -294,7 +252,11 @@ export class EntityDocumentsService {
   ): Promise<{ url: string; fileName: string; mimeType: string }> {
     const doc = await this.prisma.entityDocument.findUnique({ where: { id } });
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
-    await this.assertEntityAccess(doc.entityType, doc.entityId, user, insuranceCompanyIds);
+    try {
+      await this.assertEntityAccess(doc.entityType, doc.entityId, user, insuranceCompanyIds);
+    } catch (error) {
+      rethrowDownloadAccess(error);
+    }
 
     const url = await this.storage.getSignedUrl(doc.storageKey, expiresIn);
     return { url, fileName: doc.fileName, mimeType: doc.mimeType };
@@ -309,7 +271,11 @@ export class EntityDocumentsService {
   ): Promise<{ buffer: Buffer; fileName: string; mimeType: string }> {
     const doc = await this.prisma.entityDocument.findUnique({ where: { id } });
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
-    await this.assertEntityAccess(doc.entityType, doc.entityId, user, insuranceCompanyIds);
+    try {
+      await this.assertEntityAccess(doc.entityType, doc.entityId, user, insuranceCompanyIds);
+    } catch (error) {
+      rethrowDownloadAccess(error);
+    }
 
     const key = doc.storageKey;
     const downloaded = await this.storage.download(key);
@@ -352,7 +318,11 @@ export class EntityDocumentsService {
   ): Promise<{ url: string }> {
     const doc = await this.prisma.entityDocument.findUnique({ where: { id } });
     if (!doc || !doc.thumbnailKey) throw new NotFoundException('Thumbnail bulunamadı');
-    await this.assertEntityAccess(doc.entityType, doc.entityId, user, insuranceCompanyIds);
+    try {
+      await this.assertEntityAccess(doc.entityType, doc.entityId, user, insuranceCompanyIds);
+    } catch (error) {
+      rethrowDownloadAccess(error);
+    }
 
     const url = await this.storage.getSignedUrl(doc.thumbnailKey, expiresIn);
     return { url };

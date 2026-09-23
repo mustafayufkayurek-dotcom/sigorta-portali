@@ -7,6 +7,7 @@ echo "=== Evrak v544 kilit ==="
 cd "$REPO_ROOT"
 node --experimental-strip-types --test \
   apps/backend/src/modules/file-documents/file-document-physical-stream.lock.spec.ts \
+  apps/backend/src/common/helpers/document-download-access.lock.spec.ts \
   apps/backend/src/modules/document-types/document-type-code.lock.spec.ts \
   apps/backend/src/modules/claim-files/claim-docs-upload.lock.spec.ts \
   apps/web/src/app/panel/ayarlar/evrak-turleri-musteri-sekme.lock.spec.ts \

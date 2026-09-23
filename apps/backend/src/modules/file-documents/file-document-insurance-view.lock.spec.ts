@@ -20,6 +20,7 @@ describe('file-document insurance view LOCK', () => {
     assert.doesNotMatch(ctl, /res\.redirect\(302/);
     assert.match(svc, /getStaffViewBuffer/);
     assert.match(svc, /assertViewerAccess/);
+    assert.match(svc, /assertScopedFileEntityAccess/);
     assert.match(svc, /hidePublicToken/);
   });
 });

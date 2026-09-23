@@ -7,5 +7,6 @@ echo "=== Resim akış kilit ==="
 cd "$REPO_ROOT"
 node --experimental-strip-types --test \
   apps/backend/src/modules/entity-documents/entity-document-stream.lock.spec.ts \
+  apps/backend/src/common/helpers/document-download-access.lock.spec.ts \
   apps/web/src/utils/protected-image.lock.spec.ts
 echo "=== Resim akış kilit: PASS ==="

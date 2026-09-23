@@ -8,7 +8,7 @@ import {
   History,
   Wallet,
 } from 'lucide-react';
-import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk, resolveAcilInsuredName, resolveEmergencyFindingsDraft, isAcilLocksmithIssue } from '@sigorta/shared';
+import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk, resolveAcilInsuredName, resolveEmergencyFindingsDraft, isAcilLocksmithIssue, ACIL_STATUS_SEQUENCE_MESSAGE } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
@@ -877,8 +877,8 @@ export default function AcilDosyaDetayPage() {
       ));
       setActionFlash('Tedarikçi atandı. WhatsApp ile gönderebilirsiniz.');
       setWhatsAppTab('tedarikci');
-    } catch {
-      // sessiz
+    } catch (err) {
+      setActionFlash(getApiErrorMessage(err, ACIL_STATUS_SEQUENCE_MESSAGE));
     } finally {
       setAssignLoading(false);
     }
@@ -1591,19 +1591,20 @@ export default function AcilDosyaDetayPage() {
       const text = buildWorkStartWhatsAppText(fileNo, vaka.issueType);
       const vendorPhone = vaka.assignedVendor?.phone ?? null;
       openWhatsApp(vendorPhone, text);
+      let statusSkipMsg: string | null = null;
       if (vaka.status !== 'SAHADA' && vaka.status !== 'COZULDU' && vaka.status !== 'FATURALANDILDI') {
         try {
           const res = await updateCaseStatus(id, 'SAHADA');
           setVaka(res.data);
-        } catch {
-          /* yerel akış yine ilerler */
+        } catch (err) {
+          statusSkipMsg = getApiErrorMessage(err, ACIL_STATUS_SEQUENCE_MESSAGE);
         }
       }
       await persistFlow(appendFlowHistory(
         { ...flow, workStartPrepared: true },
         'İşe başlama (planlayıcı)',
       ));
-      setActionFlash('İş başladı. Tedarikçiye mesaj hazırlandı. Sıradaki iş: kapanış.');
+      setActionFlash(statusSkipMsg ?? 'İş başladı. Tedarikçiye mesaj hazırlandı. Sıradaki iş: kapanış.');
       await load();
     } catch (err) {
       setActionFlash(getApiErrorMessage(err, 'İşe başlama kaydedilemedi'));
@@ -1629,19 +1630,20 @@ export default function AcilDosyaDetayPage() {
       const text = buildWorkStartWhatsAppText(fileNo, vaka.issueType);
       const vendorPhone = vaka.assignedVendor?.phone ?? null;
       openWhatsApp(vendorPhone, text);
+      let statusSkipMsg: string | null = null;
       if (vaka.status === 'ATANDI' || vaka.status === 'GELEN') {
         try {
           const res = await updateCaseStatus(id, 'SAHADA');
           setVaka(res.data);
-        } catch {
-          /* yerel akış yine ilerler */
+        } catch (err) {
+          statusSkipMsg = getApiErrorMessage(err, ACIL_STATUS_SEQUENCE_MESSAGE);
         }
       }
       persistFlow(appendFlowHistory(
         { ...flow, workStartPrepared: true },
         'İşe başlama mesajı hazırlandı',
       ));
-      setActionFlash('İşe başlama mesajı hazırlandı.');
+      setActionFlash(statusSkipMsg ?? 'İşe başlama mesajı hazırlandı.');
       await load();
     } finally {
       setOpsActionBusy(null);
@@ -1674,19 +1676,20 @@ export default function AcilDosyaDetayPage() {
     }
     setOpsActionBusy('service');
     try {
+      let statusSkipMsg: string | null = null;
       if (vaka.status === 'ATANDI' || vaka.status === 'GELEN') {
         try {
           const res = await updateCaseStatus(id, 'SAHADA');
           setVaka(res.data);
-        } catch {
-          /* yerel akış yine ilerler */
+        } catch (err) {
+          statusSkipMsg = getApiErrorMessage(err, ACIL_STATUS_SEQUENCE_MESSAGE);
         }
       }
       await persistFlow(appendFlowHistory(
         { ...flow, serviceCompleted: true, workStartPrepared: true },
         'Hizmet tamamlandı',
       ));
-      setActionFlash('Hizmet tamamlandı olarak işaretlendi.');
+      setActionFlash(statusSkipMsg ?? 'Hizmet tamamlandı olarak işaretlendi.');
       await load();
     } finally {
       setOpsActionBusy(null);
@@ -1896,7 +1899,7 @@ export default function AcilDosyaDetayPage() {
       }
       await load();
     } catch (err: any) {
-      setActionFlash(err?.message ?? 'Dosya kapatılamadı');
+      setActionFlash(getApiErrorMessage(err, ACIL_STATUS_SEQUENCE_MESSAGE));
       setConfirmAction(null);
     } finally {
       closeSubmitRef.current = false;
@@ -1944,7 +1947,7 @@ export default function AcilDosyaDetayPage() {
       setActionFlash(result);
       await load();
     } catch (err: any) {
-      const msg = err?.message ?? 'Finansa gönderme başarısız';
+      const msg = getApiErrorMessage(err, ACIL_STATUS_SEQUENCE_MESSAGE);
       setFinanceResult(msg);
       setActionFlash(msg);
     } finally {
@@ -2942,8 +2945,8 @@ export default function AcilDosyaDetayPage() {
                   try {
                     const res = await updateCaseStatus(id, 'SAHADA');
                     setVaka(res.data);
-                  } catch {
-                    /* onay kaydı durur */
+                  } catch (err) {
+                    setActionFlash(getApiErrorMessage(err, ACIL_STATUS_SEQUENCE_MESSAGE));
                   }
                 }
               } else if (st === 'reddedildi') {
@@ -3005,8 +3008,13 @@ export default function AcilDosyaDetayPage() {
       {/* Ana sayfa: özet (planlayıcı) + bildirim / havuz; iş sağ çekmecede */}
       {actionFlash ? (
         <span
-          className="inline-flex rounded-md border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-800"
+          className={
+            actionFlash === ACIL_STATUS_SEQUENCE_MESSAGE
+              ? 'inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-950'
+              : 'inline-flex rounded-md border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-800'
+          }
           data-testid="aksiyon-bildirim"
+          role={actionFlash === ACIL_STATUS_SEQUENCE_MESSAGE ? 'status' : undefined}
         >
           {actionFlash}
         </span>

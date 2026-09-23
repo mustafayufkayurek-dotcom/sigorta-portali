@@ -1,0 +1,35 @@
+---
+description: Evrak ve fotoğraf indirme sahiplik kilidi
+alwaysApply: true
+---
+
+# Evrak İndirme Sahiplik Kilidi
+
+**Kaynak (Mustafa · 22.09.2026):** Giriş yapmış saha, başka dosyanın fotoğraf veya PDF’sini anahtarla açabiliyordu.
+
+**Temel cümle:** İndirme **atanan Hasar veya Acil dosyaya** bağlıdır. Eşleşmezse evrak yok sayılır. Depo anahtarı şirket / dosya ile doğrulanır.
+
+## Zorunlu
+
+1. `entity-documents` dosya baytı `assertScopedFileEntityAccess` geçer. Acil’de yalnız `assignedFieldUserId` / `assignedUserId`.
+2. `file-documents` view / fiziki aynı sahiplik. Saha başka tür evrak indirmez.
+3. `GET uploads/file` ve `signed-url` `isSafeStorageKey` + kayıt sahipliği. Kayıtsız veya yabancı anahtar **Evrak bulunamadı**. 302 MinIO yok.
+4. Sigorta oturumundaki şirket, Hasar dosyasının sigorta şirketiyle eşleşir.
+
+## Yasak (açık onay yoksa)
+
+- Giriş yapmış herkese `storageKey` ile depo açmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Saha başka dosyanın resmini açarsa → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/backend/src/common/helpers/document-download-access.lock.spec.ts
+pnpm smoke:resim-akis
+bash scripts/smoke-evrak-v544.sh
+```

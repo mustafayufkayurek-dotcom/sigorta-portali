@@ -1,0 +1,35 @@
+---
+description: Acil dosya durum basamağı atlanmaz
+alwaysApply: true
+---
+
+# Acil Durum Basamak Kilidi
+
+**Kaynak (Mustafa · 22.09.2026):** Hasar’da basamak durur; Acil’de PATCH ile rastgele atlama ve geri sıçrama açıktı.
+
+**Temel cümle:** Acil dosya **sırayla ilerler.** Gelen’den kapatma veya geri sıçrama yok. Atlanırsa sistem kilitlenmez; «Bu işlem sırasıyla yapılmalıdır» görünür.
+
+## Zorunlu
+
+1. Personel `PATCH .../emergency/cases/:id/status` `canAdvanceAcilStatus` geçer. Aynı durum yenilemesi serbest.
+2. İzin: Gelen → Atandı veya Sahada (işe başlama / onay yedeği). Atandı → Sahada veya Çözüldü (eski kapanış yedeği). Sahada → Çözüldü. Çözüldü → Faturalandı.
+3. Gelen → Çözüldü / Faturalandı, Sahada → Faturalandı, geri sıçrama yok.
+4. Mail onayı ve finans iç yazımı bu PATCH kapısından geçmez; canlı otomatik akış durur.
+5. Uyarı `ACIL_STATUS_SEQUENCE_MESSAGE`. 500 yok.
+
+## Yasak (açık onay yoksa)
+
+- PATCH’i yine her duruma açık bırakmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Atlama yine kayda geçerse → **dur, aynı gün geri koy**.
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/acil-status-transition.lock.spec.ts
+pnpm smoke:acil-netlesen
+```

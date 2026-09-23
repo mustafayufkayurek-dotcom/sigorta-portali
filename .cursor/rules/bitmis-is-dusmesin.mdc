@@ -34,6 +34,8 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 15. Müşteri kartında yetkili kişiler tek listededir. Karttaki ad listeden düşmez. Kaydet ikinci kişiyi silmez.
 16. Puantaj takviminde telefon Onayla durur. Hasar dosyası yüklerken kabuk durur. Puantaj hatası boş ay değildir. Onay ve Hasar işlem 10 saniyede kutu kapanır.
 17. Telefonda Yönetim Paneli, sol menü ve Hasar şeridi kesilmez. Giriş kodu Yapıştır ile dolar.
+18. Acil dosya sırayla ilerler. Atlama veya geri sıçrama «Bu işlem sırasıyla yapılmalıdır» der; sistem kilitlenmez.
+19. Saha yalnız atandığı Hasar veya Acil dosyanın evrak ve fotoğrafını açar. Depodan yetkisiz indirme sessizce durur.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

@@ -18,5 +18,8 @@ Bitmiş ekranı “yenileme” diye bozmak. Her sayfaya ayrı tarza KPI duvarı.
 ## Kilit — Puantaj / Hasar yükleme ve süre (v617)
 Puantaj takvimi mobil ✓ dönüşümü, Hasar dosyası skeleton loading ekranları, hata ayrım mantığı ve API 10 saniye timeout kalkanı kilitli ve kalıcı mimarilerdir. Gelecekteki hiçbir prompt veya geliştirme talebinde bu CSS kuralları ve loading/error state yapıları değiştirilemez, silinemez veya eski sürüme döndürülemez.
 
+## Kilit — Acil basamak ve evrak indirme
+Acil durum basamak geçiş mantığı, saha personeli evrak/fotoğraf sahiplik kontrol filtreleri ve genel indirme kapısı güvenlik sınırları kilitli kurallardır. Gelecekteki hiçbir talepte bu yapılar silinemez, esnetilemez veya eski sürüme döndürülemez.
+
 İş kuralı, silme, para, canlıya alma — yalnız bunları sor.
 Türkçe.

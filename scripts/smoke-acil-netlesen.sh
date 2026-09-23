@@ -25,6 +25,7 @@ node --experimental-strip-types --test \
   apps/web/src/utils/field-staff-claim-view.lock.spec.ts \
   apps/web/src/utils/protected-image.lock.spec.ts \
   apps/backend/src/modules/entity-documents/entity-document-stream.lock.spec.ts \
+  apps/backend/src/common/helpers/document-download-access.lock.spec.ts \
   apps/web/src/utils/ops-first-run-notice.lock.spec.ts \
   packages/shared/src/emergency-findings-text.lock.spec.ts \
   packages/shared/src/inbox-reply-quote.lock.spec.ts \
@@ -37,5 +38,6 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/storage/orient-photo.lock.spec.ts \
   apps/backend/src/modules/storage/image-optimizer-upload.lock.spec.ts \
   packages/shared/src/acil-vendor-service-contract.lock.spec.ts \
-  packages/shared/src/acil-photo-kind.lock.spec.ts
+  packages/shared/src/acil-photo-kind.lock.spec.ts \
+  packages/shared/src/acil-status-transition.lock.spec.ts
 echo "=== Acil netleşen canlı kilit: PASS ==="

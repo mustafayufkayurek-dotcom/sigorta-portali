@@ -44,10 +44,15 @@ import {
   isDocumentTypeId,
 } from '@/modules/document-types/document-type-scope';
 import {
-  assertClaimFileAccess,
   isInsuranceCompanyUser,
   normalizeRequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
+import { isFieldStaff } from '@/common/helpers/field-staff.helper';
+import {
+  assertScopedFileEntityAccess,
+  fieldStaffMayDownloadEntityType,
+  rethrowDownloadAccess,
+} from '@/common/helpers/document-download-access';
 
 @Injectable()
 export class FileDocumentsService {
@@ -401,19 +406,43 @@ export class FileDocumentsService {
   private async assertViewerAccess(
     entityType: string,
     entityId: string,
-    user?: { roleCode?: string; role?: { code?: string }; insuranceCompanyScopes?: string[] },
+    user?: {
+      roleCode?: string;
+      role?: { code?: string };
+      insuranceCompanyScopes?: string[];
+      assistantCustomerScopes?: string[];
+    },
   ) {
     const normalized = normalizeRequestUser(user);
-    if (!normalized || !isInsuranceCompanyUser(normalized.roleCode)) return;
-    if (entityType !== 'claim_file') {
+    if (!normalized) return;
+    if (isInsuranceCompanyUser(normalized.roleCode) && entityType !== 'claim_file') {
       throw new ForbiddenException('Bu evraka erişim izniniz bulunmamaktadır');
     }
-    const cf = await this.prisma.claimFile.findUnique({
-      where: { id: entityId },
-      select: { insuranceCompanyId: true },
+    if (isFieldStaff(normalized.roleCode) && !fieldStaffMayDownloadEntityType(entityType)) {
+      throw new ForbiddenException('Bu evraka erişim izniniz bulunmamaktadır');
+    }
+    await assertScopedFileEntityAccess(this.prisma, entityType, entityId, {
+      ...normalized,
+      insuranceCompanyScopes: user?.insuranceCompanyScopes,
+      assistantCustomerScopes: user?.assistantCustomerScopes,
     });
-    if (!cf) throw new NotFoundException('Hasar dosyası bulunamadı');
-    assertClaimFileAccess(cf, normalized, user?.insuranceCompanyScopes ?? []);
+  }
+
+  private async assertDownloadViewerAccess(
+    entityType: string,
+    entityId: string,
+    user?: {
+      roleCode?: string;
+      role?: { code?: string };
+      insuranceCompanyScopes?: string[];
+      assistantCustomerScopes?: string[];
+    },
+  ) {
+    try {
+      await this.assertViewerAccess(entityType, entityId, user);
+    } catch (error) {
+      rethrowDownloadAccess(error);
+    }
   }
 
   async findByEntity(
@@ -602,7 +631,7 @@ export class FileDocumentsService {
     mimeType: string;
   }> {
     const doc = await this.findOne(id);
-    await this.assertViewerAccess(doc.entityType, doc.entityId, user);
+    await this.assertDownloadViewerAccess(doc.entityType, doc.entityId, user);
     if (!doc.physicalUploadKey) {
       throw new NotFoundException('Yüklenmiş evrak dosyası yok');
     }
@@ -633,7 +662,7 @@ export class FileDocumentsService {
     mimeType: string;
   }> {
     const doc = await this.findOne(id);
-    await this.assertViewerAccess(doc.entityType, doc.entityId, user);
+    await this.assertDownloadViewerAccess(doc.entityType, doc.entityId, user);
     if (doc.physicalUploadKey) {
       return this.getPhysicalFileBuffer(id, user);
     }

@@ -47,6 +47,7 @@ export * from './authorized-person-name';
 export * from './customer-contacts-merge';
 export * from './acil-locksmith-issue';
 export * from './acil-photo-kind';
+export * from './acil-status-transition';
 export * from './file-recognized-partners';
 export * from './acil-assistance-mail-decision';
 export * from './acil-report-phrase-memory';

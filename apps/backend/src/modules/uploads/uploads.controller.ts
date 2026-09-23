@@ -28,8 +28,12 @@ export class UploadsController {
 
   @Get('file')
   @ApiOperation({ summary: 'Depolanan dosyayı oturumla akıt (302 yok)' })
-  async streamFile(@Query('storageKey') storageKey: string, @Res() res: Response) {
-    const { buffer, mimeType } = await this.uploadsService.getFileBuffer(storageKey);
+  async streamFile(
+    @Query('storageKey') storageKey: string,
+    @CurrentUser() user: any,
+    @Res() res: Response,
+  ) {
+    const { buffer, mimeType } = await this.uploadsService.getFileBuffer(storageKey, user);
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Cache-Control', 'private, max-age=300');
     return res.send(buffer);
@@ -37,8 +41,8 @@ export class UploadsController {
 
   @Get('signed-url')
   @ApiOperation({ summary: 'FileAsset için signed URL döndür (15dk geçerli)' })
-  async getSignedUrl(@Query('storageKey') storageKey: string) {
-    const url = await this.uploadsService.getSignedUrl(storageKey, 900);
+  async getSignedUrl(@Query('storageKey') storageKey: string, @CurrentUser() user: any) {
+    const url = await this.uploadsService.getSignedUrl(storageKey, 900, user);
     return { success: true, data: { url, expiresIn: 900 } };
   }
 }

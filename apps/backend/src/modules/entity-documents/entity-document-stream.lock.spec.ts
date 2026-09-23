@@ -19,6 +19,7 @@ describe('entity-document stream LOCK', () => {
     assert.doesNotMatch(ctl, /res\.redirect\(302/);
     const svc = readFileSync(join(here, 'entity-documents.service.ts'), 'utf8');
     assert.match(svc, /async getFileBuffer/);
+    assert.match(svc, /assertScopedFileEntityAccess/);
     assert.match(svc, /storage\.download/);
     assert.match(svc, /image process fallback/);
     assert.match(svc, /preferThumb && doc\.thumbnailKey/);

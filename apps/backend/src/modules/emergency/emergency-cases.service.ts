@@ -49,6 +49,8 @@ import {
   matchAcilReportPhrases,
   acilDigitalFormTitle,
   ACIL_ADRES_HIZMET_TALEP_KIND,
+  ACIL_STATUS_SEQUENCE_MESSAGE,
+  canAdvanceAcilStatus,
 } from '@sigorta/shared';
 import { VendorRecommendationService } from '@/modules/vendors/vendor-recommendation.service';
 import {
@@ -1042,9 +1044,12 @@ export class EmergencyCasesService {
   async updateStatus(id: string, dto: UpdateEmergencyStatusDto, userId = 'system') {
     const current = await this.prisma.emergencyCase.findUnique({
       where: { id },
-      select: { workStartedAt: true, serviceDeliveredAt: true },
+      select: { status: true, workStartedAt: true, serviceDeliveredAt: true },
     });
     await this.findOne(id);
+    if (current?.status && !canAdvanceAcilStatus(current.status, dto.status)) {
+      throw new BadRequestException(ACIL_STATUS_SEQUENCE_MESSAGE);
+    }
     const now = new Date();
     const data: any = { status: dto.status };
     if (dto.status === EmergencyStatus.SAHADA && !current?.workStartedAt) {
