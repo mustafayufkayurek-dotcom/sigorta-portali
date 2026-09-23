@@ -8,6 +8,9 @@ export const PUBLIC_APPROVAL_TOKEN_LEGACY_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE =
   'Bu belge zaten işleme alınmıştır ve erişime kapatılmıştır';
 
+/** Dış onay GET/POST yanıtı tarayıcıda saklanmaz. */
+export const PUBLIC_APPROVAL_TOKEN_CACHE_CONTROL = 'no-store, no-cache, must-revalidate';
+
 export const PUBLIC_APPROVAL_TOKEN_EVRAK_EXPIRED_MESSAGE =
   'Bu evrak linkinin süresi dolmuştur';
 

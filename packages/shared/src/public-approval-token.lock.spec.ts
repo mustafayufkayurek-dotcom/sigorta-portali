@@ -97,5 +97,54 @@ describe('dış onay linki 7 gün ve işlem sonrası kilit LOCK', () => {
     const createSozlesme = sozlesme.slice(0, sozlesme.indexOf('findByToken'));
     assert.match(createEvrak, /30 \* 24 \* 60 \* 60 \* 1000/);
     assert.match(createSozlesme, /30 \* 24 \* 60 \* 60 \* 1000/);
+    assert.match(evrak, /updateMany/);
+    assert.match(sozlesme, /updateMany/);
+    assert.match(evrak, /digitallyApprovedAt: approvedAt\.toISOString/);
+    assert.match(sozlesme, /signedAt: signedAt\.toISOString/);
+    assert.match(evrak, /evaluatePublicApprovalToken\(doc\)/);
+    assert.match(sozlesme, /evaluatePublicApprovalToken\(contract\)/);
+    const evrakCtrl = readFileSync(
+      new URL('../../../apps/backend/src/modules/file-documents/public-file-document.controller.ts', import.meta.url),
+      'utf8',
+    );
+    const sozlesmeCtrl = readFileSync(
+      new URL('../../../apps/backend/src/modules/vendor-contracts/public-contract.controller.ts', import.meta.url),
+      'utf8',
+    );
+    assert.match(evrakCtrl, /PUBLIC_APPROVAL_TOKEN_CACHE_CONTROL/);
+    assert.match(sozlesmeCtrl, /PUBLIC_APPROVAL_TOKEN_CACHE_CONTROL/);
+    assert.match(evrakCtrl, /noStore\(res\)/);
+    assert.match(sozlesmeCtrl, /noStore\(res\)/);
+  });
+
+  it('süre sunucu saati milisaniyesidir; yerel takvim farkı sonucu değiştirmez', () => {
+    const issued = new Date('2026-09-16T09:00:00+03:00');
+    const nowUtc = new Date('2026-09-23T12:00:00.000Z');
+    const nowIstanbul = new Date('2026-09-23T15:00:00+03:00');
+    assert.equal(nowUtc.getTime(), nowIstanbul.getTime());
+    assert.deepEqual(
+      evaluatePublicApprovalToken({ createdAt: issued, now: nowUtc }),
+      { ok: false, reason: 'expired' },
+    );
+    assert.deepEqual(
+      evaluatePublicApprovalToken({ createdAt: issued, now: nowIstanbul }),
+      { ok: false, reason: 'expired' },
+    );
+    const stillOpen = new Date('2026-09-22T12:00:00.000Z');
+    assert.equal(
+      evaluatePublicApprovalToken({ createdAt: issued, now: stillOpen }).ok,
+      true,
+    );
+  });
+
+  it('iptal ve red de aynı anda kapatır', () => {
+    assert.deepEqual(
+      evaluatePublicApprovalToken({ createdAt: now, status: 'cancelled', now }),
+      { ok: false, reason: 'closed' },
+    );
+    assert.deepEqual(
+      evaluatePublicApprovalToken({ createdAt: now, status: 'digitally_rejected', now }),
+      { ok: false, reason: 'closed' },
+    );
   });
 });

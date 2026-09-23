@@ -856,8 +856,12 @@ export class VendorContractsService {
       this.logger.error(`İmzalı PDF üretim hatası: ${err}`);
     }
 
-    return this.prisma.vendorContract.update({
-      where: { id: contract.id },
+    const closed = await this.prisma.vendorContract.updateMany({
+      where: {
+        id: contract.id,
+        signedAt: null,
+        status: { notIn: ['vendor_signed', 'cancelled', 'rejected'] },
+      },
       data: {
         status: 'vendor_signed',
         signedAt,
@@ -865,6 +869,10 @@ export class VendorContractsService {
         pdfStorageKey: pdfKey,
       },
     });
+    if (closed.count !== 1) {
+      throw new BadRequestException(PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE);
+    }
+    return { signedAt: signedAt.toISOString(), status: 'vendor_signed' };
   }
 
   // ── Scheduler için toplu hatırlatma ───────────────────────────────────────

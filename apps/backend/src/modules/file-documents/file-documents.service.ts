@@ -719,14 +719,15 @@ export class FileDocumentsService {
         expectedFullName = !ad || ad === '—' ? null : ad;
       }
     }
+    const { publicToken: _token, createdAt: _issuedAt, ...publicDoc } = fresh;
     if (isAcilDigitalFormKind(fresh.documentKind) && fresh.renderedContent) {
       return {
-        ...fresh,
+        ...publicDoc,
         renderedContent: toInsuredFacingMatbuHtml(fresh.renderedContent),
         expectedFullName,
       };
     }
-    return { ...fresh, expectedFullName };
+    return { ...publicDoc, expectedFullName };
   }
 
   async markViewed(token: string, ip?: string) {
@@ -801,10 +802,14 @@ export class FileDocumentsService {
       updatedContent = doc.renderedContent.replace('</body>', `${signedBadge}</body>`);
     }
 
-    return this.prisma.fileDocument.update({
-      where: { id: doc.id },
+    const closed = await this.prisma.fileDocument.updateMany({
+      where: {
+        id: doc.id,
+        digitallyApprovedAt: null,
+        status: { notIn: ['digitally_approved', 'rejected', 'digitally_rejected'] },
+      },
       data: {
-        status: doc.documentKind === 'muvafakatname' ? 'digitally_approved' : 'digitally_approved',
+        status: 'digitally_approved',
         digitallyApprovedAt: approvedAt,
         approvedIp: ip ?? null,
         approvedFullName: fullName,
@@ -812,6 +817,10 @@ export class FileDocumentsService {
         renderedContent: updatedContent,
       },
     });
+    if (closed.count !== 1) {
+      throw new BadRequestException(PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE);
+    }
+    return { digitallyApprovedAt: approvedAt.toISOString(), status: 'digitally_approved' };
   }
 
   // ── Kapama Koşulu Kontrolü (diğer servisler için) ──────────────────────────
