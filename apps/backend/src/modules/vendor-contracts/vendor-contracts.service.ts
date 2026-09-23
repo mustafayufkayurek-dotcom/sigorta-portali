@@ -39,6 +39,9 @@ import {
   acilVendorServiceContractTextIsClean,
   renderAcilVendorServiceContractClauses,
   resolveAcilInsuredName,
+  evaluatePublicApprovalToken,
+  publicApprovalTokenErrorMessage,
+  PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE,
 } from '@sigorta/shared';
 
 function partyIdLine(identityNo?: string | null, taxNumber?: string | null): string {
@@ -807,14 +810,21 @@ export class VendorContractsService {
         status: true,
         signedAt: true,
         publicTokenExpiresAt: true,
+        createdAt: true,
       },
     });
     if (!contract) throw new NotFoundException('Sözleşme bulunamadı');
-    if (contract.publicTokenExpiresAt && contract.publicTokenExpiresAt < new Date()) {
-      throw new BadRequestException('Bu sözleşme linki süresi dolmuştur');
+    const tokenGate = evaluatePublicApprovalToken(contract);
+    if (!tokenGate.ok) {
+      throw new BadRequestException(
+        tokenGate.reason === 'closed'
+          ? PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE
+          : publicApprovalTokenErrorMessage(tokenGate.reason, 'sozlesme'),
+      );
     }
+    const { createdAt: _issuedAt, ...publicContract } = contract;
     return {
-      ...contract,
+      ...publicContract,
       contractKind: readVendorContractKind(contract.workItems),
       contractPurpose: readVendorContractPurpose(contract.workItems),
     };
@@ -825,14 +835,13 @@ export class VendorContractsService {
       where: { publicToken: token },
     });
     if (!contract) throw new NotFoundException('Sözleşme bulunamadı');
-    if (contract.publicTokenExpiresAt && contract.publicTokenExpiresAt < new Date()) {
-      throw new BadRequestException('Bu sözleşme linki süresi dolmuştur');
-    }
-    if (contract.status === 'vendor_signed') {
-      throw new BadRequestException('Bu sözleşme zaten imzalanmıştır');
-    }
-    if (contract.status === 'cancelled') {
-      throw new BadRequestException('Bu sözleşme iptal edilmiştir');
+    const tokenGate = evaluatePublicApprovalToken(contract);
+    if (!tokenGate.ok) {
+      throw new BadRequestException(
+        tokenGate.reason === 'closed'
+          ? PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE
+          : publicApprovalTokenErrorMessage(tokenGate.reason, 'sozlesme'),
+      );
     }
 
     const signedAt = new Date();

@@ -8,18 +8,27 @@
 
 ---
 
-## Canlı durum (23 Eylül 2026 — web v620 / backend v620)
+## Canlı durum (23 Eylül 2026 — web v621 / backend v621)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v620-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v620-amd64` | canlı |
-| **Rollback** | Web **v619** / Backend **v619** | manifest `rollbackImages` |
-| **Etiket** | `v620-finansal-yetki-ve-iz-kalkanı` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v621-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v621-amd64` | canlı |
+| **Rollback** | Web **v620** / Backend **v620** | manifest `rollbackImages` |
+| **Etiket** | `v621-dis-onay-link-kilidi` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v621 — Full (23 Eylül 2026) — Dış onay linki kilidi
+
+- Dış `/evrak/…` ve `/sozlesme/…` linki 7 gün işlem görmezse düşer
+- Onay, imza, iptal veya red sonrası link belgeyi açmaz
+- Yeniden tıklayana: «Bu belge zaten işleme alınmıştır ve erişime kapatılmıştır»
+- WhatsApp ve evrak oluşturma yolu aynı; personel panelden evrakı görmeye devam eder
+- Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v620** / backend **v620**
 
 ### v620 — Full (23 Eylül 2026) — Finans yetki ve iz kalkanı
 

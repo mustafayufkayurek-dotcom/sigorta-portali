@@ -1,0 +1,34 @@
+---
+description: Dış onay linki 7 gün; işlem bitince kapanır
+alwaysApply: true
+---
+
+# Dış Onay Linki Kilidi
+
+**Kaynak (Mustafa · 23.09.2026):** Dışarıdaki `/evrak/…` ve `/sozlesme/…` linki 30 gün açık kalıyor; onaydan sonra da belge görünüyordu.
+
+**Temel cümle:** Dış onay linki **7 gündür.** Onay veya red olunca **kapanır.** Yeniden tıklayana belge gitmez.
+
+## Zorunlu
+
+1. Dış kapı `evaluatePublicApprovalToken` — oluşturma ve WhatsApp/mail yolu aynı durur.
+2. Onay, imza, iptal veya red sonrası link içerik vermez. Metin: «Bu belge zaten işleme alınmıştır ve erişime kapatılmıştır»
+3. 7 gün işlem yoksa link düşer. Eski 30 günlük kayıt da dış kapıda 7 güne çekilir.
+4. Personel panelden evrak/sözleşme açması bu kapıya bağlanmaz.
+
+## Yasak (açık onay yoksa)
+
+- Onaylı belgeyi dış linkte yeniden açmak
+- Süreyi 30 güne geri almak
+- WhatsApp / evrak oluşturmayı bu kilitle değiştirmek
+
+## Durdurma
+
+Onaylı link yine belge gösterirse veya 7 günden uzun açık kalırsa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/public-approval-token.lock.spec.ts
+```

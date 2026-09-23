@@ -14,7 +14,7 @@ import {
 import { buildAppPath } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
-import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isHasarVendorContractWaived, ACIL_ADRES_HIZMET_TALEP_KIND, ACIL_SERVIS_ONAY_KIND, acilDigitalFormTitle, isAcilDigitalFormKind } from '@sigorta/shared';
+import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isHasarVendorContractWaived, ACIL_ADRES_HIZMET_TALEP_KIND, ACIL_SERVIS_ONAY_KIND, acilDigitalFormTitle, isAcilDigitalFormKind, evaluatePublicApprovalToken, publicApprovalTokenErrorMessage, PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -698,11 +698,17 @@ export class FileDocumentsService {
         digitallyApprovedAt: true,
         publicToken: true,
         publicTokenExpiresAt: true,
+        createdAt: true,
       },
     });
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
-    if (doc.publicTokenExpiresAt && doc.publicTokenExpiresAt < new Date()) {
-      throw new BadRequestException('Bu evrak linkinin süresi dolmuştur');
+    const tokenGate = evaluatePublicApprovalToken(doc);
+    if (!tokenGate.ok) {
+      throw new BadRequestException(
+        tokenGate.reason === 'closed'
+          ? PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE
+          : publicApprovalTokenErrorMessage(tokenGate.reason, 'evrak'),
+      );
     }
     const fresh = await this.refreshUnapprovedEmergencyMatbu(doc);
     let expectedFullName: string | null = null;
@@ -728,6 +734,14 @@ export class FileDocumentsService {
       where: { publicToken: token },
     });
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
+    const tokenGate = evaluatePublicApprovalToken(doc);
+    if (!tokenGate.ok) {
+      throw new BadRequestException(
+        tokenGate.reason === 'closed'
+          ? PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE
+          : publicApprovalTokenErrorMessage(tokenGate.reason, 'evrak'),
+      );
+    }
 
     if (!doc.viewedAt) {
       await this.prisma.fileDocument.update({
@@ -749,11 +763,13 @@ export class FileDocumentsService {
       where: { publicToken: token },
     });
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
-    if (doc.publicTokenExpiresAt && doc.publicTokenExpiresAt < new Date()) {
-      throw new BadRequestException('Bu evrak linkinin süresi dolmuştur');
-    }
-    if (doc.digitallyApprovedAt) {
-      throw new BadRequestException('Bu evrak zaten onaylanmıştır');
+    const tokenGate = evaluatePublicApprovalToken(doc);
+    if (!tokenGate.ok) {
+      throw new BadRequestException(
+        tokenGate.reason === 'closed'
+          ? PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE
+          : publicApprovalTokenErrorMessage(tokenGate.reason, 'evrak'),
+      );
     }
 
     const approvedAt = new Date();

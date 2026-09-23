@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-23",
-  "label": "v620-finansal-yetki-ve-iz-kalkanı",
-  "description": "Full v620: Acil finans yetkisi, ödeme/dekont sahipliği, Hasar çift hakediş, ödenmiş kayıt dondurma ve iz. Geri alma web v619 / backend v619.",
+  "label": "v621-dis-onay-link-kilidi",
+  "description": "Full v621: Dış onay linki 7 gün ve işlem sonrası kapanır. Geri alma web v620 / backend v620.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v620-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v620-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v621-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v621-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v619-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v619-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v620-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v620-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { prepareTrustedDocumentHtml } from '@/utils/sanitize-html';
 import { KvkkConsentCheckbox } from '@/components/legal/KvkkConsentCheckbox';
+import { PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE } from '@sigorta/shared';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -44,7 +45,10 @@ export default function SozlesmePage() {
     fetch(`${API}/public/vendor-contracts/${token}`)
       .then(async (r) => {
         const json = await r.json();
-        if (!r.ok) throw new Error(json?.message ?? 'Sözleşme yüklenemedi');
+        if (!r.ok) {
+          const raw = json?.message;
+          throw new Error(Array.isArray(raw) ? raw.join(', ') : (raw ?? 'Sözleşme yüklenemedi'));
+        }
         setContract(json.data);
       })
       .catch((e) => setError(e.message))
@@ -88,6 +92,23 @@ export default function SozlesmePage() {
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-slate-500">Sözleşme yükleniyor…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error === PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 max-w-md w-full text-center">
+          <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <p className="text-sm text-slate-700 leading-relaxed">
+            {PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE}
+          </p>
         </div>
       </div>
     );
