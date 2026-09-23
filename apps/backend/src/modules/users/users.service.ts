@@ -99,6 +99,11 @@ const PROTECTED_SYSTEM_EMAILS = new Set([
   'admin@meridyenassistance.com',
 ]);
 
+function isProtectedSystemAccount(user: { email?: string | null; archivedEmail?: string | null }) {
+  const emails = [user.email, user.archivedEmail].map((value) => String(value ?? '').trim().toLowerCase());
+  return emails.some((value) => PROTECTED_SYSTEM_EMAILS.has(value));
+}
+
 const HASAR_EXPERT_CUSTOMER_SUB_TYPES = new Set(['eksper_firmasi', 'eksper']);
 const BROKER_CUSTOMER_SUB_TYPE = 'broker_firmasi';
 const ASSISTANT_CUSTOMER_SUB_TYPE = 'asistan_firmasi';
@@ -1097,10 +1102,6 @@ export class UsersService {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    if (PROTECTED_SYSTEM_EMAILS.has(user.email)) {
-      throw new BadRequestException('Sistem yöneticisi düzenlenemez');
-    }
-
     applyTitleCase(data, ['firstName', 'lastName', 'jobTitle']);
 
     const {
@@ -1116,6 +1117,10 @@ export class UsersService {
       brokerCustomerId,
     } = data;
     const rest: any = pickUserWriteScalars(data);
+    if (isProtectedSystemAccount(user)) {
+      delete rest.roleId;
+      delete rest.status;
+    }
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
     const resolvedInsuranceCompanyIds = (insuranceCustomerId || Array.isArray(insuranceCompanyIds))
       ? await this.resolveInviteInsuranceCompanyIds({
@@ -1458,7 +1463,7 @@ export class UsersService {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    if (PROTECTED_SYSTEM_EMAILS.has(user.email)) {
+    if (isProtectedSystemAccount(user)) {
       throw new BadRequestException('Sistem yöneticisi için geçici şifre üretilemez');
     }
 
@@ -1540,7 +1545,7 @@ export class UsersService {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    if (PROTECTED_SYSTEM_EMAILS.has(user.email)) {
+    if (isProtectedSystemAccount(user)) {
       throw new BadRequestException('Sistem yöneticisi arşivlenemez');
     }
 
@@ -1643,7 +1648,7 @@ export class UsersService {
       throw new NotFoundException('Kullanıcı bulunamadı');
     }
 
-    if (PROTECTED_SYSTEM_EMAILS.has(user.email) || PROTECTED_SYSTEM_EMAILS.has(user.archivedEmail ?? '')) {
+    if (isProtectedSystemAccount(user)) {
       throw new BadRequestException('Sistem yöneticisi kalıcı olarak silinemez');
     }
 
@@ -1708,14 +1713,14 @@ export class UsersService {
 
     const users = await this.prisma.user.findMany({
       where: { id: { in: uniqueIds } },
-      select: { id: true, email: true },
+      select: { id: true, email: true, archivedEmail: true },
     });
 
     if (users.length !== uniqueIds.length) {
       throw new NotFoundException('Silinecek kullanıcılardan biri bulunamadı');
     }
 
-    if (users.some((user) => PROTECTED_SYSTEM_EMAILS.has(user.email))) {
+    if (users.some((user) => isProtectedSystemAccount(user))) {
       throw new BadRequestException('Sistem yöneticisi toplu arşivleme ile arşivlenemez');
     }
 

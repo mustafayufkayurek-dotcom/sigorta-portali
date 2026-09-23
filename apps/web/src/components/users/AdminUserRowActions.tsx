@@ -43,10 +43,9 @@ export function AdminUserRowActions({
       items={[
         {
           id: 'edit',
-          label: protectedAdmin ? 'Sistem yöneticisi düzenlenemez' : 'Düzenle',
+          label: 'Düzenle',
           icon: <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />,
           onClick: onEdit,
-          disabled: protectedAdmin,
         },
         {
           id: 'resetPwd',

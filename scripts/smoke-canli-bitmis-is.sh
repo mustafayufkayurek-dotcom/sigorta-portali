@@ -86,6 +86,7 @@ node --experimental-strip-types --test \
   packages/shared/src/payment-record-access.lock.spec.ts \
   packages/shared/src/hasar-hakedis-once.lock.spec.ts \
   packages/shared/src/financial-record-freeze.lock.spec.ts \
-  packages/shared/src/public-approval-token.lock.spec.ts
+  packages/shared/src/public-approval-token.lock.spec.ts \
+  apps/backend/src/modules/users/system-admin-identity.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

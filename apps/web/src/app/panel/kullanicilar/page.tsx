@@ -1955,6 +1955,7 @@ export default function KullanicilarPage() {
       const payload: any = {
         firstName: form.firstName,
         lastName: form.lastName,
+        email: normalizeEmailAddress(form.email),
         phone: form.phone || undefined,
         jobTitle: form.jobTitle.trim() || undefined,
         roleId: selectedRole?.id,
@@ -2040,7 +2041,6 @@ export default function KullanicilarPage() {
       }
 
       if (modal === 'add') {
-        payload.email = normalizeEmailAddress(form.email);
         const dupEmail = users.find((u) => userMailbox(u) === payload.email);
         const dupStatus = dupEmail ? normalizeUserStatus(dupEmail.status) : null;
         if (dupEmail && dupStatus && canReinviteByEmail(dupStatus)) {

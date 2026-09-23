@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (23 Eylül 2026 — web v622 / backend v622)
+## Canlı durum (23 Eylül 2026 — web v623 / backend v623)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v622-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v622-amd64` | canlı |
-| **Rollback** | Web **v621** / Backend **v621** | manifest `rollbackImages` |
-| **Etiket** | `v622-yazisma-mail-yuzu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v623-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v623-amd64` | canlı |
+| **Rollback** | Web **v622** / Backend **v622** | manifest `rollbackImages` |
+| **Etiket** | `v623-sistem-yonetici-kimlik` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v623 — Full (23 Eylül 2026) — Sistem yöneticisi kimlik
+
+- Sistem Yöneticisi satırında Düzenle açılır; ad, soyad, telefon, görev ve e-posta kaydolur
+- Görev (rol) ve hesap durumu bu satırda değişmez; arşiv, kalıcı silme ve geçici şifre kapalı kalır
+- Giriş kodu kayıttaki yeni e-postaya gider. Diğer kullanıcılar, dosyalar, Hasar/İhbar kuyruğu ve v622 yazışma yüzü aynı
+- Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v622** / backend **v622**
 
 ### v622 — Full (23 Eylül 2026) — Yazışma mail yüzü
 
