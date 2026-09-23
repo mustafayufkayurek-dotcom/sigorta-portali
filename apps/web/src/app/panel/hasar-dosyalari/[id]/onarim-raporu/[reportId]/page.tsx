@@ -2491,7 +2491,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   ref,
 ) {
   const notify = onNotify ?? ((_type: 'error' | 'warning' | 'success', _message: string) => {});
-  const askConfirm = onConfirm ?? (async (_message: string) => window.confirm(_message));
+  const askConfirm = onConfirm ?? (async (_message: string) => false);
   const [rows, setRows] = useState<(RowState & { _id: string; _isDirty: boolean; _savedFlash: boolean })[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [addingRow, setAddingRow] = useState<RowState>(emptyRow());

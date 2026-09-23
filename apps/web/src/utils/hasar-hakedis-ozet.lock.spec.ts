@@ -169,7 +169,7 @@ describe('hasar hakediş özet LOCK', () => {
     assert.match(panel, /Sözleşme durumunu belirleyiniz/);
     assert.doesNotMatch(panel, /Dosyada sözleşme var mı sorun/);
     assert.match(panel, /HASAR_AVANS_YARI_ONAY_METNI/);
-    assert.match(panel, /window\.confirm/);
+    assert.match(panel, /usePanelConfirm/);
     assert.match(panel, /Avans uyarısı/);
     assert.doesNotMatch(panel, /Avans limiti aşıyor/);
     assert.doesNotMatch(panel, /resolveHasarAvansLimit/);

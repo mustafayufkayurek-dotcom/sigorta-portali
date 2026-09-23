@@ -309,7 +309,7 @@ describe('field-staff-claim-view lock', () => {
 
   it('tespit tamamla onay ister; saha ofis dosyasını kapatmaz', () => {
     const detail = read('../app/panel/hasar-dosyalari/[id]/page.tsx');
-    assert.match(detail, /window\.confirm/);
+    assert.match(detail, /usePanelConfirm/);
     assert.match(detail, /FIELD_STAFF_END_INSPECTION_CONFIRM/);
     assert.match(detail, /\/inspection/);
     assert.doesNotMatch(detail, /saha-dosya-kapat/);
