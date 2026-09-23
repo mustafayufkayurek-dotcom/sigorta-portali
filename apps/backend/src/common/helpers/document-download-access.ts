@@ -12,12 +12,12 @@ export const DOCUMENT_DOWNLOAD_NOT_FOUND = 'Evrak bulunamadı';
 
 type PrismaDownloadClient = {
   claimFile: {
-    findUnique: (args: unknown) => Promise<any>;
-    findFirst: (args: unknown) => Promise<any>;
+    findUnique: (args: any) => Promise<any>;
+    findFirst: (args: any) => Promise<any>;
   };
   emergencyCase: {
-    findUnique: (args: unknown) => Promise<any>;
-    findFirst: (args: unknown) => Promise<any>;
+    findUnique: (args: any) => Promise<any>;
+    findFirst: (args: any) => Promise<any>;
   };
 };
 
