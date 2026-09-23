@@ -20,7 +20,10 @@ describe('giriş kodu ekranı LOCK', () => {
     assert.match(panel, /autoComplete="one-time-code"/);
     assert.match(panel, /extractLoginEmailCode/);
     assert.match(panel, /maskLoginMailbox/);
+    assert.match(panel, /visibleLoginEmailCode/);
+    assert.match(panel, /Kod satırda durur/);
     assert.match(panel, /Yapıştır/);
+    assert.match(panel, /Silinmiş Öğeler/);
     assert.doesNotMatch(panel, /Google/);
     assert.doesNotMatch(panel, /Açık ekranınız durur/);
   });

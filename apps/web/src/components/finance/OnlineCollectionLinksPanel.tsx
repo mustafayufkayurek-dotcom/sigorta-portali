@@ -5,6 +5,7 @@ import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { useToast } from '@/contexts/ToastContext';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { PhoneInput } from '@/components/PhoneInput';
 import {
   FinansActionButton,
@@ -66,6 +67,7 @@ export function OnlineCollectionLinksPanel({
   insuredPhone?: string | null;
 }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [links, setLinks] = useState<CollectionLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -147,7 +149,7 @@ export function OnlineCollectionLinksPanel({
   };
 
   const cancelLink = async (id: string) => {
-    if (!confirm('Bu ödeme linkini iptal etmek istiyor musunuz?')) return;
+    if (!(await confirm('Bu ödeme linkini iptal etmek istiyor musunuz?'))) return;
     try {
       await axios.post(`${API}/collection-links/${id}/cancel`, {}, { headers: authHeader() });
       showToast('success', 'Link iptal edildi.');
@@ -293,6 +295,7 @@ export function OnlineCollectionLinksPanel({
           </tbody>
         </FinansDataTable>
       )}
+      {dialog}
     </FinansPanelCard>
   );
 }

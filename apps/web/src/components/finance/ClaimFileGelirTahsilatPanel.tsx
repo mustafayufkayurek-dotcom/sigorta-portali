@@ -21,6 +21,7 @@ import {
 } from '@/components/finance/FinansPanelUI';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { useToast } from '@/contexts/ToastContext';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { ACIKLAMA_YARDIM } from '@/utils/aciklama-yardim';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { API, authHeader, fmtCurrency, fmtDate } from '@/app/panel/hasar-dosyalari/[id]/_components/claim-detail-utils';
@@ -108,6 +109,7 @@ export function ClaimFileGelirTahsilatPanel({
   claim?: any;
 }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const canDelete = canDeleteClaimFinance();
   const [revenues, setRevenues] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -287,7 +289,7 @@ export function ClaimFileGelirTahsilatPanel({
 
   const removeRow = async (row: (typeof rows)[number]) => {
     if (!canDelete) return;
-    if (!window.confirm('Bu kayıt silinsin mi?')) return;
+    if (!(await confirm('Bu kayıt silinsin mi?'))) return;
     try {
       if (row.kind === 'gelir') {
         await axios.delete(`${API}/claim-files/${claimId}/revenues/${row.id.replace('rev-', '')}`, { headers: authHeader() });
@@ -685,6 +687,7 @@ export function ClaimFileGelirTahsilatPanel({
           </div>
         </form>
       </SlidePanel>
+      {dialog}
     </div>
   );
 }

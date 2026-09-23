@@ -22,6 +22,7 @@ import {
   finansInputClass,
 } from '@/components/finance/FinansPanelUI';
 import { useToast } from '@/contexts/ToastContext';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import SpeechToText from '@/components/SpeechToText';
 import { API, authHeader, fmtCurrency, fmtDate } from '../claim-detail-utils';
 import { openSessionBlob } from '@/utils/pdf-preview-open';
@@ -39,6 +40,7 @@ import {
 
 export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: string }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [versions, setVersions] = useState<any[]>([]);
   const [costEntries, setCostEntries] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
@@ -187,7 +189,7 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
   };
 
   const handleRemoveItem = async (itemId: string) => {
-    if (!window.confirm('Bu bütçe kalemini silmek istediğinize emin misiniz?')) return;
+    if (!(await confirm('Bu bütçe kalemini silmek istediğinize emin misiniz?'))) return;
     try {
       await axios.delete(`${API}/budget-items/${itemId}`, { headers: authHeader() });
       load();
@@ -198,7 +200,7 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
   };
 
   const handleRemoveCost = async (id: string) => {
-    if (!window.confirm('Bu maliyet kaydını silmek istediğinize emin misiniz?')) return;
+    if (!(await confirm('Bu maliyet kaydını silmek istediğinize emin misiniz?'))) return;
     try {
       await axios.delete(`${API}/cost-entries/${id}`, { headers: authHeader() });
       load();
@@ -666,6 +668,7 @@ export function ButceTab({ claimId, claimCity }: { claimId: string; claimCity?: 
           </div>
         </div>
       )}
+      {dialog}
     </div>
   );
 }
@@ -683,6 +686,7 @@ const INVOICE_STATUS_COLOR: Record<string, string> = {
 
 export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [invoiceRequests, setInvoiceRequests] = useState<InvoiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -786,7 +790,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
   };
 
   const handleStatusChange = async (id: string, status: string) => {
-    if (status === 'cancelled' && !window.confirm('Bu faturayı iptal etmek istediğinize emin misiniz?')) return;
+    if (status === 'cancelled' && !(await confirm('Bu faturayı iptal etmek istediğinize emin misiniz?'))) return;
     try {
       await axios.patch(`${API}/invoices/${id}/status`, { status }, { headers: authHeader() });
       load();
@@ -1038,6 +1042,7 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
           </FinansDataTable>
         )}
       </FinansPanelCard>
+      {dialog}
     </div>
   );
 }

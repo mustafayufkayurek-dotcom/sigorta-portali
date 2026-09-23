@@ -9,6 +9,7 @@ import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
 import { entityDocumentFileUrl } from '@/utils/protected-image';
 import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 import { isAcilInspectionPhotoNotes } from '@sigorta/shared';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 type PhotoDoc = {
   id: string;
@@ -43,6 +44,7 @@ export function FieldInspectionPhotosPanel({
   onCountChange?: (count: number) => void;
 }) {
   const resolvedId = entityId || claimId || '';
+  const { confirm, dialog } = usePanelConfirm();
   const [docs, setDocs] = useState<PhotoDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -121,7 +123,7 @@ export function FieldInspectionPhotosPanel({
   };
 
   const handleDelete = async (docId: string, fileName: string) => {
-    if (!confirm(`"${fileName}" silinsin mi?`)) return;
+    if (!(await confirm(`"${fileName}" silinsin mi?`))) return;
     try {
       await axios.delete(`${API}/entity-documents/${docId}`, { headers: authHeader() });
       await load();
@@ -284,6 +286,7 @@ export function FieldInspectionPhotosPanel({
           alt={docs[previewIndex]?.fileName ?? 'Tespit Fotoğrafı'}
         />
       ) : null}
+      {dialog}
     </div>
   );
 }

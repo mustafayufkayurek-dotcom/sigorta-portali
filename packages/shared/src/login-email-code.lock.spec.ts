@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { maskLoginMailbox, roleRequiresLoginEmailCode } from './login-email-code.ts';
+import { isLoginEmailCodeSubject, maskLoginMailbox, roleRequiresLoginEmailCode } from './login-email-code.ts';
 
 describe('giriş e-posta kodu LOCK', () => {
   it('yalnız yönetici ve finans ister; ofis ve saha istemez', () => {
@@ -14,5 +14,10 @@ describe('giriş e-posta kodu LOCK', () => {
 
   it('kutu adresini gizler', () => {
     assert.equal(maskLoginMailbox('mustafa@meridyen-tr.com'), 'm***@meridyen-tr.com');
+  });
+
+  it('giriş kodu konusunu gelen kutu işinden ayırır', () => {
+    assert.equal(isLoginEmailCodeSubject('Giriş Kodu — Meridyen Assistance'), true);
+    assert.equal(isLoginEmailCodeSubject('RE: KONUT CAM'), false);
   });
 });

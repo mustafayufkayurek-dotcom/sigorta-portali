@@ -1,11 +1,11 @@
 ---
-description: Canlı web v623 / backend v623 — sıradaki paketler karışmaz
+description: Canlı web v624 / backend v624 — sıradaki paketler karışmaz
 alwaysApply: true
 ---
 
-# Canlı (23.09.2026)
+# Canlı (24.09.2026)
 
-Canlı: web **v623** · backend **v623**. Geri alma: web **v622** / backend **v622**.
+Canlı: web **v624** · backend **v624**. Geri alma: web **v623** / backend **v623**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v624 (full):** Giriş kodu şifre doğru olunca satırda durur; Kodu Onayla ile girilir. Mail yine gider. Personel silme ve benzeri işlerde Chrome uyarısı kalkar; uyarı yazılımın kendi kutusunda durur. Sistem yöneticisi v623 durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v623 / backend v623.
 
 **v623 (full):** Sistem Yöneticisi Düzenle açılır; ad ve mail kaydolur. Rol, arşiv ve silme kapalı. Giriş kodu yeni adrese gider. Yazışma v622 durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v622 / backend v622.
 

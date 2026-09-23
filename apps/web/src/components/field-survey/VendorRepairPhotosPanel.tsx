@@ -9,6 +9,7 @@ import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
 import { entityDocumentFileUrl } from '@/utils/protected-image';
 import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 import { isRepairCompletionPhotoNote, repairCompletionPhotoNote } from '@sigorta/shared';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 type PhotoDoc = {
   id: string;
@@ -34,6 +35,7 @@ export function VendorRepairPhotosPanel({
   vendorName: string;
   readOnly?: boolean;
 }) {
+  const { confirm, dialog } = usePanelConfirm();
   const [docs, setDocs] = useState<PhotoDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -136,9 +138,9 @@ export function VendorRepairPhotosPanel({
               {readOnly ? null : (
               <span
                 className="absolute right-0.5 top-0.5 rounded bg-white/90 p-0.5"
-                onClick={(ev) => {
+                onClick={async (ev) => {
                   ev.stopPropagation();
-                  if (!confirm('Silinsin mi?')) return;
+                  if (!(await confirm('Silinsin mi?'))) return;
                   void axios.delete(`${API}/entity-documents/${d.id}`, { headers: authHeader() }).then(load);
                 }}
               >
@@ -158,6 +160,7 @@ export function VendorRepairPhotosPanel({
           alt={docs[previewIndex]?.fileName ?? 'Onarım resmi'}
         />
       ) : null}
+      {dialog}
     </div>
   );
 }

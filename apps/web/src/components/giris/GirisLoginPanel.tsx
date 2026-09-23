@@ -13,7 +13,7 @@ import {
 import { getLoginHomePath } from '@/utils/panel-access';
 import { safePanelNextPath } from '@/lib/panel-auth-gate';
 import { isCompanyWebsiteHost, softwareLoginHref, SOFTWARE_LOGIN_URL } from '@/utils/site-renewal';
-import { extractLoginEmailCode } from '@/utils/login-email-code-fill';
+import { extractLoginEmailCode, visibleLoginEmailCode } from '@/utils/login-email-code-fill';
 import { maskLoginMailbox } from '@sigorta/shared';
 
 const API_URL = API;
@@ -261,7 +261,7 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
       const payload = response.data?.data ?? response.data;
       if (payload?.requiresEmailCode && payload?.challengeId) {
         setChallengeId(String(payload.challengeId));
-        setEmailCode('');
+        setEmailCode(visibleLoginEmailCode(payload.code));
         return;
       }
       await finishLogin(payload);
@@ -306,8 +306,8 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
       );
       const payload = response.data?.data ?? response.data;
       if (payload?.challengeId) setChallengeId(String(payload.challengeId));
-      setEmailCode('');
-      setNotice('Yeni kod gönderildi.');
+      setEmailCode(visibleLoginEmailCode(payload?.code));
+      setNotice('Yeni kod satırda durur.');
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
       const status = axiosErr.response?.status;
@@ -369,8 +369,8 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
           {challengeId ? (
           <div>
             <p className="login-sub fade-up-2" style={{ marginTop: 0 }}>
-              Kod {maskLoginMailbox(email)} kutusuna gitti. Gelenlerde yoksa gereksiz klasörüne bakın.
-              Kodu kopyalayıp Yapıştır deyin; kutu dolar.
+              Kod satırda durur. Aynı kod {maskLoginMailbox(email)} kutusuna da gitti.
+              Gelenlerde yoksa Gereksiz veya Silinmiş Öğeler’e bakın.
             </p>
             <form onSubmit={handleEmailCode} noValidate>
             <label className="form-label" htmlFor="one-time-code">Giriş Kodu</label>
@@ -425,11 +425,23 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
                   fontWeight: 600,
                 }}
                 onClick={() => {
-                  if (!navigator.clipboard?.readText) return;
+                  const fail = () => {
+                    codeInputRef.current?.focus();
+                    setNotice('Kodu mailden kopyalayıp bu kutuya yapıştırın.');
+                  };
+                  if (!navigator.clipboard?.readText) {
+                    fail();
+                    return;
+                  }
                   void navigator.clipboard.readText().then((text) => {
                     const code = extractLoginEmailCode(text);
-                    if (code) setEmailCode(code);
-                  }).catch(() => {});
+                    if (code) {
+                      setEmailCode(code);
+                      setNotice('');
+                      return;
+                    }
+                    fail();
+                  }).catch(() => fail());
                 }}
               >
                 Yapıştır

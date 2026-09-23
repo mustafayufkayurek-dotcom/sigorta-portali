@@ -6,6 +6,7 @@ import { API, authHeader } from '../claim-detail-utils';
 import { useToast } from '@/contexts/ToastContext';
 import { openWhatsAppChat } from '@/utils/date-helpers';
 import { VendorContractPreviewModal, type VendorContractPreviewTarget } from '@/components/hasar-operasyon-planlayicisi/VendorContractPreviewModal';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 const CONTRACT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   draft: { label: 'Taslak', color: 'bg-slate-100 text-slate-700' },
@@ -17,6 +18,7 @@ const CONTRACT_STATUS_LABELS: Record<string, { label: string; color: string }> =
 
 export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: string; hideHeader?: boolean }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [contracts, setContracts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [whatsappModal, setWhatsappModal] = useState<{ id: string; phone: string } | null>(null);
@@ -54,7 +56,7 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
   };
 
   const handleCancel = async (id: string) => {
-    if (!confirm('Bu sözleşmeyi iptal etmek istediğinize emin misiniz?')) return;
+    if (!(await confirm('Bu sözleşmeyi iptal etmek istediğinize emin misiniz?'))) return;
     setCancelling(id);
     try {
       await axios.delete(`${API}/vendor-contracts/${id}`, { headers: authHeader() });
@@ -223,6 +225,7 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
           onDone={() => load()}
         />
       ) : null}
+      {dialog}
     </div>
   );
 }

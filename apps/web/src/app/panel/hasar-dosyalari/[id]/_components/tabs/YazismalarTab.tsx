@@ -5,6 +5,7 @@ import axios from 'axios';
 import { API, authHeader } from '../claim-detail-utils';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 // ─── Tab: Yazışmalar ──────────────────────────────────────────────────────────
 interface ChatMessage {
@@ -60,6 +61,7 @@ export function YazismalarTab({
   embedded?: boolean;
 }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [archives, setArchives] = useState<ChatArchive[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedArchive, setSelectedArchive] = useState<ChatArchiveDetail | null>(null);
@@ -96,7 +98,7 @@ export function YazismalarTab({
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Bu yazışmayı silmek istediğinizden emin misiniz?')) return;
+    if (!(await confirm('Bu yazışmayı silmek istediğinizden emin misiniz?'))) return;
     try {
       await axios.delete(`${API}/chat-archives/${id}`, { headers: authHeader() });
       if (selectedArchive?.id === id) setSelectedArchive(null);
@@ -282,6 +284,7 @@ export function YazismalarTab({
           </div>
         </div>
       )}
+      {dialog}
     </div>
   );
 }

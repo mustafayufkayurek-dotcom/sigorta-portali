@@ -32,6 +32,8 @@ export type EmailSendOptions = {
   readReceiptTo?: string[];
   copyNoticeHtml?: string;
   copyNoticeText?: string;
+  /** Yazışmada açık. Giriş kodunda kapalı — iz maili kutuyu süpürmesin. */
+  requestReadReceipt?: boolean;
 };
 
 @Injectable()
@@ -159,6 +161,7 @@ export class EmailService {
           graphAttachments,
           options?.cc,
           options?.readReceiptTo,
+          options?.requestReadReceipt !== false,
         );
         await this.prisma.emailLog.update({
           where: { id: logEntry.id },

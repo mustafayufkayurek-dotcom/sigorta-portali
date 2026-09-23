@@ -17,6 +17,7 @@ import { API, authHeader } from '@/utils/api';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { financeOperationNo } from '@sigorta/shared';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 const fmt = (n: number) => formatTryAmount(n, { fractionDigits: 0 });
 
@@ -35,6 +36,7 @@ export function FileMasrafIsleme({
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const canDelete = canDeleteClaimFinance();
+  const { confirm, dialog } = usePanelConfirm();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -135,7 +137,7 @@ export function FileMasrafIsleme({
                       type="button"
                       title="Sil"
                       onClick={async () => {
-                        if (!window.confirm('Bu masraf silinsin mi?')) return;
+                        if (!(await confirm('Bu masraf silinsin mi?'))) return;
                         try {
                           await axios.delete(`${API}/expenses/${e.id}`, { headers: authHeader() });
                           void load();
@@ -163,6 +165,7 @@ export function FileMasrafIsleme({
         allowExtraWorkPlan={true}
         onSaved={() => { void load(); }}
       />
+      {dialog}
     </div>
   );
 }

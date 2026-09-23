@@ -9,6 +9,7 @@ import {
   filterDocumentTypesForVendorCategory,
 } from '@/utils/document-type-scope';
 import { useToast } from '@/contexts/ToastContext';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
 import {
@@ -203,6 +204,7 @@ export function EntityDocumentsTab({
   readOnly = false,
 }: Props) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -295,7 +297,7 @@ export function EntityDocumentsTab({
   };
 
   const handleDelete = async (docId: string, fileName: string) => {
-    if (!confirm(`"${fileName}" evrakını silmek istediğinizden emin misiniz?`)) return;
+    if (!(await confirm(`"${fileName}" evrakını silmek istediğinizden emin misiniz?`))) return;
     try {
       await axios.delete(deleteUrl(docId), { headers: authHeader() });
       loadDocuments();
@@ -628,6 +630,7 @@ export function EntityDocumentsTab({
           onDownload={() => handleDownload(cadViewerDoc.id, cadViewerDoc.fileName)}
         />
       )}
+      {dialog}
     </div>
   );
 }

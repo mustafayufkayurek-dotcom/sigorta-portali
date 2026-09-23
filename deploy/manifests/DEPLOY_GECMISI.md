@@ -2,24 +2,32 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 23 Eylül 2026
+**Son güncelleme:** 24 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (23 Eylül 2026 — web v623 / backend v623)
+## Canlı durum (24 Eylül 2026 — web v624 / backend v624)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v623-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v623-amd64` | canlı |
-| **Rollback** | Web **v622** / Backend **v622** | manifest `rollbackImages` |
-| **Etiket** | `v623-sistem-yonetici-kimlik` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v624-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v624-amd64` | canlı |
+| **Rollback** | Web **v623** / Backend **v623** | manifest `rollbackImages` |
+| **Etiket** | `v624-giris-kodu-yazilim-uyari` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v624 — Full (24 Eylül 2026) — Giriş kodu satırda ve yazılım uyarısı
+
+- Şifre doğru olunca giriş kodu satırda durur; Kodu Onayla ile girilir. Mail yine gider
+- Personel silme ve benzeri işlerde tarayıcının İptal/Tamam kutusu kalkar; uyarı yazılımın kendi kutusunda durur
+- Sistem yöneticisi kimliği ve v623 kapıları aynı
+- Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v623** / backend **v623**
 
 ### v623 — Full (23 Eylül 2026) — Sistem yöneticisi kimlik
 

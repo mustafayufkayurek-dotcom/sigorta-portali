@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/TableColumnPicker';
 import { cycleClientSort, sortRowsByClientSort, type ClientSortState } from '@/utils/panel-table-sort';
 import { useToast } from '@/contexts/ToastContext';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { API, authHeader } from '@/utils/api';
 import { presentPdfPreview, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
 import { formatTryAmount } from '@/utils/format-try-amount';
@@ -795,6 +796,7 @@ export function HasarFileHakedisPanel({
   supplierCostHint?: number | null;
 }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const router = useRouter();
   const [hakedis, setHakedis] = useState<StatementRow[]>([]);
   const [vendor, setVendor] = useState<VendorCtx | null>(null);
@@ -1429,7 +1431,11 @@ export function HasarFileHakedisPanel({
       vendorAvans(satir.vendorId) + amount,
     );
     if (yariUstu) {
-      const ok = window.confirm(HASAR_AVANS_YARI_ONAY_METNI);
+      const ok = await confirm({
+        title: 'Avans Onayı',
+        message: HASAR_AVANS_YARI_ONAY_METNI,
+        confirmLabel: 'Onayla',
+      });
       if (!ok) return;
     }
     const aciklamaNotu = sozlesmeCevap === 'yok'
@@ -1990,6 +1996,7 @@ export function HasarFileHakedisPanel({
         </FinansPanelCard>
       </div>
       {drawer}
+      {dialog}
     </>
   );
 }

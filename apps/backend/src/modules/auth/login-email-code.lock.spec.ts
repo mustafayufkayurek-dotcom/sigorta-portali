@@ -24,6 +24,17 @@ describe('giriş e-posta kodu kaynak LOCK', () => {
     assert.match(auth, /owner\.status !== 'active'/);
     assert.match(auth, /Kodu kopyalayıp giriş ekranına dönün/);
     assert.match(auth, /Kod \$\{code\}/);
+    assert.match(auth, /challengeId: row\.id, code/);
+    assert.match(auth, /requestReadReceipt:\s*false/);
+    assert.doesNotMatch(auth, /letter-spacing:0\.18em/);
+  });
+
+  it('giriş kodu maili gelen kutu işine düşmez', () => {
+    const ingest = readFileSync(
+      join(here, '../operation-inbox/processors/inbound-ingest.processor.ts'),
+      'utf8',
+    );
+    assert.match(ingest, /isLoginEmailCodeSubject/);
   });
 
   it('pasifte açık oturum kapanır', () => {

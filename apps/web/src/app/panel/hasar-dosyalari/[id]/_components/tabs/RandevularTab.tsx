@@ -7,6 +7,7 @@ import { API, authHeader } from '../claim-detail-utils';
 import { FinansFormPanel, FinansPanelCard } from '@/components/finance/FinansPanelUI';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 // ─── Tab: Randevular ──────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ const APPOINTMENT_STATUS_LABEL: Record<string, string> = {
 
 export function RandevularTab({ claimId, claim }: { claimId: string; claim: any }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -103,7 +105,7 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
   };
 
   const handleStatusChange = async (apptId: string, status: string) => {
-    if (status === 'cancelled' && !window.confirm('Bu randevuyu iptal etmek istediğinize emin misiniz?')) return;
+    if (status === 'cancelled' && !(await confirm('Bu randevuyu iptal etmek istediğinize emin misiniz?'))) return;
     try {
       await axios.patch(`${API}/adjusters/appointments/${apptId}/status`, { status }, { headers: authHeader() });
       loadAppointments();
@@ -287,6 +289,7 @@ export function RandevularTab({ claimId, claim }: { claimId: string; claim: any 
         </div>
       )}
       </FinansPanelCard>
+      {dialog}
     </div>
   );
 }

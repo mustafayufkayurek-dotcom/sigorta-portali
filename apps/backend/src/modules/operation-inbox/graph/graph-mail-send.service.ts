@@ -146,6 +146,7 @@ export class GraphMailSendService {
     attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>,
     cc?: Array<{ email: string; name?: string }>,
     readReceiptTo?: string[],
+    requestReadReceipt = true,
   ): Promise<void> {
     const config = await this.loadGraphConfig();
     if (!config.active) {
@@ -200,7 +201,7 @@ export class GraphMailSendService {
             })),
           }
         : {}),
-      isReadReceiptRequested: true,
+      ...(requestReadReceipt ? { isReadReceiptRequested: true } : {}),
       ...(readReceiptTo?.length
         ? {
             internetMessageHeaders: [

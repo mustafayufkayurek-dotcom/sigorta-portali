@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk, resolveAcilInsuredName, resolveEmergencyFindingsDraft, isAcilLocksmithIssue, ACIL_STATUS_SEQUENCE_MESSAGE } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
 import { PANEL_CARD_BASE, PanelSectionTitle } from '@/components/panel/PanelCard';
@@ -481,6 +482,7 @@ const EMPTY_COST_FORM = { description: '', amount: '', entryDate: new Date().toI
 export default function AcilDosyaDetayPage() {
   const params = useParams();
   const router = useRouter();
+  const { confirm, dialog } = usePanelConfirm();
   const id = params?.id as string;
   const roleCode = usePanelRoleCode();
   const { showAcilFinancePage } = usePanelAccess();
@@ -855,9 +857,12 @@ export default function AcilDosyaDetayPage() {
   async function handleAssignVendor(vendorId: string) {
     const rec = vendorRecs.find((v) => v.id === vendorId);
     if (rec?.qualityWarning) {
-      const ok = window.confirm(
-        'Bu tedarikçinin memnuniyet veya maliyet değerlendirmesi olumsuz. Alternatif tedarikçi aramanız gerekir. Yine de atamak istiyor musunuz?',
-      );
+      const ok = await confirm({
+        title: 'Tedarikçi Ata',
+        message:
+          'Bu tedarikçinin memnuniyet veya maliyet değerlendirmesi olumsuz. Alternatif tedarikçi aramanız gerekir. Yine de atamak istiyor musunuz?',
+        confirmLabel: 'Yine De Ata',
+      });
       if (!ok) return;
     }
     setAssignLoading(true);
@@ -1979,7 +1984,7 @@ export default function AcilDosyaDetayPage() {
   }
 
   async function handleDeleteCost(costId: string) {
-    if (!confirm('Bu kaydı silmek istiyor musunuz?')) return;
+    if (!(await confirm('Bu kaydı silmek istiyor musunuz?'))) return;
     try {
       await deleteCostEntry(id, costId);
       await refreshCosts();
@@ -4004,6 +4009,7 @@ export default function AcilDosyaDetayPage() {
           </div>
         </div>
       )}
+      {dialog}
     </div>
   );
 }

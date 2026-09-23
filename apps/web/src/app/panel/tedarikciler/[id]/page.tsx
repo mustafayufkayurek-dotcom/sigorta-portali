@@ -23,6 +23,7 @@ import { fetchProvinceDistricts } from '@/utils/fetch-province-districts';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { useToast } from '@/contexts/ToastContext';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import {
   buildDepartmentCodeMap,
   filterDocumentTypesForCategory,
@@ -1242,6 +1243,7 @@ function DocPreviewModal({ doc, onClose }: { doc: any; onClose: () => void }) {
 // ── Evraklar Tab ──────────────────────────────────────────────────────────────
 function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCategory: VendorCategory }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [documents, setDocuments] = useState<any[]>([]);
   const [documentTypes, setDocumentTypes] = useState<VendorDocumentTypeRow[]>([]);
   const [deptCodeById, setDeptCodeById] = useState<Map<string, string>>(() => new Map());
@@ -1303,7 +1305,7 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
   };
 
   const handleDelete = async (docId: string, fileName: string) => {
-    if (!confirm(`"${fileName}" evrakını silmek istediğinizden emin misiniz?`)) return;
+    if (!(await confirm(`"${fileName}" evrakını silmek istediğinizden emin misiniz?`))) return;
     try { await axios.delete(`${API}/vendor-documents/${docId}`, { headers: authHeader() }); loadDocuments(); }
     catch (e: unknown) { showToast('error', getApiErrorMessage(e, 'Silinemedi')); }
   };
@@ -1430,6 +1432,7 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
           </div>
         )}
       </SectionCard>
+      {dialog}
     </div>
   );
 }
@@ -1607,6 +1610,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 function OdemelerTab({ vendorId }: { vendorId: string }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [statements, setStatements] = useState<any[]>([]);
   const [filePayments, setFilePayments] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
@@ -1652,7 +1656,7 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
   useEffect(() => { load(); }, [load]);
 
   const handleSend = async (id: string) => {
-    if (!confirm('Ekstre tedarikçiye SMS ile gönderilecek. Onaylıyor musunuz?')) return;
+    if (!(await confirm('Ekstre tedarikçiye SMS ile gönderilecek. Onaylıyor musunuz?'))) return;
     try {
       await axios.post(`${API}/vendor-statements/${id}/send`, {}, { headers: authHeader() });
       load();
@@ -1806,6 +1810,7 @@ function OdemelerTab({ vendorId }: { vendorId: string }) {
           onCreated={() => { setShowCreateModal(false); load(); }}
         />
       )}
+      {dialog}
     </div>
   );
 }

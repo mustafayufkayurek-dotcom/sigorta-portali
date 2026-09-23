@@ -78,6 +78,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'hasar-hakedis-once.lock.spec',
       'financial-record-freeze.lock.spec',
       'public-approval-token.lock.spec',
+      'panel-native-confirm.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

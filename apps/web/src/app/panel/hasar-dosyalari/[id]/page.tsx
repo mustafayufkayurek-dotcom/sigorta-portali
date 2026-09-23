@@ -66,6 +66,7 @@ import {
 } from 'lucide-react';
 import { INSPECTOR_CANNOT_BE_SUPPLIER_MESSAGE, SUPPLIER_ALREADY_ASSIGNED_MESSAGE, SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE, hasarCancelActorName, isExpertFirmCustomer, isInsuredCollectionParty, pickHasarCancelHistory, staffVisibleClaimStatusName } from '@sigorta/shared';
 import { useToast } from '@/contexts/ToastContext';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { isUiActionTimeout, UI_ACTION_TIMEOUT_MESSAGE, UI_ACTION_TIMEOUT_MS } from '@/utils/ui-action-timeout';
 import { fmtDateTime } from '@/utils/date-helpers';
@@ -252,6 +253,7 @@ function FieldStaffVisitCard({
   onClaimUpdated?: (patch: Partial<any>) => void;
 }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const queryClient = useQueryClient();
   const [marking, setMarking] = useState(false);
   const [contactRefreshKey, setContactRefreshKey] = useState(0);
@@ -263,7 +265,12 @@ function FieldStaffVisitCard({
 
   const markInspectionDone = async () => {
     if (inspection.done || marking) return;
-    const ok = window.confirm(FIELD_STAFF_END_INSPECTION_CONFIRM);
+    const ok = await confirm({
+      title: 'Tespiti Sonlandır',
+      message: FIELD_STAFF_END_INSPECTION_CONFIRM,
+      confirmLabel: 'Tespiti Sonlandır',
+      danger: false,
+    });
     if (!ok) return;
     setMarking(true);
     try {
@@ -299,6 +306,7 @@ function FieldStaffVisitCard({
   };
 
   return (
+    <>
     <div
       className="mb-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-900/[0.03]"
       data-testid="saha-ziyaret-karti"
@@ -413,6 +421,8 @@ function FieldStaffVisitCard({
         )}
       </div>
     </div>
+    {dialog}
+    </>
   );
 }
 
@@ -571,6 +581,7 @@ function DosyadaKimlerVarCard({
   embedded?: boolean;
 }) {
   const canAssign = canUserAssignClaim(userRoleCode, isFieldStaff);
+  const { confirm, dialog } = usePanelConfirm();
 
   const [officeSuggestions, setOfficeSuggestions] = useState<any[]>([]);
   const [fieldSuggestions, setFieldSuggestions] = useState<any[]>([]);
@@ -904,7 +915,11 @@ function DosyadaKimlerVarCard({
   };
 
   const handleRemoveSupplier = async (vendorId: string, vendorName?: string) => {
-    if (!window.confirm(`${vendorName ? `"${vendorName}" tedarikçisini` : 'Bu tedarikçiyi'} dosyadan kaldırmak istediğinize emin misiniz?`)) return;
+    if (!(await confirm({
+      title: 'Tedarikçiyi Kaldır',
+      message: `${vendorName ? `"${vendorName}" tedarikçisini` : 'Bu tedarikçiyi'} dosyadan kaldırmak istediğinize emin misiniz?`,
+      confirmLabel: 'Kaldır',
+    }))) return;
     setRemovingSupplierId(vendorId);
     setAssignError('');
     setAssignSuccess('');
@@ -1377,11 +1392,19 @@ function DosyadaKimlerVarCard({
     </>
   );
 
-  if (embedded) return assignmentCards;
+  if (embedded) {
+    return (
+      <>
+        {assignmentCards}
+        {dialog}
+      </>
+    );
+  }
 
   return (
     <SectionCard title="Bu Dosyada Kimler Var?">
       {assignmentCards}
+      {dialog}
     </SectionCard>
   );
 }

@@ -74,7 +74,7 @@ export class AuthService {
 
   async login(loginDto: { email: string; password: string; recaptchaToken?: string }): Promise<
     | { user: any; tokens: AuthTokens }
-    | { requiresEmailCode: true; challengeId: string }
+    | { requiresEmailCode: true; challengeId: string; code: string }
   > {
     const normalizedEmail = normalizeAuthEmail(loginDto.email);
     if (normalizedEmail.endsWith('@example.com')) {
@@ -251,7 +251,9 @@ export class AuthService {
     return this.issueLoginSession(challenge.userId, challenge.user.email);
   }
 
-  async resendLoginEmailCode(challengeId: string): Promise<{ requiresEmailCode: true; challengeId: string }> {
+  async resendLoginEmailCode(
+    challengeId: string,
+  ): Promise<{ requiresEmailCode: true; challengeId: string; code: string }> {
     const challenge = await this.prisma.loginEmailChallenge.findUnique({
       where: { id: challengeId },
       include: { user: { include: { role: true } } },
@@ -283,7 +285,7 @@ export class AuthService {
     firstName?: string | null;
     lastName?: string | null;
     role?: { code?: string | null } | null;
-  }): Promise<{ requiresEmailCode: true; challengeId: string } | null> {
+  }): Promise<{ requiresEmailCode: true; challengeId: string; code: string } | null> {
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await this.prisma.loginEmailChallenge.updateMany({
@@ -301,14 +303,18 @@ export class AuthService {
       title: 'Giriş Kodu',
       greeting: formatSnPersonGreeting(user.firstName, user.lastName),
       intro: 'Giriş için 6 haneli kod. Kodu kopyalayıp giriş ekranına dönün; kutu dolar. 10 dakika geçerlidir. Bu talebi siz oluşturmadıysanız yok sayın.',
-      bodyHtml: `<p style="margin:0 0 12px;font-size:28px;line-height:1.2;letter-spacing:0.18em;font-weight:800;">Kod ${code}</p>`,
+      bodyHtml: `<p style="margin:0 0 12px;font-size:28px;line-height:1.2;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;">Kod ${code}</p>`,
       portalUrl: buildAppPath(this.config, '/giris'),
     });
     const result = await this.email.sendEmail(
       user.email,
       'Giriş Kodu — Meridyen Assistance',
       html,
-      { text: `Giriş kodunuz (10 dakika geçerli): ${code}\nKodu kopyalayıp giriş ekranına dönün.`, mailbox: 'HASAR' },
+      {
+        text: `Giriş kodunuz (10 dakika geçerli): ${code}\nKodu kopyalayıp giriş ekranına dönün.`,
+        mailbox: 'HASAR',
+        requestReadReceipt: false,
+      },
     );
     if (!result.sent) {
       await this.prisma.loginEmailChallenge.update({
@@ -318,7 +324,7 @@ export class AuthService {
       this.logger.error(`Giriş kodu gönderilemedi → ${user.email} | ${result.errorMsg}`);
       return null;
     }
-    return { requiresEmailCode: true, challengeId: row.id };
+    return { requiresEmailCode: true, challengeId: row.id, code };
   }
 
   private hashLoginEmailCode(code: string): string {

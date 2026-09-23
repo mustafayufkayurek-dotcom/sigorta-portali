@@ -8,6 +8,7 @@ import { FinansFormPanel } from '@/components/finance/FinansPanelUI';
 import { Badge, CollapsibleSectionCard } from '../claim-detail-ui';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 // ─── Tab: Dosya Görevleri & Hatırlatmalar ─────────────────────────────────────
 
@@ -296,6 +297,7 @@ function TaskSection({ title, subtitle, tasks, accent, actionLoading, onComplete
 
 export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any }) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -449,7 +451,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
   };
 
   const handleCancel = async (taskId: string) => {
-    if (!confirm('Bu hatırlatmayı iptal etmek istediğinize emin misiniz?')) return;
+    if (!(await confirm('Bu hatırlatmayı iptal etmek istediğinize emin misiniz?'))) return;
     setActionLoading(`${taskId}-cancel`);
     try {
       await authAxios({ method: 'DELETE', url: `${API}/tasks/${taskId}` });
@@ -693,6 +695,7 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
           )}
         </div>
       )}
+      {dialog}
     </div>
   );
 }

@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-09-23",
-  "label": "v623-sistem-yonetici-kimlik",
-  "description": "Full v623: Sistem yöneticisi ad/mail değişir; arşiv/silme kapalı. Geri alma web v622 / backend v622.",
+  "updatedAt": "2026-09-24",
+  "label": "v624-giris-kodu-yazilim-uyari",
+  "description": "Full v624: Giriş kodu satırda durur; Chrome uyarısı yazılım kutusunda. Geri alma web v623 / backend v623.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v623-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v623-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v624-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v624-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v622-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v622-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v623-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v623-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

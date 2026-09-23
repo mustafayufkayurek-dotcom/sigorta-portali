@@ -55,6 +55,7 @@ import { editingDraftFromCellValue, normalizeCellNumericInput } from '@/utils/re
 import { formatTrAmountInput, numberToTrAmountInput, parseTrAmountInput } from '@/utils/tr-amount-input';
 import { LEGAL_NOTE_TEMPLATES, buildSuggestedLegalNotesText } from '@/constants/legal-note-templates';
 import { useToast } from '@/contexts/ToastContext';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { useNavigationGuard } from '@/contexts/NavigationGuardContext';
 
 const ImageAnnotationEditor = dynamic(
@@ -4095,6 +4096,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       );
     })()}
     </>
+    {localConfirmDialog}
   );
 });
 
@@ -4120,6 +4122,8 @@ function EmergencyReportEditor({
 }) {
   const router = useRouter();
   const { showToast } = useToast();
+  const notify = useCallback((type: 'error' | 'warning' | 'success', message: string) => {
+  const { confirm, dialog } = usePanelConfirm();
   const notify = useCallback((type: 'error' | 'warning' | 'success', message: string) => {
     showToast(type, message);
   }, [showToast]);
@@ -4160,7 +4164,7 @@ function EmergencyReportEditor({
   };
 
   const handleDeleteItem = async (itemId: string) => {
-    if (!confirm('Bu kalemi silmek istediğinizden emin misiniz?')) return;
+    if (!(await confirm('Bu kalemi silmek istediğinizden emin misiniz?'))) return;
     try {
       await axios.delete(`${API}/repair-report-items/${itemId}`, { headers: authHeader() });
       setLocalReport((prev: any) => {
@@ -4272,7 +4276,12 @@ function EmergencyReportEditor({
   };
 
   const handleSubmitReport = async () => {
-    if (!confirm('Raporu sunmak istediğinizden emin misiniz?')) return;
+    if (!(await confirm({
+      title: 'Raporu Sun',
+      message: 'Raporu sunmak istediğinizden emin misiniz?',
+      confirmLabel: 'Sun',
+      danger: false,
+    }))) return;
     try {
       await axios.post(`${API}/repair-reports/${reportId}/submit`, {}, { headers: authHeader() });
       onReload();
@@ -4519,7 +4528,7 @@ function EmergencyReportEditor({
         </div>
       </div>
 
-    </div>
+      {dialog}
   );
 }
 

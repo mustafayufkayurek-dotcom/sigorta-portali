@@ -44,6 +44,7 @@ import { apiClient } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
 import { isoToTrDateDisplay } from '@/utils/tr-date-input';
 import { HintIcon } from '@/components/ui/HintIcon';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 type FilterKey = 'all' | 'ok' | 'missing' | 'leave';
 type AttendanceDetailKind = 'lateStart' | 'earlyLeave';
@@ -279,6 +280,7 @@ export function AdminAttendanceSupervisionPanel({
   onOpenEmployeeArchive,
 }: Props) {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const tableColumns = usePanelTableColumns('table-cols:hr-kadro-ozeti-v5', TABLE_COLUMNS);
   const [realData, setRealData] = useState<DayEndSupervisionPreview | null>(null);
   const [apiEmployees, setApiEmployees] = useState<EmployeeApiRow[]>([]);
@@ -584,30 +586,44 @@ export function AdminAttendanceSupervisionPanel({
 
   const archiveEmployee = (row: RosterEmployee) => {
     if (preview || !row.userId) return;
-    if (!window.confirm(`${row.fullName} arşive gönderilsin mi? Giriş kapanır; kayıt durur.`)) return;
-    apiClient
-      .delete(`users/${row.userId}`)
-      .then(() => {
-        showToast('success', 'Personel arşive alındı.');
-        reload();
-      })
-      .catch((err: { message?: string }) => {
-        showToast('error', err?.message ?? 'Arşivlenemedi.');
+    void (async () => {
+      const ok = await confirm({
+        title: 'Arşive Gönder',
+        message: `${row.fullName} arşive gönderilsin mi? Giriş kapanır; kayıt durur.`,
+        confirmLabel: 'Arşive Gönder',
       });
+      if (!ok) return;
+      apiClient
+        .delete(`users/${row.userId}`)
+        .then(() => {
+          showToast('success', 'Personel arşive alındı.');
+          reload();
+        })
+        .catch((err: { message?: string }) => {
+          showToast('error', err?.message ?? 'Arşivlenemedi.');
+        });
+    })();
   };
 
   const permanentlyDeleteEmployee = (row: RosterEmployee) => {
     if (preview || !row.userId) return;
-    if (!window.confirm(`${row.fullName} kalıcı silinsin mi? Bu işlem geri alınamaz.`)) return;
-    apiClient
-      .delete(`users/${row.userId}/permanent`)
-      .then(() => {
-        showToast('success', 'Personel kalıcı silindi.');
-        reload();
-      })
-      .catch((err: { message?: string }) => {
-        showToast('error', err?.message ?? 'Silinemedi.');
+    void (async () => {
+      const ok = await confirm({
+        title: 'Kalıcı Sil',
+        message: `${row.fullName} kalıcı silinsin mi? Bu işlem geri alınamaz.`,
+        confirmLabel: 'Kalıcı Sil',
       });
+      if (!ok) return;
+      apiClient
+        .delete(`users/${row.userId}/permanent`)
+        .then(() => {
+          showToast('success', 'Personel kalıcı silindi.');
+          reload();
+        })
+        .catch((err: { message?: string }) => {
+          showToast('error', err?.message ?? 'Silinemedi.');
+        });
+    })();
   };
 
   const openEdit = (userId?: string) => {
@@ -994,6 +1010,7 @@ export function AdminAttendanceSupervisionPanel({
           onOpenEmployeeAttendance?.({ id: emp.id, fullName: emp.fullName });
         }}
       />
+      {dialog}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import {
 import {
   buildMailReceiptDisplay,
   classifyMailReceipt,
+  isLoginEmailCodeSubject,
   isReadableMailReceiptHtml,
   matchCrmEmailWatchLog,
 } from '@sigorta/shared';
@@ -163,6 +164,7 @@ export class InboundIngestProcessor {
     if (msg['@removed'] || !msg.id) return 'skipped';
 
     const mapped = this.mapGraphMessage(msg, mailbox);
+    if (isLoginEmailCodeSubject(mapped.subject)) return 'skipped';
     const receipt = classifyMailReceipt({
       subject: mapped.subject,
       fromAddress: mapped.fromAddress,

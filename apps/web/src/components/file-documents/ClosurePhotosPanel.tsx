@@ -9,6 +9,7 @@ import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
 import { entityDocumentFileUrl } from '@/utils/protected-image';
 import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 import { ACIL_AFTER_SERVICE_PHOTO_NOTE, isAcilAfterServicePhotoNotes } from '@sigorta/shared';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 type ClosurePhotoDoc = {
   id: string;
@@ -35,6 +36,7 @@ export default function ClosurePhotosPanel({
   onPhotoCountChange,
   readonly = false,
 }: Props) {
+  const { confirm, dialog } = usePanelConfirm();
   const [docs, setDocs] = useState<ClosurePhotoDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -114,7 +116,7 @@ export default function ClosurePhotosPanel({
 
   const handleDelete = async (docId: string, fileName: string) => {
     if (readonly) return;
-    if (!confirm(`"${fileName}" silinsin mi?`)) return;
+    if (!(await confirm(`"${fileName}" silinsin mi?`))) return;
     setError(null);
     try {
       await axios.delete(`${API}/entity-documents/${docId}`, { headers: authHeader() });
@@ -269,6 +271,7 @@ export default function ClosurePhotosPanel({
           alt={docs[previewIndex]?.fileName ?? 'Dosya Kapanış Resmi'}
         />
       ) : null}
+      {dialog}
     </div>
   );
 }

@@ -40,6 +40,7 @@ import { normalizeTrDateValue, isCompleteTrDateValue, isoToTrDateDisplay } from 
 import { parseTrAmountInput, numberToTrAmountInput } from '@/utils/tr-amount-input';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { API, authHeader } from '@/utils/api';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { getAccessToken } from '@/utils/auth-session';
 import { financeOperationNo } from '@sigorta/shared';
@@ -243,6 +244,7 @@ const getFileDescription = (file: Record<string, unknown>) => {
 // ── Bileşen ───────────────────────────────────────────────────────────────────
 export default function MasraflarPage() {
   const searchParams = useSearchParams();
+  const { confirm, dialog } = usePanelConfirm();
   // Veriler
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [files,    setFiles]    = useState<FileOption[]>([]);
@@ -730,7 +732,7 @@ export default function MasraflarPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Bu masrafı silmek istediğinize emin misiniz?')) return;
+    if (!(await confirm('Bu masrafı silmek istediğinize emin misiniz?'))) return;
     try {
       await axios.delete(`${API}/expenses/${id}`, { headers: authHeader() });
       load();
@@ -1831,6 +1833,7 @@ export default function MasraflarPage() {
         )}
       </FinansPanelCard>
       </TableColumnsProvider>
+      {dialog}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 
 function fmtCurrency(n: number | null | undefined) {
@@ -42,6 +43,7 @@ export default function VendorStatementDetailPage() {
     ? `/panel/hasar-dosyalari/${fromFile}?grup=finans&alt=gider-butce`
     : null);
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [statement, setStatement] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -62,7 +64,7 @@ export default function VendorStatementDetailPage() {
   useEffect(() => { load(); }, [load]);
 
   const handleSend = async () => {
-    if (!stmtId || !confirm('Ekstre tedarikçiye SMS ile gönderilecek. Onaylıyor musunuz?')) return;
+    if (!stmtId || !(await confirm('Ekstre tedarikçiye SMS ile gönderilecek. Onaylıyor musunuz?'))) return;
     setSending(true);
     try {
       await axios.post(`${API}/vendor-statements/${stmtId}/send`, {}, { headers: authHeader() });
@@ -201,6 +203,7 @@ export default function VendorStatementDetailPage() {
           </div>
         </div>
       )}
+      {dialog}
     </div>
   );
 }

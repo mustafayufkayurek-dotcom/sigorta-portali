@@ -28,6 +28,7 @@ import { hasarCancelReasonOk } from '@sigorta/shared';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { UI_ACTION_TIMEOUT_MS } from '@/utils/ui-action-timeout';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { getMandatoryChecks, missingMandatoryLabels } from './mandatory-fields';
 import type { StepId } from './types';
 import {
@@ -132,6 +133,7 @@ export function PlannerProvider({
   onRefresh,
   onGoToReports,
 }: ProviderProps) {
+  const { confirm, dialog } = usePanelConfirm();
   const [claim, setClaim] = useState<PlannerClaimSnapshot>(
     initialClaim ?? previewSnapshot(),
   );
@@ -657,8 +659,13 @@ export function PlannerProvider({
                 message: `Dosya süreçleri tamamlanmadan kapatılamaz: ${claim.closeMissing.join(', ')}. Hizmet iptalse Dosyayı İptal Et kullanın.`,
               };
             }
-            if (typeof window !== 'undefined'
-              && !window.confirm('Tüm işlemler bitti. Dosya kapatılsın mı? Sigorta, eksper ve broker kapanış maili alır.')) {
+            const closeOk = await confirm({
+              title: 'Dosyayı Kapat',
+              message: 'Tüm işlemler bitti. Dosya kapatılsın mı? Sigorta, eksper ve broker kapanış maili alır.',
+              confirmLabel: 'Dosyayı Kapat',
+              danger: false,
+            });
+            if (!closeOk) {
               return { ok: false, message: 'Kapatma iptal edildi.' };
             }
             await axios.post(
@@ -697,6 +704,7 @@ export function PlannerProvider({
       digitalFormType,
       resolveWaPhone,
       refreshClaim,
+      confirm,
     ],
   );
 
@@ -717,8 +725,12 @@ export function PlannerProvider({
       if (!hasarCancelReasonOk(reason)) {
         return { ok: false, message: 'İptal için açıklama yazınız.' };
       }
-      if (typeof window !== 'undefined'
-        && !window.confirm('Hizmet iptal. Dosya iptal edilsin mi?')) {
+      const cancelOk = await confirm({
+        title: 'Dosyayı İptal Et',
+        message: 'Hizmet iptal. Dosya iptal edilsin mi?',
+        confirmLabel: 'Dosyayı İptal Et',
+      });
+      if (!cancelOk) {
         return { ok: false, message: 'İptal işlemi durduruldu.' };
       }
       if (saveLock.current) {
@@ -741,7 +753,7 @@ export function PlannerProvider({
         setSaving(false);
       }
     },
-    [mode, claimId, canEdit, claim.fileCancelled, claim.fileClosed, refreshClaim],
+    [mode, claimId, canEdit, claim.fileCancelled, claim.fileClosed, refreshClaim, confirm],
   );
 
   const value: PlannerDraft = {
@@ -799,7 +811,12 @@ export function PlannerProvider({
     onGoToReports: onGoToReports ?? null,
   };
 
-  return <PlannerCtx.Provider value={value}>{children}</PlannerCtx.Provider>;
+  return (
+    <PlannerCtx.Provider value={value}>
+      {dialog}
+      {children}
+    </PlannerCtx.Provider>
+  );
 }
 
 export function usePlanner() {

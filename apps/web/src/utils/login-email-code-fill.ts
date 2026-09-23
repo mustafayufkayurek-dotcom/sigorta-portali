@@ -9,6 +9,12 @@ function sixDigitsLoose(text: string): string | null {
   return digits.length === 6 ? digits : null;
 }
 
+/** Giriş yanıtındaki 6 haneyi satıra yazar. */
+export function visibleLoginEmailCode(raw: unknown): string {
+  const digits = String(raw ?? '').replace(/\D/g, '').slice(0, 6);
+  return digits.length === 6 ? digits : '';
+}
+
 export function extractLoginEmailCode(raw: string): string | null {
   const text = String(raw ?? '')
     .replace(/[\u00a0\u200b\u202f]/g, ' ')

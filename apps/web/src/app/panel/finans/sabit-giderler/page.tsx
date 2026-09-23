@@ -11,6 +11,7 @@ import { getAccessToken } from '@/utils/auth-session';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 function fmtCurrency(n: number | null | undefined) {
   return formatTryAmount(n, { fractionDigits: 0 });
@@ -49,6 +50,7 @@ interface AllocationReminder {
 export default function SabitGiderlerPage() {
   const searchParams = useSearchParams();
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -136,7 +138,7 @@ export default function SabitGiderlerPage() {
     const targetSummary = breakdown
       ? `${breakdown.hasar} hasar, ${breakdown.ozelOperasyon} özel operasyon, ${breakdown.acilYardim} acil yardım`
       : `${preview?.fileCount ?? 0} dosya`;
-    if (!window.confirm(`${year}/${month} — ${fmtCurrency(totals)} (KDV hariç) ${methodLabel} ile ${targetSummary} hedefine dağıtılsın mı?`)) return;
+    if (!(await confirm(`${year}/${month} — ${fmtCurrency(totals)} (KDV hariç) ${methodLabel} ile ${targetSummary} hedefine dağıtılsın mı?`))) return;
     setAllocating(true);
     try {
       const r = await axios.post(
@@ -412,6 +414,7 @@ export default function SabitGiderlerPage() {
           Dağıtım için uygun aktif dosya bulunamadı. Hasar dosyalarında onaylı bütçe veya acil yardım vakalarında aktif kayıt olmalıdır.
         </div>
       )}
+      {dialog}
     </div>
   );
 }

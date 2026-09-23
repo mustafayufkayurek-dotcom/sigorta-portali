@@ -16,6 +16,7 @@ import {
   panelTableLayoutStyle,
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import {
   cycleClientSort,
   sortRowsByClientSort,
@@ -259,7 +260,7 @@ export default function SlaRaporPage() {
   };
 
   const handleDeleteRule = async (id: string) => {
-    if (!confirm('Bu SLA kuralını silmek istediğinizden emin misiniz?')) return;
+    if (!(await confirm('Bu SLA kuralını silmek istediğinizden emin misiniz?'))) return;
     try {
       await axios.delete(`${API}/sla-rules/${id}`, { headers: authHeader() });
       loadRules();
@@ -660,6 +661,7 @@ export default function SlaRaporPage() {
           </TableColumnsProvider>
         </div>
       )}
+      {dialog}
     </div>
   );
 }

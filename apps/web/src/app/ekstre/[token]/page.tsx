@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import axios from 'axios';
 import { ToastProvider, useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -36,6 +37,7 @@ function VendorStatementPageInner() {
   const params = useParams();
   const token = params?.token as string;
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
 
   const [statement, setStatement] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,12 @@ function VendorStatementPageInner() {
   useEffect(() => { load(); }, [load]);
 
   const handleApproveAll = async () => {
-    if (!confirm('Tüm kalemleri onaylıyor musunuz?')) return;
+    if (!(await confirm({
+      title: 'Onay',
+      message: 'Tüm kalemleri onaylıyor musunuz?',
+      confirmLabel: 'Onayla',
+      danger: false,
+    }))) return;
     setApproving('all');
     try {
       await axios.post(`${API}/public/vendor-statements/token/${token}/approve-all`);
@@ -320,6 +327,7 @@ function VendorStatementPageInner() {
           onSubmitted={() => { setDisputeModal(null); load(); }}
         />
       )}
+      {dialog}
     </div>
   );
 }
