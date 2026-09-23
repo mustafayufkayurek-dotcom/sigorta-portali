@@ -26,7 +26,6 @@ import {
   evaluateFrozenFinanceUpdate,
   financeAdjustAuditPayload,
   FINANCIAL_CORRECTION_NEEDED,
-  isPaidOrApprovedFinanceStatus,
   paymentTouchesFrozenMoneyFields,
 } from '@sigorta/shared';
 import {
