@@ -88,6 +88,7 @@ node --experimental-strip-types --test \
   packages/shared/src/financial-record-freeze.lock.spec.ts \
   packages/shared/src/public-approval-token.lock.spec.ts \
   apps/backend/src/modules/users/system-admin-identity.lock.spec.ts \
-  apps/web/src/utils/panel-native-confirm.lock.spec.ts
+  apps/web/src/utils/panel-native-confirm.lock.spec.ts \
+  apps/web/src/app/panel/personel-ozluk/personel-test-asama.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

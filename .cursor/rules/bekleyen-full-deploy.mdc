@@ -17,7 +17,7 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
 
-**v624 (full):** Giriş kodu şifre doğru olunca satırda durur; Kodu Onayla ile girilir. Mail yine gider. Personel silme ve benzeri işlerde Chrome uyarısı kalkar; uyarı yazılımın kendi kutusunda durur. Sistem yöneticisi v623 durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v623 / backend v623.
+**v624 (full):** Giriş kodu şifre doğru olunca satırda durur; Kodu Onayla ile girilir. Mail yine gider. Personel silme ve benzeri işlerde Chrome uyarısı kalkar; uyarı yazılımın kendi kutusunda durur. Personel sayfasında test şeridi durur: puantaj dışı bilgi dikkate alınmaz. Sistem yöneticisi v623 durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v623 / backend v623.
 
 **v623 (full):** Sistem Yöneticisi Düzenle açılır; ad ve mail kaydolur. Rol, arşiv ve silme kapalı. Giriş kodu yeni adrese gider. Yazışma v622 durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v622 / backend v622.
 

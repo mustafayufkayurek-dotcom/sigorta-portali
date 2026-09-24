@@ -1,7 +1,7 @@
 {
   "updatedAt": "2026-09-24",
   "label": "v624-giris-kodu-yazilim-uyari",
-  "description": "Full v624: Giriş kodu satırda durur; Chrome uyarısı yazılım kutusunda. Geri alma web v623 / backend v623.",
+  "description": "Full v624: Giriş kodu satırda; yazılım uyarısı; Personel test şeridi. Geri alma web v623 / backend v623.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",

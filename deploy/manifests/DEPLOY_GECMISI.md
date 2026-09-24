@@ -25,6 +25,7 @@
 
 - Şifre doğru olunca giriş kodu satırda durur; Kodu Onayla ile girilir. Mail yine gider
 - Personel silme ve benzeri işlerde tarayıcının İptal/Tamam kutusu kalkar; uyarı yazılımın kendi kutusunda durur
+- Personel sayfasında test şeridi: Sayfa Test Aşamasındadır; puantaj dışı bilgi dikkate alınmaz
 - Sistem yöneticisi kimliği ve v623 kapıları aynı
 - Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
 - Geri alma web **v623** / backend **v623**

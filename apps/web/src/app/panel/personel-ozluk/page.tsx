@@ -837,6 +837,19 @@ export default function PersonelOzlukPage() {
         </div>
       </div>
 
+      <div
+        className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 sm:px-5"
+        role="status"
+        data-testid="personel-test-asama-seridi"
+      >
+        <p className="text-base sm:text-[17px] font-semibold leading-snug text-amber-950">
+          Sayfa Test Aşamasındadır.
+        </p>
+        <p className="mt-1 text-base sm:text-[17px] font-semibold leading-snug text-amber-950">
+          Puantaj Bilgileri Dışındaki Bilgileri Dikkate Almayınız
+        </p>
+      </div>
+
       {designPreview && (
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-content-secondary">
           Bu ekran <span className="font-semibold text-content-primary">lokal tasarım önizlemesidir</span>.
