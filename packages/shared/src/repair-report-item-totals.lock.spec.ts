@@ -88,6 +88,14 @@ describe('onarım raporu maliyet m² LOCK', () => {
     assert.ok(Math.abs(pct - ((6600 - 6000) / 6600) * 100) < 0.01);
   });
 
+  it('çoklu hasarda kalem hasar nedenine yazılır; özet kalem tutarını kullanır', () => {
+    assert.match(page, /isMultiDamage/);
+    assert.match(page, /Hasar Nedeni/);
+    assert.match(page, /kalemToplamlari\.buildingDamageTotal/);
+    assert.match(page, /i\.damageTypeId \?\? i\.damageType\?\.id/);
+    assert.match(service, /Çok hasarlı raporda kalem için hasar nedeni zorunludur/);
+  });
+
   it('panel ve kayıt aynı kuralı kullanır', () => {
     assert.match(page, /repairItemResolvedSupplierTotal/);
     assert.match(page, /repairItemSalesTotal/);

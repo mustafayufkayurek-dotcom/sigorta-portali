@@ -10,11 +10,16 @@ export type RepairItemTotalsInput = {
 };
 
 export function repairItemSalesTotal(item: RepairItemTotalsInput): number {
-  if (item.pricingType === 'lumpsum') return Number(item.lumpSumPrice) || 0;
-  return (Number(item.quantity) || 0) * (Number(item.salesUnitPrice) || 0);
+  if (item.pricingType === 'lumpsum') return money(item.lumpSumPrice);
+  return money(item.quantity) * money(item.salesUnitPrice);
 }
 
-function money(n: number | null | undefined): number {
+function money(n: number | string | null | undefined | { toNumber?: () => number }): number {
+  if (n == null) return 0;
+  if (typeof n === 'number') return Number.isFinite(n) ? n : 0;
+  if (typeof n === 'object' && typeof n.toNumber === 'function') {
+    return money(n.toNumber());
+  }
   const v = Number(n);
   return Number.isFinite(v) ? v : 0;
 }

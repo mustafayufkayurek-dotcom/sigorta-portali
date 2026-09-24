@@ -23,10 +23,18 @@ describe('hasar pdf önizleme LOCK', () => {
     assert.doesNotMatch(reportPage, /window\.open\(url, '_blank', 'noopener,noreferrer'\)/);
   });
 
+  it('müşteri görünümü raporu aynı sayfada açar; yeni sekmeye bağlanmaz', () => {
+    const from = helper.indexOf('export async function presentPdfPreview');
+    const fn = helper.slice(from, from + 900);
+    assert.match(fn, /mountPdfPreviewPanel/);
+  });
+
   it('yardımcı blob adresine noopener vermez; kesilince sayfada Kapat durur', () => {
     assert.match(helper, /window\.open\(targetUrl, target\)/);
     assert.doesNotMatch(helper, /window\.open\([^)]*noopener/);
     assert.match(helper, /textContent = 'Kapat'/);
+    assert.match(helper, /isPdfMagic/);
+    assert.match(helper, /toPdfPreviewBlob/);
   });
 
   it('noopener fırlatan tarayıcıda üçüncü argümansız açılır', () => {
@@ -47,6 +55,24 @@ describe('hasar pdf önizleme LOCK', () => {
 
   it('içerik türü pdf yazmasa da %PDF gövdeyi kabul eder', async () => {
     const blob = new Blob(['%PDF-1.4 örnek'], { type: 'application/octet-stream' });
+    assert.equal(await readPdfPreviewFailure(blob, 'application/octet-stream'), null);
+  });
+
+  it('içerik türü boş olsa da bayt imzası PDF kabul eder', async () => {
+    const bytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31]);
+    const blob = new Blob([bytes], { type: 'application/octet-stream' });
+    assert.equal(await readPdfPreviewFailure(blob, ''), null);
+  });
+
+  it('dizi tamponu gelen raporu JSON sanmaz', async () => {
+    const buf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]).buffer;
+    assert.equal(await readPdfPreviewFailure(buf, 'application/octet-stream'), null);
+  });
+
+  it('büyük ikili gövdeyi hata yazısı saymaz', async () => {
+    const body = new Uint8Array(2_000);
+    body[0] = 0x00;
+    const blob = new Blob([body], { type: 'application/octet-stream' });
     assert.equal(await readPdfPreviewFailure(blob, 'application/octet-stream'), null);
   });
 

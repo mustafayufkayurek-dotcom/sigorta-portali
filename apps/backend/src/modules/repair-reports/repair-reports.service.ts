@@ -435,8 +435,16 @@ export class RepairReportsService {
       throw new BadRequestException('Bu durumdaki rapora kalem eklenemez');
     }
 
-    if (report.reportType === 'multi' && !dto.damageTypeId) {
-      throw new BadRequestException('Çok hasarlı raporda kalem için hasar nedeni zorunludur');
+    let damageTypeId = dto.damageTypeId;
+    if (report.reportType === 'multi' && !damageTypeId) {
+      const types = await this.prisma.reportDamageType.findMany({
+        where: { reportId },
+        orderBy: { sortOrder: 'asc' },
+      });
+      if (types.length === 1) damageTypeId = types[0].id;
+      else {
+        throw new BadRequestException('Çok hasarlı raporda kalem için hasar nedeni zorunludur');
+      }
     }
 
     const pricingType = dto.pricingType ?? 'unit';
@@ -470,7 +478,7 @@ export class RepairReportsService {
       data: {
         reportId,
         workGroupId: dto.workGroupId,
-        damageTypeId: dto.damageTypeId,
+        damageTypeId,
         location: dto.location,
         jobDescription: dto.jobDescription,
         description: dto.description,

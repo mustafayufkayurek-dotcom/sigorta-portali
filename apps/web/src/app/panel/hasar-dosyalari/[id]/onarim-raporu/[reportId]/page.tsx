@@ -1958,6 +1958,7 @@ interface EditableItemsTableProps {
   workGroups: any[];
   damageTypes: any[];
   reportType: string;
+  defaultDamageTypeId?: string;
   isEditable: boolean;
   viewMode: 'internal' | 'external';
   onSave: (itemId: string, data: any) => Promise<void>;
@@ -2009,12 +2010,16 @@ function rowFromItem(item: any): RowState {
   };
 }
 
-function emptyRow(location = ''): RowState {
+function emptyRow(location = '', damageTypeId = ''): RowState {
   return {
     workGroupId: '', location, detectionScope: '', jobDescription: '', description: '', quantity: '1', unit: 'm²',
-    salesUnitPrice: '0', supplierUnitPrice: '0', damageCategory: 'bina', damageTypeId: '',
+    salesUnitPrice: '0', supplierUnitPrice: '0', damageCategory: 'bina', damageTypeId,
     pricingType: 'unit', lumpSumPrice: '0', metrajData: null, vendorQuotes: {},
   };
+}
+
+function rowMoney(raw: string): number {
+  return parseTrAmountInput(raw) ?? (parseFloat(raw) || 0);
 }
 
 function isRowPersistableFields(row: RowState) {
@@ -2427,6 +2432,7 @@ const KALEM_COL_WIDTHS_KEY = 'onarim-kalem-col-widths-v1';
 const KALEM_DEFAULT_COL_WIDTHS: Record<string, number> = {
   idx: 36,
   damageCategory: 88,
+  damageType: 120,
   detectionScope: 110,
   location: 120,
   workGroup: 140,
@@ -2487,14 +2493,16 @@ function KalemColResizeHandle({
 }
 
 const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTableProps>(function EditableItemsTable(
-  { items, workGroups, isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange, onWorkGroupCreated, onWorkSubGroupCreated, onNotify, onConfirm },
+  { items, workGroups, damageTypes, reportType, defaultDamageTypeId = '', isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange, onWorkGroupCreated, onWorkSubGroupCreated, onNotify, onConfirm },
   ref,
 ) {
+  const isMultiDamage = reportType === 'multi' && (damageTypes?.length ?? 0) > 0;
+  const impliedDamageTypeId = defaultDamageTypeId || (damageTypes?.length === 1 ? String(damageTypes[0].id) : '');
   const notify = onNotify ?? ((_type: 'error' | 'warning' | 'success', _message: string) => {});
   const askConfirm = onConfirm ?? (async (_message: string) => false);
   const [rows, setRows] = useState<(RowState & { _id: string; _isDirty: boolean; _savedFlash: boolean })[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [addingRow, setAddingRow] = useState<RowState>(emptyRow());
+  const [addingRow, setAddingRow] = useState<RowState>(emptyRow('', impliedDamageTypeId));
   const [addingDirty, setAddingDirty] = useState(false);
   const [addingSaving, setAddingSaving] = useState(false);
   const [quickAdding, setQuickAdding] = useState(false);
@@ -2525,9 +2533,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
   const thCls = (extra = '') =>
     `sticky top-0 z-30 relative px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0] ${extra}`;
-  const addingDraftRef = useRef<RowState>(emptyRow());
+  const addingDraftRef = useRef<RowState>(emptyRow('', impliedDamageTypeId));
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
+
+  useEffect(() => {
+    if (!impliedDamageTypeId) return;
+    setAddingRow((prev) => (prev.damageTypeId ? prev : { ...prev, damageTypeId: impliedDamageTypeId }));
+  }, [impliedDamageTypeId]);
   const [descriptionErrors, setDescriptionErrors] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -2637,10 +2650,10 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       description: row.description || undefined,
       quantity: parseFloat(row.quantity) || 1,
       unit: row.unit,
-      salesUnitPrice: parseFloat(row.salesUnitPrice) || 0,
-      supplierUnitPrice: parseFloat(row.supplierUnitPrice) || 0,
+      salesUnitPrice: rowMoney(row.salesUnitPrice),
+      supplierUnitPrice: rowMoney(row.supplierUnitPrice),
       pricingType: row.pricingType,
-      lumpSumPrice: isLumpsum ? parseFloat(row.lumpSumPrice) || 0 : undefined,
+      lumpSumPrice: isLumpsum ? rowMoney(row.lumpSumPrice) : undefined,
       damageCategory: row.damageCategory,
       damageTypeId: row.damageTypeId || undefined,
       metrajData: buildVendorQuoteMetrajData(metrajBase, row.vendorQuotes),
@@ -2892,6 +2905,10 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       || '';
     try {
       const rowToSave = mergeVendorMemoryIntoRow(draftSnapshot);
+      if (isMultiDamage && !rowToSave.damageTypeId && !impliedDamageTypeId) {
+        notify('error', 'Hasar nedeni seçin.');
+        return;
+      }
       const isLumpsum = rowToSave.pricingType === 'lumpsum';
       await onAdd({
         workGroupId: rowToSave.workGroupId,
@@ -2900,17 +2917,17 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         description: rowToSave.description || undefined,
         quantity: parseFloat(rowToSave.quantity) || 1,
         unit: rowToSave.unit,
-        salesUnitPrice: parseFloat(rowToSave.salesUnitPrice) || 0,
-        supplierUnitPrice: parseFloat(rowToSave.supplierUnitPrice) || 0,
+        salesUnitPrice: rowMoney(rowToSave.salesUnitPrice),
+        supplierUnitPrice: rowMoney(rowToSave.supplierUnitPrice),
         pricingType: rowToSave.pricingType,
-        lumpSumPrice: isLumpsum ? parseFloat(rowToSave.lumpSumPrice) || 0 : undefined,
+        lumpSumPrice: isLumpsum ? rowMoney(rowToSave.lumpSumPrice) : undefined,
         damageCategory: rowToSave.damageCategory,
-        damageTypeId: rowToSave.damageTypeId || undefined,
+        damageTypeId: rowToSave.damageTypeId || impliedDamageTypeId || undefined,
         metrajData: buildRowPayload(rowToSave).metrajData,
       });
       persistVendorMemoryFromRow(rowToSave);
       const nextAddingRow = {
-        ...emptyRow(preservedLocation),
+        ...emptyRow(preservedLocation, impliedDamageTypeId || rowToSave.damageTypeId),
         detectionScope: preservedDetection,
         damageCategory: rowToSave.damageCategory,
         workGroupId: rowToSave.workGroupId,
@@ -2951,7 +2968,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         || lastRow?.detectionScope?.trim()
         || '';
       const nextAddingRow = {
-        ...emptyRow(location),
+        ...emptyRow(location, impliedDamageTypeId || lastRow?.damageTypeId || addingRow.damageTypeId),
         detectionScope,
         damageCategory: (lastRow?.damageCategory ?? addingRow.damageCategory ?? 'bina') as 'bina' | 'esya',
         workGroupId: lastRow?.workGroupId ?? addingRow.workGroupId ?? '',
@@ -2971,7 +2988,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   }, [isEditable, quickAdding, displayRows, addingRow, saveAllDirtyRows, persistAddingRowIfNeeded]);
 
   const resetAddingDraft = useCallback((preservedLocation = '') => {
-    const nextAddingRow = emptyRow(preservedLocation);
+    const nextAddingRow = emptyRow(preservedLocation, impliedDamageTypeId);
     addingDraftRef.current = nextAddingRow;
     setAddingRow(nextAddingRow);
     setAddingDirty(false);
@@ -3034,7 +3051,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   }), [quickAddRow, saveAllDirtyRows, prepareGlobalSave, discardEmptyDraft, rows, addingDirty]);
 
 
-  const COLS = ['damageCategory', 'detectionScope', 'location', 'workGroup', 'jobDescription', 'description', 'quantity', 'unit', 'salesUnitPrice', ...(viewMode === 'internal' ? ['supplierUnitPrice'] : []), 'total'];
+  const COLS = ['damageCategory', ...(isMultiDamage ? ['damageType'] : []), 'detectionScope', 'location', 'workGroup', 'jobDescription', 'description', 'quantity', 'unit', 'salesUnitPrice', ...(viewMode === 'internal' ? ['supplierUnitPrice'] : []), 'total'];
 
   // Zam Oranı Uygula
   const handleApplyZamOrani = async () => {
@@ -3207,7 +3224,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           tryAutoSaveRow(rowId);
         }
         const nextAddingRow = {
-          ...emptyRow(sourceRow?.location?.trim() || ''),
+          ...emptyRow(sourceRow?.location?.trim() || '', impliedDamageTypeId || sourceRow?.damageTypeId || ''),
           detectionScope: sourceRow?.detectionScope?.trim() || '',
           damageCategory: (sourceRow?.damageCategory ?? 'bina') as 'bina' | 'esya',
           workGroupId: sourceRow?.workGroupId ?? '',
@@ -3320,6 +3337,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         <colgroup>
           {isEditable && <col style={{ width: colWidths.idx }} />}
           <col style={{ width: colWidths.damageCategory }} />
+          {isMultiDamage && <col style={{ width: colWidths.damageType }} />}
           <col style={{ width: colWidths.detectionScope }} />
           <col style={{ width: colWidths.location }} />
           <col style={{ width: colWidths.workGroup }} />
@@ -3344,6 +3362,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               Kategori
               <KalemColResizeHandle colKey="damageCategory" onResize={resizeCol} />
             </th>
+            {isMultiDamage && (
+              <th className={thCls()}>
+                Hasar Nedeni <span className="text-status-danger">*</span>
+                <KalemColResizeHandle colKey="damageType" onResize={resizeCol} />
+              </th>
+            )}
             <th className={thCls()}>
               Tespit Alanı <span className="text-status-danger">*</span>
               <KalemColResizeHandle colKey="detectionScope" onResize={resizeCol} />
@@ -3447,6 +3471,31 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                     </span>
                   )}
                 </td>
+                {isMultiDamage && (
+                  <td className={tdCls(rowIdx, 'damageType')}>
+                    {isEditable ? (
+                      <select
+                        data-cell={`${rowIdx}-damageType`}
+                        className={cellCls(rowIdx, 'damageType', true)}
+                        value={row.damageTypeId}
+                        tabIndex={getCellTabIndex(rowIdx, 'damageType')}
+                        onFocus={() => setActiveCell({ rowIdx, col: 'damageType' })}
+                        onBlur={() => { tryAutoSaveRow(row._id); }}
+                        onChange={(e) => updateRow(row._id, 'damageTypeId', e.target.value)}
+                        onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'damageType', row._id)}
+                      >
+                        <option value="">Seçin</option>
+                        {damageTypes.map((dt: any) => (
+                          <option key={dt.id} value={dt.id}>{dt.damageTypeName}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="px-2 text-xs text-slate-700 block py-3">
+                        {damageTypes.find((dt: any) => dt.id === row.damageTypeId)?.damageTypeName ?? '—'}
+                      </span>
+                    )}
+                  </td>
+                )}
                 {/* Tespit */}
                 <td className={tdCls(rowIdx, 'detectionScope')}>
                   {isEditable ? (
@@ -3778,6 +3827,25 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   <option value="esya">Eşya</option>
                 </select>
               </td>
+              {isMultiDamage && (
+                <td className={tdCls('new', 'damageType')}>
+                  <select
+                    data-cell="new-damageType"
+                    className={cellCls('new', 'damageType', true)}
+                    value={addingRow.damageTypeId}
+                    tabIndex={getCellTabIndex('new', 'damageType')}
+                    onFocus={() => setActiveCell({ rowIdx: 'new', col: 'damageType' })}
+                    onBlur={() => undefined}
+                    onChange={(e) => { setAddingRow((p) => ({ ...p, damageTypeId: e.target.value })); setAddingDirty(true); }}
+                    onKeyDown={(e) => handleCellKeyDown(e, 'new', 'damageType')}
+                  >
+                    <option value="">Seçin</option>
+                    {damageTypes.map((dt: any) => (
+                      <option key={dt.id} value={dt.id}>{dt.damageTypeName}</option>
+                    ))}
+                  </select>
+                </td>
+              )}
               {/* Tespit */}
               <td className={tdCls('new', 'detectionScope')}>
                 <DetectionScopeSelector
@@ -4252,22 +4320,32 @@ function EmergencyReportEditor({
   };
 
   const openPdfPreview = async (view: 'internal' | 'external') => {
+    const title = view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü';
     try {
-      const res = await axios.get(`${API}/repair-reports/${reportId}/pdf?view=${view}`, { headers: authHeader(), responseType: 'blob' });
-      const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+      const res = await axios.get(`${API}/repair-reports/${reportId}/pdf?view=${view}`, {
+        headers: authHeader(),
+        responseType: 'blob',
+        transformResponse: [(data) => data],
+      });
+      const failure = await readPdfPreviewFailure(res.data, String(res.headers['content-type'] ?? ''));
       if (failure) {
         notify('error', failure);
         return;
       }
-      const opened = await presentPdfPreview(
-        res.data as Blob,
-        view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü',
-      );
+      const opened = await presentPdfPreview(res.data, title);
       if (!opened) notify('error', 'PDF önizleme açılamadı.');
-      else if (opened === 'tab') {
-        notify('success', view === 'internal' ? 'Tam görünüm önizlemesi açıldı.' : 'Müşteri görünümü önizlemesi açıldı.');
-      }
     } catch (e) {
+      const payload = axios.isAxiosError(e) ? e.response?.data : undefined;
+      if (payload) {
+        const failure = await readPdfPreviewFailure(payload, String(axios.isAxiosError(e) ? e.response?.headers?.['content-type'] ?? '' : ''));
+        if (!failure) {
+          const opened = await presentPdfPreview(payload, title);
+          if (opened) return;
+        } else {
+          notify('error', failure);
+          return;
+        }
+      }
       notify('error', 'PDF önizleme açılamadı.');
       console.error(e);
     }
@@ -5608,29 +5686,38 @@ export default function RepairReportPage() {
       notify('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
       return;
     }
+    const title = view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü';
     try {
       const res = await authAxios<Blob>({
         method: 'GET',
         url: `${API}/repair-reports/${reportId}/pdf?view=${view}`,
         responseType: 'blob',
+        transformResponse: [(data) => data],
       });
-      const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+      const failure = await readPdfPreviewFailure(res.data, String(res.headers['content-type'] ?? ''));
       if (failure) {
         notify('error', failure);
         return;
       }
-      const opened = await presentPdfPreview(
-        res.data as Blob,
-        view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü',
-      );
+      const opened = await presentPdfPreview(res.data, title);
       if (!opened) {
         notify('error', 'PDF önizleme açılamadı.');
-        return;
-      }
-      if (opened === 'tab') {
-        notify('success', view === 'internal' ? 'Tam görünüm önizlemesi açıldı.' : 'Müşteri görünümü önizlemesi açıldı.');
       }
     } catch (e: any) {
+      const payload = axios.isAxiosError(e) ? e.response?.data : undefined;
+      if (payload) {
+        const failure = await readPdfPreviewFailure(
+          payload,
+          String(axios.isAxiosError(e) ? e.response?.headers?.['content-type'] ?? '' : ''),
+        );
+        if (!failure) {
+          const opened = await presentPdfPreview(payload, title);
+          if (opened) return;
+        } else {
+          notify('error', failure);
+          return;
+        }
+      }
       let message = 'PDF önizleme açılamadı.';
       if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {
         try {
@@ -6190,6 +6277,7 @@ export default function RepairReportPage() {
           workGroups={workGroups}
           damageTypes={report.damageTypes ?? []}
           reportType={report.reportType}
+          defaultDamageTypeId={damageFilter !== 'all' ? damageFilter : ''}
           isEditable={isEditable}
           viewMode={effectiveViewMode}
           onSave={handleUpdateItemMain}
@@ -6207,14 +6295,9 @@ export default function RepairReportPage() {
 
         {/* Toplamlar */}
         {(() => {
-          const allItems = report.items ?? [];
-          const clientBina = allItems.filter((i: any) => (i.damageCategory ?? 'bina') === 'bina')
-            .reduce((s: number, i: any) => s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : (i.salesTotal ?? 0)), 0);
-          const clientEsya = allItems.filter((i: any) => i.damageCategory === 'esya')
-            .reduce((s: number, i: any) => s + (i.pricingType === 'lumpsum' ? (i.lumpSumPrice ?? 0) : (i.salesTotal ?? 0)), 0);
-          const buildingTotal = (report.buildingDamageTotal ?? 0) > 0 ? report.buildingDamageTotal : clientBina;
-          const goodsTotal = (report.goodsDamageTotal ?? 0) > 0 ? report.goodsDamageTotal : clientEsya;
-          const grandTotal = (report.totalSalesAmount ?? 0) > 0 ? report.totalSalesAmount : (clientBina + clientEsya);
+          const buildingTotal = kalemToplamlari.buildingDamageTotal;
+          const goodsTotal = kalemToplamlari.goodsDamageTotal;
+          const grandTotal = kalemToplamlari.totalSalesAmount;
           return (
             <div className="mt-5 border-t-2 border-slate-200 pt-5 space-y-3">
               <div className="flex items-center justify-between">
@@ -6255,7 +6338,7 @@ export default function RepairReportPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {report.damageTypes.map((dt: any) => {
-                    const dtItems = (report.items ?? []).filter((i: any) => i.damageTypeId === dt.id);
+                    const dtItems = (report.items ?? []).filter((i: any) => (i.damageTypeId ?? i.damageType?.id) === dt.id);
                     const dtSales = dtItems.reduce((s: number, i: any) => s + repairItemSalesTotal(i), 0);
                     const dtSupplier = dtItems.reduce((s: number, i: any) => s + repairItemResolvedSupplierTotal(i), 0);
                     const dtMargin = dtSales > 0 ? ((dtSales - dtSupplier) / dtSales) * 100 : 0;
@@ -6270,6 +6353,22 @@ export default function RepairReportPage() {
                       </tr>
                     );
                   })}
+                  {(() => {
+                    const unassigned = (report.items ?? []).filter((i: any) => !(i.damageTypeId ?? i.damageType?.id));
+                    if (unassigned.length === 0) return null;
+                    const dtSales = unassigned.reduce((s: number, i: any) => s + repairItemSalesTotal(i), 0);
+                    const dtSupplier = unassigned.reduce((s: number, i: any) => s + repairItemResolvedSupplierTotal(i), 0);
+                    const dtMargin = dtSales > 0 ? ((dtSales - dtSupplier) / dtSales) * 100 : 0;
+                    return (
+                      <tr key="unassigned" className="hover:bg-slate-50/50">
+                        <td className="px-3 py-2 font-medium text-amber-800">Hasar nedeni seçilmedi</td>
+                        {effectiveViewMode === 'internal' && <td className="px-3 py-2 text-right text-slate-500">{fmtCurrency(dtSupplier)}</td>}
+                        <td className="px-3 py-2 text-right font-semibold text-slate-800">{fmtCurrency(dtSales)}</td>
+                        {effectiveViewMode === 'internal' && <td className="px-3 py-2 text-right text-slate-700">{fmtCurrency(dtSales - dtSupplier)}</td>}
+                        {effectiveViewMode === 'internal' && <td className="px-3 py-2 text-right font-semibold text-amber-700">%{dtMargin.toFixed(1)}</td>}
+                      </tr>
+                    );
+                  })()}
                 </tbody>
               </table>
             </div>

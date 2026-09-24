@@ -11,10 +11,30 @@ let detachPreview: (() => void) | null = null;
 
 type WindowOpener = (url: string, target: string) => Window | null;
 
-export async function readPdfPreviewFailure(blob: Blob, contentType: string): Promise<string | null> {
-  const type = contentType.toLowerCase();
-  const head = await blob.slice(0, 5).text();
-  if (type.includes('pdf') || head.startsWith('%PDF')) return null;
+function isPdfMagic(bytes: Uint8Array): boolean {
+  return bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+}
+
+/** Axios / Edge bazen Blob değil dizi tamponu veya metin verir; önizleme yine açılsın. */
+export function toPdfPreviewBlob(data: unknown, contentType = ''): Blob {
+  if (typeof Blob !== 'undefined' && data instanceof Blob) return data;
+  if (typeof ArrayBuffer !== 'undefined' && data instanceof ArrayBuffer) {
+    return new Blob([data], { type: contentType || 'application/octet-stream' });
+  }
+  if (typeof Uint8Array !== 'undefined' && data instanceof Uint8Array) {
+    return new Blob([data], { type: contentType || 'application/octet-stream' });
+  }
+  if (typeof data === 'string') {
+    return new Blob([data], { type: contentType || 'text/plain' });
+  }
+  return new Blob();
+}
+
+export async function readPdfPreviewFailure(data: unknown, contentType: string): Promise<string | null> {
+  const blob = toPdfPreviewBlob(data, contentType);
+  const type = String(contentType ?? '').toLowerCase();
+  const magic = new Uint8Array(await blob.slice(0, 5).arrayBuffer());
+  if (isPdfMagic(magic) || type.includes('pdf')) return null;
 
   let message = 'PDF önizleme açılamadı.';
   try {
@@ -24,7 +44,8 @@ export async function readPdfPreviewFailure(blob: Blob, contentType: string): Pr
     if (typeof raw === 'string' && raw.trim()) message = raw;
     else if (Array.isArray(raw) && raw[0]) message = String(raw[0]);
   } catch {
-    /* gövde JSON değil */
+    /* gövde JSON değil — büyük ikili gövde yine rapordur */
+    if (blob.size >= 1_000) return null;
   }
   return message;
 }
@@ -60,7 +81,7 @@ function mountPdfPreviewPanel(url: string, title: string, print = false) {
     'position:fixed',
     'inset:0',
     'background:rgba(15,23,42,.45)',
-    'z-index:90',
+    'z-index:200',
     'display:flex',
     'align-items:center',
     'justify-content:center',
@@ -132,7 +153,7 @@ function mountPdfPreviewPanel(url: string, title: string, print = false) {
 
 function presentBlobUrl(url: string, title: string, print: boolean): 'tab' | 'panel' | null {
   const tab = openBlobUrlWithoutNoopener(url);
-  if (tab) {
+  if (tab && !tab.closed) {
     if (print) {
       const runPrint = () => {
         try {
@@ -166,8 +187,17 @@ export async function openSessionBlob(
   return presentBlobUrl(url, title, Boolean(opts?.print));
 }
 
-export async function presentPdfPreview(blob: Blob, title: string): Promise<'tab' | 'panel' | null> {
+export async function presentPdfPreview(data: unknown, title: string): Promise<'tab' | 'panel' | null> {
+  const blob = toPdfPreviewBlob(data, 'application/pdf');
   const pdfBlob = new Blob([await blob.arrayBuffer()], { type: 'application/pdf' });
   const url = URL.createObjectURL(pdfBlob);
-  return presentBlobUrl(url, title, false);
+  if (typeof document === 'undefined') {
+    const tab = openBlobUrlWithoutNoopener(url);
+    if (tab && !tab.closed) return 'tab';
+    URL.revokeObjectURL(url);
+    return null;
+  }
+  /* Yeni sekme Edge’de blob adresini keser; rapor aynı sayfada durur. */
+  mountPdfPreviewPanel(url, title, false);
+  return 'panel';
 }
