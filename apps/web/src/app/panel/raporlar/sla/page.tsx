@@ -102,6 +102,7 @@ interface TrendRow { month: string; total: number; violated: number; }
 
 export default function SlaRaporPage() {
   const router = useRouter();
+  const { confirm, dialog } = usePanelConfirm();
 
   const [data, setData] = useState<any>(null);
   const [rules, setRules] = useState<SlaRule[]>([]);
