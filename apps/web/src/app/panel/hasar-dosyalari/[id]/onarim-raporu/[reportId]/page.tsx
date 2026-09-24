@@ -4096,7 +4096,6 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       );
     })()}
     </>
-    {localConfirmDialog}
   );
 });
 
@@ -4122,7 +4121,6 @@ function EmergencyReportEditor({
 }) {
   const router = useRouter();
   const { showToast } = useToast();
-  const notify = useCallback((type: 'error' | 'warning' | 'success', message: string) => {
   const { confirm, dialog } = usePanelConfirm();
   const notify = useCallback((type: 'error' | 'warning' | 'success', message: string) => {
     showToast(type, message);
@@ -4289,6 +4287,7 @@ function EmergencyReportEditor({
   };
 
   return (
+    <>
     <div className="space-y-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -4527,8 +4526,10 @@ function EmergencyReportEditor({
           </div>
         </div>
       </div>
+    </div>
 
       {dialog}
+    </>
   );
 }
 
