@@ -2030,13 +2030,14 @@ function rowMoney(raw: string): number {
   return parseTrAmountInput(raw) ?? (parseFloat(raw) || 0);
 }
 
-function rowTotalsInput(row: Pick<RowState, 'pricingType' | 'lumpSumPrice' | 'quantity' | 'salesUnitPrice' | 'supplierUnitPrice'>) {
+function rowTotalsInput(row: Pick<RowState, 'pricingType' | 'lumpSumPrice' | 'quantity' | 'salesUnitPrice' | 'supplierUnitPrice' | 'unit'>) {
   return {
     pricingType: row.pricingType,
     lumpSumPrice: rowMoney(row.lumpSumPrice),
     quantity: rowMoney(row.quantity),
     salesUnitPrice: rowMoney(row.salesUnitPrice),
     supplierUnitPrice: rowMoney(row.supplierUnitPrice),
+    unit: row.unit,
   };
 }
 

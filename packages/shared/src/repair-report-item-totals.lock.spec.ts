@@ -52,6 +52,32 @@ describe('onarım raporu maliyet m² LOCK', () => {
     assert.notEqual(repairItemResolvedSupplierTotal(item), 167 * 3860);
   });
 
+  it('adet kalemde iş toplamı maliyet tekrar çarpılmaz', () => {
+    const item = {
+      pricingType: 'unit',
+      unit: 'Adet',
+      quantity: 3,
+      salesUnitPrice: 4500,
+      supplierUnitPrice: 4500,
+    };
+    assert.equal(repairItemSalesTotal(item), 13500);
+    assert.equal(repairItemSupplierTotal(item), 4500);
+    assert.ok(Math.abs(repairItemMarginPct(item) - ((13500 - 4500) / 13500) * 100) < 0.05);
+  });
+
+  it('m² kalemde eşit birim fiyat miktar ile çarpılır', () => {
+    const item = {
+      pricingType: 'unit',
+      unit: 'm²',
+      quantity: 6,
+      salesUnitPrice: 1100,
+      supplierUnitPrice: 1100,
+    };
+    assert.equal(repairItemSalesTotal(item), 6600);
+    assert.equal(repairItemSupplierTotal(item), 6600);
+    assert.equal(repairItemMarginPct(item), 0);
+  });
+
   it('kutuya satır tutarı yazılmışsa çarpılmaz', () => {
     const item = {
       pricingType: 'unit',
@@ -101,6 +127,8 @@ describe('onarım raporu maliyet m² LOCK', () => {
     assert.match(page, /repairItemSalesTotal/);
     assert.match(service, /repairItemSupplierTotal\(priced\)/);
     assert.match(pdfSrc, /itemSupplierTotal\(item\)/);
+    assert.match(pdfSrc, /fmtCurrency\(supplierTotal\)/);
+    assert.match(pdfSrc, /fmtCurrency\(salesTotal\)/);
     assert.match(service, /healInflatedSupplierTotals/);
     assert.match(service, /repairItemSupplierNeedsHeal/);
     assert.match(service, /supplierOnly/);

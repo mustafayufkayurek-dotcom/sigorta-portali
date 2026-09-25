@@ -467,7 +467,6 @@ export class ReportPdfService {
           const wgCell = (item.workGroup?.name ?? groupName).trim() || 'Diğer';
 
           if (viewType === 'internal') {
-            const supplierUnitPrice = isLumpsum ? (item.lumpSumPrice ?? 0) : item.supplierUnitPrice;
             const supplierTotal = itemSupplierTotal(item);
             const marginPct = salesTotal > 0 ? ((salesTotal - supplierTotal) / salesTotal) * 100 : 0;
             const marginCls = marginPct < 10 ? 'margin-low' : marginPct < 20 ? 'margin-mid' : 'margin-ok';
@@ -478,8 +477,8 @@ export class ReportPdfService {
               <td class="job-desc-cell">${formatJobDescriptionCell(item)}</td>
               <td class="text-center">${qty}</td>
               <td class="text-center">${unit}</td>
-              <td class="text-right">${fmtCurrency(supplierUnitPrice)}</td>
-              <td class="text-right">${unitPriceStr}</td>
+              <td class="text-right">${fmtCurrency(supplierTotal)}</td>
+              <td class="text-right">${fmtCurrency(salesTotal)}</td>
               <td class="text-right"><span class="${marginCls}">%${marginPct.toFixed(1)}</span></td>
               <td class="text-right amount-cell">${fmtCurrency(salesTotal)}</td>
             </tr>`;

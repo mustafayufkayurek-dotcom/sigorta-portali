@@ -8,7 +8,15 @@ export type RepairItemTotalsInput = {
   supplierUnitPrice?: number | null;
   supplierTotal?: number | null;
   salesTotal?: number | null;
+  unit?: string | null;
 };
+
+function isCountQuantityUnit(unit?: string | null): boolean {
+  const u = String(unit ?? '').trim().toLocaleLowerCase('tr-TR');
+  if (!u) return false;
+  if (/m[²³23]|m\s*\/?\s*t[uü]l|^metre$|^m²$|^m³$/.test(u)) return false;
+  return /^(adet|takım|takim|kutu|torba|çuval|cuval|kamyon|servis|günlük|yevmiye|saat|asgari|tam gün|1\/2 gün)$/.test(u);
+}
 
 export function repairItemSalesTotal(item: RepairItemTotalsInput): number {
   if (item.pricingType === 'lumpsum') {
@@ -46,6 +54,15 @@ export function repairItemSupplierCellIsLineTotal(item: RepairItemTotalsInput): 
   if (salesUnit > 0 && cell > salesUnit * 3) return true;
   const salesLine = repairItemSalesTotal(item);
   if (salesLine > 0 && Math.abs(cell - salesLine) / salesLine <= 0.15) return true;
+  // Adet vb.: maliyet kutusu satış birimiyle aynı, bedel miktar×satış — maliyet iş toplamıdır
+  if (
+    isCountQuantityUnit(item.unit)
+    && salesUnit > 0
+    && Math.abs(cell - salesUnit) <= 0.06
+    && salesLine > cell + 0.06
+  ) {
+    return true;
+  }
   return false;
 }
 

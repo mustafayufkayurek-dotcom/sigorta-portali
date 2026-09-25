@@ -1,5 +1,5 @@
 ---
-description: Canlı web v625 / backend v625 — sıradaki v626 giriş kodu anahtarı
+description: Canlı web v625 / backend v625 — sıradaki v626 Tam görünüm marj
 alwaysApply: true
 ---
 
@@ -127,6 +127,8 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Canlı **v625**.
 
-**Sıradaki paket (v626, yalnız backend):** Giriş kodu anahtarı yoksa sabit yedek kullanılmaz.
+**Sıradaki paket (v626, full):**
+- Giriş kodu anahtarı yoksa sabit yedek kullanılmaz.
+- Çift hasarlı Tam görünümde adet kalemin iş toplamı maliyeti miktarla tekrar çarpılmaz; marj sıfır görünmez.
 
 Geri alma: web v625 / backend v625. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez.
