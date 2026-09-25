@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-25",
-  "label": "v624-giris-kodu-yazilim-uyari",
-  "description": "Full v624: Giriş kodu satırda; yazılım uyarısı; Personel test şeridi; PDF aynı sayfa; çoklu hasar özeti. Geri alma web v623 / backend v623.",
+  "label": "v625-tespitci-onaya-gonder",
+  "description": "Full v625: Tespitçi zorunlu değil; Onaya Gönder girilmiş tutarı yok saymaz. Geri alma web v624 / backend v624.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v624-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v624-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v625-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v625-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v623-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v623-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v624-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v624-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

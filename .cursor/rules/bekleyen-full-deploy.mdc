@@ -1,11 +1,11 @@
 ---
-description: Canlı web v624 / backend v624 — sıradaki paket v625
+description: Canlı web v625 / backend v625
 alwaysApply: true
 ---
 
 # Canlı (25.09.2026)
 
-Canlı: web **v624** · backend **v624**. Geri alma: web **v623** / backend **v623**.
+Canlı: web **v625** · backend **v625**. Geri alma: web **v624** / backend **v624**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v625 (full):** Hasar tespitçi her dosyada zorunlu değil; gerektiğinde dosya sorumlusu atar. Tedarikçi ayrı durur. Tam görünümde satış ve maliyet dururken Onaya Gönder raporu göndermez yazısı kalkar; girilmiş tutar yok sayılmaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v624 / backend v624.
 
 **v624 (full):** Giriş kodu şifre doğru olunca satırda durur; Kodu Onayla ile girilir. Mail yine gider. Personel silme ve benzeri işlerde Chrome uyarısı kalkar; uyarı yazılımın kendi kutusunda durur. Personel sayfasında test şeridi durur: puantaj dışı bilgi dikkate alınmaz. Hasar müşteri görünümü PDF aynı sayfada açılır; hazır raporda «PDF önizleme açılamadı» çıkmaz. Çoklu hasarda iş kalemi hasar nedenine yazılır; özet satır tutarını gösterir. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v623 / backend v623.
 
@@ -123,10 +125,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Canlı hâlâ **v624**.
-
-**Sıradaki paket (v625, full):**
-- Hasar dosyasında tespitçi her dosyada zorunlu değildir. Gerektiğinde dosya sorumlusu atar. Tedarikçi ayrı durur; tespitçi görevi tedarikçiye taşınmaz.
-- Hasar raporu Tam görünümde satış ve maliyet dururken Onaya Gönder «Maliyet veya satış tutarı girilmeden» deyip raporu göndermez. Bu eski düzgün işti; düzeltildi, bir daha düşmesin.
-
-Geri alma: web v624 / backend v624. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez.
+Canlı **v625**. Bekleyen paket yok.
