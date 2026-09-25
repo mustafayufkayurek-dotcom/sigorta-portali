@@ -22,7 +22,9 @@ export function toPdfPreviewBlob(data: unknown, contentType = ''): Blob {
     return new Blob([data], { type: contentType || 'application/octet-stream' });
   }
   if (typeof Uint8Array !== 'undefined' && data instanceof Uint8Array) {
-    return new Blob([data], { type: contentType || 'application/octet-stream' });
+    const copy = new ArrayBuffer(data.byteLength);
+    new Uint8Array(copy).set(data);
+    return new Blob([copy], { type: contentType || 'application/octet-stream' });
   }
   if (typeof data === 'string') {
     return new Blob([data], { type: contentType || 'text/plain' });
