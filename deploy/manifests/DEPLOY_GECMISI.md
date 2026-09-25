@@ -2,13 +2,13 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 24 Eylül 2026
+**Son güncelleme:** 25 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (24 Eylül 2026 — web v624 / backend v624)
+## Canlı durum (25 Eylül 2026 — web v624 / backend v624)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
@@ -21,15 +21,14 @@
 
 ## Son deploy kronolojisi
 
-### v624 — Full (24 Eylül 2026) — Giriş kodu satırda ve yazılım uyarısı
+### v624 — Full (25 Eylül 2026) — Giriş kodu satırda ve yazılım uyarısı
 
 - Şifre doğru olunca giriş kodu satırda durur; Kodu Onayla ile girilir. Mail yine gider
 - Personel silme ve benzeri işlerde tarayıcının İptal/Tamam kutusu kalkar; uyarı yazılımın kendi kutusunda durur
 - Personel sayfasında test şeridi: Sayfa Test Aşamasındadır; puantaj dışı bilgi dikkate alınmaz
 - Hasar müşteri görünümü PDF aynı sayfada açılır; hazır raporda «PDF önizleme açılamadı» çıkmaz
 - Çoklu hasarda iş kalemi hasar nedenine yazılır; özet satır tutarını gösterir
-- Sistem yöneticisi kimliği ve v623 kapıları aynı
-- Güvenlik: kaynak kapısı, oturum kapısı, canlı uploads silinmedi. Alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Disk 80 GB; alımda iki servis birden durmaz; JWT ve Redis silinmez
 - Geri alma web **v623** / backend **v623**
 
 ### v623 — Full (23 Eylül 2026) — Sistem yöneticisi kimlik
