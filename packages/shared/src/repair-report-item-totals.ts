@@ -7,11 +7,20 @@ export type RepairItemTotalsInput = {
   salesUnitPrice?: number | null;
   supplierUnitPrice?: number | null;
   supplierTotal?: number | null;
+  salesTotal?: number | null;
 };
 
 export function repairItemSalesTotal(item: RepairItemTotalsInput): number {
-  if (item.pricingType === 'lumpsum') return money(item.lumpSumPrice);
-  return money(item.quantity) * money(item.salesUnitPrice);
+  if (item.pricingType === 'lumpsum') {
+    const lump = money(item.lumpSumPrice);
+    if (lump > 0) return lump;
+    const storedLump = Number(item.salesTotal);
+    return Number.isFinite(storedLump) && storedLump > 0 ? storedLump : lump;
+  }
+  const computed = money(item.quantity) * money(item.salesUnitPrice);
+  if (computed > 0) return computed;
+  const stored = Number(item.salesTotal);
+  return Number.isFinite(stored) && stored > 0 ? stored : computed;
 }
 
 function money(n: number | string | null | undefined | { toNumber?: () => number }): number {
@@ -77,7 +86,9 @@ export function repairItemResolvedSupplierTotal(item: RepairItemTotalsInput): nu
   if (repairItemSupplierNeedsHeal(item)) {
     return money(item.supplierUnitPrice);
   }
-  return repairItemSupplierTotal(item);
+  const computed = repairItemSupplierTotal(item);
+  if (computed > 0) return computed;
+  return Number.isFinite(stored) && stored > 0 ? stored : computed;
 }
 
 export function repairItemMarginPct(item: RepairItemTotalsInput): number {

@@ -57,7 +57,7 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
     id: 'on_inceleme',
     label: 'Tespit Aşamasında',
     tone: 'blue',
-    nextAction: 'Dosya sorumlusu incelemesi ve tespitçi ataması',
+    nextAction: 'Dosya sorumlusu incelemesi',
   },
   eksper_atandi: {
     id: 'eksper_atandi',

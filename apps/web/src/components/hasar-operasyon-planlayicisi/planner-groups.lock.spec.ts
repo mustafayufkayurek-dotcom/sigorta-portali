@@ -71,4 +71,22 @@ describe('hasar planner groups lock', () => {
     assert.match(stepsSrc, /hasarCancelReasonOk\(reason\)/);
     assert.match(stepsSrc, /İptal nedeni \(zorunlu\)/);
   });
+
+  it('tespitçi ataması zorunlu değildir; sıra kilitlemez', () => {
+    const stepsSrc = readFileSync(join(here, 'steps.tsx'), 'utf8');
+    const ctx = readFileSync(join(here, 'planner-context.tsx'), 'utf8');
+    const rules = readFileSync(join(here, 'planner-live-rules.ts'), 'utf8');
+    const mandatory = readFileSync(join(here, 'mandatory-fields.ts'), 'utf8');
+    const panel = readFileSync(join(here, 'OperasyonPlanlayiciPanel.tsx'), 'utf8');
+    assert.doesNotMatch(stepsSrc, /Kaydet için bir tespitçi atanmalıdır/);
+    assert.doesNotMatch(stepsSrc, /Tespitçiye WhatsApp gönderimi zorunlu/);
+    assert.match(stepsSrc, /Tespitçi zorunlu değil/);
+    assert.match(ctx, /Tespitçi atanmadı\. Gerektiğinde dosya sorumlusu atayabilir/);
+    assert.doesNotMatch(ctx, /Tespitçi seçiniz/);
+    assert.match(mandatory, /case 'inspector':\s*return \[\];/);
+    assert.match(rules, /id === 'inspector'/);
+    assert.match(panel, /hasar-tespitci-opsiyonel-seridi/);
+    assert.match(panel, /OPS_NOTICE\.hasarTespitciOpsiyonel/);
+    assert.match(rules, /Tespitçi ataması zorunlu değil/);
+  });
 });

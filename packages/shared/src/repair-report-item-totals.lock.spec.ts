@@ -109,7 +109,46 @@ describe('onarım raporu maliyet m² LOCK', () => {
 
   it('satış toplamı miktar × birim fiyattır', () => {
     assert.equal(repairItemSalesTotal({ quantity: 12.5, salesUnitPrice: 80 }), 1000);
-    assert.match(page, /parseFloat\(row\.quantity \|\| '0'\) \|\| 0\) \* \(parseFloat\(row\.salesUnitPrice/);
+    assert.match(page, /money\.quantity \* money\.salesUnitPrice/);
+  });
+
+  it('onaya gönderim kalem tutarını miktar ve birim fiyattan okur', () => {
+    const fn = service.slice(
+      service.indexOf('async requestApproval'),
+      service.indexOf('async requestApproval') + 4000,
+    );
+    assert.match(fn, /items:\s*\{\s*include:\s*\{\s*workGroup:/);
+    assert.doesNotMatch(fn, /select:\s*\{\s*quantity: true/);
+    assert.match(fn, /totalSalesAmount/);
+    assert.match(fn, /totalSupplierCost/);
+    assert.match(fn, /repairItemSalesTotal\(item\)/);
+    assert.match(fn, /repairItemResolvedSupplierTotal\(item\)/);
+    assert.match(fn, /Maliyet veya satış tutarı girilmeden onaya gönderilemez/);
+    assert.match(page, /function validateApprovalRequirements/);
+    assert.match(page, /totalSalesAmount/);
+    assert.match(page, /totalSupplierCost/);
+    assert.match(page, /const beginRequestApproval = async/);
+    assert.match(page, /itemsTableRef\.current\?\.prepareGlobalSave\(\)/);
+    assert.match(page, /itemsTableRef\.current\?\.saveAllDirtyRows\(\)/);
+    assert.match(page, /function rowTotalsInput/);
+    assert.match(page, /parseTrAmountInput\(raw\)/);
+    assert.equal(repairItemSalesTotal({ quantity: 2, salesUnitPrice: 15000, salesTotal: 1 }), 30000);
+    assert.equal(
+      repairItemSalesTotal({ salesTotal: 61240, quantity: 0, salesUnitPrice: 0 }),
+      61240,
+    );
+    assert.equal(
+      repairItemResolvedSupplierTotal({ supplierTotal: 35000, quantity: 1, supplierUnitPrice: 0 }),
+      35000,
+    );
+    assert.equal(
+      repairItemSalesTotal({
+        pricingType: 'lumpsum',
+        lumpSumPrice: 0,
+        salesTotal: 350000,
+      }),
+      350000,
+    );
   });
 
   it('eski maliyet×m² kaydı tespit edilir', () => {

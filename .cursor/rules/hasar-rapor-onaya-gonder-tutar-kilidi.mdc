@@ -1,0 +1,36 @@
+---
+description: Hasar Onaya Gönder — girilmiş maliyet ve satış sıfır sayılmaz
+alwaysApply: true
+---
+
+# Hasar Raporu Onaya Gönder Tutar Kilidi
+
+**Kaynak (Mustafa · 25.09.2026):** Personel maliyet ve satış girmişken Onaya Gönder üstte «Maliyet veya satış tutarı girilmeden onaya gönderilemez» yazıyordu. Bitmiş akış sonradan bozulmuştu.
+
+**Temel cümle:** Tam görünümde satış ve maliyet duruyorsa **rapor gider.** Onaya Gönder bu tutarı yok saymaz.
+
+## Zorunlu
+
+1. Onaya gönderimde kalem **eksik alanla çekilmez.** Tam görünümdeki satış/maliyet (rapor toplamı dahil) yok sayılmaz.
+2. Tutarı `repairItemSalesTotal` / `repairItemResolvedSupplierTotal` hesaplar. Birim yoksa kayıtlı toplam kullanılır.
+3. Panel `rowTotalsInput` / `parseTrAmountInput` ile aynı rakamı okur.
+4. Onaya Gönder önce satır kaydını bitirir.
+5. Uyarı yalnız gerçekten tutar yoksa çıkar.
+
+## Yasak (açık onay yoksa)
+
+- Onay sorgusundan miktar / birim fiyatı kesmek
+- Girilmiş tutarı sıfır sayıp uyarı basmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Girilmiş fiyatta uyarı yine çıkarsa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+  packages/shared/src/repair-report-item-totals.lock.spec.ts
+pnpm smoke:hasar-rapor-revizyon
+```

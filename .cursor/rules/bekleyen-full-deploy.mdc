@@ -1,5 +1,5 @@
 ---
-description: Canlı web v624 / backend v624 — sıradaki paket yok
+description: Canlı web v624 / backend v624 — sıradaki paket v625
 alwaysApply: true
 ---
 
@@ -123,4 +123,10 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Sıradaki paket:** Yok. Yeni iş Mustafa söyleyince yazılır.
+Canlı hâlâ **v624**.
+
+**Sıradaki paket (v625, full):**
+- Hasar dosyasında tespitçi her dosyada zorunlu değildir. Gerektiğinde dosya sorumlusu atar. Tedarikçi ayrı durur; tespitçi görevi tedarikçiye taşınmaz.
+- Hasar raporu Tam görünümde satış ve maliyet dururken Onaya Gönder «Maliyet veya satış tutarı girilmeden» deyip raporu göndermez. Bu eski düzgün işti; düzeltildi, bir daha düşmesin.
+
+Geri alma: web v624 / backend v624. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez.

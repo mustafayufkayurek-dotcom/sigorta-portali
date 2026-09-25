@@ -356,4 +356,17 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(OPS_NOTICE.yoneticiSabahBakisi.body, /çekmecede durur/);
     assert.match(OPS_NOTICE.yoneticiSabahBakisi.title, /Bekleyen İş/);
   });
+
+  it('Hasar tespitçi ataması zorunlu değildir şeridi durur', () => {
+    const panel = readFileSync(
+      join(here, '../components/hasar-operasyon-planlayicisi/OperasyonPlanlayiciPanel.tsx'),
+      'utf8',
+    );
+    assert.equal(OPS_NOTICE.hasarTespitciOpsiyonel.id, 'hasar-tespitci-opsiyonel-v625');
+    assert.match(OPS_NOTICE.hasarTespitciOpsiyonel.body, /zorunlu değil/);
+    assert.match(OPS_NOTICE.hasarTespitciOpsiyonel.body, /dosya sorumlusu atar/);
+    assert.doesNotMatch(OPS_NOTICE.hasarTespitciOpsiyonel.body, /Google/);
+    assert.match(panel, /hasar-tespitci-opsiyonel-seridi/);
+    assert.match(OPS_NOTICE.hasarDosyaSonDegisiklik.body, /zorunlu değil/);
+  });
 });

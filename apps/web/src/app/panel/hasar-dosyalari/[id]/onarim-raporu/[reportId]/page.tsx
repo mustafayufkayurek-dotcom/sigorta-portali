@@ -178,10 +178,18 @@ function validateApprovalRequirements(report: any, findingsText: string): {
   const totalSales = items.reduce((sum: number, item: any) => sum + repairItemSalesTotal(item), 0);
   const totalCost = items.reduce((sum: number, item: any) => sum + repairItemResolvedSupplierTotal(item), 0);
   const totalLumpSum = items.reduce((sum: number, item: any) => {
-    if (item.pricingType === 'lumpsum') return sum + (Number(item.lumpSumPrice) || 0);
+    if (item.pricingType === 'lumpsum') return sum + repairItemSalesTotal(item);
     return sum;
   }, 0);
-  if (totalSales <= 0 && totalCost <= 0 && totalLumpSum <= 0) {
+  const headerSales = Number(report?.totalSalesAmount) || 0;
+  const headerCost = Number(report?.totalSupplierCost) || 0;
+  if (
+    totalSales <= 0
+    && totalCost <= 0
+    && totalLumpSum <= 0
+    && headerSales <= 0
+    && headerCost <= 0
+  ) {
     return { ok: false, itemsError: 'Maliyet veya satış tutarı girilmeden onaya gönderilemez.' };
   }
   return { ok: true };
@@ -2022,13 +2030,23 @@ function rowMoney(raw: string): number {
   return parseTrAmountInput(raw) ?? (parseFloat(raw) || 0);
 }
 
+function rowTotalsInput(row: Pick<RowState, 'pricingType' | 'lumpSumPrice' | 'quantity' | 'salesUnitPrice' | 'supplierUnitPrice'>) {
+  return {
+    pricingType: row.pricingType,
+    lumpSumPrice: rowMoney(row.lumpSumPrice),
+    quantity: rowMoney(row.quantity),
+    salesUnitPrice: rowMoney(row.salesUnitPrice),
+    supplierUnitPrice: rowMoney(row.supplierUnitPrice),
+  };
+}
+
 function isRowPersistableFields(row: RowState) {
   return Boolean(row.workGroupId && row.jobDescription.trim() && row.detectionScope.trim());
 }
 
 function isAddingRowMeaningfullyEmpty(row: RowState) {
-  const sales = parseFloat(row.salesUnitPrice || '0') || 0;
-  const supplier = parseFloat(row.supplierUnitPrice || '0') || 0;
+  const sales = rowMoney(row.salesUnitPrice || '0');
+  const supplier = rowMoney(row.supplierUnitPrice || '0');
   return !row.detectionScope.trim()
     && !row.location.trim()
     && !row.workGroupId
@@ -2648,7 +2666,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       location: row.location ? validateAndFormatLocation(row.location) : undefined,
       jobDescription: row.jobDescription,
       description: row.description || undefined,
-      quantity: parseFloat(row.quantity) || 1,
+      quantity: rowMoney(row.quantity) || 1,
       unit: row.unit,
       salesUnitPrice: rowMoney(row.salesUnitPrice),
       supplierUnitPrice: rowMoney(row.supplierUnitPrice),
@@ -2828,8 +2846,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     if (row.workGroupId && row.jobDescription.trim()) {
       const stored = readVendorPriceMemory(row.workGroupId, row.jobDescription);
       const memoryPriceRaw = stored ? resolveMemorySupplierPrice(stored) : null;
-      const memoryPrice = memoryPriceRaw ? parseFloat(memoryPriceRaw) : 0;
-      const entered = parseFloat(row.supplierUnitPrice || '0');
+      const memoryPrice = memoryPriceRaw ? rowMoney(memoryPriceRaw) : 0;
+      const entered = rowMoney(row.supplierUnitPrice || '0');
       if (memoryPrice > 0 && entered > 0 && !isVendorPriceWithinTolerance(entered, memoryPrice)) {
         const memLabel = memoryPrice.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
         const ok = await askConfirm(`Hafızadaki ${memLabel} TL — devam?`);
@@ -2915,7 +2933,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         location: rowToSave.location ? validateAndFormatLocation(rowToSave.location) : undefined,
         jobDescription: rowToSave.jobDescription,
         description: rowToSave.description || undefined,
-        quantity: parseFloat(rowToSave.quantity) || 1,
+        quantity: rowMoney(rowToSave.quantity) || 1,
         unit: rowToSave.unit,
         salesUnitPrice: rowMoney(rowToSave.salesUnitPrice),
         supplierUnitPrice: rowMoney(rowToSave.supplierUnitPrice),
@@ -3063,20 +3081,20 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     setZamApplying(true);
     try {
       for (const row of rows) {
-        const newSales = ((parseFloat(row.salesUnitPrice) || 0) * multiplier);
+        const newSales = ((rowMoney(row.salesUnitPrice) || 0) * multiplier);
         const salesStr = String(Math.round(newSales * 100) / 100);
         await onSave(row._id, {
           workGroupId: row.workGroupId || undefined,
           location: row.location ? normalizeLocationLabel(row.location) : undefined,
           jobDescription: row.jobDescription,
           description: row.description || undefined,
-          quantity: parseFloat(row.quantity) || 1,
+          quantity: rowMoney(row.quantity) || 1,
           unit: row.unit,
           salesUnitPrice: parseFloat(salesStr),
           // Tedarikçi teklifi maliyet referansıdır; ticari revizyonla değiştirilmez.
-          supplierUnitPrice: parseFloat(row.supplierUnitPrice) || 0,
+          supplierUnitPrice: rowMoney(row.supplierUnitPrice) || 0,
           pricingType: row.pricingType,
-          lumpSumPrice: row.pricingType === 'lumpsum' ? parseFloat(row.lumpSumPrice) || 0 : undefined,
+          lumpSumPrice: row.pricingType === 'lumpsum' ? rowMoney(row.lumpSumPrice) || 0 : undefined,
           damageCategory: row.damageCategory,
           damageTypeId: row.damageTypeId || undefined,
         });
@@ -3098,12 +3116,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           location: row.location ? normalizeLocationLabel(row.location) : undefined,
           jobDescription: row.jobDescription,
           description: row.description || undefined,
-          quantity: parseFloat(row.quantity) || 1,
+          quantity: rowMoney(row.quantity) || 1,
           unit: row.unit,
-          salesUnitPrice: parseFloat(snap.salesUnitPrice) || 0,
-          supplierUnitPrice: parseFloat(snap.supplierUnitPrice) || 0,
+          salesUnitPrice: rowMoney(snap.salesUnitPrice) || 0,
+          supplierUnitPrice: rowMoney(snap.supplierUnitPrice) || 0,
           pricingType: row.pricingType,
-          lumpSumPrice: row.pricingType === 'lumpsum' ? parseFloat(row.lumpSumPrice) || 0 : undefined,
+          lumpSumPrice: row.pricingType === 'lumpsum' ? rowMoney(row.lumpSumPrice) || 0 : undefined,
           damageCategory: row.damageCategory,
           damageTypeId: row.damageTypeId || undefined,
         });
@@ -3258,8 +3276,9 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   };
 
   const calcTotal = (row: RowState) => {
-    if (row.pricingType === 'lumpsum') return parseFloat(row.lumpSumPrice || '0');
-    return (parseFloat(row.quantity || '0') || 0) * (parseFloat(row.salesUnitPrice || '0') || 0);
+    const money = rowTotalsInput(row);
+    if (row.pricingType === 'lumpsum') return money.lumpSumPrice;
+    return money.quantity * money.salesUnitPrice;
   };
 
   return (
@@ -3425,15 +3444,9 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             const wgName = workGroups.find((wg: any) => wg.id === row.workGroupId)?.name ?? '';
             const rowSubGroups = resolveSubGroups(row.workGroupId);
             const subGroupsLoading = row.workGroupId ? loadingSubGroupIds.has(row.workGroupId) : false;
-            const rowMoney = {
-              pricingType: row.pricingType,
-              lumpSumPrice: parseFloat(row.lumpSumPrice || '0') || 0,
-              quantity: parseFloat(row.quantity || '0') || 0,
-              salesUnitPrice: parseFloat(row.salesUnitPrice || '0') || 0,
-              supplierUnitPrice: parseFloat(row.supplierUnitPrice || '0') || 0,
-            };
-            const supplierVal = repairItemSupplierTotal(rowMoney);
-            const salesVal = repairItemSalesTotal(rowMoney);
+            const rowTotals = rowTotalsInput(row);
+            const supplierVal = repairItemSupplierTotal(rowTotals);
+            const salesVal = repairItemSalesTotal(rowTotals);
             const isLoss = viewMode === 'internal' && supplierVal > 0 && supplierVal > salesVal;
 
             return (
@@ -3718,7 +3731,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       </div>
                     </div>
                   ) : (
-                    <span className="px-2 text-sm text-slate-700 block py-3 text-center">{fmtCurrency(parseFloat(row.salesUnitPrice))}</span>
+                    <span className="px-2 text-sm text-slate-700 block py-3 text-center">{fmtCurrency(rowMoney(row.salesUnitPrice))}</span>
                   )}
                 </td>
                 {/* Maliyet (Tedarikçi Fiyatı, internal only) — CalcInput */}
@@ -3741,7 +3754,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       </div>
                     ) : (
                       <div className="px-2 py-2 text-right">
-                        <span className="text-sm text-slate-500 block">{fmtCurrency(parseFloat(row.supplierUnitPrice))}</span>
+                        <span className="text-sm text-slate-500 block">{fmtCurrency(rowMoney(row.supplierUnitPrice))}</span>
                         {row.vendorQuotes?.preferredVendorName && (
                           <span className="text-[9px] text-slate-400 block truncate">
                             {formatDisplayLabel(row.vendorQuotes.preferredVendorName)}
@@ -4080,13 +4093,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     {/* Zarar Uyarısı */}
     {(() => {
       const lossCount = rows.filter((r) => {
-        const money = {
-          pricingType: r.pricingType,
-          lumpSumPrice: parseFloat(r.lumpSumPrice || '0') || 0,
-          quantity: parseFloat(r.quantity || '0') || 0,
-          salesUnitPrice: parseFloat(r.salesUnitPrice || '0') || 0,
-          supplierUnitPrice: parseFloat(r.supplierUnitPrice || '0') || 0,
-        };
+        const money = rowTotalsInput(r);
         const sup = repairItemSupplierTotal(money);
         const sal = repairItemSalesTotal(money);
         return sup > 0 && sup > sal;
@@ -5202,7 +5209,13 @@ export default function RepairReportPage() {
     finally { setRequestingApproval(false); }
   };
 
-  const beginRequestApproval = () => {
+  const beginRequestApproval = async () => {
+    try {
+      await itemsTableRef.current?.prepareGlobalSave();
+      await itemsTableRef.current?.saveAllDirtyRows();
+    } catch {
+      /* kayıt hatası zaten bildirilir */
+    }
     const findingsText = getEffectiveFindingsText(report, pendingFields, bulgularTextareaRef.current);
     const validation = validateApprovalRequirements(report, findingsText);
 

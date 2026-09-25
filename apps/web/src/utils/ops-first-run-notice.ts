@@ -61,7 +61,13 @@ export const OPS_NOTICE = {
     id: 'hasar-dosya-v534',
     title: 'Bu dosyada ne değişti',
     body:
-      'Hasar Tespit’te tahmini süre ve görüşme notu yok. Randevu notu sesle yazılır. Tespitçi ve sigortalı WhatsApp zorunlu; tedarikçi görev notu ve WhatsApp aynı sayfada. Dosya Onaylandı, Raporlar’daki onayı gösterir. Dijital onay onarımın başında; mutabakat/muvafakat tek belge. Anket onarım bitişinde. Resim ve belgeler Evraklar → Tespit Ve Onarım’dadır.',
+      'Hasar Tespit’te tahmini süre ve görüşme notu yok. Randevu notu sesle yazılır. Tespitçi her dosyada zorunlu değil; gerektiğinde dosya sorumlusu atar. Sigortalı WhatsApp durur; tedarikçi görev notu ve WhatsApp aynı sayfada. Dosya Onaylandı, Raporlar’daki onayı gösterir. Dijital onay onarımın başında; mutabakat/muvafakat tek belge. Anket onarım bitişinde. Resim ve belgeler Evraklar → Tespit Ve Onarım’dadır.',
+  },
+  hasarTespitciOpsiyonel: {
+    id: 'hasar-tespitci-opsiyonel-v625',
+    title: 'Tespitçi',
+    body:
+      'Tespitçi her dosyada zorunlu değil. Gerektiğinde dosya sorumlusu atar. Tedarikçi ayrı durur; tespitçi görevi tedarikçiye taşınmaz.',
   },
   hasarMasrafButceEk: {
     id: 'hasar-masraf-butce-ek-v535',

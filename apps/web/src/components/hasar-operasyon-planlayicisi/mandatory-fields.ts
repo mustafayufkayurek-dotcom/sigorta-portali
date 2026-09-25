@@ -46,26 +46,7 @@ export function getMandatoryChecks(
         { key: 'insured_wa', label: 'Sigortalı WhatsApp gönderimi', ok: claim.contactWa.insured },
       ];
     case 'inspector':
-      return [
-        { key: 'appt_date', label: 'Ana Randevu Tarihi', ok: Boolean(claim.appointmentDate.trim()) },
-        { key: 'appt_time', label: 'Ana Randevu Saati', ok: Boolean(claim.appointmentTime.trim()) },
-        { key: 'address', label: 'Adres', ok: Boolean(claim.address.trim()) && claim.address !== '—' },
-        {
-          key: 'inspector',
-          label: 'Atanan Tespitçi',
-          ok: Boolean(ctx.assignedInspectorId),
-        },
-        {
-          key: 'inspector_note',
-          label: 'Tespitçi notu',
-          ok: ctx.inspectorNote.trim().length >= 3,
-        },
-        {
-          key: 'inspector_wa',
-          label: 'Tespitçi WhatsApp gönderimi',
-          ok: claim.contactWa.inspector,
-        },
-      ];
+      return [];
     case 'supplier':
       return [
         {

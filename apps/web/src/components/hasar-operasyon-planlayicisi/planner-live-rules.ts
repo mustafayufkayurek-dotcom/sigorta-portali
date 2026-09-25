@@ -218,6 +218,11 @@ export function computePlannerStepStatuses(
       result[id] = 'future';
       continue;
     }
+    if (id === 'inspector') {
+      // Tespitçi ataması zorunlu değil; sıradaki işi kilitlemez.
+      result[id] = 'future';
+      continue;
+    }
     if (!waitingPlaced) {
       result[id] = 'waiting';
       waitingPlaced = true;

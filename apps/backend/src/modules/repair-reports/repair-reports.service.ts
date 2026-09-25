@@ -1111,14 +1111,7 @@ export class RepairReportsService {
       include: {
         createdBy: { select: { id: true, firstName: true, lastName: true } },
         items: {
-          select: {
-            salesTotal: true,
-            supplierTotal: true,
-            lumpSumPrice: true,
-            pricingType: true,
-            jobDescription: true,
-            workGroup: { select: { name: true } },
-          },
+          include: { workGroup: { select: { name: true } } },
         },
         images: { take: 8, orderBy: { sortOrder: 'asc' }, select: { storageKey: true, fileName: true, mimeType: true } },
         expertOffice: { select: { email: true, companyName: true } },
@@ -1151,10 +1144,18 @@ export class RepairReportsService {
     const totalSales = report.items.reduce((sum, item) => sum + repairItemSalesTotal(item), 0);
     const totalCost = report.items.reduce((sum, item) => sum + repairItemResolvedSupplierTotal(item), 0);
     const totalLumpSum = report.items.reduce((sum, item) => {
-      if (item.pricingType === 'lumpsum') return sum + Number(item.lumpSumPrice ?? 0);
+      if (item.pricingType === 'lumpsum') return sum + repairItemSalesTotal(item);
       return sum;
     }, 0);
-    if (totalSales <= 0 && totalCost <= 0 && totalLumpSum <= 0) {
+    const headerSales = Number(report.totalSalesAmount ?? 0);
+    const headerCost = Number(report.totalSupplierCost ?? 0);
+    if (
+      totalSales <= 0
+      && totalCost <= 0
+      && totalLumpSum <= 0
+      && !(headerSales > 0)
+      && !(headerCost > 0)
+    ) {
       throw new BadRequestException('Maliyet veya satış tutarı girilmeden onaya gönderilemez.');
     }
 
@@ -1210,7 +1211,7 @@ export class RepairReportsService {
       .slice(0, 12)
       .map((item) => {
         const name = item.workGroup?.name || item.jobDescription || 'Kalem';
-        const amt = item.pricingType === 'lumpsum' ? Number(item.lumpSumPrice ?? 0) : Number(item.salesTotal ?? 0);
+        const amt = repairItemSalesTotal(item);
         return `${name}: ${Math.round(amt).toLocaleString('tr-TR')} ₺`;
       })
       .join(' · ');

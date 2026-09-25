@@ -496,7 +496,7 @@ export function PlannerProvider({
           }
           case 'inspector': {
             if (!assignedInspectorId) {
-              return { ok: false, message: 'Tespitçi seçiniz.' };
+              return { ok: true, message: 'Tespitçi atanmadı. Gerektiğinde dosya sorumlusu atayabilir.' };
             }
             const selected = claim.inspectors.find((i) => i.id === assignedInspectorId);
             if (selected?.source === 'meridyen') {

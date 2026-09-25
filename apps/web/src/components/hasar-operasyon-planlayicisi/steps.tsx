@@ -581,7 +581,7 @@ export function StepInspector() {
           </div>
           <div className="mt-2 space-y-2">
             <TemplatePreview title="Tespitçi WhatsApp şablonu" text={assignedWaMessage} />
-            <p className="text-[11px] font-medium text-amber-800">Tespitçiye WhatsApp gönderimi zorunlu.</p>
+            <p className="text-[11px] font-medium text-slate-600">Görev ve randevu mesajı gönderilebilir.</p>
             <WhatsAppOpenButton
               phone={assigned.phone}
               message={[assignedWaMessage, inspectorNote].filter(Boolean).join('\n\n')}
@@ -611,13 +611,13 @@ export function StepInspector() {
           </div>
         </Card>
       ) : (
-        <ApiNote text="Zorunlu: Kaydet için bir tespitçi atanmalıdır." />
+        <ApiNote text="Tespitçi zorunlu değil. Gerektiğinde dosya sorumlusu atar." />
       )}
 
       <Card title="Kayıtlı Tespitçi Listesi" icon={UserCog}>
         <p className="mb-2 text-[10px] leading-relaxed text-slate-500">
-          Önce Meridyen saha tespitçisi atanır. Saha personeli dosyaya gidemiyorsa, «Tespitçi Olarak
-          Görevlendir» işaretli tedarikçi seçilir.
+          Gerektiğinde Meridyen saha tespitçisi atanır. Saha personeli gidemiyorsa mevcut listeden
+          «Tespitçi Olarak Görevlendir» işaretli kayıt seçilir. Tedarikçi ataması ayrıdır.
         </p>
         <div className="space-y-2">
           {claim.inspectors.length === 0 ? (
