@@ -80,6 +80,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'public-approval-token.lock.spec',
       'panel-native-confirm.lock.spec',
       'personel-test-asama.lock.spec',
+      'https-redirect.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

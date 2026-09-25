@@ -1,5 +1,5 @@
 ---
-description: Canlı web v625 / backend v625
+description: Canlı web v625 / backend v625 — sıradaki v626 giriş kodu anahtarı
 alwaysApply: true
 ---
 
@@ -125,4 +125,8 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Canlı **v625**. Bekleyen paket yok.
+Canlı **v625**.
+
+**Sıradaki paket (v626, yalnız backend):** Giriş kodu anahtarı yoksa sabit yedek kullanılmaz.
+
+Geri alma: web v625 / backend v625. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez.

@@ -328,7 +328,10 @@ export class AuthService {
   }
 
   private hashLoginEmailCode(code: string): string {
-    const secret = this.config.get<string>('JWT_SECRET') || 'login-email-code';
+    const secret = String(this.config.get<string>('JWT_SECRET') ?? '').trim();
+    if (!secret) {
+      throw new Error('Giriş kodu anahtarı yok');
+    }
     return createHash('sha256').update(`${String(code).trim()}|${secret}`).digest('hex');
   }
 

@@ -27,6 +27,8 @@ describe('giriş e-posta kodu kaynak LOCK', () => {
     assert.match(auth, /challengeId: row\.id, code/);
     assert.match(auth, /requestReadReceipt:\s*false/);
     assert.doesNotMatch(auth, /letter-spacing:0\.18em/);
+    assert.doesNotMatch(auth, /\|\| 'login-email-code'/);
+    assert.match(auth, /Giriş kodu anahtarı yok/);
   });
 
   it('giriş kodu maili gelen kutu işine düşmez', () => {
