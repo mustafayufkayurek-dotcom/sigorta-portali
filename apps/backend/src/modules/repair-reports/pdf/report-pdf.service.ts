@@ -133,14 +133,6 @@ function itemSupplierTotal(item: ReportItem): number {
   return repairItemResolvedSupplierTotal(item);
 }
 
-function approvalActionLabel(action: string): string {
-  if (action === 'approved') return 'Onayladı';
-  if (action === 'rejected') return 'Reddetti';
-  if (action === 'revision_created') return 'Revizyon Oluşturdu';
-  if (action === 'pending_approval') return 'Onaya Gönderdi';
-  return action || 'İşlem';
-}
-
 function fmtDateTime(d: Date | string): string {
   return new Date(d).toLocaleString('tr-TR', {
     day: '2-digit',
