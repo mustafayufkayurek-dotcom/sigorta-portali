@@ -3250,7 +3250,7 @@ export default function KullanicilarPage() {
               && showsMeridyenWorkHoursToggle(form.userTask, selectedRole?.code ?? editingUser?.role?.code)
               && (modal === 'add'
                 ? !isCustomerCompanyUserTask(form.userTask)
-                : Boolean(editingUser)
+                : editingUser != null
                   && !editingUser.portalCustomerId
                   && !isProtectedSystemAdmin(editingUser)) && (
               <WorkHoursGateToggle

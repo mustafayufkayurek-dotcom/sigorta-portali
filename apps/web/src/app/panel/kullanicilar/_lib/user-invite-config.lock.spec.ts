@@ -214,6 +214,8 @@ describe('müşteri firması çoklu davet LOCK', () => {
     const page = readFileSync(join(here, '../page.tsx'), 'utf8');
     assert.match(page, /WorkHoursGateToggle/);
     assert.match(page, /showsMeridyenWorkHoursToggle/);
+    assert.doesNotMatch(page, /Boolean\(editingUser\)/);
+    assert.match(page, /editingUser != null/);
     assert.match(page, /payload\.workHoursRestricted = form\.workHoursRestricted === true/);
     assert.match(page, /label="Kullanıcı Türü"/);
     assert.doesNotMatch(page, /Bu kişi kim/);
