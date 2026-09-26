@@ -8,18 +8,29 @@
 
 ---
 
-## Canlı durum (26 Eylül 2026 — web v626 / backend v626)
+## Canlı durum (26 Eylül 2026 — web v627 / backend v627)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v626-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v626-amd64` | canlı |
-| **Rollback** | Web **v625** / Backend **v625** | manifest `rollbackImages` |
-| **Etiket** | `v626-cift-hasar-pdf` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v627-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v627-amd64` | canlı |
+| **Rollback** | Web **v626** / Backend **v626** | manifest `rollbackImages` |
+| **Etiket** | `v627-kullanici-mesai-giris-kodu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v627 — Full (26 Eylül 2026) — Mesai, giriş kodu, sigorta daveti
+
+- Kullanıcılar’da Meridyen personeli için mesai kapısı (Kullanıcı Ekle ve kart)
+- Giriş kodu mailde durur; ekranda hazır gelmez; Mac doldurma yazısı kalkar; Yapıştır durur
+- Kullanıcı türünde Finans, Eksper’den önce
+- Sigorta kullanıcısı Ayarlar şirketinden eklenir
+- Yeni Müşteri’de Sigorta Şirketi tipi durur
+- Asistans kart adları: Remed Assistance, Marm Assistance, Tur-Assist
+- Disk; alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v626** / backend **v626**
 
 ### v626 — Full (26 Eylül 2026) — Çift hasar marj ve PDF
 
