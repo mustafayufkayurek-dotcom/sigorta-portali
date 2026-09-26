@@ -931,6 +931,7 @@ export class RepairReportsService {
             claimSubject: { select: { name: true } },
             propertyAddress: { select: { city: true, district: true, addressLine: true } },
             assignedOfficeUser: { select: { firstName: true, lastName: true } },
+            assignedInspectorVendor: { select: { name: true } },
           },
         },
         expertOffice: {

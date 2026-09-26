@@ -16,8 +16,10 @@ import {
   PDF_GRAND_TOTAL_LABEL,
   allocateExternalColWidths,
   chunkPhotoRows,
+  showPdfSplitCategoryTotals,
 } from './report-pdf-fields';
 import { isRepairReportPdfDraft, repairItemSalesTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
+import { toTitleCaseTR } from '@/common/utils/text-helpers';
 
 interface ReportItem {
   workGroup?: { name: string; id?: string } | null;
@@ -249,6 +251,17 @@ function escHtml(s: string | null | undefined): string {
     .replace(/"/g, '&quot;');
 }
 
+function formatPersonName(first?: string | null, last?: string | null): string {
+  return [first, last].filter(Boolean).join(' ').trim();
+}
+
+function namesLooselyMatch(a?: string | null, b?: string | null): boolean {
+  const x = String(a ?? '').trim().toLocaleLowerCase('tr-TR');
+  const y = String(b ?? '').trim().toLocaleLowerCase('tr-TR');
+  if (!x || !y) return false;
+  return x === y || x.includes(y) || y.includes(x);
+}
+
 const QUICK_DAMAGE_TYPE_LABELS: Record<string, string> = {
   FIRE_HOME: 'Konut-Yangın',
   FIRE_INDUSTRIAL: 'Endüstriyel-Yangın',
@@ -424,7 +437,7 @@ export class ReportPdfService {
         </div>`;
     }
 
-    const subtotalColSpan = viewType === 'internal' ? 8 : 7;
+    const subtotalColSpan = viewType === 'internal' ? 9 : 8;
     const allItems = report.items ?? [];
     const computedSalesAmount = allItems.reduce((s, i) => s + itemSalesTotal(i), 0);
     const computedSupplierCost = allItems.reduce((s, i) => s + itemSupplierTotal(i), 0);
@@ -465,6 +478,7 @@ export class ReportPdfService {
             : '<span class="cat-dot cat-dot-bina">&#9679;</span>';
           const mahalBolge = formatMahalBolge(item);
           const wgCell = (item.workGroup?.name ?? groupName).trim() || 'Diğer';
+          const causeCell = (item.damageType?.damageTypeName ?? '').trim() || '—';
 
           if (viewType === 'internal') {
             const supplierTotal = itemSupplierTotal(item);
@@ -473,6 +487,7 @@ export class ReportPdfService {
             html += `
             <tr class="${zebra}">
               <td>${catDot} ${escHtml(wgCell)}</td>
+              <td class="cause-cell">${escHtml(causeCell)}</td>
               <td class="mahal-cell">${escHtml(mahalBolge)}</td>
               <td class="job-desc-cell">${formatJobDescriptionCell(item)}</td>
               <td class="text-center">${qty}</td>
@@ -487,6 +502,7 @@ export class ReportPdfService {
             html += `
             <tr class="${zebra}">
               <td>${catDot} ${escHtml(wgCell)}</td>
+              <td class="cause-cell">${escHtml(causeCell)}</td>
               <td class="mahal-cell">${escHtml(mahalBolge)}</td>
               <td class="job-desc-cell">${formatJobDescriptionCell(item, { includeDescription: false })}</td>
               <td class="desc-cell">${descNote ? escHtml(descNote) : '—'}</td>
@@ -507,27 +523,20 @@ export class ReportPdfService {
       return html;
     };
 
-    /** Üst kategori başlığı yok; yalnız iş grubu satırları + bölüm alt toplamı */
+    /** Üst kategori başlığı yok; bina/eşya toplamı özetten sonra basılır */
     const appendCategorySection = (
       items: ReportItem[],
-      categoryTotalLabel: string,
-      categoryTotal: number,
     ): string => {
       if (items.length === 0) return '';
-      return `
-        ${appendWorkGroupRows(items)}
-        <tr class="category-total-row">
-          <td colspan="${subtotalColSpan}" class="text-right category-total-label">${escHtml(categoryTotalLabel)}</td>
-          <td class="text-right category-total-amount">${fmtCurrency(categoryTotal)}</td>
-        </tr>`;
+      return appendWorkGroupRows(items);
     };
 
     const itemsHtml =
       allItems.length === 0
         ? ''
-        : appendCategorySection(binaItems, PDF_BINA_TOTAL_LABEL, binaTotal)
-          + appendCategorySection(esyaItems, PDF_ESYA_TOTAL_LABEL, esyaTotal)
-          + appendCategorySection(demirbasItems, PDF_DEMIRBAS_TOTAL_LABEL, demirbasTotal);
+        : appendCategorySection(binaItems)
+          + appendCategorySection(esyaItems)
+          + appendCategorySection(demirbasItems);
 
     const logoDataUrl = this.resolveLogoDataUrl();
     const generatedAt = new Date();
@@ -536,35 +545,47 @@ export class ReportPdfService {
       : `<div class="header-brand">Meridyen Assistance</div>`;
 
     const approvalHistory = report.approvalHistory ?? [];
-    const approvalTrailHtml = approvalHistory.length > 0
-      ? `
-<div class="approval-trail-section">
-  <div class="approval-trail-title">Dijital Onay İzleri</div>
-  <ol class="approval-trail-list">
-    ${approvalHistory.map((entry, index) => {
-      const who = [entry.user?.firstName, entry.user?.lastName].filter(Boolean).join(' ').trim() || '—';
-      const reason = entry.reason?.trim()
-        ? `<div class="approval-trail-reason">Neden: ${escHtml(entry.reason)}</div>`
-        : '';
-      return `<li>
-        <span class="approval-trail-step">${index + 1}.</span>
-        <span class="approval-trail-meta">${escHtml(fmtDateTime(entry.createdAt))}</span>
-        <span class="approval-trail-who">${escHtml(who)}</span>
-        <span class="approval-trail-action">${escHtml(approvalActionLabel(entry.action))}</span>
-        ${reason}
-      </li>`;
-    }).join('')}
-  </ol>
-</div>`
-      : '';
+    const fileDistrict = toTitleCaseTR(report.claimFile?.propertyAddress?.district ?? '')?.trim() || '';
+    const inspectorWho = fileDistrict ? `${fileDistrict} Network` : '';
+    const fileOwnerWho = formatPersonName(
+      report.claimFile?.assignedOfficeUser?.firstName,
+      report.claimFile?.assignedOfficeUser?.lastName,
+    );
+    const fileOwnerTrail = approvalHistory.filter((entry) => {
+      const who = formatPersonName(entry.user?.firstName, entry.user?.lastName);
+      if (namesLooselyMatch(who, fileOwnerWho)) return true;
+      return entry.action === 'pending_approval';
+    });
+    const signatureBoxHtml = (label: string, who: string, fallbackWhen: Date | string, trail: ApprovalHistoryEntry[]) => {
+      const when = trail[trail.length - 1]?.createdAt ?? fallbackWhen;
+      return `
+  <div class="signature-box">
+    <div class="signature-label">${escHtml(label)}</div>
+    <div class="signature-name">${who ? escHtml(who) : '&nbsp;'}</div>
+    <div class="signature-stamp-inline">Dijital imza izi · ${escHtml(fmtDateTime(when))}</div>
+    <div class="signature-line"></div>
+  </div>`;
+    };
+    const signatureSectionHtml = `
+<div class="signature-section">
+  ${signatureBoxHtml('Tespiti Yapan', inspectorWho, report.reportDate, [])}
+  ${signatureBoxHtml('Dosya Sorumlusu', fileOwnerWho, report.createdAt ?? report.reportDate, fileOwnerTrail)}
+</div>`;
 
     const showEsyaTotal = esyaItems.length > 0 || (report.goodsDamageTotal ?? 0) > 0;
     const showDemirbasTotal = demirbasItems.length > 0;
-    const categoryTotalBands = `
+    const showBinaTotal = binaItems.length > 0 || (report.buildingDamageTotal ?? 0) > 0;
+    const showSplitCategoryTotals = showPdfSplitCategoryTotals({
+      binaCount: showBinaTotal ? 1 : 0,
+      esyaCount: showEsyaTotal ? 1 : 0,
+      demirbasCount: showDemirbasTotal ? 1 : 0,
+    });
+    const categoryTotalBands = showSplitCategoryTotals ? `
+  ${showBinaTotal ? `
   <div class="repair-total-band">
     <div class="repair-total-label">${PDF_BINA_TOTAL_LABEL}</div>
     <div class="repair-total-value">${fmtCurrency(binaTotal || report.buildingDamageTotal)}</div>
-  </div>
+  </div>` : ''}
   ${showEsyaTotal ? `
   <div class="repair-total-band">
     <div class="repair-total-label">${PDF_ESYA_TOTAL_LABEL}</div>
@@ -574,7 +595,7 @@ export class ReportPdfService {
   <div class="repair-total-band">
     <div class="repair-total-label">${PDF_DEMIRBAS_TOTAL_LABEL}</div>
     <div class="repair-total-value">${fmtCurrency(demirbasTotal)}</div>
-  </div>` : ''}`;
+  </div>` : ''}` : '';
     const externalTotalsHtml = `
 <div class="repair-totals-stack">
   ${categoryTotalBands}
@@ -593,6 +614,35 @@ export class ReportPdfService {
       .map((line, i) => `<li><span class="legal-num">${i + 1}.</span> ${escHtml(line)}</li>`)
       .join('');
 
+    const damageCauseSummaryHtml = report.reportType === 'multi' && (report.damageTypes?.length ?? 0) > 0 ? `
+<div class="section-header" style="margin-top:14px;">Hasar Nedeni Bazlı Özet</div>
+<table class="damage-summary-table">
+  <thead>
+    <tr>
+      <th>Hasar Nedeni</th>
+      ${viewType === 'internal' ? '<th class="text-right">Maliyet</th>' : ''}
+      <th class="text-right">Tutar</th>
+      ${viewType === 'internal' ? '<th class="text-right">Kâr</th><th class="text-right">Marj%</th>' : ''}
+    </tr>
+  </thead>
+  <tbody>
+    ${(report.damageTypes ?? []).map((dt) => {
+      const dtItems = (report.items ?? []).filter((i) => i.damageType?.damageTypeName === dt.damageTypeName);
+      const dtSales = dtItems.reduce((s, i) => s + itemSalesTotal(i), 0);
+      const dtSupplier = dtItems.reduce((s, i) => s + itemSupplierTotal(i), 0);
+      const dtMargin = dtSales > 0 ? ((dtSales - dtSupplier) / dtSales) * 100 : 0;
+      const mCls = dtMargin >= 20 ? 'margin-ok' : dtMargin >= 10 ? 'margin-mid' : 'margin-low';
+      return `<tr>
+        <td>${escHtml(dt.damageTypeName)}</td>
+        ${viewType === 'internal' ? `<td class="text-right">${fmtCurrency(dtSupplier)}</td>` : ''}
+        <td class="text-right" style="font-weight:600;">${fmtCurrency(dtSales)}</td>
+        ${viewType === 'internal' ? `<td class="text-right">${fmtCurrency(dtSales - dtSupplier)}</td><td class="text-right"><span class="${mCls}">%${dtMargin.toFixed(1)}</span></td>` : ''}
+      </tr>`;
+    }).join('')}
+  </tbody>
+</table>
+` : '';
+
     // QR Code URL (doğrulama) — inline görüntü; harici qrserver kullanılmaz
     const verifyUrl = `${appUrl}/onay/${report.reportNo}`;
     const qrMarkup = renderReportQrMarkup(verifyUrl);
@@ -603,9 +653,10 @@ export class ReportPdfService {
     const extCols = allocateExternalColWidths(allItems);
     const tableHeaderInternal = `
       <tr>
-        <th style="width:12%">İş Grubu</th>
+        <th style="width:10%">İş Grubu</th>
+        <th style="width:10%">Hasar Nedeni</th>
         <th style="width:10%">Mahal/Bölge</th>
-        <th style="width:34%">İşin Tanımı</th>
+        <th style="width:26%">İşin Tanımı</th>
         <th style="width:5%" class="th-num">Miktar</th>
         <th style="width:7%" class="th-num">Birim</th>
         <th style="width:8%" class="th-num">Tlr. Fiyat</th>
@@ -617,6 +668,7 @@ export class ReportPdfService {
     const tableHeaderExternal = `
       <tr>
         <th style="width:${extCols.group}%">İş Grubu</th>
+        <th style="width:${extCols.cause}%">Hasar Nedeni</th>
         <th style="width:${extCols.mahal}%">Mahal/Bölge</th>
         <th style="width:${extCols.job}%">İşin Tanımı</th>
         <th style="width:${extCols.desc}%">Açıklama</th>
@@ -639,7 +691,7 @@ export class ReportPdfService {
           const alt = caption || 'Tespit';
           const src = img.dataUrl?.trim() || '';
           const imgTag = src
-            ? `<img src="${src}" class="photo-img" alt="${escHtml(alt)}"/>`
+            ? `<div class="photo-frame"><img src="${src}" class="photo-img" alt="${escHtml(alt)}"/></div>`
             : `<div class="photo-error">Fotoğraf yüklenemedi</div>`;
           const captionHtml = caption
             ? `<div class="photo-caption">${escHtml(caption)}</div>`
@@ -650,7 +702,7 @@ export class ReportPdfService {
       }).join('');
 
       photoGalleryHtml = `
-        <div class="appendix-block">
+        <div class="appendix-block photo-appendix">
         <div class="section-header">Tespit Resimleri (Rapor Eki)</div>
         <table class="photo-gallery">
           ${rowsHtml}
@@ -738,7 +790,8 @@ export class ReportPdfService {
     background: transparent;
   }
 
-  .mahal-cell {
+  .mahal-cell,
+  .cause-cell {
     white-space: normal;
     word-break: normal;
     overflow-wrap: anywhere;
@@ -1081,7 +1134,7 @@ export class ReportPdfService {
   }
 
   .subtotal-label { color: #475569; font-style: italic; }
-  .subtotal-amount { color: #374151; font-weight: 700; }
+  .subtotal-amount { color: #374151; font-weight: 700; font-style: italic; }
 
   .amount-cell { font-weight: 600; color: #374151; white-space: nowrap; word-break: keep-all; overflow: visible; }
 
@@ -1265,6 +1318,8 @@ export class ReportPdfService {
     border: 1px solid #e2e8f0;
     border-left: 3px solid #cbd5e1;
     page-break-before: auto;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .legal-title {
@@ -1307,33 +1362,41 @@ export class ReportPdfService {
     margin-top: 16px;
     padding-top: 12px;
     border-top: 2px solid #e2e8f0;
+    page-break-inside: avoid;
   }
 
   .signature-box {
     flex: 1;
     text-align: center;
-    max-width: 200px;
+    max-width: 280px;
   }
 
   .signature-label {
     font-size: 8.5pt;
     font-weight: 700;
     color: #374151;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 32px;
-  }
-
-  .signature-line {
-    border-top: 1.5px solid #374151;
-    width: 80%;
-    margin: 0 auto 6px;
+    margin-bottom: 10px;
   }
 
   .signature-name {
     font-size: 9pt;
     font-weight: 600;
     color: #1e293b;
+    min-height: 14px;
+    margin-bottom: 6px;
+  }
+
+  .signature-stamp-inline {
+    font-size: 7.5pt;
+    color: #64748b;
+    white-space: nowrap;
+    margin: 0 auto 8px;
+  }
+
+  .signature-line {
+    border-top: 1.5px solid #374151;
+    width: 80%;
+    margin: 0 auto 6px;
   }
 
   /* ── Footer ── */
@@ -1440,11 +1503,22 @@ export class ReportPdfService {
     color: #475569;
   }
 
-  /* ── Tespit resimleri eki: 3 sütun; boş sayfa açılmaz, sığmazsa sonraki sayfaya akar ── */
+  /* ── Tespit resimleri eki: 3 sütun; başlık yalnız kalmaz; satır bölünmez ── */
   .appendix-block {
     break-before: auto;
     page-break-before: auto;
     margin-top: 12px;
+  }
+
+  .photo-appendix {
+    break-before: page;
+    page-break-before: always;
+    margin-top: 0;
+  }
+
+  .photo-appendix .section-header {
+    break-after: avoid;
+    page-break-after: avoid;
   }
 
   .photo-gallery {
@@ -1456,11 +1530,14 @@ export class ReportPdfService {
     border: 1px solid #e2e8f0;
     border-top: none;
     background: #fafafa;
+    break-inside: auto;
+    page-break-inside: auto;
   }
 
   .photo-gallery tr {
     break-inside: avoid;
     page-break-inside: avoid;
+    break-before: auto;
   }
 
   .photo-cell {
@@ -1479,18 +1556,24 @@ export class ReportPdfService {
     border: none;
   }
 
+  .photo-frame {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #f8fafc;
+    overflow: hidden;
+  }
+
   .photo-img {
     width: 100%;
-    height: 156px;
+    height: 100%;
     object-fit: contain;
     object-position: center;
-    background: #f8fafc;
     display: block;
   }
 
   .photo-error {
     width: 100%;
-    height: 156px;
+    aspect-ratio: 4 / 3;
     background: #f1f5f9;
     color: #94a3b8;
     font-size: 8pt;
@@ -1591,20 +1674,23 @@ ${revisionInfoHtml}
     ${viewType === 'internal' ? tableHeaderInternal : tableHeaderExternal}
   </thead>
   <tbody>
-    ${itemsHtml || `<tr><td colspan="${viewType === 'internal' ? 9 : 8}" style="text-align:center;padding:20px;color:#9ca3af;">Kalem Bulunmamaktadır</td></tr>`}
+    ${itemsHtml || `<tr><td colspan="${viewType === 'internal' ? 10 : 9}" style="text-align:center;padding:20px;color:#9ca3af;">Kalem Bulunmamaktadır</td></tr>`}
   </tbody>
 </table>
+
+${damageCauseSummaryHtml}
 
 <!-- TOPLAMLAR -->
 ${viewType === 'external' ? externalTotalsHtml : `
 <div class="totals-section">
   <div class="totals-grid">
+    ${showSplitCategoryTotals && showBinaTotal ? `
     <div class="total-label">${PDF_BINA_TOTAL_LABEL}</div>
-    <div class="total-amount">${fmtCurrency(binaTotal || report.buildingDamageTotal)}</div>
-    ${showEsyaTotal ? `
+    <div class="total-amount">${fmtCurrency(binaTotal || report.buildingDamageTotal)}</div>` : ''}
+    ${showSplitCategoryTotals && showEsyaTotal ? `
     <div class="total-label">${PDF_ESYA_TOTAL_LABEL}</div>
     <div class="total-amount">${fmtCurrency(esyaTotal || report.goodsDamageTotal)}</div>` : ''}
-    ${showDemirbasTotal ? `
+    ${showSplitCategoryTotals && showDemirbasTotal ? `
     <div class="total-label">${PDF_DEMIRBAS_TOTAL_LABEL}</div>
     <div class="total-amount">${fmtCurrency(demirbasTotal)}</div>` : ''}
     <div class="grand-total-label">${PDF_GRAND_TOTAL_LABEL}</div>
@@ -1618,34 +1704,14 @@ ${viewType === 'external' ? externalTotalsHtml : `
   </div>
 </div>`}
 
-${report.reportType === 'multi' && (report.damageTypes?.length ?? 0) > 0 ? `
-<div class="section-header" style="margin-top:14px;">Hasar Nedeni Bazlı Özet</div>
-<table class="damage-summary-table">
-  <thead>
-    <tr>
-      <th>Hasar Nedeni</th>
-      ${viewType === 'internal' ? '<th class="text-right">Maliyet</th>' : ''}
-      <th class="text-right">Tutar</th>
-      ${viewType === 'internal' ? '<th class="text-right">Kâr</th><th class="text-right">Marj%</th>' : ''}
-    </tr>
-  </thead>
-  <tbody>
-    ${(report.damageTypes ?? []).map((dt) => {
-      const dtItems = (report.items ?? []).filter((i) => i.damageType?.damageTypeName === dt.damageTypeName);
-      const dtSales = dtItems.reduce((s, i) => s + itemSalesTotal(i), 0);
-      const dtSupplier = dtItems.reduce((s, i) => s + itemSupplierTotal(i), 0);
-      const dtMargin = dtSales > 0 ? ((dtSales - dtSupplier) / dtSales) * 100 : 0;
-      const mCls = dtMargin >= 20 ? 'margin-ok' : dtMargin >= 10 ? 'margin-mid' : 'margin-low';
-      return `<tr>
-        <td>${escHtml(dt.damageTypeName)}</td>
-        ${viewType === 'internal' ? `<td class="text-right">${fmtCurrency(dtSupplier)}</td>` : ''}
-        <td class="text-right" style="font-weight:600;">${fmtCurrency(dtSales)}</td>
-        ${viewType === 'internal' ? `<td class="text-right">${fmtCurrency(dtSales - dtSupplier)}</td><td class="text-right"><span class="${mCls}">%${dtMargin.toFixed(1)}</span></td>` : ''}
-      </tr>`;
-    }).join('')}
-  </tbody>
-</table>
-` : ''}
+<!-- İMZA ALANLARI -->
+${signatureSectionHtml}
+
+<!-- METRAJ ÖZETİ (RAPOR EKİ) -->
+${metrajAppendixHtml}
+
+<!-- TESPİT RESİMLERİ (RAPOR EKİ) -->
+${photoGalleryHtml}
 
 <!-- YASAL NOTLAR -->
 <div class="legal-section">
@@ -1654,24 +1720,6 @@ ${report.reportType === 'multi' && (report.damageTypes?.length ?? 0) > 0 ? `
     ${legalHtml}
   </ul>
 </div>
-
-<!-- DİJİTAL ONAY İZLERİ -->
-${approvalTrailHtml}
-
-<!-- İMZA ALANLARI -->
-<div class="signature-section">
-  <div class="signature-box">
-    <div class="signature-label">Tespiti Yapan</div>
-    <div class="signature-line"></div>
-    <div class="signature-name"></div>
-  </div>
-</div>
-
-<!-- METRAJ ÖZETİ (RAPOR EKİ) -->
-${metrajAppendixHtml}
-
-<!-- TESPİT RESİMLERİ (RAPOR EKİ) -->
-${photoGalleryHtml}
 
 <!-- FOOTER -->
 <div class="report-footer">

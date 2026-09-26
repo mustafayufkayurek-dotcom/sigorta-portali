@@ -1,11 +1,11 @@
 ---
-description: Canlı web v625 / backend v625 — sıradaki v626 Tam görünüm marj
+description: Canlı web v626 / backend v626 — sıradaki paket yok
 alwaysApply: true
 ---
 
-# Canlı (25.09.2026)
+# Canlı (26.09.2026)
 
-Canlı: web **v625** · backend **v625**. Geri alma: web **v624** / backend **v624**.
+Canlı: web **v626** · backend **v626**. Geri alma: web **v625** / backend **v625**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v626 (full):** Çift hasarlı Tam görünümde adet kalemin iş maliyeti miktarla şişmez; marj sıfır görünmez. PDF’de hasar nedeni özeti bina toplamının üstünde; İş Grubu yanında Hasar Nedeni; yalnız bina varken ayrı bina toplam satırı yok. Tespiti Yapan yanında Dosya Sorumlusu; dijital imza izi tek satır çizginin üstünde; tespit satırında ilçe + Network. Yasal uyarılar resimlerin sonunda; grup toplamı rakamı italik; resim eki yerleşimi dağılmaz. Giriş kodu anahtarı yoksa sabit yedek kullanılmaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v625 / backend v625.
 
 **v625 (full):** Hasar tespitçi her dosyada zorunlu değil; gerektiğinde dosya sorumlusu atar. Tedarikçi ayrı durur. Tam görünümde satış ve maliyet dururken Onaya Gönder raporu göndermez yazısı kalkar; girilmiş tutar yok sayılmaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v624 / backend v624.
 
@@ -125,10 +127,8 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Canlı **v625**.
+Canlı **v626**.
 
-**Sıradaki paket (v626, full):**
-- Giriş kodu anahtarı yoksa sabit yedek kullanılmaz.
-- Çift hasarlı Tam görünümde adet kalemin iş toplamı maliyeti miktarla tekrar çarpılmaz; marj sıfır görünmez.
+**Sıradaki paket:** yok.
 
-Geri alma: web v625 / backend v625. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez.
+Alım yalnız «canlıya al» deyince. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez.

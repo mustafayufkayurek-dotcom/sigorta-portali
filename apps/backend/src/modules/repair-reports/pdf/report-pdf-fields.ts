@@ -292,6 +292,7 @@ export const PDF_DEMIRBAS_TOTAL_LABEL = 'Demirbaş Hasarı Toplamı';
 
 export type PdfExternalColWidths = {
   group: number;
+  cause: number;
   mahal: number;
   job: number;
   desc: number;
@@ -319,21 +320,35 @@ export function allocateExternalColWidths(
   const maxDesc = longest(items.map((i) => i.description));
   const maxMahal = longest(items.map((i) => i.location));
 
-  const group = 11;
+  const group = 10;
+  const cause = 10;
   const mahal = maxMahal <= 10 ? 8 : maxMahal <= 18 ? 10 : 12;
   const qty = 5;
   const unit = 6;
   const price = 8;
   const amount = 13;
-  const flex = 100 - group - mahal - qty - unit - price - amount;
+  const flex = 100 - group - cause - mahal - qty - unit - price - amount;
   const jobWeight = Math.max(maxJob, 8);
   const descWeight = Math.max(maxDesc, 6);
-  const jobMin = 14;
-  const jobMax = Math.min(30, flex - 16);
+  const jobMin = 12;
+  const jobMax = Math.min(28, Math.max(jobMin, flex - 14));
   let job = Math.round((flex * jobWeight) / (jobWeight + descWeight));
   job = Math.min(jobMax, Math.max(jobMin, job));
   const desc = flex - job;
-  return { group, mahal, job, desc, qty, unit, price, amount };
+  return { group, cause, mahal, job, desc, qty, unit, price, amount };
+}
+
+/** Bina / eşya / demirbaş ayrı toplam yalnız birden fazla tür varken. */
+export function showPdfSplitCategoryTotals(opts: {
+  binaCount: number;
+  esyaCount: number;
+  demirbasCount: number;
+}): boolean {
+  const n =
+    (opts.binaCount > 0 ? 1 : 0)
+    + (opts.esyaCount > 0 ? 1 : 0)
+    + (opts.demirbasCount > 0 ? 1 : 0);
+  return n >= 2;
 }
 
 export function pdfCategoryTotalLabel(category: string): string {

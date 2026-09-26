@@ -2,24 +2,35 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 25 Eylül 2026
+**Son güncelleme:** 26 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (25 Eylül 2026 — web v624 / backend v624)
+## Canlı durum (26 Eylül 2026 — web v626 / backend v626)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v624-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v624-amd64` | canlı |
-| **Rollback** | Web **v623** / Backend **v623** | manifest `rollbackImages` |
-| **Etiket** | `v624-giris-kodu-yazilim-uyari` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v626-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v626-amd64` | canlı |
+| **Rollback** | Web **v625** / Backend **v625** | manifest `rollbackImages` |
+| **Etiket** | `v626-cift-hasar-pdf` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v626 — Full (26 Eylül 2026) — Çift hasar marj ve PDF
+
+- Çift hasarlı Tam görünümde adet kalemin iş maliyeti miktarla şişmez; marj sıfır görünmez
+- PDF: hasar nedeni özeti bina toplamının üstünde; İş Grubu yanında Hasar Nedeni
+- Yalnız bina varken ayrı bina toplam satırı yok; Rapor Genel Toplam durur
+- Tespiti Yapan yanında Dosya Sorumlusu; dijital imza izi tek satır, çizginin üstünde; tespit satırında ilçe + Network
+- Yasal uyarılar resimlerin sonunda; grup toplamı rakamı italik; resim eki yerleşimi dağılmaz
+- Giriş kodu anahtarı yoksa sabit yedek kullanılmaz
+- Disk; alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v625** / backend **v625**
 
 ### v624 — Full (25 Eylül 2026) — Giriş kodu satırda ve yazılım uyarısı
 
