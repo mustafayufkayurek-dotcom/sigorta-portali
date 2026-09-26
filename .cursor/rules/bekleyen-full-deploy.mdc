@@ -129,6 +129,14 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Canlı **v626**.
 
-**Sıradaki paket: v627 (full)** — Kullanıcılar’da Meridyen personeli için mesai kapısı (Kullanıcı Ekle ve kart). Giriş kodu mailde durur; ekranda hazır gelmez; Mac doldurma yazısı kalkar; Yapıştır durur. Kullanıcı türünde Finans, Eksper’den önce. Sigorta kullanıcısı Ayarlar şirketinden eklenir. Yeni Müşteri’de Sigorta Şirketi tipi durur. Asistans kart adları canlı ile aynı (Remed Assistance, Marm Assistance, Tur-Assist). Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v626 / backend v626.
+**Sıradaki paket: v627 (full)** — geri alma web **v626** / backend **v626**.
 
-Alım yalnız «canlıya al» deyince. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez.
+1. Kullanıcılar’da Meridyen personeli için mesai kapısı (Kullanıcı Ekle ve kart).
+2. Giriş kodu mailde durur; ekranda hazır gelmez; Mac doldurma yazısı kalkar; Yapıştır durur.
+3. Kullanıcı türünde Finans, Eksper’den önce.
+4. Sigorta kullanıcısı Ayarlar şirketinden eklenir.
+5. Yeni Müşteri’de Sigorta Şirketi tipi durur.
+6. Asistans kart adları canlı ile aynı: Remed Assistance, Marm Assistance, Tur-Assist.
+
+Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez.
+Alım yalnız «canlıya al» deyince.
