@@ -1,9 +1,9 @@
 /** Postadan kopyalanan metinden 6 haneli giriş kodunu ayıklar. */
 
 function sixDigitsLoose(text: string): string | null {
-  const compact = text.match(/(\d{6})\b/);
+  const compact = text.match(/(?<!\d)(\d{6})(?!\d)/);
   if (compact) return compact[1];
-  const spaced = text.match(/(\d(?:[\s.\-]*\d){5})/);
+  const spaced = text.match(/(?<!\d)(\d(?:[ .\-]+\d){5})(?!\d)/);
   if (!spaced) return null;
   const digits = spaced[1].replace(/\D/g, '');
   return digits.length === 6 ? digits : null;
@@ -21,7 +21,7 @@ export function extractLoginEmailCode(raw: string): string | null {
     .trim();
   if (!text) return null;
 
-  const labeledAt = text.search(/kod(?:unuz|u)?/i);
+  const labeledAt = text.search(/kod(?:unuz|u)?|sayı|anahtar/i);
   if (labeledAt >= 0) {
     const fromLabel = sixDigitsLoose(text.slice(labeledAt));
     if (fromLabel) return fromLabel;

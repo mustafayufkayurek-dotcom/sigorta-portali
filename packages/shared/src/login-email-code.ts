@@ -15,8 +15,13 @@ export function maskLoginMailbox(email?: string | null): string {
   return `${visible}***@${domain}`;
 }
 
+/** Mailde bitişik 6 hane ve «Kod» yazılmaz; Mac her kutuya doldurma önermesin. */
+export function formatLoginEmailCodeForMail(code: string): string {
+  return String(code).replace(/\D/g, '').slice(0, 6).split('').join(' ');
+}
+
 /** Giriş kodu maili gelen kutu işine düşmez; kutuda durur. */
 export function isLoginEmailCodeSubject(subject?: string | null): boolean {
   const value = String(subject ?? '').trim().toLocaleLowerCase('tr-TR');
-  return value.startsWith('giriş kodu');
+  return value.startsWith('giriş kodu') || value.startsWith('giriş onayı');
 }

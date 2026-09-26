@@ -1,5 +1,5 @@
 ---
-description: Canlı web v627 / backend v627 — sıradaki paket yok
+description: Canlı web v627 / backend v627 — sıradaki paket v628
 alwaysApply: true
 ---
 
@@ -131,6 +131,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Canlı **v627**.
 
-**Sıradaki paket:** yok.
+**Sıradaki paket: v628 (full)** — Giriş maili bitişik 6 hane yazmaz; Mac her kutuya kod doldurma önermez. Yapıştır durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v627 / backend v627.
 
-Alım yalnız «canlıya al» deyince. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez.
+Alım yalnız «canlıya al» deyince.

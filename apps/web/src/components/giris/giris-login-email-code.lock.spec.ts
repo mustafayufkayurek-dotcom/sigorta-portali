@@ -28,6 +28,10 @@ describe('giriş kodu ekranı LOCK', () => {
     assert.doesNotMatch(panel, /visibleLoginEmailCode/);
     assert.doesNotMatch(panel, /payload\.code/);
     assert.doesNotMatch(panel, /one-time-code/);
+    assert.match(panel, /maxLength=\{11\}/);
+    assert.doesNotMatch(panel, /inputMode="numeric"/);
+    assert.doesNotMatch(panel, /pattern="\[0-9\]\{6\}"/);
+    assert.doesNotMatch(panel, /autoFocus/);
     assert.doesNotMatch(panel, /Google/);
     assert.doesNotMatch(panel, /Açık ekranınız durur/);
   });

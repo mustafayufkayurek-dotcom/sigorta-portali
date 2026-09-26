@@ -22,8 +22,12 @@ describe('giriş e-posta kodu kaynak LOCK', () => {
     assert.match(auth, /if \(!result\.sent\)/);
     assert.match(auth, /return null/);
     assert.match(auth, /owner\.status !== 'active'/);
-    assert.match(auth, /Kodu kopyalayıp giriş ekranında Yapıştır/);
-    assert.match(auth, /Kod \$\{code\}/);
+    assert.match(auth, /Yapıştır ile yazın/);
+    assert.match(auth, /formatLoginEmailCodeForMail/);
+    assert.match(auth, /Sayı \$\{mailNumber\}/);
+    assert.match(auth, /Giriş Onayı — Meridyen Assistance/);
+    assert.doesNotMatch(auth, /Kod \$\{code\}/);
+    assert.doesNotMatch(auth, /Giriş Kodu — Meridyen Assistance/);
     assert.match(auth, /challengeId: row\.id \}/);
     assert.doesNotMatch(auth, /challengeId: row\.id, code/);
     assert.match(auth, /requestReadReceipt:\s*false/);

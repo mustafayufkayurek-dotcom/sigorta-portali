@@ -12,12 +12,12 @@ copyFileSync(join(__dirname, '../assets/meridyen-logo-original.png'), join(outDi
 
 const greeting = formatSnPersonGreeting('MUSTAFA', 'YUFKAYÜREK');
 let html = buildTransactionalEmailHtml({
-  title: 'Giriş Kodu',
+  title: 'Giriş Onayı',
   greeting,
   intro:
-    'Giriş için 6 haneli kod. Kodu kopyalayıp giriş ekranında Yapıştır ile yazın. 10 dakika geçerlidir. Bu talebi siz oluşturmadıysanız yok sayın.',
+    'Aşağıdaki sayıyı kopyalayıp giriş ekranında Yapıştır ile yazın. 10 dakika geçerlidir. Bu talebi siz oluşturmadıysanız yok sayın.',
   bodyHtml:
-    '<p style="margin:0 0 12px;font-size:28px;line-height:1.2;letter-spacing:0.18em;font-weight:800;">Kod 847291</p>',
+    '<p style="margin:0 0 12px;font-size:28px;line-height:1.2;font-weight:800;">Sayı 8 4 7 2 9 1</p>',
   portalUrl: 'http://localhost:3001/giris',
 });
 html = html

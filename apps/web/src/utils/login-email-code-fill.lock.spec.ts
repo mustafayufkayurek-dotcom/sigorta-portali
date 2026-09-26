@@ -13,7 +13,8 @@ describe('giriş kodu kutuya dolsun LOCK', () => {
     assert.equal(extractLoginEmailCode('  847291  '), '847291');
     assert.equal(extractLoginEmailCode('Giriş kodunuz (10 dakika geçerli): 847291'), '847291');
     assert.equal(extractLoginEmailCode('Kod 847291'), '847291');
-    assert.equal(extractLoginEmailCode('Kod 8 4 7 2 9 1'), '847291');
+    assert.equal(extractLoginEmailCode('Sayı 8 4 7 2 9 1'), '847291');
+    assert.equal(extractLoginEmailCode('Giriş sayısı (10 dakika geçerli): 8 4 7 2 9 1'), '847291');
     assert.equal(
       extractLoginEmailCode(
         'Giriş için 6 haneli kod. 23.09.2026. Kod 847291. Kodu kopyalayıp giriş ekranına dönün.',
@@ -38,6 +39,8 @@ describe('giriş kodu kutuya dolsun LOCK', () => {
     assert.doesNotMatch(panel, /visibleLoginEmailCode/);
     assert.doesNotMatch(panel, /payload\.code/);
     assert.doesNotMatch(panel, /one-time-code/);
+    assert.doesNotMatch(panel, /inputMode="numeric"/);
+    assert.doesNotMatch(panel, /autoFocus/);
     assert.doesNotMatch(panel, /placeholder="000000"/);
     assert.doesNotMatch(panel, /Google/);
   });

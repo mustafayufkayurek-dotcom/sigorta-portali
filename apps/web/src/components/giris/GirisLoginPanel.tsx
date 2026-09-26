@@ -353,12 +353,10 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
                 id="login-email-code"
                 name="login-email-code"
                 type="text"
-                inputMode="numeric"
                 autoComplete="off"
                 autoCapitalize="off"
                 autoCorrect="off"
                 spellCheck={false}
-                autoFocus
                 data-1p-ignore
                 data-lpignore="true"
                 data-form-type="other"
@@ -375,8 +373,7 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
                 placeholder=""
                 className="form-input scroll-input-safe"
                 required
-                maxLength={6}
-                pattern="[0-9]{6}"
+                maxLength={11}
                 aria-label="Giriş Kodu"
               />
               <button

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isLoginEmailCodeSubject, maskLoginMailbox, roleRequiresLoginEmailCode } from './login-email-code.ts';
+import { isLoginEmailCodeSubject, maskLoginMailbox, roleRequiresLoginEmailCode, formatLoginEmailCodeForMail } from './login-email-code.ts';
 
 describe('giriş e-posta kodu LOCK', () => {
   it('yalnız yönetici ve finans ister; ofis ve saha istemez', () => {
@@ -18,6 +18,11 @@ describe('giriş e-posta kodu LOCK', () => {
 
   it('giriş kodu konusunu gelen kutu işinden ayırır', () => {
     assert.equal(isLoginEmailCodeSubject('Giriş Kodu — Meridyen Assistance'), true);
+    assert.equal(isLoginEmailCodeSubject('Giriş Onayı — Meridyen Assistance'), true);
     assert.equal(isLoginEmailCodeSubject('RE: KONUT CAM'), false);
+  });
+
+  it('mailde bitişik 6 hane yazılmaz', () => {
+    assert.equal(formatLoginEmailCodeForMail('847291'), '8 4 7 2 9 1');
   });
 });
