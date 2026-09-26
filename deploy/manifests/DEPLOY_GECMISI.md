@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (26 Eylül 2026 — web v627 / backend v627)
+## Canlı durum (26 Eylül 2026 — web v628 / backend v628)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v627-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v627-amd64` | canlı |
-| **Rollback** | Web **v626** / Backend **v626** | manifest `rollbackImages` |
-| **Etiket** | `v627-kullanici-mesai-giris-kodu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v628-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v628-amd64` | canlı |
+| **Rollback** | Web **v627** / Backend **v627** | manifest `rollbackImages` |
+| **Etiket** | `v628-giris-mail-mac-doldurma` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v628 — Full (26 Eylül 2026) — Giriş maili Mac doldurmasın
+
+- Mail bitişik 6 hane yazmaz; Mac her kutuya «kodunu doldur» önermez
+- Yapıştır durur
+- Disk; alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Geri alma web **v627** / backend **v627**
 
 ### v627 — Full (26 Eylül 2026) — Mesai, giriş kodu, sigorta daveti
 

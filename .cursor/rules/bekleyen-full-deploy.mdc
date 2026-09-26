@@ -1,11 +1,11 @@
 ---
-description: Canlı web v627 / backend v627 — sıradaki paket v628
+description: Canlı web v628 / backend v628 — sıradaki paket yok
 alwaysApply: true
 ---
 
 # Canlı (26.09.2026)
 
-Canlı: web **v627** · backend **v627**. Geri alma: web **v626** / backend **v626**.
+Canlı: web **v628** · backend **v628**. Geri alma: web **v627** / backend **v627**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v628 (full):** Giriş maili bitişik 6 hane yazmaz; Mac her kutuya kod doldurma önermez. Yapıştır durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v627 / backend v627.
 
 **v627 (full):** Kullanıcılar’da Meridyen personeli için mesai kapısı (Kullanıcı Ekle ve kart). Giriş kodu mailde durur; ekranda hazır gelmez; Mac doldurma yazısı kalkar; Yapıştır durur. Kullanıcı türünde Finans, Eksper’den önce. Sigorta kullanıcısı Ayarlar şirketinden eklenir. Yeni Müşteri’de Sigorta Şirketi tipi durur. Asistans kart adları canlı ile aynı (Remed Assistance, Marm Assistance, Tur-Assist). Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v626 / backend v626.
 
@@ -129,8 +131,8 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Canlı **v627**.
+Canlı **v628**.
 
-**Sıradaki paket: v628 (full)** — Giriş maili bitişik 6 hane yazmaz; Mac her kutuya kod doldurma önermez. Yapıştır durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v627 / backend v627.
+**Sıradaki paket:** yok.
 
 Alım yalnız «canlıya al» deyince.
