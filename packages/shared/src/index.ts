@@ -53,6 +53,7 @@ export * from './payment-record-access';
 export * from './hasar-hakedis-once';
 export * from './financial-record-freeze';
 export * from './public-approval-token';
+export * from './work-hours-gate-policy';
 export * from './file-recognized-partners';
 export * from './acil-assistance-mail-decision';
 export * from './acil-report-phrase-memory';

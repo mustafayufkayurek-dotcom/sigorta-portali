@@ -416,24 +416,64 @@ async function main() {
   });
   console.log('✅ Created/updated insurance company user (sigorta@meridyenasistans.com / admin123)');
 
-  // Yerel geliştirme: acil yardım asistan firmaları (davet + gelen kutusu kapsamı)
-  const assistantFirmSeeds = [
+  // Canlıdaki asistan firmaları — yerel Kullanıcı Ekle / Müşteriler aynı kartları göstersin
+  const assistantFirmSeeds: Array<{
+    taxNumber: string | null;
+    companyName: string;
+    shortName: string;
+    phone: string;
+    email: string;
+    city?: string;
+    district?: string;
+  }> = [
     {
       taxNumber: '7340735275',
-      companyName: 'Remed Uluslararası Destek Ve Danışmanlık Hizmetleri Tic. A.Ş.',
+      companyName: 'Remed Assistance',
+      shortName: 'Remed Assistance',
+      phone: '+905558946857',
+      email: 'serdar.acar@remed.com.tr',
+      city: 'İstanbul',
+      district: 'Sarıyer',
+    },
+    {
+      taxNumber: '4630174058',
+      companyName: 'Marm Assistance',
+      shortName: 'Marm Assistance',
+      phone: '+902165600724',
+      email: 'technic@marm.com.tr',
+    },
+    {
+      taxNumber: null,
+      companyName: 'Tur-Assist',
+      shortName: 'Tur-Assist',
+      phone: '05495987424',
+      email: 'nbenli@turassist.com',
+      city: 'İstanbul',
+      district: 'Sarıyer',
     },
   ];
   for (const firm of assistantFirmSeeds) {
-    const existing = await prisma.customer.findFirst({ where: { taxNumber: firm.taxNumber } });
+    const existing = firm.taxNumber
+      ? await prisma.customer.findFirst({ where: { taxNumber: firm.taxNumber } })
+      : await prisma.customer.findFirst({
+          where: {
+            subType: 'asistan_firmasi',
+            OR: [{ companyName: firm.companyName }, { shortName: firm.shortName }],
+          },
+        });
     const data = {
-      type: 'kurumsal',
+      type: 'corporate',
       entityType: 'corporate',
       subType: 'asistan_firmasi',
       companyName: firm.companyName,
-      shortName: 'Remed',
+      shortName: firm.shortName,
       fullName: firm.companyName,
       serviceType: 'acil_yardim',
       status: 'active',
+      phone: firm.phone,
+      email: firm.email,
+      city: firm.city ?? null,
+      district: firm.district ?? null,
     };
     if (existing) {
       await prisma.customer.update({ where: { id: existing.id }, data });
@@ -441,7 +481,7 @@ async function main() {
       await prisma.customer.create({ data: { ...data, taxNumber: firm.taxNumber } });
     }
   }
-  console.log(`✅ Created/updated ${assistantFirmSeeds.length} acil yardım asistan firması (yerel seed)`);
+  console.log(`✅ Created/updated ${assistantFirmSeeds.length} acil yardım asistan firması (canlı kartlar)`);
 
   // Demo: Asistans firma portal kullanıcısı
   await prisma.user.upsert({

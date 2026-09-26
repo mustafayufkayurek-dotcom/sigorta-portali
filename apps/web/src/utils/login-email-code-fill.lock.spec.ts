@@ -26,16 +26,18 @@ describe('giriş kodu kutuya dolsun LOCK', () => {
     assert.equal(visibleLoginEmailCode({}), '');
   });
 
-  it('kod adımında kopyalanan kod kutuya yazılır; Mac otomatik doldurma durur', () => {
+  it('kod adımında kutu boş kalır; Mac otomatik doldurma ve satıra basma durur', () => {
     const panel = readFileSync(join(here, '../components/giris/GirisLoginPanel.tsx'), 'utf8');
     assert.match(panel, /extractLoginEmailCode/);
-    assert.match(panel, /visibleLoginEmailCode/);
-    assert.match(panel, /payload\.code/);
-    assert.match(panel, /autoComplete="one-time-code"/);
-    assert.match(panel, /name="one-time-code"/);
+    assert.match(panel, /autoComplete="off"/);
+    assert.match(panel, /name="login-email-code"/);
     assert.match(panel, /clipboard/);
     assert.match(panel, /Yapıştır/);
     assert.match(panel, /maskLoginMailbox/);
+    assert.match(panel, /visibilityState === 'hidden'/);
+    assert.doesNotMatch(panel, /visibleLoginEmailCode/);
+    assert.doesNotMatch(panel, /payload\.code/);
+    assert.doesNotMatch(panel, /one-time-code/);
     assert.doesNotMatch(panel, /placeholder="000000"/);
     assert.doesNotMatch(panel, /Google/);
   });

@@ -62,6 +62,11 @@ const CORPORATE_ONLY_SUB_TYPES = new Set([
 export function mergeCustomerSubTypes(stored: CustomerSubTypeDef[]): CustomerSubTypeDef[] {
   const clean = stored.filter((row) => row?.value && row.value !== 'eksper');
   if (clean.length === 0) return DEFAULT_CUSTOMER_SUB_TYPES.filter((t) => t.value !== 'eksper');
+  const seen = new Set(clean.map((row) => row.value));
+  for (const row of DEFAULT_CUSTOMER_SUB_TYPES) {
+    if (row.value === 'eksper' || seen.has(row.value)) continue;
+    clean.push(row);
+  }
   return clean;
 }
 
@@ -429,3 +434,8 @@ export function formatCustomerUpdatedMeta(customer: {
     : '';
   return who ? `${who} — ${when}` : when;
 }
+
+export {
+  matchInsuranceCatalogCompany,
+  normalizeInsuranceCatalogName,
+} from './insurance-catalog-match';

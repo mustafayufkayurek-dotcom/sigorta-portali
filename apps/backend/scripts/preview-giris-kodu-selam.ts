@@ -15,7 +15,7 @@ let html = buildTransactionalEmailHtml({
   title: 'Giriş Kodu',
   greeting,
   intro:
-    'Giriş için 6 haneli kod. Kodu kopyalayıp giriş ekranına dönün; kutu dolar. 10 dakika geçerlidir. Bu talebi siz oluşturmadıysanız yok sayın.',
+    'Giriş için 6 haneli kod. Kodu kopyalayıp giriş ekranında Yapıştır ile yazın. 10 dakika geçerlidir. Bu talebi siz oluşturmadıysanız yok sayın.',
   bodyHtml:
     '<p style="margin:0 0 12px;font-size:28px;line-height:1.2;letter-spacing:0.18em;font-weight:800;">Kod 847291</p>',
   portalUrl: 'http://localhost:3001/giris',

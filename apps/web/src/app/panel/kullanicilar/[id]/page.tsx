@@ -16,11 +16,12 @@ import {
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
 import { formatPhoneDisplay } from '@/data/country-codes';
-import { displayPersonDuty, showsUserOperationalAuthorization } from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import { displayPersonDuty, showsMeridyenWorkHoursToggle, showsUserOperationalAuthorization } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import {
   OperationalAccessGrantPanel,
   resolveDefaultAuthorizationFlow,
 } from '@/components/users/OperationalAccessGrantPanel';
+import { WorkHoursGateToggle } from '@/components/users/WorkHoursGateToggle';
 
 
 function fmtDate(d: string | null | undefined) { return d ? new Date(d).toLocaleDateString('tr-TR') : '—'; }
@@ -45,7 +46,15 @@ function SectionCard({ title, children }: { title: string; children: React.React
 }
 
 // ── Profil Tab ──────────────────────────────────────────────────────────────────
-function ProfilTab({ user }: { user: any }) {
+function ProfilTab({
+  user,
+  canEditHours,
+  onHoursSaved,
+}: {
+  user: any;
+  canEditHours: boolean;
+  onHoursSaved: (restricted: boolean) => void;
+}) {
   const fields = [
     { label: 'Ad', value: user.firstName },
     { label: 'Soyad', value: user.lastName },
@@ -56,7 +65,9 @@ function ProfilTab({ user }: { user: any }) {
     { label: 'Durum', value: user.isActive ? 'Aktif' : 'Pasif' },
     { label: 'Kayıt Tarihi', value: fmtDate(user.createdAt) },
   ];
+  const showHours = showsMeridyenWorkHoursToggle(undefined, user.role?.code) && !user.portalCustomerId;
   return (
+    <div className="space-y-4">
     <SectionCard title="Kullanıcı Bilgileri">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
         {fields.map((f) => (
@@ -67,6 +78,17 @@ function ProfilTab({ user }: { user: any }) {
         ))}
       </div>
     </SectionCard>
+    {showHours && (
+      <WorkHoursGateToggle
+        userId={user.id}
+        roleCode={user.role?.code}
+        portalCustomerId={user.portalCustomerId}
+        restrictedOverride={user.workHoursRestricted}
+        canEdit={canEditHours}
+        onSaved={onHoursSaved}
+      />
+    )}
+    </div>
   );
 }
 
@@ -574,7 +596,13 @@ export default function KullaniciDetayPage() {
 
       {/* Content */}
       <div className="max-w-5xl mx-auto px-6 py-6">
-        {activeTab === 'profil' && <ProfilTab user={user} />}
+        {activeTab === 'profil' && (
+          <ProfilTab
+            user={user}
+            canEditHours={isAdminOrManager}
+            onHoursSaved={(next) => setUser((prev: any) => (prev ? { ...prev, workHoursRestricted: next } : prev))}
+          />
+        )}
         {activeTab === 'bolgeler' && <BolgelerTab user={user} onUpdate={loadUser} />}
         {activeTab === 'randevular' && <RandevularTab userId={id!} />}
         {activeTab === 'ekranlar' && canManageScreens && (

@@ -1,7 +1,6 @@
 export const PORTAL_CUSTOMER_SUB_TYPES = [
   'eksper_firmasi',
   'eksper',
-  'sigorta_sirketi',
   'broker_firmasi',
   'asistan_firmasi',
 ] as const;

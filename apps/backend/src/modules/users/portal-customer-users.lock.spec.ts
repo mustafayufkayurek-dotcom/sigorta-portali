@@ -15,8 +15,8 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe('müşteri kartı portal kullanıcısı LOCK', () => {
-  it('yalnız sigorta eksper broker asistans kartında portal kullanıcısı açılır', () => {
-    assert.equal(isPortalCustomerSubType('sigorta_sirketi'), true);
+  it('yalnız eksper broker asistans kartında portal kullanıcısı açılır', () => {
+    assert.equal(isPortalCustomerSubType('sigorta_sirketi'), false);
     assert.equal(isPortalCustomerSubType('eksper_firmasi'), true);
     assert.equal(isPortalCustomerSubType('broker_firmasi'), true);
     assert.equal(isPortalCustomerSubType('asistan_firmasi'), true);
@@ -38,7 +38,7 @@ describe('müşteri kartı portal kullanıcısı LOCK', () => {
     assert.match(controller, /portal-invite\/:customerId/);
     const usersPage = readFileSync(join(here, '../../../../web/src/app/panel/kullanicilar/page.tsx'), 'utf8');
     assert.match(usersPage, /eksper-ofisi-personel-listesi/);
-    assert.match(usersPage, /ekspertiz-firma-secim-popup/);
+    assert.match(usersPage, /ekspertiz-firma-secim/);
     assert.match(usersPage, /sigorta-firma-secim/);
     assert.doesNotMatch(usersPage, /name="expert-firm"/);
     assert.doesNotMatch(usersPage, /name="insurance-company-user-company"/);
@@ -54,5 +54,8 @@ describe('müşteri kartı portal kullanıcısı LOCK', () => {
     assert.match(panel, /placeholder="Görev"/);
     assert.match(panel, /portal-invite/);
     assert.doesNotMatch(panel, /Görev seçin/);
+    const portal = readFileSync(join(here, 'portal-customer-users.ts'), 'utf8');
+    assert.match(portal, /Ayarlar’daki sigorta şirketine bağlı değil/);
+    assert.doesNotMatch(portal, /prisma\.insuranceCompany\.create/);
   });
 });

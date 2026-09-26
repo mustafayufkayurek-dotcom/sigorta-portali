@@ -132,6 +132,11 @@ const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubType[] = [
 function mergeCustomerSubTypes(stored: CustomerSubType[]): CustomerSubType[] {
   const clean = stored.filter((row) => row?.value && row.value !== 'eksper');
   if (clean.length === 0) return DEFAULT_CUSTOMER_SUB_TYPES;
+  const seen = new Set(clean.map((row) => row.value));
+  for (const row of DEFAULT_CUSTOMER_SUB_TYPES) {
+    if (seen.has(row.value)) continue;
+    clean.push(row);
+  }
   return clean;
 }
 

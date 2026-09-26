@@ -12,6 +12,7 @@ import { assertNewPassword, hashPassword, verifyPassword } from '@/common/securi
 import { randomInt } from 'crypto';
 import {
   buildPlatformMailCopyNotice,
+  isMeridyenStaffRole,
   welcomeInviteAdminCopies,
 } from '@sigorta/shared';
 import { pickUserWriteScalars } from './user-update-fields';
@@ -135,9 +136,10 @@ export class UsersService {
     private readonly config: ConfigService,
   ) {}
 
-  async findAll(params?: { page?: number; limit?: number; roleId?: string; branchId?: string; customerId?: string }) {
+  async findAll(params?: { page?: number; limit?: number; roleId?: string; branchId?: string; customerId?: string; insuranceCompanyId?: string }) {
     const page = parseInt(String(params?.page || 1), 10);
-    const defaultLimit = params?.customerId ? 100 : 20;
+    const insuranceCompanyId = String(params?.insuranceCompanyId ?? '').trim();
+    const defaultLimit = params?.customerId || insuranceCompanyId ? 100 : 20;
     const limit = parseInt(String(params?.limit || defaultLimit), 10);
     const skip = (page - 1) * limit;
 
@@ -150,6 +152,12 @@ export class UsersService {
     const customerId = String(params?.customerId ?? '').trim();
     if (customerId) {
       where.AND = [...(where.AND ?? []), await this.portalUsersWhereForCustomer(customerId)];
+    }
+    if (insuranceCompanyId) {
+      where.AND = [
+        ...(where.AND ?? []),
+        { userInsuranceCompanyScopes: { some: { insuranceCompanyId } } },
+      ];
     }
 
     const [data, total, officeContacts] = await Promise.all([
@@ -329,6 +337,10 @@ export class UsersService {
       portalCustomerId: requestedPortalCustomerId,
     } = data;
     const rest: any = pickUserWriteScalars(data);
+    await this.applyWorkHoursRestrictedWrite(rest, data, {
+      roleId: typeof rest.roleId === 'string' ? rest.roleId : '',
+      portalCustomerId: requestedPortalCustomerId,
+    });
     await this.validateNestedUserRelations(departmentMemberships, responsibilityAssignments);
     const resolvedInsuranceCompanyIds = await this.resolveInviteInsuranceCompanyIds({
       insuranceCustomerId,
@@ -362,7 +374,6 @@ export class UsersService {
       const portalCustomerId = this.derivePortalCustomerId({
         portalCustomerId: requestedPortalCustomerId,
         expertCustomerId,
-        insuranceCustomerId,
         brokerCustomerId,
         assistantCustomerIds,
       });
@@ -691,7 +702,7 @@ export class UsersService {
       if (role.code === 'broker_user' && !context.brokerCustomerId) {
         throw new BadRequestException('Broker firması seçilmelidir');
       }
-      if (role.code === 'insurance_company_user' && !context.insuranceCustomerId && (!context.insuranceCompanyIds || context.insuranceCompanyIds.length !== 1)) {
+      if (role.code === 'insurance_company_user' && (!context.insuranceCompanyIds || context.insuranceCompanyIds.length !== 1)) {
         throw new BadRequestException('Sigorta şirketi seçilmelidir');
       }
       if (role.code === 'assistance_company_user' && (!context.assistantCustomerIds || context.assistantCustomerIds.length !== 1)) {
@@ -707,6 +718,16 @@ export class UsersService {
       // Broker firması yalnızca davet sırasında zorunlu; düzenlemede kalıcı bağ henüz yok.
     }
 
+    if (context.insuranceCompanyIds?.length) {
+      const companies = await this.prisma.insuranceCompany.findMany({
+        where: { id: { in: context.insuranceCompanyIds } },
+        select: { id: true, status: true },
+      });
+      if (companies.length !== context.insuranceCompanyIds.length || companies.some((row) => row.status !== 'active')) {
+        throw new BadRequestException('Geçerli bir sigorta şirketi seçilmelidir');
+      }
+    }
+
     if (context.expertCustomerId) {
       const customer = await this.prisma.customer.findUnique({ where: { id: context.expertCustomerId } });
       if (!customer || customer.status !== 'active' || customer.entityType !== 'corporate') {
@@ -714,16 +735,6 @@ export class UsersService {
       }
       if (!customer.subType || !HASAR_EXPERT_CUSTOMER_SUB_TYPES.has(customer.subType)) {
         throw new BadRequestException('Seçilen kayıt ekspertiz firması değil');
-      }
-    }
-
-    if (context.insuranceCustomerId) {
-      const customer = await this.prisma.customer.findUnique({ where: { id: context.insuranceCustomerId } });
-      if (!customer || customer.status !== 'active' || customer.entityType !== 'corporate') {
-        throw new BadRequestException('Geçerli bir sigorta şirketi kartı seçilmelidir');
-      }
-      if (customer.subType !== 'sigorta_sirketi') {
-        throw new BadRequestException('Seçilen kayıt sigorta şirketi değil');
       }
     }
 
@@ -756,14 +767,12 @@ export class UsersService {
   private derivePortalCustomerId(params: {
     portalCustomerId?: string | null;
     expertCustomerId?: string | null;
-    insuranceCustomerId?: string | null;
     brokerCustomerId?: string | null;
     assistantCustomerIds?: string[] | null;
   }): string | undefined {
     const value = [
       params.portalCustomerId,
       params.expertCustomerId,
-      params.insuranceCustomerId,
       params.brokerCustomerId,
       params.assistantCustomerIds?.[0],
     ]
@@ -776,16 +785,21 @@ export class UsersService {
     insuranceCustomerId?: string | null;
     insuranceCompanyIds?: string[] | null;
   }): Promise<string[] | undefined> {
+    if (Array.isArray(params.insuranceCompanyIds) && params.insuranceCompanyIds.length > 0) {
+      return [...new Set(params.insuranceCompanyIds.filter(Boolean))];
+    }
     if (params.insuranceCustomerId) {
+      const fromCatalog = await this.prisma.insuranceCompany.findUnique({
+        where: { id: params.insuranceCustomerId },
+        select: { id: true, status: true },
+      });
+      if (fromCatalog?.status === 'active') return [fromCatalog.id];
       const customer = await this.prisma.customer.findUnique({ where: { id: params.insuranceCustomerId } });
       if (!customer || customer.status !== 'active' || customer.entityType !== 'corporate' || customer.subType !== 'sigorta_sirketi') {
-        throw new BadRequestException('Geçerli bir sigorta şirketi kartı seçilmelidir');
+        throw new BadRequestException('Geçerli bir sigorta şirketi seçilmelidir');
       }
       const insuranceCompanyId = await ensureInsuranceCompanyIdForCustomer(this.prisma, customer);
       return [insuranceCompanyId];
-    }
-    if (Array.isArray(params.insuranceCompanyIds) && params.insuranceCompanyIds.length > 0) {
-      return [...new Set(params.insuranceCompanyIds.filter(Boolean))];
     }
     return undefined;
   }
@@ -836,8 +850,11 @@ export class UsersService {
     if (!customer || customer.status !== 'active') {
       throw new BadRequestException('Geçerli bir müşteri kartı bulunamadı');
     }
+    if (customer.subType === 'sigorta_sirketi') {
+      throw new BadRequestException('Sigorta kullanıcısı Kullanıcılar’dan, Ayarlar’daki şirkete eklenir.');
+    }
     if (customer.entityType !== 'corporate' || !isPortalCustomerSubType(customer.subType)) {
-      throw new BadRequestException('Bu kart için portal kullanıcısı açılamaz. Sigorta, eksper, broker veya asistans kartı gerekir.');
+      throw new BadRequestException('Bu kart için portal kullanıcısı açılamaz. Eksper, broker veya asistans kartı gerekir.');
     }
 
     const roleCodes = roleCodesForPortalCustomerSubType(customer.subType);
@@ -859,9 +876,6 @@ export class UsersService {
     });
 
     const subType = customer.subType ?? '';
-    const insuranceCompanyIds = subType === 'sigorta_sirketi'
-      ? [await ensureInsuranceCompanyIdForCustomer(this.prisma, customer)]
-      : undefined;
     const expertCustomerId = (subType === 'eksper_firmasi' || subType === 'eksper') ? customer.id : undefined;
     const brokerCustomerId = subType === 'broker_firmasi' ? customer.id : undefined;
     const assistantCustomerIds = subType === 'asistan_firmasi' ? [customer.id] : undefined;
@@ -895,7 +909,6 @@ export class UsersService {
         portalCustomerId: customer.id,
         expertCustomerId,
         brokerCustomerId,
-        insuranceCompanyIds,
         assistantCustomerIds,
       });
       invited.push({
@@ -1117,6 +1130,10 @@ export class UsersService {
       brokerCustomerId,
     } = data;
     const rest: any = pickUserWriteScalars(data);
+    await this.applyWorkHoursRestrictedWrite(rest, data, {
+      roleId: typeof rest.roleId === 'string' ? rest.roleId : user.roleId,
+      portalCustomerId: data.portalCustomerId ?? user.portalCustomerId,
+    });
     if (isProtectedSystemAccount(user)) {
       delete rest.roleId;
       delete rest.status;
@@ -1133,7 +1150,6 @@ export class UsersService {
     const portalCustomerId = this.derivePortalCustomerId({
       portalCustomerId: data.portalCustomerId,
       expertCustomerId,
-      insuranceCustomerId,
       brokerCustomerId,
       assistantCustomerIds,
     });
@@ -1421,6 +1437,27 @@ export class UsersService {
     return issuedTemporaryPassword
       ? { ...result, temporaryPassword: issuedTemporaryPassword }
       : result;
+  }
+
+  /** Mesai kapısı yalnız Meridyen personeli kişi kaydına yazılır. */
+  private async applyWorkHoursRestrictedWrite(
+    rest: Record<string, unknown>,
+    data: Record<string, unknown>,
+    ctx: { roleId: string; portalCustomerId?: string | null },
+  ) {
+    if (!Object.prototype.hasOwnProperty.call(data, 'workHoursRestricted')) {
+      delete rest.workHoursRestricted;
+      return;
+    }
+    const roleId = typeof rest.roleId === 'string' && rest.roleId ? rest.roleId : ctx.roleId;
+    const role = roleId
+      ? await this.prisma.role.findUnique({ where: { id: roleId }, select: { code: true } })
+      : null;
+    if (ctx.portalCustomerId || !isMeridyenStaffRole(role?.code)) {
+      delete rest.workHoursRestricted;
+      return;
+    }
+    rest.workHoursRestricted = data.workHoursRestricted === true;
   }
 
   private async validateNestedUserRelations(

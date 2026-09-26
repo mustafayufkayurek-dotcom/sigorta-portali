@@ -13,7 +13,7 @@ import {
 import { getLoginHomePath } from '@/utils/panel-access';
 import { safePanelNextPath } from '@/lib/panel-auth-gate';
 import { isCompanyWebsiteHost, softwareLoginHref, SOFTWARE_LOGIN_URL } from '@/utils/site-renewal';
-import { extractLoginEmailCode, visibleLoginEmailCode } from '@/utils/login-email-code-fill';
+import { extractLoginEmailCode } from '@/utils/login-email-code-fill';
 import { maskLoginMailbox } from '@sigorta/shared';
 
 const API_URL = API;
@@ -172,47 +172,20 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
 
   useEffect(() => {
     if (!challengeId) return;
-    let cancelled = false;
-
-    const applyCode = (code: string) => {
-      if (cancelled || !code) return;
-      setEmailCode((current) => (current.length === 6 ? current : code));
-    };
-
-    const fillFromClipboard = async () => {
-      if (!navigator.clipboard?.readText) return;
-      try {
-        const text = await navigator.clipboard.readText();
-        const code = extractLoginEmailCode(text);
-        if (code) applyCode(code);
-      } catch {
-        /* İzin yoksa sessiz; yapıştırma yine çalışır. */
-      }
-    };
-
-    const onPaste = (event: ClipboardEvent) => {
-      const text = event.clipboardData?.getData('text') ?? '';
-      const code = extractLoginEmailCode(text);
-      if (!code) return;
-      event.preventDefault();
-      applyCode(code);
-    };
-
-    const onTabBack = () => {
-      if (document.visibilityState === 'visible') void fillFromClipboard();
-    };
-
-    window.addEventListener('focus', onTabBack);
-    document.addEventListener('visibilitychange', onTabBack);
-    document.addEventListener('paste', onPaste);
+    setEmailCode('');
     codeInputRef.current?.focus();
-    void fillFromClipboard();
 
+    const clearIfLeft = () => {
+      if (document.visibilityState === 'hidden') setEmailCode('');
+    };
+    const clearOnRestore = (event: PageTransitionEvent) => {
+      if (event.persisted) setEmailCode('');
+    };
+    document.addEventListener('visibilitychange', clearIfLeft);
+    window.addEventListener('pageshow', clearOnRestore);
     return () => {
-      cancelled = true;
-      window.removeEventListener('focus', onTabBack);
-      document.removeEventListener('visibilitychange', onTabBack);
-      document.removeEventListener('paste', onPaste);
+      document.removeEventListener('visibilitychange', clearIfLeft);
+      window.removeEventListener('pageshow', clearOnRestore);
     };
   }, [challengeId]);
 
@@ -261,7 +234,7 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
       const payload = response.data?.data ?? response.data;
       if (payload?.requiresEmailCode && payload?.challengeId) {
         setChallengeId(String(payload.challengeId));
-        setEmailCode(visibleLoginEmailCode(payload.code));
+        setEmailCode('');
         return;
       }
       await finishLogin(payload);
@@ -306,8 +279,8 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
       );
       const payload = response.data?.data ?? response.data;
       if (payload?.challengeId) setChallengeId(String(payload.challengeId));
-      setEmailCode(visibleLoginEmailCode(payload?.code));
-      setNotice('Yeni kod satırda durur.');
+      setEmailCode('');
+      setNotice('Yeni kod e-postanıza gitti. Satır boş kalır; Yapıştır ile yazın.');
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
       const status = axiosErr.response?.status;
@@ -369,23 +342,26 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
           {challengeId ? (
           <div>
             <p className="login-sub fade-up-2" style={{ marginTop: 0 }}>
-              Kod satırda durur. Aynı kod {maskLoginMailbox(email)} kutusuna da gitti.
+              Kod yalnızca {maskLoginMailbox(email)} kutusuna gider; bu satıra kendiliğinden yazılmaz.
               Gelenlerde yoksa Gereksiz veya Silinmiş Öğeler’e bakın.
             </p>
             <form onSubmit={handleEmailCode} noValidate>
-            <label className="form-label" htmlFor="one-time-code">Giriş Kodu</label>
+            <label className="form-label" htmlFor="login-email-code">Giriş Kodu</label>
             <div className="form-input-wrap" style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
               <input
                 ref={codeInputRef}
-                id="one-time-code"
-                name="one-time-code"
+                id="login-email-code"
+                name="login-email-code"
                 type="text"
                 inputMode="numeric"
-                autoComplete="one-time-code"
+                autoComplete="off"
                 autoCapitalize="off"
                 autoCorrect="off"
                 spellCheck={false}
                 autoFocus
+                data-1p-ignore
+                data-lpignore="true"
+                data-form-type="other"
                 value={emailCode}
                 onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 onPaste={(e) => {
@@ -395,15 +371,7 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
                   e.preventDefault();
                   setEmailCode(code);
                 }}
-                onFocus={(e) => {
-                  scrollFieldIntoView(e);
-                  if (navigator.clipboard?.readText) {
-                    void navigator.clipboard.readText().then((text) => {
-                      const code = extractLoginEmailCode(text);
-                      if (code) setEmailCode((current) => (current.length === 6 ? current : code));
-                    }).catch(() => {});
-                  }
-                }}
+                onFocus={scrollFieldIntoView}
                 placeholder=""
                 className="form-input scroll-input-safe"
                 required

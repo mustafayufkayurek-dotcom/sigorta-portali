@@ -743,8 +743,8 @@ function CustomerDrawer({ customerId, open, onClose, onEdit }: CustomerDrawerPro
 
 const SUB_TYPE_FILTER_CHIPS: { value: string; label: string }[] = [
   { value: '', label: 'Tümü' },
-  { value: 'eksper_firmasi', label: 'Eksper Firması' },
   { value: 'sigorta_sirketi', label: 'Sigorta Şirketi' },
+  { value: 'eksper_firmasi', label: 'Eksper Firması' },
   { value: 'broker_firmasi', label: 'Broker Firması' },
   { value: 'asistan_firmasi', label: 'Asistan Firması' },
   { value: 'private_customer', label: 'Özel Müşteri' },
@@ -1963,7 +1963,11 @@ export default function MusterilerPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
           <p className="text-sm text-blue-900">
             <span className="font-semibold">{settingsReturn.returnLabel}</span>
-            <span className="text-blue-700"> — Müşteri grubu kaydı ekliyorsunuz</span>
+            <span className="text-blue-700">
+              {settingsReturn.returnTo.includes('sigorta-sirketleri')
+                ? ' — Portal kartı ekliyorsunuz'
+                : ' — Müşteri grubu kaydı ekliyorsunuz'}
+            </span>
           </p>
           <div className="flex items-center gap-2">
             <Link

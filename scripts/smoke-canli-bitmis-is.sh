@@ -55,6 +55,10 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/auth/login-email-code.lock.spec.ts \
   apps/web/src/components/giris/giris-login-email-code.lock.spec.ts \
   apps/web/src/utils/login-email-code-fill.lock.spec.ts \
+  packages/shared/src/work-hours-gate-policy.lock.spec.ts \
+  apps/backend/src/modules/users/user-work-hours.lock.spec.ts \
+  apps/backend/src/modules/customers/insurance-catalog-bind.lock.spec.ts \
+  apps/web/src/utils/customer-form-helpers.insurance-bind.lock.spec.ts \
   apps/web/src/components/session-timeout-idle.lock.spec.ts \
   apps/web/src/utils/auth-session-refresh.lock.spec.ts \
   apps/web/src/features/dashboard/components/management-dashboard/morning-briefing.lock.spec.ts \

@@ -8,6 +8,7 @@ export type CustomerFileStatsParty = {
   fullName?: string | null;
   shortName?: string | null;
   subType?: string | null;
+  insuranceCompanyId?: string | null;
 };
 
 export type CustomerFileStats = {
@@ -77,6 +78,9 @@ export async function resolveInsuranceCompanyIdsForCustomer(
   prisma: PrismaService,
   customer: CustomerFileStatsParty,
 ): Promise<string[]> {
+  const boundId = customer.insuranceCompanyId?.trim();
+  if (boundId) return [boundId];
+
   if (!shouldLinkInsuranceCompany(customer) && !customer.taxNumber?.trim()) {
     return [];
   }

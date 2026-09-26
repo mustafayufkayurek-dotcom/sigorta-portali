@@ -12,6 +12,7 @@ export const USER_WRITE_SCALAR_KEYS = [
   'employeeCode',
   'isMobileUser',
   'isWebUser',
+  'workHoursRestricted',
 ] as const;
 
 export type UserWriteScalarKey = (typeof USER_WRITE_SCALAR_KEYS)[number];

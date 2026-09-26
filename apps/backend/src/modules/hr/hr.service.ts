@@ -41,6 +41,7 @@ import {
 } from './hr-attendance-reminder.helper';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
 import { RecordActivityBeatDto } from './dto/record-activity-beat.dto';
+import { workHoursGateApplies } from '@sigorta/shared';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 
 type AuthUser = {
@@ -435,12 +436,35 @@ export class HrService {
 
   /**
    * Panel giriş / çıkış mesai kapısı.
-   * Admin, yönetici ve portal rolleri muaf.
+   * Varsayılan: yönetici muaf, finans/ofis/saha kısıtlı.
+   * Kişi kaydı (Kullanıcılar) kısıtı açar veya kapatır. Yalnız Meridyen personeli.
    * Pazar + Türkiye resmi tatilleri + mesai bitişi sonrası → giriş kapalı.
    */
-  getPanelAccess(user: AuthUser) {
-    const role = (user.roleCode ?? '').toUpperCase();
-    const subjectToGate = this.isSubjectToWorkHoursGate(role);
+  async getPanelAccess(user: AuthUser) {
+    let roleCode = user.roleCode ?? '';
+    let portalCustomerId: string | null = null;
+    let restrictedOverride: boolean | null = null;
+    const userId = user.id ?? user.userId;
+    if (userId) {
+      const row = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          workHoursRestricted: true,
+          portalCustomerId: true,
+          role: { select: { code: true } },
+        },
+      });
+      if (row) {
+        roleCode = row.role?.code ?? roleCode;
+        portalCustomerId = row.portalCustomerId;
+        restrictedOverride = row.workHoursRestricted;
+      }
+    }
+    const subjectToGate = workHoursGateApplies({
+      roleCode,
+      portalCustomerId,
+      restrictedOverride,
+    });
     const schedule = getWorkHoursSchedule();
     const access = evaluatePanelAccess(new Date());
     const earlyExit = evaluateEarlyExitNotice(new Date());
@@ -492,20 +516,6 @@ export class HrService {
         expectedEnd: earlyExit.expectedEnd,
       },
     };
-  }
-
-  private isSubjectToWorkHoursGate(role: string): boolean {
-    if (!role) return false;
-    if (role === 'ADMIN' || role === 'MANAGER') return false;
-    if (
-      role === 'EXPERT'
-      || role === 'INSURANCE_COMPANY_USER'
-      || role === 'ASSISTANCE_COMPANY_USER'
-      || role.includes('PORTAL')
-    ) {
-      return false;
-    }
-    return true;
   }
 
   /** Özet Ve Denetim ekranı — gün sonu puantaj onay durumu (gerçek veri). */

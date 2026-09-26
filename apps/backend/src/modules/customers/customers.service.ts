@@ -502,6 +502,7 @@ export class CustomersService {
     const { contacts, contactInfos, customerType, ...rest } = data as any;
     this.sanitizeCustomerWriteData(rest);
     await this.assertCustomerSubTypeIfRequired(rest);
+    await this.assertInsuranceCatalogBind(rest);
     this.assertShortNameRequired(rest);
 
     // entityType / type eşleme
@@ -538,6 +539,7 @@ export class CustomersService {
           tax_number: 'Vergi No',
           phone: 'Telefon',
           email: 'E-posta',
+          insurance_company_id: 'Sigorta şirketi bağ',
         };
         throw new ConflictException(`Bu ${fieldLabel[field] ?? field} zaten kayıtlı`);
       }
@@ -587,6 +589,7 @@ export class CustomersService {
     const { contacts, contactInfos, customerType, ...rest } = data as any;
     this.sanitizeCustomerWriteData(rest);
     await this.assertCustomerSubTypeIfRequired(rest);
+    await this.assertInsuranceCatalogBind(rest, existing);
     this.keepExistingShortName(rest, existing);
     this.assertShortNameRequired(rest);
     if (customerType && !rest.entityType) {
@@ -616,6 +619,7 @@ export class CustomersService {
           tax_number: 'Vergi No',
           phone: 'Telefon',
           email: 'E-posta',
+          insurance_company_id: 'Sigorta şirketi bağ',
         };
         throw new ConflictException(`Bu ${fieldLabel[field] ?? field} zaten kayıtlı`);
       }
@@ -1009,6 +1013,17 @@ export class CustomersService {
     return Buffer.from(buf);
   }
 
+  /** Sigorta dışı kartta Ayarlar şirket kimliği durmaz. */
+  private async assertInsuranceCatalogBind(
+    rest: Record<string, unknown>,
+    existing?: { id?: string; subType?: string | null; insuranceCompanyId?: string | null },
+  ): Promise<void> {
+    const subType = String(rest.subType ?? existing?.subType ?? '').trim();
+    if (subType !== 'sigorta_sirketi') {
+      rest.insuranceCompanyId = null;
+    }
+  }
+
   /** Prisma Customer modelinde olmayan alanları ayıklar; privateServiceType → serviceType eşlemesi. */
   private sanitizeCustomerWriteData(rest: Record<string, unknown>): void {
     if (rest.privateServiceType && !rest.serviceType) {
@@ -1024,6 +1039,7 @@ export class CustomersService {
       'buildingNo', 'doorNo', 'address', 'birthDate', 'latitude', 'longitude',
       'serviceType', 'serviceBranches', 'source', 'satisfactionScore',
       'followUpDate', 'tags', 'status', 'notes', 'updatedByUserId',
+      'insuranceCompanyId',
     ]);
     for (const key of Object.keys(rest)) {
       if (!allowed.has(key)) delete rest[key];

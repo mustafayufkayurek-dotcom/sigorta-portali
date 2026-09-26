@@ -1,9 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import type { PrismaService } from '@/prisma/prisma.service';
-import {
-  partyNamesLikelyMatch,
-  resolveInsuranceCompanyIdsForCustomer,
-} from '@/modules/customers/customer-file-stats';
+import { resolveInsuranceCompanyIdsForCustomer } from '@/modules/customers/customer-file-stats';
 
 export {
   PORTAL_CUSTOMER_SUB_TYPES,
@@ -13,19 +10,7 @@ export {
 } from './portal-customer-subtypes';
 export type { PortalCustomerSubType } from './portal-customer-subtypes';
 
-function slugInsuranceCode(name: string): string {
-  const slug = name
-    .toUpperCase()
-    .replace(/[ÇçĞğİıÖöŞşÜü]/g, (c) => (
-      { Ç: 'C', ç: 'C', Ğ: 'G', ğ: 'G', İ: 'I', ı: 'I', Ö: 'O', ö: 'O', Ş: 'S', ş: 'S', Ü: 'U', ü: 'U' }[c] ?? c
-    ))
-    .replace(/[^A-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .substring(0, 20);
-  return slug || 'SIRKET';
-}
-
-/** Sigorta portal kapsamı müşteri kartından — vergi no / unvan, yoksa yeni şirket kaydı */
+/** Sigorta portal kapsamı müşteri kartındaki Ayarlar bağından gelir. */
 export async function ensureInsuranceCompanyIdForCustomer(
   prisma: PrismaService,
   customer: {
@@ -35,13 +20,24 @@ export async function ensureInsuranceCompanyIdForCustomer(
     fullName?: string | null;
     shortName?: string | null;
     subType?: string | null;
-    phone?: string | null;
-    email?: string | null;
-    address?: string | null;
+    insuranceCompanyId?: string | null;
   },
 ): Promise<string> {
+  const bound = customer.insuranceCompanyId?.trim();
+  if (bound) return bound;
+
   const existing = await resolveInsuranceCompanyIdsForCustomer(prisma, customer);
-  if (existing.length === 1) return existing[0]!;
+  if (existing.length === 1) {
+    try {
+      await prisma.customer.update({
+        where: { id: customer.id },
+        data: { insuranceCompanyId: existing[0] },
+      });
+    } catch {
+      /* başka kart aynı şirkete bağlıysa kayıt durur; davet yine o id ile gider */
+    }
+    return existing[0]!;
+  }
   if (existing.length > 1) {
     const tax = customer.taxNumber?.trim();
     if (tax) {
@@ -49,41 +45,21 @@ export async function ensureInsuranceCompanyIdForCustomer(
         where: { id: { in: existing }, taxNumber: tax },
         select: { id: true },
       });
-      if (byTax) return byTax.id;
+      if (byTax) {
+        try {
+          await prisma.customer.update({
+            where: { id: customer.id },
+            data: { insuranceCompanyId: byTax.id },
+          });
+        } catch {
+          /* benzersiz bağ çakışması */
+        }
+        return byTax.id;
+      }
     }
-    return existing[0]!;
   }
 
-  const name = (customer.companyName ?? customer.fullName ?? customer.shortName ?? '').trim();
-  if (!name) {
-    throw new BadRequestException('Sigorta şirketi unvanı eksik. Kartı tamamlayıp tekrar deneyin.');
-  }
-
-  const allActive = await prisma.insuranceCompany.findMany({
-    where: { status: 'active' },
-    select: { id: true, name: true },
-  });
-  const nameMatch = allActive.find((row) => partyNamesLikelyMatch(row.name, name));
-  if (nameMatch) return nameMatch.id;
-
-  let code = slugInsuranceCode(customer.shortName?.trim() || name);
-  let attempt = 0;
-  while (await prisma.insuranceCompany.findUnique({ where: { code } })) {
-    attempt += 1;
-    code = `${slugInsuranceCode(name)}_${attempt}`;
-  }
-
-  const created = await prisma.insuranceCompany.create({
-    data: {
-      code,
-      name,
-      taxNumber: customer.taxNumber?.trim() || undefined,
-      contactPhone: customer.phone?.trim() || undefined,
-      contactEmail: customer.email?.trim() || undefined,
-      address: customer.address?.trim() || undefined,
-      status: 'active',
-    },
-    select: { id: true },
-  });
-  return created.id;
+  throw new BadRequestException(
+    'Bu kart Ayarlar’daki sigorta şirketine bağlı değil. Kartı açıp şirketi seçin.',
+  );
 }

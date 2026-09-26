@@ -10,10 +10,12 @@ export type OperationalScopeKey = 'acil_yardim' | 'hasar';
 export type AuthorizationFlow = 'extra_access' | 'leave_substitute';
 
 interface OperationalAccessGrantPanelProps {
-  userId: string;
+  userId?: string;
   compact?: boolean;
   /** İlk açılışta önerilen sekme (rol ipucu; admin değiştirebilir) */
   defaultFlow?: AuthorizationFlow;
+  draftExtraAccess?: Partial<Record<OperationalScopeKey, boolean>>;
+  onDraftExtraAccessChange?: (scope: OperationalScopeKey, enabled: boolean) => void;
 }
 
 const SCOPE_LABELS: Record<OperationalScopeKey, string> = {
@@ -64,7 +66,7 @@ export function resolveDefaultAuthorizationFlow(
   return 'extra_access';
 }
 
-function ToggleSwitch({
+export function ToggleSwitch({
   active,
   disabled,
   onToggle,
@@ -93,14 +95,27 @@ function ToggleSwitch({
   );
 }
 
+export async function grantOperationalExtraAccess(userId: string, scopeType: OperationalScopeKey) {
+  await axios.post(`${API}/operational-access-grants`, {
+    granteeUserId: userId,
+    grantType: 'function_delegation',
+    scopeType,
+    accessLevel: 'manage',
+    validFrom: new Date().toISOString(),
+  }, { headers: authHeader() });
+}
+
 export function OperationalAccessGrantPanel({
   userId,
   compact = false,
   defaultFlow,
+  draftExtraAccess,
+  onDraftExtraAccessChange,
 }: OperationalAccessGrantPanelProps) {
+  const isDraft = !userId;
   const [grants, setGrants] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isDraft);
   const [saving, setSaving] = useState(false);
   const [togglingScope, setTogglingScope] = useState<OperationalScopeKey | null>(null);
   const [error, setError] = useState('');
@@ -110,6 +125,11 @@ export function OperationalAccessGrantPanel({
   const [note, setNote] = useState('');
 
   const loadGrants = useCallback(() => {
+    if (!userId) {
+      setGrants([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     axios.get(`${API}/operational-access-grants`, {
       headers: authHeader(),
@@ -166,6 +186,7 @@ export function OperationalAccessGrantPanel({
     principalUserId?: string;
     reason?: string;
   }) {
+    if (!userId) return;
     await axios.post(`${API}/operational-access-grants`, {
       granteeUserId: userId,
       grantType: payload.grantType,
@@ -183,6 +204,10 @@ export function OperationalAccessGrantPanel({
   }
 
   async function toggleExtraAccess(scope: OperationalScopeKey, enabled: boolean) {
+    if (isDraft) {
+      onDraftExtraAccessChange?.(scope, enabled);
+      return;
+    }
     setTogglingScope(scope);
     setError('');
     try {
@@ -261,13 +286,19 @@ export function OperationalAccessGrantPanel({
           </p>
         )}
 
-        {flow === 'extra_access' ? (
+        {flow === 'leave_substitute' && isDraft ? (
+          <p className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            İzin vekaleti kişi kaydı oluştuktan sonra bu kartta verilir.
+          </p>
+        ) : flow === 'extra_access' ? (
           loading ? (
             <p className="text-sm text-slate-500">Yükleniyor…</p>
           ) : (
             <div className="space-y-2">
               {EXTRA_ACCESS_SCOPES.map((scope) => {
-                const active = Boolean(activeFunctionGrant(scope));
+                const active = isDraft
+                  ? Boolean(draftExtraAccess?.[scope])
+                  : Boolean(activeFunctionGrant(scope));
                 return (
                   <div
                     key={scope}
@@ -337,6 +368,7 @@ export function OperationalAccessGrantPanel({
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       </div>
 
+      {!isDraft && (
       <div className={cardClass}>
         <h4 className={`font-semibold text-slate-800 ${compact ? 'text-xs mb-3' : 'text-sm mb-4'}`}>
           Aktif Kayıtlar
@@ -387,6 +419,7 @@ export function OperationalAccessGrantPanel({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

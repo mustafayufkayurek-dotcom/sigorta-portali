@@ -92,7 +92,7 @@ export function SearchableSelect({
   return (
     <div ref={rootRef} className={`relative ${className}`}>
       <input
-        type="search"
+        type="text"
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}

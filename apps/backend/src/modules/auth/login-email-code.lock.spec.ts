@@ -22,9 +22,10 @@ describe('giriş e-posta kodu kaynak LOCK', () => {
     assert.match(auth, /if \(!result\.sent\)/);
     assert.match(auth, /return null/);
     assert.match(auth, /owner\.status !== 'active'/);
-    assert.match(auth, /Kodu kopyalayıp giriş ekranına dönün/);
+    assert.match(auth, /Kodu kopyalayıp giriş ekranında Yapıştır/);
     assert.match(auth, /Kod \$\{code\}/);
-    assert.match(auth, /challengeId: row\.id, code/);
+    assert.match(auth, /challengeId: row\.id \}/);
+    assert.doesNotMatch(auth, /challengeId: row\.id, code/);
     assert.match(auth, /requestReadReceipt:\s*false/);
     assert.doesNotMatch(auth, /letter-spacing:0\.18em/);
     assert.doesNotMatch(auth, /\|\| 'login-email-code'/);

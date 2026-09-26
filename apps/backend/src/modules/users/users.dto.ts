@@ -67,13 +67,18 @@ export class CreateUserDto {
   @IsBoolean()
   isWebUser?: boolean;
 
+  @ApiPropertyOptional({ description: 'Mesai saati kısıtı. Yalnız Meridyen personeli.' })
+  @IsOptional()
+  @IsBoolean()
+  workHoursRestricted?: boolean;
+
   /** Eksper daveti — müşteri kaydı (eksper_firmasi) */
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
   expertCustomerId?: string;
 
-  /** Sigorta şirketi daveti — müşteri kaydı (sigorta_sirketi) */
+  /** Sigorta portal daveti — Ayarlar sigorta şirketi (eski kart id’si durur, okunmaz) */
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()

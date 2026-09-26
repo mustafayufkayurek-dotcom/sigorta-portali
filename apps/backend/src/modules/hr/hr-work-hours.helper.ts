@@ -5,7 +5,7 @@ import {
   parseDateKey,
 } from './hr-turkey-calendar.helper';
 
-/** Kurumsal mesai penceresi — Europe/Istanbul. Ayar ekranı sonraki faz. */
+/** Kurumsal mesai penceresi — Europe/Istanbul. Kişi kaydı Kullanıcılar’dadır. */
 export const HR_WORK_HOURS = {
   timeZone: 'Europe/Istanbul',
   weekday: { start: '08:30', end: '18:00' },

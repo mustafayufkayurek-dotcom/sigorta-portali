@@ -65,16 +65,47 @@ export function showsUserOperationalAuthorization(
   userTask?: string | null,
   roleCode?: string | null,
 ): boolean {
-  if (userTask === 'operations') return true;
+  if (userTask === 'operations' || userTask === 'finance') return true;
   if (userTask) return false;
-  return roleCodesMatch(roleCode, 'office_staff');
+  return roleCodesMatch(roleCode, 'office_staff') || roleCodesMatch(roleCode, 'finance');
 }
 
-/** Sigorta / eksper / broker / asistans müşteri kartı — portal kullanıcısı buradan açılır */
+export function userInviteCardTitle(input: {
+  mode: 'add' | 'edit';
+  taskLabel?: string | null;
+  personName?: string | null;
+}): string {
+  const task = String(input.taskLabel ?? '').trim();
+  const name = String(input.personName ?? '').trim();
+  if (input.mode === 'add') {
+    return task ? `Kullanıcı Ekle — ${task}` : 'Kullanıcı Ekle';
+  }
+  if (name && task) return `Kullanıcıyı Düzenle — ${name} · ${task}`;
+  if (name) return `Kullanıcıyı Düzenle — ${name}`;
+  return 'Kullanıcıyı Düzenle';
+}
+
+const MERIDYEN_USER_TASKS = new Set(['management', 'operations', 'field_operations', 'finance']);
+
+/** Mesai saati kısıtı düğmesi yalnız Meridyen personelinde. */
+export function showsMeridyenWorkHoursToggle(
+  userTask?: string | null,
+  roleCode?: string | null,
+): boolean {
+  if (userTask) return MERIDYEN_USER_TASKS.has(userTask);
+  return (
+    roleCodesMatch(roleCode, 'admin')
+    || roleCodesMatch(roleCode, 'manager')
+    || roleCodesMatch(roleCode, 'office_staff')
+    || roleCodesMatch(roleCode, 'field_staff')
+    || roleCodesMatch(roleCode, 'finance')
+  );
+}
+
+/** Eksper / broker / asistans müşteri kartı — portal kullanıcısı buradan açılır */
 export const PORTAL_CUSTOMER_SUB_TYPES = [
   'eksper_firmasi',
   'eksper',
-  'sigorta_sirketi',
   'broker_firmasi',
   'asistan_firmasi',
 ] as const;
@@ -316,10 +347,11 @@ export interface AcilYardimAssistantCustomerRecord {
   status?: string | null;
   companyName?: string | null;
   fullName?: string | null;
+  shortName?: string | null;
 }
 
 export function acilYardimAssistantCustomerName(customer: AcilYardimAssistantCustomerRecord) {
-  return (customer.companyName ?? customer.fullName ?? '').trim();
+  return (customer.companyName ?? customer.fullName ?? customer.shortName ?? '').trim();
 }
 
 export function isAcilYardimAssistantCustomer(customer: AcilYardimAssistantCustomerRecord) {
@@ -361,6 +393,7 @@ export interface SigortaCustomerRecord {
   status?: string | null;
   companyName?: string | null;
   fullName?: string | null;
+  insuranceCompanyId?: string | null;
 }
 
 export function sigortaCustomerName(customer: SigortaCustomerRecord) {
@@ -371,6 +404,11 @@ export function isSigortaCustomer(customer: SigortaCustomerRecord) {
   if (customer.status && customer.status !== 'active') return false;
   if (customer.entityType && customer.entityType !== 'corporate') return false;
   return customer.subType === SIGORTA_CUSTOMER_SUB_TYPE;
+}
+
+/** Portal listesi yalnız Ayarlar kaydına bağlanmış sigorta kartını alır. */
+export function isLinkedInsurancePortalCustomer(customer: SigortaCustomerRecord) {
+  return isSigortaCustomer(customer) && Boolean(String(customer.insuranceCompanyId ?? '').trim());
 }
 
 /** Müşteriler → kurumsal → alt tip Broker Firması */

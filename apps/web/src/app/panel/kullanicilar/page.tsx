@@ -12,7 +12,7 @@ import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
-import { Check, Copy, Plus, UserCheck, Users, X } from 'lucide-react';
+import { Check, Copy, Plus, Search, UserCheck, Users, X } from 'lucide-react';
 import { HintIcon } from '@/components/ui/HintIcon';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
@@ -23,8 +23,10 @@ import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { GeographicRegionScopePanel } from '@/components/users/GeographicRegionScopePanel';
 import {
   OperationalAccessGrantPanel,
+  grantOperationalExtraAccess,
   resolveDefaultAuthorizationFlow,
 } from '@/components/users/OperationalAccessGrantPanel';
+import { WorkHoursGateToggle } from '@/components/users/WorkHoursGateToggle';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import {
@@ -72,7 +74,6 @@ import {
   FIELD_OPERATION_AREA_OPTIONS,
   FIELD_OTHER_SUBJECT_LABEL,
   HASAR_EXPERT_CUSTOMER_SUB_TYPE,
-  SIGORTA_CUSTOMER_SUB_TYPE,
   acilYardimAssistantCustomerName,
   brokerCustomerName,
   departmentCodeMatchesArea,
@@ -80,7 +81,6 @@ import {
   displayUserRoleName,
   emptyInvitePersonDraft,
   fieldStaffUsesServiceBranches,
-  filterOfficeFirmsByQuery,
   findDepartmentForArea,
   findRoleByCode,
   hasarExpertCustomerName,
@@ -88,7 +88,6 @@ import {
   isBrokerCustomer,
   isCustomerCompanyUserTask,
   isHasarExpertCustomer,
-  isSigortaCustomer,
   isCompleteOfficePersonPhone,
   officePersonToFormFields,
   operationAreaFromDepartmentCodes,
@@ -99,7 +98,8 @@ import {
   showsInsuranceCompanyScope,
   showsOperationsServiceAreaScope,
   showsUserOperationalAuthorization,
-  sigortaCustomerName,
+  showsMeridyenWorkHoursToggle,
+  userInviteCardTitle,
   type InvitePersonDraft,
 } from './_lib/user-invite-config';
 
@@ -321,6 +321,7 @@ interface User {
   lastLoginAt?: string | null;
   createdAt: string;
   portalCustomerId?: string | null;
+  workHoursRestricted?: boolean | null;
   adjuster?: { id?: string; name?: string | null; company?: string | null; phone?: string | null } | null;
 }
 
@@ -375,6 +376,9 @@ interface UserFormState {
   selectedGeographicRegionIds: string[];
   selectedSubjects: string[];
   otherSubjectNotes: string;
+  extraAccessHasar: boolean;
+  extraAccessAcil: boolean;
+  workHoursRestricted: boolean | null;
   invitePeople: InvitePersonDraft[];
 }
 
@@ -398,6 +402,9 @@ const DEFAULT_FORM: UserFormState = {
   selectedGeographicRegionIds: [],
   selectedSubjects: [],
   otherSubjectNotes: '',
+  extraAccessHasar: false,
+  extraAccessAcil: false,
+  workHoursRestricted: null,
   invitePeople: [emptyInvitePersonDraft()],
 };
 
@@ -405,11 +412,11 @@ const USER_TASK_OPTIONS: Array<{ value: UserTaskCode; label: string; description
   { value: 'management', label: 'Meridyen Yönetim', description: 'Yönetici veya müdür yetki seviyesinde iç kullanıcı.' },
   { value: 'operations', label: 'Meridyen Dosya Sorumlusu', description: 'Hasar ve Acil Yardım dosyalarını ofisten yöneten Meridyen iç kullanıcısı.' },
   { value: 'field_operations', label: 'Meridyen Saha Operasyonu', description: 'Meridyen bünyesinde sahada tespit veya operasyon takibi yapan iç kullanıcı.' },
-  { value: 'expert', label: 'Eksper', description: 'Eksper portalı ve eksper iş akışları için kullanıcı.' },
-  { value: 'insurance_company_user', label: 'Sigorta Şirketi Kullanıcısı', description: 'Sigorta şirketi kapsamındaki portal kullanıcısı.' },
+  { value: 'finance', label: 'Finans', description: 'Finans ve mali operasyon ekranlarını kullanan ekip üyesi.' },
+  { value: 'insurance_company_user', label: 'Sigorta Şirketi Kullanıcısı', description: 'Ayarlar’daki sigorta şirketinin portal kullanıcısı.' },
   { value: 'broker', label: 'Broker Kullanıcısı', description: 'Broker firması kapsamındaki portal kullanıcısı.' },
   { value: 'assistance_company_user', label: 'Asistans Firma Kullanıcısı', description: 'Asistans firması kapsamındaki portal kullanıcısı.' },
-  { value: 'finance', label: 'Finans', description: 'Finans ve mali operasyon ekranlarını kullanan ekip üyesi.' },
+  { value: 'expert', label: 'Eksper', description: 'Eksper portalı ve eksper iş akışları için kullanıcı.' },
 ];
 
 const OPERATION_AREA_OPTIONS: Array<{ value: Exclude<OperationArea, ''>; label: string }> = [
@@ -655,73 +662,36 @@ function FormField({
 const inputCls =
   'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
 
-function FirmPickerOverlay({
+function OrganizationSelectList({
   title,
-  search,
-  onSearch,
   items,
   selectedId,
   onSelect,
-  onClose,
+  testId,
 }: {
   title: string;
-  search: string;
-  onSearch: (value: string) => void;
-  items: PortalOrganizationOption[];
+  items: Array<{ id: string; name: string; disabled?: boolean; hint?: string }>;
   selectedId: string;
   onSelect: (id: string) => void;
-  onClose: () => void;
+  testId: string;
 }) {
-  const filtered = useMemo(() => filterOfficeFirmsByQuery(items, search), [items, search]);
-
-  return createPortal(
-    <div className="fixed inset-0 z-[10050] flex items-center justify-center p-4" data-testid="ekspertiz-firma-secim-popup">
-      <div className="absolute inset-0 bg-slate-950/50" onClick={onClose} aria-hidden="true" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="relative flex max-h-[calc(100vh-4rem)] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-900/10"
-      >
-        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
-          <div>
-            <p className="text-base font-semibold text-slate-900">{title}</p>
-            <p className="mt-1 text-xs text-slate-500">Firmayı seçince ofisteki personel altta listelenir.</p>
-          </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Kapat">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="border-b border-slate-100 px-5 py-3">
-          <SearchInput placeholder="Firma adı ara" value={search} onChange={onSearch} />
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          {filtered.length === 0 ? (
-            <p className="px-3 py-6 text-center text-sm text-slate-500">Eşleşen firma yok.</p>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {filtered.map((company) => {
-                const selected = selectedId === company.id;
-                return (
-                  <li key={company.id}>
-                    <button
-                      type="button"
-                      onClick={() => onSelect(company.id)}
-                      className={`w-full px-3 py-2.5 text-left text-sm transition-colors ${
-                        selected ? 'bg-blue-50 font-medium text-blue-800' : 'text-slate-800 hover:bg-slate-50'
-                      }`}
-                    >
-                      {company.name}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body,
+  return (
+    <div className="relative" data-testid={testId}>
+      <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <SearchableSelect
+        options={items
+          .filter((company) => !company.disabled)
+          .map((company) => ({ value: company.id, label: company.name, hint: company.hint }))}
+        value={selectedId}
+        onChange={onSelect}
+        placeholder={title}
+        emptyText="Eşleşen firma yok."
+        fallbackLabel={items.find((company) => company.id === selectedId)?.name}
+        disableBrowserAutocomplete
+        inputClassName={`${inputCls} pl-9`}
+      />
+      <span className="sr-only" data-testid={`${testId}-popup`}>{title}</span>
+    </div>
   );
 }
 
@@ -760,7 +730,6 @@ export default function KullanicilarPage() {
   const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([]);
   const [acilYardimCustomers, setAcilYardimCustomers] = useState<AcilYardimCustomer[]>([]);
   const [hasarExpertCustomers, setHasarExpertCustomers] = useState<PortalOrganizationOption[]>([]);
-  const [insuranceCustomers, setInsuranceCustomers] = useState<PortalOrganizationOption[]>([]);
   const [brokerCustomers, setBrokerCustomers] = useState<PortalOrganizationOption[]>([]);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [geographicRegions, setGeographicRegions] = useState<GeographicRegion[]>([]);
@@ -788,8 +757,6 @@ export default function KullanicilarPage() {
   const [officeContacts, setOfficeContacts] = useState<Array<{ name?: string | null; email?: string | null; phone?: string | null }>>([]);
   const [officeUsersLoading, setOfficeUsersLoading] = useState(false);
   const [selectedOfficeUserId, setSelectedOfficeUserId] = useState('');
-  const [officeFirmPickerOpen, setOfficeFirmPickerOpen] = useState(false);
-  const [officeFirmSearch, setOfficeFirmSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -895,7 +862,13 @@ export default function KullanicilarPage() {
         params: { limit: 200, status: 'active' },
       });
       const list = r.data?.data ?? r.data ?? [];
-      setInsuranceCompanies(Array.isArray(list) ? list.filter(isUserInviteSelectableInsuranceCompany) : []);
+      setInsuranceCompanies(
+        Array.isArray(list)
+          ? list
+              .filter(isUserInviteSelectableInsuranceCompany)
+              .sort((a: InsuranceCompany, b: InsuranceCompany) => a.name.localeCompare(b.name, 'tr'))
+          : [],
+      );
     } catch {
       setInsuranceCompanies([]);
     }
@@ -956,35 +929,6 @@ export default function KullanicilarPage() {
       );
     } catch {
       setHasarExpertCustomers([]);
-    }
-  }, []);
-
-  const loadInsuranceCustomers = useCallback(async () => {
-    try {
-      const r = await axios.get(`${API}/customers`, {
-        headers: authHeader(),
-        params: {
-          limit: 200,
-          status: 'active',
-          customerType: 'corporate',
-          subType: SIGORTA_CUSTOMER_SUB_TYPE,
-        },
-      });
-      const list = r.data?.data ?? r.data ?? [];
-      setInsuranceCustomers(
-        Array.isArray(list)
-          ? list
-              .filter(isSigortaCustomer)
-              .map((customer: any) => ({
-                id: customer.id,
-                name: sigortaCustomerName(customer),
-              }))
-              .filter((customer: PortalOrganizationOption) => Boolean(customer.name))
-              .sort((a: PortalOrganizationOption, b: PortalOrganizationOption) => a.name.localeCompare(b.name, 'tr'))
-          : [],
-      );
-    } catch {
-      setInsuranceCustomers([]);
     }
   }, []);
 
@@ -1067,11 +1011,10 @@ export default function KullanicilarPage() {
     loadInsuranceCompanies();
     loadAcilYardimCustomers();
     loadHasarExpertCustomers();
-    loadInsuranceCustomers();
     loadBrokerCustomers();
     loadProvinces();
     loadGeographicRegions();
-  }, [loadUsers, loadRoles, loadDepartments, loadInsuranceCompanies, loadAcilYardimCustomers, loadHasarExpertCustomers, loadInsuranceCustomers, loadBrokerCustomers, loadProvinces, loadGeographicRegions]);
+  }, [loadUsers, loadRoles, loadDepartments, loadInsuranceCompanies, loadAcilYardimCustomers, loadHasarExpertCustomers, loadBrokerCustomers, loadProvinces, loadGeographicRegions]);
 
   useEffect(() => {
     if (modal !== 'edit' || form.userTask !== 'operations' || form.countrywide) return;
@@ -1107,11 +1050,11 @@ export default function KullanicilarPage() {
         selectedName: hasarExpertCustomers.find((company) => company.id === form.expertCustomerId)?.name ?? '',
         emptyLead: 'Aktif ekspertiz firması bulunamadı. Önce',
         emptyKind: 'ekspertiz firması',
+        emptyLinkLabel: 'Müşteriler',
         musterilerHref: '/panel/musteriler?openAdd=1&subType=eksper_firmasi&entityType=corporate',
         buttonTestId: 'ekspertiz-firma-secim',
         placeholder: 'Ekspertiz firması seç',
         pickerTitle: 'Ekspertiz firması seç',
-        note: 'Portal kullanıcısı seçilen ekspertiz firmasına bağlanır; hoş geldin mailinde firma adı bu kayıttan gelir. Aynı firmaya birden fazla kişi eklenebilir.',
         applyKey: 'expertCustomerId' as const,
       };
     }
@@ -1119,16 +1062,16 @@ export default function KullanicilarPage() {
       return {
         label: 'Sigorta Şirketi',
         error: formErrors.insuranceCustomerId,
-        items: insuranceCustomers,
+        items: insuranceCompanies.map((company) => ({ id: company.id, name: company.name })),
         selectedId: form.insuranceCustomerId,
-        selectedName: insuranceCustomers.find((company) => company.id === form.insuranceCustomerId)?.name ?? '',
-        emptyLead: 'Aktif sigorta şirketi kartı bulunamadı. Önce',
+        selectedName: insuranceCompanies.find((company) => company.id === form.insuranceCustomerId)?.name ?? '',
+        emptyLead: 'Ayarlar’da sigorta şirketi yok. Önce',
         emptyKind: 'sigorta şirketi',
-        musterilerHref: '/panel/musteriler?openAdd=1&subType=sigorta_sirketi&entityType=corporate',
+        emptyLinkLabel: 'Ayarlar',
+        musterilerHref: '/panel/ayarlar/sigorta-sirketleri',
         buttonTestId: 'sigorta-firma-secim',
-        placeholder: 'Sigorta şirketi seç',
-        pickerTitle: 'Sigorta şirketi seç',
-        note: 'Portal kullanıcısı seçilen sigorta şirketi kartına bağlanır; hoş geldin mailinde firma adı bu kayıttan gelir. Aynı firmaya birden fazla kişi eklenebilir.',
+        placeholder: 'Şirket adı yazın',
+        pickerTitle: 'Şirket adı yazın',
         applyKey: 'insuranceCustomerId' as const,
       };
     }
@@ -1141,11 +1084,11 @@ export default function KullanicilarPage() {
         selectedName: brokerCustomers.find((company) => company.id === form.brokerCustomerId)?.name ?? '',
         emptyLead: 'Aktif broker firması bulunamadı. Önce',
         emptyKind: 'broker firması',
+        emptyLinkLabel: 'Müşteriler',
         musterilerHref: '/panel/musteriler?openAdd=1&subType=broker_firmasi&entityType=corporate',
         buttonTestId: 'broker-firma-secim',
         placeholder: 'Broker firması seç',
         pickerTitle: 'Broker firması seç',
-        note: 'Portal kullanıcısı seçilen broker firmasına bağlanır; hoş geldin mailinde firma adı bu kayıttan gelir. Aynı firmaya birden fazla kişi eklenebilir.',
         applyKey: 'brokerCustomerId' as const,
       };
     }
@@ -1158,11 +1101,11 @@ export default function KullanicilarPage() {
         selectedName: acilYardimCustomers.find((company) => company.id === form.assistantCustomerId)?.name ?? '',
         emptyLead: 'Aktif asistans firması bulunamadı. Önce',
         emptyKind: 'asistans firması',
+        emptyLinkLabel: 'Müşteriler',
         musterilerHref: '/panel/musteriler?openAdd=1&subType=asistan_firmasi&entityType=corporate',
         buttonTestId: 'asistans-firma-secim',
         placeholder: 'Asistans firması seç',
         pickerTitle: 'Asistans firması seç',
-        note: 'Portal kullanıcısı seçilen asistans firmasına bağlanır; yalnızca o firmanın acil yardım dosyalarını görür. Aynı firmaya birden fazla kişi eklenebilir.',
         applyKey: 'assistantCustomerId' as const,
       };
     }
@@ -1178,7 +1121,7 @@ export default function KullanicilarPage() {
     formErrors.brokerCustomerId,
     formErrors.assistantCustomerId,
     hasarExpertCustomers,
-    insuranceCustomers,
+    insuranceCompanies,
     brokerCustomers,
     acilYardimCustomers,
   ]);
@@ -1198,20 +1141,19 @@ export default function KullanicilarPage() {
       try {
         const r = await axios.get(`${API}/users`, {
           headers: authHeader(),
-          params: {
-            customerId: selectedOfficeId,
-            limit: 200,
-            includeInactive: 'true',
-            page: 1,
-          },
+          params: form.userTask === 'insurance_company_user'
+            ? { insuranceCompanyId: selectedOfficeId, limit: 200, includeInactive: 'true', page: 1 }
+            : { customerId: selectedOfficeId, limit: 200, includeInactive: 'true', page: 1 },
         });
         const list = r.data?.data ?? r.data ?? [];
         let contacts: Array<{ name?: string | null; email?: string | null; phone?: string | null }> = [];
-        try {
-          const office = await axios.get(`${API}/customers/${selectedOfficeId}`, { headers: authHeader() });
-          contacts = office.data?.data?.contacts ?? office.data?.contacts ?? [];
-        } catch {
-          contacts = [];
+        if (form.userTask !== 'insurance_company_user') {
+          try {
+            const office = await axios.get(`${API}/customers/${selectedOfficeId}`, { headers: authHeader() });
+            contacts = office.data?.data?.contacts ?? office.data?.contacts ?? [];
+          } catch {
+            contacts = [];
+          }
         }
         if (!cancelled) {
           setOfficeContacts(contacts);
@@ -1585,9 +1527,11 @@ export default function KullanicilarPage() {
       serviceAreas: value === 'operations' || value === 'field_operations' || value === 'expert' ? prev.serviceAreas : [],
       selectedGeographicRegionIds: value === 'operations' ? prev.selectedGeographicRegionIds : [],
       selectedSubjects: value === 'field_operations' ? prev.selectedSubjects : [],
+      otherSubjectNotes: value === 'field_operations' ? prev.otherSubjectNotes : '',
+      extraAccessHasar: false,
+      extraAccessAcil: false,
+      workHoursRestricted: showsMeridyenWorkHoursToggle(value) ? prev.workHoursRestricted : null,
     }));
-    setOfficeFirmPickerOpen(false);
-    setOfficeFirmSearch('');
     setFormErrors((prev) => ({
       ...prev,
       userTask: undefined,
@@ -1803,8 +1747,6 @@ export default function KullanicilarPage() {
     setCreatedCredential(null);
     setCreatedInvites(null);
     setEditingUser(null);
-    setOfficeFirmPickerOpen(false);
-    setOfficeFirmSearch('');
     setModal('add');
   };
 
@@ -1820,9 +1762,11 @@ export default function KullanicilarPage() {
       managementLevel: task.managementLevel,
       operationArea: (isFieldStaffRole(u.role) || u.role?.code === 'office_staff') ? operationAreaFromMemberships(u.departmentMemberships) : '',
       insuranceCompanyIds: task.userTask === 'insurance_company_user'
-        ? []
+        ? (u.userInsuranceCompanyScopes ?? []).map((scope) => scope.insuranceCompanyId).filter(Boolean)
         : (u.userInsuranceCompanyScopes ?? []).map((scope) => scope.insuranceCompanyId).filter(Boolean),
-      insuranceCustomerId: task.userTask === 'insurance_company_user' ? (u.portalCustomerId ?? '') : '',
+      insuranceCustomerId: task.userTask === 'insurance_company_user'
+        ? ((u.userInsuranceCompanyScopes ?? []).map((scope) => scope.insuranceCompanyId).filter(Boolean)[0] ?? '')
+        : '',
       expertCustomerId: task.userTask === 'expert' ? (u.portalCustomerId ?? '') : '',
       brokerCustomerId: task.userTask === 'broker' ? (u.portalCustomerId ?? '') : '',
       assistantCustomerId: task.userTask === 'assistance_company_user'
@@ -1848,6 +1792,9 @@ export default function KullanicilarPage() {
         : [],
       selectedSubjects: [],
       otherSubjectNotes: '',
+      extraAccessHasar: false,
+      extraAccessAcil: false,
+      workHoursRestricted: u.workHoursRestricted ?? null,
       invitePeople: [emptyInvitePersonDraft()],
     });
     setSelectedProvinceId('');
@@ -1859,8 +1806,6 @@ export default function KullanicilarPage() {
     setCreatedCredential(null);
     setCreatedInvites(null);
     setEditingUser(u);
-    setOfficeFirmPickerOpen(false);
-    setOfficeFirmSearch('');
     setModal('edit');
   };
 
@@ -1876,8 +1821,6 @@ export default function KullanicilarPage() {
     setCreatedInvites(null);
     setResetPwdError('');
     setResetCredential(null);
-    setOfficeFirmPickerOpen(false);
-    setOfficeFirmSearch('');
   };
 
   const validateUserForm = () => {
@@ -1888,7 +1831,7 @@ export default function KullanicilarPage() {
     if (!form.email.trim()) nextErrors.email = 'E-posta zorunludur.';
     else if (!validateEmail(form.email)) nextErrors.email = 'Geçerli bir e-posta adresi girilmelidir.';
     if (!isCompleteOfficePersonPhone(form.phone)) nextErrors.phone = 'Telefon zorunludur.';
-    if (!form.userTask) nextErrors.userTask = 'Bu kişi kim? seçimi zorunludur.';
+    if (!form.userTask) nextErrors.userTask = 'Kullanıcı türü seçimi zorunludur.';
     if (form.userTask === 'management' && hasMultipleManagementRoles && !form.managementLevel) {
       nextErrors.managementLevel = 'Yetki seviyesi seçilmelidir.';
     }
@@ -1980,8 +1923,7 @@ export default function KullanicilarPage() {
       }
 
       if (form.userTask === 'insurance_company_user' && form.insuranceCustomerId) {
-        payload.insuranceCustomerId = form.insuranceCustomerId;
-        payload.portalCustomerId = form.insuranceCustomerId;
+        payload.insuranceCompanyIds = [form.insuranceCustomerId];
       }
 
       if (form.userTask === 'expert' && form.expertCustomerId) {
@@ -2011,6 +1953,13 @@ export default function KullanicilarPage() {
         } else if (form.userTask === 'operations') {
           payload.serviceAreas = [];
         }
+      }
+
+      if (
+        showsMeridyenWorkHoursToggle(form.userTask, selectedRole?.code)
+        && form.workHoursRestricted !== null
+      ) {
+        payload.workHoursRestricted = form.workHoursRestricted === true;
       }
 
       if (form.userTask === 'operations') {
@@ -2068,6 +2017,14 @@ export default function KullanicilarPage() {
         setCreatedInvites([row]);
         setCreatedCredential(row);
         setInactiveDuplicateUser(null);
+        if (created?.id && (form.extraAccessAcil || form.extraAccessHasar)) {
+          try {
+            if (form.extraAccessAcil) await grantOperationalExtraAccess(created.id, 'acil_yardim');
+            if (form.extraAccessHasar) await grantOperationalExtraAccess(created.id, 'hasar');
+          } catch {
+            setFormError('Kullanıcı eklendi. Yetkilendirme kaydı yazılamadı; kişi kaydından tekrar açın.');
+          }
+        }
         await loadUsers();
         return;
       } else if (modal === 'edit' && editingUser) {
@@ -2646,11 +2603,13 @@ export default function KullanicilarPage() {
               ? modal === 'edit'
                 ? 'Rol Değişikliği Tamamlandı'
                 : 'Kullanıcı Eklendi'
-              : modal === 'add'
-                ? 'Kullanıcı Ekle'
-                : editingUser
-                  ? `Kullanıcıyı Düzenle — ${editingUser.firstName} ${editingUser.lastName}`
-                  : 'Kullanıcıyı Düzenle'
+              : userInviteCardTitle({
+                  mode: modal === 'add' ? 'add' : 'edit',
+                  taskLabel: USER_TASK_OPTIONS.find((option) => option.value === form.userTask)?.label,
+                  personName: editingUser
+                    ? `${editingUser.firstName} ${editingUser.lastName}`
+                    : '',
+                })
           }
           subtitle={
             !createdCredential && modal === 'edit' && editingUser
@@ -2724,38 +2683,25 @@ export default function KullanicilarPage() {
 
             {!createdCredential && (
               <>
-            {modal === 'add' && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-sm font-semibold text-slate-900">Firma kartı Müşteriler’dedir.</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">
-                  Eksper ofisi, sigorta, broker ve asistans firması Müşteriler kaydıdır. Ofis seçilince o karttaki personel burada durur. Yeni kişi bu ekrandan tek tek eklenir.
-                </p>
-              </div>
-            )}
-
             <div className="grid grid-cols-2 gap-3">
             <div className="order-1 col-span-2">
-              <FormField label="Bu kişi kim?" required error={formErrors.userTask}>
+              <FormField label="Kullanıcı Türü" required error={formErrors.userTask}>
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 {USER_TASK_OPTIONS.map((option) => (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => selectUserTask(option.value)}
-                      className={`rounded-xl border px-3 py-3 text-left transition-colors ${
+                      className={`rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-colors ${
                         form.userTask === option.value
                           ? 'border-blue-500 bg-blue-50 text-blue-800 ring-1 ring-blue-200'
                           : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                       }`}
                     >
-                      <span className="block text-sm font-semibold">{option.label}</span>
-                      <span className="mt-1 block text-xs leading-5 text-slate-500">{option.description}</span>
+                      {option.label}
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  Tedarikçiler kullanıcı rolü olarak değil; Tedarikçiler ekranında ayrı kayıt olarak yönetilir.
-                </p>
               </FormField>
             </div>
 
@@ -2795,40 +2741,26 @@ export default function KullanicilarPage() {
                     <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                       {officePicker.emptyLead}{' '}
                       <Link href={officePicker.musterilerHref} className="font-semibold underline">
-                        Müşteriler
+                        {officePicker.emptyLinkLabel}
                       </Link>
                       {' '}üzerinden {officePicker.emptyKind} kaydı oluşturun.
                     </p>
                   ) : (
-                    <button
-                      type="button"
-                      data-testid={officePicker.buttonTestId}
-                      onClick={() => {
-                        setOfficeFirmSearch('');
-                        setOfficeFirmPickerOpen(true);
+                    <OrganizationSelectList
+                      title={officePicker.pickerTitle}
+                      items={officePicker.items}
+                      selectedId={officePicker.selectedId}
+                      testId={officePicker.buttonTestId}
+                      onSelect={(id) => {
+                        setForm((prev) => ({ ...prev, [officePicker.applyKey]: id }));
+                        setFormErrors((prev) => ({ ...prev, [officePicker.applyKey]: undefined, general: undefined }));
                       }}
-                      className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm hover:border-blue-300"
-                    >
-                      <span className={officePicker.selectedName ? 'font-medium text-slate-900' : 'text-slate-400'}>
-                        {officePicker.selectedName || officePicker.placeholder}
-                      </span>
-                      <span className="shrink-0 text-xs font-semibold text-blue-700">
-                        {officePicker.selectedName ? 'Değiştir' : 'Aç'}
-                      </span>
-                    </button>
+                    />
                   )}
-                  <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-700">
-                    {officePicker.note}
-                  </p>
                 </FormField>
                 {selectedOfficeId ? (
                   <div className="space-y-2" data-testid="eksper-ofisi-personel-listesi">
                     <p className="text-sm font-semibold text-slate-800">Bu ofiste kayıtlı personel</p>
-                    <p className="text-xs leading-5 text-slate-500">
-                      {modal === 'add'
-                        ? 'Kişiyi seçince ad, soyad, görev, e-posta ve telefon dolar.'
-                        : 'Seçilen ofiste tanımlı kişiler.'}
-                    </p>
                     {officeUsersLoading ? (
                       <p className="text-xs text-slate-500">Yükleniyor…</p>
                     ) : officeUsers.length === 0 ? (
@@ -2865,21 +2797,6 @@ export default function KullanicilarPage() {
                       </ul>
                     )}
                   </div>
-                ) : null}
-                {officeFirmPickerOpen ? (
-                  <FirmPickerOverlay
-                    title={officePicker.pickerTitle}
-                    search={officeFirmSearch}
-                    onSearch={setOfficeFirmSearch}
-                    items={officePicker.items}
-                    selectedId={officePicker.selectedId}
-                    onSelect={(id) => {
-                      setForm((prev) => ({ ...prev, [officePicker.applyKey]: id }));
-                      setFormErrors((prev) => ({ ...prev, [officePicker.applyKey]: undefined, general: undefined }));
-                      setOfficeFirmPickerOpen(false);
-                    }}
-                    onClose={() => setOfficeFirmPickerOpen(false)}
-                  />
                 ) : null}
               </div>
             ) : null}
@@ -3010,29 +2927,25 @@ export default function KullanicilarPage() {
 	                    {formErrors.insuranceCompanyIds && (
 	                      <p className="mb-2 text-xs text-red-600">{formErrors.insuranceCompanyIds}</p>
 	                    )}
-	                    {insuranceCompanies.length === 0 ? (
-	                      <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-	                        Aktif müşteri/şirket bulunamadı; kapsam seçilemez.
-	                      </p>
-	                    ) : !allInsuranceCompaniesSelected ? (
-	                      <div className="grid max-h-40 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
-	                        {insuranceCompanies.map((company) => (
-	                          <label key={company.id} className="flex items-center gap-2 text-sm text-slate-700">
-	                            <input
-	                              type="checkbox"
-	                              checked={form.insuranceCompanyIds.includes(company.id)}
-	                              onChange={() => toggleInsuranceCompany(company.id)}
-	                              className="rounded border-slate-300 text-brand-600"
-	                            />
-	                            {company.name}
-	                          </label>
-	                        ))}
-	                      </div>
-	                    ) : (
-	                      <p className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-	                        Tüm aktif sigorta şirketleri kapsam dahilindedir. Bölge kapsamına göre görevlendirme yapabilirsiniz.
-	                      </p>
-	                    )}
+                    {insuranceCompanies.length === 0 ? (
+                      <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                        Aktif müşteri/şirket bulunamadı; kapsam seçilemez.
+                      </p>
+                    ) : (
+                      <div className="grid max-h-40 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
+                        {insuranceCompanies.map((company) => (
+                          <label key={company.id} className="flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={allInsuranceCompaniesSelected || form.insuranceCompanyIds.includes(company.id)}
+                              onChange={() => toggleInsuranceCompany(company.id)}
+                              className="rounded border-slate-300 text-brand-600"
+                            />
+                            {company.name}
+                          </label>
+                        ))}
+                      </div>
+                    )}
 	                  </div>
 	                  )}
 
@@ -3055,29 +2968,25 @@ export default function KullanicilarPage() {
 	                    {formErrors.acilYardimCustomerIds && (
 	                      <p className="mb-2 text-xs text-red-600">{formErrors.acilYardimCustomerIds}</p>
 	                    )}
-	                    {acilYardimCustomers.length === 0 ? (
-	                      <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-	                        Aktif müşteri/şirket bulunamadı; kapsam seçilemez.
-	                      </p>
-	                    ) : allAcilYardimCustomersSelected ? (
-	                      <p className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-	                        Tüm acil yardım asistan firmaları kapsam dahilindedir.
-	                      </p>
-	                    ) : (
-	                      <div className="grid max-h-40 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
-	                        {acilYardimCustomers.map((customer) => (
-	                          <label key={customer.id} className="flex items-center gap-2 text-sm text-slate-700">
-	                            <input
-	                              type="checkbox"
-	                              checked={form.acilYardimCustomerIds.includes(customer.id)}
-	                              onChange={() => toggleAcilYardimCustomer(customer.id)}
-	                              className="rounded border-slate-300 text-brand-600"
-	                            />
-	                            {customer.name}
-	                          </label>
-	                        ))}
-	                      </div>
-	                    )}
+                    {acilYardimCustomers.length === 0 ? (
+                      <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                        Aktif müşteri/şirket bulunamadı; kapsam seçilemez.
+                      </p>
+                    ) : (
+                      <div className="grid max-h-40 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-2">
+                        {acilYardimCustomers.map((customer) => (
+                          <label key={customer.id} className="flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={allAcilYardimCustomersSelected || form.acilYardimCustomerIds.includes(customer.id)}
+                              onChange={() => toggleAcilYardimCustomer(customer.id)}
+                              className="rounded border-slate-300 text-brand-600"
+                            />
+                            {customer.name}
+                          </label>
+                        ))}
+                      </div>
+                    )}
 	                  </div>
 	                  )}
 
@@ -3235,6 +3144,27 @@ export default function KullanicilarPage() {
               </div>
             )}
 
+            {isAdminOrManager && showsUserOperationalAuthorization(form.userTask, editingUser?.role?.code) && (
+              <div className="order-2 col-span-2">
+                <OperationalAccessGrantPanel
+                  userId={modal === 'edit' ? editingUser?.id : undefined}
+                  compact
+                  defaultFlow={modal === 'add' ? 'extra_access' : resolveDefaultAuthorizationFlow(editingUser?.role?.code, form.userTask)}
+                  draftExtraAccess={{
+                    hasar: form.extraAccessHasar,
+                    acil_yardim: form.extraAccessAcil,
+                  }}
+                  onDraftExtraAccessChange={(scope, enabled) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      extraAccessHasar: scope === 'hasar' ? enabled : prev.extraAccessHasar,
+                      extraAccessAcil: scope === 'acil_yardim' ? enabled : prev.extraAccessAcil,
+                    }));
+                  }}
+                />
+              </div>
+            )}
+
             {form.userTask && (
               <div className="order-3 col-span-2 grid grid-cols-2 gap-3">
                 <div>
@@ -3316,12 +3246,28 @@ export default function KullanicilarPage() {
               </>
             )}
 
-            {modal === 'edit' && editingUser && isAdminOrManager
-              && showsUserOperationalAuthorization(form.userTask, editingUser.role?.code) && (
-              <OperationalAccessGrantPanel
-                userId={editingUser.id}
+            {isAdminOrManager
+              && showsMeridyenWorkHoursToggle(form.userTask, selectedRole?.code ?? editingUser?.role?.code)
+              && (modal === 'add'
+                ? !isCustomerCompanyUserTask(form.userTask)
+                : Boolean(editingUser)
+                  && !editingUser.portalCustomerId
+                  && !isProtectedSystemAdmin(editingUser)) && (
+              <WorkHoursGateToggle
+                key={editingUser?.id ?? `add-${form.userTask}`}
                 compact
-                defaultFlow={resolveDefaultAuthorizationFlow(editingUser.role?.code, form.userTask)}
+                userId={modal === 'edit' ? editingUser?.id : undefined}
+                roleCode={selectedRole?.code ?? editingUser?.role?.code}
+                portalCustomerId={modal === 'edit' ? editingUser?.portalCustomerId : null}
+                restrictedOverride={
+                  modal === 'add' ? form.workHoursRestricted : editingUser?.workHoursRestricted
+                }
+                onSaved={(next) => {
+                  setForm((prev) => ({ ...prev, workHoursRestricted: next }));
+                  if (modal === 'edit') {
+                    setEditingUser((prev) => (prev ? { ...prev, workHoursRestricted: next } : prev));
+                  }
+                }}
               />
             )}
 

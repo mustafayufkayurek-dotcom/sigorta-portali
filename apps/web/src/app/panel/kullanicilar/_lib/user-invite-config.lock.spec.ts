@@ -22,6 +22,9 @@ import {
   fieldStaffIncludesAcil,
   fieldStaffUsesServiceBranches,
   showsUserOperationalAuthorization,
+  showsMeridyenWorkHoursToggle,
+  userInviteCardTitle,
+  acilYardimAssistantCustomerName,
 } from './user-invite-config.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -70,8 +73,10 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.match(page, /label: 'Eksper'/);
     assert.match(page, /Ekspertiz Firması/);
     assert.match(page, /ekspertiz-firma-secim/);
-    assert.match(page, /ekspertiz-firma-secim-popup/);
+    assert.match(page, /OrganizationSelectList/);
+    assert.match(page, /\$\{testId\}-popup/);
     assert.match(page, /Ekspertiz firması seç/);
+    assert.doesNotMatch(page, /FirmPickerOverlay/);
     assert.match(page, /sigorta-firma-secim/);
     assert.match(page, /broker-firma-secim/);
     assert.match(page, /asistans-firma-secim/);
@@ -80,7 +85,11 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.doesNotMatch(page, /name="broker-firm"/);
     assert.doesNotMatch(page, /name="assistant-firm"/);
     assert.match(page, /portalCustomerId/);
-    assert.match(page, /Kullanıcı Ekle/);
+    assert.match(page, /SearchableSelect/);
+    assert.match(page, /disableBrowserAutocomplete/);
+    assert.match(page, /Şirket adı yazın/);
+    assert.doesNotMatch(page, /Firma nereye yazılır/);
+    assert.doesNotMatch(page, /Kişi Ayarlar’daki sigorta şirketine bağlanır/);
     assert.doesNotMatch(page, /Aynı müşteri firmasına birden fazla kişiyi göreviyle ekleyin/);
     assert.doesNotMatch(page, /USER_TASK_OPTIONS\.filter\(\(option\) => modal !== 'add'/);
     assert.doesNotMatch(page, /Kullanıcı Davet Et/);
@@ -162,7 +171,7 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.equal(showsUserOperationalAuthorization('management', 'office_staff'), false);
     assert.equal(showsUserOperationalAuthorization('field_operations', 'field_staff'), false);
     assert.equal(showsUserOperationalAuthorization('expert', 'expert'), false);
-    assert.equal(showsUserOperationalAuthorization('finance', 'finance'), false);
+    assert.equal(showsUserOperationalAuthorization('finance', 'finance'), true);
     assert.equal(fieldStaffIncludesAcil('acil'), true);
     assert.equal(fieldStaffIncludesAcil('both'), true);
     assert.equal(fieldStaffIncludesAcil('hasar'), false);
@@ -179,5 +188,83 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.match(page, /showsUserOperationalAuthorization\(form\.userTask/);
     const detail = readFileSync(join(here, '../[id]/page.tsx'), 'utf8');
     assert.match(detail, /showsUserOperationalAuthorization\(undefined, user\.role\?\.code\)/);
+  });
+
+  it('Finans ile Eksper yer değiştirmiştir', () => {
+    const page = readFileSync(join(here, '../page.tsx'), 'utf8');
+    const tasks = page.slice(
+      page.indexOf('const USER_TASK_OPTIONS'),
+      page.indexOf('const OPERATION_AREA_OPTIONS'),
+    );
+    assert.ok(
+      tasks.indexOf("value: 'finance'") >= 0
+      && tasks.indexOf("value: 'finance'") < tasks.indexOf("value: 'expert'"),
+      'Finans Eksper satırındadır',
+    );
+  });
+
+  it('mesai kısıtı düğmesi yalnız Meridyen personelinde durur', () => {
+    assert.equal(showsMeridyenWorkHoursToggle('finance', 'finance'), true);
+    assert.equal(showsMeridyenWorkHoursToggle('operations', 'office_staff'), true);
+    assert.equal(showsMeridyenWorkHoursToggle('management', 'admin'), true);
+    assert.equal(showsMeridyenWorkHoursToggle('field_operations', 'field_staff'), true);
+    assert.equal(showsMeridyenWorkHoursToggle('expert', 'expert'), false);
+    assert.equal(showsMeridyenWorkHoursToggle('insurance_company_user', 'insurance_company_user'), false);
+    assert.equal(showsMeridyenWorkHoursToggle('', 'finance'), true);
+    const page = readFileSync(join(here, '../page.tsx'), 'utf8');
+    assert.match(page, /WorkHoursGateToggle/);
+    assert.match(page, /showsMeridyenWorkHoursToggle/);
+    assert.match(page, /payload\.workHoursRestricted = form\.workHoursRestricted === true/);
+    assert.match(page, /label="Kullanıcı Türü"/);
+    assert.doesNotMatch(page, /Bu kişi kim/);
+    const toggle = readFileSync(join(here, '../../../../components/users/WorkHoursGateToggle.tsx'), 'utf8');
+    assert.match(toggle, /Mesai Saati Kısıtı/);
+    assert.match(toggle, /userId\?: string/);
+    const detail = readFileSync(join(here, '../[id]/page.tsx'), 'utf8');
+    assert.match(detail, /WorkHoursGateToggle/);
+  });
+
+  it('acil yardım müşteri adı kısa ünvanı da okur', () => {
+    assert.equal(
+      acilYardimAssistantCustomerName({
+        id: '1',
+        companyName: null,
+        fullName: null,
+        shortName: 'Turasist',
+      }),
+      'Turasist',
+    );
+    const source = readFileSync(join(here, './user-invite-config.ts'), 'utf8');
+    assert.match(source, /ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE = 'asistan_firmasi'/);
+    const seed = readFileSync(
+      join(here, '../../../../../../backend/prisma/seed.ts'),
+      'utf8',
+    );
+    assert.match(seed, /Tur-Assist/);
+    assert.match(seed, /Marm Assistance/);
+    assert.match(seed, /Remed Assistance/);
+  });
+
+  it('kart başlığında seçilen kişi tipi durur', () => {
+    assert.equal(userInviteCardTitle({ mode: 'add' }), 'Kullanıcı Ekle');
+    assert.equal(
+      userInviteCardTitle({ mode: 'add', taskLabel: 'Meridyen Dosya Sorumlusu' }),
+      'Kullanıcı Ekle — Meridyen Dosya Sorumlusu',
+    );
+    assert.equal(
+      userInviteCardTitle({ mode: 'edit', personName: 'Aslı Güngör', taskLabel: 'Finans' }),
+      'Kullanıcıyı Düzenle — Aslı Güngör · Finans',
+    );
+    const page = readFileSync(join(here, '../page.tsx'), 'utf8');
+    assert.match(page, /userInviteCardTitle/);
+  });
+
+  it('sigorta seçimi Ayarlar listesidir', () => {
+    const config = readFileSync(join(here, 'user-invite-config.ts'), 'utf8');
+    assert.doesNotMatch(config, /function portalInsuranceChoices/);
+    const page = readFileSync(join(here, '../page.tsx'), 'utf8');
+    assert.match(page, /\/panel\/ayarlar\/sigorta-sirketleri/);
+    assert.doesNotMatch(page, /isLinkedInsurancePortalCustomer/);
+    assert.doesNotMatch(page, /portalInsuranceChoices/);
   });
 });

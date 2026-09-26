@@ -68,7 +68,7 @@ export class HrController {
   async panelAccess(
     @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
   ) {
-    return { data: this.hrService.getPanelAccess(user) };
+    return { data: await this.hrService.getPanelAccess(user) };
   }
 
   @Get('summary')
