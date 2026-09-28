@@ -429,7 +429,7 @@ export class CrmService {
       ownerName: string;
       dismissed: boolean;
       opened: boolean;
-      customers: Array<{ name: string; action: string; note: string | null }>;
+      customers: Array<{ name: string; action: string; note: string | null; fileStillMissing?: boolean }>;
     }>();
 
     for (const office of silent) {
