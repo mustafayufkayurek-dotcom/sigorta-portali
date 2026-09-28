@@ -113,81 +113,83 @@ export function mapMorningBriefingHoverLines(
     }>;
   },
 ): MorningBriefingHoverLine[] {
+  const lines: MorningBriefingHoverLine[] = [];
+
   if (id === 'sessiz') {
-    return (source.silent ?? [])
-      .map((row, index) => {
-        const title = String(row.ownerName ?? '').trim();
-        const detail = String(row.headline ?? '').trim();
-        if (!title && !detail) return null;
-        return {
-          key: `sessiz-${index}-${title}`,
-          title: title || 'Dosya Sorumlusu',
-          detail: detail || undefined,
-          href: MORNING_BRIEFING_HREF.sessiz,
-        };
-      })
-      .filter((row): row is MorningBriefingHoverLine => row != null)
-      .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
+    for (const [index, row] of (source.silent ?? []).entries()) {
+      const title = String(row.ownerName ?? '').trim();
+      const detail = String(row.headline ?? '').trim();
+      if (!title && !detail) continue;
+      lines.push({
+        key: `sessiz-${index}-${title}`,
+        title: title || 'Dosya Sorumlusu',
+        detail: detail || undefined,
+        href: MORNING_BRIEFING_HREF.sessiz,
+      });
+      if (lines.length >= MORNING_BRIEFING_HOVER_LIMIT) break;
+    }
+    return lines;
   }
 
   if (id === 'tahsilat') {
-    return (source.payments ?? [])
-      .map((row, index) => {
-        const title = String(row.fileNo ?? '').trim();
-        if (!title) return null;
-        const amount = Number(row.amount);
-        const party = String(row.insuranceCompany ?? '').trim();
-        const money = Number.isFinite(amount) && amount > 0 ? formatMorningBriefingMoney(amount) : '';
-        return {
-          key: `tahsilat-${index}-${title}`,
-          title,
-          detail: [party, money].filter(Boolean).join(' · ') || undefined,
-          href: MORNING_BRIEFING_HREF.tahsilat,
-        };
-      })
-      .filter((row): row is MorningBriefingHoverLine => row != null)
-      .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
+    for (const [index, row] of (source.payments ?? []).entries()) {
+      const title = String(row.fileNo ?? '').trim();
+      if (!title) continue;
+      const amount = Number(row.amount);
+      const party = String(row.insuranceCompany ?? '').trim();
+      const money = Number.isFinite(amount) && amount > 0 ? formatMorningBriefingMoney(amount) : '';
+      lines.push({
+        key: `tahsilat-${index}-${title}`,
+        title,
+        detail: [party, money].filter(Boolean).join(' · ') || undefined,
+        href: MORNING_BRIEFING_HREF.tahsilat,
+      });
+      if (lines.length >= MORNING_BRIEFING_HOVER_LIMIT) break;
+    }
+    return lines;
   }
 
   if (id === 'onay72') {
-    return (source.claims ?? []).slice(0, MORNING_BRIEFING_HOVER_LIMIT).map((row) => ({
-      key: `onay72-${row.id}`,
-      title: row.fileNo,
-      detail: [row.insured, row.statusLabel].filter((part) => part && part !== '—').join(' · ') || undefined,
-      href: row.href,
-    }));
+    for (const row of (source.claims ?? []).slice(0, MORNING_BRIEFING_HOVER_LIMIT)) {
+      lines.push({
+        key: `onay72-${row.id}`,
+        title: row.fileNo,
+        detail: [row.insured, row.statusLabel].filter((part) => part && part !== '—').join(' · ') || undefined,
+        href: row.href,
+      });
+    }
+    return lines;
   }
 
   if (id === 'puantaj') {
-    return (source.employees ?? [])
-      .filter((row) => row.status === 'missing')
-      .map((row, index) => {
-        const title = String(row.fullName ?? '').trim();
-        if (!title) return null;
-        return {
-          key: `puantaj-${index}-${title}`,
-          title,
-          detail: 'Onaylanmadı',
-          href: MORNING_BRIEFING_HREF.puantaj,
-        };
-      })
-      .filter((row): row is MorningBriefingHoverLine => row != null)
-      .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
+    for (const [index, row] of (source.employees ?? []).entries()) {
+      if (row.status !== 'missing') continue;
+      const title = String(row.fullName ?? '').trim();
+      if (!title) continue;
+      lines.push({
+        key: `puantaj-${index}-${title}`,
+        title,
+        detail: 'Onaylanmadı',
+        href: MORNING_BRIEFING_HREF.puantaj,
+      });
+      if (lines.length >= MORNING_BRIEFING_HOVER_LIMIT) break;
+    }
+    return lines;
   }
 
-  return (source.inbox ?? [])
-    .filter((row) => row.isUnowned === true)
-    .map((row, index) => {
-      const title = String(row.subject ?? '').trim() || 'Konusuz yazı';
-      const from = String(row.fromName ?? row.fromAddress ?? '').trim();
-      return {
-        key: `kutu-${row.id ?? index}`,
-        title,
-        detail: from || undefined,
-        href: MORNING_BRIEFING_HREF.kutu,
-      };
-    })
-    .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
+  for (const [index, row] of (source.inbox ?? []).entries()) {
+    if (row.isUnowned !== true) continue;
+    const title = String(row.subject ?? '').trim() || 'Konusuz yazı';
+    const from = String(row.fromName ?? row.fromAddress ?? '').trim();
+    lines.push({
+      key: `kutu-${row.id ?? index}`,
+      title,
+      detail: from || undefined,
+      href: MORNING_BRIEFING_HREF.kutu,
+    });
+    if (lines.length >= MORNING_BRIEFING_HOVER_LIMIT) break;
+  }
+  return lines;
 }
 
 export function mapMorningBriefingClaimPreview(raw: unknown): MorningBriefingClaimPreview[] {
