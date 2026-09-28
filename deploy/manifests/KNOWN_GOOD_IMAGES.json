@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-09-26",
-  "label": "v628-giris-mail-mac-doldurma",
-  "description": "Full v628: Giriş maili bitişik kod yazmaz; Mac her kutuya doldurmaz. Geri alma web v627 / backend v627.",
+  "updatedAt": "2026-09-28",
+  "label": "v629-crm-sessiz-musteri",
+  "description": "Full v629: CRM sessiz müşteri uyarısı; liste 100 kesilmez; ciro uydurulmaz; otomatik mail yok. Geri alma web v628 / backend v628.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v628-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v628-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v629-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v629-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v627-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v627-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v628-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v628-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

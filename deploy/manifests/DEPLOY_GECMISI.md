@@ -2,24 +2,34 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 26 Eylül 2026
+**Son güncelleme:** 28 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (26 Eylül 2026 — web v628 / backend v628)
+## Canlı durum (28 Eylül 2026 — web v629 / backend v629)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v628-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v628-amd64` | canlı |
-| **Rollback** | Web **v627** / Backend **v627** | manifest `rollbackImages` |
-| **Etiket** | `v628-giris-mail-mac-doldurma` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v629-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v629-amd64` | canlı |
+| **Rollback** | Web **v628** / Backend **v628** | manifest `rollbackImages` |
+| **Etiket** | `v629-crm-sessiz-musteri` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v629 — Full (28 Eylül 2026) — CRM sessiz müşteri
+
+- İki gün yeni ihbar yoksa Hasar uyarısı; kapatınca ertesi İstanbul sabahı
+- Alternatif yalnız yeni bölge; yönetici özeti ve Pazartesi
+- Liste 100’de kesilmez; ciro uydurulmaz; mail kendiliğinden gitmez
+- Akışta önceki sayfa adına tıklanınca dönüş; Muhatap yazımı
+- Disk; alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v628** / backend **v628**
 
 ### v628 — Full (26 Eylül 2026) — Giriş maili Mac doldurmasın
 
