@@ -1,11 +1,11 @@
 ---
-description: Canlı web v629 / backend v629 — sıradaki paket v630
+description: Canlı web v630 / backend v630 — sıradaki paket henüz yok
 alwaysApply: true
 ---
 
 # Canlı (28.09.2026)
 
-Canlı: web **v629** · backend **v629**. Geri alma: web **v628** / backend **v628**.
+Canlı: web **v630** · backend **v630**. Geri alma: web **v629** / backend **v629**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v630 (full):** Personel kalıcı silme: müşteri erişim izi kaydı silmeyi kesmez. Gelen kutuda yazılım yankısı kuyruk olmaz; ortak kutu alıcı olmaz; dış yazı durur. Yönetim Paneli Bekleyen İş: yazı ve sayı yan yana, üzerine gelince önizleme. Acil dosya sorumlusu ekranında asistans sessiz müşteri uyarısı (Hasar eksper uyarısı Acil’e girmez). Hasar müşteri görünümü PDF açılır; hazır raporda «PDF önizleme açılamadı» çıkmaz; Onaya Gönder PDF yüzünden kesilmez. Dosya veya ödeme izi duran personel yine silinmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v629 / backend v629.
 
 **v629 (full):** CRM sessiz müşteri: 2 gün ihbar yoksa Hasar uyarısı; kapatınca ertesi İstanbul sabahı; alternatif yalnız yeni bölge; yönetici özeti ve Pazartesi. Liste 100’de kesilmez. Ciro uydurulmaz. Mail kendiliğinden gitmez. Akışta önceki sayfa adına tıklanınca dönüş. Muhatap yazımı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v628 / backend v628.
 
@@ -133,8 +135,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Canlı **v629**.
+Canlı **v630**.
 
-**Sıradaki paket: v630 (full)** — Personel kalıcı silme: müşteri erişim izi kaydı silmeyi kesmez. Gelen kutuda yazılım yankısı kuyruk olmaz; ortak kutu alıcı olmaz; dış yazı durur. Yönetim Paneli Bekleyen İş: yazı ve sayı yan yana, üzerine gelince önizleme. Acil dosya sorumlusu ekranında asistans sessiz müşteri uyarısı (Hasar eksper uyarısı Acil’e girmez). Hasar müşteri görünümü PDF açılır; hazır raporda «PDF önizleme açılamadı» çıkmaz; Onaya Gönder PDF yüzünden kesilmez. Dosya veya ödeme izi duran personel yine silinmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v629 / backend v629.
-
-Alım yalnız «canlıya al» deyince.
+Sıradaki paket henüz yok. Alım yalnız «canlıya al» deyince.

@@ -8,18 +8,29 @@
 
 ---
 
-## Canlı durum (28 Eylül 2026 — web v629 / backend v629)
+## Canlı durum (28 Eylül 2026 — web v630 / backend v630)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v629-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v629-amd64` | canlı |
-| **Rollback** | Web **v628** / Backend **v628** | manifest `rollbackImages` |
-| **Etiket** | `v629-crm-sessiz-musteri` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v630-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v630-amd64` | canlı |
+| **Rollback** | Web **v629** / Backend **v629** | manifest `rollbackImages` |
+| **Etiket** | `v630-personel-gelen-pdf` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v630 — Full (28 Eylül 2026) — Personel silme, gelen kutu, PDF
+
+- Personel kalıcı silme: müşteri erişim izi kaydı silmeyi kesmez
+- Gelen kutuda yazılım yankısı kuyruk olmaz; ortak kutu alıcı olmaz; dış yazı durur
+- Yönetim Paneli Bekleyen İş: yazı ve sayı yan yana, üzerine gelince önizleme
+- Acil dosya sorumlusu ekranında asistans sessiz müşteri uyarısı
+- Hasar müşteri görünümü PDF açılır; Onaya Gönder PDF yüzünden kesilmez
+- Disk; alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v629** / backend **v629**
 
 ### v629 — Full (28 Eylül 2026) — CRM sessiz müşteri
 
