@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as puppeteer from 'puppeteer';
 import encodeQR from '@/common/utils/vendor/paulmillr-qr/encode';
-import { reportImageToDataUrl } from '../report-image-paths';
+import { reportImageToPdfDataUrl } from '../report-image-paths';
 import {
   mapRepairReportPdfIdentity,
   PDF_BINA_TOTAL_LABEL,
@@ -297,10 +297,12 @@ export class ReportPdfService {
 
   async generate(report: ReportData, viewType: 'internal' | 'external'): Promise<Buffer> {
     try {
-      const images = (report.images ?? []).map((img) => ({
-        ...img,
-        dataUrl: img.dataUrl || reportImageToDataUrl(img.storageKey, img.mimeType),
-      }));
+      const images = await Promise.all(
+        (report.images ?? []).map(async (img) => ({
+          ...img,
+          dataUrl: img.dataUrl || (await reportImageToPdfDataUrl(img.storageKey, img.mimeType)),
+        })),
+      );
       const isDraft = isRepairReportPdfDraft(report.status, report.approvalHistory);
       const usageMark = isDraft
         ? 'Taslak'
@@ -386,7 +388,7 @@ export class ReportPdfService {
     });
     try {
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 20_000 });
+      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60_000 });
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,

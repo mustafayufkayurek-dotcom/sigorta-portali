@@ -1835,7 +1835,7 @@ model CustomerAccessLog {
   isAnomaly   Boolean  @default(false) @map("is_anomaly")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  user      User       @relation(fields: [userId], references: [id])
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   customer  Customer   @relation(fields: [customerId], references: [id])
   claimFile ClaimFile? @relation(fields: [claimFileId], references: [id])
 

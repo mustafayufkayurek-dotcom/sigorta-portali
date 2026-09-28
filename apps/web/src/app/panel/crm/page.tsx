@@ -22,12 +22,17 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { crmMailWatch } from '@sigorta/shared';
 import type { ExpertLane, ExpertWorkMemory, FileRecognizedPartner } from '@sigorta/shared';
 import {
+  ACIL_SILENCE_FOLLOW_UP_TITLE,
+  ACIL_SILENCE_LIST_HREF,
+  acilNewRegionMailDraft,
+  acilSilenceMailDraft,
   EXPERT_OPEN_FILE_OWNER_LINE,
   EXPERT_SILENCE_DAYS,
   EXPERT_SILENCE_FOLLOW_UP_TITLE,
   expertNewRegionMailDraft,
   expertSilenceMailDraft,
   expertSilencePostponeDueAt,
+  isAssistanceFirmCustomer,
   isExpertFirmCustomer,
   isExpertSilenceFollowUpTitle,
   isIstanbulCity,
@@ -423,7 +428,7 @@ function withExpertWork(entity: CrmEntity, work?: ExpertWorkMemory | null): CrmE
   const istanbul = isIstanbulCity(entity.city);
   const signal =
     work.lane === 'silent'
-      ? EXPERT_SILENCE_FOLLOW_UP_TITLE
+      ? (isAssistanceFirmCustomer(entity.source) ? ACIL_SILENCE_FOLLOW_UP_TITLE : EXPERT_SILENCE_FOLLOW_UP_TITLE)
       : work.lane === 'new_region'
         ? istanbul
           ? 'Yeni bölge · İstanbul'
@@ -443,7 +448,13 @@ function withExpertWork(entity: CrmEntity, work?: ExpertWorkMemory | null): CrmE
 
 function firstSilentExpert(rows: CrmEntity[]) {
   return [...rows]
-    .filter((item) => item.kind === 'customer' && item.expertWork?.lane === 'silent')
+    .filter((item) => item.kind === 'customer' && item.expertWork?.lane === 'silent' && isExpertFirmCustomer(item.source))
+    .sort((a, b) => (b.expertWork?.silentDays ?? 0) - (a.expertWork?.silentDays ?? 0))[0] ?? null;
+}
+
+function firstSilentAssistance(rows: CrmEntity[]) {
+  return [...rows]
+    .filter((item) => item.kind === 'customer' && item.expertWork?.lane === 'silent' && isAssistanceFirmCustomer(item.source))
     .sort((a, b) => (b.expertWork?.silentDays ?? 0) - (a.expertWork?.silentDays ?? 0))[0] ?? null;
 }
 
@@ -659,7 +670,10 @@ export default function CrmPage() {
     if (lane === 'silent' || lane === 'new_region' || lane === 'open_file') return lane;
     return '';
   });
-  const [istanbulOnly, setIstanbulOnly] = useState(false);
+  const [acilScope, setAcilScope] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('scope') === 'acil';
+  });
   const [riskFilter, setRiskFilter] = useState('');
   const [crmSummaries, setCrmSummaries] = useState<Record<string, CrmSummary>>({});
   const [crmActivity, setCrmActivity] = useState<CrmActivity | null>(null);
@@ -712,9 +726,13 @@ export default function CrmPage() {
           ...listOf<any>(adjusters).map((item) => normalizeAdjuster(item, performance)),
           ...listOf<any>(vendors).map(normalizeVendor),
         ];
-        const expertIds = next.filter((item) => item.kind === 'customer' && isExpertFirmCustomer(item.source)).map((item) => item.id);
-        const expertWork = expertIds.length
-          ? await apiClient.post<Record<string, ExpertWorkMemory>>('/crm/relationships/expert-work', { ids: expertIds }).catch(() => ({} as Record<string, ExpertWorkMemory>))
+        const workIds = next
+          .filter((item) =>
+            item.kind === 'customer'
+            && (isExpertFirmCustomer(item.source) || isAssistanceFirmCustomer(item.source)))
+          .map((item) => item.id);
+        const expertWork = workIds.length
+          ? await apiClient.post<Record<string, ExpertWorkMemory>>('/crm/relationships/expert-work', { ids: workIds }).catch(() => ({} as Record<string, ExpertWorkMemory>))
           : {};
         const merged = next.map((item) => withExpertWork(item, item.kind === 'customer' ? expertWork[item.id] : null));
 
@@ -732,7 +750,8 @@ export default function CrmPage() {
             }
             if (lane === 'silent') {
               setIstanbulOnly(false);
-              return firstSilentExpert(merged);
+              const scopeAcil = params?.get('scope') === 'acil';
+              return scopeAcil ? firstSilentAssistance(merged) : firstSilentExpert(merged);
             }
             const narrow =
               typeof window !== 'undefined' &&
@@ -768,6 +787,7 @@ export default function CrmPage() {
     if (lane === 'silent' || lane === 'new_region' || lane === 'open_file') {
       setExpertLaneFilter(lane);
     }
+    setAcilScope(params.get('scope') === 'acil');
     if (kind === 'customer' || kind === 'adjuster' || kind === 'vendor') {
       setKindFilter(kind);
     }
@@ -780,10 +800,10 @@ export default function CrmPage() {
     }
     if (lane === 'silent') {
       setIstanbulOnly(false);
-      const silent = firstSilentExpert(entities);
+      const silent = acilScope ? firstSilentAssistance(entities) : firstSilentExpert(entities);
       if (silent) setSelected(silent);
     }
-  }, [entities]);
+  }, [acilScope, entities]);
 
   async function refreshCrmActivity(entity: CrmEntity) {
     setActivityLoading(true);
@@ -839,7 +859,7 @@ export default function CrmPage() {
   async function saveSilenceFollowUp() {
     if (!selected || selected.kind !== 'customer' || !selected.expertWork?.silent) return;
     const summary = crmSummaries[relationshipKey(selected)];
-    if (isExpertSilenceFollowUpTitle(summary?.openFollowUp?.title)) {
+    if (isExpertSilenceFollowUpTitle(summary?.openFollowUp?.title) || summary?.openFollowUp?.title === ACIL_SILENCE_FOLLOW_UP_TITLE) {
       setActiveActionTab('followup');
       setActionSuccess('Bu ofis için takip zaten açık.');
       return;
@@ -850,8 +870,8 @@ export default function CrmPage() {
     try {
       await apiClient.post(`/crm/relationships/${selected.kind}/${selected.id}/follow-ups`, {
         status: 'open',
-        title: EXPERT_SILENCE_FOLLOW_UP_TITLE,
-        result: EXPERT_SILENCE_FOLLOW_UP_TITLE,
+        title: isAssistanceFirmCustomer(selected.source) ? ACIL_SILENCE_FOLLOW_UP_TITLE : EXPERT_SILENCE_FOLLOW_UP_TITLE,
+        result: isAssistanceFirmCustomer(selected.source) ? ACIL_SILENCE_FOLLOW_UP_TITLE : EXPERT_SILENCE_FOLLOW_UP_TITLE,
         dueAt: toIsoDate(todayInputDate()),
         visibility: 'everyone',
       });
@@ -874,7 +894,7 @@ export default function CrmPage() {
     try {
       await apiClient.post(`/crm/relationships/${selected.kind}/${selected.id}/follow-ups`, {
         status: 'open',
-        title: EXPERT_SILENCE_FOLLOW_UP_TITLE,
+        title: isAssistanceFirmCustomer(selected.source) ? ACIL_SILENCE_FOLLOW_UP_TITLE : EXPERT_SILENCE_FOLLOW_UP_TITLE,
         result: 'Tarih bağlandı',
         dueAt: toIsoDate(expertSilencePostponeDueAt()),
         visibility: 'everyone',
@@ -892,9 +912,10 @@ export default function CrmPage() {
 
   function prepareExpertMail() {
     if (!selected?.expertWork) return;
+    const assistance = isAssistanceFirmCustomer(selected.source);
     const mail = selected.expertWork.lane === 'new_region'
-      ? expertNewRegionMailDraft(selected.name)
-      : expertSilenceMailDraft(selected.name);
+      ? (assistance ? acilNewRegionMailDraft(selected.name) : expertNewRegionMailDraft(selected.name))
+      : (assistance ? acilSilenceMailDraft(selected.name) : expertSilenceMailDraft(selected.name));
     setEmailForm((prev) => ({
       ...prev,
       to: selected.email || prev.to,
@@ -916,11 +937,12 @@ export default function CrmPage() {
     setNoteForm({ occurredAt: todayInputDate(), noteType: 'general', visibility: 'everyone', summary: '', body: '' });
     setFollowUpForm({ dueAt: inputDate(summary?.openFollowUp?.dueAt) || todayInputDate(), status: 'open', visibility: 'everyone', result: '' });
     const work = selected.expertWork;
+    const assistance = isAssistanceFirmCustomer(selected.source);
     const mail =
       work?.lane === 'silent'
-        ? expertSilenceMailDraft(selected.name)
+        ? (assistance ? acilSilenceMailDraft(selected.name) : expertSilenceMailDraft(selected.name))
         : work?.lane === 'new_region'
-          ? expertNewRegionMailDraft(selected.name)
+          ? (assistance ? acilNewRegionMailDraft(selected.name) : expertNewRegionMailDraft(selected.name))
           : { subject: `${selected.name} - Görüşme takibi`, message: 'Merhaba,\n\nSon görüşmemizle ilgili takip notumuzu paylaşmak isteriz.' };
     setEmailForm({
       to: selected.email || '',
@@ -1060,19 +1082,23 @@ export default function CrmPage() {
     };
     const base = entities.filter(matchesBase);
     if (expertLaneFilter === 'silent') {
-      const silent = base.filter((item) => item.expertWork?.lane === 'silent');
+      const silentAll = base.filter((item) => item.expertWork?.lane === 'silent');
+      const silent = silentAll.filter((item) =>
+        acilScope ? isAssistanceFirmCustomer(item.source) : isExpertFirmCustomer(item.source));
+      const pool = base.filter((item) =>
+        acilScope ? isAssistanceFirmCustomer(item.source) : isExpertFirmCustomer(item.source));
       const altIds = pickExpertSilenceAlternatives(
-        base.map((item) => ({ id: item.id, kind: item.kind, lane: item.expertWork?.lane ?? null })),
+        pool.map((item) => ({ id: item.id, kind: item.kind, lane: item.expertWork?.lane ?? null })),
         silent.map((item) => item.id),
       ).map((row) => row.id);
-      const alternatives = base.filter((item) => item.expertWork?.lane === 'new_region' && altIds.includes(item.id));
+      const alternatives = pool.filter((item) => item.expertWork?.lane === 'new_region' && altIds.includes(item.id));
       return [...silent, ...alternatives];
     }
     if (expertLaneFilter) {
       return base.filter((item) => item.expertWork?.lane === expertLaneFilter);
     }
     return base;
-  }, [crmSummaries, entities, expertLaneFilter, istanbulOnly, kindFilter, openFollowOnly, riskFilter, search, statusFilter]);
+  }, [acilScope, crmSummaries, entities, expertLaneFilter, istanbulOnly, kindFilter, openFollowOnly, riskFilter, search, statusFilter]);
 
   const summary = useMemo(() => {
     const follow = entities.filter((item) => isOpenFollow(effectiveFollowUpDate(item, crmSummaries[relationshipKey(item)]))).length;
@@ -1102,8 +1128,12 @@ export default function CrmPage() {
             <button
               type="button"
               onClick={() => {
-                const lane = new URLSearchParams(window.location.search).get('lane');
-                router.push(lane === 'silent' ? '/panel/hasar-dosyalari' : '/panel');
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('scope') === 'acil') {
+                  router.push(ACIL_SILENCE_LIST_HREF);
+                  return;
+                }
+                router.push(params.get('lane') === 'silent' ? '/panel/hasar-dosyalari' : '/panel');
               }}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
               aria-label="Geri"
@@ -1114,11 +1144,17 @@ export default function CrmPage() {
             <PanelFlowTrail
               items={
                 expertLaneFilter === 'silent'
-                  ? [
-                      { label: 'Dashboard', href: '/panel' },
-                      { label: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
-                      { label: 'CRM' },
-                    ]
+                  ? acilScope
+                    ? [
+                        { label: 'Dashboard', href: '/panel' },
+                        { label: 'Acil Yardım', href: ACIL_SILENCE_LIST_HREF },
+                        { label: 'CRM' },
+                      ]
+                    : [
+                        { label: 'Dashboard', href: '/panel' },
+                        { label: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
+                        { label: 'CRM' },
+                      ]
                   : [
                       { label: 'Dashboard', href: '/panel' },
                       { label: 'CRM' },

@@ -93,5 +93,46 @@ describe('CRM eksper sessizlik ekran kilidi', () => {
       'utf8',
     );
     assert.match(monday, /HasarSilentOwnerReport/);
+    const dash = readFileSync(
+      join(here, '../../../features/dashboard/components/management-dashboard/ManagementDashboard.tsx'),
+      'utf8',
+    );
+    const briefing = readFileSync(
+      join(here, '../../../features/dashboard/components/management-dashboard/MgmtMorningBriefing.tsx'),
+      'utf8',
+    );
+    const briefingHelper = readFileSync(
+      join(here, '../../../features/dashboard/components/management-dashboard/morning-briefing.ts'),
+      'utf8',
+    );
+    assert.doesNotMatch(dash, /HasarSilentOwnerReport/);
+    assert.match(briefing, /yonetici-sabah-bakisi-sessiz/);
+    assert.match(briefingHelper, /id: 'sessiz'/);
+    assert.match(briefingHelper, /Sessiz Müşteri/);
+    assert.match(briefingHelper, /EXPERT_SILENCE_CRM_HREF/);
+  });
+
+  it('Acil dosya sorumlusu ekranında asistans sessiz müşteri şeridi durur', () => {
+    const ops = readFileSync(join(here, '../operasyon/page.tsx'), 'utf8');
+    const panel = readFileSync(join(here, '../page.tsx'), 'utf8');
+    const hasar = readFileSync(join(here, '../hasar-dosyalari/page.tsx'), 'utf8');
+    const strip = readFileSync(join(here, '../../../components/crm/AcilSilentAssistanceStrip.tsx'), 'utf8');
+    assert.match(ops, /AcilSilentAssistanceStrip/);
+    assert.match(ops, /acil-uyari-sirasi/);
+    assert.match(panel, /AcilSilentAssistanceStrip/);
+    assert.match(panel, /operationArea === 'acil'/);
+    assert.doesNotMatch(hasar, /AcilSilentAssistanceStrip/);
+    assert.match(strip, /acil-sessiz-asistans-seridi/);
+    assert.match(strip, /\/crm\/my-silent-assistance/);
+    assert.match(strip, /ACIL_SILENCE_CRM_HREF/);
+    assert.match(strip, /underline/);
+    assert.doesNotMatch(strip, /Google/);
+    assert.match(service, /getMySilentAssistanceCustomers/);
+    assert.match(service, /buildAssistanceWorkMap/);
+    assert.match(service, /isAssistanceFirmCustomer/);
+    assert.match(page, /firstSilentAssistance/);
+    assert.match(page, /ACIL_SILENCE_LIST_HREF/);
+    assert.match(page, /get\('scope'\) === 'acil'/);
+    assert.match(page, /isAssistanceFirmCustomer/);
   });
 });

@@ -177,6 +177,12 @@ export const OPS_NOTICE = {
     body:
       'Sessiz müşteri, onay bekleyen rapor değildir. Eksper 2 gündür yeni hasar dosyası göndermediyse yazıyı siz gönderirsiniz. Açık dosya bu kutuyu kapatmaz; onay kartta durur. Hiç dosya yoksa yeni bölgedir. Broşür yalnız henüz dosyası olmayana gider; eski ofise satılık yazı yok. Uyarı kapanınca ertesi sabah yeniden çıkar. Görüşülüp dosya gelmezse yönetici özetinde durur.',
   },
+  acilSessizMusteri: {
+    id: 'acil-sessiz-musteri-v630',
+    title: 'Sessiz acil müşteri',
+    body:
+      'Acil’de sessiz müşteri asistans firmasıdır. 2 gündür yeni ihbar gelmediyse yazıyı siz gönderirsiniz. Hasar eksper uyarısı buraya girmez. Mail kendiliğinden gitmez. Uyarı kapanınca ertesi sabah yeniden çıkar.',
+  },
 } as const;
 
 export function opsNoticeStorageKey(noticeId: string): string {

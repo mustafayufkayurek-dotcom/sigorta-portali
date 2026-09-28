@@ -1,4 +1,7 @@
 import { resolveWelcomeEmailLogoUrl } from './email-brand.util';
+import { isMeridyenInternalMailbox } from '@sigorta/shared';
+
+export { isMeridyenInternalMailbox };
 
 export type FileClosureAudience = 'assistance' | 'other';
 
@@ -72,11 +75,6 @@ export function formatClosureDuration(
   if (minutes) parts.push(`${minutes} dakika`);
   if (!parts.length) return '0 dakika';
   return parts.join(' ');
-}
-
-export function isMeridyenInternalMailbox(email: string): boolean {
-  const host = String(email.split('@')[1] || '').trim().toLowerCase();
-  return !host || host === 'localhost' || host === 'meridyen-tr.com' || host.endsWith('.meridyen-tr.com');
 }
 
 export function customerFirmTitle(c?: {

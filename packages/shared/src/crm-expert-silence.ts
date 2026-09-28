@@ -206,3 +206,10 @@ export function expertSilenceOwnerHeadline(input: {
   if (input.opened) return 'CRM’i açtı. Henüz not yok.';
   return 'Uyarıya bakmadı.';
 }
+
+export function evaluateAssistanceWork(input: ExpertWorkInput): ExpertWorkMemory {
+  return {
+    ...evaluateExpertWork(input),
+    followUpTitle: 'Bu müşteriden ihbar gelmedi.',
+  };
+}

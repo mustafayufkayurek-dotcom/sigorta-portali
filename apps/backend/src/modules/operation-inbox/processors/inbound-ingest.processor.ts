@@ -21,6 +21,7 @@ import {
   classifyMailReceipt,
   isLoginEmailCodeSubject,
   isReadableMailReceiptHtml,
+  isSoftwareOutboundInboxEcho,
   matchCrmEmailWatchLog,
 } from '@sigorta/shared';
 import { OperationInboxService } from '../operation-inbox.service';
@@ -115,8 +116,9 @@ export class InboundIngestProcessor {
     let updated = 0;
     let skipped = 0;
 
+    const siblingAddress = mailbox === 'IHBAR' ? config.hasarMailbox : config.ihbarMailbox;
     for (const msg of page.messages) {
-      const result = await this.ingestMessage(token, mailbox, mailboxAddress, msg);
+      const result = await this.ingestMessage(token, mailbox, mailboxAddress, siblingAddress, msg);
       if (result === 'created') created += 1;
       else if (result === 'updated') updated += 1;
       else skipped += 1;
@@ -159,11 +161,18 @@ export class InboundIngestProcessor {
     token: string,
     mailbox: InboundMailbox,
     mailboxAddress: string,
+    siblingMailboxAddress: string | undefined,
     msg: GraphMessage,
   ): Promise<'created' | 'updated' | 'skipped'> {
     if (msg['@removed'] || !msg.id) return 'skipped';
 
     const mapped = this.mapGraphMessage(msg, mailbox);
+    const softwareEcho = isSoftwareOutboundInboxEcho({
+      fromAddress: mapped.fromAddress,
+      subject: mapped.subject,
+      mailboxAddress,
+      siblingMailboxAddress,
+    });
     if (isLoginEmailCodeSubject(mapped.subject)) return 'skipped';
     const receipt = classifyMailReceipt({
       subject: mapped.subject,
@@ -217,6 +226,13 @@ export class InboundIngestProcessor {
       if (msg.hasAttachments) {
         await this.syncAttachments(token, mailboxAddress, existing.id, msg.id);
       }
+      if (
+        softwareEcho &&
+        !existing.assignedUserId &&
+        ['NEW', 'CLASSIFIED', 'CLASSIFYING', 'ERROR'].includes(existing.status)
+      ) {
+        await this.quietSoftwareOutboundEcho(existing.id);
+      }
       return 'updated';
     }
 
@@ -245,6 +261,10 @@ export class InboundIngestProcessor {
       });
       return 'created';
     }
+    if (softwareEcho) {
+      await this.quietSoftwareOutboundEcho(created.id);
+      return 'created';
+    }
     await this.inboxService.applyOutboundCounterpartReply({
       conversationId: mapped.conversationId,
       subject: mapped.subject,
@@ -264,6 +284,14 @@ export class InboundIngestProcessor {
       CLASSIFY_JOB_OPTIONS,
     );
     return 'created';
+  }
+
+  private async quietSoftwareOutboundEcho(messageId: string) {
+    await this.inboxService.attemptRuleBasedLink(messageId);
+    await this.prisma.inboundMessage.update({
+      where: { id: messageId },
+      data: { status: 'ACTIONED', processedAt: new Date(), suggestedAction: null },
+    });
   }
 
   private async applyCrmMailWatch(input: {

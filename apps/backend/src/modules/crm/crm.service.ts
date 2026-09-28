@@ -7,12 +7,14 @@ import { EmailService } from '@/modules/notifications/email/email.service';
 import {
   buildCrmSenderCopyNotice,
   canSendVisibleCopy,
+  evaluateAssistanceWork,
   evaluateExpertWork,
   EXPERT_SILENCE_DISMISS_ACTION,
   EXPERT_SILENCE_OPENED_ACTION,
   EXPERT_SILENCE_SIGNAL_KEY,
   expertSilenceFileStillMissing,
   expertSilenceOwnerHeadline,
+  isAssistanceFirmCustomer,
   isExpertFirmCustomer,
   matchCrmEmailWatchLog,
   prependFileOwnerCopyNotice,
@@ -154,6 +156,13 @@ export class CrmService {
       },
     });
     const expertIds = customers.filter((row) => isExpertFirmCustomer(row)).map((row) => row.id);
+    const assistanceIds = customers.filter((row) => isAssistanceFirmCustomer(row)).map((row) => row.id);
+    const expertWork = await this.buildExpertClaimWorkMap(expertIds);
+    const assistanceWork = await this.buildAssistanceWorkMap(assistanceIds);
+    return { ...expertWork, ...assistanceWork };
+  }
+
+  private async buildExpertClaimWorkMap(expertIds: string[]): Promise<Record<string, ExpertWorkMemory>> {
     if (expertIds.length === 0) return {};
 
     const [files, reports] = await Promise.all([
@@ -247,6 +256,52 @@ export class CrmService {
             openFileCount: fileRows.filter((row) => row.open).length,
             lastFileAt,
             lastApprovedAt: bucket.lastApprovedAt,
+          }),
+        ];
+      }),
+    );
+  }
+
+  private async buildAssistanceWorkMap(assistanceIds: string[]): Promise<Record<string, ExpertWorkMemory>> {
+    if (assistanceIds.length === 0) return {};
+    const cases = await this.prisma.emergencyCase.findMany({
+      where: { customerId: { in: assistanceIds } },
+      select: {
+        id: true,
+        customerId: true,
+        status: true,
+        fileDate: true,
+        createdAt: true,
+      },
+    });
+    const buckets = new Map<string, { files: Map<string, { createdAt: Date; open: boolean }> }>();
+    for (const id of assistanceIds) buckets.set(id, { files: new Map() });
+    for (const row of cases) {
+      if (!row.customerId) continue;
+      const bucket = buckets.get(row.customerId);
+      if (!bucket) continue;
+      const createdAt = row.fileDate ?? row.createdAt;
+      const previous = bucket.files.get(row.id);
+      if (!previous || createdAt.getTime() > previous.createdAt.getTime()) {
+        bucket.files.set(row.id, {
+          createdAt,
+          open: row.status === 'GELEN' || row.status === 'ATANDI' || row.status === 'SAHADA',
+        });
+      }
+    }
+    return Object.fromEntries(
+      assistanceIds.map((id) => {
+        const fileRows = Array.from((buckets.get(id) ?? { files: new Map() }).files.values());
+        const lastFileAt = fileRows.reduce<Date | null>((latest, row) => {
+          if (!latest || row.createdAt.getTime() > latest.getTime()) return row.createdAt;
+          return latest;
+        }, null);
+        return [
+          id,
+          evaluateAssistanceWork({
+            fileCount: fileRows.length,
+            openFileCount: fileRows.filter((row) => row.open).length,
+            lastFileAt,
           }),
         ];
       }),
@@ -371,6 +426,74 @@ export class CrmService {
           lastWorkAt: memory?.lastWorkAt ?? null,
           lastFileAt: memory?.lastFileAt ?? null,
           lastAction: this.silentOfficeActionLabel(latest),
+          canAct: office.ownerUserId === userId,
+        };
+      })
+      .sort((a, b) => (b.silentDays ?? 0) - (a.silentDays ?? 0));
+  }
+
+  async getMySilentAssistanceCustomers(user: any) {
+    const userId = this.userId(user);
+    if (!userId) return [];
+    const asManager = this.isManager(user);
+    const cases = await this.prisma.emergencyCase.findMany({
+      where: asManager ? { assignedUserId: { not: null } } : { assignedUserId: userId },
+      select: {
+        assignedUserId: true,
+        assignedUser: { select: { id: true, firstName: true, lastName: true } },
+        customer: {
+          select: {
+            id: true,
+            subType: true,
+            companyName: true,
+            fullName: true,
+            type: true,
+            entityType: true,
+            city: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+    });
+    const offices = new Map<string, {
+      id: string;
+      name: string;
+      city: string | null;
+      email: string | null;
+      phone: string | null;
+      ownerUserId: string | null;
+      ownerName: string | null;
+    }>();
+    for (const row of cases) {
+      const customer = row.customer;
+      if (!customer?.id || !isAssistanceFirmCustomer(customer)) continue;
+      const name = String(customer.companyName ?? customer.fullName ?? '').trim();
+      if (!name) continue;
+      const owner = row.assignedUser;
+      const ownerName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ').trim() || null;
+      const previous = offices.get(customer.id);
+      offices.set(customer.id, {
+        id: customer.id,
+        name,
+        city: customer.city ?? previous?.city ?? null,
+        email: customer.email ?? previous?.email ?? null,
+        phone: customer.phone ?? previous?.phone ?? null,
+        ownerUserId: owner?.id ?? previous?.ownerUserId ?? null,
+        ownerName: ownerName ?? previous?.ownerName ?? null,
+      });
+    }
+    const work = await this.getExpertWorkMap([...offices.keys()]);
+    const silent = [...offices.values()].filter((office) => work[office.id]?.lane === 'silent');
+    return silent
+      .map((office) => {
+        const memory = work[office.id];
+        return {
+          ...office,
+          lane: memory?.lane ?? 'silent',
+          silentDays: memory?.silentDays ?? null,
+          lastWorkAt: memory?.lastWorkAt ?? null,
+          lastFileAt: memory?.lastFileAt ?? null,
           canAct: office.ownerUserId === userId,
         };
       })

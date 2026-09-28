@@ -77,6 +77,7 @@ describe('file-closure-email', () => {
 
   it('skips meridyen internal mailboxes', () => {
     expect(isMeridyenInternalMailbox('info@meridyen-tr.com')).toBe(true);
+    expect(isMeridyenInternalMailbox('ihbar@safranbh.com')).toBe(true);
     expect(isMeridyenInternalMailbox('operasyon@remed.com')).toBe(false);
   });
 });

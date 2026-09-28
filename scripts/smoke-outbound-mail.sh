@@ -18,5 +18,7 @@ node --experimental-strip-types --test \
   packages/shared/src/inbox-reply-attachment.lock.spec.ts \
   packages/shared/src/outbound-mail-signal.lock.spec.ts \
   packages/shared/src/file-owner-mail-copy.lock.spec.ts \
-  packages/shared/src/crm-mail-watch.lock.spec.ts
+  packages/shared/src/crm-mail-watch.lock.spec.ts \
+  packages/shared/src/operational-mailbox.lock.spec.ts \
+  apps/backend/src/modules/operation-inbox/software-outbound-echo.lock.spec.ts
 echo "=== Giden mail kilit: PASS ==="

@@ -16,7 +16,9 @@ alwaysApply: true
 3. Pencere gelmezse sayfada başlık ve **Kapat** durur.
 4. `%PDF` gövde, içerik türü yazmasa da önizleme ve indirmedir. Sunucu hata cümlesi olduğu gibi gösterilir.
 5. Dekont ve depodaki evrak oturumla bayt açılır. Kısa süreli dış adres yok.
-6. Her canlı alım `pdf-preview-open.lock.spec.ts` çalıştırır (`smoke-canli-bitmis-is.sh`).
+6. `presentPdfPreview` raporu tam tampon kopyalamaz; aynı sayfada durur.
+7. Onarım PDF fotoğrafı büyükse küçülür; Onaya Gönder PDF yüzünden kesilmez.
+8. Her canlı alım `pdf-preview-open.lock.spec.ts` çalıştırır (`smoke-canli-bitmis-is.sh`).
 
 ## Yasak (açık onay yoksa)
 

@@ -16,6 +16,12 @@ export class CrmController {
     return { success: true, data };
   }
 
+  @Get('my-silent-assistance')
+  async mySilentAssistance(@Req() req: any) {
+    const data = await this.crmService.getMySilentAssistanceCustomers(req.user);
+    return { success: true, data };
+  }
+
   @Get('silence-action-report')
   async silenceActionReport(@Req() req: any) {
     const data = await this.crmService.getSilenceActionReport(req.user);

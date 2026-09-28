@@ -66,6 +66,7 @@ import { SlidePanel } from '@/components/SlidePanel';
 import { EmergencyCaseNewForm } from '@/components/emergency/EmergencyCaseNewForm';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
+import { AcilSilentAssistanceStrip } from '@/components/crm/AcilSilentAssistanceStrip';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import {
@@ -1062,13 +1063,26 @@ function OperasyonPageContent() {
 
       {isAcilListMode ? (
         <div className="space-y-2">
-          <MissingShortNameBanner />
+          <div
+            className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:items-stretch"
+            data-testid="acil-uyari-sirasi"
+          >
+            <AcilSilentAssistanceStrip />
+            <MissingShortNameBanner />
+          </div>
           <OpsFirstRunNotice
             compact
             noticeId={OPS_NOTICE.acilListeSonDegisiklik.id}
             title={OPS_NOTICE.acilListeSonDegisiklik.title}
             body={OPS_NOTICE.acilListeSonDegisiklik.body}
             testId="acil-liste-ilk-kullanim-seridi"
+          />
+          <OpsFirstRunNotice
+            compact
+            noticeId={OPS_NOTICE.acilSessizMusteri.id}
+            title={OPS_NOTICE.acilSessizMusteri.title}
+            body={OPS_NOTICE.acilSessizMusteri.body}
+            testId="acil-sessiz-musteri-ilk-kullanim-seridi"
           />
           {showFinanceExtraAccessAcil ? (
             <OpsFirstRunNotice

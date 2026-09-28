@@ -5,6 +5,7 @@ import { InboundMailbox } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { M365GraphConfig } from '../../system-settings/system-settings.service';
 import { M365_GRAPH_CONFIG_KEY, SHARED_MAILBOXES } from '../operation-inbox.constants';
+import { filterSoftwareMailboxRecipients } from '@sigorta/shared';
 import { GraphAuthService } from './graph-auth.service';
 import { GraphMailSyncService } from './graph-mail-sync.service';
 
@@ -82,6 +83,12 @@ export class GraphMailSendService {
       seenTo.add(key);
       toList.push(address);
     }
+    const outboundTo = filterSoftwareMailboxRecipients(toList, mailboxAddress);
+    const outboundCc = filterSoftwareMailboxRecipients(
+      (cc ?? []).map((item) => item.email),
+      mailboxAddress,
+    );
+    const ccByEmail = new Map((cc ?? []).map((item) => [item.email.trim().toLowerCase(), item]));
     // Geçmiş panelde eklenir. Graph comment alanı orijinal logolu HTML'i tekrar yapıştırır; kullanılmaz.
     // Görünür kopya ayrı mail değildir; aynı Graph yanıtının ccRecipients alanıdır. Asıl yazı gitmezse kopya da gitmez.
     const payload = {
@@ -91,21 +98,24 @@ export class GraphMailSendService {
           content: trimmed,
         },
         isReadReceiptRequested: true,
-        ...(toList.length
+        ...(outboundTo.length
           ? {
-              toRecipients: toList.map((address) => ({
+              toRecipients: outboundTo.map((address) => ({
                 emailAddress: { address },
               })),
             }
           : {}),
-        ...(cc?.length
+        ...(outboundCc.length
           ? {
-              ccRecipients: cc.map((item) => ({
-                emailAddress: {
-                  address: item.email,
-                  ...(item.name?.trim() ? { name: item.name.trim() } : {}),
-                },
-              })),
+              ccRecipients: outboundCc.map((address) => {
+                const item = ccByEmail.get(address.toLowerCase());
+                return {
+                  emailAddress: {
+                    address,
+                    ...(item?.name?.trim() ? { name: item.name.trim() } : {}),
+                  },
+                };
+              }),
             }
           : {}),
         ...(graphAttachments?.length ? { attachments: graphAttachments } : {}),
@@ -172,10 +182,15 @@ export class GraphMailSendService {
         'Microsoft 365 kutu adresi boş. Ayarlar → Entegrasyonlar’da Hasar / İhbar kutusunu yazın.',
       );
     }
-    const recipients = to.map((address) => address.trim()).filter(Boolean);
+    const recipients = filterSoftwareMailboxRecipients(to, mailboxAddress);
     if (!recipients.length) {
-      throw new BadRequestException('Alıcı e-posta adresi yok.');
+      throw new BadRequestException('Ortak kutu alıcı olmaz. Dış taraf adresi gerekir.');
     }
+    const outboundCc = filterSoftwareMailboxRecipients(
+      (cc ?? []).map((item) => item.email),
+      mailboxAddress,
+    );
+    const ccByEmail = new Map((cc ?? []).map((item) => [item.email.trim().toLowerCase(), item]));
 
     const encodedUser = encodeURIComponent(mailboxAddress);
     const trimmed = body.trim();
@@ -191,14 +206,17 @@ export class GraphMailSendService {
       toRecipients: recipients.map((address) => ({
         emailAddress: { address },
       })),
-      ...(cc?.length
+      ...(outboundCc.length
         ? {
-            ccRecipients: cc.map((item) => ({
-              emailAddress: {
-                address: item.email,
-                ...(item.name?.trim() ? { name: item.name.trim() } : {}),
-              },
-            })),
+            ccRecipients: outboundCc.map((address) => {
+              const item = ccByEmail.get(address.toLowerCase());
+              return {
+                emailAddress: {
+                  address,
+                  ...(item?.name?.trim() ? { name: item.name.trim() } : {}),
+                },
+              };
+            }),
           }
         : {}),
       ...(requestReadReceipt ? { isReadReceiptRequested: true } : {}),

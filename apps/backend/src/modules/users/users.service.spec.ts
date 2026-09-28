@@ -168,4 +168,39 @@ describe('UsersService', () => {
       expect(tx.loginEmailChallenge.updateMany).toHaveBeenCalled();
     });
   });
+
+  describe('permanentDelete', () => {
+    it('müşteri erişim izini düşürüp kullanıcıyı siler', async () => {
+      const user = {
+        id: 'user-1',
+        email: 'archived+user@deleted.meridyen.local',
+        archivedEmail: 'eski@test.com',
+        status: 'archived',
+      };
+      const tx = {
+        screenPermission: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        userServiceArea: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        userDepartmentMembership: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        claimResponsibilityAssignment: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        userInsuranceCompanyScope: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        refreshToken: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        passwordResetToken: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        loginEmailChallenge: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        userEmailPreferences: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        customerAccessLog: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
+        notification: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        user: { delete: jest.fn().mockResolvedValue(user) },
+      };
+
+      prisma.user.findUnique.mockResolvedValue(user);
+      prisma.claimFile = { count: jest.fn().mockResolvedValue(0) };
+      prisma.$transaction.mockImplementation(async (callback: any) => callback(tx));
+
+      const result = await service.permanentDelete('user-1', 'admin-1');
+
+      expect(tx.customerAccessLog.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
+      expect(tx.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+      expect(result.message).toBe('Kullanıcı kalıcı olarak silindi');
+    });
+  });
 });

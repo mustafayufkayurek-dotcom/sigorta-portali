@@ -1,0 +1,37 @@
+---
+description: Gelen kutu yazılım yankısı — kuyruk yalnız dış yazı
+alwaysApply: true
+---
+
+# Gelen Kutu Yazılım Yankısı Kilidi
+
+**Kaynak (Mustafa · 28.09.2026):** Yazılım kapanış ve kopya yazısı ortak kutuya düşünce bekleyen iş gibi duruyordu. İş dosyada zaten vardı.
+
+**Temel cümle:** Ortak kutu **alıcı olmaz.** Kendi yazılım yazısının yankısı **kuyruk değildir.** Dışarıdan gelen durur. Outlook silinmez.
+
+## Zorunlu
+
+1. Kapanış / onay / kopya alıcısı `ihbar@` / `hasar@` ve Meridyen alanı olmaz (`isMeridyenInternalMailbox` / `filterSoftwareMailboxRecipients`).
+2. Gelen yazı yankıysa (`isSoftwareOutboundInboxEcho`): ortak kutudan, yanıt öneki yok, yazılım konusu. Kuyrukta ACTIONED; dosyaya bağlanır. Sınıflandırma ve «yanıt geldi» çalışmaz.
+3. `Ynt:` / dış gönderen / `Mutabakat` gibi yabancı yazı kuyrukta durur.
+4. Sınıflandırma mail atmaz.
+
+## Yasak (açık onay yoksa)
+
+- Konuya bakıp her Dosya Kapanışı’nı gizlemek
+- Yankıyı Outlook’tan silmek
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Kendi kapanış kartı yine bekliyorsa veya dış yazı kaybolursa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/operational-mailbox.lock.spec.ts \
+ apps/backend/src/modules/operation-inbox/software-outbound-echo.lock.spec.ts \
+ apps/backend/src/modules/operation-inbox/inbound-classify-human.lock.spec.ts
+bash scripts/smoke-outbound-mail.sh
+```

@@ -1,7 +1,9 @@
 /** Yönetici sabah bakışı — sıfır satır basılmaz; yeni tema / KPI duvarı değildir. */
 
+import { EXPERT_SILENCE_CRM_HREF } from '@sigorta/shared';
+
 export type MorningBriefingItem = {
-  id: 'tahsilat' | 'onay72' | 'puantaj' | 'kutu';
+  id: 'sessiz' | 'tahsilat' | 'onay72' | 'puantaj' | 'kutu';
   href: string;
   label: string;
   value: string;
@@ -25,6 +27,7 @@ export type MorningBriefingClaimPreview = {
 };
 
 export const MORNING_BRIEFING_HREF = {
+  sessiz: EXPERT_SILENCE_CRM_HREF,
   tahsilat: '/panel/finans/tahsilatlar',
   onay72: '/panel/hasar-dosyalari',
   puantaj: '/panel/personel-ozluk?tab=attendance',
@@ -85,6 +88,108 @@ function previewPlace(row: Record<string, unknown>): string {
   return district || city || nestedTrim(row.claimSubject, 'name') || nestedTrim(row.departmentFileSubject, 'name');
 }
 
+export type MorningBriefingHoverLine = {
+  key: string;
+  title: string;
+  detail?: string;
+  href?: string;
+};
+
+export const MORNING_BRIEFING_HOVER_LIMIT = 5;
+
+export function mapMorningBriefingHoverLines(
+  id: MorningBriefingItem['id'],
+  source: {
+    silent?: Array<{ ownerName?: string | null; headline?: string | null }>;
+    payments?: Array<{ fileNo?: string | null; amount?: number | null; insuranceCompany?: string | null }>;
+    claims?: Array<Pick<MorningBriefingClaimPreview, 'id' | 'href' | 'fileNo' | 'insured' | 'statusLabel'>>;
+    employees?: Array<{ fullName?: string | null; status?: string | null }>;
+    inbox?: Array<{
+      id?: string;
+      subject?: string | null;
+      fromName?: string | null;
+      fromAddress?: string | null;
+      isUnowned?: boolean;
+    }>;
+  },
+): MorningBriefingHoverLine[] {
+  if (id === 'sessiz') {
+    return (source.silent ?? [])
+      .map((row, index) => {
+        const title = String(row.ownerName ?? '').trim();
+        const detail = String(row.headline ?? '').trim();
+        if (!title && !detail) return null;
+        return {
+          key: `sessiz-${index}-${title}`,
+          title: title || 'Dosya Sorumlusu',
+          detail: detail || undefined,
+          href: MORNING_BRIEFING_HREF.sessiz,
+        };
+      })
+      .filter((row): row is MorningBriefingHoverLine => Boolean(row))
+      .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
+  }
+
+  if (id === 'tahsilat') {
+    return (source.payments ?? [])
+      .map((row, index) => {
+        const title = String(row.fileNo ?? '').trim();
+        if (!title) return null;
+        const amount = Number(row.amount);
+        const party = String(row.insuranceCompany ?? '').trim();
+        const money = Number.isFinite(amount) && amount > 0 ? formatMorningBriefingMoney(amount) : '';
+        return {
+          key: `tahsilat-${index}-${title}`,
+          title,
+          detail: [party, money].filter(Boolean).join(' · ') || undefined,
+          href: MORNING_BRIEFING_HREF.tahsilat,
+        };
+      })
+      .filter((row): row is MorningBriefingHoverLine => Boolean(row))
+      .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
+  }
+
+  if (id === 'onay72') {
+    return (source.claims ?? []).slice(0, MORNING_BRIEFING_HOVER_LIMIT).map((row) => ({
+      key: `onay72-${row.id}`,
+      title: row.fileNo,
+      detail: [row.insured, row.statusLabel].filter((part) => part && part !== '—').join(' · ') || undefined,
+      href: row.href,
+    }));
+  }
+
+  if (id === 'puantaj') {
+    return (source.employees ?? [])
+      .filter((row) => row.status === 'missing')
+      .map((row, index) => {
+        const title = String(row.fullName ?? '').trim();
+        if (!title) return null;
+        return {
+          key: `puantaj-${index}-${title}`,
+          title,
+          detail: 'Onaylanmadı',
+          href: MORNING_BRIEFING_HREF.puantaj,
+        };
+      })
+      .filter((row): row is MorningBriefingHoverLine => Boolean(row))
+      .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
+  }
+
+  return (source.inbox ?? [])
+    .filter((row) => row.isUnowned === true)
+    .map((row, index) => {
+      const title = String(row.subject ?? '').trim() || 'Konusuz yazı';
+      const from = String(row.fromName ?? row.fromAddress ?? '').trim();
+      return {
+        key: `kutu-${row.id ?? index}`,
+        title,
+        detail: from || undefined,
+        href: MORNING_BRIEFING_HREF.kutu,
+      };
+    })
+    .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
+}
+
 export function mapMorningBriefingClaimPreview(raw: unknown): MorningBriefingClaimPreview[] {
   const list = Array.isArray(raw) ? raw : [];
   const rows: MorningBriefingClaimPreview[] = [];
@@ -117,6 +222,7 @@ export function mapMorningBriefingClaimPreview(raw: unknown): MorningBriefingCla
 }
 
 export function buildMorningBriefingItems(input: {
+  silentOwnerCount?: number | null;
   pendingIncomingCount?: number | null;
   totalPendingAmount?: number | null;
   approval72h?: number | null;
@@ -124,6 +230,18 @@ export function buildMorningBriefingItems(input: {
   inboxUnowned?: number | null;
 }): MorningBriefingItem[] {
   const items: MorningBriefingItem[] = [];
+  const silent = count(input.silentOwnerCount);
+  if (silent > 0) {
+    const value = formatMorningBriefingCount(silent, 'Kişi');
+    items.push({
+      id: 'sessiz',
+      href: MORNING_BRIEFING_HREF.sessiz,
+      label: 'Sessiz Müşteri',
+      value,
+      ariaLabel: `Sessiz Müşteri, ${value}`,
+    });
+  }
+
   const incoming = count(input.pendingIncomingCount);
   const money = Number(input.totalPendingAmount);
   const moneyOk = Number.isFinite(money) && money > 0;

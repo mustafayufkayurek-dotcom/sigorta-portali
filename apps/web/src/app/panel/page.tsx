@@ -24,6 +24,7 @@ import {
 } from '@/features/dashboard/components/admin';
 import { ManagementDashboard } from '@/features/dashboard/components/management-dashboard';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
+import { AcilSilentAssistanceStrip } from '@/components/crm/AcilSilentAssistanceStrip';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import { resolveDashboardLayout } from '@/features/dashboard/registry/role-dashboard-layout';
 
@@ -126,6 +127,7 @@ export default function PanelPage() {
         {/* Tespit uyarı bandı — saha ile aynı yöntem; yalnız office_staff */}
         <OfficeInspectionReminder />
         <OfficeSurveyReminder />
+        {(operationArea === 'acil' || operationArea === 'both') ? <AcilSilentAssistanceStrip /> : null}
 
         <OfficeKpiBand staggerIndex={0} />
 

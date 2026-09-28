@@ -70,4 +70,13 @@ describe('onarım raporu PDF düzen LOCK', () => {
     assert.match(pdfSrc, /signatureBoxHtml\('Dosya Sorumlusu'/);
     assert.match(reportsSrc, /assignedInspectorVendor:/);
   });
+
+  it('büyük tespit fotoğrafı PDF’de küçülür; motor 60 saniye bekler', () => {
+    const paths = readFileSync(join(specDir, '../report-image-paths.ts'), 'utf8');
+    assert.match(paths, /export async function reportImageToPdfDataUrl/);
+    assert.match(paths, /PDF_IMAGE_BYTES/);
+    assert.match(paths, /sharp\(/);
+    assert.match(pdfSrc, /reportImageToPdfDataUrl/);
+    assert.match(pdfSrc, /timeout: 60_000/);
+  });
 });

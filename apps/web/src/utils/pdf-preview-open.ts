@@ -36,12 +36,21 @@ export async function readPdfPreviewFailure(data: unknown, contentType: string):
   const blob = toPdfPreviewBlob(data, contentType);
   const type = String(contentType ?? '').toLowerCase();
   const magic = new Uint8Array(await blob.slice(0, 5).arrayBuffer());
-  if (isPdfMagic(magic) || type.includes('pdf')) return null;
+  if (isPdfMagic(magic)) return null;
+  if (type.includes('pdf') && blob.size >= 1_000) return null;
 
   let message = 'PDF önizleme açılamadı.';
   try {
     const text = await blob.text();
-    const parsed = JSON.parse(text) as { message?: string | string[] };
+    const trimmed = text.trim();
+    if (!trimmed) return message;
+    if (/^</.test(trimmed)) {
+      if (/504|502|503|timeout|gateway|cloudflare/i.test(trimmed)) {
+        return 'PDF hazırlanamadı. Lütfen tekrar deneyin.';
+      }
+      return message;
+    }
+    const parsed = JSON.parse(trimmed) as { message?: string | string[] };
     const raw = parsed.message;
     if (typeof raw === 'string' && raw.trim()) message = raw;
     else if (Array.isArray(raw) && raw[0]) message = String(raw[0]);
@@ -190,16 +199,23 @@ export async function openSessionBlob(
 }
 
 export async function presentPdfPreview(data: unknown, title: string): Promise<'tab' | 'panel' | null> {
-  const blob = toPdfPreviewBlob(data, 'application/pdf');
-  const pdfBlob = new Blob([await blob.arrayBuffer()], { type: 'application/pdf' });
-  const url = URL.createObjectURL(pdfBlob);
-  if (typeof document === 'undefined') {
-    const tab = openBlobUrlWithoutNoopener(url);
-    if (tab && !tab.closed) return 'tab';
-    URL.revokeObjectURL(url);
+  try {
+    const source = toPdfPreviewBlob(data, 'application/pdf');
+    const blob =
+      source.type.includes('pdf') || source.size === 0
+        ? source
+        : new Blob([source], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    if (typeof document === 'undefined') {
+      const tab = openBlobUrlWithoutNoopener(url);
+      if (tab && !tab.closed) return 'tab';
+      URL.revokeObjectURL(url);
+      return null;
+    }
+    /* Yeni sekme Edge’de blob adresini keser; rapor aynı sayfada durur. */
+    mountPdfPreviewPanel(url, title, false);
+    return 'panel';
+  } catch {
     return null;
   }
-  /* Yeni sekme Edge’de blob adresini keser; rapor aynı sayfada durur. */
-  mountPdfPreviewPanel(url, title, false);
-  return 'panel';
 }

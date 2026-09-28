@@ -25,8 +25,9 @@ describe('hasar pdf önizleme LOCK', () => {
 
   it('müşteri görünümü raporu aynı sayfada açar; yeni sekmeye bağlanmaz', () => {
     const from = helper.indexOf('export async function presentPdfPreview');
-    const fn = helper.slice(from, from + 900);
+    const fn = helper.slice(from, from + 1200);
     assert.match(fn, /mountPdfPreviewPanel/);
+    assert.doesNotMatch(fn, /arrayBuffer\(\)/);
   });
 
   it('yardımcı blob adresine noopener vermez; kesilince sayfada Kapat durur', () => {
@@ -79,6 +80,14 @@ describe('hasar pdf önizleme LOCK', () => {
   it('sunucu hata yazısını olduğu gibi bırakır', async () => {
     const blob = new Blob([JSON.stringify({ message: 'PDF oluşturulamadı.' })], { type: 'application/json' });
     assert.equal(await readPdfPreviewFailure(blob, 'application/json'), 'PDF oluşturulamadı.');
+  });
+
+  it('kapı zaman aşımı HTML gövdesini PDF saymaz', async () => {
+    const blob = new Blob(['<html>504 Gateway Timeout</html>'], { type: 'text/html' });
+    assert.equal(
+      await readPdfPreviewFailure(blob, 'text/html'),
+      'PDF hazırlanamadı. Lütfen tekrar deneyin.',
+    );
   });
 
   it('oturum dosyası açan yerler aynı kapıyı kullanır', () => {

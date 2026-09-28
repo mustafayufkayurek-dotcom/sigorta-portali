@@ -1,5 +1,5 @@
 ---
-description: Canlı web v629 / backend v629
+description: Canlı web v629 / backend v629 — sıradaki paket v630
 alwaysApply: true
 ---
 
@@ -134,5 +134,7 @@ Alım yalnız Mustafa «canlıya al» deyince.
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
 Canlı **v629**.
+
+**Sıradaki paket: v630 (full)** — Personel kalıcı silme: müşteri erişim izi kaydı silmeyi kesmez. Gelen kutuda yazılım yankısı kuyruk olmaz; ortak kutu alıcı olmaz; dış yazı durur. Yönetim Paneli Bekleyen İş: yazı ve sayı yan yana, üzerine gelince önizleme. Acil dosya sorumlusu ekranında asistans sessiz müşteri uyarısı (Hasar eksper uyarısı Acil’e girmez). Hasar müşteri görünümü PDF açılır; hazır raporda «PDF önizleme açılamadı» çıkmaz; Onaya Gönder PDF yüzünden kesilmez. Dosya veya ödeme izi duran personel yine silinmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v629 / backend v629.
 
 Alım yalnız «canlıya al» deyince.

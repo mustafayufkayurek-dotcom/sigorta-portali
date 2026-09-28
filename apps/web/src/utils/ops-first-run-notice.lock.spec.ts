@@ -136,6 +136,9 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(hasarRapor, /OPS_NOTICE\.hasarRaporSonDegisiklik/);
     assert.match(opsListe, /OPS_NOTICE\.acilListeSonDegisiklik/);
     assert.match(opsListe, /acil-liste-ilk-kullanim-seridi/);
+    assert.match(opsListe, /AcilSilentAssistanceStrip/);
+    assert.match(opsListe, /OPS_NOTICE\.acilSessizMusteri/);
+    assert.match(opsListe, /acil-sessiz-musteri-ilk-kullanim-seridi/);
     assert.match(opsListe, /OPS_NOTICE\.acilVekaletKuyruk/);
     assert.match(opsListe, /acil-vekalet-kuyruk-seridi/);
     assert.equal(OPS_NOTICE.acilVekaletKuyruk.id, 'acil-vekalet-kuyruk-v537');

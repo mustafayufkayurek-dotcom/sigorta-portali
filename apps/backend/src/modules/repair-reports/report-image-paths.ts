@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import sharp from 'sharp';
 
 /**
  * Rapor fotoğraf dizini — cwd farkı (repo kökü vs apps/backend) yüzünden
@@ -101,5 +102,31 @@ export function reportImageToDataUrl(
     return `data:${mimeFromPath(filePath, mimeType)};base64,${buf.toString('base64')}`;
   } catch {
     return null;
+  }
+}
+
+const PDF_IMAGE_BYTES = 180_000;
+
+/** PDF’ye gömülecek fotoğraf — büyük telefon resmi Chrome’u düşürmesin. */
+export async function reportImageToPdfDataUrl(
+  storageKey: string | null | undefined,
+  mimeType?: string | null,
+): Promise<string | null> {
+  const filePath = resolveReportImageFilePath(storageKey);
+  if (!filePath) return null;
+  try {
+    const original = fs.readFileSync(filePath);
+    if (!original.length) return null;
+    if (original.length <= PDF_IMAGE_BYTES) {
+      return `data:${mimeFromPath(filePath, mimeType)};base64,${original.toString('base64')}`;
+    }
+    const compressed = await sharp(original)
+      .rotate()
+      .resize({ width: 1400, height: 1400, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 72, mozjpeg: true })
+      .toBuffer();
+    return `data:image/jpeg;base64,${compressed.toString('base64')}`;
+  } catch {
+    return reportImageToDataUrl(storageKey, mimeType);
   }
 }

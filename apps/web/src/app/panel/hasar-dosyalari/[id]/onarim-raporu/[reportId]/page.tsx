@@ -5206,7 +5206,18 @@ export default function RepairReportPage() {
           : 'Onaya alındı.',
       );
       await load();
-    } catch (e: any) { notify('error', e.response?.data?.message ?? 'Hata Oluştu'); }
+    } catch (e: any) {
+      let message = 'Hata Oluştu';
+      const payload = e?.response?.data;
+      if (payload instanceof Blob) {
+        message = (await readPdfPreviewFailure(payload, String(e.response?.headers?.['content-type'] ?? ''))) ?? message;
+      } else if (typeof payload?.message === 'string' && payload.message.trim()) {
+        message = payload.message;
+      } else if (Array.isArray(payload?.message) && payload.message[0]) {
+        message = String(payload.message[0]);
+      }
+      notify('error', message);
+    }
     finally { setRequestingApproval(false); }
   };
 

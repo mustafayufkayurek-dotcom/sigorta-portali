@@ -11,6 +11,7 @@ import {
   buildMorningBriefingItems,
   formatMorningBriefingCount,
   mapMorningBriefingClaimPreview,
+  mapMorningBriefingHoverLines,
   MORNING_BRIEFING_HREF,
 } from './morning-briefing.ts';
 
@@ -54,23 +55,48 @@ describe('yönetici sabah bakışı LOCK', () => {
     );
 
     const items = buildMorningBriefingItems({
+      silentOwnerCount: 2,
       pendingIncomingCount: 2,
       totalPendingAmount: 150000,
       approval72h: 3,
       attendanceNotApproved: 1,
       inboxUnowned: 4,
     });
-    assert.equal(items.length, 4);
-    assert.equal(items[0].href, MORNING_BRIEFING_HREF.tahsilat);
-    assert.equal(items[1].href, MORNING_BRIEFING_HREF.onay72);
-    assert.equal(items[2].href, MORNING_BRIEFING_HREF.puantaj);
-    assert.equal(items[3].href, MORNING_BRIEFING_HREF.kutu);
-    assert.equal(items[1].value, '3 Dosya');
-    assert.equal(items[1].preview, 'onay72');
-    assert.equal(items[2].value, '1 Kişi');
-    assert.equal(items[3].value, '4 Yazı');
-    assert.match(items[0].value, /2 İş/);
+    assert.equal(items.length, 5);
+    assert.equal(items[0].href, MORNING_BRIEFING_HREF.sessiz);
+    assert.equal(items[0].label, 'Sessiz Müşteri');
+    assert.equal(items[0].value, '2 Kişi');
+    assert.equal(items[1].href, MORNING_BRIEFING_HREF.tahsilat);
+    assert.equal(items[2].href, MORNING_BRIEFING_HREF.onay72);
+    assert.equal(items[3].href, MORNING_BRIEFING_HREF.puantaj);
+    assert.equal(items[4].href, MORNING_BRIEFING_HREF.kutu);
+    assert.equal(items[2].value, '3 Dosya');
+    assert.equal(items[2].preview, 'onay72');
+    assert.equal(items[3].value, '1 Kişi');
+    assert.equal(items[4].value, '4 Yazı');
+    assert.match(items[1].value, /2 İş/);
     assert.equal(formatMorningBriefingCount(5, 'Dosya'), '5 Dosya');
+
+    const silentHover = mapMorningBriefingHoverLines('sessiz', {
+      silent: [{ ownerName: 'Didem Caner', headline: 'Uyarıya bakmadı.' }],
+    });
+    assert.equal(silentHover[0].title, 'Didem Caner');
+    assert.equal(silentHover[0].detail, 'Uyarıya bakmadı.');
+    assert.equal(silentHover[0].href, MORNING_BRIEFING_HREF.sessiz);
+
+    const claimHover = mapMorningBriefingHoverLines('onay72', {
+      claims: [
+        {
+          id: 'abc',
+          href: '/panel/hasar-dosyalari/abc?grup=operasyon',
+          fileNo: 'HS-1',
+          insured: 'Ayşe Demir',
+          statusLabel: 'Onay Bekliyor',
+        },
+      ],
+    });
+    assert.equal(claimHover[0].title, 'HS-1');
+    assert.match(claimHover[0].href ?? '', /hasar-dosyalari\/abc/);
   });
 
   it('yönetim paneline şerit eklenir; dönem tuşu ve KPI kabuğu bozulmaz', () => {
@@ -78,6 +104,7 @@ describe('yönetici sabah bakışı LOCK', () => {
     const strip = readFileSync(join(here, 'MgmtMorningBriefing.tsx'), 'utf8');
     const header = readFileSync(join(here, 'MgmtHeader.tsx'), 'utf8');
     const panel = readFileSync(join(here, '../../../../app/panel/page.tsx'), 'utf8');
+    const helper = readFileSync(join(here, 'morning-briefing.ts'), 'utf8');
     assert.match(dash, /<MgmtHeader/);
     assert.match(dash, /<MgmtMorningBriefing \/>/);
     assert.match(dash, /<MgmtKpiRow/);
@@ -95,7 +122,18 @@ describe('yönetici sabah bakışı LOCK', () => {
     assert.match(strip, /useFinanceBottlenecks/);
     assert.match(strip, /useOperationInboxStats/);
     assert.match(strip, /MgmtMorningBriefingPreview/);
-    assert.match(strip, /yonetici-sabah-bakisi-onay72/);
+    assert.match(strip, /yonetici-sabah-bakisi-sessiz/);
+    assert.match(strip, /silence-action-report/);
+    assert.match(helper, /Sessiz Müşteri/);
+    assert.doesNotMatch(dash, /HasarSilentOwnerReport/);
+    assert.match(strip, /sm:flex-row/);
+    assert.match(strip, /sm:border-l/);
+    assert.match(strip, /tabular-nums/);
+    assert.match(strip, /yonetici-sabah-bakisi-hover/);
+    assert.match(strip, /onMouseEnter/);
+    assert.match(strip, /mapMorningBriefingHoverLines/);
+    assert.match(helper, /mapMorningBriefingHoverLines/);
+    assert.doesNotMatch(strip, /flex-1 text-\[13px\]/);
     const preview = readFileSync(join(here, 'MgmtMorningBriefingPreview.tsx'), 'utf8');
     assert.match(preview, /SlidePanel/);
     assert.match(preview, /opsPreset: 'approval_72h'/);
@@ -107,7 +145,6 @@ describe('yönetici sabah bakışı LOCK', () => {
     assert.match(preview, /ExpertFileNoteModal/);
     assert.match(preview, /OperationSendEmailModal/);
     assert.match(preview, /row-actions:hasar-dosyalari-v1/);
-    const helper = readFileSync(join(here, 'morning-briefing.ts'), 'utf8');
     assert.match(helper, /'Dosya'/);
     assert.doesNotMatch(helper, /\$\{h72\} dosya/);
     assert.doesNotMatch(strip, />Bugün</);

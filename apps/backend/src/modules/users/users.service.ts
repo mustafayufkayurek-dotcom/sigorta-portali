@@ -1723,8 +1723,20 @@ export class UsersService {
       await tx.userInsuranceCompanyScope.deleteMany({ where: { userId: id } });
       await tx.refreshToken.deleteMany({ where: { userId: id } });
       await tx.passwordResetToken.deleteMany({ where: { userId: id } });
+      await tx.loginEmailChallenge.deleteMany({ where: { userId: id } });
       await tx.userEmailPreferences.deleteMany({ where: { userId: id } });
-      await tx.user.delete({ where: { id } });
+      await tx.customerAccessLog.deleteMany({ where: { userId: id } });
+      await tx.notification.deleteMany({ where: { userId: id } });
+      try {
+        await tx.user.delete({ where: { id } });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+          throw new BadRequestException(
+            'Bu personelin iş kaydı duruyor. Kalıcı silinemez. Arşivde bırakın.',
+          );
+        }
+        throw error;
+      }
     });
 
     this.auditLogsService.log({

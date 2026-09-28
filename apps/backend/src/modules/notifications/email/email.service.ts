@@ -12,7 +12,7 @@ import {
 } from './email.template';
 import { WelcomeEmailService } from './welcome-email.service';
 import { WelcomeEmailData, WelcomeEmailRole } from './welcome-email.template';
-import { prependFileOwnerCopyNotice } from '@sigorta/shared';
+import { prependFileOwnerCopyNotice, filterSoftwareMailboxRecipients } from '@sigorta/shared';
 
 export type EmailSendResult = {
   sent: boolean;
@@ -135,10 +135,14 @@ export class EmailService {
       data: { to, subject, status: 'queued' },
     });
 
-    const recipients = String(to)
-      .split(/[,;]+/)
-      .map((part) => part.trim())
-      .filter((part) => part.includes('@'));
+    const recipients = filterSoftwareMailboxRecipients(
+      String(to)
+        .split(/[,;]+/)
+        .map((part) => part.trim()),
+    );
+    const visibleCc = options?.cc
+      ? options.cc.filter((item) => filterSoftwareMailboxRecipients([item.email]).length > 0)
+      : undefined;
     if (!recipients.length) {
       const errorMsg = 'Geçerli bir alıcı e-posta adresi yok.';
       await this.prisma.emailLog.update({
@@ -159,7 +163,7 @@ export class EmailService {
           subject,
           html,
           graphAttachments,
-          options?.cc,
+          visibleCc,
           options?.readReceiptTo,
           options?.requestReadReceipt !== false,
         );
@@ -194,11 +198,11 @@ export class EmailService {
     try {
       const info = await transport.transporter.sendMail({
         from: transport.from,
-        to,
+        to: recipients.join(', '),
         subject,
         html,
         text: options?.text,
-        cc: options?.cc?.map((item) => item.email).filter(Boolean).join(', ') || undefined,
+        cc: visibleCc?.map((item) => item.email).filter(Boolean).join(', ') || undefined,
         attachments: options?.attachments,
         headers: options?.readReceiptTo?.length
           ? { 'Disposition-Notification-To': options.readReceiptTo.join(', ') }

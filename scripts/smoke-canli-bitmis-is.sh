@@ -67,6 +67,8 @@ node --experimental-strip-types --test \
   scripts/offsite-status.lock.spec.ts \
   apps/backend/src/modules/expenses/receipt-scan-human.lock.spec.ts \
   apps/backend/src/modules/operation-inbox/inbound-classify-human.lock.spec.ts \
+  packages/shared/src/operational-mailbox.lock.spec.ts \
+  apps/backend/src/modules/operation-inbox/software-outbound-echo.lock.spec.ts \
   apps/backend/src/modules/payments/payment-second-eye.lock.spec.ts \
   apps/backend/src/modules/hr/hr-attendance-reminder.lock.spec.ts \
   apps/backend/src/modules/hr/hr-activity-beat.lock.spec.ts \
@@ -92,10 +94,12 @@ node --experimental-strip-types --test \
   packages/shared/src/financial-record-freeze.lock.spec.ts \
   packages/shared/src/public-approval-token.lock.spec.ts \
   apps/backend/src/modules/users/system-admin-identity.lock.spec.ts \
+  apps/backend/src/modules/users/user-permanent-delete.lock.spec.ts \
   apps/web/src/utils/panel-native-confirm.lock.spec.ts \
   apps/web/src/app/panel/personel-ozluk/personel-test-asama.lock.spec.ts \
   nginx/https-redirect.lock.spec.ts \
   packages/shared/src/crm-expert-silence.lock.spec.ts \
+  packages/shared/src/acil-assistance-silence.lock.spec.ts \
   apps/web/src/app/panel/crm/crm-eksper-sessizlik.lock.spec.ts \
   apps/web/src/components/ui/panel-flow-trail.lock.spec.ts
 
