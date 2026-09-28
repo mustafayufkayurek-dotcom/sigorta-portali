@@ -134,5 +134,6 @@ describe('CRM eksper sessizlik ekran kilidi', () => {
     assert.match(page, /ACIL_SILENCE_LIST_HREF/);
     assert.match(page, /get\('scope'\) === 'acil'/);
     assert.match(page, /isAssistanceFirmCustomer/);
+    assert.match(page, /const \[istanbulOnly, setIstanbulOnly\]/);
   });
 });

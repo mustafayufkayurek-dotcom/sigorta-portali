@@ -674,6 +674,7 @@ export default function CrmPage() {
     if (typeof window === 'undefined') return false;
     return new URLSearchParams(window.location.search).get('scope') === 'acil';
   });
+  const [istanbulOnly, setIstanbulOnly] = useState(false);
   const [riskFilter, setRiskFilter] = useState('');
   const [crmSummaries, setCrmSummaries] = useState<Record<string, CrmSummary>>({});
   const [crmActivity, setCrmActivity] = useState<CrmActivity | null>(null);
