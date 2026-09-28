@@ -10,6 +10,30 @@ export class CrmController {
     return this.crmService.getSummaries(body?.relationships ?? [], req.user);
   }
 
+  @Get('my-silent-offices')
+  async mySilentOffices(@Req() req: any) {
+    const data = await this.crmService.getMySilentExpertOffices(req.user);
+    return { success: true, data };
+  }
+
+  @Get('silence-action-report')
+  async silenceActionReport(@Req() req: any) {
+    const data = await this.crmService.getSilenceActionReport(req.user);
+    return { success: true, data };
+  }
+
+  @Post('silence-warning/dismiss')
+  async dismissSilenceWarning(@Body() body: any, @Req() req: any) {
+    const data = await this.crmService.recordSilenceWarningSignal('dismissed', req.user, body?.officeIds);
+    return { success: true, data };
+  }
+
+  @Post('silence-warning/opened')
+  async openedSilenceWarning(@Body() body: any, @Req() req: any) {
+    const data = await this.crmService.recordSilenceWarningSignal('opened', req.user, body?.officeIds);
+    return { success: true, data };
+  }
+
   @Get('relationships/:kind/:id/activity')
   activity(@Param('kind') kind: string, @Param('id') id: string, @Req() req: any) {
     return this.crmService.getActivity(kind, id, req.user);
@@ -18,6 +42,12 @@ export class CrmController {
   @Get('relationships/:kind/:id/memory')
   memory(@Param('kind') kind: string, @Param('id') id: string, @Req() req: any) {
     return this.crmService.getMemory(kind, id, req.user);
+  }
+
+  @Post('relationships/expert-work')
+  async expertWork(@Body() body: any) {
+    const data = await this.crmService.getExpertWorkMap(body?.ids ?? []);
+    return { success: true, data };
   }
 
   @Post('relationships/:kind/:id/notes')

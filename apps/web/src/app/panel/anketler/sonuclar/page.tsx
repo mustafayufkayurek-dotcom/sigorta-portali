@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Download,
@@ -155,7 +156,9 @@ export default function AnketSonuclariPage() {
       <div className="flex min-w-0 items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] text-slate-500">
-            Anketler <span className="mx-1 text-slate-300">&gt;</span> Anket Sonuçları
+            <Link href="/panel/anketler" className="hover:text-brand-600">Anketler</Link>
+            <span className="mx-1 text-slate-300">&gt;</span>
+            Anket Sonuçları
           </p>
           <h1 className="mt-0.5 whitespace-nowrap text-xl font-semibold tracking-tight text-slate-900 md:text-[22px] md:leading-7">
             Anket Sonuçları

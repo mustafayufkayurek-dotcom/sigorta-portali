@@ -1,0 +1,37 @@
+---
+description: CRM eksper sessizliği — onay kuyruğu değil, otomatik mail yok
+alwaysApply: false
+---
+
+# CRM Eksper Sessizlik Kilidi
+
+**Kaynak (Mustafa · 27.09.2026 / 28.09.2026):** Personel boş oturuyor; eksper dosya göndermiyor. Amaç onay gecikmesini kovalamak değil; hasar dosyası gelmeyen eksper ofisine hatırlatmak.
+
+**Temel cümle:** Sessiz müşteri **2 gündür yeni hasar dosyası ihbarı gelmeyen eksper ofisidir.** Onay bekleyen dosya bu kutu değildir. Hiç iş yoksa **yeni bölgedir.** Mail kendiliğinden gitmez.
+
+## Zorunlu
+
+1. `evaluateExpertWork` — sessizlik son **gönderilen hasar dosyasına** bakar. 2 gün ihbar yoksa hatırlatma çıkar. Açık veya onay bekleyen dosya sessizliği kapatmaz. Sıfır dosya = yeni bölge. Broşür yalnız yeni bölgeye; sessiz eski ofise satılık yazı yok.
+2. CRM `/panel/crm` — Sessiz Müşteri ve Yeni Bölge ayrı süzgeç. İstanbul işareti yalnız Yeni Bölge içindir; sessiz müşteride durmaz. Takip Aç, Yazı, Ara, Tarih Bağla durur. Hasar uyarısından gelince **Geri** Hasar Dosyaları’na döner.
+3. Hasar listesinde ofis adı durmaz. **Sessiz Müşteri Uyarı -> Tıklayınız** — yalnız **Tıklayınız** altı çizili ve tıklanır. Kart eni eski ölçüdedir; yalnız kalınlığı incedir. Yanıp söner, **Kapat** ile kapanır; **ertesi sabah yeniden çıkar.** Altında: **Dosya Akış Hızı Düşmüş Olup, Mevcut ve Alternatif Müşteri Görüşmelerine Başlayınız.** Yazı, Ara, Tarih Bağla CRM’dedir. Sessiz süzgeçte en fazla 3 yeni bölge alternatifi durur. Broşür yalnız yeni bölgeye.
+4. Takip personel açar. Yazı Hazırla kutuyu doldurur; gönderim kişidedir. Hasar kutusu.
+5. Onay bekleyen dosya kuyruğu bu listeye bağlanmaz. Broşür bu pakette yok. 2 günlük sessizlik yoksa şerit çıkmaz.
+6. Dosya sorumlusunun bu uyarıdaki işi **admin ve yöneticiye** kısa özet gider: baktı mı, kapattı mı, hangi müşteri ile yazdı / aradı / not düştü. Görüşmeden 2 gün sonra ihbar yoksa **Konuşuldu, dosya gelmedi.** Aynı özet Pazartesi toplantısındadır. Mail kendiliğinden gitmez.
+
+## Yasak (açık onay yoksa)
+
+- Sessiz müşteriye otomatik eksper maili
+- Onay kuyruğunu sessizlik sanmak
+- Açık dosya var diye 2 gündür ihbar gelmeyen ofisi gizleme
+
+## Durdurma
+
+Otomatik mail giderse veya onay bekleyen kuyruk bu kutuya bağlanırsa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/crm-expert-silence.lock.spec.ts \
+ apps/web/src/app/panel/crm/crm-eksper-sessizlik.lock.spec.ts
+```

@@ -1066,7 +1066,7 @@ export function PerformanceManagementPanel({
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
         <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
-        <span className="text-slate-600 font-medium">Personel</span>
+        <a href="/panel/personel-ozluk" className="hover:text-brand-600 transition-colors">Personel</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Performans</span>
       </nav>

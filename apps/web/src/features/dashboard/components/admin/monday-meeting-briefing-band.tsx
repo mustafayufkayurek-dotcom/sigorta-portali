@@ -134,7 +134,7 @@ export function MondayMeetingBriefingBand({
       <BriefingStat
         label="Tamamlanan Not"
         value={completedThisWeek}
-        hint={`${activeTemplates} mutatap konu tanımlı`}
+        hint={`${activeTemplates} muhatap konu tanımlı`}
         accentClass="card-accent-emerald"
         iconBg="bg-emerald-50 dark:bg-emerald-950/40"
         icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
@@ -147,7 +147,7 @@ export function MondayMeetingBriefingBand({
             ? 'Tüm gündem maddeleri tamamlandı'
             : readiness === 'pending'
               ? `${openAgenda} madde toplantıda ele alınacak`
-              : 'Mutatap konulardan veya yeni not ekleyin'
+              : 'Muhatap konulardan veya yeni not ekleyin'
         }
         accentClass={READINESS_ACCENTS[readiness]}
         iconBg={READINESS_ICON_BG[readiness]}

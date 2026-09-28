@@ -85,6 +85,9 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'panel-native-confirm.lock.spec',
       'personel-test-asama.lock.spec',
       'https-redirect.lock.spec',
+      'crm-expert-silence.lock.spec',
+      'crm-eksper-sessizlik.lock.spec',
+      'panel-flow-trail.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

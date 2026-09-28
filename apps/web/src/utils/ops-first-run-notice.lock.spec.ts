@@ -92,6 +92,7 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     const opsListe = readFileSync(join(here, '../app/panel/operasyon/page.tsx'), 'utf8');
     assert.match(hasarListe, /OPS_NOTICE\.hasarListeSonDegisiklik/);
     assert.match(hasarListe, /hasar-liste-ilk-kullanim-seridi/);
+    assert.match(hasarListe, /HasarSilentOfficeStrip/);
     assert.match(hasarListe, /ops-row-approval-72h/);
     assert.match(hasarListe, /ops-72s-chip/);
     assert.match(hasarListe, /OpsStripKpi/);
@@ -368,5 +369,20 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.doesNotMatch(OPS_NOTICE.hasarTespitciOpsiyonel.body, /Google/);
     assert.match(panel, /hasar-tespitci-opsiyonel-seridi/);
     assert.match(OPS_NOTICE.hasarDosyaSonDegisiklik.body, /zorunlu değil/);
+  });
+
+  it('CRM eksper sessizlik şeridi durur', () => {
+    const page = readFileSync(join(here, '../app/panel/crm/page.tsx'), 'utf8');
+    assert.equal(OPS_NOTICE.crmEksperSessizlik.id, 'crm-eksper-sessizlik-v629');
+    assert.match(OPS_NOTICE.crmEksperSessizlik.body, /onay bekleyen rapor değildir/);
+    assert.match(OPS_NOTICE.crmEksperSessizlik.body, /Açık dosya bu kutuyu kapatmaz/);
+    assert.match(OPS_NOTICE.crmEksperSessizlik.body, /yazıyı siz gönderirsiniz/);
+    assert.match(OPS_NOTICE.crmEksperSessizlik.body, /Broşür yalnız/);
+    assert.doesNotMatch(OPS_NOTICE.crmEksperSessizlik.body, /Google/);
+    assert.match(page, /OpsFirstRunNotice/);
+    assert.match(page, /crm-eksper-sessizlik-seridi/);
+    assert.match(page, /Sessiz Müşteri/);
+    assert.match(page, /Yeni Bölge/);
+    assert.doesNotMatch(page, /sendEmail\(/);
   });
 });

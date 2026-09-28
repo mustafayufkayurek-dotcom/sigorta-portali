@@ -14,6 +14,7 @@ export * from './inbox-recipient-card';
 export * from './outbound-mail-signal';
 export * from './file-owner-mail-copy';
 export * from './crm-mail-watch';
+export * from './crm-expert-silence';
 export * from './file-address';
 export * from './file-no-normalize';
 export * from './inbound-file-no';

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   AlertCircle,
@@ -19,9 +20,24 @@ import {
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { crmMailWatch } from '@sigorta/shared';
-import type { FileRecognizedPartner } from '@sigorta/shared';
+import type { ExpertLane, ExpertWorkMemory, FileRecognizedPartner } from '@sigorta/shared';
+import {
+  EXPERT_OPEN_FILE_OWNER_LINE,
+  EXPERT_SILENCE_DAYS,
+  EXPERT_SILENCE_FOLLOW_UP_TITLE,
+  expertNewRegionMailDraft,
+  expertSilenceMailDraft,
+  expertSilencePostponeDueAt,
+  isExpertFirmCustomer,
+  isExpertSilenceFollowUpTitle,
+  isIstanbulCity,
+  pickExpertSilenceAlternatives,
+} from '@sigorta/shared';
 import { CrmMailWatchStrip } from '@/components/crm/CrmMailWatchStrip';
 import { FileRecognizedPartners } from '@/components/customers/FileRecognizedPartners';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { PanelFlowTrail } from '@/components/ui/PanelFlowTrail';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
 type EntityKind = 'customer' | 'adjuster' | 'vendor';
 type RiskLevel = 'low' | 'medium' | 'high' | 'none';
@@ -52,6 +68,7 @@ type CrmEntity = {
   source: any;
   detail?: any;
   filePartners?: FileRecognizedPartner[];
+  expertWork?: ExpertWorkMemory | null;
 };
 
 type CrmSummary = {
@@ -124,6 +141,7 @@ type OperationMemory = {
     lastOperationDate: string | null;
     currency?: string;
   } | null;
+  expertWork?: ExpertWorkMemory | null;
   sources: {
     crmNotes: number;
     crmFollowUps: number;
@@ -258,7 +276,21 @@ function isPositiveMetric(value?: number | null) {
 }
 
 function compactCurrency(value?: number | null, currency = 'TRY') {
-  return isPositiveMetric(value) ? fmtCurrency(value, currency) : 'Finansal veri yok';
+  return isPositiveMetric(value) ? fmtCurrency(value, currency) : 'Yok';
+}
+
+async function fetchCrmPoolRows<T>(path: string): Promise<T[]> {
+  const pageSize = 200;
+  const first = await apiClient.getWithMeta<T[], { totalPages?: number }>(path, { limit: pageSize, page: 1 });
+  const rows = listOf<T>(first.data ?? first);
+  const totalPages = Math.min(Number(first.meta?.totalPages) || 1, 25);
+  if (totalPages <= 1) return rows;
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      apiClient.get<T[]>(path, { limit: pageSize, page: index + 2 }).then((item) => listOf<T>(item)),
+    ),
+  );
+  return [...rows, ...rest.flat()];
 }
 
 function inputDate(value?: string | null) {
@@ -358,13 +390,16 @@ function normalizeCustomer(customer: any): CrmEntity {
   const count = Number(customer?._count?.claimFiles ?? customer?._count?.files ?? customer?.claimFiles?.length ?? 0);
   const followUp = customer.followUpDate ?? null;
   const satisfaction = customer.satisfactionScore == null ? null : Number(customer.satisfactionScore);
+  const expertOffice = isExpertFirmCustomer(customer);
   return {
     id: customer.id,
     kind: 'customer',
     name: nameFromCustomer(customer),
-    typeLabel: customer.customerType === 'corporate' || customer.entityType === 'corporate' || customer.type === 'corporate'
-      ? 'Kurumsal'
-      : 'Bireysel',
+    typeLabel: expertOffice
+      ? 'Eksper Ofisi'
+      : customer.customerType === 'corporate' || customer.entityType === 'corporate' || customer.type === 'corporate'
+        ? 'Kurumsal'
+        : 'Bireysel',
     status: customer.status ?? 'active',
     statusLabel: statusLabels[customer.status] ?? customer.status ?? 'Aktif',
     phone: customer.phone,
@@ -381,6 +416,35 @@ function normalizeCustomer(customer: any): CrmEntity {
     source: customer,
     filePartners: Array.isArray(customer.filePartners) ? customer.filePartners : [],
   };
+}
+
+function withExpertWork(entity: CrmEntity, work?: ExpertWorkMemory | null): CrmEntity {
+  if (!work || entity.kind !== 'customer') return entity;
+  const istanbul = isIstanbulCity(entity.city);
+  const signal =
+    work.lane === 'silent'
+      ? EXPERT_SILENCE_FOLLOW_UP_TITLE
+      : work.lane === 'new_region'
+        ? istanbul
+          ? 'Yeni bölge · İstanbul'
+          : 'Yeni bölge'
+        : work.lane === 'open_file'
+          ? 'Açık dosya var'
+          : entity.signal;
+  return {
+    ...entity,
+    expertWork: work,
+    lastContact: work.lastWorkAt ?? entity.lastContact,
+    operationCount: work.fileCount || entity.operationCount,
+    signal,
+    risk: work.silent ? 'medium' : entity.risk,
+  };
+}
+
+function firstSilentExpert(rows: CrmEntity[]) {
+  return [...rows]
+    .filter((item) => item.kind === 'customer' && item.expertWork?.lane === 'silent')
+    .sort((a, b) => (b.expertWork?.silentDays ?? 0) - (a.expertWork?.silentDays ?? 0))[0] ?? null;
 }
 
 function normalizeAdjuster(adjuster: any, performance: Record<string, any>): CrmEntity {
@@ -535,7 +599,7 @@ function buildMemoryCards(entity: CrmEntity) {
       { label: 'Son Temas', value: fmtDate(entity.lastContact), detail: 'Görüşme özeti yok', tone: 'blue' as const },
       { label: 'Sonraki Aksiyon', value: entity.followUp ? fmtDate(entity.followUp) : 'Planlanmamış', detail: entity.followUp ? 'Takip var' : 'Aksiyon beklemiyor', tone: entity.followUp ? 'amber' as const : 'slate' as const },
       { label: 'Açık Takip Özeti', value: entity.followUp ? 'Takip var' : 'Yok', detail: entity.followUp ? fmtDate(entity.followUp) : 'Bekleyen takip yok', tone: entity.followUp ? 'amber' as const : 'slate' as const },
-      { label: 'Operasyon Değeri', value: `${entity.operationCount} dosya`, detail: 'Ciro/kar canlı hafıza ile gelir', tone: 'emerald' as const },
+      { label: 'Dosya', value: entity.operationCount > 0 ? `${entity.operationCount} dosya` : 'Dosya yok', detail: 'Sayı; ciro değildir', tone: 'emerald' as const },
     ];
   }
   if (entity.kind === 'adjuster') {
@@ -580,6 +644,7 @@ function EmptyState({ onReset }: { onReset: () => void }) {
 }
 
 export default function CrmPage() {
+  const router = useRouter();
   const [entities, setEntities] = useState<CrmEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -588,6 +653,13 @@ export default function CrmPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [kindFilter, setKindFilter] = useState<EntityKind | ''>('');
   const [openFollowOnly, setOpenFollowOnly] = useState(false);
+  const [expertLaneFilter, setExpertLaneFilter] = useState<ExpertLane | ''>(() => {
+    if (typeof window === 'undefined') return '';
+    const lane = new URLSearchParams(window.location.search).get('lane');
+    if (lane === 'silent' || lane === 'new_region' || lane === 'open_file') return lane;
+    return '';
+  });
+  const [istanbulOnly, setIstanbulOnly] = useState(false);
   const [riskFilter, setRiskFilter] = useState('');
   const [crmSummaries, setCrmSummaries] = useState<Record<string, CrmSummary>>({});
   const [crmActivity, setCrmActivity] = useState<CrmActivity | null>(null);
@@ -611,6 +683,8 @@ export default function CrmPage() {
     setStatusFilter('');
     setRiskFilter('');
     setOpenFollowOnly(false);
+    setExpertLaneFilter('');
+    setIstanbulOnly(false);
   }
 
   useEffect(() => {
@@ -620,9 +694,9 @@ export default function CrmPage() {
       setError(null);
       try {
         const [customers, vendors, adjusters, performanceRows, signature] = await Promise.all([
-          apiClient.get<any[]>('/customers', { limit: 100 }),
-          apiClient.get<any[]>('/vendors', { limit: 100 }),
-          apiClient.get<any[]>('/adjusters', { limit: 100 }),
+          fetchCrmPoolRows<any>('/customers'),
+          fetchCrmPoolRows<any>('/vendors'),
+          fetchCrmPoolRows<any>('/adjusters'),
           apiClient.get<any[]>('/adjusters/performance').catch(() => []),
           apiClient.get<CorporateEmailSignature>('/system-settings/corporate-email-signature').catch(() => null),
         ]);
@@ -638,21 +712,37 @@ export default function CrmPage() {
           ...listOf<any>(adjusters).map((item) => normalizeAdjuster(item, performance)),
           ...listOf<any>(vendors).map(normalizeVendor),
         ];
+        const expertIds = next.filter((item) => item.kind === 'customer' && isExpertFirmCustomer(item.source)).map((item) => item.id);
+        const expertWork = expertIds.length
+          ? await apiClient.post<Record<string, ExpertWorkMemory>>('/crm/relationships/expert-work', { ids: expertIds }).catch(() => ({} as Record<string, ExpertWorkMemory>))
+          : {};
+        const merged = next.map((item) => withExpertWork(item, item.kind === 'customer' ? expertWork[item.id] : null));
 
         if (!cancelled) {
-          setEntities(next);
+          setEntities(merged);
           setCorporateSignature(signature);
           setSelected((prev) => {
             if (prev) return prev;
+            const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+            const officeId = params?.get('office');
+            const lane = params?.get('lane');
+            if (officeId) {
+              const found = merged.find((item) => item.kind === 'customer' && item.id === officeId);
+              if (found) return found;
+            }
+            if (lane === 'silent') {
+              setIstanbulOnly(false);
+              return firstSilentExpert(merged);
+            }
             const narrow =
               typeof window !== 'undefined' &&
               window.matchMedia('(max-width: 1279px)').matches;
             if (narrow) return null;
-            return next[0] ?? null;
+            return merged[0] ?? null;
           });
-          if (next.length > 0) {
+          if (merged.length > 0) {
             const summaries = await apiClient.post<Record<string, CrmSummary>>('/crm/relationships/summaries', {
-              relationships: next.map((item) => ({ kind: item.kind, id: item.id })),
+              relationships: merged.map((item) => ({ kind: item.kind, id: item.id })),
             });
             if (!cancelled) setCrmSummaries(summaries ?? {});
           }
@@ -668,6 +758,32 @@ export default function CrmPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (entities.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const lane = params.get('lane');
+    const office = params.get('office');
+    const kind = params.get('kind');
+    if (lane === 'silent' || lane === 'new_region' || lane === 'open_file') {
+      setExpertLaneFilter(lane);
+    }
+    if (kind === 'customer' || kind === 'adjuster' || kind === 'vendor') {
+      setKindFilter(kind);
+    }
+    if (office) {
+      const found = entities.find((item) => item.kind === 'customer' && item.id === office);
+      if (found) {
+        setSelected(found);
+        return;
+      }
+    }
+    if (lane === 'silent') {
+      setIstanbulOnly(false);
+      const silent = firstSilentExpert(entities);
+      if (silent) setSelected(silent);
+    }
+  }, [entities]);
 
   async function refreshCrmActivity(entity: CrmEntity) {
     setActivityLoading(true);
@@ -709,9 +825,83 @@ export default function CrmPage() {
     try {
       const data = await apiClient.get<OperationMemory>(`/crm/relationships/${entity.kind}/${entity.id}/memory`);
       setOperationMemory(data ?? null);
+      if (data?.expertWork) {
+        setEntities((prev) => prev.map((item) => (
+          item.kind === entity.kind && item.id === entity.id ? withExpertWork(item, data.expertWork) : item
+        )));
+        setSelected((prev) => (prev && prev.kind === entity.kind && prev.id === entity.id ? withExpertWork(prev, data.expertWork) : prev));
+      }
     } catch {
       setOperationMemory(null);
     }
+  }
+
+  async function saveSilenceFollowUp() {
+    if (!selected || selected.kind !== 'customer' || !selected.expertWork?.silent) return;
+    const summary = crmSummaries[relationshipKey(selected)];
+    if (isExpertSilenceFollowUpTitle(summary?.openFollowUp?.title)) {
+      setActiveActionTab('followup');
+      setActionSuccess('Bu ofis için takip zaten açık.');
+      return;
+    }
+    setSavingAction('silence-follow-up');
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      await apiClient.post(`/crm/relationships/${selected.kind}/${selected.id}/follow-ups`, {
+        status: 'open',
+        title: EXPERT_SILENCE_FOLLOW_UP_TITLE,
+        result: EXPERT_SILENCE_FOLLOW_UP_TITLE,
+        dueAt: toIsoDate(todayInputDate()),
+        visibility: 'everyone',
+      });
+      setActiveActionTab('followup');
+      await refreshCrmActivity(selected);
+      await refreshOperationMemory(selected);
+      setActionSuccess('Takip açıldı. Mail kendiliğinden gitmez; yazıyı siz gönderirsiniz.');
+    } catch (err) {
+      setActionError(apiErrorMessage(err, 'Takip kaydedilemedi'));
+    } finally {
+      setSavingAction(null);
+    }
+  }
+
+  async function saveSilencePostpone() {
+    if (!selected || selected.kind !== 'customer' || !selected.expertWork?.silent) return;
+    setSavingAction('silence-postpone');
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      await apiClient.post(`/crm/relationships/${selected.kind}/${selected.id}/follow-ups`, {
+        status: 'open',
+        title: EXPERT_SILENCE_FOLLOW_UP_TITLE,
+        result: 'Tarih bağlandı',
+        dueAt: toIsoDate(expertSilencePostponeDueAt()),
+        visibility: 'everyone',
+      });
+      setActiveActionTab('followup');
+      await refreshCrmActivity(selected);
+      await refreshOperationMemory(selected);
+      setActionSuccess('Tarih bağlandı. O gün yeniden bakılır.');
+    } catch (err) {
+      setActionError(apiErrorMessage(err, 'Tarih bağlanamadı'));
+    } finally {
+      setSavingAction(null);
+    }
+  }
+
+  function prepareExpertMail() {
+    if (!selected?.expertWork) return;
+    const mail = selected.expertWork.lane === 'new_region'
+      ? expertNewRegionMailDraft(selected.name)
+      : expertSilenceMailDraft(selected.name);
+    setEmailForm((prev) => ({
+      ...prev,
+      to: selected.email || prev.to,
+      subject: mail.subject,
+      message: mail.message,
+    }));
+    setActiveActionTab('email');
   }
 
   useEffect(() => {
@@ -725,10 +915,17 @@ export default function CrmPage() {
     setActiveActionTab('note');
     setNoteForm({ occurredAt: todayInputDate(), noteType: 'general', visibility: 'everyone', summary: '', body: '' });
     setFollowUpForm({ dueAt: inputDate(summary?.openFollowUp?.dueAt) || todayInputDate(), status: 'open', visibility: 'everyone', result: '' });
+    const work = selected.expertWork;
+    const mail =
+      work?.lane === 'silent'
+        ? expertSilenceMailDraft(selected.name)
+        : work?.lane === 'new_region'
+          ? expertNewRegionMailDraft(selected.name)
+          : { subject: `${selected.name} - Görüşme takibi`, message: 'Merhaba,\n\nSon görüşmemizle ilgili takip notumuzu paylaşmak isteriz.' };
     setEmailForm({
       to: selected.email || '',
-      subject: `${selected.name} - Görüşme takibi`,
-      message: 'Merhaba,\n\nSon görüşmemizle ilgili takip notumuzu paylaşmak isteriz.',
+      subject: mail.subject,
+      message: mail.message,
       visibility: 'everyone',
     });
     refreshCrmActivity(selected);
@@ -845,7 +1042,7 @@ export default function CrmPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('tr-TR');
-    return entities.filter((item) => {
+    const matchesBase = (item: CrmEntity) => {
       const itemSummary = crmSummaries[relationshipKey(item)];
       const itemStatus = effectiveCrmStatus(item, itemSummary);
       const itemStatusLabel = crmStatusLabels[itemStatus];
@@ -857,22 +1054,40 @@ export default function CrmPage() {
       if (kindFilter && item.kind !== kindFilter) return false;
       if (statusFilter && itemStatusLabel !== statusFilter) return false;
       if (openFollowOnly && !isOpenFollow(itemFollowUp)) return false;
+      if (istanbulOnly && !isIstanbulCity(item.city)) return false;
       if (riskFilter && item.risk !== riskFilter) return false;
       return true;
-    });
-  }, [crmSummaries, entities, kindFilter, openFollowOnly, riskFilter, search, statusFilter]);
+    };
+    const base = entities.filter(matchesBase);
+    if (expertLaneFilter === 'silent') {
+      const silent = base.filter((item) => item.expertWork?.lane === 'silent');
+      const altIds = pickExpertSilenceAlternatives(
+        base.map((item) => ({ id: item.id, kind: item.kind, lane: item.expertWork?.lane ?? null })),
+        silent.map((item) => item.id),
+      ).map((row) => row.id);
+      const alternatives = base.filter((item) => item.expertWork?.lane === 'new_region' && altIds.includes(item.id));
+      return [...silent, ...alternatives];
+    }
+    if (expertLaneFilter) {
+      return base.filter((item) => item.expertWork?.lane === expertLaneFilter);
+    }
+    return base;
+  }, [crmSummaries, entities, expertLaneFilter, istanbulOnly, kindFilter, openFollowOnly, riskFilter, search, statusFilter]);
 
   const summary = useMemo(() => {
     const follow = entities.filter((item) => isOpenFollow(effectiveFollowUpDate(item, crmSummaries[relationshipKey(item)]))).length;
     const risk = entities.filter((item) => item.risk === 'medium' || item.risk === 'high').length;
     const operations = entities.reduce((sum, item) => sum + item.operationCount, 0);
-    return { total: entities.length, follow, risk, operations };
+    const silent = entities.filter((item) => item.expertWork?.silent).length;
+    const newRegion = entities.filter((item) => item.expertWork?.lane === 'new_region').length;
+    return { total: entities.length, follow, risk, operations, silent, newRegion };
   }, [crmSummaries, entities]);
 
   const selectedCards = selected ? buildMemoryCards(selected) : [];
   const selectedSummary = selected ? crmSummaries[relationshipKey(selected)] : undefined;
   const selectedCrmStatus = selected ? effectiveCrmStatus(selected, selectedSummary) : 'active';
   const customerOperationSummary = operationMemory?.customerOperationSummary ?? null;
+  const selectedWork = selected?.expertWork ?? operationMemory?.expertWork ?? null;
   const selectedFollowUpEvents = useMemo(() => (crmActivity?.events ?? []).filter(isFollowUpEvent), [crmActivity]);
   const currentEmailPreview = useMemo(
     () => emailPreviewText(emailForm.message, corporateSignature),
@@ -883,18 +1098,52 @@ export default function CrmPage() {
     <main className="min-h-screen bg-slate-50 px-4 py-2 sm:px-5 lg:px-5">
       <div className="mx-auto flex max-w-screen-2xl flex-col gap-2">
         <header className="flex flex-col gap-1.5 border-b border-slate-200 pb-1.5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <p className="truncate text-xs font-semibold tracking-[0.02em] text-brand-600">
-              Operasyon İlişkileri <span className="mx-1 text-slate-300">&gt;</span> CRM
-            </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const lane = new URLSearchParams(window.location.search).get('lane');
+                router.push(lane === 'silent' ? '/panel/hasar-dosyalari' : '/panel');
+              }}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Geri"
+              data-testid="crm-geri"
+            >
+              <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+            </button>
+            <PanelFlowTrail
+              items={
+                expertLaneFilter === 'silent'
+                  ? [
+                      { label: 'Dashboard', href: '/panel' },
+                      { label: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
+                      { label: 'CRM' },
+                    ]
+                  : [
+                      { label: 'Dashboard', href: '/panel' },
+                      { label: 'CRM' },
+                    ]
+              }
+            />
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 overflow-x-auto rounded-full border border-slate-200 bg-white px-2.5 py-1 shadow-sm">
             <PoolSummaryItem label="Toplam ilişki" value={`${summary.total}`} />
+            <PoolSummaryItem label="Sessiz müşteri" value={summary.silent > 0 ? `${summary.silent}` : 'Yok'} tone={summary.silent ? 'amber' : 'slate'} />
+            <PoolSummaryItem label="Yeni bölge" value={summary.newRegion > 0 ? `${summary.newRegion}` : 'Yok'} tone={summary.newRegion ? 'blue' : 'slate'} />
             <PoolSummaryItem label="Açık takip" value={summary.follow > 0 ? `${summary.follow}` : 'Yok'} tone={summary.follow ? 'amber' : 'slate'} />
             <PoolSummaryItem label="Risk sinyali" value={summary.risk > 0 ? `${summary.risk}` : 'Yok'} tone={summary.risk ? 'rose' : 'slate'} />
             <PoolSummaryItem label="Operasyon bağı" value={summary.operations > 0 ? `${summary.operations}` : 'Yok'} tone={summary.operations ? 'blue' : 'slate'} />
           </div>
         </header>
+
+        <OpsFirstRunNotice
+          compact
+          noticeId={OPS_NOTICE.crmEksperSessizlik.id}
+          title={OPS_NOTICE.crmEksperSessizlik.title}
+          body={OPS_NOTICE.crmEksperSessizlik.body}
+          testId="crm-eksper-sessizlik-seridi"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2"
+        />
 
         <div className="rounded-2xl border border-slate-200/70 bg-white px-3 py-2.5 shadow-card">
           <div className="panel-filter-bar">
@@ -936,10 +1185,30 @@ export default function CrmPage() {
               <option value="medium">Orta Risk</option>
               <option value="high">Yüksek Risk</option>
             </select>
+            <select
+              value={expertLaneFilter}
+              onChange={(event) => {
+                const next = event.target.value as ExpertLane | '';
+                setExpertLaneFilter(next);
+                if (next === 'silent') setIstanbulOnly(false);
+              }}
+              className="panel-filter-control"
+            >
+              <option value="">Tüm Ofis Durumu</option>
+              <option value="silent">Sessiz Müşteri</option>
+              <option value="new_region">Yeni Bölge</option>
+              <option value="open_file">Açık Dosyası Var</option>
+            </select>
             <label className="inline-flex h-10 flex-[1_1_calc(50%-0.25rem)] items-center gap-2 whitespace-nowrap rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-600 sm:flex-[0_0_auto]">
               <input type="checkbox" checked={openFollowOnly} onChange={(event) => setOpenFollowOnly(event.target.checked)} />
               Açık Takip
             </label>
+            {expertLaneFilter !== 'silent' ? (
+              <label className="inline-flex h-10 flex-[1_1_calc(50%-0.25rem)] items-center gap-2 whitespace-nowrap rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-600 sm:flex-[0_0_auto]">
+                <input type="checkbox" checked={istanbulOnly} onChange={(event) => setIstanbulOnly(event.target.checked)} />
+                Yeni Bölge · İstanbul
+              </label>
+            ) : null}
           </div>
         </div>
 
@@ -956,8 +1225,14 @@ export default function CrmPage() {
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
               <div className="border-b border-slate-100 px-2.5 py-2">
                 <p className="text-xs font-semibold text-slate-500">İlişki Havuzu</p>
-                <p className="mt-0.5 text-xs text-slate-600 xl:hidden">Seçilen ilişki detayda açılır.</p>
-                <p className="mt-0.5 hidden text-xs text-slate-600 xl:block">Seçilen ilişki sağdaki workspace alanında açılır.</p>
+                {expertLaneFilter === 'silent' ? (
+                  <p className="mt-0.5 text-xs text-slate-600">Sessiz müşteri ve bugünün alternatifleri.</p>
+                ) : (
+                  <>
+                    <p className="mt-0.5 text-xs text-slate-600 xl:hidden">Seçilen ilişki detayda açılır.</p>
+                    <p className="mt-0.5 hidden text-xs text-slate-600 xl:block">Seçilen ilişki sağdaki workspace alanında açılır.</p>
+                  </>
+                )}
               </div>
 
               <div className="max-h-[calc(100vh-250px)] min-h-[390px] divide-y divide-slate-100 overflow-y-auto">
@@ -990,10 +1265,23 @@ export default function CrmPage() {
                         </div>
                       </div>
                       <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-[11px] text-slate-600">
-                        <span>Son: {fmtDate(itemSummary?.lastContactAt ?? item.lastContact)}</span>
+                        <span>Son: {fmtDate(item.expertWork?.lastWorkAt ?? itemSummary?.lastContactAt ?? item.lastContact)}</span>
                         <span>Takip: {itemFollowUp ? fmtDate(itemFollowUp) : '-'}</span>
                         <span>Bağ: {item.operationCount}</span>
                       </div>
+                      {item.expertWork?.lane === 'silent' || item.expertWork?.lane === 'new_region' ? (
+                        <p className={`mt-1.5 text-[11px] font-semibold ${item.expertWork.lane === 'silent' ? 'text-amber-800' : 'text-blue-800'}`}>
+                          {item.expertWork.lane === 'silent'
+                            ? EXPERT_SILENCE_FOLLOW_UP_TITLE
+                            : expertLaneFilter === 'silent'
+                              ? isIstanbulCity(item.city)
+                                ? 'Alternatif · Yeni bölge · İstanbul — henüz dosya yok'
+                                : 'Alternatif · Yeni bölge — henüz dosya yok'
+                              : isIstanbulCity(item.city)
+                                ? 'Yeni bölge · İstanbul — henüz dosya yok'
+                                : 'Yeni bölge — henüz dosya yok'}
+                        </p>
+                      ) : null}
                     </button>
                   );
                 })}
@@ -1026,10 +1314,69 @@ export default function CrmPage() {
                   </div>
 
                   <div className="mt-3 space-y-2">
+                    {selectedWork ? (
+                      <div className={`rounded-lg border px-3 py-2 ${selectedWork.lane === 'silent' ? 'border-amber-200 bg-amber-50' : selectedWork.lane === 'new_region' ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50'}`}>
+                        <p className="text-xs font-semibold text-slate-800">
+                          {selectedWork.lane === 'silent'
+                            ? EXPERT_SILENCE_FOLLOW_UP_TITLE
+                            : selectedWork.lane === 'new_region'
+                              ? isIstanbulCity(selected.city)
+                                ? 'Yeni bölge · İstanbul — henüz dosya yok'
+                                : 'Yeni bölge — henüz dosya yok'
+                              : selectedWork.lane === 'open_file'
+                                ? EXPERT_OPEN_FILE_OWNER_LINE
+                                : `Son iş ${EXPERT_SILENCE_DAYS} günden yeni`}
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-600">
+                          {selectedWork.lane === 'new_region'
+                            ? 'Tanıtım yalnız henüz dosyası olmayana. Ortak bağ yoksa yazılmaz. Eski sessiz ofise broşür gitmez.'
+                            : 'Onay bekleyen dosya kuyruğu değildir. Mail kendiliğinden gitmez. Cevap yoksa telefon, sonra tarih bağlanır.'}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {selectedWork.silent ? (
+                            <button
+                              type="button"
+                              onClick={() => void saveSilenceFollowUp()}
+                              disabled={savingAction === 'silence-follow-up'}
+                              className="inline-flex h-8 items-center rounded-md bg-brand-600 px-3 text-[11px] font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                            >
+                              {savingAction === 'silence-follow-up' ? 'Kaydediliyor' : 'Takip Aç'}
+                            </button>
+                          ) : null}
+                          {selectedWork.silent && selected.phone ? (
+                            <a
+                              href={`tel:${selected.phone}`}
+                              className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700"
+                            >
+                              Ara
+                            </a>
+                          ) : null}
+                          {selectedWork.silent ? (
+                            <button
+                              type="button"
+                              onClick={() => void saveSilencePostpone()}
+                              disabled={savingAction === 'silence-postpone'}
+                              className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700"
+                            >
+                              {savingAction === 'silence-postpone' ? 'Kaydediliyor' : 'Tarih Bağla'}
+                            </button>
+                          ) : null}
+                          {selectedWork.lane === 'silent' || selectedWork.lane === 'new_region' ? (
+                            <button
+                              type="button"
+                              onClick={prepareExpertMail}
+                              className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700"
+                            >
+                              {selectedWork.lane === 'new_region' ? 'Tanıtım Yazısı' : 'Yazı Hazırla'}
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="min-w-0">
                       <p className="mb-1.5 text-xs font-semibold text-blue-700">İlişki Takibi</p>
                       <div className="grid grid-cols-2 gap-2 min-[1180px]:grid-cols-4">
-                        <DecisionMetric label="Son Temas" value={fmtDate(operationMemory?.shortSummary?.lastContact ?? selectedSummary?.lastContactAt ?? selected.lastContact)} tone="blue" />
+                        <DecisionMetric label="Son Temas" value={fmtDate(selectedWork?.lastWorkAt ?? operationMemory?.shortSummary?.lastContact ?? selectedSummary?.lastContactAt ?? selected.lastContact)} tone="blue" />
                         <DecisionMetric label="Açık Takip" value={selectedSummary?.openFollowUp ? selectedSummary.openFollowUp.title ?? 'Takip var' : 'Yok'} tone={selectedSummary?.openFollowUp ? 'amber' : 'slate'} />
                         <DecisionMetric label="Planlama" value={effectiveFollowUpText(selectedSummary) ?? 'Planlanmamış'} tone={selectedSummary?.openFollowUp ? 'amber' : 'slate'} />
                         <DecisionMetric label="Aksiyon" value={selectedSummary?.lastNoteSummary ?? selected.signal ?? 'Bekleyen yok'} tone={selectedSummary?.lastNoteSummary ? 'blue' : 'slate'} />
@@ -1037,12 +1384,23 @@ export default function CrmPage() {
                     </div>
 
                     <div className="min-w-0">
-                      <p className="mb-1.5 text-xs font-semibold text-emerald-700">Performans ve Operasyon Özeti</p>
+                      <p className="mb-1.5 text-xs font-semibold text-emerald-700">{selectedWork ? 'Dosya Hafızası' : 'Performans ve Operasyon Özeti'}</p>
                       <div className="grid grid-cols-2 gap-2 min-[1180px]:grid-cols-4">
-                        <DecisionMetric label="Operasyon Bağı" value={selected.operationCount > 0 ? `${selected.operationCount}` : 'Yok'} tone={selected.operationCount > 0 ? 'blue' : 'slate'} />
-                        <DecisionMetric label="Toplam Dosya" value={isPositiveMetric(customerOperationSummary?.totalFiles) ? `${customerOperationSummary?.totalFiles}` : selected.operationCount > 0 ? `${selected.operationCount}` : 'Dosya yok'} tone={(customerOperationSummary?.totalFiles ?? selected.operationCount) > 0 ? 'emerald' : 'slate'} />
-                        <DecisionMetric label="Açık Dosya" value={isPositiveMetric(customerOperationSummary?.openFiles) ? `${customerOperationSummary?.openFiles}` : 'Açık dosya yok'} tone={isPositiveMetric(customerOperationSummary?.openFiles) ? 'amber' : 'slate'} />
-                        <DecisionMetric label="Finansal Etki" value={compactCurrency(customerOperationSummary?.totalProfit ?? customerOperationSummary?.totalRevenue, customerOperationSummary?.currency)} tone={isPositiveMetric(customerOperationSummary?.totalProfit ?? customerOperationSummary?.totalRevenue) ? 'emerald' : 'slate'} />
+                        {selectedWork ? (
+                          <>
+                            <DecisionMetric label="Son Dosya" value={fmtDate(selectedWork.lastFileAt)} tone={selectedWork.lastFileAt ? 'blue' : 'slate'} />
+                            <DecisionMetric label="Son Onay" value={fmtDate(selectedWork.lastApprovedAt)} tone={selectedWork.lastApprovedAt ? 'emerald' : 'slate'} />
+                            <DecisionMetric label="Açık Dosya" value={selectedWork.openFileCount > 0 ? `${selectedWork.openFileCount}` : 'Açık dosya yok'} tone={selectedWork.openFileCount > 0 ? 'amber' : 'slate'} />
+                            <DecisionMetric label="Sessizlik" value={selectedWork.silentDays != null ? `${selectedWork.silentDays} gün` : 'Dosya yok'} tone={selectedWork.silent ? 'amber' : 'slate'} />
+                          </>
+                        ) : (
+                          <>
+                            <DecisionMetric label="Operasyon Bağı" value={selected.operationCount > 0 ? `${selected.operationCount}` : 'Yok'} tone={selected.operationCount > 0 ? 'blue' : 'slate'} />
+                            <DecisionMetric label="Toplam Dosya" value={isPositiveMetric(customerOperationSummary?.totalFiles) ? `${customerOperationSummary?.totalFiles}` : selected.operationCount > 0 ? `${selected.operationCount}` : 'Dosya yok'} tone={(customerOperationSummary?.totalFiles ?? selected.operationCount) > 0 ? 'emerald' : 'slate'} />
+                            <DecisionMetric label="Açık Dosya" value={isPositiveMetric(customerOperationSummary?.openFiles) ? `${customerOperationSummary?.openFiles}` : 'Açık dosya yok'} tone={isPositiveMetric(customerOperationSummary?.openFiles) ? 'amber' : 'slate'} />
+                            <DecisionMetric label="Finansal Etki" value={compactCurrency(customerOperationSummary?.totalProfit ?? customerOperationSummary?.totalRevenue, customerOperationSummary?.currency)} tone={isPositiveMetric(customerOperationSummary?.totalProfit ?? customerOperationSummary?.totalRevenue) ? 'emerald' : 'slate'} />
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

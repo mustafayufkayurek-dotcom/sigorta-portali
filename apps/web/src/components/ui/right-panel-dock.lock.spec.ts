@@ -31,7 +31,10 @@ describe('sağ panel kaydır LOCK', () => {
     assert.doesNotMatch(tab, /from '\.\/right-panel-dock-state\.ts'/);
     assert.match(tab, /sag-panel-geri-ac/);
     assert.match(tab, /createPortal/);
-    assert.match(tab, /fixed right-0/);
+    assert.match(tab, /w-10/);
+    assert.match(tab, /min-h-\[10\.5rem\]/);
+    assert.match(tab, /writing-mode:vertical-rl/);
+    assert.match(tab, /tracking-\[0\.42em\]/);
     assert.doesNotMatch(tab, /absolute left-0/);
     assert.match(tab, /sag-panel-hatirlat/);
     assert.match(tab, /acil-siradaki-pulse/);

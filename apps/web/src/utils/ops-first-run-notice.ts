@@ -171,6 +171,12 @@ export const OPS_NOTICE = {
     body:
       'Hasar ve Acil ayrı durur. Pin iş adresidir; il adı yeter, tedarikçi telefonu gerekmez. Tercihle kapanan dosya da durur. Üstte Bölge Seç. Yeşil kutu sahada iş. Daire personel telefonudur.',
   },
+  crmEksperSessizlik: {
+    id: 'crm-eksper-sessizlik-v629',
+    title: 'Sessiz müşteri',
+    body:
+      'Sessiz müşteri, onay bekleyen rapor değildir. Eksper 2 gündür yeni hasar dosyası göndermediyse yazıyı siz gönderirsiniz. Açık dosya bu kutuyu kapatmaz; onay kartta durur. Hiç dosya yoksa yeni bölgedir. Broşür yalnız henüz dosyası olmayana gider; eski ofise satılık yazı yok. Uyarı kapanınca ertesi sabah yeniden çıkar. Görüşülüp dosya gelmezse yönetici özetinde durur.',
+  },
 } as const;
 
 export function opsNoticeStorageKey(noticeId: string): string {

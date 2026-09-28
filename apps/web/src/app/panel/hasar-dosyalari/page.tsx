@@ -80,6 +80,8 @@ import { usePanelAccess } from '@/hooks/usePanelAccess';
 import { fieldStaffIncludesAcil } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { MissingShortNameBanner } from '@/components/customers/MissingShortNameBanner';
+import { HasarSilentOfficeStrip } from '@/components/crm/HasarSilentOfficeStrip';
+import { HasarSilentOwnerReport } from '@/components/crm/HasarSilentOwnerReport';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { acilVendorPayLabel, acilVendorPayTone } from '@/utils/acil-vendor-pay';
 
@@ -278,7 +280,7 @@ function ClaimFilesPageContent() {
   const rowActions = usePortalRowActionPrefs('row-actions:hasar-dosyalari-v1', OPS_ROW_ACTIONS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
-  const { operationArea } = usePanelAccess();
+  const { operationArea, isManagement } = usePanelAccess();
   const fieldAcilQuery = useFieldAssignedAcilCases(isFieldStaff && fieldStaffIncludesAcil(operationArea));
   const fieldAcilRows = useMemo(() => {
     const rows = fieldAcilQuery.data ?? [];
@@ -578,7 +580,14 @@ function ClaimFilesPageContent() {
 
       {!isFieldStaff && (
         <div className="space-y-2">
-          <MissingShortNameBanner />
+          <div
+            className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:items-stretch"
+            data-testid="hasar-uyari-sirasi"
+          >
+            <HasarSilentOfficeStrip />
+            <MissingShortNameBanner />
+          </div>
+          {isManagement ? <HasarSilentOwnerReport /> : null}
           <OpsFirstRunNotice
             compact
             noticeId={OPS_NOTICE.hasarListeSonDegisiklik.id}

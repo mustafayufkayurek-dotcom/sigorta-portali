@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, CalendarDays } from 'lucide-react';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
+import { PanelFlowTrail } from '@/components/ui/PanelFlowTrail';
 import { MondayMeetingNotes } from '@/features/dashboard/components/admin/monday-meeting-notes';
 
 export default function PazartesiToplantisiPage() {
@@ -25,13 +26,21 @@ export default function PazartesiToplantisiPage() {
     <div className="space-y-4 pb-8">
       <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-card dark:border-slate-700 dark:bg-slate-900">
         <div className="px-4 py-4 sm:px-6 sm:py-5">
-          <Link
-            href="/panel"
-            className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition-colors hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Dashboard
-          </Link>
+          <div className="mb-3 flex items-center gap-2">
+            <Link
+              href="/panel"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Geri"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+            </Link>
+            <PanelFlowTrail
+              items={[
+                { label: 'Dashboard', href: '/panel' },
+                { label: 'Pazartesi Toplantısı' },
+              ]}
+            />
+          </div>
 
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/40">

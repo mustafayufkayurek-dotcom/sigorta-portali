@@ -15,7 +15,7 @@ type MissingShortNameSummary = {
  * Dosya Sorumlusu Merkezi — Kısa Ad eksik müşteri uyarısı.
  * Tüm aktif müşterilerde Kısa Ad dolunca kaybolur.
  */
-export function MissingShortNameBanner() {
+export function MissingShortNameBanner({ className }: { className?: string } = {}) {
   const [summary, setSummary] = useState<MissingShortNameSummary | null>(null);
 
   useEffect(() => {
@@ -35,39 +35,29 @@ export function MissingShortNameBanner() {
 
   if (!summary || summary.complete || summary.count <= 0) return null;
 
-  const sampleNames = summary.samples
-    .map((s) => s.name)
-    .filter(Boolean)
-    .slice(0, 3)
-    .join(', ');
-
   return (
     <div
-      className="rounded-xl border-2 border-amber-500 bg-amber-50 px-4 py-3.5 text-sm text-amber-950 shadow-sm"
+      className={`flex h-full flex-col justify-center rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950 shadow-sm ${className ?? ''}`.trim()}
       data-testid="missing-short-name-banner"
       role="status"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex items-start gap-2.5">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-warning" aria-hidden />
-          <div className="min-w-0">
-            <p className="text-base font-bold">
-              {summary.count} Müşteri Kartında Kısa Ad Eksik
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
-              Listelerde Kısa Ad gerekir. «Kısa Ad Tanımlanmamış» yazısına tıklayınca müşteri kartı açılır;
-              Kısa Ad’ı orada girin. Tüm kartlar dolunca bu uyarı kalkar.
-              {sampleNames ? ` Örnek: ${sampleNames}${summary.count > 3 ? '…' : ''}` : ''}
-            </p>
-          </div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-status-warning" aria-hidden />
+          <p className="text-sm font-bold leading-snug">
+            {summary.count} Müşteri Kartında Kısa Ad Eksik
+          </p>
         </div>
         <Link
           href="/panel/musteriler?shortName=eksik"
-          className="shrink-0 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+          className="shrink-0 rounded-lg bg-brand-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-700"
         >
           Kısa Ad Tanımla
         </Link>
       </div>
+      <p className="mt-1 text-xs leading-snug text-amber-900/90">
+        Listede müşteri adı Kısa Ad’dır. Kartta yazın; dolunca bu kutu kalkar.
+      </p>
     </div>
   );
 }

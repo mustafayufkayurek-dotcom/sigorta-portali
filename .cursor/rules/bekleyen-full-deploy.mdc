@@ -1,5 +1,5 @@
 ---
-description: Canlı web v628 / backend v628 — sıradaki paket yok
+description: Canlı web v628 / backend v628 — sıradaki paket v629
 alwaysApply: true
 ---
 
@@ -133,6 +133,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Canlı **v628**.
 
-**Sıradaki paket:** yok.
+**Sıradaki paket: v629 (full)** — CRM sessiz müşteri (2 gün ihbar yoksa uyarı; kapatınca ertesi sabah; alternatif yeni bölge; yönetici özeti; Pazartesi). Liste 100’de kesilmez. Ciro uydurulmaz. Mail kendiliğinden gitmez. Akışta önceki sayfa adına tıklanınca dönüş. Muhatap yazımı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v628 / backend v628.
 
 Alım yalnız «canlıya al» deyince.

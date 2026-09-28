@@ -371,7 +371,7 @@ export class SystemSettingsController {
 
   @Get('monday-meeting')
   @RequirePermissions('dashboard.view')
-  @ApiOperation({ summary: 'Pazartesi toplantısı notları ve mutatap konuları' })
+  @ApiOperation({ summary: 'Pazartesi toplantısı notları ve muhatap konuları' })
   async getMondayMeeting() {
     const data = await this.service.getMondayMeeting();
     return { success: true, data };
@@ -379,7 +379,7 @@ export class SystemSettingsController {
 
   @Put('monday-meeting/templates')
   @RequirePermissions('settings.manage')
-  @ApiOperation({ summary: 'Pazartesi toplantısı mutatap konularını güncelle' })
+  @ApiOperation({ summary: 'Pazartesi toplantısı muhatap konularını güncelle' })
   async updateMondayMeetingTemplates(@Body() body: { templates: MondayMeetingTemplate[] }) {
     const data = await this.service.updateMondayMeetingTemplates(body.templates ?? []);
     return { success: true, data };

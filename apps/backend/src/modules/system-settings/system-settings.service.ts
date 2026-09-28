@@ -1227,7 +1227,7 @@ export class SystemSettingsService {
       }))
       .filter((t) => t.text.length > 0);
     if (normalized.length === 0) {
-      throw new BadRequestException('En az bir mutatap konu gerekli');
+      throw new BadRequestException('En az bir muhatap konu gerekli');
     }
     const next = { ...current, templates: normalized };
     const { weekKey: _wk, ...persist } = next;

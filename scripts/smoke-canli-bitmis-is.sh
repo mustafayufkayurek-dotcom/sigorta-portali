@@ -94,6 +94,9 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/users/system-admin-identity.lock.spec.ts \
   apps/web/src/utils/panel-native-confirm.lock.spec.ts \
   apps/web/src/app/panel/personel-ozluk/personel-test-asama.lock.spec.ts \
-  nginx/https-redirect.lock.spec.ts
+  nginx/https-redirect.lock.spec.ts \
+  packages/shared/src/crm-expert-silence.lock.spec.ts \
+  apps/web/src/app/panel/crm/crm-eksper-sessizlik.lock.spec.ts \
+  apps/web/src/components/ui/panel-flow-trail.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

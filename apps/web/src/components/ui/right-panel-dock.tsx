@@ -92,16 +92,16 @@ export function RightPanelDockTab({
         onClick={onClick}
         data-testid="sag-panel-geri-ac"
         aria-label={`${label} — geri aç`}
-        className={`fixed right-0 top-1/2 z-[220] flex w-10 -translate-y-1/2 flex-col items-center gap-3 rounded-l-xl border border-r-0 bg-white py-5 shadow-[-10px_0_28px_rgba(15,23,42,0.14)] hover:bg-slate-50 ${
+        className={`fixed right-0 top-1/2 z-[220] flex w-10 min-h-[10.5rem] -translate-y-1/2 flex-col items-center gap-4 rounded-l-xl border border-r-0 bg-white py-7 shadow-[-10px_0_28px_rgba(15,23,42,0.14)] hover:bg-slate-50 ${
           showRemind ? 'acil-siradaki-pulse border-amber-400' : 'border-slate-200'
         }`}
       >
         <span
-          className={`absolute bottom-4 left-0 top-4 w-[3px] rounded-full ${showRemind ? 'bg-amber-500' : 'bg-slate-800'}`}
+          className={`absolute bottom-5 left-0 top-5 w-[3px] rounded-full ${showRemind ? 'bg-amber-500' : 'bg-slate-800'}`}
           aria-hidden
         />
         <ChevronLeft className="h-4 w-4 shrink-0 text-slate-500" strokeWidth={2.25} />
-        <span className="px-0 text-[11px] font-semibold leading-none tracking-[0.16em] text-slate-800 [writing-mode:vertical-rl]">
+        <span className="px-0 text-sm font-semibold leading-none tracking-[0.42em] text-slate-800 [writing-mode:vertical-rl]">
           {label}
         </span>
       </button>

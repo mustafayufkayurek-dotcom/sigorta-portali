@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, ListChecks, Plus, Settings2 } from 'lucide-reac
 import { API, authHeader } from '@/utils/api';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { MondayMeetingBriefingBand } from './monday-meeting-briefing-band';
+import { HasarSilentOwnerReport } from '@/components/crm/HasarSilentOwnerReport';
 import {
   type MondayMeetingNote,
   type MondayMeetingPayload,
@@ -66,7 +67,7 @@ function NoteRow({
       >
         {note.text}
         {note.templateId ? (
-          <span className="ml-1.5 text-[10px] font-normal text-slate-400">(Mutatap)</span>
+          <span className="ml-1.5 text-[10px] font-normal text-slate-400">(Muhatap)</span>
         ) : null}
       </span>
     </li>
@@ -186,6 +187,16 @@ export function MondayMeetingNotes({
       />
     ) : null;
 
+  const pageLead =
+    isPage && showBriefing ? (
+      <>
+        {briefingBand}
+        <HasarSilentOwnerReport />
+      </>
+    ) : (
+      briefingBand
+    );
+
   if (loading && !isPage) {
     return (
       <div className="mt-2 animate-pulse rounded-xl border border-dashed border-slate-200 p-4 dark:border-slate-700">
@@ -202,7 +213,7 @@ export function MondayMeetingNotes({
   if (loading && isPage) {
     return (
       <div className="space-y-4">
-        {briefingBand}
+        {pageLead}
         <div className="animate-pulse rounded-2xl border border-slate-200/70 bg-white p-6 shadow-card dark:border-slate-700 dark:bg-slate-900">
           <div className="h-5 w-48 rounded bg-slate-200 dark:bg-slate-700" />
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -217,7 +228,7 @@ export function MondayMeetingNotes({
   if (!data) {
     return (
       <div className="space-y-4">
-        {briefingBand}
+        {pageLead}
         <p className="text-sm text-slate-500">Toplantı notları yüklenemedi.</p>
       </div>
     );
@@ -228,7 +239,7 @@ export function MondayMeetingNotes({
       className={`rounded-2xl border border-blue-100/80 bg-blue-50/30 p-4 dark:border-blue-900/40 dark:bg-blue-950/20 ${isPage ? 'h-full' : 'mb-2'}`}
     >
       <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-        Her Pazartesi otomatik listelenecek mutatap konular.
+        Her Pazartesi otomatik listelenecek muhatap konular.
       </p>
       <ul className="space-y-2">
         {effectiveDraftTemplates.map((tpl, idx) => (
@@ -290,7 +301,7 @@ export function MondayMeetingNotes({
           onClick={() => void saveTemplates()}
           className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
         >
-          Mutatapları Kaydet
+          Muhatap Konuları Kaydet
         </button>
       </div>
     </div>
@@ -356,7 +367,7 @@ export function MondayMeetingNotes({
             <div className="flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-brand-600" />
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                Mutatap Konular
+                Muhatap Konular
               </h3>
             </div>
             {templatesPanel}
@@ -419,7 +430,7 @@ export function MondayMeetingNotes({
   if (isPage) {
     return (
       <div className="space-y-4">
-        {briefingBand}
+        {pageLead}
         <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-card dark:border-slate-700 dark:bg-slate-900">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
             <div className="flex items-center gap-2">
@@ -456,7 +467,7 @@ export function MondayMeetingNotes({
           className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400"
         >
           <Settings2 className="h-3 w-3" />
-          Mutatap Konular
+          Muhatap Konular
           {showTemplates ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </button>
       </div>

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -7,8 +7,16 @@ import { EmailService } from '@/modules/notifications/email/email.service';
 import {
   buildCrmSenderCopyNotice,
   canSendVisibleCopy,
+  evaluateExpertWork,
+  EXPERT_SILENCE_DISMISS_ACTION,
+  EXPERT_SILENCE_OPENED_ACTION,
+  EXPERT_SILENCE_SIGNAL_KEY,
+  expertSilenceFileStillMissing,
+  expertSilenceOwnerHeadline,
+  isExpertFirmCustomer,
   matchCrmEmailWatchLog,
   prependFileOwnerCopyNotice,
+  type ExpertWorkMemory,
 } from '@sigorta/shared';
 
 type RelationshipKind = 'customer' | 'adjuster' | 'vendor';
@@ -101,12 +109,13 @@ export class CrmService {
     const signals = this.buildMemorySignals(kind as RelationshipKind, summary, operations);
     const latestOperation = operations[0] ?? null;
     const customerOperationSummary = kind === 'customer' ? await this.getCustomerOperationSummary(id) : null;
+    const expertWork = kind === 'customer' ? (await this.getExpertWorkMap([id]))[id] ?? null : null;
 
     return {
       success: true,
       data: {
         shortSummary: {
-          lastContact: summary.lastContactAt,
+          lastContact: expertWork?.lastWorkAt ?? summary.lastContactAt,
           lastContactBy: this.latestOwner(visibleLogs, 'crm.note.created'),
           openFollowUp: summary.openFollowUp,
           latestOperation,
@@ -116,6 +125,7 @@ export class CrmService {
         signals,
         links: this.buildOperationLinks(operations),
         customerOperationSummary,
+        expertWork,
         sources: {
           crmNotes: summary.noteCount ?? 0,
           crmFollowUps: summary.followUpCount ?? 0,
@@ -124,6 +134,399 @@ export class CrmService {
         },
       },
     };
+  }
+
+  async getExpertWorkMap(ids: unknown): Promise<Record<string, ExpertWorkMemory>> {
+    const customerIds = Array.from(
+      new Set((Array.isArray(ids) ? ids : []).map((id) => String(id ?? '').trim()).filter(Boolean)),
+    ).slice(0, 400);
+    if (customerIds.length === 0) return {};
+
+    const customers = await this.prisma.customer.findMany({
+      where: { id: { in: customerIds } },
+      select: {
+        id: true,
+        subType: true,
+        companyName: true,
+        fullName: true,
+        type: true,
+        entityType: true,
+      },
+    });
+    const expertIds = customers.filter((row) => isExpertFirmCustomer(row)).map((row) => row.id);
+    if (expertIds.length === 0) return {};
+
+    const [files, reports] = await Promise.all([
+      this.prisma.claimFile.findMany({
+        where: { customerId: { in: expertIds } },
+        select: {
+          id: true,
+          customerId: true,
+          createdAt: true,
+          closedAt: true,
+          currentStatus: { select: { code: true, name: true } },
+          repairReports: {
+            select: {
+              status: true,
+              updatedAt: true,
+              externalApprovals: { select: { status: true, respondedAt: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.repairReport.findMany({
+        where: { expertOfficeId: { in: expertIds } },
+        select: {
+          expertOfficeId: true,
+          status: true,
+          updatedAt: true,
+          claimFile: {
+            select: {
+              id: true,
+              createdAt: true,
+              closedAt: true,
+              currentStatus: { select: { code: true, name: true } },
+            },
+          },
+          externalApprovals: { select: { status: true, respondedAt: true } },
+        },
+      }),
+    ]);
+
+    const buckets = new Map<string, { files: Map<string, { createdAt: Date; open: boolean }>; lastApprovedAt: Date | null }>();
+    for (const id of expertIds) {
+      buckets.set(id, { files: new Map(), lastApprovedAt: null });
+    }
+
+    const rememberFile = (
+      officeId: string | null | undefined,
+      file: { id: string; createdAt: Date; closedAt: Date | null; currentStatus?: { code?: string | null; name?: string | null } | null },
+    ) => {
+      if (!officeId) return;
+      const bucket = buckets.get(officeId);
+      if (!bucket) return;
+      const previous = bucket.files.get(file.id);
+      if (!previous || file.createdAt.getTime() > previous.createdAt.getTime()) {
+        bucket.files.set(file.id, { createdAt: file.createdAt, open: this.isOpenFile(file) });
+      }
+    };
+
+    const rememberApproval = (officeId: string | null | undefined, date: Date | null | undefined) => {
+      if (!officeId || !date) return;
+      const bucket = buckets.get(officeId);
+      if (!bucket) return;
+      if (!bucket.lastApprovedAt || date.getTime() > bucket.lastApprovedAt.getTime()) {
+        bucket.lastApprovedAt = date;
+      }
+    };
+
+    for (const file of files) {
+      rememberFile(file.customerId, file);
+      for (const report of file.repairReports) {
+        rememberApproval(file.customerId, this.reportApprovalDate(report));
+      }
+    }
+
+    for (const report of reports) {
+      rememberFile(report.expertOfficeId, report.claimFile);
+      rememberApproval(report.expertOfficeId, this.reportApprovalDate(report));
+    }
+
+    return Object.fromEntries(
+      expertIds.map((id) => {
+        const bucket = buckets.get(id) ?? { files: new Map(), lastApprovedAt: null };
+        const fileRows = Array.from(bucket.files.values());
+        const lastFileAt = fileRows.reduce<Date | null>((latest, row) => {
+          if (!latest || row.createdAt.getTime() > latest.getTime()) return row.createdAt;
+          return latest;
+        }, null);
+        return [
+          id,
+          evaluateExpertWork({
+            fileCount: fileRows.length,
+            openFileCount: fileRows.filter((row) => row.open).length,
+            lastFileAt,
+            lastApprovedAt: bucket.lastApprovedAt,
+          }),
+        ];
+      }),
+    );
+  }
+
+  async getMySilentExpertOffices(user: any) {
+    const userId = this.userId(user);
+    if (!userId) return [];
+    const asManager = this.isManager(user);
+
+    const files = await this.prisma.claimFile.findMany({
+      where: asManager ? { assignedOfficeUserId: { not: null } } : { assignedOfficeUserId: userId },
+      select: {
+        assignedOfficeUserId: true,
+        assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
+        customer: {
+          select: {
+            id: true,
+            subType: true,
+            companyName: true,
+            fullName: true,
+            type: true,
+            entityType: true,
+            city: true,
+            email: true,
+            phone: true,
+          },
+        },
+        repairReports: {
+          select: {
+            expertOffice: {
+              select: {
+                id: true,
+                subType: true,
+                companyName: true,
+                fullName: true,
+                type: true,
+                entityType: true,
+                city: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const offices = new Map<string, {
+      id: string;
+      name: string;
+      city: string | null;
+      email: string | null;
+      phone: string | null;
+      ownerUserId: string | null;
+      ownerName: string | null;
+    }>();
+    const remember = (
+      row: {
+        id?: string;
+        subType?: string | null;
+        companyName?: string | null;
+        fullName?: string | null;
+        type?: string | null;
+        entityType?: string | null;
+        city?: string | null;
+        email?: string | null;
+        phone?: string | null;
+      } | null,
+      owner: { id?: string | null; firstName?: string | null; lastName?: string | null } | null,
+    ) => {
+      if (!row?.id || !isExpertFirmCustomer(row)) return;
+      const name = String(row.companyName ?? row.fullName ?? '').trim();
+      if (!name) return;
+      const ownerName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ').trim() || null;
+      const previous = offices.get(row.id);
+      offices.set(row.id, {
+        id: row.id,
+        name,
+        city: row.city ?? previous?.city ?? null,
+        email: row.email ?? previous?.email ?? null,
+        phone: row.phone ?? previous?.phone ?? null,
+        ownerUserId: owner?.id ?? previous?.ownerUserId ?? null,
+        ownerName: ownerName ?? previous?.ownerName ?? null,
+      });
+    };
+    for (const file of files) {
+      remember(file.customer, file.assignedOfficeUser);
+      for (const report of file.repairReports) remember(report.expertOffice, file.assignedOfficeUser);
+    }
+
+    const work = await this.getExpertWorkMap([...offices.keys()]);
+    const silent = [...offices.values()].filter((office) => work[office.id]?.lane === 'silent');
+    if (silent.length === 0) return [];
+
+    const keys = silent.map((office) => this.key('customer', office.id));
+    const logs = await this.prisma.auditLog.findMany({
+      where: {
+        entityType: CRM_ENTITY_TYPE,
+        entityId: { in: keys },
+        action: { in: ['crm.email.sent', 'crm.note.created', 'crm.follow_up.created'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 400,
+    });
+    const latestByOffice = new Map<string, { action: string; createdAt: Date; value: any }>();
+    for (const log of logs) {
+      const officeId = String(log.entityId ?? '').split(':')[1];
+      if (!officeId || latestByOffice.has(officeId)) continue;
+      latestByOffice.set(officeId, { action: log.action, createdAt: log.createdAt, value: this.valueOf(log) });
+    }
+
+    return silent
+      .map((office) => {
+        const memory = work[office.id];
+        const latest = latestByOffice.get(office.id);
+        return {
+          ...office,
+          lane: memory?.lane ?? 'silent',
+          silentDays: memory?.silentDays ?? null,
+          lastWorkAt: memory?.lastWorkAt ?? null,
+          lastFileAt: memory?.lastFileAt ?? null,
+          lastAction: this.silentOfficeActionLabel(latest),
+          canAct: office.ownerUserId === userId,
+        };
+      })
+      .sort((a, b) => (b.silentDays ?? 0) - (a.silentDays ?? 0));
+  }
+
+  async recordSilenceWarningSignal(kind: 'dismissed' | 'opened', user: any, officeIds?: string[]) {
+    const userId = this.userId(user);
+    if (!userId) throw new BadRequestException('Oturum gerekli');
+    const ids = Array.isArray(officeIds) ? officeIds.map((id) => String(id).trim()).filter(Boolean) : [];
+    const action = kind === 'opened' ? EXPERT_SILENCE_OPENED_ACTION : EXPERT_SILENCE_DISMISS_ACTION;
+    await this.writeLog(`${EXPERT_SILENCE_SIGNAL_KEY}:${userId}`, action, {
+      ownerUserId: userId,
+      ownerName: this.userName(user),
+      officeIds: ids,
+    }, user);
+    return { ok: true };
+  }
+
+  async getSilenceActionReport(user: any) {
+    if (!this.isManager(user)) {
+      throw new ForbiddenException('Bu kayda erişiminiz yok.');
+    }
+    const silent = await this.getMySilentExpertOffices(user);
+    if (silent.length === 0) return [];
+
+    const officeKeys = silent.map((office) => this.key('customer', office.id));
+    const ownerIds = [...new Set(silent.map((office) => office.ownerUserId).filter(Boolean))] as string[];
+    const signalKeys = ownerIds.map((id) => `${EXPERT_SILENCE_SIGNAL_KEY}:${id}`);
+
+    const [crmLogs, signalLogs] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where: {
+          entityType: CRM_ENTITY_TYPE,
+          entityId: { in: officeKeys },
+          action: { in: ['crm.email.sent', 'crm.note.created', 'crm.follow_up.created'] },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 800,
+      }),
+      signalKeys.length
+        ? this.prisma.auditLog.findMany({
+            where: {
+              entityType: CRM_ENTITY_TYPE,
+              entityId: { in: signalKeys },
+              action: { in: [EXPERT_SILENCE_DISMISS_ACTION, EXPERT_SILENCE_OPENED_ACTION] },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 400,
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const byOwner = new Map<string, {
+      ownerUserId: string;
+      ownerName: string;
+      dismissed: boolean;
+      opened: boolean;
+      customers: Array<{ name: string; action: string; note: string | null }>;
+    }>();
+
+    for (const office of silent) {
+      const ownerUserId = office.ownerUserId || 'atanmamis';
+      const ownerName = office.ownerName || 'Dosya Sorumlusu Atanmamış';
+      if (!byOwner.has(ownerUserId)) {
+        byOwner.set(ownerUserId, {
+          ownerUserId,
+          ownerName,
+          dismissed: false,
+          opened: false,
+          customers: [],
+        });
+      }
+      const bucket = byOwner.get(ownerUserId)!;
+      const lastFileAt = office.lastFileAt ? new Date(office.lastFileAt).getTime() : 0;
+      const latest = crmLogs.find((log) => {
+        const officeId = String(log.entityId ?? '').split(':')[1];
+        if (officeId !== office.id) return false;
+        const actor = String(log.userId ?? this.valueOf(log)?.ownerUserId ?? '');
+        if (office.ownerUserId && actor && actor !== office.ownerUserId) return false;
+        return lastFileAt === 0 || log.createdAt.getTime() >= lastFileAt;
+      });
+      if (latest) {
+        const value = this.valueOf(latest);
+        const note = String(value?.summary ?? value?.result ?? value?.title ?? value?.body ?? '').trim() || null;
+        const fileStillMissing = expertSilenceFileStillMissing({
+          actedAt: latest.createdAt,
+          lastFileAt: office.lastFileAt,
+        });
+        bucket.customers.push({
+          name: office.name,
+          action: this.silentOfficeActionLabel({ action: latest.action, createdAt: latest.createdAt, value }),
+          note,
+          fileStillMissing,
+        });
+      }
+    }
+
+    for (const log of signalLogs) {
+      const ownerUserId = String(log.entityId ?? '').split(':')[1] || String(log.userId ?? '');
+      const bucket = byOwner.get(ownerUserId);
+      if (!bucket) continue;
+      if (log.action === EXPERT_SILENCE_DISMISS_ACTION) bucket.dismissed = true;
+      if (log.action === EXPERT_SILENCE_OPENED_ACTION) bucket.opened = true;
+    }
+
+    return [...byOwner.values()].map((row) => {
+      const acted = row.customers.length > 0;
+      return {
+        ownerUserId: row.ownerUserId,
+        ownerName: row.ownerName,
+        acted,
+        dismissed: row.dismissed,
+        opened: row.opened,
+        headline: expertSilenceOwnerHeadline({
+          acted,
+          dismissed: row.dismissed,
+          opened: row.opened,
+          customers: row.customers,
+        }),
+        customers: row.customers,
+      };
+    });
+  }
+
+  private silentOfficeActionLabel(latest?: { action: string; createdAt: Date; value: any } | null) {
+    if (!latest) return 'Bekliyor';
+    if (latest.action === 'crm.email.sent') {
+      const watch = String(latest.value?.deliveryStatus ?? '');
+      if (watch === 'bounced') return 'Ulaşmadı';
+      if (watch === 'replied') return 'Yanıt geldi';
+      return 'Yazıldı';
+    }
+    if (latest.action === 'crm.note.created' && latest.value?.noteType === 'phone_call') return 'Arandı';
+    if (latest.action === 'crm.note.created') return 'Not düşüldü';
+    if (latest.action === 'crm.follow_up.created' && String(latest.value?.result ?? '').includes('Tarih')) return 'Tarih bağlandı';
+    if (latest.action === 'crm.follow_up.created') return 'Takip açık';
+    return 'Bekliyor';
+  }
+
+  private reportApprovalDate(report: {
+    status?: string | null;
+    updatedAt?: Date | null;
+    externalApprovals?: Array<{ status?: string | null; respondedAt?: Date | null }>;
+  }) {
+    const approved = new Set(['approved', 'externally_approved']);
+    let latest: Date | null = null;
+    const consider = (value?: Date | null) => {
+      if (!value) return;
+      if (!latest || value.getTime() > latest.getTime()) latest = value;
+    };
+    if (approved.has(String(report.status ?? ''))) consider(report.updatedAt ?? null);
+    for (const row of report.externalApprovals ?? []) {
+      if (String(row.status ?? '') === 'approved') consider(row.respondedAt ?? null);
+    }
+    return latest;
   }
 
   private async getCustomerOperationSummary(customerId: string) {
