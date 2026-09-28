@@ -126,7 +126,7 @@ export function mapMorningBriefingHoverLines(
           href: MORNING_BRIEFING_HREF.sessiz,
         };
       })
-      .filter((row): row is MorningBriefingHoverLine => Boolean(row))
+      .filter((row): row is MorningBriefingHoverLine => row != null)
       .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
   }
 
@@ -145,7 +145,7 @@ export function mapMorningBriefingHoverLines(
           href: MORNING_BRIEFING_HREF.tahsilat,
         };
       })
-      .filter((row): row is MorningBriefingHoverLine => Boolean(row))
+      .filter((row): row is MorningBriefingHoverLine => row != null)
       .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
   }
 
@@ -171,7 +171,7 @@ export function mapMorningBriefingHoverLines(
           href: MORNING_BRIEFING_HREF.puantaj,
         };
       })
-      .filter((row): row is MorningBriefingHoverLine => Boolean(row))
+      .filter((row): row is MorningBriefingHoverLine => row != null)
       .slice(0, MORNING_BRIEFING_HOVER_LIMIT);
   }
 

@@ -133,6 +133,8 @@ describe('yönetici sabah bakışı LOCK', () => {
     assert.match(strip, /onMouseEnter/);
     assert.match(strip, /mapMorningBriefingHoverLines/);
     assert.match(helper, /mapMorningBriefingHoverLines/);
+    assert.match(helper, /row != null/);
+    assert.doesNotMatch(helper, /Boolean\(row\)/);
     assert.doesNotMatch(strip, /flex-1 text-\[13px\]/);
     const preview = readFileSync(join(here, 'MgmtMorningBriefingPreview.tsx'), 'utf8');
     assert.match(preview, /SlidePanel/);
