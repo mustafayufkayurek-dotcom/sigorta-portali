@@ -28,7 +28,7 @@ export function GirisKoduKopyalaClient() {
     <div className="flex min-h-[70vh] items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         <div className="mb-6 flex justify-center">
-          <LoginBrandLogo />
+          <LoginBrandLogo alt="Meridyen Assistance" />
         </div>
         {!code ? (
           <p className="text-sm text-slate-600">Giriş kodu bulunamadı.</p>

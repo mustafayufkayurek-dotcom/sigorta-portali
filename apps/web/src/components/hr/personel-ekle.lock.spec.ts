@@ -41,5 +41,6 @@ describe('personel ekle LOCK', () => {
     const page = readFileSync(join(here, '../../app/giris/kopyala/GirisKoduKopyalaClient.tsx'), 'utf8');
     assert.match(page, /Kopyalandı/);
     assert.match(page, /clipboard\.writeText/);
+    assert.match(page, /LoginBrandLogo alt=/);
   });
 });
