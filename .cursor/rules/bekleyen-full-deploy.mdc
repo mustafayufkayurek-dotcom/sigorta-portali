@@ -1,11 +1,11 @@
 ---
-description: Canlı web v631 / backend v631
+description: Canlı web v632 / backend v632
 alwaysApply: true
 ---
 
 # Canlı (29.09.2026)
 
-Canlı: web **v631** · backend **v631**. Geri alma: web **v630** / backend **v630**.
+Canlı: web **v632** · backend **v632**. Geri alma: web **v631** / backend **v631**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v632 (full):** Gelen kutuda Kullanıcı Ata ofis listesidir. Dosya sorumlusu **Kendime Al** ile maili üzerine alır. Kullanıcılar yetkisi gerekmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v631 / backend v631.
 
 **v631 (full):** Giriş onayı mailinde «Sayı» kalkar; **Giriş Kodu** ve kopyala durur. Kullanıcı Ekle’de firma seçilince karttaki kişiler listede durur; yetkili kişi kendiliğinden giriş almaz. İlişki türünde müşteri ve tedarikçi alt kırılımı (Acil Yardım, Hasar Onarım). Dijital onay WhatsApp: ad, dosya numarası, olağan prosedür, onay sayfası, dosya sorumlusu cep; Muvafakatname / Onayla’ya basın yok. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v630 / backend v630.
 
@@ -137,4 +139,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Canlı **v631**.
+Canlı **v632**.

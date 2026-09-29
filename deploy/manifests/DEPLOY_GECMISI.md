@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (29 Eylül 2026 — web v631 / backend v631)
+## Canlı durum (29 Eylül 2026 — web v632 / backend v632)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v631-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v631-amd64` | canlı |
-| **Rollback** | Web **v630** / Backend **v630** | manifest `rollbackImages` |
-| **Etiket** | `v631-giris-ofis-iliski-onay` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v632-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v632-amd64` | canlı |
+| **Rollback** | Web **v631** / Backend **v631** | manifest `rollbackImages` |
+| **Etiket** | `v632-gelen-kutu-kendime-al` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v632 — Full (29 Eylül 2026) — Gelen kutu Kendime Al
+
+- Kullanıcı Ata ofis listesini kullanır; Kullanıcılar yetkisi gerekmez
+- Dosya sorumlusu Kendime Al ile maili üzerine alır
+- Disk; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v631** / backend **v631**
 
 ### v631 — Full (29 Eylül 2026) — Giriş maili, ofis listesi, ilişki, dijital onay
 

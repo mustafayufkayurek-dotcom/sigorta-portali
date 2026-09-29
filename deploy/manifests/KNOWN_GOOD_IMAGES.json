@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-29",
-  "label": "v631-giris-ofis-iliski-onay",
-  "description": "Full v631: giriş kodu maili, Kullanıcı Ekle ofis listesi, ilişki türü altı, dijital onay WhatsApp. Geri alma web v630 / backend v630.",
+  "label": "v632-gelen-kutu-kendime-al",
+  "description": "Full v632: gelen kutu Kullanıcı Ata ofis listesi; Kendime Al. Geri alma web v631 / backend v631.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v631-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v631-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v632-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v632-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v630-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v630-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v631-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v631-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
