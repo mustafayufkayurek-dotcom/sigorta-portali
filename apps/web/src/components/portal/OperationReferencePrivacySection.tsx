@@ -44,14 +44,17 @@ export default function OperationReferencePrivacySection() {
 
 export function OperationReferenceFooterBand() {
   return (
-    <div className="rounded-xl bg-[#0B1F3A] px-4 py-3 sm:px-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-3xl text-xs leading-relaxed text-blue-100/90 sm:text-[13px]">
+    <div
+      className="mb-24 rounded-xl bg-[#0B1F3A] px-4 py-3 sm:mb-28 sm:px-5"
+      data-testid="operasyon-agi-footer-band"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+        <p className="text-xs leading-snug text-blue-100/90 sm:text-[13px]">
           Meridyen Assistance; operasyonel başarılarını görsellerle değil, sürdürülebilir hizmet
           kalitesi, kurumsal güven ve referans operasyon deneyimiyle temsil etmeyi ilke edinmiştir.
         </p>
         <Link
-          href="/panel"
+          href="/panel/sigorta-portal"
           className="inline-flex shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/15"
         >
           Meridyen Hakkında Daha Fazla →

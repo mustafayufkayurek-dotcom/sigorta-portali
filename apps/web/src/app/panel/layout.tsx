@@ -1860,12 +1860,20 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const showAcilYardim = canAccessAcilYardim(roleCode, operationArea, user?.operationalAccessGrants);
 
   useEffect(() => {
-    if (!loading && isExpert && pathname === '/panel') router.replace('/panel/eksper-portal');
-    if (!loading && isInsuranceCompanyUser && pathname === '/panel') router.replace('/panel/sigorta-portal');
-    if (!loading && isAssistanceCompanyUser && pathname === '/panel') router.replace('/panel/asistans-portal');
-    if (!loading && isFinance && pathname === '/panel') router.replace('/panel/finans');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, roleCode]);
+    if (loading || pathname !== '/panel') return;
+    if (isExpert) router.replace('/panel/eksper-portal');
+    if (isInsuranceCompanyUser) router.replace('/panel/sigorta-portal');
+    if (isAssistanceCompanyUser) router.replace('/panel/asistans-portal');
+    if (isFinance) router.replace('/panel/finans');
+  }, [
+    loading,
+    pathname,
+    isExpert,
+    isInsuranceCompanyUser,
+    isAssistanceCompanyUser,
+    isFinance,
+    router,
+  ]);
 
   const isPublicPanelPath = pathname === '/panel/profil';
   const mustChangePassword = user?.mustChangePassword === true;

@@ -120,7 +120,7 @@ export default function SigortaOperasyonAgiPage() {
 
   return (
     <DashboardShell>
-      <div className="flex flex-col gap-4 pb-2">
+      <div className="flex flex-col gap-4 pb-8">
         <PortalPageHeader
           portalHomeHref="/panel/sigorta-portal"
           portalHomeLabel="Dosya Takip"

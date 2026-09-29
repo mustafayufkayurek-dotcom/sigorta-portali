@@ -535,9 +535,9 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
+        <a href="/panel/eksper-portal" className="hover:text-brand-600 transition-colors">Eksper Paneli</a>
         <span>/</span>
-        <span className="text-slate-600 font-medium">Eksper Portal</span>
+        <span className="text-slate-600 font-medium">Yeni İhbar</span>
       </nav>
 
       {/* Overlay */}

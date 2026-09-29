@@ -107,6 +107,7 @@ node --experimental-strip-types --test \
   apps/web/src/components/ui/panel-flow-trail.lock.spec.ts \
   packages/shared/src/inbox-assignable-users.lock.spec.ts \
   packages/shared/src/repair-report-pdf-groups.lock.spec.ts \
-  packages/shared/src/role-account-family.lock.spec.ts
+  packages/shared/src/role-account-family.lock.spec.ts \
+  apps/web/src/components/portal/operasyon-agi-canli-destek.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

@@ -15,10 +15,6 @@ export default function PortalBreadcrumb({
 }: PortalBreadcrumbProps) {
   return (
     <nav className="mb-2 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-slate-400">
-      <Link href="/panel" className="hover:text-brand-600 transition-colors">
-        Dashboard
-      </Link>
-      <span>/</span>
       <Link href={portalHomeHref} className="hover:text-brand-600 transition-colors">
         {portalHomeLabel}
       </Link>
