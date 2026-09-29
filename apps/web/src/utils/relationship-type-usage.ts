@@ -31,7 +31,7 @@ export const RELATIONSHIP_VENDOR_CHILDREN = [
   { value: 'hasar' as const, label: 'Hasar Onarım' },
 ];
 
-const VENDOR_CHILD_VALUES = new Set(RELATIONSHIP_VENDOR_CHILDREN.map((row) => row.value));
+const VENDOR_CHILD_VALUES = new Set<string>(RELATIONSHIP_VENDOR_CHILDREN.map((row) => row.value));
 
 export function isRelationshipCustomerChild(area?: string | null): boolean {
   return CUSTOMER_CHILD_VALUES.has(String(area ?? '').trim());
