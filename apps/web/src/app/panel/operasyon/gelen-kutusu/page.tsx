@@ -146,7 +146,7 @@ interface PanelUser {
   id: string;
   firstName: string;
   lastName: string;
-  email?: string;
+  email?: string | null;
 }
 
 interface OpenClaimResult {
