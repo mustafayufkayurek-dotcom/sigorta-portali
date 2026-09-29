@@ -195,6 +195,6 @@ export function ensureRelationshipVendorUsage(
     return next;
   }
   const child = value === 'acil' ? 'acil' : 'hasar';
-  if (relationshipTypeAppliesToArea({ usageAreas: current }, child)) return current;
+  if (relationshipTypeAppliesToArea({ label: '', usageAreas: current }, child)) return current;
   return [...current.filter((area) => area !== 'tedarikci'), child];
 }
