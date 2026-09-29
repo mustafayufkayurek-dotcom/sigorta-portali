@@ -1,11 +1,11 @@
 ---
-description: Canlı web v636 / backend v636
+description: Canlı web v637 / backend v637
 alwaysApply: true
 ---
 
 # Canlı (30.09.2026)
 
-Canlı: web **v636** · backend **v636**. Geri alma: web **v635** / backend **v635**.
+Canlı: web **v637** · backend **v637**. Geri alma: web **v636** / backend **v636**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v637 (full):** Kullanıcı Ekle’de sigorta / eksper / broker / asistans ofisinde Meridyen kadrosu durmaz; karttaki yetkili kişi durur. Müşteri kartında yetkili e-posta ile genel kutu ayrıdır; ortak kutu giriş hesabı olmaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v636 / backend v636.
 
 **v636 (full):** Sigorta Dosyalar ve Faturalar’da Geçmiş, Onaylar’daki gibi Operasyon Geçmişi’ni açar. Giriş onay mailinde kopyala yazılım sayfası açmaz. Müşteri kartında açık adres mahalle/cadde ile üst üste binmez; tekrarlı satır bir kez durur. İlişki türünde müşteri altına Sigortalı durur. Kullanıcı Ekle’de Ayarlar’daki Asistans Firma rolü görevle eşleşir. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v635 / backend v635.
 
@@ -147,6 +149,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Paket (lokal, canlı değil):** Kullanıcı Ekle’de sigorta / eksper / broker / asistans ofisinde Meridyen kadrosu durmaz. Karttaki yetkili kişi durur. Müşteri kartında yetkili e-posta ile genel kutu ayrıdır; ortak kutu giriş hesabı olmaz.
+(boş)
 
-Canlı **v636**.
+Canlı **v637**.

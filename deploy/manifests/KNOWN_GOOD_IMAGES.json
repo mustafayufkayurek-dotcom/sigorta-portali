@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-30",
-  "label": "v636-sigorta-gecmis-adres-asistans",
-  "description": "Full v636: sigorta Geçmiş, mail kopyala, açık adres, Sigortalı, Asistans Firma. Geri alma web v635 / backend v635.",
+  "label": "v637-ofis-liste-genel-kutu",
+  "description": "Full v637: Kullanıcı Ekle ofis listesinde Meridyen kadrosu yok; müşteri yetkili e-posta ile genel kutu ayrı. Geri alma web v636 / backend v636.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v636-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v636-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v637-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v637-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v635-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v635-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v636-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v636-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

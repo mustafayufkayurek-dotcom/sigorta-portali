@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (30 Eylül 2026 — web v636 / backend v636)
+## Canlı durum (30 Eylül 2026 — web v637 / backend v637)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v636-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v636-amd64` | canlı |
-| **Rollback** | Web **v635** / Backend **v635** | manifest `rollbackImages` |
-| **Etiket** | `v636-sigorta-gecmis-adres-asistans` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v637-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v637-amd64` | canlı |
+| **Rollback** | Web **v636** / Backend **v636** | manifest `rollbackImages` |
+| **Etiket** | `v637-ofis-liste-genel-kutu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v637 — Full (30 Eylül 2026) — Ofis listesi ve genel kutu
+
+- Kullanıcı Ekle’de sigorta / eksper / broker / asistans ofisinde Meridyen kadrosu durmaz; karttaki yetkili kişi durur
+- Müşteri kartında yetkili e-posta ile genel kutu ayrıdır; ortak kutu giriş hesabı olmaz
+- Disk 17 GB; DB yedeği gzip 69M (`/var/backups/meridyen/pre_v637-ofis-liste-genel-kutu_20260930_020918.sql.gz`); uploads `/opt/app/backups/uploads/uploads_20260930_020932.tar.gz`; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v636** / backend **v636**
 
 ### v636 — Full (30 Eylül 2026) — Sigorta geçmiş, adres, asistans
 
