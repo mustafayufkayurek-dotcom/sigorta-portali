@@ -12,7 +12,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
 import { customerSubTypeLabel, customerDisplayName, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType, collapseRepeatedAddressLine, customerCardOpenAddress } from '@/utils/customer-form-helpers';
-import { mergePrimaryIntoCustomerContacts } from '@sigorta/shared';
+import { mergePrimaryIntoCustomerContacts, generalMailboxFromContactInfos } from '@sigorta/shared';
 import { isPortalCustomerSubType } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { CustomerPortalUsersPanel } from '@/components/customers/CustomerPortalUsersPanel';
 import { customerFileCounts } from '@/utils/customer-file-counts';
@@ -179,6 +179,11 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
             <InfoRow label="E-posta" value={customer.email ? (
               <a href={`mailto:${customer.email}`} className="text-emerald-600 hover:underline">{customer.email}</a>
             ) : null} />
+            {generalMailboxFromContactInfos(customer.contactInfos) ? (
+              <InfoRow label="Genel E-posta" value={
+                <a href={`mailto:${generalMailboxFromContactInfos(customer.contactInfos)}`} className="text-emerald-600 hover:underline">{generalMailboxFromContactInfos(customer.contactInfos)}</a>
+              } />
+            ) : null}
             <InfoRow label="İl" value={customer.city} />
             <InfoRow label="İlçe" value={customer.district} />
             {neighborhoodLine ? <InfoRow label={ADDRESS_FIELD.neighborhood} value={neighborhoodLine} /> : null}

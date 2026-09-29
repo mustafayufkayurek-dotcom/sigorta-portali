@@ -141,6 +141,12 @@ export const OPS_NOTICE = {
     body:
       'Bu kutuya yalnız kişi adı yazılır. Firma adı veya unvan parçası kaydı durdurur. Yazılım ad uydurmaz.',
   },
+  musteriGenelKutu: {
+    id: 'musteri-genel-kutu-v637',
+    title: 'Genel e-posta',
+    body:
+      'Yetkili e-posta kişiye aittir. Ortak kutu Genel E-posta alanına yazılır. Giriş hesabı olmaz.',
+  },
   acilListeSonDegisiklik: {
     id: 'acil-liste-v529',
     title: 'Bu sayfada ne değişti',

@@ -9,6 +9,8 @@ import {
   isAssistanceCompanyRoleCode,
   isAssistanceCompanyRoleName,
   isLockedRoleAccountCode,
+  isMeridyenInternalStaffRole,
+  belongsOnPortalOfficePersonnelList,
   isValidNewRoleAccountCode,
   roleAccountFamilyFromCode,
   roleAccountFamilyLabel,
@@ -21,6 +23,10 @@ describe('rol hesap ailesi LOCK', () => {
     assert.equal(roleAccountFamilyFromCode('office_staff'), 'meridyen');
     assert.equal(roleAccountFamilyFromCode('insurance_company_user'), 'dis');
     assert.equal(roleAccountFamilyFromCode('DIS_OZEL'), 'dis');
+    assert.equal(isMeridyenInternalStaffRole('office_staff'), true);
+    assert.equal(isMeridyenInternalStaffRole('insurance_company_user'), false);
+    assert.equal(belongsOnPortalOfficePersonnelList({ id: 'u-1', roleCode: 'office_staff' }), false);
+    assert.equal(belongsOnPortalOfficePersonnelList({ id: 'contact:1', roleCode: 'office_staff' }), true);
     assert.equal(isAssistanceCompanyRoleCode('assistance_company_user'), true);
     assert.equal(isAssistanceCompanyRoleCode('DIS_ASISTANS_FIRMA'), true);
     assert.equal(isAssistanceCompanyRoleName('Asistans Firma'), true);

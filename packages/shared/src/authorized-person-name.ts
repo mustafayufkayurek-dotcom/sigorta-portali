@@ -28,6 +28,9 @@ const FIRM_TOKENS = new Set([
   'reasürans',
   'reasurans',
   'kooperatif',
+  'mail',
+  'eposta',
+  'genel',
 ]);
 
 export function foldAuthorizedPersonText(value: string | null | undefined): string {

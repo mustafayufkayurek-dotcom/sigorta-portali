@@ -19,11 +19,14 @@ describe('müşteri yetkili adı LOCK', () => {
     assert.match(page, /OpsFirstRunNotice/);
     assert.match(page, /OPS_NOTICE\.musteriYetkiliAd/);
     assert.match(page, /musteri-yetkili-ad-ilk-kullanim-seridi/);
+    assert.match(page, /Genel E-posta/);
+    assert.match(page, /musteri-genel-kutu-ilk-kullanim-seridi/);
     assert.doesNotMatch(page, /OpenAI|ChatGPT|Google/);
   });
 
   it('şerit kişi adı kuralını anlatır', () => {
     assert.match(notice, /musteri-yetkili-ad-v533/);
     assert.match(notice, /Yazılım ad uydurmaz/);
+    assert.match(notice, /musteri-genel-kutu-v637/);
   });
 });

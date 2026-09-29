@@ -7,6 +7,7 @@ import {
   normalizeRequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
 import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
+import { generalMailboxesFromContactInfos } from '@sigorta/shared';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import {
@@ -2557,6 +2558,15 @@ export class ClaimFilesService {
       const audience: FileClosureAudience = customerSubType === 'asistan_firmasi' ? 'assistance' : 'other';
       for (const contact of contacts) {
         add(contact.email, customerTitle, audience, closureCardGreeting(claimFile.customer, contact.name));
+      }
+      const channels = claimFile.customer?.id
+        ? await this.prisma.contactInfo.findMany({
+            where: { customerId: claimFile.customer.id, type: 'email' },
+            select: { type: true, label: true, value: true },
+          })
+        : [];
+      for (const mailbox of generalMailboxesFromContactInfos(channels)) {
+        add(mailbox, customerTitle, audience, customerGreeting);
       }
     }
 

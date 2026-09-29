@@ -22,6 +22,16 @@ describe('rapor müşteri maili LOCK', () => {
     assert.deepEqual(to, ['sezgi@sezgiglobal.com']);
   });
 
+  it('genel kutu rapor alıcısına eklenir', () => {
+    const to = resolveReportCustomerMailRecipients({
+      customerEmail: 'melis.uzun@remed.com.tr',
+      contacts: [],
+      channelEmails: ['konut@remed.com.tr'],
+      expertOfficeEmail: null,
+    });
+    assert.deepEqual(to, ['melis.uzun@remed.com.tr', 'konut@remed.com.tr']);
+  });
+
   it('tekrarlayan adresleri birler', () => {
     const to = resolveReportCustomerMailRecipients({
       customerEmail: 'sezgi@sezgiglobal.com',
@@ -34,6 +44,7 @@ describe('rapor müşteri maili LOCK', () => {
   it('requestApproval müşteriye PDF gönderir; yönetici mailini yutmaz', () => {
     const src = readFileSync(join(here, 'repair-reports.service.ts'), 'utf8');
     assert.match(src, /resolveReportCustomerMailRecipients/);
+    assert.match(src, /generalMailboxesFromContactInfos/);
     assert.match(src, /sendReport/);
     assert.match(src, /await this\.claimEventEmail\.onManagerApprovalRequested/);
     assert.doesNotMatch(src, /void this\.claimEventEmail\.onManagerApprovalRequested/);

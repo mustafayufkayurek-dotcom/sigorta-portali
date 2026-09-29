@@ -97,6 +97,11 @@ import {
   AUTHORIZED_PERSON_DIRTY_MESSAGE,
   isDirtyAuthorizedPersonName,
   mergePrimaryIntoCustomerContacts,
+  personMailboxFromList,
+  extraMailboxesFromList,
+  generalMailboxFromContactInfos,
+  upsertGeneralMailboxContactInfos,
+  appendGeneralMailboxes,
 } from '@sigorta/shared';
 import {
   emptyCardNoteEntries,
@@ -1201,8 +1206,15 @@ export default function MusterilerPage() {
   };
 
   const handleEmailBlur = () => {
-    if (!form.email) { setEmailError(null); return; }
-    setEmailError(validateEmail(form.email) ? null : 'Geçersiz e-posta adresi');
+    const extras = extraMailboxesFromList(form.email);
+    const person = personMailboxFromList(form.email);
+    if (extras.length > 0) {
+      setForm((p) => ({ ...p, email: person }));
+      setContactInfos((prev) => appendGeneralMailboxes(prev, extras));
+    }
+    const check = person || String(form.email ?? '').trim();
+    if (!check) { setEmailError(null); return; }
+    setEmailError(validateEmail(check) ? null : 'Geçersiz e-posta adresi');
   };
 
   const handlePhoneDuplicateCheck = async (phone: string) => {
@@ -1766,9 +1778,34 @@ export default function MusterilerPage() {
         streetName: addr.streetName,
       }) || null;
 
+      const personEmail = personMailboxFromList(form.email) || null;
+      let savedContactInfos = appendGeneralMailboxes(
+        contactInfos.filter((ci) => ci.value.trim() || ci.type !== 'email'),
+        extraMailboxesFromList(form.email),
+      );
+      const savedContacts = mergePrimaryIntoCustomerContacts(
+          contacts
+            .filter((c) => c.firstName.trim() || c.lastName.trim())
+            .map((c) => {
+              savedContactInfos = appendGeneralMailboxes(savedContactInfos, extraMailboxesFromList(c.email));
+              return {
+                ...c,
+                name: `${c.firstName} ${c.lastName}`.trim(),
+                role: c.role === '__other__' ? '' : c.role,
+                email: personMailboxFromList(c.email),
+              };
+            }),
+          {
+            firstName: form.contactFirstName,
+            lastName: form.contactLastName,
+            phone: form.phone,
+            email: personEmail,
+          },
+        );
+
       const payload: any = {
         customerType: form.customerType, entityType: form.customerType,
-        phone: form.phone || null, email: form.email || null,
+        phone: form.phone || null, email: personEmail,
         city: form.city || null, district: form.district || null,
         neighborhood,
         streetName: addr.streetName || null,
@@ -1786,22 +1823,8 @@ export default function MusterilerPage() {
               ? 'hasar'
               : null,
         serviceBranches: form.subType === 'sigorta_sirketi' ? form.serviceBranches : [],
-        contacts: mergePrimaryIntoCustomerContacts(
-          contacts
-            .filter((c) => c.firstName.trim() || c.lastName.trim())
-            .map((c) => ({
-              ...c,
-              name: `${c.firstName} ${c.lastName}`.trim(),
-              role: c.role === '__other__' ? '' : c.role,
-            })),
-          {
-            firstName: form.contactFirstName,
-            lastName: form.contactLastName,
-            phone: form.phone,
-            email: form.email,
-          },
-        ),
-        contactInfos: contactInfos.filter((ci) => ci.value.trim()),
+        contacts: savedContacts,
+        contactInfos: savedContactInfos.filter((ci) => ci.value.trim()),
       };
       if (form.customerType === 'individual') {
         payload.firstName = form.firstName; payload.lastName = form.lastName;
@@ -2778,6 +2801,13 @@ export default function MusterilerPage() {
                 testId="musteri-yetkili-ad-ilk-kullanim-seridi"
                 className="mb-4"
               />
+              <OpsFirstRunNotice
+                noticeId={OPS_NOTICE.musteriGenelKutu.id}
+                title={OPS_NOTICE.musteriGenelKutu.title}
+                body={OPS_NOTICE.musteriGenelKutu.body}
+                testId="musteri-genel-kutu-ilk-kullanim-seridi"
+                className="mb-4"
+              />
               {activeSection === 0 && (
                 <div>
                   <SectionDivider emoji="👤" title="Önce Müşteri Tipi" />
@@ -3097,19 +3127,36 @@ export default function MusterilerPage() {
                           {!phoneError && phoneWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {phoneWarn}</p>}
                         </FormField>
                         </div>
-                        <FormField label="E-posta">
-                          <input type="email" className={inp} placeholder="ornek@mail.com" value={form.email}
+                        <FormField label="Yetkili E-posta">
+                          <input type="text" inputMode="email" autoComplete="off" className={inp} placeholder="Örn. melis@sirket.com" value={form.email}
                             onChange={(e) => {
                               const value = e.target.value;
                               setForm((p) => ({ ...p, email: value }));
-                              syncPrimaryContact({ email: value });
+                              syncPrimaryContact({ email: personMailboxFromList(value) || value });
                               setEmailError(null);
                               setEmailWarn(null);
                               setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; });
                             }}
-                            onBlur={() => { handleEmailBlur(); handleEmailDuplicateCheck(form.email); }} />
+                            onBlur={() => { handleEmailBlur(); handleEmailDuplicateCheck(personMailboxFromList(form.email) || form.email); }} />
                           {emailError && <p className="text-xs text-status-danger mt-1.5">{emailError}</p>}
                           {!emailError && emailWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {emailWarn}</p>}
+                        </FormField>
+                        <FormField label="Genel E-posta">
+                          <input type="text" inputMode="email" autoComplete="off" className={inp} placeholder="Örn. konut@sirket.com"
+                            value={generalMailboxFromContactInfos(contactInfos)}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setContactInfos((prev) => upsertGeneralMailboxContactInfos(prev, value));
+                            }}
+                            onBlur={(e) => {
+                              const extras = extraMailboxesFromList(e.target.value);
+                              const person = personMailboxFromList(e.target.value);
+                              setContactInfos((prev) => appendGeneralMailboxes(
+                                upsertGeneralMailboxContactInfos(prev, person),
+                                extras,
+                              ));
+                            }} />
+                          <p className="mt-1.5 text-xs text-slate-500">Ortak kutu buraya yazılır. Giriş hesabı açılmaz.</p>
                         </FormField>
                       </div>
                     </>
@@ -3234,7 +3281,12 @@ export default function MusterilerPage() {
                                       />
                                     </FormField>
                                   </div>
-                                  <div className="col-span-1 sm:col-span-2"><FormField label="E-posta"><input type="email" className={inp} placeholder="ornek@mail.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} /></FormField></div>
+                                  <div className="col-span-1 sm:col-span-2"><FormField label="E-posta"><input type="text" inputMode="email" autoComplete="off" className={inp} placeholder="Örn. melis@sirket.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} onBlur={(e) => {
+                                    const extras = extraMailboxesFromList(e.target.value);
+                                    const person = personMailboxFromList(e.target.value);
+                                    if (person) upC(idx, 'email', person);
+                                    if (extras.length) setContactInfos((prev) => appendGeneralMailboxes(prev, extras));
+                                  }} /></FormField></div>
                                 </div>
                               </div>
                             ))}
@@ -3312,7 +3364,12 @@ export default function MusterilerPage() {
                                   />
                                 </FormField>
                               </div>
-                              <div className="col-span-1 sm:col-span-2"><FormField label="E-posta"><input type="email" className={inp} placeholder="ornek@sirket.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} /></FormField></div>
+                              <div className="col-span-1 sm:col-span-2"><FormField label="E-posta"><input type="text" inputMode="email" autoComplete="off" className={inp} placeholder="Örn. melis@sirket.com" value={c.email} onChange={(e) => upC(idx, 'email', e.target.value)} onBlur={(e) => {
+                                const extras = extraMailboxesFromList(e.target.value);
+                                const person = personMailboxFromList(e.target.value);
+                                if (person) upC(idx, 'email', person);
+                                if (extras.length) setContactInfos((prev) => appendGeneralMailboxes(prev, extras));
+                              }} /></FormField></div>
                             </div>
                           </div>
                         ))}

@@ -16,7 +16,9 @@ import {
   isInvitePersonBlank,
   isCompleteOfficePersonPhone,
   officePersonPhone,
+  personMailboxFromList,
   mergeOfficeUsersWithContacts,
+  belongsOnPortalOfficePersonnelList,
   officePersonToFormFields,
   resolveOfficePersonPhone,
   selectedPortalOfficeCustomerId,
@@ -63,6 +65,13 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.equal(submit.length, 1);
     assert.equal(submit[0]?.email, 'ayse@firma.com');
     assert.equal(invitePeopleToSubmit([emptyInvitePersonDraft()]).length, 1);
+  });
+
+  it('ofis listesinden doldurunca giriş tek adrestir', () => {
+    assert.equal(
+      personMailboxFromList('melis.uzun@remed.com.tr;konut@remed.com.tr'),
+      'melis.uzun@remed.com.tr',
+    );
   });
 
   it('davet kutusu müşteri kartında durur; Kullanıcılar ofisteki personeli listeler', () => {
@@ -147,6 +156,29 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.equal(merged[1]?.firstName, 'Mehmet');
     assert.equal(merged[1]?.lastName, 'Demir');
     assert.equal(merged[1]?.jobTitle, 'Operasyon');
+  });
+
+  it('sigorta ofisinde Meridyen dosya sorumlusu durmaz; karttaki kişi durur', () => {
+    assert.equal(
+      belongsOnPortalOfficePersonnelList({ id: 'u-1', roleCode: 'office_staff' }),
+      false,
+    );
+    assert.equal(
+      belongsOnPortalOfficePersonnelList({ id: 'u-2', roleCode: 'insurance_company_user' }),
+      true,
+    );
+    assert.equal(
+      belongsOnPortalOfficePersonnelList({ id: 'contact:c-1', roleCode: 'office_staff' }),
+      true,
+    );
+    const page = readFileSync(join(here, '../page.tsx'), 'utf8');
+    assert.match(page, /belongsOnPortalOfficePersonnelList/);
+    const service = readFileSync(
+      join(here, '../../../../../../backend/src/modules/users/users.service.ts'),
+      'utf8',
+    );
+    assert.match(service, /portalOfficePersonnelRoleWhere/);
+    assert.match(service, /MERIDYEN_LOCKED_ROLE_CODES/);
   });
 
   it('ekspertiz firması popup’ta ada göre süzülür', () => {

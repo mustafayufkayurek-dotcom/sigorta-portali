@@ -4,6 +4,15 @@ export const FIELD_OPERATION_AREA_OPTIONS = [
   { value: 'both' as const, label: 'Her İkisi' },
 ];
 
+/** Karttaki iki adres yapışınca giriş yalnız ilk geçerli kutudur. */
+export function personMailboxFromList(raw?: string | null): string {
+  for (const part of String(raw ?? '').split(/[;,\n]+/)) {
+    const email = part.trim().toLowerCase();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return email;
+  }
+  return '';
+}
+
 export function fieldStaffIncludesAcil(area?: string | null): boolean {
   return area === 'acil' || area === 'both';
 }
@@ -64,7 +73,7 @@ export function mergeOfficeUsersWithContacts<T extends { id: string; email?: str
 ): Array<T & { firstName?: string; lastName?: string; phone?: string | null; jobTitle?: string | null }> {
   const seen = new Set(
     users
-      .map((row) => String(row.email ?? '').trim().toLowerCase())
+      .map((row) => personMailboxFromList(row.email) || String(row.email ?? '').trim().toLowerCase())
       .filter(Boolean),
   );
   const extra: Array<T & { firstName?: string; lastName?: string; phone?: string | null; jobTitle?: string | null }> = [];
@@ -72,19 +81,45 @@ export function mergeOfficeUsersWithContacts<T extends { id: string; email?: str
     const { firstName, lastName } = splitOfficeContactName(contact.name);
     if (!firstName) return;
     const email = String(contact.email ?? '').trim();
-    const emailKey = email.toLowerCase();
+    const emailKey = personMailboxFromList(email) || email.toLowerCase();
     if (emailKey && seen.has(emailKey)) return;
     if (emailKey) seen.add(emailKey);
     extra.push({
       id: `contact:${String(contact.id ?? index)}`,
       firstName,
       lastName,
-      email,
+      email: personMailboxFromList(email) || email,
       phone: contact.phone ?? null,
       jobTitle: String(contact.role ?? '').trim() || null,
     } as T & { firstName?: string; lastName?: string; phone?: string | null; jobTitle?: string | null });
   });
   return [...users, ...extra];
+}
+
+const MERIDYEN_OFFICE_LIST_ROLES = new Set([
+  'admin',
+  'manager',
+  'office_staff',
+  'field_staff',
+  'finance',
+  'finans',
+  'accountant',
+  'ops_manager',
+]);
+
+function isMeridyenInternalStaffRole(code?: string | null): boolean {
+  const n = String(code ?? '').trim().toLowerCase().replace(/-/g, '_');
+  if (MERIDYEN_OFFICE_LIST_ROLES.has(n)) return true;
+  return n.startsWith('mer_');
+}
+
+/** Sigorta / eksper / broker / asistans ofisinde Meridyen kadrosu durmaz. */
+export function belongsOnPortalOfficePersonnelList(input: {
+  id?: string | null;
+  roleCode?: string | null;
+}): boolean {
+  if (String(input.id ?? '').startsWith('contact:')) return true;
+  return !isMeridyenInternalStaffRole(input.roleCode);
 }
 
 /** Popup’ta ekspertiz / broker / asistans firması araması */
@@ -289,12 +324,15 @@ export function resolveOfficePersonPhone(
     contacts?: Array<{ name?: string | null; email?: string | null; phone?: string | null }>;
   },
 ): string {
-  const email = String(person.email ?? person.archivedEmail ?? '').trim().toLowerCase();
-  const fullName = `${person.firstName ?? ''} ${person.lastName ?? ''}`.trim().toLocaleLowerCase('tr-TR');
-  const fromContact = (office?.contacts ?? []).find((contact) => {
-    const contactEmail = String(contact.email ?? '').trim().toLowerCase();
-    const contactName = String(contact.name ?? '').trim().toLocaleLowerCase('tr-TR');
-    const emailMatch = Boolean(email && contactEmail && email === contactEmail);
+    const email = personMailboxFromList(person.email ?? person.archivedEmail);
+    const fullName = `${person.firstName ?? ''} ${person.lastName ?? ''}`.trim().toLocaleLowerCase('tr-TR');
+    const fromContact = (office?.contacts ?? []).find((contact) => {
+      const contactEmails = String(contact.email ?? '')
+        .split(/[;,\n]+/)
+        .map((part) => part.trim().toLowerCase())
+        .filter(Boolean);
+      const contactName = String(contact.name ?? '').trim().toLocaleLowerCase('tr-TR');
+      const emailMatch = Boolean(email && contactEmails.includes(email));
     const nameMatch = Boolean(fullName && contactName && fullName === contactName);
     return (emailMatch || nameMatch) && String(contact.phone ?? '').trim();
   });
@@ -321,7 +359,7 @@ export function officePersonToFormFields(person: {
   return {
     firstName: String(person.firstName ?? '').trim(),
     lastName: String(person.lastName ?? '').trim(),
-    email: String(person.archivedEmail ?? person.email ?? '').trim(),
+    email: personMailboxFromList(String(person.archivedEmail ?? person.email ?? '')),
     phone: isCompleteOfficePersonPhone(phone) ? phone : '',
     jobTitle: jobTitle || displayPersonDuty(person),
   };

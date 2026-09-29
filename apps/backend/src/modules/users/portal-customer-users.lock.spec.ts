@@ -47,6 +47,7 @@ describe('müşteri kartı portal kullanıcısı LOCK', () => {
     const service = readFileSync(join(here, 'users.service.ts'), 'utf8');
     assert.match(service, /listedUserPhone/);
     assert.match(service, /portalTwinCustomerIds/);
+    assert.match(service, /portalOfficePersonnelRoleWhere/);
     assert.match(service, /isAssistanceFirmSubType/);
     assert.match(service, /görev ve telefon yazılmalıdır/);
     assert.match(service, /adjuster\?\.phone/);

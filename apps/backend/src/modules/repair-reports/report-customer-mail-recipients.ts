@@ -10,6 +10,7 @@ function normalizeEmail(value?: string | null): string | null {
 export function resolveReportCustomerMailRecipients(input: {
   customerEmail?: string | null;
   contacts?: Array<{ email?: string | null; isPrimary?: boolean | null }> | null;
+  channelEmails?: Array<string | null | undefined> | null;
   expertOfficeEmail?: string | null;
 }): string[] {
   const seen = new Set<string>();
@@ -26,6 +27,7 @@ export function resolveReportCustomerMailRecipients(input: {
   const primary = contacts.find((c) => c?.isPrimary);
   push(primary?.email ?? null);
   for (const c of contacts) push(c?.email ?? null);
+  for (const channel of input.channelEmails ?? []) push(channel ?? null);
   push(input.expertOfficeEmail);
   return out;
 }

@@ -14,6 +14,7 @@ import {
   buildPlatformMailCopyNotice,
   isAssistanceCompanyRoleCode,
   isMeridyenStaffRole,
+  MERIDYEN_LOCKED_ROLE_CODES,
   welcomeInviteAdminCopies,
 } from '@sigorta/shared';
 import { pickUserWriteScalars } from './user-update-fields';
@@ -31,6 +32,21 @@ import { resolveInsuranceCompanyIdsForCustomer } from '@/modules/customers/custo
 
 function normalizeUserEmail(email: string): string {
   return normalizeEmailAddress(email);
+}
+
+/** Firma ofis listesi: dosya sorumlusunun sigorta/asistans kapsamı sızmaz. */
+function portalOfficePersonnelRoleWhere(): Prisma.UserWhereInput {
+  return {
+    role: {
+      is: {
+        AND: [
+          { code: { notIn: [...MERIDYEN_LOCKED_ROLE_CODES] } },
+          { NOT: { code: { startsWith: 'MER_' } } },
+          { NOT: { code: { startsWith: 'mer_' } } },
+        ],
+      },
+    },
+  };
 }
 
 function isInactiveUserStatus(status: string | null | undefined): boolean {
@@ -159,6 +175,7 @@ export class UsersService {
       where.AND = [
         ...(where.AND ?? []),
         { userInsuranceCompanyScopes: { some: { insuranceCompanyId } } },
+        portalOfficePersonnelRoleWhere(),
       ];
     }
 
@@ -842,7 +859,9 @@ export class UsersService {
       });
     }
 
-    return { OR: or };
+    return {
+      AND: [{ OR: or }, portalOfficePersonnelRoleWhere()],
+    };
   }
 
   private async portalTwinCustomerIds(customer: {

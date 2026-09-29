@@ -13,6 +13,9 @@ const MERIDYEN_LOCKED = [
   'ops_manager',
 ] as const;
 
+/** Kullanıcı Ekle ofis listesi: bu kodlar Meridyen kadrosudur. */
+export const MERIDYEN_LOCKED_ROLE_CODES: readonly string[] = MERIDYEN_LOCKED;
+
 const DIS_LOCKED = [
   'expert',
   'adjuster',
@@ -59,6 +62,22 @@ export function isLockedRoleAccountCode(code?: string | null): boolean {
   const n = normalizeRoleAccountCode(code);
   return (MERIDYEN_LOCKED as readonly string[]).includes(n)
     || (DIS_LOCKED as readonly string[]).includes(n);
+}
+
+/** Yönetici, dosya sorumlusu, saha, finans — dış firma ofisi değildir. */
+export function isMeridyenInternalStaffRole(code?: string | null): boolean {
+  const n = normalizeRoleAccountCode(code);
+  if ((MERIDYEN_LOCKED as readonly string[]).includes(n)) return true;
+  return n.startsWith('mer_');
+}
+
+/** Firma ofis listesi: karttaki kişi durur; Meridyen kadrosu durmaz. */
+export function belongsOnPortalOfficePersonnelList(input: {
+  id?: string | null;
+  roleCode?: string | null;
+}): boolean {
+  if (String(input.id ?? '').startsWith('contact:')) return true;
+  return !isMeridyenInternalStaffRole(input.roleCode);
 }
 
 export function roleAccountFamilyFromCode(code?: string | null): RoleAccountFamily {

@@ -20,6 +20,7 @@ import { ExternalApprovalsService } from '@/modules/external-approvals/external-
 import { normalizeReportImageCategory } from './report-image-category';
 import { resolveReportImageFilePath } from './report-image-paths';
 import { resolveReportCustomerMailRecipients } from './report-customer-mail-recipients';
+import { generalMailboxesFromContactInfos } from '@sigorta/shared';
 import {
   isExpertFirmCustomer,
   REPAIR_REPORT_INITIAL_VERSION,
@@ -1125,6 +1126,7 @@ export class RepairReportsService {
                 email: true,
                 companyName: true,
                 contacts: { select: { email: true, isPrimary: true } },
+                contactInfos: { select: { type: true, label: true, value: true } },
               },
             },
           },
@@ -1163,6 +1165,7 @@ export class RepairReportsService {
     const customerRecipients = resolveReportCustomerMailRecipients({
       customerEmail: report.claimFile?.customer?.email,
       contacts: report.claimFile?.customer?.contacts,
+      channelEmails: generalMailboxesFromContactInfos(report.claimFile?.customer?.contactInfos),
       expertOfficeEmail: report.expertOffice?.email,
     });
     const { buffer: customerPdf } = await this.generatePdf(reportId, 'external');

@@ -174,6 +174,9 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(musteri, /musteri-yetkili-ad-ilk-kullanim-seridi/);
     assert.equal(OPS_NOTICE.musteriYetkiliAd.id, 'musteri-yetkili-ad-v533');
     assert.match(OPS_NOTICE.musteriYetkiliAd.body, /Yazılım ad uydurmaz/);
+    assert.equal(OPS_NOTICE.musteriGenelKutu.id, 'musteri-genel-kutu-v637');
+    assert.match(musteri, /OPS_NOTICE\.musteriGenelKutu/);
+    assert.match(musteri, /musteri-genel-kutu-ilk-kullanim-seridi/);
     assert.doesNotMatch(musteri, /OpenAI|ChatGPT|Google Places/);
   });
 

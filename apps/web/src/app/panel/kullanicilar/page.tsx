@@ -92,6 +92,7 @@ import {
   isCustomerCompanyUserTask,
   isHasarExpertCustomer,
   isCompleteOfficePersonPhone,
+  belongsOnPortalOfficePersonnelList,
   mergeOfficeUsersWithContacts,
   officePersonToFormFields,
   operationAreaFromDepartmentCodes,
@@ -1173,7 +1174,10 @@ export default function KullanicilarPage() {
               phone: resolveOfficePersonPhone(person, { contacts }) || person.phone,
             })),
             contacts,
-          );
+          ).filter((person) => belongsOnPortalOfficePersonnelList({
+            id: person.id,
+            roleCode: person.role?.code,
+          }));
           setOfficeUsers(people);
           if (modal === 'edit' && editingUser?.id) {
             setSelectedOfficeUserId(editingUser.id);

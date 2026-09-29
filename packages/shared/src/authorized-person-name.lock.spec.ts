@@ -40,6 +40,14 @@ describe('yetkili kişi adı LOCK', () => {
       }),
       false,
     );
+    assert.equal(
+      isDirtyAuthorizedPersonName({
+        firstName: 'Genel',
+        lastName: 'Mail',
+        companyName: 'Remed Assistance',
+      }),
+      true,
+    );
   });
 
   it('personel mesajı firma/API adı taşımaz', () => {
