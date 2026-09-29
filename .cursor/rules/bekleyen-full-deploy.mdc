@@ -1,11 +1,11 @@
 ---
-description: Canlı web v630 / backend v630 — sıradaki paket henüz yok
+description: Canlı web v631 / backend v631
 alwaysApply: true
 ---
 
-# Canlı (28.09.2026)
+# Canlı (29.09.2026)
 
-Canlı: web **v630** · backend **v630**. Geri alma: web **v629** / backend **v629**.
+Canlı: web **v631** · backend **v631**. Geri alma: web **v630** / backend **v630**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v631 (full):** Giriş onayı mailinde «Sayı» kalkar; **Giriş Kodu** ve kopyala durur. Kullanıcı Ekle’de firma seçilince karttaki kişiler listede durur; yetkili kişi kendiliğinden giriş almaz. İlişki türünde müşteri ve tedarikçi alt kırılımı (Acil Yardım, Hasar Onarım). Dijital onay WhatsApp: ad, dosya numarası, olağan prosedür, onay sayfası, dosya sorumlusu cep; Muvafakatname / Onayla’ya basın yok. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v630 / backend v630.
 
 **v630 (full):** Personel kalıcı silme: müşteri erişim izi kaydı silmeyi kesmez. Gelen kutuda yazılım yankısı kuyruk olmaz; ortak kutu alıcı olmaz; dış yazı durur. Yönetim Paneli Bekleyen İş: yazı ve sayı yan yana, üzerine gelince önizleme. Acil dosya sorumlusu ekranında asistans sessiz müşteri uyarısı (Hasar eksper uyarısı Acil’e girmez). Hasar müşteri görünümü PDF açılır; hazır raporda «PDF önizleme açılamadı» çıkmaz; Onaya Gönder PDF yüzünden kesilmez. Dosya veya ödeme izi duran personel yine silinmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v629 / backend v629.
 
@@ -135,12 +137,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Canlı **v630**.
-
-**Giriş onayı maili:** Canlıdaki aynı kabuk. «Sayı» kalkar; **Giriş Kodu** ve yanındaki kopyala durur. Cümle: «Aşağıdaki giriş kodunu kullanarak platforma giriş yapabilirsiniz.» Alım yalnız «canlıya al» deyince.
-
-**Kullanıcı Ekle ofis listesi:** Firma seçilince karttaki kişiler listede durur. Yetkili kişi kendiliğinden giriş almaz. Alım yalnız «canlıya al» deyince.
-
-**İlişki türleri:** Müşteri altı (Eksper, Sigorta Şirketi, Asistans Firma, Özel Müşteri) ve tedarikçi altı (Acil Yardım, Hasar Onarım). Alt boşsa o gruptaki tüm kartlarda durur. Alım yalnız «canlıya al» deyince.
-
-**Dijital onay WhatsApp:** Sigortalıya giden yazıda ad, dosya numarası, olağan prosedür, onay sayfası (meridyen-tr.com) ve dosya sorumlusu cep durur. Muvafakatname / Onayla’ya basın kalıbı yoktur. Hasar, Acil ihbar ve Acil kapanış aynı duruştadır. Alım yalnız «canlıya al» deyince.
+Canlı **v631**.

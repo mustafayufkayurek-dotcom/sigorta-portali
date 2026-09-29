@@ -2,24 +2,34 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 28 Eylül 2026
+**Son güncelleme:** 29 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (28 Eylül 2026 — web v630 / backend v630)
+## Canlı durum (29 Eylül 2026 — web v631 / backend v631)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v630-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v630-amd64` | canlı |
-| **Rollback** | Web **v629** / Backend **v629** | manifest `rollbackImages` |
-| **Etiket** | `v630-personel-gelen-pdf` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v631-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v631-amd64` | canlı |
+| **Rollback** | Web **v630** / Backend **v630** | manifest `rollbackImages` |
+| **Etiket** | `v631-giris-ofis-iliski-onay` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v631 — Full (29 Eylül 2026) — Giriş maili, ofis listesi, ilişki, dijital onay
+
+- Giriş onayı mailinde Giriş Kodu ve kopyala; Sayı yok
+- Kullanıcı Ekle’de karttaki kişiler listede durur; yetkili kişi kendiliğinden giriş almaz
+- İlişki türü müşteri ve tedarikçi alt kırılımı
+- Dijital onay WhatsApp: ad, dosya no, olağan prosedür, onay sayfası, dosya sorumlusu cep
+- Disk; alımda iki servis birden durmaz; JWT ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v630** / backend **v630**
 
 ### v630 — Full (28 Eylül 2026) — Personel silme, gelen kutu, PDF
 
