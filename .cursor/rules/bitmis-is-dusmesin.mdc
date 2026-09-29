@@ -43,6 +43,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 24. Gelen kutuda Kullanıcı Ata ofis listesidir. Dosya sorumlusu Kendime Al ile üzerine alır. Kullanıcılar yetkisi gerekmez.
 25. Çoklu hasar PDF ara toplamı hasar nedeninedir; iş grubuna göre toplanmaz.
 26. Puantaj onayı silinmiş hesaba gitmez. `archived+…@deleted.meridyen.local` kutusuna «Puantaj Onayı Bekliyor» yazılmaz.
+27. Sigorta Operasyon Ağı: Canlı Destek mavi bantın üstüne binmez. Bant tuşu ve sayfa konumu ofis Operasyon Merkezi’ne gitmez; «yetkiniz yok» çıkmaz.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

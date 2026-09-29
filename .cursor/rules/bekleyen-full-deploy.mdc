@@ -1,11 +1,11 @@
 ---
-description: Canlı web v634 / backend v634
+description: Canlı web v635 / backend v635
 alwaysApply: true
 ---
 
 # Canlı (29.09.2026)
 
-Canlı: web **v634** · backend **v634**. Geri alma: web **v633** / backend **v633**.
+Canlı: web **v635** · backend **v635**. Geri alma: web **v634** / backend **v634**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v635 (full):** Sigorta / eksper / asistans müşteri yüzü. Canlı Destek mavi bantın üstüne binmez. Bant yazısı tek satırda durur. «Meridyen Hakkında Daha Fazla» ve sayfa konumu ofis Operasyon Merkezi’ne gitmez; «yetkiniz yok» çıkmaz. Sigorta ana sayfasına veya kendi portalına döner. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v634 / backend v634.
 
 **v634 (full):** Rol Yönetimi kod göstermez; liste Meridyen Personeli / Dış Kullanıcı. Giriş onay mailinde kopyala **Kopyalandı**. Personel listesinde rakamlar sütun altında ortada. Personel Ekle: görev listesi, otomatik sicil, **İptal** ve **Kaydet**. Puantaj onayı silinmiş hesaba gitmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v633 / backend v633.
 
@@ -143,6 +145,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Paket (lokal, canlı değil):** Sigorta / eksper / asistans müşteri yüzü. Canlı Destek mavi bantın üstüne binmez. Bant yazısı tek satırda durur. «Meridyen Hakkında Daha Fazla» ve sayfa konumu ofis Operasyon Merkezi’ne gitmez; «yetkiniz yok» çıkmaz. Sigorta ana sayfasına veya kendi portalına döner.
+*(boş)*
 
-Canlı **v634**.
+Canlı **v635**.

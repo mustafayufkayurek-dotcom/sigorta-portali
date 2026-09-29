@@ -8,18 +8,27 @@
 
 ---
 
-## Canlı durum (29 Eylül 2026 — web v634 / backend v634)
+## Canlı durum (29 Eylül 2026 — web v635 / backend v635)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v634-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v634-amd64` | canlı |
-| **Rollback** | Web **v633** / Backend **v633** | manifest `rollbackImages` |
-| **Etiket** | `v634-rol-personel-puantaj` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v635-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v635-amd64` | canlı |
+| **Rollback** | Web **v634** / Backend **v634** | manifest `rollbackImages` |
+| **Etiket** | `v635-sigorta-portal-musteri-yuzu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v635 — Full (29 Eylül 2026) — Sigorta müşteri yüzü
+
+- Canlı Destek mavi bantın üstüne binmez; bant yazısı tek satırda durur
+- «Meridyen Hakkında Daha Fazla» ve sayfa konumu ofis Operasyon Merkezi’ne gitmez; yetkiniz yok çıkmaz
+- Sigorta ana sayfasına veya kendi portalına döner
+- Disk; DB yedeği gzip sağlam; uploads yedeği; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v634** / backend **v634**
 
 ### v634 — Full (29 Eylül 2026) — Rol, personel, kopyala, puantaj arşiv
 
