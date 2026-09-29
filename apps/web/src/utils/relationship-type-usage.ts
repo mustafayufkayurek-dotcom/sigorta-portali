@@ -1,5 +1,6 @@
 export type RelationshipUsageArea =
   | 'musteri'
+  | 'insured'
   | 'eksper'
   | 'sigorta_sirketi'
   | 'asistan_firmasi'
@@ -17,6 +18,7 @@ export type RelationshipTypeRow = {
 
 /** Müşteri kartının altı — eksper ayrı form değildir. */
 export const RELATIONSHIP_CUSTOMER_CHILDREN = [
+  { value: 'insured' as const, label: 'Sigortalı' },
   { value: 'eksper' as const, label: 'Eksper' },
   { value: 'sigorta_sirketi' as const, label: 'Sigorta Şirketi' },
   { value: 'asistan_firmasi' as const, label: 'Asistans Firma' },
@@ -45,6 +47,7 @@ export function relationshipUsageAreaForCustomerSubType(
   subType: string | null | undefined,
 ): RelationshipUsageArea {
   const value = (subType ?? '').trim();
+  if (value === 'insured') return 'insured';
   if (value === 'eksper' || value === 'eksper_firmasi') return 'eksper';
   if (value === 'sigorta_sirketi') return 'sigorta_sirketi';
   if (value === 'asistan_firmasi' || value === 'asistans_firmasi') return 'asistan_firmasi';

@@ -174,7 +174,7 @@ export default function IliskiTurleriPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p>
-          Müşteri işaretlenince altı açılır: Eksper, Sigorta Şirketi, Asistans Firma, Özel Müşteri.
+          Müşteri işaretlenince altı açılır: Sigortalı, Eksper, Sigorta Şirketi, Asistans Firma, Özel Müşteri.
           Tedarikçi işaretlenince altı açılır: Acil Yardım, Hasar Onarım.
           Alt seçilmezse o gruptaki tüm kartlarda durur. Pasif tür hiçbir kartta görünmez.
         </p>

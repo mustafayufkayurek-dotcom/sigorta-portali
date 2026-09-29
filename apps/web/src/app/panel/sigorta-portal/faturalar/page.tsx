@@ -15,6 +15,7 @@ import {
 } from '@/components/eksper-portal/ExpertFileDetailDrawer';
 import {
   ExpertFileDocumentsModal,
+  ExpertFileHistoryOverlay,
   ExpertFileReportPreviewModal,
   ExpertFileNoteModal,
 } from '@/components/eksper-portal/ExpertFileModals';
@@ -107,6 +108,7 @@ export default function SigortaFaturalarPage() {
   const [docsClaimId, setDocsClaimId] = useState<string | null>(null);
   const [drawerFile, setDrawerFile] = useState<ExpertDrawerFile | null>(null);
   const [drawerTab, setDrawerTab] = useState<'ozet' | 'belgeler' | 'operasyon' | 'notlar'>('ozet');
+  const [historyClaimId, setHistoryClaimId] = useState<string | null>(null);
   const [notesRefreshToken, setNotesRefreshToken] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -251,11 +253,7 @@ export default function SigortaFaturalarPage() {
       setToast('Bu fatura için dosya kaydı bulunamadı.');
       return;
     }
-    setDrawerTab('notlar');
-    setDrawerFile({
-      id: inv.claimFile.id,
-      fileNo: inv.claimFile.fileNo ?? '—',
-    });
+    setHistoryClaimId(inv.claimFile.id);
   };
 
   const copyText = async (value: string, okMsg: string, emptyMsg: string) => {
@@ -630,6 +628,11 @@ export default function SigortaFaturalarPage() {
         claimFileId={docsClaimId}
         allowUpload={false}
         onClose={() => setDocsClaimId(null)}
+      />
+      <ExpertFileHistoryOverlay
+        open={Boolean(historyClaimId)}
+        claimFileId={historyClaimId}
+        onClose={() => setHistoryClaimId(null)}
       />
     </div>
   );

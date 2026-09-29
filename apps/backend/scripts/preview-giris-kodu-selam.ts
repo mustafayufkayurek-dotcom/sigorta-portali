@@ -16,10 +16,7 @@ let html = buildTransactionalEmailHtml({
   title: 'Giriş Onayı',
   greeting,
   intro: 'Aşağıdaki giriş kodunu kullanarak platforma giriş yapabilirsiniz.',
-  bodyHtml: buildLoginApprovalCodeHtml(
-    '2 8 1 3 9 8',
-    'https://app.meridyen-tr.com/giris/kopyala?kod=281398',
-  ),
+  bodyHtml: buildLoginApprovalCodeHtml('2 8 1 3 9 8'),
   portalUrl: 'http://localhost:3001/giris',
 });
 html = html

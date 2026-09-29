@@ -1,3 +1,4 @@
+import { isAssistanceCompanyRoleCode } from '@sigorta/shared';
 import { ForbiddenException } from '@nestjs/common';
 import { isFieldStaff } from './field-staff.helper';
 
@@ -19,7 +20,7 @@ export function isInsuranceCompanyUser(roleCode: string | undefined | null): boo
 }
 
 export function isAssistanceCompanyUser(roleCode: string | undefined | null): boolean {
-  return roleCode === 'assistance_company_user';
+  return isAssistanceCompanyRoleCode(roleCode);
 }
 
 export function mergeWhereAnd(...clauses: Array<Record<string, unknown>>): Record<string, unknown> {

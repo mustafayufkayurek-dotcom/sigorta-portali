@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
+  isAssistanceCompanyRoleCode,
+  isAssistanceCompanyRoleName,
   isLockedRoleAccountCode,
   isValidNewRoleAccountCode,
   roleAccountFamilyFromCode,
@@ -19,6 +21,10 @@ describe('rol hesap ailesi LOCK', () => {
     assert.equal(roleAccountFamilyFromCode('office_staff'), 'meridyen');
     assert.equal(roleAccountFamilyFromCode('insurance_company_user'), 'dis');
     assert.equal(roleAccountFamilyFromCode('DIS_OZEL'), 'dis');
+    assert.equal(isAssistanceCompanyRoleCode('assistance_company_user'), true);
+    assert.equal(isAssistanceCompanyRoleCode('DIS_ASISTANS_FIRMA'), true);
+    assert.equal(isAssistanceCompanyRoleName('Asistans Firma'), true);
+    assert.equal(isAssistanceCompanyRoleCode('office_staff'), false);
     assert.equal(roleAccountKindLabel('office_staff'), 'Dosya Sorumlusu');
     assert.equal(roleAccountFamilyLabel('meridyen'), 'Meridyen Personeli');
     assert.equal(isLockedRoleAccountCode('office_staff'), true);

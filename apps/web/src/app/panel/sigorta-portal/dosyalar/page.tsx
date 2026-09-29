@@ -12,7 +12,11 @@ import {
   ExpertFileDetailDrawer,
   type ExpertDrawerFile,
 } from '@/components/eksper-portal/ExpertFileDetailDrawer';
-import { ExpertFileDocumentsModal, ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
+import {
+  ExpertFileDocumentsModal,
+  ExpertFileHistoryOverlay,
+  ExpertFileNoteModal,
+} from '@/components/eksper-portal/ExpertFileModals';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
 import {
   usePanelTableColumns,
@@ -194,6 +198,7 @@ export default function SigortaDosyalarPage() {
   const [docsFileId, setDocsFileId] = useState<string | null>(null);
   const [drawerFileId, setDrawerFileId] = useState<string | null>(null);
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('ozet');
+  const [historyClaimId, setHistoryClaimId] = useState<string | null>(null);
   const [notesRefreshToken, setNotesRefreshToken] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
@@ -642,7 +647,7 @@ export default function SigortaDosyalarPage() {
                                         onAddNote={() => setNoteFileId(f.id)}
                                         onDocuments={() => setDocsFileId(f.id)}
                                         onOperation={() => openDrawer(f.id, 'operasyon')}
-                                        onHistory={() => openDrawer(f.id, 'notlar')}
+                                        onHistory={() => setHistoryClaimId(f.id)}
                                         onCopyFileNo={() => void copyFileNo(f)}
                                       />
                                     </PanelTableTd>
@@ -695,6 +700,16 @@ export default function SigortaDosyalarPage() {
           setNotesRefreshToken((n) => n + 1);
           setNoteFileId(null);
         }}
+      />
+
+      <ExpertFileHistoryOverlay
+        open={Boolean(historyClaimId)}
+        claimFileId={historyClaimId}
+        fileCreatedAt={(() => {
+          const f = files.find((x) => x.id === historyClaimId);
+          return f ? ihbarAt(f) : undefined;
+        })()}
+        onClose={() => setHistoryClaimId(null)}
       />
     </div>
   );

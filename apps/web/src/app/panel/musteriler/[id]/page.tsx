@@ -11,7 +11,7 @@ import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
-import { customerSubTypeLabel, customerDisplayName, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType } from '@/utils/customer-form-helpers';
+import { customerSubTypeLabel, customerDisplayName, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType, collapseRepeatedAddressLine, customerCardOpenAddress } from '@/utils/customer-form-helpers';
 import { mergePrimaryIntoCustomerContacts } from '@sigorta/shared';
 import { isPortalCustomerSubType } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { CustomerPortalUsersPanel } from '@/components/customers/CustomerPortalUsersPanel';
@@ -124,6 +124,8 @@ function Badge({ variant, children }: { variant: 'green' | 'gray' | 'blue' | 'pu
 function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { customer: any; isFieldStaff: boolean; onReload: () => void; onEdit: () => void }) {
   const isCorporate = (customer.customerType ?? customer.entityType) === 'corporate';
   const subTypeLabel = customerSubTypeLabel(customer.subType);
+  const neighborhoodLine = collapseRepeatedAddressLine(customer.neighborhood);
+  const openAddressLine = customerCardOpenAddress(customer);
 
   const handleClearLocation = async () => {
     try {
@@ -179,7 +181,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
             ) : null} />
             <InfoRow label="İl" value={customer.city} />
             <InfoRow label="İlçe" value={customer.district} />
-            {customer.neighborhood && <InfoRow label={ADDRESS_FIELD.neighborhood} value={customer.neighborhood} />}
+            {neighborhoodLine ? <InfoRow label={ADDRESS_FIELD.neighborhood} value={neighborhoodLine} /> : null}
             {customer.streetName && <InfoRow label={ADDRESS_FIELD.street} value={customer.streetName} />}
             {(customer.buildingNo || customer.doorNo) && (
               <InfoRow
@@ -187,7 +189,9 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
                 value={[customer.buildingNo && `No: ${customer.buildingNo}`, customer.doorNo && `D: ${customer.doorNo}`].filter(Boolean).join(' · ')}
               />
             )}
-            <InfoRow label={ADDRESS_FIELD.openAddress} value={customer.address} className="col-span-2" />
+            {openAddressLine ? (
+              <InfoRow label={ADDRESS_FIELD.openAddress} value={openAddressLine} className="col-span-2" />
+            ) : null}
           </div>
           {customer.latitude != null && customer.longitude != null ? (
             <div className="mt-4 pt-4 border-t border-slate-50">
@@ -195,7 +199,7 @@ function CustomerProfilTab({ customer, isFieldStaff, onReload, onEdit }: { custo
               <LocationPreview
                 lat={customer.latitude}
                 lng={customer.longitude}
-                addressLabel={[customer.city, customer.district, customer.address].filter(Boolean).join(', ') || undefined}
+                addressLabel={[customer.city, customer.district, openAddressLine || neighborhoodLine].filter(Boolean).join(', ') || undefined}
                 onEdit={onEdit}
                 onClear={handleClearLocation}
                 accentColor="emerald"

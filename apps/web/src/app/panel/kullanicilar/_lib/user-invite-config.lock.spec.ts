@@ -26,6 +26,7 @@ import {
   showsMeridyenWorkHoursToggle,
   userInviteCardTitle,
   acilYardimAssistantCustomerName,
+  findRoleByCode,
 } from './user-invite-config.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +39,17 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.equal(isCustomerCompanyUserTask('assistance_company_user'), true);
     assert.equal(isCustomerCompanyUserTask('operations'), false);
     assert.equal(isCustomerCompanyUserTask('management'), false);
+    const found = findRoleByCode(
+      [{ id: '1', code: 'DIS_ASISTANS_FIRMA', name: 'Asistans Firma' }],
+      'assistance_company_user',
+      'asistans_firma',
+    );
+    assert.equal(found?.code, 'DIS_ASISTANS_FIRMA');
+    const named = findRoleByCode(
+      [{ id: '2', code: 'DIS_OZEL', name: 'Asistans Firma' }],
+      'assistance_company_user',
+    );
+    assert.equal(named?.id, '2');
   });
 
   it('boş fazla satır düşer; en az bir kişi kalır', () => {

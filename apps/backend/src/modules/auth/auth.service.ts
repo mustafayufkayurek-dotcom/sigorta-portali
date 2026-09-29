@@ -300,12 +300,11 @@ export class AuthService {
       },
     });
     const mailNumber = formatLoginEmailCodeForMail(code);
-    const copyHref = buildAppPath(this.config, `/giris/kopyala?kod=${encodeURIComponent(code)}`);
     const html = buildTransactionalEmailHtml({
       title: 'Giriş Onayı',
       greeting: formatSnPersonGreeting(user.firstName, user.lastName),
       intro: 'Aşağıdaki giriş kodunu kullanarak platforma giriş yapabilirsiniz.',
-      bodyHtml: buildLoginApprovalCodeHtml(mailNumber, copyHref),
+      bodyHtml: buildLoginApprovalCodeHtml(mailNumber),
       portalUrl: buildAppPath(this.config, '/giris'),
     });
     const result = await this.email.sendEmail(

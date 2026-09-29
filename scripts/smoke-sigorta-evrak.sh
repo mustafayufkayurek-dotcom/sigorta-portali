@@ -7,5 +7,6 @@ echo "=== Sigorta muvafakat izleme kilit ==="
 cd "$REPO_ROOT"
 node --experimental-strip-types --test \
   apps/web/src/app/panel/sigorta-portal/sigorta-evrak-muvafakat.lock.spec.ts \
+  apps/web/src/app/panel/sigorta-portal/sigorta-dosyalar-gecmis.lock.spec.ts \
   apps/backend/src/modules/file-documents/file-document-insurance-view.lock.spec.ts
 echo "=== Sigorta muvafakat izleme kilit: PASS ==="

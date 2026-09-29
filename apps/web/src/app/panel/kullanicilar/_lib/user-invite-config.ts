@@ -205,6 +205,32 @@ export function roleCodesMatch(a?: string | null, b?: string | null): boolean {
   return normalizeRoleCode(a) === normalizeRoleCode(b);
 }
 
+export function isAssistanceCompanyRoleCode(code?: string | null): boolean {
+  const n = normalizeRoleCode(code);
+  const bare = n.replace(/^(dis|mer)_/, '');
+  return (
+    n === 'assistance_company_user'
+    || bare === 'assistance_company_user'
+    || bare === 'asistans_firma'
+    || bare === 'asistan_firma'
+    || bare === 'asistan_firmasi'
+    || bare === 'asistans_firmasi'
+    || bare === 'asistans_firma_kullanicisi'
+    || bare === 'asistan_firma_kullanicisi'
+  );
+}
+
+export function isAssistanceCompanyRoleName(name?: string | null): boolean {
+  const n = String(name ?? '').trim().toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ');
+  const compact = n.replace(/ kullanıcısı$/, '').replace(/ kullanicisi$/, '');
+  return (
+    compact === 'asistans firma'
+    || compact === 'asistans firması'
+    || compact === 'asistan firması'
+    || compact === 'asistan firma'
+  );
+}
+
 /** Liste, profil ve üst bant — görev Türkçe adı */
 export function displayUserRoleName(role?: { code?: string | null; name?: string | null } | null): string {
   if (!role) return '—';
@@ -215,7 +241,7 @@ export function displayUserRoleName(role?: { code?: string | null; name?: string
   if (code === 'expert' || code === 'adjuster') return 'Eksper';
   if (code === 'insurance_company_user') return 'Sigorta Şirketi Kullanıcısı';
   if (code === 'broker_user') return 'Broker Kullanıcısı';
-  if (code === 'assistance_company_user') return 'Asistans Firma Kullanıcısı';
+  if (isAssistanceCompanyRoleCode(code)) return 'Asistans Firma Kullanıcısı';
   if (code === 'finance') return 'Finans';
   return (role.name ?? '').trim() || '—';
 }
@@ -301,13 +327,25 @@ export function officePersonToFormFields(person: {
   };
 }
 
-export function findRoleByCode<T extends { code: string }>(
+export function findRoleByCode<T extends { code: string; name?: string | null }>(
   roles: T[],
   code: string,
   ...aliases: string[]
 ): T | undefined {
   const targets = new Set([code, ...aliases].map(normalizeRoleCode));
-  return roles.find((role) => targets.has(normalizeRoleCode(role.code)));
+  const exact = roles.find((role) => targets.has(normalizeRoleCode(role.code)));
+  if (exact) return exact;
+  const prefixed = roles.find((role) => {
+    const bare = normalizeRoleCode(role.code).replace(/^(dis|mer)_/, '');
+    return [...targets].some((t) => t === bare || t.replace(/^(dis|mer)_/, '') === bare);
+  });
+  if (prefixed) return prefixed;
+  if ([...targets].some((t) => isAssistanceCompanyRoleCode(t))) {
+    return roles.find(
+      (role) => isAssistanceCompanyRoleCode(role.code) || isAssistanceCompanyRoleName(role.name),
+    );
+  }
+  return undefined;
 }
 
 export type OperationAreaCode = '' | 'hasar' | 'acil' | 'both';

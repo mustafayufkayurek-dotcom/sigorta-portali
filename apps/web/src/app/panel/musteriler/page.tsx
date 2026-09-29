@@ -32,6 +32,8 @@ import {
   mergeCustomerSubTypes,
   customerSubTypesForPicker,
   normalizeCustomerAddressFields,
+  collapseRepeatedAddressLine,
+  customerCardOpenAddress,
   normalizeCustomerRow,
   mapCustomerRecordToForm,
   mapCustomerContactsToForm,
@@ -1757,26 +1759,22 @@ export default function MusterilerPage() {
       }
       const addr = normalizeCustomerAddressFields(form);
       setForm((p) => ({ ...p, ...addr }));
-
-      // Yapılandırılmış adres alanlarını birleştir
-      const addressParts = [
-        addr.neighborhood,
-        addr.streetName,
-        addr.address,
-        form.buildingNo ? `No: ${form.buildingNo}` : '',
-        form.doorNo ? `D: ${form.doorNo}` : '',
-      ].filter(Boolean);
-      const computedAddress = addressParts.length > 0 ? addressParts.join(' ') : null;
+      const neighborhood = collapseRepeatedAddressLine(addr.neighborhood) || null;
+      const address = customerCardOpenAddress({
+        address: addr.address,
+        neighborhood,
+        streetName: addr.streetName,
+      }) || null;
 
       const payload: any = {
         customerType: form.customerType, entityType: form.customerType,
         phone: form.phone || null, email: form.email || null,
         city: form.city || null, district: form.district || null,
-        neighborhood: addr.neighborhood || null,
+        neighborhood,
         streetName: addr.streetName || null,
         buildingNo: form.buildingNo || null,
         doorNo: form.doorNo || null,
-        address: computedAddress,
+        address,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
         shortName: form.shortName.trim(),
         notes: serializeCardNotes(form.cardNotes), source: form.source || null,

@@ -86,6 +86,8 @@ import {
   findRoleByCode,
   hasarExpertCustomerName,
   isAcilYardimAssistantCustomer,
+  isAssistanceCompanyRoleCode,
+  isAssistanceCompanyRoleName,
   isBrokerCustomer,
   isCustomerCompanyUserTask,
   isHasarExpertCustomer,
@@ -1268,7 +1270,15 @@ export default function KullanicilarPage() {
     if (form.userTask === 'expert') return roleByCode('expert', 'adjuster');
     if (form.userTask === 'insurance_company_user') return roleByCode('insurance_company_user');
     if (form.userTask === 'broker') return roleByCode('broker_user');
-    if (form.userTask === 'assistance_company_user') return roleByCode('assistance_company_user');
+    if (form.userTask === 'assistance_company_user') {
+      return roleByCode(
+        'assistance_company_user',
+        'asistans_firma',
+        'asistan_firma',
+        'asistan_firmasi',
+        'asistans_firmasi',
+      );
+    }
     if (form.userTask === 'finance') return roleByCode('finance');
     return undefined;
   })();
@@ -1288,7 +1298,7 @@ export default function KullanicilarPage() {
     if (roleCodesMatch(role?.code, 'broker_user')) {
       return { userTask: 'broker', managementLevel: '' };
     }
-    if (roleCodesMatch(role?.code, 'assistance_company_user')) {
+    if (isAssistanceCompanyRoleCode(role?.code) || isAssistanceCompanyRoleName(role?.name)) {
       return { userTask: 'assistance_company_user', managementLevel: '' };
     }
     if (roleCodesMatch(role?.code, 'finance')) return { userTask: 'finance', managementLevel: '' };

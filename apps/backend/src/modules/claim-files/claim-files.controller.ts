@@ -24,6 +24,7 @@ import { CostMaskingInterceptor } from '@/common/interceptors/cost-masking.inter
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { RECEIPT_IMAGE_VALIDATION_PIPE } from '@/common/pipes/file-validation.pipe';
 import { extractIntakeDocumentFieldsFromImage } from './document-intake-scan.util';
+import { isAssistanceCompanyRoleCode } from '@sigorta/shared';
 
 @ApiTags('claim-files')
 @ApiBearerAuth()
@@ -50,7 +51,7 @@ export class ClaimFilesController {
       }
       query.insuranceCompanyIds = companyIds;
     }
-    if (roleCode === 'assistance_company_user') {
+    if (isAssistanceCompanyRoleCode(roleCode)) {
       const customerIds = await this.claimFilesService.getAssistantCustomerScopes(userId);
       if (customerIds.length === 0) {
         return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 } };
@@ -142,7 +143,7 @@ export class ClaimFilesController {
       }
       insuranceCompanyIds = companyIds;
     }
-    if (roleCode === 'assistance_company_user') {
+    if (isAssistanceCompanyRoleCode(roleCode)) {
       const customerIds = await this.claimFilesService.getAssistantCustomerScopes(userId);
       if (customerIds.length === 0) {
         return { success: true, data: [], meta: { total: 0, delayed: 0, inRepair: 0 } };

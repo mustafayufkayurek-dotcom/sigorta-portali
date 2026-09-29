@@ -11,6 +11,7 @@ import { ExternalApprovalsService } from './external-approvals.service';
 import { SendExternalApprovalDto, RespondExternalApprovalDto } from './dto/external-approvals.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Public } from '@/common/decorators/public.decorator';
+import { isAssistanceCompanyRoleCode } from '@sigorta/shared';
 
 @Controller()
 export class ExternalApprovalsController {
@@ -57,7 +58,7 @@ export class ExternalApprovalsController {
         includeExpired === 'true',
       );
     }
-    if (role === 'assistance_company_user' && user?.assistantCustomerScopes?.length) {
+    if (isAssistanceCompanyRoleCode(role) && user?.assistantCustomerScopes?.length) {
       return this.service.listPendingForAssistantCustomers(
         user.assistantCustomerScopes,
         includeExpired === 'true',

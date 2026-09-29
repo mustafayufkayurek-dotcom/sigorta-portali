@@ -41,4 +41,10 @@ describe('giriş kodu ekranı LOCK', () => {
     assert.doesNotMatch(girisPage, /handoffToSoftware/);
     assert.doesNotMatch(girisPage, /auth\/login/);
   });
+
+  it('mail kopyala ikonu yazılım sayfası açmaz', () => {
+    const kopyala = readFileSync(join(here, '../../app/giris/kopyala/page.tsx'), 'utf8');
+    assert.match(kopyala, /redirect\('\/giris'\)/);
+    assert.doesNotMatch(kopyala, /kod=/);
+  });
 });

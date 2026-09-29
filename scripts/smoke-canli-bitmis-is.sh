@@ -83,6 +83,7 @@ node --experimental-strip-types --test \
   packages/shared/src/dijital-onay-whatsapp-message.lock.spec.ts \
   apps/web/src/utils/invoice-request-list.lock.spec.ts \
   apps/web/src/utils/relationship-type-usage.lock.spec.ts \
+  apps/web/src/utils/customer-open-address.lock.spec.ts \
   packages/shared/src/customer-contacts-merge.lock.spec.ts \
   apps/web/src/app/panel/hasar-dosyalari/hasar-dosya-yukleme.lock.spec.ts \
   apps/web/src/components/hr/attendance-load-error.lock.spec.ts \

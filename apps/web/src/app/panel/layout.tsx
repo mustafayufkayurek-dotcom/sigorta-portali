@@ -22,6 +22,7 @@ import { TopProgressBar } from '@/components/ui/TopProgressBar';
 import { GlobalActivityStrip } from '@/components/ui/GlobalActivityStrip';
 import { LoadingScreen } from '@/components/ui/LoadingIndicator';
 import { SidebarNavTooltip } from '@/components/ui/SidebarNavTooltip';
+import { isAssistanceCompanyRoleCode } from '@sigorta/shared';
 import { isFieldStaffRole, isFinanceRole, isOfficeStaffRole, roleAllowedForNav } from '@/hooks/usePanelRole';
 import {
   canAccessAcilYardim,
@@ -1853,7 +1854,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const operationArea = userOperationArea(user);
   const isExpert = roleCode === 'expert';
   const isInsuranceCompanyUser = roleCode === 'insurance_company_user';
-  const isAssistanceCompanyUser = roleCode === 'assistance_company_user';
+  const isAssistanceCompanyUser = isAssistanceCompanyRoleCode(roleCode);
   const isPortalUser = isExpert || isInsuranceCompanyUser || isAssistanceCompanyUser;
   const isFinance = isFinanceRole(roleCode);
   const isFieldStaff = isFieldStaffRole(roleCode);

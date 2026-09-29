@@ -28,6 +28,33 @@ export function normalizeRoleAccountCode(code?: string | null): string {
     .replace(/-/g, '_');
 }
 
+/** Ayarlar’da «Asistans Firma» yazılınca üretilen DIS_ kodu da portal görevidir. */
+export function isAssistanceCompanyRoleCode(code?: string | null): boolean {
+  const n = normalizeRoleAccountCode(code);
+  const bare = n.replace(/^(dis|mer)_/, '');
+  return (
+    n === 'assistance_company_user'
+    || bare === 'assistance_company_user'
+    || bare === 'asistans_firma'
+    || bare === 'asistan_firma'
+    || bare === 'asistan_firmasi'
+    || bare === 'asistans_firmasi'
+    || bare === 'asistans_firma_kullanicisi'
+    || bare === 'asistan_firma_kullanicisi'
+  );
+}
+
+export function isAssistanceCompanyRoleName(name?: string | null): boolean {
+  const n = String(name ?? '').trim().toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ');
+  const compact = n.replace(/ kullanıcısı$/, '').replace(/ kullanicisi$/, '');
+  return (
+    compact === 'asistans firma'
+    || compact === 'asistans firması'
+    || compact === 'asistan firması'
+    || compact === 'asistan firma'
+  );
+}
+
 export function isLockedRoleAccountCode(code?: string | null): boolean {
   const n = normalizeRoleAccountCode(code);
   return (MERIDYEN_LOCKED as readonly string[]).includes(n)

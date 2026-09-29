@@ -37,10 +37,10 @@ describe('personel ekle LOCK', () => {
     assert.match(list, /colId="sicil" align="center"/);
   });
 
-  it('mail kopyala Kopyalandı sayfasına gider', () => {
-    const page = readFileSync(join(here, '../../app/giris/kopyala/GirisKoduKopyalaClient.tsx'), 'utf8');
-    assert.match(page, /Kopyalandı/);
-    assert.match(page, /clipboard\.writeText/);
-    assert.match(page, /LoginBrandLogo alt=/);
+  it('eski mail kopyala adresi kod sayfası açmaz', () => {
+    const page = readFileSync(join(here, '../../app/giris/kopyala/page.tsx'), 'utf8');
+    assert.match(page, /redirect\('\/giris'\)/);
+    assert.doesNotMatch(page, /GirisKoduKopyalaClient/);
+    assert.doesNotMatch(page, /searchParams/);
   });
 });

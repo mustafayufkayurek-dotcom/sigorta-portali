@@ -549,15 +549,14 @@ export function buildNotificationEmailHtml(data: NotificationEmailTemplateData):
 </html>`;
 }
 
-/** Giriş onayı — canlı satır; bitişik 6 hane yazılmaz. */
-export function buildLoginApprovalCodeHtml(mailNumber: string, copyHref?: string): string {
+/** Giriş onayı — canlı satır; bitişik 6 hane yazılmaz. Kopyala ikonu sayfa açmaz. */
+export function buildLoginApprovalCodeHtml(mailNumber: string): string {
   const spaced = String(mailNumber ?? '').trim();
   const compact = spaced.replace(/\D/g, '').slice(0, 6);
   const copyIcon =
     '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="9" y="9" width="13" height="13" rx="2" stroke="#1E5AA8" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="#1E5AA8" stroke-width="2"/></svg>';
-  const href = copyHref && compact
-    ? escapeHtml(copyHref)
-    : '#giris-kodu-kopyala';
+  const copyOnClick =
+    "try{var c=this.getAttribute('data-code')||'';if(!c)return false;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(c);}else{var t=document.createElement('textarea');t.value=c;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);}this.setAttribute('title','Kopyalandı');}catch(e){}return false;";
 
   return `
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 12px;">
@@ -567,9 +566,9 @@ export function buildLoginApprovalCodeHtml(mailNumber: string, copyHref?: string
                     <div style="font-size:28px;line-height:1.2;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;color:#0F172A;-webkit-user-select:all;user-select:all;">${escapeHtml(spaced)}</div>
                   </td>
                   <td style="vertical-align:bottom;padding:0 0 4px;">
-                    <a id="giris-kodu-kopyala" href="${href}" title="Kopyala" data-code="${escapeHtml(compact)}" style="display:inline-block;width:26px;height:26px;border:1px solid #CBD5E1;border-radius:6px;background:#F8FAFC;text-align:center;line-height:24px;text-decoration:none;">
+                    <span id="giris-kodu-kopyala" role="button" title="Kopyala" data-code="${escapeHtml(compact)}" onclick="${copyOnClick}" style="display:inline-block;width:26px;height:26px;border:1px solid #CBD5E1;border-radius:6px;background:#F8FAFC;text-align:center;line-height:24px;cursor:pointer;">
                       ${copyIcon}
-                    </a>
+                    </span>
                   </td>
                 </tr>
               </table>`;

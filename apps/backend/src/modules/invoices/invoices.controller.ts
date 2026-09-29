@@ -18,6 +18,7 @@ import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { ClaimFilesService } from '@/modules/claim-files/claim-files.service';
+import { isAssistanceCompanyRoleCode } from '@sigorta/shared';
 
 @ApiTags('invoices')
 @ApiBearerAuth()
@@ -44,7 +45,7 @@ export class InvoicesController {
       }
       query.insuranceCompanyIds = companyIds;
     }
-    if (this.resolveRoleCode(user) === 'assistance_company_user') {
+    if (isAssistanceCompanyRoleCode(this.resolveRoleCode(user))) {
       const customerIds = await this.claimFilesService.getAssistantCustomerScopes(user.id);
       if (customerIds.length === 0) {
         return { success: true, data: [], meta: { total: 0, page: 1, limit: Number(query?.limit) || 20, totalPages: 0 }, summary: { totalAmount: 0, paidAmount: 0, pendingAmount: 0, overdueAmount: 0, totalCount: 0, paidCount: 0 } };
@@ -67,7 +68,7 @@ export class InvoicesController {
         throw new ForbiddenException('Bu faturaya erişim izniniz bulunmamaktadır');
       }
     }
-    if (this.resolveRoleCode(user) === 'assistance_company_user') {
+    if (isAssistanceCompanyRoleCode(this.resolveRoleCode(user))) {
       const customerIds = await this.claimFilesService.getAssistantCustomerScopes(user.id);
       const claimCustomerId = (data as { claimFile?: { customerId?: string }; emergencyCase?: { customerId?: string } })?.claimFile?.customerId
         ?? (data as { emergencyCase?: { customerId?: string } })?.emergencyCase?.customerId;

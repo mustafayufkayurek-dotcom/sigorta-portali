@@ -12,6 +12,7 @@ import { assertNewPassword, hashPassword, verifyPassword } from '@/common/securi
 import { randomInt } from 'crypto';
 import {
   buildPlatformMailCopyNotice,
+  isAssistanceCompanyRoleCode,
   isMeridyenStaffRole,
   welcomeInviteAdminCopies,
 } from '@sigorta/shared';
@@ -588,7 +589,7 @@ export class UsersService {
     if (roleCode === 'expert') return 'EXPERT';
     if (roleCode === 'insurance_company_user') return 'INSURANCE_COMPANY';
     if (roleCode === 'broker_user') return 'BROKER';
-    if (roleCode === 'assistance_company_user') return 'ASSISTANCE_COMPANY';
+    if (isAssistanceCompanyRoleCode(roleCode)) return 'ASSISTANCE_COMPANY';
     return 'MERIDYEN_STAFF';
   }
 
@@ -623,7 +624,7 @@ export class UsersService {
     if (role === 'BROKER') {
       return params.brokerOrganizationName?.trim() || params.branchName?.trim() || undefined;
     }
-    if (params.roleCode === 'assistance_company_user') {
+    if (isAssistanceCompanyRoleCode(params.roleCode)) {
       return params.assistantOrganizationName?.trim() || params.branchName?.trim() || undefined;
     }
     return params.branchName?.trim() || undefined;
@@ -706,7 +707,7 @@ export class UsersService {
       if (role.code === 'insurance_company_user' && (!context.insuranceCompanyIds || context.insuranceCompanyIds.length !== 1)) {
         throw new BadRequestException('Sigorta şirketi seçilmelidir');
       }
-      if (role.code === 'assistance_company_user' && (!context.assistantCustomerIds || context.assistantCustomerIds.length !== 1)) {
+      if (isAssistanceCompanyRoleCode(role.code) && (!context.assistantCustomerIds || context.assistantCustomerIds.length !== 1)) {
         throw new BadRequestException('Asistans firması seçilmelidir');
       }
     }
@@ -897,7 +898,11 @@ export class UsersService {
     const roleCodes = roleCodesForPortalCustomerSubType(customer.subType);
     const roles = await this.prisma.role.findMany({ select: { id: true, code: true } });
     const targets = new Set(roleCodes.map((code) => normalizePortalRoleCode(code)));
-    const role = roles.find((row) => targets.has(normalizePortalRoleCode(row.code)));
+    const role = roles.find((row) => {
+      const n = normalizePortalRoleCode(row.code);
+      if (targets.has(n)) return true;
+      return roleCodes.includes('assistance_company_user') && isAssistanceCompanyRoleCode(row.code);
+    });
     if (!role) {
       throw new BadRequestException('Bu kart için sistem rolü bulunamadı. Ayarlar → Roller bölümünü kontrol edin.');
     }

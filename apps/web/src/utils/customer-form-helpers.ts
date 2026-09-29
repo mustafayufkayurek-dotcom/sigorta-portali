@@ -7,6 +7,9 @@ import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import { cardNotesToFormEntries } from '@/utils/card-notes';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { mergePrimaryIntoCustomerContacts } from '@sigorta/shared';
+import { collapseRepeatedAddressLine, customerCardOpenAddress } from '@/utils/customer-open-address';
+
+export { collapseRepeatedAddressLine, customerCardOpenAddress } from '@/utils/customer-open-address';
 
 export type CustomerType = 'individual' | 'corporate';
 
@@ -397,11 +400,15 @@ export function mapCustomerRecordToForm(
     cityCode: province?.code ?? '',
     city: String(customer.city ?? ''),
     district: String(customer.district ?? ''),
-    neighborhood: String(customer.neighborhood ?? ''),
+    neighborhood: collapseRepeatedAddressLine(String(customer.neighborhood ?? '')),
     streetName: String(customer.streetName ?? ''),
     buildingNo: String(customer.buildingNo ?? ''),
     doorNo: String(customer.doorNo ?? ''),
-    address: String(customer.address ?? ''),
+    address: customerCardOpenAddress({
+      address: String(customer.address ?? ''),
+      neighborhood: String(customer.neighborhood ?? ''),
+      streetName: String(customer.streetName ?? ''),
+    }),
     source: String(customer.source ?? ''),
     satisfactionScore: customer.satisfactionScore
       ? String(customer.satisfactionScore) as '1' | '2' | '3' | '4' | '5'

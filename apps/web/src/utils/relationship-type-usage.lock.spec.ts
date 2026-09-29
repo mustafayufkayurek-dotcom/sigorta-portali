@@ -28,6 +28,7 @@ const catalog = [
 
 describe('ilişki türü kullanım alanı LOCK', () => {
   it('eksper kartı eksper işaretini basar; müşteri kartı basmaz', () => {
+    assert.equal(relationshipUsageAreaForCustomerSubType('insured'), 'insured');
     assert.equal(relationshipUsageAreaForCustomerSubType('eksper_firmasi'), 'eksper');
     assert.equal(relationshipUsageAreaForCustomerSubType('eksper'), 'eksper');
     assert.equal(relationshipUsageAreaForCustomerSubType('sigorta_sirketi'), 'sigorta_sirketi');
@@ -53,6 +54,7 @@ describe('ilişki türü kullanım alanı LOCK', () => {
     assert.match(page, /toggleRelationshipCustomerChild/);
     assert.match(page, /RELATIONSHIP_CUSTOMER_CHILDREN/);
     assert.match(page, /RELATIONSHIP_VENDOR_CHILDREN/);
+    assert.match(page, /Sigortalı/);
     assert.match(page, /Asistans Firma/);
     assert.match(page, /Özel Müşteri/);
     assert.match(page, /Acil Yardım/);
@@ -73,6 +75,12 @@ describe('ilişki türü kullanım alanı LOCK', () => {
     assert.ok(!areas.includes('musteri'));
     areas = toggleRelationshipUsageParent(['musteri', 'eksper', 'dosya'], 'musteri');
     assert.deepEqual(areas, []);
+    assert.equal(relationshipTypeAppliesToArea({ label: 'Vekil', usageAreas: ['insured'] }, 'insured'), true);
+    assert.equal(relationshipTypeAppliesToArea({ label: 'Vekil', usageAreas: ['insured'] }, 'eksper'), false);
+    assert.equal(relationshipTypeAppliesToArea({ label: 'Vekil', usageAreas: ['musteri'] }, 'insured'), true);
+    areas = toggleRelationshipCustomerChild(['musteri'], 'insured');
+    assert.deepEqual(areas, ['insured']);
+    assert.deepEqual(relationshipUsageDisplayLabels(areas), ['Müşteri · Sigortalı']);
   });
 
   it('tedarikçi altı Acil Yardım ve Hasar Onarım; yalnız o kartta durur', () => {
