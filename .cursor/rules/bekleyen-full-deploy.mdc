@@ -1,11 +1,11 @@
 ---
-description: Canlı web v633 / backend v633
+description: Canlı web v634 / backend v634
 alwaysApply: true
 ---
 
 # Canlı (29.09.2026)
 
-Canlı: web **v633** · backend **v633**. Geri alma: web **v632** / backend **v632**.
+Canlı: web **v634** · backend **v634**. Geri alma: web **v633** / backend **v633**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v634 (full):** Rol Yönetimi kod göstermez; liste Meridyen Personeli / Dış Kullanıcı. Giriş onay mailinde kopyala **Kopyalandı**. Personel listesinde rakamlar sütun altında ortada. Personel Ekle: görev listesi, otomatik sicil, **İptal** ve **Kaydet**. Puantaj onayı silinmiş hesaba gitmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v633 / backend v633.
 
 **v633 (full):** Çoklu hasar PDF ara toplamı hasar nedeninedir (Dahili Su / Fırtına). İş grubu (Boya / Mobilya İşleri) ara toplamı basılmaz. Hasar nedeni özeti kalem kimliğiyle dolar. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v632 / backend v632.
 
@@ -141,8 +143,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Paket (lokal, canlı değil):** Rol Yönetimi kod göstermez; liste Meridyen Personeli / Dış Kullanıcı. Giriş onay mailinde kopyala tıklanınca **Kopyalandı** görünür. Personel listesinde rakamlar sütun altında ortada. Personel Ekle: görev listesi gelir, sicil üretilir, altta **İptal** ve **Kaydet**.
+*(boş)*
 
-**Paket (lokal, henüz yok):** Puantaj onayı silinmiş hesaba gitmez. `archived+…@deleted.meridyen.local` adresine «Puantaj Onayı Bekliyor» yazılmaz; Outlook «Teslim edilmez» dönmez.
-
-Canlı **v633**.
+Canlı **v634**.

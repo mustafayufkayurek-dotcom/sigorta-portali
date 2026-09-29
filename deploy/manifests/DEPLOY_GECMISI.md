@@ -8,18 +8,29 @@
 
 ---
 
-## Canlı durum (29 Eylül 2026 — web v633 / backend v633)
+## Canlı durum (29 Eylül 2026 — web v634 / backend v634)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v633-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v633-amd64` | canlı |
-| **Rollback** | Web **v632** / Backend **v632** | manifest `rollbackImages` |
-| **Etiket** | `v633-hasar-pdf-neden-toplami` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v634-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v634-amd64` | canlı |
+| **Rollback** | Web **v633** / Backend **v633** | manifest `rollbackImages` |
+| **Etiket** | `v634-rol-personel-puantaj` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v634 — Full (29 Eylül 2026) — Rol, personel, kopyala, puantaj arşiv
+
+- Rol Yönetimi kod göstermez; liste Meridyen Personeli / Dış Kullanıcı
+- Giriş onay mailinde kopyala Kopyalandı sayfasına gider
+- Personel listesinde rakamlar sütun altında ortada
+- Personel Ekle: görev listesi, otomatik sicil, İptal ve Kaydet
+- Puantaj onayı `archived+…@deleted.meridyen.local` kutusuna gitmez
+- Disk; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v633** / backend **v633**
 
 ### v633 — Full (29 Eylül 2026) — Çoklu hasar PDF hasar nedeni toplamı
 

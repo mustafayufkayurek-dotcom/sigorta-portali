@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-29",
-  "label": "v633-hasar-pdf-neden-toplami",
-  "description": "Full v633: çoklu hasar PDF ara toplamı hasar nedenine göre. Geri alma web v632 / backend v632.",
+  "label": "v634-rol-personel-puantaj",
+  "description": "Full v634: rol aileleri, giriş kodu kopyala, personel ekle, puantaj silinmiş hesaba gitmez. Geri alma web v633 / backend v633.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v633-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v633-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v634-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v634-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v632-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v632-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v633-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v633-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
