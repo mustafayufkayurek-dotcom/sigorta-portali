@@ -28,5 +28,6 @@ node --experimental-strip-types --test \
 node --experimental-strip-types --test \
   apps/web/src/components/file-documents/dijital-onay-whatsapp.lock.spec.ts \
   apps/backend/src/modules/file-documents/dijital-onay-whatsapp.lock.spec.ts \
+  packages/shared/src/dijital-onay-whatsapp-message.lock.spec.ts \
   apps/backend/src/modules/external-approvals/send-external-approval.dto.lock.spec.ts
 echo "=== Hasar rapor revizyon kilit: PASS ==="

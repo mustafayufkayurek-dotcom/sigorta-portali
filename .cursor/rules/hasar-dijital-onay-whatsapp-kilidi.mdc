@@ -7,7 +7,7 @@ alwaysApply: true
 
 **Kaynak (Mustafa · 26.08.2026):** Personel dijital onayda link oluşturuyor, gönderim olmuyordu. Sigortalı numarası kutuya hazır gelmiyordu. Bitmiş iş yine bozulmuştu.
 
-**Temel cümle:** Hasar dijital onayda **sigortalı telefonu kutuda durur.** Gönder deyince **WhatsApp açılır.** Kutu kapanıp iş bitmiş sayılmaz.
+**Temel cümle:** Hasar dijital onayda **sigortalı telefonu kutuda durur.** Gönder deyince **WhatsApp açılır.** Kutu kapanıp iş bitmiş sayılmaz. Sigortalıya giden yazı **şüpheli işlem kalıbı değildir.**
 
 ## Zorunlu
 
@@ -15,12 +15,14 @@ alwaysApply: true
 2. Gönderim `openWhatsAppChat` — yalnız link kaydı + kutu kapatma yok.
 3. Backend `resolveInsuredPhone` + `sendWhatsapp` mesaj ve telefon döner.
 4. Planlayıcı dijital onay: `defaultPhone={claim.insuredPhone}`.
+5. Mesaj `buildDijitalOnayWhatsAppMessage`: Sayın + dosya no + gerekçe; Hasar ve Acil ihbarda «Söz konusu talep olağan prosedür kapsamındadır»; onay sayfası (meridyen-tr.com); dosya sorumlusu adı ve cep (532 133 4144). Acil kapanışta hizmetin tamamlandığı cümlesi. Aynı kapı Acil Adres Ve Hizmet Talep ile Servis Onay Formu’na da gider.
 
 ## Yasak (açık onay yoksa)
 
 - `onSent` ile kutuyu kapatıp WhatsApp’ı atlamak
 - «Link Oluştur» deyip sohbet açmamak
 - Sigortalı telefonunu boş bırakıp personeli yazmaya zorlamak
+- WhatsApp’ta Muvafakatname, «Yazıcı gerekmez», «Onayla’ya basın»
 - Bu kilidi “sadeleştirme” diye kaldırmak
 
 ## Durdurma

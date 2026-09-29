@@ -4,6 +4,7 @@ import {
   buildNotificationEmailHtml,
   buildTransactionalEmailHtml,
   buildWelcomeInviteEmailHtml,
+  buildLoginApprovalCodeHtml,
   formatSnPersonGreeting,
   onarimRaporuRequestSubject,
   organizationLineForMail,
@@ -206,5 +207,25 @@ describe('buildExternalApprovalSummaryHtml', () => {
     expect(html).toContain('Onay Gönderim tarihi');
     expect(html).not.toContain('Rapor No');
     expect(html).not.toContain('Hasar Dosya No');
+  });
+});
+
+describe('buildLoginApprovalCodeHtml', () => {
+  it('canlı satırda giriş kodu ve kopyala durur; bitişik Kod yazılmaz', () => {
+    const html = buildTransactionalEmailHtml({
+      title: 'Giriş Onayı',
+      greeting: 'Sn. Mustafa Yufkayürek,',
+      intro: 'Aşağıdaki giriş kodunu kullanarak platforma giriş yapabilirsiniz.',
+      bodyHtml: buildLoginApprovalCodeHtml('2 8 1 3 9 8'),
+    });
+    expect(html).toContain('Giriş Kodu');
+    expect(html).toContain('2 8 1 3 9 8');
+    expect(html).toContain('font-size:28px');
+    expect(html).toContain('title="Kopyala"');
+    expect(html).toContain('width="120"');
+    expect(html).toContain('Giriş Onayı');
+    expect(html).not.toContain('Sayı 2 8 1 3 9 8');
+    expect(html).not.toContain('Kod 281398');
+    expect(html).not.toContain('Operasyon Bildirimi');
   });
 });

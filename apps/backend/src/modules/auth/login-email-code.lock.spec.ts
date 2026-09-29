@@ -22,9 +22,10 @@ describe('giriş e-posta kodu kaynak LOCK', () => {
     assert.match(auth, /if \(!result\.sent\)/);
     assert.match(auth, /return null/);
     assert.match(auth, /owner\.status !== 'active'/);
-    assert.match(auth, /Yapıştır ile yazın/);
+    assert.match(auth, /Aşağıdaki giriş kodunu kullanarak platforma giriş yapabilirsiniz/);
     assert.match(auth, /formatLoginEmailCodeForMail/);
-    assert.match(auth, /Sayı \$\{mailNumber\}/);
+    assert.match(auth, /buildLoginApprovalCodeHtml\(mailNumber\)/);
+    assert.doesNotMatch(auth, /Sayı \$\{mailNumber\}/);
     assert.match(auth, /Giriş Onayı — Meridyen Assistance/);
     assert.doesNotMatch(auth, /Kod \$\{code\}/);
     assert.doesNotMatch(auth, /Giriş Kodu — Meridyen Assistance/);
@@ -34,6 +35,12 @@ describe('giriş e-posta kodu kaynak LOCK', () => {
     assert.doesNotMatch(auth, /letter-spacing:0\.18em/);
     assert.doesNotMatch(auth, /\|\| 'login-email-code'/);
     assert.match(auth, /Giriş kodu anahtarı yok/);
+    const template = readFileSync(join(here, '../notifications/email/email.template.ts'), 'utf8');
+    assert.match(template, /export function buildLoginApprovalCodeHtml/);
+    assert.match(template, /Giriş Kodu/);
+    assert.match(template, /title="Kopyala"/);
+    assert.doesNotMatch(template, /Sayı \$\{escapeHtml\(spaced\)\}/);
+    assert.doesNotMatch(template, /Kod \$\{/);
   });
 
   it('giriş kodu maili gelen kutu işine düşmez', () => {

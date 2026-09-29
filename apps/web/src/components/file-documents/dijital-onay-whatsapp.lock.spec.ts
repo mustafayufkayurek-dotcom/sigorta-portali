@@ -41,5 +41,6 @@ describe('Hasar dijital onay WhatsApp kilidi', () => {
     assert.doesNotMatch(panel, /setWaModal\(null\); load\(\)/);
     assert.match(panel, /onSent=\{\(\) => \{ load\(\); \}\}/);
     assert.match(service, /return \{ waUrl, link, message, phone \}/);
+    assert.match(service, /buildDijitalOnayWhatsAppMessage/);
   });
 });

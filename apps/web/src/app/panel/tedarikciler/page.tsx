@@ -65,6 +65,11 @@ import {
   type VendorDocumentTypeRow,
   type VendorTypeHizmetMode,
 } from '@/utils/vendor-form-helpers';
+import {
+  ensureRelationshipVendorUsage,
+  relationshipTypeLabelsForVendorCategory,
+  type RelationshipTypeRow,
+} from '@/utils/relationship-type-usage';
 import { CardNotesEditor } from '@/components/card-notes/CardNotesEditor';
 import {
   cardNotesToFormEntries,
@@ -851,10 +856,14 @@ export default function VendorsPage() {
   const [showAddType, setShowAddType] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
   const [savingType, setSavingType] = useState(false);
-  const [relationshipTypes, setRelationshipTypes] = useState<string[]>([]);
+  const [relationshipCatalog, setRelationshipCatalog] = useState<RelationshipTypeRow[]>([]);
   const [addingNewRelType, setAddingNewRelType] = useState(false);
   const [newRelTypeValue, setNewRelTypeValue] = useState('');
   const [savingRelType, setSavingRelType] = useState(false);
+  const relationshipTypes = useMemo(
+    () => relationshipTypeLabelsForVendorCategory(relationshipCatalog, form.category),
+    [relationshipCatalog, form.category],
+  );
 
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
@@ -986,19 +995,21 @@ export default function VendorsPage() {
     try {
       const res = await axios.get(`${API}/system-settings/relationship-types`, { headers: authHeader() });
       const existing = res.data.data ?? [];
-      type RelType = { label: string; active: boolean; usageAreas?: Array<'musteri' | 'eksper' | 'tedarikci' | 'dosya'> };
-      const full: RelType[] = existing.length > 0 && typeof existing[0] === 'string'
-        ? (existing as string[]).map((l) => ({ label: l, active: true, usageAreas: ['tedarikci'] }))
-        : (existing as RelType[]);
+      const full: RelationshipTypeRow[] = existing.length > 0 && typeof existing[0] === 'string'
+        ? (existing as string[]).map((l) => ({ label: l, active: true, usageAreas: ensureRelationshipVendorUsage([], form.category) }))
+        : (existing as RelationshipTypeRow[]);
       const found = full.find((t) => t.label === val);
       if (!found) {
-        full.push({ label: val, active: true, usageAreas: ['tedarikci'] });
+        full.push({ label: val, active: true, usageAreas: ensureRelationshipVendorUsage([], form.category) });
         await axios.put(`${API}/system-settings/relationship-types`, { values: full }, { headers: authHeader() });
-      } else if (!(found.usageAreas ?? []).includes('tedarikci')) {
-        found.usageAreas = [...(found.usageAreas ?? []), 'tedarikci'];
-        await axios.put(`${API}/system-settings/relationship-types`, { values: full }, { headers: authHeader() });
+      } else {
+        const nextAreas = ensureRelationshipVendorUsage(found.usageAreas, form.category);
+        if (JSON.stringify(found.usageAreas ?? []) !== JSON.stringify(nextAreas)) {
+          found.usageAreas = nextAreas;
+          await axios.put(`${API}/system-settings/relationship-types`, { values: full }, { headers: authHeader() });
+        }
       }
-      setRelationshipTypes((prev) => prev.includes(val) ? prev : [...prev, val]);
+      setRelationshipCatalog(full);
       onSelect?.(val);
     } catch { /* ignore */ } finally {
       setSavingRelType(false);
@@ -1251,14 +1262,9 @@ export default function VendorsPage() {
       .then((r) => {
         const data = r.data.data ?? [];
         if (data.length > 0 && typeof data[0] === 'string') {
-          // Eski string[] — kullanım alanı yok; tedarikçi formunda gösterme (müşteri listesi sızmasın)
-          setRelationshipTypes([]);
+          setRelationshipCatalog([]);
         } else {
-          setRelationshipTypes(
-            (data as { label: string; active: boolean; usageAreas?: string[] }[])
-              .filter((t) => t.active !== false && (t.usageAreas ?? []).includes('tedarikci'))
-              .map((t) => t.label)
-          );
+          setRelationshipCatalog(data as RelationshipTypeRow[]);
         }
       })
       .catch(() => { /* empty fallback */ });

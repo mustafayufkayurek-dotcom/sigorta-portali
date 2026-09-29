@@ -67,6 +67,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'approval-72h.lock.spec',
       'acil-vendor-whatsapp.lock.spec',
       'claim-whatsapp-message.lock.spec',
+      'dijital-onay-whatsapp-message.lock.spec',
       'invoice-request-list.lock.spec',
       'relationship-type-usage.lock.spec',
       'customer-contacts-merge.lock.spec',
@@ -92,6 +93,8 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'panel-flow-trail.lock.spec',
       'operational-mailbox.lock.spec',
       'software-outbound-echo.lock.spec',
+      'portal-customer-users.lock.spec',
+      'user-invite-config.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

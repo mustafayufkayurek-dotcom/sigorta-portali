@@ -14,5 +14,9 @@ describe('file-documents dijital onay WhatsApp', () => {
     assert.match(service, /suggestedPhone/);
     assert.match(service, /dto\.phone \?\? ''\)\.trim\(\) \|\|/);
     assert.match(service, /return \{ waUrl, link, message, phone \}/);
+    assert.match(service, /buildDijitalOnayWhatsAppMessage/);
+    assert.match(service, /resolveDigitalApprovalWhatsAppContext/);
+    assert.doesNotMatch(service, /Yazıcı gerekmez\. Aşağıdaki linki/);
+    assert.doesNotMatch(service, /tarafından düzenlenen \$\{kindLabel\}/);
   });
 });

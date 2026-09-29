@@ -3,6 +3,7 @@ export const PORTAL_CUSTOMER_SUB_TYPES = [
   'eksper',
   'broker_firmasi',
   'asistan_firmasi',
+  'asistans_firmasi',
 ] as const;
 
 export type PortalCustomerSubType = (typeof PORTAL_CUSTOMER_SUB_TYPES)[number];
@@ -17,8 +18,13 @@ export function roleCodesForPortalCustomerSubType(subType?: string | null): stri
   if (value === 'eksper_firmasi' || value === 'eksper') return ['expert', 'adjuster'];
   if (value === 'sigorta_sirketi') return ['insurance_company_user'];
   if (value === 'broker_firmasi') return ['broker_user', 'broker'];
-  if (value === 'asistan_firmasi') return ['assistance_company_user'];
+  if (value === 'asistan_firmasi' || value === 'asistans_firmasi') return ['assistance_company_user'];
   return [];
+}
+
+export function isAssistanceFirmSubType(subType?: string | null): boolean {
+  const value = (subType ?? '').trim();
+  return value === 'asistan_firmasi' || value === 'asistans_firmasi';
 }
 
 export function normalizePortalRoleCode(code?: string | null): string {

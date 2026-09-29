@@ -46,6 +46,7 @@ export * from './acil-insured-name';
 export * from './acil-inbox-file-owner';
 export * from './acil-file-owner-delegation';
 export * from './acil-digital-approval-pause';
+export * from './dijital-onay-whatsapp-message';
 export * from './authorized-person-name';
 export * from './customer-contacts-merge';
 export * from './acil-locksmith-issue';

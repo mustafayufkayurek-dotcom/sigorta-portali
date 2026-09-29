@@ -52,6 +52,7 @@ import { ADMIN_USER_ROW_ACTIONS } from '@/components/portal/portal-row-action-pr
 import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { formatPhoneDisplay } from '@/data/country-codes';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { mergePrimaryIntoCustomerContacts } from '@sigorta/shared';
 import {
   cycleClientSort,
   sortRowsByClientSort,
@@ -89,6 +90,7 @@ import {
   isCustomerCompanyUserTask,
   isHasarExpertCustomer,
   isCompleteOfficePersonPhone,
+  mergeOfficeUsersWithContacts,
   officePersonToFormFields,
   operationAreaFromDepartmentCodes,
   roleCodesMatch,
@@ -1150,17 +1152,26 @@ export default function KullanicilarPage() {
         if (form.userTask !== 'insurance_company_user') {
           try {
             const office = await axios.get(`${API}/customers/${selectedOfficeId}`, { headers: authHeader() });
-            contacts = office.data?.data?.contacts ?? office.data?.contacts ?? [];
+            const card = office.data?.data ?? office.data ?? {};
+            contacts = mergePrimaryIntoCustomerContacts(card.contacts ?? [], {
+              firstName: card.contactFirstName,
+              lastName: card.contactLastName,
+              phone: card.phone,
+              email: card.email,
+            });
           } catch {
             contacts = [];
           }
         }
         if (!cancelled) {
           setOfficeContacts(contacts);
-          const people = (Array.isArray(list) ? list.map(normalizeUser) : []).map((person: User) => ({
-            ...person,
-            phone: resolveOfficePersonPhone(person, { contacts }) || person.phone,
-          }));
+          const people = mergeOfficeUsersWithContacts(
+            (Array.isArray(list) ? list.map(normalizeUser) : []).map((person: User) => ({
+              ...person,
+              phone: resolveOfficePersonPhone(person, { contacts }) || person.phone,
+            })),
+            contacts,
+          );
           setOfficeUsers(people);
           if (modal === 'edit' && editingUser?.id) {
             setSelectedOfficeUserId(editingUser.id);

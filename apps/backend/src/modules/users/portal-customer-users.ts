@@ -5,6 +5,7 @@ import { resolveInsuranceCompanyIdsForCustomer } from '@/modules/customers/custo
 export {
   PORTAL_CUSTOMER_SUB_TYPES,
   isPortalCustomerSubType,
+  isAssistanceFirmSubType,
   normalizePortalRoleCode,
   roleCodesForPortalCustomerSubType,
 } from './portal-customer-subtypes';

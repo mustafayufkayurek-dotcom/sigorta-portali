@@ -21,7 +21,7 @@ export function extractLoginEmailCode(raw: string): string | null {
     .trim();
   if (!text) return null;
 
-  const labeledAt = text.search(/kod(?:unuz|u)?|sayı|anahtar/i);
+  const labeledAt = text.search(/giriş\s*kodu|kod(?:unuz|u)?|sayı|anahtar/i);
   if (labeledAt >= 0) {
     const fromLabel = sixDigitsLoose(text.slice(labeledAt));
     if (fromLabel) return fromLabel;

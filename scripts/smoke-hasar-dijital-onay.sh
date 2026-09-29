@@ -8,5 +8,6 @@ cd "$REPO_ROOT"
 node --experimental-strip-types --test \
   apps/web/src/components/file-documents/dijital-onay-whatsapp.lock.spec.ts \
   apps/backend/src/modules/file-documents/dijital-onay-whatsapp.lock.spec.ts \
+  packages/shared/src/dijital-onay-whatsapp-message.lock.spec.ts \
   apps/web/src/components/hasar-operasyon-planlayicisi/planner-entry.lock.spec.ts
 echo "=== Hasar dijital onay WhatsApp kilit: PASS ==="

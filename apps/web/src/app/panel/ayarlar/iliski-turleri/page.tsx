@@ -23,16 +23,18 @@ import {
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
+import {
+  RELATIONSHIP_CUSTOMER_CHILDREN,
+  RELATIONSHIP_VENDOR_CHILDREN,
+  isRelationshipCustomerParentOn,
+  isRelationshipVendorParentOn,
+  relationshipUsageDisplayLabels,
+  toggleRelationshipCustomerChild,
+  toggleRelationshipUsageParent,
+  toggleRelationshipVendorChild,
+} from '@/utils/relationship-type-usage';
 
-
-type UsageArea = 'musteri' | 'eksper' | 'tedarikci' | 'dosya';
-
-const USAGE_AREAS: { value: UsageArea; label: string; color: string }[] = [
-  { value: 'musteri', label: 'Müşteri', color: 'bg-blue-50 text-blue-700' },
-  { value: 'eksper', label: 'Eksper', color: 'bg-purple-50 text-purple-700' },
-  { value: 'tedarikci', label: 'Tedarikçi', color: 'bg-amber-50 text-amber-700' },
-  { value: 'dosya', label: 'Dosya', color: 'bg-green-50 text-green-700' },
-];
+type UsageArea = string;
 
 interface RelationshipType {
   label: string;
@@ -97,21 +99,16 @@ export default function IliskiTurleriPage() {
     setShowModal(true);
   };
 
-  const toggleUsageArea = (area: UsageArea) => {
-    setFormUsageAreas((prev) =>
-      prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]
-    );
-  };
-
   const handleSave = async () => {
     const val = normalizeFormFreeText(formLabel);
     if (!val) { setModalError('Boş değer girilemez'); return; }
+    const usageAreas = formUsageAreas.filter((area) => area !== 'dosya');
     if (editingIdx === null) {
       if (types.some((t) => t.label === val)) { setModalError('Bu tür zaten mevcut'); return; }
-      await save([...types, { label: val, active: true, usageAreas: formUsageAreas }]);
+      await save([...types, { label: val, active: true, usageAreas }]);
     } else {
       if (types.some((t, i) => i !== editingIdx && t.label === val)) { setModalError('Bu tür zaten mevcut'); return; }
-      const updated = types.map((t, i) => (i === editingIdx ? { ...t, label: val, usageAreas: formUsageAreas } : t));
+      const updated = types.map((t, i) => (i === editingIdx ? { ...t, label: val, usageAreas } : t));
       await save(updated);
     }
     setShowModal(false);
@@ -146,7 +143,7 @@ export default function IliskiTurleriPage() {
   return (
     <SettingsPageLayout
       title="İlişki Türleri"
-      description="Kullanım alanına göre ayrılır: Müşteri formunda yalnız «Müşteri», tedarikçi formunda yalnız «Tedarikçi» işaretli türler görünür"
+      description="Müşteri ve tedarikçi kartında işaretlenen alt türler görünür"
       addButtonText="Yeni İlişki Türü"
       onAdd={openCreate}
       backHref={TANIMLAR_BACK_HREF}
@@ -177,8 +174,9 @@ export default function IliskiTurleriPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p>
-          Kullanım alanı belirlenen türler, ilgili formlardaki ilişki dropdown&apos;larında filtrelenerek gösterilir.
-          Pasif türler hiçbir formda görünmez.
+          Müşteri işaretlenince altı açılır: Eksper, Sigorta Şirketi, Asistans Firma, Özel Müşteri.
+          Tedarikçi işaretlenince altı açılır: Acil Yardım, Hasar Onarım.
+          Alt seçilmezse o gruptaki tüm kartlarda durur. Pasif tür hiçbir kartta görünmez.
         </p>
       </div>
 
@@ -201,16 +199,13 @@ export default function IliskiTurleriPage() {
                 </span>
               </SettingsTableTd>
               <SettingsTableTd>
-                {type.usageAreas && type.usageAreas.length > 0 ? (
+                {relationshipUsageDisplayLabels(type.usageAreas).length > 0 ? (
                   <div className="flex flex-wrap gap-1">
-                    {type.usageAreas.map((area) => {
-                      const info = USAGE_AREAS.find((u) => u.value === area);
-                      return (
-                        <span key={area} className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${info?.color ?? 'bg-slate-100 text-slate-600'}`}>
-                          {info?.label ?? area}
-                        </span>
-                      );
-                    })}
+                    {relationshipUsageDisplayLabels(type.usageAreas).map((label) => (
+                      <span key={label} className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-slate-100 text-slate-700">
+                        {label}
+                      </span>
+                    ))}
                   </div>
                 ) : (
                   <span className="text-xs text-slate-300">—</span>
@@ -264,7 +259,7 @@ export default function IliskiTurleriPage() {
           <label className={labelCls}>İlişki Türü Adı *</label>
           <input
             className={inputCls}
-            placeholder="Örn: Sekreter, Ofis Müdürü, Saha Sorumlusu..."
+            placeholder="Örn. sekreter"
             value={formLabel}
             onChange={(e) => { setFormLabel(e.target.value); setModalError(''); }}
             onBlur={(e) => {
@@ -277,19 +272,58 @@ export default function IliskiTurleriPage() {
 
         <div>
           <label className={labelCls}>Kullanım Alanları</label>
-          <p className="text-xs text-slate-400 mb-2">Bu ilişki türünün hangi formlarda görüneceğini seçin.</p>
-          <div className="grid grid-cols-2 gap-2">
-            {USAGE_AREAS.map((area) => (
-              <label key={area.value} className="flex items-center gap-2.5 cursor-pointer rounded-lg border border-slate-200 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-blue-500"
-                  checked={formUsageAreas.includes(area.value)}
-                  onChange={() => toggleUsageArea(area.value)}
-                />
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${area.color}`}>{area.label}</span>
-              </label>
-            ))}
+          <p className="text-xs text-slate-500 mb-2">Bu türün hangi kartta duracağını seçin.</p>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2.5 cursor-pointer rounded-lg border border-slate-200 px-3 py-2.5 hover:bg-slate-50">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-blue-500"
+                checked={isRelationshipCustomerParentOn(formUsageAreas)}
+                onChange={() => setFormUsageAreas((prev) => toggleRelationshipUsageParent(prev, 'musteri'))}
+              />
+              <span className="text-sm font-medium text-slate-800">Müşteri</span>
+            </label>
+            {isRelationshipCustomerParentOn(formUsageAreas) ? (
+              <div className="ml-4 space-y-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                <p className="text-xs text-slate-500">Müşteri Statüsü. Boş bırakılırsa tüm müşteri kartlarında durur.</p>
+                {RELATIONSHIP_CUSTOMER_CHILDREN.map((child) => (
+                  <label key={child.value} className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-blue-500"
+                      checked={formUsageAreas.includes(child.value)}
+                      onChange={() => setFormUsageAreas((prev) => toggleRelationshipCustomerChild(prev, child.value))}
+                    />
+                    <span className="text-sm text-slate-700">{child.label}</span>
+                  </label>
+                ))}
+              </div>
+            ) : null}
+            <label className="flex items-center gap-2.5 cursor-pointer rounded-lg border border-slate-200 px-3 py-2.5 hover:bg-slate-50">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-blue-500"
+                checked={isRelationshipVendorParentOn(formUsageAreas)}
+                onChange={() => setFormUsageAreas((prev) => toggleRelationshipUsageParent(prev, 'tedarikci'))}
+              />
+              <span className="text-sm font-medium text-slate-800">Tedarikçi</span>
+            </label>
+            {isRelationshipVendorParentOn(formUsageAreas) ? (
+              <div className="ml-4 space-y-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                <p className="text-xs text-slate-500">Tedarikçi Statüsü. Boş bırakılırsa tüm tedarikçi kartlarında durur.</p>
+                {RELATIONSHIP_VENDOR_CHILDREN.map((child) => (
+                  <label key={child.value} className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-blue-500"
+                      checked={formUsageAreas.includes(child.value)}
+                      onChange={() => setFormUsageAreas((prev) => toggleRelationshipVendorChild(prev, child.value))}
+                    />
+                    <span className="text-sm text-slate-700">{child.label}</span>
+                  </label>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </SettingsModal>

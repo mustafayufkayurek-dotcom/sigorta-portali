@@ -21,6 +21,7 @@ import {
   ensureInsuranceCompanyIdForCustomer,
 } from './portal-customer-users';
 import {
+  isAssistanceFirmSubType,
   isPortalCustomerSubType,
   normalizePortalRoleCode,
   roleCodesForPortalCustomerSubType,
@@ -107,7 +108,7 @@ function isProtectedSystemAccount(user: { email?: string | null; archivedEmail?:
 
 const HASAR_EXPERT_CUSTOMER_SUB_TYPES = new Set(['eksper_firmasi', 'eksper']);
 const BROKER_CUSTOMER_SUB_TYPE = 'broker_firmasi';
-const ASSISTANT_CUSTOMER_SUB_TYPE = 'asistan_firmasi';
+const ASSISTANT_CUSTOMER_SUB_TYPES = ['asistan_firmasi', 'asistans_firmasi'] as const;
 
 type WelcomeOrgParams = {
   roleCode?: string | null;
@@ -669,7 +670,7 @@ export class UsersService {
     if (!assistantCustomerId) return undefined;
     const customer = await this.prisma.customer.findUnique({ where: { id: assistantCustomerId } });
     if (!customer || customer.status !== 'active') return undefined;
-    if (customer.entityType !== 'corporate' || customer.subType !== ASSISTANT_CUSTOMER_SUB_TYPE) {
+    if (customer.entityType !== 'corporate' || !isAssistanceFirmSubType(customer.subType)) {
       return undefined;
     }
     return (customer.companyName ?? customer.fullName ?? '').trim() || undefined;
@@ -757,7 +758,7 @@ export class UsersService {
         throw new BadRequestException('Geçerli bir asistans firması seçilmelidir');
       }
       for (const customer of customers) {
-        if (customer.status !== 'active' || customer.entityType !== 'corporate' || customer.subType !== ASSISTANT_CUSTOMER_SUB_TYPE) {
+        if (customer.status !== 'active' || customer.entityType !== 'corporate' || !isAssistanceFirmSubType(customer.subType)) {
           throw new BadRequestException('Seçilen kayıt asistans firması değil');
         }
       }
@@ -820,9 +821,10 @@ export class UsersService {
       return { id: { in: [] } };
     }
 
+    const officeIds = await this.portalTwinCustomerIds(customer);
     const or: Prisma.UserWhereInput[] = [
-      { portalCustomerId: customerId },
-      { userAssistantCustomerScopes: { some: { customerId } } },
+      { portalCustomerId: { in: officeIds } },
+      { userAssistantCustomerScopes: { some: { customerId: { in: officeIds } } } },
     ];
 
     const insuranceIds = await resolveInsuranceCompanyIdsForCustomer(this.prisma, customer);
@@ -840,6 +842,41 @@ export class UsersService {
     }
 
     return { OR: or };
+  }
+
+  private async portalTwinCustomerIds(customer: {
+    id: string;
+    subType?: string | null;
+    taxNumber?: string | null;
+    companyName?: string | null;
+    fullName?: string | null;
+  }): Promise<string[]> {
+    const family = isAssistanceFirmSubType(customer.subType)
+      ? [...ASSISTANT_CUSTOMER_SUB_TYPES]
+      : customer.subType === 'broker_firmasi'
+        ? ['broker_firmasi']
+        : customer.subType === 'eksper_firmasi' || customer.subType === 'eksper'
+          ? ['eksper_firmasi', 'eksper']
+          : null;
+    if (!family) return [customer.id];
+
+    const tax = String(customer.taxNumber ?? '').trim();
+    const name = (customer.companyName ?? customer.fullName ?? '').trim();
+    const or: Prisma.CustomerWhereInput[] = [];
+    if (tax) or.push({ taxNumber: tax });
+    if (name) or.push({ companyName: name });
+    if (or.length === 0) return [customer.id];
+
+    const twins = await this.prisma.customer.findMany({
+      where: {
+        status: 'active',
+        entityType: 'corporate',
+        subType: { in: family },
+        OR: or,
+      },
+      select: { id: true },
+    });
+    return [...new Set([customer.id, ...twins.map((row) => row.id)])];
   }
 
   async inviteFromCustomer(
@@ -878,7 +915,7 @@ export class UsersService {
     const subType = customer.subType ?? '';
     const expertCustomerId = (subType === 'eksper_firmasi' || subType === 'eksper') ? customer.id : undefined;
     const brokerCustomerId = subType === 'broker_firmasi' ? customer.id : undefined;
-    const assistantCustomerIds = subType === 'asistan_firmasi' ? [customer.id] : undefined;
+    const assistantCustomerIds = isAssistanceFirmSubType(subType) ? [customer.id] : undefined;
 
     const invited: Array<{
       email: string;
@@ -1963,7 +2000,7 @@ export class UsersService {
         where: {
           id: { in: normalizedIds },
           entityType: 'corporate',
-          subType: ASSISTANT_CUSTOMER_SUB_TYPE,
+          subType: { in: [...ASSISTANT_CUSTOMER_SUB_TYPES] },
           status: 'active',
         },
         select: { id: true },

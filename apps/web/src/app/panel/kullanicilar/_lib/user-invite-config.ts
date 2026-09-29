@@ -47,6 +47,46 @@ export function selectedPortalOfficeCustomerId(input: {
   return '';
 }
 
+export function splitOfficeContactName(name?: string | null): { firstName: string; lastName: string } {
+  const parts = String(name ?? '').trim().replace(/\s+/g, ' ').split(' ').filter(Boolean);
+  return { firstName: parts[0] ?? '', lastName: parts.slice(1).join(' ') };
+}
+
+export function mergeOfficeUsersWithContacts<T extends { id: string; email?: string | null }>(
+  users: T[],
+  contacts: Array<{
+    id?: string | null;
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    role?: string | null;
+  }>,
+): Array<T & { firstName?: string; lastName?: string; phone?: string | null; jobTitle?: string | null }> {
+  const seen = new Set(
+    users
+      .map((row) => String(row.email ?? '').trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const extra: Array<T & { firstName?: string; lastName?: string; phone?: string | null; jobTitle?: string | null }> = [];
+  (contacts ?? []).forEach((contact, index) => {
+    const { firstName, lastName } = splitOfficeContactName(contact.name);
+    if (!firstName) return;
+    const email = String(contact.email ?? '').trim();
+    const emailKey = email.toLowerCase();
+    if (emailKey && seen.has(emailKey)) return;
+    if (emailKey) seen.add(emailKey);
+    extra.push({
+      id: `contact:${String(contact.id ?? index)}`,
+      firstName,
+      lastName,
+      email,
+      phone: contact.phone ?? null,
+      jobTitle: String(contact.role ?? '').trim() || null,
+    } as T & { firstName?: string; lastName?: string; phone?: string | null; jobTitle?: string | null });
+  });
+  return [...users, ...extra];
+}
+
 /** Popup’ta ekspertiz / broker / asistans firması araması */
 export function filterOfficeFirmsByQuery(
   firms: Array<{ id: string; name: string }>,
@@ -357,7 +397,8 @@ export function acilYardimAssistantCustomerName(customer: AcilYardimAssistantCus
 export function isAcilYardimAssistantCustomer(customer: AcilYardimAssistantCustomerRecord) {
   if (customer.status && customer.status !== 'active') return false;
   if (customer.entityType && customer.entityType !== 'corporate') return false;
-  return customer.subType === ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE;
+  const subType = String(customer.subType ?? '').trim();
+  return subType === ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE || subType === 'asistans_firmasi';
 }
 
 /** Müşteriler → kurumsal → alt tip Eksper Firması (hasar ihbar cari) */

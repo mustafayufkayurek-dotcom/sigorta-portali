@@ -12,7 +12,7 @@ import { createHash, randomInt } from 'crypto';
 import { AuthTokens, RegisterDto, mergeAcilFileOwnerPermissions, roleRequiresLoginEmailCode, formatLoginEmailCodeForMail } from '@sigorta/shared';
 import { OperationalAccessGrantsService } from '../operational-access-grants/operational-access-grants.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
-import { buildTransactionalEmailHtml, formatSnPersonGreeting, isMeridyenStaffRole, organizationLineForMail } from '@/modules/notifications/email/email.template';
+import { buildTransactionalEmailHtml, formatSnPersonGreeting, isMeridyenStaffRole, organizationLineForMail, buildLoginApprovalCodeHtml } from '@/modules/notifications/email/email.template';
 
 function normalizeAuthEmail(email: string): string {
   return normalizeEmailAddress(email);
@@ -303,8 +303,8 @@ export class AuthService {
     const html = buildTransactionalEmailHtml({
       title: 'Giriş Onayı',
       greeting: formatSnPersonGreeting(user.firstName, user.lastName),
-      intro: 'Aşağıdaki sayıyı kopyalayıp giriş ekranında Yapıştır ile yazın. 10 dakika geçerlidir. Bu talebi siz oluşturmadıysanız yok sayın.',
-      bodyHtml: `<p style="margin:0 0 12px;font-size:28px;line-height:1.2;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;">Sayı ${mailNumber}</p>`,
+      intro: 'Aşağıdaki giriş kodunu kullanarak platforma giriş yapabilirsiniz.',
+      bodyHtml: buildLoginApprovalCodeHtml(mailNumber),
       portalUrl: buildAppPath(this.config, '/giris'),
     });
     const result = await this.email.sendEmail(
@@ -312,7 +312,7 @@ export class AuthService {
       'Giriş Onayı — Meridyen Assistance',
       html,
       {
-        text: `Giriş sayısı (10 dakika geçerli): ${mailNumber}\nSayıyı kopyalayıp giriş ekranına dönün.`,
+        text: `Giriş kodu (10 dakika geçerli): ${mailNumber}\nGiriş kodunu kopyalayıp giriş ekranına dönün.`,
         mailbox: 'HASAR',
         requestReadReceipt: false,
       },

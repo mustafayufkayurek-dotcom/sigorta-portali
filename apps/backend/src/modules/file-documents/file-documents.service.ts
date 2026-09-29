@@ -14,7 +14,7 @@ import {
 import { buildAppPath } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
-import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isHasarVendorContractWaived, ACIL_ADRES_HIZMET_TALEP_KIND, ACIL_SERVIS_ONAY_KIND, acilDigitalFormTitle, isAcilDigitalFormKind, evaluatePublicApprovalToken, publicApprovalTokenErrorMessage, PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE } from '@sigorta/shared';
+import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isHasarVendorContractWaived, ACIL_ADRES_HIZMET_TALEP_KIND, ACIL_SERVIS_ONAY_KIND, isAcilDigitalFormKind, resolveAcilInsuredName, buildDijitalOnayWhatsAppMessage, dijitalOnayWhatsAppKind, evaluatePublicApprovalToken, publicApprovalTokenErrorMessage, PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -382,6 +382,67 @@ export class FileDocumentsService {
     throw new BadRequestException('Geçersiz entityType');
   }
 
+  private async resolveDigitalApprovalWhatsAppContext(
+    entityType: string,
+    entityId: string,
+  ): Promise<{ insuredName: string; fileNo: string; ownerName: string; ownerPhone: string }> {
+    const ownerSelect = { firstName: true, lastName: true, phone: true } as const;
+    if (entityType === 'claim_file') {
+      const cf = await this.prisma.claimFile.findUnique({
+        where: { id: entityId },
+        select: {
+          fileNo: true,
+          insuredName: true,
+          customer: { select: { fullName: true, firstName: true, lastName: true } },
+          assignedOfficeUser: { select: ownerSelect },
+          currentResponsibleUser: { select: ownerSelect },
+        },
+      });
+      const insuredRaw =
+        cf?.insuredName
+        || cf?.customer?.fullName
+        || `${cf?.customer?.firstName ?? ''} ${cf?.customer?.lastName ?? ''}`.trim();
+      const owner = cf?.assignedOfficeUser ?? cf?.currentResponsibleUser;
+      return {
+        insuredName: toTitleCaseTR(insuredRaw) || '',
+        fileNo: cf?.fileNo ?? '',
+        ownerName: toTitleCaseTR(`${owner?.firstName ?? ''} ${owner?.lastName ?? ''}`.trim()) || '',
+        ownerPhone: owner?.phone ?? '',
+      };
+    }
+    if (entityType === 'emergency_case') {
+      const ec = await this.prisma.emergencyCase.findUnique({
+        where: { id: entityId },
+        select: {
+          fileNo: true,
+          caseNo: true,
+          customerName: true,
+          notes: true,
+          customer: { select: { companyName: true, fullName: true, shortName: true } },
+          assignedUser: { select: ownerSelect },
+        },
+      });
+      const insuredRaw =
+        resolveAcilInsuredName({
+          personField: ec?.customerName,
+          notes: ec?.notes,
+          firmNames: [
+            ec?.customer?.companyName,
+            ec?.customer?.fullName,
+            ec?.customer?.shortName,
+          ],
+        }) || ec?.customerName || '';
+      const owner = ec?.assignedUser;
+      return {
+        insuredName: toTitleCaseTR(insuredRaw) || '',
+        fileNo: (ec?.fileNo || ec?.caseNo || '').trim(),
+        ownerName: toTitleCaseTR(`${owner?.firstName ?? ''} ${owner?.lastName ?? ''}`.trim()) || '',
+        ownerPhone: owner?.phone ?? '',
+      };
+    }
+    return { insuredName: '', fileNo: '', ownerName: '', ownerPhone: '' };
+  }
+
   /** Dijital onay WhatsApp — dosyadaki sigortalı / müşteri telefonu */
   async resolveInsuredPhone(entityType: string, entityId: string): Promise<string> {
     if (entityType === 'claim_file') {
@@ -525,14 +586,15 @@ export class FileDocumentsService {
     }
 
     const link = buildAppPath(this.config, `/evrak/${doc.publicToken}`);
-
-    const kindLabel =
-      doc.documentKind === 'muvafakatname' ? 'Muvafakatname' : acilDigitalFormTitle(doc.documentKind);
-
-    const message =
-      isAcilDigitalFormKind(doc.documentKind)
-        ? `Meridyen Assistance ${kindLabel}. Yazıcı gerekmez. Aşağıdaki linki telefondan açıp Onayla’ya basın:\n\n${link}\n\nMeridyen Assistance`
-        : `Meridyen Assistance tarafından düzenlenen ${kindLabel} belgesini aşağıdaki linkten inceleyebilir ve onaylayabilirsiniz:\n\n${link}\n\nMeridyen Assistance`;
+    const ctx = await this.resolveDigitalApprovalWhatsAppContext(doc.entityType, doc.entityId);
+    const message = buildDijitalOnayWhatsAppMessage({
+      kind: dijitalOnayWhatsAppKind(doc.documentKind),
+      insuredName: ctx.insuredName,
+      fileNo: ctx.fileNo,
+      approvalUrl: link,
+      ownerName: ctx.ownerName,
+      ownerPhone: ctx.ownerPhone,
+    });
     const waUrl = buildWhatsAppMeUrl(phone, message);
     if (!waUrl) {
       throw new BadRequestException('Geçerli bir WhatsApp telefon numarası giriniz');

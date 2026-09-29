@@ -16,6 +16,7 @@ import {
   isInvitePersonBlank,
   isCompleteOfficePersonPhone,
   officePersonPhone,
+  mergeOfficeUsersWithContacts,
   officePersonToFormFields,
   resolveOfficePersonPhone,
   selectedPortalOfficeCustomerId,
@@ -66,6 +67,8 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.match(page, /eksper-ofisi-personel-listesi/);
     assert.match(page, /Bu ofiste kayıtlı personel/);
     assert.match(page, /selectOfficePerson/);
+    assert.match(page, /mergeOfficeUsersWithContacts/);
+    assert.match(page, /mergePrimaryIntoCustomerContacts/);
     assert.match(page, /Telefon zorunludur/);
     assert.match(page, /label="Telefon"/);
     assert.match(page, /officePersonToFormFields/);
@@ -117,6 +120,21 @@ describe('müşteri firması çoklu davet LOCK', () => {
       'as-1',
     );
     assert.equal(selectedPortalOfficeCustomerId({ userTask: 'operations', expertCustomerId: 'ofis-1' }), '');
+  });
+
+  it('karttaki yetkili kişiler ofis listesinde durur; aynı e-posta ikinci kez yazılmaz', () => {
+    const merged = mergeOfficeUsersWithContacts(
+      [{ id: 'u-1', email: 'ayse@remed.com', firstName: 'Ayşe' }],
+      [
+        { id: 'c-1', name: 'Ayşe Yılmaz', email: 'ayse@remed.com' },
+        { id: 'c-2', name: 'Mehmet Demir', email: 'mehmet@remed.com', phone: '5321334144', role: 'Operasyon' },
+      ],
+    );
+    assert.equal(merged.length, 2);
+    assert.equal(merged[1]?.id, 'contact:c-2');
+    assert.equal(merged[1]?.firstName, 'Mehmet');
+    assert.equal(merged[1]?.lastName, 'Demir');
+    assert.equal(merged[1]?.jobTitle, 'Operasyon');
   });
 
   it('ekspertiz firması popup’ta ada göre süzülür', () => {

@@ -38,6 +38,8 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 19. Saha yalnız atandığı Hasar veya Acil dosyanın evrak ve fotoğrafını açar. Depodan yetkisiz indirme sessizce durur.
 20. Acil finans yalnız yönetici veya yetkili finans hesabına açıktır. Ofis başka dosyanın ödemesini veya dekontunu açamaz. Aynı Hasar dosyası ve tedarikçide aynı iş grubu ikinci hakediş açmaz. Ödenmiş kayıt izsiz değişmez.
 21. Hasar Tam görünümde satış ve maliyet dururken Onaya Gönder raporu kesmez.
+22. Kullanıcı Ekle’de asistans / eksper / broker firması seçilince karttaki kişiler listede durur. Yetkili kişi kendiliğinden giriş almaz.
+23. Dijital onay WhatsApp: sigortalı adı, dosya numarası, olağan prosedür, onay sayfası (meridyen-tr.com), dosya sorumlusu cep. Muvafakatname ve Onayla’ya basın yazılmaz.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

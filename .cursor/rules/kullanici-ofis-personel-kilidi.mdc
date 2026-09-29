@@ -1,0 +1,36 @@
+---
+description: Firma seçilince karttaki kişiler Kullanıcı Ekle listesinde durur
+alwaysApply: true
+---
+
+# Kullanıcı Ofis Personeli Kilidi
+
+**Kaynak (Mustafa · 29.09.2026):** Remed kartında kişiler duruyordu. Kullanıcı Ekle’de «Bu ofiste henüz personel yok» yazıyordu.
+
+**Temel cümle:** Firma seçilince karttaki kişiler **listede durur.** Yetkili kişi kendiliğinden giriş almaz.
+
+## Zorunlu
+
+1. Kullanıcı Ekle’de eksper / broker / asistans ofisi seçilince kartın Yetkili Kişileri ofis listesine yazılır (`mergeOfficeUsersWithContacts` + `mergePrimaryIntoCustomerContacts`).
+2. Aynı vergi no veya aynı unvanlı ikinci karttaki portal kullanıcı da listelenir (`portalTwinCustomerIds`).
+3. Asistans kartı `asistan_firmasi` ve `asistans_firmasi` aynı kapıdadır.
+4. Panele giriş yine **Kullanıcı Ekle** veya karttaki **Firma kullanıcıları** davetiyledir.
+
+## Yasak (açık onay yoksa)
+
+- Listeyi yalnız kayıtlı giriş hesabına bırakıp karttaki kişiyi gizlemek
+- Yetkili kişiye sessizce giriş açmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Firma seçilince karttaki kişi yine yoksa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/web/src/app/panel/kullanicilar/_lib/user-invite-config.lock.spec.ts \
+ apps/backend/src/modules/users/portal-customer-users.lock.spec.ts
+bash scripts/smoke-liste-gorunum.sh
+```

@@ -51,6 +51,7 @@ node --experimental-strip-types --test \
   packages/shared/src/file-recognized-partners.lock.spec.ts \
   packages/shared/src/inbox-recipient-card.lock.spec.ts \
   apps/backend/src/modules/users/portal-customer-users.lock.spec.ts \
+  apps/web/src/app/panel/kullanicilar/_lib/user-invite-config.lock.spec.ts \
   packages/shared/src/login-email-code.lock.spec.ts \
   apps/backend/src/modules/auth/login-email-code.lock.spec.ts \
   apps/web/src/components/giris/giris-login-email-code.lock.spec.ts \
@@ -78,6 +79,7 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/claim-files/approval-72h.lock.spec.ts \
   packages/shared/src/acil-vendor-whatsapp.lock.spec.ts \
   apps/web/src/utils/claim-whatsapp-message.lock.spec.ts \
+  packages/shared/src/dijital-onay-whatsapp-message.lock.spec.ts \
   apps/web/src/utils/invoice-request-list.lock.spec.ts \
   apps/web/src/utils/relationship-type-usage.lock.spec.ts \
   packages/shared/src/customer-contacts-merge.lock.spec.ts \

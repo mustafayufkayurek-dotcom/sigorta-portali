@@ -58,7 +58,7 @@ const DEFAULT_UNIT_OPTIONS = ['m²', 'adet', 'metre', 'saat', 'kg', 'ton'];
 export interface RelationshipType {
   label: string;
   active: boolean;
-  usageAreas?: ('musteri' | 'eksper' | 'tedarikci' | 'dosya')[];
+  usageAreas?: ('musteri' | 'eksper' | 'sigorta_sirketi' | 'asistan_firmasi' | 'private_customer' | 'tedarikci' | 'acil' | 'hasar' | 'dosya')[];
 }
 
 const DEFAULT_RELATIONSHIP_TYPES: RelationshipType[] = [

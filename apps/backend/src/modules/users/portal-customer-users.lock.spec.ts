@@ -20,6 +20,7 @@ describe('müşteri kartı portal kullanıcısı LOCK', () => {
     assert.equal(isPortalCustomerSubType('eksper_firmasi'), true);
     assert.equal(isPortalCustomerSubType('broker_firmasi'), true);
     assert.equal(isPortalCustomerSubType('asistan_firmasi'), true);
+    assert.equal(isPortalCustomerSubType('asistans_firmasi'), true);
     assert.equal(isPortalCustomerSubType('insured'), false);
     assert.equal(isPortalCustomerSubType('private_customer'), false);
   });
@@ -29,6 +30,7 @@ describe('müşteri kartı portal kullanıcısı LOCK', () => {
     assert.deepEqual(roleCodesForPortalCustomerSubType('sigorta_sirketi'), ['insurance_company_user']);
     assert.deepEqual(roleCodesForPortalCustomerSubType('broker_firmasi'), ['broker_user', 'broker']);
     assert.deepEqual(roleCodesForPortalCustomerSubType('asistan_firmasi'), ['assistance_company_user']);
+    assert.deepEqual(roleCodesForPortalCustomerSubType('asistans_firmasi'), ['assistance_company_user']);
   });
 
   it('çoklu davet müşteri kartındadır; Kullanıcılar ofisteki personeli listeler', () => {
@@ -44,6 +46,8 @@ describe('müşteri kartı portal kullanıcısı LOCK', () => {
     assert.doesNotMatch(usersPage, /name="insurance-company-user-company"/);
     const service = readFileSync(join(here, 'users.service.ts'), 'utf8');
     assert.match(service, /listedUserPhone/);
+    assert.match(service, /portalTwinCustomerIds/);
+    assert.match(service, /isAssistanceFirmSubType/);
     assert.match(service, /görev ve telefon yazılmalıdır/);
     assert.match(service, /adjuster\?\.phone/);
     assert.doesNotMatch(usersPage, /Aynı müşteri firmasına birden fazla kişiyi göreviyle ekleyin/);

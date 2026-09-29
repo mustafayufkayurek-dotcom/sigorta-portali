@@ -336,6 +336,8 @@ export class CustomersService {
             ],
           },
         ];
+      } else if (params.subType === 'asistan_firmasi') {
+        (where as any).subType = { in: ['asistan_firmasi', 'asistans_firmasi'] };
       } else {
         (where as any).subType = params.subType;
       }

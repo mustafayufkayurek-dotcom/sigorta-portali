@@ -14,6 +14,7 @@ describe('giriş kodu kutuya dolsun LOCK', () => {
     assert.equal(extractLoginEmailCode('Giriş kodunuz (10 dakika geçerli): 847291'), '847291');
     assert.equal(extractLoginEmailCode('Kod 847291'), '847291');
     assert.equal(extractLoginEmailCode('Sayı 8 4 7 2 9 1'), '847291');
+    assert.equal(extractLoginEmailCode('Giriş Kodu 8 4 7 2 9 1'), '847291');
     assert.equal(extractLoginEmailCode('Giriş sayısı (10 dakika geçerli): 8 4 7 2 9 1'), '847291');
     assert.equal(
       extractLoginEmailCode(
