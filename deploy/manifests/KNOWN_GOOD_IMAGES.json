@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-09-29",
-  "label": "v635-sigorta-portal-musteri-yuzu",
-  "description": "Full v635: sigorta müşteri yüzü Canlı Destek bant, tek satır yazı, ofis paneline düşmez. Geri alma web v634 / backend v634.",
+  "updatedAt": "2026-09-30",
+  "label": "v636-sigorta-gecmis-adres-asistans",
+  "description": "Full v636: sigorta Geçmiş, mail kopyala, açık adres, Sigortalı, Asistans Firma. Geri alma web v635 / backend v635.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v635-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v635-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v636-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v636-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v634-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v634-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v635-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v635-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

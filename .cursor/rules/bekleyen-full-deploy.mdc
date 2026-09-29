@@ -1,11 +1,11 @@
 ---
-description: Canlı web v635 / backend v635
+description: Canlı web v636 / backend v636
 alwaysApply: true
 ---
 
-# Canlı (29.09.2026)
+# Canlı (30.09.2026)
 
-Canlı: web **v635** · backend **v635**. Geri alma: web **v634** / backend **v634**.
+Canlı: web **v636** · backend **v636**. Geri alma: web **v635** / backend **v635**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v636 (full):** Sigorta Dosyalar ve Faturalar’da Geçmiş, Onaylar’daki gibi Operasyon Geçmişi’ni açar. Giriş onay mailinde kopyala yazılım sayfası açmaz. Müşteri kartında açık adres mahalle/cadde ile üst üste binmez; tekrarlı satır bir kez durur. İlişki türünde müşteri altına Sigortalı durur. Kullanıcı Ekle’de Ayarlar’daki Asistans Firma rolü görevle eşleşir. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v635 / backend v635.
 
 **v635 (full):** Sigorta / eksper / asistans müşteri yüzü. Canlı Destek mavi bantın üstüne binmez. Bant yazısı tek satırda durur. «Meridyen Hakkında Daha Fazla» ve sayfa konumu ofis Operasyon Merkezi’ne gitmez; «yetkiniz yok» çıkmaz. Sigorta ana sayfasına veya kendi portalına döner. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v634 / backend v634.
 
@@ -145,6 +147,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Paket (lokal, canlı değil):** Sigorta Dosyalar ve Faturalar’da Geçmiş, Onaylar’daki gibi Operasyon Geçmişi’ni açar. Giriş onay mailinde kopyala ikonu yazılım sayfası açmaz. Müşteri kartında açık adres mahalle/cadde ile üst üste binmez; tekrarlı satır bir kez durur. İlişki türünde müşteri altına Sigortalı durur. Kullanıcı Ekle’de Ayarlar’daki Asistans Firma rolü görevle eşleşir.
+(boş)
 
-Canlı **v635**.
+Canlı **v636**.

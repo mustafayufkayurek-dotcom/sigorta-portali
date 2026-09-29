@@ -2,24 +2,34 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 29 Eylül 2026
+**Son güncelleme:** 30 Eylül 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (29 Eylül 2026 — web v635 / backend v635)
+## Canlı durum (30 Eylül 2026 — web v636 / backend v636)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v635-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v635-amd64` | canlı |
-| **Rollback** | Web **v634** / Backend **v634** | manifest `rollbackImages` |
-| **Etiket** | `v635-sigorta-portal-musteri-yuzu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v636-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v636-amd64` | canlı |
+| **Rollback** | Web **v635** / Backend **v635** | manifest `rollbackImages` |
+| **Etiket** | `v636-sigorta-gecmis-adres-asistans` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v636 — Full (30 Eylül 2026) — Sigorta geçmiş, adres, asistans
+
+- Sigorta Dosyalar ve Faturalar’da Geçmiş Operasyon Geçmişi’ni açar; notlar çekmecesi değildir
+- Giriş onay mailinde kopyala yazılım sayfası açmaz
+- Müşteri açık adresi mahalle/cadde ile üst üste binmez
+- İlişki türünde müşteri altına Sigortalı; Kullanıcı Ekle’de Asistans Firma görevi eşleşir
+- Disk 26 GB; DB yedeği gzip 69M (`/var/backups/meridyen/pre_v636-sigorta-gecmis-adres-asistans_20260930_005546.sql.gz`); uploads `/opt/app/backups/uploads/uploads_20260930_005628.tar.gz`; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v635** / backend **v635**
 
 ### v635 — Full (29 Eylül 2026) — Sigorta müşteri yüzü
 
