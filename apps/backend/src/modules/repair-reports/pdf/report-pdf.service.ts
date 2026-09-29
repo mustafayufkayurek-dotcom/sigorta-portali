@@ -18,12 +18,21 @@ import {
   chunkPhotoRows,
   showPdfSplitCategoryTotals,
 } from './report-pdf-fields';
-import { isRepairReportPdfDraft, repairItemSalesTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
+import {
+  groupRepairPdfItems,
+  isRepairReportPdfDraft,
+  itemMatchesRepairDamageType,
+  pdfGroupTotalLabel,
+  repairItemSalesTotal,
+  repairItemResolvedSupplierTotal,
+  repairPdfItemGroupKind,
+} from '@sigorta/shared';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
 
 interface ReportItem {
   workGroup?: { name: string; id?: string } | null;
-  damageType?: { damageTypeName: string } | null;
+  damageTypeId?: string | null;
+  damageType?: { id?: string; damageTypeName: string } | null;
   location?: string | null;
   metrajData?: { detectionScope?: string | null } | Record<string, unknown> | null;
   jobDescription: string;
@@ -141,13 +150,6 @@ function fmtDateTime(d: Date | string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-/** Örn. Boya → Boya İşleri Toplamı */
-function workGroupJobsTotalLabel(groupName: string): string {
-  const name = (groupName || 'Diğer').trim().replace(/\s*iş grubu$/i, '').trim() || 'Diğer';
-  if (/işleri$/i.test(name)) return `${name} Toplamı`;
-  return `${name} İşleri Toplamı`;
 }
 
 /** Mahal/Bölge kolonunu eksiksiz göster (location + varsa tespit alanı) */
@@ -445,18 +447,15 @@ export class ReportPdfService {
     const demirbasTotal = demirbasItems.reduce((s, i) => s + itemSalesTotal(i), 0);
 
     let rowIndex = 0;
-    const appendWorkGroupRows = (items: ReportItem[]): string => {
-      const grouped = new Map<string, ReportItem[]>();
-      for (const item of items) {
-        const key = item.workGroup?.name ?? 'Diğer';
-        if (!grouped.has(key)) grouped.set(key, []);
-        grouped.get(key)!.push(item);
-      }
+    const pdfGroupKind = repairPdfItemGroupKind(report.reportType, report.damageTypes?.length ?? 0);
+    const appendGroupedRows = (items: ReportItem[]): string => {
+      const grouped = groupRepairPdfItems(items, report.reportType, report.damageTypes ?? []);
 
       let html = '';
-      for (const [groupName, groupItems] of grouped) {
+      for (const group of grouped) {
+        const groupItems = group.items;
         const groupSalesTotal = groupItems.reduce((s, i) => s + itemSalesTotal(i), 0);
-        // İş grubu ara başlık satırı yok — yalnız kalemler + … İşleri Toplamı
+        // Ara başlık satırı yok — yalnız kalemler + hasar nedeni / iş grubu toplamı
 
         for (const item of groupItems) {
           const zebra = rowIndex % 2 === 0 ? 'row-even' : 'row-odd';
@@ -471,7 +470,7 @@ export class ReportPdfService {
             ? '<span class="cat-dot cat-dot-esya">&#9679;</span>'
             : '<span class="cat-dot cat-dot-bina">&#9679;</span>';
           const mahalBolge = formatMahalBolge(item);
-          const wgCell = (item.workGroup?.name ?? groupName).trim() || 'Diğer';
+          const wgCell = (item.workGroup?.name ?? group.label).trim() || 'Diğer';
           const causeCell = (item.damageType?.damageTypeName ?? '').trim() || '—';
 
           if (viewType === 'internal') {
@@ -510,7 +509,7 @@ export class ReportPdfService {
 
         html += `
         <tr class="group-total-row">
-          <td colspan="${subtotalColSpan}" class="text-right subtotal-label">${escHtml(workGroupJobsTotalLabel(groupName))}</td>
+          <td colspan="${subtotalColSpan}" class="text-right subtotal-label">${escHtml(pdfGroupTotalLabel(group.label, pdfGroupKind))}</td>
           <td class="text-right subtotal-amount">${fmtCurrency(groupSalesTotal)}</td>
         </tr>`;
       }
@@ -522,7 +521,7 @@ export class ReportPdfService {
       items: ReportItem[],
     ): string => {
       if (items.length === 0) return '';
-      return appendWorkGroupRows(items);
+      return appendGroupedRows(items);
     };
 
     const itemsHtml =
@@ -621,7 +620,7 @@ export class ReportPdfService {
   </thead>
   <tbody>
     ${(report.damageTypes ?? []).map((dt) => {
-      const dtItems = (report.items ?? []).filter((i) => i.damageType?.damageTypeName === dt.damageTypeName);
+      const dtItems = (report.items ?? []).filter((i) => itemMatchesRepairDamageType(i, dt));
       const dtSales = dtItems.reduce((s, i) => s + itemSalesTotal(i), 0);
       const dtSupplier = dtItems.reduce((s, i) => s + itemSupplierTotal(i), 0);
       const dtMargin = dtSales > 0 ? ((dtSales - dtSupplier) / dtSales) * 100 : 0;

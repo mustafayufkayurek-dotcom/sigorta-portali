@@ -96,6 +96,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'portal-customer-users.lock.spec',
       'user-invite-config.lock.spec',
       'inbox-assignable-users.lock.spec',
+      'repair-report-pdf-groups.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

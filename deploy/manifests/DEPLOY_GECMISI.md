@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (29 Eylül 2026 — web v632 / backend v632)
+## Canlı durum (29 Eylül 2026 — web v633 / backend v633)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v632-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v632-amd64` | canlı |
-| **Rollback** | Web **v631** / Backend **v631** | manifest `rollbackImages` |
-| **Etiket** | `v632-gelen-kutu-kendime-al` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v633-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v633-amd64` | canlı |
+| **Rollback** | Web **v632** / Backend **v632** | manifest `rollbackImages` |
+| **Etiket** | `v633-hasar-pdf-neden-toplami` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v633 — Full (29 Eylül 2026) — Çoklu hasar PDF hasar nedeni toplamı
+
+- Çoklu hasarda PDF ara toplamı Dahili Su / Fırtına gibi hasar nedenine göredir
+- Boya / Mobilya İşleri ara toplamı basılmaz
+- Hasar Nedeni Bazlı Özet kalemi kimlikten eşler
+- Disk; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Geri alma web **v632** / backend **v632**
 
 ### v632 — Full (29 Eylül 2026) — Gelen kutu Kendime Al
 

@@ -104,6 +104,7 @@ node --experimental-strip-types --test \
   packages/shared/src/acil-assistance-silence.lock.spec.ts \
   apps/web/src/app/panel/crm/crm-eksper-sessizlik.lock.spec.ts \
   apps/web/src/components/ui/panel-flow-trail.lock.spec.ts \
-  packages/shared/src/inbox-assignable-users.lock.spec.ts
+  packages/shared/src/inbox-assignable-users.lock.spec.ts \
+  packages/shared/src/repair-report-pdf-groups.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

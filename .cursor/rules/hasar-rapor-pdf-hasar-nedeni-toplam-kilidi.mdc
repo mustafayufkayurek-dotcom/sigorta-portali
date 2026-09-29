@@ -1,0 +1,36 @@
+---
+description: Çoklu hasar onarım PDF — ara toplam hasar nedenine göredir
+alwaysApply: true
+---
+
+# Hasar Raporu PDF — Hasar Nedeni Toplamı Kilidi
+
+**Kaynak (Mustafa · 29.09.2026):** Mehmet Büyüktopçu 10260016574. PDF yine Boya/Mobilya «İşleri Toplamı» basıyordu. Hasar nedeni özeti boş kalıyordu.
+
+**Temel cümle:** Çoklu hasarda PDF ara toplamı **hasar nedeninedir.** İş grubuna göre toplanmaz.
+
+## Zorunlu
+
+1. `reportType === 'multi'` iken `groupRepairPdfItems` hasar nedeni kovası kullanır (`Dahili Su Toplamı`, `Fırtına Toplamı`).
+2. Tek hasarda ara toplam iş grubunda kalır (`Boya İşleri Toplamı`).
+3. Hasar Nedeni Bazlı Özet kalemi `itemMatchesRepairDamageType` ile kimlikten eşler; yalnız ada bakılmaz.
+4. «Boya İşleri İşleri Toplamı» basılmaz.
+
+## Yasak (açık onay yoksa)
+
+- Çoklu hasarda `workGroup.name` ile ara toplam
+- Özeti yalnız `damageTypeName ===` ile doldurmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+PDF yine iş grubu toplamı basarsa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/repair-report-pdf-groups.lock.spec.ts \
+ apps/backend/src/modules/repair-reports/pdf/report-pdf-layout.lock.spec.ts
+pnpm smoke:hasar-rapor-revizyon
+```

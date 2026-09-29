@@ -32,6 +32,14 @@ describe('onarım raporu PDF düzen LOCK', () => {
     assert.match(pdfSrc, /item\.damageType\?\.damageTypeName/);
   });
 
+  it('çoklu hasarda ara toplam hasar nedenine göredir', () => {
+    assert.match(pdfSrc, /groupRepairPdfItems/);
+    assert.match(pdfSrc, /pdfGroupTotalLabel/);
+    assert.match(pdfSrc, /itemMatchesRepairDamageType/);
+    assert.doesNotMatch(pdfSrc, /const key = item\.workGroup\?\.name/);
+    assert.doesNotMatch(pdfSrc, /i\.damageType\?\.damageTypeName === dt\.damageTypeName/);
+  });
+
   it('grup toplamında rakam da italik durur', () => {
     assert.match(pdfSrc, /\.subtotal-amount \{[^}]*font-style: italic/);
   });
