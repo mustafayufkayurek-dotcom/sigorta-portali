@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateRoleDto {
@@ -7,11 +7,10 @@ export class CreateRoleDto {
   @IsNotEmpty()
   name!: string;
 
-  @ApiProperty()
+  @ApiProperty({ enum: ['meridyen', 'dis'] })
   @IsString()
-  @IsNotEmpty()
-  @Matches(/^[A-Z_]+$/, { message: 'Kod yalnızca büyük harf ve alt çizgi içerebilir' })
-  code!: string;
+  @IsIn(['meridyen', 'dis'])
+  accountFamily!: 'meridyen' | 'dis';
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -216,12 +216,16 @@ describe('buildLoginApprovalCodeHtml', () => {
       title: 'Giriş Onayı',
       greeting: 'Sn. Mustafa Yufkayürek,',
       intro: 'Aşağıdaki giriş kodunu kullanarak platforma giriş yapabilirsiniz.',
-      bodyHtml: buildLoginApprovalCodeHtml('2 8 1 3 9 8'),
+      bodyHtml: buildLoginApprovalCodeHtml(
+        '2 8 1 3 9 8',
+        'https://app.meridyen-tr.com/giris/kopyala?kod=281398',
+      ),
     });
     expect(html).toContain('Giriş Kodu');
     expect(html).toContain('2 8 1 3 9 8');
     expect(html).toContain('font-size:28px');
     expect(html).toContain('title="Kopyala"');
+    expect(html).toContain('/giris/kopyala?kod=281398');
     expect(html).toContain('width="120"');
     expect(html).toContain('Giriş Onayı');
     expect(html).not.toContain('Sayı 2 8 1 3 9 8');

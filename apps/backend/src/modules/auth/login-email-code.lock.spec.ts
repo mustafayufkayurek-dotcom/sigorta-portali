@@ -24,7 +24,7 @@ describe('giriş e-posta kodu kaynak LOCK', () => {
     assert.match(auth, /owner\.status !== 'active'/);
     assert.match(auth, /Aşağıdaki giriş kodunu kullanarak platforma giriş yapabilirsiniz/);
     assert.match(auth, /formatLoginEmailCodeForMail/);
-    assert.match(auth, /buildLoginApprovalCodeHtml\(mailNumber\)/);
+    assert.match(auth, /buildLoginApprovalCodeHtml\(mailNumber, copyHref\)/);
     assert.doesNotMatch(auth, /Sayı \$\{mailNumber\}/);
     assert.match(auth, /Giriş Onayı — Meridyen Assistance/);
     assert.doesNotMatch(auth, /Kod \$\{code\}/);
@@ -35,10 +35,12 @@ describe('giriş e-posta kodu kaynak LOCK', () => {
     assert.doesNotMatch(auth, /letter-spacing:0\.18em/);
     assert.doesNotMatch(auth, /\|\| 'login-email-code'/);
     assert.match(auth, /Giriş kodu anahtarı yok/);
+    assert.match(auth, /\/giris\/kopyala/);
     const template = readFileSync(join(here, '../notifications/email/email.template.ts'), 'utf8');
     assert.match(template, /export function buildLoginApprovalCodeHtml/);
     assert.match(template, /Giriş Kodu/);
     assert.match(template, /title="Kopyala"/);
+    assert.match(template, /copyHref/);
     assert.doesNotMatch(template, /Sayı \$\{escapeHtml\(spaced\)\}/);
     assert.doesNotMatch(template, /Kod \$\{/);
   });

@@ -77,5 +77,20 @@ export function roleReceivesAttendanceReminders(roleCode?: string | null): boole
 export function roleCanBeAddedAsPersonnel(roleCode?: string | null): boolean {
   const r = (roleCode ?? '').trim().toUpperCase();
   if (!r || isCustomerOrVendorRole(r)) return false;
-  return PERSONNEL_ADD_ROLES.has(r);
+  if (PERSONNEL_ADD_ROLES.has(r)) return true;
+  if (r.startsWith('DIS_')) return false;
+  return r.startsWith('MER_');
+}
+
+/** Arşivlenmiş hesap. Outlook teslim etmez. */
+export function isRetiredPersonnelMailbox(email?: string | null): boolean {
+  const folded = String(email ?? '').trim().toLowerCase();
+  if (!folded.includes('@')) return false;
+  if (folded.endsWith('@deleted.meridyen.local')) return true;
+  return folded.startsWith('archived+') && folded.includes('@deleted.');
+}
+
+export function isClosedPersonnelAccount(status?: string | null): boolean {
+  const s = String(status ?? '').trim().toLowerCase();
+  return s === 'archived' || s === 'inactive' || s === 'passive' || s === 'pasif';
 }

@@ -118,6 +118,7 @@ export function PersonelEklePanel({
   const [bloodType, setBloodType] = useState('');
   const [saving, setSaving] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  const [nextSicil, setNextSicil] = useState('');
 
   const isUpdate = useMemo(
     () => employees.some((e) => e.userId === userId),
@@ -140,7 +141,7 @@ export function PersonelEklePanel({
   }, [hireDate]);
 
   const resetContactFields = () => {
-    setPersonnelNo('');
+    setPersonnelNo(nextSicil);
     setIdentityNo('');
     setBirthDate('');
     setPersonalGsm('');
@@ -190,19 +191,35 @@ export function PersonelEklePanel({
     let alive = true;
     (async () => {
       try {
-        const [cand, emp, roleList] = await Promise.all([
+        const [cand, emp] = await Promise.all([
           apiClient.get<CandidateUser[]>('hr/employees/candidates'),
           apiClient.get<EmployeeRow[]>('hr/employees'),
-          apiClient.get<RoleOption[]>('hr/employees/roles'),
         ]);
         if (!alive) return;
         setCandidates(Array.isArray(cand) ? cand : []);
         setEmployees(Array.isArray(emp) ? emp : []);
-        setRoles(Array.isArray(roleList) ? roleList : []);
       } catch (e) {
         showToast(
           'error',
           e instanceof Error ? e.message : 'Personel listesi alınamadı',
+        );
+      }
+      try {
+        const [roleList, nextNo] = await Promise.all([
+          apiClient.get<RoleOption[]>('hr/employees/roles'),
+          apiClient.get<string>('hr/employees/next-personnel-no'),
+        ]);
+        if (!alive) return;
+        setRoles(Array.isArray(roleList) ? roleList : []);
+        if (!initialUserId) {
+          const allocated = typeof nextNo === 'string' ? nextNo : String(nextNo ?? '');
+          setNextSicil(allocated);
+          setPersonnelNo(allocated);
+        }
+      } catch (e) {
+        showToast(
+          'error',
+          e instanceof Error ? e.message : 'Görev listesi alınamadı',
         );
       }
     })();
@@ -266,10 +283,6 @@ export function PersonelEklePanel({
     }
     if (!roleId) {
       showToast('warning', 'Görevi Seçin');
-      return;
-    }
-    if (!personnelNo.trim()) {
-      showToast('warning', 'Sicil No Zorunludur');
       return;
     }
     const tc = identityNo.replace(/\D/g, '');
@@ -390,24 +403,24 @@ export function PersonelEklePanel({
           const title = selected ? `${selected.firstName} ${selected.lastName}`.trim() : '';
           const extra = [personnelNo.trim() ? `Sicil ${personnelNo.trim()}` : '', personalGsm.trim() || companyGsm.trim()].filter(Boolean).join(' · ');
           return (
-        <div className="flex items-start justify-between gap-3 border-b border-emerald-500/30 bg-gradient-to-r from-emerald-600 to-emerald-700 px-5 py-4" data-testid="personel-form-kimlik-bandi">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4" data-testid="personel-form-kimlik-bandi">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-              <UserPlus className="h-5 w-5 text-white" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50">
+              <UserPlus className="h-5 w-5 text-brand-600" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">
+              <p className="truncate text-sm font-semibold text-slate-800">
                 {title || (isUpdate ? 'Personel Kartını Güncelle' : 'Personel Ekle')}
               </p>
-              <p className="mt-0.5 truncate text-xs text-emerald-100">
-                {title ? [roleName, extra].filter(Boolean).join(' · ') || 'Operasyonel özlük kartı' : 'Operasyonel özlük kartı'}
+              <p className="mt-0.5 truncate text-xs text-slate-500">
+                {title ? [roleName, extra].filter(Boolean).join(' · ') || 'Özlük kartı' : 'Özlük kartı'}
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-white/20 p-2 text-emerald-100 hover:bg-white/10"
+            className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
           >
             <X className="h-4 w-4" />
           </button>
@@ -453,6 +466,11 @@ export function PersonelEklePanel({
                   </option>
                 ))}
               </select>
+              {filteredCandidates.length === 0 ? (
+                <p className="mt-1 text-[11px] text-content-tertiary">
+                  Listede kullanıcı yok. Önce Kullanıcılar’dan hesap açın.
+                </p>
+              ) : null}
             </div>
 
             <div>
@@ -494,14 +512,13 @@ export function PersonelEklePanel({
                 Sicil No
               </label>
               <input
-                className={fieldClass}
+                className={`${fieldClass} bg-slate-50`}
                 value={personnelNo}
-                onChange={(e) => setPersonnelNo(e.target.value)}
-                placeholder="Zorunlu"
-                required
-                aria-required
+                readOnly
+                aria-readonly
                 aria-label="Sicil No"
               />
+              <p className="mt-1 text-[11px] text-content-tertiary">Sicil numarası otomatik üretilir.</p>
             </div>
 
             <div>
@@ -618,36 +635,23 @@ export function PersonelEklePanel({
           </div>
         </div>
 
-        <div className="border-t border-border px-5 py-4">
-          {isUpdate ? (
+        <div className="flex shrink-0 gap-3 border-t border-slate-100 px-5 py-4">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={onClose}
+              className="flex-1 rounded-lg border border-slate-200 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+              İptal
+            </button>
             <button
               type="button"
               disabled={saving}
               onClick={() => void handleSave('close')}
-              className="w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-brand-600 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
             >
-              {saving ? 'Kaydediliyor...' : 'Personel Kartını Güncelle'}
+              {saving ? 'Kaydediliyor...' : 'Kaydet'}
             </button>
-          ) : (
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => void handleSave('close')}
-                className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-content-primary hover:bg-slate-50 disabled:opacity-50"
-              >
-                Kaydet Ve Kapat
-              </button>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => void handleSave('new')}
-                className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
-              >
-                {saving ? 'Kaydediliyor...' : 'Kaydet Ve Yeni'}
-              </button>
-            </div>
-          )}
         </div>
       </aside>
     </>

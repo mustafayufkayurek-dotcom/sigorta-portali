@@ -20,4 +20,32 @@ export class UpsertEmployeeProfileDto {
   @IsOptional()
   @IsUUID()
   managerUserId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  roleId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(11)
+  identityNo?: string | null;
+
+  @IsOptional()
+  @IsDateString()
+  birthDate?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  personalGsm?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  companyGsm?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  bloodType?: string | null;
 }

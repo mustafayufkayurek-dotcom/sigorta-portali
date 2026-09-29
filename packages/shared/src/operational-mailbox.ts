@@ -58,6 +58,14 @@ export function isSoftwareOutboundInboxEcho(input: {
   return boxes.includes(from);
 }
 
+/** Arşivlenmiş hesap. DNS yok; Outlook «Teslim edilmez» döner. */
+export function isRetiredPersonnelMailbox(email?: string | null): boolean {
+  const folded = foldMailboxAddress(email);
+  if (!folded.includes('@')) return false;
+  if (folded.endsWith('@deleted.meridyen.local')) return true;
+  return folded.startsWith('archived+') && folded.includes('@deleted.');
+}
+
 export function filterSoftwareMailboxRecipients(
   addresses: Array<string | null | undefined>,
   mailboxAddress?: string | null,
@@ -70,6 +78,7 @@ export function filterSoftwareMailboxRecipients(
     const key = foldMailboxAddress(addr);
     if (!key.includes('@') || seen.has(key)) continue;
     if (isOperationalSharedMailbox(key)) continue;
+    if (isRetiredPersonnelMailbox(key)) continue;
     if (box && key === box) continue;
     seen.add(key);
     out.push(addr);

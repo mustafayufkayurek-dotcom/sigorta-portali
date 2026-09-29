@@ -9,6 +9,7 @@ import {
   isIstanbulLastCalendarDay,
   istanbulYmd,
   previousIstanbulMonth,
+  isRetiredPersonnelMailbox,
   roleReceivesAttendanceReminders,
 } from './hr-attendance-reminder.helper';
 import { shouldRunDayEndAttendanceReminder } from './hr-work-hours.helper';
@@ -240,7 +241,7 @@ export class HrAttendanceReminderService {
         `${roster.workDateLabel} puantajınız henüz onaylanmadı. Personel → Devam’dan onaylayın.`,
       );
 
-      if (person.email && (await this.shouldSendEmail('hr_attendance_day_end'))) {
+      if (person.email && !isRetiredPersonnelMailbox(person.email) && (await this.shouldSendEmail('hr_attendance_day_end'))) {
         const result = await this.email.sendEmail(
           person.email,
           'Puantaj Onayı Bekliyor',

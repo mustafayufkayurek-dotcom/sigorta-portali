@@ -141,4 +141,8 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
+**Paket (lokal, canlı değil):** Rol Yönetimi kod göstermez; liste Meridyen Personeli / Dış Kullanıcı. Giriş onay mailinde kopyala tıklanınca **Kopyalandı** görünür. Personel listesinde rakamlar sütun altında ortada. Personel Ekle: görev listesi gelir, sicil üretilir, altta **İptal** ve **Kaydet**.
+
+**Paket (lokal, henüz yok):** Puantaj onayı silinmiş hesaba gitmez. `archived+…@deleted.meridyen.local` adresine «Puantaj Onayı Bekliyor» yazılmaz; Outlook «Teslim edilmez» dönmez.
+
 Canlı **v633**.

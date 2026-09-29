@@ -35,7 +35,9 @@ import {
 import { applyActivityBeat } from './hr-activity-beat.helper';
 import {
   CUSTOMER_VENDOR_ROLE_CODES,
+  isClosedPersonnelAccount,
   isCustomerOrVendorRole,
+  isRetiredPersonnelMailbox,
   roleCanBeAddedAsPersonnel,
   roleReceivesAttendanceReminders,
 } from './hr-attendance-reminder.helper';
@@ -310,7 +312,15 @@ export class HrService {
         },
       },
       include: {
-        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: { select: { id: true, code: true, name: true } },
+          },
+        },
         department: { select: { id: true, name: true } },
         leaveBalances: {
           where: { leaveType: HR_LEAVE_TYPE.ANNUAL, year },
@@ -352,40 +362,46 @@ export class HrService {
       select: { userId: true },
     });
     const linkedIds = linked.map((l) => l.userId);
-    return this.prisma.user.findMany({
+    const rows = await this.prisma.user.findMany({
       where: {
         id: { notIn: linkedIds.length ? linkedIds : ['__none__'] },
         status: 'active',
         portalCustomerId: null,
-        role: {
-          code: {
-            in: [
-              'admin',
-              'ADMIN',
-              'manager',
-              'MANAGER',
-              'office_staff',
-              'OFFICE_STAFF',
-              'field_staff',
-              'FIELD_STAFF',
-              'finance',
-              'FINANCE',
-              'accountant',
-              'ACCOUNTANT',
-            ],
-          },
-        },
+        role: { code: { notIn: [...CUSTOMER_VENDOR_ROLE_CODES] } },
       },
       select: {
         id: true,
         firstName: true,
         lastName: true,
         email: true,
-        role: { select: { code: true, name: true } },
+        role: { select: { id: true, code: true, name: true } },
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-      take: 200,
+      take: 400,
     });
+    return rows.filter((u) => roleCanBeAddedAsPersonnel(u.role?.code));
+  }
+
+  async listPersonnelRoles(user: AuthUser) {
+    this.assertCanSupervise(user);
+    const roles = await this.prisma.role.findMany({
+      select: { id: true, code: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+    return roles.filter((r) => roleCanBeAddedAsPersonnel(r.code));
+  }
+
+  async nextPersonnelNo(user: AuthUser): Promise<string> {
+    this.assertCanSupervise(user);
+    const rows = await this.prisma.hrEmployeeProfile.findMany({
+      select: { personnelNo: true },
+    });
+    let max = 0;
+    for (const row of rows) {
+      const n = Number.parseInt(String(row.personnelNo ?? '').replace(/\D/g, ''), 10);
+      if (Number.isFinite(n) && n > max) max = n;
+    }
+    return String(max + 1).padStart(4, '0');
   }
 
   /** Ay sonu toplu rapor — dönem içinde onaylı izinler (izin formu eki için). */
@@ -559,6 +575,7 @@ export class HrService {
             firstName: true,
             lastName: true,
             email: true,
+            status: true,
             portalCustomerId: true,
             role: { select: { name: true, code: true } },
           },
@@ -572,7 +589,9 @@ export class HrService {
     const rosterProfiles = profiles.filter(
       (profile) =>
         !profile.user.portalCustomerId
-        && !isCustomerOrVendorRole(profile.user.role?.code),
+        && !isCustomerOrVendorRole(profile.user.role?.code)
+        && !isClosedPersonnelAccount(profile.user.status)
+        && !isRetiredPersonnelMailbox(profile.user.email),
     );
 
     const activities = await this.prisma.activitySession.findMany({
@@ -719,6 +738,7 @@ export class HrService {
       (e) =>
         e.status === 'missing'
         && Boolean(e.email)
+        && !isRetiredPersonnelMailbox(e.email)
         && roleReceivesAttendanceReminders(e.roleCode),
     );
   }
@@ -742,6 +762,27 @@ export class HrService {
       throw new ForbiddenException('Müşteri ve tedarikçi personel kadrosuna alınamaz');
     }
 
+    if (dto.roleId) {
+      const nextRole = await this.prisma.role.findUnique({
+        where: { id: dto.roleId },
+        select: { id: true, code: true },
+      });
+      if (!nextRole || !roleCanBeAddedAsPersonnel(nextRole.code)) {
+        throw new ForbiddenException('Bu görev personel kadrosuna yazılamaz');
+      }
+      await this.prisma.user.update({
+        where: { id: dto.userId },
+        data: {
+          roleId: nextRole.id,
+          ...(dto.companyGsm?.trim() ? { phone: dto.companyGsm.trim() } : {}),
+        },
+      });
+    } else if (dto.companyGsm?.trim()) {
+      await this.prisma.user.update({
+        where: { id: dto.userId },
+        data: { phone: dto.companyGsm.trim() },
+      });
+    }
     const hireDate =
       dto.hireDate === null
         ? null
@@ -749,16 +790,19 @@ export class HrService {
           ? this.toDateOnly(dto.hireDate)
           : undefined;
 
-    const personnelNo =
+    const existing = await this.prisma.hrEmployeeProfile.findUnique({
+      where: { userId: dto.userId },
+    });
+
+    let personnelNo =
       dto.personnelNo === undefined
         ? undefined
         : dto.personnelNo?.trim()
           ? dto.personnelNo.trim()
           : null;
-
-    const existing = await this.prisma.hrEmployeeProfile.findUnique({
-      where: { userId: dto.userId },
-    });
+    if (!existing) {
+      personnelNo = await this.nextPersonnelNo(user);
+    }
 
     const profile = existing
       ? await this.prisma.hrEmployeeProfile.update({

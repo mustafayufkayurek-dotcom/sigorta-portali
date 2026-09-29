@@ -1,5 +1,10 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import {
+  isLockedRoleAccountCode,
+  suggestRoleAccountCode,
+  type RoleAccountFamily,
+} from '@sigorta/shared';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import {
@@ -47,14 +52,25 @@ export class RolesService {
     return role;
   }
 
-  async create(dto: CreateRoleDto) {
-    const existing = await this.prisma.role.findUnique({ where: { code: dto.code } });
-    if (existing) throw new ConflictException('Bu kod zaten kullanılıyor');
+  private async nextRoleCode(family: RoleAccountFamily, name: string): Promise<string> {
+    const base = suggestRoleAccountCode(family, name);
+    let code = base;
+    let n = 2;
+    while (await this.prisma.role.findFirst({
+      where: { code: { equals: code, mode: 'insensitive' } },
+    })) {
+      code = `${base}_${n}`;
+      n += 1;
+    }
+    return code;
+  }
 
+  async create(dto: CreateRoleDto) {
+    const code = await this.nextRoleCode(dto.accountFamily, dto.name);
     return this.prisma.role.create({
       data: {
         name: dto.name,
-        code: dto.code.toUpperCase(),
+        code,
         description: dto.description,
       },
     });
@@ -62,19 +78,11 @@ export class RolesService {
 
   async update(id: string, dto: UpdateRoleDto) {
     await this.findOne(id);
-
-    if (dto.code) {
-      const existing = await this.prisma.role.findFirst({
-        where: { code: dto.code, id: { not: id } },
-      });
-      if (existing) throw new ConflictException('Bu kod zaten kullanılıyor');
-    }
-
+    // Kilitli görev anahtarı (office_staff vb.) kod bu ekrandan değişmez.
     return this.prisma.role.update({
       where: { id },
       data: {
         ...(dto.name && { name: dto.name }),
-        ...(dto.code && { code: dto.code.toUpperCase() }),
         ...(dto.description !== undefined && { description: dto.description }),
       },
     });
@@ -86,6 +94,10 @@ export class RolesService {
       include: { _count: { select: { users: true } } },
     });
     if (!role) throw new NotFoundException('Rol bulunamadı');
+
+    if (isLockedRoleAccountCode(role.code)) {
+      throw new BadRequestException('Bu görev silinemez.');
+    }
 
     if (role._count.users > 0) {
       throw new BadRequestException(

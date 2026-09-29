@@ -79,13 +79,23 @@ export class HrController {
     return { data };
   }
 
-  @Get('employees')
+  @Get('employees/roles')
   @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
   @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
-  async listEmployees(
+  async listPersonnelRoles(
     @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
   ) {
-    const data = await this.hrService.listEmployeeProfiles(user);
+    const data = await this.hrService.listPersonnelRoles(user);
+    return { data };
+  }
+
+  @Get('employees/next-personnel-no')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async nextPersonnelNo(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+  ) {
+    const data = await this.hrService.nextPersonnelNo(user);
     return { data };
   }
 
@@ -96,6 +106,16 @@ export class HrController {
     @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
   ) {
     const data = await this.hrService.listUsersWithoutProfile(user);
+    return { data };
+  }
+
+  @Get('employees')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async listEmployees(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+  ) {
+    const data = await this.hrService.listEmployeeProfiles(user);
     return { data };
   }
 

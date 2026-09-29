@@ -8,6 +8,7 @@ import {
   filterSoftwareMailboxRecipients,
   isMeridyenInternalMailbox,
   isOperationalSharedMailbox,
+  isRetiredPersonnelMailbox,
   isSoftwareOutboundInboxEcho,
 } from './operational-mailbox.ts';
 
@@ -71,6 +72,21 @@ describe('gelen kutu yazılım yankısı LOCK', () => {
         'ihbar@safranbh.com',
       ),
       ['operasyon@remed.com', 'ayse@meridyen-tr.com'],
+    );
+  });
+
+  it('silinmiş personel kutusu alıcı olmaz', () => {
+    assert.equal(
+      isRetiredPersonnelMailbox('archived+f412d00de205@deleted.meridyen.local'),
+      true,
+    );
+    assert.equal(isRetiredPersonnelMailbox('mustafa@meridyen-tr.com'), false);
+    assert.deepEqual(
+      filterSoftwareMailboxRecipients([
+        'archived+f412d00de205@deleted.meridyen.local',
+        'seda@meridyen-tr.com',
+      ]),
+      ['seda@meridyen-tr.com'],
     );
   });
 });

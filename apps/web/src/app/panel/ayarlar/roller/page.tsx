@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
@@ -21,20 +21,17 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
-import { applyNameWithAutoCode, blurNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
-
+import {
+  isLockedRoleAccountCode,
+  roleAccountFamilyFromCode,
+  roleAccountFamilyLabel,
+  roleAccountKindLabel,
+  type RoleAccountFamily,
+} from '@sigorta/shared';
 
 type Role = { id: string; code: string; name: string; description?: string | null; _count?: { users: number } };
 
-const emptyForm = { name: '', code: '', description: '' };
-
-/** Rol DTO yalnızca A-Z ve alt çizgi kabul eder (rakam yok) */
-function roleAutoCode(name: string): string {
-  return suggestAutoCode('ROL', name)
-    .replace(/[0-9]/g, '')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '') || 'ROL_YENI';
-}
+const emptyForm = { name: '', description: '', accountFamily: '' as RoleAccountFamily | '' };
 
 export default function RollerPage() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -60,37 +57,64 @@ export default function RollerPage() {
 
   useEffect(() => { fetchRoles(); }, [fetchRoles]);
 
-  const filtered = roles.filter(r =>
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.code.toLowerCase().includes(search.toLowerCase()) ||
-    (r.description ?? '').toLowerCase().includes(search.toLowerCase())
+  const filtered = roles.filter((r) => {
+    const q = search.toLowerCase();
+    return r.name.toLowerCase().includes(q)
+      || (r.description ?? '').toLowerCase().includes(q)
+      || roleAccountKindLabel(r.code).toLowerCase().includes(q)
+      || roleAccountFamilyLabel(roleAccountFamilyFromCode(r.code)).toLowerCase().includes(q);
+  });
+
+  const meridyenRoles = useMemo(
+    () => filtered.filter((r) => roleAccountFamilyFromCode(r.code) === 'meridyen'),
+    [filtered],
+  );
+  const disRoles = useMemo(
+    () => filtered.filter((r) => roleAccountFamilyFromCode(r.code) === 'dis'),
+    [filtered],
   );
 
-  const openCreate = () => { setEditing(null); setForm({ ...emptyForm }); setError(''); setShowModal(true); };
-  const openEdit = (r: Role) => { setEditing(r); setForm({ name: r.name, code: r.code, description: r.description ?? '' }); setError(''); setShowModal(true); };
+  const openCreate = () => {
+    setEditing(null);
+    setForm({ ...emptyForm });
+    setError('');
+    setShowModal(true);
+  };
+  const openEdit = (r: Role) => {
+    setEditing(r);
+    setForm({
+      name: r.name,
+      description: r.description ?? '',
+      accountFamily: roleAccountFamilyFromCode(r.code),
+    });
+    setError('');
+    setShowModal(true);
+  };
+
+  const setFamily = (family: RoleAccountFamily) => {
+    if (editing) return;
+    setForm((p) => ({ ...p, accountFamily: p.accountFamily === family ? '' : family }));
+  };
 
   const handleSave = async () => {
     const name = normalizeFormFreeText(form.name);
     const description = form.description.trim() ? normalizeFormFreeText(form.description) : '';
     if (!name) { setError('Rol Adı zorunludur'); return; }
-    const code = editing ? form.code.trim() : (form.code.trim() || roleAutoCode(name));
-    if (!code) { setError('Kod üretilemedi. Rol adını kontrol edin.'); return; }
-    if (!/^[A-Z_]+$/.test(code)) { setError('Kod yalnızca büyük harf ve alt çizgi (_) içerebilir'); return; }
+    if (!editing && !form.accountFamily) { setError('Hesap ailesi seçin'); return; }
     const dupName = roles.find((r) =>
       r.name.trim().toLowerCase() === name.toLowerCase() && (!editing || r.id !== editing.id)
     );
     if (dupName) { setError('Bu isimde bir rol zaten mevcut!'); return; }
-    const dupCode = roles.find((r) =>
-      r.code.trim().toUpperCase() === code.toUpperCase() && (!editing || r.id !== editing.id)
-    );
-    if (dupCode) { setError('Bu kodda bir rol zaten mevcut!'); return; }
-    const payload = { name, code, description: description || undefined };
     setSaving(true); setError('');
     try {
       if (editing) {
-        await axios.put(`${API}/roles/${editing.id}`, payload, { headers: authHeader() });
+        await axios.put(`${API}/roles/${editing.id}`, { name, description: description || undefined }, { headers: authHeader() });
       } else {
-        await axios.post(`${API}/roles`, payload, { headers: authHeader() });
+        await axios.post(
+          `${API}/roles`,
+          { name, accountFamily: form.accountFamily, description: description || undefined },
+          { headers: authHeader() },
+        );
       }
       setShowModal(false); fetchRoles();
     } catch (e: any) { setError(e.response?.data?.message ?? 'Bir hata oluştu'); }
@@ -107,39 +131,34 @@ export default function RollerPage() {
     finally { setDeleting(false); }
   };
 
-  return (
-    <SettingsPageLayout
-      title="Rol Yönetimi"
-      description="Sistem rollerini ve yetkilerini yönetin"
-      addButtonText="+ Yeni Rol"
-      onAdd={openCreate}
-    >
-
-      <div className="mb-4">
-        <input className={`${inputCls} max-w-xs`}
-          placeholder="Rol ara..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+  const renderGroup = (title: string, hint: string, rows: Role[], indexOffset: number) => (
+    <div className="mb-8">
+      <div className="mb-3">
+        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+        <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
       </div>
-
-      <SettingsTable loading={loading} empty={filtered.length === 0}
-        emptyText={search ? 'Arama kriterlerine uyan rol bulunamadı.' : 'Henüz rol tanımlanmamış.'}>
+      <SettingsTable
+        loading={loading}
+        empty={!loading && rows.length === 0}
+        emptyText={search ? 'Bu ailede aramaya uyan rol yok.' : 'Bu ailede henüz rol yok.'}
+      >
         <SettingsTableHead>
           <SettingsRowIndexTh />
           <SettingsTableTh>Rol Adı</SettingsTableTh>
-          <SettingsTableTh>Kod</SettingsTableTh>
+          <SettingsTableTh>Tür</SettingsTableTh>
           <SettingsTableTh>Açıklama</SettingsTableTh>
           <SettingsTableTh>Kullanıcı Sayısı</SettingsTableTh>
           <SettingsTableTh />
         </SettingsTableHead>
         <SettingsTableBody>
-          {filtered.map((r, index) => (
+          {rows.map((r, index) => (
             <SettingsTableRow key={r.id}>
-              <SettingsRowIndexTd index={index} />
+              <SettingsRowIndexTd index={indexOffset + index} />
               <SettingsTableTd><p className="text-sm font-medium text-slate-800">{r.name}</p></SettingsTableTd>
               <SettingsTableTd>
-                <code className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">{r.code}</code>
+                <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-slate-100 text-slate-700">
+                  {roleAccountKindLabel(r.code)}
+                </span>
               </SettingsTableTd>
               <SettingsTableTd>
                 <p className="text-sm text-slate-500">{r.description || <span className="text-slate-300 italic">—</span>}</p>
@@ -152,12 +171,47 @@ export default function RollerPage() {
               </SettingsTableTd>
               <SettingsTableActions>
                 <EditButton onClick={() => openEdit(r)} />
-                <DeleteButton onClick={() => { setDeleteTarget(r); setDeleteError(''); }} />
+                {!isLockedRoleAccountCode(r.code) ? (
+                  <DeleteButton onClick={() => { setDeleteTarget(r); setDeleteError(''); }} />
+                ) : null}
               </SettingsTableActions>
             </SettingsTableRow>
           ))}
         </SettingsTableBody>
       </SettingsTable>
+    </div>
+  );
+
+  const familyLocked = Boolean(editing);
+
+  return (
+    <SettingsPageLayout
+      title="Rol Yönetimi"
+      description="Personel ve dış hesap görevleri"
+      addButtonText="+ Yeni Rol"
+      onAdd={openCreate}
+    >
+      <div className="mb-4">
+        <input
+          className={`${inputCls} max-w-xs`}
+          placeholder="Rol ara..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {renderGroup(
+        'Meridyen Personeli',
+        'Yönetici, dosya sorumlusu, finans ve saha bu listededir.',
+        meridyenRoles,
+        0,
+      )}
+      {renderGroup(
+        'Dış Kullanıcı',
+        'Sigorta, eksper, broker ve asistans bu listededir.',
+        disRoles,
+        meridyenRoles.length,
+      )}
 
       <SettingsModal isOpen={showModal} onClose={() => setShowModal(false)}
         title={editing ? 'Rol Düzenle' : 'Yeni Rol'}
@@ -167,30 +221,46 @@ export default function RollerPage() {
           <input
             className={inputCls}
             value={form.name}
-            onChange={(e) => setForm((p) => {
-              const next = applyNameWithAutoCode(p, e.target.value, !!editing, 'ROL');
-              return editing ? next : { ...next, code: roleAutoCode(e.target.value) };
-            })}
-            onBlur={() => setForm((p) => {
-              const next = blurNameWithAutoCode(p, !!editing, 'ROL');
-              return editing ? next : { ...next, code: roleAutoCode(next.name) };
-            })}
-            placeholder="Örn: Muhasebe Yöneticisi"
+            onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+            onBlur={() => setForm((p) => ({ ...p, name: normalizeFormFreeText(p.name) }))}
+            placeholder="Örn. bölge koordinatörü"
           />
         </div>
         <div>
-          <label className={labelCls}>Kod</label>
-          <input
-            className={`${inputCls} font-mono disabled:bg-slate-50`}
-            value={form.code}
-            disabled
-            placeholder={editing ? 'ROL_KODU' : 'Ad yazınca otomatik üretilir'}
-          />
-          {!editing && (
-            <p className="text-xs text-slate-400 mt-1">
-              Kod rol adından otomatik üretilir. Oluşturulduktan sonra değiştirilemez.
-            </p>
-          )}
+          <label className={labelCls}>Hesap</label>
+          <p className="text-xs text-slate-500 mb-2">Bu görevin hangi hesapta duracağını seçin.</p>
+          <div className="space-y-2">
+            <label className={`flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 ${familyLocked ? 'opacity-70' : 'cursor-pointer hover:bg-slate-50'}`}>
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-blue-500"
+                checked={form.accountFamily === 'meridyen'}
+                disabled={familyLocked}
+                onChange={() => setFamily('meridyen')}
+              />
+              <span className="text-sm font-medium text-slate-800">Meridyen Personeli</span>
+            </label>
+            {form.accountFamily === 'meridyen' ? (
+              <div className="ml-4 space-y-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                <p className="text-xs text-slate-500">Yönetici, müdür, dosya sorumlusu, finans ve saha bu ailede durur. Yeni ad ayrı bir personel görevidir.</p>
+              </div>
+            ) : null}
+            <label className={`flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 ${familyLocked ? 'opacity-70' : 'cursor-pointer hover:bg-slate-50'}`}>
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-blue-500"
+                checked={form.accountFamily === 'dis'}
+                disabled={familyLocked}
+                onChange={() => setFamily('dis')}
+              />
+              <span className="text-sm font-medium text-slate-800">Dış Kullanıcı</span>
+            </label>
+            {form.accountFamily === 'dis' ? (
+              <div className="ml-4 space-y-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                <p className="text-xs text-slate-500">Sigorta şirketi, eksper, broker ve asistans bu ailede durur. Yeni ad ayrı bir dış görevdir.</p>
+              </div>
+            ) : null}
+          </div>
         </div>
         <div>
           <label className={labelCls}>Açıklama</label>

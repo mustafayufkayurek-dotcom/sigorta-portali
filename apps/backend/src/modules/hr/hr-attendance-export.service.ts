@@ -6,6 +6,7 @@ import { CompanyInfo, SystemSettingsService } from '@/modules/system-settings/sy
 import { EmailService } from '@/modules/notifications/email/email.service';
 import { SendAttendanceAccountantDto } from './dto/send-attendance-accountant.dto';
 import { HR_ATTENDANCE_STATUS_LABELS, HR_LEAVE_TYPE_LABELS, HrLeaveType } from './hr.constants';
+import { isRetiredPersonnelMailbox } from './hr-attendance-reminder.helper';
 
 const MAIL_SETUP_ERROR =
   'E-posta gönderilemedi. Ayarlar → E-posta Bildirimleri mail kurulumunu kontrol edin.';
@@ -228,6 +229,7 @@ export class HrAttendanceExportService {
 
     for (const recipient of recipients) {
       if (!recipient.email || !this.isValidEmail(recipient.email)) continue;
+      if (isRetiredPersonnelMailbox(recipient.email)) continue;
       const result = await this.email.sendEmail(
         recipient.email,
         'Puantaj Onayı Bekliyor',

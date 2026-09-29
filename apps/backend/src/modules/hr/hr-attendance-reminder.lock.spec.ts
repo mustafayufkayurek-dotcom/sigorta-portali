@@ -8,8 +8,10 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+  isClosedPersonnelAccount,
   isCustomerOrVendorRole,
   isIstanbulLastCalendarDay,
+  isRetiredPersonnelMailbox,
   roleCanBeAddedAsPersonnel,
   roleReceivesAttendanceReminders,
 } from './hr-attendance-reminder.helper.ts';
@@ -55,10 +57,17 @@ describe('puantaj hatırlatma LOCK', () => {
     assert.equal(isCustomerOrVendorRole('expert'), true);
     assert.equal(isCustomerOrVendorRole('field_staff'), false);
     assert.equal(roleCanBeAddedAsPersonnel('field_staff'), true);
+    assert.equal(roleCanBeAddedAsPersonnel('MER_OZLUK'), true);
     assert.equal(roleCanBeAddedAsPersonnel('expert'), false);
     assert.equal(roleCanBeAddedAsPersonnel('broker_user'), false);
+    assert.equal(roleCanBeAddedAsPersonnel('DIS_DIS'), false);
+    assert.equal(isRetiredPersonnelMailbox('archived+f412d00de205@deleted.meridyen.local'), true);
+    assert.equal(isRetiredPersonnelMailbox('mustafa@meridyen-tr.com'), false);
+    assert.equal(isClosedPersonnelAccount('archived'), true);
+    assert.equal(isClosedPersonnelAccount('active'), false);
     const service = readFileSync(join(here, 'hr.service.ts'), 'utf8');
     assert.match(service, /Müşteri ve tedarikçi personel kadrosuna alınamaz/);
+    assert.match(service, /listPersonnelRoles/);
     assert.match(service, /portalCustomerId/);
     assert.match(service, /Personel kaydı yok/);
     const layout = readFileSync(

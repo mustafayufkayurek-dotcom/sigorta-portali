@@ -72,6 +72,7 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/operation-inbox/software-outbound-echo.lock.spec.ts \
   apps/backend/src/modules/payments/payment-second-eye.lock.spec.ts \
   apps/backend/src/modules/hr/hr-attendance-reminder.lock.spec.ts \
+  apps/web/src/components/hr/personel-ekle.lock.spec.ts \
   apps/backend/src/modules/hr/hr-activity-beat.lock.spec.ts \
   apps/web/src/components/hr/panel-activity-heartbeat.lock.spec.ts \
   apps/backend/src/modules/emergency/acil-saha-atama.lock.spec.ts \
@@ -105,6 +106,7 @@ node --experimental-strip-types --test \
   apps/web/src/app/panel/crm/crm-eksper-sessizlik.lock.spec.ts \
   apps/web/src/components/ui/panel-flow-trail.lock.spec.ts \
   packages/shared/src/inbox-assignable-users.lock.spec.ts \
-  packages/shared/src/repair-report-pdf-groups.lock.spec.ts
+  packages/shared/src/repair-report-pdf-groups.lock.spec.ts \
+  packages/shared/src/role-account-family.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

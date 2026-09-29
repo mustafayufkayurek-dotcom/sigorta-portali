@@ -660,7 +660,7 @@ export function AdminAttendanceSupervisionPanel({
         );
       case 'sicil':
         return (
-          <PanelTableTd colId="sicil" className="px-4 py-3 text-content-secondary">
+          <PanelTableTd colId="sicil" align="center" className="px-4 py-3 text-center text-content-secondary">
             <span className="truncate">{row.personnelNo || '—'}</span>
           </PanelTableTd>
         );
@@ -678,25 +678,25 @@ export function AdminAttendanceSupervisionPanel({
         );
       case 'hakedilen':
         return (
-          <PanelTableTd colId="hakedilen" align="right" className="px-4 py-3 tabular-nums text-content-primary">
+          <PanelTableTd colId="hakedilen" align="center" className="px-4 py-3 text-center tabular-nums text-content-primary">
             {row.entitledLeaveDays ?? '—'}
           </PanelTableTd>
         );
       case 'kullanilan':
         return (
-          <PanelTableTd colId="kullanilan" align="right" className="px-4 py-3 tabular-nums text-content-secondary">
+          <PanelTableTd colId="kullanilan" align="center" className="px-4 py-3 text-center tabular-nums text-content-secondary">
             {row.usedLeaveDays ?? '—'}
           </PanelTableTd>
         );
       case 'bekleyenIzin':
         return (
-          <PanelTableTd colId="bekleyenIzin" align="right" className="px-4 py-3 tabular-nums text-status-warning">
+          <PanelTableTd colId="bekleyenIzin" align="center" className="px-4 py-3 text-center tabular-nums text-status-warning">
             {row.pendingLeaveDays ?? 0}
           </PanelTableTd>
         );
       case 'izinKalan':
         return (
-          <PanelTableTd colId="izinKalan" align="right" className="px-4 py-3 tabular-nums font-semibold text-content-primary">
+          <PanelTableTd colId="izinKalan" align="center" className="px-4 py-3 text-center tabular-nums font-semibold text-content-primary">
             {row.remainingLeaveDays}
           </PanelTableTd>
         );
@@ -725,7 +725,7 @@ export function AdminAttendanceSupervisionPanel({
         );
       case 'zimmet':
         return (
-          <PanelTableTd colId="zimmet" align="right" className="px-4 py-3 tabular-nums text-content-secondary">
+          <PanelTableTd colId="zimmet" align="center" className="px-4 py-3 text-center tabular-nums text-content-secondary">
             {row.assetsCount == null ? '—' : row.assetsCount}
           </PanelTableTd>
         );
