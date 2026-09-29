@@ -23,7 +23,7 @@ export const RELATIONSHIP_CUSTOMER_CHILDREN = [
   { value: 'private_customer' as const, label: 'Özel Müşteri' },
 ];
 
-const CUSTOMER_CHILD_VALUES = new Set(RELATIONSHIP_CUSTOMER_CHILDREN.map((row) => row.value));
+const CUSTOMER_CHILD_VALUES = new Set<string>(RELATIONSHIP_CUSTOMER_CHILDREN.map((row) => row.value));
 
 /** Tedarikçi kartının altı — Acil ve Hasar ayrı form değildir. */
 export const RELATIONSHIP_VENDOR_CHILDREN = [
