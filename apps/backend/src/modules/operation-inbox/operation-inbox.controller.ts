@@ -124,8 +124,11 @@ export class OperationInboxController {
 
   @Get('assignable-users')
   @RequirePermissions('operation_inbox.view')
-  listAssignableUsers(@Query('messageId') messageId?: string) {
-    return this.inboxService.listAssignableUsers(messageId);
+  listAssignableUsers(
+    @Query('messageId') messageId?: string,
+    @Request() req: { user?: { id?: string } },
+  ) {
+    return this.inboxService.listAssignableUsers(messageId, req.user?.id);
   }
 
   @Get('messages/:id/routing-suggestion')

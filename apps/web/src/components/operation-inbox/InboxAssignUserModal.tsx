@@ -1,15 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import axios from 'axios';
+import {
+  INBOX_ASSIGN_SELF_LABEL,
+  filterAssignableUsersBySearch,
+  mergeSessionUserIntoAssignable,
+} from '@sigorta/shared';
 import { apiClient, ApiError } from '@/lib/api-client';
-import { API, authHeader } from '@/utils/api';
+import { readInboxSessionUser } from '@/utils/inbox-session-user';
 
 interface PanelUser {
   id: string;
   firstName: string;
   lastName: string;
-  email?: string;
+  email?: string | null;
   role?: { name?: string };
 }
 
@@ -46,18 +50,22 @@ export function InboxAssignUserModal({
   const [loading, setLoading] = useState(false);
   const [listLoading, setListLoading] = useState(false);
   const [error, setError] = useState('');
+  const [listError, setListError] = useState('');
   const [routing, setRouting] = useState<RoutingSuggestion | null>(null);
+  const sessionUser = readInboxSessionUser();
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (id: string) => {
     setListLoading(true);
+    setListError('');
     try {
-      const res = await axios.get(`${API}/users`, {
-        headers: authHeader(),
-        params: { limit: 100 },
+      const res = await apiClient.get<{ users: PanelUser[] }>('/operation-inbox/assignable-users', {
+        messageId: id,
       });
-      setUsers((res.data?.data ?? []) as PanelUser[]);
-    } catch {
-      setUsers([]);
+      setUsers(mergeSessionUserIntoAssignable(res.users ?? [], readInboxSessionUser()));
+    } catch (err) {
+      setUsers(mergeSessionUserIntoAssignable([], readInboxSessionUser()));
+      const msg = err instanceof ApiError ? err.message : 'Atanacak kişiler yüklenemedi. Lütfen tekrar deneyin.';
+      setListError(msg);
     } finally {
       setListLoading(false);
     }
@@ -68,8 +76,9 @@ export function InboxAssignUserModal({
     setSearch('');
     setSelectedId(currentAssignee?.id ?? '');
     setError('');
+    setListError('');
     setRouting(null);
-    void loadUsers();
+    void loadUsers(messageId);
     void apiClient
       .get<RoutingSuggestion>(`/operation-inbox/messages/${messageId}/routing-suggestion`)
       .then((res) => {
@@ -83,16 +92,11 @@ export function InboxAssignUserModal({
 
   if (!open || !messageId) return null;
 
-  const q = search.trim().toLowerCase();
-  const filtered = users.filter((u) => {
-    if (!q) return true;
-    const label = userLabel(u).toLowerCase();
-    const email = (u.email ?? '').toLowerCase();
-    return label.includes(q) || email.includes(q);
-  });
+  const filtered = filterAssignableUsersBySearch(users, search);
 
-  const handleAssign = async () => {
-    if (!selectedId) {
+  const handleAssign = async (userId?: string) => {
+    const assignedUserId = (userId ?? selectedId).trim();
+    if (!assignedUserId) {
       setError('Lütfen bir kullanıcı seçin.');
       return;
     }
@@ -103,14 +107,20 @@ export function InboxAssignUserModal({
       const res = await apiClient.post<{
         assignedUser?: { id: string; firstName: string; lastName: string };
       }>(`/operation-inbox/messages/${messageId}/assign`, {
-        assignedUserId: selectedId,
+        assignedUserId,
       });
-      const assignee = res.assignedUser ?? users.find((u) => u.id === selectedId);
-      if (assignee) {
+      const assignee = res.assignedUser ?? users.find((u) => u.id === assignedUserId);
+      const session = readInboxSessionUser();
+      const fallback =
+        assignee ??
+        (session?.id === assignedUserId
+          ? { id: session.id, firstName: session.firstName, lastName: session.lastName }
+          : null);
+      if (fallback) {
         onSuccess({
-          id: assignee.id,
-          firstName: assignee.firstName,
-          lastName: assignee.lastName,
+          id: fallback.id,
+          firstName: fallback.firstName,
+          lastName: fallback.lastName,
         });
       }
       onToast('success', 'Kullanıcı atandı');
@@ -157,16 +167,29 @@ export function InboxAssignUserModal({
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Ad veya e-posta…"
+          placeholder="Ad veya giriş e-postası…"
           className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 mb-3"
           disabled={loading}
         />
+
+        {sessionUser?.id && (
+          <button
+            type="button"
+            onClick={() => void handleAssign(sessionUser.id)}
+            disabled={loading}
+            className="w-full mb-3 px-4 py-2 rounded-xl text-sm font-semibold border border-brand-200 text-brand-700 bg-brand-50 hover:bg-brand-100 transition-colors disabled:opacity-50"
+          >
+            {INBOX_ASSIGN_SELF_LABEL}
+          </button>
+        )}
 
         <div className="max-h-52 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
           {listLoading ? (
             <p className="px-3 py-4 text-sm text-slate-400 text-center">Yükleniyor…</p>
           ) : filtered.length === 0 ? (
-            <p className="px-3 py-4 text-sm text-slate-400 text-center">Kullanıcı bulunamadı</p>
+            <p className="px-3 py-4 text-sm text-slate-400 text-center">
+              {listError || (search.trim() ? 'Kullanıcı bulunamadı' : 'Atanacak ofis kullanıcısı yok')}
+            </p>
           ) : (
             filtered.map((u) => (
               <button
@@ -177,7 +200,13 @@ export function InboxAssignUserModal({
                   selectedId === u.id ? 'bg-blue-50/80' : ''
                 }`}
               >
-                <span className="font-medium text-slate-800">{userLabel(u)}</span>
+                <span className="font-medium text-slate-800">
+                  {userLabel(u) || u.email}
+                  {sessionUser?.id === u.id ? ' (Siz)' : ''}
+                </span>
+                {u.email && (
+                  <span className="block text-[11px] text-slate-400 mt-0.5">{u.email}</span>
+                )}
                 {u.role?.name && (
                   <span className="block text-[11px] text-slate-400 mt-0.5">{u.role.name}</span>
                 )}
@@ -185,6 +214,10 @@ export function InboxAssignUserModal({
             ))
           )}
         </div>
+
+        {listError && filtered.length > 0 && (
+          <p className="text-xs text-amber-700 mt-3">{listError}</p>
+        )}
 
         {error && (
           <p className="text-xs text-red-600 mt-3">{error}</p>

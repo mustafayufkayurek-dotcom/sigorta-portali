@@ -10,6 +10,7 @@ export * from './inbound-mail-terminology';
 export * from './inbound-form-fields';
 export * from './inbox-reply-quote';
 export * from './inbox-reply-attachment';
+export * from './inbox-assignable-users';
 export * from './inbox-recipient-card';
 export * from './outbound-mail-signal';
 export * from './file-owner-mail-copy';

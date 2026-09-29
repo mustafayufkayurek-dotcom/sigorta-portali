@@ -388,4 +388,14 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(page, /Yeni Bölge/);
     assert.doesNotMatch(page, /sendEmail\(/);
   });
+
+  it('Gelen kutuda Kendime Al şeridi durur', () => {
+    const page = readFileSync(join(here, '../app/panel/operasyon/gelen-kutusu/page.tsx'), 'utf8');
+    assert.equal(OPS_NOTICE.gelenKutuKendimeAl.id, 'gelen-kutu-kendime-al-v632');
+    assert.match(OPS_NOTICE.gelenKutuKendimeAl.body, /Kendime Al/);
+    assert.match(OPS_NOTICE.gelenKutuKendimeAl.body, /Sigorta şirketinin e-postasını yazmanız gerekmez/);
+    assert.doesNotMatch(OPS_NOTICE.gelenKutuKendimeAl.body, /Google/);
+    assert.match(page, /OpsFirstRunNotice/);
+    assert.match(page, /gelen-kutu-kendime-al-seridi/);
+  });
 });

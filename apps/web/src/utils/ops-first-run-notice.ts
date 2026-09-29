@@ -183,6 +183,12 @@ export const OPS_NOTICE = {
     body:
       'Acil’de sessiz müşteri asistans firmasıdır. 2 gündür yeni ihbar gelmediyse yazıyı siz gönderirsiniz. Hasar eksper uyarısı buraya girmez. Mail kendiliğinden gitmez. Uyarı kapanınca ertesi sabah yeniden çıkar.',
   },
+  gelenKutuKendimeAl: {
+    id: 'gelen-kutu-kendime-al-v632',
+    title: 'Kendime Al',
+    body:
+      'Maili üzerine almak için Kullanıcı Ata içinde Kendime Al durur. Sigorta şirketinin e-postasını yazmanız gerekmez.',
+  },
 } as const;
 
 export function opsNoticeStorageKey(noticeId: string): string {

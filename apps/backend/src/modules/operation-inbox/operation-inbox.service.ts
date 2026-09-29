@@ -203,11 +203,11 @@ export class OperationInboxService {
     return this.routingService.getRoutingSuggestion(id);
   }
 
-  async listAssignableUsers(messageId?: string) {
+  async listAssignableUsers(messageId?: string, viewerUserId?: string) {
     if (messageId) {
       await this.getMessage(messageId);
     }
-    return this.routingService.listAssignableOfficeUsers(messageId);
+    return this.routingService.listAssignableOfficeUsers(messageId, viewerUserId);
   }
 
   async getAutoAssignPreview(id: string) {

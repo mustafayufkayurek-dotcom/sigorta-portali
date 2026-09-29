@@ -6,6 +6,7 @@ import {
   resolveInsuredPhoneForInbox,
   resolveInboundFileNo,
   isPlaceholderOfficeUser,
+  mergeSessionUserIntoAssignable,
 } from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ClaimResponsibilitiesService } from '../claim-responsibilities/claim-responsibilities.service';
@@ -66,6 +67,7 @@ export interface AssignableOfficeUser {
   id: string;
   firstName: string;
   lastName: string;
+  email?: string | null;
   departmentCodes: string[];
 }
 
@@ -186,7 +188,7 @@ export class InboundRoutingService {
     };
   }
 
-  async listAssignableOfficeUsers(messageId?: string): Promise<AssignableUsersResult> {
+  async listAssignableOfficeUsers(messageId?: string, viewerUserId?: string): Promise<AssignableUsersResult> {
     let departmentId: string | null = null;
     let departmentCode: string | null = null;
     let departmentName: string | null = null;
@@ -212,7 +214,8 @@ export class InboundRoutingService {
     });
     const roleIds = roles.map((r) => r.id);
     if (roleIds.length === 0) {
-      return { departmentCode, departmentName, users: [] };
+      const users = await this.ensureViewerInAssignable([], viewerUserId);
+      return { departmentCode, departmentName, users };
     }
 
     const users = await this.prisma.user.findMany({
@@ -232,6 +235,7 @@ export class InboundRoutingService {
         id: true,
         firstName: true,
         lastName: true,
+        email: true,
         departmentMemberships: {
           where: { isActive: true },
           select: { department: { select: { code: true } } },
@@ -240,16 +244,52 @@ export class InboundRoutingService {
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
 
+    const mapped = users.map((u) => ({
+      id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      email: u.email,
+      departmentCodes: u.departmentMemberships.map((m) => m.department.code),
+    }));
+
     return {
       departmentCode,
       departmentName,
-      users: users.map((u) => ({
-        id: u.id,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        departmentCodes: u.departmentMemberships.map((m) => m.department.code),
-      })),
+      users: await this.ensureViewerInAssignable(mapped, viewerUserId),
     };
+  }
+
+  private async ensureViewerInAssignable(
+    users: AssignableOfficeUser[],
+    viewerUserId?: string,
+  ): Promise<AssignableOfficeUser[]> {
+    const id = viewerUserId?.trim();
+    if (!id) return users;
+    const viewer = await this.prisma.user.findFirst({
+      where: {
+        id,
+        status: 'active',
+        role: { code: { in: ['office_staff', 'manager', 'admin'] } },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        departmentMemberships: {
+          where: { isActive: true },
+          select: { department: { select: { code: true } } },
+        },
+      },
+    });
+    if (!viewer) return users;
+    return mergeSessionUserIntoAssignable(users, {
+      id: viewer.id,
+      firstName: viewer.firstName,
+      lastName: viewer.lastName,
+      email: viewer.email,
+      departmentCodes: viewer.departmentMemberships.map((m) => m.department.code),
+    });
   }
 
   async getAutoAssignPreview(messageId: string): Promise<AutoAssignPreview> {

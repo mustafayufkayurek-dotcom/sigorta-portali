@@ -1,0 +1,35 @@
+---
+description: Gelen kutuda dosya sorumlusu kendini atayabilir
+alwaysApply: true
+---
+
+# Gelen Kutu Kullanıcı Ata Kilidi
+
+**Kaynak (Mustafa · 29.09.2026):** Hasar dosya sorumlusu mailden dosyayı üzerine alamıyordu. Kutu Kullanıcılar listesini istiyordu; ofisin o listeyi görme yetkisi yoktu. E-posta yazınca «Kullanıcı bulunamadı» çıkıyordu.
+
+**Temel cümle:** Gelen kutuda **Kullanıcı Ata** ofis listesidir. Dosya sorumlusu **kendine alır.** Kullanıcılar yetkisi gerekmez.
+
+## Zorunlu
+
+1. `InboxAssignUserModal` `GET /operation-inbox/assignable-users` kullanır. `GET /users` ve 100 kayıt kesmesi yok.
+2. Oturumdaki kişi listede durur (`mergeSessionUserIntoAssignable` + `ensureViewerInAssignable`). **Kendime Al** tuşu vardır.
+3. Arama ad soyad ve giriş e-postasıyladır. Liste gelmezse hata gizlenmez.
+4. Kapı `operation_inbox.view` — `user.view` yok.
+5. Gelen kutu sayfasında Kendime Al bir kez anlatılır (`gelen-kutu-kendime-al-seridi`).
+
+## Yasak (açık onay yoksa)
+
+- Bu kutuyu Kullanıcılar listesine (`GET /users`) bağlamak
+- Kendine almayı kaldırmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Dosya sorumlusu yine kendini bulamazsa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/inbox-assignable-users.lock.spec.ts
+```

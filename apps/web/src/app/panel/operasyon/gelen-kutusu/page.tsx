@@ -7,7 +7,8 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
 import { HintIcon } from '@/components/ui/HintIcon';
 import { toTitleCaseTR } from '@/utils/text-helpers';
-import { stripInboundAddressPollution, sanitizeInboundPhone, isPlaceholderOfficeUserName } from '@sigorta/shared';
+import { stripInboundAddressPollution, sanitizeInboundPhone, isPlaceholderOfficeUserName, mergeSessionUserIntoAssignable } from '@sigorta/shared';
+import { readInboxSessionUser } from '@/utils/inbox-session-user';
 import {
   InboxLinkFilePickerModal,
   type LinkPickerHasarFile,
@@ -17,6 +18,8 @@ import { InboxAssignUserModal } from '@/components/operation-inbox/InboxAssignUs
 import { InboxComposeModal } from '@/components/operation-inbox/InboxComposeModal';
 import { InboxMatchCandidates } from '@/components/operation-inbox/InboxMatchCandidates';
 import { InboxDetailModal } from '@/components/operation-inbox/InboxDetailModal';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { InboxOpenFileModal } from '@/components/operation-inbox/InboxOpenFileModal';
 import { buildInboxFileOpenDraft, buildInboxFileOpenDraftFromRow, type InboxFileOpenDraft } from '@/utils/inbox-file-open-draft';
 import { parseSenderPersonName } from '@/utils/inbox-customer-prefill';
@@ -742,12 +745,12 @@ export default function GelenKutusuPage() {
             seen.add(delegate.id);
           }
         }
-        setPanelUsers(merged);
+        setPanelUsers(mergeSessionUserIntoAssignable(merged, readInboxSessionUser()));
       } catch {
-        setPanelUsers(baseUsers);
+        setPanelUsers(mergeSessionUserIntoAssignable(baseUsers, readInboxSessionUser()));
       }
     } catch {
-      setPanelUsers([]);
+      setPanelUsers(mergeSessionUserIntoAssignable([], readInboxSessionUser()));
     }
   }, []);
 
@@ -1656,6 +1659,14 @@ export default function GelenKutusuPage() {
           </button>
         </div>
       </div>
+
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.gelenKutuKendimeAl.id}
+        title={OPS_NOTICE.gelenKutuKendimeAl.title}
+        body={OPS_NOTICE.gelenKutuKendimeAl.body}
+        testId="gelen-kutu-kendime-al-seridi"
+        className="mb-4"
+      />
 
       {syncMessage && (
         <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm text-blue-900">
