@@ -1526,10 +1526,9 @@ export default function MusterilerPage() {
     try {
       const res = await axios.get(`${API}/system-settings/relationship-types`, { headers: authHeader() });
       const existing = res.data.data ?? [];
-      type RelType = RelationshipTypeRow & { usageAreas?: Array<'musteri' | 'eksper' | 'tedarikci' | 'dosya'> };
-      const full: RelType[] = existing.length > 0 && typeof existing[0] === 'string'
+      const full: RelationshipTypeRow[] = existing.length > 0 && typeof existing[0] === 'string'
         ? (existing as string[]).map((l) => ({ label: l, active: true, usageAreas: [relationshipArea] }))
-        : (existing as RelType[]);
+        : (existing as RelationshipTypeRow[]);
       const found = full.find((t) => t.label === val);
       if (!found) {
         full.push({ label: val, active: true, usageAreas: [relationshipArea] });
