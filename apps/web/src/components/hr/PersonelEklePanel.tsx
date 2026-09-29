@@ -403,16 +403,16 @@ export function PersonelEklePanel({
           const title = selected ? `${selected.firstName} ${selected.lastName}`.trim() : '';
           const extra = [personnelNo.trim() ? `Sicil ${personnelNo.trim()}` : '', personalGsm.trim() || companyGsm.trim()].filter(Boolean).join(' · ');
           return (
-        <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4" data-testid="personel-form-kimlik-bandi">
+        <div className="flex items-start justify-between gap-3 border-b border-emerald-500/30 bg-gradient-to-r from-emerald-600 to-emerald-700 px-5 py-4" data-testid="personel-form-kimlik-bandi">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50">
-              <UserPlus className="h-5 w-5 text-brand-600" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+              <UserPlus className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-800">
+              <p className="truncate text-sm font-semibold text-white">
                 {title || (isUpdate ? 'Personel Kartını Güncelle' : 'Personel Ekle')}
               </p>
-              <p className="mt-0.5 truncate text-xs text-slate-500">
+              <p className="mt-0.5 truncate text-xs text-emerald-100">
                 {title ? [roleName, extra].filter(Boolean).join(' · ') || 'Özlük kartı' : 'Özlük kartı'}
               </p>
             </div>
@@ -420,7 +420,8 @@ export function PersonelEklePanel({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
+            className="rounded-xl p-2 text-emerald-100 hover:bg-white/10 hover:text-white"
+            aria-label="Kapat"
           >
             <X className="h-4 w-4" />
           </button>
