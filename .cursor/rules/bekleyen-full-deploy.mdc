@@ -155,6 +155,8 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-(boş)
+1. Onarım raporu mailindeki **Raporu Aç** girişten sonra o rapora düşer. Yönetim Paneli Bekleyen İş’te onay bekleyen rapor sayısı durur.
+2. İlişki türünde müşteri altına **Broker Firma** durur (Sigortalı, Eksper, Sigorta Şirketi, Asistans Firma ile aynı kutu).
+3. Müşteri kartında tip **Asistans Firma** durur. **Asistan Firması** yazılmaz.
 
 Canlı web **v640** · backend **v639**.

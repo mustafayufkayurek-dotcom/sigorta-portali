@@ -11,7 +11,7 @@ import {
   establishWebAuthCookies,
 } from '@/utils/auth-session';
 import { getLoginHomePath } from '@/utils/panel-access';
-import { safePanelNextPath } from '@/lib/panel-auth-gate';
+import { rememberPanelLoginNext, takePanelLoginNext } from '@/lib/panel-auth-gate';
 import { isCompanyWebsiteHost, softwareLoginHref, SOFTWARE_LOGIN_URL } from '@/utils/site-renewal';
 import { extractLoginEmailCode } from '@/utils/login-email-code-fill';
 import { maskLoginMailbox } from '@sigorta/shared';
@@ -171,6 +171,10 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
   }, [handoffToSoftware]);
 
   useEffect(() => {
+    rememberPanelLoginNext(new URLSearchParams(window.location.search).get('next'));
+  }, []);
+
+  useEffect(() => {
     if (!challengeId) return;
     setEmailCode('');
     codeInputRef.current?.focus();
@@ -214,7 +218,7 @@ export function GirisLoginPanel({ handoffToSoftware = false }: { handoffToSoftwa
     setRememberMePreference(rememberMe, normalizedEmail);
     localStorage.setItem('user', JSON.stringify(user));
     window.dispatchEvent(new Event('meridyen:user-updated'));
-    const next = safePanelNextPath(new URLSearchParams(window.location.search).get('next'));
+    const next = takePanelLoginNext(new URLSearchParams(window.location.search).get('next'));
     const home = next ?? getLoginHomePath(String(user?.role?.code ?? ''));
     router.replace(home);
   };

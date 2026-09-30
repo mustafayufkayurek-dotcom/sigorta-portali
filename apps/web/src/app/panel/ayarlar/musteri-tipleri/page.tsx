@@ -181,7 +181,7 @@ export default function MusteriTipleriPage() {
     >
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          Örnek: <strong>Asistans Firması</strong> tipini seçtikten sonra Müşteriler&apos;de <strong>X Asistan Firması</strong> cari kaydı açılır.
+          Örnek: <strong>Asistans Firma</strong> tipini seçtikten sonra Müşteriler&apos;de o tipte cari kaydı açılır.
           Bu ekranda yalnızca tip tanımı vardır.
         </div>
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}

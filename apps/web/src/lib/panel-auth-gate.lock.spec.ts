@@ -13,6 +13,7 @@ import {
   isJwtCookieValue,
   isProtectedAppPath,
   isPublicUnauthenticatedPath,
+  panelAuthLoginHrefFromLocation,
   safePanelNextPath,
 } from './panel-auth-gate.ts';
 
@@ -61,7 +62,8 @@ describe('panel oturum kapısı LOCK', () => {
   });
 
   it('panel oturumsuz boyanmaz; adres çubuğu girişe döner', () => {
-    assert.match(panelLayout, /window\.location\.replace\('\/giris\?reason=auth'\)/);
+    assert.match(panelLayout, /panelAuthLoginHrefFromLocation/);
+    assert.doesNotMatch(panelLayout, /replace\('\/giris\?reason=auth'\)/);
     assert.match(panelLayout, /if \(loading \|\| !user\)/);
   });
 
@@ -79,5 +81,15 @@ describe('panel oturum kapısı LOCK', () => {
     assert.match(girisRedirectUrl('/panel/hasar-dosyalari'), /reason=auth/);
     assert.match(backendCookies, /ACCESS_COOKIE_NAME/);
     assert.match(backendCookies, /@sigorta\/shared/);
+  });
+
+  it('rapor maili girişten sonra aynı rapora döner', () => {
+    const path = '/panel/hasar-dosyalari/abc/onarim-raporu/rpt-1';
+    const href = panelAuthLoginHrefFromLocation(path, '');
+    const next = new URLSearchParams(href.split('?')[1] ?? '').get('next');
+    assert.equal(safePanelNextPath(next), path);
+    const login = readFileSync(join(here, '../components/giris/GirisLoginPanel.tsx'), 'utf8');
+    assert.match(login, /takePanelLoginNext/);
+    assert.match(login, /rememberPanelLoginNext/);
   });
 });

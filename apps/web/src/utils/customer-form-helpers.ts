@@ -5,7 +5,7 @@ import {
 } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import { cardNotesToFormEntries } from '@/utils/card-notes';
-import { toTitleCaseTR } from '@/utils/text-helpers';
+import { normalizeFormFreeText, toTitleCaseTR } from '@/utils/text-helpers';
 import { mergePrimaryIntoCustomerContacts } from '@sigorta/shared';
 import { collapseRepeatedAddressLine, customerCardOpenAddress } from '@/utils/customer-open-address';
 
@@ -38,7 +38,7 @@ export type CustomerSubTypeDef = {
 export const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubTypeDef[] = [
   { value: 'sigorta_sirketi', label: 'Sigorta Şirketi', forType: 'corporate', color: 'blue' },
   { value: 'broker_firmasi', label: 'Broker Firması', forType: 'corporate', color: 'gray' },
-  { value: 'asistan_firmasi', label: 'Asistan Firması', forType: 'corporate', color: 'orange' },
+  { value: 'asistan_firmasi', label: 'Asistans Firma', forType: 'corporate', color: 'orange' },
   { value: 'eksper_firmasi', label: 'Eksper Firması', forType: 'corporate', color: 'purple' },
   { value: 'insured', label: 'Sigortalı', forType: 'both', color: 'orange' },
   { value: 'private_customer', label: 'Özel Müşteri', forType: 'individual', color: 'green' },
@@ -52,6 +52,7 @@ const LEGACY_SUB_TYPE_LABELS: Record<string, string> = {
 const SUB_TYPE_LABELS: Record<string, string> = {
   ...Object.fromEntries(DEFAULT_CUSTOMER_SUB_TYPES.map((t) => [t.value, t.label])),
   ...LEGACY_SUB_TYPE_LABELS,
+  asistans_firmasi: 'Asistans Firma',
 };
 
 const CORPORATE_ONLY_SUB_TYPES = new Set([
@@ -62,6 +63,14 @@ const CORPORATE_ONLY_SUB_TYPES = new Set([
 ]);
 
 /** Kayıt varsa o durur. Boşsa sekme yapısı kaybolmasın diye varsayılan tipler. */
+function withCanonicalCustomerSubTypeLabel(row: CustomerSubTypeDef): CustomerSubTypeDef {
+  const value = String(row.value ?? '').trim();
+  if (value === 'asistan_firmasi' || value === 'asistans_firmasi') {
+    return { ...row, label: 'Asistans Firma' };
+  }
+  return row;
+}
+
 export function mergeCustomerSubTypes(stored: CustomerSubTypeDef[]): CustomerSubTypeDef[] {
   const clean = stored.filter((row) => row?.value && row.value !== 'eksper');
   if (clean.length === 0) return DEFAULT_CUSTOMER_SUB_TYPES.filter((t) => t.value !== 'eksper');
@@ -70,7 +79,7 @@ export function mergeCustomerSubTypes(stored: CustomerSubTypeDef[]): CustomerSub
     if (row.value === 'eksper' || seen.has(row.value)) continue;
     clean.push(row);
   }
-  return clean;
+  return clean.map(withCanonicalCustomerSubTypeLabel);
 }
 
 export function customerSubTypesForPicker(
@@ -100,7 +109,7 @@ export function filterCustomerSubTypesForPanelUser(
 const SUB_TYPE_HINTS: Record<string, string> = {
   sigorta_sirketi: 'Sigorta şirketi bilgilerini giriniz. Branş seçimini aşağıdan tamamlayın.',
   broker_firmasi: 'Broker firması bilgilerini giriniz.',
-  asistan_firmasi: 'Asistan firması bilgilerini giriniz.',
+  asistan_firmasi: 'Asistans firma bilgilerini giriniz.',
   eksper_firmasi: 'Eksper firması bilgilerini giriniz.',
   eksper: 'Eski eksper kaydı — yeni tanımlar için Eksper Firması kullanın.',
   insured: 'Sigortalı müşteri bilgilerini giriniz.',
@@ -149,13 +158,41 @@ export function customerDisplayName(c: {
   lastName?: string | null;
 }): string {
   const short = c.shortName?.trim();
-  if (short) return short;
   const company = c.companyName?.trim();
-  if (company) return company;
   const personal =
     c.fullName?.trim()
     || `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
-  return personal || '—';
+  const raw = short || company || personal;
+  if (!raw) return '—';
+  return toTitleCaseTR(raw);
+}
+
+/** Personelin yazdığı ad / unvan — MUSTAFA YUFKAYÜREK → Mustafa Yufkayürek. E-posta ve numara durur. */
+export function titleCaseCustomerWrittenFields<T extends {
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+  shortName?: string;
+  taxOffice?: string;
+  contactFirstName?: string;
+  contactLastName?: string;
+  neighborhood?: string;
+  streetName?: string;
+  tags?: string[];
+}>(form: T): T {
+  return {
+    ...form,
+    firstName: normalizeFormFreeText(form.firstName ?? ''),
+    lastName: normalizeFormFreeText(form.lastName ?? ''),
+    companyName: normalizeFormFreeText(form.companyName ?? ''),
+    shortName: normalizeFormFreeText(form.shortName ?? ''),
+    taxOffice: normalizeFormFreeText(form.taxOffice ?? ''),
+    contactFirstName: normalizeFormFreeText(form.contactFirstName ?? ''),
+    contactLastName: normalizeFormFreeText(form.contactLastName ?? ''),
+    neighborhood: normalizeFormFreeText(form.neighborhood ?? ''),
+    streetName: normalizeFormFreeText(form.streetName ?? ''),
+    tags: (form.tags ?? []).map((tag) => normalizeFormFreeText(tag)).filter(Boolean),
+  };
 }
 
 export function customerFormHasIdentity(form: Parameters<typeof customerDisplayName>[0]): boolean {
@@ -280,13 +317,13 @@ export function mapCustomerContactsToForm(
   const mapped = contacts.length
     ? contacts.map((contact) => {
         const parts = String(contact.name ?? '').trim().split(/\s+/);
-        const firstName = parts[0] ?? '';
-        const lastName = parts.slice(1).join(' ');
+        const firstName = normalizeFormFreeText(parts[0] ?? '');
+        const lastName = normalizeFormFreeText(parts.slice(1).join(' '));
         return {
           id: contact.id,
           firstName,
           lastName,
-          role: contact.role ?? '',
+          role: normalizeFormFreeText(contact.role ?? ''),
           phone: contact.phone ?? '',
           phoneType: 'gsm' as const,
           extensionNo: '',
@@ -381,7 +418,7 @@ export function mapCustomerRecordToForm(
         ? 'hasar'
         : '' as '' | 'hasar' | 'acil_yardim';
 
-  return {
+  const mapped = {
     customerType: entityType,
     subType,
     firstName: String(customer.firstName ?? ''),
@@ -422,6 +459,7 @@ export function mapCustomerRecordToForm(
     serviceBranches,
     privateServiceType: '',
   };
+  return titleCaseCustomerWrittenFields(mapped);
 }
 
 export function formatCustomerUpdatedMeta(customer: {

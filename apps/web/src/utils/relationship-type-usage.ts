@@ -3,6 +3,7 @@ export type RelationshipUsageArea =
   | 'insured'
   | 'eksper'
   | 'sigorta_sirketi'
+  | 'broker_firmasi'
   | 'asistan_firmasi'
   | 'private_customer'
   | 'tedarikci'
@@ -21,6 +22,7 @@ export const RELATIONSHIP_CUSTOMER_CHILDREN = [
   { value: 'insured' as const, label: 'Sigortalı' },
   { value: 'eksper' as const, label: 'Eksper' },
   { value: 'sigorta_sirketi' as const, label: 'Sigorta Şirketi' },
+  { value: 'broker_firmasi' as const, label: 'Broker Firma' },
   { value: 'asistan_firmasi' as const, label: 'Asistans Firma' },
   { value: 'private_customer' as const, label: 'Özel Müşteri' },
 ];
@@ -50,6 +52,7 @@ export function relationshipUsageAreaForCustomerSubType(
   if (value === 'insured') return 'insured';
   if (value === 'eksper' || value === 'eksper_firmasi') return 'eksper';
   if (value === 'sigorta_sirketi') return 'sigorta_sirketi';
+  if (value === 'broker_firmasi' || value === 'broker') return 'broker_firmasi';
   if (value === 'asistan_firmasi' || value === 'asistans_firmasi') return 'asistan_firmasi';
   if (value === 'private_customer') return 'private_customer';
   return 'musteri';

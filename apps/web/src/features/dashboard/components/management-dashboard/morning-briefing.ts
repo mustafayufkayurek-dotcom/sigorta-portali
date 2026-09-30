@@ -3,7 +3,7 @@
 import { EXPERT_SILENCE_CRM_HREF } from '@sigorta/shared';
 
 export type MorningBriefingItem = {
-  id: 'sessiz' | 'tahsilat' | 'onay72' | 'puantaj' | 'kutu';
+  id: 'sessiz' | 'tahsilat' | 'raporOnay' | 'onay72' | 'puantaj' | 'kutu';
   href: string;
   label: string;
   value: string;
@@ -29,6 +29,7 @@ export type MorningBriefingClaimPreview = {
 export const MORNING_BRIEFING_HREF = {
   sessiz: EXPERT_SILENCE_CRM_HREF,
   tahsilat: '/panel/finans/tahsilatlar',
+  raporOnay: '/panel/hasar-dosyalari?repairReportStatus=pending_approval',
   onay72: '/panel/hasar-dosyalari',
   puantaj: '/panel/personel-ozluk?tab=attendance',
   kutu: '/panel/operasyon/gelen-kutusu',
@@ -103,6 +104,7 @@ export function mapMorningBriefingHoverLines(
     silent?: Array<{ ownerName?: string | null; headline?: string | null }>;
     payments?: Array<{ fileNo?: string | null; amount?: number | null; insuranceCompany?: string | null }>;
     claims?: Array<Pick<MorningBriefingClaimPreview, 'id' | 'href' | 'fileNo' | 'insured' | 'statusLabel'>>;
+    pendingReports?: Array<Pick<MorningBriefingClaimPreview, 'id' | 'href' | 'fileNo' | 'insured' | 'statusLabel'>>;
     employees?: Array<{ fullName?: string | null; status?: string | null }>;
     inbox?: Array<{
       id?: string;
@@ -145,6 +147,18 @@ export function mapMorningBriefingHoverLines(
         href: MORNING_BRIEFING_HREF.tahsilat,
       });
       if (lines.length >= MORNING_BRIEFING_HOVER_LIMIT) break;
+    }
+    return lines;
+  }
+
+  if (id === 'raporOnay') {
+    for (const row of (source.pendingReports ?? []).slice(0, MORNING_BRIEFING_HOVER_LIMIT)) {
+      lines.push({
+        key: `raporOnay-${row.id}`,
+        title: row.fileNo,
+        detail: [row.insured, row.statusLabel].filter((part) => part && part !== '—').join(' · ') || undefined,
+        href: row.href,
+      });
     }
     return lines;
   }
@@ -192,7 +206,10 @@ export function mapMorningBriefingHoverLines(
   return lines;
 }
 
-export function mapMorningBriefingClaimPreview(raw: unknown): MorningBriefingClaimPreview[] {
+export function mapMorningBriefingClaimPreview(
+  raw: unknown,
+  options?: { preferReportHref?: boolean },
+): MorningBriefingClaimPreview[] {
   const list = Array.isArray(raw) ? raw : [];
   const rows: MorningBriefingClaimPreview[] = [];
   for (const item of list) {
@@ -201,9 +218,13 @@ export function mapMorningBriefingClaimPreview(raw: unknown): MorningBriefingCla
     const id = trimStr(row.id);
     const fileNo = trimStr(row.fileNo) || trimStr(row.claimNo);
     if (!id && !fileNo) continue;
-    const href = id
-      ? `/panel/hasar-dosyalari/${encodeURIComponent(id)}?grup=operasyon`
-      : `/panel/hasar-dosyalari?search=${encodeURIComponent(fileNo)}`;
+    const reportId = previewReportId(row);
+    const href =
+      options?.preferReportHref && id && reportId
+        ? `/panel/hasar-dosyalari/${encodeURIComponent(id)}/onarim-raporu/${encodeURIComponent(reportId)}`
+        : id
+          ? `/panel/hasar-dosyalari/${encodeURIComponent(id)}?grup=operasyon`
+          : `/panel/hasar-dosyalari?search=${encodeURIComponent(fileNo)}`;
     const status = row.currentStatus as { code?: string; name?: string } | null | undefined;
     const operationLabel = trimStr(row.operationStatusLabel);
     const statusName = typeof status?.name === 'string' ? status.name.trim() : '';
@@ -215,7 +236,7 @@ export function mapMorningBriefingClaimPreview(raw: unknown): MorningBriefingCla
       statusLabel: operationLabel || statusName || '—',
       party: previewParty(row),
       place: previewPlace(row),
-      reportId: previewReportId(row),
+      reportId,
       customerEmail: nestedTrim(row.customer, 'email'),
       insuranceEmail: nestedTrim(row.insuranceCompany, 'contactEmail'),
     });
@@ -228,6 +249,7 @@ export function buildMorningBriefingItems(input: {
   pendingIncomingCount?: number | null;
   totalPendingAmount?: number | null;
   approval72h?: number | null;
+  reportApproval?: number | null;
   attendanceNotApproved?: number | null;
   inboxUnowned?: number | null;
 }): MorningBriefingItem[] {
@@ -260,6 +282,18 @@ export function buildMorningBriefingItems(input: {
       label: 'Bekleyen Tahsilat',
       value,
       ariaLabel: `Bekleyen Tahsilat, ${value}`,
+    });
+  }
+
+  const rapor = count(input.reportApproval);
+  if (rapor > 0) {
+    const value = formatMorningBriefingCount(rapor, 'Dosya');
+    items.push({
+      id: 'raporOnay',
+      href: MORNING_BRIEFING_HREF.raporOnay,
+      label: 'Onay Bekleyen Rapor',
+      value,
+      ariaLabel: `Onay Bekleyen Rapor, ${value}`,
     });
   }
 

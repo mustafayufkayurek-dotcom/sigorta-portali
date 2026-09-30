@@ -58,22 +58,25 @@ describe('yönetici sabah bakışı LOCK', () => {
       silentOwnerCount: 2,
       pendingIncomingCount: 2,
       totalPendingAmount: 150000,
+      reportApproval: 2,
       approval72h: 3,
       attendanceNotApproved: 1,
       inboxUnowned: 4,
     });
-    assert.equal(items.length, 5);
+    assert.equal(items.length, 6);
     assert.equal(items[0].href, MORNING_BRIEFING_HREF.sessiz);
     assert.equal(items[0].label, 'Sessiz Müşteri');
     assert.equal(items[0].value, '2 Kişi');
     assert.equal(items[1].href, MORNING_BRIEFING_HREF.tahsilat);
-    assert.equal(items[2].href, MORNING_BRIEFING_HREF.onay72);
-    assert.equal(items[3].href, MORNING_BRIEFING_HREF.puantaj);
-    assert.equal(items[4].href, MORNING_BRIEFING_HREF.kutu);
-    assert.equal(items[2].value, '3 Dosya');
-    assert.equal(items[2].preview, 'onay72');
-    assert.equal(items[3].value, '1 Kişi');
-    assert.equal(items[4].value, '4 Yazı');
+    assert.equal(items[2].href, MORNING_BRIEFING_HREF.raporOnay);
+    assert.equal(items[2].label, 'Onay Bekleyen Rapor');
+    assert.equal(items[3].href, MORNING_BRIEFING_HREF.onay72);
+    assert.equal(items[4].href, MORNING_BRIEFING_HREF.puantaj);
+    assert.equal(items[5].href, MORNING_BRIEFING_HREF.kutu);
+    assert.equal(items[3].value, '3 Dosya');
+    assert.equal(items[3].preview, 'onay72');
+    assert.equal(items[4].value, '1 Kişi');
+    assert.equal(items[5].value, '4 Yazı');
     assert.match(items[1].value, /2 İş/);
     assert.equal(formatMorningBriefingCount(5, 'Dosya'), '5 Dosya');
 
@@ -97,6 +100,24 @@ describe('yönetici sabah bakışı LOCK', () => {
     });
     assert.equal(claimHover[0].title, 'HS-1');
     assert.match(claimHover[0].href ?? '', /hasar-dosyalari\/abc/);
+
+    const reportHref = mapMorningBriefingClaimPreview(
+      [{ id: 'abc', fileNo: 'HS-1', latestRepairReport: { id: 'rap-9' } }],
+      { preferReportHref: true },
+    );
+    assert.match(reportHref[0].href, /onarim-raporu\/rap-9/);
+    const raporHover = mapMorningBriefingHoverLines('raporOnay', {
+      pendingReports: [
+        {
+          id: 'abc',
+          href: '/panel/hasar-dosyalari/abc/onarim-raporu/rap-9',
+          fileNo: 'HS-1',
+          insured: 'Ayşe Demir',
+          statusLabel: 'Onay Bekliyor',
+        },
+      ],
+    });
+    assert.match(raporHover[0].href ?? '', /onarim-raporu\/rap-9/);
   });
 
   it('yönetim paneline şerit eklenir; dönem tuşu ve KPI kabuğu bozulmaz', () => {
@@ -123,6 +144,10 @@ describe('yönetici sabah bakışı LOCK', () => {
     assert.match(strip, /useOperationInboxStats/);
     assert.match(strip, /MgmtMorningBriefingPreview/);
     assert.match(strip, /yonetici-sabah-bakisi-sessiz/);
+    assert.match(strip, /yonetici-sabah-bakisi-rapor-onay/);
+    assert.match(strip, /reportApproval/);
+    assert.match(helper, /Onay Bekleyen Rapor/);
+    assert.match(helper, /repairReportStatus=pending_approval/);
     assert.match(strip, /silence-action-report/);
     assert.match(helper, /Sessiz Müşteri/);
     assert.doesNotMatch(dash, /HasarSilentOwnerReport/);

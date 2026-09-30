@@ -35,6 +35,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
 import axios from 'axios';
 import { getDefaultScreensForRole } from '@/utils/screen-permissions-defaults';
+import { panelAuthLoginHrefFromLocation } from '@/lib/panel-auth-gate';
 import { PanelSidebarGuideFooter } from '@/components/panel/PanelSidebarGuideFooter';
 import { PANEL_BACKEND_VERSION, PANEL_WEB_VERSION } from '@/config/panel-build-info';
 import { GUIDE_CONTENT_VERSION } from '@/config/panel-user-guide';
@@ -1523,7 +1524,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     const token = getAccessToken();
     if (!token || !hasValidSessionScope() || isRememberMeExpired() || isRememberMeInactive()) {
       clearAuth({ preserveRememberedEmail: isRememberMePreferred() });
-      window.location.replace('/giris?reason=auth');
+      window.location.replace(
+        panelAuthLoginHrefFromLocation(window.location.pathname, window.location.search),
+      );
       return;
     }
     const apiBase = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}`.replace(/\/$/, '').replace(/\/api\/v1$/, '/api/v1');
@@ -1596,7 +1599,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           return;
         }
         clearAuth({ preserveRememberedEmail: isRememberMePreferred() });
-        window.location.replace('/giris?reason=auth');
+        window.location.replace(
+          panelAuthLoginHrefFromLocation(window.location.pathname, window.location.search),
+        );
       })
       .finally(() => {
         setLoading(false);

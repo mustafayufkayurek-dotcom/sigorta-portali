@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { ClipboardList, Clock, Inbox, TrendingDown, Wallet } from 'lucide-react';
+import { ClipboardCheck, ClipboardList, Clock, Inbox, TrendingDown, Wallet } from 'lucide-react';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { useApiQuery } from '@/hooks/useApi';
 import { apiClient } from '@/lib/api-client';
@@ -23,7 +23,7 @@ import {
   buildMorningBriefingItems,
 } from './morning-briefing';
 
-type OperationStatsSlice = { approval72h?: number };
+type OperationStatsSlice = { approval72h?: number; reportApproval?: number };
 type DayEndSummarySlice = {
   totals?: { notApproved?: number };
   employees?: Array<{ fullName?: string; status?: string }>;
@@ -40,6 +40,7 @@ type InboxPreviewRow = {
 const ROW_ICON = {
   sessiz: TrendingDown,
   tahsilat: Wallet,
+  raporOnay: ClipboardCheck,
   onay72: Clock,
   puantaj: ClipboardList,
   kutu: Inbox,
@@ -48,6 +49,7 @@ const ROW_ICON = {
 const ROW_TONE = {
   sessiz: 'text-[#D97706]',
   tahsilat: 'text-[#2563EB]',
+  raporOnay: 'text-[#2563EB]',
   onay72: 'text-[#EF4444]',
   puantaj: 'text-[#F59E0B]',
   kutu: 'text-[#0F172A]',
@@ -74,6 +76,19 @@ export function MgmtMorningBriefing() {
     '/crm/silence-action-report',
     { retry: false },
   );
+
+  const pendingReportsQuery = useQuery({
+    queryKey: ['morning-briefing-pending-report'],
+    enabled: hoveredId === 'raporOnay',
+    queryFn: async () => {
+      const res = await apiClient.getWithMeta<unknown[], { total?: number }>('/claim-files', {
+        page: 1,
+        limit: 50,
+        repairReportStatus: 'pending_approval',
+      });
+      return mapMorningBriefingClaimPreview(res.data, { preferReportHref: true });
+    },
+  });
 
   const claimsQuery = useQuery({
     queryKey: ['morning-briefing-approval-72h'],
@@ -112,6 +127,7 @@ export function MgmtMorningBriefing() {
     pendingIncomingCount: finance.data?.pendingIncomingCount,
     totalPendingAmount: finance.data?.totalPendingAmount,
     approval72h: opsStats.data?.approval72h,
+    reportApproval: opsStats.data?.reportApproval,
     attendanceNotApproved: attendance.data?.totals?.notApproved,
     inboxUnowned: inbox.data?.unownedCount,
   });
@@ -140,11 +156,13 @@ export function MgmtMorningBriefing() {
       silent: silentReport.data,
       payments: finance.data?.pendingPayments,
       claims: claimsQuery.data,
+      pendingReports: pendingReportsQuery.data,
       employees: attendance.data?.employees,
       inbox: inboxPreviewQuery.data,
     });
 
   const hoverLoading =
+    (hoveredId === 'raporOnay' && pendingReportsQuery.isLoading) ||
     (hoveredId === 'onay72' && claimsQuery.isLoading) ||
     (hoveredId === 'kutu' && inboxPreviewQuery.isLoading);
 
@@ -176,7 +194,13 @@ export function MgmtMorningBriefing() {
             <li
               key={item.id}
               className={`relative ${index === 0 ? '' : 'border-t border-[#E2E8F0] sm:border-t-0 sm:border-l'} ${hoveredId === item.id ? 'z-20' : ''}`}
-              data-testid={item.id === 'sessiz' ? 'yonetici-sabah-bakisi-sessiz' : undefined}
+              data-testid={
+                item.id === 'sessiz'
+                  ? 'yonetici-sabah-bakisi-sessiz'
+                  : item.id === 'raporOnay'
+                    ? 'yonetici-sabah-bakisi-rapor-onay'
+                    : undefined
+              }
               onMouseEnter={() => showHover(item.id)}
               onMouseLeave={hideHover}
               onFocus={() => showHover(item.id)}

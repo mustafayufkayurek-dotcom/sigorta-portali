@@ -18,6 +18,21 @@ describe('müşteri form kimlik bandı LOCK', () => {
     assert.match(helpers, /customerFormIdentityBand/);
     assert.match(helpers, /if \(customerFormHasIdentity\(form\)\) return null/);
     assert.match(helpers, /Eksper firması bilgilerini giriniz/);
+    assert.match(helpers, /label: 'Asistans Firma'/);
+    assert.doesNotMatch(helpers, /Asistan Firması/);
+  });
+
+  it('yazılan ad Mustafa Yufkayürek biçimine çekilir; e-posta durur', () => {
+    const helpers = readFileSync(join(here, 'customer-form-helpers.ts'), 'utf8');
+    const page = readFileSync(join(here, '../app/panel/musteriler/page.tsx'), 'utf8');
+    const text = readFileSync(join(here, 'text-helpers.ts'), 'utf8');
+    assert.match(text, /MUSTAFA YUFKAYÜREK/);
+    assert.match(helpers, /titleCaseCustomerWrittenFields/);
+    assert.match(helpers, /return toTitleCaseTR\(raw\)/);
+    assert.match(page, /titleCaseCustomerWrittenFields\(form\)/);
+    assert.match(page, /normalizeFormFreeText\(r\.title/);
+    assert.match(page, /Asistans Firma/);
+    assert.doesNotMatch(page, /Asistan Firması/);
   });
 
   it('müşteri tedarikçi personel formunda kimlik bandı durur', () => {

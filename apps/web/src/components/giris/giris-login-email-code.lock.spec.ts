@@ -22,7 +22,7 @@ describe('giriş kodu ekranı LOCK', () => {
     assert.match(panel, /extractLoginEmailCode/);
     assert.match(panel, /maskLoginMailbox/);
     assert.match(panel, /Kod yalnızca/);
-    assert.match(panel, /Yapıştır/);
+    assert.match(panel, /takePanelLoginNext/);
     assert.match(panel, /Silinmiş Öğeler/);
     assert.match(panel, /visibilityState === 'hidden'/);
     assert.doesNotMatch(panel, /visibleLoginEmailCode/);

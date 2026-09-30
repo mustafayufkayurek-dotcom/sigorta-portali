@@ -1101,7 +1101,7 @@ export default function KullanicilarPage() {
     }
     if (form.userTask === 'assistance_company_user') {
       return {
-        label: 'Asistans Firması',
+        label: 'Asistans Firma',
         error: formErrors.assistantCustomerId,
         items: acilYardimCustomers,
         selectedId: form.assistantCustomerId,

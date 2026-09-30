@@ -17,7 +17,7 @@ import { PhoneInput } from '@/components/PhoneInput';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { relativeTime, activityColor } from '@/utils/date-helpers';
-import { toTitleCaseTR, normalizeFreeTextInput } from '@/utils/text-helpers';
+import { toTitleCaseTR, normalizeFreeTextInput, normalizeFormFreeText } from '@/utils/text-helpers';
 import { geocodeAddressCascade } from '@/utils/geocode-address';
 import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
@@ -46,6 +46,7 @@ import {
   customerFormHasIdentity,
   customerFormIdentityBand,
   isHasarCustomerServiceType,
+  titleCaseCustomerWrittenFields,
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
 import {
@@ -753,7 +754,7 @@ const SUB_TYPE_FILTER_CHIPS: { value: string; label: string }[] = [
   { value: 'sigorta_sirketi', label: 'Sigorta Şirketi' },
   { value: 'eksper_firmasi', label: 'Eksper Firması' },
   { value: 'broker_firmasi', label: 'Broker Firması' },
-  { value: 'asistan_firmasi', label: 'Asistan Firması' },
+  { value: 'asistan_firmasi', label: 'Asistans Firma' },
   { value: 'private_customer', label: 'Özel Müşteri' },
 ];
 
@@ -1528,7 +1529,7 @@ export default function MusterilerPage() {
   }, []);
 
   const handleAddNewRelType = async (onSelect?: (label: string) => void) => {
-    const val = newRelTypeValue.trim();
+    const val = normalizeFormFreeText(newRelTypeValue);
     if (!val || savingRelType) return;
     if (relationshipTypes.includes(val)) {
       onSelect?.(val);
@@ -1590,7 +1591,7 @@ export default function MusterilerPage() {
     setGibLoading(true); setGibError(null);
     try {
       const r = await turmobQuery(form.taxNumber, getToken());
-      if (r.found) setForm((p) => ({ ...p, companyName: r.title || p.companyName }));
+      if (r.found) setForm((p) => ({ ...p, companyName: normalizeFormFreeText(r.title || p.companyName) }));
       else setGibError('TÜRMOB sorgulaması başarısız — ünvanı manuel girebilirsiniz.');
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? '';
@@ -1769,8 +1770,9 @@ export default function MusterilerPage() {
         showToast('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
         return;
       }
-      const addr = normalizeCustomerAddressFields(form);
-      setForm((p) => ({ ...p, ...addr }));
+      const written = titleCaseCustomerWrittenFields(form);
+      const addr = normalizeCustomerAddressFields(written);
+      setForm((p) => ({ ...p, ...written, ...addr }));
       const neighborhood = collapseRepeatedAddressLine(addr.neighborhood) || null;
       const address = customerCardOpenAddress({
         address: addr.address,
@@ -1788,16 +1790,21 @@ export default function MusterilerPage() {
             .filter((c) => c.firstName.trim() || c.lastName.trim())
             .map((c) => {
               savedContactInfos = appendGeneralMailboxes(savedContactInfos, extraMailboxesFromList(c.email));
+              const firstName = normalizeFormFreeText(c.firstName);
+              const lastName = normalizeFormFreeText(c.lastName);
+              const role = c.role === '__other__' ? '' : normalizeFormFreeText(c.role);
               return {
                 ...c,
-                name: `${c.firstName} ${c.lastName}`.trim(),
-                role: c.role === '__other__' ? '' : c.role,
+                firstName,
+                lastName,
+                name: `${firstName} ${lastName}`.trim(),
+                role,
                 email: personMailboxFromList(c.email),
               };
             }),
           {
-            firstName: form.contactFirstName,
-            lastName: form.contactLastName,
+            firstName: written.contactFirstName,
+            lastName: written.contactLastName,
             phone: form.phone,
             email: personEmail,
           },
@@ -1813,10 +1820,10 @@ export default function MusterilerPage() {
         doorNo: form.doorNo || null,
         address,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
-        shortName: form.shortName.trim(),
+        shortName: written.shortName.trim(),
         notes: serializeCardNotes(form.cardNotes), source: form.source || null,
         satisfactionScore: form.satisfactionScore ? Number(form.satisfactionScore) : null,
-        followUpDate: form.followUpDate || null, tags: form.tags,
+        followUpDate: form.followUpDate || null, tags: written.tags,
         serviceType: form.subType === 'asistan_firmasi'
             ? 'acil_yardim'
             : form.subType === 'sigorta_sirketi'
@@ -1827,17 +1834,17 @@ export default function MusterilerPage() {
         contactInfos: savedContactInfos.filter((ci) => ci.value.trim()),
       };
       if (form.customerType === 'individual') {
-        payload.firstName = form.firstName; payload.lastName = form.lastName;
+        payload.firstName = written.firstName; payload.lastName = written.lastName;
         payload.identityNo = form.identityNo || null; payload.subType = form.subType || null;
       } else {
-        payload.companyName = form.companyName; payload.taxNumber = form.taxNumber || null;
-        payload.taxOffice = form.taxOffice || null;
+        payload.companyName = written.companyName; payload.taxNumber = form.taxNumber || null;
+        payload.taxOffice = written.taxOffice || null;
         payload.subType = form.subType || null;
-        payload.contactFirstName = form.contactFirstName || null;
-        payload.contactLastName = form.contactLastName || null;
+        payload.contactFirstName = written.contactFirstName || null;
+        payload.contactLastName = written.contactLastName || null;
         // Geriye dönük uyumluluk için authorizedPerson'ı da doldur
-        if (form.contactFirstName || form.contactLastName) {
-          payload.authorizedPerson = `${form.contactFirstName} ${form.contactLastName}`.trim() || null;
+        if (written.contactFirstName || written.contactLastName) {
+          payload.authorizedPerson = `${written.contactFirstName} ${written.contactLastName}`.trim() || null;
         }
       }
 
@@ -2873,12 +2880,12 @@ export default function MusterilerPage() {
                           </FormField>
                         </div>
                         <FormField label="Ad" required error={fieldErrors.firstName}>
-                          <input ref={firstNameRef} className={fieldErrors.firstName ? inpError : inp} placeholder="Örn: Ahmet" value={form.firstName}
+                          <input ref={firstNameRef} className={fieldErrors.firstName ? inpError : inp} placeholder="Örn. Ahmet" value={form.firstName}
                             onChange={(e) => { setForm((p) => ({ ...p, firstName: e.target.value })); setFieldErrors((prev) => { const n = { ...prev }; delete n.firstName; return n; }); }}
                             onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, firstName: v })); }} />
                         </FormField>
                         <FormField label="Soyad" required error={fieldErrors.lastName}>
-                          <input ref={lastNameRef} className={fieldErrors.lastName ? inpError : inp} placeholder="Örn: Yılmaz" value={form.lastName}
+                          <input ref={lastNameRef} className={fieldErrors.lastName ? inpError : inp} placeholder="Örn. Yılmaz" value={form.lastName}
                             onChange={(e) => { setForm((p) => ({ ...p, lastName: e.target.value })); setFieldErrors((prev) => { const n = { ...prev }; delete n.lastName; return n; }); }}
                             onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v })); }} />
                         </FormField>
@@ -2955,7 +2962,7 @@ export default function MusterilerPage() {
                           <FormField label="Kısa Ad" required error={fieldErrors.shortName}>
                             <input
                               className={fieldErrors.shortName ? inpError : inp}
-                              placeholder="Örn: Remed, Sezgi Grup"
+                              placeholder="Örn. Remed, Sezgi Grup"
                               value={form.shortName}
                               onChange={(e) => {
                                 setForm((p) => ({ ...p, shortName: e.target.value }));
@@ -3008,7 +3015,7 @@ export default function MusterilerPage() {
                           {!taxNoError && !taxNoWarn && gibError && <p className="text-xs text-amber-600 mt-1.5">⚠ {gibError}</p>}
                         </FormField>
                         <FormField label="Vergi Dairesi">
-                          <input className={inp} placeholder="Opsiyonel" value={form.taxOffice} onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))} />
+                          <input className={inp} placeholder="Opsiyonel" value={form.taxOffice} onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))} onBlur={(e) => { const v = normalizeFormFreeText(e.target.value); if (v) setForm((p) => ({ ...p, taxOffice: v })); }} />
                         </FormField>
                         <div className="col-span-1 sm:col-span-2">
                           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
@@ -3098,6 +3105,10 @@ export default function MusterilerPage() {
                               placeholder="Görevi / Ünvanı girin..."
                               value={contacts[0]?.role === '__other__' ? '' : (contacts[0]?.role ?? '')}
                               onChange={(e) => syncPrimaryContact({ role: e.target.value || '__other__' })}
+                              onBlur={(e) => {
+                                const v = normalizeFormFreeText(e.target.value);
+                                if (v) syncPrimaryContact({ role: v });
+                              }}
                             />
                           )}
                         </FormField>

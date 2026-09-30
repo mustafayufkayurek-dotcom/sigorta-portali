@@ -58,7 +58,7 @@ const DEFAULT_UNIT_OPTIONS = ['m²', 'adet', 'metre', 'saat', 'kg', 'ton'];
 export interface RelationshipType {
   label: string;
   active: boolean;
-  usageAreas?: ('musteri' | 'insured' | 'eksper' | 'sigorta_sirketi' | 'asistan_firmasi' | 'private_customer' | 'tedarikci' | 'acil' | 'hasar' | 'dosya')[];
+  usageAreas?: ('musteri' | 'insured' | 'eksper' | 'sigorta_sirketi' | 'broker_firmasi' | 'asistan_firmasi' | 'private_customer' | 'tedarikci' | 'acil' | 'hasar' | 'dosya')[];
 }
 
 const DEFAULT_RELATIONSHIP_TYPES: RelationshipType[] = [
@@ -123,7 +123,7 @@ export interface CustomerSubType {
 const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubType[] = [
   { value: 'sigorta_sirketi', label: 'Sigorta Şirketi', forType: 'corporate', color: 'blue' },
   { value: 'broker_firmasi', label: 'Broker Firması', forType: 'corporate', color: 'gray' },
-  { value: 'asistan_firmasi', label: 'Asistan Firması', forType: 'corporate', color: 'orange' },
+  { value: 'asistan_firmasi', label: 'Asistans Firma', forType: 'corporate', color: 'orange' },
   { value: 'eksper_firmasi', label: 'Eksper Firması', forType: 'corporate', color: 'purple' },
   { value: 'insured', label: 'Sigortalı', forType: 'both', color: 'orange' },
   { value: 'private_customer', label: 'Özel Müşteri', forType: 'individual', color: 'green' },
@@ -137,7 +137,13 @@ function mergeCustomerSubTypes(stored: CustomerSubType[]): CustomerSubType[] {
     if (seen.has(row.value)) continue;
     clean.push(row);
   }
-  return clean;
+  return clean.map((row) => {
+    const value = String(row.value ?? '').trim();
+    if (value === 'asistan_firmasi' || value === 'asistans_firmasi') {
+      return { ...row, label: 'Asistans Firma' };
+    }
+    return row;
+  });
 }
 
 export interface FieldInspectionBranch {

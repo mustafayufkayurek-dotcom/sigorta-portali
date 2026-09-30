@@ -32,6 +32,7 @@ describe('ilişki türü kullanım alanı LOCK', () => {
     assert.equal(relationshipUsageAreaForCustomerSubType('eksper_firmasi'), 'eksper');
     assert.equal(relationshipUsageAreaForCustomerSubType('eksper'), 'eksper');
     assert.equal(relationshipUsageAreaForCustomerSubType('sigorta_sirketi'), 'sigorta_sirketi');
+    assert.equal(relationshipUsageAreaForCustomerSubType('broker_firmasi'), 'broker_firmasi');
     assert.equal(relationshipUsageAreaForCustomerSubType('asistan_firmasi'), 'asistan_firmasi');
     assert.equal(relationshipUsageAreaForCustomerSubType('private_customer'), 'private_customer');
     assert.deepEqual(relationshipTypeLabelsForArea(catalog, 'eksper'), ['Dosya Sorumlusu', 'Operasyon Yetkilisi']);
@@ -55,6 +56,7 @@ describe('ilişki türü kullanım alanı LOCK', () => {
     assert.match(page, /RELATIONSHIP_CUSTOMER_CHILDREN/);
     assert.match(page, /RELATIONSHIP_VENDOR_CHILDREN/);
     assert.match(page, /Sigortalı/);
+    assert.match(page, /Broker Firma/);
     assert.match(page, /Asistans Firma/);
     assert.match(page, /Özel Müşteri/);
     assert.match(page, /Acil Yardım/);
@@ -73,8 +75,14 @@ describe('ilişki türü kullanım alanı LOCK', () => {
     assert.ok(areas.includes('eksper'));
     assert.ok(areas.includes('sigorta_sirketi'));
     assert.ok(!areas.includes('musteri'));
+    areas = toggleRelationshipCustomerChild(areas, 'broker_firmasi');
+    assert.ok(areas.includes('broker_firmasi'));
+    assert.deepEqual(relationshipUsageDisplayLabels(areas), ['Müşteri · Eksper', 'Müşteri · Sigorta Şirketi', 'Müşteri · Broker Firma']);
     areas = toggleRelationshipUsageParent(['musteri', 'eksper', 'dosya'], 'musteri');
     assert.deepEqual(areas, []);
+    assert.equal(relationshipTypeAppliesToArea({ label: 'Broker Yetkili', usageAreas: ['broker_firmasi'] }, 'broker_firmasi'), true);
+    assert.equal(relationshipTypeAppliesToArea({ label: 'Broker Yetkili', usageAreas: ['broker_firmasi'] }, 'musteri'), false);
+    assert.equal(relationshipTypeAppliesToArea({ label: 'Broker Yetkili', usageAreas: ['broker_firmasi'] }, 'sigorta_sirketi'), false);
     assert.equal(relationshipTypeAppliesToArea({ label: 'Vekil', usageAreas: ['insured'] }, 'insured'), true);
     assert.equal(relationshipTypeAppliesToArea({ label: 'Vekil', usageAreas: ['insured'] }, 'eksper'), false);
     assert.equal(relationshipTypeAppliesToArea({ label: 'Vekil', usageAreas: ['musteri'] }, 'insured'), true);

@@ -50,6 +50,39 @@ export function safePanelNextPath(raw: string | null | undefined): string | null
   return path;
 }
 
+export const PANEL_LOGIN_NEXT_STORAGE_KEY = 'meridyen-login-next';
+
+export function rememberPanelLoginNext(raw: string | null | undefined): void {
+  if (typeof window === 'undefined') return;
+  const next = safePanelNextPath(raw);
+  if (!next) return;
+  try {
+    window.sessionStorage.setItem(PANEL_LOGIN_NEXT_STORAGE_KEY, next);
+  } catch {
+    /* quota */
+  }
+}
+
+export function takePanelLoginNext(queryNext: string | null | undefined): string | null {
+  const fromQuery = safePanelNextPath(queryNext);
+  if (typeof window === 'undefined') return fromQuery;
+  if (fromQuery) {
+    try {
+      window.sessionStorage.removeItem(PANEL_LOGIN_NEXT_STORAGE_KEY);
+    } catch {
+      /* yok */
+    }
+    return fromQuery;
+  }
+  try {
+    const stored = safePanelNextPath(window.sessionStorage.getItem(PANEL_LOGIN_NEXT_STORAGE_KEY));
+    window.sessionStorage.removeItem(PANEL_LOGIN_NEXT_STORAGE_KEY);
+    return stored;
+  } catch {
+    return null;
+  }
+}
+
 export function girisRedirectUrl(nextPathname: string, search = ''): string {
   const next = `${nextPathname}${search}`;
   const params = new URLSearchParams();
@@ -58,4 +91,12 @@ export function girisRedirectUrl(nextPathname: string, search = ''): string {
     params.set('next', next.startsWith('/panel') ? next : '/panel');
   }
   return `/giris?${params.toString()}`;
+}
+
+/** Oturum düşünce açık panel yolu kaybolmaz; girişten sonra aynı iş açılır. */
+export function panelAuthLoginHrefFromLocation(
+  pathname: string,
+  search = '',
+): string {
+  return girisRedirectUrl(pathname, search);
 }
