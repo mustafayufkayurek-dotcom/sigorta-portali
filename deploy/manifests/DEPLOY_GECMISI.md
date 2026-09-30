@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (30 Eylül 2026 — web v639 / backend v639)
+## Canlı durum (30 Eylül 2026 — web v640 / backend v639)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v639-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v640-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v639-amd64` | canlı |
-| **Rollback** | Web **v638** / Backend **v638** | manifest `rollbackImages` |
-| **Etiket** | `v639-musteri-tedarikci-tablo` | |
+| **Rollback** | Web **v639** / Backend **v639** | manifest `rollbackImages` |
+| **Etiket** | `v640-oturum-serit-dev` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v640 — Web-only (30 Eylül 2026) — Oturum şeridi ve deneme sayfaları
+
+- Oturum şeridi fareyle kapanmaz; Oturumu Uzat veya Çıkış Yap
+- Deneme `/dev` sayfaları canlıda açılmaz
+- Disk 7 GB; DB yedeği gzip 71M (`/var/backups/meridyen/pre_v640-oturum-serit-dev_20260930_205606.sql.gz`); uploads `/opt/app/backups/uploads/uploads_20260930_205649.tar.gz`; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde; `/dev/personel-ozluk-denetim` 404
+- Geri alma web **v639** / backend **v639**
 
 ### v639 — Full (30 Eylül 2026) — Müşteri ve tedarikçi tablo
 
