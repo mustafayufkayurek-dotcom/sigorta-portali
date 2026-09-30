@@ -17,6 +17,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(util, /fieldStaffInsuredName/);
     assert.match(util, /fieldStaffPhone/);
     assert.match(util, /fieldStaffAddress/);
+    assert.match(util, /fieldStaffClaimSubject/);
+    assert.match(util, /resolveClaimDosyaKonusu/);
     assert.match(util, /fieldStaffDirectionsUrl/);
     assert.match(util, /fieldStaffInspectionStatus/);
     assert.match(util, /fieldStaffInspectionBadgeClass/);
@@ -122,6 +124,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(home, /from-brand-50/);
     assert.match(home, /compact/);
     assert.match(home, /saha-merkez-dosya-karti/);
+    assert.match(home, /fieldStaffClaimSubject/);
+    assert.doesNotMatch(home, /claimSubject\?\.name \|\|/);
     assert.match(home, /FieldAcilAssignmentCard/);
     assert.match(home, /fieldStaffIncludesAcil/);
     assert.match(home, /usePanelAccess/);
@@ -140,6 +144,26 @@ describe('field-staff-claim-view lock', () => {
     assert.doesNotMatch(header, /Dosyalarıma Git/);
     const banner = read('../components/field-survey/InspectionReminderBanner.tsx');
     assert.match(banner, /Dosyalarıma Git/);
+  });
+
+  it('saha konu satırı ofis Dosya Konusu ile aynıdır; eski ihbar yangını ezmez', () => {
+    const util = read('./field-staff-claim-view.ts');
+    const helpers = read('./text-helpers.ts');
+    assert.match(util, /fieldStaffClaimSubject/);
+    assert.match(util, /resolveClaimDosyaKonusu/);
+    assert.match(helpers, /departmentFileSubject\?\.name/);
+    const deptIdx = helpers.indexOf('const deptName = claim.departmentFileSubject');
+    const subjectIdx = helpers.indexOf('const subjectName = claim.claimSubject');
+    assert.ok(deptIdx > 0 && subjectIdx > deptIdx);
+    const home = read('../features/dashboard/components/admin/field-operations-home.tsx');
+    const completed = read('../features/dashboard/components/admin/field-completed-inspections-page.tsx');
+    const list = read('../app/panel/hasar-dosyalari/page.tsx');
+    assert.match(home, /fieldStaffClaimSubject\(claim\)/);
+    assert.match(completed, /fieldStaffClaimSubject\(claim\)/);
+    assert.match(list, /fieldStaffClaimSubject\(claim, dosyaKonusuCatalog\)/);
+    assert.doesNotMatch(home, /claimSubject\?\.name \|\|/);
+    assert.doesNotMatch(completed, /claimSubject\?\.name \|\|/);
+    assert.doesNotMatch(list, /claim\.claimSubject\?\.name \|\|/);
   });
 
   it('ofis + saha aynı tespit uyarı bandı yöntemi; çan/WhatsApp kanalı yok', () => {

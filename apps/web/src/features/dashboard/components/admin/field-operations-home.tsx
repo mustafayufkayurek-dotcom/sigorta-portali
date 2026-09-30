@@ -25,6 +25,7 @@ import {
   fieldStaffInsuredName,
   fieldStaffPhone,
   fieldStaffAssignedListSplit,
+  fieldStaffClaimSubject,
   fieldStaffCompletedInspectionFiles,
   FIELD_STAFF_ASSIGNMENTS_HREF,
   FIELD_STAFF_ASSIGNMENTS_LABEL,
@@ -601,11 +602,7 @@ export function FieldOperationsHome() {
                 const cityLine = [claim.propertyAddress?.city, claim.propertyAddress?.district]
                   .filter(Boolean)
                   .join(' / ');
-                const subject =
-                  claim.claimSubject?.name ||
-                  claim.lossType ||
-                  claim.productBranch ||
-                  'Hasar Dosyası';
+                const subject = fieldStaffClaimSubject(claim);
 
                 return (
                   <li

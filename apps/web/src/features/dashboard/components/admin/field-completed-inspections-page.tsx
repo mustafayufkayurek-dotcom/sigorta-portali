@@ -14,6 +14,7 @@ import { apiClient } from '@/lib/api-client';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import { SearchInput } from '@/components/ui/SearchInput';
 import {
+  fieldStaffClaimSubject,
   fieldStaffCompletedInspectionFiles,
   fieldStaffInspectionBadgeClass,
   fieldStaffInspectionStatus,
@@ -190,11 +191,7 @@ export function FieldCompletedInspectionsPage() {
             const cityLine = [claim.propertyAddress?.city, claim.propertyAddress?.district]
               .filter(Boolean)
               .join(' / ');
-            const subject =
-              claim.claimSubject?.name ||
-              claim.lossType ||
-              claim.productBranch ||
-              'Hasar Dosyası';
+            const subject = fieldStaffClaimSubject(claim);
             const closed = Boolean(claim.currentStatus?.isClosedState);
 
             return (

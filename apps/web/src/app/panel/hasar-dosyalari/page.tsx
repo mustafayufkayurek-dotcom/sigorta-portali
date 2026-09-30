@@ -66,6 +66,7 @@ import {
 } from '@/utils/claim-list-url-status';
 import {
   fieldStaffAddress,
+  fieldStaffClaimSubject,
   fieldStaffInspectionBadgeClass,
   fieldStaffInspectionStatus,
   fieldStaffInsuredName,
@@ -860,11 +861,7 @@ function ClaimFilesPageContent() {
                 const cityLine = [claim.propertyAddress?.city, claim.propertyAddress?.district]
                   .filter(Boolean)
                   .join(' / ');
-                const subject =
-                  claim.claimSubject?.name ||
-                  claim.lossType ||
-                  claim.productBranch ||
-                  'Hasar Dosyası';
+                const subject = fieldStaffClaimSubject(claim, dosyaKonusuCatalog);
                 return (
                   <div
                     key={claim.id}

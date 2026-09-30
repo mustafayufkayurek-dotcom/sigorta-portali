@@ -4,7 +4,7 @@
  * Finans / sigorta / planlayıcı UI’da yok.
  */
 
-import { formatHasarAdresi } from '@/utils/text-helpers';
+import { formatHasarAdresi, resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 
 export type FieldStaffClaimLite = {
@@ -34,6 +34,24 @@ export function fieldStaffPhone(claim: FieldStaffClaimLite): string {
 
 export function fieldStaffAddress(claim: FieldStaffClaimLite): string {
   return formatHasarAdresi(claim.propertyAddress);
+}
+
+/**
+ * Saha konu satırı ofis Dosya Konusu ile aynıdır.
+ * Eski ihbar claimSubject (Yangın Hasarı) dosya sorumlusunun departmentFileSubject
+ * (Dahili Su) kaydını ezmez.
+ */
+export function fieldStaffClaimSubject(
+  claim: {
+    departmentFileSubject?: { name?: string | null } | null;
+    claimSubject?: { name?: string | null } | null;
+    lossType?: string | null;
+    productBranch?: string | null;
+  },
+  catalogNames?: string[],
+): string {
+  const label = resolveClaimDosyaKonusu(claim, catalogNames);
+  return label === '—' ? 'Hasar Dosyası' : label;
 }
 
 export type FieldStaffInspectionStatus = {
