@@ -2431,8 +2431,8 @@ export default function MusterilerPage() {
             <span className="text-xs text-slate-400">Sayfa {page} / {Math.max(1, Math.ceil(total / limit))}</span>
           </div>
 
-          {/* Mobil / tablet kart */}
-          <div className="grid gap-3 p-3 lg:hidden">
+          {/* Dar kart liste ofiste kapalı — tablo durur */}
+          <div className="hidden" data-testid="musteri-dar-kart-liste-kapali">
             {displayedCustomers.map((c) => {
               const listed = listedCustomerShortLabel(c);
               const name = listed.name;
@@ -2517,7 +2517,7 @@ export default function MusterilerPage() {
             })}
           </div>
 
-          <PanelTableScroll className="hidden lg:block">
+          <PanelTableScroll className="musteri-ofis-tablo">
             <table className="text-sm" style={panelTableLayoutStyle(tableColumns, { leadingWidths: [36] })}>
               <PanelTableColGroup leadingWidths={[36]} />
               <thead className="sticky top-0 z-10 table-head-row portal-table-head">

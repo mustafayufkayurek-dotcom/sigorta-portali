@@ -1,0 +1,33 @@
+---
+description: Ofis günlük listesi tablo durur; daralınca kart açılmaz
+globs: apps/web/src/app/panel/{hasar-dosyalari,operasyon,musteriler,tedarikciler,kullanicilar}/**/*.tsx
+alwaysApply: false
+---
+
+# Ofis Liste Tablo Kilidi
+
+**Kaynak (Mustafa · 30.09.2026):** Dosya sorumlusu Acil/Hasar’da kart liste gördü; admin tabloda kaldı. Müşteri ve tedarikçi aynı ikinci yüze düşüyordu.
+
+**Temel cümle:** Ofis listesi **tablodur.** Dar pencere kart liste açmaz. Saha kartı ayrıdır.
+
+## Zorunlu
+
+1. Hasar ofis, Acil, Müşteriler, Tedarikçiler, Kullanıcılar tablo yüzü. `office-list-table.lock.spec.ts` her alımda çalışır.
+2. Saha Hasar kartı yalnız saha oturumunda.
+3. Tablo daralınca yana kayar; kart yüze dönülmez.
+
+## Yasak (açık onay yoksa)
+
+- Ofis listesinde daralınca kart, genişte tablo
+- Bu kilidi «sadeleştirme» diye kaldırmak
+
+## Durdurma
+
+Dosya sorumlusu yine kart liste görürse → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/web/src/utils/office-list-table.lock.spec.ts
+```

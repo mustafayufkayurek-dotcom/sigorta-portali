@@ -2276,8 +2276,7 @@ export default function VendorsPage() {
         </div>
       ) : (
         <>
-          {/* Mobil kart listesi */}
-          <div className="space-y-2 md:hidden">
+          <div className="hidden" data-testid="tedarikci-dar-kart-liste-kapali">
             {vendors.map((v) => {
               const identityGap = vendorIdentityGapLabel(v);
               return (
@@ -2382,7 +2381,7 @@ export default function VendorsPage() {
             )}
           </div>
 
-          <div className="table-container ops-queue-table hidden md:block">
+          <div className="table-container ops-queue-table tedarikci-ofis-tablo">
           <PanelTableScroll>
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <PanelTableColGroup />
