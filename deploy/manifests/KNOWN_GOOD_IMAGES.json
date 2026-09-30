@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-30",
-  "label": "v637-ofis-liste-genel-kutu",
-  "description": "Full v637: Kullanıcı Ekle ofis listesinde Meridyen kadrosu yok; müşteri yetkili e-posta ile genel kutu ayrı. Geri alma web v636 / backend v636.",
+  "label": "v638-ofis-tablo-sigorta-karti",
+  "description": "Full v638: dosya sorumlusu Hasar/Acil listesi tablo; Kullanıcı Ekle sigorta kartındaki kişi. Geri alma web v637 / backend v637.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v637-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v637-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v638-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v638-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v636-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v636-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v637-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v637-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

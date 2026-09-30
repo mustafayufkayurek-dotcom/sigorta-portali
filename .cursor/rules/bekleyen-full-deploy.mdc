@@ -1,11 +1,11 @@
 ---
-description: Canlı web v637 / backend v637
+description: Canlı web v638 / backend v638
 alwaysApply: true
 ---
 
 # Canlı (30.09.2026)
 
-Canlı: web **v637** · backend **v637**. Geri alma: web **v636** / backend **v636**.
+Canlı: web **v638** · backend **v638**. Geri alma: web **v637** / backend **v637**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v638 (full):** Dosya sorumlusu Acil Yardım ve Hasar Onarım listesinde tablo durur; daralınca kart liste açılmaz. Kullanıcı Ekle’de sigorta seçilince müşteri kartındaki kişi durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v637 / backend v637.
 
 **v637 (full):** Kullanıcı Ekle’de sigorta / eksper / broker / asistans ofisinde Meridyen kadrosu durmaz; karttaki yetkili kişi durur. Müşteri kartında yetkili e-posta ile genel kutu ayrıdır; ortak kutu giriş hesabı olmaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v636 / backend v636.
 
@@ -149,6 +151,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Paket (lokal değil, canlıda kırık):** Acil Yardım ve Hasar Onarım **dosya sorumlusu** listesi. Admin’de tablo durur. Dosya sorumlusunda daralınca tablo kapanır, kart liste açılır; Yeni Dosya sola kayar, sayılar ikiye bölünür. Saha kartı ayrı durur. Onaylı yüz tablo; dosya sorumlusu yüzü kilitlenmemiş. Alım yalnız «canlıya al» deyince.
+(boş)
 
-Canlı **v637**.
+Canlı **v638**.
