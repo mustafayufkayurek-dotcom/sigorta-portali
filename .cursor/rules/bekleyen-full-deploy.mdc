@@ -1,11 +1,11 @@
 ---
-description: Canlı web v638 / backend v638
+description: Canlı web v639 / backend v639
 alwaysApply: true
 ---
 
 # Canlı (30.09.2026)
 
-Canlı: web **v638** · backend **v638**. Geri alma: web **v637** / backend **v637**.
+Canlı: web **v639** · backend **v639**. Geri alma: web **v638** / backend **v638**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v639 (full):** Müşteriler ve Tedarikçiler ofiste tablo durur; daralınca kart liste açılmaz. Günlük ofis listeleri aynı kilittedir. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v638 / backend v638.
 
 **v638 (full):** Dosya sorumlusu Acil Yardım ve Hasar Onarım listesinde tablo durur; daralınca kart liste açılmaz. Kullanıcı Ekle’de sigorta seçilince müşteri kartındaki kişi durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v637 / backend v637.
 
@@ -153,4 +155,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 (boş)
 
-Canlı **v638**.
+Canlı **v639**.

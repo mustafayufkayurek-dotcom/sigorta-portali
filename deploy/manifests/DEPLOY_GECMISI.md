@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (30 Eylül 2026 — web v638 / backend v638)
+## Canlı durum (30 Eylül 2026 — web v639 / backend v639)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v638-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v638-amd64` | canlı |
-| **Rollback** | Web **v637** / Backend **v637** | manifest `rollbackImages` |
-| **Etiket** | `v638-ofis-tablo-sigorta-karti` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v639-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v639-amd64` | canlı |
+| **Rollback** | Web **v638** / Backend **v638** | manifest `rollbackImages` |
+| **Etiket** | `v639-musteri-tedarikci-tablo` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v639 — Full (30 Eylül 2026) — Müşteri ve tedarikçi tablo
+
+- Müşteriler ve Tedarikçiler ofiste tablo durur; daralınca kart liste açılmaz
+- Günlük ofis listeleri aynı kilittedir
+- Disk 12 GB; DB yedeği gzip 71M (`/var/backups/meridyen/pre_v639-musteri-tedarikci-tablo_20260930_145126.sql.gz`); uploads `/opt/app/backups/uploads/uploads_20260930_145216.tar.gz`; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v638** / backend **v638**
 
 ### v638 — Full (30 Eylül 2026) — Ofis tablo ve sigorta kartı
 
