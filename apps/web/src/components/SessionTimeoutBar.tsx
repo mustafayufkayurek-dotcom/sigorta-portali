@@ -27,11 +27,17 @@ export default function SessionTimeoutBar() {
   const [visible, setVisible] = useState(false);
   const [extending, setExtending] = useState(false);
   const lastActivityRef = useRef(Date.now());
+  const warningVisibleRef = useRef(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const resetActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
+  }, []);
+
+  const hideWarning = useCallback(() => {
+    warningVisibleRef.current = false;
+    setVisible(false);
   }, []);
 
   const extendSession = useCallback(async () => {
@@ -45,10 +51,10 @@ export default function SessionTimeoutBar() {
       }
     } finally {
       lastActivityRef.current = Date.now();
-      setVisible(false);
+      hideWarning();
       setExtending(false);
     }
-  }, [router]);
+  }, [hideWarning, router]);
 
   const doLogout = useCallback(() => {
     const proceed = () => {
@@ -70,6 +76,7 @@ export default function SessionTimeoutBar() {
     };
 
     const onActivity = () => {
+      if (warningVisibleRef.current) return;
       resetActivity();
       scheduleTokenRefresh();
     };
@@ -88,10 +95,13 @@ export default function SessionTimeoutBar() {
     intervalRef.current = setInterval(() => {
       const elapsed = Date.now() - lastActivityRef.current;
       const remaining = Math.max(0, sessionDurationMs - elapsed);
+      const showWarning = remaining <= WARN_BEFORE_MS && remaining > 0;
       setRemainingMs(remaining);
-      setVisible(remaining <= WARN_BEFORE_MS && remaining > 0);
+      warningVisibleRef.current = showWarning;
+      setVisible(showWarning);
 
       if (remaining <= 0) {
+        warningVisibleRef.current = false;
         if (intervalRef.current) clearInterval(intervalRef.current);
         doLogout();
       }

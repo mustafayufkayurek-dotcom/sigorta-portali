@@ -22,6 +22,15 @@ describe('unutulan ekran LOCK', () => {
     assert.doesNotMatch(bar, /if \(rememberMe \|\| localDev \|\| !visible\)/);
   });
 
+  it('şerit açıkken fare / kaydırma süreyi sıfırlamaz; yalnız Uzat veya Çıkış kapatır', () => {
+    const bar = readFileSync(join(here, 'SessionTimeoutBar.tsx'), 'utf8');
+    assert.match(bar, /warningVisibleRef/);
+    assert.match(bar, /if \(warningVisibleRef\.current\) return/);
+    assert.match(bar, /hideWarning/);
+    assert.match(bar, /onClick=\{extendSession\}/);
+    assert.match(bar, /onClick=\{doLogout\}/);
+  });
+
   it('kısa sunucu kesintisi oturumu silmez', () => {
     const gate = readFileSync(join(here, '../lib/panel-auth-gate.lock.spec.ts'), 'utf8');
     assert.match(gate, /sunucu kısa kesilince oturum silinmez/);

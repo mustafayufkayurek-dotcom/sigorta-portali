@@ -77,6 +77,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'panel-table-scroll.lock.spec',
       'panel-cep-duzen.lock.spec',
       'office-list-table.lock.spec',
+      'dev-production-closed.lock.spec',
       'acil-status-transition.lock.spec',
       'document-download-access.lock.spec',
       'acil-finance-access.lock.spec',
