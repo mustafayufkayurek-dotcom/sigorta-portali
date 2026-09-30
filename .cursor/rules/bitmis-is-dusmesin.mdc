@@ -45,6 +45,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 26. Puantaj onayı silinmiş hesaba gitmez. `archived+…@deleted.meridyen.local` kutusuna «Puantaj Onayı Bekliyor» yazılmaz.
 27. Sigorta Operasyon Ağı: Canlı Destek mavi bantın üstüne binmez. Bant tuşu ve sayfa konumu ofis Operasyon Merkezi’ne gitmez; «yetkiniz yok» çıkmaz.
 28. Deneme `/dev` sayfaları canlıda açılmaz.
+29. Saha konu satırı ofisteki Dosya Konusu ile aynıdır. Eski ihbar yangını ezmez.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

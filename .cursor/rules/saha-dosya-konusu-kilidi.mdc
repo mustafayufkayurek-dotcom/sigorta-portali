@@ -1,0 +1,28 @@
+# Saha Dosya Konusu Kilidi
+
+**Kaynak (Mustafa · 30.09.2026):** Dosya 20102602781. Ofis Hasar listesi **Dahili Su**. Saha Merkezi **Yangın Hasarı**. Tespitçi yanlış konuda sahaya gidiyordu.
+
+**Temel cümle:** Saha konu satırı **ofisteki Dosya Konusu** ile aynıdır. Eski ihbar yangını ezmez.
+
+## Zorunlu
+
+1. Ofis `resolveClaimDosyaKonusu` kullanır: önce `departmentFileSubject.name`, sonra `claimSubject.name`, sonra `lossType`.
+2. Saha Merkezi, Tamamlanan Tespitler ve saha Hasar kartı `fieldStaffClaimSubject` kullanır; bu kapı aynı çözücüdür.
+3. Konu satırında `claimSubject?.name || lossType || productBranch` yok.
+
+## Yasak (açık onay yoksa)
+
+- Saha kartına ihbar `claimSubject` veya ürün branşını Dosya Konusu diye basmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Saha yine ofisten farklı konu gösterirse → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/web/src/utils/field-staff-claim-view.lock.spec.ts
+pnpm smoke:hasar-rapor-revizyon
+```

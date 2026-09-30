@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (30 Eylül 2026 — web v641 / backend v641)
+## Canlı durum (30 Eylül 2026 — web v642 / backend v641)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v641-amd64` | canlı |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v642-amd64` | canlı |
 | **Backend** | `app-backend:dalga2-agreement-hr-01-v641-amd64` | canlı |
-| **Rollback** | Web **v640** / Backend **v639** | manifest `rollbackImages` |
-| **Etiket** | `v641-rapor-broker-asistans` | |
+| **Rollback** | Web **v641** / Backend **v641** | manifest `rollbackImages` |
+| **Etiket** | `v642-saha-dosya-konusu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v642 — Web-only (30 Eylül 2026) — Saha Dosya Konusu
+
+- Saha konu satırı ofisteki Dosya Konusu ile aynıdır; eski ihbar yangını ezmez
+- Disk; DB yedeği gzip 71M (`/var/backups/meridyen/pre_v642-saha-dosya-konusu_20260930_234308.sql.gz`); uploads `/opt/app/backups/uploads/uploads_20260930_234348.tar.gz`; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v641** / backend **v641**
 
 ### v641 — Full (30 Eylül 2026) — Rapor dönüşü, Broker Firma, Asistans Firma
 

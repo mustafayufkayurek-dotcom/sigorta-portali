@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-09-30",
-  "label": "v641-rapor-broker-asistans",
-  "description": "Full v641: rapor maili girişten sonra rapora düşer; Bekleyen İş’te onay bekleyen rapor; ilişki türünde Broker Firma; müşteri tipi Asistans Firma. Geri alma web v640 / backend v639.",
+  "label": "v642-saha-dosya-konusu",
+  "description": "Web-only v642: saha konu satırı ofisteki Dosya Konusu ile aynıdır; eski ihbar yangını ezmez. Backend v641. Geri alma web v641 / backend v641.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v641-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v641-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v642-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v640-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v639-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v641-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v641-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

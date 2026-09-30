@@ -1,11 +1,11 @@
 ---
-description: Canlı web v641 / backend v641
+description: Canlı web v642 / backend v641
 alwaysApply: true
 ---
 
 # Canlı (30.09.2026)
 
-Canlı: web **v641** · backend **v641**. Geri alma: web **v640** / backend **v639**.
+Canlı: web **v642** · backend **v641**. Geri alma: web **v641** / backend **v641**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v642 (yalnız web):** Saha konu satırı ofisteki Dosya Konusu ile aynıdır. Eski ihbar yangını Dahili Su dosyasını ezmez. Backend **v641**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v641 / backend v641.
 
 **v641 (full):** Onarım raporu mailindeki Raporu Aç girişten sonra o rapora düşer. Yönetim Paneli Bekleyen İş’te onay bekleyen rapor sayısı durur. İlişki türünde müşteri altına Broker Firma durur. Müşteri kartında tip Asistans Firma durur; Asistan Firması yazılmaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v640 / backend v639.
 
@@ -159,4 +161,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 (boş)
 
-Canlı web **v641** · backend **v641**.
+Canlı web **v642** · backend **v641**.
