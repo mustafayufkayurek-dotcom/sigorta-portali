@@ -8,18 +8,28 @@
 
 ---
 
-## Canlı durum (30 Eylül 2026 — web v640 / backend v639)
+## Canlı durum (30 Eylül 2026 — web v641 / backend v641)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v640-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v639-amd64` | canlı |
-| **Rollback** | Web **v639** / Backend **v639** | manifest `rollbackImages` |
-| **Etiket** | `v640-oturum-serit-dev` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v641-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v641-amd64` | canlı |
+| **Rollback** | Web **v640** / Backend **v639** | manifest `rollbackImages` |
+| **Etiket** | `v641-rapor-broker-asistans` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v641 — Full (30 Eylül 2026) — Rapor dönüşü, Broker Firma, Asistans Firma
+
+- Onarım raporu mailindeki Raporu Aç girişten sonra o rapora düşer
+- Yönetim Paneli Bekleyen İş’te onay bekleyen rapor sayısı durur
+- İlişki türünde müşteri altına Broker Firma durur
+- Müşteri kartında tip Asistans Firma; Asistan Firması yazılmaz
+- Disk 22 GB; DB yedeği gzip 71M (`/var/backups/meridyen/pre_v641-rapor-broker-asistans_20260930_224839.sql.gz`); uploads `/opt/app/backups/uploads/uploads_20260930_224914.tar.gz`; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v640** / backend **v639**
 
 ### v640 — Web-only (30 Eylül 2026) — Oturum şeridi ve deneme sayfaları
 
