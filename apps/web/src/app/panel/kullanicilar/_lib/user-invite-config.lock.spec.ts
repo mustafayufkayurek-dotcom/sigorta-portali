@@ -19,6 +19,7 @@ import {
   personMailboxFromList,
   mergeOfficeUsersWithContacts,
   belongsOnPortalOfficePersonnelList,
+  isCustomerCardForInsuranceCompany,
   officePersonToFormFields,
   resolveOfficePersonPhone,
   selectedPortalOfficeCustomerId,
@@ -156,6 +157,41 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.equal(merged[1]?.firstName, 'Mehmet');
     assert.equal(merged[1]?.lastName, 'Demir');
     assert.equal(merged[1]?.jobTitle, 'Operasyon');
+  });
+
+  it('sigorta seçilince müşteri kartındaki kişi ofis listesine yazılır', () => {
+    assert.equal(
+      isCustomerCardForInsuranceCompany(
+        {
+          id: 'c-ray',
+          entityType: 'corporate',
+          subType: 'sigorta_sirketi',
+          status: 'active',
+          companyName: 'Ray Sigorta',
+          insuranceCompanyId: 'ins-ray',
+        },
+        { id: 'ins-ray', name: 'Ray Sigorta A.Ş.' },
+      ),
+      true,
+    );
+    assert.equal(
+      isCustomerCardForInsuranceCompany(
+        {
+          id: 'c-other',
+          entityType: 'corporate',
+          subType: 'sigorta_sirketi',
+          status: 'active',
+          companyName: 'Allianz',
+          insuranceCompanyId: 'ins-allianz',
+        },
+        { id: 'ins-ray', name: 'Ray Sigorta' },
+      ),
+      false,
+    );
+    const page = readFileSync(join(here, '../page.tsx'), 'utf8');
+    assert.match(page, /isCustomerCardForInsuranceCompany/);
+    assert.match(page, /subType: SIGORTA_CUSTOMER_SUB_TYPE/);
+    assert.doesNotMatch(page, /userTask !== 'insurance_company_user'/);
   });
 
   it('sigorta ofisinde Meridyen dosya sorumlusu durmaz; karttaki kişi durur', () => {

@@ -1098,7 +1098,7 @@ function OperasyonPageContent() {
 
       {/* Dosya Özeti KPI — Acil listesinde yalnız acil sayıları */}
       {isAcilListMode ? (
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" data-testid="ops-kpi-band-acil">
+      <div className="grid grid-cols-5 gap-2 overflow-x-auto" data-testid="ops-kpi-band-acil">
         <OpsStripKpi
           dense
           label="Açık Dosya"
@@ -1512,8 +1512,7 @@ function OperasyonPageContent() {
             <div className="py-16 text-center text-sm text-slate-400">Henüz kayıt bulunamadı.</div>
         ) : (
           <>
-          {/* Mobil / tablet kart — masaüstü tablo lg+ */}
-          <div className="grid gap-3 p-3 lg:hidden">
+          <div className="hidden" data-testid="ops-dar-kart-liste-kapali">
             {pagedRows.length === 0 ? (
               <p className="py-8 text-center text-sm text-slate-400">
                 {casesError ? 'Liste alınamadı.' : 'Kayıt yok.'}
@@ -1660,7 +1659,7 @@ function OperasyonPageContent() {
               </div>
             ))}
           </div>
-          <PanelTableScroll className="hidden lg:block">
+          <PanelTableScroll className="ops-ofis-tablo">
             <table className={`w-full ${isAcilListMode ? 'text-sm' : 'text-xs'}`} style={opsTableStyle}>
               <PanelTableColGroup />
               <thead className="table-head-row portal-table-head">

@@ -90,6 +90,7 @@ node --experimental-strip-types --test \
   apps/web/src/utils/ui-action-timeout.lock.spec.ts \
   apps/web/src/utils/panel-table-scroll.lock.spec.ts \
   apps/web/src/utils/panel-cep-duzen.lock.spec.ts \
+  apps/web/src/utils/office-list-table.lock.spec.ts \
   packages/shared/src/acil-status-transition.lock.spec.ts \
   apps/backend/src/common/helpers/document-download-access.lock.spec.ts \
   packages/shared/src/acil-finance-access.lock.spec.ts \

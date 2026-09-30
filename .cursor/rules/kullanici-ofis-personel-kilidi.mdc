@@ -11,7 +11,7 @@ alwaysApply: true
 
 ## Zorunlu
 
-1. Kullanıcı Ekle’de eksper / broker / asistans ofisi seçilince kartın Yetkili Kişileri ofis listesine yazılır (`mergeOfficeUsersWithContacts` + `mergePrimaryIntoCustomerContacts`). Sigorta / eksper / broker / asistans ofisinde **Meridyen kadrosu durmaz** (`belongsOnPortalOfficePersonnelList` / `portalOfficePersonnelRoleWhere`).
+1. Kullanıcı Ekle’de sigorta / eksper / broker / asistans ofisi seçilince kartın Yetkili Kişileri ofis listesine yazılır (`mergeOfficeUsersWithContacts` + `mergePrimaryIntoCustomerContacts`). Sigorta seçimi Ayarlar kaydıdır; kişiler bağlı müşteri kartından gelir (`isCustomerCardForInsuranceCompany`). Sigorta / eksper / broker / asistans ofisinde **Meridyen kadrosu durmaz** (`belongsOnPortalOfficePersonnelList` / `portalOfficePersonnelRoleWhere`).
 2. Aynı vergi no veya aynı unvanlı ikinci karttaki portal kullanıcı da listelenir (`portalTwinCustomerIds`).
 3. Asistans kartı `asistan_firmasi` ve `asistans_firmasi` aynı kapıdadır.
 4. Panele giriş yine **Kullanıcı Ekle** veya karttaki **Firma kullanıcıları** davetiyledir.

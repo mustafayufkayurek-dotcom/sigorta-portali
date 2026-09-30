@@ -510,6 +510,7 @@ export interface SigortaCustomerRecord {
   status?: string | null;
   companyName?: string | null;
   fullName?: string | null;
+  shortName?: string | null;
   insuranceCompanyId?: string | null;
 }
 
@@ -526,6 +527,40 @@ export function isSigortaCustomer(customer: SigortaCustomerRecord) {
 /** Portal listesi yalnız Ayarlar kaydına bağlanmış sigorta kartını alır. */
 export function isLinkedInsurancePortalCustomer(customer: SigortaCustomerRecord) {
   return isSigortaCustomer(customer) && Boolean(String(customer.insuranceCompanyId ?? '').trim());
+}
+
+function normalizeOfficeFirmName(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase('tr-TR')
+    .replace(/['.`]/g, '')
+    .replace(/\b(a\.?\s*ş\.?|a\.?\s*s\.?|ltd\.?|şti\.?|sti\.?)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function officeFirmNamesLikelyMatch(a?: string | null, b?: string | null): boolean {
+  const na = normalizeOfficeFirmName(String(a ?? ''));
+  const nb = normalizeOfficeFirmName(String(b ?? ''));
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  if (na.length >= 5 && nb.length >= 5 && (na.includes(nb) || nb.includes(na))) return true;
+  return false;
+}
+
+/** Kullanıcı Ekle sigorta seçimi Ayarlar kaydıdır; kişiler müşteri kartındadır. */
+export function isCustomerCardForInsuranceCompany(
+  customer: SigortaCustomerRecord,
+  company: { id: string; name?: string | null },
+): boolean {
+  if (customer.status && customer.status !== 'active') return false;
+  const companyId = String(company.id ?? '').trim();
+  if (companyId && String(customer.insuranceCompanyId ?? '').trim() === companyId) return true;
+  if (!isSigortaCustomer({ ...customer, status: 'active' })) return false;
+  const target = String(company.name ?? '').trim();
+  return [customer.companyName, customer.fullName, customer.shortName].some((name) =>
+    officeFirmNamesLikelyMatch(name, target),
+  );
 }
 
 /** Müşteriler → kurumsal → alt tip Broker Firması */

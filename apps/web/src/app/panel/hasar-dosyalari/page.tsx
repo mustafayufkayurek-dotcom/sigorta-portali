@@ -599,7 +599,7 @@ function ClaimFilesPageContent() {
       )}
 
       {!isFieldStaff && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" data-testid="hasar-kpi-band">
+        <div className="grid grid-cols-5 gap-2 overflow-x-auto" data-testid="hasar-kpi-band">
           <OpsStripKpi
             dense
             label="Açık Dosya"
@@ -847,7 +847,7 @@ function ClaimFilesPageContent() {
         </div>
       ) : (
         <div className="table-container ops-queue-table">
-          <div className={`grid gap-3 p-3 ${isFieldStaff ? '' : 'lg:hidden'}`}>
+          <div className={isFieldStaff ? 'grid gap-3 p-3' : 'hidden'} data-testid="hasar-saha-kart-liste">
             {isFieldStaff
               ? fieldAcilRows.map((row) => <FieldAcilAssignmentCard key={row.id} item={row} showLastActivity={false} />)
               : null}
@@ -1071,7 +1071,7 @@ function ClaimFilesPageContent() {
               );
             })}
           </div>
-          <PanelTableScroll className={`hidden ${isFieldStaff ? '' : 'lg:block'}`}>
+          <PanelTableScroll className={isFieldStaff ? 'hidden' : 'hasar-ofis-tablo'}>
             <table className="w-full text-sm" style={panelTableLayoutStyle(tableColumns)}>
               <PanelTableColGroup />
               <thead className="table-head-row portal-table-head">

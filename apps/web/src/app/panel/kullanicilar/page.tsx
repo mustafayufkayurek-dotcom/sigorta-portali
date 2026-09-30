@@ -92,8 +92,10 @@ import {
   isCustomerCompanyUserTask,
   isHasarExpertCustomer,
   isCompleteOfficePersonPhone,
+  isCustomerCardForInsuranceCompany,
   belongsOnPortalOfficePersonnelList,
   mergeOfficeUsersWithContacts,
+  SIGORTA_CUSTOMER_SUB_TYPE,
   officePersonToFormFields,
   operationAreaFromDepartmentCodes,
   roleCodesMatch,
@@ -1151,20 +1153,82 @@ export default function KullanicilarPage() {
             : { customerId: selectedOfficeId, limit: 200, includeInactive: 'true', page: 1 },
         });
         const list = r.data?.data ?? r.data ?? [];
-        let contacts: Array<{ name?: string | null; email?: string | null; phone?: string | null }> = [];
-        if (form.userTask !== 'insurance_company_user') {
-          try {
+        let contacts: Array<{ name?: string | null; email?: string | null; phone?: string | null; role?: string | null }> = [];
+        const cardContactsFrom = (card: {
+          contacts?: Array<{ name?: string | null; email?: string | null; phone?: string | null; role?: string | null }>;
+          contactFirstName?: string | null;
+          contactLastName?: string | null;
+          phone?: string | null;
+          email?: string | null;
+        }) =>
+          mergePrimaryIntoCustomerContacts(card.contacts ?? [], {
+            firstName: card.contactFirstName,
+            lastName: card.contactLastName,
+            phone: card.phone,
+            email: card.email,
+          });
+        try {
+          if (form.userTask === 'insurance_company_user') {
+            const companyName = insuranceCompanies.find((company) => company.id === selectedOfficeId)?.name ?? '';
+            const cardsRes = await axios.get(`${API}/customers`, {
+              headers: authHeader(),
+              params: {
+                limit: 200,
+                status: 'active',
+                customerType: 'corporate',
+                subType: SIGORTA_CUSTOMER_SUB_TYPE,
+              },
+            });
+            const cards = Array.isArray(cardsRes.data?.data ?? cardsRes.data)
+              ? (cardsRes.data?.data ?? cardsRes.data)
+              : [];
+            const company = { id: selectedOfficeId, name: companyName };
+            let matched = cards.filter((card: { id?: string }) =>
+              isCustomerCardForInsuranceCompany(
+                card as Parameters<typeof isCustomerCardForInsuranceCompany>[0],
+                company,
+              ),
+            );
+            if (matched.length === 0 && companyName) {
+              const searchRes = await axios.get(`${API}/customers`, {
+                headers: authHeader(),
+                params: {
+                  limit: 50,
+                  status: 'active',
+                  customerType: 'corporate',
+                  search: companyName,
+                },
+              });
+              const searched = Array.isArray(searchRes.data?.data ?? searchRes.data)
+                ? (searchRes.data?.data ?? searchRes.data)
+                : [];
+              matched = searched.filter((card: { id?: string }) =>
+                isCustomerCardForInsuranceCompany(
+                  card as Parameters<typeof isCustomerCardForInsuranceCompany>[0],
+                  company,
+                ),
+              );
+            }
+            const byId = new Map<string, (typeof matched)[number]>();
+            for (const card of matched) {
+              if (card?.id) byId.set(String(card.id), card);
+            }
+            for (const card of byId.values()) {
+              try {
+                const office = await axios.get(`${API}/customers/${card.id}`, { headers: authHeader() });
+                const detail = office.data?.data ?? office.data ?? card;
+                contacts = [...contacts, ...cardContactsFrom(detail)];
+              } catch {
+                contacts = [...contacts, ...cardContactsFrom(card)];
+              }
+            }
+          } else {
             const office = await axios.get(`${API}/customers/${selectedOfficeId}`, { headers: authHeader() });
             const card = office.data?.data ?? office.data ?? {};
-            contacts = mergePrimaryIntoCustomerContacts(card.contacts ?? [], {
-              firstName: card.contactFirstName,
-              lastName: card.contactLastName,
-              phone: card.phone,
-              email: card.email,
-            });
-          } catch {
-            contacts = [];
+            contacts = cardContactsFrom(card);
           }
+        } catch {
+          contacts = [];
         }
         if (!cancelled) {
           setOfficeContacts(contacts);
@@ -1192,7 +1256,7 @@ export default function KullanicilarPage() {
     return () => {
       cancelled = true;
     };
-  }, [modal, form.userTask, selectedOfficeId, editingUser?.id]);
+  }, [modal, form.userTask, selectedOfficeId, editingUser?.id, insuranceCompanies]);
 
   const selectOfficePerson = (person: User) => {
     const listed = users.find((row) => row.id === person.id);

@@ -76,6 +76,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'ui-action-timeout.lock.spec',
       'panel-table-scroll.lock.spec',
       'panel-cep-duzen.lock.spec',
+      'office-list-table.lock.spec',
       'acil-status-transition.lock.spec',
       'document-download-access.lock.spec',
       'acil-finance-access.lock.spec',
