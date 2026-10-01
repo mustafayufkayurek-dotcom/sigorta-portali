@@ -12,7 +12,7 @@ import {
   resolveCustomerReminderEmail,
   resolveCustomerReminderTitle,
 } from './approval-72h-customer-email.rule';
-import { vendorsMissingRepairPhotos } from '@sigorta/shared';
+import { vendorsMissingRepairPhotos, isHasarDigitalApprovalRelaxed } from '@sigorta/shared';
 
 const MANUAL_DECISION_MIN_REASON = 10;
 const PORTAL_ROLE_CODES = new Set([
@@ -909,7 +909,7 @@ export class ClaimOperationCenterService {
       claimFileId,
       claim.supplierAssignments.map((s) => s.vendorId),
     );
-    if (!flags.muvafakatApproved) {
+    if (!flags.muvafakatApproved && !isHasarDigitalApprovalRelaxed(claim.insuredName)) {
       throw new BadRequestException('Onarım öncesi muvafakatname dijital onayı yok.');
     }
     if (claim.supplierAssignments.length === 0) {

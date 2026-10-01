@@ -438,6 +438,7 @@ export function mapLiveSnapshot(
     jobs: preApprovalJobs,
     generalApproved: Boolean(flags.muvafakatApproved),
     preApproved: Boolean(flags.preMuvafakatApproved),
+    insuredName: claimFile?.insuredName ?? op.claim.insuredName,
   });
   const pipeline = reportPipelineFlags(
     claimFile?.latestRepairReport?.status,

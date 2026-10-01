@@ -40,6 +40,27 @@ describe('claim pre-approval lock', () => {
       true,
     );
     assert.equal(PRE_APPROVAL_DIGITAL_KIND, 'muvafakatname_on_is');
+    assert.equal(
+      isDigitalApprovalBundleReady({
+        hasPre: true,
+        jobs,
+        generalApproved: false,
+        preApproved: false,
+        insuredName: 'Ali Rıza Özcan',
+      }),
+      true,
+    );
+    assert.equal(expectedDigitalApprovalCount(true, jobs, '  ALİ RIZA ÖZCAN '), 0);
+    assert.equal(
+      isDigitalApprovalBundleReady({
+        hasPre: true,
+        jobs,
+        generalApproved: true,
+        preApproved: false,
+        insuredName: 'Mehmet Yılmaz',
+      }),
+      false,
+    );
   });
 
   it('planlayıcı ön onay sorusu ve ikinci dijital belge durur', () => {
@@ -50,5 +71,18 @@ describe('claim pre-approval lock', () => {
     assert.match(steps, /ön onaylı iş var mı/);
     assert.match(steps, /PRE_APPROVAL_DIGITAL_KIND/);
     assert.match(steps, /muvafakatname_on_is|PRE_APPROVAL_DIGITAL_KIND/);
+    assert.match(steps, /isHasarDigitalApprovalRelaxed/);
+    assert.match(steps, /Sigortalıdan dijital onay istenmez/);
+    assert.doesNotMatch(steps, /Bu dosyada tek dijital onay yeter/);
+    const mandatory = readFileSync(
+      join(here, '../../../apps/web/src/components/hasar-operasyon-planlayicisi/mandatory-fields.ts'),
+      'utf8',
+    );
+    assert.match(mandatory, /isHasarDigitalApprovalRelaxed/);
+    const center = readFileSync(
+      join(here, '../../../apps/backend/src/modules/claim-files/claim-operation-center.service.ts'),
+      'utf8',
+    );
+    assert.match(center, /isHasarDigitalApprovalRelaxed\(claim\.insuredName\)/);
   });
 });

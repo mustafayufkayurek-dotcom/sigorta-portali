@@ -32,6 +32,7 @@ import {
   INSPECTOR_ALREADY_ASSIGNED_MESSAGE,
   PRE_APPROVAL_DIGITAL_KIND,
   SUPPLIER_ALREADY_ASSIGNED_MESSAGE,
+  isHasarDigitalApprovalRelaxed,
   isInspectorAlreadyAssigned,
 } from '@sigorta/shared';
 import { openWhatsAppChat, toWhatsAppLink } from '@/utils/date-helpers';
@@ -1208,9 +1209,23 @@ export function StepDigitalApproval() {
     return <p className="mt-3 text-xs text-slate-500">Dosya bağlı değil.</p>;
   }
 
+  const relaxed = isHasarDigitalApprovalRelaxed(claim.insuredName);
   const hasPre = claim.hasPreApprovalWork;
   const selectedIds = new Set(claim.preApprovalJobs.map((j) => j.id));
-  const needTwo = hasPre === true && claim.preApprovalJobs.length > 0;
+  const needTwo = !relaxed && hasPre === true && claim.preApprovalJobs.length > 0;
+
+  if (relaxed) {
+    return (
+      <div className="mt-3 space-y-3">
+        <p className="text-xs font-medium text-slate-800">
+          Bu dosyada onarımdan çekildi. Sigortalıdan dijital onay istenmez.
+        </p>
+        <p className="text-xs text-slate-600">
+          WhatsApp onay linki açılmaz. Diğer dosyalarda dijital onay aynı kalır.
+        </p>
+      </div>
+    );
+  }
 
   const toggleJob = (job: { id: string; name: string }) => {
     const next = selectedIds.has(job.id)
@@ -1710,7 +1725,7 @@ function StepRepairComplete() {
           ))
         : null}
       {suppliers.length === 0 ? <p className="text-xs text-slate-500">Önce tedarikçi atayın.</p> : null}
-      {!claim.flowFlags.muvafakatApproved ? (
+      {!claim.flowFlags.muvafakatApproved && !isHasarDigitalApprovalRelaxed(claim.insuredName) ? (
         <p className="text-xs text-amber-800">Dijital onay yok — onarım bitişi kaydedilmez.</p>
       ) : null}
       <Card title="Kapanış Anketi" icon={MessageCircle}>

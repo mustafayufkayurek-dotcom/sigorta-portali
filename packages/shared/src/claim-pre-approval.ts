@@ -33,10 +33,26 @@ export function parsePreApprovalJobs(raw: unknown): PreApprovalJob[] {
   return [];
 }
 
+/** Yalnız Ali Rıza Özcan: onarımdan çekildi; sigortalı dijital onayı istenmez. */
+export const RELAXED_DIGITAL_APPROVAL_INSURED = 'ali rıza özcan';
+
+export function foldInsuredName(raw: unknown): string {
+  return String(raw ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('tr-TR');
+}
+
+export function isHasarDigitalApprovalRelaxed(insuredName: unknown): boolean {
+  return foldInsuredName(insuredName) === RELAXED_DIGITAL_APPROVAL_INSURED;
+}
+
 export function expectedDigitalApprovalCount(
   hasPre: boolean | null,
   jobs: PreApprovalJob[],
+  insuredName?: unknown,
 ): number {
+  if (isHasarDigitalApprovalRelaxed(insuredName)) return 0;
   if (hasPre === true && jobs.length > 0) return 2;
   return 1;
 }
@@ -46,7 +62,11 @@ export function isDigitalApprovalBundleReady(input: {
   jobs: PreApprovalJob[];
   generalApproved: boolean;
   preApproved: boolean;
+  insuredName?: unknown;
 }): boolean {
+  if (isHasarDigitalApprovalRelaxed(input.insuredName)) {
+    return true;
+  }
   if (input.hasPre === true) {
     if (input.jobs.length === 0) return false;
     return Boolean(input.generalApproved && input.preApproved);

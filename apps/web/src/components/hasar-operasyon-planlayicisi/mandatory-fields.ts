@@ -2,6 +2,7 @@
  * Operasyon Planlayıcısı — Kaydet zorunlu alan listesi
  */
 
+import { isHasarDigitalApprovalRelaxed } from '@sigorta/shared';
 import type { StepId } from './types';
 import type { PlannerClaimSnapshot } from './claim-snapshot';
 
@@ -81,33 +82,35 @@ export function getMandatoryChecks(
       ];
     case 'muvafakat':
       return [
-        { key: 'muvafakat', label: 'Muvafakatname dijital onayı', ok: claim.flowFlags.muvafakatApproved },
+        { key: 'muvafakat', label: 'Muvafakatname dijital onayı', ok: isHasarDigitalApprovalRelaxed(claim.insuredName) || claim.flowFlags.muvafakatApproved },
       ];
     case 'closure_survey':
       return [{ key: 'phone', label: 'Sigortalı telefon', ok: Boolean(claim.insuredPhone.trim()) }];
-    case 'digital_approval':
+    case 'digital_approval': {
+      const relaxed = isHasarDigitalApprovalRelaxed(claim.insuredName);
       return [
         {
           key: 'pre_choice',
           label: 'Ön onaylı iş sorusu',
-          ok: claim.hasPreApprovalWork !== null,
+          ok: relaxed || claim.hasPreApprovalWork !== null,
         },
         {
           key: 'pre_jobs',
           label: 'Ön onayı alınan işler',
-          ok: claim.hasPreApprovalWork !== true || claim.preApprovalJobs.length > 0,
+          ok: relaxed || claim.hasPreApprovalWork !== true || claim.preApprovalJobs.length > 0,
         },
         {
           key: 'muvafakat',
           label: 'Asıl onarım dijital onayı',
-          ok: claim.flowFlags.muvafakatApproved,
+          ok: relaxed || claim.flowFlags.muvafakatApproved,
         },
         {
           key: 'pre_muvafakat',
           label: 'Ön iş dijital onayı',
-          ok: claim.hasPreApprovalWork !== true || claim.flowFlags.preMuvafakatApproved,
+          ok: relaxed || claim.hasPreApprovalWork !== true || claim.flowFlags.preMuvafakatApproved,
         },
       ];
+    }
     case 'report_writing': {
       const r = claim.report.readyChecks;
       return [
@@ -136,7 +139,7 @@ export function getMandatoryChecks(
     }
     case 'repair_complete':
       return [
-        { key: 'muvafakat', label: 'Dijital onay', ok: claim.flowFlags.muvafakatApproved },
+        { key: 'muvafakat', label: 'Dijital onay', ok: isHasarDigitalApprovalRelaxed(claim.insuredName) || claim.flowFlags.muvafakatApproved },
         { key: 'photos', label: 'Her tedarikçi onarım resmi', ok: claim.flowFlags.repairPhotosReady },
       ];
     case 'docs_upload':

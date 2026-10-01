@@ -24,7 +24,7 @@ import { normalizeTrDateValue } from '@/utils/tr-date-input';
 import { buildSupplierTaskMapFromNotes } from '@/utils/hasar-supplier-tasks';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { isLegacyOpsCatchupBypassActive } from '@/utils/whatsapp-sent-confirm-gate';
-import { hasarCancelReasonOk } from '@sigorta/shared';
+import { hasarCancelReasonOk, isHasarDigitalApprovalRelaxed } from '@sigorta/shared';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { UI_ACTION_TIMEOUT_MS } from '@/utils/ui-action-timeout';
@@ -634,7 +634,7 @@ export function PlannerProvider({
             };
           }
           case 'muvafakat':
-            if (!claim.flowFlags.muvafakatApproved) {
+            if (!claim.flowFlags.muvafakatApproved && !isHasarDigitalApprovalRelaxed(claim.insuredName)) {
               return { ok: false, message: 'Sigortalı muvafakatnameyi dijital onaylamadan bu adım bitmez.' };
             }
             await refreshClaim();
