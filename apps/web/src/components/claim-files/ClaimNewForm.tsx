@@ -353,7 +353,6 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       }
     }, 300);
   };
-  };
 
   const handleSelectCustomerFromDropdown = (c: SelectedCustomer) => {
     setSelectedCustomer(c);
