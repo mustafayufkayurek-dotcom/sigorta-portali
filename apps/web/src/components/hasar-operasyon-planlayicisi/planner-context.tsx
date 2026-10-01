@@ -396,7 +396,7 @@ export function PlannerProvider({
   const validateStep = useCallback(
     (step: StepId) => {
       if (step === 'report_writing' && isLegacyOpsCatchupBypassActive()) {
-        return { ok: true, missing: [] as string[] };
+        return { ok: true, missing: [] as string[], missingKeys: [] as string[] };
       }
       const checks = getMandatoryChecks(step, claim, {
         meetingNote,
@@ -449,7 +449,7 @@ export function PlannerProvider({
     async (step: StepId): Promise<SaveStepResult> => {
       const result = validateStep(step);
       if (!result.ok) {
-        setFailedMandatoryKeys(result.missingKeys);
+        setFailedMandatoryKeys(result.missingKeys ?? []);
         requestAnimationFrame(() => {
           document.querySelector('[data-mandatory-error="true"]')?.scrollIntoView({
             behavior: 'smooth',

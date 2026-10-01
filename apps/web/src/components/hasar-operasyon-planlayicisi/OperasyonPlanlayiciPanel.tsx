@@ -22,6 +22,7 @@ import {
   type PlannerInspector,
   type PlannerSupplier,
 } from './claim-snapshot';
+import { resolvePlannerEntry } from './planner-live-rules';
 import {
   isInspectionServiceKind,
   plannerStepHiddenForServiceKind,
