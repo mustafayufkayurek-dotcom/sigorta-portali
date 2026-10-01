@@ -2,24 +2,33 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 30 Eylül 2026
+**Son güncelleme:** 1 Ekim 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (30 Eylül 2026 — web v642 / backend v641)
+## Canlı durum (1 Ekim 2026 — web v643 / backend v643)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v642-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v641-amd64` | canlı |
-| **Rollback** | Web **v641** / Backend **v641** | manifest `rollbackImages` |
-| **Etiket** | `v642-saha-dosya-konusu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v643-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v643-amd64` | canlı |
+| **Rollback** | Web **v642** / Backend **v641** | manifest `rollbackImages` |
+| **Etiket** | `v643-yeni-dosya-on-onay` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v643 — Full (1 Ekim 2026) — Yeni Dosya Ve Ön Onay
+
+- Hasar listesinde Yeni Dosya; açılışta dosya sorumlusu, hizmet türü, özel müşteri, irtibat
+- Tespitçi yalnız dosyanın il/ilçesinde; ikinci atama uyarısı; Hasar Tespitte kısa akış ve Onarıma Çevir
+- Ön onaylı iş sorulur; seçilen işler ayrı dijital onay alır
+- Disk; DB yedeği gzip 73M (`/var/backups/meridyen/pre_v643-yeni-dosya-on-onay_20261001_133742.sql.gz`); uploads `/opt/app/backups/uploads/uploads_20261001_133844.tar.gz`; kayıt geçişi uygulandı; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v642** / backend **v641**
 
 ### v642 — Web-only (30 Eylül 2026) — Saha Dosya Konusu
 

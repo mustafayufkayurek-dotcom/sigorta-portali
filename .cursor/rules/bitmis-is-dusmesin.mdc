@@ -46,6 +46,8 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 27. Sigorta Operasyon Ağı: Canlı Destek mavi bantın üstüne binmez. Bant tuşu ve sayfa konumu ofis Operasyon Merkezi’ne gitmez; «yetkiniz yok» çıkmaz.
 28. Deneme `/dev` sayfaları canlıda açılmaz.
 29. Saha konu satırı ofisteki Dosya Konusu ile aynıdır. Eski ihbar yangını ezmez.
+30. Hasar açılışı Yeni Dosya’dır. Dosya sorumlusu, hizmet türü ve irtibat durur; tespitçi yalnız dosya bölgesinde listelenir.
+31. Ön onay alınan işler ayrı dijital onay alır; genel muvafakat durur.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

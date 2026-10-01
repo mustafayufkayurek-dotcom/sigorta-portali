@@ -1,11 +1,11 @@
 ---
-description: Canlı web v642 / backend v641
+description: Canlı web v643 / backend v643
 alwaysApply: true
 ---
 
-# Canlı (30.09.2026)
+# Canlı (01.10.2026)
 
-Canlı: web **v642** · backend **v641**. Geri alma: web **v641** / backend **v641**.
+Canlı: web **v643** · backend **v643**. Geri alma: web **v642** / backend **v641**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v643 (full):** Hasar listesinde Yeni Dosya. Açılışta dosya sorumlusu, hizmet türü, özel müşteri, irtibat. Tespitçi yalnız dosyanın il/ilçesinde. Hasar Tespitte kısa akış; Onarıma Çevir onarımı açar. Ön onaylı iş sorulur; seçilen işler ayrı dijital onay alır. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v642 / backend v641.
 
 **v642 (yalnız web):** Saha konu satırı ofisteki Dosya Konusu ile aynıdır. Eski ihbar yangını Dahili Su dosyasını ezmez. Backend **v641**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v641 / backend v641.
 
@@ -159,8 +161,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Yeni Dosya Ve Tespitçi (web + backend + kayıt):** Hasar listesinde **Yeni Dosya**. Açılışta dosya sorumlusu, hizmet türü (Hasar Tespit / Onarım / Danışmanlık), özel müşteri, irtibat. Tespitçi yalnız o il/ilçe; Muğla kaydı İstanbul’da çıkmaz. Arama ve ikinci atama uyarısı. Hasar Tespitte kısa akış; **Onarıma Çevir** onarımı açar. Bekleyen adım turuncu, biten soluk. Zorunlu kutu kırmızı + kaydırma. Dosya No yanında **i**. İrtibat rapora yazılmaz.
+**Yönetim Paneli yazısı:** Panel ve sol menü hâlâ **Yeni Hasar**; Hasar listesi Yeni Dosya.
 
-**Alımdan önce duran:** Yönetim Paneli ve sol menü hâlâ **Yeni Hasar**. Mustafa «sorunlu birkaç madde daha var» dedi — o maddeler gelmeden canlıya alınmaz.
-
-Canlı web **v642** · backend **v641**.
+Canlı web **v643** · backend **v643**.

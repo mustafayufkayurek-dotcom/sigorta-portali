@@ -1,16 +1,16 @@
 {
-  "updatedAt": "2026-09-30",
-  "label": "v642-saha-dosya-konusu",
-  "description": "Web-only v642: saha konu satırı ofisteki Dosya Konusu ile aynıdır; eski ihbar yangını ezmez. Backend v641. Geri alma web v641 / backend v641.",
+  "updatedAt": "2026-10-01",
+  "label": "v643-yeni-dosya-on-onay",
+  "description": "Full v643: Yeni Dosya (sorumlu, hizmet türü, irtibat, tespitçi bölge) ve ön onaylı iş + ayrı dijital onay. Geri alma web v642 / backend v641.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v641-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v642-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v643-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v643-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v641-amd64",
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v642-amd64",
     "backendPrevious": "app-backend:dalga2-agreement-hr-01-v641-amd64"
   },
   "mustPassSmokeRoutes": [
