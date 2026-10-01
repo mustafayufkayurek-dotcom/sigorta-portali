@@ -28,6 +28,11 @@ import {
   Wrench,
 } from 'lucide-react';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import {
+  INSPECTOR_ALREADY_ASSIGNED_MESSAGE,
+  SUPPLIER_ALREADY_ASSIGNED_MESSAGE,
+  isInspectorAlreadyAssigned,
+} from '@sigorta/shared';
 import { openWhatsAppChat, toWhatsAppLink } from '@/utils/date-helpers';
 import {
   isLegacyOpsCatchupBypassActive,
@@ -118,14 +123,19 @@ function Field({
   label,
   children,
   icon: Icon,
+  invalid,
 }: {
   label: string;
   children: ReactNode;
   icon?: ComponentType<{ className?: string }>;
+  invalid?: boolean;
 }) {
   return (
-    <div>
-      <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+    <div
+      data-mandatory-error={invalid ? 'true' : undefined}
+      className={invalid ? 'rounded-lg border-2 border-red-400 bg-red-50/70 p-2' : undefined}
+    >
+      <p className={`mb-1 flex items-center gap-1 text-[11px] font-semibold ${invalid ? 'text-red-700' : 'text-slate-600'}`}>
         {Icon ? <Icon className="h-3 w-3 text-slate-400" /> : null}
         {label}
       </p>
@@ -217,13 +227,20 @@ function Card({
   title,
   icon: Icon,
   children,
+  invalid,
 }: {
   title?: string;
   icon?: ComponentType<{ className?: string }>;
   children: ReactNode;
+  invalid?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+    <div
+      data-mandatory-error={invalid ? 'true' : undefined}
+      className={`rounded-xl border bg-white p-3 shadow-sm ${
+        invalid ? 'border-2 border-red-400 bg-red-50/50' : 'border-slate-200'
+      }`}
+    >
       {title ? (
         <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-slate-800">
           {Icon ? <Icon className="h-3.5 w-3.5 text-slate-500" /> : null}
@@ -315,6 +332,7 @@ export function StepInsuredAppointment() {
     buildInsuredApptMessage,
     templatesFromSettings,
     recordWhatsAppContact,
+    failedMandatoryKeys,
   } = usePlanner();
   const persistedSent = claim.contactWa.insured;
   const [sent, setSent] = useState(persistedSent);
@@ -341,13 +359,21 @@ export function StepInsuredAppointment() {
     <div className="mt-3 space-y-3">
       <Card title="Sigortalı Bilgileri" icon={UserRound}>
         <div className="space-y-2">
-          <Field label="Sigortalı Adı Soyadı">
+          <Field label="Sigortalı Adı Soyadı" invalid={failedMandatoryKeys.includes('insured_name')}>
             <Input value={claim.insuredName} readOnly />
           </Field>
-          <Field label="Telefon" icon={Phone}>
+          <Field label="Telefon" icon={Phone} invalid={failedMandatoryKeys.includes('insured_phone')}>
             <Input value={claim.insuredPhone} readOnly />
           </Field>
-          <Field label="Adres" icon={MapPin}>
+          {claim.siteContactName || claim.siteContactPhone ? (
+            <Field label="İrtibat">
+              <Input
+                value={[claim.siteContactName, claim.siteContactPhone].filter(Boolean).join(' · ')}
+                readOnly
+              />
+            </Field>
+          ) : null}
+          <Field label="Adres" icon={MapPin} invalid={failedMandatoryKeys.includes('address')}>
             <Input value={claim.address} readOnly />
           </Field>
           <Field label="Konum Bağlantısı" icon={Link2}>
@@ -367,7 +393,7 @@ export function StepInsuredAppointment() {
 
       <Card title="Randevu" icon={CalendarDays}>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Randevu Tarihi" icon={CalendarDays}>
+          <Field label="Randevu Tarihi" icon={CalendarDays} invalid={failedMandatoryKeys.includes('appt_date')}>
             <div ref={apptDateWrapRef}>
               {apptEditable ? (
                 <TrDateInput
@@ -389,7 +415,7 @@ export function StepInsuredAppointment() {
               )}
             </div>
           </Field>
-          <Field label="Randevu Saati" icon={Clock3}>
+          <Field label="Randevu Saati" icon={Clock3} invalid={failedMandatoryKeys.includes('appt_time')}>
             {apptEditable ? (
               <input
                 ref={apptTimeRef}
@@ -455,7 +481,7 @@ export function StepInsuredAppointment() {
         />
       </Card>
 
-      <Card title="WhatsApp Randevu Bildirimi" icon={MessageCircle}>
+      <Card title="WhatsApp Randevu Bildirimi" icon={MessageCircle} invalid={failedMandatoryKeys.includes('insured_wa')}>
         <p className="mb-2 text-[10px] text-slate-500">
           Şablon: Ayarlar › Mesaj Şablonları › Hasar
           {templatesFromSettings ? ' (canlı şablon)' : ' (varsayılan)'}
@@ -519,6 +545,14 @@ export function StepInspector() {
   const assigned = claim.inspectors.find((i) => i.id === assignedInspectorId) ?? null;
   const assignedWaMessage = buildInspectorMessage();
   const inspectorSent = claim.contactWa.inspector;
+  const [inspectorQuery, setInspectorQuery] = useState('');
+  const [inspectorWarn, setInspectorWarn] = useState('');
+  const inspectorNeedle = inspectorQuery.trim().toLocaleLowerCase('tr-TR');
+  const visibleInspectors = claim.inspectors.filter((ins) => {
+    if (!inspectorNeedle) return true;
+    const hay = `${ins.name} ${ins.region} ${ins.phone}`.toLocaleLowerCase('tr-TR');
+    return hay.includes(inspectorNeedle);
+  });
 
   return (
     <div className="mt-3 space-y-3">
@@ -617,16 +651,34 @@ export function StepInspector() {
       <Card title="Kayıtlı Tespitçi Listesi" icon={UserCog}>
         <p className="mb-2 text-[10px] leading-relaxed text-slate-500">
           Gerektiğinde Meridyen saha tespitçisi atanır. Saha personeli gidemiyorsa mevcut listeden
-          «Tespitçi Olarak Görevlendir» işaretli kayıt seçilir. Tedarikçi ataması ayrıdır.
+          «Tespitçi Olarak Görevlendir» işaretli kayıt seçilir. Tedarikçi ataması ayrıdır. Liste dosyanın
+          ili ve ilçesine göredir.
         </p>
+        <input
+          type="search"
+          value={inspectorQuery}
+          onChange={(e) => setInspectorQuery(e.target.value)}
+          placeholder="Ad, il, ilçe ara…"
+          className="mb-2 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-400"
+          data-testid="tespitci-arama"
+        />
+        {inspectorWarn ? (
+          <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+            {inspectorWarn}
+          </p>
+        ) : null}
         <div className="space-y-2">
           {claim.inspectors.length === 0 ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-800">
-              Atanabilir tespitçi bulunamadı. Kullanıcılar’da saha personeli veya Tedarikçiler’de
+              Bu bölgede tespitçi yok. Kullanıcılar’da saha hizmet bölgesi veya Tedarikçiler’de
               «Tespitçi Olarak Görevlendir» kayıtlarını kontrol edin.
             </p>
+          ) : visibleInspectors.length === 0 ? (
+            <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-600">
+              Aramaya uyan tespitçi yok.
+            </p>
           ) : null}
-          {claim.inspectors.map((ins) => {
+          {visibleInspectors.map((ins) => {
             const wa = toWhatsAppLink(ins.phone);
             return (
               <div
@@ -659,7 +711,14 @@ export function StepInspector() {
                     <Btn
                       tone="primary"
                       disabled={!ins.available}
-                      onClick={() => setAssignedInspectorId(ins.id)}
+                      onClick={() => {
+                        if (isInspectorAlreadyAssigned(ins.id, assignedInspectorId)) {
+                          setInspectorWarn(INSPECTOR_ALREADY_ASSIGNED_MESSAGE);
+                          return;
+                        }
+                        setInspectorWarn('');
+                        setAssignedInspectorId(ins.id);
+                      }}
                     >
                       Ata
                     </Btn>
@@ -849,6 +908,10 @@ export function StepSupplier() {
                         <Btn
                           tone="primary"
                           onClick={() => {
+                            if (assigned.includes(s.id)) {
+                              setAssignWarn(SUPPLIER_ALREADY_ASSIGNED_MESSAGE);
+                              return;
+                            }
                             setAssignWarn('');
                             setAssigned((a) => [...a, s.id]);
                           }}
@@ -918,6 +981,7 @@ export function StepWhatsApp({
     assignedInspectorId,
     assignedSupplierIds,
     recordWhatsAppContact,
+    failedMandatoryKeys,
   } = usePlanner();
   const persistedMarked = claim.stepStatuses.whatsapp === 'done';
   const [marked, setMarked] = useState(persistedMarked);
@@ -976,7 +1040,7 @@ export function StepWhatsApp({
   return (
     <div className="mt-3 space-y-3">
       <Card title="Alıcı" icon={UserRound}>
-        <Field label="Alıcı Türü *">
+        <Field label="Alıcı Türü *" invalid={failedMandatoryKeys.includes('recipient_type')}>
           <select
             value={recipientType}
             onChange={(e) => {
@@ -1000,14 +1064,14 @@ export function StepWhatsApp({
           <Field label="Alıcı Adı">
             <Input value={recipientName} readOnly />
           </Field>
-          <Field label="Telefon *" icon={Phone}>
+          <Field label="Telefon *" icon={Phone} invalid={failedMandatoryKeys.includes('phone')}>
             <Input value={phone} readOnly />
           </Field>
         </div>
       </Card>
 
       <Card title="Şablon Ve Mesaj" icon={MessageCircle}>
-        <Field label="Şablon Seçimi *">
+        <Field label="Şablon Seçimi *" invalid={failedMandatoryKeys.includes('template')}>
           <select
             value={templateType}
             onChange={(e) => {
@@ -1044,7 +1108,7 @@ export function StepWhatsApp({
             : ' — oturum/API yok; Ayarlar varsayılanı kullanılıyor.'}
         </p>
         <div className="mt-2">
-          <Field label="Mesaj Önizlemesi / Düzenleme *">
+          <Field label="Mesaj Önizlemesi / Düzenleme *" invalid={failedMandatoryKeys.includes('body')}>
             <TextArea value={body} onChange={setBody} rows={4} />
           </Field>
         </div>

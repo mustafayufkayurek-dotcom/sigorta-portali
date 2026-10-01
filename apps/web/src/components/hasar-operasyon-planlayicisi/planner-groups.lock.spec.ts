@@ -38,6 +38,9 @@ describe('hasar planner groups lock', () => {
     const panel = readFileSync(join(here, 'OperasyonPlanlayiciPanel.tsx'), 'utf8');
     const steps = readFileSync(join(here, 'steps.tsx'), 'utf8');
     assert.match(panel, /hasar-planner-groups/);
+    assert.match(panel, /onarima-cevir/);
+    assert.match(panel, /border-2 border-orange-400/);
+    assert.match(panel, /opacity-60/);
     assert.doesNotMatch(panel, /xl:grid-cols-8/);
     assert.doesNotMatch(panel, /sm:grid-cols-4/);
     assert.doesNotMatch(panel, /İlerleme Özeti/);

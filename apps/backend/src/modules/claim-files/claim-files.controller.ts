@@ -104,6 +104,8 @@ export class ClaimFilesController {
   async getAssignableStaff(
     @Query('role') role?: 'office_staff' | 'field_staff',
     @Query('includeDelegates') includeDelegates?: 'acil_yardim' | 'hasar' | 'both',
+    @Query('city') city?: string,
+    @Query('district') district?: string,
   ) {
     const scope =
       includeDelegates === 'acil_yardim'
@@ -111,7 +113,10 @@ export class ClaimFilesController {
       || includeDelegates === 'both'
         ? includeDelegates
         : undefined;
-    const data = await this.claimFilesService.getAssignableStaff(role ?? 'office_staff', scope);
+    const data = await this.claimFilesService.getAssignableStaff(role ?? 'office_staff', scope, {
+      city,
+      district,
+    });
     return { success: true, data };
   }
 
@@ -354,6 +359,18 @@ export class ClaimFilesController {
     @CurrentUser() user: any,
   ) {
     const data = await this.claimFilesService.assignInspectorVendor(id, body.vendorId, user, body.note);
+    return { success: true, data };
+  }
+
+  @Post(':id/convert-to-repair')
+  @RequirePermissions('claim_file.update')
+  @ApiOperation({ summary: 'Hasar Tespit dosyasını onarıma çevir' })
+  async convertToRepair(@Param('id') id: string, @CurrentUser() user: any) {
+    const data = await this.claimFilesService.convertInspectionToRepair(id, {
+      id: user?.id ?? user?.userId,
+      roleCode: user?.roleCode ?? user?.role?.code,
+      vendorId: user?.vendorId,
+    });
     return { success: true, data };
   }
 

@@ -333,6 +333,10 @@ model ClaimFile {
   propertyAddressId     String?   @map("property_address_id")
   fileType              String?   @map("file_type")
   description           String?
+  /// inspection | repair | consultancy — boş kayıt onarım sayılır
+  serviceKind           String?   @map("service_kind")
+  siteContactName       String?   @map("site_contact_name")
+  siteContactPhone      String?   @map("site_contact_phone")
   initialReserveAmount  Float?    @map("initial_reserve_amount")
   estimatedCostAmount   Float?    @map("estimated_cost_amount")
   approvedBudgetAmount  Float?    @map("approved_budget_amount")

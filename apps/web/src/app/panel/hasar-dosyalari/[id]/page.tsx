@@ -367,6 +367,16 @@ function FieldStaffVisitCard({
           ) : null}
         </div>
 
+        <div className="rounded-xl border border-slate-100 px-3.5 py-3">
+          <p className="text-[11px] font-medium text-slate-500">İrtibat</p>
+          <p className="mt-1 text-base font-semibold text-slate-950">
+            {claim.siteContactName?.trim() || '—'}
+          </p>
+          {claim.siteContactPhone ? (
+            <p className="mt-0.5 text-sm tabular-nums text-slate-700">{claim.siteContactPhone}</p>
+          ) : null}
+        </div>
+
         <div className="rounded-xl border border-brand-100 bg-brand-50/30 px-3.5 py-3">
           <p className="text-[11px] font-medium text-slate-500">İletişim</p>
           <div className="mt-2">
@@ -697,7 +707,19 @@ function DosyadaKimlerVarCard({
     if (!canAssign || !activePanel || activePanel === 'supplier') return;
     const role = activePanel === 'field' ? 'field_staff' : 'office_staff';
     axios
-      .get(`${API}/claim-files/assignable-staff?role=${role}`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS })
+      .get(`${API}/claim-files/assignable-staff`, {
+        headers: authHeader(),
+        timeout: UI_ACTION_TIMEOUT_MS,
+        params: {
+          role,
+          ...(role === 'field_staff'
+            ? {
+                city: claim?.propertyAddress?.city ?? '',
+                district: claim?.propertyAddress?.district ?? '',
+              }
+            : {}),
+        },
+      })
       .then((r) => {
         const list = r.data?.data ?? [];
         const users = Array.isArray(list) ? list : [];
@@ -712,7 +734,7 @@ function DosyadaKimlerVarCard({
           field: role === 'field_staff' ? [] : prev.field,
         }));
       });
-  }, [canAssign, activePanel]);
+  }, [canAssign, activePanel, claim?.id, claim?.propertyAddress?.city, claim?.propertyAddress?.district]);
 
   useEffect(() => {
     if (!canAssign || activePanel !== 'supplier' || !claim?.id) return;

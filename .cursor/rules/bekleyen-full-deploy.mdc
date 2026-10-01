@@ -159,6 +159,8 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-(boş)
+**Yeni Dosya Ve Tespitçi (web + backend + kayıt):** Hasar listesinde **Yeni Dosya**. Açılışta dosya sorumlusu, hizmet türü (Hasar Tespit / Onarım / Danışmanlık), özel müşteri, irtibat. Tespitçi yalnız o il/ilçe; Muğla kaydı İstanbul’da çıkmaz. Arama ve ikinci atama uyarısı. Hasar Tespitte kısa akış; **Onarıma Çevir** onarımı açar. Bekleyen adım turuncu, biten soluk. Zorunlu kutu kırmızı + kaydırma. Dosya No yanında **i**. İrtibat rapora yazılmaz.
+
+**Alımdan önce duran:** Yönetim Paneli ve sol menü hâlâ **Yeni Hasar**. Mustafa «sorunlu birkaç madde daha var» dedi — o maddeler gelmeden canlıya alınmaz.
 
 Canlı web **v642** · backend **v641**.

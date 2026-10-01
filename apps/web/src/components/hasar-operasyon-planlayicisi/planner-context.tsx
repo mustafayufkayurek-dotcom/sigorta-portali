@@ -29,7 +29,7 @@ import { reportCaughtError } from '@/utils/report-caught-error';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { UI_ACTION_TIMEOUT_MS } from '@/utils/ui-action-timeout';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
-import { getMandatoryChecks, missingMandatoryLabels } from './mandatory-fields';
+import { getMandatoryChecks, missingMandatoryKeys, missingMandatoryLabels } from './mandatory-fields';
 import type { StepId } from './types';
 import {
   previewSnapshot,
@@ -96,8 +96,10 @@ type PlannerDraft = {
   buildInspectorMessage: () => string;
   buildVendorTaskMessage: (vendorName: string, task: string) => string;
   applyWaTemplateForRecipient: (recipientType: string) => string;
-  validateStep: (step: StepId) => { ok: boolean; missing: string[] };
+  validateStep: (step: StepId) => { ok: boolean; missing: string[]; missingKeys: string[] };
   saveStep: (step: StepId) => Promise<SaveStepResult>;
+  convertInspectionToRepair: () => Promise<SaveStepResult>;
+  failedMandatoryKeys: string[];
   cancelOpenFile: (reason: string) => Promise<SaveStepResult>;
   recordWhatsAppContact: (input?: {
     status?: 'opened' | 'sent' | 'ready';
@@ -164,6 +166,7 @@ export function PlannerProvider({
   const [templatesFromSettings, setTemplatesFromSettings] = useState(false);
   const [templatesLoading, setTemplatesLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [failedMandatoryKeys, setFailedMandatoryKeys] = useState<string[]>([]);
   const saveLock = useRef(false);
 
   /** Soft refresh’te form alanlarını sıfırlama — yalnızca dosya / ilk hydrate. */
@@ -412,7 +415,8 @@ export function PlannerProvider({
         meridyenNote,
       });
       const missing = missingMandatoryLabels(checks);
-      return { ok: missing.length === 0, missing };
+      const missingKeys = missingMandatoryKeys(checks);
+      return { ok: missing.length === 0, missing, missingKeys };
     },
     [
       claim,
@@ -441,12 +445,20 @@ export function PlannerProvider({
     async (step: StepId): Promise<SaveStepResult> => {
       const result = validateStep(step);
       if (!result.ok) {
+        setFailedMandatoryKeys(result.missingKeys);
+        requestAnimationFrame(() => {
+          document.querySelector('[data-mandatory-error="true"]')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        });
         return {
           ok: false,
           message: `Zorunlu alanlar eksik: ${result.missing.join(', ')}. Kaydet yapılamaz.`,
           missing: result.missing,
         };
       }
+      setFailedMandatoryKeys([]);
 
       if (mode === 'preview' || !claimId) {
         return {
@@ -756,6 +768,26 @@ export function PlannerProvider({
     [mode, claimId, canEdit, claim.fileCancelled, claim.fileClosed, refreshClaim, confirm],
   );
 
+  const convertInspectionToRepair = useCallback(async (): Promise<SaveStepResult> => {
+    if (mode === 'preview' || !claimId) {
+      return { ok: false, message: 'Önizlemede onarıma çevirme yazılmaz.' };
+    }
+    if (!canEdit) {
+      return { ok: false, message: 'Bu işlem için yetkiniz yok.' };
+    }
+    try {
+      await axios.post(
+        `${API}/claim-files/${claimId}/convert-to-repair`,
+        {},
+        { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
+      );
+      await refreshClaim();
+      return { ok: true, message: 'Onarım adımları açıldı.' };
+    } catch (error: unknown) {
+      return { ok: false, message: getApiErrorMessage(error, 'Onarıma çevrilemedi.') };
+    }
+  }, [mode, claimId, canEdit, refreshClaim]);
+
   const value: PlannerDraft = {
     mode,
     canEdit,
@@ -805,6 +837,8 @@ export function PlannerProvider({
     applyWaTemplateForRecipient,
     validateStep,
     saveStep,
+    convertInspectionToRepair,
+    failedMandatoryKeys,
     cancelOpenFile,
     recordWhatsAppContact,
     saving,

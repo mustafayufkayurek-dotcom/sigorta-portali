@@ -681,7 +681,7 @@ function ClaimFilesPageContent() {
       <SlidePanel
         open={showNewPanel}
         onClose={() => setShowNewPanel(false)}
-        title="Yeni Hasar Dosyası"
+        title="Yeni Dosya"
         width={600}
         scrollContent={false}
       >

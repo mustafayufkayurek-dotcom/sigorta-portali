@@ -8,6 +8,12 @@ import {
 } from '@/common/helpers/claim-file-scope.helper';
 import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
 import { generalMailboxesFromContactInfos } from '@sigorta/shared';
+import {
+  departmentCodeForNewClaim,
+  filterStaffByFileArea,
+  INSPECTOR_ALREADY_ASSIGNED_MESSAGE,
+  parseClaimServiceKind,
+} from '@sigorta/shared';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import {
@@ -33,7 +39,6 @@ import {
 import { buildWhatsAppMeUrl, normalizeWhatsAppPhone } from '@/common/utils/whatsapp-phone';
 import {
   buildVendorNearbyWhere,
-  buildInspectorFallbackWhere,
   buildSupplierFallbackWhere,
   normalizeLocationLabel,
   resolveProvinceDistrictIds,
@@ -236,11 +241,27 @@ export class ClaimFilesService {
   }
 
   private async resolveHasarDepartmentId(): Promise<string | null> {
+    return this.resolveDepartmentIdByCode('hasar-onarim');
+  }
+
+  private async resolveDepartmentIdByCode(code: string): Promise<string | null> {
     const dept = await this.prisma.department.findFirst({
-      where: { code: 'hasar-onarim', status: 'active' },
+      where: { code, status: 'active' },
       select: { id: true },
     });
     return dept?.id ?? null;
+  }
+
+  private async ensureOzelMusteriInsuranceCompanyId(): Promise<string> {
+    const existing = await this.prisma.insuranceCompany.findFirst({
+      where: { OR: [{ code: 'OZEL-MUSTERI' }, { name: 'Özel Müşteri' }] },
+      select: { id: true },
+    });
+    if (existing) return existing.id;
+    const created = await this.prisma.insuranceCompany.create({
+      data: { code: 'OZEL-MUSTERI', name: 'Özel Müşteri', status: 'active' },
+    });
+    return created.id;
   }
 
   private async fallbackHasarOfficeUserId(): Promise<string | null> {
@@ -1514,7 +1535,20 @@ export class ClaimFilesService {
       throw new BadRequestException('Bu dosya numarası zaten kullanılıyor');
     }
 
-    const insuranceCompanyId = typeof rest.insuranceCompanyId === 'string' ? rest.insuranceCompanyId.trim() : '';
+    const insuranceCompanyIdRaw = typeof rest.insuranceCompanyId === 'string' ? rest.insuranceCompanyId.trim() : '';
+    const customerSourceRaw = rest.customerSource;
+    const customerSource = customerSourceRaw === 'private' ? 'private' : 'expert';
+    const requireOfficeOwner = customerSourceRaw === 'private' || customerSourceRaw === 'expert';
+    delete rest.customerSource;
+    const serviceKind = parseClaimServiceKind(rest.serviceKind);
+    delete rest.serviceKind;
+    const siteContactName =
+      typeof rest.siteContactName === 'string' ? rest.siteContactName.trim() || null : null;
+    delete rest.siteContactName;
+    const siteContactPhoneRaw =
+      typeof rest.siteContactPhone === 'string' ? rest.siteContactPhone.replace(/\D/g, '') : '';
+    const siteContactPhone = siteContactPhoneRaw || null;
+    delete rest.siteContactPhone;
     let sourceChannel = typeof rest.sourceChannel === 'string' ? rest.sourceChannel.trim() : '';
     const earlyRoleCode = String(requestingUser?.roleCode ?? requestingUser?.role?.code ?? '').trim();
     if (earlyRoleCode === 'insurance_company_user' && !sourceChannel) {
@@ -1531,7 +1565,14 @@ export class ClaimFilesService {
     let departmentFileSubjectId = rest.departmentFileSubjectId ?? null;
     const departmentId = rest.departmentId ?? null;
 
-    if (!insuranceCompanyId) throw new BadRequestException('Sigorta şirketi zorunludur');
+    let insuranceCompanyId = insuranceCompanyIdRaw;
+    if (!insuranceCompanyId) {
+      if (customerSource === 'private') {
+        insuranceCompanyId = await this.ensureOzelMusteriInsuranceCompanyId();
+      } else {
+        throw new BadRequestException('Sigorta şirketi zorunludur');
+      }
+    }
     if (!policyNo) {
       if (sourceChannel === 'expert_portal' || sourceChannel === 'insurance_portal') {
         policyNo = 'Belirtilmedi';
@@ -1593,7 +1634,17 @@ export class ClaimFilesService {
       let assignedOfficeUserId = rest.assignedOfficeUserId ?? null;
       let resolvedDepartmentId = departmentId ?? null;
       if (!resolvedDepartmentId && sourceChannel !== 'expert_portal' && sourceChannel !== 'insurance_portal') {
-        resolvedDepartmentId = await this.resolveHasarDepartmentId();
+        const deptCode = departmentCodeForNewClaim({ customerSource, serviceKind });
+        resolvedDepartmentId = await this.resolveDepartmentIdByCode(deptCode);
+      }
+
+      if (
+        requireOfficeOwner
+        && !assignedOfficeUserId
+        && sourceChannel !== 'expert_portal'
+        && sourceChannel !== 'insurance_portal'
+      ) {
+        throw new BadRequestException('Dosya sorumlusu zorunludur');
       }
 
       const normalizedRoleCode = String(roleCode ?? '').trim().toLowerCase();
@@ -1658,6 +1709,9 @@ export class ClaimFilesService {
           claimSubjectId,
           departmentFileSubjectId,
           departmentId: resolvedDepartmentId,
+          serviceKind,
+          siteContactName,
+          siteContactPhone,
           currentResponsibleRole: assignedOfficeUserId ? 'operasyon_sorumlusu' : null,
           currentResponsibleUserId: assignedOfficeUserId ?? null,
           lastActivityAt: new Date(),
@@ -1893,6 +1947,16 @@ export class ClaimFilesService {
       rest.priority = p || undefined;
     }
 
+    if (typeof rest.serviceKind === 'string') {
+      rest.serviceKind = parseClaimServiceKind(rest.serviceKind);
+    }
+    if (typeof rest.siteContactName === 'string') {
+      rest.siteContactName = rest.siteContactName.trim() || null;
+    }
+    if (typeof rest.siteContactPhone === 'string') {
+      rest.siteContactPhone = rest.siteContactPhone.replace(/\D/g, '') || null;
+    }
+
     if (typeof rest.lossType === 'string') {
       rest.lossType = sanitizeInboundLossType(rest.lossType.trim());
       if (!rest.departmentFileSubjectId && rest.lossType !== 'Belirtilmemiş') {
@@ -2043,6 +2107,9 @@ export class ClaimFilesService {
 
     const updateData: any = {};
     if (dto.assignedFieldUserId !== undefined) {
+      if (dto.assignedFieldUserId && (claimFile as any).assignedFieldUserId === dto.assignedFieldUserId) {
+        throw new BadRequestException(INSPECTOR_ALREADY_ASSIGNED_MESSAGE);
+      }
       updateData.assignedFieldUserId = dto.assignedFieldUserId;
       if (dto.assignedFieldUserId) {
         updateData.assignedInspectorVendorId = null;
@@ -2802,6 +2869,7 @@ export class ClaimFilesService {
   async getAssignableStaff(
     role: 'office_staff' | 'field_staff' = 'office_staff',
     includeDelegates?: 'acil_yardim' | 'hasar' | 'both',
+    area?: { city?: string; district?: string },
   ) {
     const roleCodes =
       role === 'field_staff'
@@ -2820,20 +2888,38 @@ export class ClaimFilesService {
         email: true,
         phone: true,
         role: { select: { id: true, name: true, code: true } },
+        serviceAreas: {
+          select: {
+            province: { select: { name: true } },
+            district: { select: { name: true } },
+          },
+        },
       },
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
       take: 200,
     });
 
+    const mappedStaff = staff.map((user) => ({
+      ...user,
+      serviceAreas: (user.serviceAreas ?? []).map((sa) => ({
+        provinceName: sa.province?.name ?? null,
+        districtName: sa.district?.name ?? null,
+      })),
+    }));
+
+    if (role === 'field_staff' && (area?.city !== undefined || area?.district !== undefined)) {
+      return filterStaffByFileArea(mappedStaff, area.city, area.district);
+    }
+
     if (role === 'field_staff' || !includeDelegates || !this.operationalAccessGrants) {
-      return staff;
+      return mappedStaff;
     }
 
     const delegates = await this.operationalAccessGrants.listActiveFunctionDelegates(includeDelegates);
     const extraIds = delegates
       .map((d) => d.id)
       .filter((id) => !staff.some((s) => s.id === id));
-    if (extraIds.length === 0) return staff;
+    if (extraIds.length === 0) return mappedStaff;
 
     const extra = await this.prisma.user.findMany({
       where: {
@@ -2850,7 +2936,19 @@ export class ClaimFilesService {
       },
     });
 
-    return mergeAssignableStaffWithDelegates(staff, extra);
+    return mergeAssignableStaffWithDelegates(mappedStaff, extra);
+  }
+
+  async convertInspectionToRepair(
+    id: string,
+    requestingUser?: { id: string; roleCode?: string | null; vendorId?: string | null },
+  ) {
+    await this.assertHasarFileMutationAllowed(requestingUser);
+    const file = await this.findOne(id, requestingUser);
+    if (parseClaimServiceKind((file as { serviceKind?: string | null }).serviceKind) !== 'inspection') {
+      return file;
+    }
+    return this.update(id, { serviceKind: 'repair' }, requestingUser);
   }
 
   async suggestResponsible(claimFileId: string, role: 'office_staff' | 'field_staff' = 'office_staff') {
@@ -3248,6 +3346,10 @@ export class ClaimFilesService {
       include: { supplierAssignments: { select: { vendorId: true } } },
     });
     if (!file) throw new NotFoundException('Dosya bulunamadı.');
+
+    if (file.assignedInspectorVendorId === vendorId) {
+      throw new BadRequestException(INSPECTOR_ALREADY_ASSIGNED_MESSAGE);
+    }
 
     if (file.supplierAssignments.some((s) => s.vendorId === vendorId)) {
       throw new BadRequestException(SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE);
@@ -3773,13 +3875,9 @@ export class ClaimFilesService {
       orderBy: { name: 'asc' },
     });
 
-    // Bölge eşleşmesi yoksa operasyonu kilitleme — hasar dosyası → hasar havuzu
-    if (vendors.length === 0) {
+    if (vendors.length === 0 && purpose !== 'inspector') {
       vendors = await this.prisma.vendor.findMany({
-        where:
-          purpose === 'inspector'
-            ? buildInspectorFallbackWhere()
-            : buildSupplierFallbackWhere(['hasar', 'her_ikisi']),
+        where: buildSupplierFallbackWhere(['hasar', 'her_ikisi']),
         select: vendorSelect,
         take: 100,
         orderBy: { name: 'asc' },

@@ -5,6 +5,7 @@
 
 import type { StepId, StepStatus } from './types';
 import { PLANNER_STEPS, PLANNER_VISIBLE_STEPS } from './types';
+import { parseClaimServiceKind, plannerStepHiddenForServiceKind } from '@sigorta/shared';
 import { PREVIEW } from './preview-data';
 import { plannerMapsHref } from './planner-maps';
 import {
@@ -167,6 +168,9 @@ export type PlannerClaimSnapshot = {
   statusCode: string | null;
   closeMissing: string[];
   cancelRecord: { at: string; by: string; reason: string } | null;
+  serviceKind: string | null;
+  siteContactName: string;
+  siteContactPhone: string;
 };
 
 function fmtDateTime(iso: string | null | undefined): { date: string; time: string; at: string } {
@@ -251,6 +255,9 @@ export function previewSnapshot(): PlannerClaimSnapshot {
     statusCode: null,
     closeMissing: ['Onaylı rapor', 'Onarım bitişi'],
     cancelRecord: null,
+    serviceKind: 'repair',
+    siteContactName: '',
+    siteContactPhone: '',
   };
 }
 
@@ -448,8 +455,12 @@ export function mapLiveSnapshot(
     hasFileClosed: fileClosed || fileCancelled,
   });
 
-  const completedCount = PLANNER_VISIBLE_STEPS.filter((s) => stepStatuses[s.id] === 'done').length;
-  const totalCount = PLANNER_VISIBLE_STEPS.length;
+  const serviceKind = parseClaimServiceKind(claimFile?.serviceKind);
+  const visibleSteps = PLANNER_VISIBLE_STEPS.filter(
+    (s) => !plannerStepHiddenForServiceKind(s.id, serviceKind),
+  );
+  const completedCount = visibleSteps.filter((s) => stepStatuses[s.id] === 'done').length;
+  const totalCount = visibleSteps.length;
 
   const suppliersFromAssigned: PlannerSupplier[] = op.assignedSuppliers.map((s) => ({
     id: s.id,
@@ -689,5 +700,8 @@ export function mapLiveSnapshot(
     statusCode,
     closeMissing,
     cancelRecord,
+    serviceKind,
+    siteContactName: String(claimFile?.siteContactName ?? '').trim(),
+    siteContactPhone: String(claimFile?.siteContactPhone ?? '').trim(),
   };
 }

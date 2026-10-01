@@ -136,3 +136,7 @@ export function getMandatoryChecks(
 export function missingMandatoryLabels(checks: MandatoryCheck[]): string[] {
   return checks.filter((c) => !c.ok).map((c) => c.label);
 }
+
+export function missingMandatoryKeys(checks: MandatoryCheck[]): string[] {
+  return checks.filter((c) => !c.ok).map((c) => c.key);
+}

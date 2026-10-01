@@ -1035,7 +1035,7 @@ function OperasyonPageContent() {
           {!isAcilListMode && (
             <Link href="/panel/hasar-dosyalari?yeni=1" className="btn-primary shadow-sm shadow-blue-200/60 justify-center">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              Yeni Hasar Dosyası
+              Yeni Dosya
             </Link>
           )}
           <button

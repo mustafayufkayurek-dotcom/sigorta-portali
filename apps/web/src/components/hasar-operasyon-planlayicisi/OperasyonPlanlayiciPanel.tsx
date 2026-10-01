@@ -22,7 +22,10 @@ import {
   type PlannerInspector,
   type PlannerSupplier,
 } from './claim-snapshot';
-import { resolvePlannerEntry } from './planner-live-rules';
+import {
+  isInspectionServiceKind,
+  plannerStepHiddenForServiceKind,
+} from '@sigorta/shared';
 
 /** FINAL referans — sol kenar akış renkleri */
 const C = {
@@ -45,10 +48,9 @@ function StatusIcon({ status }: { status: StepStatus }) {
 }
 
 function statusTone(status: StepStatus, active: boolean) {
-  if (active) return 'ring-2 ring-orange-400 border-orange-200 bg-orange-50/70';
-  if (status === 'done') return 'border-emerald-200 bg-emerald-50/40';
-  if (status === 'waiting') return 'border-amber-200 bg-amber-50/40';
-  return 'border-slate-200 bg-white';
+  if (active) return 'ring-2 ring-orange-400 border-orange-300 bg-orange-50';
+  if (status === 'done') return 'border-emerald-100 bg-emerald-50/30 opacity-60';
+  return 'border-2 border-orange-400 bg-orange-50 shadow-sm';
 }
 
 function stepStatusLabel(status: StepStatus, active: boolean) {
@@ -115,7 +117,7 @@ function PlanlayiciInner({
   activeStep: StepId;
   setActiveStep: (v: StepId) => void;
 }) {
-  const { claim, saveStep, saving, canEdit } = usePlanner();
+  const { claim, saveStep, saving, canEdit, convertInspectionToRepair } = usePlanner();
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const { docked, dock, expand } = useRightPanelDock(drawerOpen, { title: 'Operasyon' });
@@ -136,9 +138,17 @@ function PlanlayiciInner({
       PLANNER_STEPS.map((s) => ({
         ...s,
         status: claim.stepStatuses[s.id] ?? s.status,
+        hidden: s.hidden || plannerStepHiddenForServiceKind(s.id, claim.serviceKind),
       })),
-    [claim.stepStatuses],
+    [claim.stepStatuses, claim.serviceKind],
   );
+
+  useEffect(() => {
+    const current = steps.find((s) => s.id === activeStep);
+    if (current && !current.hidden) return;
+    const first = steps.find((s) => !s.hidden);
+    if (first) setActiveStep(first.id);
+  }, [steps, activeStep, setActiveStep]);
 
   const activeMeta = steps.find((s) => s.id === activeStep) ?? steps[0];
 
@@ -152,6 +162,18 @@ function PlanlayiciInner({
               {claim.completedCount}/{claim.totalCount} tamam
             </span>
           </h2>
+          {isInspectionServiceKind(claim.serviceKind) && canEdit ? (
+            <button
+              type="button"
+              data-testid="onarima-cevir"
+              onClick={() => {
+                void convertInspectionToRepair().then((r) => setSaveNotice(r.message));
+              }}
+              className="rounded-lg border border-brand-300 bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-800"
+            >
+              Onarıma Çevir
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -167,6 +189,7 @@ function PlanlayiciInner({
         <div className="space-y-2" data-testid="hasar-planner-groups">
           {PLANNER_GROUPS.map((g) => {
             const gSteps = steps.filter((s) => s.group === g.id && !s.hidden);
+            if (gSteps.length === 0) return null;
             return (
               <div key={g.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
                 <p className="w-[9.5rem] shrink-0 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
@@ -271,6 +294,7 @@ function PlanlayiciInner({
               >
                 {PLANNER_GROUPS.map((g) => {
                   const gSteps = steps.filter((s) => s.group === g.id && !s.hidden);
+                  if (gSteps.length === 0) return null;
                   return (
                     <div key={g.id} className="mb-2">
                       <p className="px-1.5 pb-1 text-[9px] font-semibold uppercase tracking-wide text-slate-400">
@@ -298,8 +322,10 @@ function PlanlayiciInner({
                           onClick={() => setActiveStep(s.id)}
                           className={`relative flex w-full items-start gap-2 rounded-lg px-1.5 py-2 text-left transition ${
                             active
-                              ? 'bg-orange-50 ring-1 ring-orange-200'
-                              : 'hover:bg-slate-50'
+                              ? 'bg-orange-50 ring-2 ring-orange-400'
+                              : done
+                                ? 'opacity-60 hover:bg-slate-50'
+                                : 'bg-orange-50/40 ring-2 ring-orange-400 hover:bg-orange-50'
                           }`}
                         >
                           <FlowStepDot status={s.status} active={active} n={s.n} />
@@ -444,6 +470,9 @@ export function OperasyonPlanlayiciPanel({
       setError(null);
       if (!opts?.soft) setLoading(true);
       try {
+        const addr = claimFile?.propertyAddress;
+        const city = addr?.city ?? '';
+        const district = addr?.district ?? '';
         const [opRes, inspRes, vendorRes, fieldStaffRes, claimRes] = await Promise.all([
           axios.get(`${API}/claim-operation-center/${claimId}`, { headers: authHeader() }),
           axios
@@ -457,7 +486,10 @@ export function OperasyonPlanlayiciPanel({
             })
             .catch(() => ({ data: null })),
           axios
-            .get(`${API}/claim-files/assignable-staff?role=field_staff`, { headers: authHeader() })
+            .get(`${API}/claim-files/assignable-staff`, {
+              headers: authHeader(),
+              params: { role: 'field_staff', city, district },
+            })
             .catch(() => ({ data: null })),
           axios.get(`${API}/claim-files/${claimId}`, { headers: authHeader() }).catch(() => ({ data: null })),
         ]);
@@ -468,17 +500,26 @@ export function OperasyonPlanlayiciPanel({
         const fieldStaffRaw = fieldStaffRes.data?.data ?? fieldStaffRes.data;
 
         const staffList: PlannerInspector[] = Array.isArray(fieldStaffRaw)
-          ? fieldStaffRaw.map((u: any) => ({
-              id: u.id,
-              name: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || 'Saha Personeli',
-              region: 'Meridyen Saha · Türkiye',
-              available: true,
-              score: 0,
-              lastWork: '—',
-              completedJobs: 0,
-              phone: u.phone ?? '',
-              source: 'meridyen' as const,
-            }))
+          ? fieldStaffRaw.map((u: any) => {
+              const areas = Array.isArray(u.serviceAreas) ? u.serviceAreas : [];
+              const region =
+                areas
+                  .map((a: { districtName?: string; provinceName?: string }) =>
+                    [a.districtName, a.provinceName].filter(Boolean).join(' / '),
+                  )
+                  .find(Boolean) || '—';
+              return {
+                id: u.id,
+                name: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || 'Saha Personeli',
+                region,
+                available: true,
+                score: 0,
+                lastWork: '—',
+                completedJobs: 0,
+                phone: u.phone ?? '',
+                source: 'meridyen' as const,
+              };
+            })
           : [];
 
         const vendorInspectors: PlannerInspector[] = Array.isArray(inspRaw)

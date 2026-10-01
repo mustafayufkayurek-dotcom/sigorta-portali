@@ -24,7 +24,13 @@ import {
 } from '@/utils/customer-form-helpers';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
-import { createInFlightGuard } from '@/utils/in-flight-guard';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
+import {
+  CLAIM_SERVICE_KIND_LABEL,
+  CLAIM_SERVICE_KINDS,
+  parseClaimServiceKind,
+  type ClaimServiceKind,
+} from '@sigorta/shared';
 
 
 
@@ -105,6 +111,8 @@ type SelectedCustomer = {
   phone?: string | null;
 };
 
+type PanelUser = { id: string; firstName?: string | null; lastName?: string | null };
+
 const inp = 'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400';
 const inpCompact = 'w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400';
 const lbl = 'block text-xs font-medium text-slate-600 mb-1.5';
@@ -139,7 +147,13 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
   const [description, setDescription] = useState('');
   const [currentStatusId, setCurrentStatusId] = useState('');
 
-  const [fileNoError, setFileNoError] = useState<string | null>(null);
+  const [customerSource, setCustomerSource] = useState<'expert' | 'private'>('expert');
+  const [serviceKind, setServiceKind] = useState<ClaimServiceKind>('repair');
+  const [officeUsers, setOfficeUsers] = useState<PanelUser[]>([]);
+  const [assignedOfficeUserId, setAssignedOfficeUserId] = useState('');
+  const [siteContactName, setSiteContactName] = useState('');
+  const [siteContactPhone, setSiteContactPhone] = useState('');
+  const [sessionUserId, setSessionUserId] = useState('');
   const [fileNoChecking, setFileNoChecking] = useState(false);
 
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -195,17 +209,32 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
 
   const loadLookups = useCallback(async () => {
     try {
-      const [icRes, subjectsRes, meRes] = await Promise.all([
+      const [icRes, subjectsRes, meRes, staffRes] = await Promise.all([
         axios.get(`${API}/insurance-companies?limit=200`, { headers: authHeader() }),
         axios.get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() }).catch((err) => {
           reportCaughtError(err, 'Hasar konuları yüklenemedi. Lütfen sayfayı yenileyin.');
           return null;
         }),
         axios.get(`${API}/auth/me`, { headers: authHeader() }).catch(() => null),
+        axios
+          .get(`${API}/claim-files/assignable-staff`, {
+            headers: authHeader(),
+            params: { role: 'office_staff', includeDelegates: 'hasar' },
+          })
+          .catch(() => ({ data: { data: [] } })),
       ]);
       let companies: { id: string; name: string }[] = icRes.data.data || [];
       const me = meRes?.data?.data ?? meRes?.data?.user ?? meRes?.data;
       const roleCode = String(me?.role?.code ?? me?.roleCode ?? '').toLowerCase();
+      const meId = String(me?.id ?? me?.userId ?? '');
+      if (meId) setSessionUserId(meId);
+      const staff = (staffRes.data?.data ?? []) as PanelUser[];
+      setOfficeUsers(staff);
+      if (meId && staff.some((u) => u.id === meId)) {
+        setAssignedOfficeUserId(meId);
+      } else if (staff.length === 1) {
+        setAssignedOfficeUserId(staff[0].id);
+      }
       const scopedIds = Array.isArray(me?.insuranceCompanyScopes)
         ? me.insuranceCompanyScopes.map((s: { id?: string }) => s.id).filter(Boolean)
         : [];
@@ -301,6 +330,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
           limit: '15',
           status: 'active',
         });
+        if (customerSource === 'private') params.set('subType', 'private_customer');
         const res = await axios.get(`${API}/customers?${params}`, { headers: authHeader() });
         const data = res.data.data || [];
         setCustomerResults(data.map((c: Record<string, unknown>) => ({
@@ -322,6 +352,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         setCustomerSearchLoading(false);
       }
     }, 300);
+  };
   };
 
   const handleSelectCustomerFromDropdown = (c: SelectedCustomer) => {
@@ -370,8 +401,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
   const validateDosyaFields = (errs: Record<string, string>) => {
     if (!fileNo.trim()) errs.fileNo = 'Dosya numarası zorunludur.';
     if (fileNoError) errs.fileNo = fileNoError;
-    if (!insuranceCompanyId) errs.insuranceCompanyId = 'Sigorta şirketi zorunludur.';
+    if (customerSource !== 'private' && !insuranceCompanyId) errs.insuranceCompanyId = 'Sigorta şirketi zorunludur.';
     if (!lossType) errs.lossType = 'Hasar konusu zorunludur.';
+    if (!assignedOfficeUserId) errs.assignedOfficeUserId = 'Dosya sorumlusu zorunludur.';
+    if (!serviceKind) errs.serviceKind = 'Hizmet türü zorunludur.';
     const ihbarToday = todayTrDateDisplay();
     if (!isPanel && !isCompleteTrDateValue(notificationDate || ihbarToday)) {
       errs.notificationDate = 'İhbar tarihi zorunludur (GG.AA.YYYY).';
@@ -391,8 +424,14 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
     validateEksperFields(errs);
     validateDosyaFields(errs);
     setErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      const first = Object.keys(errs)[0];
+      requestAnimationFrame(() => {
+        document.querySelector(`[data-field="${first}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
     if (errs.customer) setOpenSections((p) => ({ ...p, eksper: true }));
-    if (errs.fileNo || errs.insuranceCompanyId || errs.lossType || errs.insuredName) {
+    if (errs.fileNo || errs.insuranceCompanyId || errs.lossType || errs.insuredName || errs.assignedOfficeUserId || errs.serviceKind) {
       setOpenSections((p) => ({ ...p, dosya: true }));
     }
     return Object.keys(errs).length === 0;
@@ -412,7 +451,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       if (showNewCustomerForm) {
         const cRes = await axios.post(`${API}/customers`, {
           type: 'corporate',
-          subType: HASAR_EXPERT_CUSTOMER_SUB_TYPE,
+          subType: customerSource === 'private' ? 'private_customer' : HASAR_EXPERT_CUSTOMER_SUB_TYPE,
           serviceType: 'hasar',
           companyName: toTitleCaseTR(newCustomerCompanyName.trim()),
           taxNumber: newCustomerTaxNumber.trim() || undefined,
@@ -426,6 +465,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         const lastName = parts.length > 1 ? parts[parts.length - 1] : '';
         const cRes = await axios.post(`${API}/customers`, {
           type: 'individual',
+          subType: customerSource === 'private' ? 'private_customer' : undefined,
           fullName: name,
           firstName,
           lastName: lastName || undefined,
@@ -449,7 +489,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       const ihbarIso = new Date(normalizeTrDateValue(ihbarToday)).toISOString();
       const payload: Record<string, unknown> = {
         fileNo: fileNo.trim(),
-        insuranceCompanyId,
+        insuranceCompanyId: insuranceCompanyId || undefined,
         policyNo: 'N/A',
         claimNo: fileNo.trim() || 'N/A',
         productBranch: 'diger',
@@ -461,6 +501,11 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         insuredName: toTitleCaseTR(insuredName.trim()),
         customerId: customerId || undefined,
         propertyAddressId,
+        assignedOfficeUserId,
+        customerSource,
+        serviceKind: parseClaimServiceKind(serviceKind),
+        siteContactName: toTitleCaseTR(siteContactName.trim()) || undefined,
+        siteContactPhone: siteContactPhone.replace(/\D/g, '') || undefined,
       };
       if (currentStatusId) payload.currentStatusId = currentStatusId;
 
@@ -483,6 +528,33 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
 
   const eksperSection = (
     <>
+      <div className="mb-3" data-field="customerSource">
+        <label className={label}>Müşteri Kaynağı</label>
+        <div className="grid grid-cols-2 gap-1.5">
+          {([
+            ['expert', 'Eksper Ofisi'],
+            ['private', 'Özel Müşteri'],
+          ] as const).map(([id, caption]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setCustomerSource(id);
+                setSelectedCustomer(null);
+                setCustomerSearch('');
+                setShowNewCustomerForm(false);
+              }}
+              className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${
+                customerSource === id
+                  ? 'border-brand-400 bg-brand-50 text-brand-800'
+                  : 'border-slate-200 bg-white text-slate-600'
+              }`}
+            >
+              {caption}
+            </button>
+          ))}
+        </div>
+      </div>
       {errors.customer && <p className="text-xs text-status-danger mb-2">{errors.customer}</p>}
 
       {selectedCustomer && !showNewCustomerForm ? (
@@ -505,7 +577,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       ) : !showNewCustomerForm ? (
         <>
           <div ref={customerSearchRef} className="relative">
-            <label className={label}>Müşteri Ara</label>
+            <label className={label}>{customerSource === 'private' ? 'Özel Müşteri Ara' : 'Müşteri Ara'}</label>
             <input
               type="text"
               className={`${field} ${errors.customer ? 'border-red-400' : ''}`}
@@ -559,7 +631,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
               onClick={() => { setShowNewCustomerForm(true); setSelectedCustomer(null); setCustomerSearch(''); setOpenSections((p) => ({ ...p, eksper: true })); }}
               className="w-full px-3 py-2.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50 sm:flex-1"
             >
-              Yeni Eksper Ofisi
+              {customerSource === 'private' ? 'Yeni Özel Müşteri' : 'Yeni Eksper Ofisi'}
             </button>
           </div>
         </>
@@ -568,7 +640,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       {showNewCustomerForm && (
         <div className={`space-y-2 ${isPanel ? '' : 'space-y-3'} pt-1`}>
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-600">Yeni Eksper Ofisi</p>
+            <p className="text-xs font-medium text-slate-600">
+              {customerSource === 'private' ? 'Yeni Özel Müşteri' : 'Yeni Eksper Ofisi'}
+            </p>
             <button
               type="button"
               onClick={() => { setShowNewCustomerForm(false); setPhoneDupError(null); }}
@@ -624,19 +698,64 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         </div>
       )}
       <div className={formGrid}>
-        <div className="min-w-0">
+        <div className={`${spanFull} min-w-0`} data-field="serviceKind">
+          <label className={label}>Hizmet Türü <span className="text-status-danger">*</span></label>
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+            {CLAIM_SERVICE_KINDS.map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => {
+                  setServiceKind(kind);
+                  setErrors((p) => { const n = { ...p }; delete n.serviceKind; return n; });
+                }}
+                className={`rounded-lg border px-2 py-1.5 text-[11px] font-semibold ${
+                  serviceKind === kind
+                    ? 'border-brand-400 bg-brand-50 text-brand-800'
+                    : errors.serviceKind
+                      ? 'border-red-400 bg-red-50 text-slate-700'
+                      : 'border-slate-200 bg-white text-slate-600'
+                }`}
+              >
+                {CLAIM_SERVICE_KIND_LABEL[kind]}
+              </button>
+            ))}
+          </div>
+          {errors.serviceKind && <p className="text-xs text-status-danger mt-0.5">{errors.serviceKind}</p>}
+        </div>
+        <div className="min-w-0" data-field="assignedOfficeUserId">
+          <label className={label}>Dosya Sorumlusu <span className="text-status-danger">*</span></label>
+          <select
+            className={`${field} ${errors.assignedOfficeUserId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
+            value={assignedOfficeUserId}
+            onChange={(e) => {
+              setAssignedOfficeUserId(e.target.value);
+              if (e.target.value) setErrors((p) => { const n = { ...p }; delete n.assignedOfficeUserId; return n; });
+            }}
+          >
+            <option value="">Seçiniz...</option>
+            {officeUsers.map((u) => (
+              <option key={u.id} value={u.id}>
+                {`${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.id}
+                {u.id === sessionUserId ? ' (Siz)' : ''}
+              </option>
+            ))}
+          </select>
+          {errors.assignedOfficeUserId && <p className="text-xs text-status-danger mt-0.5">{errors.assignedOfficeUserId}</p>}
+        </div>
+        <div className="min-w-0" data-field="insuredName">
           <label className={label}>Sigortalı Adı Soyadı <span className="text-status-danger">*</span></label>
           <input
-            className={`${field} ${errors.insuredName ? 'border-red-400' : ''}`}
+            className={`${field} ${errors.insuredName ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
             value={insuredName}
             onChange={(e) => setInsuredName(e.target.value)}
             onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setInsuredName(v); }}
           />
           {errors.insuredName && <p className="text-xs text-status-danger mt-0.5">{errors.insuredName}</p>}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0" data-field="lossType">
           <label className={label}>Hasar Konusu <span className="text-status-danger">*</span></label>
-          <select className={`${field} ${errors.lossType ? 'border-red-400' : ''}`} value={lossType} onChange={(e) => setLossType(e.target.value)}>
+          <select className={`${field} ${errors.lossType ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`} value={lossType} onChange={(e) => setLossType(e.target.value)}>
             <option value="">Seçiniz...</option>
             {claimSubjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
             {claimSubjects.length === 0 && <option value="Diğer">Diğer</option>}
@@ -646,26 +765,29 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
           )}
           {errors.lossType && <p className="text-xs text-status-danger mt-0.5">{errors.lossType}</p>}
         </div>
-        <div className="min-w-0">
-          <label className={label}>Sigorta Şirketi <span className="text-status-danger">*</span></label>
-          <select className={`${field} w-full min-w-0 ${errors.insuranceCompanyId ? 'border-red-400' : ''}`} value={insuranceCompanyId} onChange={(e) => setInsuranceCompanyId(e.target.value)}>
+        <div className="min-w-0" data-field="insuranceCompanyId">
+          <label className={label}>
+            Sigorta Şirketi {customerSource === 'private' ? '' : <span className="text-status-danger">*</span>}
+            {customerSource === 'private' ? <span className="font-normal text-slate-400"> (Tercih)</span> : null}
+          </label>
+          <select className={`${field} w-full min-w-0 ${errors.insuranceCompanyId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`} value={insuranceCompanyId} onChange={(e) => setInsuranceCompanyId(e.target.value)}>
             <option value="">Seçiniz...</option>
             {insuranceCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           {errors.insuranceCompanyId && <p className="text-xs text-status-danger mt-0.5">{errors.insuranceCompanyId}</p>}
         </div>
-        <div className="min-w-0">
-          <label className={label}>Dosya No <span className="text-status-danger">*</span></label>
+        <div className="min-w-0" data-field="fileNo">
+          <label className={`${label} flex items-center gap-1.5`}>
+            <span>Dosya No <span className="text-status-danger">*</span></span>
+            <FieldHelpTip text="Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz." testId="dosya-no-yardim" />
+          </label>
           <input
-            className={`${field} ${errors.fileNo ? 'border-red-400' : ''}`}
+            className={`${field} ${errors.fileNo ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
             value={fileNo}
             onChange={(e) => { setFileNo(e.target.value); setFileNoError(null); }}
             onBlur={(e) => { const v = e.target.value.trim(); if (v) setFileNo(v); void checkFileNoDuplicate(v); }}
           />
           {fileNoChecking && <p className="text-xs text-slate-400 mt-0.5">Kontrol ediliyor...</p>}
-          {!fileNoChecking && !errors.fileNo && (
-            <p className="text-xs text-slate-400 mt-0.5">Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz.</p>
-          )}
           {errors.fileNo && <p className="text-xs text-status-danger mt-0.5">{errors.fileNo}</p>}
         </div>
         <div className={`${spanFull} min-w-0 border-t border-slate-100 pt-3 sm:pt-1`}>
@@ -707,6 +829,21 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
             </div>
           </div>
         </div>
+        <div className="min-w-0">
+          <label className={label}>İrtibat Ad Soyad</label>
+          <input
+            className={field}
+            value={siteContactName}
+            onChange={(e) => setSiteContactName(e.target.value)}
+            onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setSiteContactName(v); }}
+            placeholder="Tespitte aranacak kişi"
+          />
+        </div>
+        <div className="min-w-0">
+          <label className={label}>İrtibat Telefon</label>
+          <TRPhoneInput value={siteContactPhone} onChange={setSiteContactPhone} className={isPanel ? 'rounded-lg px-2.5 py-1.5' : ''} />
+          <p className="text-[11px] text-slate-400 mt-0.5">Yalnız tespit içindir; rapora yazılmaz.</p>
+        </div>
         <div className={spanFull}>
           <label className={label}>İhbar Detayı</label>
           <textarea
@@ -731,8 +868,8 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
   const pagePanels = (
     <>
       <CollapsibleFormPanel
-        title="Eksper Ofisi"
-        hint="Dosyanın bağlı olduğu eksper ofisi"
+        title={customerSource === 'private' ? 'Özel Müşteri' : 'Eksper Ofisi'}
+        hint={customerSource === 'private' ? 'Dosyanın bağlı olduğu özel müşteri kartı' : 'Dosyanın bağlı olduğu eksper ofisi'}
         open={openSections.eksper}
         onToggle={() => toggleSection('eksper')}
         summary={eksperSummary}
@@ -792,7 +929,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         open={showCustomerModal}
         onClose={() => setShowCustomerModal(false)}
         hideTypeColumn
-        subTypeFilter={HASAR_EXPERT_CUSTOMER_SUB_TYPE}
+        subTypeFilter={customerSource === 'private' ? 'private_customer' : HASAR_EXPERT_CUSTOMER_SUB_TYPE}
         onSelect={(c) => {
           setSelectedCustomer({
             id: c.id,
