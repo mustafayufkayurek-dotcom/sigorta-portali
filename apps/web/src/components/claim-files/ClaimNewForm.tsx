@@ -24,6 +24,7 @@ import {
 } from '@/utils/customer-form-helpers';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
+import { createInFlightGuard } from '@/utils/in-flight-guard';
 import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import {
   CLAIM_SERVICE_KIND_LABEL,
