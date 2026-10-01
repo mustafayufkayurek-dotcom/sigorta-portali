@@ -156,6 +156,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
   const [siteContactPhone, setSiteContactPhone] = useState('');
   const [sessionUserId, setSessionUserId] = useState('');
   const [fileNoChecking, setFileNoChecking] = useState(false);
+  const [fileNoError, setFileNoError] = useState<string | null>(null);
 
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<SelectedCustomer | null>(null);
