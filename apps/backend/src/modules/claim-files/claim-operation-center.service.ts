@@ -306,15 +306,19 @@ export class ClaimOperationCenterService {
   }
 
   private async buildFlowFlags(claimFileId: string, vendorIds: string[]) {
-    const [docs, fileDoc, claimRow, report, closureDocCount] = await Promise.all([
+    const [docs, fileDocs, claimRow, report, closureDocCount] = await Promise.all([
       this.prisma.entityDocument.findMany({
         where: { entityType: 'claim_file', entityId: claimFileId },
         select: { notes: true, mimeType: true },
       }),
-      this.prisma.fileDocument.findFirst({
-        where: { entityType: 'claim_file', entityId: claimFileId, documentKind: 'muvafakatname' },
+      this.prisma.fileDocument.findMany({
+        where: {
+          entityType: 'claim_file',
+          entityId: claimFileId,
+          documentKind: { in: ['muvafakatname', 'muvafakatname_on_is'] },
+        },
         orderBy: { createdAt: 'desc' },
-        select: { digitallyApprovedAt: true, status: true },
+        select: { documentKind: true, digitallyApprovedAt: true, status: true },
       }),
       this.prisma.claimFile.findUnique({
         where: { id: claimFileId },
@@ -334,7 +338,10 @@ export class ClaimOperationCenterService {
     ]);
     const photoDocs = docs.filter((d) => String(d.mimeType ?? '').startsWith('image/'));
     const missingPhotoVendorIds = vendorsMissingRepairPhotos(vendorIds, photoDocs);
-    const muvafakatApproved = Boolean(fileDoc?.digitallyApprovedAt);
+    const genelDoc = fileDocs.find((d) => d.documentKind === 'muvafakatname');
+    const preDoc = fileDocs.find((d) => d.documentKind === 'muvafakatname_on_is');
+    const muvafakatApproved = Boolean(genelDoc?.digitallyApprovedAt);
+    const preMuvafakatApproved = Boolean(preDoc?.digitallyApprovedAt);
     const code = claimRow?.currentStatus?.code ?? '';
     const repairCompleted = [
       'repair_completed',
@@ -346,7 +353,8 @@ export class ClaimOperationCenterService {
     ].includes(code);
     return {
       muvafakatApproved,
-      muvafakatStatus: fileDoc?.status ?? null,
+      preMuvafakatApproved,
+      muvafakatStatus: genelDoc?.status ?? null,
       missingPhotoVendorIds,
       repairPhotosReady: vendorIds.length > 0 && missingPhotoVendorIds.length === 0,
       repairCompleted,

@@ -30,6 +30,7 @@ import {
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import {
   INSPECTOR_ALREADY_ASSIGNED_MESSAGE,
+  PRE_APPROVAL_DIGITAL_KIND,
   SUPPLIER_ALREADY_ASSIGNED_MESSAGE,
   isInspectorAlreadyAssigned,
 } from '@sigorta/shared';
@@ -41,6 +42,8 @@ import {
 import { isoToTrDateDisplay } from '@/utils/tr-date-input';
 import type { StepId } from './types';
 import FileDocumentPanel from '@/components/file-documents/FileDocumentPanel';
+import { API, authHeader } from '@/utils/api';
+import axios from 'axios';
 import { ClaimManualDocumentsPanel } from '@/components/file-documents/ClaimManualDocumentsPanel';
 import { VendorRepairPhotosPanel } from '@/components/field-survey/VendorRepairPhotosPanel';
 import { PlannerVendorContractGuide } from './PlannerVendorContractGuide';
@@ -1174,28 +1177,163 @@ export function StepWhatsApp({
   );
 }
 
-/* ─── Dijital Onay — mutabakat / muvafakat tek belge ─── */
+/* ─── Dijital Onay — mutabakat / muvafakat; ön iş varsa ikinci belge ─── */
 export function StepDigitalApproval() {
-  const { claim } = usePlanner();
+  const { claim, canEdit, savePreApprovalChoice, failedMandatoryKeys } = usePlanner();
+  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
+  const [groupError, setGroupError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get(`${API}/work-groups`, { headers: authHeader() })
+      .then((res) => {
+        if (cancelled) return;
+        const raw = res.data?.data ?? res.data ?? [];
+        const list = (Array.isArray(raw) ? raw : []).map((g: { id?: string; name?: string }) => ({
+          id: String(g.id ?? ''),
+          name: String(g.name ?? '').trim(),
+        })).filter((g: { id: string; name: string }) => g.id && g.name);
+        setGroups(list);
+      })
+      .catch(() => {
+        if (!cancelled) setGroupError('İş listesi yüklenemedi. Sayfayı yenileyin.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   if (!claim.claimId) {
     return <p className="mt-3 text-xs text-slate-500">Dosya bağlı değil.</p>;
   }
+
+  const hasPre = claim.hasPreApprovalWork;
+  const selectedIds = new Set(claim.preApprovalJobs.map((j) => j.id));
+  const needTwo = hasPre === true && claim.preApprovalJobs.length > 0;
+
+  const toggleJob = (job: { id: string; name: string }) => {
+    const next = selectedIds.has(job.id)
+      ? claim.preApprovalJobs.filter((j) => j.id !== job.id)
+      : [...claim.preApprovalJobs, job];
+    void savePreApprovalChoice({ hasPreApprovalWork: true, preApprovalJobs: next });
+  };
+
   return (
     <div className="mt-3 space-y-3">
       <p className="text-xs text-slate-600">
         Mutabakat ve muvafakat aynı belgedir. Sigortalı WhatsApp linkinden dijital onaylar. Ayrı sayfa yok.
       </p>
-      {claim.flowFlags.muvafakatApproved ? (
-        <p className="text-xs font-medium text-emerald-800">Dijital onay alındı.</p>
-      ) : (
-        <p className="text-xs font-medium text-amber-800">Onay gelmeden onarım bitişi kaydedilmez.</p>
-      )}
-      <FileDocumentPanel
-        entityType="claim_file"
-        entityId={claim.claimId}
-        documentKind="muvafakatname"
-        defaultPhone={claim.insuredPhone}
-      />
+      <Card title="Ön Onaylı İş" invalid={failedMandatoryKeys.includes('pre_choice')}>
+        <p className="text-xs text-slate-700">Bu dosyada ön onaylı iş var mı?</p>
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          {([
+            [true, 'Evet'],
+            [false, 'Hayır'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={label}
+              type="button"
+              disabled={!canEdit}
+              onClick={() => {
+                void savePreApprovalChoice({
+                  hasPreApprovalWork: value,
+                  preApprovalJobs: value ? claim.preApprovalJobs : [],
+                });
+              }}
+              className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${
+                hasPre === value
+                  ? 'border-brand-400 bg-brand-50 text-brand-800'
+                  : 'border-slate-200 bg-white text-slate-600'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-500">
+          Hayır: tek dijital onay. Evet: ön işler tek belgede, asıl onarım ayrı belgede.
+        </p>
+      </Card>
+
+      {hasPre === true ? (
+        <Card title="Ön Onayı Alınan İşler" invalid={failedMandatoryKeys.includes('pre_jobs')}>
+          {groupError ? <p className="text-xs text-status-danger">{groupError}</p> : null}
+          {groups.length === 0 && !groupError ? (
+            <p className="text-xs text-slate-500">İş listesi yükleniyor…</p>
+          ) : null}
+          <div className="space-y-1.5">
+            {groups.map((g) => (
+              <label key={g.id} className="flex items-center gap-2 text-xs text-slate-800">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(g.id)}
+                  disabled={!canEdit}
+                  onChange={() => toggleJob(g)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                {g.name}
+              </label>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
+      {needTwo ? (
+        <p className="text-xs font-medium text-slate-800">
+          Bu dosyada iki dijital onay durur: önce ön iş, sonra asıl onarım.
+        </p>
+      ) : null}
+
+      {hasPre === true && claim.preApprovalJobs.length === 0 ? (
+        <p className="text-xs font-medium text-amber-800">Ön onayı alınan işi listeden seçin.</p>
+      ) : null}
+
+      {needTwo ? (
+        <div
+          data-mandatory-error={failedMandatoryKeys.includes('pre_muvafakat') ? 'true' : undefined}
+          className={failedMandatoryKeys.includes('pre_muvafakat') ? 'rounded-lg border-2 border-red-400 p-2' : undefined}
+        >
+          <p className="mb-1 text-[11px] font-semibold text-slate-700">
+            1 / 2 · Ön İş ({claim.preApprovalJobs.map((j) => j.name).join(', ')})
+          </p>
+          {claim.flowFlags.preMuvafakatApproved ? (
+            <p className="mb-2 text-xs font-medium text-emerald-800">Ön iş dijital onayı alındı.</p>
+          ) : (
+            <p className="mb-2 text-xs font-medium text-amber-800">
+              Ön iş dijital onayı gelmeden söküm / enkaz başlamaz.
+            </p>
+          )}
+          <FileDocumentPanel
+            entityType="claim_file"
+            entityId={claim.claimId}
+            documentKind={PRE_APPROVAL_DIGITAL_KIND}
+            defaultPhone={claim.insuredPhone}
+          />
+        </div>
+      ) : null}
+
+      {hasPre !== null && (hasPre === false || needTwo) ? (
+        <div
+          data-mandatory-error={failedMandatoryKeys.includes('muvafakat') ? 'true' : undefined}
+          className={failedMandatoryKeys.includes('muvafakat') ? 'rounded-lg border-2 border-red-400 p-2' : undefined}
+        >
+          <p className="mb-1 text-[11px] font-semibold text-slate-700">
+            {needTwo ? '2 / 2 · Asıl Onarım Dijital Onayı' : 'Dijital Onay'}
+          </p>
+          {claim.flowFlags.muvafakatApproved ? (
+            <p className="mb-2 text-xs font-medium text-emerald-800">Dijital onay alındı.</p>
+          ) : (
+            <p className="mb-2 text-xs font-medium text-amber-800">Onay gelmeden onarım bitişi kaydedilmez.</p>
+          )}
+          <FileDocumentPanel
+            entityType="claim_file"
+            entityId={claim.claimId}
+            documentKind="muvafakatname"
+            defaultPhone={claim.insuredPhone}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

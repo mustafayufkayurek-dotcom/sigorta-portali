@@ -1956,6 +1956,16 @@ export class ClaimFilesService {
     if (typeof rest.siteContactPhone === 'string') {
       rest.siteContactPhone = rest.siteContactPhone.replace(/\D/g, '') || null;
     }
+    if (rest.hasPreApprovalWork === true || rest.hasPreApprovalWork === false) {
+      rest.hasPreApprovalWork = Boolean(rest.hasPreApprovalWork);
+    }
+    if (typeof rest.preApprovalWorkJson === 'string') {
+      rest.preApprovalWorkJson = rest.preApprovalWorkJson.trim() || null;
+    }
+    if (Array.isArray(rest.preApprovalJobs)) {
+      rest.preApprovalWorkJson = JSON.stringify(rest.preApprovalJobs);
+      delete rest.preApprovalJobs;
+    }
 
     if (typeof rest.lossType === 'string') {
       rest.lossType = sanitizeInboundLossType(rest.lossType.trim());

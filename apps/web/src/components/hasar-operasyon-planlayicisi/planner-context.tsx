@@ -99,6 +99,10 @@ type PlannerDraft = {
   validateStep: (step: StepId) => { ok: boolean; missing: string[]; missingKeys: string[] };
   saveStep: (step: StepId) => Promise<SaveStepResult>;
   convertInspectionToRepair: () => Promise<SaveStepResult>;
+  savePreApprovalChoice: (input: {
+    hasPreApprovalWork: boolean | null;
+    preApprovalJobs: Array<{ id: string; name: string }>;
+  }) => Promise<SaveStepResult>;
   failedMandatoryKeys: string[];
   cancelOpenFile: (reason: string) => Promise<SaveStepResult>;
   recordWhatsAppContact: (input?: {
@@ -590,6 +594,14 @@ export function PlannerProvider({
             };
           }
           case 'digital_approval': {
+            await axios.patch(
+              `${API}/claim-files/${claimId}`,
+              {
+                hasPreApprovalWork: claim.hasPreApprovalWork,
+                preApprovalWorkJson: JSON.stringify(claim.preApprovalJobs ?? []),
+              },
+              { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
+            );
             await refreshClaim();
             return {
               ok: true,
@@ -788,6 +800,42 @@ export function PlannerProvider({
     }
   }, [mode, claimId, canEdit, refreshClaim]);
 
+  const savePreApprovalChoice = useCallback(
+    async (input: {
+      hasPreApprovalWork: boolean | null;
+      preApprovalJobs: Array<{ id: string; name: string }>;
+    }): Promise<SaveStepResult> => {
+      setClaim((prev) => ({
+        ...prev,
+        hasPreApprovalWork: input.hasPreApprovalWork,
+        preApprovalJobs: input.hasPreApprovalWork === true ? input.preApprovalJobs : [],
+      }));
+      if (mode === 'preview' || !claimId) {
+        return { ok: true, message: 'Ön onay seçimi bu oturumda durur.' };
+      }
+      if (!canEdit) {
+        return { ok: false, message: 'Bu işlem için yetkiniz yok.' };
+      }
+      try {
+        await axios.patch(
+          `${API}/claim-files/${claimId}`,
+          {
+            hasPreApprovalWork: input.hasPreApprovalWork,
+            preApprovalWorkJson: JSON.stringify(
+              input.hasPreApprovalWork === true ? input.preApprovalJobs : [],
+            ),
+          },
+          { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
+        );
+        await refreshClaim();
+        return { ok: true, message: 'Ön onay seçimi kaydedildi.' };
+      } catch (error: unknown) {
+        return { ok: false, message: getApiErrorMessage(error, 'Ön onay kaydedilemedi.') };
+      }
+    },
+    [mode, claimId, canEdit, refreshClaim, setClaim],
+  );
+
   const value: PlannerDraft = {
     mode,
     canEdit,
@@ -838,6 +886,7 @@ export function PlannerProvider({
     validateStep,
     saveStep,
     convertInspectionToRepair,
+    savePreApprovalChoice,
     failedMandatoryKeys,
     cancelOpenFile,
     recordWhatsAppContact,

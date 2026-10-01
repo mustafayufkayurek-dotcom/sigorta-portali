@@ -5,13 +5,15 @@
 
 import type { StepId, StepStatus } from './types';
 import { PLANNER_STEPS, PLANNER_VISIBLE_STEPS } from './types';
-import { parseClaimServiceKind, plannerStepHiddenForServiceKind } from '@sigorta/shared';
-import { PREVIEW } from './preview-data';
-import { plannerMapsHref } from './planner-maps';
 import {
   hasarCancelActorName,
   hasarOfficeCloseMissing,
+  isDigitalApprovalBundleReady,
+  parseClaimServiceKind,
+  parseHasPreApprovalWork,
+  parsePreApprovalJobs,
   pickHasarCancelHistory,
+  plannerStepHiddenForServiceKind,
 } from '@sigorta/shared';
 import {
   computePlannerStepStatuses,
@@ -27,6 +29,8 @@ import {
   resolvePlannerReadyChecks,
   type PlannerActivityItem,
 } from './planner-live-rules';
+import { PREVIEW } from './preview-data';
+import { plannerMapsHref } from './planner-maps';
 import { resolvePlannerExpertOffice } from './planner-approval-party';
 
 export type PlannerMode = 'preview' | 'live';
@@ -156,6 +160,7 @@ export type PlannerClaimSnapshot = {
   preAssignedSupplierIds: string[];
   flowFlags: {
     muvafakatApproved: boolean;
+    preMuvafakatApproved: boolean;
     repairCompleted: boolean;
     repairPhotosReady: boolean;
     missingPhotoVendorIds: string[];
@@ -171,6 +176,8 @@ export type PlannerClaimSnapshot = {
   serviceKind: string | null;
   siteContactName: string;
   siteContactPhone: string;
+  hasPreApprovalWork: boolean | null;
+  preApprovalJobs: Array<{ id: string; name: string }>;
 };
 
 function fmtDateTime(iso: string | null | undefined): { date: string; time: string; at: string } {
@@ -243,6 +250,7 @@ export function previewSnapshot(): PlannerClaimSnapshot {
     preAssignedSupplierIds: [],
     flowFlags: {
       muvafakatApproved: false,
+      preMuvafakatApproved: false,
       repairCompleted: false,
       repairPhotosReady: false,
       missingPhotoVendorIds: [],
@@ -258,6 +266,8 @@ export function previewSnapshot(): PlannerClaimSnapshot {
     serviceKind: 'repair',
     siteContactName: '',
     siteContactPhone: '',
+    hasPreApprovalWork: false,
+    preApprovalJobs: [],
   };
 }
 
@@ -308,6 +318,7 @@ type OperationCenterPayload = {
   }>;
   flowFlags?: {
     muvafakatApproved?: boolean;
+    preMuvafakatApproved?: boolean;
     repairCompleted?: boolean;
     repairPhotosReady?: boolean;
     missingPhotoVendorIds?: string[];
@@ -377,6 +388,11 @@ type ClaimFileLite = {
   estimatedCostAmount?: number | null;
   createdAt?: string;
   closedAt?: string | null;
+  serviceKind?: string | null;
+  siteContactName?: string | null;
+  siteContactPhone?: string | null;
+  hasPreApprovalWork?: boolean | null;
+  preApprovalWorkJson?: string | null;
   currentStatus?: { code?: string | null; isClosedState?: boolean | null } | null;
   statusHistory?: Array<{
     changedAt?: string | Date | null;
@@ -415,7 +431,14 @@ export function mapLiveSnapshot(
   const activity = (op.activity ?? []) as PlannerActivityItem[];
   const flags = op.flowFlags ?? {};
   const hasWhatsapp = hasWhatsappSent(activity);
-  const hasDigitalApproval = Boolean(flags.muvafakatApproved);
+  const hasPreApprovalWork = parseHasPreApprovalWork(claimFile?.hasPreApprovalWork);
+  const preApprovalJobs = parsePreApprovalJobs(claimFile?.preApprovalWorkJson);
+  const hasDigitalApproval = isDigitalApprovalBundleReady({
+    hasPre: hasPreApprovalWork,
+    jobs: preApprovalJobs,
+    generalApproved: Boolean(flags.muvafakatApproved),
+    preApproved: Boolean(flags.preMuvafakatApproved),
+  });
   const pipeline = reportPipelineFlags(
     claimFile?.latestRepairReport?.status,
     claimFile?.latestRepairReport?.reportNo,
@@ -688,6 +711,7 @@ export function mapLiveSnapshot(
     preAssignedSupplierIds: op.assignedSuppliers.map((s) => s.id),
     flowFlags: {
       muvafakatApproved: Boolean(flags.muvafakatApproved),
+      preMuvafakatApproved: Boolean(flags.preMuvafakatApproved),
       repairCompleted: Boolean(flags.repairCompleted),
       repairPhotosReady: Boolean(flags.repairPhotosReady),
       missingPhotoVendorIds: flags.missingPhotoVendorIds ?? [],
@@ -703,5 +727,7 @@ export function mapLiveSnapshot(
     serviceKind,
     siteContactName: String(claimFile?.siteContactName ?? '').trim(),
     siteContactPhone: String(claimFile?.siteContactPhone ?? '').trim(),
+    hasPreApprovalWork,
+    preApprovalJobs,
   };
 }

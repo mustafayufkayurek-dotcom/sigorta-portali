@@ -337,6 +337,9 @@ model ClaimFile {
   serviceKind           String?   @map("service_kind")
   siteContactName       String?   @map("site_contact_name")
   siteContactPhone      String?   @map("site_contact_phone")
+  /// null = henüz sorulmadı; true = söküm/enkaz gibi ön iş var
+  hasPreApprovalWork    Boolean?  @map("has_pre_approval_work")
+  preApprovalWorkJson   String?   @map("pre_approval_work_json")
   initialReserveAmount  Float?    @map("initial_reserve_amount")
   estimatedCostAmount   Float?    @map("estimated_cost_amount")
   approvedBudgetAmount  Float?    @map("approved_budget_amount")

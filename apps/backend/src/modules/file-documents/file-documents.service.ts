@@ -330,12 +330,19 @@ export class FileDocumentsService {
 
       const publicToken = randomUUID();
       const publicTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const documentKind =
+        dto.documentKind === 'muvafakatname_on_is' ? 'muvafakatname_on_is' : 'muvafakatname';
+      const existingKind = await this.prisma.fileDocument.findFirst({
+        where: { entityType: 'claim_file', entityId: dto.entityId, documentKind },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (existingKind) return existingKind;
 
       return this.prisma.fileDocument.create({
         data: {
           entityType: 'claim_file',
           entityId: dto.entityId,
-          documentKind: 'muvafakatname',
+          documentKind,
           status: 'draft',
           renderedContent: rendered,
           publicToken,

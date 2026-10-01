@@ -37,6 +37,7 @@ export function claimManualDocumentLabel(doc: {
 }) {
   if (doc.documentTypeName?.trim()) return doc.documentTypeName.trim();
   if (doc.documentKind === 'muvafakatname') return 'Muvafakatname';
+  if (doc.documentKind === 'muvafakatname_on_is') return 'Ön İş Dijital Onayı';
   if (doc.documentKind === 'adres_hizmet_talep') return 'Adres Ve Hizmet Talep Onayı';
   if (doc.documentKind === 'matbu_evrak') return 'Servis Onay Formu';
   if (doc.documentKind === 'anket_formu') return 'Anket Formu';

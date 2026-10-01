@@ -88,9 +88,24 @@ export function getMandatoryChecks(
     case 'digital_approval':
       return [
         {
+          key: 'pre_choice',
+          label: 'Ön onaylı iş sorusu',
+          ok: claim.hasPreApprovalWork !== null,
+        },
+        {
+          key: 'pre_jobs',
+          label: 'Ön onayı alınan işler',
+          ok: claim.hasPreApprovalWork !== true || claim.preApprovalJobs.length > 0,
+        },
+        {
           key: 'muvafakat',
-          label: 'Dijital onay (mutabakat / muvafakat)',
+          label: 'Asıl onarım dijital onayı',
           ok: claim.flowFlags.muvafakatApproved,
+        },
+        {
+          key: 'pre_muvafakat',
+          label: 'Ön iş dijital onayı',
+          ok: claim.hasPreApprovalWork !== true || claim.flowFlags.preMuvafakatApproved,
         },
       ];
     case 'report_writing': {

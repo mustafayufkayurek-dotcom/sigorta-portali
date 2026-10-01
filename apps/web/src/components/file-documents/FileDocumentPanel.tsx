@@ -195,6 +195,8 @@ export default function FileDocumentPanel({
   const kindLabel =
     documentKind === 'muvafakatname'
       ? 'Mutabakat / Muvafakat Formu'
+      : documentKind === 'muvafakatname_on_is'
+        ? 'Ön İş Dijital Onayı'
       : documentKind === 'adres_hizmet_talep'
         ? ACIL_ADRES_HIZMET_TALEP_TITLE
         : entityType === 'emergency_case'

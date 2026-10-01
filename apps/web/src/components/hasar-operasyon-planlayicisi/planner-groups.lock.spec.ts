@@ -27,6 +27,8 @@ describe('hasar planner groups lock', () => {
     assert.equal(PLANNER_VISIBLE_STEPS.find((s) => s.id === 'file_close')?.group, 'kapanis');
     const stepsSrc = readFileSync(join(here, 'steps.tsx'), 'utf8');
     const card = readFileSync(join(here, 'HasarSalesInvoiceRequestCard.tsx'), 'utf8');
+    assert.match(stepsSrc, /ön onaylı iş var mı/);
+    assert.match(stepsSrc, /PRE_APPROVAL_DIGITAL_KIND/);
     assert.match(stepsSrc, /HasarSalesInvoiceRequestCard/);
     assert.match(stepsSrc, /PlannerVendorContractGuide/);
     assert.match(card, /Satış faturası talebi/);
