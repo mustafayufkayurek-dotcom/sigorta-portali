@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-10-01",
-  "label": "v643-yeni-dosya-on-onay",
-  "description": "Full v643: Yeni Dosya (sorumlu, hizmet türü, irtibat, tespitçi bölge) ve ön onaylı iş + ayrı dijital onay. Geri alma web v642 / backend v641.",
+  "label": "v644-ali-riza-dijital-onay-esnet",
+  "description": "Full v644: Ali Rıza Özcan dosyasında onarımdan çekilince sigortalı dijital onayı istenmez. Geri alma web v643 / backend v643.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v643-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v643-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v644-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v644-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v642-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v641-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v643-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v643-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
