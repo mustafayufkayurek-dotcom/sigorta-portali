@@ -2,24 +2,31 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 1 Ekim 2026
+**Son güncelleme:** 3 Ekim 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (1 Ekim 2026 — web v644 / backend v644)
+## Canlı durum (3 Ekim 2026 — web v645 / backend v645)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v644-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v644-amd64` | canlı |
-| **Rollback** | Web **v643** / Backend **v643** | manifest `rollbackImages` |
-| **Etiket** | `v644-ali-riza-dijital-onay-esnet` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v645-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v645-amd64` | canlı |
+| **Rollback** | Web **v644** / Backend **v644** | manifest `rollbackImages` |
+| **Etiket** | `v645-hasar-sigorta-katalog` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v645 — Full (3 Ekim 2026) — Hasar sigorta şirketi listesi
+
+- Ayarlara eklenen aktif sigorta şirketi Hasar dosya sorumlusunun Sigorta Şirketi listesinde durur; kişisel kapsam yeni şirketi gizlemez
+- Disk 15 GB; DB yedeği gzip 75M (`/var/backups/meridyen/pre_v645-hasar-sigorta-katalog_20261003_115745.sql.gz`); uploads `/opt/app/backups/uploads/uploads_20261003_115808.tar.gz`; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v644** / backend **v644**
 
 ### v644 — Full (1 Ekim 2026) — Ali Rıza Özcan dijital onay
 

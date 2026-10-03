@@ -1,11 +1,11 @@
 ---
-description: Canlı web v644 / backend v644
+description: Canlı web v645 / backend v645
 alwaysApply: true
 ---
 
-# Canlı (01.10.2026)
+# Canlı (03.10.2026)
 
-Canlı: web **v644** · backend **v644**. Geri alma: web **v643** / backend **v643**.
+Canlı: web **v645** · backend **v645**. Geri alma: web **v644** / backend **v644**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v645 (full):** Ayarlara eklenen sigorta şirketi Hasar dosya sorumlusunun Sigorta Şirketi listesinde durur. Kişisel kapsam yeni şirketi gizlemez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v644 / backend v644.
 
 **v644 (full):** Ali Rıza Özcan dosyasında onarımdan çekilince sigortalıdan dijital onay istenmez. WhatsApp linki açılmaz. Diğer dosyalarda dijital onay aynı kalır. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v643 / backend v643.
 
@@ -165,4 +167,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 **Yönetim Paneli yazısı:** Panel ve sol menü hâlâ **Yeni Hasar**; Hasar listesi Yeni Dosya.
 
-Canlı web **v644** · backend **v644**.
+Canlı web **v645** · backend **v645**.
