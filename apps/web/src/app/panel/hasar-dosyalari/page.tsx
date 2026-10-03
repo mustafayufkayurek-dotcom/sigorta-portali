@@ -53,7 +53,7 @@ import { fmtDate } from '@/utils/date-helpers';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
-import { resolveOperationStatusLabel, HASAR_PRODUCT_STAGE_FILTERS, hasarProductStageFilterValue } from '@sigorta/shared';
+import { resolveOperationStatusLabel, HASAR_PRODUCT_STAGE_FILTERS, hasarProductStageFilterValue, HASAR_FILE_INSURANCE_CATALOG_QUERY } from '@sigorta/shared';
 import { istanbulYmd } from '@/utils/istanbul-period';
 import {
   cycleClientSort,
@@ -299,7 +299,7 @@ function ClaimFilesPageContent() {
   // --- TanStack Query: Insurance Companies ---
   const { data: insuranceCompaniesResponse } = useApiQuery<unknown>(
     ['insurance-companies'],
-    '/insurance-companies?limit=200',
+    `/insurance-companies?status=${HASAR_FILE_INSURANCE_CATALOG_QUERY.status}&limit=${HASAR_FILE_INSURANCE_CATALOG_QUERY.limit}`,
   );
   const insuranceCompanies = useMemo(() => asList<InsuranceCompany>(insuranceCompaniesResponse), [insuranceCompaniesResponse]);
 

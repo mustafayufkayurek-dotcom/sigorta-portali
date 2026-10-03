@@ -7,7 +7,7 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
 import { HintIcon } from '@/components/ui/HintIcon';
 import { toTitleCaseTR } from '@/utils/text-helpers';
-import { stripInboundAddressPollution, sanitizeInboundPhone, isPlaceholderOfficeUserName, mergeSessionUserIntoAssignable } from '@sigorta/shared';
+import { stripInboundAddressPollution, sanitizeInboundPhone, isPlaceholderOfficeUserName, mergeSessionUserIntoAssignable, HASAR_FILE_INSURANCE_CATALOG_QUERY } from '@sigorta/shared';
 import { readInboxSessionUser } from '@/utils/inbox-session-user';
 import {
   InboxLinkFilePickerModal,
@@ -919,7 +919,7 @@ export default function GelenKutusuPage() {
     try {
       const res = await axios.get(`${API}/insurance-companies`, {
         headers: authHeader(),
-        params: { limit: 200 },
+        params: HASAR_FILE_INSURANCE_CATALOG_QUERY,
       });
       const list = (res.data?.data ?? []) as InsuranceCompany[];
       setInsuranceCompanies(list);

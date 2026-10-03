@@ -48,6 +48,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 29. Saha konu satırı ofisteki Dosya Konusu ile aynıdır. Eski ihbar yangını ezmez.
 30. Hasar açılışı Yeni Dosya’dır. Dosya sorumlusu, hizmet türü ve irtibat durur; tespitçi yalnız dosya bölgesinde listelenir.
 31. Ön onay alınan işler ayrı dijital onay alır; genel muvafakat durur.
+32. Ayarlara eklenen sigorta şirketi Hasar dosya sorumlusunun Sigorta Şirketi listesinde durur; kişisel kapsam yeni şirketi gizlemez.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

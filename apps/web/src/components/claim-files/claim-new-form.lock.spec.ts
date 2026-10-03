@@ -28,6 +28,8 @@ describe('yeni dosya form lock', () => {
     assert.match(form, /dosya-no-yardim/);
     assert.match(form, /data-field="assignedOfficeUserId"/);
     assert.match(form, /data-field="fileNo"/);
+    assert.match(form, /filterInsuranceCatalogForHasarFileForm/);
+    assert.doesNotMatch(form, /isOfficeStaffRole\(roleCode\) && scopedIds/);
     assert.doesNotMatch(form, /Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz\.<\/p>/);
   });
 

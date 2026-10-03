@@ -1,0 +1,29 @@
+# Hasar Sigorta Şirketi Katalog Kilidi
+
+**Kaynak (Mustafa · 03.10.2026):** Ayarlara GIG Sigorta eklenmişti. Hasar dosya sorumlusunun Sigorta Şirketi listesinde yoktu.
+
+**Temel cümle:** Ayarlara eklenen aktif şirket **Yeni Dosya ve gelen kutu** listesinde durur. Dosya sorumlusunun eski kapsamı yeni şirketi gizlemez.
+
+## Zorunlu
+
+1. Liste `filterInsuranceCatalogForHasarFileForm` — ofis / yönetici tam katalog. Kapsam yalnız `insurance_company_user`.
+2. Hasar formu `HASAR_FILE_INSURANCE_CATALOG_QUERY` (`status=active`, `limit=1000`). Ayarlar `SETTINGS_INSURANCE_CATALOG_QUERY` (`status=all`).
+3. API `insuranceCompanyListWhere`: `status=all` pasifi kesmez.
+4. Yeni kayıtta durum boşsa `active`.
+
+## Yasak (açık onay yoksa)
+
+- Ofis listesini `insuranceCompanyScopes` ile kesmek
+- Ayarlar `status=all` isteğini yine yalnız aktif saymak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Ayarlara eklenen şirket Hasar listesinde yoksa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/insurance-company-catalog.lock.spec.ts
+```

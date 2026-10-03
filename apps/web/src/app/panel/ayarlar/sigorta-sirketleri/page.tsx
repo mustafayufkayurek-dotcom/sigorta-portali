@@ -25,6 +25,7 @@ import {
   SETTINGS_API as API,
   settingsAuthHeader as authHeader,
 } from '@/utils/settings-api';
+import { SETTINGS_INSURANCE_CATALOG_QUERY } from '@sigorta/shared';
 
 type InsuranceCompany = {
   id: string;
@@ -133,7 +134,7 @@ export default function SigortaSirketleriPage() {
     try {
       const response = await axios.get(`${API}/insurance-companies`, {
         headers: authHeader(),
-        params: { status: 'all', limit: 1000 },
+        params: SETTINGS_INSURANCE_CATALOG_QUERY,
       });
       setCompanies(response.data.data ?? []);
     } catch (requestError) {

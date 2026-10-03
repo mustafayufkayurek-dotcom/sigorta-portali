@@ -29,6 +29,8 @@ import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import {
   CLAIM_SERVICE_KIND_LABEL,
   CLAIM_SERVICE_KINDS,
+  HASAR_FILE_INSURANCE_CATALOG_QUERY,
+  filterInsuranceCatalogForHasarFileForm,
   parseClaimServiceKind,
   type ClaimServiceKind,
 } from '@sigorta/shared';
@@ -212,7 +214,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
   const loadLookups = useCallback(async () => {
     try {
       const [icRes, subjectsRes, meRes, staffRes] = await Promise.all([
-        axios.get(`${API}/insurance-companies?limit=200`, { headers: authHeader() }),
+        axios.get(`${API}/insurance-companies`, {
+          headers: authHeader(),
+          params: HASAR_FILE_INSURANCE_CATALOG_QUERY,
+        }),
         axios.get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() }).catch((err) => {
           reportCaughtError(err, 'Hasar konuları yüklenemedi. Lütfen sayfayı yenileyin.');
           return null;
@@ -237,12 +242,11 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
       } else if (staff.length === 1) {
         setAssignedOfficeUserId(staff[0].id);
       }
-      const scopedIds = Array.isArray(me?.insuranceCompanyScopes)
-        ? me.insuranceCompanyScopes.map((s: { id?: string }) => s.id).filter(Boolean)
-        : [];
-      if (isOfficeStaffRole(roleCode) && scopedIds.length > 0) {
-        companies = companies.filter((c) => scopedIds.includes(c.id));
-      }
+      companies = filterInsuranceCatalogForHasarFileForm(
+        companies,
+        roleCode,
+        me?.insuranceCompanyScopes,
+      );
       setInsuranceCompanies(companies);
 
       const prefs = loadClaimNewPrefs();

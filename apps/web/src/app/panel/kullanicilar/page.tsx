@@ -866,7 +866,7 @@ export default function KullanicilarPage() {
     try {
       const r = await axios.get(`${API}/insurance-companies`, {
         headers: authHeader(),
-        params: { limit: 200, status: 'active' },
+        params: { limit: 1000, status: 'active' },
       });
       const list = r.data?.data ?? r.data ?? [];
       setInsuranceCompanies(

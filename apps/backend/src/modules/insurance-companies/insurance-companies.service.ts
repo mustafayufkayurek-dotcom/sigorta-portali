@@ -1,4 +1,8 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  clampInsuranceCompanyListLimit,
+  insuranceCompanyListWhere,
+} from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
@@ -7,15 +11,9 @@ export class InsuranceCompaniesService {
 
   async findAll(params?: { page?: number; limit?: number; status?: string }) {
     const page = Number(params?.page) || 1;
-    const limit = Number(params?.limit) || 20;
+    const limit = clampInsuranceCompanyListLimit(params?.limit);
     const skip = (page - 1) * limit;
-
-    const where: any = {};
-    if (params?.status && params.status !== 'all') {
-      where.status = params.status;
-    } else {
-      where.status = 'active';
-    }
+    const where = insuranceCompanyListWhere(params?.status);
 
     const [data, total] = await Promise.all([
       this.prisma.insuranceCompany.findMany({
@@ -67,12 +65,16 @@ export class InsuranceCompaniesService {
 
   async create(data: any) {
     const { code: _ignored, ...rest } = data;
+    const name = String(rest.name ?? '').trim();
     const nameConflict = await this.prisma.insuranceCompany.findFirst({
-      where: { name: rest.name },
+      where: { name },
     });
     if (nameConflict) throw new ConflictException('Bu isimde bir sigorta şirketi zaten mevcut');
-    const code = await this.generateCode(rest.name ?? 'SIRKET');
-    return this.prisma.insuranceCompany.create({ data: { ...rest, code } });
+    const code = await this.generateCode(name || 'SIRKET');
+    const status = String(rest.status ?? '').trim() || 'active';
+    return this.prisma.insuranceCompany.create({
+      data: { ...rest, name, code, status },
+    });
   }
 
   async update(id: string, data: any) {
