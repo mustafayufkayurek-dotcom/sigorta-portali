@@ -14,7 +14,6 @@ import { renderStepContent } from './steps';
 import { PlannerProvider, usePlanner } from './planner-context';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
-import { getInvoiceRequestsByClaimFile } from '@/utils/invoiceRequestApi';
 import { RightPanelDockTab, rightPanelDockClass, useRightPanelDock } from '@/components/ui/right-panel-dock';
 import { useRightPanelUnsavedGuard } from '@/components/ui/right-panel-unsaved';
 import {
@@ -83,8 +82,8 @@ function FlowStepDot({
   if (active || status === 'waiting') {
     return (
       <span
-        className="relative z-[1] flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white ring-2 ring-orange-200"
-        style={{ backgroundColor: C.active }}
+        className="relative z-[1] flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white ring-4"
+        style={{ backgroundColor: C.active, boxShadow: `0 0 0 4px ${C.activeRing}55` }}
       >
         {n}
       </span>
@@ -119,7 +118,7 @@ function PlanlayiciInner({
   activeStep: StepId;
   setActiveStep: (v: StepId) => void;
 }) {
-  const { claim, saveStep, saving, canEdit, convertInspectionToRepair, saveKapanisButce } = usePlanner();
+  const { claim, saveStep, saving, canEdit, convertInspectionToRepair } = usePlanner();
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const { docked, dock, expand } = useRightPanelDock(drawerOpen, { title: 'Operasyon' });
@@ -187,27 +186,6 @@ function PlanlayiciInner({
             Operasyon Planlayıcısı
           </button>
         </div>
-        {claim.kapanisButce.remainingRepairDropped && !claim.fileClosed && !claim.fileCancelled ? (
-          <p
-            className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
-            data-testid="hasar-kapanis-butce-ozet"
-          >
-            <span className="font-semibold">Kalan onarım yok — kapanış bütçesi. </span>
-            Onarım adımları beklenmez. Bütçe ve fatura talebi Finans’tedir. Dosyayı Kapat en sonda.
-            {canEdit ? (
-              <button
-                type="button"
-                data-testid="hasar-onarima-don-ozet"
-                className="ml-2 font-semibold underline"
-                onClick={() => {
-                  void saveKapanisButce({ remainingRepairDropped: false }).then((r) => setSaveNotice(r.message));
-                }}
-              >
-                Onarıma dön
-              </button>
-            ) : null}
-          </p>
-        ) : null}
 
         <div className="space-y-2" data-testid="hasar-planner-groups">
           {PLANNER_GROUPS.map((g) => {
@@ -215,7 +193,7 @@ function PlanlayiciInner({
             if (gSteps.length === 0) return null;
             return (
               <div key={g.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                <p className="w-[9.5rem] shrink-0 text-[10px] font-semibold text-slate-500">
+                <p className="w-[9.5rem] shrink-0 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   {g.label}
                 </p>
                 <div className="flex min-w-0 flex-wrap gap-1">
@@ -249,7 +227,7 @@ function PlanlayiciInner({
 
         {claim.people.length > 0 ? (
           <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2">
-            <span className="text-[10px] font-semibold text-slate-500">Dosyada</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Dosyada</span>
             {claim.people.map((p) => (
               <span
                 key={`${p.role}-${p.name}`}
@@ -320,20 +298,20 @@ function PlanlayiciInner({
                   if (gSteps.length === 0) return null;
                   return (
                     <div key={g.id} className="mb-2">
-                      <p className="px-1.5 pb-1 text-[9px] font-semibold text-slate-400">
+                      <p className="px-1.5 pb-1 text-[9px] font-semibold uppercase tracking-wide text-slate-400">
                         {g.label}
                       </p>
-                      <ol className="relative flex flex-col gap-2">
+                      <ol className="relative flex flex-col gap-0.5">
                         {gSteps.map((s, idx) => {
                     const active = activeStep === s.id;
                     const done = s.status === 'done';
                     const waiting = active || s.status === 'waiting';
                     const lineDone = done && !active;
                     return (
-                      <li key={s.id} className="relative z-[1]">
+                      <li key={s.id} className="relative">
                         {idx < gSteps.length - 1 ? (
                           <span
-                            className="pointer-events-none absolute left-[19px] top-[2.35rem] bottom-[-0.5rem] z-0 w-0.5"
+                            className="pointer-events-none absolute left-[18px] top-8 h-[calc(100%-8px)] w-0.5"
                             style={{
                               backgroundColor: lineDone ? C.done : C.pending,
                             }}
@@ -343,14 +321,12 @@ function PlanlayiciInner({
                         <button
                           type="button"
                           onClick={() => setActiveStep(s.id)}
-                          className={`relative z-[2] flex w-full items-start gap-2 rounded-lg px-1.5 py-2 text-left transition ${
+                          className={`relative flex w-full items-start gap-2 rounded-lg px-1.5 py-2 text-left transition ${
                             active
                               ? 'bg-orange-50 ring-2 ring-orange-400'
                               : done
                                 ? 'opacity-60 hover:bg-slate-50'
-                                : s.status === 'waiting'
-                                  ? 'bg-orange-50/50 hover:bg-orange-50'
-                                  : 'hover:bg-slate-50'
+                                : 'bg-orange-50/40 ring-2 ring-orange-400 hover:bg-orange-50'
                           }`}
                         >
                           <FlowStepDot status={s.status} active={active} n={s.n} />
@@ -403,7 +379,7 @@ function PlanlayiciInner({
                     body={OPS_NOTICE.hasarTespitciOpsiyonel.body}
                     testId="hasar-tespitci-opsiyonel-seridi"
                   />
-                  <p className="text-[10px] font-semibold text-slate-400">
+                  <p className="text-[10px] font-semibold tracking-wide text-slate-400">
                     {activeMeta.n}. Adım
                   </p>
                   <h3 className="text-sm font-bold text-slate-950">{activeMeta.label}</h3>
@@ -498,7 +474,7 @@ export function OperasyonPlanlayiciPanel({
         const addr = claimFile?.propertyAddress;
         const city = addr?.city ?? '';
         const district = addr?.district ?? '';
-        const [opRes, inspRes, vendorRes, fieldStaffRes, claimRes, invoiceReqs] = await Promise.all([
+        const [opRes, inspRes, vendorRes, fieldStaffRes, claimRes] = await Promise.all([
           axios.get(`${API}/claim-operation-center/${claimId}`, { headers: authHeader() }),
           axios
             .get(`${API}/claim-files/${claimId}/vendors/nearby?purpose=inspector`, {
@@ -517,7 +493,6 @@ export function OperasyonPlanlayiciPanel({
             })
             .catch(() => ({ data: null })),
           axios.get(`${API}/claim-files/${claimId}`, { headers: authHeader() }).catch(() => ({ data: null })),
-          getInvoiceRequestsByClaimFile(claimId).catch(() => []),
         ]);
 
         const op = opRes.data?.data ?? opRes.data;
@@ -585,12 +560,9 @@ export function OperasyonPlanlayiciPanel({
             }))
           : [];
 
-        const liveFile = claimRes.data?.data ?? claimRes.data ?? claimFileRef.current;
         const next = mapLiveSnapshot(
           op,
-          liveFile
-            ? { ...liveFile, invoiceRequests: invoiceReqs }
-            : liveFile,
+          claimRes.data?.data ?? claimRes.data ?? claimFileRef.current,
           inspList,
           vendorList,
         );
