@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { inputCls, labelCls } from '@/components/settings/SettingsUI';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { API, authHeader } from '@/utils/api';
 import { redirectAfterSettingsSave } from '@/utils/settings-save-redirect';
 import { toTitleCaseTR } from '@/utils/text-helpers';
@@ -261,10 +262,10 @@ export default function SirketBilgileriPage() {
       <section className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 mt-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Bordro İşvereni (Safran) — Opsiyonel</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Belirsiz süreli sözleşmeli personelin bordrolu olduğu şirket. Etkinleştirildiğinde sözleşmelere bilgilendirme maddesi eklenir; OİB/İŞKUR izni gerekmez.
-            </p>
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+              <span>Bordro İşvereni (Safran) — Opsiyonel</span>
+              <FieldHelpTip text="Belirsiz süreli sözleşmeli personelin bordrolu olduğu şirket. Etkinleştirildiğinde sözleşmelere bilgilendirme maddesi eklenir; OİB/İŞKUR izni gerekmez." />
+            </h2>
           </div>
           <label className="flex items-center gap-2 shrink-0 cursor-pointer select-none">
             <input

@@ -11,6 +11,7 @@ import {
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { useToast } from '@/contexts/ToastContext';
 import { HintIcon } from '@/components/ui/HintIcon';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ContactPhoneField } from '@/components/ContactPhoneField';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -232,11 +233,12 @@ function CustomerSubTypePicker({
   );
 }
 
-function FormField({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+function FormField({ label, required, error, help, children }: { label: string; required?: boolean; error?: string; help?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-500 mb-1.5">
-        {label}{required && <span className="text-xs italic text-slate-400 ml-1 font-normal">(zorunlu alan)</span>}
+      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+        <span>{label}{required && <span className="text-xs italic text-slate-400 ml-1 font-normal">(zorunlu alan)</span>}</span>
+        {help ? <FieldHelpTip text={help} /> : null}
       </label>
       {children}
       {error && <p className="text-xs text-status-danger mt-1.5">{error}</p>}
@@ -2862,7 +2864,7 @@ export default function MusterilerPage() {
                       <SectionDivider emoji="📋" title="Bireysel Bilgiler" />
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
                         <div className="col-span-1 sm:col-span-2">
-                          <FormField label="Kısa Ad" required error={fieldErrors.shortName}>
+                          <FormField label="Kısa Ad" required error={fieldErrors.shortName} help="Dosya listelerinde uzun unvan yerine bu ad gösterilir.">
                             <input
                               className={fieldErrors.shortName ? inpError : inp}
                               placeholder="Listelerde Görünecek Kısa Ad"
@@ -2876,7 +2878,6 @@ export default function MusterilerPage() {
                                 if (v) setForm((p) => ({ ...p, shortName: v }));
                               }}
                             />
-                            <p className="mt-1 text-[11px] text-slate-500">Dosya listelerinde uzun unvan yerine bu ad gösterilir.</p>
                           </FormField>
                         </div>
                         <FormField label="Ad" required error={fieldErrors.firstName}>
@@ -2959,7 +2960,7 @@ export default function MusterilerPage() {
                       <SectionDivider emoji="🏢" title="Kurumsal Bilgiler" />
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
                         <div className="col-span-1 sm:col-span-2">
-                          <FormField label="Kısa Ad" required error={fieldErrors.shortName}>
+                          <FormField label="Kısa Ad" required error={fieldErrors.shortName} help="Dosya listelerinde uzun unvan yerine bu ad gösterilir.">
                             <input
                               className={fieldErrors.shortName ? inpError : inp}
                               placeholder="Örn. Remed, Sezgi Grup"
@@ -2973,7 +2974,6 @@ export default function MusterilerPage() {
                                 if (v) setForm((p) => ({ ...p, shortName: v }));
                               }}
                             />
-                            <p className="mt-1 text-[11px] text-slate-500">Dosya listelerinde uzun unvan yerine bu ad gösterilir.</p>
                           </FormField>
                         </div>
                         <div className="col-span-1 sm:col-span-2">

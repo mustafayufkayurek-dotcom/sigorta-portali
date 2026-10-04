@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useToast } from '@/contexts/ToastContext';
 import SpeechToText from '@/components/SpeechToText';
 import { FileDropZone } from '@/components/ui/FileDropZone';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
@@ -14,7 +15,7 @@ import { ExpertPortalContactStrip } from '@/components/panel/expert-portal-conta
 import { PortalWeeklyTrendCard } from '@/components/panel/portal-weekly-trend-card';
 import { classifyExpertQueue, countExpertQueues } from '@/utils/expert-portal-queues';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
-import { buildPortalWeeklyActivity, type PortalWeeklyPoint } from '@/utils/portal-weekly-activity';
+import { HASAR_FILE_INSURANCE_CATALOG_QUERY } from '@sigorta/shared';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -225,7 +226,10 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           return;
         }
         const [companyResponse, provinceResponse, konuResponse] = await Promise.all([
-          fetch(`${API_V1}/insurance-companies?limit=200`, { headers: authHeaders() }),
+          fetch(
+            `${API_V1}/insurance-companies?status=${HASAR_FILE_INSURANCE_CATALOG_QUERY.status}&limit=${HASAR_FILE_INSURANCE_CATALOG_QUERY.limit}`,
+            { headers: authHeaders() },
+          ),
           fetch(`${API_V1}/locations/provinces`, { headers: authHeaders() }),
           fetch(`${API_V1}/claim-subjects/active?category=hasar`, { headers: authHeaders() }),
         ]);
@@ -585,9 +589,9 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800">Belgeden Oku</p>
-                <p className="text-xs text-slate-600 mt-1">
-                  Poliçe, ihbar formu veya hasar belgesinin fotoğrafını çekin; alanlar otomatik dolsun.
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                  <span>Belgeden Oku</span>
+                  <FieldHelpTip text="Poliçe, ihbar formu veya hasar belgesinin fotoğrafını çekin; alanlar otomatik dolsun." />
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">Belgeyi buraya sürükleyebilirsiniz</p>
                 <button
@@ -848,7 +852,10 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
 
           {/* Fotoğraf */}
           <div>
-            <label className="text-xs font-medium text-slate-600 block mb-1.5">Fotoğraf Yükle</label>
+            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+              <span>Fotoğraf Yükle</span>
+              <FieldHelpTip text={`Maksimum ${MAX_IHBAR_PHOTO_COUNT} adet, dosya başına 10 MB`} />
+            </label>
             <div className="space-y-3">
               <FileDropZone
                 accept="image/*"
@@ -861,7 +868,6 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 <p className="text-xs text-slate-500">Fotoğrafları Sürükleyin veya Seçin</p>
-                <p className="text-[11px] text-slate-400 mt-1">Maksimum {MAX_IHBAR_PHOTO_COUNT} adet, dosya başına 10 MB</p>
               </FileDropZone>
               {photos.length > 0 && (
                 <div className="grid grid-cols-3 gap-3">

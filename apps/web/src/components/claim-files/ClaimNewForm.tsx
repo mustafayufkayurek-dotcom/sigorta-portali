@@ -845,9 +845,11 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
           />
         </div>
         <div className="min-w-0">
-          <label className={label}>İrtibat Telefon</label>
+          <label className={`${label} flex items-center gap-1.5`}>
+            <span>İrtibat Telefon</span>
+            <FieldHelpTip text="Yalnız tespit içindir; rapora yazılmaz." testId="irtibat-telefon-yardim" />
+          </label>
           <TRPhoneInput value={siteContactPhone} onChange={setSiteContactPhone} className={isPanel ? 'rounded-lg px-2.5 py-1.5' : ''} />
-          <p className="text-[11px] text-slate-400 mt-0.5">Yalnız tespit içindir; rapora yazılmaz.</p>
         </div>
         <div className={spanFull}>
           <label className={label}>İhbar Detayı</label>

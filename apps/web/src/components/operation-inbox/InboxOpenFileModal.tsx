@@ -15,6 +15,7 @@ import {
 } from '@/utils/customer-form-helpers';
 import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 
 interface InsuranceCompany {
   id: string;
@@ -79,6 +80,7 @@ function FieldInput({
   disabled,
   placeholder,
   multiline,
+  help,
 }: {
   label: string;
   value: string;
@@ -88,15 +90,19 @@ function FieldInput({
   disabled?: boolean;
   placeholder?: string;
   multiline?: boolean;
+  help?: string;
 }) {
   const cls =
     'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-60';
 
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-600 mb-1.5">
-        {label}
-        {required && <span className="text-status-danger ml-0.5">*</span>}
+      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+        <span>
+          {label}
+          {required && <span className="text-status-danger ml-0.5">*</span>}
+        </span>
+        {help ? <FieldHelpTip text={help} /> : null}
       </label>
       {multiline ? (
         <textarea
@@ -516,9 +522,12 @@ export function InboxOpenFileModal({
             </div>
             <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Dosya Konusu
-                  <span className="text-status-danger ml-0.5">*</span>
+                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                  <span>
+                    Dosya Konusu
+                    <span className="text-status-danger ml-0.5">*</span>
+                  </span>
+                  <FieldHelpTip text="Katalogdan seçin. Mail konusu kaba ise (ör. Tesisat) doğru hizmet kolunu işaretleyin." />
                 </label>
                 <select
                   value={fileSubject}
@@ -537,9 +546,6 @@ export function InboxOpenFileModal({
                     <option value={fileSubject}>{fileSubject}</option>
                   )}
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Katalogdan seçin. Mail konusu kaba ise (ör. Tesisat) doğru hizmet kolunu işaretleyin.
-                </p>
               </div>
               <FieldInput
                 label="Poliçe No"

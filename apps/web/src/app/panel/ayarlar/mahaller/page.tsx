@@ -23,6 +23,7 @@ import {
   SettingsRowIndexTd,
   inputCls,
   labelCls,
+  SettingsFieldLabel,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
@@ -586,7 +587,9 @@ export default function MahallerPage() {
         error={subError}
       >
         <div>
-          <label className={labelCls}>Mahal *</label>
+          <SettingsFieldLabel help="Bu alt bölge hangi mahale bağlanacak? Örn: Salon Zemin → Salon">
+            Mahal *
+          </SettingsFieldLabel>
           <select
             className={`${inputCls} bg-white`}
             value={subForm.parentId}
@@ -597,7 +600,6 @@ export default function MahallerPage() {
               <option key={l.id} value={l.id}>{l.name}</option>
             ))}
           </select>
-          <p className="text-xs text-slate-500 mt-1.5">Bu alt bölge hangi mahale bağlanacak? Örn: Salon Zemin → Salon</p>
         </div>
 
         {selectedParentForSubModal && (

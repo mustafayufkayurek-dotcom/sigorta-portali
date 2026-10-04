@@ -28,6 +28,8 @@ describe('tespitçi bölge kilidi', () => {
     assert.doesNotMatch(service, /buildInspectorFallbackWhere\(\)/);
     assert.match(service, /filterStaffByFileArea/);
     assert.match(service, /area\?\.city !== undefined/);
+    assert.match(service, /OFFICE_SETTINGS_CATALOG_LIMIT/);
+    assert.match(panel, /Tüm Türkiye/);
     assert.match(panel, /onarima-cevir/);
   });
 });

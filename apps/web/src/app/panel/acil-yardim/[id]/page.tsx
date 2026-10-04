@@ -11,6 +11,7 @@ import {
 import { resolveEmergencyOperationLabel, acilDigitalApprovalGateOk, resolveAcilInsuredName, resolveEmergencyFindingsDraft, isAcilLocksmithIssue, ACIL_STATUS_SEQUENCE_MESSAGE } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { ClaimFileHeaderActionsMenu } from '@/components/operasyon/ClaimFileHeaderActionsMenu';
 import { PANEL_CARD_BASE, PanelSectionTitle } from '@/components/panel/PanelCard';
@@ -2586,16 +2587,17 @@ export default function AcilDosyaDetayPage() {
         approvalStep={(
           <div className="space-y-3" data-testid="acil-onay-evrak">
             {isLocksmith ? (
-              <p className="text-xs text-slate-500">
-                Sigortalı dijital onayı İhbar ve Kapanış adımlarında alınır. Bu adımda müşteri bedel onayı kaydedilir.
+              <p className="flex items-center gap-1.5 text-xs text-slate-700">
+                <span>Çilingir onayı</span>
+                <FieldHelpTip text="Sigortalı dijital onayı İhbar ve Kapanış adımlarında alınır. Bu adımda müşteri bedel onayı kaydedilir." />
               </p>
             ) : (
               <section className="space-y-3" data-testid="acil-onay-tespit" ref={findingsFormRef}>
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <h4 className="text-xs font-semibold text-slate-900">Tespit Bulguları *</h4>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    Rapor buradan yazılır. Satış bedeli Tedarikçi Ve Maliyet adımından işlenir.
-                  </p>
+                  <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
+                    <span>Tespit Bulguları *</span>
+                    <FieldHelpTip text="Rapor buradan yazılır. Satış bedeli Tedarikçi Ve Maliyet adımından işlenir." />
+                  </h4>
                   <div className={`mt-2 overflow-hidden rounded-lg border ${findingsError ? 'border-red-400 ring-1 ring-red-400' : 'border-slate-200'}`}>
                     <div className="border-b border-slate-100 bg-slate-50 px-3 pb-0.5 pt-2.5">
                       <span className="select-none text-sm font-bold italic text-slate-800">
@@ -2642,8 +2644,10 @@ export default function AcilDosyaDetayPage() {
                   ) : null}
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <h4 className="text-xs font-semibold text-slate-900">Tespit Fotoğrafları *</h4>
-                  <p className="mb-2 mt-1 text-[11px] text-slate-500">Rapora eklenir. Sürükleyip bırakabilirsiniz.</p>
+                  <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
+                    <span>Tespit Fotoğrafları *</span>
+                    <FieldHelpTip text="Rapora eklenir. Sürükleyip bırakabilirsiniz." />
+                  </h4>
                   <FieldInspectionPhotosPanel
                     entityType="emergency_case"
                     entityId={vaka.id}
@@ -2651,10 +2655,10 @@ export default function AcilDosyaDetayPage() {
                   />
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-3" data-testid="acil-rapor-kalem">
-                  <h4 className="text-xs font-semibold text-slate-900">Rapor kalemi</h4>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    İş grubu, mahal, işin tanımı ve açıklama elle yazılır. Hasar iş kalemi listesi buraya düşmez.
-                  </p>
+                  <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
+                    <span>Rapor kalemi</span>
+                    <FieldHelpTip text="İş grubu, mahal, işin tanımı ve açıklama elle yazılır. Hasar iş kalemi listesi buraya düşmez." />
+                  </h4>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     <label className="block">
                       <span className="text-[10px] font-semibold text-slate-500">İş Grubu</span>
@@ -2720,10 +2724,10 @@ export default function AcilDosyaDetayPage() {
               className="rounded-xl border border-slate-200 bg-white p-3 space-y-3"
               data-testid="acil-servis-onay-formu"
             >
-              <h4 className="text-xs font-semibold text-slate-900">Servis Onay Formu</h4>
-              <p className="text-[11px] text-slate-500">
-                Hizmet verildikten sonra alınır. Sigortalıda hizmet bedeli görünmez.
-              </p>
+              <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
+                <span>Servis Onay Formu</span>
+                <FieldHelpTip text="Hizmet verildikten sonra alınır. Sigortalıda hizmet bedeli görünmez." />
+              </h4>
               <FileDocumentPanel
                 entityType="emergency_case"
                 entityId={vaka.id}
@@ -2737,10 +2741,12 @@ export default function AcilDosyaDetayPage() {
               data-testid="acil-saha-tespit"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-xs font-semibold text-slate-900">İşlem detayı ve resimler</h4>
-                <p className="text-[11px] text-slate-500">
-                  {isLocksmith ? 'Tedarikçiden gelince dosyaya işlenir' : 'Rapor Onay Talep adımında yazılır; burada durur.'}
-                </p>
+                <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
+                  <span>İşlem detayı ve resimler</span>
+                  <FieldHelpTip
+                    text={isLocksmith ? 'Tedarikçiden gelince dosyaya işlenir' : 'Rapor Onay Talep adımında yazılır; burada durur.'}
+                  />
+                </h4>
               </div>
               <div className="grid gap-3 sm:grid-cols-2" ref={findingsFormRef}>
                 <div>
@@ -3101,11 +3107,13 @@ export default function AcilDosyaDetayPage() {
       {/* 4. Tedarikçi maliyeti algılama */}
       {showCostDetect && (
         <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-4 space-y-3" data-testid="maliyet-algilandi">
-          <p className="text-sm font-semibold text-slate-800">
-            Tedarikçi maliyeti algılandı:{' '}
-            <span className="text-amber-800">{fmtCurrency(Number(costEditDraft || flow.detectedCostTl || 0))}</span>
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+            <span>
+              Tedarikçi maliyeti algılandı:{' '}
+              <span className="text-amber-800">{fmtCurrency(Number(costEditDraft || flow.detectedCostTl || 0))}</span>
+            </span>
+            <FieldHelpTip text="Onaylanmadan maliyet kesinleşmez." />
           </p>
-          <p className="text-[11px] text-slate-500">Onaylanmadan maliyet kesinleşmez.</p>
           <input
             type="number"
             step="0.01"

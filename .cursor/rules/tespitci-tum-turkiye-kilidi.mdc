@@ -1,0 +1,29 @@
+# Tespitçi Tüm Türkiye Kilidi
+
+**Kaynak (Mustafa · 04.10.2026):** Mustafa Yufkayürek Tüm Türkiye tespitçi işaretliydi. Hasar tespitçi listesinde yoktu.
+
+**Temel cümle:** Kullanıcılarda **Tüm Türkiye** işaretli saha, her dosyanın tespitçi listesinde durur. Yabancı il yine durmaz.
+
+## Zorunlu
+
+1. «Tüm Türkiye» kaydı hizmet bölgesi boştur (`isCountrywideStaffServiceArea`).
+2. `userServiceAreaMatchesFile` boş bölgeyi her il/ilçede kabul eder.
+3. `getAssignableStaff` saha listesi `filterStaffByFileArea` ile aynı kuralı kullanır. Öneri listesindeki Türkiye geneli ile çelişmez.
+4. Muğla kaydı İstanbul dosyasında durmaz.
+
+## Yasak (açık onay yoksa)
+
+- Tüm Türkiye’yi «bölgesi yok» diye listeden kesmek
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Tüm Türkiye tespitçi yine listede yoksa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/field-staff-area.lock.spec.ts \
+ apps/web/src/components/hasar-operasyon-planlayicisi/inspector-region.lock.spec.ts
+```

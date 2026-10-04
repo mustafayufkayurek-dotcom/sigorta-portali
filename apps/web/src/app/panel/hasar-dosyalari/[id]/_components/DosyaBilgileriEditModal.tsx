@@ -11,6 +11,7 @@ import { toTitleCaseTR, resolveClaimIhbarKonusu } from '@/utils/text-helpers';
 import { customerDisplayName } from '@/utils/customer-form-helpers';
 import { HASAR_EXPERT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 
 const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Düşük' },
@@ -101,18 +102,14 @@ export function DosyaBilgileriEditModal({
   useEffect(() => {
     let cancelled = false;
     axios
-      .get(`${API}/users?limit=200`, { headers: authHeader() })
+      .get(`${API}/claim-files/assignable-staff`, {
+        headers: authHeader(),
+        params: { role: 'office_staff', includeDelegates: 'hasar' },
+      })
       .then((r) => {
         if (cancelled) return;
-        const rows = (r.data?.data ?? r.data ?? []) as OfficeUser[];
-        const list = Array.isArray(rows) ? rows : [];
-        const officeRoles = new Set(['office_staff', 'admin', 'manager', 'ops_manager']);
-        setOfficeUsers(
-          list.filter((u) => {
-            const role = String(u.role?.code ?? '').toLowerCase();
-            return officeRoles.has(role) || u.id === claim.assignedOfficeUserId;
-          }),
-        );
+        const rows = (r.data?.data ?? []) as OfficeUser[];
+        setOfficeUsers(Array.isArray(rows) ? rows : []);
       })
       .catch(() => {
         if (!cancelled) setOfficeUsers([]);
@@ -120,7 +117,7 @@ export function DosyaBilgileriEditModal({
     return () => {
       cancelled = true;
     };
-  }, [claim.assignedOfficeUserId]);
+  }, []);
 
   const officeOptions = useMemo(() => {
     const list = [...officeUsers];
@@ -400,8 +397,9 @@ export function DosyaBilgileriEditModal({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Tahmini Onarım Bitiş
+                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                  <span>Tahmini Onarım Bitiş</span>
+                  <FieldHelpTip text="Aktif sözleşmede teslim tarihi varsa o tarih önceliklidir." />
                 </label>
                 <input
                   type="date"
@@ -409,9 +407,6 @@ export function DosyaBilgileriEditModal({
                   value={estimatedRepairEndAt}
                   onChange={(e) => setEstimatedRepairEndAt(e.target.value)}
                 />
-                <p className="mt-1 text-[11px] text-slate-400">
-                  Aktif sözleşmede teslim tarihi varsa o tarih önceliklidir.
-                </p>
               </div>
             </div>
 

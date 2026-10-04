@@ -14,6 +14,7 @@ import {
   isInvitePersonBlank,
   type InvitePersonDraft,
 } from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 
 type PortalUserRow = {
   id: string;
@@ -139,10 +140,10 @@ export function CustomerPortalUsersPanel({
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-slate-50">
-        <h4 className="text-sm font-semibold text-slate-800">Firma kullanıcıları</h4>
-        <p className="text-xs text-slate-400 mt-0.5">
-          Panele giren kişiler. Yetkili kişiler ayrıdır; onlara giriş açılmaz.
-        </p>
+        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+          <span>Firma kullanıcıları</span>
+          <FieldHelpTip text="Panele giren kişiler. Yetkili kişiler ayrıdır; onlara giriş açılmaz." />
+        </h4>
       </div>
       <div className="p-5 space-y-4">
         {loading ? (

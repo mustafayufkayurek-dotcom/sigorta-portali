@@ -7,6 +7,7 @@ import axios from 'axios';
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { ContactPhoneField } from '@/components/ContactPhoneField';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import {
@@ -456,11 +457,12 @@ function SectionDivider({ icon, title }: { icon: React.ReactNode; title: string 
   );
 }
 
-function FormField({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+function FormField({ label, required, error, help, children }: { label: string; required?: boolean; error?: string; help?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-500 mb-1.5">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+        <span>{label}{required && <span className="text-red-400 ml-0.5">*</span>}</span>
+        {help ? <FieldHelpTip text={help} /> : null}
       </label>
       {children}
       {error && <p className="text-xs text-status-danger mt-1.5">{error}</p>}
@@ -3713,11 +3715,13 @@ export default function VendorsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                     </svg>
                   } title="Evrak Yükleme" />
-                  <p className="mb-2 text-[11px] text-slate-500">{vendorIdentityDocumentHint(form.entityType)}</p>
                   <div className="space-y-2 mb-2">
                     <div className="flex flex-wrap gap-3 items-end">
                       <div className="flex-1 min-w-48">
-                        <label className="text-xs font-medium text-slate-500 block mb-1.5">Evrak Türü *</label>
+                        <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                          <span>Evrak Türü *</span>
+                          <FieldHelpTip text={vendorIdentityDocumentHint(form.entityType)} />
+                        </label>
                         <select
                           className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                           value={docSelectedTypeId}

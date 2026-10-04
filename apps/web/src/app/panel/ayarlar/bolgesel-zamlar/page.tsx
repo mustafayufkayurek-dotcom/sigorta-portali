@@ -16,6 +16,7 @@ import {
   SettingsRowIndexTd,
   inputCls,
   labelCls,
+  SettingsFieldLabel,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { API, authHeader } from '@/utils/api';
@@ -374,7 +375,9 @@ export default function BolgeselZamlarPage() {
             </div>
           )}
           <div>
-            <label className={labelCls}>Zam Oranı (%) <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
+            <SettingsFieldLabel help="Pozitif değer = zam artışı. Örn: 15 → baz fiyat × 1.15">
+              Zam Oranı (%) <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span>
+            </SettingsFieldLabel>
             <div className="relative">
               <input
                 type="number"
@@ -386,7 +389,6 @@ export default function BolgeselZamlarPage() {
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
             </div>
-            <p className="text-xs text-slate-400 mt-1">Pozitif değer = zam artışı. Örn: 15 → baz fiyat × 1.15</p>
           </div>
           <div>
             <label className={labelCls}>Geçerlilik Tarihi <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
@@ -440,7 +442,9 @@ export default function BolgeselZamlarPage() {
           </div>
 
           <div>
-            <label className={labelCls}>Zam Oranı (%) <span className='text-xs font-normal text-slate-400 ml-1'>(Zorunlu)</span></label>
+            <SettingsFieldLabel help="Pozitif değer = zam artışı. Örn: 15 → baz fiyat × 1.15">
+              Zam Oranı (%) <span className="text-xs font-normal text-slate-400 ml-1">(Zorunlu)</span>
+            </SettingsFieldLabel>
             <div className="relative">
               <input
                 type="number"

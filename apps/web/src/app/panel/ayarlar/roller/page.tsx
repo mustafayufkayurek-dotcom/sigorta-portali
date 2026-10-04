@@ -20,6 +20,7 @@ import {
   labelCls,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
 import {
   isLockedRoleAccountCode,
@@ -134,8 +135,10 @@ export default function RollerPage() {
   const renderGroup = (title: string, hint: string, rows: Role[], indexOffset: number) => (
     <div className="mb-8">
       <div className="mb-3">
-        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
-        <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+          <span>{title}</span>
+          {hint ? <FieldHelpTip text={hint} /> : null}
+        </h2>
       </div>
       <SettingsTable
         loading={loading}

@@ -7,6 +7,7 @@ import axios from 'axios';
 import { EntityDocumentsTab } from '@/components/EntityDocumentsTab';
 import { LocationPreview } from '@/components/LocationPickerModal';
 import { PhoneContactActions } from '@/components/ui/PhoneContactActions';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
@@ -328,6 +329,10 @@ function YetkiliIletisimTab({ customer, canInvite }: { customer: any; canInvite:
     <div className="space-y-4">
       {customer.entityType === 'corporate' || customer.serviceType === 'ACIL_YARDIM' ? (
         <SectionCard title="Acil haberleşme" subtitle="Ana müşteri için WhatsApp / e-posta. Sigortalı her dosyada WhatsApp.">
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="text-xs font-medium text-slate-600">Tercih</span>
+            <FieldHelpTip text="Bu müşterinin sonraki Acil dosyalarında Onay ve Kapanış bu tercihe göre açılır." />
+          </div>
           <fieldset className="space-y-2" data-testid="musteri-acil-haberlesme">
             {([
               { id: 'whatsapp' as const, label: 'WhatsApp' },
@@ -348,7 +353,6 @@ function YetkiliIletisimTab({ customer, canInvite }: { customer: any; canInvite:
               </label>
             ))}
           </fieldset>
-          <p className="mt-2 text-[11px] text-slate-500">Bu müşterinin sonraki Acil dosyalarında Onay ve Kapanış bu tercihe göre açılır.</p>
         </SectionCard>
       ) : null}
       {isPortalCustomerSubType(customer.subType) && (

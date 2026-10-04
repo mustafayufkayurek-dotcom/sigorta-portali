@@ -22,8 +22,10 @@ import {
   DeleteButton,
   inputCls,
   labelCls,
+  SettingsFieldLabel,
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import {
   VENDOR_SERVICE_TABS,
   deriveServiceBranchTypes,
@@ -437,7 +439,8 @@ export default function EvrakTurleriPage() {
           }
         >
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap gap-2 p-1 bg-slate-100 rounded-xl w-fit">
               {SCOPE_MODES.map((mode) => (
                 <button
                   key={mode.id}
@@ -453,9 +456,8 @@ export default function EvrakTurleriPage() {
                 </button>
               ))}
             </div>
-            <p className="text-xs text-slate-500 -mt-2">
-              {SCOPE_MODES.find((m) => m.id === scopeMode)?.hint}
-            </p>
+            <FieldHelpTip text={SCOPE_MODES.find((m) => m.id === scopeMode)?.hint} />
+            </div>
 
             {scopeMode === 'vendor' ? (
               <ScopeTabBar
@@ -622,7 +624,9 @@ export default function EvrakTurleriPage() {
 
             {form.entityScope === 'vendor' ? (
               <div>
-                <label className={labelCls}>Meridyen Hizmet Türleri *</label>
+              <SettingsFieldLabel help="Türü ilgili hizmete bağlayın. Listede yoksa önce Tanımlar’dan ekleyin.">
+                Meridyen Hizmet Türleri *
+              </SettingsFieldLabel>
                 <div className="flex flex-wrap gap-2 mt-1.5">
                   {VENDOR_SERVICE_TABS.map((tab) => (
                     <label
@@ -643,9 +647,6 @@ export default function EvrakTurleriPage() {
                     </label>
                   ))}
                 </div>
-                <p className="text-xs text-slate-500 mt-1.5">
-                  Türü ilgili hizmete bağlayın. Listede yoksa önce Tanımlar’dan ekleyin.
-                </p>
               </div>
             ) : (
               <div>
@@ -715,8 +716,8 @@ export default function EvrakTurleriPage() {
                   onChange={(e) => setForm((p) => ({ ...p, isRequired: e.target.checked }))}
                 />
                 <span className="text-sm text-slate-700">Zorunlu Evrak</span>
+                <FieldHelpTip text="Sıra numarası alfabetik dizilime göre otomatik atanır." />
               </label>
-              <p className="text-xs text-slate-400 mt-1">Sıra numarası alfabetik dizilime göre otomatik atanır.</p>
             </div>
           </SettingsModal>
 

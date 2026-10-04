@@ -65,12 +65,36 @@ describe('hasar sigorta şirketi katalog LOCK', () => {
       ),
       'utf8',
     );
+    const edit = readFileSync(
+      new URL(
+        '../../../apps/web/src/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriEditModal.tsx',
+        import.meta.url,
+      ),
+      'utf8',
+    );
+    const eksper = readFileSync(
+      new URL('../../../apps/web/src/app/panel/eksper-portal/page.tsx', import.meta.url),
+      'utf8',
+    );
+    const picker = readFileSync(
+      new URL('../../../apps/web/src/components/CustomerSelectModal.tsx', import.meta.url),
+      'utf8',
+    );
     assert.match(form, /filterInsuranceCatalogForHasarFileForm/);
     assert.match(form, /HASAR_FILE_INSURANCE_CATALOG_QUERY/);
     assert.doesNotMatch(form, /isOfficeStaffRole\(roleCode\) && scopedIds/);
-    assert.match(settings, /SETTINGS_INSURANCE_CATALOG_QUERY|status: 'all'/);
-    assert.match(settings, /limit: 1000|SETTINGS_INSURANCE_CATALOG_QUERY/);
+    assert.match(settings, /SETTINGS_INSURANCE_CATALOG_QUERY/);
     assert.match(service, /insuranceCompanyListWhere/);
+    assert.match(edit, /claim-files\/assignable-staff/);
+    assert.match(edit, /includeDelegates:\s*'hasar'/);
+    assert.doesNotMatch(edit, /\/users\?limit=/);
+    assert.match(eksper, /HASAR_FILE_INSURANCE_CATALOG_QUERY/);
+    const acil = readFileSync(
+      new URL('../../../apps/web/src/components/emergency/EmergencyCaseNewForm.tsx', import.meta.url),
+      'utf8',
+    );
+    assert.match(picker, /OFFICE_SETTINGS_CATALOG_LIMIT/);
+    assert.match(acil, /OFFICE_SETTINGS_CATALOG_LIMIT/);
     assert.equal(HASAR_FILE_INSURANCE_CATALOG_QUERY.limit, 1000);
     assert.equal(SETTINGS_INSURANCE_CATALOG_QUERY.status, 'all');
   });

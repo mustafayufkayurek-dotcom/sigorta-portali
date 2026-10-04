@@ -1,6 +1,8 @@
 /** Ayarlar Sigorta Şirketleri ile Hasar dosya listesi aynı katalogdur. */
 
 export const INSURANCE_COMPANY_CATALOG_LIMIT = 1000;
+/** Ayarlar kaydı — ofis formları aynı üst sınırı kullanır. */
+export const OFFICE_SETTINGS_CATALOG_LIMIT = INSURANCE_COMPANY_CATALOG_LIMIT;
 
 export const HASAR_FILE_INSURANCE_CATALOG_QUERY = {
   status: 'active' as const,

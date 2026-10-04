@@ -11,7 +11,7 @@ interface DashboardHeaderProps {
   actions?: ReactNode;
   hideDefaultActions?: boolean;
   showAcilAction?: boolean;
-  /** Dosya sorumlusu vb.: tek birincil CTA (Yeni Hasar) — Acil kapsama göre ayrı */
+  /** Dosya sorumlusu vb.: tek birincil CTA (Yeni Dosya) — Acil kapsama göre ayrı */
   singlePrimaryAction?: boolean;
   /** Admin yönetim merkezi mockup düzeni */
   isManagement?: boolean;
@@ -107,7 +107,7 @@ export function DashboardHeader({
                     className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-brand-800 sm:text-sm"
                   >
                     <span className="text-sm font-semibold leading-none">+</span>
-                    Yeni Hasar
+                    Yeni Dosya
                   </Link>
                   {showAcilAction ? (
                     <Link
@@ -133,7 +133,7 @@ export function DashboardHeader({
                     className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm shadow-blue-200/60 transition-colors hover:bg-brand-800 sm:text-sm"
                   >
                     <span className="text-sm font-semibold leading-none">+</span>
-                    Yeni Hasar
+                    Yeni Dosya
                   </Link>
                   {showAcilAction ? (
                     <Link
@@ -161,7 +161,7 @@ export function DashboardHeader({
                       }`}
                     >
                       <HASAR_OPERATION_ICON className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      Yeni Hasar
+                      Yeni Dosya
                     </Link>
                     {!singlePrimaryAction && showAcilAction && (
                       <Link

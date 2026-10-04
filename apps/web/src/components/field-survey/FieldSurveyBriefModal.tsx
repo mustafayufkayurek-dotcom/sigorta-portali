@@ -5,6 +5,7 @@ import { API, authHeader } from '@/utils/api';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import {
   FieldSurveyCameraModal,
   type FieldSurveyCameraDimension,
@@ -832,8 +833,9 @@ export function FieldSurveyBriefModal({
                   </a>
                 )}
               </div>
-              <p className="text-[11px] text-slate-400 mt-2">
-                Kamera ölçü emareleri ve ölçü özeti ile açılır. Fotoğrafı buraya da sürükleyebilirsiniz.
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+                <span>Ölçü fotoğrafı</span>
+                <FieldHelpTip text="Kamera ölçü emareleri ve ölçü özeti ile açılır. Fotoğrafı buraya da sürükleyebilirsiniz." />
               </p>
             </FileDropZone>
 

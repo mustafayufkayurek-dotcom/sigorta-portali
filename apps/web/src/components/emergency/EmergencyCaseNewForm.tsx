@@ -21,12 +21,12 @@ import {
   type EmergencyUrgency,
   type VendorOption,
 } from '@/utils/emergencyApi';
-import { mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import { mapInboundLossTypeToMeridyen, OFFICE_SETTINGS_CATALOG_LIMIT } from '@sigorta/shared';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { createInFlightGuard } from '@/utils/in-flight-guard';
 import SpeechToText from '@/components/SpeechToText';
-import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
 const URGENCY_OPTIONS: { value: EmergencyUrgency; label: string; color: string }[] = [
@@ -357,7 +357,8 @@ export function EmergencyCaseNewForm({
       try {
         const params = new URLSearchParams({
           search: val.trim(),
-          limit: '10',
+          limit: String(OFFICE_SETTINGS_CATALOG_LIMIT),
+          status: 'active',
           subType: ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE,
         });
         const res = await axios.get(`${API}/customers?${params}`, { headers: authHeader() });
@@ -671,7 +672,10 @@ export function EmergencyCaseNewForm({
           {errors.issueType && <p className="text-xs text-status-danger mt-0.5">{errors.issueType}</p>}
         </div>
         <div className="min-w-0">
-          <label className={label}>Dosya No <span className="text-status-danger">*</span></label>
+          <label className={`${label} flex items-center gap-1.5`}>
+            <span>Dosya No <span className="text-status-danger">*</span></span>
+            <FieldHelpTip text="Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz." testId="acil-dosya-no-yardim" />
+          </label>
           <input
             className={`${field} ${errors.fileNo ? 'border-red-400' : ''}`}
             value={fileNo}
@@ -679,9 +683,6 @@ export function EmergencyCaseNewForm({
             onBlur={(e) => { const v = e.target.value.trim(); if (v) setFileNo(v); void checkFileNoDuplicate(v); }}
           />
           {fileNoChecking && <p className="text-xs text-slate-400 mt-0.5">Kontrol ediliyor...</p>}
-          {!fileNoChecking && !errors.fileNo && (
-            <p className="text-xs text-slate-400 mt-0.5">Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz.</p>
-          )}
           {errors.fileNo && <p className="text-xs text-status-danger mt-0.5">{errors.fileNo}</p>}
         </div>
         {!isPanel ? (
@@ -766,8 +767,11 @@ export function EmergencyCaseNewForm({
           </div>
         </div>
         <div className="col-span-2" id="tespit-bulgulari">
-          <label className={label}>
-            Tespit Bulguları <span className="text-status-danger">*</span>
+          <label className={`${label} flex items-center gap-1.5`}>
+            <span>
+              Tespit Bulguları <span className="text-status-danger">*</span>
+            </span>
+            <FieldHelpTip text="Dosya kaydı için zorunludur." testId="acil-tespit-bulgulari-yardim" />
           </label>
           <div
             className={`border rounded-lg overflow-hidden ${
@@ -818,9 +822,7 @@ export function EmergencyCaseNewForm({
             <p className="text-xs text-status-danger mt-0.5" data-testid="tespit-bulgulari-error">
               {errors.findingsText}
             </p>
-          ) : (
-            <p className="text-[11px] text-slate-400 mt-0.5">Dosya kaydı için zorunludur.</p>
-          )}
+          ) : null}
         </div>
         <div className="col-span-2">
           <label className={label}>Notlar</label>

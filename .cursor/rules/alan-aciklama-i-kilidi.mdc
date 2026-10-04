@@ -1,0 +1,35 @@
+---
+description: Alan açıklaması i harfi altında; kutu altı nasıl-doldurulur yazısı yok
+alwaysApply: false
+---
+
+# Alan Açıklaması i Kilidi
+
+**Kaynak (Mustafa · 04.10.2026):** Yeni Dosya’da Dosya No açıklaması i altına alınmıştı. Aynı düzen yazılım genelidir; yalnız Hasar / Acil formuna bağlanmaz.
+
+**Temel cümle:** Alana nasıl yazılacağını söyleyen metin **i** altındadır. Hata, boş, yükleme ve tıklanır yol görünür kalır.
+
+## Zorunlu
+
+1. Alan yardımı `FieldHelpTip` / `FieldLabel` / `SettingsFieldLabel` / FormField `help`.
+2. Sayfa başlığı i yasağı (`HintIcon` null) durur; alan i ayrıdır.
+3. Hata (`text-status-danger`), yükleme, boş kayıt, KPI/veri satırı ve tıklanır yol (Tedarikçiler linki, sürükle-bırak kutusu) görünür kalır.
+4. İlk kullanım şeridi (`OpsFirstRunNotice`) bu kurala bağlanmaz.
+
+## Yasak (açık onay yoksa)
+
+- Nasıl doldurulur cümlesini kutu altına `<p>` olarak basmak
+- Bu kilidi yalnız Hasar / Acil Yeni Dosya ile sınırlamak
+- Hata veya tıklanır yolu i içine gizleyip yolu kesmek
+
+## Durdurma
+
+Açıklama yine kutu altında durursa → **dur, i altına çek.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ apps/web/src/components/ui/field-help-tip.lock.spec.ts \
+ apps/web/src/components/claim-files/claim-new-form.lock.spec.ts
+```

@@ -10,6 +10,7 @@ import { entityDocumentFileUrl } from '@/utils/protected-image';
 import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
 import { ACIL_AFTER_SERVICE_PHOTO_NOTE, isAcilAfterServicePhotoNotes } from '@sigorta/shared';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 
 type ClosurePhotoDoc = {
   id: string;
@@ -166,8 +167,9 @@ export default function ClosurePhotosPanel({
             strokeWidth={1.75}
             aria-hidden
           />
-          <p className="text-xs font-semibold text-slate-800 truncate">
-            Hizmet Sonrası Resimleri
+          <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-800">
+            <span className="truncate">Hizmet Sonrası Resimleri</span>
+            <FieldHelpTip text="Hizmet bittikten sonraki saha resimleri. Kapanış raporuna yazılır. Belgeler sekmesinden ayrıdır." />
           </p>
         </div>
         <span
@@ -184,17 +186,11 @@ export default function ClosurePhotosPanel({
         </span>
       </div>
 
-      <p className="text-[10px] text-slate-500 leading-snug">
-        Hizmet bittikten sonraki saha resimleri. Kapanış raporuna yazılır. Belgeler sekmesinden ayrıdır.
-        {!readonly ? (
-          <>
-            {' '}
-            <span data-testid="dosya-kapanis-surukle-birak">
-              Resim yükle ile veya dosyayı bu alana sürükleyip bırakarak ekleyin.
-            </span>
-          </>
-        ) : null}
-      </p>
+      {!readonly ? (
+        <p className="text-[10px] text-slate-500 leading-snug" data-testid="dosya-kapanis-surukle-birak">
+          Resim yükle ile veya dosyayı bu alana sürükleyip bırakarak ekleyin.
+        </p>
+      ) : null}
 
       {!readonly && (
         <div className="flex flex-wrap items-center gap-1.5">

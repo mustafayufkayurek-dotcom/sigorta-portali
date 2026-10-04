@@ -6,6 +6,7 @@ import { API, authHeader } from '../claim-detail-utils';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 
 // ─── Tab: Yazışmalar ──────────────────────────────────────────────────────────
 interface ChatMessage {
@@ -232,7 +233,10 @@ export function YazismalarTab({
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500 block mb-1">WhatsApp .txt Dosyası *</label>
+                <label className="mb-1 flex items-center gap-1.5 text-xs text-slate-500">
+                  <span>WhatsApp .txt Dosyası *</span>
+                  <FieldHelpTip text="Yalnızca .txt dosyası." />
+                </label>
                 <div
                   className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ${dragOver ? 'border-green-400 bg-green-50' : 'border-slate-200 hover:border-green-300'}`}
                   onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -253,7 +257,6 @@ export function YazismalarTab({
                   ) : (
                     <div>
                       <p className="text-sm text-slate-500">Dosyayı Buraya Sürükleyin veya Tıklayın</p>
-                      <p className="text-xs text-slate-400 mt-1">Yalnızca .txt Dosyası</p>
                     </div>
                   )}
                 </div>

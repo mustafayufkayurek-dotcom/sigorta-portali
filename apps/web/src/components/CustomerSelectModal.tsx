@@ -6,6 +6,7 @@ import { customerDisplayName } from '@/utils/customer-form-helpers';
 import { API, authHeader } from '@/utils/api';
 import { HASAR_EXPERT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { reportCaughtError } from '@/utils/report-caught-error';
+import { OFFICE_SETTINGS_CATALOG_LIMIT } from '@sigorta/shared';
 
 type Customer = {
   id: string;
@@ -72,7 +73,7 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        limit: isExpertPicker || isAssistantPicker ? '500' : '50',
+        limit: isExpertPicker || isAssistantPicker ? String(OFFICE_SETTINGS_CATALOG_LIMIT) : '50',
         status: 'active',
       });
       if (q.trim()) params.set('search', q.trim());

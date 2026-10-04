@@ -14,6 +14,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import { Check, Copy, Plus, Search, UserCheck, Users, X } from 'lucide-react';
 import { HintIcon } from '@/components/ui/HintIcon';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -647,18 +648,23 @@ function FormField({
   label,
   required,
   error,
+  help,
   children,
 }: {
   label: string;
   required?: boolean;
   error?: string;
+  help?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium text-slate-700">
-        {label}
-        {required && <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>}
+      <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-700">
+        <span>
+          {label}
+          {required && <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>}
+        </span>
+        {help ? <FieldHelpTip text={help} /> : null}
       </label>
       {children}
       {error && <p className="mt-1.5 text-xs font-medium text-red-600">{error}</p>}

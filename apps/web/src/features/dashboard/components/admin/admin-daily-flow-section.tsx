@@ -28,7 +28,7 @@ export function AdminDailyFlowSection({ hideAcil = false, staggerIndex = 0 }: Ad
 
   const flowItems = [
     {
-      title: 'Yeni Hasar',
+      title: 'Yeni Dosya',
       value: loading ? '—' : (today?.newClaims ?? 0),
       detail: 'Bugün açılan',
       icon: HASAR_OPERATION_ICON,

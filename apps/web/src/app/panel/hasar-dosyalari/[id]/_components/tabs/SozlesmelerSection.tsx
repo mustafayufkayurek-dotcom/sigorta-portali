@@ -7,6 +7,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { openWhatsAppChat } from '@/utils/date-helpers';
 import { VendorContractPreviewModal, type VendorContractPreviewTarget } from '@/components/hasar-operasyon-planlayicisi/VendorContractPreviewModal';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 
 const CONTRACT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   draft: { label: 'Taslak', color: 'bg-slate-100 text-slate-700' },
@@ -79,12 +80,17 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
     <div>
       {!hideHeader && (
       <div className="mb-3">
-        <h3 className="text-sm font-semibold text-slate-700">Tedarikçi Sözleşmeleri</h3>
-        <p className="text-xs text-slate-500 mt-0.5">Burada toplanan onaylar durur. Yeni onay Operasyonu Başlat → Onarım Planlama’dadır.</p>
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+          <span>Tedarikçi Sözleşmeleri</span>
+          <FieldHelpTip text="Burada toplanan onaylar durur. Yeni onay Operasyonu Başlat → Onarım Planlama’dadır." />
+        </h3>
       </div>
       )}
       {hideHeader && (
-        <p className="text-xs text-slate-500 mb-3">Toplanan tedarikçi onayları. Yeni sözleşme Operasyonu Başlat → Onarım Planlama’dadır.</p>
+        <p className="mb-3 flex items-center gap-1.5 text-xs font-medium text-slate-700">
+          <span>Tedarikçi sözleşmeleri</span>
+          <FieldHelpTip text="Toplanan tedarikçi onayları. Yeni sözleşme Operasyonu Başlat → Onarım Planlama’dadır." />
+        </p>
       )}
 
       {loading ? (

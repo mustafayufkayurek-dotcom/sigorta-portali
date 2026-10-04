@@ -22,6 +22,7 @@ import {
 } from '@/components/settings/SettingsUI';
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { normalizeFormFreeText, toTitleCaseTR } from '@/utils/text-helpers';
 
 type CatalogItem = {
@@ -212,8 +213,10 @@ function CatalogSection({
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
-          <p className="text-xs text-slate-500 mt-0.5 max-w-2xl">{hint}</p>
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+            <span>{title}</span>
+            {hint ? <FieldHelpTip text={hint} /> : null}
+          </h3>
         </div>
         <div className="flex items-center gap-2">
           {items.length > 0 && (

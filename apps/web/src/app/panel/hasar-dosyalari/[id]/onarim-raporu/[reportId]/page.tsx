@@ -56,6 +56,7 @@ import { formatTrAmountInput, numberToTrAmountInput, parseTrAmountInput } from '
 import { LEGAL_NOTE_TEMPLATES, buildSuggestedLegalNotesText } from '@/constants/legal-note-templates';
 import { useToast } from '@/contexts/ToastContext';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { useNavigationGuard } from '@/contexts/NavigationGuardContext';
 
 const ImageAnnotationEditor = dynamic(
@@ -7014,7 +7015,10 @@ export default function RepairReportPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Gönderim Kanalı</label>
+                <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                  <span>Gönderim Kanalı</span>
+                  <FieldHelpTip text="Sigorta portalına gönderim iç onay sonrası otomatik yapılır." />
+                </label>
                 <select
                   value={externalApprovalForm.channel}
                   onChange={(e) => setExternalApprovalForm((f) => ({ ...f, channel: e.target.value as 'email' | 'whatsapp' }))}
@@ -7023,7 +7027,6 @@ export default function RepairReportPage() {
                   <option value="email">E-posta</option>
                   <option value="whatsapp">WhatsApp</option>
                 </select>
-                <p className="text-xs text-slate-400 mt-1">Sigorta portalına gönderim iç onay sonrası otomatik yapılır.</p>
               </div>
 
               <div>

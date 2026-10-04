@@ -6,6 +6,7 @@ import axios from 'axios';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { applyNameWithAutoCode, blurNameWithAutoCode, suggestAutoCode } from '@/utils/auto-code';
 import { TANIMLAR_BACK_HREF, TANIMLAR_BACK_TEXT } from '@/utils/settings-definition-nav';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import {
   DepartmentContextBand,
@@ -307,8 +308,10 @@ export default function DosyaKonulariPage() {
               searchPlaceholder={`${activeTabMeta.name} konusu ara...`}
               hierarchyChild={`${activeTabMeta.name} dosya konusu`}
             />
-
-            <p className="text-xs text-slate-500 -mt-1">{tabHint}</p>
+            <div className="flex items-center gap-1.5 -mt-1">
+              <span className="text-xs font-medium text-slate-600">{activeTabMeta.name}</span>
+              {tabHint ? <FieldHelpTip text={tabHint} /> : null}
+            </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <SettingsTable

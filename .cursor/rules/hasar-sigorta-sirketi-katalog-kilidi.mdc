@@ -7,14 +7,17 @@
 ## Zorunlu
 
 1. Liste `filterInsuranceCatalogForHasarFileForm` — ofis / yönetici tam katalog. Kapsam yalnız `insurance_company_user`.
-2. Hasar formu `HASAR_FILE_INSURANCE_CATALOG_QUERY` (`status=active`, `limit=1000`). Ayarlar `SETTINGS_INSURANCE_CATALOG_QUERY` (`status=all`).
+2. Hasar formu ve eksper ihbar `HASAR_FILE_INSURANCE_CATALOG_QUERY` (`status=active`, `limit=1000`). Ayarlar `SETTINGS_INSURANCE_CATALOG_QUERY` (`status=all`).
 3. API `insuranceCompanyListWhere`: `status=all` pasifi kesmez.
 4. Yeni kayıtta durum boşsa `active`.
+5. Hasar dosya bilgisi **Dosya Sorumlusu** `GET /claim-files/assignable-staff` — `GET /users` yok.
+6. Asistans / eksper seçici `OFFICE_SETTINGS_CATALOG_LIMIT` (1000).
 
 ## Yasak (açık onay yoksa)
 
 - Ofis listesini `insuranceCompanyScopes` ile kesmek
 - Ayarlar `status=all` isteğini yine yalnız aktif saymak
+- Dosya sorumlusunu Kullanıcılar listesine bağlamak
 - Bu kilidi “sadeleştirme” diye kaldırmak
 
 ## Durdurma
@@ -25,5 +28,6 @@ Regresyon:
 
 ```bash
 node --experimental-strip-types --test \
- packages/shared/src/insurance-company-catalog.lock.spec.ts
+ packages/shared/src/insurance-company-catalog.lock.spec.ts \
+ apps/backend/src/modules/claim-files/assignable-file-owners.lock.spec.ts
 ```

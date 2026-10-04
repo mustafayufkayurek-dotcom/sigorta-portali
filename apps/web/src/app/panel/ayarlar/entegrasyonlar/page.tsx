@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { SETTINGS_API as API, settingsAuthHeader as authHeader } from '@/utils/settings-api';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
-import { inputCls, labelCls } from '@/components/settings/SettingsUI';
+import { inputCls, labelCls, SettingsFieldLabel } from '@/components/settings/SettingsUI';
 import { redirectAfterSettingsSave } from '@/utils/settings-save-redirect';
 
 type IntegrationTab = 'sms' | 'turmob' | 'logo-wings' | 'm365' | 'google-places';
@@ -535,9 +535,9 @@ export default function EntegrasyonlarPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelCls}>
+                  <SettingsFieldLabel help="Gönderen adı — en fazla 11 karakter">
                     Sender ID (Başlık) <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>
-                  </label>
+                  </SettingsFieldLabel>
                   <input
                     type="text"
                     className={inputCls}
@@ -546,7 +546,6 @@ export default function EntegrasyonlarPage() {
                     value={smsConfig.senderId}
                     onChange={(e) => setSmsConfig((prev) => ({ ...prev, senderId: e.target.value.toUpperCase() }))}
                   />
-                  <p className="mt-1 text-xs text-slate-400">Gönderen adı — en fazla 11 karakter</p>
                 </div>
               </div>
 

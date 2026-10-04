@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { geocodeAddressCascade } from '@/utils/geocode-address';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 
 export interface LatLng {
   lat: number;
@@ -277,7 +278,10 @@ export function LocationPickerModal({ open, initial, onConfirm, onClose, address
               </>
             )}
           </button>
-          <p className="text-[11px] text-slate-400 text-center mt-1.5">Müşteri ziyaretinde sahada konumu kaydetmek için kullanın</p>
+          <p className="mt-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium text-slate-600">
+            <span>Konum</span>
+            <FieldHelpTip text="Müşteri ziyaretinde sahada konumu kaydetmek için kullanın" />
+          </p>
         </div>
 
         {/* Map */}

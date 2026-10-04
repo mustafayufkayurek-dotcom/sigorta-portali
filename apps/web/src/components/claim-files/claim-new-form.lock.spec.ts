@@ -26,6 +26,13 @@ describe('yeni dosya form lock', () => {
     assert.match(form, /rapora yazılmaz/);
     assert.match(form, /FieldHelpTip/);
     assert.match(form, /dosya-no-yardim/);
+    assert.match(form, /irtibat-telefon-yardim/);
+    assert.doesNotMatch(form, /Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz\.<\/p>/);
+    assert.doesNotMatch(form, /Yalnız tespit içindir; rapora yazılmaz\.<\/p>/);
+    const acil = readFileSync(join(here, '../emergency/EmergencyCaseNewForm.tsx'), 'utf8');
+    assert.match(acil, /acil-dosya-no-yardim/);
+    assert.match(acil, /acil-tespit-bulgulari-yardim/);
+    assert.doesNotMatch(acil, /Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz\.<\/p>/);
     assert.match(form, /data-field="assignedOfficeUserId"/);
     assert.match(form, /data-field="fileNo"/);
     assert.match(form, /filterInsuranceCatalogForHasarFileForm/);
@@ -36,6 +43,7 @@ describe('yeni dosya form lock', () => {
   it('sayfa başlığı i yasağı durur; alan yardımı ayrıdır', () => {
     assert.match(hint, /return null/);
     assert.match(fieldHelp, /export function FieldHelpTip/);
+    assert.match(fieldHelp, /export function FieldLabel/);
     assert.match(fieldHelp, /onClick/);
   });
 });

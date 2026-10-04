@@ -32,9 +32,22 @@ describe('acil dosya sorumlusu listesi LOCK', () => {
       join(here, '../../../../web/src/components/emergency/EmergencyCaseNewForm.tsx'),
       'utf8',
     );
-    assert.match(form, /includeDelegates:\s*'acil_yardim'/);
     assert.match(form, /claim-files\/assignable-staff/);
+    assert.match(form, /includeDelegates:\s*'acil_yardim'/);
     assert.match(form, /dosya-sorumlusu-ilk-kullanim-seridi/);
+  });
+
+  it('Hasar dosya bilgisi düzenle Kullanıcılar listesini çekmez', () => {
+    const edit = readFileSync(
+      join(
+        here,
+        '../../../../web/src/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriEditModal.tsx',
+      ),
+      'utf8',
+    );
+    assert.match(edit, /claim-files\/assignable-staff/);
+    assert.match(edit, /includeDelegates:\s*'hasar'/);
+    assert.doesNotMatch(edit, /\/users\?limit=/);
   });
 
   it('API ofis personeline acil fonksiyon vekillerini katar', () => {

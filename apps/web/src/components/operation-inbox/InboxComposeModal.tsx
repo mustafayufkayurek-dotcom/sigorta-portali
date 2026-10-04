@@ -15,6 +15,7 @@ import {
   sanitizeInboxReplyAttachmentName,
 } from '@sigorta/shared';
 import { OutboundMailSignalStrip } from '@/components/operation-inbox/OutboundMailSignalStrip';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import {
   InboxLinkFilePickerModal,
   type LinkPickerHasarFile,
@@ -308,9 +309,9 @@ export function InboxComposeModal({
           />
 
           <div className="mt-3">
-            <p className="text-xs font-medium text-slate-600">Fotoğraf Veya Belge</p>
-            <p className="text-[11px] text-slate-500 mt-0.5 mb-1.5">
-              Ek, asıl yazı ile birlikte gider. Fotoğraflar gönderime uygun küçültülür.
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+              <span>Fotoğraf Veya Belge</span>
+              <FieldHelpTip text="Ek, asıl yazı ile birlikte gider. Fotoğraflar gönderime uygun küçültülür." />
             </p>
             <input
               ref={fileInputRef}
@@ -390,8 +391,9 @@ export function InboxComposeModal({
             )}
           </div>
           {(linkedClaim || linkedEmergency) && (
-            <p className="text-[11px] text-slate-500 mt-2">
-              Dosya sorumlusunun adresi görünür kopyaya yazılır. Gizli kopya yok.
+            <p className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600 mt-2">
+              <span>Görünür kopya</span>
+              <FieldHelpTip text="Dosya sorumlusunun adresi görünür kopyaya yazılır. Gizli kopya yok." />
             </p>
           )}
 

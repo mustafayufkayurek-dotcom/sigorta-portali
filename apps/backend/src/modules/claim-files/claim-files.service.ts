@@ -12,6 +12,7 @@ import {
   departmentCodeForNewClaim,
   filterStaffByFileArea,
   INSPECTOR_ALREADY_ASSIGNED_MESSAGE,
+  OFFICE_SETTINGS_CATALOG_LIMIT,
   parseClaimServiceKind,
 } from '@sigorta/shared';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
@@ -2906,7 +2907,7 @@ export class ClaimFilesService {
         },
       },
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
-      take: 200,
+      take: OFFICE_SETTINGS_CATALOG_LIMIT,
     });
 
     const mappedStaff = staff.map((user) => ({

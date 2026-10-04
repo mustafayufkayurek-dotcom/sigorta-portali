@@ -17,6 +17,7 @@ import {
 } from '@sigorta/shared';
 import { shrinkInboxReplyAttachment } from '@/utils/inbox-reply-image';
 import { OutboundMailSignalStrip } from '@/components/operation-inbox/OutboundMailSignalStrip';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 
 interface ReplyMessageDetail {
   fromAddress: string;
@@ -353,16 +354,16 @@ export function InboxReplyModal({
 
         {(detail?.platformMailCopy || detail?.fileOwnerCopy) && (
           <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <p className="text-xs font-medium text-slate-700">Platform Mail Kopyası</p>
+            <p className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
+              <span>Platform Mail Kopyası</span>
+              <FieldHelpTip text="Sizin kutunuza asıl yazı ile birlikte gider. Asıl yazı gitmezse kopya da gitmez. Gizli kopya yok." />
+            </p>
             <p className="text-sm text-slate-800 mt-0.5">
               {platformMailCopyLineLabel(
                 (detail.platformMailCopy || detail.fileOwnerCopy)?.roleCode,
               )}{' '}
               · {(detail.platformMailCopy || detail.fileOwnerCopy)?.name} ·{' '}
               {(detail.platformMailCopy || detail.fileOwnerCopy)?.email}
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1">
-              Sizin kutunuza asıl yazı ile birlikte gider. Asıl yazı gitmezse kopya da gitmez. Gizli kopya yok.
             </p>
           </div>
         )}
@@ -384,10 +385,10 @@ export function InboxReplyModal({
         />
 
         <div className="mt-3">
-          <p className="text-xs font-medium text-slate-600">Fotoğraf Veya Belge</p>
-          <p className="text-[11px] text-slate-500 mt-0.5 mb-1.5">
-            Ek, asıl yazı ile birlikte gider. Fotoğraflar gönderime uygun küçültülür.
-          </p>
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+              <span>Fotoğraf Veya Belge</span>
+              <FieldHelpTip text="Ek, asıl yazı ile birlikte gider. Fotoğraflar gönderime uygun küçültülür." />
+            </p>
           <input
             ref={fileInputRef}
             type="file"
@@ -468,9 +469,9 @@ export function InboxReplyModal({
         </label>
 
         <div className="mt-4">
-          <p className="text-xs font-medium text-slate-600">Alıcıda yazışma geçmişi</p>
-          <p className="text-[11px] text-slate-500 mt-0.5 mb-1.5">
-            Önceki yazı gönderilen mailin altında durur. Logolar ve tekrarlayan imza düşer.
+          <p className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+            <span>Alıcıda yazışma geçmişi</span>
+            <FieldHelpTip text="Önceki yazı gönderilen mailin altında durur. Logolar ve tekrarlayan imza düşer." />
           </p>
           <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 whitespace-pre-wrap">
             {quotePreview || 'Bu iletide geçmiş metin yok.'}

@@ -586,7 +586,7 @@ function Navbar({
   });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
-  /** Saha personeli hasar ihbarı oluşturamaz — Hızlı İşlem’de Yeni Hasar yok */
+  /** Saha personeli hasar ihbarı oluşturamaz — Hızlı İşlem’de Yeni Dosya yok */
   const canCreateHasar = !isPortalUser && !isFieldStaff && canSee('/panel/hasar-dosyalari');
   const canCreateAcil = !isPortalUser && !isFieldStaff && showAcilYardim;
   const canOpenMonday = !isPortalUser && !isFieldStaff && canSee('/panel/pazartesi-toplantisi');
@@ -697,7 +697,7 @@ function Navbar({
                         onClick={() => setQuickActionOpen(false)}
                       >
                         <HASAR_OPERATION_ICON className="h-4 w-4 text-brand-600" />
-                        Yeni Hasar
+                        Yeni Dosya
                       </Link>
                     ) : null}
                     {canCreateAcil ? (

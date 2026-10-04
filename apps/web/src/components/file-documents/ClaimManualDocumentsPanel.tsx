@@ -13,6 +13,7 @@ import {
   type CatalogDocumentType,
   type FileDocument,
 } from '@/utils/fileDocumentApi';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 
 export function ClaimManualDocumentsPanel({
   claimId,
@@ -94,17 +95,17 @@ export function ClaimManualDocumentsPanel({
     <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
       {listOnly ? (
         <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/40">
-          <h4 className="text-sm font-semibold text-slate-800">Yüklenen Evraklar</h4>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Yükleme planlayıcıdadır. Biriken evrak Evraklar → Tespit Ve Onarım’dadır.
-          </p>
+          <h4 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+            <span>Yüklenen Evraklar</span>
+            <FieldHelpTip text="Yükleme planlayıcıdadır. Biriken evrak Evraklar → Tespit Ve Onarım’dadır." />
+          </h4>
         </div>
       ) : (
         <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/40">
-          <h4 className="text-sm font-semibold text-slate-800">Manuel Evrak Yükle</h4>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Yüklemeden önce evrak türünü seçin. Türler Ayarlar → Evrak Türleri (Müşteri · Sigortalı).
-          </p>
+          <h4 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+            <span>Manuel Evrak Yükle</span>
+            <FieldHelpTip text="Yüklemeden önce evrak türünü seçin. Türler Ayarlar → Evrak Türleri (Müşteri · Sigortalı)." />
+          </h4>
         </div>
       )}
 

@@ -39,6 +39,17 @@ describe('panel cep düzen LOCK', () => {
     assert.match(css, /flex-col items-stretch/);
   });
 
+  it('Yönetim Paneli ve Hızlı İşlem Yeni Dosya yazar', () => {
+    const header = read('app/panel/_components/dashboard-header.tsx');
+    const layout = read('app/panel/layout.tsx');
+    const flow = read('features/dashboard/components/admin/admin-daily-flow-section.tsx');
+    assert.match(header, /Yeni Dosya/);
+    assert.doesNotMatch(header, /Yeni Hasar/);
+    assert.match(layout, /Yeni Dosya/);
+    assert.doesNotMatch(layout, />\s*Yeni Hasar\s*</);
+    assert.match(flow, /title: 'Yeni Dosya'/);
+  });
+
   it('Hasar listesinde şerit kartların üstüne binmez', () => {
     const hasar = read('app/panel/hasar-dosyalari/page.tsx');
     assert.match(hasar, /hasar-liste-ilk-kullanim-seridi/);
