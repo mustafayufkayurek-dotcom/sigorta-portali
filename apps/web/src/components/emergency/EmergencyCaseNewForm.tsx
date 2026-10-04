@@ -27,6 +27,7 @@ import { reportCaughtError } from '@/utils/report-caught-error';
 import { createInFlightGuard } from '@/utils/in-flight-guard';
 import SpeechToText from '@/components/SpeechToText';
 import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
 const URGENCY_OPTIONS: { value: EmergencyUrgency; label: string; color: string }[] = [
