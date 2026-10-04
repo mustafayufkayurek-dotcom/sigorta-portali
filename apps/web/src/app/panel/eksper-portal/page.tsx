@@ -15,6 +15,7 @@ import { ExpertPortalContactStrip } from '@/components/panel/expert-portal-conta
 import { PortalWeeklyTrendCard } from '@/components/panel/portal-weekly-trend-card';
 import { classifyExpertQueue, countExpertQueues } from '@/utils/expert-portal-queues';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
+import { buildPortalWeeklyActivity, type PortalWeeklyPoint } from '@/utils/portal-weekly-activity';
 import { HASAR_FILE_INSURANCE_CATALOG_QUERY } from '@sigorta/shared';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
