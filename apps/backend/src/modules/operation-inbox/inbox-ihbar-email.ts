@@ -1,5 +1,6 @@
 import type { NotificationEmailTemplateData } from '../notifications/email/email.template';
 import { formatIhbarMailAddress } from '@sigorta/shared';
+import { toTitleCaseTR } from '@/common/utils/text-helpers';
 import {
   formatNotificationDateTime,
   notificationDash,
@@ -19,7 +20,20 @@ export type InboxIhbarEmailSummary = {
   address?: string | null;
   actionUrl: string;
   portalUrl?: string;
+  /** Atayan kişinin Kullanıcılar’daki Görev yazısı */
+  assignedByJobTitle?: string | null;
 };
+
+export const HASAR_ASSIGNED_BY_HEADING_SUFFIX = 'Tarafından Atanmıştır';
+
+/** Görev: Operasyon Direktörü → Operasyon Direktörü Tarafından Atanmıştır */
+export function hasarAssignedByHeading(jobTitle?: string | null): string | undefined {
+  const raw = String(jobTitle ?? '').trim().replace(/\s+/g, ' ');
+  if (!raw) return undefined;
+  const duty = toTitleCaseTR(raw).replace(/\s+tarafından\s+atanmıştır\.?$/i, '').trim();
+  if (!duty) return undefined;
+  return `${duty} ${HASAR_ASSIGNED_BY_HEADING_SUFFIX}`;
+}
 
 export function inboxIhbarDepartmentLabel(fileType: 'hasar' | 'acil'): string {
   return fileType === 'acil' ? 'Acil Yardım Departmanı' : 'Hasar Departmanı';
@@ -54,6 +68,7 @@ export function buildInboxIhbarEmailTemplate(
 ): NotificationEmailTemplateData {
   return {
     title: 'Yeni İhbar Dosyası',
+    titleSuffix: hasarAssignedByHeading(summary.assignedByJobTitle),
     badgeLabel: inboxIhbarDepartmentLabel(summary.fileType),
     kickerLabel: '',
     bannerLead: notificationDash(summary.customerLongName),

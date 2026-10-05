@@ -2,6 +2,7 @@ import { buildNotificationEmailHtml } from '../notifications/email/email.templat
 import {
   buildInboxIhbarEmailRows,
   buildInboxIhbarEmailTemplate,
+  hasarAssignedByHeading,
   inboxIhbarDepartmentLabel,
 } from './inbox-ihbar-email';
 
@@ -106,5 +107,27 @@ describe('inbox ihbar email', () => {
     expect(html).toContain('width="120"');
     expect(html).not.toContain('Operasyon Bildirimi');
     expect(html).not.toContain('Yeni Hasar Dosyası');
+  });
+
+  it('dosya sorumlusuna atayan kişinin görevi başlıkta durur', () => {
+    expect(hasarAssignedByHeading('operasyon direktörü')).toBe(
+      'Operasyon Direktörü Tarafından Atanmıştır',
+    );
+    expect(hasarAssignedByHeading('  ')).toBeUndefined();
+    const html = buildNotificationEmailHtml(
+      buildInboxIhbarEmailTemplate({
+        fileType: 'hasar',
+        fileNo: '2026 YE 1480/1',
+        insuranceCompanyName: 'Allianz Sigorta',
+        customerLongName: 'Sirius Ekspertiz',
+        insuredName: 'Doğanlar Mobilya Grubu',
+        actionUrl: 'https://app.meridyen-tr.com/panel/hasar-dosyalari/ornek',
+        assignedByJobTitle: 'Operasyon Direktörü',
+      }),
+    );
+    expect(html).toContain('Yeni İhbar Dosyası (Operasyon Direktörü Tarafından Atanmıştır)');
+    expect(html).toContain('Sirius Ekspertiz');
+    expect(html).not.toContain('Operasyon Bildirimi');
+    expect(html).not.toContain('Sistem Yöneticisi');
   });
 });

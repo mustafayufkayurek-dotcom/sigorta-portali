@@ -74,7 +74,7 @@ export class ClaimEventEmailService {
     );
   }
 
-  /** 2. Dosya atama / değişiklik */
+  /** 2. Dosya atama — aynı Yeni İhbar kabuğu; başlıkta yönetici ataması */
   async onClaimAssigned(params: {
     recipientEmail: string;
     recipientUserId: string;
@@ -82,28 +82,37 @@ export class ClaimEventEmailService {
     customer: string;
     assigneeName: string;
     claimFileId: string;
+    insuranceCompanyName?: string | null;
+    fileSubject?: string | null;
+    insuredName?: string | null;
+    city?: string | null;
+    district?: string | null;
+    address?: string | null;
+    notificationAt?: Date | string | null;
+    expertOfficeShortName?: string | null;
+    assignedByJobTitle?: string | null;
   }) {
+    const actionUrl = buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId));
     await this.email.sendIfPreferred(
       params.recipientUserId,
       'claimAssignment',
       params.recipientEmail,
-      `Hasar Dosyası Atandı: ${params.fileNo}`,
-      {
-        title: 'Dosya Ataması',
-        badgeLabel: 'Yeni Atama',
-        preheader: `${params.fileNo} numaralı dosya size atandı.`,
-        greeting: params.assigneeName ? `Sayın ${params.assigneeName},` : undefined,
-        bodyNote: 'Size atanan dosyayı inceleyebilir, süreci panel üzerinden takip edebilirsiniz.',
-        summaryTitle: 'Dosya Özeti',
-        rows: [
-          { label: 'Dosya No', value: params.fileNo },
-          { label: 'Müşteri', value: params.customer },
-          { label: 'Atanan Personel', value: params.assigneeName },
-        ],
-        nextStepText: 'Dosyayı açarak güncel durumu, belgeleri ve operasyon notlarını kontrol edin.',
-        actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
-        actionLabel: 'Dosyayı Görüntüle',
-      },
+      yeniIhbarSubject(params.expertOfficeShortName),
+      buildInboxIhbarEmailTemplate({
+        fileType: 'hasar',
+        fileNo: params.fileNo,
+        notificationAt: params.notificationAt,
+        customerLongName: params.customer,
+        insuranceCompanyName: params.insuranceCompanyName,
+        fileSubject: params.fileSubject,
+        insuredName: params.insuredName,
+        city: params.city,
+        district: params.district,
+        address: params.address,
+        actionUrl,
+        portalUrl: this.appUrl,
+        assignedByJobTitle: params.assignedByJobTitle,
+      }),
     );
   }
 

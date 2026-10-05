@@ -1,11 +1,11 @@
 ---
-description: Canlı web v646 / backend v646
+description: Canlı web v647 / backend v647
 alwaysApply: true
 ---
 
-# Canlı (04.10.2026)
+# Canlı (05.10.2026)
 
-Canlı: web **v646** · backend **v646**. Geri alma: web **v645** / backend **v645**.
+Canlı: web **v647** · backend **v647**. Geri alma: web **v646** / backend **v646**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v647 (full):** Hasar dosya sorumlusu atama maili Yeni İhbar kabuğunda durur. Başlıkta atayan kişinin Kullanıcılar’daki Görevi: **Operasyon Direktörü Tarafından Atanmıştır**. Sistem Yöneticisi yazılmaz. Görev boşsa parantez yoktur. Kapanış bütçesi alınmadı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v646 / backend v646.
 
 **v646 (full):** Yönetim Paneli ve Hızlı İşlem **Yeni Dosya**. Hasar Dosya Sorumlusu ofis atama listesidir. Eksper ihbarında Sigorta Şirketi Ayarlardaki listedir. Acil seçici aynı genişliktedir. Tespitçi Tüm Türkiye kaydında her dosyada durur. Alan açıklaması i harfine tıklanınca okunur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v645 / backend v645.
 
@@ -169,4 +171,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 **Hasar kapanış bütçesi ve dosya hakediş kalemleri:** Lokal taslak. Dosya kapanışında bütçe, Meridyen operasyon gideri ve tedarikçi hakediş listesi henüz canlıda yok.
 
-Canlı web **v646** · backend **v646**.
+Canlı web **v647** · backend **v647**.

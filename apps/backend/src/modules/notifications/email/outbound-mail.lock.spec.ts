@@ -126,6 +126,14 @@ describe('operasyon giden mail LOCK', () => {
     assert.match(emergency, /applyInboundAssistanceDecision/);
   });
 
+  it('dosya sorumlusu atama yazısı yönetici cümlesidir', () => {
+    const claims = readFileSync(join(here, '../../claim-files/claim-files.service.ts'), 'utf8');
+    assert.match(claims, /notifyHasarOfficeOwnerAssigned/);
+    const assigned = readFileSync(join(here, 'claim-event-email.service.ts'), 'utf8');
+    assert.match(assigned, /buildInboxIhbarEmailTemplate/);
+    assert.match(assigned, /assignedByJobTitle: params\.assignedByJobTitle/);
+  });
+
   it('dış onayda rapor durumu mail gittikten sonra yazılır', () => {
     const src = readFileSync(
       join(here, '../../external-approvals/external-approvals.service.ts'),

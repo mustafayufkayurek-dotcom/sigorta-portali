@@ -265,6 +265,60 @@ export class ClaimFilesService {
     return created.id;
   }
 
+  private async notifyHasarOfficeOwnerAssigned(params: {
+    actorId?: string | null;
+    previousOfficeUserId?: string | null;
+    officeUser?: {
+      id: string;
+      email?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+    } | null;
+    fileNo: string;
+    customerName: string;
+    claimFileId: string;
+    insuranceCompanyName?: string | null;
+    fileSubject?: string | null;
+    insuredName?: string | null;
+    city?: string | null;
+    district?: string | null;
+    address?: string | null;
+    notificationAt?: Date | string | null;
+    expertOfficeShortName?: string | null;
+  }) {
+    if (!this.claimEventEmail) return;
+    const u = params.officeUser;
+    if (!u?.id || !u.email) return;
+    if (params.previousOfficeUserId && params.previousOfficeUserId === u.id) return;
+    if (params.actorId && params.actorId === u.id) return;
+    const name = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
+    let assignedByJobTitle: string | null = null;
+    if (params.actorId) {
+      const actor = await this.prisma.user.findUnique({
+        where: { id: params.actorId },
+        select: { jobTitle: true },
+      });
+      assignedByJobTitle = actor?.jobTitle ?? null;
+    }
+    void this.claimEventEmail.onClaimAssigned({
+      recipientEmail: u.email,
+      recipientUserId: u.id,
+      fileNo: params.fileNo,
+      customer: params.customerName,
+      assigneeName: name,
+      claimFileId: params.claimFileId,
+      insuranceCompanyName: params.insuranceCompanyName,
+      fileSubject: params.fileSubject,
+      insuredName: params.insuredName,
+      city: params.city,
+      district: params.district,
+      address: params.address,
+      notificationAt: params.notificationAt,
+      expertOfficeShortName: params.expertOfficeShortName,
+      assignedByJobTitle,
+    });
+  }
+
   private async fallbackHasarOfficeUserId(): Promise<string | null> {
     const user = await this.prisma.user.findFirst({
       where: {
@@ -1793,14 +1847,11 @@ export class ClaimFilesService {
         });
       }
 
-      // Email: Yeni dosya oluşturma bildirimi (gelen kutu kendi kartını gönderir)
+      // Email: Gelen kutu kendi kartını gönderir. Dosya sorumlusuna atama yazısı gider.
       if (this.claimEventEmail && sourceChannel !== 'email_inbox') {
         const recipients: Array<{ id: string; email: string }> = [];
         if (created.assignedFieldUser && (created.assignedFieldUser as any).email) {
           recipients.push({ id: created.assignedFieldUserId!, email: (created.assignedFieldUser as any).email });
-        }
-        if (created.assignedOfficeUser && (created.assignedOfficeUser as any).email) {
-          recipients.push({ id: created.assignedOfficeUserId!, email: (created.assignedOfficeUser as any).email });
         }
         const customerLongName = (
           (created.customer as any)?.companyName
@@ -1828,6 +1879,26 @@ export class ClaimFilesService {
             expertOfficeShortName,
           });
         }
+        this.notifyHasarOfficeOwnerAssigned({
+          actorId: String(requestingUser?.id ?? requestingUser?.userId ?? '').trim() || null,
+          officeUser: created.assignedOfficeUser as {
+            id: string;
+            email?: string | null;
+            firstName?: string | null;
+            lastName?: string | null;
+          } | null,
+          fileNo: created.fileNo,
+          customerName: customerLongName || customerName,
+          claimFileId: created.id,
+          insuranceCompanyName: created.insuranceCompany?.name ?? null,
+          fileSubject: (created as any).claimSubject?.name || created.lossType,
+          insuredName: created.insuredName,
+          city: (created as any)?.propertyAddress?.city ?? null,
+          district: (created as any)?.propertyAddress?.district ?? null,
+          address: (created as any)?.propertyAddress?.addressLine ?? null,
+          notificationAt: created.notificationDate || created.createdAt,
+          expertOfficeShortName,
+        });
       }
 
       this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
@@ -1967,7 +2038,6 @@ export class ClaimFilesService {
       rest.preApprovalWorkJson = JSON.stringify(rest.preApprovalJobs);
       delete rest.preApprovalJobs;
     }
-
     if (typeof rest.lossType === 'string') {
       rest.lossType = sanitizeInboundLossType(rest.lossType.trim());
       if (!rest.departmentFileSubjectId && rest.lossType !== 'Belirtilmemiş') {
@@ -2082,6 +2152,7 @@ export class ClaimFilesService {
     delete rest.departmentFileSubject;
     delete rest.currentStatus;
 
+    const previousOfficeUserId = existingAny.assignedOfficeUserId ?? null;
     const updated = await this.prisma.claimFile.update({
       where: { id },
       data: rest,
@@ -2095,6 +2166,18 @@ export class ClaimFilesService {
       },
     });
     this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
+    const customerName =
+      (updated as any).customer?.fullName
+      ?? (updated as any).customer?.companyName
+      ?? 'Bilinmiyor';
+    this.notifyHasarOfficeOwnerAssigned({
+      actorId: requestingUser?.id ?? null,
+      previousOfficeUserId,
+      officeUser: (updated as any).assignedOfficeUser,
+      fileNo: (updated as any).fileNo,
+      customerName,
+      claimFileId: id,
+    });
     return updated;
   }
 
@@ -2127,7 +2210,13 @@ export class ClaimFilesService {
         updateData.inspectorAssignedAt = null;
       }
     }
-    if (dto.assignedOfficeUserId !== undefined) updateData.assignedOfficeUserId = dto.assignedOfficeUserId;
+    if (dto.assignedOfficeUserId !== undefined) {
+      updateData.assignedOfficeUserId = dto.assignedOfficeUserId;
+      if (dto.assignedOfficeUserId) {
+        updateData.currentResponsibleRole = 'operasyon_sorumlusu';
+        updateData.currentResponsibleUserId = dto.assignedOfficeUserId;
+      }
+    }
     if (dto.assignedAdjusterId !== undefined) updateData.assignedAdjusterId = dto.assignedAdjusterId;
     if (dto.assignedBranchId !== undefined) updateData.assignedBranchId = dto.assignedBranchId;
 
@@ -2197,12 +2286,12 @@ export class ClaimFilesService {
         'Bilinmiyor';
 
       const newAssignees: Array<{ id: string; email: string; name: string }> = [];
-      if (dto.assignedFieldUserId && updated.assignedFieldUser) {
+      if (
+        dto.assignedFieldUserId
+        && updated.assignedFieldUser
+        && dto.assignedFieldUserId !== (claimFile as any).assignedFieldUserId
+      ) {
         const u = updated.assignedFieldUser as any;
-        if (u.email) newAssignees.push({ id: u.id, email: u.email, name: `${u.firstName} ${u.lastName}` });
-      }
-      if (dto.assignedOfficeUserId && updated.assignedOfficeUser) {
-        const u = updated.assignedOfficeUser as any;
         if (u.email) newAssignees.push({ id: u.id, email: u.email, name: `${u.firstName} ${u.lastName}` });
       }
 
@@ -2216,6 +2305,20 @@ export class ClaimFilesService {
           claimFileId: id,
         });
       }
+
+      this.notifyHasarOfficeOwnerAssigned({
+        actorId: requestingUser?.id ?? null,
+        previousOfficeUserId: (claimFile as any).assignedOfficeUserId ?? null,
+        officeUser: updated.assignedOfficeUser as {
+          id: string;
+          email?: string | null;
+          firstName?: string | null;
+          lastName?: string | null;
+        } | null,
+        fileNo: (claimFile as any).fileNo,
+        customerName,
+        claimFileId: id,
+      });
     }
 
     // SMS: Sigortalıya atama bildirim SMS'i gönder

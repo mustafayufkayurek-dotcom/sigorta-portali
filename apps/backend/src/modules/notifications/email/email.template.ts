@@ -24,6 +24,8 @@ export interface NotificationEmailTemplateData extends EmailTemplateData {
   kickerLabel?: string;
   /** Lacivert bantta başlığın altı — müşteri uzun ünvanı. */
   bannerLead?: string;
+  /** Başlığın yanında parantez notu */
+  titleSuffix?: string;
 }
 
 function escapeHtml(text: string): string {
@@ -395,6 +397,9 @@ export function buildNotificationEmailHtml(data: NotificationEmailTemplateData):
   const summaryTitle = escapeHtml(data.summaryTitle ?? 'Özet');
   const actionLabel = escapeHtml(data.actionLabel ?? 'Dosyayı Görüntüle');
   const title = escapeHtml(data.title);
+  const titleSuffixHtml = data.titleSuffix?.trim()
+    ? ` <span style="font-size:15px;font-weight:700;color:rgba(255,255,255,.92);">(${escapeHtml(data.titleSuffix.trim())})</span>`
+    : '';
   const preheader = data.preheader ? escapeHtml(data.preheader) : '';
   const badgeLabel = data.badgeLabel ? escapeHtml(data.badgeLabel) : '';
   const greeting = data.greeting ? escapeHtml(data.greeting) : '';
@@ -502,7 +507,7 @@ export function buildNotificationEmailHtml(data: NotificationEmailTemplateData):
         <tr>
           <td style="padding:22px 24px 20px;background:linear-gradient(135deg,#0b2847 0%,#123A63 55%,#1E5AA8 100%);">
             ${badgeHtml}
-            <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;font-weight:800;color:#ffffff;">${title}</h1>
+            <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;font-weight:800;color:#ffffff;">${title}${titleSuffixHtml}</h1>
             ${
               bannerLead
                 ? `<p style="margin:0;font-size:15px;line-height:1.5;font-weight:700;color:rgba(255,255,255,.94);">${bannerLead}</p>`
