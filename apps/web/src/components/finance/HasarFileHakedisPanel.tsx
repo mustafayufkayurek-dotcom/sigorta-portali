@@ -124,14 +124,10 @@ function paymentDokumLayoutStyle(tableColumns: ReturnType<typeof usePanelTableCo
 type Composer = 'none' | 'avans' | 'hakedis';
 type SozlesmeCevap = 'var' | 'yok' | null;
 
-async function openDosyaSozlesmePdf(id: string) {
-  const res = await axios.get(`${API}/vendor-contracts/${id}/pdf`, {
-    headers: authHeader(),
-    responseType: 'blob',
-  });
-  const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+async function openDosyaSozlesmePdf(blob: Blob) {
+  const failure = await readPdfPreviewFailure(blob, blob.type || '');
   if (failure) throw new Error(failure);
-  const opened = await presentPdfPreview(res.data as Blob, 'Sözleşme');
+  const opened = await presentPdfPreview(blob, 'Sözleşme');
   if (!opened) throw new Error('PDF önizleme açılamadı.');
 }
 
