@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-10-03",
-  "label": "v645-hasar-sigorta-katalog",
-  "description": "Full v645: Ayarlara eklenen sigorta şirketi Hasar dosya sorumlusunun listesinde durur. Geri alma web v644 / backend v644.",
+  "updatedAt": "2026-10-06",
+  "label": "v648-kapanis-tespit",
+  "description": "Full v648: kapanış bütçesi, görev sütunu, ön onay formu, sigorta ekleme, tespit çoklu fotoğraf, Tespiti Sonlandır fotoğraf ve not zorunlu. Geri alma web v647 / backend v647.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v645-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v645-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v648-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v648-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v644-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v644-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v647-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v647-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

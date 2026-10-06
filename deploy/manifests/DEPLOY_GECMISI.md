@@ -2,24 +2,36 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 3 Ekim 2026
+**Son güncelleme:** 6 Ekim 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (3 Ekim 2026 — web v645 / backend v645)
+## Canlı durum (6 Ekim 2026 — web v648 / backend v648)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v645-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v645-amd64` | canlı |
-| **Rollback** | Web **v644** / Backend **v644** | manifest `rollbackImages` |
-| **Etiket** | `v645-hasar-sigorta-katalog` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v648-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v648-amd64` | canlı |
+| **Rollback** | Web **v647** / Backend **v647** | manifest `rollbackImages` |
+| **Etiket** | `v648-kapanis-tespit` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v648 — Full (6 Ekim 2026) — Kapanış, görev, ön onay, tespit
+
+- Hasar kapanışında bütçe, Meridyen operasyon gideri ve tedarikçi hakediş listesi
+- Kullanıcılar’da Görev boşsa **—**; yazılmış görev durur
+- Ön Onaylı İşler Muvafakat Formu iki satır; seçilen işler numaralı; onay izi Onayla sonrası
+- Sigorta ve asistans eklerken vergi no, e-posta, telefon, adres, şehir sorulmaz
+- Tespitçi galeriden çerçeve ve yön tuşuyla birden fazla fotoğraf seçer
+- Tespiti Sonlandır fotoğraf ve notun altındadır; ikisi yazılmadan açılmaz
+- Mali mesuliyet alanı çizilmediği için alınmadı
+- Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Geri alma web **v647** / backend **v647**
 
 ### v645 — Full (3 Ekim 2026) — Hasar sigorta şirketi listesi
 
