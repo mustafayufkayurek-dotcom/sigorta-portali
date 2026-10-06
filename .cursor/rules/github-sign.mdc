@@ -1,0 +1,28 @@
+---
+description: GitHub Sign — gönderim girişle; şifre/token sohbette yok
+alwaysApply: true
+---
+
+# GitHub Sign
+
+**Kaynak (Mustafa · 06.10.2026):** Canlı v649 kaydı yerelde duruyordu. GitHub’a gönderilmedi. Giriş bu makinede yoktu.
+
+**Temel cümle:** GitHub’a gitti sayılmaz. Önce tarayıcıda **github.com/login/device** onaylanır. Şifre ve anahtar sohbete yazılmaz.
+
+## Zorunlu
+
+1. `git push` HTTPS `Device not configured` veya SSH `Permission denied (publickey)` → giriş yok. Gitti deme.
+2. Komut paleti (Cmd + Shift + P) bu makinede işe yaramaz. Yol: tarayıcıda **https://github.com/login/device** → sohbetteki kodu yaz → Continue → Authorize.
+3. Bitince o «oldu» der. Yeniden `git push origin`.
+4. `origin.cursor.com` GitHub değildir. Bu depo `github.com/mustafayufkayurek-dotcom/sigorta-portali`.
+5. `git config` değiştirilmez. Token, şifre, anahtar sohbete istenmez.
+
+## Yasak
+
+- Giriş yokken «GitHub’a gitti»
+- Token/şifre yapıştırın demek
+- Cursor Cloud Agent GitHub uygulamasını git push sanmak
+
+## Durdurma
+
+Push yine kullanıcı adı sorarsa → dur, cihaz onayını bir kez daha aç. Yerel commit durur.
