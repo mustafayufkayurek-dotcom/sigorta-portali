@@ -22,6 +22,7 @@ import { cycleClientSort, sortRowsByClientSort, type ClientSortState } from '@/u
 import { useToast } from '@/contexts/ToastContext';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { API, authHeader } from '@/utils/api';
+import { presentPdfPreview, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
 import {
   claimManualDocumentLabel,
   getFileDocuments,
@@ -122,6 +123,17 @@ function paymentDokumLayoutStyle(tableColumns: ReturnType<typeof usePanelTableCo
 }
 type Composer = 'none' | 'avans' | 'hakedis';
 type SozlesmeCevap = 'var' | 'yok' | null;
+
+async function openDosyaSozlesmePdf(id: string) {
+  const res = await axios.get(`${API}/vendor-contracts/${id}/pdf`, {
+    headers: authHeader(),
+    responseType: 'blob',
+  });
+  const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+  if (failure) throw new Error(failure);
+  const opened = await presentPdfPreview(res.data as Blob, 'Sözleşme');
+  if (!opened) throw new Error('PDF önizleme açılamadı.');
+}
 
 const DIJITAL_ONAY_DURUM: Record<string, string> = {
   draft: 'Taslak',
@@ -1314,6 +1326,7 @@ export function HasarFileHakedisPanel({
   const dijitalOnayMuaf = isHasarDigitalApprovalRelaxed(insuredName);
   const soruMuaf = dijitalOnayMuaf;
   void sozlesmeMuaf;
+  void openDosyaSozlesmePdf;
   const sozlesmeHazir = soruMuaf
     ? true
     : sozlesmeCevap === 'var'
