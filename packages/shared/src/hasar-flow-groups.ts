@@ -67,7 +67,10 @@ export function canCreateHasarInvoiceRequest(input: {
 export function canOfferHasarSalesInvoiceRequest(input: {
   reportApproved: boolean;
   totalAmount: number;
+  remainingRepairDropped?: boolean;
+  hasBillable?: boolean | null;
 }): boolean {
+  if (input.remainingRepairDropped && input.hasBillable === true) return true;
   return Boolean(input.reportApproved) && Number(input.totalAmount) > 0;
 }
 

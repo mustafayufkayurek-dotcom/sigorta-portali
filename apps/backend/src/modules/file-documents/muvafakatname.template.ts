@@ -13,6 +13,9 @@ export const MUVAFAKATNAME_TEMPLATE = `<!DOCTYPE html>
     .doc-header-meta { text-align: right; font-size: 10px; color: #64748b; line-height: 1.5; }
     .doc-header-meta strong { display: block; font-size: 12px; color: #1a4080; margin-bottom: 2px; }
     h1 { text-align: center; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; margin: 0 0 18px; color: #1a4080; }
+    h1.doc-title { display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.25; }
+    .title-line { display: block; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+    .title-line-under { text-decoration: underline; text-underline-offset: 3px; }
     .meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin-bottom: 14px; font-size: 11px; }
     .field { border-bottom: 1px solid #374151; padding-bottom: 2px; min-height: 18px; }
     .field-label { color: #4b5563; font-size: 10px; margin-bottom: 2px; }
@@ -31,6 +34,12 @@ export const MUVAFAKATNAME_TEMPLATE = `<!DOCTYPE html>
     .sig-line { border-top: 1px solid #9ca3af; margin-top: 48px; padding-top: 4px; font-size: 10px; color: #6b7280; }
     .amount-box { margin: 14px 0; font-size: 11px; }
     .contact { margin-top: 16px; font-size: 10px; color: #374151; line-height: 1.6; }
+    .job-list { list-style: none; margin: 0; padding: 0; }
+    .job-list li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #e2e8f0; font-size: 12px; font-weight: 600; color: #111827; }
+    .job-list li:first-child { border-top: 0; padding-top: 2px; }
+    .job-no { flex: 0 0 22px; height: 22px; border-radius: 999px; background: #e8eef8; color: #1a4080; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+    .on-is-card { margin: 4px 0 8px; border: 1px solid #dbe3ef; border-radius: 8px; background: #f8fafc; padding: 12px 14px 10px; }
+    .on-is-note { margin: 8px 0 0; font-size: 10.5px; color: #475569; }
     .footnote { margin-top: 14px; font-size: 10px; font-weight: 600; text-align: center; color: #475569; }
     .footer { margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 9px; color: #94a3b8; text-align: center; }
   </style>
@@ -47,7 +56,7 @@ export const MUVAFAKATNAME_TEMPLATE = `<!DOCTYPE html>
     </div>
   </div>
 
-  <h1>Mutabakat / Muvafakat Onay Formu</h1>
+  <h1 class="doc-title">{{belge_baslik}}</h1>
 
   <div class="meta-row">
     <div>
@@ -84,6 +93,8 @@ export const MUVAFAKATNAME_TEMPLATE = `<!DOCTYPE html>
       <div class="party-row"><span class="field-label">Adres</span><div class="field field-value">{{magdur_adres}}</div></div>
     </div>
   </div>
+
+  {{on_is_bolumu}}
 
   <div class="legal-title">İbraname ve Onarım Tutanağı</div>
   <div class="legal">

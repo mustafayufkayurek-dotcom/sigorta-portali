@@ -12,6 +12,8 @@ import {
   parseClaimServiceKind,
   parseHasPreApprovalWork,
   parsePreApprovalJobs,
+  parseHasarKapanisButce,
+  EMPTY_HASAR_KAPANIS_BUTCE,
   pickHasarCancelHistory,
   plannerStepHiddenForServiceKind,
 } from '@sigorta/shared';
@@ -178,6 +180,14 @@ export type PlannerClaimSnapshot = {
   siteContactPhone: string;
   hasPreApprovalWork: boolean | null;
   preApprovalJobs: Array<{ id: string; name: string }>;
+  kapanisButce: {
+    remainingRepairDropped: boolean;
+    hasBillable: boolean | null;
+    customerAgreed: boolean;
+    infoWhatsappAt: string | null;
+    closeBudgetStartedAt: string | null;
+  };
+  hasInvoiceRequest: boolean;
 };
 
 function fmtDateTime(iso: string | null | undefined): { date: string; time: string; at: string } {
@@ -268,6 +278,8 @@ export function previewSnapshot(): PlannerClaimSnapshot {
     siteContactPhone: '',
     hasPreApprovalWork: false,
     preApprovalJobs: [],
+    kapanisButce: { ...EMPTY_HASAR_KAPANIS_BUTCE },
+    hasInvoiceRequest: false,
   };
 }
 
@@ -393,6 +405,8 @@ type ClaimFileLite = {
   siteContactPhone?: string | null;
   hasPreApprovalWork?: boolean | null;
   preApprovalWorkJson?: string | null;
+  kapanisButceJson?: string | null;
+  invoiceRequests?: Array<{ id?: string; status?: string | null }> | null;
   currentStatus?: { code?: string | null; isClosedState?: boolean | null } | null;
   statusHistory?: Array<{
     changedAt?: string | Date | null;
@@ -433,12 +447,17 @@ export function mapLiveSnapshot(
   const hasWhatsapp = hasWhatsappSent(activity);
   const hasPreApprovalWork = parseHasPreApprovalWork(claimFile?.hasPreApprovalWork);
   const preApprovalJobs = parsePreApprovalJobs(claimFile?.preApprovalWorkJson);
+  const kapanisButce = parseHasarKapanisButce(claimFile?.kapanisButceJson);
+  const hasInvoiceRequest = (claimFile?.invoiceRequests ?? []).some((row) =>
+    ['pending', 'approved', 'invoiced'].includes(String(row.status ?? '').toLowerCase()),
+  );
   const hasDigitalApproval = isDigitalApprovalBundleReady({
     hasPre: hasPreApprovalWork,
     jobs: preApprovalJobs,
     generalApproved: Boolean(flags.muvafakatApproved),
     preApproved: Boolean(flags.preMuvafakatApproved),
     insuredName: claimFile?.insuredName ?? op.claim.insuredName,
+    remainingRepairDropped: kapanisButce.remainingRepairDropped,
   });
   const pipeline = reportPipelineFlags(
     claimFile?.latestRepairReport?.status,
@@ -452,6 +471,12 @@ export function mapLiveSnapshot(
   const closeMissing = hasarOfficeCloseMissing({
     statusCode,
     hasApprovedReport: pipeline.hasApproved,
+    remainingRepairDropped: kapanisButce.remainingRepairDropped,
+    hasBillable: kapanisButce.hasBillable,
+    customerAgreed: kapanisButce.customerAgreed,
+    infoWhatsappAt: kapanisButce.infoWhatsappAt,
+    closeBudgetStartedAt: kapanisButce.closeBudgetStartedAt,
+    hasInvoiceRequest,
   });
   const cancelRow = pickHasarCancelHistory(claimFile?.statusHistory ?? []);
   const cancelAt = fmtDateTime(cancelRow?.changedAt ? String(cancelRow.changedAt) : null);
@@ -471,9 +496,9 @@ export function mapLiveSnapshot(
     hasReport: pipeline.hasReport,
     hasSentForApproval: pipeline.hasSentForApproval,
     hasApproved: pipeline.hasApproved,
-    hasRepairWhatsapp: hasRepairWhatsappSent(activity),
-    hasMuvafakat: Boolean(flags.muvafakatApproved),
-    hasRepairComplete: Boolean(flags.repairCompleted),
+    hasRepairWhatsapp: kapanisButce.remainingRepairDropped || hasRepairWhatsappSent(activity),
+    hasMuvafakat: kapanisButce.remainingRepairDropped || Boolean(flags.muvafakatApproved),
+    hasRepairComplete: kapanisButce.remainingRepairDropped || Boolean(flags.repairCompleted),
     hasClosureSurvey: hasClosureSurveyWa(activity),
     hasDocsUpload,
     hasFileClosed: fileClosed || fileCancelled,
@@ -730,5 +755,7 @@ export function mapLiveSnapshot(
     siteContactPhone: String(claimFile?.siteContactPhone ?? '').trim(),
     hasPreApprovalWork,
     preApprovalJobs,
+    kapanisButce,
+    hasInvoiceRequest,
   };
 }

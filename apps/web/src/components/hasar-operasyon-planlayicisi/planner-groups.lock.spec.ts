@@ -29,7 +29,25 @@ describe('hasar planner groups lock', () => {
     const card = readFileSync(join(here, 'HasarSalesInvoiceRequestCard.tsx'), 'utf8');
     assert.match(stepsSrc, /ön onaylı iş var mı/);
     assert.match(stepsSrc, /PRE_APPROVAL_DIGITAL_KIND/);
-    assert.match(stepsSrc, /HasarSalesInvoiceRequestCard/);
+    assert.match(stepsSrc, /PlannerFileCostEntry/);
+    const digitalSlice = stepsSrc.slice(
+      stepsSrc.indexOf('function StepDigitalApproval'),
+      stepsSrc.indexOf('function StepReportWriting'),
+    );
+    const closeSlice = stepsSrc.slice(stepsSrc.indexOf('function StepFileClose'));
+    assert.doesNotMatch(digitalSlice, /PlannerFileCostEntry/);
+    assert.match(digitalSlice, /Dijital Onay Sözleşmeleri/);
+    assert.doesNotMatch(digitalSlice, /Tedarikçi Hakedişi/);
+    assert.match(closeSlice, /PlannerFileCostEntry/);
+    assert.match(closeSlice, /Dosya Kapanışı/);
+    assert.match(closeSlice, /Tedarikçi Hakedişi/);
+    assert.match(closeSlice, /Meridyen Operasyon Gideri/);
+    assert.match(closeSlice, /Kapanış Kararı/);
+    assert.match(closeSlice, /Fatura Edilecek İş/);
+    assert.match(closeSlice, /Hizmet İptali/);
+    assert.doesNotMatch(closeSlice, /title="Dosya kapanışı"/);
+    assert.doesNotMatch(closeSlice, /title="Hizmet iptal"/);
+    assert.doesNotMatch(closeSlice, /window\.location\.assign\(financeGider\)/);
     assert.match(stepsSrc, /PlannerVendorContractGuide/);
     assert.match(card, /Satış faturası talebi/);
     assert.match(card, /Finansa talep et/);
@@ -43,6 +61,9 @@ describe('hasar planner groups lock', () => {
     assert.match(panel, /onarima-cevir/);
     assert.match(panel, /border-2 border-orange-400/);
     assert.match(panel, /opacity-60/);
+    assert.match(panel, /relative z-\[2\]/);
+    assert.match(panel, /flex flex-col gap-2/);
+    assert.doesNotMatch(panel, /uppercase tracking-wide/);
     assert.doesNotMatch(panel, /xl:grid-cols-8/);
     assert.doesNotMatch(panel, /sm:grid-cols-4/);
     assert.doesNotMatch(panel, /İlerleme Özeti/);
@@ -61,12 +82,16 @@ describe('hasar planner groups lock', () => {
     assert.doesNotMatch(collect, /Dosya Seç Ve Yükle/);
     assert.match(stepsSrc, /function StepDocsUpload/);
     assert.match(stepsSrc, /function StepFileClose/);
+    assert.match(stepsSrc, /Kalan onarım yok/);
+    assert.match(stepsSrc, /CLOSE_BILLABLE_QUESTION/);
+    assert.match(stepsSrc, /grup=finans/);
+    assert.match(stepsSrc, /Onarıma dön/);
     assert.match(stepsSrc, /hasar-ofis-dosya-kapat-seridi/);
     assert.match(stepsSrc, /ClaimManualDocumentsPanel/);
     assert.match(stepsSrc, /onUploaded/);
     assert.match(stepsSrc, /refreshClaim/);
     const panel = readFileSync(join(here, 'OperasyonPlanlayiciPanel.tsx'), 'utf8');
-    assert.match(panel, /hasar-ofis-dosya-kapat/);
+    assert.match(panel, /hasar-kapanis-butce-ozet/);
     const ctx = readFileSync(join(here, 'planner-context.tsx'), 'utf8');
     assert.match(ctx, /office-close/);
     assert.match(ctx, /office-cancel/);

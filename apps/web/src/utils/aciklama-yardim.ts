@@ -5,4 +5,5 @@ export const ACIKLAMA_YARDIM = {
   gelir: 'Gelir Kaydını Açıklayınız.',
   masraf: 'Masraf Gerekçesini Açıklayınız.',
   sozlesmeYok: 'Sözleşme Yokluğunu Açıklayınız.',
+  dijitalOnayYok: 'Dijital Onay Yokluğunu Açıklayınız.',
 } as const;

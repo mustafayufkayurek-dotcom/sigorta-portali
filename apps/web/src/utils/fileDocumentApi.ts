@@ -31,6 +31,10 @@ export function listClaimInsuredDocumentTypes(): Promise<CatalogDocumentType[]> 
     );
 }
 
+export function isHasarDijitalOnayBelgesi(kind: string | null | undefined): boolean {
+  return kind === 'muvafakatname' || kind === 'muvafakatname_on_is';
+}
+
 export function claimManualDocumentLabel(doc: {
   documentKind?: string | null;
   documentTypeName?: string | null;

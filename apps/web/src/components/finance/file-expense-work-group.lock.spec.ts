@@ -28,6 +28,14 @@ describe('masraf iş grubu denetimi UI LOCK', () => {
     assert.match(filePanel, /allowExtraWorkPlan=\{true\}/);
     assert.match(filePanel, /hasar-masraf-butce-ek-seridi/);
     assert.match(filePanel, /FinansMetricGrid/);
+    assert.match(filePanel, /Meridyen Operasyon Gideri/);
+    assert.match(filePanel, /id="meridyen-operasyon-gideri"/);
+    const plannerCost = readFileSync(
+      join(root, 'apps/web/src/components/hasar-operasyon-planlayicisi/PlannerFileCostEntry.tsx'),
+      'utf8',
+    );
+    assert.match(plannerCost, /ClaimFileExpenseFormPanel/);
+    assert.match(plannerCost, /allowExtraWorkPlan=\{true\}/);
   });
 
   it('finans masraflar sayfası aynı iş grubu kırılımını kullanır', () => {

@@ -285,8 +285,7 @@ export function displayPersonDuty(
   user?: { jobTitle?: string | null; role?: { code?: string | null; name?: string | null } | null } | null,
 ): string {
   const written = String(user?.jobTitle ?? '').trim();
-  if (written) return written;
-  return displayUserRoleName(user?.role);
+  return written || '—';
 }
 
 /** Telefon kutusunun beklediği uluslararası yazım: +905321334144 */
@@ -361,7 +360,7 @@ export function officePersonToFormFields(person: {
     lastName: String(person.lastName ?? '').trim(),
     email: personMailboxFromList(String(person.archivedEmail ?? person.email ?? '')),
     phone: isCompleteOfficePersonPhone(phone) ? phone : '',
-    jobTitle: jobTitle || displayPersonDuty(person),
+    jobTitle,
   };
 }
 

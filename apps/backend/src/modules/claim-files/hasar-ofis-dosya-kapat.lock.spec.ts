@@ -26,6 +26,8 @@ describe('hasar ofis dosya kapat LOCK', () => {
     assert.match(fn, /code: 'closed'/);
     assert.match(fn, /this\.changeStatus/);
     assert.match(fn, /assertOfficeCloseReady/);
+    assert.match(fn, /kapanisButceJson/);
+    assert.match(fn, /remainingRepairDropped/);
   });
 
   it('office-cancel açıklama ister; saha Forbidden', () => {

@@ -7,7 +7,7 @@ import {
   normalizeRequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
 import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
-import { generalMailboxesFromContactInfos } from '@sigorta/shared';
+import { generalMailboxesFromContactInfos, isAcilInspectionPhotoNotes } from '@sigorta/shared';
 import {
   departmentCodeForNewClaim,
   filterStaffByFileArea,
@@ -76,6 +76,7 @@ import {
   isCollectionPartyChangeBlocked,
   hasarOfficeCloseMissing,
   hasarCancelReasonOk,
+  parseHasarKapanisButce,
   type OperationPreset,
   type VerbalManualDecision,
 } from '@sigorta/shared';
@@ -2038,6 +2039,14 @@ export class ClaimFilesService {
       rest.preApprovalWorkJson = JSON.stringify(rest.preApprovalJobs);
       delete rest.preApprovalJobs;
     }
+    if (typeof rest.kapanisButceJson === 'string') {
+      rest.kapanisButceJson = rest.kapanisButceJson.trim() || null;
+    }
+    if (rest.kapanisButce && typeof rest.kapanisButce === 'object') {
+      rest.kapanisButceJson = JSON.stringify(parseHasarKapanisButce(rest.kapanisButce));
+      delete rest.kapanisButce;
+    }
+
     if (typeof rest.lossType === 'string') {
       rest.lossType = sanitizeInboundLossType(rest.lossType.trim());
       if (!rest.departmentFileSubjectId && rest.lossType !== 'Belirtilmemiş') {
@@ -2573,19 +2582,36 @@ export class ClaimFilesService {
   }
 
   private async assertOfficeCloseReady(claimFileId: string) {
-    const [file, report] = await Promise.all([
+    const [file, report, invoice] = await Promise.all([
       this.prisma.claimFile.findUnique({
         where: { id: claimFileId },
-        select: { currentStatus: { select: { code: true } } },
+        select: {
+          currentStatus: { select: { code: true } },
+          kapanisButceJson: true,
+        },
       }),
       this.prisma.repairReport.findFirst({
         where: { claimFileId, status: { in: [...APPROVED_REPAIR_REPORT_STATUSES] } },
         select: { id: true },
       }),
+      this.prisma.invoiceRequest.findFirst({
+        where: {
+          claimFileId,
+          status: { in: ['pending', 'approved', 'invoiced'] },
+        },
+        select: { id: true },
+      }),
     ]);
+    const kapanis = parseHasarKapanisButce(file?.kapanisButceJson);
     const missing = hasarOfficeCloseMissing({
       statusCode: file?.currentStatus?.code,
       hasApprovedReport: Boolean(report),
+      remainingRepairDropped: kapanis.remainingRepairDropped,
+      hasBillable: kapanis.hasBillable,
+      customerAgreed: kapanis.customerAgreed,
+      infoWhatsappAt: kapanis.infoWhatsappAt,
+      closeBudgetStartedAt: kapanis.closeBudgetStartedAt,
+      hasInvoiceRequest: Boolean(invoice),
     });
     if (missing.length) {
       throw new BadRequestException(
@@ -3822,6 +3848,7 @@ export class ClaimFilesService {
   async addInspectionNote(fileId: string, body: { note: string; estimatedCost?: number }, actor: any) {
     const file = await this.prisma.claimFile.findUnique({ where: { id: fileId } });
     if (!file) throw new NotFoundException('Dosya bulunamadı.');
+    await this.assertFieldInspectionReady(fileId);
 
     const note = await this.prisma.note.create({
       data: {
@@ -3856,6 +3883,33 @@ export class ClaimFilesService {
     });
 
     return note;
+  }
+
+  /** Fotoğraf ve saha notu yoksa tespit bitmez. Sonlandırma notu bu kontrolden sonra yazılır. */
+  private async assertFieldInspectionReady(fileId: string) {
+    const [docs, fieldNote] = await Promise.all([
+      this.prisma.entityDocument.findMany({
+        where: { entityType: 'claim_file', entityId: fileId },
+        select: { mimeType: true, notes: true, fileName: true },
+      }),
+      this.prisma.note.findMany({
+        where: {
+          claimFileId: fileId,
+          noteType: { in: ['field', 'field_correction'] },
+        },
+        select: { content: true },
+      }),
+    ]);
+    const hasPhoto = docs.some((doc) => {
+      const mime = doc.mimeType || '';
+      const looksImage =
+        mime.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(doc.fileName || '');
+      return looksImage && isAcilInspectionPhotoNotes(doc.notes);
+    });
+    const hasNote = fieldNote.some((note) => Boolean(note.content?.trim()));
+    if (!hasPhoto || !hasNote) {
+      throw new BadRequestException('Tespit fotoğrafı ve tespit notu zorunludur.');
+    }
   }
 
   /**

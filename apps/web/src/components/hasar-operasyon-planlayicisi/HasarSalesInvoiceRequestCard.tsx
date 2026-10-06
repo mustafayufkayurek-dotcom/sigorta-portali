@@ -30,7 +30,7 @@ function partyDisplayName(party: CollectionParty, insuredName: string, insurerNa
   return name && name !== '—' ? name : 'Şirket adı dosyada yok';
 }
 
-export function HasarSalesInvoiceRequestCard() {
+export function HasarSalesInvoiceRequestCard({ closeBillable = false }: { closeBillable?: boolean }) {
   const { claim, mode, canEdit, refreshClaim, setClaim } = usePlanner();
   const { showToast } = useToast();
   const approved = claim.stepStatuses.approved === 'done';
@@ -38,6 +38,8 @@ export function HasarSalesInvoiceRequestCard() {
   const showBox = canOfferHasarSalesInvoiceRequest({
     reportApproved: approved,
     totalAmount: amount,
+    remainingRepairDropped: closeBillable && claim.kapanisButce.remainingRepairDropped,
+    hasBillable: closeBillable ? claim.kapanisButce.hasBillable : undefined,
   });
 
   const [party, setParty] = useState<CollectionParty>(
@@ -99,7 +101,10 @@ export function HasarSalesInvoiceRequestCard() {
           ? partyDisplayName(COLLECTION_PARTY.insured, claim.insuredName, claim.insurer)
           : partyDisplayName(COLLECTION_PARTY.insuranceCompany, claim.insuredName, claim.insurer),
         totalAmount: amount,
-        workItemsSummary: [{ description: 'Onaylı rapor satış tutarı', amount }],
+        workItemsSummary: [{
+          description: closeBillable ? 'Kapanış bütçesi satış tutarı' : 'Onaylı rapor satış tutarı',
+          amount,
+        }],
         notes: insured
           ? `Fatura kime: Sigortalı — ${partyDisplayName(COLLECTION_PARTY.insured, claim.insuredName, claim.insurer)}`
           : `Fatura kime: Sigorta Şirketi — ${partyDisplayName(COLLECTION_PARTY.insuranceCompany, claim.insuredName, claim.insurer)}`,
@@ -180,10 +185,26 @@ export function HasarSalesInvoiceRequestCard() {
               );
             })}
           </div>
-          <p className="text-[11px] text-slate-500">Tutar: {claim.report.total} · onaylı rapordan</p>
+          <p className="text-[11px] text-slate-500">
+            Tutar: {claim.report.total}
+            {closeBillable ? ' · kapanış bütçesi / rapor' : ' · onaylı rapordan'}
+          </p>
+          {closeBillable && amount <= 0 ? (
+            <p className="text-[11px] text-amber-800">
+              Önce Gelir & Tahsilat’ta tutarı yazın.{' '}
+              {claim.claimId ? (
+                <a
+                  href={`/panel/hasar-dosyalari/${claim.claimId}?grup=finans&alt=gelir-tahsilat`}
+                  className="font-semibold underline"
+                >
+                  Gelir & Tahsilat
+                </a>
+              ) : null}
+            </p>
+          ) : null}
           <button
             type="button"
-            disabled={!canEdit || saving || checking || mode === 'preview'}
+            disabled={!canEdit || saving || checking || mode === 'preview' || amount <= 0}
             data-testid="hasar-finansa-talep-et"
             onClick={() => void submit()}
             className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"

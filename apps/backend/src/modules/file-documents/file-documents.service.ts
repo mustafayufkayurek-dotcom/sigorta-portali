@@ -14,7 +14,7 @@ import {
 import { buildAppPath } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
-import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isHasarVendorContractWaived, ACIL_ADRES_HIZMET_TALEP_KIND, ACIL_SERVIS_ONAY_KIND, isAcilDigitalFormKind, resolveAcilInsuredName, buildDijitalOnayWhatsAppMessage, dijitalOnayWhatsAppKind, evaluatePublicApprovalToken, publicApprovalTokenErrorMessage, PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE } from '@sigorta/shared';
+import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isHasarVendorContractWaived, ACIL_ADRES_HIZMET_TALEP_KIND, ACIL_SERVIS_ONAY_KIND, isAcilDigitalFormKind, resolveAcilInsuredName, buildDijitalOnayWhatsAppMessage, dijitalOnayWhatsAppKind, evaluatePublicApprovalToken, publicApprovalTokenErrorMessage, PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE, parsePreApprovalJobs, preApprovalApprovalLines, PRE_APPROVAL_DIGITAL_KIND } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -62,8 +62,12 @@ export class FileDocumentsService {
     private readonly storage: StorageService,
   ) {}
 
-  private renderTemplate(template: string, placeholders: Record<string, string>): string {
-    const safe = escHtmlRecord(placeholders);
+  private renderTemplate(
+    template: string,
+    placeholders: Record<string, string>,
+    rawHtmlKeys?: ReadonlySet<string>,
+  ): string {
+    const safe = escHtmlRecord(placeholders, rawHtmlKeys);
     let rendered = template;
     for (const [key, value] of Object.entries(safe)) {
       rendered = rendered.replaceAll(key, value);
@@ -274,6 +278,112 @@ export class FileDocumentsService {
     return { ...doc, renderedContent: rendered };
   }
 
+  private preApprovalJobSectionHtml(raw: unknown): string {
+    const lines = preApprovalApprovalLines(parsePreApprovalJobs(raw)).map((name) => toTitleCaseTR(name));
+    const list = lines.length
+      ? `<ol class="job-list">${lines.map((name, index) => `<li><span class="job-no">${index + 1}</span><span>${escHtml(name)}</span></li>`).join('')}</ol>`
+      : '<p class="on-is-note">Ön onaylı iş yazılmadı.</p>';
+    return `<div class="on-is-card">${list}<p class="on-is-note">Onay yalnız bu işler içindir. Listede olmayan iş bu formla başlamaz.</p></div>`;
+  }
+
+  private async renderHasarDigitalHtml(
+    cf: {
+      fileNo: string;
+      lossType?: string | null;
+      policyNo?: string | null;
+      claimNo?: string | null;
+      preApprovalWorkJson?: string | null;
+      insuranceCompany?: { name?: string | null } | null;
+      customer?: {
+        fullName?: string | null;
+        companyName?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        identityNo?: string | null;
+      } | null;
+      propertyAddress?: { addressLine?: string | null; district?: string | null; city?: string | null } | null;
+      budgetVersions?: Array<{ totalAmount?: unknown }>;
+    },
+    documentKind: string,
+  ): Promise<string> {
+    const insuredName =
+      cf.customer?.fullName ??
+      cf.customer?.companyName ??
+      `${cf.customer?.firstName ?? ''} ${cf.customer?.lastName ?? ''}`.trim();
+    const damageAddress = cf.propertyAddress
+      ? `${cf.propertyAddress.addressLine ?? ''} ${cf.propertyAddress.district ?? ''} ${cf.propertyAddress.city ?? ''}`.trim()
+      : '';
+    const budgetRaw = cf.budgetVersions?.[0]?.totalAmount;
+    const budgetTotal = budgetRaw == null || budgetRaw === '' ? null : Number(budgetRaw);
+    const companyPlaceholders = await this.getDocumentCompanyPlaceholders();
+    const placeholders: Record<string, string> = {
+      '{{dosya_no}}': cf.fileNo,
+      '{{tarih}}': new Date().toLocaleDateString('tr-TR'),
+      '{{sigorta_sirketi}}': cf.insuranceCompany?.name ?? '—',
+      '{{hasar_nedeni}}': cf.lossType ?? '—',
+      '{{police_no}}': cf.policyNo ?? '—',
+      '{{hasar_no}}': cf.claimNo ?? '—',
+      '{{sigorta_musteri_ad}}': insuredName || '—',
+      '{{hasar_adresi}}': damageAddress || '—',
+      '{{sigortali_ad}}': insuredName || '—',
+      '{{sigortali_tc}}': cf.customer?.identityNo ?? '—',
+      '{{sigortali_tazminat_bedeli}}': this.formatCurrency(budgetTotal),
+      '{{sigortali_adres}}': damageAddress || '—',
+      '{{magdur_ad}}': '—',
+      '{{magdur_tc}}': '—',
+      '{{magdur_konum}}': '—',
+      '{{magdur_adres}}': '—',
+      '{{onarim_bitis_tarihi}}': '… / … / ……',
+      '{{tazminat_bedeli_toplam}}': this.formatCurrency(budgetTotal),
+      '{{on_is_bolumu}}': documentKind === PRE_APPROVAL_DIGITAL_KIND
+        ? this.preApprovalJobSectionHtml(cf.preApprovalWorkJson)
+        : '',
+      '{{belge_baslik}}': documentKind === PRE_APPROVAL_DIGITAL_KIND
+        ? '<span class="title-line title-line-under">Ön Onaylı İşler</span><span class="title-line">Muvafakat Formu</span>'
+        : 'Mutabakat / Muvafakat Onay Formu',
+      ...companyPlaceholders,
+    };
+    return this.renderTemplate(
+      MUVAFAKATNAME_TEMPLATE,
+      placeholders,
+      new Set(['{{on_is_bolumu}}', '{{belge_baslik}}']),
+    );
+  }
+
+  /** Onaysız ön iş belgesi seçilen işlerle yenilenir. Onaylı kopya durur. */
+  private async refreshUnapprovedPreApproval<T extends {
+    id: string;
+    entityType: string;
+    entityId: string;
+    documentKind: string;
+    digitallyApprovedAt: Date | null;
+    renderedContent: string;
+  }>(doc: T): Promise<T> {
+    if (doc.documentKind !== PRE_APPROVAL_DIGITAL_KIND || doc.entityType !== 'claim_file') return doc;
+    if (doc.digitallyApprovedAt) return doc;
+    const cf = await this.prisma.claimFile.findUnique({
+      where: { id: doc.entityId },
+      include: {
+        insuranceCompany: true,
+        customer: true,
+        propertyAddress: true,
+        budgetVersions: {
+          orderBy: { versionNo: 'desc' },
+          take: 1,
+          select: { totalAmount: true },
+        },
+      },
+    });
+    if (!cf) return doc;
+    const rendered = await this.renderHasarDigitalHtml(cf, PRE_APPROVAL_DIGITAL_KIND);
+    if (rendered === doc.renderedContent) return doc;
+    await this.prisma.fileDocument.update({
+      where: { id: doc.id },
+      data: { renderedContent: rendered },
+    });
+    return { ...doc, renderedContent: rendered };
+  }
+
   // ── Oluşturma ─────────────────────────────────────────────────────────────
 
   async create(dto: CreateFileDocumentDto, createdByUserId: string) {
@@ -294,49 +404,28 @@ export class FileDocumentsService {
       });
       if (!cf) throw new NotFoundException('Hasar dosyası bulunamadı');
 
-      const insuredName =
-        cf.customer?.fullName ??
-        cf.customer?.companyName ??
-        `${cf.customer?.firstName ?? ''} ${cf.customer?.lastName ?? ''}`.trim();
-      const damageAddress = cf.propertyAddress
-        ? `${cf.propertyAddress.addressLine ?? ''} ${cf.propertyAddress.district ?? ''} ${cf.propertyAddress.city ?? ''}`.trim()
-        : '';
-      const budgetTotal = cf.budgetVersions[0]?.totalAmount ?? null;
-      const companyPlaceholders = await this.getDocumentCompanyPlaceholders();
-
-      const placeholders: Record<string, string> = {
-        '{{dosya_no}}': cf.fileNo,
-        '{{tarih}}': new Date().toLocaleDateString('tr-TR'),
-        '{{sigorta_sirketi}}': cf.insuranceCompany?.name ?? '—',
-        '{{hasar_nedeni}}': cf.lossType ?? '—',
-        '{{police_no}}': cf.policyNo ?? '—',
-        '{{hasar_no}}': cf.claimNo ?? '—',
-        '{{sigorta_musteri_ad}}': insuredName || '—',
-        '{{hasar_adresi}}': damageAddress || '—',
-        '{{sigortali_ad}}': insuredName || '—',
-        '{{sigortali_tc}}': cf.customer?.identityNo ?? '—',
-        '{{sigortali_tazminat_bedeli}}': this.formatCurrency(budgetTotal),
-        '{{sigortali_adres}}': damageAddress || '—',
-        '{{magdur_ad}}': '—',
-        '{{magdur_tc}}': '—',
-        '{{magdur_konum}}': '—',
-        '{{magdur_adres}}': '—',
-        '{{onarim_bitis_tarihi}}': '… / … / ……',
-        '{{tazminat_bedeli_toplam}}': this.formatCurrency(budgetTotal),
-        ...companyPlaceholders,
-      };
-
-      const rendered = this.renderTemplate(MUVAFAKATNAME_TEMPLATE, placeholders);
-
       const publicToken = randomUUID();
       const publicTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       const documentKind =
-        dto.documentKind === 'muvafakatname_on_is' ? 'muvafakatname_on_is' : 'muvafakatname';
+        dto.documentKind === PRE_APPROVAL_DIGITAL_KIND ? PRE_APPROVAL_DIGITAL_KIND : 'muvafakatname';
+      const rendered = await this.renderHasarDigitalHtml(cf, documentKind);
       const existingKind = await this.prisma.fileDocument.findFirst({
         where: { entityType: 'claim_file', entityId: dto.entityId, documentKind },
         orderBy: { createdAt: 'desc' },
       });
-      if (existingKind) return existingKind;
+      if (existingKind) {
+        if (
+          documentKind === PRE_APPROVAL_DIGITAL_KIND
+          && !existingKind.digitallyApprovedAt
+          && existingKind.renderedContent !== rendered
+        ) {
+          return this.prisma.fileDocument.update({
+            where: { id: existingKind.id },
+            data: { renderedContent: rendered },
+          });
+        }
+        return existingKind;
+      }
 
       return this.prisma.fileDocument.create({
         data: {
@@ -736,7 +825,9 @@ export class FileDocumentsService {
       return this.getPhysicalFileBuffer(id, user);
     }
     if (doc.renderedContent?.trim()) {
-      const fresh = await this.refreshUnapprovedEmergencyMatbu(doc);
+      const fresh = await this.refreshUnapprovedPreApproval(
+        await this.refreshUnapprovedEmergencyMatbu(doc),
+      );
       const html =
         isAcilDigitalFormKind(fresh.documentKind)
           ? toInsuredFacingMatbuHtml(fresh.renderedContent)
@@ -779,7 +870,9 @@ export class FileDocumentsService {
           : publicApprovalTokenErrorMessage(tokenGate.reason, 'evrak'),
       );
     }
-    const fresh = await this.refreshUnapprovedEmergencyMatbu(doc);
+    const fresh = await this.refreshUnapprovedPreApproval(
+      await this.refreshUnapprovedEmergencyMatbu(doc),
+    );
     let expectedFullName: string | null = null;
     if (fresh.entityType === 'emergency_case') {
       const ec = await this.loadEmergencyCaseForMatbu(fresh.entityId);

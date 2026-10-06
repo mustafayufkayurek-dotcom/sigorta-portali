@@ -41,6 +41,10 @@ describe('sigorta Ayarlar kapısı kilidi', () => {
     );
     assert.doesNotMatch(settings, /Kartı Aç/);
     assert.doesNotMatch(settings, /Kart Aç/);
+    assert.doesNotMatch(settings, /<label className=\{labelCls\}>Vergi No<\/label>/);
+    assert.doesNotMatch(settings, /<label className=\{labelCls\}>E-posta<\/label>/);
+    assert.doesNotMatch(settings, /<label className=\{labelCls\}>Telefon<\/label>/);
+    assert.doesNotMatch(settings, /<label className=\{labelCls\}>Adres<\/label>/);
     const customersPage = readFileSync(
       join(here, '../../../../../apps/web/src/app/panel/musteriler/page.tsx'),
       'utf8',

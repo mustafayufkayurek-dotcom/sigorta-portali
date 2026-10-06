@@ -24,7 +24,7 @@ import { normalizeTrDateValue } from '@/utils/tr-date-input';
 import { buildSupplierTaskMapFromNotes } from '@/utils/hasar-supplier-tasks';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { isLegacyOpsCatchupBypassActive } from '@/utils/whatsapp-sent-confirm-gate';
-import { hasarCancelReasonOk, isHasarDigitalApprovalRelaxed } from '@sigorta/shared';
+import { hasarCancelReasonOk, isHasarDigitalApprovalRelaxed, serializeHasarKapanisButce, EMPTY_HASAR_KAPANIS_BUTCE, type HasarKapanisButce } from '@sigorta/shared';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { UI_ACTION_TIMEOUT_MS } from '@/utils/ui-action-timeout';
@@ -103,6 +103,7 @@ type PlannerDraft = {
     hasPreApprovalWork: boolean | null;
     preApprovalJobs: Array<{ id: string; name: string }>;
   }) => Promise<SaveStepResult>;
+  saveKapanisButce: (patch: Partial<HasarKapanisButce>) => Promise<SaveStepResult>;
   failedMandatoryKeys: string[];
   cancelOpenFile: (reason: string) => Promise<SaveStepResult>;
   recordWhatsAppContact: (input?: {
@@ -836,6 +837,37 @@ export function PlannerProvider({
     [mode, claimId, canEdit, refreshClaim, setClaim],
   );
 
+  const saveKapanisButce = useCallback(
+    async (patch: Partial<HasarKapanisButce>): Promise<SaveStepResult> => {
+      const next = { ...EMPTY_HASAR_KAPANIS_BUTCE, ...claim.kapanisButce, ...patch };
+      if (patch.remainingRepairDropped === false) {
+        next.hasBillable = null;
+        next.customerAgreed = false;
+        next.infoWhatsappAt = null;
+        next.closeBudgetStartedAt = null;
+      }
+      setClaim((prev) => ({ ...prev, kapanisButce: next }));
+      if (mode === 'preview' || !claimId) {
+        return { ok: true, message: 'Kapanış bütçesi bu oturumda durur.' };
+      }
+      if (!canEdit) {
+        return { ok: false, message: 'Bu işlem için yetkiniz yok.' };
+      }
+      try {
+        await axios.patch(
+          `${API}/claim-files/${claimId}`,
+          { kapanisButceJson: serializeHasarKapanisButce(next) },
+          { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
+        );
+        await refreshClaim();
+        return { ok: true, message: 'Kapanış bütçesi kaydedildi.' };
+      } catch (error: unknown) {
+        return { ok: false, message: getApiErrorMessage(error, 'Kapanış bütçesi kaydedilemedi.') };
+      }
+    },
+    [mode, claimId, canEdit, refreshClaim, setClaim, claim.kapanisButce],
+  );
+
   const value: PlannerDraft = {
     mode,
     canEdit,
@@ -887,6 +919,7 @@ export function PlannerProvider({
     saveStep,
     convertInspectionToRepair,
     savePreApprovalChoice,
+    saveKapanisButce,
     failedMandatoryKeys,
     cancelOpenFile,
     recordWhatsAppContact,

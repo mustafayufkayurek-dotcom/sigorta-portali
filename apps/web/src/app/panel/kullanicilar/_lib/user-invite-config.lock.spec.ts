@@ -228,9 +228,19 @@ describe('müşteri firması çoklu davet LOCK', () => {
     assert.equal(filterOfficeFirmsByQuery(firms, '').length, 3);
   });
 
-  it('yazılan görev kod listesinin üstünde durur', () => {
+  it('yazılan görev durur; boşsa rol adı uydurulmaz', () => {
     assert.equal(displayPersonDuty({ jobTitle: 'Hasar Müdürü', role: { code: 'expert', name: 'Expert' } }), 'Hasar Müdürü');
-    assert.equal(displayPersonDuty({ jobTitle: '', role: { code: 'expert', name: 'Expert' } }), 'Eksper');
+    assert.equal(displayPersonDuty({ jobTitle: '', role: { code: 'expert', name: 'Expert' } }), '—');
+    assert.equal(
+      officePersonToFormFields({
+        firstName: 'Ayşe',
+        lastName: 'Yılmaz',
+        email: 'ayse@ornek.com',
+        jobTitle: '',
+        role: { code: 'expert', name: 'Expert' },
+      }).jobTitle,
+      '',
+    );
   });
 
   it('ofis personeli seçilince ad soyad görev e-posta telefon dolar', () => {

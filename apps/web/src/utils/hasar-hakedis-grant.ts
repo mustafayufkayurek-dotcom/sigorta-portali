@@ -214,6 +214,14 @@ export function buildHasarHakedisGrantLines(source: {
   return [];
 }
 
+export type HasarHakedisKalemGosterim = {
+  id?: string;
+  name: string;
+  amount: number;
+  selected: boolean;
+  fulfilled: boolean;
+};
+
 export type HasarHakedisSecimSatiri = {
   key: string;
   workGroupId?: string;
@@ -222,7 +230,62 @@ export type HasarHakedisSecimSatiri = {
   vendorName: string;
   paymentDueDays: number | null;
   amount: number;
+  jobs: HasarHakedisKalemGosterim[];
 };
+
+function jobsFromLine(line?: HasarHakedisGrantLine | null): HasarHakedisKalemGosterim[] {
+  return (line?.details ?? []).map((item) => ({
+    id: item.id,
+    name: String(item.jobDescription || '').trim() || 'İş kalemi',
+    amount: Number(item.amount) || 0,
+    selected: true,
+    fulfilled: false,
+  }));
+}
+
+/** Bu dosyada seçilen ve yerine getirilen kalemler öne alınır. */
+export function withHakedisKalemDurumu(
+  rows: HasarHakedisSecimSatiri[],
+  source: {
+    selectedJobIds?: string[];
+    selectedJobNames?: string[];
+    repairFulfilled?: boolean;
+  } = {},
+): HasarHakedisSecimSatiri[] {
+  const ids = new Set((source.selectedJobIds ?? []).map((id) => id.trim()).filter(Boolean));
+  const names = new Set(
+    (source.selectedJobNames ?? [])
+      .map((name) => name.trim().toLocaleLowerCase('tr-TR'))
+      .filter(Boolean),
+  );
+  const hasSelection = ids.size > 0 || names.size > 0;
+  const done = Boolean(source.repairFulfilled);
+  return rows.map((row) => {
+    const marked = row.jobs.map((job) => {
+      const selected = hasSelection
+        ? ids.has(String(job.id ?? '').trim())
+          || names.has(job.name.trim().toLocaleLowerCase('tr-TR'))
+        : true;
+      return { ...job, selected, fulfilled: done && selected };
+    });
+    const visible = marked.filter((job) => job.selected || job.fulfilled);
+    return { ...row, jobs: visible.length > 0 ? visible : marked };
+  });
+}
+
+export function groupHakedisSatirlariByVendor(rows: HasarHakedisSecimSatiri[]): Array<{
+  vendorId: string;
+  vendorName: string;
+  rows: HasarHakedisSecimSatiri[];
+}> {
+  const map = new Map<string, { vendorId: string; vendorName: string; rows: HasarHakedisSecimSatiri[] }>();
+  for (const row of rows) {
+    const prev = map.get(row.vendorId);
+    if (prev) prev.rows.push(row);
+    else map.set(row.vendorId, { vendorId: row.vendorId, vendorName: row.vendorName, rows: [row] });
+  }
+  return Array.from(map.values());
+}
 
 export type HasarHakedisSecimTedarikci = {
   id: string;
@@ -422,6 +485,7 @@ export function buildHasarHakedisSecimSatirlari(source: {
             vendorName: supplier.name,
             paymentDueDays: supplier.paymentDueDays ?? null,
             amount: line.amount,
+            jobs: jobsFromLine(line),
           });
         }
         continue;
@@ -436,6 +500,7 @@ export function buildHasarHakedisSecimSatirlari(source: {
         vendorName: supplier.name,
         paymentDueDays: supplier.paymentDueDays ?? null,
         amount,
+        jobs: jobsFromLine(fallback),
       });
       continue;
     }
@@ -451,6 +516,7 @@ export function buildHasarHakedisSecimSatirlari(source: {
         vendorName: supplier.name,
         paymentDueDays: supplier.paymentDueDays ?? null,
         amount,
+        jobs: jobsFromLine(matched ?? (real.length === 1 ? fallback : null)),
       });
     }
   }

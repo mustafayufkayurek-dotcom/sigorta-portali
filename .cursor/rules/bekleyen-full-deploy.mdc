@@ -1,11 +1,11 @@
 ---
-description: Canlı web v647 / backend v647
+description: Canlı web v648 / backend v648
 alwaysApply: true
 ---
 
-# Canlı (05.10.2026)
+# Canlı (06.10.2026)
 
-Canlı: web **v647** · backend **v647**. Geri alma: web **v646** / backend **v646**.
+Canlı: web **v648** · backend **v648**. Geri alma: web **v647** / backend **v647**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v648 (full):** Hasar kapanışında bütçe, Meridyen operasyon gideri ve tedarikçi hakediş listesi durur. Kullanıcılar’da Görev boşsa **—** durur; yazılmış görev durur. Ön Onaylı İşler Muvafakat Formu iki satırdır; seçilen işler numaralıdır; onay izi Onayla deyince belgenin sonuna yazılır. Sigorta ve asistans eklerken vergi no, e-posta, telefon, adres ve şehir sorulmaz. Tespitçi galeriden çerçeve ve yön tuşuyla birden fazla fotoğraf seçer. Tespiti Sonlandır fotoğraf ve notun altındadır; ikisi yazılmadan açılmaz. Mali mesuliyet alanı çizilmediği için alınmadı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v647 / backend v647.
 
 **v647 (full):** Hasar dosya sorumlusu atama maili Yeni İhbar kabuğunda durur. Başlıkta atayan kişinin Kullanıcılar’daki Görevi: **Operasyon Direktörü Tarafından Atanmıştır**. Sistem Yöneticisi yazılmaz. Görev boşsa parantez yoktur. Kapanış bütçesi alınmadı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v646 / backend v646.
 
@@ -169,6 +171,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-**Hasar kapanış bütçesi ve dosya hakediş kalemleri:** Lokal taslak. Dosya kapanışında bütçe, Meridyen operasyon gideri ve tedarikçi hakediş listesi henüz canlıda yok.
+1. **Mali mesuliyet alanı:** Hasar muvafakatında mali mesuliyet işi yoksa mağdur kutusu ve imza alanı durmaz. Varsa durur: yan komşu, alt kat, üst kat, ortak alan. Ayrı dizayn. Henüz çizilmedi; bu alıma girmedi.
 
-Canlı web **v647** · backend **v647**.
+Canlı web **v648** · backend **v648**.

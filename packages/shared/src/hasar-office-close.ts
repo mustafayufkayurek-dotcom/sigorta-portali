@@ -13,10 +13,28 @@ export const HASAR_CANCEL_REASON_MIN_LEN = 10;
 export function hasarOfficeCloseMissing(input: {
   statusCode?: string | null;
   hasApprovedReport?: boolean;
+  remainingRepairDropped?: boolean;
+  hasBillable?: boolean | null;
+  customerAgreed?: boolean;
+  infoWhatsappAt?: string | null;
+  closeBudgetStartedAt?: string | null;
+  hasInvoiceRequest?: boolean;
 }): string[] {
   const code = String(input.statusCode ?? '').trim().toLowerCase();
   if (code === 'closed') return [];
   if (code === 'cancelled') return ['İptal edilmiş dosya kapatılmaz'];
+  if (input.remainingRepairDropped) {
+    if (input.hasBillable === null || input.hasBillable === undefined) {
+      return ['Fatura edilecek masraf / hizmet sorusu'];
+    }
+    if (input.hasBillable === false) return [];
+    const missing: string[] = [];
+    if (!input.closeBudgetStartedAt) missing.push('Kapanış bütçesi');
+    if (!input.customerAgreed) missing.push('Müşteri mutabık');
+    if (!String(input.infoWhatsappAt ?? '').trim()) missing.push('Tahsilat bilgi yazısı');
+    if (!input.hasInvoiceRequest) missing.push('Fatura talebi');
+    return missing;
+  }
   const missing: string[] = [];
   if (!input.hasApprovedReport) missing.push('Onaylı rapor');
   if (!(HASAR_OFFICE_CLOSE_READY_CODES as readonly string[]).includes(code)) {

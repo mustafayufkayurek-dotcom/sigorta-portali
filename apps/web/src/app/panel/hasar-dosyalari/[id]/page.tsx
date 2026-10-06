@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
@@ -246,64 +246,16 @@ function DosyaOzetiChipleri({ claim }: { claim: any }) {
 function FieldStaffVisitCard({
   claim,
   onBack,
-  onClaimUpdated,
 }: {
   claim: any;
   onBack: () => void;
-  onClaimUpdated?: (patch: Partial<any>) => void;
 }) {
-  const { showToast } = useToast();
-  const { confirm, dialog } = usePanelConfirm();
-  const queryClient = useQueryClient();
-  const [marking, setMarking] = useState(false);
   const [contactRefreshKey, setContactRefreshKey] = useState(0);
   const insuredLine = fieldStaffInsuredName(claim);
   const insuredPhone = fieldStaffPhone(claim);
   const addressLine = fieldStaffAddress(claim);
   const directionsUrl = fieldStaffDirectionsUrl(addressLine);
   const inspection = fieldStaffInspectionStatus(claim);
-
-  const markInspectionDone = async () => {
-    if (inspection.done || marking) return;
-    const ok = await confirm({
-      title: 'Tespiti Sonlandır',
-      message: FIELD_STAFF_END_INSPECTION_CONFIRM,
-      confirmLabel: 'Tespiti Sonlandır',
-      danger: false,
-    });
-    if (!ok) return;
-    setMarking(true);
-    try {
-      await axios.post(
-        `${API}/claim-files/${claim.id}/inspection`,
-        { note: 'Saha tespiti tamamlandı.' },
-        { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
-      );
-      const nowIso = new Date().toISOString();
-      onClaimUpdated?.({
-        inspectionDone: true,
-        inspectionDoneAt: nowIso,
-        currentStatus: {
-          ...(claim.currentStatus ?? {}),
-          code: 'INSPECTION_DONE',
-          name: 'Tespit Yapıldı',
-          isClosedState: false,
-        },
-        closedAt: null,
-        statusChangedAt: nowIso,
-      });
-      showToast('success', FIELD_STAFF_END_INSPECTION_TOAST);
-      notifyFieldStaffClaimsChanged();
-      void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
-      void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
-      void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
-      void queryClient.invalidateQueries({ queryKey: ['office-inspection-reminder'] });
-    } catch (err) {
-      reportCaughtError(err, getApiErrorMessage(err, 'Tespit işaretlenemedi.'));
-    } finally {
-      setMarking(false);
-    }
-  };
 
   return (
     <>
@@ -396,43 +348,115 @@ function FieldStaffVisitCard({
           </div>
         </div>
 
-        <OpsFirstRunNotice
-          noticeId={OPS_NOTICE.sahaTespitSonlandir.id}
-          title={OPS_NOTICE.sahaTespitSonlandir.title}
-          body={OPS_NOTICE.sahaTespitSonlandir.body}
-          testId="saha-tespit-sonlandir-seridi"
-        />
+      </div>
+    </div>
+    </>
+  );
+}
 
-        {!inspection.done ? (
+function FieldStaffEndInspection({
+  claim,
+  photoCount,
+  noteCount,
+  onClaimUpdated,
+}: {
+  claim: any;
+  photoCount: number;
+  noteCount: number;
+  onClaimUpdated?: (patch: Partial<any>) => void;
+}) {
+  const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
+  const queryClient = useQueryClient();
+  const [marking, setMarking] = useState(false);
+  const inspection = fieldStaffInspectionStatus(claim);
+  const ready = photoCount > 0 && noteCount > 0;
+
+  const markInspectionDone = async () => {
+    if (inspection.done || marking || !ready) return;
+    const ok = await confirm({
+      title: 'Tespiti Sonlandır',
+      message: FIELD_STAFF_END_INSPECTION_CONFIRM,
+      confirmLabel: 'Tespiti Sonlandır',
+      danger: false,
+    });
+    if (!ok) return;
+    setMarking(true);
+    try {
+      await axios.post(
+        `${API}/claim-files/${claim.id}/inspection`,
+        { note: 'Saha tespiti tamamlandı.' },
+        { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS },
+      );
+      const nowIso = new Date().toISOString();
+      onClaimUpdated?.({
+        inspectionDone: true,
+        inspectionDoneAt: nowIso,
+        currentStatus: {
+          ...(claim.currentStatus ?? {}),
+          code: 'INSPECTION_DONE',
+          name: 'Tespit Yapıldı',
+          isClosedState: false,
+        },
+        closedAt: null,
+        statusChangedAt: nowIso,
+      });
+      showToast('success', FIELD_STAFF_END_INSPECTION_TOAST);
+      notifyFieldStaffClaimsChanged();
+      void queryClient.invalidateQueries({ queryKey: ['claim-files'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
+      void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
+      void queryClient.invalidateQueries({ queryKey: ['office-inspection-reminder'] });
+    } catch (err) {
+      reportCaughtError(err, getApiErrorMessage(err, 'Tespit işaretlenemedi.'));
+    } finally {
+      setMarking(false);
+    }
+  };
+
+  return (
+    <div className="mt-4" data-testid="saha-tespit-sonlandir-alt">
+      <OpsFirstRunNotice
+        noticeId={OPS_NOTICE.sahaTespitSonlandir.id}
+        title={OPS_NOTICE.sahaTespitSonlandir.title}
+        body={OPS_NOTICE.sahaTespitSonlandir.body}
+        testId="saha-tespit-sonlandir-seridi"
+      />
+      {!inspection.done ? (
+        <div className="space-y-2">
+          {!ready ? (
+            <p className="text-center text-xs font-medium text-slate-600" data-testid="saha-tespit-zorunlu">
+              Tespit fotoğrafı ve tespit notu zorunludur.
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={() => void markInspectionDone()}
-            disabled={marking}
+            disabled={marking || !ready}
             className="inline-flex w-full items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
             data-testid="saha-tespit-isaretle"
           >
             {marking ? 'İşaretleniyor…' : FIELD_STAFF_END_INSPECTION_LABEL}
           </button>
-        ) : (
-          <div className="space-y-2">
-            <p className="rounded-xl border border-status-success/30 bg-status-success/10 px-3.5 py-2.5 text-center text-sm font-semibold text-status-success">
-              {FIELD_STAFF_END_INSPECTION_DONE}
-            </p>
-            <Link
-              href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}
-              className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
-            </Link>
-            {claim?.currentStatus?.isClosedState || claim?.closedAt ? (
-              <p className="text-center text-xs font-medium text-slate-500">Dosya Kapalı</p>
-            ) : null}
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="rounded-xl border border-status-success/30 bg-status-success/10 px-3.5 py-2.5 text-center text-sm font-semibold text-status-success">
+            {FIELD_STAFF_END_INSPECTION_DONE}
+          </p>
+          <Link
+            href={FIELD_STAFF_COMPLETED_INSPECTIONS_HREF}
+            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+          >
+            {FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL}
+          </Link>
+          {claim?.currentStatus?.isClosedState || claim?.closedAt ? (
+            <p className="text-center text-xs font-medium text-slate-500">Dosya Kapalı</p>
+          ) : null}
+        </div>
+      )}
+      {dialog}
     </div>
-    {dialog}
-    </>
   );
 }
 
@@ -459,7 +483,6 @@ function DosyaSayfaUstu({
       <FieldStaffVisitCard
         claim={claim}
         onBack={onBack}
-        onClaimUpdated={onClaimUpdated}
       />
     );
   }
@@ -1621,6 +1644,10 @@ export default function ClaimFileDetailPage() {
     gorunumParam === 'eski' || Boolean(initialOpsSub) ? 'eski' : 'planlayici',
   );
   const [claim, setClaim] = useState<any>(null);
+  const [sahaPhotoCount, setSahaPhotoCount] = useState(0);
+  const [sahaNoteCount, setSahaNoteCount] = useState(0);
+  const onSahaPhotoCount = useCallback((count: number) => setSahaPhotoCount(count), []);
+  const onSahaNoteCount = useCallback((count: number) => setSahaNoteCount(count), []);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeGroup, setActiveGroup] = useState<GroupTab>(initialGroup);
@@ -1750,6 +1777,7 @@ export default function ClaimFileDetailPage() {
 
       {/* Saha: ziyaret + foto + not — ofis evrak yaşam döngüsü yok */}
       {isFieldStaff && (
+        <>
         <div className="grid gap-4 lg:grid-cols-2">
           <section
             id="saha-foto"
@@ -1757,9 +1785,9 @@ export default function ClaimFileDetailPage() {
           >
             <div className="mb-3">
               <h3 className="text-sm font-semibold text-slate-950">Tespit Fotoğrafları</h3>
-              <p className="mt-0.5 text-xs text-slate-500">Ofis ile ortak; dosya sorumlusu da görür</p>
+              <p className="mt-0.5 text-xs text-slate-500">Zorunlu. Ofis ile ortak; dosya sorumlusu da görür</p>
             </div>
-            <FieldInspectionPhotosPanel claimId={id!} />
+            <FieldInspectionPhotosPanel claimId={id!} onCountChange={onSahaPhotoCount} />
           </section>
           <section
             id="saha-not"
@@ -1767,11 +1795,18 @@ export default function ClaimFileDetailPage() {
           >
             <div className="mb-3">
               <h3 className="text-sm font-semibold text-slate-950">Tespit Notları</h3>
-              <p className="mt-0.5 text-xs text-slate-500">Saha ve ofis ortak not alanı</p>
+              <p className="mt-0.5 text-xs text-slate-500">Zorunlu. Saha ve ofis ortak not alanı</p>
             </div>
-            <IletisimGunluguPanel claimId={id!} variant="field" />
+            <IletisimGunluguPanel claimId={id!} variant="field" onFieldNoteCount={onSahaNoteCount} />
           </section>
         </div>
+        <FieldStaffEndInspection
+          claim={claim}
+          photoCount={sahaPhotoCount}
+          noteCount={sahaNoteCount}
+          onClaimUpdated={(patch) => setClaim((c: any) => ({ ...c, ...patch }))}
+        />
+        </>
       )}
 
       {!isFieldStaff && (

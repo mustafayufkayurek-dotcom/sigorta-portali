@@ -18,6 +18,9 @@ describe('saha tespit ofis dosyasını kapatmaz LOCK', () => {
     assert.ok(start >= 0 && end > start);
     const fn = src.slice(start, end);
     assert.match(fn, /addInspectionNote/);
+    const ready = src.slice(src.indexOf('async addInspectionNote'), start);
+    assert.match(ready, /assertFieldInspectionReady/);
+    assert.match(ready, /Tespit fotoğrafı ve tespit notu zorunludur/);
     assert.match(fn, /INSPECTION_DONE/);
     assert.doesNotMatch(fn, /closedAt/);
     assert.doesNotMatch(fn, /isClosedState:\s*true/);

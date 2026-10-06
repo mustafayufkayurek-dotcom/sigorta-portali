@@ -236,6 +236,14 @@ describe('field-staff-claim-view lock', () => {
       detail.indexOf('{!isFieldStaff && (', detail.indexOf('{/* Saha: ziyaret + foto + not')),
     );
     assert.match(fieldBlock, /lg:grid-cols-2/);
+    assert.match(fieldBlock, /FieldStaffEndInspection/);
+    assert.match(detail, /saha-tespit-sonlandir-alt/);
+    assert.match(detail, /saha-tespit-zorunlu/);
+    assert.match(detail, /Tespit fotoğrafı ve tespit notu zorunludur/);
+    const fotoAt = fieldBlock.indexOf('Tespit Fotoğrafları');
+    const notAt = fieldBlock.indexOf('Tespit Notları');
+    const endAt = fieldBlock.indexOf('FieldStaffEndInspection');
+    assert.ok(fotoAt >= 0 && notAt > fotoAt && endAt > notAt);
     assert.doesNotMatch(fieldBlock, /EvraklarTab/);
     assert.doesNotMatch(fieldBlock, /EvrakOzetPanel/);
     assert.doesNotMatch(fieldBlock, /Dosya Yaşam Döngüsü/);
@@ -285,6 +293,12 @@ describe('field-staff-claim-view lock', () => {
     assert.match(photos, /PhotoLightbox|Önceki/);
     assert.match(photos, /Tespit Fotoğrafı/);
     assert.match(photos, /saha-tespit-fotograflari/);
+    const gallery = photos.slice(
+      photos.indexOf('ref={galleryInputRef}'),
+      photos.indexOf('data-testid="saha-tespit-foto-input"'),
+    );
+    assert.match(gallery, /\bmultiple\b/);
+    assert.doesNotMatch(gallery, /accept=/);
     assert.match(photos, /capture="environment"/);
     assert.match(photos, /Kameradan/);
     assert.match(photos, /Galeriden/);

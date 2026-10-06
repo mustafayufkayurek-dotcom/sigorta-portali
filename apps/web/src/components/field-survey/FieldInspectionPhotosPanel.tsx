@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { API, authHeader } from '@/utils/api';
-import { reportCaughtError } from '@/utils/report-caught-error';
+import { notifyToast, reportCaughtError } from '@/utils/report-caught-error';
 import { AuthBlobImg } from '@/components/ui/AuthBlobImg';
 import { entityDocumentFileUrl } from '@/utils/protected-image';
 import { PhotoLightbox } from '@/components/ui/PhotoLightbox';
@@ -83,14 +83,20 @@ export function FieldInspectionPhotosPanel({
 
   const uploadFiles = async (files: File[]) => {
     if (!resolvedId || files.length === 0) return;
+    const images = files.filter(
+      (file) =>
+        isImageMime(file.type) ||
+        !file.type ||
+        /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(file.name),
+    );
+    const skipped = files.length - images.length;
+    if (images.length === 0) {
+      notifyToast('error', 'Yalnız fotoğraf seçin.');
+      return;
+    }
     setUploading(true);
     try {
-      for (const file of files) {
-        const looksImage =
-          isImageMime(file.type) ||
-          !file.type ||
-          /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(file.name);
-        if (!looksImage) continue;
+      for (const file of images) {
         const fd = new FormData();
         fd.append('file', file);
         fd.append('entityType', entityType);
@@ -100,6 +106,7 @@ export function FieldInspectionPhotosPanel({
           headers: authHeader(),
         });
       }
+      if (skipped > 0) notifyToast('warning', 'Fotoğraf olmayan dosyalar alınmadı.');
       await load();
     } catch (err) {
       reportCaughtError(err, 'Fotoğraf yüklenemedi.');
@@ -181,10 +188,10 @@ export function FieldInspectionPhotosPanel({
         <div className="flex flex-wrap items-center gap-2">
           {readOnly ? null : (
             <>
+          {/* accept yok: Mac seçici tür süzünce çerçeve ve yön tuşuyla çoklu seçim kapanır */}
           <input
             ref={galleryInputRef}
             type="file"
-            accept="image/*,.heic,.heif,image/heic,image/heif"
             multiple
             className="hidden"
             onChange={(e) => void handleUpload(e)}

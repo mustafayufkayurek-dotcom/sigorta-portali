@@ -46,6 +46,7 @@ export * from './acil-vendor-service-contract';
 export * from './vendor-identity';
 export * from './hasar-flow-groups';
 export * from './hasar-office-close';
+export * from './hasar-kapanis-butcesi';
 export * from './emergency-findings-text';
 export * from './file-expense-work-group-audit';
 export * from './acil-vendor-whatsapp';

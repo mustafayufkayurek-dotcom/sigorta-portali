@@ -231,12 +231,17 @@ export default function SigortaSirketleriPage() {
     setSaving(true);
     setError('');
     try {
+      const payload = {
+        name: form.name.trim(),
+        status: form.status,
+        notes: form.notes.trim() || null,
+      };
       if (editing) {
-        await axios.patch(`${API}/insurance-companies/${editing.id}`, form, {
+        await axios.patch(`${API}/insurance-companies/${editing.id}`, payload, {
           headers: authHeader(),
         });
       } else {
-        await axios.post(`${API}/insurance-companies`, form, { headers: authHeader() });
+        await axios.post(`${API}/insurance-companies`, payload, { headers: authHeader() });
       }
       setShowModal(false);
       await fetchCompanies();
@@ -308,10 +313,6 @@ export default function SigortaSirketleriPage() {
       companyName: assistanceForm.companyName.trim(),
       shortName: String(editingAssistance?.shortName ?? '').trim()
         || assistanceForm.companyName.trim(),
-      email: assistanceForm.email.trim() || null,
-      phone: assistanceForm.phone.trim() || null,
-      city: assistanceForm.city.trim() || null,
-      address: assistanceForm.address.trim() || null,
       notes: assistanceForm.notes.trim() || null,
       customerType: 'corporate',
       entityType: 'corporate',
@@ -639,42 +640,6 @@ export default function SigortaSirketleriPage() {
           />
         </div>
         <div>
-          <label className={labelCls}>Vergi No</label>
-          <input
-            className={inputCls}
-            value={form.taxNumber}
-            onChange={(event) => setForm({ ...form, taxNumber: event.target.value })}
-          />
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label className={labelCls}>E-posta</label>
-            <input
-              type="email"
-              className={inputCls}
-              value={form.contactEmail}
-              onChange={(event) => setForm({ ...form, contactEmail: event.target.value })}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Telefon</label>
-            <input
-              className={inputCls}
-              value={form.contactPhone}
-              onChange={(event) => setForm({ ...form, contactPhone: event.target.value })}
-            />
-          </div>
-        </div>
-        <div>
-          <label className={labelCls}>Adres</label>
-          <textarea
-            className={`${inputCls} resize-none`}
-            rows={2}
-            value={form.address}
-            onChange={(event) => setForm({ ...form, address: event.target.value })}
-          />
-        </div>
-        <div>
           <label className={labelCls}>Notlar</label>
           <textarea
             className={`${inputCls} resize-none`}
@@ -717,48 +682,6 @@ export default function SigortaSirketleriPage() {
             value={assistanceForm.companyName}
             onChange={(event) =>
               setAssistanceForm({ ...assistanceForm, companyName: event.target.value })
-            }
-          />
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label className={labelCls}>E-posta</label>
-            <input
-              type="email"
-              className={inputCls}
-              value={assistanceForm.email}
-              onChange={(event) =>
-                setAssistanceForm({ ...assistanceForm, email: event.target.value })
-              }
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Telefon</label>
-            <input
-              className={inputCls}
-              value={assistanceForm.phone}
-              onChange={(event) =>
-                setAssistanceForm({ ...assistanceForm, phone: event.target.value })
-              }
-            />
-          </div>
-        </div>
-        <div>
-          <label className={labelCls}>Şehir</label>
-          <input
-            className={inputCls}
-            value={assistanceForm.city}
-            onChange={(event) => setAssistanceForm({ ...assistanceForm, city: event.target.value })}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Adres</label>
-          <textarea
-            className={`${inputCls} resize-none`}
-            rows={2}
-            value={assistanceForm.address}
-            onChange={(event) =>
-              setAssistanceForm({ ...assistanceForm, address: event.target.value })
             }
           />
         </div>

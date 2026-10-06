@@ -55,6 +55,12 @@ export function FileMasrafIsleme({
 
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash !== '#meridyen-operasyon-gideri') return;
+    document.getElementById('meridyen-operasyon-gideri')?.scrollIntoView({ block: 'start' });
+  }, [loading]);
+
   const total = expenses.reduce((s, e) => s + Number(e.amount ?? 0), 0);
   const butceTotal = expenses.reduce(
     (s, e) => (e.expensePlan === 'EKSTRA_SATIS_MASRAFI' ? s : s + Number(e.amount ?? 0)),
@@ -80,9 +86,10 @@ export function FileMasrafIsleme({
         body={OPS_NOTICE.hasarMasrafButceEk.body}
         testId="hasar-masraf-butce-ek-seridi"
       />
+      <div id="meridyen-operasyon-gideri">
       <FinansPanelCard
-        title="Masraf İşleme"
-        subtitle="Bütçelenen veya ek iş — aynı yöntem"
+        title="Meridyen Operasyon Gideri"
+        subtitle="Hasar tespit, enkaz kaldırma, refakat bu dosyanın bütçesine yazılır"
         action={{
           label: 'Yeni Masraf Ekle',
           onClick: () => setOpen(true),
@@ -102,7 +109,7 @@ export function FileMasrafIsleme({
         ) : expenses.length === 0 ? (
           <FinansEmptyState
             title="Henüz Masraf Yok"
-            description="Masraf eklemek için Yeni Masraf Ekle butonunu kullanın."
+            description="Hasar tespit, enkaz kaldırma, refakat için Yeni Masraf Ekle."
           />
         ) : (
           <ul className="divide-y divide-slate-100">
@@ -156,6 +163,7 @@ export function FileMasrafIsleme({
           </ul>
         )}
       </FinansPanelCard>
+      </div>
 
       <ClaimFileExpenseFormPanel
         open={open}

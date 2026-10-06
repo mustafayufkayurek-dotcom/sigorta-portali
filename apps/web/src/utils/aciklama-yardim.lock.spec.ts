@@ -19,9 +19,11 @@ describe('zorunlu açıklama yardım LOCK', () => {
     assert.equal(ACIKLAMA_YARDIM.gelir, 'Gelir Kaydını Açıklayınız.');
     assert.equal(ACIKLAMA_YARDIM.masraf, 'Masraf Gerekçesini Açıklayınız.');
     assert.equal(ACIKLAMA_YARDIM.sozlesmeYok, 'Sözleşme Yokluğunu Açıklayınız.');
+    assert.equal(ACIKLAMA_YARDIM.dijitalOnayYok, 'Dijital Onay Yokluğunu Açıklayınız.');
     const avans = read('../components/finance/HasarFileHakedisPanel.tsx');
     assert.match(avans, /placeholder=\{ACIKLAMA_YARDIM\.avans\}/);
-    assert.match(avans, /placeholder=\{ACIKLAMA_YARDIM\.sozlesmeYok\}/);
+    assert.match(avans, /placeholder=\{ACIKLAMA_YARDIM\.dijitalOnayYok\}/);
+    assert.doesNotMatch(avans, /placeholder=\{ACIKLAMA_YARDIM\.sozlesmeYok\}/);
     assert.doesNotMatch(avans, /hasar-avans-aciklama-yardim/);
     assert.doesNotMatch(avans, /setAvansAciklama\(avansAciklamaMetni/);
     const gelir = read('../components/finance/ClaimFileGelirTahsilatPanel.tsx');

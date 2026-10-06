@@ -28,12 +28,21 @@ import {
   Wrench,
 } from 'lucide-react';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import {
   INSPECTOR_ALREADY_ASSIGNED_MESSAGE,
   PRE_APPROVAL_DIGITAL_KIND,
+  PRE_APPROVAL_OTHER_JOB_ID,
   SUPPLIER_ALREADY_ASSIGNED_MESSAGE,
+  CLOSE_BILLABLE_QUESTION,
+  buildKapanisTahsilatWhatsAppMessage,
+  filePreApprovalItemChoices,
+  hasarCancelReasonOk,
   isHasarDigitalApprovalRelaxed,
   isInspectorAlreadyAssigned,
+  isPreApprovalOtherJob,
+  preApprovalJobsSelectionOk,
+  preApprovalOtherTextOk,
 } from '@sigorta/shared';
 import { openWhatsAppChat, toWhatsAppLink } from '@/utils/date-helpers';
 import {
@@ -52,16 +61,16 @@ import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import SpeechToText from '@/components/SpeechToText';
 import { HasarSalesInvoiceRequestCard } from './HasarSalesInvoiceRequestCard';
+import { PlannerFileCostEntry } from './PlannerFileCostEntry';
 import { openPlannerMap, plannerMapsHref } from './planner-maps';
 import { usePlanner } from './planner-context';
 import { sendPlannerApprovalMail } from './planner-send-approval-mail';
 import { repairReportStatusLabel } from '@/utils/repair-report-status';
-import { hasarCancelReasonOk } from '@sigorta/shared';
 import {
   plannerApprovalPartyLabel,
   resolvePlannerApprovalParty,
 } from './planner-approval-party';
-import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
+import { resolveClaimDosyaKonusu, toTitleCaseTR } from '@/utils/text-helpers';
 import {
   HASAR_WA_TEMPLATE_TYPES,
   interpolateHasarTemplate,
@@ -232,11 +241,13 @@ function Card({
   icon: Icon,
   children,
   invalid,
+  help,
 }: {
   title?: string;
   icon?: ComponentType<{ className?: string }>;
   children: ReactNode;
   invalid?: boolean;
+  help?: string;
 }) {
   return (
     <div
@@ -248,7 +259,8 @@ function Card({
       {title ? (
         <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-slate-800">
           {Icon ? <Icon className="h-3.5 w-3.5 text-slate-500" /> : null}
-          {title}
+          <span>{title}</span>
+          {help ? <FieldHelpTip text={help} /> : null}
         </p>
       ) : null}
       {children}
@@ -560,7 +572,7 @@ export function StepInspector() {
 
   return (
     <div className="mt-3 space-y-3">
-      <Card title="Ana Randevu (Dosyadan)" icon={CalendarDays}>
+      <Card title="Ana Randevu (Dosyadan)" icon={CalendarDays} help="Yeni randevu oluşturulmaz; ana randevu kullanılır.">
         <div className="grid grid-cols-2 gap-2 text-xs text-slate-700">
           <p>
             <span className="font-semibold text-slate-500">Tarih:</span> {claim.appointmentDate}
@@ -588,9 +600,6 @@ export function StepInspector() {
         </p>
         <p className="mt-1 text-xs text-slate-700">
           <span className="font-semibold text-slate-500">Bölge:</span> {claim.district}
-        </p>
-        <p className="mt-2 text-[10px] text-slate-500">
-          Yeni randevu oluşturulmaz; ana randevu kullanılır.
         </p>
       </Card>
 
@@ -771,9 +780,9 @@ export function StepSupplier() {
 
   return (
     <div className="mt-3 space-y-3">
-      <p className="text-[11px] text-slate-500">
-        Hasar türüne uygun tedarikçileri seçin. Atanınca görev ve WhatsApp bu adımda iletilir.
-        Tespitçi olan tedarikçi olamaz.
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+        <span>Tedarikçi Atama</span>
+        <FieldHelpTip text="Hasar türüne uygun tedarikçileri seçin. Atanınca görev ve WhatsApp bu adımda iletilir. Tespitçi olan tedarikçi olamaz." />
       </p>
       {assignedRows.length > 0 ? (
         <Card title="Atama Özeti" icon={Wrench}>
@@ -1180,30 +1189,49 @@ export function StepWhatsApp({
 
 /* ─── Dijital Onay — mutabakat / muvafakat; ön iş varsa ikinci belge ─── */
 export function StepDigitalApproval() {
-  const { claim, canEdit, savePreApprovalChoice, failedMandatoryKeys } = usePlanner();
-  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
-  const [groupError, setGroupError] = useState('');
+  const { claim, canEdit, savePreApprovalChoice, failedMandatoryKeys, setClaim } = usePlanner();
+  const [fileItems, setFileItems] = useState<Array<{ id: string; name: string }>>([]);
+  const [itemError, setItemError] = useState('');
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const otherSaved = claim.preApprovalJobs.find((j) => isPreApprovalOtherJob(j));
+  const [otherDraft, setOtherDraft] = useState(otherSaved?.name ?? '');
 
   useEffect(() => {
+    setOtherDraft(otherSaved?.name ?? '');
+  }, [otherSaved?.name]);
+
+  useEffect(() => {
+    const reportId = claim.report.id;
+    if (!reportId) {
+      setFileItems([]);
+      setItemError('');
+      setItemsLoading(false);
+      return;
+    }
     let cancelled = false;
+    setItemsLoading(true);
     axios
-      .get(`${API}/work-groups`, { headers: authHeader() })
+      .get(`${API}/repair-reports/${reportId}`, { headers: authHeader() })
       .then((res) => {
         if (cancelled) return;
-        const raw = res.data?.data ?? res.data ?? [];
-        const list = (Array.isArray(raw) ? raw : []).map((g: { id?: string; name?: string }) => ({
-          id: String(g.id ?? ''),
-          name: String(g.name ?? '').trim(),
-        })).filter((g: { id: string; name: string }) => g.id && g.name);
-        setGroups(list);
+        const raw = res.data?.data ?? res.data ?? {};
+        const items = Array.isArray(raw.items) ? raw.items : [];
+        setFileItems(filePreApprovalItemChoices(items).map((row) => ({
+          ...row,
+          name: toTitleCaseTR(row.name),
+        })));
+        setItemError('');
       })
       .catch(() => {
-        if (!cancelled) setGroupError('İş listesi yüklenemedi. Sayfayı yenileyin.');
+        if (!cancelled) setItemError('Dosya kalemleri yüklenemedi. Sayfayı yenileyin.');
+      })
+      .finally(() => {
+        if (!cancelled) setItemsLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [claim.report.id]);
 
   if (!claim.claimId) {
     return <p className="mt-3 text-xs text-slate-500">Dosya bağlı değil.</p>;
@@ -1212,7 +1240,9 @@ export function StepDigitalApproval() {
   const relaxed = isHasarDigitalApprovalRelaxed(claim.insuredName);
   const hasPre = claim.hasPreApprovalWork;
   const selectedIds = new Set(claim.preApprovalJobs.map((j) => j.id));
-  const needTwo = !relaxed && hasPre === true && claim.preApprovalJobs.length > 0;
+  const otherOn = Boolean(otherSaved);
+  const jobsOk = preApprovalJobsSelectionOk(hasPre, claim.preApprovalJobs);
+  const needTwo = !relaxed && hasPre === true && jobsOk;
 
   if (relaxed) {
     return (
@@ -1227,19 +1257,42 @@ export function StepDigitalApproval() {
     );
   }
 
+  const saveJobs = (next: Array<{ id: string; name: string }>) => {
+    void savePreApprovalChoice({ hasPreApprovalWork: true, preApprovalJobs: next });
+  };
+
   const toggleJob = (job: { id: string; name: string }) => {
+    const named = { id: job.id, name: toTitleCaseTR(job.name) };
     const next = selectedIds.has(job.id)
       ? claim.preApprovalJobs.filter((j) => j.id !== job.id)
-      : [...claim.preApprovalJobs, job];
-    void savePreApprovalChoice({ hasPreApprovalWork: true, preApprovalJobs: next });
+      : [...claim.preApprovalJobs, named];
+    saveJobs(next);
+  };
+
+  const toggleOther = (checked: boolean) => {
+    const without = claim.preApprovalJobs.filter((j) => !isPreApprovalOtherJob(j));
+    if (!checked) {
+      setOtherDraft('');
+      saveJobs(without);
+      return;
+    }
+    saveJobs([...without, { id: PRE_APPROVAL_OTHER_JOB_ID, name: otherDraft.trim() }]);
+  };
+
+  const commitOtherText = (raw: string) => {
+    const name = toTitleCaseTR(raw).trim();
+    setOtherDraft(name);
+    const without = claim.preApprovalJobs.filter((j) => !isPreApprovalOtherJob(j));
+    saveJobs([...without, { id: PRE_APPROVAL_OTHER_JOB_ID, name }]);
   };
 
   return (
     <div className="mt-3 space-y-3">
-      <p className="text-xs text-slate-600">
-        Mutabakat ve muvafakat aynı belgedir. Sigortalı WhatsApp linkinden dijital onaylar. Ayrı sayfa yok.
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+        <span>Dijital Onay Sözleşmeleri</span>
+        <FieldHelpTip text="Mutabakat ve muvafakat bu adımda istenir. Sigortalı WhatsApp linkinden dijital onaylar. Tedarikçi sözleşmesi burada sorulmaz." />
       </p>
-      <Card title="Ön Onaylı İş" invalid={failedMandatoryKeys.includes('pre_choice')}>
+      <Card title="Ön Onaylı İş" invalid={failedMandatoryKeys.includes('pre_choice')} help="Hayır: tek dijital onay. Evet: ön işler tek belgede, asıl onarım ayrı belgede.">
         <p className="text-xs text-slate-700">Bu dosyada ön onaylı iş var mı?</p>
         <div className="mt-2 grid grid-cols-2 gap-1.5">
           {([
@@ -1266,19 +1319,21 @@ export function StepDigitalApproval() {
             </button>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-slate-500">
-          Hayır: tek dijital onay. Evet: ön işler tek belgede, asıl onarım ayrı belgede.
-        </p>
       </Card>
 
       {hasPre === true ? (
-        <Card title="Ön Onayı Alınan İşler" invalid={failedMandatoryKeys.includes('pre_jobs')}>
-          {groupError ? <p className="text-xs text-status-danger">{groupError}</p> : null}
-          {groups.length === 0 && !groupError ? (
-            <p className="text-xs text-slate-500">İş listesi yükleniyor…</p>
+        <Card
+          title="Ön Onayı Alınan İşler"
+          invalid={failedMandatoryKeys.includes('pre_jobs')}
+          help="Bu dosyanın rapor kalemleridir. Raporda yoksa Diğer’i işaretleyip yazın."
+        >
+          {itemError ? <p className="text-xs text-status-danger">{itemError}</p> : null}
+          {itemsLoading ? <p className="text-xs text-slate-500">Kalemler yükleniyor…</p> : null}
+          {!itemsLoading && fileItems.length === 0 && !itemError ? (
+            <p className="text-xs text-slate-600">Bu dosyada henüz rapor kalemi yok.</p>
           ) : null}
           <div className="space-y-1.5">
-            {groups.map((g) => (
+            {fileItems.map((g) => (
               <label key={g.id} className="flex items-center gap-2 text-xs text-slate-800">
                 <input
                   type="checkbox"
@@ -1286,10 +1341,53 @@ export function StepDigitalApproval() {
                   disabled={!canEdit}
                   onChange={() => toggleJob(g)}
                   className="h-4 w-4 rounded border-slate-300"
+                  data-testid={`hasar-on-onay-kalem-${g.id}`}
                 />
-                {g.name}
+                {toTitleCaseTR(g.name)}
               </label>
             ))}
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+              <input
+                type="checkbox"
+                checked={otherOn}
+                disabled={!canEdit}
+                onChange={(e) => toggleOther(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300"
+                data-testid="hasar-on-onay-diger"
+              />
+              Diğer
+            </label>
+            {otherOn ? (
+              <div>
+                <label className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+                  <span>Diğer İş</span>
+                  <FieldHelpTip text="Raporda durmayan işi buraya yazın. Boş bırakılmaz." />
+                </label>
+                <input
+                  type="text"
+                  value={otherDraft}
+                  disabled={!canEdit}
+                  placeholder="Örn. enkaz kaldırma"
+                  data-testid="hasar-on-onay-diger-metin"
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setOtherDraft(v);
+                    setClaim((prev) => ({
+                      ...prev,
+                      preApprovalJobs: [
+                        ...prev.preApprovalJobs.filter((j) => !isPreApprovalOtherJob(j)),
+                        { id: PRE_APPROVAL_OTHER_JOB_ID, name: v.trim() },
+                      ],
+                    }));
+                  }}
+                  onBlur={() => commitOtherText(otherDraft)}
+                  className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800"
+                />
+                {!preApprovalOtherTextOk(claim.preApprovalJobs) ? (
+                  <p className="mt-1 text-xs text-status-danger">Diğer seçildi. Açıklama yazın.</p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </Card>
       ) : null}
@@ -1300,8 +1398,10 @@ export function StepDigitalApproval() {
         </p>
       ) : null}
 
-      {hasPre === true && claim.preApprovalJobs.length === 0 ? (
-        <p className="text-xs font-medium text-amber-800">Ön onayı alınan işi listeden seçin.</p>
+      {hasPre === true && !jobsOk ? (
+        <p className="text-xs font-medium text-amber-800">
+          Ön onayı alınan işi dosya kaleminden seçin. Diğer işaretliyse açıklama yazın.
+        </p>
       ) : null}
 
       {needTwo ? (
@@ -1310,7 +1410,7 @@ export function StepDigitalApproval() {
           className={failedMandatoryKeys.includes('pre_muvafakat') ? 'rounded-lg border-2 border-red-400 p-2' : undefined}
         >
           <p className="mb-1 text-[11px] font-semibold text-slate-700">
-            1 / 2 · Ön İş ({claim.preApprovalJobs.map((j) => j.name).join(', ')})
+            1 / 2 · Ön İş ({claim.preApprovalJobs.map((j) => toTitleCaseTR(j.name) || 'Diğer').join(', ')})
           </p>
           {claim.flowFlags.preMuvafakatApproved ? (
             <p className="mb-2 text-xs font-medium text-emerald-800">Ön iş dijital onayı alındı.</p>
@@ -1328,7 +1428,17 @@ export function StepDigitalApproval() {
         </div>
       ) : null}
 
-      {hasPre !== null && (hasPre === false || needTwo) ? (
+      {needTwo && !claim.flowFlags.preMuvafakatApproved ? (
+        <div
+          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
+          data-testid="hasar-asil-onarim-onay-pasif"
+        >
+          <p className="text-[11px] font-semibold text-slate-500">2 / 2 · Asıl Onarım Dijital Onayı</p>
+          <p className="mt-1 text-xs text-slate-500">Ön iş onayı gelince açılır.</p>
+        </div>
+      ) : null}
+
+      {hasPre === false || (needTwo && claim.flowFlags.preMuvafakatApproved) ? (
         <div
           data-mandatory-error={failedMandatoryKeys.includes('muvafakat') ? 'true' : undefined}
           className={failedMandatoryKeys.includes('muvafakat') ? 'rounded-lg border-2 border-red-400 p-2' : undefined}
@@ -1766,9 +1876,17 @@ function StepDocsUpload() {
 }
 
 function StepFileClose() {
-  const { claim, cancelOpenFile, saving, canEdit } = usePlanner();
+  const { claim, cancelOpenFile, saving, canEdit, saveKapanisButce } = usePlanner();
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+  const dropped = claim.kapanisButce.remainingRepairDropped;
+  const billable = claim.kapanisButce.hasBillable;
+  const financeGider = claim.claimId
+    ? `/panel/hasar-dosyalari/${claim.claimId}?grup=finans&alt=gider-butce`
+    : '#';
+  const financeGelir = claim.claimId
+    ? `/panel/hasar-dosyalari/${claim.claimId}?grup=finans&alt=gelir-tahsilat`
+    : '#';
 
   if (claim.fileCancelled) {
     return (
@@ -1802,14 +1920,62 @@ function StepFileClose() {
 
   return (
     <div className="mt-3 space-y-3">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+        <span>Dosya Kapanışı</span>
+        <FieldHelpTip text="Hakediş ve Meridyen gideri bu adımda yazılır. Kapatma en sonda. Finans aynı kaydı görür; sayfa değişmez." />
+      </p>
       <OpsFirstRunNotice
         noticeId={OPS_NOTICE.hasarOfisDosyaKapat.id}
         title={OPS_NOTICE.hasarOfisDosyaKapat.title}
         body={OPS_NOTICE.hasarOfisDosyaKapat.body}
         testId="hasar-ofis-dosya-kapat-seridi"
       />
-      <Card title="Dosya kapanışı">
-        {claim.closeMissing.length ? (
+      {dropped ? (
+        <OpsFirstRunNotice
+          noticeId={OPS_NOTICE.hasarKapanisButce.id}
+          title={OPS_NOTICE.hasarKapanisButce.title}
+          body={OPS_NOTICE.hasarKapanisButce.body}
+          testId="hasar-kapanis-butce-seridi"
+        />
+      ) : null}
+      {claim.claimId ? (
+        <>
+          <Card
+            title="Tedarikçi Hakedişi"
+            icon={WalletCards}
+            help="Bu dosyada seçilen ve yerine getirilen iş tedarikçiye yazılır. Finans aynı kaydı görür."
+          >
+            <PlannerFileCostEntry
+              claimId={claim.claimId}
+              fileLabel={claim.fileNo}
+              reportId={claim.report.id}
+              supplierCostHint={claim.report.supplierCostAmount || null}
+              canEdit={canEdit}
+              section="hakedis"
+            />
+          </Card>
+          <Card
+            title="Meridyen Operasyon Gideri"
+            icon={Building2}
+            help="Hasar tespit, enkaz kaldırma, refakat bu dosyaya yazılır. Araç kirası ve maaş yazılmaz."
+          >
+            <PlannerFileCostEntry
+              claimId={claim.claimId}
+              fileLabel={claim.fileNo}
+              reportId={claim.report.id}
+              supplierCostHint={claim.report.supplierCostAmount || null}
+              canEdit={canEdit}
+              section="gider"
+            />
+          </Card>
+        </>
+      ) : null}
+      <Card title="Kapanış Kararı" icon={CheckCircle2}>
+        {dropped ? (
+          <p className="text-xs leading-relaxed text-amber-900">
+            Kalan onarım yok. Onarım bitişi aranmaz. Hakediş ve Meridyen gideri bu adımda yazılır. Altta Dosyayı Kapat en sonda durur.
+          </p>
+        ) : claim.closeMissing.length ? (
           <p className="text-xs leading-relaxed text-amber-800">
             Süreçler bitmeden kapatılamaz: {claim.closeMissing.join(', ')}. Altta Dosyayı Kapat durur.
           </p>
@@ -1818,8 +1984,150 @@ function StepFileClose() {
             Tüm işlemler bitti. Altta Dosyayı Kapat deyince kapanış maili gider.
           </p>
         )}
+        {!dropped && canEdit ? (
+          <button
+            type="button"
+            data-testid="hasar-kalan-onarim-yok"
+            disabled={saving}
+            onClick={() => {
+              void saveKapanisButce({ remainingRepairDropped: true }).then((r) => setNotice(r.message));
+            }}
+            className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+          >
+            Kalan onarım yok — kapanış bütçesi
+          </button>
+        ) : null}
+        {dropped && canEdit ? (
+          <button
+            type="button"
+            data-testid="hasar-onarima-don"
+            disabled={saving}
+            onClick={() => {
+              void saveKapanisButce({ remainingRepairDropped: false }).then((r) => setNotice(r.message));
+            }}
+            className="mt-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+          >
+            Onarıma dön
+          </button>
+        ) : null}
       </Card>
-      <Card title="Hizmet iptal">
+      {dropped ? (
+        <Card title="Fatura Edilecek İş" help={CLOSE_BILLABLE_QUESTION}>
+          <p className="mb-2 text-xs text-slate-700">{CLOSE_BILLABLE_QUESTION}</p>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              data-testid="hasar-kapanis-fatura-evet"
+              disabled={saving || !canEdit}
+              onClick={() => {
+                void saveKapanisButce({ hasBillable: true }).then((r) => setNotice(r.message));
+              }}
+              className={`rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
+                billable === true
+                  ? 'border-brand-600 bg-brand-50 text-slate-900'
+                  : 'border-slate-200 bg-white text-slate-700'
+              }`}
+            >
+              Evet
+            </button>
+            <button
+              type="button"
+              data-testid="hasar-kapanis-fatura-hayir"
+              disabled={saving || !canEdit}
+              onClick={() => {
+                void saveKapanisButce({
+                  hasBillable: false,
+                  customerAgreed: false,
+                  infoWhatsappAt: null,
+                  closeBudgetStartedAt: null,
+                }).then((r) => setNotice(r.message));
+              }}
+              className={`rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
+                billable === false
+                  ? 'border-brand-600 bg-brand-50 text-slate-900'
+                  : 'border-slate-200 bg-white text-slate-700'
+              }`}
+            >
+              Hayır
+            </button>
+          </div>
+          {billable === false ? (
+            <p className="mt-2 text-xs text-slate-600">Fatura edilecek iş yok. Altta Dosyayı Kapat.</p>
+          ) : null}
+          {billable === true ? (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-semibold text-slate-800">Kapanış Bütçesi</p>
+              <p className="text-xs leading-relaxed text-slate-600">
+                Hakediş ve Meridyen gideri bu adımda yazılır. Finans’te aynı kayıt durur; sayfa değişmez.
+              </p>
+              <a
+                href={financeGider}
+                className="block rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-100"
+              >
+                Gider & Bütçe
+              </a>
+              <a
+                href={financeGelir}
+                className="block rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-100"
+              >
+                Gelir & Tahsilat
+              </a>
+              <button
+                type="button"
+                data-testid="hasar-kapanis-butce-baslat"
+                disabled={saving || !canEdit}
+                onClick={() => {
+                  void saveKapanisButce({
+                    closeBudgetStartedAt: claim.kapanisButce.closeBudgetStartedAt ?? new Date().toISOString(),
+                  }).then((r) => setNotice(r.message));
+                }}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {claim.kapanisButce.closeBudgetStartedAt ? 'Bütçeyi aç' : 'Kapanış bütçesini başlat'}
+              </button>
+              <label className="flex items-start gap-2 text-xs text-slate-700">
+                <input
+                  type="checkbox"
+                  data-testid="hasar-kapanis-mutabik"
+                  checked={claim.kapanisButce.customerAgreed}
+                  disabled={!canEdit}
+                  onChange={(e) => {
+                    void saveKapanisButce({ customerAgreed: e.target.checked });
+                  }}
+                  className="mt-0.5"
+                />
+                Müşteri tutarda mutabıktır
+              </label>
+              <button
+                type="button"
+                data-testid="hasar-kapanis-tahsilat-whatsapp"
+                disabled={saving || !canEdit}
+                onClick={() => {
+                  const body = buildKapanisTahsilatWhatsAppMessage({
+                    insuredName: claim.insuredName,
+                    fileNo: claim.fileNo,
+                  });
+                  openWhatsAppChat(claim.insuredPhone, body);
+                  void saveKapanisButce({ infoWhatsappAt: new Date().toISOString() }).then((r) => setNotice(r.message));
+                }}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                Tahsilat bilgi yazısı
+              </button>
+              {claim.kapanisButce.infoWhatsappAt ? (
+                <p className="text-[11px] text-emerald-800">Bilgi yazısı açıldı. Onay istenmez.</p>
+              ) : null}
+              <HasarSalesInvoiceRequestCard closeBillable />
+              {claim.closeMissing.length ? (
+                <p className="text-xs text-amber-800">Kapatmadan önce: {claim.closeMissing.join(', ')}.</p>
+              ) : (
+                <p className="text-xs text-slate-600">Sıra bitti. Altta Dosyayı Kapat.</p>
+              )}
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
+      <Card title="Hizmet İptali" icon={FileText}>
         <p className="mb-2 text-xs leading-relaxed text-slate-600">
           Hizmet iptal edildiyse dosyayı iptal edin. Açıklama zorunlu. İptal eden ve zamanı dosyada durur.
         </p>

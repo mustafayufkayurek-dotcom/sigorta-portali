@@ -130,9 +130,15 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(OPS_NOTICE.hasarHakedisGider.body, /her iş grubu/);
     assert.match(hakedisPanel, /Finansa Aktar/);
     assert.match(hakedisPanel, /tahsilatlar\?queue=payable/);
-    assert.equal(OPS_NOTICE.hasarMasrafButceEk.id, 'hasar-masraf-butce-ek-v535');
+    assert.equal(OPS_NOTICE.hasarMasrafButceEk.id, 'hasar-masraf-butce-ek-v647');
     assert.match(OPS_NOTICE.hasarMasrafButceEk.body, /Bütçelenen/);
     assert.match(OPS_NOTICE.hasarMasrafButceEk.body, /Ek İş/);
+    assert.match(OPS_NOTICE.hasarMasrafButceEk.body, /Hasar tespit/);
+    assert.match(OPS_NOTICE.hasarMasrafButceEk.body, /enkaz kaldırma/);
+    assert.match(OPS_NOTICE.hasarMasrafButceEk.body, /Dosyayı Kapat/);
+    assert.match(OPS_NOTICE.hasarMasrafButceEk.body, /Dijital onayda yazılmaz/);
+    assert.match(masrafIsleme, /Meridyen Operasyon Gideri/);
+    assert.match(masrafIsleme, /id="meridyen-operasyon-gideri"/);
     assert.match(hasarRapor, /OPS_NOTICE\.hasarRaporSonDegisiklik/);
     assert.match(opsListe, /OPS_NOTICE\.acilListeSonDegisiklik/);
     assert.match(opsListe, /acil-liste-ilk-kullanim-seridi/);
@@ -224,7 +230,9 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     );
     assert.match(hasarDosya, /OPS_NOTICE\.sahaTespitSonlandir/);
     assert.match(hasarDosya, /saha-tespit-sonlandir-seridi/);
-    assert.equal(OPS_NOTICE.sahaTespitSonlandir.id, 'saha-tespit-sonlandir-v551');
+    assert.equal(OPS_NOTICE.sahaTespitSonlandir.id, 'saha-tespit-sonlandir-v648');
+    assert.match(OPS_NOTICE.sahaTespitSonlandir.body, /Tespit fotoğrafı ve tespit notu/);
+    assert.match(OPS_NOTICE.sahaTespitSonlandir.body, /altındadır/);
     assert.match(OPS_NOTICE.sahaTespitSonlandir.body, /Tespiti Sonlandır/);
     assert.match(OPS_NOTICE.sahaTespitSonlandir.body, /dosya sorumlusuna düşer/);
     assert.match(OPS_NOTICE.sahaTespitSonlandir.body, /Kapatma dosya sorumlusundadır/);
@@ -309,6 +317,21 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(OPS_NOTICE.hasarOfisDosyaKapat.body, /iptal nedeni zorunlu/);
     assert.match(OPS_NOTICE.hasarOfisDosyaKapat.body, /Saha kapatmaz/);
     assert.doesNotMatch(OPS_NOTICE.hasarOfisDosyaKapat.body, /Google|API/);
+  });
+
+  it('Hasar kapanış bütçesi şeridi durur', () => {
+    const steps = readFileSync(
+      join(here, '../components/hasar-operasyon-planlayicisi/steps.tsx'),
+      'utf8',
+    );
+    assert.match(steps, /OPS_NOTICE\.hasarKapanisButce/);
+    assert.match(steps, /hasar-kapanis-butce-seridi/);
+    assert.equal(OPS_NOTICE.hasarKapanisButce.id, 'hasar-kapanis-butce-v646');
+    assert.match(OPS_NOTICE.hasarKapanisButce.body, /Fatura edilecek masraf/);
+    assert.match(OPS_NOTICE.hasarKapanisButce.body, /bu adımda yazılır/);
+    assert.match(OPS_NOTICE.hasarKapanisButce.body, /Dosyayı Kapat en sonda/);
+    assert.match(OPS_NOTICE.hasarKapanisButce.body, /Onarıma dön/);
+    assert.doesNotMatch(OPS_NOTICE.hasarKapanisButce.body, /Google|API/);
   });
 
   it('sağ panel kaydır şeridi durur', () => {

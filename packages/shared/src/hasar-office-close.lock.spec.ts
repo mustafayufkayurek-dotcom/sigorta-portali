@@ -26,6 +26,15 @@ describe('hasar ofis kapanış / iptal', () => {
       hasarOfficeCloseMissing({ statusCode: 'cancelled', hasApprovedReport: true }),
       ['İptal edilmiş dosya kapatılmaz'],
     );
+    assert.deepEqual(
+      hasarOfficeCloseMissing({
+        statusCode: 'repair_planning',
+        hasApprovedReport: false,
+        remainingRepairDropped: true,
+        hasBillable: false,
+      }),
+      [],
+    );
   });
 
   it('iptal açıklaması kısa olmaz; iptal kaydı kişiyi verir', () => {

@@ -340,6 +340,7 @@ model ClaimFile {
   /// null = henüz sorulmadı; true = söküm/enkaz gibi ön iş var
   hasPreApprovalWork    Boolean?  @map("has_pre_approval_work")
   preApprovalWorkJson   String?   @map("pre_approval_work_json")
+  kapanisButceJson      String?   @map("kapanis_butce_json")
   initialReserveAmount  Float?    @map("initial_reserve_amount")
   estimatedCostAmount   Float?    @map("estimated_cost_amount")
   approvedBudgetAmount  Float?    @map("approved_budget_amount")

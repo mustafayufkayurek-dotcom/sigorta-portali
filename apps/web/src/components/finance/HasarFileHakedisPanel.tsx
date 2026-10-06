@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { ArrowLeft, Banknote, Check, Receipt, Wallet, X } from 'lucide-react';
-import { AVANS_REF_PREFIX, HASAR_AVANS_YARI_ONAY_METNI, HASAR_AVANS_YARI_USTU_ETIKET, isAvansPayment, isAvansYariUstuNote, isHakedisMahsupPayment, isHasarAvansYariUstu, isHasarVendorContractWaived, resolveHasarAvansHesap, withAvansNote, withAvansYariUstuNote } from '@sigorta/shared';
+import { AVANS_REF_PREFIX, HASAR_AVANS_YARI_ONAY_METNI, HASAR_AVANS_YARI_USTU_ETIKET, isAvansPayment, isAvansYariUstuNote, isHakedisMahsupPayment, isHasarAvansYariUstu, isHasarDigitalApprovalRelaxed, isHasarVendorContractWaived, parseHasPreApprovalWork, parsePreApprovalJobs, resolveHasarAvansHesap, withAvansNote, withAvansYariUstuNote } from '@sigorta/shared';
 import { FinanceRowActions, printFinanceSlip, vendorEkstreHref } from '@/components/finance/FinanceRowActions';
 import { FinansPanelCard } from '@/components/finance/FinansPanelUI';
 import {
@@ -22,8 +22,15 @@ import { cycleClientSort, sortRowsByClientSort, type ClientSortState } from '@/u
 import { useToast } from '@/contexts/ToastContext';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { API, authHeader } from '@/utils/api';
-import { presentPdfPreview, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
+import {
+  claimManualDocumentLabel,
+  getFileDocuments,
+  isHasarDijitalOnayBelgesi,
+  openFileDocumentView,
+  type FileDocument,
+} from '@/utils/fileDocumentApi';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { RightPanelDockTab, rightPanelDockClass, useRightPanelDock } from '@/components/ui/right-panel-dock';
@@ -35,6 +42,8 @@ import {
   avansPayiForSatir,
   buildHasarHakedisGrantLines,
   buildHasarHakedisSecimSatirlari,
+  groupHakedisSatirlariByVendor,
+  withHakedisKalemDurumu,
   DOSYA_ODEME_IS_GRUBU_YOK,
   DOSYA_ODEME_TEDARIKCI_YOK,
   dosyaOdemeIsGrubu,
@@ -114,34 +123,13 @@ function paymentDokumLayoutStyle(tableColumns: ReturnType<typeof usePanelTableCo
 type Composer = 'none' | 'avans' | 'hakedis';
 type SozlesmeCevap = 'var' | 'yok' | null;
 
-type DosyaSozlesme = {
-  id: string;
-  contractNo?: string;
-  status?: string;
-  contractDate?: string;
-  signedAt?: string | null;
-  vendor?: { id?: string; name?: string };
-  vendorName?: string;
-};
-
-const SOZLESME_DURUM: Record<string, string> = {
+const DIJITAL_ONAY_DURUM: Record<string, string> = {
   draft: 'Taslak',
-  ready: 'Hazır',
   sent: 'Gönderildi',
-  vendor_signed: 'İmzalandı',
-  cancelled: 'İptal',
+  viewed: 'Görüldü',
+  digitally_approved: 'Onaylandı',
+  physically_uploaded: 'Yüklendi',
 };
-
-async function openDosyaSozlesmePdf(id: string) {
-  const res = await axios.get(`${API}/vendor-contracts/${id}/pdf`, {
-    headers: authHeader(),
-    responseType: 'blob',
-  });
-  const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
-  if (failure) throw new Error(failure);
-  const opened = await presentPdfPreview(res.data as Blob, 'Sözleşme');
-  if (!opened) throw new Error('PDF önizleme açılamadı.');
-}
 
 type StatementRow = {
   id: string;
@@ -525,9 +513,15 @@ function HakedisTedarikciKartlari({
   if (rows.length === 0) {
     return <p className="text-[12px] font-normal text-slate-500">Bu dosyada iş grubu bütçesi yok.</p>;
   }
+  const groups = groupHakedisSatirlariByVendor(rows);
   return (
     <ul className="space-y-2" data-testid={testId}>
-      {rows.map((row) => {
+      {groups.map((group) => (
+        <li key={group.vendorId} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+          <p className="text-[11px] font-medium text-slate-500">Tedarikçi</p>
+          <p className="text-[13px] font-medium text-slate-800">{group.vendorName}</p>
+          <ul className="mt-3 space-y-3">
+            {group.rows.map((row) => {
         const avans = avansOf(row);
         const kalan = hasarHakedisKalan(row.amount, avans, verilenOf(row));
         const isPasif = pasif(row) || kalan <= 0;
@@ -535,15 +529,28 @@ function HakedisTedarikciKartlari({
         return (
           <li
             key={row.key}
-            className={`rounded-xl border px-3 py-3 ${
-              isPasif ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-white'
-            }`}
+            className={group.rows.length > 1 ? 'border-t border-slate-100 pt-3' : ''}
           >
-            <p className="text-[11px] font-medium text-slate-500">Tedarikçi</p>
-            <p className={`text-[13px] font-medium ${isPasif ? 'text-slate-500' : 'text-slate-800'}`}>
-              {row.vendorName}
-            </p>
-            <p className="mt-2 text-[11px] font-medium text-slate-500">İş Grubu</p>
+            {row.jobs.length > 0 ? (
+              <ul className="mb-2 space-y-1" data-testid="hasar-hakedis-kalem-listesi">
+                {row.jobs.map((job, idx) => (
+                  <li key={job.id || `${row.key}-${idx}`} className="flex items-start justify-between gap-2 text-[12px] text-slate-700">
+                    <span className="min-w-0">
+                      <span className="block font-medium">{toTitleCaseTR(job.name)}</span>
+                      <span className="text-[11px] font-medium text-slate-500">
+                        {job.fulfilled ? 'Yerine Getirildi' : job.selected ? 'Seçildi' : 'Raporda'}
+                      </span>
+                    </span>
+                    {job.amount > 0 ? (
+                      <span className="shrink-0 tabular-nums text-slate-800">{fmt(job.amount)}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mb-2 text-[12px] text-slate-500">Bu tedarikçide seçilen iş kalemi yok.</p>
+            )}
+            <p className="text-[11px] font-medium text-slate-500">İş Grubu</p>
             <p className={`text-[13px] font-medium ${
               row.workGroupLabel === 'İş Grubu Yok' ? 'text-red-700' : isPasif ? 'text-slate-500' : 'text-slate-800'
             }`}>{row.workGroupLabel}</p>
@@ -627,6 +634,9 @@ function HakedisTedarikciKartlari({
           </li>
         );
       })}
+          </ul>
+        </li>
+      ))}
     </ul>
   );
 }
@@ -678,7 +688,6 @@ function SozlesmeSoru({
   yokNeden,
   kayitlar,
   yukleniyor,
-  vendorName,
   onVar,
   onYok,
   onYokNeden,
@@ -686,17 +695,16 @@ function SozlesmeSoru({
 }: {
   cevap: SozlesmeCevap;
   yokNeden: string;
-  kayitlar: DosyaSozlesme[];
+  kayitlar: FileDocument[];
   yukleniyor: boolean;
-  vendorName?: string;
   onVar: () => void;
   onYok: () => void;
   onYokNeden: (value: string) => void;
   onPdfHata: (e: unknown) => void;
 }) {
   return (
-    <div data-testid="dosya-sozlesme-soru" className="rounded-xl border border-slate-200 px-3 py-3">
-      <p className="text-[13px] font-medium text-slate-800">Dosyada sözleşme var mı?</p>
+    <div data-testid="dosya-dijital-onay-soru" className="rounded-xl border border-slate-200 px-3 py-3">
+      <p className="text-[13px] font-medium text-slate-800">Bu dosyada dijital onay var mı?</p>
       <div className="mt-2 flex gap-2">
         <button
           type="button"
@@ -724,27 +732,27 @@ function SozlesmeSoru({
       {cevap === 'var' ? (
         <div className="mt-2">
           {yukleniyor ? (
-            <p className="text-[12px] font-normal text-slate-400">Sözleşme yükleniyor…</p>
-          ) : kayitlar.length === 0 ? null : (
+            <p className="text-[12px] font-normal text-slate-400">Dijital onay yükleniyor…</p>
+          ) : kayitlar.length === 0 ? (
+            <p className="text-[12px] text-slate-600">Bu dosyada henüz dijital onay belgesi yok. Dijital Onay adımında oluşturulur.</p>
+          ) : (
             <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 px-3">
               {kayitlar.map((row) => (
                 <li key={row.id} className="flex items-center justify-between gap-2 py-2">
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-medium text-slate-800">
-                      {row.contractNo || 'Sözleşme'}
+                      {claimManualDocumentLabel(row)}
                     </p>
                     <p className="mt-0.5 text-[11px] font-normal text-slate-400">
-                      {row.vendor?.name || row.vendorName || vendorName || 'Tedarikçi'}
-                      {' · '}
-                      {fmtDate(row.signedAt ?? row.contractDate)}
+                      {fmtDate(row.digitallyApprovedAt ?? row.createdAt)}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <StatusPill label={SOZLESME_DURUM[row.status ?? ''] ?? row.status ?? '—'} />
+                    <StatusPill label={DIJITAL_ONAY_DURUM[row.status] ?? row.status} />
                     <button
                       type="button"
                       onClick={() => {
-                        void openDosyaSozlesmePdf(row.id).catch(onPdfHata);
+                        void openFileDocumentView(row.id).catch(onPdfHata);
                       }}
                       className="text-[12px] font-medium text-blue-700 hover:underline"
                     >
@@ -760,14 +768,14 @@ function SozlesmeSoru({
       {cevap === 'yok' ? (
         <label className="mt-2 block">
           <span className="text-[11px] font-medium text-slate-500">
-            Sözleşme Yoksa Açıklayınız <span className="text-red-500">*</span>
+            Dijital Onay Yoksa Açıklayınız <span className="text-red-500">*</span>
           </span>
           <textarea
             value={yokNeden}
             onChange={(e) => onYokNeden(e.target.value)}
             rows={2}
             required
-            placeholder={ACIKLAMA_YARDIM.sozlesmeYok}
+            placeholder={ACIKLAMA_YARDIM.dijitalOnayYok}
             className="mt-1 min-h-[56px] w-full resize-none rounded-lg border border-slate-200 px-2.5 py-2 text-[13px] font-normal outline-none focus:ring-1 focus:ring-blue-500"
           />
         </label>
@@ -790,10 +798,15 @@ export function HasarFileHakedisPanel({
   claimId,
   reportId,
   supplierCostHint,
+  compact = false,
+  hideCompactTitle = false,
 }: {
   claimId: string;
   reportId?: string | null;
   supplierCostHint?: number | null;
+  /** Planlayıcıda: aynı çekmece, dosyadan çıkılmaz */
+  compact?: boolean;
+  hideCompactTitle?: boolean;
 }) {
   const { showToast } = useToast();
   const { confirm, dialog } = usePanelConfirm();
@@ -803,6 +816,7 @@ export function HasarFileHakedisPanel({
   const [suppliers, setSuppliers] = useState<VendorCtx[]>([]);
   const [catalogWorkGroupIds, setCatalogWorkGroupIds] = useState<string[]>([]);
   const [fileNo, setFileNo] = useState('');
+  const [insuredName, setInsuredName] = useState('');
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [expenses, setExpenses] = useState<Array<{
     id: string;
@@ -847,12 +861,15 @@ export function HasarFileHakedisPanel({
   const [savingAvans, setSavingAvans] = useState(false);
   const [sozlesmeCevap, setSozlesmeCevap] = useState<SozlesmeCevap>(null);
   const [sozlesmeYokNeden, setSozlesmeYokNeden] = useState('');
-  const [dosyaSozlesmeleri, setDosyaSozlesmeleri] = useState<DosyaSozlesme[]>([]);
+  const [dosyaSozlesmeleri, setDosyaSozlesmeleri] = useState<FileDocument[]>([]);
   const [sozlesmeYukleniyor, setSozlesmeYukleniyor] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<StatementDetail | null>(null);
   const [secilenHakedisKey, setSecilenHakedisKey] = useState<string | null>(null);
   const [secilenAvansKey, setSecilenAvansKey] = useState<string | null>(null);
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
+  const [selectedJobNames, setSelectedJobNames] = useState<string[]>([]);
+  const [repairFulfilled, setRepairFulfilled] = useState(false);
 
   const dueDays = vendor?.paymentDueDays === 15 || vendor?.paymentDueDays === 30
     ? vendor.paymentDueDays
@@ -866,21 +883,39 @@ export function HasarFileHakedisPanel({
       setSozlesmeKaynak('dosya');
     }
     const req = { headers: authHeader(), timeout: 8000 };
-    const [claimRes, listRes, budgetRes] = await Promise.allSettled([
+    const [claimRes, listRes, budgetRes, centerRes] = await Promise.allSettled([
       axios.get(`${API}/claim-files/${claimId}`, req),
       axios.get(`${API}/claim-files/${claimId}/repair-reports`, req),
       axios.get(`${API}/claim-files/${claimId}/budget-versions`, req),
+      axios.get(`${API}/claim-operation-center/${claimId}`, req),
     ]);
     const claim = claimRes.status === 'fulfilled'
       ? unwrap(claimRes.value.data) as {
         fileNo?: string;
         claimNo?: string;
+        insuredName?: string;
         latestRepairReport?: { id?: string; totalSupplierCost?: number };
         estimatedCostAmount?: number;
         financialSummary?: { estimatedCost?: number; vendorCost?: number };
+        hasPreApprovalWork?: boolean | null;
+        preApprovalWorkJson?: string | null;
+        preApprovalJobs?: unknown;
       }
       : null;
     setFileNo(claim?.fileNo || claim?.claimNo || '');
+    setInsuredName(claim?.insuredName || '');
+    const preJobs = parsePreApprovalJobs(claim?.preApprovalJobs ?? claim?.preApprovalWorkJson);
+    if (parseHasPreApprovalWork(claim?.hasPreApprovalWork) === true) {
+      setSelectedJobIds(preJobs.map((job) => job.id));
+      setSelectedJobNames(preJobs.map((job) => job.name).filter(Boolean));
+    } else {
+      setSelectedJobIds([]);
+      setSelectedJobNames([]);
+    }
+    const center = centerRes.status === 'fulfilled'
+      ? unwrap(centerRes.value.data) as { flowFlags?: { repairCompleted?: boolean } }
+      : null;
+    setRepairFulfilled(Boolean(center?.flowFlags?.repairCompleted));
     let id = reportId ?? claim?.latestRepairReport?.id ?? null;
     if (!id && listRes.status === 'fulfilled') {
       id = firstId(listRes.value.data);
@@ -1047,14 +1082,15 @@ export function HasarFileHakedisPanel({
 
   const goToPayments = () => {
     setDrawerOpen(false);
+    if (compact) return;
     router.push(`/panel/finans/tahsilatlar?queue=payable&claimFileId=${claimId}`);
   };
 
   const openGrant = async (baslangic?: 'avans' | 'hakedis', satir?: HasarHakedisSecimSatiri) => {
     setDrawerOpen(true);
     setOpening(true);
-    setFilter(baslangic ?? 'avans');
-    setComposer(baslangic ?? 'none');
+    setFilter(baslangic ?? (compact ? 'hakedis' : 'avans'));
+    setComposer(baslangic ?? (compact ? 'hakedis' : 'none'));
     setSelectedId(null);
     setDetail(null);
     setSecilenHakedisKey(satir?.key ?? null);
@@ -1093,7 +1129,7 @@ export function HasarFileHakedisPanel({
   };
 
   const secimSatirlari = useMemo(
-    () => buildHasarHakedisSecimSatirlari({
+    () => withHakedisKalemDurumu(buildHasarHakedisSecimSatirlari({
       lines: lines.map((line) => ({
         key: line.key,
         workGroupId: line.workGroupId,
@@ -1103,8 +1139,12 @@ export function HasarFileHakedisPanel({
       })),
       suppliers,
       catalogWorkGroupIds,
+    }), {
+      selectedJobIds,
+      selectedJobNames,
+      repairFulfilled,
     }),
-    [lines, suppliers, catalogWorkGroupIds],
+    [lines, suppliers, catalogWorkGroupIds, selectedJobIds, selectedJobNames, repairFulfilled],
   );
   const hakedisSayfaSatirlari = useMemo(
     () => secimSatirlari,
@@ -1271,7 +1311,10 @@ export function HasarFileHakedisPanel({
     (secilenAvansSatir ? vendorAvans(secilenAvansSatir.vendorId) : avansHesap.avansToplam) + avansTutarDraft,
   );
   const sozlesmeMuaf = isHasarVendorContractWaived({ id: claimId, fileNo });
-  const sozlesmeHazir = sozlesmeMuaf
+  const dijitalOnayMuaf = isHasarDigitalApprovalRelaxed(insuredName);
+  const soruMuaf = dijitalOnayMuaf;
+  void sozlesmeMuaf;
+  const sozlesmeHazir = soruMuaf
     ? true
     : sozlesmeCevap === 'var'
       ? true
@@ -1283,18 +1326,13 @@ export function HasarFileHakedisPanel({
     setSozlesmeCevap('var');
     setSozlesmeYukleniyor(true);
     try {
-      const res = await axios.get(`${API}/vendor-contracts`, {
-        headers: authHeader(),
-        params: { claimFileId: claimId },
-      });
-      const rows = asList<DosyaSozlesme>(res.data).filter((row) => row.status !== 'cancelled');
-      const vendorRows = vendor?.id
-        ? rows.filter((row) => row.vendor?.id === vendor.id)
-        : rows;
-      setDosyaSozlesmeleri(vendorRows.length > 0 ? vendorRows : rows);
+      const rows = (await getFileDocuments('claim_file', claimId)).filter((row) =>
+        isHasarDijitalOnayBelgesi(row.documentKind),
+      );
+      setDosyaSozlesmeleri(rows);
     } catch (e) {
       setDosyaSozlesmeleri([]);
-      showToast('error', axiosErrorMessage(e, 'Sözleşme yüklenemedi.'));
+      showToast('error', axiosErrorMessage(e, 'Dijital onay yüklenemedi.'));
     } finally {
       setSozlesmeYukleniyor(false);
     }
@@ -1395,12 +1433,12 @@ export function HasarFileHakedisPanel({
       showToast('error', 'Bu tedarikçide kalan yok.');
       return;
     }
-    if (!sozlesmeMuaf && !sozlesmeCevap) {
-      showToast('error', 'Sözleşme durumunu belirleyiniz.');
+    if (!soruMuaf && !sozlesmeCevap) {
+      showToast('error', 'Dijital onay durumunu belirleyiniz.');
       return;
     }
     if (!sozlesmeHazir) {
-      showToast('error', ACIKLAMA_YARDIM.sozlesmeYok);
+      showToast('error', ACIKLAMA_YARDIM.dijitalOnayYok);
       return;
     }
     const aciklamaTrim = avansAciklamaMetni(avansAciklama);
@@ -1439,7 +1477,7 @@ export function HasarFileHakedisPanel({
       if (!ok) return;
     }
     const aciklamaNotu = sozlesmeCevap === 'yok'
-      ? `${aciklamaTrim} · Sözleşme yok: ${sozlesmeYokNeden.trim()}`
+      ? `${aciklamaTrim} · Dijital onay yok: ${sozlesmeYokNeden.trim()}`
       : aciklamaTrim;
     const avansNotu = yariUstu ? withAvansYariUstuNote(aciklamaNotu) : withAvansNote(aciklamaNotu);
     setSavingAvans(true);
@@ -1537,12 +1575,12 @@ export function HasarFileHakedisPanel({
       showToast('error', `${satir.vendorName} kartında 15 veya 30 gün vade seçili değil.`);
       return;
     }
-    if (!sozlesmeMuaf && !sozlesmeCevap) {
-      showToast('error', 'Sözleşme durumunu belirleyiniz.');
+    if (!soruMuaf && !sozlesmeCevap) {
+      showToast('error', 'Dijital onay durumunu belirleyiniz.');
       return;
     }
     if (!sozlesmeHazir) {
-      showToast('error', ACIKLAMA_YARDIM.sozlesmeYok);
+      showToast('error', ACIKLAMA_YARDIM.dijitalOnayYok);
       return;
     }
     if (sozlesme != null && (onayliToplam + kalan) > sozlesme + 0.009) {
@@ -1659,6 +1697,7 @@ export function HasarFileHakedisPanel({
                   )}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  {!compact ? (
                   <button
                     type="button"
                     onClick={goToPayments}
@@ -1666,6 +1705,7 @@ export function HasarFileHakedisPanel({
                   >
                     Ödemeleri gör
                   </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={requestClose}
@@ -1843,20 +1883,19 @@ export function HasarFileHakedisPanel({
                             </button>
                           </div>
                         </div>
-                        {!sozlesmeMuaf ? (
+                        {!soruMuaf ? (
                         <SozlesmeSoru
                           cevap={sozlesmeCevap}
                           yokNeden={sozlesmeYokNeden}
                           kayitlar={dosyaSozlesmeleri}
                           yukleniyor={sozlesmeYukleniyor}
-                          vendorName={secilenAvansSatir.vendorName}
                           onVar={() => void cagirDosyaSozlesmesi()}
                           onYok={() => {
                             setSozlesmeCevap('yok');
                             setDosyaSozlesmeleri([]);
                           }}
                           onYokNeden={setSozlesmeYokNeden}
-                          onPdfHata={(e) => showToast('error', axiosErrorMessage(e, 'Sözleşme açılamadı.'))}
+                          onPdfHata={(e) => showToast('error', axiosErrorMessage(e, 'Dijital onay açılamadı.'))}
                         />
                         ) : null}
                       </>
@@ -1867,6 +1906,20 @@ export function HasarFileHakedisPanel({
                 {composer === 'hakedis' ? (
                   <div className="space-y-3">
                     <div data-testid="hasar-hakedis-is-grubu" className="space-y-2">
+                      <p className="text-[13px] font-medium text-slate-800">Bu Dosyanın İş Kalemleri</p>
+                      {compact ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFilter('avans');
+                            setComposer('avans');
+                            setSecilenHakedisKey(null);
+                          }}
+                          className="text-[12px] font-medium text-blue-700 hover:underline"
+                        >
+                          Avans
+                        </button>
+                      ) : null}
                       <span className="sr-only">{HAKEDIS_KAYNAK_ETIKET[onerilenKaynak]}</span>
                       <HakedisTedarikciKartlari
                         rows={hakedisSayfaSatirlari}
@@ -1881,20 +1934,19 @@ export function HasarFileHakedisPanel({
                         savingButceKey={savingButceKey}
                       />
                     </div>
-                    {secimSatirlari.some((row) => !satirPasif(row)) && !sozlesmeMuaf ? (
+                    {secimSatirlari.some((row) => !satirPasif(row)) && !soruMuaf ? (
                       <SozlesmeSoru
                         cevap={sozlesmeCevap}
                         yokNeden={sozlesmeYokNeden}
                         kayitlar={dosyaSozlesmeleri}
                         yukleniyor={sozlesmeYukleniyor}
-                        vendorName={vendor?.name}
                         onVar={() => void cagirDosyaSozlesmesi()}
                         onYok={() => {
                           setSozlesmeCevap('yok');
                           setDosyaSozlesmeleri([]);
                         }}
                         onYokNeden={setSozlesmeYokNeden}
-                        onPdfHata={(e) => showToast('error', axiosErrorMessage(e, 'Sözleşme açılamadı.'))}
+                        onPdfHata={(e) => showToast('error', axiosErrorMessage(e, 'Dijital onay açılamadı.'))}
                       />
                     ) : null}
                     {hakedis.length > 0 ? (
@@ -1948,6 +2000,7 @@ export function HasarFileHakedisPanel({
             </div>
 
             <footer className="sticky bottom-0 flex shrink-0 items-center justify-end gap-2 border-t border-slate-200 bg-white px-4 py-2.5">
+                {!compact ? (
                 <button
                   type="button"
                   onClick={goToPayments}
@@ -1955,6 +2008,7 @@ export function HasarFileHakedisPanel({
                 >
                   Ödemeleri gör
                 </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={requestClose}
@@ -1971,9 +2025,49 @@ export function HasarFileHakedisPanel({
       )
     : null;
 
+  const compactList = (
+    <div data-testid="hasar-hakedis-sayfa-listesi">
+      {loading ? (
+        <p className="py-2 text-xs text-slate-400">Yükleniyor...</p>
+      ) : dosyaOdemeleri.length === 0 ? (
+        <p className="text-xs text-slate-600">Bu dosyada henüz hakediş yok.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {dosyaOdemeleri.slice(0, 6).map((row) => (
+            <li key={row.id} className="flex items-center justify-between gap-2 py-1.5 text-xs text-slate-700">
+              <span className="min-w-0 truncate">
+                {row.vendorName}
+                <span className="ml-1 text-slate-400">{row.tur}</span>
+              </span>
+              <span className="shrink-0 font-semibold tabular-nums">{fmt(row.tutar)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
   return (
     <>
       <div data-testid="hasar-gider-hakedis">
+        {compact ? (
+          <div className="space-y-2">
+            <div className={`flex items-center gap-2 ${hideCompactTitle ? 'justify-end' : 'justify-between'}`}>
+              {hideCompactTitle ? null : (
+                <p className="text-xs font-semibold text-slate-800">Tedarikçi Hakedişi</p>
+              )}
+              <button
+                type="button"
+                data-testid="hasar-on-onay-hakedis-yolu"
+                onClick={() => void openGrant()}
+                className="rounded-lg bg-brand-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-700"
+              >
+                Hakediş Ver
+              </button>
+            </div>
+            {compactList}
+          </div>
+        ) : (
         <FinansPanelCard
           title="Tedarikçi Hakedişi"
           subtitle="Gider"
@@ -1994,6 +2088,7 @@ export function HasarFileHakedisPanel({
             )}
           </div>
         </FinansPanelCard>
+        )}
       </div>
       {drawer}
       {dialog}

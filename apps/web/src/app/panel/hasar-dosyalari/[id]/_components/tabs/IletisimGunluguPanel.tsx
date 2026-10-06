@@ -138,10 +138,12 @@ function NoteFeedItem({ note, collapseBody = false }: { note: NoteRecord; collap
 export function IletisimGunluguPanel({
   claimId,
   variant = 'office',
+  onFieldNoteCount,
 }: {
   claimId: string;
   /** Saha: talimat/composer sadeleştirilir; ofis evrak dili yok */
   variant?: 'office' | 'field';
+  onFieldNoteCount?: (count: number) => void;
 }) {
   const { showToast } = useToast();
   const isField = variant === 'field';
@@ -151,7 +153,7 @@ export function IletisimGunluguPanel({
   const [noteType, setNoteType] = useState<'manager_instruction' | 'general'>('general');
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<FilterKey>('all');
-  const [composerOpen, setComposerOpen] = useState(!isField);
+  const [composerOpen, setComposerOpen] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -184,6 +186,16 @@ export function IletisimGunluguPanel({
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!isField || !onFieldNoteCount) return;
+    const count = notes.filter(
+      (note) =>
+        (note.noteType === 'field' || note.noteType === 'field_correction') &&
+        Boolean(note.content?.trim()),
+    ).length;
+    onFieldNoteCount(count);
+  }, [isField, notes, onFieldNoteCount]);
 
   const filteredNotes = useMemo(() => {
     if (filter === 'all') return notes;

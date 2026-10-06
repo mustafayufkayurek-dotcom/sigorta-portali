@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
-import { avansPayiForSatir, buildHasarHakedisGrantLines, buildHasarHakedisSecimSatirlari, buDosyaOdemeKaynagi, DOSYA_ODEME_IS_GRUBU_YOK, DOSYA_ODEME_TEDARIKCI_YOK, avansAciklamaMetni, dosyaOdemeIsGrubu, dosyaOdemeTedarikciAdi, gercekTedarikciIsGruplari, hasarHakedisKalan, isBuDosyaOdeme, isHasarHakedisSatiriPasif, isOrnekHakedisSatiri, scaleGrantDetailsToAmount, verilenHakedisForSatir, workGroupJobsLabel } from './hasar-hakedis-grant.ts';
+import { avansPayiForSatir, buildHasarHakedisGrantLines, buildHasarHakedisSecimSatirlari, buDosyaOdemeKaynagi, DOSYA_ODEME_IS_GRUBU_YOK, DOSYA_ODEME_TEDARIKCI_YOK, avansAciklamaMetni, dosyaOdemeIsGrubu, dosyaOdemeTedarikciAdi, gercekTedarikciIsGruplari, groupHakedisSatirlariByVendor, hasarHakedisKalan, isBuDosyaOdeme, isHasarHakedisSatiriPasif, isOrnekHakedisSatiri, scaleGrantDetailsToAmount, verilenHakedisForSatir, withHakedisKalemDurumu, workGroupJobsLabel } from './hasar-hakedis-grant.ts';
 import { netHakedisAfterAvans } from '../../../../packages/shared/src/hasar-flow-groups.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -90,6 +90,35 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.equal(rows[0]?.workGroupLabel, 'Mobilya İşleri');
     assert.equal(rows[0]?.vendorName, 'Local Kabul Tedarikci');
     assert.equal(rows[0]?.amount, 7500);
+  });
+
+  it('seçilen ve yerine getirilen kalem tedarikçi altında durur', () => {
+    const rows = buildHasarHakedisSecimSatirlari({
+      lines: [{
+        key: 'mob',
+        workGroupId: 'mob',
+        label: 'Mobilya İşleri',
+        amount: 7500,
+        details: [{ id: 'i1', jobDescription: 'Koltuk döşeme', amount: 7500 }],
+      }],
+      suppliers: [{
+        id: 'v1',
+        name: 'Local Kabul Tedarikci',
+        paymentDueDays: 15,
+        workGroups: [{ id: 'mob', name: 'Mobilya' }],
+      }],
+    });
+    assert.equal(rows[0]?.jobs[0]?.name, 'Koltuk döşeme');
+    const marked = withHakedisKalemDurumu(rows, {
+      selectedJobIds: ['i1'],
+      repairFulfilled: true,
+    });
+    assert.equal(marked[0]?.jobs[0]?.selected, true);
+    assert.equal(marked[0]?.jobs[0]?.fulfilled, true);
+    const grouped = groupHakedisSatirlariByVendor(marked);
+    assert.equal(grouped.length, 1);
+    assert.equal(grouped[0]?.vendorName, 'Local Kabul Tedarikci');
+    assert.equal(grouped[0]?.rows[0]?.jobs[0]?.name, 'Koltuk döşeme');
   });
 
   it('tedarikçide grup yoksa rapor iş grubu satırı kullanılır', () => {
@@ -316,7 +345,8 @@ describe('hasar hakediş maliyeti LOCK', () => {
     assert.match(panel, /Finansa Aktar/);
     assert.match(panel, /Bu iş grubuna hakediş verildi/);
     assert.doesNotMatch(panel, /Bu tedarikçiye hakediş verildi/);
-    assert.match(panel, /Sözleşme durumunu belirleyiniz/);
+    assert.match(panel, /Dijital onay durumunu belirleyiniz/);
+    assert.doesNotMatch(panel, /Dosyada sözleşme var mı/);
     assert.doesNotMatch(panel, /Dosyada sözleşme var mı sorun/);
     assert.match(panel, /Avans Ver/);
     assert.match(panel, /hasar-avans-tedarikci/);

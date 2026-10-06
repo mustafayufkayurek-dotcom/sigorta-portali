@@ -2,7 +2,7 @@
  * Operasyon Planlayıcısı — Kaydet zorunlu alan listesi
  */
 
-import { isHasarDigitalApprovalRelaxed } from '@sigorta/shared';
+import { isHasarDigitalApprovalRelaxed, preApprovalJobsSelectionOk } from '@sigorta/shared';
 import type { StepId } from './types';
 import type { PlannerClaimSnapshot } from './claim-snapshot';
 
@@ -97,7 +97,7 @@ export function getMandatoryChecks(
         {
           key: 'pre_jobs',
           label: 'Ön onayı alınan işler',
-          ok: relaxed || claim.hasPreApprovalWork !== true || claim.preApprovalJobs.length > 0,
+          ok: relaxed || preApprovalJobsSelectionOk(claim.hasPreApprovalWork, claim.preApprovalJobs),
         },
         {
           key: 'muvafakat',
@@ -107,7 +107,11 @@ export function getMandatoryChecks(
         {
           key: 'pre_muvafakat',
           label: 'Ön iş dijital onayı',
-          ok: relaxed || claim.hasPreApprovalWork !== true || claim.flowFlags.preMuvafakatApproved,
+          ok:
+            relaxed
+            || claim.hasPreApprovalWork !== true
+            || !preApprovalJobsSelectionOk(claim.hasPreApprovalWork, claim.preApprovalJobs)
+            || claim.flowFlags.preMuvafakatApproved,
         },
       ];
     }

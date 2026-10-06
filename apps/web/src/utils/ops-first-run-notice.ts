@@ -16,10 +16,10 @@ export const OPS_NOTICE = {
       'Bu dosyada Saha Operasyonu seçilir. Kişi Atanan Dosyalar sayfasında görür. Tedarikçi ayrıdır.',
   },
   sahaTespitSonlandir: {
-    id: 'saha-tespit-sonlandir-v551',
+    id: 'saha-tespit-sonlandir-v648',
     title: 'Tespiti sonlandır',
     body:
-      'Tespit bitince Tespiti Sonlandır deyin. Dosya dosya sorumlusuna düşer; dosya kapanmaz. Kapatma dosya sorumlusundadır.',
+      'Tespit fotoğrafı ve tespit notu yazılmadan Tespiti Sonlandır açılmaz. Tuş fotoğraf ve notun altındadır. Dosya dosya sorumlusuna düşer; dosya kapanmaz. Kapatma dosya sorumlusundadır.',
   },
   acilKayitliTedarikci: {
     id: 'acil-kayitli-tedarikci-v520',
@@ -70,10 +70,10 @@ export const OPS_NOTICE = {
       'Tespitçi her dosyada zorunlu değil. Gerektiğinde dosya sorumlusu atar. Tedarikçi ayrı durur; tespitçi görevi tedarikçiye taşınmaz.',
   },
   hasarMasrafButceEk: {
-    id: 'hasar-masraf-butce-ek-v535',
-    title: 'Masraf yeri',
+    id: 'hasar-masraf-butce-ek-v647',
+    title: 'Meridyen Operasyon Gideri',
     body:
-      'Masraf eklerken Bütçelenen veya Ek İş seçin. Ek iş kârı ayrı ve toplamda görünür. Araç kirası, maaş, SGK ve vergi bu dosyaya yazılmaz; Finans’te yönetim gideri havuzuna işlenir, ayın son günü dağıtılmadıysa finans ve yöneticiye hatırlatılır.',
+      'Hasar tespit, enkaz kaldırma, refakat Dosyayı Kapat adımında Yeni Masraf Ekle ile yazılır. Dijital onayda yazılmaz. Bütçelenen bütçe gidere düşer. Ek İş kârı ayrı ve toplamda görünür. Araç kirası ve maaş bu dosyaya yazılmaz.',
   },
   hasarHakedisGider: {
     id: 'hasar-hakedis-gider-v552',
@@ -128,6 +128,12 @@ export const OPS_NOTICE = {
     title: 'Dosyayı kapat',
     body:
       'Süreçler bitmeden dosya kapanmaz. Onaylı rapor ve onarım bitişi gerekir. Hizmet iptalse Dosyayı İptal Et; iptal nedeni zorunlu. İptal eden ve işlem zamanı dosyada durur. Saha kapatmaz.',
+  },
+  hasarKapanisButce: {
+    id: 'hasar-kapanis-butce-v646',
+    title: 'Kalan onarım yok',
+    body:
+      'Kalan onarım yoksa kapanış bütçesi buradadır. Fatura edilecek masraf / hizmet sorulur. Hakediş ve Meridyen gideri bu adımda yazılır; Finans’te aynı kayıt durur. Dosyayı Kapat en sonda. Kapatmadan önce Onarıma dön ile geri alınır. Ödendi finans personelindedir.',
   },
   hasarRaporSonDegisiklik: {
     id: 'hasar-rapor-v526',

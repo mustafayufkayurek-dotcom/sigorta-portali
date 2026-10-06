@@ -115,9 +115,11 @@ export default function EvrakOnayPage() {
   const kindLabel =
     doc?.documentKind === 'muvafakatname'
       ? 'Muvafakatname'
-      : doc?.documentKind
-        ? acilDigitalFormTitle(doc.documentKind)
-        : 'Evrak';
+      : doc?.documentKind === 'muvafakatname_on_is'
+        ? 'Ön Onaylı İşler Muvafakat Formu'
+        : doc?.documentKind
+          ? acilDigitalFormTitle(doc.documentKind)
+          : 'Evrak';
 
   if (stage === 'loading') {
     return (
