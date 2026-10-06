@@ -8,18 +8,28 @@
 
 ---
 
-## Canlı durum (6 Ekim 2026 — web v648 / backend v648)
+## Canlı durum (6 Ekim 2026 — web v649 / backend v649)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v648-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v648-amd64` | canlı |
-| **Rollback** | Web **v647** / Backend **v647** | manifest `rollbackImages` |
-| **Etiket** | `v648-kapanis-tespit` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v649-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v649-amd64` | canlı |
+| **Rollback** | Web **v648** / Backend **v648** | manifest `rollbackImages` |
+| **Etiket** | `v649-tespit-not-onay` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v649 — Full (6 Ekim 2026) — Tespit not, ihbar, ön onaylı mail, yönetici onay
+
+- Tespitçi notu açık; yazım Title Case; sarı kutu İhbar Notu; Tespiti Sonlandır Atanan Dosyalar; başlık ikonu
+- Ön onaylı iş bitiş maili Ön Onaylı İş Tamamlandı; Dosya No altında sigortalı ve ilçe · il
+- Onay talep mailindeki Raporu Aç’ta yönetici Onayla ve Reddet
+- Mali mesuliyet alanı çizilmediği için alınmadı
+- Disk 53 GB (eski image etiketleri ve fazla yedek; canlı uploads silinmedi); DB yedeği gzip 81M (`/var/backups/meridyen/pre_v649-tespit-not-onay_20261006_183616.sql.gz`); uploads `/opt/app/backups/uploads/uploads_20261006_183632.tar.gz`; alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez
+- Smoke: Route Gate FAIL=2 (oturum şifresi yok); health ve giriş yerinde
+- Geri alma web **v648** / backend **v648**
 
 ### v648 — Full (6 Ekim 2026) — Kapanış, görev, ön onay, tespit
 
