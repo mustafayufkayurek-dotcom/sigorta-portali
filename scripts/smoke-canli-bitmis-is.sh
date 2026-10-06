@@ -121,6 +121,10 @@ node --experimental-strip-types --test \
   packages/shared/src/claim-pre-approval.lock.spec.ts \
   packages/shared/src/insurance-company-catalog.lock.spec.ts \
   apps/backend/src/modules/claim-files/assignable-file-owners.lock.spec.ts \
-  apps/web/src/components/hasar-operasyon-planlayicisi/inspector-region.lock.spec.ts
+  apps/web/src/components/hasar-operasyon-planlayicisi/inspector-region.lock.spec.ts \
+  apps/web/src/utils/field-staff-claim-view.lock.spec.ts \
+  apps/web/src/utils/text-helpers.lock.spec.ts \
+  apps/backend/src/modules/timeline/tespit-notu-yazim.lock.spec.ts \
+  apps/backend/src/modules/repair-reports/repair-report-revise.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

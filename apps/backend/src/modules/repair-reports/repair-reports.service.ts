@@ -1399,6 +1399,10 @@ export class RepairReportsService {
     if (report.status !== 'pending_approval') {
       throw new BadRequestException('Yalnızca onay bekleyen raporlar reddedilebilir');
     }
+    const trimmedReason = String(reason ?? '').trim();
+    if (!trimmedReason) {
+      throw new BadRequestException('Red nedeni yazılmalıdır.');
+    }
 
     await this.prisma.repairReport.update({
       where: { id: reportId },
@@ -1406,7 +1410,7 @@ export class RepairReportsService {
     });
 
     await this.prisma.reportApprovalHistory.create({
-      data: { reportId, userId, action: 'rejected', reason },
+      data: { reportId, userId, action: 'rejected', reason: trimmedReason },
     });
 
     // Notify report creator (in-app)
@@ -1414,7 +1418,7 @@ export class RepairReportsService {
       report.createdByUserId,
       'report_rejected',
       'Raporunuz Reddedildi',
-      `${report.reportNo} numaralı raporunuz reddedildi. Neden: ${reason || 'Belirtilmemiş'}`,
+      `${report.reportNo} numaralı raporunuz reddedildi. Neden: ${trimmedReason}`,
       reportId,
     );
 
@@ -1425,7 +1429,7 @@ export class RepairReportsService {
         recipientUserId: report.createdByUserId,
         reportNo: report.reportNo,
         fileNo: (report.claimFile as any)?.fileNo ?? '',
-        rejectionReason: reason || 'Belirtilmemiş',
+        rejectionReason: trimmedReason,
         claimFileId: report.claimFileId,
         reportId,
       });
@@ -1436,7 +1440,7 @@ export class RepairReportsService {
     await this.supersedeOpenWritingReports(
       report.claimFileId,
       userId,
-      reason,
+      trimmedReason,
       reportId,
     );
 

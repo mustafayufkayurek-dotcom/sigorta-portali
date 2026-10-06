@@ -8,7 +8,7 @@ import {
   panelRevizyonTalebiPath,
 } from '@/common/utils/panel-url';
 import { EmailService } from './email.service';
-import { formatEmergencyFileAddress } from '@sigorta/shared';
+import { claimFilePlaceLabel, formatEmergencyFileAddress, repairCompletedMailCopy } from '@sigorta/shared';
 import {
   buildApprovalReminderEmailHtml,
   buildApprovalReminderEmailSubject,
@@ -520,32 +520,42 @@ export class ClaimEventEmailService {
     });
   }
 
-  /** Onarım bitti — yönetici ve finans. Dosya kapanışı beklenmez. */
+  /** Onarım veya ön onaylı iş bitti — yönetici ve finans. */
   async onRepairCompleted(params: {
     recipientEmail: string;
     recipientName?: string | null;
     fileNo: string;
     claimFileId: string;
     vendorNames: string;
+    insuredName?: string | null;
+    city?: string | null;
+    district?: string | null;
+    hasPreApprovalWork?: boolean;
   }) {
     const to = params.recipientEmail?.trim();
     if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
       return { sent: false as const, errorMsg: 'Alıcı e-postası yok' };
     }
-    return this.email.sendTemplateEmail(to, `Onarım bitti — fatura düzenlenebilir: ${params.fileNo}`, {
-      title: 'Onarım Tamamlandı',
-      badgeLabel: 'Fatura',
-      preheader: `${params.fileNo} onarımı bitti. Dosya kapanmadan fatura kesilebilir.`,
+    const copy = repairCompletedMailCopy({
+      fileNo: params.fileNo,
+      hasPreApprovalWork: Boolean(params.hasPreApprovalWork),
+    });
+    return this.email.sendTemplateEmail(to, copy.subject, {
+      title: copy.title,
+      badgeLabel: copy.badgeLabel,
+      preheader: copy.preheader,
       greeting: params.recipientName ? `Sayın ${params.recipientName},` : undefined,
-      bodyNote: 'Dosyanın kapanması beklenmez. Fatura talebi finans kuyruğuna düşebilir.',
+      bodyNote: copy.bodyNote,
       rows: [
         { label: 'Dosya No', value: params.fileNo },
+        { label: 'Sigortalı', value: String(params.insuredName ?? '').trim() || '—' },
+        { label: 'İl / İlçe', value: claimFilePlaceLabel(params.city, params.district) },
         { label: 'Tedarikçiler', value: params.vendorNames || '—' },
       ],
       actionUrl: buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId)),
       actionLabel: 'Dosyayı Aç',
       nextStepTitle: 'Sıradaki iş',
-      nextStepText: 'Finans faturayı düzenler. Hakediş ayrı onaylanır.',
+      nextStepText: copy.nextStepText,
     });
   }
 }

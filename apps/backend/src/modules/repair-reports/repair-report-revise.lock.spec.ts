@@ -35,5 +35,10 @@ describe('hasar rapor revizyon durumu LOCK', () => {
     assert.match(page, /canStartRepairReportRevisionFromStatus/);
     assert.match(page, /canReviseThisReport/);
     assert.match(page, /onStartRevision=\{canReviseThisReport \? handleRevise : undefined\}/);
+    assert.match(page, /canApprovePendingRepairReport/);
+    assert.match(page, /yonetici-rapor-onay/);
+    assert.match(page, /repair-reports\/\$\{reportId\}\/approve/);
+    assert.match(page, /repair-reports\/\$\{reportId\}\/reject/);
+    assert.match(shared, /canApprovePendingRepairReport/);
   });
 });

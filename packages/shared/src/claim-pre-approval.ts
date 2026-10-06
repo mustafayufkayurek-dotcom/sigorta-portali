@@ -138,3 +138,46 @@ export function preApprovalApprovalLines(jobs: PreApprovalJob[]): string[] {
   }
   return lines;
 }
+
+/** Mail özeti: ilçe · il. «İl (…) · İlçe (…)» yazılmaz. */
+export function claimFilePlaceLabel(city?: string | null, district?: string | null): string {
+  const ilce = String(district ?? '').replace(/\s+/g, ' ').trim();
+  const il = String(city ?? '').replace(/\s+/g, ' ').trim();
+  if (ilce && il) return `${ilce} · ${il}`;
+  return ilce || il || '—';
+}
+
+export type RepairCompletedMailCopy = {
+  title: string;
+  badgeLabel: string;
+  subject: string;
+  preheader: string;
+  bodyNote: string;
+  nextStepText: string;
+};
+
+/** Ön onaylı iş bitince «Onarım Tamamlandı» yazılmaz. */
+export function repairCompletedMailCopy(input: {
+  fileNo: string;
+  hasPreApprovalWork: boolean;
+}): RepairCompletedMailCopy {
+  const fileNo = String(input.fileNo ?? '').trim() || '—';
+  if (input.hasPreApprovalWork) {
+    return {
+      title: 'Ön Onaylı İş Tamamlandı',
+      badgeLabel: 'Ön Onay',
+      subject: `Ön onaylı iş bitti: ${fileNo}`,
+      preheader: `${fileNo} ön onaylı işi bitti.`,
+      bodyNote: 'Bu dosyada ön onaylı iş tamamlandı. Kalan onarım varsa dosya kapanmaz.',
+      nextStepText: 'Hakediş ayrı onaylanır. Kalan onarım varsa onarım sürer.',
+    };
+  }
+  return {
+    title: 'Onarım Tamamlandı',
+    badgeLabel: 'Fatura',
+    subject: `Onarım bitti — fatura düzenlenebilir: ${fileNo}`,
+    preheader: `${fileNo} onarımı bitti. Dosya kapanmadan fatura kesilebilir.`,
+    bodyNote: 'Dosyanın kapanması beklenmez. Fatura talebi finans kuyruğuna düşebilir.',
+    nextStepText: 'Finans faturayı düzenler. Hakediş ayrı onaylanır.',
+  };
+}

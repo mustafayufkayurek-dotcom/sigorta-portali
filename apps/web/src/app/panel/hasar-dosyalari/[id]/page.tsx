@@ -59,6 +59,7 @@ import {
   ClipboardList,
   FileText,
   FolderOpen,
+  ImagePlus,
   MapPin,
   Settings2,
   Wallet,
@@ -365,6 +366,7 @@ function FieldStaffEndInspection({
   noteCount: number;
   onClaimUpdated?: (patch: Partial<any>) => void;
 }) {
+  const router = useRouter();
   const { showToast } = useToast();
   const { confirm, dialog } = usePanelConfirm();
   const queryClient = useQueryClient();
@@ -407,6 +409,7 @@ function FieldStaffEndInspection({
       void queryClient.invalidateQueries({ queryKey: ['field-operations-home-claims'] });
       void queryClient.invalidateQueries({ queryKey: ['field-completed-inspections'] });
       void queryClient.invalidateQueries({ queryKey: ['office-inspection-reminder'] });
+      router.push(FIELD_STAFF_ASSIGNMENTS_HREF);
     } catch (err) {
       reportCaughtError(err, getApiErrorMessage(err, 'Tespit işaretlenemedi.'));
     } finally {
@@ -1783,9 +1786,14 @@ export default function ClaimFileDetailPage() {
             id="saha-foto"
             className="scroll-mt-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5"
           >
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold text-slate-950">Tespit Fotoğrafları</h3>
-              <p className="mt-0.5 text-xs text-slate-500">Zorunlu. Ofis ile ortak; dosya sorumlusu da görür</p>
+            <div className="mb-3 flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                <ImagePlus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-slate-950">Tespit Fotoğrafları</h3>
+                <p className="mt-0.5 text-xs text-slate-500">Zorunlu. Ofis ile ortak; dosya sorumlusu da görür</p>
+              </div>
             </div>
             <FieldInspectionPhotosPanel claimId={id!} onCountChange={onSahaPhotoCount} />
           </section>
@@ -1793,9 +1801,14 @@ export default function ClaimFileDetailPage() {
             id="saha-not"
             className="scroll-mt-4 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-5"
           >
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold text-slate-950">Tespit Notları</h3>
-              <p className="mt-0.5 text-xs text-slate-500">Zorunlu. Saha ve ofis ortak not alanı</p>
+            <div className="mb-3 flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                <ClipboardList className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-slate-950">Tespit Notları</h3>
+                <p className="mt-0.5 text-xs text-slate-500">Zorunlu. Saha ve ofis ortak not alanı</p>
+              </div>
             </div>
             <IletisimGunluguPanel claimId={id!} variant="field" onFieldNoteCount={onSahaNoteCount} />
           </section>

@@ -10,6 +10,8 @@ import {
   parseHasPreApprovalWork,
   parsePreApprovalJobs,
   PRE_APPROVAL_DIGITAL_KIND,
+  claimFilePlaceLabel,
+  repairCompletedMailCopy,
   PRE_APPROVAL_OTHER_JOB_ID,
   preApprovalApprovalLines,
   preApprovalJobsSelectionOk,
@@ -179,5 +181,27 @@ describe('claim pre-approval lock', () => {
       'utf8',
     );
     assert.match(center, /isHasarDigitalApprovalRelaxed\(claim\.insuredName\)/);
+    assert.match(center, /parseHasPreApprovalWork\(claim\.hasPreApprovalWork\)/);
+    assert.match(center, /hasPreApprovalWork,/);
+  });
+
+  it('ön onaylı bitiş maili Onarım Tamamlandı yazmaz; sigortalı ve ilçe · il durur', () => {
+    assert.equal(claimFilePlaceLabel('İstanbul', 'Üsküdar'), 'Üsküdar · İstanbul');
+    assert.equal(claimFilePlaceLabel(null, null), '—');
+    const pre = repairCompletedMailCopy({ fileNo: '353853', hasPreApprovalWork: true });
+    assert.equal(pre.title, 'Ön Onaylı İş Tamamlandı');
+    assert.match(pre.subject, /Ön onaylı iş bitti/);
+    assert.doesNotMatch(pre.title, /Onarım Tamamlandı/);
+    const full = repairCompletedMailCopy({ fileNo: '353853', hasPreApprovalWork: false });
+    assert.equal(full.title, 'Onarım Tamamlandı');
+    const email = readFileSync(
+      join(here, '../../../apps/backend/src/modules/notifications/email/claim-event-email.service.ts'),
+      'utf8',
+    );
+    assert.match(email, /repairCompletedMailCopy/);
+    assert.match(email, /claimFilePlaceLabel/);
+    assert.match(email, /\{ label: 'Sigortalı'/);
+    assert.match(email, /\{ label: 'İl \/ İlçe'/);
+    assert.doesNotMatch(email, /title: 'Onarım Tamamlandı'/);
   });
 });

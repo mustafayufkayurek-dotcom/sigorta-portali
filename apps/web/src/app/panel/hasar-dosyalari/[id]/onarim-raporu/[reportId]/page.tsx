@@ -23,6 +23,7 @@ import type { ManualDecisionAction } from '@/components/operasyon/ManualDecision
 import { FieldSurveyBriefModal } from '@/components/field-survey/FieldSurveyBriefModal';
 import { FieldSurveyBriefList } from '@/components/field-survey/FieldSurveyBriefList';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { UI_ACTION_TIMEOUT_MESSAGE, isUiActionTimeout, withUiActionTimeout } from '@/utils/ui-action-timeout';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import VendorQuoteModal, { readVendorPriceMemory, writeVendorPriceMemory } from '@/components/damage-reports/VendorQuoteModal';
@@ -33,7 +34,7 @@ import {
 } from '@/components/damage-reports/VendorQuotePopover';
 import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
+import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -4691,6 +4692,9 @@ export default function RepairReportPage() {
   });
   const [externalApprovals, setExternalApprovals] = useState<any[]>([]);
   const [sendingExternal, setSendingExternal] = useState(false);
+  const [managerApprovalBusy, setManagerApprovalBusy] = useState(false);
+  const [showRejectReason, setShowRejectReason] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   // Dirty state for save/cancel
   const [pendingFields, setPendingFields] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -5220,6 +5224,50 @@ export default function RepairReportPage() {
       notify('error', message);
     }
     finally { setRequestingApproval(false); }
+  };
+
+  const handleManagerApprove = async () => {
+    const ok = await askConfirm('Bu raporu onaylıyor musunuz?');
+    if (!ok) return;
+    setManagerApprovalBusy(true);
+    try {
+      await withUiActionTimeout(
+        axios.post(`${API}/repair-reports/${reportId}/approve`, {}, { headers: authHeader(), timeout: 10_000 }),
+      );
+      notify('success', 'Rapor onaylandı.');
+      setShowRejectReason(false);
+      await load();
+    } catch (e) {
+      notify('error', isUiActionTimeout(e) ? UI_ACTION_TIMEOUT_MESSAGE : getApiErrorMessage(e, 'Onay kaydedilemedi'));
+    } finally {
+      setManagerApprovalBusy(false);
+    }
+  };
+
+  const handleManagerReject = async () => {
+    const reason = rejectReason.trim();
+    if (!reason) {
+      notify('warning', 'Red nedeni yazılmalıdır.');
+      return;
+    }
+    setManagerApprovalBusy(true);
+    try {
+      await withUiActionTimeout(
+        axios.post(
+          `${API}/repair-reports/${reportId}/reject`,
+          { reason },
+          { headers: authHeader(), timeout: 10_000 },
+        ),
+      );
+      notify('success', 'Rapor reddedildi.');
+      setShowRejectReason(false);
+      setRejectReason('');
+      await load();
+    } catch (e) {
+      notify('error', isUiActionTimeout(e) ? UI_ACTION_TIMEOUT_MESSAGE : getApiErrorMessage(e, 'Red kaydedilemedi'));
+    } finally {
+      setManagerApprovalBusy(false);
+    }
   };
 
   const beginRequestApproval = async () => {
@@ -5771,6 +5819,10 @@ export default function RepairReportPage() {
 
   // Acil Yardım raporu ise ayrı editörü kullan
   const isEditable = (report.status === 'draft' || report.status === 'rejected') && !isFieldStaff;
+  const canManagerApprove = canApprovePendingRepairReport(
+    currentUser?.role?.code ?? currentUser?.roleCode,
+    report.status,
+  );
   const canReviseThisReport =
     !isFieldStaff
     && canStartRepairReportRevisionFromStatus(report.status)
@@ -5804,6 +5856,28 @@ export default function RepairReportPage() {
 
   const reportActionButtons = (
     <>
+      {canManagerApprove && (
+        <>
+          <button
+            type="button"
+            data-testid="yonetici-rapor-onayla"
+            disabled={managerApprovalBusy}
+            onClick={() => void handleManagerApprove()}
+            className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {managerApprovalBusy ? 'Kaydediliyor...' : 'Onayla'}
+          </button>
+          <button
+            type="button"
+            data-testid="yonetici-rapor-reddet"
+            disabled={managerApprovalBusy}
+            onClick={() => setShowRejectReason(true)}
+            className="text-xs border border-slate-300 bg-white text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+          >
+            Reddet
+          </button>
+        </>
+      )}
       {report.reportType === 'multi' && isEditable && (
         <button type="button" onClick={() => setShowDamageTypeModal(true)} className="text-xs bg-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-brand-700">+ Hasar Nedeni</button>
       )}
@@ -6071,6 +6145,36 @@ export default function RepairReportPage() {
               )}
             </p>
           )}
+        </div>
+      )}
+
+      {canManagerApprove && (
+        <div
+          data-testid="yonetici-rapor-onay"
+          className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3"
+        >
+          <p className="text-sm font-semibold text-slate-800">Bu rapor onayınızı bekliyor.</p>
+          <p className="mt-0.5 text-xs text-slate-600">Onaylayınca dosya ilerler. Redde neden yazılır.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-testid="yonetici-rapor-onayla-serit"
+              disabled={managerApprovalBusy}
+              onClick={() => void handleManagerApprove()}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {managerApprovalBusy ? 'Kaydediliyor...' : 'Onayla'}
+            </button>
+            <button
+              type="button"
+              data-testid="yonetici-rapor-reddet-serit"
+              disabled={managerApprovalBusy}
+              onClick={() => setShowRejectReason(true)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Reddet
+            </button>
+          </div>
         </div>
       )}
 
@@ -6616,6 +6720,26 @@ export default function RepairReportPage() {
                 </svg>
                 Revize Et
               </button>
+            )}
+            {canManagerApprove && (
+              <>
+                <button
+                  type="button"
+                  disabled={managerApprovalBusy}
+                  onClick={() => void handleManagerApprove()}
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {managerApprovalBusy ? 'Kaydediliyor...' : 'Onayla'}
+                </button>
+                <button
+                  type="button"
+                  disabled={managerApprovalBusy}
+                  onClick={() => setShowRejectReason(true)}
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Reddet
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -7222,6 +7346,40 @@ export default function RepairReportPage() {
           onClose={() => setShowReviseModal(false)}
           onConfirm={confirmRevise}
         />
+      )}
+      {showRejectReason && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[80] p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <h3 className="text-base font-semibold text-slate-800 mb-2">Raporu Reddet</h3>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Neden (Zorunlu)</label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(toTitleCaseTR(e.target.value))}
+              onBlur={(e) => setRejectReason(toTitleCaseTR(e.target.value.trim()))}
+              placeholder="Örn. tutar yüksek"
+              rows={3}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                type="button"
+                disabled={managerApprovalBusy}
+                onClick={() => void handleManagerReject()}
+                className="flex-1 rounded-lg bg-slate-800 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-50"
+              >
+                {managerApprovalBusy ? 'Kaydediliyor...' : 'Reddet'}
+              </button>
+              <button
+                type="button"
+                disabled={managerApprovalBusy}
+                onClick={() => { setShowRejectReason(false); setRejectReason(''); }}
+                className="flex-1 rounded-lg border border-slate-200 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                İptal
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {confirmDialog && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[80] p-4">

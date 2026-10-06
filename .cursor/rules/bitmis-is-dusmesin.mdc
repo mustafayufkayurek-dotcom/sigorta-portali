@@ -52,6 +52,9 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 33. Yönetim Paneli ve Hızlı İşlem **Yeni Dosya**.
 34. Hasar Dosya Sorumlusu ofis atama listesidir. Eksper ihbarında Sigorta Şirketi Ayarlardaki listedir. Acil seçici aynı genişliktedir.
 35. Alan açıklaması i harfine tıklanınca okunur; kutu altında nasıl doldurulur yazısı durmaz.
+36. Tespitçi notu açıktır; yazım Title Case; sarı kutu **İhbar Notu**; Tespiti Sonlandır **Atanan Dosyalar** açar.
+37. Ön onaylı iş bitiş maili **Ön Onaylı İş Tamamlandı** yazar; Dosya No altında sigortalı ve ilçe · il durur.
+38. Onay talep mailindeki Raporu Aç’ta yönetici **Onayla** ve **Reddet** durur.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

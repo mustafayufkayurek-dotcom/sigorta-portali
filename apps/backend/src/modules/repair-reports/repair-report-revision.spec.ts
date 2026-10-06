@@ -6,6 +6,7 @@ import {
   isRepairReportRevision,
   nextRepairReportVersionNo,
   repairReportClosesOnRevise,
+  canApprovePendingRepairReport,
 } from '@sigorta/shared';
 
 describe('repair-report-revision', () => {
@@ -36,5 +37,14 @@ describe('repair-report-revision', () => {
     expect(canStartRepairReportRevisionFromStatus('draft')).toBe(false);
     expect(repairReportClosesOnRevise('sent_for_external_approval')).toBe(true);
     expect(repairReportClosesOnRevise('approved')).toBe(false);
+  });
+
+  it('onay bekleyen raporu yalnız yönetici onaylar', () => {
+    expect(canApprovePendingRepairReport('admin', 'pending_approval')).toBe(true);
+    expect(canApprovePendingRepairReport('manager', 'pending_approval')).toBe(true);
+    expect(canApprovePendingRepairReport('ops_manager', 'pending_approval')).toBe(true);
+    expect(canApprovePendingRepairReport('ADMIN', 'pending_approval')).toBe(true);
+    expect(canApprovePendingRepairReport('office_staff', 'pending_approval')).toBe(false);
+    expect(canApprovePendingRepairReport('admin', 'draft')).toBe(false);
   });
 });

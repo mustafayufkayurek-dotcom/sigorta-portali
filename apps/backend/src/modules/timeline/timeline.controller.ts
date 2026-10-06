@@ -50,6 +50,15 @@ export class TimelineController {
     return this.timelineService.createNote(id, req.user.id, dto.content, dto.noteType);
   }
 
+  @Patch(':id/notes/:noteId')
+  async updateNote(
+    @Param('id') id: string,
+    @Param('noteId') noteId: string,
+    @Body() dto: CreateTimelineNoteDto,
+  ) {
+    return this.timelineService.updateNote(id, noteId, dto.content);
+  }
+
   // Ek Talep #2: Hareketsiz dosya listesi
   @Get('reports/inactive-files')
   async getInactiveFiles(@Query('hours') hours?: string) {

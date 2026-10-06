@@ -55,13 +55,24 @@ export function RaporlarTespitBlok({ claimId }: { claimId: string }) {
       >
         <SmartMeasureList claimFileId={claimId} showEmpty embed />
         <div className="border-t border-slate-100 px-4 py-4 sm:px-5">
-          <h3 className="mb-3 text-sm font-semibold text-slate-800">Tespit Notları</h3>
           {photosOpen ? (
             <div id="saha-foto" className="mb-4 scroll-mt-16">
+              <div className="mb-3 flex items-start gap-2.5">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                  <ImagePlus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                </span>
+                <h3 className="pt-1.5 text-sm font-semibold text-slate-800">Tespit Fotoğrafları</h3>
+              </div>
               <FieldInspectionPhotosPanel claimId={claimId} />
             </div>
           ) : null}
           <div id="saha-not" className="scroll-mt-16">
+            <div className="mb-3 flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                <ClipboardList className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              </span>
+              <h3 className="pt-1.5 text-sm font-semibold text-slate-800">Tespit Notları</h3>
+            </div>
             <IletisimGunluguPanel claimId={claimId} variant="field" />
           </div>
         </div>

@@ -12,7 +12,11 @@ import {
   resolveCustomerReminderEmail,
   resolveCustomerReminderTitle,
 } from './approval-72h-customer-email.rule';
-import { vendorsMissingRepairPhotos, isHasarDigitalApprovalRelaxed } from '@sigorta/shared';
+import {
+  vendorsMissingRepairPhotos,
+  isHasarDigitalApprovalRelaxed,
+  parseHasPreApprovalWork,
+} from '@sigorta/shared';
 
 const MANUAL_DECISION_MIN_REASON = 10;
 const PORTAL_ROLE_CODES = new Set([
@@ -966,6 +970,14 @@ export class ClaimOperationCenterService {
       take: 60,
     });
     const vendorNames = claim.supplierAssignments.map((s) => s.vendor.name).join(', ');
+    const insuredName =
+      claim.insuredName ??
+      claim.customer?.fullName ??
+      claim.customer?.companyName ??
+      null;
+    const city = claim.propertyAddress?.city ?? claim.customer?.city ?? null;
+    const district = claim.propertyAddress?.district ?? claim.customer?.district ?? null;
+    const hasPreApprovalWork = parseHasPreApprovalWork(claim.hasPreApprovalWork) === true;
     const mailResults: Array<{ to: string; sent: boolean }> = [];
     for (const u of staff) {
       const res = await this.claimEventEmail.onRepairCompleted({
@@ -974,6 +986,10 @@ export class ClaimOperationCenterService {
         fileNo: claim.fileNo,
         claimFileId,
         vendorNames,
+        insuredName,
+        city,
+        district,
+        hasPreApprovalWork,
       });
       mailResults.push({ to: u.email, sent: !!res.sent });
     }

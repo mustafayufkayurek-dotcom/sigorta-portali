@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { toTitleCaseTR } from '@/common/utils/text-helpers';
 
 @Injectable()
 export class NotesService {
@@ -53,8 +54,12 @@ export class NotesService {
   }
 
   async create(data: any, userId: string) {
+    const payload = { ...data };
+    if (typeof payload.content === 'string') {
+      payload.content = toTitleCaseTR(payload.content.trim()) || payload.content.trim();
+    }
     return this.prisma.note.create({
-      data: { ...data, authorUserId: userId },
+      data: { ...payload, authorUserId: userId },
       include: {
         author: { select: { id: true, firstName: true, lastName: true } },
       },
@@ -66,9 +71,13 @@ export class NotesService {
     if (note.authorUserId !== userId) {
       throw new ForbiddenException('Bu notu düzenleme yetkiniz yok');
     }
+    const content =
+      typeof data.content === 'string'
+        ? toTitleCaseTR(data.content.trim()) || data.content.trim()
+        : data.content;
     return this.prisma.note.update({
       where: { id },
-      data: { content: data.content, noteType: data.noteType, isPrivate: data.isPrivate },
+      data: { content, noteType: data.noteType, isPrivate: data.isPrivate },
     });
   }
 

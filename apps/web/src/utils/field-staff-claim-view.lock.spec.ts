@@ -220,8 +220,18 @@ describe('field-staff-claim-view lock', () => {
     assert.match(detail, /IletisimGunluguPanel/);
     assert.match(detail, /variant="field"/);
     const notes = read('../app/panel/hasar-dosyalari/[id]/_components/tabs/IletisimGunluguPanel.tsx');
+    assert.match(notes, /İhbar Notu/);
+    assert.match(notes, /variant === 'field' && noteType === 'manager_instruction'/);
     assert.match(notes, /tespit-notu-duzenle/);
     assert.match(notes, /Düzenle/);
+    assert.match(notes, /Not Ekle/);
+    assert.match(notes, /fieldSavedNotes\.length === 0/);
+    assert.match(notes, /fieldSavedNotes\.length > 0 \|\| editingNoteId/);
+    assert.match(notes, /normalizeFormFreeText\(content\)/);
+    assert.match(notes, /toTitleCaseTR\(el\.value\)/);
+    assert.match(notes, /claim-files\/\$\{claimId\}\/notes\/\$\{editingNoteId\}/);
+    assert.doesNotMatch(notes, /collapseBody/);
+    assert.match(notes, /<p className="whitespace-pre-wrap text-sm text-slate-700">\{note\.content\}<\/p>/);
     assert.doesNotMatch(notes, /tespit-notu-duzeltme/);
     assert.doesNotMatch(notes, />Düzeltme</);
     assert.doesNotMatch(notes, /type="checkbox"/);
@@ -244,6 +254,8 @@ describe('field-staff-claim-view lock', () => {
     const notAt = fieldBlock.indexOf('Tespit Notları');
     const endAt = fieldBlock.indexOf('FieldStaffEndInspection');
     assert.ok(fotoAt >= 0 && notAt > fotoAt && endAt > notAt);
+    assert.match(fieldBlock, /ImagePlus/);
+    assert.match(fieldBlock, /ClipboardList/);
     assert.doesNotMatch(fieldBlock, /EvraklarTab/);
     assert.doesNotMatch(fieldBlock, /EvrakOzetPanel/);
     assert.doesNotMatch(fieldBlock, /Dosya Yaşam Döngüsü/);
@@ -354,6 +366,9 @@ describe('field-staff-claim-view lock', () => {
     assert.doesNotMatch(detail, /field-close/);
     assert.doesNotMatch(detail, /Dosyayı Kapat/);
     assert.match(detail, /notifyFieldStaffClaimsChanged/);
+    assert.match(detail, /router.push\(FIELD_STAFF_ASSIGNMENTS_HREF\)/);
+    const endFn = detail.slice(detail.indexOf('const markInspectionDone'), detail.indexOf('return (', detail.indexOf('const markInspectionDone')));
+    assert.match(endFn, /router.push\(FIELD_STAFF_ASSIGNMENTS_HREF\)/);
     assert.match(detail, /FIELD_STAFF_COMPLETED_INSPECTIONS_HREF/);
     assert.match(detail, /FIELD_STAFF_ASSIGNMENTS_HREF/);
     assert.match(detail, /OPS_NOTICE\.sahaTespitSonlandir/);

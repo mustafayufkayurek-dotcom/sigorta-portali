@@ -11,7 +11,7 @@ import {
   finansInputClass,
 } from '@/components/finance/FinansPanelUI';
 import { useToast } from '@/contexts/ToastContext';
-import { toTitleCaseTR } from '@/utils/text-helpers';
+import { normalizeFormFreeText, toTitleCaseTR } from '@/utils/text-helpers';
 import { mergeClaimFileNotes, type ClaimFileNoteRow } from '@/utils/merge-claim-file-notes';
 import { API, authAxios } from '../claim-detail-utils';
 
@@ -64,11 +64,23 @@ function authorName(author?: { firstName?: string; lastName?: string }) {
   return name || 'Bilinmeyen';
 }
 
-function NoteFeedItem({ note, collapseBody = false }: { note: NoteRecord; collapseBody?: boolean }) {
-  const [open, setOpen] = useState(!collapseBody);
+function noteTypeLabel(noteType: string, variant: 'office' | 'field'): string {
+  if (variant === 'field' && noteType === 'manager_instruction') return 'İhbar Notu';
+  return NOTE_TYPE_LABELS[noteType] ?? noteType;
+}
+
+function NoteFeedItem({
+  note,
+  onEdit,
+  variant = 'office',
+}: {
+  note: NoteRecord;
+  onEdit?: (note: NoteRecord) => void;
+  variant?: 'office' | 'field';
+}) {
   const isTalimat = note.noteType === 'manager_instruction';
   const isCorrection = note.noteType === 'field_correction';
-  const label = NOTE_TYPE_LABELS[note.noteType] ?? note.noteType;
+  const label = noteTypeLabel(note.noteType, variant);
 
   if (isTalimat) {
     return (
@@ -117,20 +129,20 @@ function NoteFeedItem({ note, collapseBody = false }: { note: NoteRecord; collap
             {label}
           </span>
           <span className="text-xs font-medium text-slate-600">{authorName(note.author)}</span>
-          {collapseBody ? (
+          {onEdit ? (
             <button
               type="button"
-              onClick={() => setOpen((v) => !v)}
+              onClick={() => onEdit(note)}
               className="text-xs font-medium text-brand-600 hover:text-brand-700"
               data-testid="tespit-notu-duzenle"
             >
-              {open ? 'Gizle' : 'Düzenle'}
+              Düzenle
             </button>
           ) : null}
         </div>
         <span className="shrink-0 text-xs text-slate-400">{formatTimestamp(note.createdAt)}</span>
       </div>
-      {open ? <p className="whitespace-pre-wrap text-sm text-slate-700">{note.content}</p> : null}
+      <p className="whitespace-pre-wrap text-sm text-slate-700">{note.content}</p>
     </div>
   );
 }
@@ -154,6 +166,7 @@ export function IletisimGunluguPanel({
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [composerOpen, setComposerOpen] = useState(true);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -197,22 +210,45 @@ export function IletisimGunluguPanel({
     onFieldNoteCount(count);
   }, [isField, notes, onFieldNoteCount]);
 
+  const fieldSavedNotes = useMemo(
+    () =>
+      notes.filter(
+        (note) =>
+          (note.noteType === 'field' || note.noteType === 'field_correction') &&
+          Boolean(note.content?.trim()),
+      ),
+    [notes],
+  );
+
+  useEffect(() => {
+    if (!isField) return;
+    if (fieldSavedNotes.length === 0 && !editingNoteId) setComposerOpen(true);
+  }, [isField, fieldSavedNotes.length, editingNoteId]);
+
   const filteredNotes = useMemo(() => {
     if (filter === 'all') return notes;
     return notes.filter((n) => n.noteType === filter);
   }, [notes, filter]);
 
   const handleSave = async () => {
-    const trimmed = content.trim();
+    const trimmed = normalizeFormFreeText(content);
     if (!trimmed) return;
     setSaving(true);
     try {
       if (isField) {
-        await authAxios({
-          method: 'POST',
-          url: `${API}/claim-files/${claimId}/notes`,
-          data: { content: trimmed, noteType: 'field' },
-        });
+        if (editingNoteId) {
+          await authAxios({
+            method: 'PATCH',
+            url: `${API}/claim-files/${claimId}/notes/${editingNoteId}`,
+            data: { content: trimmed, noteType: 'field' },
+          });
+        } else {
+          await authAxios({
+            method: 'POST',
+            url: `${API}/claim-files/${claimId}/notes`,
+            data: { content: trimmed, noteType: 'field' },
+          });
+        }
       } else {
         await authAxios({
           method: 'POST',
@@ -221,8 +257,9 @@ export function IletisimGunluguPanel({
         });
       }
       setContent('');
+      setEditingNoteId(null);
       if (isField) setComposerOpen(false);
-      showToast('success', 'Kayıt eklendi');
+      showToast('success', editingNoteId ? 'Kayıt güncellendi' : 'Kayıt eklendi');
       load();
     } catch (e: unknown) {
       if (axios.isAxiosError(e) && e.response?.status === 401) return;
@@ -248,14 +285,17 @@ export function IletisimGunluguPanel({
       ? 'Yukarıdaki formu kullanarak talimat veya dosya notu ekleyebilirsiniz.'
       : 'Bu filtreye uygun kayıt yok. Farklı bir filtre seçin veya yeni kayıt ekleyin.';
 
-  const fieldComposer = isField && !composerOpen ? (
+  const fieldComposer = isField && !composerOpen && fieldSavedNotes.length > 0 ? (
     <button
       type="button"
-      onClick={() => setComposerOpen(true)}
+      onClick={() => {
+        setEditingNoteId(null);
+        setContent('');
+        setComposerOpen(true);
+      }}
       className="text-sm font-medium text-brand-600 hover:text-brand-700"
-      data-testid="tespit-notu-duzenle"
     >
-      Düzenle
+      Not Ekle
     </button>
   ) : (
     <div className={`grid grid-cols-1 items-start gap-3 ${isField ? '' : 'md:grid-cols-2'}`}>
@@ -285,29 +325,44 @@ export function IletisimGunluguPanel({
             rows={3}
             placeholder={isField ? 'Tespit notu yazın...' : 'Talimat veya not yazın...'}
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => {
+              const el = e.currentTarget;
+              const caret = el.selectionStart;
+              const next = toTitleCaseTR(el.value);
+              setContent(next);
+              requestAnimationFrame(() => {
+                try {
+                  el.setSelectionRange(caret, caret);
+                } catch {
+                  /* odak kaybında imleç yok */
+                }
+              });
+            }}
             onBlur={() => {
-              const v = toTitleCaseTR(content.trim());
-              if (v !== content.trim()) setContent(v);
+              const v = normalizeFormFreeText(content);
+              if (v !== content) setContent(v);
             }}
           />
           <div className="absolute bottom-2 right-2">
             <SpeechToText
               size="sm"
               onTranscript={(text) =>
-                setContent((prev) => (prev ? `${prev} ${text}` : text))
+                setContent((prev) => toTitleCaseTR(prev ? `${prev} ${text}` : text))
               }
             />
           </div>
         </div>
       </div>
       <div className={`flex flex-wrap items-center justify-end gap-3 ${isField ? '' : 'md:col-span-2'}`}>
-        {isField ? (
+        {isField && (fieldSavedNotes.length > 0 || editingNoteId) ? (
           <button
             type="button"
-            onClick={() => setComposerOpen(false)}
+            onClick={() => {
+              setComposerOpen(false);
+              setEditingNoteId(null);
+              setContent('');
+            }}
             className="mr-auto text-sm font-medium text-brand-600 hover:text-brand-700"
-            data-testid="tespit-notu-duzenle"
           >
             Gizle
           </button>
@@ -358,7 +413,20 @@ export function IletisimGunluguPanel({
       ) : (
         <div className="space-y-3">
           {filteredNotes.map((note) => (
-            <NoteFeedItem key={note.id} note={note} collapseBody={isField} />
+            <NoteFeedItem
+              key={note.id}
+              note={note}
+              variant={variant}
+              onEdit={
+                isField
+                  ? (row) => {
+                      setEditingNoteId(row.id);
+                      setContent(toTitleCaseTR(row.content ?? ''));
+                      setComposerOpen(true);
+                    }
+                  : undefined
+              }
+            />
           ))}
         </div>
       )}

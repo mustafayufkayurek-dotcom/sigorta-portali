@@ -43,5 +43,19 @@ export function repairReportClosesOnRevise(status: string | null | undefined): b
   return (REPAIR_REPORT_STATUSES_CLOSED_ON_REVISE as readonly string[]).includes(status ?? '');
 }
 
+/** Maildeki yönetici onayı: yalnız bu roller. */
+export const REPAIR_REPORT_MANAGER_APPROVER_ROLES = ['admin', 'manager', 'ops_manager'] as const;
+
+export function canApprovePendingRepairReport(
+  roleCode: unknown,
+  reportStatus?: string | null,
+): boolean {
+  const role = String(roleCode ?? '').trim().toLowerCase();
+  const allowed = (REPAIR_REPORT_MANAGER_APPROVER_ROLES as readonly string[]).includes(role);
+  if (!allowed) return false;
+  if (reportStatus == null) return true;
+  return reportStatus === 'pending_approval';
+}
+
 export const REPAIR_REPORT_MAX_REVISION_MESSAGE =
   'Revizyon Geçmişi 0–3 ile sınırlıdır; 4. Revizyon Oluşturulamaz';

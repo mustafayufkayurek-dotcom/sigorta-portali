@@ -38,6 +38,7 @@ import {
   findEmergencyCaseIdByCompactFileNo,
 } from '@/common/utils/file-no-helpers';
 import { buildWhatsAppMeUrl, normalizeWhatsAppPhone } from '@/common/utils/whatsapp-phone';
+import { toTitleCaseTR } from '@/common/utils/text-helpers';
 import {
   buildVendorNearbyWhere,
   buildSupplierFallbackWhere,
@@ -3854,7 +3855,7 @@ export class ClaimFilesService {
       data: {
         claimFileId: fileId,
         noteType: 'inspection',
-        content: body.note,
+        content: toTitleCaseTR(String(body.note ?? '').trim()) || String(body.note ?? '').trim(),
         isPrivate: false,
         authorUserId: actor.id,
       },

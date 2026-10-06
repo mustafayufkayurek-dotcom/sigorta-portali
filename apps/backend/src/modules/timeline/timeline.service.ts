@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { overlayClaimStatusProductName } from '@sigorta/shared';
+import { toTitleCaseTR } from '@/common/utils/text-helpers';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -158,11 +159,12 @@ export class TimelineService {
   // Ek Talep #5: İç Not Sistemi
   async createNote(claimFileId: string, authorId: string, content: string, noteType?: string) {
     const resolvedType = noteType || 'general';
+    const written = toTitleCaseTR(String(content ?? '').trim()) || String(content ?? '').trim();
     const note = await (this.prisma as any).timelineNote.create({
       data: {
         claimFileId,
         authorId,
-        content,
+        content: written,
         noteType: resolvedType,
       },
       include: {
@@ -176,7 +178,7 @@ export class TimelineService {
         data: {
           claimFileId,
           authorUserId: authorId,
-          content,
+          content: written,
           noteType: resolvedType,
         },
       });
@@ -191,6 +193,50 @@ export class TimelineService {
     });
 
     return note;
+  }
+
+  async updateNote(claimFileId: string, noteId: string, content: string) {
+    const written = toTitleCaseTR(String(content ?? '').trim()) || String(content ?? '').trim();
+    if (!written) throw new NotFoundException('Not bulunamadı');
+    const existingNote = await this.prisma.note.findFirst({
+      where: { id: noteId, claimFileId },
+    });
+    const existingTl = await (this.prisma as any).timelineNote.findFirst({
+      where: { id: noteId, claimFileId },
+    });
+    if (!existingNote && !existingTl) {
+      throw new NotFoundException('Not bulunamadı');
+    }
+    const oldContent = String((existingNote ?? existingTl).content ?? '');
+    if (existingNote) {
+      await this.prisma.note.update({
+        where: { id: existingNote.id },
+        data: { content: written },
+      });
+    }
+    if (existingTl) {
+      await (this.prisma as any).timelineNote.update({
+        where: { id: existingTl.id },
+        data: { content: written },
+      });
+    }
+    if (existingNote && !existingTl) {
+      await (this.prisma as any).timelineNote.updateMany({
+        where: { claimFileId, content: oldContent },
+        data: { content: written },
+      });
+    }
+    if (existingTl && !existingNote) {
+      await this.prisma.note.updateMany({
+        where: { claimFileId, content: oldContent },
+        data: { content: written },
+      });
+    }
+    await (this.prisma.claimFile as any).update({
+      where: { id: claimFileId },
+      data: { lastActivityAt: new Date(), lastHumanActionAt: new Date() },
+    });
+    return { ...(existingNote ?? existingTl), content: written };
   }
 
   async getNotes(claimFileId: string) {

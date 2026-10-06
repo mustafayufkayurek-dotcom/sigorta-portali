@@ -171,6 +171,20 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-1. **Mali mesuliyet alanı:** Hasar muvafakatında mali mesuliyet işi yoksa mağdur kutusu ve imza alanı durmaz. Varsa durur: yan komşu, alt kat, üst kat, ortak alan. Ayrı dizayn. Henüz çizilmedi; bu alıma girmedi.
+1. **Tespitçi başlık ikonları:** Tespitçi ekranında **Tespit Fotoğrafları** ve **Tespit Notları** yanında Hasar ailesinden kare ikon durur. Sayfa biraz dolu görünür; yeni tema yoktur. Ofis Raporlar’da aynı başlık hali. Lokal gösterildi.
+
+2. **Tespit notu yazım düzeltmesi:** Klavyeyi düzensiz kullansa da not **Mustafa Yufkayürek** biçimine çekilir. `İNCEleme` → **İnceleme**. Yazarken ve kaydederken aynı. Lokal gösterildi.
+
+3. **Tespit notu açık durur:** Yazılan not gizlenmez. **Düzenle** yalnız kayıtlı notta durur; not yokken çıkmaz. İlk not kutuya yazılır; yeni yazı **Not Ekle** iledir. Lokal gösterildi.
+
+4. **Tespiti Sonlandır dönüşü:** Tespiti Sonlandır deyince **Atanan Dosyalar** açılır. Lokal gösterildi.
+
+5. **Tespitçi ihbar notu:** Tespit notlarında sarı kutu **İhbar Notu** yazar. Talimat değildir. Ofiste gerçek talimat aynı kalır. Lokal gösterildi.
+
+6. **Onarım bitti maili:** Ön onaylı işte başlık **Ön Onaylı İş Tamamlandı** olur; **Onarım Tamamlandı** yazılmaz. Dosya No altında sigortalı adı, altında ilçe · il durur. Eski mail hata değildir; özellik yokken gitmişti. Lokal gösterildi.
+
+7. **Yönetici rapor onayı:** Onay talep mailindeki Raporu Aç, raporda **Onayla** ve **Reddet** durur. Yönetici üç noktadaki Manuel Onay’a bağlı kalmaz. Lokal gösterildi.
+
+8. **Mali mesuliyet alanı:** Hasar muvafakatında mali mesuliyet işi yoksa mağdur kutusu ve imza alanı durmaz. Varsa durur: yan komşu, alt kat, üst kat, ortak alan. Ayrı dizayn. Henüz çizilmedi; bu alıma girmedi.
 
 Canlı web **v648** · backend **v648**.
