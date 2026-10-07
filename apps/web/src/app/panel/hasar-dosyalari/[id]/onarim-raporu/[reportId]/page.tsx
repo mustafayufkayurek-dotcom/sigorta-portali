@@ -2536,7 +2536,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const [subGroups, setSubGroups] = useState<Record<string, any[]>>({});
   const [loadingSubGroupIds, setLoadingSubGroupIds] = useState<Set<string>>(new Set());
   const [metrajModalRowId, setMetrajModalRowId] = useState<string | null>(null);
-  const [locationList, setLocationList] = useState<string[]>([]);
+  const [extraMahals, setExtraMahals] = useState<string[]>([]);
   const [mahalCatalog, setMahalCatalog] = useState<RepairMahalCatalogEntry[]>([]);
   const [vendorModalRowId, setVendorModalRowId] = useState<string | null>(null);
   // Zam oranı state
@@ -2574,7 +2574,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     addingDraftRef.current = addingRow;
   }, [addingRow]);
 
-  // locationList + tespit alanları (sistem tanımları + rapor içi)
+  // Mahal önerisi + tespit alanları (sistem tanımları + rapor içi)
   const [catalogDetectionScopes, setCatalogDetectionScopes] = useState<string[]>([]);
   const [detectionScopeList, setDetectionScopeList] = useState<string[]>([]);
 
@@ -2597,20 +2597,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   }, []);
 
   useEffect(() => {
-    const locs = Array.from(new Set(
-      items
-        .map((i: any) => i.location)
-        .filter((l: string) => l && l.trim())
-        .map((l: string) => normalizeLocationLabel(l)),
-    )) as string[];
-    setLocationList(locs);
     const fromItems = items.map((i: any) => readMetrajDetectionScope(i.metrajData)).filter(Boolean);
     setDetectionScopeList(Array.from(new Set([...catalogDetectionScopes, ...fromItems])));
   }, [items, catalogDetectionScopes]);
 
   const addLocationIfNew = (loc: string) => {
     const normalized = validateAndFormatLocation(loc);
-    setLocationList((prev) => prev.includes(normalized) ? prev : [...prev, normalized]);
+    setExtraMahals((prev) => (prev.includes(normalized) ? prev : [...prev, normalized]));
   };
 
   const addDetectionScopeIfNew = (scope: string) => {
@@ -3557,10 +3550,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       suggestions={mahalSuggestionsForCategory(
                         mahalCatalog,
                         row.damageCategory,
-                        items
-                          .filter((i: any) => (i.damageCategory ?? 'bina') === row.damageCategory)
-                          .map((i: any) => i.location)
-                          .filter(Boolean),
+                        [
+                          ...items
+                            .filter((i: any) => (i.damageCategory ?? 'bina') === row.damageCategory)
+                            .map((i: any) => i.location)
+                            .filter(Boolean),
+                          ...extraMahals,
+                        ],
                       )}
                       onChange={(v) => updateRow(row._id, 'location', v)}
                       onRegister={addLocationIfNew}
@@ -3912,10 +3908,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   suggestions={mahalSuggestionsForCategory(
                     mahalCatalog,
                     addingRow.damageCategory,
-                    items
-                      .filter((i: any) => (i.damageCategory ?? 'bina') === addingRow.damageCategory)
-                      .map((i: any) => i.location)
-                      .filter(Boolean),
+                    [
+                      ...items
+                        .filter((i: any) => (i.damageCategory ?? 'bina') === addingRow.damageCategory)
+                        .map((i: any) => i.location)
+                        .filter(Boolean),
+                      ...extraMahals,
+                    ],
                   )}
                   onChange={(v) => { setAddingRow((p) => ({ ...p, location: v })); setAddingDirty(true); }}
                   onRegister={addLocationIfNew}
