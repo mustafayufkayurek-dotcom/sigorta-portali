@@ -27,6 +27,7 @@ export * from './repair-report-item-totals';
 export * from './repair-report-pdf-draft';
 export * from './repair-report-pdf-groups';
 export * from './repair-damage-category';
+export * from './mali-mesuliyet';
 export * from './role-account-family';
 export * from './claim-file-stage';
 export * from './operation-status';

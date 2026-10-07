@@ -77,6 +77,13 @@ describe('dış onay linki 7 gün ve işlem sonrası kilit LOCK', () => {
     );
     assert.match(evrak, /evaluatePublicApprovalToken/);
     assert.match(sozlesme, /evaluatePublicApprovalToken/);
+    const mali = readFileSync(
+      new URL('../../../apps/backend/src/modules/mali-mesuliyet/mali-mesuliyet.service.ts', import.meta.url),
+      'utf8',
+    );
+    assert.match(mali, /evaluatePublicApprovalToken/);
+    assert.match(mali, /PUBLIC_APPROVAL_TOKEN_MAX_MS/);
+    assert.match(mali, /PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE/);
     assert.match(evrak, /PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE/);
     assert.match(sozlesme, /PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE/);
     const evrakPage = readFileSync(
@@ -87,7 +94,12 @@ describe('dış onay linki 7 gün ve işlem sonrası kilit LOCK', () => {
       new URL('../../../apps/web/src/app/sozlesme/[token]/page.tsx', import.meta.url),
       'utf8',
     );
+    const maliPage = readFileSync(
+      new URL('../../../apps/web/src/app/evrak/mali-mesuliyet/[token]/page.tsx', import.meta.url),
+      'utf8',
+    );
     assert.match(evrakPage, /PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE/);
+    assert.match(maliPage, /PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE/);
     assert.match(sozlesmePage, /PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE/);
     assert.match(evrakPage, /error === PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE/);
     assert.match(sozlesmePage, /error === PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE/);
@@ -144,6 +156,10 @@ describe('dış onay linki 7 gün ve işlem sonrası kilit LOCK', () => {
     );
     assert.deepEqual(
       evaluatePublicApprovalToken({ createdAt: now, status: 'digitally_rejected', now }),
+      { ok: false, reason: 'closed' },
+    );
+    assert.deepEqual(
+      evaluatePublicApprovalToken({ createdAt: now, status: 'muvafakat_verildi', now }),
       { ok: false, reason: 'closed' },
     );
   });

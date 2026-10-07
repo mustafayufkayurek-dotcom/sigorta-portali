@@ -460,6 +460,8 @@ model ClaimFile {
   smartMeasureElements SmartMeasureElement[]
   smartMeasureVersions SmartMeasureVersion[]
   takeoffRuns          TakeoffRun[]
+  maliMesuliyetTespitler MaliMesuliyetTespit[]
+  maliMesuliyetMuvafakat MaliMesuliyetMuvafakat?
 
   @@index([fileNo])
   @@index([insuranceCompanyId])
@@ -1423,12 +1425,86 @@ model RepairReportItem {
   report     RepairReport      @relation(fields: [reportId], references: [id], onDelete: Cascade)
   workGroup  WorkGroup         @relation(fields: [workGroupId], references: [id])
   damageType ReportDamageType? @relation(fields: [damageTypeId], references: [id])
+  maliMesuliyetTespit MaliMesuliyetTespit? @relation(fields: [maliMesuliyetTespitId], references: [id], onDelete: SetNull)
+  maliMesuliyetTespitId String? @map("mali_mesuliyet_tespit_id")
   statementItems VendorStatementItem[]
   anomalyFlags   RepairItemAnomalyFlag[]
+  maliMesuliyetKalem MaliMesuliyetIsKalemi?
 
   @@index([reportId])
   @@index([workGroupId])
+  @@index([maliMesuliyetTespitId])
   @@map("repair_report_items")
+}
+
+/// Hasar dosyasında birden fazla mali mesuliyet tespit alanı (yan daire, alt kat, üst kat).
+model MaliMesuliyetTespit {
+  id          String   @id @default(uuid())
+  claimFileId String   @map("claim_file_id")
+  /// yan_daire | alt_kat | ust_kat | ortak_alan
+  lokasyon    String
+  daireNo     String   @map("daire_no")
+  findingsText String? @map("findings_text")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  claimFile ClaimFile              @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  items     MaliMesuliyetIsKalemi[]
+  reportItems RepairReportItem[]
+
+  @@index([claimFileId])
+  @@index([lokasyon])
+  @@map("mali_mesuliyet_tespit")
+}
+
+model MaliMesuliyetIsKalemi {
+  id                 String   @id @default(uuid())
+  tespitId           String   @map("tespit_id")
+  jobDescription     String   @map("job_description")
+  quantity           Float    @default(1)
+  unit               String   @default("adet")
+  salesUnitPrice     Float    @default(0) @map("sales_unit_price")
+  supplierUnitPrice  Float    @default(0) @map("supplier_unit_price")
+  salesTotal         Float    @default(0) @map("sales_total")
+  supplierTotal      Float    @default(0) @map("supplier_total")
+  pricingType        String   @default("unit") @map("pricing_type")
+  lumpSumPrice       Float?   @map("lump_sum_price")
+  sortOrder          Int      @default(0) @map("sort_order")
+  repairReportItemId String?  @unique @map("repair_report_item_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tespit           MaliMesuliyetTespit @relation(fields: [tespitId], references: [id], onDelete: Cascade)
+  repairReportItem RepairReportItem?   @relation(fields: [repairReportItemId], references: [id], onDelete: SetNull)
+
+  @@index([tespitId])
+  @@map("mali_mesuliyet_is_kalemi")
+}
+
+/// Komşu tespit muvafakati — dış link 7 gün; onay/red sonrası kapanır.
+model MaliMesuliyetMuvafakat {
+  id                   String    @id @default(uuid())
+  claimFileId          String    @unique @map("claim_file_id")
+  /// pending | muvafakat_verildi | digitally_rejected
+  status               String    @default("pending")
+  publicToken          String?   @unique @map("public_token")
+  publicTokenExpiresAt DateTime? @map("public_token_expires_at")
+  digitallyApprovedAt  DateTime? @map("digitally_approved_at")
+  approvedFullName     String?   @map("approved_full_name")
+  approvedIp           String?   @map("approved_ip")
+  rejectedAt           DateTime? @map("rejected_at")
+  rejectReason         String?   @map("reject_reason")
+  whatsappSentAt       DateTime? @map("whatsapp_sent_at")
+  whatsappPhone        String?   @map("whatsapp_phone")
+  createdByUserId      String?   @map("created_by_user_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  claimFile ClaimFile @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+
+  @@index([publicToken])
+  @@map("mali_mesuliyet_muvafakat")
 }
 
 model ReportImage {

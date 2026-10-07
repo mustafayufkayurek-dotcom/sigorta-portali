@@ -1,11 +1,11 @@
 ---
-description: Canlı web v649 / backend v649
+description: Canlı web v650 / backend v650
 alwaysApply: true
 ---
 
-# Canlı (06.10.2026)
+# Canlı (07.10.2026)
 
-Canlı: web **v649** · backend **v649**. Geri alma: web **v648** / backend **v648**.
+Canlı: web **v650** · backend **v650**. Geri alma: web **v649** / backend **v649**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v650 (full):** Ayarlar’da Mahal Ve Kategori aynı sayfada bağlanır. Yeni kategori adla eklenir. Aynı mahal/bölge bir satırda, kategori solda balonlarda durur. Hasar onarım raporunda **Kategori** sütunu durur; Mali Mesuliyet raporda **MM** yazılır. Rapordan Mahal/Bölge, İş Grubu ve İş alt grubu ekleme durur. Mali mesuliyet muvafakat alanı ve Sentry bu alıma girmedi. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v649 / backend v649.
 
 **v649 (full):** Tespitçi notu açık durur; yazım Title Case; sarı kutu **İhbar Notu**; Tespiti Sonlandır **Atanan Dosyalar** açar. Başlıkta kare ikon durur. Ön onaylı iş bitiş maili **Ön Onaylı İş Tamamlandı** yazar; Dosya No altında sigortalı ve ilçe · il durur. Onay talep mailindeki Raporu Aç’ta yönetici **Onayla** ve **Reddet** durur. Mali mesuliyet alanı çizilmediği için alınmadı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v648 / backend v648.
 
@@ -175,4 +177,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Mali mesuliyet alanı:** Hasar muvafakatında mali mesuliyet işi yoksa mağdur kutusu ve imza alanı durmaz. Varsa durur: yan komşu, alt kat, üst kat, ortak alan. Ayrı dizayn. Henüz çizilmedi; bu alıma girmedi.
 
-Canlı web **v649** · backend **v649**.
+Canlı web **v650** · backend **v650**.

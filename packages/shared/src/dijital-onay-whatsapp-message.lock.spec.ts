@@ -58,5 +58,17 @@ describe('dijital onay WhatsApp metni LOCK', () => {
     });
     assert.match(kapanis, /AY-1001 numaralı acil yardım dosyanızda hizmetin tamamlandığını onaylamanız gerekmektedir/);
     assert.doesNotMatch(kapanis, /olağan prosedür/);
+    assert.equal(dijitalOnayWhatsAppKind('mali_mesuliyet'), 'mali_mesuliyet');
+    const mm = buildDijitalOnayWhatsAppMessage({
+      kind: 'mali_mesuliyet',
+      insuredName: 'Ayşe Yılmaz',
+      fileNo: 'HASAR-1001',
+      approvalUrl: url,
+      ownerName: 'Mehmet Demir',
+      ownerPhone: '05321334144',
+    });
+    assert.match(mm, /komşu daire tespit onayı gerekmektedir/);
+    assert.doesNotMatch(mm, /Muvafakatname/);
+    assert.doesNotMatch(mm, /Onayla’ya basın/);
   });
 });

@@ -1191,6 +1191,7 @@ export function StepWhatsApp({
 export function StepDigitalApproval() {
   const { claim, canEdit, savePreApprovalChoice, failedMandatoryKeys, setClaim } = usePlanner();
   const [fileItems, setFileItems] = useState<Array<{ id: string; name: string }>>([]);
+  const [hasMmWork, setHasMmWork] = useState(false);
   const [itemError, setItemError] = useState('');
   const [itemsLoading, setItemsLoading] = useState(false);
   const otherSaved = claim.preApprovalJobs.find((j) => isPreApprovalOtherJob(j));
@@ -1204,6 +1205,7 @@ export function StepDigitalApproval() {
     const reportId = claim.report.id;
     if (!reportId) {
       setFileItems([]);
+      setHasMmWork(false);
       setItemError('');
       setItemsLoading(false);
       return;
@@ -1220,10 +1222,14 @@ export function StepDigitalApproval() {
           ...row,
           name: toTitleCaseTR(row.name),
         })));
+        setHasMmWork(items.some((row: { damageCategory?: string | null }) => row.damageCategory === 'mm'));
         setItemError('');
       })
       .catch(() => {
-        if (!cancelled) setItemError('Dosya kalemleri yüklenemedi. Sayfayı yenileyin.');
+        if (!cancelled) {
+          setHasMmWork(false);
+          setItemError('Dosya kalemleri yüklenemedi. Sayfayı yenileyin.');
+        }
       })
       .finally(() => {
         if (!cancelled) setItemsLoading(false);
@@ -1451,6 +1457,11 @@ export function StepDigitalApproval() {
           ) : (
             <p className="mb-2 text-xs font-medium text-amber-800">Onay gelmeden onarım bitişi kaydedilmez.</p>
           )}
+          {hasMmWork ? (
+            <p className="mb-2 text-xs text-slate-600" data-testid="hasar-mm-muvafakat-notu">
+              Bu dosyada mali mesuliyet işi var. Muvafakatta mağdur bilgisi durur.
+            </p>
+          ) : null}
           <FileDocumentPanel
             entityType="claim_file"
             entityId={claim.claimId}

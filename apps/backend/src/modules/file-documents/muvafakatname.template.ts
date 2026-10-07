@@ -21,6 +21,10 @@ export const MUVAFAKATNAME_TEMPLATE = `<!DOCTYPE html>
     .field-label { color: #4b5563; font-size: 10px; margin-bottom: 2px; }
     .field-value { font-weight: 600; color: #111827; }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+    .two-col:has(.party-block:only-child) { grid-template-columns: 1fr; }
+    .party-block-mm { background: #fff7ed; border-color: #fdba74; }
+    .party-block-mm .section-title { color: #9a3412; border-bottom-color: #fed7aa; }
+    .signatures-one { grid-template-columns: 1fr; max-width: 320px; margin-left: auto; }
     .section-title { font-size: 11px; font-weight: 700; color: #1a4080; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px; }
     .section-sub { font-size: 9px; color: #64748b; font-weight: 400; }
     .party-block { border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; background: #f8fafc; }
@@ -85,13 +89,7 @@ export const MUVAFAKATNAME_TEMPLATE = `<!DOCTYPE html>
       <div class="party-row"><span class="field-label">Tazminat Bedeli</span><div class="field field-value">{{sigortali_tazminat_bedeli}}</div></div>
       <div class="party-row"><span class="field-label">Adres</span><div class="field field-value">{{sigortali_adres}}</div></div>
     </div>
-    <div class="party-block">
-      <div class="section-title">Mali Mesuliyet Mağdur Bilgiler <span class="section-sub">(Mağduriyet Var İse Doldurunuz)</span></div>
-      <div class="party-row"><span class="field-label">Ad Soyad</span><div class="field field-value">{{magdur_ad}}</div></div>
-      <div class="party-row"><span class="field-label">T.C. Kimlik No</span><div class="field field-value">{{magdur_tc}}</div></div>
-      <div class="party-row"><span class="field-label">Mağdurun Konumu</span><div class="field field-value">{{magdur_konum}}</div></div>
-      <div class="party-row"><span class="field-label">Adres</span><div class="field field-value">{{magdur_adres}}</div></div>
-    </div>
+    {{magdur_blogu}}
   </div>
 
   {{on_is_bolumu}}
@@ -113,16 +111,7 @@ export const MUVAFAKATNAME_TEMPLATE = `<!DOCTYPE html>
     </p>
   </div>
 
-  <div class="signatures">
-    <div class="sig-col">
-      <h4>Mağdur (3. Şahıs Mali Mesuliyet)</h4>
-      <div class="sig-line">Ad Soyad · İmza</div>
-    </div>
-    <div class="sig-col">
-      <h4>Sigortalı</h4>
-      <div class="sig-line">Ad Soyad · İmza</div>
-    </div>
-  </div>
+  {{imza_blogu}}
 
   <div class="amount-box">
     <strong>Tazminat Bedeli:</strong> {{tazminat_bedeli_toplam}} TL + KDV

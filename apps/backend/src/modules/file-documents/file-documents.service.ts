@@ -14,7 +14,7 @@ import {
 import { buildAppPath } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
-import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isHasarVendorContractWaived, ACIL_ADRES_HIZMET_TALEP_KIND, ACIL_SERVIS_ONAY_KIND, isAcilDigitalFormKind, resolveAcilInsuredName, buildDijitalOnayWhatsAppMessage, dijitalOnayWhatsAppKind, evaluatePublicApprovalToken, publicApprovalTokenErrorMessage, PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE, parsePreApprovalJobs, preApprovalApprovalLines, PRE_APPROVAL_DIGITAL_KIND } from '@sigorta/shared';
+import { mapInboundLossTypeToMeridyen, canCreateHasarInvoiceRequest, isHasarVendorContractWaived, ACIL_ADRES_HIZMET_TALEP_KIND, ACIL_SERVIS_ONAY_KIND, isAcilDigitalFormKind, resolveAcilInsuredName, buildDijitalOnayWhatsAppMessage, dijitalOnayWhatsAppKind, evaluatePublicApprovalToken, publicApprovalTokenErrorMessage, PUBLIC_APPROVAL_TOKEN_CLOSED_MESSAGE, parsePreApprovalJobs, preApprovalApprovalLines, PRE_APPROVAL_DIGITAL_KIND, muvafakatShowsMagdur, maliMesuliyetKonumYazi } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import {
   CreateFileDocumentDto,
@@ -288,6 +288,7 @@ export class FileDocumentsService {
 
   private async renderHasarDigitalHtml(
     cf: {
+      id: string;
       fileNo: string;
       lossType?: string | null;
       policyNo?: string | null;
@@ -316,6 +317,39 @@ export class FileDocumentsService {
     const budgetRaw = cf.budgetVersions?.[0]?.totalAmount;
     const budgetTotal = budgetRaw == null || budgetRaw === '' ? null : Number(budgetRaw);
     const companyPlaceholders = await this.getDocumentCompanyPlaceholders();
+    const mmKalemler = await this.prisma.repairReportItem.findMany({
+      where: { report: { claimFileId: cf.id }, damageCategory: 'mm' },
+      select: { location: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const showMagdur = muvafakatShowsMagdur(mmKalemler.length, documentKind);
+    const magdurKonum = maliMesuliyetKonumYazi(mmKalemler) || '—';
+    const magdurBlogu = showMagdur
+      ? `<div class="party-block party-block-mm">
+      <div class="section-title">Mali Mesuliyet Mağdur Bilgiler <span class="section-sub">(Mağduriyet Var İse Doldurunuz)</span></div>
+      <div class="party-row"><span class="field-label">Ad Soyad</span><div class="field field-value">—</div></div>
+      <div class="party-row"><span class="field-label">T.C. Kimlik No</span><div class="field field-value">—</div></div>
+      <div class="party-row"><span class="field-label">Mağdurun Konumu</span><div class="field field-value">${escHtml(magdurKonum)}</div></div>
+      <div class="party-row"><span class="field-label">Adres</span><div class="field field-value">${escHtml(damageAddress || '—')}</div></div>
+    </div>`
+      : '';
+    const imzaBlogu = showMagdur
+      ? `<div class="signatures">
+    <div class="sig-col">
+      <h4>Mağdur (3. Şahıs Mali Mesuliyet)</h4>
+      <div class="sig-line">Ad Soyad · İmza</div>
+    </div>
+    <div class="sig-col">
+      <h4>Sigortalı</h4>
+      <div class="sig-line">Ad Soyad · İmza</div>
+    </div>
+  </div>`
+      : `<div class="signatures signatures-one">
+    <div class="sig-col">
+      <h4>Sigortalı</h4>
+      <div class="sig-line">Ad Soyad · İmza</div>
+    </div>
+  </div>`;
     const placeholders: Record<string, string> = {
       '{{dosya_no}}': cf.fileNo,
       '{{tarih}}': new Date().toLocaleDateString('tr-TR'),
@@ -329,10 +363,8 @@ export class FileDocumentsService {
       '{{sigortali_tc}}': cf.customer?.identityNo ?? '—',
       '{{sigortali_tazminat_bedeli}}': this.formatCurrency(budgetTotal),
       '{{sigortali_adres}}': damageAddress || '—',
-      '{{magdur_ad}}': '—',
-      '{{magdur_tc}}': '—',
-      '{{magdur_konum}}': '—',
-      '{{magdur_adres}}': '—',
+      '{{magdur_blogu}}': magdurBlogu,
+      '{{imza_blogu}}': imzaBlogu,
       '{{onarim_bitis_tarihi}}': '… / … / ……',
       '{{tazminat_bedeli_toplam}}': this.formatCurrency(budgetTotal),
       '{{on_is_bolumu}}': documentKind === PRE_APPROVAL_DIGITAL_KIND
@@ -346,7 +378,7 @@ export class FileDocumentsService {
     return this.renderTemplate(
       MUVAFAKATNAME_TEMPLATE,
       placeholders,
-      new Set(['{{on_is_bolumu}}', '{{belge_baslik}}']),
+      new Set(['{{on_is_bolumu}}', '{{belge_baslik}}', '{{magdur_blogu}}', '{{imza_blogu}}']),
     );
   }
 
@@ -359,7 +391,8 @@ export class FileDocumentsService {
     digitallyApprovedAt: Date | null;
     renderedContent: string;
   }>(doc: T): Promise<T> {
-    if (doc.documentKind !== PRE_APPROVAL_DIGITAL_KIND || doc.entityType !== 'claim_file') return doc;
+    if (doc.entityType !== 'claim_file') return doc;
+    if (doc.documentKind !== PRE_APPROVAL_DIGITAL_KIND && doc.documentKind !== 'muvafakatname') return doc;
     if (doc.digitallyApprovedAt) return doc;
     const cf = await this.prisma.claimFile.findUnique({
       where: { id: doc.entityId },
@@ -375,7 +408,7 @@ export class FileDocumentsService {
       },
     });
     if (!cf) return doc;
-    const rendered = await this.renderHasarDigitalHtml(cf, PRE_APPROVAL_DIGITAL_KIND);
+    const rendered = await this.renderHasarDigitalHtml(cf, doc.documentKind);
     if (rendered === doc.renderedContent) return doc;
     await this.prisma.fileDocument.update({
       where: { id: doc.id },
@@ -414,11 +447,7 @@ export class FileDocumentsService {
         orderBy: { createdAt: 'desc' },
       });
       if (existingKind) {
-        if (
-          documentKind === PRE_APPROVAL_DIGITAL_KIND
-          && !existingKind.digitallyApprovedAt
-          && existingKind.renderedContent !== rendered
-        ) {
+        if (!existingKind.digitallyApprovedAt && existingKind.renderedContent !== rendered) {
           return this.prisma.fileDocument.update({
             where: { id: existingKind.id },
             data: { renderedContent: rendered },

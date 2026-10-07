@@ -23,6 +23,7 @@ const CONSUMED_STATUSES = new Set([
   'cancelled',
   'rejected',
   'digitally_rejected',
+  'muvafakat_verildi',
 ]);
 
 export type PublicApprovalTokenKind = 'evrak' | 'sozlesme';

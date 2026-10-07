@@ -254,6 +254,7 @@ describe('field-staff-claim-view lock', () => {
     const notAt = fieldBlock.indexOf('Tespit Notları');
     const endAt = fieldBlock.indexOf('FieldStaffEndInspection');
     assert.ok(fotoAt >= 0 && notAt > fotoAt && endAt > notAt);
+    assert.doesNotMatch(detail, /MaliMesuliyetAlanlariPanel/);
     assert.match(fieldBlock, /ImagePlus/);
     assert.match(fieldBlock, /ClipboardList/);
     assert.doesNotMatch(fieldBlock, /EvraklarTab/);

@@ -3,11 +3,12 @@
  * Link durur; kim, dosya, neden ve dosya sorumlusu cep yazılır.
  */
 
-export type DijitalOnayWhatsAppKind = 'hasar' | 'acil_ihbar' | 'acil_kapanis';
+export type DijitalOnayWhatsAppKind = 'hasar' | 'acil_ihbar' | 'acil_kapanis' | 'mali_mesuliyet';
 
 export function dijitalOnayWhatsAppKind(documentKind: string): DijitalOnayWhatsAppKind {
   if (documentKind === 'adres_hizmet_talep') return 'acil_ihbar';
   if (documentKind === 'matbu_evrak') return 'acil_kapanis';
+  if (documentKind === 'mali_mesuliyet') return 'mali_mesuliyet';
   return 'hasar';
 }
 
@@ -46,6 +47,9 @@ export function buildDijitalOnayWhatsAppMessage(input: {
   } else if (input.kind === 'acil_kapanis') {
     purpose =
       `Meridyen Assistance, ${fileNo} numaralı acil yardım dosyanızda hizmetin tamamlandığını onaylamanız gerekmektedir.`;
+  } else if (input.kind === 'mali_mesuliyet') {
+    purpose =
+      `Meridyen Assistance, ${fileNo} numaralı hasar dosyanızda komşu daire tespit onayı gerekmektedir. Söz konusu talep olağan prosedür kapsamındadır.`;
   } else {
     purpose =
       `Meridyen Assistance, ${fileNo} numaralı hasar dosyanız için onarım onayı gerekmektedir. Söz konusu talep olağan prosedür kapsamındadır.`;

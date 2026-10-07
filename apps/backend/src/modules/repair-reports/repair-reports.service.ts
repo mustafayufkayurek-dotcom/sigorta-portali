@@ -34,6 +34,8 @@ import {
   repairItemMarginPct,
   repairItemSupplierNeedsHeal,
   repairItemResolvedSupplierTotal,
+  claimFileReportGrandTotal,
+  maliMesuliyetAlanToplami,
 } from '@sigorta/shared';
 import {
   CreateRepairReportDto,
@@ -737,13 +739,32 @@ export class RepairReportsService {
 
   private async recalculateTotals(reportId: string) {
     const items = await this.prisma.repairReportItem.findMany({ where: { reportId } });
-    const totalSupplierCost = items.reduce((s, i) => s + repairItemResolvedSupplierTotal(i), 0);
-    const totalSalesAmount = items.reduce((s, i) => s + repairItemSalesTotal(i), 0);
+    const reportRow = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      select: { claimFileId: true },
+    });
+    const unlinkedNeighbor = reportRow
+      ? await this.prisma.maliMesuliyetIsKalemi.findMany({
+          where: {
+            tespit: { claimFileId: reportRow.claimFileId },
+            repairReportItemId: null,
+          },
+        })
+      : [];
+    const mainItems = items.filter((item) => !item.maliMesuliyetTespitId);
+    const taggedNeighbor = items.filter((item) => item.maliMesuliyetTespitId);
+    const grand = claimFileReportGrandTotal({
+      mainReportItems: mainItems,
+      neighborItems: [...taggedNeighbor, ...unlinkedNeighbor],
+    });
+    const totalSupplierCost = grand.genelMaliyet;
+    const totalSalesAmount = grand.genelToplam;
     const grossProfit = totalSalesAmount - totalSupplierCost;
     const grossMarginPct = totalSalesAmount > 0 ? (grossProfit / totalSalesAmount) * 100 : 0;
 
     const buildingDamageTotal = items.reduce((s, i) =>
-      (i.damageCategory ?? 'bina') === 'bina' ? s + repairItemSalesTotal(i) : s, 0);
+      (i.damageCategory ?? 'bina') === 'bina' ? s + repairItemSalesTotal(i) : s, 0)
+      + maliMesuliyetAlanToplami(unlinkedNeighbor).sales;
     const goodsDamageTotal = items.reduce((s, i) =>
       (i.damageCategory ?? 'bina') === 'esya' ? s + repairItemSalesTotal(i) : s, 0);
 

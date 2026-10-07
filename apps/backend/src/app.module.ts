@@ -32,6 +32,7 @@ import { VendorIntelligenceProfileModule } from './modules/vendor-intelligence-p
 import { VendorDiscoveryModule } from './modules/vendor-discovery/vendor-discovery.module';
 import { WorkGroupsModule } from './modules/work-groups/work-groups.module';
 import { RepairReportsModule } from './modules/repair-reports/repair-reports.module';
+import { MaliMesuliyetModule } from './modules/mali-mesuliyet/mali-mesuliyet.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { ClaimSubjectsModule } from './modules/claim-subjects/claim-subjects.module';
 import { ClaimResponsibilitiesModule } from './modules/claim-responsibilities/claim-responsibilities.module';
@@ -168,6 +169,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     VendorDiscoveryModule,
     WorkGroupsModule,
     RepairReportsModule,
+    MaliMesuliyetModule,
     DepartmentsModule,
     ClaimSubjectsModule,
     ClaimResponsibilitiesModule,

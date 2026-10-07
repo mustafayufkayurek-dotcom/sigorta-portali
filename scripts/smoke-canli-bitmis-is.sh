@@ -119,6 +119,9 @@ node --experimental-strip-types --test \
   packages/shared/src/claim-service-kind.lock.spec.ts \
   packages/shared/src/field-staff-area.lock.spec.ts \
   packages/shared/src/claim-pre-approval.lock.spec.ts \
+  packages/shared/src/mali-mesuliyet.lock.spec.ts \
+  packages/shared/src/repair-damage-category.lock.spec.ts \
+  apps/web/src/app/panel/hasar-dosyalari/mali-mesuliyet-alanlari.lock.spec.ts \
   packages/shared/src/insurance-company-catalog.lock.spec.ts \
   apps/backend/src/modules/claim-files/assignable-file-owners.lock.spec.ts \
   apps/web/src/components/hasar-operasyon-planlayicisi/inspector-region.lock.spec.ts \

@@ -34,7 +34,7 @@ import {
 } from '@/components/damage-reports/VendorQuotePopover';
 import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal, mergeRepairDamageCategories, repairDamageCategoryDisplay, repairDamageCategorySelectLabel, mahalSuggestionsForCategory, type RepairDamageCategoryOption, type RepairMahalCatalogEntry } from '@sigorta/shared';
+import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal, mergeRepairDamageCategories, repairDamageCategoryDisplay, repairDamageCategorySelectLabel, mahalSuggestionsForCategory, normalizeRepairDamageCategoryCode, MALI_MESULIYET_LOKASYON, MALI_MESULIYET_LOKASYON_ETIKET, formatMaliMesuliyetMahal, parseMaliMesuliyetMahal, maliMesuliyetDaireNoOk, type RepairDamageCategoryOption, type RepairMahalCatalogEntry } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -93,6 +93,12 @@ function formatLocationLabel(value: string): { formatted: string; warning?: stri
 
 function validateAndFormatLocation(value: string): string {
   return formatLocationLabel(value).formatted;
+}
+
+function mmMahalEksik(damageCategory: string, location: string): boolean {
+  if (damageCategory !== 'mm' || !location.trim()) return false;
+  const mmMahal = parseMaliMesuliyetMahal(location);
+  return !mmMahal.lokasyon || !maliMesuliyetDaireNoOk(mmMahal.lokasyon, mmMahal.daireNo);
 }
 
 function isValidLocationFormat(value: string): boolean {
@@ -1776,11 +1782,11 @@ function DetectionScopeSelector({
 
   if (addingNew) {
     return (
-      <div className="flex items-center gap-1 px-1 w-full">
+      <div className="flex min-w-0 w-full max-w-full items-center gap-1 overflow-hidden px-1">
         <input
           ref={inputRef}
           type="text"
-          className="flex-1 h-8 border border-blue-300 rounded px-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="min-w-0 h-8 w-full flex-1 rounded border border-blue-300 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
           placeholder="Tespit alanı adı..."
           value={newVal}
           disabled={saving}
@@ -1901,11 +1907,11 @@ function WorkGroupSelector({
 
   if (addingNew) {
     return (
-      <div className="flex items-center gap-1 px-1 w-full">
+      <div className="flex min-w-0 w-full max-w-full items-center gap-1 overflow-hidden px-1">
         <input
           ref={inputRef}
           type="text"
-          className="flex-1 h-8 border border-blue-300 rounded px-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="min-w-0 h-8 w-full flex-1 rounded border border-blue-300 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
           placeholder="İş grubu adı..."
           value={newVal}
           disabled={saving}
@@ -2391,7 +2397,141 @@ function CalcInput({
   );
 }
 
-// ─── Mahal/Bölge — serbest metin + rapor içi öneriler (datalist)
+// ─── MM Mahal/Bölge — tek hücre, tespit alanı gibi ekleme
+function MmMahalInput({
+  value,
+  suggestions,
+  onChange,
+  onAddNew,
+  className,
+  'data-cell': dataCell,
+  tabIndex,
+  onFocus,
+  onBlur,
+  onKeyDown,
+}: {
+  value: string;
+  suggestions: string[];
+  onChange: (v: string) => void;
+  onAddNew: (name: string) => Promise<string>;
+  className?: string;
+  'data-cell'?: string;
+  tabIndex?: number;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLSelectElement | HTMLInputElement>) => void;
+}) {
+  const [addingNew, setAddingNew] = useState(false);
+  const [newVal, setNewVal] = useState('');
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const presets = MALI_MESULIYET_LOKASYON.map((code) => MALI_MESULIYET_LOKASYON_ETIKET[code]);
+  const options = Array.from(
+    new Set([...presets, ...suggestions, value].map((row) => String(row ?? '').trim()).filter(Boolean)),
+  );
+
+  useEffect(() => {
+    if (addingNew) inputRef.current?.focus();
+  }, [addingNew]);
+
+  const commit = async () => {
+    const formatted = formatLocationLabel(toTitleCaseTR(newVal.trim())).formatted;
+    if (!formatted) {
+      setAddingNew(false);
+      setNewVal('');
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await onAddNew(formatted);
+      onChange(saved || formatted);
+    } catch {
+      onChange(formatted);
+    } finally {
+      setSaving(false);
+      setAddingNew(false);
+      setNewVal('');
+    }
+  };
+
+  if (addingNew) {
+    return (
+      <div className="flex min-w-0 w-full max-w-full items-center gap-1 overflow-hidden px-1" data-testid="mm-mahal-alan">
+        <input
+          ref={inputRef}
+          type="text"
+          className="min-w-0 h-8 w-full flex-1 rounded border border-blue-300 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          placeholder="Örn. alt kat - daire 5"
+          value={newVal}
+          disabled={saving}
+          aria-label="Mahal/Bölge"
+          onChange={(e) => setNewVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void commit();
+            } else if (e.key === 'Escape') {
+              setAddingNew(false);
+              setNewVal('');
+            } else {
+              onKeyDown?.(e);
+            }
+          }}
+          onBlur={() => void commit()}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setAddingNew(false);
+            setNewVal('');
+          }}
+          className="flex-shrink-0 text-xs text-slate-400 hover:text-status-danger"
+        >
+          ×
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      data-cell={dataCell}
+      data-testid="mm-mahal-alan"
+      className={className}
+      value={value}
+      tabIndex={tabIndex}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onKeyDown={onKeyDown}
+      onChange={(e) => {
+        const next = e.target.value;
+        if (next === '__add_new__') {
+          setNewVal('');
+          setAddingNew(true);
+          return;
+        }
+        const parsed = parseMaliMesuliyetMahal(next);
+        if (presets.includes(next) && parsed.lokasyon && parsed.lokasyon !== 'ortak_alan') {
+          setNewVal(`${MALI_MESULIYET_LOKASYON_ETIKET[parsed.lokasyon]} - `);
+          setAddingNew(true);
+          return;
+        }
+        if (presets.includes(next) && parsed.lokasyon === 'ortak_alan') {
+          onChange(formatMaliMesuliyetMahal('ortak_alan'));
+          return;
+        }
+        onChange(next);
+      }}
+    >
+      <option value="">Seçin</option>
+      {options.map((label) => (
+        <option key={label} value={label}>{label}</option>
+      ))}
+      <option value="__add_new__">+ Yeni Mahal/Bölge Ekle</option>
+    </select>
+  );
+}
+
 function LocationInput({
   value,
   suggestions,
@@ -2454,13 +2594,13 @@ function LocationInput({
   );
 }
 
-const KALEM_COL_WIDTHS_KEY = 'onarim-kalem-col-widths-v1';
+const KALEM_COL_WIDTHS_KEY = 'onarim-kalem-col-widths-v2';
 const KALEM_DEFAULT_COL_WIDTHS: Record<string, number> = {
   idx: 36,
   damageCategory: 88,
   damageType: 120,
   detectionScope: 110,
-  location: 120,
+  location: 148,
   workGroup: 140,
   jobDescription: 170,
   description: 180,
@@ -2577,6 +2717,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   // Mahal önerisi + tespit alanları (sistem tanımları + rapor içi)
   const [catalogDetectionScopes, setCatalogDetectionScopes] = useState<string[]>([]);
   const [detectionScopeList, setDetectionScopeList] = useState<string[]>([]);
+  const [categoryIdByCode, setCategoryIdByCode] = useState<Record<string, string>>({});
 
   useEffect(() => {
     axios
@@ -2597,6 +2738,21 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   }, []);
 
   useEffect(() => {
+    axios
+      .get(`${API}/claim-damage-categories`, { headers: authHeader(), params: { status: 'active' } })
+      .then((res) => {
+        const rows = (res.data?.data ?? res.data ?? []) as { id?: string; code?: string }[];
+        const map: Record<string, string> = {};
+        for (const row of rows) {
+          const code = normalizeRepairDamageCategoryCode(row.code);
+          if (row.id) map[code] = row.id;
+        }
+        setCategoryIdByCode(map);
+      })
+      .catch(() => setCategoryIdByCode({}));
+  }, []);
+
+  useEffect(() => {
     const fromItems = items.map((i: any) => readMetrajDetectionScope(i.metrajData)).filter(Boolean);
     setDetectionScopeList(Array.from(new Set([...catalogDetectionScopes, ...fromItems])));
   }, [items, catalogDetectionScopes]);
@@ -2604,6 +2760,33 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const addLocationIfNew = (loc: string) => {
     const normalized = validateAndFormatLocation(loc);
     setExtraMahals((prev) => (prev.includes(normalized) ? prev : [...prev, normalized]));
+  };
+
+  const createMmMahal = async (label: string): Promise<string> => {
+    const formatted = validateAndFormatLocation(label);
+    const parts = formatted.split(/\s*-\s*/).filter(Boolean);
+    const mahalName = parts[0] ?? formatted;
+    const bolgeName = parts.slice(1).join(' - ');
+    const categoryId = categoryIdByCode.mm;
+    if (categoryId) {
+      try {
+        await axios.post(
+          `${API}/claim-locations/bind`,
+          {
+            categoryIds: [categoryId],
+            mahalName,
+            bolgeName: bolgeName || undefined,
+          },
+          { headers: authHeader() },
+        );
+        const catalog = await axios.get(`${API}/claim-locations/catalog`, { headers: authHeader() });
+        setMahalCatalog(catalog.data?.data ?? []);
+      } catch {
+        /* liste yine raporda durur */
+      }
+    }
+    addLocationIfNew(formatted);
+    return formatted;
   };
 
   const addDetectionScopeIfNew = (scope: string) => {
@@ -2851,6 +3034,11 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       focusCell(rowsRef.current.findIndex((r) => r._id === id), 'location');
       return;
     }
+    if (mmMahalEksik(row.damageCategory, row.location)) {
+      notify('error', 'Mali mesuliyet mahallinde lokasyon ve daire no durur.');
+      focusCell(rowsRef.current.findIndex((r) => r._id === id), 'location');
+      return;
+    }
 
     if (row.workGroupId && row.jobDescription.trim()) {
       const stored = readVendorPriceMemory(row.workGroupId, row.jobDescription);
@@ -2917,7 +3105,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       return;
     }
     if (draft.location.trim() && !isValidLocationFormat(draft.location)) {
-      notify('error', 'Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Alt Kat - 5 Nolu Daire)');
+      notify('error', 'Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Salon - Zemin)');
+      focusCell('new', 'location');
+      return;
+    }
+    if (mmMahalEksik(draft.damageCategory, draft.location)) {
+      notify('error', 'Mali mesuliyet mahallinde lokasyon ve daire no durur.');
       focusCell('new', 'location');
       return;
     }
@@ -3034,6 +3227,11 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
     }
     if (draft.location.trim() && !isValidLocationFormat(draft.location)) {
       notify('error', 'Mahal/Bölge formatı zorunlu: Kelime1 - Kelime2 (ör. Salon - Zemin)');
+      focusCell('new', 'location');
+      return;
+    }
+    if (mmMahalEksik(draft.damageCategory, draft.location)) {
+      notify('error', 'Mali mesuliyet mahallinde lokasyon ve daire no durur.');
       focusCell('new', 'location');
       return;
     }
@@ -3281,7 +3479,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
   const tdCls = (rowIdx: number | 'new', col: string) => {
     const isActive = activeCell?.rowIdx === rowIdx && activeCell?.col === col;
-    return `border-r border-slate-100 last:border-r-0 ${isActive ? 'bg-blue-50/20' : ''}`;
+    return `overflow-hidden border-r border-slate-100 last:border-r-0 ${isActive ? 'bg-blue-50/20' : ''}`;
   };
 
   const calcTotal = (row: RowState) => {
@@ -3476,10 +3674,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       onFocus={() => setActiveCell({ rowIdx, col: 'damageCategory' })}
                       onBlur={() => { tryAutoSaveRow(row._id); }}
                       onChange={(e) => {
+                        const next = e.target.value;
+                        const keepMmMahal = next === 'mm' && Boolean(parseMaliMesuliyetMahal(row.location).lokasyon);
                         updateRowCategory(row._id, {
-                          damageCategory: e.target.value,
+                          damageCategory: next,
                           workGroupId: '',
                           jobDescription: '',
+                          location: next === 'mm' && !keepMmMahal ? '' : row.location,
                         });
                       }}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'damageCategory', row._id)}
@@ -3543,6 +3744,30 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                 {/* Mahal/Bölge */}
                 <td className={tdCls(rowIdx, 'location')}>
                   {isEditable ? (
+                    row.damageCategory === 'mm' ? (
+                    <MmMahalInput
+                      data-cell={`${rowIdx}-location`}
+                      className={cellCls(rowIdx, 'location', true)}
+                      value={row.location}
+                      suggestions={mahalSuggestionsForCategory(
+                        mahalCatalog,
+                        'mm',
+                        [
+                          ...items
+                            .filter((i: any) => i.damageCategory === 'mm')
+                            .map((i: any) => i.location)
+                            .filter(Boolean),
+                          ...extraMahals,
+                        ],
+                      )}
+                      tabIndex={getCellTabIndex(rowIdx, 'location')}
+                      onChange={(v) => updateRow(row._id, 'location', v)}
+                      onAddNew={createMmMahal}
+                      onFocus={() => setActiveCell({ rowIdx, col: 'location' })}
+                      onBlur={() => { tryAutoSaveRow(row._id); }}
+                      onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'location', row._id)}
+                    />
+                    ) : (
                     <LocationInput
                       data-cell={`${rowIdx}-location`}
                       className={cellCls(rowIdx, 'location', true)}
@@ -3565,6 +3790,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       onBlur={() => { tryAutoSaveRow(row._id); }}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'location', row._id)}
                     />
+                    )
                   ) : (
                     <span className="px-2 text-xs text-slate-700 block py-3">{row.location ? formatDisplayLabel(row.location) : '—'}</span>
                   )}
@@ -3855,7 +4081,20 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   tabIndex={getCellTabIndex('new', 'damageCategory')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'damageCategory' })}
                   onBlur={() => undefined}
-                  onChange={(e) => { setAddingRow((p) => ({ ...p, damageCategory: e.target.value, workGroupId: '', jobDescription: '' })); setAddingDirty(true); }}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setAddingRow((p) => {
+                      const keepMmMahal = next === 'mm' && Boolean(parseMaliMesuliyetMahal(p.location).lokasyon);
+                      return {
+                        ...p,
+                        damageCategory: next,
+                        workGroupId: '',
+                        jobDescription: '',
+                        location: next === 'mm' && !keepMmMahal ? '' : p.location,
+                      };
+                    });
+                    setAddingDirty(true);
+                  }}
                   onKeyDown={(e) => handleCellKeyDown(e, 'new', 'damageCategory')}
                 >
                   {mergeRepairDamageCategories(damageCategories).map((cat) => (
@@ -3901,6 +4140,30 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
               </td>
               {/* Mahal/Bölge */}
               <td className={tdCls('new', 'location')}>
+                {addingRow.damageCategory === 'mm' ? (
+                <MmMahalInput
+                  data-cell="new-location"
+                  className={cellCls('new', 'location', true)}
+                  value={addingRow.location}
+                  suggestions={mahalSuggestionsForCategory(
+                    mahalCatalog,
+                    'mm',
+                    [
+                      ...items
+                        .filter((i: any) => i.damageCategory === 'mm')
+                        .map((i: any) => i.location)
+                        .filter(Boolean),
+                      ...extraMahals,
+                    ],
+                  )}
+                  tabIndex={getCellTabIndex('new', 'location')}
+                  onChange={(v) => { setAddingRow((p) => ({ ...p, location: v })); setAddingDirty(true); }}
+                  onAddNew={createMmMahal}
+                  onFocus={() => setActiveCell({ rowIdx: 'new', col: 'location' })}
+                  onBlur={() => undefined}
+                  onKeyDown={(e) => handleCellKeyDown(e, 'new', 'location')}
+                />
+                ) : (
                 <LocationInput
                   data-cell="new-location"
                   className={cellCls('new', 'location', true)}
@@ -3923,6 +4186,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   onBlur={() => undefined}
                   onKeyDown={(e) => handleCellKeyDown(e, 'new', 'location')}
                 />
+                )}
               </td>
               {/* İş Grubu */}
               <td className={tdCls('new', 'workGroup')}>

@@ -60,6 +60,7 @@ describe('rapor kategori kataloğu kilidi', () => {
     assert.match(rapor, /\+ Yeni İş Kalemi Ekle/);
     assert.match(rapor, /\+ Yeni İş Grubu Ekle/);
     assert.match(rapor, /function LocationInput/);
+    assert.match(rapor, /function MmMahalInput/);
     assert.match(rapor, /addLocationIfNew/);
     assert.doesNotMatch(rapor, /<option value="bina">Bina<\/option>/);
     const catalog = [

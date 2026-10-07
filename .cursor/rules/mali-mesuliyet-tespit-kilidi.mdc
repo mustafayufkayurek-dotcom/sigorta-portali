@@ -1,0 +1,37 @@
+---
+description: Mali mesuliyet raporda MM; dijital muvafakatta mağdur
+alwaysApply: false
+---
+
+# Mali Mesuliyet Kilidi
+
+**Kaynak (Mustafa · 06–07.10.2026):** Kategori **MM**. Rapor yazımı o grupta devam eder. PDF aynı yansıtır. Canlı dijital onay muvafakatına, dosyada MM işi varsa mağdur kutusu eklenir. Dosya sayfasında ayrı alan paneli ve ayrı taslak yok.
+
+**Temel cümle:** İş **rapor içeriğindedir.** Muvafakat **canlı dijital onaydır.** MM varsa mağdur durur.
+
+## Zorunlu
+
+1. Onarım raporunda Kategori **MM**. Mahal: Yan Komşu / Alt Kat / Üst Kat / Ortak Alan; daire no (ortak alanda yok).
+2. MM kalemleri asıl rapordadır; tutar rapor toplamına ve PDF’ye MM olarak yansır. Aynı kalem iki kez toplanmaz.
+3. Dijital onay `FileDocumentPanel` `muvafakatname`. Ayrı `/evrak/mali-mesuliyet` ofis yolu değildir.
+4. Mağdur kutusu ve mağdur imzası yalnız `damageCategory === 'mm'` kalemi varken ve asıl muvafakatta durur. Ön onay belgesinde (`muvafakatname_on_is`) durmaz. Konum MM mahallerinden gelir.
+5. Onaysız muvafakat HTML’si MM kalemi değişince yenilenir. Onaylı kopya durur.
+
+## Yasak (açık onay yoksa)
+
+- Dosya sayfasında **Mali Mesuliyet Alanları** veya **Muvafakat Taslağı**
+- MM işini rapordan kesip ayrı panele almak
+- Ön onay belgesine mağdur basmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+- `/dev` maketi ile Hasar dosya yerine koymak
+
+## Durdurma
+
+MM raporda yoksa, ayrı taslak duruyorsa veya MM varken muvafakatta mağdur yoksa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test packages/shared/src/mali-mesuliyet.lock.spec.ts \
+  apps/web/src/app/panel/hasar-dosyalari/mali-mesuliyet-alanlari.lock.spec.ts
+```
