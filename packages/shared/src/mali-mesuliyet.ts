@@ -119,19 +119,19 @@ export function parseMaliMesuliyetMahal(location: string | null | undefined): {
 }
 
 export function maliMesuliyetKonumYazi(
-  tespipler: Array<{ lokasyon: string; daireNo?: string | null } | { location?: string | null }>,
+  rows: Array<{ location?: string | null; lokasyon?: string | null; daireNo?: string | null }>,
 ): string {
-  return tespipler
+  return rows
     .map((row) => {
-      if ('location' in row) {
-        return String(row.location ?? '').trim();
+      const fromLocation = String(row.location ?? '').trim();
+      if (fromLocation) return fromLocation;
+      const lokasyon = String(row.lokasyon ?? '').trim();
+      if (!lokasyon) return '';
+      if (isMaliMesuliyetLokasyon(lokasyon)) {
+        return formatMaliMesuliyetMahal(lokasyon, row.daireNo);
       }
-      const etiket = isMaliMesuliyetLokasyon(row.lokasyon)
-        ? MALI_MESULIYET_LOKASYON_ETIKET[row.lokasyon]
-        : row.lokasyon;
       const no = String(row.daireNo ?? '').trim();
-      if (row.lokasyon === 'ortak_alan') return formatMaliMesuliyetMahal('ortak_alan');
-      return no ? formatMaliMesuliyetMahal(row.lokasyon as MaliMesuliyetLokasyon, no) : etiket;
+      return no ? `${lokasyon} - Daire ${no}` : lokasyon;
     })
     .filter(Boolean)
     .join(', ');
