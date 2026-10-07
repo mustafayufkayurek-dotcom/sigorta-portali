@@ -289,6 +289,8 @@ export const PDF_GRAND_TOTAL_LABEL = 'Rapor Genel Toplam';
 export const PDF_BINA_TOTAL_LABEL = 'Bina Hasarı Toplamı';
 export const PDF_ESYA_TOTAL_LABEL = 'Eşya Hasarı Toplamı';
 export const PDF_DEMIRBAS_TOTAL_LABEL = 'Demirbaş Hasarı Toplamı';
+export const PDF_MM_TOTAL_LABEL = 'Mali Mesuliyet Toplamı';
+export const PDF_CATEGORY_ORDER = ['bina', 'esya', 'demirbas', 'mm'] as const;
 
 export type PdfExternalColWidths = {
   group: number;
@@ -338,21 +340,52 @@ export function allocateExternalColWidths(
   return { group, cause, mahal, job, desc, qty, unit, price, amount };
 }
 
-/** Bina / eşya / demirbaş ayrı toplam yalnız birden fazla tür varken. */
+/** Ayrı kategori toplamı yalnız birden fazla tür varken. */
 export function showPdfSplitCategoryTotals(opts: {
   binaCount: number;
   esyaCount: number;
   demirbasCount: number;
+  extraCount?: number;
 }): boolean {
   const n =
     (opts.binaCount > 0 ? 1 : 0)
     + (opts.esyaCount > 0 ? 1 : 0)
-    + (opts.demirbasCount > 0 ? 1 : 0);
+    + (opts.demirbasCount > 0 ? 1 : 0)
+    + Math.max(0, opts.extraCount ?? 0);
   return n >= 2;
+}
+
+export function normalizePdfDamageCategoryCode(raw: string | null | undefined): string {
+  const code = (raw ?? 'bina').trim().toLowerCase();
+  return code || 'bina';
+}
+
+export function partitionItemsByDamageCategory<T extends { damageCategory?: string | null }>(
+  items: T[],
+): Array<{ code: string; items: T[] }> {
+  const map = new Map<string, T[]>();
+  for (const item of items) {
+    const code = normalizePdfDamageCategoryCode(item.damageCategory);
+    const list = map.get(code) ?? [];
+    list.push(item);
+    map.set(code, list);
+  }
+  const ordered: Array<{ code: string; items: T[] }> = [];
+  for (const code of PDF_CATEGORY_ORDER) {
+    const list = map.get(code);
+    if (list?.length) ordered.push({ code, items: list });
+    map.delete(code);
+  }
+  for (const [code, list] of map) {
+    if (list.length) ordered.push({ code, items: list });
+  }
+  return ordered;
 }
 
 export function pdfCategoryTotalLabel(category: string): string {
   if (category === 'esya') return PDF_ESYA_TOTAL_LABEL;
   if (category === 'demirbas') return PDF_DEMIRBAS_TOTAL_LABEL;
-  return PDF_BINA_TOTAL_LABEL;
+  if (category === 'mm') return PDF_MM_TOTAL_LABEL;
+  if (category === 'bina') return PDF_BINA_TOTAL_LABEL;
+  return `${category} Toplamı`;
 }

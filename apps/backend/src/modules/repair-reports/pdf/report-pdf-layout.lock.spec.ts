@@ -21,7 +21,7 @@ describe('onarım raporu PDF düzen LOCK', () => {
     const toplam = pdfSrc.indexOf('<!-- TOPLAMLAR -->');
     assert.ok(ozet > 0 && toplam > ozet, 'özet toplam başlığının üstünde olmalı');
     assert.match(pdfSrc, /Hasar Nedeni Bazlı Özet/);
-    assert.match(pdfSrc, /PDF_BINA_TOTAL_LABEL/);
+    assert.match(pdfSrc, /pdfCategoryTotalLabel\('bina'\)/);
   });
 
   it('iş grubu yanında hasar nedeni sütunu durur', () => {

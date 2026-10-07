@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsIn, MaxLength, Min } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsIn, IsUUID, MaxLength, Min } from 'class-validator';
 
 export class UpdateClaimLocationDto {
   @IsOptional()
@@ -19,4 +19,8 @@ export class UpdateClaimLocationDto {
   @IsOptional()
   @IsIn(['active', 'inactive'])
   status?: string;
+
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
 }

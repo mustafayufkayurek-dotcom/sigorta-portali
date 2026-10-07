@@ -18,7 +18,7 @@ const DEFINITION_PAGE_LABELS: Record<string, string> = {
   '/panel/ayarlar/tedarikci-hizmet-kollari': 'Tedarikçi Hizmet Kolları',
   '/panel/ayarlar/is-gruplari': 'İş Grupları',
   '/panel/ayarlar/masraf-kategorileri': 'Masraf Kategorileri',
-  '/panel/ayarlar/mahaller': 'Mahal ve Bölgeler',
+  '/panel/ayarlar/mahaller': 'Mahal Ve Kategori',
   '/panel/ayarlar/fiyat-listesi': 'Fiyat Listesi',
   '/panel/ayarlar/bolgesel-zamlar': 'Bölgesel Zamlar',
   '/panel/ayarlar/eskalasyon-kurallari': 'Eskalasyon Kuralları',

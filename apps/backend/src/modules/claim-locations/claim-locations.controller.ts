@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/
 import { ClaimLocationsService } from './claim-locations.service';
 import { CreateClaimLocationDto } from './dto/create-claim-location.dto';
 import { UpdateClaimLocationDto } from './dto/update-claim-location.dto';
+import { BindClaimLocationDto } from './dto/bind-claim-location.dto';
 
 @Controller('claim-locations')
 export class ClaimLocationsController {
@@ -13,12 +14,24 @@ export class ClaimLocationsController {
     return { data };
   }
 
+  @Get('catalog')
+  async catalog() {
+    const data = await this.service.catalogForReport();
+    return { data };
+  }
+
   @Get(':id/sub-locations')
   async findSubLocations(
     @Param('id') id: string,
     @Query('status') status?: string,
   ) {
     const data = await this.service.findSubLocations(id, status);
+    return { data };
+  }
+
+  @Post('bind')
+  async bind(@Body() dto: BindClaimLocationDto) {
+    const data = await this.service.bind(dto);
     return { data };
   }
 

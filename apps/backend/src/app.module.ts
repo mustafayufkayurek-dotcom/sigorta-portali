@@ -53,6 +53,7 @@ import { SystemSettingsModule } from './modules/system-settings/system-settings.
 import { EntityDocumentsModule } from './modules/entity-documents/entity-documents.module';
 import { ChatArchiveModule } from './modules/chat-archive/chat-archive.module';
 import { ClaimLocationsModule } from './modules/claim-locations/claim-locations.module';
+import { ClaimDamageCategoriesModule } from './modules/claim-damage-categories/claim-damage-categories.module';
 import { WorkSubGroupsModule } from './modules/work-sub-groups/work-sub-groups.module';
 import { TaxVerificationModule } from './modules/tax-verification/tax-verification.module';
 import { WidgetsModule } from './modules/widgets/widgets.module';
@@ -188,6 +189,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     EntityDocumentsModule,
     ChatArchiveModule,
     ClaimLocationsModule,
+    ClaimDamageCategoriesModule,
     WorkSubGroupsModule,
     TaxVerificationModule,
     WidgetsModule,

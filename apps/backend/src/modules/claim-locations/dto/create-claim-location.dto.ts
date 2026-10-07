@@ -24,4 +24,8 @@ export class CreateClaimLocationDto {
   @IsOptional()
   @IsUUID()
   parentId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
 }

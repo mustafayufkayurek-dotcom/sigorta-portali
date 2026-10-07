@@ -34,7 +34,7 @@ import {
 } from '@/components/damage-reports/VendorQuotePopover';
 import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal } from '@sigorta/shared';
+import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal, mergeRepairDamageCategories, repairDamageCategoryDisplay, repairDamageCategorySelectLabel, mahalSuggestionsForCategory, type RepairDamageCategoryOption, type RepairMahalCatalogEntry } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -141,7 +141,11 @@ function recomputeReportTotals(items: any[]) {
     if (i.damageCategory !== 'esya') return s;
     return s + repairItemSalesTotal(i);
   }, 0);
-  return { totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct, buildingDamageTotal, goodsDamageTotal };
+  const mmDamageTotal = items.reduce((s, i) => {
+    if (i.damageCategory !== 'mm') return s;
+    return s + repairItemSalesTotal(i);
+  }, 0);
+  return { totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct, buildingDamageTotal, goodsDamageTotal, mmDamageTotal };
 }
 
 
@@ -1966,6 +1970,7 @@ export interface EditableItemsTableHandle {
 interface EditableItemsTableProps {
   items: any[];
   workGroups: any[];
+  damageCategories: RepairDamageCategoryOption[];
   damageTypes: any[];
   reportType: string;
   defaultDamageTypeId?: string;
@@ -1991,7 +1996,7 @@ interface RowState {
   unit: string;
   salesUnitPrice: string;
   supplierUnitPrice: string;
-  damageCategory: 'bina' | 'esya';
+  damageCategory: string;
   damageTypeId: string;
   pricingType: 'unit' | 'lumpsum';
   lumpSumPrice: string;
@@ -2011,7 +2016,7 @@ function rowFromItem(item: any): RowState {
     unit: item.unit ?? 'm²',
     salesUnitPrice: String(item.salesUnitPrice ?? '0'),
     supplierUnitPrice: String(item.supplierUnitPrice ?? '0'),
-    damageCategory: (item.damageCategory ?? 'bina') as 'bina' | 'esya',
+    damageCategory: item.damageCategory ?? 'bina',
     damageTypeId: item.damageTypeId ?? '',
     pricingType: (item.pricingType ?? 'unit') as 'unit' | 'lumpsum',
     lumpSumPrice: String(item.lumpSumPrice ?? '0'),
@@ -2514,7 +2519,7 @@ function KalemColResizeHandle({
 }
 
 const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTableProps>(function EditableItemsTable(
-  { items, workGroups, damageTypes, reportType, defaultDamageTypeId = '', isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange, onWorkGroupCreated, onWorkSubGroupCreated, onNotify, onConfirm },
+  { items, workGroups, damageCategories, damageTypes, reportType, defaultDamageTypeId = '', isEditable, viewMode, onSave, onDelete, onAdd, onDirtyChange, onWorkGroupCreated, onWorkSubGroupCreated, onNotify, onConfirm },
   ref,
 ) {
   const isMultiDamage = reportType === 'multi' && (damageTypes?.length ?? 0) > 0;
@@ -2532,6 +2537,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   const [loadingSubGroupIds, setLoadingSubGroupIds] = useState<Set<string>>(new Set());
   const [metrajModalRowId, setMetrajModalRowId] = useState<string | null>(null);
   const [locationList, setLocationList] = useState<string[]>([]);
+  const [mahalCatalog, setMahalCatalog] = useState<RepairMahalCatalogEntry[]>([]);
   const [vendorModalRowId, setVendorModalRowId] = useState<string | null>(null);
   // Zam oranı state
   const [zamOraniInput, setZamOraniInput] = useState('');
@@ -2581,6 +2587,13 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         setCatalogDetectionScopes(names);
       })
       .catch(() => setCatalogDetectionScopes([]));
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get(`${API}/claim-locations/catalog`, { headers: authHeader() })
+      .then((res) => setMahalCatalog(res.data?.data ?? []))
+      .catch(() => setMahalCatalog([]));
   }, []);
 
   useEffect(() => {
@@ -2991,7 +3004,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       const nextAddingRow = {
         ...emptyRow(location, impliedDamageTypeId || lastRow?.damageTypeId || addingRow.damageTypeId),
         detectionScope,
-        damageCategory: (lastRow?.damageCategory ?? addingRow.damageCategory ?? 'bina') as 'bina' | 'esya',
+        damageCategory: lastRow?.damageCategory ?? addingRow.damageCategory ?? 'bina',
         workGroupId: lastRow?.workGroupId ?? addingRow.workGroupId ?? '',
         unit: lastRow?.unit ?? addingRow.unit ?? 'm²',
         damageTypeId: lastRow?.damageTypeId ?? addingRow.damageTypeId ?? '',
@@ -3247,7 +3260,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         const nextAddingRow = {
           ...emptyRow(sourceRow?.location?.trim() || '', impliedDamageTypeId || sourceRow?.damageTypeId || ''),
           detectionScope: sourceRow?.detectionScope?.trim() || '',
-          damageCategory: (sourceRow?.damageCategory ?? 'bina') as 'bina' | 'esya',
+          damageCategory: sourceRow?.damageCategory ?? 'bina',
           workGroupId: sourceRow?.workGroupId ?? '',
           unit: sourceRow?.unit ?? 'm²',
           damageTypeId: sourceRow?.damageTypeId ?? '',
@@ -3471,19 +3484,22 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       onBlur={() => { tryAutoSaveRow(row._id); }}
                       onChange={(e) => {
                         updateRowCategory(row._id, {
-                          damageCategory: e.target.value as 'bina' | 'esya',
+                          damageCategory: e.target.value,
                           workGroupId: '',
                           jobDescription: '',
                         });
                       }}
                       onKeyDown={(e) => handleCellKeyDown(e, rowIdx, 'damageCategory', row._id)}
                     >
-                      <option value="bina">Bina</option>
-                      <option value="esya">Eşya</option>
+                      {mergeRepairDamageCategories(damageCategories).map((cat) => (
+                        <option key={cat.code} value={cat.code}>
+                          {repairDamageCategorySelectLabel(cat)}
+                        </option>
+                      ))}
                     </select>
                   ) : (
-                    <span className={`px-2 text-xs block py-3 font-medium ${row.damageCategory === 'esya' ? 'text-teal-700' : 'text-orange-700'}`}>
-                      {row.damageCategory === 'esya' ? 'Eşya' : 'Bina'}
+                    <span className={`px-2 text-xs block py-3 font-medium ${row.damageCategory === 'esya' ? 'text-teal-700' : row.damageCategory === 'mm' ? 'text-amber-700' : 'text-orange-700'}`}>
+                      {repairDamageCategoryDisplay(row.damageCategory, damageCategories)}
                     </span>
                   )}
                 </td>
@@ -3538,7 +3554,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                       data-cell={`${rowIdx}-location`}
                       className={cellCls(rowIdx, 'location', true)}
                       value={row.location}
-                      suggestions={locationList}
+                      suggestions={mahalSuggestionsForCategory(
+                        mahalCatalog,
+                        row.damageCategory,
+                        items
+                          .filter((i: any) => (i.damageCategory ?? 'bina') === row.damageCategory)
+                          .map((i: any) => i.location)
+                          .filter(Boolean),
+                      )}
                       onChange={(v) => updateRow(row._id, 'location', v)}
                       onRegister={addLocationIfNew}
                       tabIndex={getCellTabIndex(rowIdx, 'location')}
@@ -3836,11 +3859,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   tabIndex={getCellTabIndex('new', 'damageCategory')}
                   onFocus={() => setActiveCell({ rowIdx: 'new', col: 'damageCategory' })}
                   onBlur={() => undefined}
-                  onChange={(e) => { setAddingRow((p) => ({ ...p, damageCategory: e.target.value as 'bina' | 'esya', workGroupId: '', jobDescription: '' })); setAddingDirty(true); }}
+                  onChange={(e) => { setAddingRow((p) => ({ ...p, damageCategory: e.target.value, workGroupId: '', jobDescription: '' })); setAddingDirty(true); }}
                   onKeyDown={(e) => handleCellKeyDown(e, 'new', 'damageCategory')}
                 >
-                  <option value="bina">Bina</option>
-                  <option value="esya">Eşya</option>
+                  {mergeRepairDamageCategories(damageCategories).map((cat) => (
+                    <option key={cat.code} value={cat.code}>
+                      {repairDamageCategorySelectLabel(cat)}
+                    </option>
+                  ))}
                 </select>
               </td>
               {isMultiDamage && (
@@ -3883,7 +3909,14 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   data-cell="new-location"
                   className={cellCls('new', 'location', true)}
                   value={addingRow.location}
-                  suggestions={locationList}
+                  suggestions={mahalSuggestionsForCategory(
+                    mahalCatalog,
+                    addingRow.damageCategory,
+                    items
+                      .filter((i: any) => (i.damageCategory ?? 'bina') === addingRow.damageCategory)
+                      .map((i: any) => i.location)
+                      .filter(Boolean),
+                  )}
                   onChange={(v) => { setAddingRow((p) => ({ ...p, location: v })); setAddingDirty(true); }}
                   onRegister={addLocationIfNew}
                   tabIndex={getCellTabIndex('new', 'location')}
@@ -4185,6 +4218,7 @@ function EmergencyReportEditor({
   reportId,
   claimId,
   workGroups,
+  damageCategories,
   onReload,
   onWorkGroupCreated,
   onWorkSubGroupCreated,
@@ -4193,6 +4227,7 @@ function EmergencyReportEditor({
   reportId: string;
   claimId: string;
   workGroups: any[];
+  damageCategories: RepairDamageCategoryOption[];
   onReload: () => void;
   onWorkGroupCreated?: (workGroup: any) => void;
   onWorkSubGroupCreated?: (workGroupId: string, subGroup: any) => void;
@@ -4477,6 +4512,7 @@ function EmergencyReportEditor({
               ref={itemsTableRef}
               items={localReport.items ?? []}
               workGroups={workGroups}
+              damageCategories={damageCategories}
               damageTypes={[]}
               reportType={localReport.reportType ?? 'emergency'}
               isEditable={isEditable}
@@ -4639,6 +4675,7 @@ export default function RepairReportPage() {
   }, [showToast]);
   const [report, setReport] = useState<any>(null);
   const [workGroups, setWorkGroups] = useState<any[]>([]);
+  const [damageCategories, setDamageCategories] = useState<RepairDamageCategoryOption[]>([]);
   const handleWorkGroupCreated = useCallback((workGroup: any) => {
     if (!workGroup?.id) return;
     setWorkGroups((prev) => {
@@ -4725,11 +4762,13 @@ export default function RepairReportPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [rRes, wgRes] = await Promise.all([
+      const [rRes, wgRes, catRes] = await Promise.all([
         axios.get(`${API}/repair-reports/${reportId}`, { headers: authHeader() }),
         axios.get(`${API}/work-groups`, { headers: authHeader() }),
+        axios.get(`${API}/claim-damage-categories`, { headers: authHeader(), params: { status: 'active' } }).catch(() => ({ data: { data: [] } })),
       ]);
       setReport(rRes.data.data);
+      setDamageCategories(mergeRepairDamageCategories(catRes.data?.data ?? []));
       const inferredQuickTypes = inferQuickDamageTypesFromReport(rRes.data.data);
       const storedQuickTypes = rRes.data.data?.quickDamageTypes ?? [];
       setQuickDamageTypes(storedQuickTypes.length > 0 ? storedQuickTypes : inferredQuickTypes);
@@ -5847,6 +5886,7 @@ export default function RepairReportPage() {
         reportId={reportId}
         claimId={claimId}
         workGroups={workGroups}
+        damageCategories={damageCategories}
         onReload={load}
         onWorkGroupCreated={handleWorkGroupCreated}
         onWorkSubGroupCreated={handleWorkSubGroupCreated}
@@ -6405,6 +6445,7 @@ export default function RepairReportPage() {
           ref={itemsTableRef}
           items={sortReportItems(damageFilter === 'all' ? (report.items ?? []) : (report.items ?? []).filter((i: any) => i.damageTypeId === damageFilter))}
           workGroups={workGroups}
+          damageCategories={damageCategories}
           damageTypes={report.damageTypes ?? []}
           reportType={report.reportType}
           defaultDamageTypeId={damageFilter !== 'all' ? damageFilter : ''}
@@ -6427,13 +6468,14 @@ export default function RepairReportPage() {
         {(() => {
           const buildingTotal = kalemToplamlari.buildingDamageTotal;
           const goodsTotal = kalemToplamlari.goodsDamageTotal;
+          const mmTotal = kalemToplamlari.mmDamageTotal;
           const grandTotal = kalemToplamlari.totalSalesAmount;
           return (
             <div className="mt-5 border-t-2 border-slate-200 pt-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-500 tracking-wide">Hasar Toplam Özeti</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className={`grid grid-cols-1 gap-3 ${mmTotal > 0 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
                 <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-center">
                   <p className="text-xs text-orange-600 font-medium mb-1">Bina Hasar Toplamı</p>
                   <p className="text-xl font-bold text-orange-700">{fmtCurrency(buildingTotal)}</p>
@@ -6442,6 +6484,12 @@ export default function RepairReportPage() {
                   <p className="text-xs text-teal-600 font-medium mb-1">Eşya Hasar Toplamı</p>
                   <p className="text-xl font-bold text-teal-700">{fmtCurrency(goodsTotal)}</p>
                 </div>
+                {mmTotal > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-center">
+                    <p className="text-xs text-amber-700 font-medium mb-1">Mali Mesuliyet Toplamı</p>
+                    <p className="text-xl font-bold text-amber-800">{fmtCurrency(mmTotal)}</p>
+                  </div>
+                )}
                 <div className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-center">
                   <p className="text-xs text-slate-400 font-medium mb-1">Rapor Genel Toplam</p>
                   <p className="text-xl font-bold text-white">{fmtCurrency(grandTotal)}</p>

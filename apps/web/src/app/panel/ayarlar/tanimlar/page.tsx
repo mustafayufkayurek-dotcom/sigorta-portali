@@ -88,8 +88,8 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
       },
       {
         key: 'locations',
-        title: 'Mahal ve Bölgeler',
-        purpose: 'Rapor mahal ve alt bölge tanımları.',
+        title: 'Mahal Ve Kategori',
+        purpose: 'Hasar raporunda kullanılan mahal/bölge ve kategori.',
         href: '/panel/ayarlar/mahaller',
         tone: 'emerald',
       },

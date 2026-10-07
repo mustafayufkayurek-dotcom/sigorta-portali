@@ -8,14 +8,13 @@ import encodeQR from '@/common/utils/vendor/paulmillr-qr/encode';
 import { reportImageToPdfDataUrl } from '../report-image-paths';
 import {
   mapRepairReportPdfIdentity,
-  PDF_BINA_TOTAL_LABEL,
-  PDF_DEMIRBAS_TOTAL_LABEL,
-  PDF_ESYA_TOTAL_LABEL,
   PDF_FINDINGS_LEAD,
   PDF_FINDINGS_SECTION_TITLE,
   PDF_GRAND_TOTAL_LABEL,
   allocateExternalColWidths,
   chunkPhotoRows,
+  partitionItemsByDamageCategory,
+  pdfCategoryTotalLabel,
   showPdfSplitCategoryTotals,
 } from './report-pdf-fields';
 import {
@@ -439,9 +438,10 @@ export class ReportPdfService {
     const computedSupplierCost = allItems.reduce((s, i) => s + itemSupplierTotal(i), 0);
     const computedGrossProfit = computedSalesAmount - computedSupplierCost;
     const computedGrossMarginPct = computedSalesAmount > 0 ? (computedGrossProfit / computedSalesAmount) * 100 : 0;
-    const binaItems = allItems.filter((i) => (i.damageCategory ?? 'bina') === 'bina');
-    const esyaItems = allItems.filter((i) => i.damageCategory === 'esya');
-    const demirbasItems = allItems.filter((i) => i.damageCategory === 'demirbas');
+    const categoryPartitions = partitionItemsByDamageCategory(allItems);
+    const binaItems = categoryPartitions.find((p) => p.code === 'bina')?.items ?? [];
+    const esyaItems = categoryPartitions.find((p) => p.code === 'esya')?.items ?? [];
+    const demirbasItems = categoryPartitions.find((p) => p.code === 'demirbas')?.items ?? [];
     const binaTotal = binaItems.reduce((s, i) => s + itemSalesTotal(i), 0);
     const esyaTotal = esyaItems.reduce((s, i) => s + itemSalesTotal(i), 0);
     const demirbasTotal = demirbasItems.reduce((s, i) => s + itemSalesTotal(i), 0);
@@ -466,9 +466,13 @@ export class ReportPdfService {
           const qty = isLumpsum ? '—' : String(item.quantity);
           const unit = isLumpsum ? 'Maktuen' : escHtml(item.unit);
           const unitPriceStr = isLumpsum ? '—' : fmtCurrency(unitPrice);
-          const catDot = item.damageCategory === 'esya'
-            ? '<span class="cat-dot cat-dot-esya">&#9679;</span>'
-            : '<span class="cat-dot cat-dot-bina">&#9679;</span>';
+          const catCode = (item.damageCategory ?? 'bina').toLowerCase();
+          const catDotClass = catCode === 'esya'
+            ? 'cat-dot-esya'
+            : catCode === 'mm'
+              ? 'cat-dot-mm'
+              : 'cat-dot-bina';
+          const catDot = `<span class="cat-dot ${catDotClass}">&#9679;</span>`;
           const mahalBolge = formatMahalBolge(item);
           const wgCell = (item.workGroup?.name ?? group.label).trim() || 'Diğer';
           const causeCell = (item.damageType?.damageTypeName ?? '').trim() || '—';
@@ -527,9 +531,7 @@ export class ReportPdfService {
     const itemsHtml =
       allItems.length === 0
         ? ''
-        : appendCategorySection(binaItems)
-          + appendCategorySection(esyaItems)
-          + appendCategorySection(demirbasItems);
+        : categoryPartitions.map((part) => appendCategorySection(part.items)).join('');
 
     const logoDataUrl = this.resolveLogoDataUrl();
     const generatedAt = new Date();
@@ -568,27 +570,40 @@ export class ReportPdfService {
     const showEsyaTotal = esyaItems.length > 0 || (report.goodsDamageTotal ?? 0) > 0;
     const showDemirbasTotal = demirbasItems.length > 0;
     const showBinaTotal = binaItems.length > 0 || (report.buildingDamageTotal ?? 0) > 0;
+    const extraCategoryParts = categoryPartitions.filter(
+      (p) => p.code !== 'bina' && p.code !== 'esya' && p.code !== 'demirbas',
+    );
     const showSplitCategoryTotals = showPdfSplitCategoryTotals({
       binaCount: showBinaTotal ? 1 : 0,
       esyaCount: showEsyaTotal ? 1 : 0,
       demirbasCount: showDemirbasTotal ? 1 : 0,
+      extraCount: extraCategoryParts.length,
     });
+    const extraCategoryBands = extraCategoryParts.map((part) => {
+      const total = part.items.reduce((s, i) => s + itemSalesTotal(i), 0);
+      return `
+  <div class="repair-total-band">
+    <div class="repair-total-label">${pdfCategoryTotalLabel(part.code)}</div>
+    <div class="repair-total-value">${fmtCurrency(total)}</div>
+  </div>`;
+    }).join('');
     const categoryTotalBands = showSplitCategoryTotals ? `
   ${showBinaTotal ? `
   <div class="repair-total-band">
-    <div class="repair-total-label">${PDF_BINA_TOTAL_LABEL}</div>
+    <div class="repair-total-label">${pdfCategoryTotalLabel('bina')}</div>
     <div class="repair-total-value">${fmtCurrency(binaTotal || report.buildingDamageTotal)}</div>
   </div>` : ''}
   ${showEsyaTotal ? `
   <div class="repair-total-band">
-    <div class="repair-total-label">${PDF_ESYA_TOTAL_LABEL}</div>
+    <div class="repair-total-label">${pdfCategoryTotalLabel('esya')}</div>
     <div class="repair-total-value">${fmtCurrency(esyaTotal || report.goodsDamageTotal)}</div>
   </div>` : ''}
   ${showDemirbasTotal ? `
   <div class="repair-total-band">
-    <div class="repair-total-label">${PDF_DEMIRBAS_TOTAL_LABEL}</div>
+    <div class="repair-total-label">${pdfCategoryTotalLabel('demirbas')}</div>
     <div class="repair-total-value">${fmtCurrency(demirbasTotal)}</div>
-  </div>` : ''}` : '';
+  </div>` : ''}
+  ${extraCategoryBands}` : '';
     const externalTotalsHtml = `
 <div class="repair-totals-stack">
   ${categoryTotalBands}
@@ -1102,6 +1117,7 @@ export class ReportPdfService {
   }
   .cat-dot-bina { color: #3b82f6; }
   .cat-dot-esya { color: #22c55e; }
+  .cat-dot-mm { color: #d97706; }
 
   /* Group header row */
   .group-header-row td.group-header {
@@ -1678,14 +1694,17 @@ ${viewType === 'external' ? externalTotalsHtml : `
 <div class="totals-section">
   <div class="totals-grid">
     ${showSplitCategoryTotals && showBinaTotal ? `
-    <div class="total-label">${PDF_BINA_TOTAL_LABEL}</div>
+    <div class="total-label">${pdfCategoryTotalLabel('bina')}</div>
     <div class="total-amount">${fmtCurrency(binaTotal || report.buildingDamageTotal)}</div>` : ''}
     ${showSplitCategoryTotals && showEsyaTotal ? `
-    <div class="total-label">${PDF_ESYA_TOTAL_LABEL}</div>
+    <div class="total-label">${pdfCategoryTotalLabel('esya')}</div>
     <div class="total-amount">${fmtCurrency(esyaTotal || report.goodsDamageTotal)}</div>` : ''}
     ${showSplitCategoryTotals && showDemirbasTotal ? `
-    <div class="total-label">${PDF_DEMIRBAS_TOTAL_LABEL}</div>
+    <div class="total-label">${pdfCategoryTotalLabel('demirbas')}</div>
     <div class="total-amount">${fmtCurrency(demirbasTotal)}</div>` : ''}
+    ${showSplitCategoryTotals ? extraCategoryParts.map((part) => `
+    <div class="total-label">${pdfCategoryTotalLabel(part.code)}</div>
+    <div class="total-amount">${fmtCurrency(part.items.reduce((s, i) => s + itemSalesTotal(i), 0))}</div>`).join('') : ''}
     <div class="grand-total-label">${PDF_GRAND_TOTAL_LABEL}</div>
     <div class="grand-total-amount">${fmtCurrency(computedSalesAmount)}</div>
     <div class="total-label" style="margin-top:8px;color:#64748b;">Toplam Maliyet</div>
