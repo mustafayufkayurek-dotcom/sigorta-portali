@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-10-06",
-  "label": "v649-tespit-not-onay",
-  "description": "Full v649: tespitçi not açık, yazım Title Case, İhbar Notu, Tespiti Sonlandır Atanan Dosyalar, ön onaylı bitiş maili, yönetici Onayla/Reddet. Geri alma web v648 / backend v648.",
+  "updatedAt": "2026-10-07",
+  "label": "v651-mali-mesuliyet-mm",
+  "description": "Full v651: Hasar raporda MM mahal; dijital muvafakatta MM varsa mağdur. Geri alma web v650 / backend v650.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v649-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v649-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v651-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v651-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v648-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v648-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v650-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v650-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

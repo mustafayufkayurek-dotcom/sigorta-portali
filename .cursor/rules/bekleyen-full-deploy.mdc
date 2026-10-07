@@ -1,11 +1,11 @@
 ---
-description: Canlı web v650 / backend v650
+description: Canlı web v651 / backend v651
 alwaysApply: true
 ---
 
 # Canlı (07.10.2026)
 
-Canlı: web **v650** · backend **v650**. Geri alma: web **v649** / backend **v649**.
+Canlı: web **v651** · backend **v651**. Geri alma: web **v650** / backend **v650**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v651 (full):** Hasar onarım raporunda Kategori **MM**; mahal tek hücrede, Yeni Mahal/Bölge Ekle durur. Dosyada MM işi varsa canlı dijital muvafakatta mağdur bilgisi ve imza durur; yoksa durmaz. Ön onay belgesine mağdur girmez. Dosya sayfasında ayrı alan paneli yoktur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v650 / backend v650.
 
 **v650 (full):** Ayarlar’da Mahal Ve Kategori aynı sayfada bağlanır. Yeni kategori adla eklenir. Aynı mahal/bölge bir satırda, kategori solda balonlarda durur. Hasar onarım raporunda **Kategori** sütunu durur; Mali Mesuliyet raporda **MM** yazılır. Rapordan Mahal/Bölge, İş Grubu ve İş alt grubu ekleme durur. Mali mesuliyet muvafakat alanı ve Sentry bu alıma girmedi. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v649 / backend v649.
 
@@ -175,6 +177,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-1. **Mali mesuliyet alanı:** Hasar muvafakatında mali mesuliyet işi yoksa mağdur kutusu ve imza alanı durmaz. Varsa durur: yan komşu, alt kat, üst kat, ortak alan. Ayrı dizayn. Henüz çizilmedi; bu alıma girmedi.
+1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v650** · backend **v650**.
+Canlı web **v651** · backend **v651**.
