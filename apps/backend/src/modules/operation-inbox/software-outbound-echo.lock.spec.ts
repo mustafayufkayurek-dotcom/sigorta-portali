@@ -24,6 +24,18 @@ describe('gelen kutu yazılım yankısı ingest LOCK', () => {
     assert.ok(counterpart > createdEcho);
   });
 
+  it('dış yanıt dosyaya bağlanınca kuyruk kapanmaz', () => {
+    const inbox = readFileSync(join(here, 'operation-inbox.service.ts'), 'utf8');
+    assert.match(inbox, /Dosyaya bağlamak kuyruğu kapatmaz/);
+    assert.match(inbox, /status: \{ in: \['NEW', 'CLASSIFIED', 'CLASSIFYING', 'ERROR'\] \}/);
+    const rule = inbox.slice(inbox.indexOf('async attemptRuleBasedLink'), inbox.indexOf('async reprocessMatching'));
+    const auto = inbox.slice(inbox.indexOf('async attemptAutoLink'), inbox.indexOf('async getStats'));
+    assert.match(rule, /claimFileId: result.claimFileId/);
+    assert.doesNotMatch(rule, /status: 'ACTIONED'/);
+    assert.match(auto, /claimFileId: result.claimFileId/);
+    assert.doesNotMatch(auto, /status: 'ACTIONED'/);
+  });
+
   it('gönderimde ortak kutu alıcı olmaz', () => {
     const send = readFileSync(join(here, 'graph/graph-mail-send.service.ts'), 'utf8');
     assert.match(send, /filterSoftwareMailboxRecipients/);

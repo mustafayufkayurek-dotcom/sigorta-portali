@@ -13,7 +13,7 @@ alwaysApply: true
 
 1. Kapanış / onay / kopya alıcısı `ihbar@` / `hasar@` ve Meridyen alanı olmaz (`isMeridyenInternalMailbox` / `filterSoftwareMailboxRecipients`).
 2. Gelen yazı yankıysa (`isSoftwareOutboundInboxEcho`): ortak kutudan, yanıt öneki yok, yazılım konusu. Kuyrukta ACTIONED; dosyaya bağlanır. Sınıflandırma ve «yanıt geldi» çalışmaz.
-3. `Ynt:` / dış gönderen / `Mutabakat` gibi yabancı yazı kuyrukta durur.
+3. `Ynt:` / dış gönderen / `Mutabakat` gibi yabancı yazı kuyrukta durur. Dosyaya bağlamak kuyruğu kapatmaz; eksper yanıtı Bekleyen’de kalır.
 4. Sınıflandırma mail atmaz.
 
 ## Yasak (açık onay yoksa)

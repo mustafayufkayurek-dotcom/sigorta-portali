@@ -56,6 +56,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 37. Ön onaylı iş bitiş maili **Ön Onaylı İş Tamamlandı** yazar; Dosya No altında sigortalı ve ilçe · il durur.
 38. Onay talep mailindeki Raporu Aç’ta yönetici **Onayla** ve **Reddet** durur.
 39. Hasar raporda Kategori **MM**; mahal tek hücrede eklenir. Dosyada MM işi varsa canlı dijital muvafakatta mağdur durur; yoksa durmaz.
+40. Eksper yanıtı gelen kutuda durur. Dosyaya bağlamak Bekleyen’i kapatmaz.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

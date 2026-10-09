@@ -10,12 +10,22 @@ function foldTR(value: string): string {
 }
 
 const RCS_FILE_NO = /\bRCS-(\d{6,})\b/i;
+/** Allianz / eksper dosya no: 2026 YE 1480/1 */
+const YEAR_BRANCH_FILE_NO = /\b(\d{4}\s*[A-ZÇĞİÖŞÜ]{2}\s*\d{3,6}\s*\/\s*\d{1,3})\b/i;
 
 /** Remed dosya no: RCS-20261854032. Konu veya gövdeden alır. */
 export function extractRcsFileNo(text?: string | null): string | null {
   if (!text?.trim()) return null;
   const match = text.match(RCS_FILE_NO);
   return match?.[1] ? `RCS-${match[1]}` : null;
+}
+
+export function extractInsuranceYearBranchFileNo(text?: string | null): string | null {
+  if (!text?.trim()) return null;
+  const match = text.match(YEAR_BRANCH_FILE_NO);
+  const raw = match?.[1]?.trim();
+  if (!raw) return null;
+  return raw.replace(/\s*\/\s*/g, '/').replace(/\s+/g, ' ');
 }
 
 export function isBareDigitFileNo(value: string): boolean {
@@ -93,6 +103,7 @@ export function resolveInboundFileNo(input: {
   const insurer = input.insurer?.trim() || '';
   const haystack = [input.subject, input.extraText, body].filter(Boolean).join(' ');
   const rcs = extractRcsFileNo(haystack);
+  const yearBranch = extractInsuranceYearBranchFileNo(haystack);
   const brandRejected = Boolean(body && isInsuranceBrandFileNo(body, insurer || body));
   const policyRejected =
     isSameInboundNumber(body, input.policyNo)
@@ -113,6 +124,15 @@ export function resolveInboundFileNo(input: {
         ? inboundFileNoPolicyRecoveredWarning(rcs)
         : inboundFileNoRecoveredWarning(rcs);
     return { fileNo: rcs, warning, bodyRejected: Boolean(body) && bodyRejected };
+  }
+
+  if (yearBranch && (bodyRejected || !body)) {
+    const warning = !body
+      ? null
+      : policyRejected
+        ? inboundFileNoPolicyRecoveredWarning(yearBranch)
+        : inboundFileNoRecoveredWarning(yearBranch);
+    return { fileNo: yearBranch, warning, bodyRejected: Boolean(body) && bodyRejected };
   }
 
   if (!bodyRejected) {

@@ -143,20 +143,10 @@ export class OperationInboxService {
     };
   }
 
-  /** Aksiyon gereken mesajlar: bağlanmamış bekleyen veya sahiplenilmiş işlenmemiş. */
+  /** Aksiyon gereken mesajlar: işlenmemiş dış yazı. Dosyaya bağlamak kuyruğu kapatmaz. */
   private buildActionQueueWhere(): Prisma.InboundMessageWhereInput {
     return {
-      OR: [
-        {
-          status: { in: ['NEW', 'CLASSIFIED', 'CLASSIFYING', 'ERROR'] },
-          claimFileId: null,
-          emergencyCaseId: null,
-        },
-        {
-          assignedUserId: { not: null },
-          status: { not: 'ACTIONED' },
-        },
-      ],
+      status: { in: ['NEW', 'CLASSIFIED', 'CLASSIFYING', 'ERROR'] },
     };
   }
 
@@ -444,9 +434,6 @@ export class OperationInboxService {
         data: {
           claimFileId: result.claimFileId ?? null,
           emergencyCaseId: result.emergencyCaseId ?? null,
-          status: 'ACTIONED',
-          suggestedAction: null,
-          processedAt: new Date(),
         },
       });
       this.logger.log(`Kural tabanlı otomatik bağlama: ${messageId}`);
@@ -513,9 +500,6 @@ export class OperationInboxService {
         data: {
           claimFileId: result.claimFileId ?? null,
           emergencyCaseId: result.emergencyCaseId ?? null,
-          status: 'ACTIONED',
-          suggestedAction: null,
-          processedAt: new Date(),
         },
       });
       if (result.emergencyCaseId) {

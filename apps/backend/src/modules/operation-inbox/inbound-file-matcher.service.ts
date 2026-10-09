@@ -5,7 +5,7 @@ import {
   InboundMessage,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
-import { compactFileNo } from '@sigorta/shared';
+import { compactFileNo, extractInsuranceYearBranchFileNo } from '@sigorta/shared';
 import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
@@ -38,6 +38,7 @@ const FILE_NO_PATTERNS = [
   /\b(HK-\d{6}-\d{3,6})\b/i,
   /\b(AYF-\d{6}-\d{3,6})\b/i,
   /\b(DOSYA[\s.:]*([A-Z0-9-]{5,20}))\b/i,
+  /\b(\d{4}\s*[A-ZÇĞİÖŞÜ]{2}\s*\d{3,6}\s*\/\s*\d{1,3})\b/i,
 ];
 
 const PLATE_PATTERN = /\b(\d{2}\s?[A-ZÇĞİÖŞÜ]{1,3}\s?\d{2,4})\b/i;
@@ -129,6 +130,10 @@ export class InboundFileMatcherService {
     const subjectHints = extractSubjectHints(message.subject);
     if (!hints.claimNo && subjectHints.claimNo) hints.claimNo = subjectHints.claimNo;
     if (!hints.policyNo && subjectHints.policyNo) hints.policyNo = subjectHints.policyNo;
+    if (!hints.fileNo) {
+      const yearBranch = extractInsuranceYearBranchFileNo(message.subject);
+      if (yearBranch) hints.fileNo = this.normalizeFileNo(yearBranch);
+    }
 
     const bodyText = [message.bodyText, message.bodyPreview, message.subject].filter(Boolean).join(' ');
     if (!hints.plate) {
@@ -225,17 +230,20 @@ export class InboundFileMatcherService {
   }
 
   private async matchByClaimNo(claimNo: string): Promise<FileMatchCandidate[]> {
-    const claims = await this.prisma.claimFile.findMany({
-      where: { claimNo: { equals: claimNo, mode: 'insensitive' } },
-      take: 3,
-      select: { id: true, fileNo: true, claimNo: true },
-    });
-    return claims.map((c) => ({
+    const compact = compactFileNo(claimNo);
+    if (!compact) return [];
+    const rows = await this.prisma.$queryRaw<{ id: string; file_no: string; claim_no: string }[]>`
+      SELECT id, file_no, claim_no FROM claim_files
+      WHERE UPPER(REGEXP_REPLACE(COALESCE(claim_no, ''), '[[:space:]]+', '', 'g')) = ${compact}
+         OR UPPER(REGEXP_REPLACE(COALESCE(file_no, ''), '[[:space:]]+', '', 'g')) = ${compact}
+      LIMIT 3
+    `;
+    return rows.map((c) => ({
       type: 'claim' as const,
       id: c.id,
-      fileNo: c.fileNo,
+      fileNo: c.file_no,
       score: 95,
-      reason: `Hasar no eşleşmesi (${c.claimNo})`,
+      reason: `Hasar no eşleşmesi (${c.claim_no})`,
     }));
   }
 
@@ -279,7 +287,7 @@ export class InboundFileMatcherService {
         type: 'claim',
         id: linked.claimFile.id,
         fileNo: linked.claimFile.fileNo,
-        score: 85,
+        score: 92,
         reason: 'Aynı e-posta zinciri',
       }];
     }
@@ -288,7 +296,7 @@ export class InboundFileMatcherService {
         type: 'emergency',
         id: linked.emergencyCase.id,
         fileNo: linked.emergencyCase.fileNo ?? linked.emergencyCase.caseNo,
-        score: 85,
+        score: 92,
         reason: 'Aynı e-posta zinciri',
       }];
     }

@@ -94,6 +94,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'crm-eksper-sessizlik.lock.spec',
       'panel-flow-trail.lock.spec',
       'operational-mailbox.lock.spec',
+      'inbound-file-no.lock.spec',
       'software-outbound-echo.lock.spec',
       'portal-customer-users.lock.spec',
       'user-invite-config.lock.spec',

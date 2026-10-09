@@ -69,6 +69,7 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/expenses/receipt-scan-human.lock.spec.ts \
   apps/backend/src/modules/operation-inbox/inbound-classify-human.lock.spec.ts \
   packages/shared/src/operational-mailbox.lock.spec.ts \
+  packages/shared/src/inbound-file-no.lock.spec.ts \
   apps/backend/src/modules/operation-inbox/software-outbound-echo.lock.spec.ts \
   apps/backend/src/modules/payments/payment-second-eye.lock.spec.ts \
   apps/backend/src/modules/hr/hr-attendance-reminder.lock.spec.ts \

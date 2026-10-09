@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  extractInsuranceYearBranchFileNo,
   isInsuranceBrandFileNo,
   resolveInboundFileNo,
 } from './inbound-file-no.ts';
@@ -87,5 +88,16 @@ describe('inbound file no × sigorta markası LOCK', () => {
     });
     assert.equal(resolved.fileNo, 'RCS-20261859999');
     assert.equal(resolved.bodyRejected, true);
+  });
+
+  it('eksper yanıtındaki yıl-şube dosya no durur', () => {
+    assert.equal(
+      extractInsuranceYearBranchFileNo('RE: Hasar Onarım Raporu - 2026 YE 1480/1'),
+      '2026 YE 1480/1',
+    );
+    const resolved = resolveInboundFileNo({
+      subject: 'RE: Hasar Onarım Raporu - 2026 YE 1480/1',
+    });
+    assert.equal(resolved.fileNo, '2026 YE 1480/1');
   });
 });
