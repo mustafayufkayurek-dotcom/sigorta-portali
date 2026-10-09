@@ -1,11 +1,11 @@
 ---
-description: Canlı web v651 / backend v651
+description: Canlı web v652 / backend v652
 alwaysApply: true
 ---
 
-# Canlı (07.10.2026)
+# Canlı (09.10.2026)
 
-Canlı: web **v651** · backend **v651**. Geri alma: web **v650** / backend **v650**.
+Canlı: web **v652** · backend **v652**. Geri alma: web **v651** / backend **v651**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v652 (full):** Eksper yanıtı gelen kutuda durur. Dosyaya bağlamak Bekleyen’i kapatmaz. 2026 YE 1480/1 iskonto yazısı aynı kuraldadır. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v651 / backend v651.
 
 **v651 (full):** Hasar onarım raporunda Kategori **MM**; mahal tek hücrede, Yeni Mahal/Bölge Ekle durur. Dosyada MM işi varsa canlı dijital muvafakatta mağdur bilgisi ve imza durur; yoksa durmaz. Ön onay belgesine mağdur girmez. Dosya sayfasında ayrı alan paneli yoktur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v650 / backend v650.
 
@@ -179,4 +181,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v651** · backend **v651**.
+Canlı web **v652** · backend **v652**.
