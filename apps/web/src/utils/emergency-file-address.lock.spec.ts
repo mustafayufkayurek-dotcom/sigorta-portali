@@ -167,7 +167,8 @@ describe('acil dosya adresi LOCK', () => {
     assert.match(hasarPage, /join\(' - '\)/);
     assert.match(hasarPage, /initialOpen=\{openEdit\}/);
     assert.match(detay, /Sigortalı \{ozet.insured\}/);
-    assert.match(detay, /href=\{`tel:\$\{ozet.phone/);
+    assert.match(detay, /ozet\.phoneHref/);
+    assert.match(detay, /tel:\$\{ozet\.phone/);
     assert.match(detay, /İhbar Tarihi \{ozet.ihbar\}/);
     assert.match(detay, /STAGE_TONE_BADGE\[ozet.durumTone\]/);
     assert.doesNotMatch(hasarPage, /durumRozeti &&/);
