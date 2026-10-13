@@ -19,6 +19,13 @@ import {
 import { DosyaBilgileriEditModal } from './DosyaBilgileriEditModal';
 import { HasarCollectionPartyAdminLock } from './HasarCollectionPartyAdminLock';
 import { FILE_STATUS_BADGE_BASE, FILE_STATUS_TONE } from '@/components/panel/file-status-tone';
+import {
+  hasarIrtibatAdi,
+  hasarIrtibatTelHref,
+  hasarIrtibatTelefonGosterim,
+  hasarSigortaliTelHref,
+  hasarSigortaliTelefonGosterim,
+} from '@/utils/hasar-dosya-irtibat';
 
 /** Durum rengi ortak sözlükten gelir; Acil ile aynı renk davranışı. */
 const STAGE_TONE_BADGE: Record<string, string> = FILE_STATUS_TONE;
@@ -51,6 +58,7 @@ type DosyaField = {
   label: string;
   value: string;
   wide?: boolean;
+  telHref?: string;
 };
 
 function formatPriority(priority: string | null | undefined): string {
@@ -123,10 +131,23 @@ function resolveQuickRepairSummary(reportSummary: any | null): string {
 
 export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null): DosyaField[] {
   const insuredPhone = typeof claim.insuredPhone === 'string' ? claim.insuredPhone.trim() : '';
+  const insuredPhoneDisplay = hasarSigortaliTelefonGosterim(insuredPhone);
+  const irtibatAdi = hasarIrtibatAdi(claim);
+  const irtibatTel = hasarIrtibatTelefonGosterim(claim);
   const core: DosyaField[] = [
     { label: 'Hasar Dosya No', value: claimListFileNo(claim) },
     { label: 'Sigortalı Adı Soyadı', value: resolveHasarInsuredName(claim) },
-    { label: 'Sigortalı Telefon', value: insuredPhone || '—' },
+    {
+      label: 'Sigortalı Telefon',
+      value: insuredPhoneDisplay || '—',
+      telHref: hasarSigortaliTelHref(insuredPhone) || undefined,
+    },
+    { label: 'İrtibat Ad Soyad', value: irtibatAdi || '—' },
+    {
+      label: 'İrtibat Telefon',
+      value: irtibatTel || '—',
+      telHref: hasarIrtibatTelHref(claim) || undefined,
+    },
     { label: 'Dosya Konusu', value: resolveClaimIhbarKonusu(claim) },
     { label: 'Sigorta Şirketi', value: claim.insuranceCompany?.name?.trim() || '—' },
     { label: 'İhbar Tarihi', value: resolveIhbarTarihi(claim) },
@@ -173,6 +194,10 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
 function buildDosyaBilgileriOzet(claim: any, reportSummary?: any | null): {
   insured: string;
   phone: string;
+  phoneHref: string;
+  irtibatName: string;
+  irtibatPhone: string;
+  irtibatHref: string;
   address: string;
   extras: string[];
   ihbar: string;
@@ -188,9 +213,14 @@ function buildDosyaBilgileriOzet(claim: any, reportSummary?: any | null): {
     claimStatusCode: claim.currentStatus?.code,
     reportStatus: reportSummary?.status ?? claim.newestRepairReportStatus ?? claim.latestRepairReport?.status,
   });
+  const insuredPhone = typeof claim.insuredPhone === 'string' ? claim.insuredPhone.trim() : '';
   return {
     insured: resolveHasarInsuredName(claim),
-    phone: typeof claim.insuredPhone === 'string' ? claim.insuredPhone.trim() : '',
+    phone: hasarSigortaliTelefonGosterim(insuredPhone),
+    phoneHref: hasarSigortaliTelHref(insuredPhone),
+    irtibatName: hasarIrtibatAdi(claim),
+    irtibatPhone: hasarIrtibatTelefonGosterim(claim),
+    irtibatHref: hasarIrtibatTelHref(claim),
     address: (() => {
       const addr = formatPropertyAddress(claim);
       return addr && addr !== 'Belirtilmemiş' ? addr : '';
@@ -353,11 +383,28 @@ export function DosyaBilgileriDetay({
                 <>
                   <span> · </span>
                   <a
-                    href={`tel:${ozet.phone.replace(/\s/g, '')}`}
+                    href={ozet.phoneHref || `tel:${ozet.phone.replace(/\s/g, '')}`}
                     className="tabular-nums text-brand-700 hover:underline"
                   >
                     {ozet.phone}
                   </a>
+                </>
+              ) : null}
+              {ozet.irtibatName || ozet.irtibatPhone ? (
+                <>
+                  <span> · İrtibat </span>
+                  {ozet.irtibatName ? <span>{ozet.irtibatName}</span> : null}
+                  {ozet.irtibatPhone ? (
+                    <>
+                      {ozet.irtibatName ? <span> · </span> : null}
+                      <a
+                        href={ozet.irtibatHref || `tel:${ozet.irtibatPhone.replace(/\s/g, '')}`}
+                        className="tabular-nums text-brand-700 hover:underline"
+                      >
+                        {ozet.irtibatPhone}
+                      </a>
+                    </>
+                  ) : null}
                 </>
               ) : null}
               {ozet.address ? <span> · {ozet.address}</span> : null}
@@ -402,7 +449,15 @@ export function DosyaBilgileriDetay({
               {compactFields.map((field) => (
                 <div key={field.label} className="text-center">
                   <p className="text-[11px] text-slate-400">{field.label}</p>
-                  <p className="text-xs font-medium text-slate-800 mt-0.5">{field.value}</p>
+                  <p className="text-xs font-medium text-slate-800 mt-0.5">
+                    {field.telHref && field.value !== '—' ? (
+                      <a href={field.telHref} className="tabular-nums text-brand-700 hover:underline">
+                        {field.value}
+                      </a>
+                    ) : (
+                      field.value
+                    )}
+                  </p>
                 </div>
               ))}
             </div>

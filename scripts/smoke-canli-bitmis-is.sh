@@ -118,6 +118,7 @@ node --experimental-strip-types --test \
   apps/web/src/components/portal/operasyon-agi-canli-destek.lock.spec.ts \
   apps/web/src/app/dev/dev-production-closed.lock.spec.ts \
   apps/web/src/components/claim-files/claim-new-form.lock.spec.ts \
+  apps/web/src/utils/hasar-dosya-irtibat.lock.spec.ts \
   apps/web/src/components/ui/field-help-tip.lock.spec.ts \
   packages/shared/src/claim-service-kind.lock.spec.ts \
   packages/shared/src/field-staff-area.lock.spec.ts \

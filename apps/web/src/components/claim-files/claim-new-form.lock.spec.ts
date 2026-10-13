@@ -35,6 +35,12 @@ describe('yeni dosya form lock', () => {
     assert.doesNotMatch(acil, /Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz\.<\/p>/);
     assert.match(form, /data-field="assignedOfficeUserId"/);
     assert.match(form, /data-field="fileNo"/);
+    const detay = readFileSync(
+      join(here, '../../app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay.tsx'),
+      'utf8',
+    );
+    assert.match(detay, /İrtibat Ad Soyad/);
+    assert.match(detay, /hasarIrtibatAdi/);
     assert.match(form, /filterInsuranceCatalogForHasarFileForm/);
     assert.doesNotMatch(form, /isOfficeStaffRole\(roleCode\) && scopedIds/);
     assert.doesNotMatch(form, /Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz\.<\/p>/);

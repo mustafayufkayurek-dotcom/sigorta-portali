@@ -69,6 +69,8 @@ export function DosyaBilgileriEditModal({
     () => resolveHasarInsuredName(claim) !== '—' ? resolveHasarInsuredName(claim) : (claim.insuredName ?? ''),
   );
   const [insuredPhone, setInsuredPhone] = useState(claim.insuredPhone ?? '');
+  const [siteContactName, setSiteContactName] = useState(claim.siteContactName ?? '');
+  const [siteContactPhone, setSiteContactPhone] = useState(claim.siteContactPhone ?? '');
   const [policyNo, setPolicyNo] = useState(claim.policyNo ?? '');
   const [lossType, setLossType] = useState(() => {
     const konu = resolveClaimIhbarKonusu(claim);
@@ -132,6 +134,8 @@ export function DosyaBilgileriEditModal({
     setError('');
     const name = toTitleCaseTR(insuredName.trim());
     const phone = insuredPhone.replace(/\D/g, '').trim();
+    const irtibatAd = toTitleCaseTR(siteContactName.trim());
+    const irtibatTel = siteContactPhone.replace(/\D/g, '').trim();
     const policy = policyNo.trim();
     const konu = toTitleCaseTR(lossType.trim());
     const ihbar = description.trim();
@@ -153,6 +157,8 @@ export function DosyaBilgileriEditModal({
       const payload: Record<string, unknown> = {
         insuredName: name || null,
         insuredPhone: phone || null,
+        siteContactName: irtibatAd || null,
+        siteContactPhone: irtibatTel || null,
         policyNo: policy,
         lossType: konu,
         description: ihbar || null,
@@ -176,6 +182,8 @@ export function DosyaBilgileriEditModal({
       onSaved({
         insuredName: updated?.insuredName ?? (name || null),
         insuredPhone: updated?.insuredPhone ?? (phone || null),
+        siteContactName: updated?.siteContactName ?? (irtibatAd || null),
+        siteContactPhone: updated?.siteContactPhone ?? (irtibatTel || null),
         policyNo: updated?.policyNo ?? policy,
         lossType: updated?.lossType ?? konu,
         description: updated?.description ?? (ihbar || null),
@@ -257,6 +265,27 @@ export function DosyaBilgileriEditModal({
                   className={fieldCls}
                   value={insuredPhone}
                   onChange={(e) => setInsuredPhone(e.target.value)}
+                  placeholder="05XX XXX XX XX"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">İrtibat Ad Soyad</label>
+                <input
+                  className={fieldCls}
+                  value={siteContactName}
+                  onChange={(e) => setSiteContactName(e.target.value)}
+                  onBlur={(e) => {
+                    const v = toTitleCaseTR(e.target.value.trim());
+                    if (v) setSiteContactName(v);
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">İrtibat Telefon</label>
+                <input
+                  className={fieldCls}
+                  value={siteContactPhone}
+                  onChange={(e) => setSiteContactPhone(e.target.value)}
                   placeholder="05XX XXX XX XX"
                 />
               </div>
