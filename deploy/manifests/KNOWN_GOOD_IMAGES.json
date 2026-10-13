@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-10-13",
-  "label": "v653-hasar-bolge-mail",
-  "description": "Full v653: Hasar bölge maili dosya sorumlusundan ayrı; istisna konu. Geri alma web v652 / backend v652.",
+  "label": "v654-hasar-ek-onarim",
+  "description": "Full v654: Kapalı Hasar dosyasında ek onarım. Geri alma web v653 / backend v653.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v653-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v653-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v654-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v654-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v652-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v652-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v653-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v653-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
