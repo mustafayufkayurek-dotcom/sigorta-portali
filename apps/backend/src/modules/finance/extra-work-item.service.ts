@@ -2,10 +2,19 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import {
+  EXTRA_REPAIR_KIND,
+  EXTRA_REPAIR_TITLE,
+  canOpenHasarExtraRepair,
+  extraRepairReasonOk,
+  isOpenExtraRepairStatus,
+} from '@sigorta/shared';
 import { CreateExtraWorkItemDto } from './dto/create-extra-work-item.dto';
 import { UpdateExtraWorkItemDto } from './dto/update-extra-work-item.dto';
+import { OpenExtraRepairDto, RejectExtraRepairDto } from './dto/open-extra-repair.dto';
 
 type ExtraWorkItemWithRelations = Awaited<ReturnType<ExtraWorkItemService['findOne']>>;
 
@@ -131,6 +140,121 @@ export class ExtraWorkItemService {
         category: (c as any).expenseCategory?.name ?? c.expenseCategoryId,
       })),
     };
+  }
+
+  async findOpenExtraRepair(claimFileId: string) {
+    return this.prisma.extraWorkItem.findFirst({
+      where: {
+        claimFileId,
+        kind: EXTRA_REPAIR_KIND,
+        status: { in: ['draft', 'approved'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        claimFileId: true,
+        title: true,
+        description: true,
+        status: true,
+        kind: true,
+        estimatedAmount: true,
+        repairReportId: true,
+        createdAt: true,
+        agreedAt: true,
+      },
+    });
+  }
+
+  async openExtraRepair(
+    claimFileId: string,
+    dto: OpenExtraRepairDto,
+    userId: string,
+    roleCode?: string | null,
+  ) {
+    this.assertNotFieldStaff(roleCode);
+    const reason = String(dto.reason ?? '').trim();
+    if (!extraRepairReasonOk(reason)) {
+      throw new BadRequestException('Ek onarım için gerekçe yazınız.');
+    }
+    const file = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      select: {
+        id: true,
+        closedAt: true,
+        currentStatus: { select: { code: true, isClosedState: true } },
+      },
+    });
+    if (!file) throw new NotFoundException('Hasar dosyası bulunamadı');
+    const fileClosed = Boolean(
+      file.closedAt || file.currentStatus?.isClosedState || file.currentStatus?.code === 'closed',
+    );
+    const fileCancelled = file.currentStatus?.code === 'cancelled';
+    const existing = await this.findOpenExtraRepair(claimFileId);
+    if (!canOpenHasarExtraRepair({ fileClosed, fileCancelled, extraRepairOpen: Boolean(existing) })) {
+      if (!fileClosed) throw new BadRequestException('Ek onarım yalnız kapalı dosyada açılır.');
+      if (fileCancelled) throw new BadRequestException('İptal dosyada ek onarım açılmaz.');
+      throw new BadRequestException('Bu dosyada açık ek onarım var.');
+    }
+    return this.prisma.extraWorkItem.create({
+      data: {
+        claimFileId,
+        title: EXTRA_REPAIR_TITLE,
+        description: reason,
+        kind: EXTRA_REPAIR_KIND,
+        estimatedAmount: dto.estimatedAmount ?? null,
+        createdByUserId: userId,
+        status: 'draft',
+      },
+    });
+  }
+
+  async rejectExtraRepair(
+    claimFileId: string,
+    id: string,
+    dto: RejectExtraRepairDto,
+    roleCode?: string | null,
+  ) {
+    this.assertNotFieldStaff(roleCode);
+    const reason = String(dto.reason ?? '').trim();
+    if (!extraRepairReasonOk(reason)) {
+      throw new BadRequestException('İptal için açıklama yazınız.');
+    }
+    const item = await this.findOne(claimFileId, id);
+    if (item.kind !== EXTRA_REPAIR_KIND || !isOpenExtraRepairStatus(item.status)) {
+      throw new BadRequestException('Açık ek onarım bulunamadı.');
+    }
+    return this.prisma.extraWorkItem.update({
+      where: { id },
+      data: {
+        status: 'cancelled',
+        rejectedAt: new Date(),
+        rejectReason: reason,
+      },
+    });
+  }
+
+  async completeExtraRepair(claimFileId: string, id: string, roleCode?: string | null) {
+    this.assertNotFieldStaff(roleCode);
+    const item = await this.findOne(claimFileId, id);
+    if (item.kind !== EXTRA_REPAIR_KIND || !isOpenExtraRepairStatus(item.status)) {
+      throw new BadRequestException('Açık ek onarım bulunamadı.');
+    }
+    if (item.status !== 'approved') {
+      throw new BadRequestException('Ek rapor onaylanmadan ek onarım bitmez.');
+    }
+    return this.prisma.extraWorkItem.update({
+      where: { id },
+      data: {
+        status: 'completed',
+        completedAt: new Date(),
+      },
+    });
+  }
+
+  private assertNotFieldStaff(roleCode?: string | null) {
+    if (String(roleCode ?? '').trim().toLowerCase() === 'field_staff') {
+      throw new ForbiddenException('Saha tespit ek onarım açamaz. Ek onarım dosya sorumlusundadır.');
+    }
   }
 
   private async assertClaimFileExists(claimFileId: string): Promise<void> {

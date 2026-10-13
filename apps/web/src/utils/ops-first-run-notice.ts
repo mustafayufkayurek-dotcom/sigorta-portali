@@ -195,6 +195,12 @@ export const OPS_NOTICE = {
     body:
       'Acil’de sessiz müşteri asistans firmasıdır. 2 gündür yeni ihbar gelmediyse yazıyı siz gönderirsiniz. Hasar eksper uyarısı buraya girmez. Mail kendiliğinden gitmez. Uyarı kapanınca ertesi sabah yeniden çıkar.',
   },
+  hasarEkOnarim: {
+    id: 'hasar-ek-onarim-v654',
+    title: 'Ek Onarım',
+    body:
+      'Kapalı dosyada ek iş çıkınca Ek Onarım Açılır. Yeni dosya açılmaz. İlk kapanış durur. Ek rapor ayrı onaya gider. Onay gelmeden ek onarım bitmez. Redde dosya kapalı kalır.',
+  },
   gelenKutuKendimeAl: {
     id: 'gelen-kutu-kendime-al-v632',
     title: 'Kendime Al',

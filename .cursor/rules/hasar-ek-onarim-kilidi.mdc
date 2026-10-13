@@ -1,0 +1,37 @@
+---
+description: Kapalı Hasar dosyasında ek onarım; ilk kapanış durur
+alwaysApply: false
+---
+
+# Hasar Ek Onarım Kilidi
+
+**Kaynak (Mustafa · 13.10.2026):** Eksper onayı ve kapanıştan sonra ek onarım çıkabiliyor. Yazışmayla yürüyordu.
+
+**Temel cümle:** Kapalı dosyada **Ek Onarım** açılır. **Yeni dosya açılmaz.** İlk kapanış durur. Durum **Kapalı · Ek Onarım**.
+
+## Zorunlu
+
+1. Yalnız kapalı Hasar dosyasında açılır. İptalde açılmaz. Aynı anda ikinci açık ek onarım yok.
+2. `closedAt` silinmez. Dosya durumu `closed` kalır.
+3. Gerekçe yazılır. Ek rapor ayrıdır; ilk onaylı rapor durur. Onaya gönderim mevcut kapıdadır.
+4. Ek rapor onaylanmadan **Ek Onarımı Bitir** açılmaz. İptalde dosya kapalı kalır.
+5. Liste ve dosya etiketi `Kapalı · Ek Onarım`. Personel şeridi bir kez durur.
+
+## Yasak (açık onay yoksa)
+
+- Yeni dosya açmak
+- İlk kapanışı silmek
+- Ek raporu eski onaylı raporun üstüne yazmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Kapalı dosyada ek iş yine yalnız mail ile yürürse → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/hasar-ek-onarim.lock.spec.ts \
+ apps/backend/src/modules/finance/hasar-ek-onarim.lock.spec.ts
+```

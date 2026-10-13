@@ -21,4 +21,8 @@ describe('portal dosya durumu LOCK', () => {
   it('gerçek kapanış Dosya Kapatıldı kalır', () => {
     assert.equal(portalStatusLabel('closed', 'Dosya Kapatıldı'), 'Dosya Kapatıldı');
   });
+
+  it('kapalı kod + ek onarım adı gizlenmez', () => {
+    assert.equal(portalStatusLabel('closed', 'Kapalı · Ek Onarım'), 'Kapalı · Ek Onarım');
+  });
 });

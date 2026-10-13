@@ -22,6 +22,7 @@ export * from './file-address';
 export * from './file-no-normalize';
 export * from './inbound-file-no';
 export * from './hasar-region-watch';
+export * from './hasar-ek-onarim';
 export * from './repair-report-expert';
 export * from './repair-report-revision';
 export * from './repair-report-item-totals';

@@ -131,6 +131,8 @@ node --experimental-strip-types --test \
   apps/web/src/utils/field-staff-claim-view.lock.spec.ts \
   apps/web/src/utils/text-helpers.lock.spec.ts \
   apps/backend/src/modules/timeline/tespit-notu-yazim.lock.spec.ts \
-  apps/backend/src/modules/repair-reports/repair-report-revise.lock.spec.ts
+  apps/backend/src/modules/repair-reports/repair-report-revise.lock.spec.ts \
+  packages/shared/src/hasar-ek-onarim.lock.spec.ts \
+  apps/backend/src/modules/finance/hasar-ek-onarim.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

@@ -10,6 +10,7 @@ import { buildAppPath, resolveAppUrl } from '@/common/utils/app-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
+import { markExtraRepairApprovedForReport } from '@/modules/finance/hasar-extra-repair-link';
 import { ReportPdfService } from '../repair-reports/pdf/report-pdf.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import {
@@ -201,6 +202,9 @@ export class ExternalApprovalsService {
         },
       });
     });
+    if (dto.action === 'approved') {
+      await markExtraRepairApprovedForReport(this.prisma, approval.reportId);
+    }
 
     // Gönderen kişiye bildirim
     await this.prisma.notification.create({
@@ -280,6 +284,9 @@ export class ExternalApprovalsService {
         },
       });
     });
+    if (dto.action === 'approved') {
+      await markExtraRepairApprovedForReport(this.prisma, approval.reportId);
+    }
 
     // Bildirim onay sonucunu engellemesin (gönderen kullanıcı silinmiş olabilir)
     try {

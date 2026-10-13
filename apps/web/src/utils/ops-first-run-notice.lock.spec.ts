@@ -415,6 +415,24 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.doesNotMatch(page, /sendEmail\(/);
   });
 
+  it('Hasar ek onarım şeridi durur', () => {
+    const page = readFileSync(
+      join(here, '../app/panel/hasar-dosyalari/[id]/page.tsx'),
+      'utf8',
+    );
+    const panel = readFileSync(
+      join(here, '../app/panel/hasar-dosyalari/[id]/_components/HasarEkOnarimPanel.tsx'),
+      'utf8',
+    );
+    assert.equal(OPS_NOTICE.hasarEkOnarim.id, 'hasar-ek-onarim-v654');
+    assert.match(OPS_NOTICE.hasarEkOnarim.body, /Yeni dosya açılmaz/);
+    assert.match(OPS_NOTICE.hasarEkOnarim.body, /İlk kapanış durur/);
+    assert.doesNotMatch(OPS_NOTICE.hasarEkOnarim.body, /Google/);
+    assert.match(page, /HasarEkOnarimPanel/);
+    assert.match(panel, /hasar-ek-onarim-seridi/);
+    assert.match(panel, /Ek Onarım Aç/);
+  });
+
   it('Gelen kutuda Kendime Al şeridi durur', () => {
     const page = readFileSync(join(here, '../app/panel/operasyon/gelen-kutusu/page.tsx'), 'utf8');
     assert.equal(OPS_NOTICE.gelenKutuKendimeAl.id, 'gelen-kutu-kendime-al-v632');

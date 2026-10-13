@@ -673,7 +673,7 @@ function YeniRaporWizard({
   );
 }
 
-export function OnarimRaporuTab({ claimId }: { claimId: string }) {
+export function OnarimRaporuTab({ claimId, extraRepairOpen = false }: { claimId: string; extraRepairOpen?: boolean }) {
   const router = useRouter();
   const [reports, setReports] = useState<RepairReportListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -733,6 +733,11 @@ export function OnarimRaporuTab({ claimId }: { claimId: string }) {
   return (
     <div className="space-y-4">
       <div id="raporlar-onarim" className="scroll-mt-16">
+      {extraRepairOpen ? (
+        <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-900">
+          Ek onarım raporu ayrı yazılır. İlk onaylı rapor durur. Yeni Rapor bu ek işedir.
+        </p>
+      ) : null}
       <FinansPanelCard
         title="Onarım Raporları"
         subtitle="Orijinal, revize edilmiş ve onaylanmış rapor sürümleri — revizyon geçmişi her rapor kartında"

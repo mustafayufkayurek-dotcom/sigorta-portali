@@ -21,6 +21,7 @@ import { FinancialSummaryService } from './financial-summary.service';
 import { VatReportService } from './vat-report.service';
 import { CreateExtraWorkItemDto } from './dto/create-extra-work-item.dto';
 import { UpdateExtraWorkItemDto } from './dto/update-extra-work-item.dto';
+import { OpenExtraRepairDto, RejectExtraRepairDto } from './dto/open-extra-repair.dto';
 import { CreateClaimFileRevenueDto } from './dto/create-claim-file-revenue.dto';
 import { AllocateOverheadDto } from './dto/create-monthly-overhead.dto';
 
@@ -28,6 +29,20 @@ import { AllocateOverheadDto } from './dto/create-monthly-overhead.dto';
 @Controller('claim-files/:claimFileId/extra-works')
 export class ExtraWorkItemController {
   constructor(private readonly extraWorkService: ExtraWorkItemService) {}
+
+  @Post('extra-repair')
+  openExtraRepair(
+    @Param('claimFileId') claimFileId: string,
+    @Body() dto: OpenExtraRepairDto,
+    @Request() req: any,
+  ) {
+    return this.extraWorkService.openExtraRepair(
+      claimFileId,
+      dto,
+      req.user?.id ?? 'system',
+      req.user?.roleCode ?? req.user?.role?.code,
+    );
+  }
 
   @Post()
   create(
@@ -46,6 +61,34 @@ export class ExtraWorkItemController {
   @Get(':id')
   findOne(@Param('claimFileId') claimFileId: string, @Param('id') id: string) {
     return this.extraWorkService.findOne(claimFileId, id);
+  }
+
+  @Post(':id/reject-repair')
+  rejectExtraRepair(
+    @Param('claimFileId') claimFileId: string,
+    @Param('id') id: string,
+    @Body() dto: RejectExtraRepairDto,
+    @Request() req: any,
+  ) {
+    return this.extraWorkService.rejectExtraRepair(
+      claimFileId,
+      id,
+      dto,
+      req.user?.roleCode ?? req.user?.role?.code,
+    );
+  }
+
+  @Post(':id/complete-repair')
+  completeExtraRepair(
+    @Param('claimFileId') claimFileId: string,
+    @Param('id') id: string,
+    @Request() req: any,
+  ) {
+    return this.extraWorkService.completeExtraRepair(
+      claimFileId,
+      id,
+      req.user?.roleCode ?? req.user?.role?.code,
+    );
   }
 
   @Patch(':id')

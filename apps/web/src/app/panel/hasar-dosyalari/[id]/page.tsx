@@ -74,6 +74,7 @@ import { fmtDateTime } from '@/utils/date-helpers';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { HasarDosyaKabukSkeleton } from '@/components/ui/skeletons/HasarDosyaKabukSkeleton';
+import { HasarEkOnarimPanel } from './_components/HasarEkOnarimPanel';
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
   if (!roleCode) return null;
@@ -537,6 +538,7 @@ function DosyaSayfaUstu({
               reportStatus: latestReport?.status ?? null,
               claimStatusCode: claim.currentStatus?.code ?? null,
               claimFile: claim,
+              extraRepairOpen: Boolean(claim.extraRepairOpen),
             }}
           />
         </div>
@@ -1760,6 +1762,18 @@ export default function ClaimFileDetailPage() {
       />
 
       {!isFieldStaff && (
+        <HasarEkOnarimPanel
+          claim={claim}
+          onUpdated={() => {
+            axios.get(`${API}/claim-files/${id}`, { headers: authHeader(), timeout: UI_ACTION_TIMEOUT_MS })
+              .then((r) => setClaim(r.data.data))
+              .catch(() => undefined);
+          }}
+          onWriteReport={() => setActiveGroup('raporlar')}
+        />
+      )}
+
+      {!isFieldStaff && (
         <div className="mb-4">
           <OpsFirstRunNotice
             noticeId={OPS_NOTICE.hasarDosyaSonDegisiklik.id}
@@ -1892,7 +1906,7 @@ export default function ClaimFileDetailPage() {
           {activeGroup === 'raporlar' && (
             <div className="space-y-3">
               <RaporlarTespitBlok claimId={id!} />
-              <OnarimRaporuTab claimId={id!} />
+              <OnarimRaporuTab claimId={id!} extraRepairOpen={Boolean(claim.extraRepairOpen)} />
             </div>
           )}
           {activeGroup === 'evraklar' && <EvraklarTab claimId={id!} claim={claim} />}

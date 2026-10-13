@@ -26,6 +26,7 @@ export const OPERATION_STAGE_ORDER = [
   'onarim',
   'fatura',
   'odeme',
+  'ek_onarim',
   'dosya_kapandi',
   'iptal',
 ] as const;
@@ -124,6 +125,12 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
     label: 'Finansa Aktarıldı',
     tone: 'purple',
     nextAction: 'Tahsilatı takip et',
+  },
+  ek_onarim: {
+    id: 'ek_onarim',
+    label: 'Kapalı · Ek Onarım',
+    tone: 'orange',
+    nextAction: 'Ek onarım raporu ve onay',
   },
   dosya_kapandi: {
     id: 'dosya_kapandi',
@@ -286,6 +293,8 @@ export type DeriveOperationStageInput = {
   reportStatus?: string | null;
   /** Sözlü manuel red — açık rapor yoksa «Reddedildi» */
   verbalDecision?: VerbalManualDecision | null;
+  /** Kapalı dosyada açık ek onarım — kapanış kaydı durur. */
+  extraRepairOpen?: boolean | null;
 };
 
 export function deriveOperationStageId(input: DeriveOperationStageInput): OperationStageId {
@@ -293,6 +302,9 @@ export function deriveOperationStageId(input: DeriveOperationStageInput): Operat
   const report = String(input.reportStatus ?? '').trim().toLowerCase();
 
   if (claim === 'cancelled') return 'iptal';
+
+  // Kapalı dosyadaki ek onarım kapanış ve rapor reddinin üstündedir; ilk onay durur.
+  if (input.extraRepairOpen) return 'ek_onarim';
 
   // Son işlem (red / revizyon) kapanış kodunun altında kalmaz.
   if (REPORT_REJECTED.has(report)) return 'rapor_reddedildi';
@@ -343,6 +355,7 @@ export type HasarKpiFileInput = {
   claimStatusCode?: string | null;
   newestReportStatus?: string | null;
   verbalDecision?: VerbalManualDecision | null;
+  extraRepairOpen?: boolean | null;
 };
 
 export type HasarOperationKpiTally = {
@@ -373,6 +386,7 @@ export function tallyHasarOperationKpis(
       claimStatusCode: file.claimStatusCode,
       reportStatus: file.newestReportStatus,
       verbalDecision: file.verbalDecision,
+      extraRepairOpen: file.extraRepairOpen,
     });
     if (isHasarWorkloadOpenStage(stageId)) tally.openClaims += 1;
     if (stageId === 'rapor_yaziliyor') tally.reportWriting += 1;

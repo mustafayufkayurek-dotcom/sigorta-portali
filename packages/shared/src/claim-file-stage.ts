@@ -52,6 +52,8 @@ export type ClaimFileStageInput = {
   claimStatusCode?: string | null;
   /** En az bir tedarikçi atanmış mı */
   hasSuppliersAssigned?: boolean;
+  /** Kapalı dosyada açık ek onarım */
+  extraRepairOpen?: boolean | null;
 };
 
 /**
@@ -63,6 +65,11 @@ export function deriveClaimFileStageIndex(input: ClaimFileStageInput): number | 
   const claimStatus = (input.claimStatusCode ?? '').trim().toLowerCase();
   const hasSuppliers = Boolean(input.hasSuppliersAssigned);
 
+  if (input.extraRepairOpen) {
+    if (REPORT_AWAITING.has(reportStatus)) return 0;
+    if (REPORT_APPROVED.has(reportStatus)) return 1;
+    return 0;
+  }
   if (REPORT_REJECTED.has(reportStatus)) return null;
   if (CLAIM_REPAIR_DONE.has(claimStatus) && !REPORT_REJECTED.has(reportStatus)) return 4;
   if (CLAIM_REPAIR_IN_PROGRESS.has(claimStatus)) return 3;

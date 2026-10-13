@@ -16,6 +16,10 @@ import { ClaimEventEmailService } from '@/modules/notifications/email/claim-even
 import { AnomalyDetectionService } from '@/modules/vendor-risk/anomaly-detection.service';
 import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
 import { DamageRepairTemplatesService } from '@/modules/damage-repair-templates/damage-repair-templates.service';
+import {
+  linkOpenExtraRepairToReport,
+  markExtraRepairApprovedForReport,
+} from '@/modules/finance/hasar-extra-repair-link';
 import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
 import { normalizeReportImageCategory } from './report-image-category';
 import { resolveReportImageFilePath } from './report-image-paths';
@@ -317,7 +321,7 @@ export class RepairReportsService {
     const count = await this.prisma.repairReport.count({ where: { claimFileId } });
     const reportNo = `RPT-${claimFile.fileNo}-${(count + 1).toString().padStart(3, '0')}`;
 
-    return this.mutateReportWithInclude('create', {
+    const created = await this.mutateReportWithInclude('create', {
       data: {
         claimFileId,
         reportNo,
@@ -335,6 +339,8 @@ export class RepairReportsService {
         versionNo: REPAIR_REPORT_INITIAL_VERSION,
       },
     });
+    await linkOpenExtraRepairToReport(this.prisma, claimFileId, created.id);
+    return created;
   }
 
   async getReport(id: string) {
@@ -1346,6 +1352,7 @@ export class RepairReportsService {
       where: { id: reportId },
       data: { status: 'approved' },
     });
+    await markExtraRepairApprovedForReport(this.prisma, reportId);
 
     const approver = await this.prisma.user.findUnique({
       where: { id: userId },

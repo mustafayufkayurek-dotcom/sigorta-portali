@@ -64,7 +64,9 @@ export const PORTAL_NEXT_STEP_HINTS: Record<string, string> = {
 
 export function portalStatusLabel(code: string | undefined, fallbackName?: string): string {
   const overlay = String(fallbackName ?? '').trim();
-  if (overlay === 'Reddedildi' || overlay === 'Revizyon Talep Edildi') return overlay;
+  if (overlay === 'Reddedildi' || overlay === 'Revizyon Talep Edildi' || overlay === 'Kapalı · Ek Onarım') {
+    return overlay;
+  }
   if (code === 'budget_revision_requested') return 'Revizyon Talep Edildi';
   if (code && PORTAL_STATUS_LABELS[code]) return PORTAL_STATUS_LABELS[code];
   const name = overlay.toLocaleLowerCase('tr-TR');

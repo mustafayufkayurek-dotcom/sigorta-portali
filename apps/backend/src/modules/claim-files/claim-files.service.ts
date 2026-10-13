@@ -869,7 +869,8 @@ export class ClaimFilesService {
     ]);
 
     const dataWithReports = await this.attachLatestRepairReports(data);
-    const enriched = await this.enrichOperationFields(dataWithReports);
+    const dataWithExtra = await this.attachExtraRepair(dataWithReports);
+    const enriched = await this.enrichOperationFields(dataWithExtra);
     const withInspection = await this.enrichInspectionStatus(enriched);
     const withVendorPay = await this.attachVendorPaid(withInspection);
 
@@ -1010,6 +1011,11 @@ export class ClaimFilesService {
           take: 1,
           select: { status: true },
         },
+        extraWorkItems: {
+          where: { kind: 'extra_repair', status: { in: ['draft', 'approved'] } },
+          take: 1,
+          select: { id: true },
+        },
       },
     });
     const verbalByClaim = await this.latestVerbalDecisions(rows.map((row) => row.id));
@@ -1019,6 +1025,7 @@ export class ClaimFilesService {
         claimStatusCode: row.currentStatus?.code,
         reportStatus: row.repairReports[0]?.status ?? null,
         verbalDecision: verbalByClaim.get(row.id) ?? null,
+        extraRepairOpen: row.extraWorkItems.length > 0,
       });
       if (!isHasarWorkloadOpenStage(stageId)) excluded.push(row.id);
     }
@@ -1084,6 +1091,11 @@ export class ClaimFilesService {
             take: 1,
             select: { status: true },
           },
+          extraWorkItems: {
+            where: { kind: 'extra_repair', status: { in: ['draft', 'approved'] } },
+            take: 1,
+            select: { id: true },
+          },
         },
       }),
       this.countForOpsPreset('urgent', requestingUser, extraWhere),
@@ -1103,6 +1115,7 @@ export class ClaimFilesService {
         claimStatusCode: row.currentStatus?.code,
         newestReportStatus: row.repairReports[0]?.status ?? null,
         verbalDecision: verbalByClaim.get(row.id) ?? null,
+        extraRepairOpen: row.extraWorkItems.length > 0,
       })),
       todayRange,
     );
@@ -1180,6 +1193,7 @@ export class ClaimFilesService {
         claimStatusCode: claimCode,
         reportStatus: newestStatus ?? report?.status ?? null,
         verbalDecision: verbalByClaim.get(claim.id) ?? null,
+        extraRepairOpen: Boolean((claim as { extraRepairOpen?: boolean }).extraRepairOpen),
       });
       const awaitingSince =
         report?.id && isApprovalWaitingReport(report.status)
@@ -1260,6 +1274,38 @@ export class ClaimFilesService {
         latestRepairReport: latest ? formatLatestRepairReport(latest) : null,
         newestRepairReportStatus: newest?.status ?? null,
       };
+    });
+  }
+
+  private async attachExtraRepair<T extends { id: string }>(claims: T[]) {
+    if (!claims.length) return claims.map((claim) => ({ ...claim, extraRepair: null, extraRepairOpen: false }));
+    const rows = await this.prisma.extraWorkItem.findMany({
+      where: {
+        claimFileId: { in: claims.map((c) => c.id) },
+        kind: 'extra_repair',
+        status: { in: ['draft', 'approved'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        claimFileId: true,
+        title: true,
+        description: true,
+        status: true,
+        kind: true,
+        estimatedAmount: true,
+        repairReportId: true,
+        createdAt: true,
+        agreedAt: true,
+      },
+    });
+    const byClaim = new Map<string, (typeof rows)[number]>();
+    for (const row of rows) {
+      if (!byClaim.has(row.claimFileId)) byClaim.set(row.claimFileId, row);
+    }
+    return claims.map((claim) => {
+      const extraRepair = byClaim.get(claim.id) ?? null;
+      return { ...claim, extraRepair, extraRepairOpen: Boolean(extraRepair) };
     });
   }
 
@@ -1433,10 +1479,33 @@ export class ClaimFilesService {
       toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus) : h.toStatus,
     }));
 
+    const extraRepair = await this.prisma.extraWorkItem.findFirst({
+      where: {
+        claimFileId: id,
+        kind: 'extra_repair',
+        status: { in: ['draft', 'approved'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        claimFileId: true,
+        title: true,
+        description: true,
+        status: true,
+        kind: true,
+        estimatedAmount: true,
+        repairReportId: true,
+        createdAt: true,
+        agreedAt: true,
+      },
+    });
+    const extraRepairOpen = Boolean(extraRepair);
+
     const operationStatusLabel = resolveOperationStatusLabel({
       claimStatusCode: claimFile.currentStatus?.code ?? null,
       reportStatus: newestReport?.status ?? null,
       verbalDecision,
+      extraRepairOpen,
     });
 
     return {
@@ -1453,6 +1522,8 @@ export class ClaimFilesService {
       inboundReceivedAt: earliestInbound?.receivedAt ?? null,
       latestRepairReport: latestReport ? formatLatestRepairReport(latestReport) : null,
       newestRepairReportStatus: newestReport?.status ?? null,
+      extraRepair,
+      extraRepairOpen,
       operationStatusLabel,
       activeDelegation,
       financialVisibilityConfig: resolveFinancialVisibilityConfig(claimFile),

@@ -58,6 +58,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 39. Hasar raporda Kategori **MM**; mahal tek hücrede eklenir. Dosyada MM işi varsa canlı dijital muvafakatta mağdur durur; yoksa durmaz.
 40. Eksper yanıtı gelen kutuda durur. Dosyaya bağlamak Bekleyen’i kapatmaz.
 41. Hasar yeni dosyada bölge personeline mail gider; dosya sorumlusu başka olsa da durur. Tercih değişince istisna dosya konusudur.
+42. Kapalı Hasar dosyasında Ek Onarım açılır. Yeni dosya açılmaz. İlk kapanış durur. Durum Kapalı · Ek Onarım.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

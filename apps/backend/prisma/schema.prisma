@@ -1352,6 +1352,7 @@ model RepairReport {
   // Tedarikçi Sözleşmeleri
   vendorContracts VendorContract[]
   writeSessions   ReportWriteSession[]
+  extraWorkItems  ExtraWorkItem[]
 
   @@index([claimFileId])
   @@index([status])
@@ -2716,19 +2717,28 @@ model ExtraWorkItem {
   description     String?
   status          String    @default("draft")
   // draft | approved | completed | cancelled
+  kind            String    @default("extra_work")
+  // extra_work | extra_repair
+  estimatedAmount Float?    @map("estimated_amount")
+  repairReportId  String?   @map("repair_report_id")
+  rejectedAt      DateTime? @map("rejected_at")
+  rejectReason    String?   @map("reject_reason") @db.Text
   agreedAt        DateTime? @map("agreed_at")
   completedAt     DateTime? @map("completed_at")
   createdByUserId String    @map("created_by_user_id")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  claimFile   ClaimFile          @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
-  createdBy   User               @relation("CreatedExtraWorkItems", fields: [createdByUserId], references: [id])
-  revenues    ClaimFileRevenue[]
-  costEntries CostEntry[]
+  claimFile    ClaimFile          @relation(fields: [claimFileId], references: [id], onDelete: Cascade)
+  createdBy    User               @relation("CreatedExtraWorkItems", fields: [createdByUserId], references: [id])
+  repairReport RepairReport?      @relation(fields: [repairReportId], references: [id], onDelete: SetNull)
+  revenues     ClaimFileRevenue[]
+  costEntries  CostEntry[]
 
   @@index([claimFileId])
   @@index([status])
+  @@index([kind, status])
+  @@index([repairReportId])
   @@map("extra_work_items")
 }
 

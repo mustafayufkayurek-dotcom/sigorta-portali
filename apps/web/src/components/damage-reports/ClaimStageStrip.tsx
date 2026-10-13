@@ -18,8 +18,10 @@ export type ClaimStageStripSource = {
     assignedSuppliers?: Array<{ id?: string } | null> | null;
     supplierAssignments?: Array<{ vendorId?: string; vendor?: { id?: string } | null } | null> | null;
     supplierAssignedAt?: string | Date | null;
+    extraRepairOpen?: boolean | null;
   } | null;
   hasSuppliersAssigned?: boolean;
+  extraRepairOpen?: boolean | null;
 };
 
 function resolveActiveIndex(source: ClaimStageStripSource): number | null {
@@ -29,6 +31,7 @@ function resolveActiveIndex(source: ClaimStageStripSource): number | null {
     claimStatusCode: source.claimStatusCode ?? claimFile?.currentStatus?.code ?? null,
     hasSuppliersAssigned:
       source.hasSuppliersAssigned ?? hasClaimFileSuppliersAssigned(claimFile),
+    extraRepairOpen: source.extraRepairOpen ?? claimFile?.extraRepairOpen ?? false,
   });
 }
 

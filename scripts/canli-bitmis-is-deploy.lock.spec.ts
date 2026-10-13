@@ -114,6 +114,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'text-helpers.lock.spec',
       'tespit-notu-yazim.lock.spec',
       'repair-report-revise.lock.spec',
+      'hasar-ek-onarim.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }
