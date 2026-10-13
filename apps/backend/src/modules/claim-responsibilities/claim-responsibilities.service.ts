@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { hasarResponsibilityCoversSubject } from '@sigorta/shared';
 import { regionValueMatchesProvince } from '@/common/helpers/turkey-geographic-regions.helper';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateClaimResponsibilityDto, UpdateClaimResponsibilityDto } from './dto/claim-responsibilities.dto';
@@ -99,8 +100,21 @@ export class ClaimResponsibilitiesService {
     city: string;
     district?: string;
     claimSubjectId?: string;
+    claimSubjectName?: string;
   }) {
-    const { departmentId, city, district, claimSubjectId } = params;
+    const matches = await this.findMatchingResponsibleUsers(params);
+    return matches[0] ?? null;
+  }
+
+  /** Bölge Hasar izi: eşleşen bütün kişiler. Konu istisnası kapsam dışını keser. */
+  async findMatchingResponsibleUsers(params: {
+    departmentId: string;
+    city: string;
+    district?: string;
+    claimSubjectId?: string;
+    claimSubjectName?: string;
+  }) {
+    const { departmentId, city, district, claimSubjectId, claimSubjectName } = params;
 
     const assignments = await this.prisma.claimResponsibilityAssignment.findMany({
       where: {
@@ -113,23 +127,33 @@ export class ClaimResponsibilitiesService {
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
     });
 
+    const matched: Array<{ id: string; firstName: string | null; lastName: string | null; email: string | null }> = [];
+    const seen = new Set<string>();
+
     for (const a of assignments) {
-      // Coverage type kontrolü
-      if (a.coverageType === 'specific_subjects' && claimSubjectId) {
-        const cfg = a.coverageConfig as any;
-        const allowedSubjects = cfg?.claimSubjectIds ?? [];
-        if (allowedSubjects.length > 0 && !allowedSubjects.includes(claimSubjectId)) continue;
+      if (!a.user?.id || seen.has(a.user.id)) continue;
+      const cfg = (a.coverageConfig ?? {}) as { claimSubjectIds?: unknown; ihbarSubjects?: unknown };
+      if (!hasarResponsibilityCoversSubject({
+        coverageType: a.coverageType,
+        coverageConfig: cfg,
+        claimSubjectId,
+        claimSubjectName,
+      })) {
+        continue;
       }
 
-      // Region matching
-      if (a.regionType === 'countrywide') return a.user;
+      let regionOk = false;
+      if (a.regionType === 'countrywide') regionOk = true;
+      const regionValues = (a.regionValues as string[]) ?? [];
+      if (a.regionType === 'city' && regionValues.includes(city)) regionOk = true;
+      if (a.regionType === 'district' && district && regionValues.includes(district)) regionOk = true;
+      if (a.regionType === 'region' && regionValueMatchesProvince(regionValues, city)) regionOk = true;
+      if (!regionOk) continue;
 
-      const regionValues = (a.regionValues as any as string[]) ?? [];
-      if (a.regionType === 'city' && regionValues.includes(city)) return a.user;
-      if (a.regionType === 'district' && district && regionValues.includes(district)) return a.user;
-      if (a.regionType === 'region' && regionValueMatchesProvince(regionValues, city)) return a.user;
+      seen.add(a.user.id);
+      matched.push(a.user);
     }
 
-    return null;
+    return matched;
   }
 }

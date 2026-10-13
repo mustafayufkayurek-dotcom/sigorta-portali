@@ -244,15 +244,25 @@ export class ClaimFilesService {
   }
 
   private async resolveHasarDepartmentId(): Promise<string | null> {
-    return this.resolveDepartmentIdByCode('hasar-onarim');
+    return (
+      (await this.resolveDepartmentIdByCode('HASAR_ONARIM'))
+      ?? (await this.resolveDepartmentIdByCode('hasar-onarim'))
+    );
   }
 
   private async resolveDepartmentIdByCode(code: string): Promise<string | null> {
-    const dept = await this.prisma.department.findFirst({
-      where: { code, status: 'active' },
+    const folded = code.trim();
+    if (!folded) return null;
+    const active = await this.prisma.department.findFirst({
+      where: { status: 'active', code: { equals: folded, mode: 'insensitive' } },
       select: { id: true },
     });
-    return dept?.id ?? null;
+    if (active) return active.id;
+    const any = await this.prisma.department.findFirst({
+      where: { code: { equals: folded, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    return any?.id ?? null;
   }
 
   private async ensureOzelMusteriInsuranceCompanyId(): Promise<string> {
@@ -319,6 +329,66 @@ export class ClaimFilesService {
       expertOfficeShortName: params.expertOfficeShortName,
       assignedByJobTitle,
     });
+  }
+
+  /** Bölge Hasar personeli: dosya sorumlusu başka olsa da bölge maili gider. İstisna yalnız konu. */
+  private async notifyHasarRegionWatchers(params: {
+    skipUserIds?: Array<string | null | undefined>;
+    departmentId?: string | null;
+    city?: string | null;
+    district?: string | null;
+    claimSubjectId?: string | null;
+    claimSubjectName?: string | null;
+    fileNo: string;
+    claimFileId: string;
+    customerLongName: string;
+    insuranceCompanyName?: string | null;
+    insuredName?: string | null;
+    address?: string | null;
+    notificationAt?: Date | string | null;
+    expertOfficeShortName?: string | null;
+  }) {
+    if (!this.claimEventEmail || !this.claimResponsibilities) return;
+    const city = params.city?.trim();
+    if (!city) return;
+    const departmentId = params.departmentId?.trim() || (await this.resolveHasarDepartmentId()) || '';
+    if (!departmentId) return;
+    const skip = new Set(
+      (params.skipUserIds ?? []).map((id) => String(id ?? '').trim()).filter(Boolean),
+    );
+    const watchers = await this.claimResponsibilities.findMatchingResponsibleUsers({
+      departmentId,
+      city,
+      district: params.district?.trim() || undefined,
+      claimSubjectId: params.claimSubjectId ?? undefined,
+      claimSubjectName: params.claimSubjectName ?? undefined,
+    });
+    for (const watcher of watchers) {
+      if (!watcher.id || skip.has(watcher.id) || !watcher.email) continue;
+      skip.add(watcher.id);
+      void this.claimEventEmail.onNewClaimFile({
+        recipientEmail: watcher.email,
+        recipientUserId: watcher.id,
+        fileNo: params.fileNo,
+        claimFileId: params.claimFileId,
+        customerLongName: params.customerLongName,
+        insuranceCompanyName: params.insuranceCompanyName,
+        fileSubject: params.claimSubjectName,
+        insuredName: params.insuredName,
+        city: params.city,
+        district: params.district,
+        address: params.address,
+        notificationAt: params.notificationAt,
+        expertOfficeShortName: params.expertOfficeShortName,
+      });
+      void this.createInAppNotification({
+        userId: watcher.id,
+        type: 'file_assignment',
+        title: 'Yeni Dosya Atandı',
+        body: `Bölge dosyası: ${params.fileNo} - ${params.customerLongName}`,
+        relatedEntityId: params.claimFileId,
+      });
+    }
   }
 
   private async fallbackHasarOfficeUserId(): Promise<string | null> {
@@ -1897,6 +1967,25 @@ export class ClaimFilesService {
           insuredName: created.insuredName,
           city: (created as any)?.propertyAddress?.city ?? null,
           district: (created as any)?.propertyAddress?.district ?? null,
+          address: (created as any)?.propertyAddress?.addressLine ?? null,
+          notificationAt: created.notificationDate || created.createdAt,
+          expertOfficeShortName,
+        });
+        this.notifyHasarRegionWatchers({
+          skipUserIds: [
+            created.assignedOfficeUserId,
+            created.assignedFieldUserId,
+          ],
+          departmentId: created.departmentId,
+          city: (created as any)?.propertyAddress?.city ?? null,
+          district: (created as any)?.propertyAddress?.district ?? null,
+          claimSubjectId: created.claimSubjectId,
+          claimSubjectName: (created as any).claimSubject?.name || created.lossType,
+          fileNo: created.fileNo,
+          claimFileId: created.id,
+          customerLongName: customerLongName || customerName,
+          insuranceCompanyName: created.insuranceCompany?.name ?? null,
+          insuredName: created.insuredName,
           address: (created as any)?.propertyAddress?.addressLine ?? null,
           notificationAt: created.notificationDate || created.createdAt,
           expertOfficeShortName,

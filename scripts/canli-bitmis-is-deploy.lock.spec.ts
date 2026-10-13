@@ -95,6 +95,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'panel-flow-trail.lock.spec',
       'operational-mailbox.lock.spec',
       'inbound-file-no.lock.spec',
+      'hasar-region-watch.lock.spec',
       'software-outbound-echo.lock.spec',
       'portal-customer-users.lock.spec',
       'user-invite-config.lock.spec',
