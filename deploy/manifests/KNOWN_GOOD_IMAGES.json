@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-10-14",
-  "label": "v657-revizyon-acik-kayit",
-  "description": "v657: Onay bekleyen rapordan revizyon açılır. Geri alma web v656 / backend v656.",
+  "label": "v658-acil-ihbar-konu",
+  "description": "v658: Acil yeni ihbar mail konusu poliçe / sigortalı / dosya no / konu. Geri alma web v657 / backend v657.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v657-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v657-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v658-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v658-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v656-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v656-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v657-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v657-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
