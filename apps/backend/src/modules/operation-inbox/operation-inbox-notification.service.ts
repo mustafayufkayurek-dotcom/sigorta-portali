@@ -3,8 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { resolveAppUrl } from '@/common/utils/app-url';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
-import { yeniIhbarSubject } from '@/modules/notifications/email/email.template';
+import { acilYeniIhbarSubject, yeniIhbarSubject } from '@/modules/notifications/email/email.template';
 import { resolveAcilInsuredName } from '@sigorta/shared';
+import { extractHeuristicFields } from './inbound-heuristic-parser';
 import { buildInboxIhbarEmailTemplate } from './inbox-ihbar-email';
 
 export type InboxNotificationType =
@@ -179,6 +180,7 @@ export class OperationInboxNotificationService {
       let address: string | null = null;
       let notificationAt: Date | null = null;
       let expertOfficeShortName = '';
+      let policyNo: string | null = null;
 
       if (params.fileType === 'hasar') {
         const claim = await this.prisma.claimFile.findUnique({
@@ -237,13 +239,47 @@ export class OperationInboxNotificationService {
         district = acil?.district ?? null;
         address = acil?.address ?? null;
         notificationAt = acil?.fileDate ?? acil?.createdAt ?? null;
+        const inbound = await this.prisma.inboundMessage.findUnique({
+          where: { id: params.messageId },
+          select: {
+            subject: true,
+            bodyText: true,
+            bodyPreview: true,
+            bodyHtml: true,
+            aiExtractedJson: true,
+          },
+        }).catch(() => null);
+        if (inbound) {
+          const heuristic = extractHeuristicFields(inbound);
+          const raw = inbound.aiExtractedJson && typeof inbound.aiExtractedJson === 'object' && !Array.isArray(inbound.aiExtractedJson)
+            ? inbound.aiExtractedJson as Record<string, unknown>
+            : null;
+          const routing = raw?.routing && typeof raw.routing === 'object' && !Array.isArray(raw.routing)
+            ? raw.routing as Record<string, unknown>
+            : null;
+          const mailFields = routing?.mailFields && typeof routing.mailFields === 'object' && !Array.isArray(routing.mailFields)
+            ? routing.mailFields as Record<string, unknown>
+            : null;
+          const fromJson = typeof raw?.policyNo === 'string' ? raw.policyNo : '';
+          const fromMail = typeof mailFields?.policyNo === 'string' ? mailFields.policyNo : '';
+          policyNo = heuristic.policyNo?.trim() || fromJson.trim() || fromMail.trim() || null;
+        }
       }
+
+      const mailSubject = params.fileType === 'acil'
+        ? acilYeniIhbarSubject({
+          policyNo,
+          insuredName,
+          fileNo: params.fileNo,
+          fileSubject,
+        })
+        : yeniIhbarSubject(expertOfficeShortName);
 
       await this.emailService.sendIfPreferred(
         params.userId,
         'newClaimFile',
         params.userEmail,
-        yeniIhbarSubject(expertOfficeShortName),
+        mailSubject,
         buildInboxIhbarEmailTemplate({
           fileType: params.fileType,
           fileNo: params.fileNo,
@@ -252,6 +288,7 @@ export class OperationInboxNotificationService {
           assistantCompanyName,
           customerLongName,
           fileSubject,
+          policyNo,
           insuredName,
           city,
           district,

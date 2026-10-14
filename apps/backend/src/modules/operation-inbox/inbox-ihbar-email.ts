@@ -14,6 +14,7 @@ export type InboxIhbarEmailSummary = {
   assistantCompanyName?: string | null;
   customerLongName?: string | null;
   fileSubject?: string | null;
+  policyNo?: string | null;
   insuredName?: string | null;
   city?: string | null;
   district?: string | null;
@@ -52,14 +53,20 @@ export function buildInboxIhbarEmailRows(
     district: summary.district,
     city: summary.city,
   });
-  return [
+  const rows: Array<{ label: string; value: string }> = [
     { label: 'İhbar Tarihi', value: formatNotificationDateTime(summary.notificationAt) },
     { label: companyLabel, value: companyValue },
+  ];
+  if (summary.fileType === 'acil') {
+    rows.push({ label: 'Poliçe No', value: notificationDash(summary.policyNo) });
+  }
+  rows.push(
     { label: 'Dosya No', value: notificationDash(summary.fileNo) },
     { label: 'Dosya Konusu', value: notificationDash(summary.fileSubject) },
     { label: 'Sigortalı Adı Soyadı', value: notificationDash(summary.insuredName) },
     { label: 'Adres', value: address },
-  ];
+  );
+  return rows;
 }
 
 /** 1 Eylül onaylı ihbar kartı — Operasyon Bildirimi yok. */

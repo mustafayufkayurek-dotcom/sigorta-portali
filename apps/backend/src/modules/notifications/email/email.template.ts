@@ -110,6 +110,20 @@ export function yeniIhbarSubject(expertOfficeShortName?: string | null): string 
   return shortName ? `Yeni İhbar-${shortName}` : 'Yeni İhbar';
 }
 
+/** Acil yeni ihbar konu: poliçe / sigortalı / dosya no / dosya konusu */
+export function acilYeniIhbarSubject(input: {
+  policyNo?: string | null;
+  insuredName?: string | null;
+  fileNo?: string | null;
+  fileSubject?: string | null;
+}): string {
+  const policy = String(input.policyNo ?? '').trim();
+  const insured = toTitleCaseTR(String(input.insuredName ?? '').trim()) || '';
+  const fileNo = String(input.fileNo ?? '').trim();
+  const fileSubject = toTitleCaseTR(String(input.fileSubject ?? '').trim()) || '';
+  return [policy, insured, fileNo, fileSubject].filter(Boolean).join(' / ') || 'Yeni İhbar';
+}
+
 export function expertOfficeSubjectLabel(office?: {
   shortName?: string | null;
   companyName?: string | null;

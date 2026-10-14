@@ -41,6 +41,7 @@ describe('inbox ihbar email', () => {
       fileNo: 'RCS-20261877741',
       notificationAt: new Date('2026-09-07T08:48:00+03:00'),
       assistantCompanyName: 'Remed Assistance',
+      policyNo: '1573577325',
       fileSubject: 'Konut Cam',
       insuredName: 'Ayşe Yılmaz',
       city: 'Bolu',
@@ -51,15 +52,17 @@ describe('inbox ihbar email', () => {
     expect(rows.map((row) => row.label)).toEqual([
       'İhbar Tarihi',
       'Asistan Firması',
+      'Poliçe No',
       'Dosya No',
       'Dosya Konusu',
       'Sigortalı Adı Soyadı',
       'Adres',
     ]);
     expect(rows[1]?.value).toBe('Remed Assistance');
-    expect(rows[4]?.value).toBe('Ayşe Yılmaz');
-    expect(rows[4]?.value).not.toBe('—');
-    expect(rows[5]?.value).toBe(
+    expect(rows[2]?.value).toBe('1573577325');
+    expect(rows[5]?.value).toBe('Ayşe Yılmaz');
+    expect(rows[5]?.value).not.toBe('—');
+    expect(rows[6]?.value).toBe(
       'Borazanlar 413 Özyıl Apt. No : 4 Daire : 2 Merkez-BOLU',
     );
     expect(rows[5]?.value).not.toContain('Türkiye');
@@ -78,7 +81,7 @@ describe('inbox ihbar email', () => {
         'Yeni Abdullah Aykon Dogan 4 Toki Sit. Toki Dk2 1 Toki Dk2 1 No : 6 /1 Daire : 9 Atabey - Türkiye - Isparta',
       actionUrl: 'https://app.meridyen-tr.com/panel/acil-yardim/ornek',
     });
-    expect(rows[5]?.value).toBe(
+    expect(rows[6]?.value).toBe(
       'Yeni Abdullah Aykon Dogan 4 Toki Sit. Toki Dk2 1 Toki Dk2 1 No : 6 /1 Daire : 9 Atabey-ISPARTA',
     );
     expect(rows[5]?.value).not.toMatch(/Türkiye|Turkiye/i);
@@ -125,7 +128,8 @@ describe('inbox ihbar email', () => {
         assignedByJobTitle: 'Operasyon Direktörü',
       }),
     );
-    expect(html).toContain('Yeni İhbar Dosyası (Operasyon Direktörü Tarafından Atanmıştır)');
+    expect(html).toContain('Yeni İhbar Dosyası');
+    expect(html).toContain('Operasyon Direktörü Tarafından Atanmıştır');
     expect(html).toContain('Sirius Ekspertiz');
     expect(html).not.toContain('Operasyon Bildirimi');
     expect(html).not.toContain('Sistem Yöneticisi');

@@ -10,6 +10,7 @@ import {
   organizationLineForMail,
   raporOnaylandiSubject,
   yeniIhbarSubject,
+  acilYeniIhbarSubject,
   buildRaporOnaylandiEmailHtml,
   buildNewClaimFileEmailHtml,
 } from './email.template';
@@ -150,6 +151,14 @@ describe('rapor mail konuları', () => {
     );
     expect(yeniIhbarSubject('Fidar')).toBe('Yeni İhbar-Fidar');
     expect(yeniIhbarSubject('')).toBe('Yeni İhbar');
+    expect(
+      acilYeniIhbarSubject({
+        policyNo: '1573577325',
+        insuredName: 'VEDAT ÇİMEN',
+        fileNo: 'RCS-20261920728',
+        fileSubject: 'TESİSAT',
+      }),
+    ).toBe('1573577325 / Vedat Çimen / RCS-20261920728 / Tesisat');
   });
 
   it('expert approved body follows rapor onaylandı shell without report no', () => {
