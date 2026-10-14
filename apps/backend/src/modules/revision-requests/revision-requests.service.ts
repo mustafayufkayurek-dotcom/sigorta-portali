@@ -262,6 +262,7 @@ export class RevisionRequestsService {
 
     const existingDraft = await this.prisma.repairReport.findFirst({
       where: {
+        id: { not: report.id },
         originalReportId: originalId,
         status: { in: ['draft', 'rejected', 'pending_approval'] },
       },

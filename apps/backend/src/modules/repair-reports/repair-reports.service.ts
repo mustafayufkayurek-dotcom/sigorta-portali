@@ -1620,6 +1620,7 @@ export class RepairReportsService {
     // Mevcut açık (draft/rejected) revizyon var mı kontrol et
     const existingDraft = await this.prisma.repairReport.findFirst({
       where: {
+        id: { not: reportId },
         originalReportId: originalId,
         status: { in: ['draft', 'rejected', 'pending_approval'] },
       },

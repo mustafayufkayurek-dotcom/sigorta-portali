@@ -35,6 +35,12 @@ describe('hasar rapor revizyon durumu LOCK', () => {
     assert.match(page, /canStartRepairReportRevisionFromStatus/);
     assert.match(page, /canReviseThisReport/);
     assert.match(page, /onStartRevision=\{canReviseThisReport \? handleRevise : undefined\}/);
+    assert.match(svc, /id: \{ not: reportId \}/);
+    const revReq = readFileSync(
+      join(here, '../revision-requests/revision-requests.service.ts'),
+      'utf8',
+    );
+    assert.match(revReq, /id: \{ not: report\.id \}/);
     assert.match(page, /canApprovePendingRepairReport/);
     assert.match(page, /yonetici-rapor-onay/);
     assert.match(page, /repair-reports\/\$\{reportId\}\/approve/);
