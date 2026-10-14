@@ -79,6 +79,13 @@ describe('onarım raporu PDF düzen LOCK', () => {
     assert.match(reportsSrc, /assignedInspectorVendor:/);
   });
 
+  it('ek onarım kalemleri Ek Onarım Maliyeti başlığı altında durur', () => {
+    assert.match(pdfSrc, /EXTRA_REPAIR_COST_HEADING/);
+    assert.match(pdfSrc, /EXTRA_REPAIR_COST_TOTAL_LABEL/);
+    assert.match(pdfSrc, /extra-cost-heading-row/);
+    assert.match(pdfSrc, /partitionExtraRepairCostItems/);
+  });
+
   it('büyük tespit fotoğrafı PDF’de küçülür; motor 60 saniye bekler', () => {
     const paths = readFileSync(join(specDir, '../report-image-paths.ts'), 'utf8');
     assert.match(paths, /export async function reportImageToPdfDataUrl/);

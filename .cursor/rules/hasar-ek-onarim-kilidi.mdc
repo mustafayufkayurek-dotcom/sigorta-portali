@@ -14,6 +14,7 @@ alwaysApply: false
 1. Yalnız kapalı Hasar dosyasında açılır. İptalde açılmaz. Aynı anda ikinci açık ek onarım yok.
 2. `closedAt` silinmez. Dosya durumu `closed` kalır.
 3. Gerekçe yazılır. Ek rapor ayrıdır; ilk onaylı rapor durur. Onaya gönderim mevcut kapıdadır.
+3b. Ek kalemler ilk rapor iş grubuna karışmaz. Raporda **Ek Onarım Maliyeti** başlığı altında durur; rapor altında **Ek Onarım Toplamı** yazar; dış PDF dahil.
 4. Ek rapor onaylanmadan **Ek Onarımı Bitir** açılmaz. İptalde dosya kapalı kalır.
 5. Liste ve dosya etiketi `Kapalı · Ek Onarım`. Personel şeridi bir kez durur.
 

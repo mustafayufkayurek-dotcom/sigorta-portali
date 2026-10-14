@@ -27,6 +27,8 @@ import { resolveReportCustomerMailRecipients } from './report-customer-mail-reci
 import { generalMailboxesFromContactInfos } from '@sigorta/shared';
 import {
   isExpertFirmCustomer,
+  EXTRA_REPAIR_KIND,
+  partitionExtraRepairCostItems,
   REPAIR_REPORT_INITIAL_VERSION,
   REPAIR_REPORT_MAX_REVISION_MESSAGE,
   canCreateRepairReportRevision,
@@ -363,10 +365,12 @@ export class RepairReportsService {
     }
     const vendorName = claim?.assignedInspectorVendor?.name?.trim();
     if (!report.inspectorName?.trim() && vendorName) {
-      return this.overlayReportItemMoney({ ...report, inspectorName: vendorName });
+      return this.attachExtraRepairCostLayout(
+        this.overlayReportItemMoney({ ...report, inspectorName: vendorName }),
+      );
     }
 
-    return this.overlayReportItemMoney(report);
+    return this.attachExtraRepairCostLayout(this.overlayReportItemMoney(report));
   }
 
   async updateReport(id: string, dto: UpdateRepairReportDto) {
@@ -743,6 +747,67 @@ export class RepairReportsService {
     return { ...report, items, totalSupplierCost, totalSalesAmount, grossProfit, grossMarginPct };
   }
 
+  private async attachExtraRepairCostLayout<T extends {
+    id: string;
+    claimFileId: string;
+    originalReportId?: string | null;
+    items?: Array<{
+      id?: string | null;
+      workGroup?: { name?: string | null } | null;
+      workGroupId?: string | null;
+      jobDescription?: string | null;
+    }>;
+  }>(report: T): Promise<T & {
+    extraReportAlone: boolean;
+    originalCostItems: NonNullable<T['items']>;
+    items: Array<NonNullable<T['items']>[number] & { extraRepairCost: boolean }>;
+  }> {
+    const extraLink = await this.prisma.extraWorkItem.findFirst({
+      where: { repairReportId: report.id, kind: EXTRA_REPAIR_KIND },
+      select: { id: true },
+    });
+    let originalItems: NonNullable<T['items']> = [] as NonNullable<T['items']>;
+    if (report.originalReportId) {
+      originalItems = await this.prisma.repairReportItem.findMany({
+        where: { reportId: report.originalReportId },
+        include: { workGroup: true, damageType: true },
+      }) as NonNullable<T['items']>;
+    } else if (extraLink) {
+      const base = await this.prisma.repairReport.findFirst({
+        where: {
+          claimFileId: report.claimFileId,
+          id: { not: report.id },
+          status: { in: ['approved', 'externally_approved'] },
+        },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          items: {
+            include: { workGroup: true, damageType: true },
+            orderBy: [{ workGroup: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
+          },
+        },
+      });
+      originalItems = (base?.items ?? []) as NonNullable<T['items']>;
+    }
+    const extraReportAlone = Boolean(extraLink) && !report.originalReportId;
+    const split = partitionExtraRepairCostItems({
+      currentItems: report.items ?? [],
+      originalItems,
+      extraReportAlone,
+    });
+    const extraIds = new Set(split.extraItems.map((row) => String(row.id ?? '')));
+    const items = (report.items ?? []).map((item) => ({
+      ...item,
+      extraRepairCost: extraIds.has(String(item.id ?? '')),
+    }));
+    return {
+      ...report,
+      items,
+      extraReportAlone,
+      originalCostItems: extraReportAlone ? originalItems : split.originalItems,
+    };
+  }
+
   private async recalculateTotals(reportId: string) {
     const items = await this.prisma.repairReportItem.findMany({ where: { reportId } });
     const reportRow = await this.prisma.repairReport.findUnique({
@@ -981,7 +1046,7 @@ export class RepairReportsService {
       },
     });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
-    return this.overlayReportItemMoney(report);
+    return this.attachExtraRepairCostLayout(this.overlayReportItemMoney(report));
   }
 
   async generatePdf(reportId: string, viewType: 'internal' | 'external'): Promise<{ buffer: Buffer; report: any }> {

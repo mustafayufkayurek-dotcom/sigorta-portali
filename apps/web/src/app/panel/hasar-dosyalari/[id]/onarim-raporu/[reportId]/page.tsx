@@ -34,7 +34,7 @@ import {
 } from '@/components/damage-reports/VendorQuotePopover';
 import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal, mergeRepairDamageCategories, repairDamageCategoryDisplay, repairDamageCategorySelectLabel, mahalSuggestionsForCategory, normalizeRepairDamageCategoryCode, MALI_MESULIYET_LOKASYON, MALI_MESULIYET_LOKASYON_ETIKET, formatMaliMesuliyetMahal, parseMaliMesuliyetMahal, maliMesuliyetDaireNoOk, type RepairDamageCategoryOption, type RepairMahalCatalogEntry } from '@sigorta/shared';
+import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal, mergeRepairDamageCategories, repairDamageCategoryDisplay, repairDamageCategorySelectLabel, mahalSuggestionsForCategory, normalizeRepairDamageCategoryCode, MALI_MESULIYET_LOKASYON, MALI_MESULIYET_LOKASYON_ETIKET, formatMaliMesuliyetMahal, parseMaliMesuliyetMahal, maliMesuliyetDaireNoOk, EXTRA_REPAIR_COST_HEADING, EXTRA_REPAIR_COST_TOTAL_LABEL, type RepairDamageCategoryOption, type RepairMahalCatalogEntry } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -131,7 +131,7 @@ function sortReportItems(items: any[] | null | undefined): any[] {
 
 function rowStateSortKey(row: RowState & { workGroupId?: string }, workGroups: any[]): string {
   const wg = workGroups.find((w: any) => w.id === row.workGroupId)?.name ?? row.workGroupId ?? '';
-  return `${row.detectionScope}\0${row.location}\0${wg}`;
+  return `${row.extraRepairCost ? '1' : '0'}\0${row.detectionScope}\0${row.location}\0${wg}`;
 }
 
 function recomputeReportTotals(items: any[]) {
@@ -2008,6 +2008,7 @@ interface RowState {
   lumpSumPrice: string;
   metrajData: Record<string, unknown> | null;
   vendorQuotes: VendorQuoteData;
+  extraRepairCost?: boolean;
 }
 
 function rowFromItem(item: any): RowState {
@@ -2028,14 +2029,15 @@ function rowFromItem(item: any): RowState {
     lumpSumPrice: String(item.lumpSumPrice ?? '0'),
     metrajData: item.metrajData && typeof item.metrajData === 'object' ? item.metrajData : null,
     vendorQuotes,
+    extraRepairCost: Boolean(item.extraRepairCost),
   };
 }
 
-function emptyRow(location = '', damageTypeId = ''): RowState {
+function emptyRow(location = '', damageTypeId = '', extraRepairCost = false): RowState {
   return {
     workGroupId: '', location, detectionScope: '', jobDescription: '', description: '', quantity: '1', unit: 'm²',
     salesUnitPrice: '0', supplierUnitPrice: '0', damageCategory: 'bina', damageTypeId,
-    pricingType: 'unit', lumpSumPrice: '0', metrajData: null, vendorQuotes: {},
+    pricingType: 'unit', lumpSumPrice: '0', metrajData: null, vendorQuotes: {}, extraRepairCost,
   };
 }
 
@@ -2664,11 +2666,12 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 ) {
   const isMultiDamage = reportType === 'multi' && (damageTypes?.length ?? 0) > 0;
   const impliedDamageTypeId = defaultDamageTypeId || (damageTypes?.length === 1 ? String(damageTypes[0].id) : '');
+  const extraCostDefault = items.some((i: { extraRepairCost?: boolean }) => i.extraRepairCost);
   const notify = onNotify ?? ((_type: 'error' | 'warning' | 'success', _message: string) => {});
   const askConfirm = onConfirm ?? (async (_message: string) => false);
   const [rows, setRows] = useState<(RowState & { _id: string; _isDirty: boolean; _savedFlash: boolean })[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [addingRow, setAddingRow] = useState<RowState>(emptyRow('', impliedDamageTypeId));
+  const [addingRow, setAddingRow] = useState<RowState>(emptyRow('', impliedDamageTypeId, extraCostDefault));
   const [addingDirty, setAddingDirty] = useState(false);
   const [addingSaving, setAddingSaving] = useState(false);
   const [quickAdding, setQuickAdding] = useState(false);
@@ -2700,7 +2703,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
 
   const thCls = (extra = '') =>
     `sticky top-0 z-30 relative px-2 py-2 text-center text-slate-500 font-medium border-b border-r border-slate-200 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0] ${extra}`;
-  const addingDraftRef = useRef<RowState>(emptyRow('', impliedDamageTypeId));
+  const addingDraftRef = useRef<RowState>(emptyRow('', impliedDamageTypeId, extraCostDefault));
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
@@ -3147,7 +3150,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
       });
       persistVendorMemoryFromRow(rowToSave);
       const nextAddingRow = {
-        ...emptyRow(preservedLocation, impliedDamageTypeId || rowToSave.damageTypeId),
+        ...emptyRow(preservedLocation, impliedDamageTypeId || rowToSave.damageTypeId, extraCostDefault),
         detectionScope: preservedDetection,
         damageCategory: rowToSave.damageCategory,
         workGroupId: rowToSave.workGroupId,
@@ -3188,7 +3191,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         || lastRow?.detectionScope?.trim()
         || '';
       const nextAddingRow = {
-        ...emptyRow(location, impliedDamageTypeId || lastRow?.damageTypeId || addingRow.damageTypeId),
+        ...emptyRow(location, impliedDamageTypeId || lastRow?.damageTypeId || addingRow.damageTypeId, extraCostDefault),
         detectionScope,
         damageCategory: lastRow?.damageCategory ?? addingRow.damageCategory ?? 'bina',
         workGroupId: lastRow?.workGroupId ?? addingRow.workGroupId ?? '',
@@ -3208,7 +3211,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
   }, [isEditable, quickAdding, displayRows, addingRow, saveAllDirtyRows, persistAddingRowIfNeeded]);
 
   const resetAddingDraft = useCallback((preservedLocation = '') => {
-    const nextAddingRow = emptyRow(preservedLocation, impliedDamageTypeId);
+    const nextAddingRow = emptyRow(preservedLocation, impliedDamageTypeId, extraCostDefault);
     addingDraftRef.current = nextAddingRow;
     setAddingRow(nextAddingRow);
     setAddingDirty(false);
@@ -3449,7 +3452,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
           tryAutoSaveRow(rowId);
         }
         const nextAddingRow = {
-          ...emptyRow(sourceRow?.location?.trim() || '', impliedDamageTypeId || sourceRow?.damageTypeId || ''),
+          ...emptyRow(sourceRow?.location?.trim() || '', impliedDamageTypeId || sourceRow?.damageTypeId || '', extraCostDefault),
           detectionScope: sourceRow?.detectionScope?.trim() || '',
           damageCategory: sourceRow?.damageCategory ?? 'bina',
           workGroupId: sourceRow?.workGroupId ?? '',
@@ -3646,6 +3649,8 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
         </thead>
         <tbody className="divide-y divide-slate-100">
           {displayRows.map((row, rowIdx) => {
+            const extraHeading = row.extraRepairCost && !displayRows.slice(0, rowIdx).some((r) => r.extraRepairCost);
+            const headingColSpan = COLS.length + (isEditable ? 2 : 0);
             const total = calcTotal(row);
             const isSaving = savingId === row._id;
             const wgName = workGroups.find((wg: any) => wg.id === row.workGroupId)?.name ?? '';
@@ -3657,7 +3662,18 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
             const isLoss = viewMode === 'internal' && supplierVal > 0 && supplierVal > salesVal;
 
             return (
-              <tr key={row._id} className={`group transition-colors ${row._savedFlash ? 'saved-flash' : rowIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'} hover:bg-blue-50/10 ${row._isDirty ? 'border-l-2 border-l-amber-400' : ''}`}>
+              <React.Fragment key={row._id}>
+              {extraHeading ? (
+                <tr>
+                  <td
+                    colSpan={headingColSpan}
+                    className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-700 border-b border-slate-200"
+                  >
+                    {EXTRA_REPAIR_COST_HEADING}
+                  </td>
+                </tr>
+              ) : null}
+              <tr className={`group transition-colors ${row._savedFlash ? 'saved-flash' : rowIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'} hover:bg-blue-50/10 ${row._isDirty ? 'border-l-2 border-l-amber-400' : ''}`}>
                 {isEditable && (
                   <td className="w-8 px-1 text-center border-r border-slate-100">
                     <span className="text-slate-300 text-xs">{rowIdx + 1}</span>
@@ -4063,6 +4079,7 @@ const EditableItemsTable = forwardRef<EditableItemsTableHandle, EditableItemsTab
                   </td>
                 )}
               </tr>
+              </React.Fragment>
             );
           })}
 
@@ -6732,13 +6749,17 @@ export default function RepairReportPage() {
           const buildingTotal = kalemToplamlari.buildingDamageTotal;
           const goodsTotal = kalemToplamlari.goodsDamageTotal;
           const mmTotal = kalemToplamlari.mmDamageTotal;
+          const extraRepairTotal = (report.items ?? [])
+            .filter((i: { extraRepairCost?: boolean }) => i.extraRepairCost)
+            .reduce((s: number, i: unknown) => s + repairItemSalesTotal(i as never), 0);
           const grandTotal = kalemToplamlari.totalSalesAmount;
+          const extraCols = (mmTotal > 0 ? 1 : 0) + (extraRepairTotal > 0 ? 1 : 0);
           return (
             <div className="mt-5 border-t-2 border-slate-200 pt-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-500 tracking-wide">Hasar Toplam Özeti</p>
               </div>
-              <div className={`grid grid-cols-1 gap-3 ${mmTotal > 0 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
+              <div className={`grid grid-cols-1 gap-3 ${extraCols > 0 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
                 <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-center">
                   <p className="text-xs text-orange-600 font-medium mb-1">Bina Hasar Toplamı</p>
                   <p className="text-xl font-bold text-orange-700">{fmtCurrency(buildingTotal)}</p>
@@ -6751,6 +6772,12 @@ export default function RepairReportPage() {
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-center">
                     <p className="text-xs text-amber-700 font-medium mb-1">Mali Mesuliyet Toplamı</p>
                     <p className="text-xl font-bold text-amber-800">{fmtCurrency(mmTotal)}</p>
+                  </div>
+                )}
+                {extraRepairTotal > 0 && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center">
+                    <p className="text-xs text-slate-600 font-medium mb-1">{EXTRA_REPAIR_COST_TOTAL_LABEL}</p>
+                    <p className="text-xl font-bold text-slate-800">{fmtCurrency(extraRepairTotal)}</p>
                   </div>
                 )}
                 <div className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-center">

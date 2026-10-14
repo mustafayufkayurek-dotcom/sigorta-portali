@@ -18,9 +18,12 @@ import {
   showPdfSplitCategoryTotals,
 } from './report-pdf-fields';
 import {
+  EXTRA_REPAIR_COST_HEADING,
+  EXTRA_REPAIR_COST_TOTAL_LABEL,
   groupRepairPdfItems,
   isRepairReportPdfDraft,
   itemMatchesRepairDamageType,
+  partitionExtraRepairCostItems,
   pdfGroupTotalLabel,
   repairItemSalesTotal,
   repairItemResolvedSupplierTotal,
@@ -48,6 +51,7 @@ interface ReportItem {
   materialIncluded?: boolean | null;
   laborIncluded?: boolean | null;
   damageCategory?: string | null;
+  extraRepairCost?: boolean | null;
 }
 
 interface ExpertOfficeInfo {
@@ -126,6 +130,8 @@ interface ReportData {
     } | null;
   } | null;
   items?: ReportItem[];
+  originalCostItems?: ReportItem[];
+  extraReportAlone?: boolean | null;
   damageTypes?: Array<{ id: string; damageTypeName: string }>;
   quickDamageTypes?: string[];
   quickDamageSize?: string | null;
@@ -433,7 +439,14 @@ export class ReportPdfService {
     }
 
     const subtotalColSpan = viewType === 'internal' ? 9 : 8;
-    const allItems = report.items ?? [];
+    const extraCostSplit = partitionExtraRepairCostItems({
+      currentItems: report.items ?? [],
+      originalItems: report.originalCostItems ?? [],
+      extraReportAlone: Boolean(report.extraReportAlone),
+    });
+    const originalCostItems = extraCostSplit.originalItems;
+    const extraCostItems = extraCostSplit.extraItems;
+    const allItems = [...originalCostItems, ...extraCostItems];
     const computedSalesAmount = allItems.reduce((s, i) => s + itemSalesTotal(i), 0);
     const computedSupplierCost = allItems.reduce((s, i) => s + itemSupplierTotal(i), 0);
     const computedGrossProfit = computedSalesAmount - computedSupplierCost;
@@ -528,10 +541,20 @@ export class ReportPdfService {
       return appendGroupedRows(items);
     };
 
+    const extraColSpan = viewType === 'internal' ? 10 : 9;
+    const extraHeadingRow = extraCostItems.length
+      ? `<tr class="extra-cost-heading-row"><td colspan="${extraColSpan}">${EXTRA_REPAIR_COST_HEADING}</td></tr>`
+      : '';
+    const originalItemsHtml = originalCostItems.length === 0
+      ? ''
+      : partitionItemsByDamageCategory(originalCostItems).map((part) => appendCategorySection(part.items)).join('');
+    const extraItemsHtml = extraCostItems.length === 0
+      ? ''
+      : partitionItemsByDamageCategory(extraCostItems).map((part) => appendCategorySection(part.items)).join('');
     const itemsHtml =
-      allItems.length === 0
-        ? ''
-        : categoryPartitions.map((part) => appendCategorySection(part.items)).join('');
+      originalItemsHtml || extraItemsHtml
+        ? `${originalItemsHtml}${extraHeadingRow}${extraItemsHtml}`
+        : '';
 
     const logoDataUrl = this.resolveLogoDataUrl();
     const generatedAt = new Date();
@@ -579,6 +602,12 @@ export class ReportPdfService {
       demirbasCount: showDemirbasTotal ? 1 : 0,
       extraCount: extraCategoryParts.length,
     });
+    const extraCostTotal = extraCostItems.reduce((s, i) => s + itemSalesTotal(i), 0);
+    const extraCostBand = extraCostItems.length ? `
+  <div class="repair-total-band">
+    <div class="repair-total-label">${EXTRA_REPAIR_COST_TOTAL_LABEL}</div>
+    <div class="repair-total-value">${fmtCurrency(extraCostTotal)}</div>
+  </div>` : '';
     const extraCategoryBands = extraCategoryParts.map((part) => {
       const total = part.items.reduce((s, i) => s + itemSalesTotal(i), 0);
       return `
@@ -607,6 +636,7 @@ export class ReportPdfService {
     const externalTotalsHtml = `
 <div class="repair-totals-stack">
   ${categoryTotalBands}
+  ${extraCostBand}
   <div class="repair-total-band repair-total-band-grand">
     <div class="repair-total-label">${PDF_GRAND_TOTAL_LABEL}</div>
     <div class="repair-total-value">${fmtCurrency(computedSalesAmount)}</div>
@@ -1007,6 +1037,17 @@ export class ReportPdfService {
     border-bottom: 1px solid #e2e8f0;
     break-after: avoid;
     page-break-after: avoid;
+  }
+
+  .extra-cost-heading-row td {
+    background: #f8fafc;
+    color: #334155;
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    padding: 8px 10px;
+    border-top: 2px solid #cbd5e1;
+    border-bottom: 1px solid #e2e8f0;
   }
 
   /* ── Findings ── */
@@ -1705,6 +1746,9 @@ ${viewType === 'external' ? externalTotalsHtml : `
     ${showSplitCategoryTotals ? extraCategoryParts.map((part) => `
     <div class="total-label">${pdfCategoryTotalLabel(part.code)}</div>
     <div class="total-amount">${fmtCurrency(part.items.reduce((s, i) => s + itemSalesTotal(i), 0))}</div>`).join('') : ''}
+    ${extraCostItems.length ? `
+    <div class="total-label">${EXTRA_REPAIR_COST_TOTAL_LABEL}</div>
+    <div class="total-amount">${fmtCurrency(extraCostTotal)}</div>` : ''}
     <div class="grand-total-label">${PDF_GRAND_TOTAL_LABEL}</div>
     <div class="grand-total-amount">${fmtCurrency(computedSalesAmount)}</div>
     <div class="total-label" style="margin-top:8px;color:#64748b;">Toplam Maliyet</div>

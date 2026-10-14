@@ -12,8 +12,11 @@ import {
   EXTRA_REPAIR_STATUS_LABEL,
   EXTRA_REPAIR_TITLE,
   canOpenHasarExtraRepair,
+  EXTRA_REPAIR_COST_HEADING,
+  EXTRA_REPAIR_COST_TOTAL_LABEL,
   extraRepairReasonOk,
   hasOpenExtraRepair,
+  partitionExtraRepairCostItems,
 } from './hasar-ek-onarim.ts';
 import { deriveOperationStage, isHasarWorkloadOpenStage } from './operation-status.ts';
 
@@ -114,5 +117,39 @@ describe('hasar ek onarım LOCK', () => {
     assert.match(page, /HasarEkOnarimPanel/);
     assert.match(panel, /hasar-ek-onarim-seridi/);
     assert.equal(EXTRA_REPAIR_TITLE, 'Ek Onarım');
+  });
+
+  it('ilk rapor kalemleri durur; ek kalem Ek Onarım Maliyeti altına düşer', () => {
+    assert.equal(EXTRA_REPAIR_COST_HEADING, 'Ek Onarım Maliyeti');
+    assert.equal(EXTRA_REPAIR_COST_TOTAL_LABEL, 'Ek Onarım Toplamı');
+    const original = [
+      { jobDescription: 'İç Cephe Boya', workGroup: { name: 'Boya İşleri' } },
+      { jobDescription: 'Laminant Parke Döşeme', workGroup: { name: 'Parke' } },
+      { jobDescription: 'Mobilya Onarımı', workGroup: { name: 'Mobilya İşleri' } },
+    ];
+    const current = [
+      ...original,
+      { jobDescription: 'Lake Boyalı Çift Yüz Pervaz Yenileme', workGroup: { name: 'Mobilya İşleri' } },
+      { jobDescription: '10 Cm Lake Süpürgelik Yenileme', workGroup: { name: 'Mobilya İşleri' } },
+    ];
+    const split = partitionExtraRepairCostItems({ currentItems: current, originalItems: original });
+    assert.equal(split.originalItems.length, 3);
+    assert.equal(split.extraItems.length, 2);
+    assert.equal(split.extraItems[0]?.jobDescription, 'Lake Boyalı Çift Yüz Pervaz Yenileme');
+    const pdf = readFileSync(
+      join(here, '../../../apps/backend/src/modules/repair-reports/pdf/report-pdf.service.ts'),
+      'utf8',
+    );
+    const rapor = readFileSync(
+      join(here, '../../../apps/web/src/app/panel/hasar-dosyalari/[id]/onarim-raporu/[reportId]/page.tsx'),
+      'utf8',
+    );
+    assert.match(pdf, /EXTRA_REPAIR_COST_HEADING/);
+    assert.match(pdf, /EXTRA_REPAIR_COST_TOTAL_LABEL/);
+    assert.match(pdf, /partitionExtraRepairCostItems/);
+    assert.match(pdf, /\.extra-cost-heading-row td \{[\s\S]*?padding: 8px 10px;/);
+    assert.match(rapor, /EXTRA_REPAIR_COST_HEADING/);
+    assert.match(rapor, /EXTRA_REPAIR_COST_TOTAL_LABEL/);
+    assert.match(rapor, /extraRepairCost/);
   });
 });
