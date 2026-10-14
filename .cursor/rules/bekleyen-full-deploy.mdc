@@ -1,11 +1,11 @@
 ---
-description: Canlı web v656 / backend v656
+description: Canlı web v657 / backend v657
 alwaysApply: true
 ---
 
-# Canlı (13.10.2026)
+# Canlı (14.10.2026)
 
-Canlı: web **v656** · backend **v656**. Geri alma: web **v655** / backend **v654**.
+Canlı: web **v657** · backend **v657**. Geri alma: web **v656** / backend **v656**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v657 (full):** Onay bekleyen onarım raporundan revizyon açılır. Açık revizyon kendi kaydını «zaten mevcut» saymaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v656 / backend v656.
 
 **v656 (full):** Kapalı Hasar ek onarım kalemleri raporda **Ek Onarım Maliyeti** başlığı altında durur; rapor altında **Ek Onarım Toplamı** yazar. Dış PDF dahil. İlk onaylı kalemler karışmaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v655 / backend v654.
 
@@ -189,4 +191,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v656** · backend **v656**.
+Canlı web **v657** · backend **v657**.
