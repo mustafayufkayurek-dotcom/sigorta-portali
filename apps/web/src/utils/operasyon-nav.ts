@@ -89,7 +89,7 @@ export function buildAsistansNavChildren(): OperasyonNavChild[] {
 export function buildOperasyonNavChildren(
   types?: { name: string; code?: string | null }[] | null,
 ): OperasyonNavChild[] {
-  return sortNavByTitleTr([
+  const children: OperasyonNavChild[] = [
     { title: 'Dosya Özeti', href: '/panel/operasyon', exactMatch: true },
     { title: 'Gelen Kutusu', href: '/panel/operasyon/gelen-kutusu' },
     { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
@@ -106,7 +106,8 @@ export function buildOperasyonNavChildren(
       groupOnly: true,
       children: buildAsistansNavChildren(),
     },
-  ]);
+  ];
+  return sortNavByTitleTr(children);
 }
 
 export function acilListPageTitle(kaynak?: string | null): string {

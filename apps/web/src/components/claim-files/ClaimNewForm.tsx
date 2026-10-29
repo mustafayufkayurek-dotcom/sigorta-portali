@@ -690,7 +690,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         <div className={`space-y-2 ${isPanel ? '' : 'space-y-3'} pt-1`}>
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-slate-600">
-              {customerSource === 'private' ? 'Yeni Özel Müşteri' : 'Yeni Eksper Ofisi'}
+              Yeni Eksper Ofisi
             </p>
             <button
               type="button"
