@@ -27,6 +27,7 @@ describe('panel cep düzen LOCK', () => {
 
   it('sol menü yazıları kesilmez; Anladım metnin içinde kalmaz', () => {
     const layout = read('app/panel/layout.tsx');
+    assert.match(layout, /buildOperasyonNavChildren/);
     assert.match(layout, /createPortal/);
     assert.match(layout, /panel-mobile-nav/);
     assert.match(layout, /safe-area-inset-left/);

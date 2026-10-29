@@ -91,6 +91,7 @@ export class EmergencyCasesController {
     @Query('customerId') customerId?: string,
     @Query('search') search?: string,
     @Query('overdueOnly') overdueOnly?: string,
+    @Query('kaynak') kaynak?: string,
     @CurrentUser() user?: any,
   ) {
     const { requestingUser, insuranceCompanyIds, assistantCustomerIds } = await this.resolveScope(user);
@@ -108,6 +109,7 @@ export class EmergencyCasesController {
         customerId,
         search,
         overdueOnly: overdueOnly === 'true',
+        kaynak,
       },
       requestingUser,
       insuranceCompanyIds,

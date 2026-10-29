@@ -1436,10 +1436,36 @@ async function main() {
   for (const st of serviceTypes) {
     const exists = await prisma.serviceType.findUnique({ where: { name: st.name } });
     if (!exists) {
-      await prisma.serviceType.create({ data: { ...st, isActive: true } });
+      await prisma.serviceType.create({ data: { ...st, isActive: true, family: 'legacy' } });
     }
   }
-  console.log(`✅ Created/updated ${serviceTypes.length} service types`);
+  const tespi = await prisma.serviceType.findFirst({
+    where: { OR: [{ code: 'hasar_tespit' }, { name: 'Hasar Tespit' }] },
+  });
+  if (!tespi) {
+    await prisma.serviceType.create({
+      data: {
+        name: 'Hasar Tespit',
+        family: 'consultancy',
+        code: 'hasar_tespit',
+        isActive: true,
+        isSystem: true,
+        sortOrder: 1,
+      },
+    });
+  } else {
+    await prisma.serviceType.update({
+      where: { id: tespi.id },
+      data: {
+        name: 'Hasar Tespit',
+        family: 'consultancy',
+        code: 'hasar_tespit',
+        isActive: true,
+        isSystem: true,
+      },
+    });
+  }
+  console.log(`✅ Created/updated ${serviceTypes.length} service types + Hasar Tespit`);
 
   // ── Evrak Türleri (DocumentType) — tedarikçi kapsamı ─────────────────────
   const vendorDocumentTypes = [

@@ -14,6 +14,7 @@ type MetricKey =
   | 'locations'
   | 'workGroups'
   | 'claimSubjects'
+  | 'consultancyServiceTypes'
   | 'documentTypes'
   | 'hrLeaveTypes';
 
@@ -114,6 +115,13 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
         tone: 'violet',
       },
       {
+        key: 'consultancyServiceTypes',
+        title: 'Danışmanlık Hizmet Türleri',
+        purpose: 'Danışmanlık altında Hasar Tespit ve gerektiğinde eklenen hizmetler.',
+        href: '/panel/ayarlar/hizmet-turleri',
+        tone: 'violet',
+      },
+      {
         key: 'documentTypes',
         title: 'Evrak Türleri',
         purpose: 'Hizmet türüne bağlı evrak katalogları.',
@@ -198,6 +206,7 @@ export default function TanimlarPage() {
     locations: emptyMetric(),
     workGroups: emptyMetric(),
     claimSubjects: emptyMetric(),
+    consultancyServiceTypes: emptyMetric(),
     documentTypes: emptyMetric(),
     hrLeaveTypes: emptyMetric(),
   });
@@ -215,6 +224,7 @@ export default function TanimlarPage() {
         locations,
         workGroups,
         claimSubjects,
+        consultancyServiceTypes,
         documentTypes,
         hrLeaveTypes,
       ] = await Promise.all([
@@ -264,6 +274,10 @@ export default function TanimlarPage() {
             return { total: null, active: null, loading: false, note: 'Okunamadı' };
           }
         })(),
+        safeMetric(axios.get(`${API}/service-types`, { headers, params: { family: 'consultancy' } }), (raw) => {
+          const items = extractArray(raw);
+          return { total: items.length, active: countActive(items) };
+        }),
         safeMetric(axios.get(`${API}/document-types`, { headers }), (raw) => {
           const items = extractArray(raw);
           return { total: items.length, active: countActive(items) };
@@ -283,6 +297,7 @@ export default function TanimlarPage() {
         locations,
         workGroups,
         claimSubjects,
+        consultancyServiceTypes,
         documentTypes,
         hrLeaveTypes,
       });

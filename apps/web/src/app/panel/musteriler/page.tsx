@@ -30,6 +30,7 @@ import {
   CUSTOMER_RELATION_SECTION_HINT,
   customerSubTypeHint,
   filterCustomerSubTypesForPanelUser,
+  DEFAULT_CUSTOMER_SUB_TYPES,
   mergeCustomerSubTypes,
   customerSubTypesForPicker,
   normalizeCustomerAddressFields,
@@ -58,6 +59,9 @@ import {
 import { customerFileCounts } from '@/utils/customer-file-counts';
 import { useRestoreRightPanelSession } from '@/components/ui/right-panel-session-hook';
 import {
+  entityTypeForMusteriAdd,
+  isYeniDosyaOzelMusteriAdd,
+  OZEL_MUSTERI_SUB_TYPE,
   parseMusteriGrubuAddContext,
   type MusteriGrubuAddContext,
 } from '@/utils/musteri-gruplari-add-context';
@@ -896,6 +900,7 @@ export default function MusterilerPage() {
     setDrawerOpen(true);
   });
   const [settingsReturn, setSettingsReturn] = useState<MusteriGrubuAddContext | null>(null);
+  const ozelMusteriAdd = isYeniDosyaOzelMusteriAdd(settingsReturn);
   const groupAddHandled = useRef(false);
   const editCustomerHandled = useRef(false);
 
@@ -1408,7 +1413,7 @@ export default function MusterilerPage() {
   const loadCustomerSubTypes = useCallback(() => {
     axios.get(`${API}/system-settings/customer-sub-types`, { headers: authHeader() })
       .then((r) => setCustomerSubTypes(mergeCustomerSubTypes(r.data.data ?? [])))
-      .catch(() => setCustomerSubTypes([]));
+      .catch(() => setCustomerSubTypes(mergeCustomerSubTypes([])));
   }, []);
 
   const openCustomerForEditById = useCallback(async (customerId: string) => {
@@ -1458,7 +1463,7 @@ export default function MusterilerPage() {
     if (ctx) setSettingsReturn(ctx);
 
     const subType = searchParams.get('subType')?.trim() ?? '';
-    const entityType = searchParams.get('entityType') === 'corporate' ? 'corporate' : 'individual';
+    const entityType = entityTypeForMusteriAdd(subType, searchParams.get('entityType'));
     const panelUser = readStoredPanelUser();
     const panelRole = String(panelUser?.role?.code ?? '').toLowerCase();
     const panelOpArea = userOperationArea(panelUser);
@@ -1483,14 +1488,30 @@ export default function MusterilerPage() {
       loadCustomerSubTypes();
       setShowModal(true);
       if (ctx) {
-        showToast('info', `${ctx.returnLabel} için kurumsal cari ekliyorsunuz.`);
+        const fromYeniDosya = isYeniDosyaOzelMusteriAdd(ctx);
+        showToast(
+          'info',
+          fromYeniDosya
+            ? 'Özel müşteri bireysel karttır. Ad, soyad ve iletişim bilgilerini doldurun; kaydedince Yeni Dosya açılır.'
+            : `${ctx.returnLabel} için kurumsal cari ekliyorsunuz.`,
+        );
       } else if (effectiveSubType) {
         showToast('info', 'Önce müşteri tipi seçili geldi; cari bilgilerini tamamlayın.');
       }
     }
 
-    router.replace('/panel/musteriler', { scroll: false });
+    if (!isYeniDosyaOzelMusteriAdd(ctx)) {
+      router.replace('/panel/musteriler', { scroll: false });
+    }
   }, [searchParams, router, showToast, loadCustomerSources, loadCustomerSubTypes]);
+
+  useEffect(() => {
+    if (!showModal || !ozelMusteriAdd) return;
+    setForm((p) => {
+      if (p.customerType === 'individual' && p.subType === OZEL_MUSTERI_SUB_TYPE) return p;
+      return { ...p, customerType: 'individual', subType: OZEL_MUSTERI_SUB_TYPE, serviceType: '', serviceBranches: [] };
+    });
+  }, [showModal, ozelMusteriAdd]);
 
   // Müşteri detay / liste → tam form ile düzenleme (?edit=uuid)
   useEffect(() => {
@@ -1866,15 +1887,26 @@ export default function MusterilerPage() {
         return;
       }
       const newId = savedId;
+      if (settingsReturn && newId) {
+        let dest = settingsReturn.returnTo;
+        if (dest.includes('/panel/hasar-dosyalari') && dest.includes('yeni=1')) {
+          const url = new URL(dest, 'http://yerel.panel');
+          url.searchParams.set('customerId', String(newId));
+          dest = `${url.pathname}${url.search}`;
+        }
+        setShowModal(false);
+        resetForm();
+        load();
+        setSettingsReturn(null);
+        showToast(
+          'success',
+          dest.includes('yeni=1') ? 'Kart kaydedildi — Yeni Dosya açılıyor' : 'Kayıt eklendi — gruba dönülüyor',
+        );
+        router.push(dest);
+        return;
+      }
       if (effectiveSaveMode === 'close') {
         setShowModal(false); resetForm(); load();
-        if (settingsReturn) {
-          const dest = settingsReturn.returnTo;
-          setSettingsReturn(null);
-          showToast('success', 'Kayıt eklendi — gruba dönülüyor');
-          router.push(dest);
-          return;
-        }
         showToast('success', 'Müşteri Başarıyla Eklendi');
       } else if (effectiveSaveMode === 'new') {
         resetForm(); load();
@@ -2733,7 +2765,15 @@ export default function MusterilerPage() {
         }}
       />
 
-      <SlidePanel open={showModal} onClose={() => { setShowModal(false); resetForm(); }} width={640} scrollContent={false}>
+      <SlidePanel open={showModal} onClose={() => {
+        setShowModal(false);
+        resetForm();
+        if (settingsReturn) {
+          const dest = settingsReturn.returnTo;
+          setSettingsReturn(null);
+          router.push(dest);
+        }
+      }} width={640} scrollContent={false}>
         <div className="flex flex-col h-full min-h-0">
             {(() => {
               const band = customerFormIdentityBand(form);
@@ -2744,18 +2784,22 @@ export default function MusterilerPage() {
                   {band.empty
                     ? (editingCustomerId
                       ? 'Müşteri Düzenle'
-                      : settingsReturn
-                        ? `${settingsReturn.returnLabel} Ekle`
-                        : 'Yeni Müşteri Ekle')
+                      : ozelMusteriAdd
+                        ? 'Özel Müşteri'
+                        : settingsReturn
+                          ? `${settingsReturn.returnLabel} Ekle`
+                          : 'Yeni Müşteri Ekle')
                     : band.title}
                 </h3>
                 <p className="text-emerald-100 text-xs mt-0.5 truncate">
                   {band.empty
                     ? (editingCustomerId
                       ? 'Kayıt türü ve alt tip dahil tüm alanları güncelleyebilirsiniz'
-                      : settingsReturn
-                        ? 'Kurumsal cari kaydı tamamlayın; kayıttan sonra gruba dönebilirsiniz'
-                        : 'Tüm Bilgileri Eksiksiz Doldurun')
+                      : settingsReturn?.returnTo.includes('hasar-dosyalari')
+                        ? 'Tüm Bilgileri Eksiksiz Doldurun'
+                        : settingsReturn
+                          ? 'Kurumsal cari kaydı tamamlayın; kayıttan sonra gruba dönebilirsiniz'
+                          : 'Tüm Bilgileri Eksiksiz Doldurun')
                     : [band.side, band.extra].filter(Boolean).join(' · ')}
                 </p>
                 {editingCustomerId && editingCustomerMeta && formatCustomerUpdatedMeta(editingCustomerMeta) && (
@@ -2772,7 +2816,15 @@ export default function MusterilerPage() {
                   </Link>
                 )}
               </div>
-              <button type="button" onClick={() => setShowModal(false)} className="text-emerald-200 hover:text-white transition-colors">
+              <button type="button" onClick={() => {
+                setShowModal(false);
+                resetForm();
+                if (settingsReturn) {
+                  const dest = settingsReturn.returnTo;
+                  setSettingsReturn(null);
+                  router.push(dest);
+                }
+              }} className="text-emerald-200 hover:text-white transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -2820,9 +2872,16 @@ export default function MusterilerPage() {
               {activeSection === 0 && (
                 <div>
                   <SectionDivider emoji="👤" title="Önce Müşteri Tipi" />
-                  <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                    Kurumsal veya bireysel seçin; ardından müşteri tipini belirleyin. Cari adı ve iletişim bilgileri tip seçildikten sonra açılır.
-                  </p>
+                  {ozelMusteriAdd ? (
+                    <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                      Özel müşteri bireysel kişidir. Sigorta, eksper, broker veya asistans firması değildir.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                      Kurumsal veya bireysel seçin; ardından müşteri tipini belirleyin. Cari adı ve iletişim bilgileri tip seçildikten sonra açılır.
+                    </p>
+                  )}
+                  {!ozelMusteriAdd ? (
                   <div className="grid grid-cols-1 gap-3 mb-5 sm:grid-cols-2">
                     {CUSTOMER_TYPE_OPTIONS.map(({ val, label, emoji }) => (
                       <button key={val} type="button"
@@ -2832,15 +2891,17 @@ export default function MusterilerPage() {
                       </button>
                     ))}
                   </div>
+                  ) : null}
 
                   <CustomerSubTypePicker
                     customerType={form.customerType}
-                    subTypes={visibleCustomerSubTypes}
+                    subTypes={ozelMusteriAdd ? DEFAULT_CUSTOMER_SUB_TYPES.filter((t) => t.value === OZEL_MUSTERI_SUB_TYPE) : visibleCustomerSubTypes}
                     selectedSubType={form.subType}
                     required={requiresCustomerSubType(form.customerType)}
                     hasError={!!fieldErrors.subType}
                     identityFilled={customerFormHasIdentity(form)}
                     onToggle={(value) => {
+                      if (ozelMusteriAdd) return;
                       if (value === ACIL_YARDIM_ASSISTANT_CUSTOMER_SUB_TYPE && !canSelectAsistanFirmasi) return;
                       setForm((p) => {
                         const nextSubType = p.subType === value ? '' : value as typeof p.subType;

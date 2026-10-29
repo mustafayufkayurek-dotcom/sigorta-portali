@@ -121,6 +121,11 @@ node --experimental-strip-types --test \
   apps/web/src/utils/hasar-dosya-irtibat.lock.spec.ts \
   apps/web/src/components/ui/field-help-tip.lock.spec.ts \
   packages/shared/src/claim-service-kind.lock.spec.ts \
+  apps/web/src/utils/operasyon-nav.lock.spec.ts \
+  apps/web/src/app/panel/ayarlar/hizmet-turleri/danismanlik-hizmet-turleri.lock.spec.ts \
+  apps/web/src/utils/musteri-gruplari-add-context.lock.spec.ts \
+  apps/web/src/utils/repair-report-number-input.lock.spec.ts \
+  apps/web/src/utils/tr-amount-input.lock.spec.ts \
   packages/shared/src/field-staff-area.lock.spec.ts \
   packages/shared/src/claim-pre-approval.lock.spec.ts \
   packages/shared/src/mali-mesuliyet.lock.spec.ts \

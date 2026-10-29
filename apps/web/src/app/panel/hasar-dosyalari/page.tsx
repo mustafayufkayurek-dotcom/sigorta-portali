@@ -54,6 +54,13 @@ import { formatTryAmount } from '@/utils/format-try-amount';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { portalStatusLabel } from '@/utils/portal-file-flow-labels';
 import { resolveOperationStatusLabel, HASAR_PRODUCT_STAGE_FILTERS, hasarProductStageFilterValue, HASAR_FILE_INSURANCE_CATALOG_QUERY } from '@sigorta/shared';
+import {
+  HASAR_LIST_HIZMET_PARAM,
+  MUSTERI_KAYNAK_PARAM,
+  hasarListPageTitle,
+  normalizeHasarHizmetParam,
+  normalizeMusteriKaynakParam,
+} from '@/utils/operasyon-nav';
 import { istanbulYmd } from '@/utils/istanbul-period';
 import {
   cycleClientSort,
@@ -249,6 +256,9 @@ function ClaimFilesPageContent() {
   const urlInvoiceStatus = searchParams.get('invoiceStatus') ?? '';
   const urlPriority = searchParams.get('priority') ?? '';
   const urlRepairReportStatus = searchParams.get('repairReportStatus') ?? '';
+  const urlHizmet = normalizeHasarHizmetParam(searchParams.get(HASAR_LIST_HIZMET_PARAM));
+  const urlKaynak = normalizeMusteriKaynakParam(searchParams.get(MUSTERI_KAYNAK_PARAM));
+  const [prefillCustomerId, setPrefillCustomerId] = useState<string | null>(null);
 
   // Filters state
   const [search, setSearch] = useState(urlSearch);
@@ -281,6 +291,7 @@ function ClaimFilesPageContent() {
   const rowActions = usePortalRowActionPrefs('row-actions:hasar-dosyalari-v1', OPS_ROW_ACTIONS);
 
   const { officeStaffUserId, isFieldStaff } = useMemo(() => getUserScope(), []);
+  const listTitle = isFieldStaff ? 'Atanan Dosyalar' : hasarListPageTitle(urlHizmet, urlKaynak);
   const { operationArea, isManagement } = usePanelAccess();
   const fieldAcilQuery = useFieldAssignedAcilCases(isFieldStaff && fieldStaffIncludesAcil(operationArea));
   const fieldAcilRows = useMemo(() => {
@@ -330,10 +341,16 @@ function ClaimFilesPageContent() {
 
   useEffect(() => {
     if (searchParams.get('yeni') !== '1') return;
+    const customerId = searchParams.get('customerId')?.trim() || null;
+    if (customerId) setPrefillCustomerId(customerId);
     setFormSession((s) => s + 1);
     setShowNewPanel(true);
-    router.replace('/panel/hasar-dosyalari', { scroll: false });
-  }, [searchParams, router]);
+    const next = new URLSearchParams();
+    if (urlHizmet) next.set(HASAR_LIST_HIZMET_PARAM, urlHizmet);
+    if (urlKaynak) next.set(MUSTERI_KAYNAK_PARAM, urlKaynak);
+    const qs = next.toString();
+    router.replace(qs ? `/panel/hasar-dosyalari?${qs}` : '/panel/hasar-dosyalari', { scroll: false });
+  }, [searchParams, router, urlHizmet, urlKaynak]);
 
   useEffect(() => {
     if (!toast) return;
@@ -352,10 +369,12 @@ function ClaimFilesPageContent() {
     if (dateTo) params.set('dateTo', dateTo);
     if (invoiceStatusFilter) params.set('invoiceStatus', invoiceStatusFilter);
     if (officeStaffUserId) params.set('assignedOfficeUserId', officeStaffUserId);
+    if (urlHizmet) params.set(HASAR_LIST_HIZMET_PARAM, urlHizmet);
+    if (urlKaynak) params.set(MUSTERI_KAYNAK_PARAM, urlKaynak);
     if (repairReportStatusFilter) params.set('repairReportStatus', repairReportStatusFilter);
     else if (pendingReportFilter) params.set('repairReportStatus', 'pending_approval');
     return params.toString();
-  }, [search, statusFilter, priorityFilter, insuranceFilter, dateFrom, dateTo, page, limit, invoiceStatusFilter, officeStaffUserId, pendingReportFilter, repairReportStatusFilter]);
+  }, [search, statusFilter, priorityFilter, insuranceFilter, dateFrom, dateTo, page, limit, invoiceStatusFilter, officeStaffUserId, pendingReportFilter, repairReportStatusFilter, urlHizmet, urlKaynak]);
 
   const {
     data: claimsResponse,
@@ -491,7 +510,7 @@ function ClaimFilesPageContent() {
           {isFieldStaff ? 'Saha Merkezi' : 'Dashboard'}
         </a>
         <span>/</span>
-        <span className="text-slate-600 font-medium">{isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}</span>
+        <span className="text-slate-600 font-medium">{listTitle}</span>
       </nav>
 
       {/* Header */}
@@ -513,7 +532,7 @@ function ClaimFilesPageContent() {
           </div>
           <div>
             <h2 className="page-title">
-              {isFieldStaff ? 'Atanan Dosyalar' : 'Hasar Dosyaları'}
+              {listTitle}
             </h2>
             {!loading && (
               <p className="page-subtitle">
@@ -596,6 +615,15 @@ function ClaimFilesPageContent() {
             body={OPS_NOTICE.hasarListeSonDegisiklik.body}
             testId="hasar-liste-ilk-kullanim-seridi"
           />
+          {urlHizmet ? (
+            <OpsFirstRunNotice
+              compact
+              noticeId={OPS_NOTICE.hasarDanismanlikHizmet.id}
+              title={OPS_NOTICE.hasarDanismanlikHizmet.title}
+              body={OPS_NOTICE.hasarDanismanlikHizmet.body}
+              testId="danismanlik-hizmet-ilk-kullanim-seridi"
+            />
+          ) : null}
         </div>
       )}
 
@@ -688,6 +716,7 @@ function ClaimFilesPageContent() {
         <ClaimNewForm
           key={formSession}
           variant="panel"
+          prefillCustomerId={prefillCustomerId}
           onCancel={() => setShowNewPanel(false)}
           onSuccess={handleCreateSuccess}
         />

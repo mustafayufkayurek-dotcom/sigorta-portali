@@ -52,7 +52,12 @@ import {
   repairReportStatusBadge,
   repairReportStatusLabel,
 } from '@/utils/repair-report-status';
-import { editingDraftFromCellValue, normalizeCellNumericInput } from '@/utils/repair-report-number-input';
+import {
+  editingDraftFromCellValue,
+  evaluateAmountExpression,
+  formulaForEval,
+  normalizeCellNumericInput,
+} from '@/utils/repair-report-number-input';
 import { formatTrAmountInput, numberToTrAmountInput, parseTrAmountInput } from '@/utils/tr-amount-input';
 import { LEGAL_NOTE_TEMPLATES, buildSuggestedLegalNotesText } from '@/constants/legal-note-templates';
 import { useToast } from '@/contexts/ToastContext';
@@ -205,73 +210,6 @@ function validateApprovalRequirements(report: any, findingsText: string): {
     return { ok: false, itemsError: 'Maliyet veya satış tutarı girilmeden onaya gönderilemez.' };
   }
   return { ok: true };
-}
-
-// ─── Güvenli Matematiksel İfade Parser ──────────────────────────────────────
-function evaluateExpression(expr: string): number | null {
-  const trimmed = expr.trim();
-  // Sadece sayı, operatör ve parantez içeriyorsa işlem yap
-  if (!/^[\d\s\+\-\*\/\.\(\)]+$/.test(trimmed)) return null;
-  // Boş veya sadece operatörle bitiyorsa geçersiz
-  if (!trimmed || /[\+\-\*\/]$/.test(trimmed)) return null;
-  // Saf sayı ise çevir
-  if (/^-?\d+(\.\d+)?$/.test(trimmed)) return null;
-
-  try {
-    // Token tabanlı güvenli parser
-    const result = parseExpr(trimmed);
-    if (!isFinite(result) || isNaN(result)) return null;
-    return Math.round(result * 100) / 100;
-  } catch {
-    return null;
-  }
-}
-
-function parseExpr(expr: string): number {
-  let pos = 0;
-  const s = expr.replace(/\s+/g, '');
-
-  function parseNum(): number {
-    if (pos >= s.length) throw new Error('Unexpected end');
-    if (s[pos] === '(') {
-      pos++; // '('
-      const val = parseAddSub();
-      if (s[pos] !== ')') throw new Error('Missing )');
-      pos++; // ')'
-      return val;
-    }
-    let numStr = '';
-    if (s[pos] === '-') { numStr += '-'; pos++; }
-    while (pos < s.length && /[\d\.]/.test(s[pos])) { numStr += s[pos++]; }
-    if (!numStr || numStr === '-') throw new Error('Invalid number');
-    return parseFloat(numStr);
-  }
-
-  function parseMulDiv(): number {
-    let left = parseNum();
-    while (pos < s.length && (s[pos] === '*' || s[pos] === '/')) {
-      const op = s[pos++];
-      const right = parseNum();
-      if (op === '*') left *= right;
-      else { if (right === 0) throw new Error('Division by zero'); left /= right; }
-    }
-    return left;
-  }
-
-  function parseAddSub(): number {
-    let left = parseMulDiv();
-    while (pos < s.length && (s[pos] === '+' || s[pos] === '-')) {
-      const op = s[pos++];
-      const right = parseMulDiv();
-      if (op === '+') left += right;
-      else left -= right;
-    }
-    return left;
-  }
-
-  const result = parseAddSub();
-  if (pos !== s.length) throw new Error('Unexpected token');
-  return result;
 }
 
 const UNITS = ['Adet', 'Maktuen', 'm²', 'm³', 'm/tül', 'Takım', 'Asgari', 'Tam Gün', '1/2 gün', 'Çuval', 'Servis', 'Günlük', 'Yevmiye', 'Saat', 'Kamyon', 'Torba', 'Metre', 'Kutu'];
@@ -924,7 +862,7 @@ function MetrajHesaplamaModal({
   };
 
   const raporaEkleOzel = () => {
-    const sonuc = evaluateExpression(ozelFormul);
+    const sonuc = evaluateAmountExpression(formulaForEval(ozelFormul));
     if (sonuc === null || sonuc <= 0) return;
     const formulaText = ozelFormul.trim();
     syncEntries([
@@ -1004,7 +942,7 @@ function MetrajHesaplamaModal({
   };
 
   const eklenenToplam = metrajEntriesTotal(eklenenler);
-  const ozelSonuc = hesaplamaTuru === 'ozel' ? evaluateExpression(ozelFormul) : null;
+  const ozelSonuc = hesaplamaTuru === 'ozel' ? evaluateAmountExpression(formulaForEval(ozelFormul)) : null;
   const pvcCarpan = pvcKanatCarpan(pvcKanat);
   const pvcAlanHam = parseN(pvcEn) * parseN(pvcBoy) * Math.max(1, Math.round(parseN(pvcAdet)) || 1);
   const pvcAlan = pvcAlanHam * pvcCarpan;
@@ -2142,10 +2080,6 @@ function looksLikeCalcFormula(raw: string): boolean {
   return /[+\-*/()]/.test(raw) && !/^-?\d+([.,]\d+)?$/.test(raw.trim());
 }
 
-function formulaForEval(raw: string): string {
-  return raw.replace(/,/g, '.');
-}
-
 function CalcInput({
   value,
   onChange,
@@ -2235,15 +2169,13 @@ function CalcInput({
     if (committingRef.current) return;
     committingRef.current = true;
     setEditing(false);
-    const evaluated = evaluateExpression(formulaForEval(raw));
     let final: string;
-    if (evaluated !== null) {
-      final = String(evaluated);
-    } else if (amountFormat && !looksLikeCalcFormula(raw)) {
+    if (amountFormat && !looksLikeCalcFormula(raw)) {
       const tr = parseTrAmountInput(raw);
       final = tr !== null ? String(Math.round(tr * 100) / 100) : normalizeCellNumericInput(raw);
     } else {
-      final = normalizeCellNumericInput(raw);
+      const evaluated = evaluateAmountExpression(formulaForEval(raw));
+      final = evaluated !== null ? String(evaluated) : normalizeCellNumericInput(raw);
     }
     onChange(final);
     onCommit(final);
@@ -2253,7 +2185,7 @@ function CalcInput({
   };
 
   const commitShadow = () => {
-    const evaluated = evaluateExpression(formulaForEval(formula));
+    const evaluated = evaluateAmountExpression(formulaForEval(formula));
     if (evaluated === null) return false;
     setShadowOpen(false);
     setFormula('');
@@ -2308,7 +2240,7 @@ function CalcInput({
         })()
       : value;
   const displayValue = editing && !shadowOpen ? draft : idleDisplay;
-  const shadowPreview = evaluateExpression(formulaForEval(formula));
+  const shadowPreview = evaluateAmountExpression(formulaForEval(formula));
 
   return (
     <div ref={wrapRef} className="relative flex items-center w-full min-h-11">

@@ -70,6 +70,20 @@ describe('ClaimFilesService', () => {
       expect(findManyCall.where.customerId).toBeUndefined();
     });
 
+    it('hizmet=hasar-tespit tespit dosyalarını süzler', async () => {
+      await service.findAll({ hizmet: 'hasar-tespit' });
+      const findManyCall = prisma.claimFile.findMany.mock.calls[0][0];
+      expect(findManyCall.where.serviceKind).toBe('inspection');
+    });
+
+    it('kaynak=asistans müşteri tipini süzler', async () => {
+      await service.findAll({ kaynak: 'asistans' });
+      const findManyCall = prisma.claimFile.findMany.mock.calls[0][0];
+      expect(findManyCall.where.customer).toEqual({
+        subType: { in: ['asistan_firmasi', 'asistans_firmasi'] },
+      });
+    });
+
     it('liste select tedarikçi alanlarını içerir (Atanmadı regresyon kilidi)', async () => {
       await service.findAll({});
       const findManyCall = prisma.claimFile.findMany.mock.calls[0][0];

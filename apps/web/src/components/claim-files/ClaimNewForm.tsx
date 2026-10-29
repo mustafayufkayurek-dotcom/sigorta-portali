@@ -2,6 +2,7 @@
 
 import { API, authHeader } from '@/utils/api';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { CustomerSelectModal } from '@/components/CustomerSelectModal';
 import { CollapsibleFormPanel } from '@/components/form/CollapsibleFormPanel';
@@ -125,9 +126,10 @@ export type ClaimNewFormProps = {
   variant?: 'panel' | 'page';
   onSuccess: (claimId: string) => void;
   onCancel: () => void;
+  prefillCustomerId?: string | null;
 };
 
-export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNewFormProps) {
+export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCustomerId }: ClaimNewFormProps) {
   const isPanel = variant === 'panel';
   const field = isPanel ? inpCompact : inp;
   const label = isPanel ? lblCompact : lbl;
@@ -152,6 +154,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
 
   const [customerSource, setCustomerSource] = useState<'expert' | 'private'>('expert');
   const [serviceKind, setServiceKind] = useState<ClaimServiceKind>('repair');
+  const router = useRouter();
   const [officeUsers, setOfficeUsers] = useState<PanelUser[]>([]);
   const [assignedOfficeUserId, setAssignedOfficeUserId] = useState('');
   const [siteContactName, setSiteContactName] = useState('');
@@ -288,6 +291,31 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
 
   useEffect(() => { loadLookups(); loadStatuses(); }, [loadLookups, loadStatuses]);
 
+  useEffect(() => {
+    const id = String(prefillCustomerId ?? '').trim();
+    if (!id) return;
+    let alive = true;
+    axios.get(`${API}/customers/${id}`, { headers: authHeader() }).then((res) => {
+      const c = res.data?.data ?? res.data;
+      if (!alive || !c?.id) return;
+      setSelectedCustomer({
+        id: String(c.id),
+        subType: c.subType ?? null,
+        fullName: c.fullName ?? null,
+        firstName: c.firstName ?? null,
+        lastName: c.lastName ?? null,
+        companyName: c.companyName ?? null,
+        identityNo: c.identityNo ?? null,
+        taxNumber: c.taxNumber ?? null,
+        phone: c.phone ?? null,
+      });
+      setCustomerSource('private');
+      setShowNewCustomerForm(false);
+      setCustomerSearch('');
+    }).catch(() => { /* kart seçimi sessizce durur */ });
+    return () => { alive = false; };
+  }, [prefillCustomerId]);
+
   const loadCustomerClaimFileOrdinal = useCallback(async (customerId: string) => {
     setCustomerFileOrdinalLoading(true);
     try {
@@ -418,7 +446,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
   };
 
   const validateEksperFields = (errs: Record<string, string>) => {
-    if (showNewCustomerForm) {
+    if (showNewCustomerForm && customerSource !== 'private') {
       if (!newCustomerCompanyName.trim()) errs.customer = 'Şirket adı zorunludur.';
       if (phoneDupError) errs.customer = phoneDupError;
     }
@@ -453,7 +481,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
     try {
       let customerId = selectedCustomer?.id ?? '';
 
-      if (showNewCustomerForm) {
+      if (showNewCustomerForm && customerSource !== 'private') {
         const cRes = await axios.post(`${API}/customers`, {
           type: 'corporate',
           subType: customerSource === 'private' ? 'private_customer' : HASAR_EXPERT_CUSTOMER_SUB_TYPE,
@@ -633,7 +661,23 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
             </button>
             <button
               type="button"
-              onClick={() => { setShowNewCustomerForm(true); setSelectedCustomer(null); setCustomerSearch(''); setOpenSections((p) => ({ ...p, eksper: true })); }}
+              onClick={() => {
+                if (customerSource === 'private') {
+                  const params = new URLSearchParams({
+                    openAdd: '1',
+                    subType: 'private_customer',
+                    entityType: 'individual',
+                    returnTo: '/panel/hasar-dosyalari?yeni=1',
+                    returnLabel: 'Yeni Dosya',
+                  });
+                  router.push(`/panel/musteriler?${params.toString()}`);
+                  return;
+                }
+                setShowNewCustomerForm(true);
+                setSelectedCustomer(null);
+                setCustomerSearch('');
+                setOpenSections((p) => ({ ...p, eksper: true }));
+              }}
               className="w-full px-3 py-2.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50 sm:flex-1"
             >
               {customerSource === 'private' ? 'Yeni Özel Müşteri' : 'Yeni Eksper Ofisi'}
@@ -642,7 +686,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel }: ClaimNew
         </>
       ) : null}
 
-      {showNewCustomerForm && (
+      {showNewCustomerForm && customerSource !== 'private' && (
         <div className={`space-y-2 ${isPanel ? '' : 'space-y-3'} pt-1`}>
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-slate-600">

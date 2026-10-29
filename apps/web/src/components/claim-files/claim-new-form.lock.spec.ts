@@ -44,6 +44,16 @@ describe('yeni dosya form lock', () => {
     assert.match(form, /filterInsuranceCatalogForHasarFileForm/);
     assert.doesNotMatch(form, /isOfficeStaffRole\(roleCode\) && scopedIds/);
     assert.doesNotMatch(form, /Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz\.<\/p>/);
+    assert.match(form, /CLAIM_SERVICE_KINDS\.map/);
+    assert.match(form, /sm:grid-cols-3/);
+    assert.match(form, /Yeni Özel Müşteri/);
+    assert.match(form, /\/panel\/musteriler/);
+    assert.match(form, /subType: 'private_customer'/);
+    assert.match(form, /entityType: 'individual'/);
+    assert.match(form, /prefillCustomerId/);
+    assert.doesNotMatch(form, /CLAIM_FILE_SERVICE_KIND_TOP/);
+    assert.doesNotMatch(form, /Danışmanlık Hizmeti/);
+    assert.doesNotMatch(form, /danismanlik-hizmet-ilk-kullanim-seridi/);
   });
 
   it('sayfa başlığı i yasağı durur; alan yardımı ayrıdır', () => {

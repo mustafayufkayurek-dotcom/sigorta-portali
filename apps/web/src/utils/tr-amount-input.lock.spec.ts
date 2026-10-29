@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { formatTrAmountInput } from './tr-amount-input.ts';
+import { formatTrAmountInput, parseTrAmountInput, parseTrGroupedOrDecimal } from './tr-amount-input.ts';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 
@@ -11,6 +11,9 @@ describe('tutar yazarken nokta', () => {
   it('125555 yazılınca 125.555 olur', () => {
     assert.equal(formatTrAmountInput('125555'), '125.555');
     assert.equal(formatTrAmountInput('1255'), '1.255');
+    assert.equal(formatTrAmountInput('1850000'), '1.850.000');
+    assert.equal(parseTrAmountInput('1.850.000'), 1_850_000);
+    assert.equal(parseTrGroupedOrDecimal('1.850.000'), 1_850_000);
   });
 
   it('dosya gelir ve tahsilat TrAmountInput kullanır', () => {

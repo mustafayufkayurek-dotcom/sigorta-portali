@@ -335,6 +335,7 @@ model ClaimFile {
   description           String?
   /// inspection | repair | consultancy — boş kayıt onarım sayılır
   serviceKind           String?   @map("service_kind")
+  consultancyServiceTypeId String? @map("consultancy_service_type_id")
   siteContactName       String?   @map("site_contact_name")
   siteContactPhone      String?   @map("site_contact_phone")
   /// null = henüz sorulmadı; true = söküm/enkaz gibi ön iş var
@@ -414,6 +415,7 @@ model ClaimFile {
   department          Department?   @relation(fields: [departmentId], references: [id])
   departmentFileSubject DepartmentFileSubject? @relation(fields: [departmentFileSubjectId], references: [id])
   claimSubject        ClaimSubject? @relation("ClaimFileSubject", fields: [claimSubjectId], references: [id])
+  consultancyServiceType ServiceType? @relation(fields: [consultancyServiceTypeId], references: [id])
 
   statusHistory        ClaimStatusHistory[]
   waitings             ClaimFileWaiting[]
@@ -469,6 +471,7 @@ model ClaimFile {
   @@index([assignedFieldUserId])
   @@index([assignedOfficeUserId])
   @@index([assignedAdjusterId])
+  @@index([consultancyServiceTypeId])
   @@map("claim_files")
 }
 
@@ -3633,13 +3636,20 @@ model FileAppointment {
 model ServiceType {
   id          String   @id @default(uuid())
   name        String   @unique
+  /// consultancy | legacy
+  family      String   @default("legacy") @map("family")
+  code        String?  @unique
   description String?
   isActive    Boolean  @default(true) @map("is_active")
+  isSystem    Boolean  @default(false) @map("is_system")
   sortOrder   Int      @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  claimFiles ClaimFile[]
+
   @@index([isActive])
+  @@index([family, isActive])
   @@map("service_types")
 }
 

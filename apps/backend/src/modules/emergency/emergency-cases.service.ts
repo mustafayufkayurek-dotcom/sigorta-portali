@@ -41,6 +41,7 @@ import {
     isAcilLocksmithIssue,
     isAcilInspectionPhotoNotes,
     isAcilAfterServicePhotoNotes,
+  claimFileWhereForMusteriKaynak,
   parseAssistanceMailDecision,
   canSendVisibleCopy,
   buildPlatformMailCopyNotice,
@@ -744,6 +745,7 @@ export class EmergencyCasesService {
       customerId?: string;
       search?: string;
       overdueOnly?: boolean;
+      kaynak?: string;
     },
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
@@ -755,6 +757,12 @@ export class EmergencyCasesService {
       insuranceCompanyIds,
       assistantCustomerIds,
     );
+    const kaynakWhere = claimFileWhereForMusteriKaynak(filters.kaynak);
+    if (kaynakWhere) {
+      const merged = mergeWhereAnd(where, kaynakWhere);
+      Object.keys(where).forEach((k) => delete where[k]);
+      Object.assign(where, merged);
+    }
     if (filters.status) where.status = filters.status;
     if (filters.search) {
       const q = sanitizeSearchQuery(filters.search);

@@ -207,6 +207,12 @@ export const OPS_NOTICE = {
     body:
       'Maili üzerine almak için Kullanıcı Ata içinde Kendime Al durur. Sigorta şirketinin e-postasını yazmanız gerekmez.',
   },
+  hasarDanismanlikHizmet: {
+    id: 'hasar-danismanlik-hizmet-v659',
+    title: 'Danışmanlık',
+    body:
+      'Danışmanlık Operasyon menüsündedir. Hasar Tespit ve eklenen türler oradan açılır. Yeni tür gerektiğinde Tanımlar’dan eklenir.',
+  },
 } as const;
 
 export function opsNoticeStorageKey(noticeId: string): string {

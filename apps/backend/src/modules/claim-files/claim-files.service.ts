@@ -9,8 +9,14 @@ import {
 import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
 import { generalMailboxesFromContactInfos, isAcilInspectionPhotoNotes } from '@sigorta/shared';
 import {
+  claimFileWhereForHizmet,
+  claimFileWhereForMusteriKaynak,
+  claimServiceKindFromConsultancyType,
+  CONSULTANCY_SERVICE_FAMILY,
   departmentCodeForNewClaim,
   filterStaffByFileArea,
+  HASAR_TESPIT_SERVICE_CODE,
+  HASAR_TESPIT_SERVICE_NAME,
   INSPECTOR_ALREADY_ASSIGNED_MESSAGE,
   OFFICE_SETTINGS_CATALOG_LIMIT,
   parseClaimServiceKind,
@@ -219,6 +225,71 @@ export class ClaimFilesService {
     @Optional() private readonly vendorProfile?: VendorIntelligenceProfileService,
     @Optional() private readonly surveys?: SurveysService,
   ) {}
+
+  private async ensureHasarTespitServiceType() {
+    const existing = await this.prisma.serviceType.findFirst({
+      where: {
+        OR: [{ code: HASAR_TESPIT_SERVICE_CODE }, { name: HASAR_TESPIT_SERVICE_NAME }],
+      },
+    });
+    if (existing) {
+      if (
+        existing.family === CONSULTANCY_SERVICE_FAMILY
+        && existing.code === HASAR_TESPIT_SERVICE_CODE
+        && existing.isSystem
+        && existing.isActive
+      ) {
+        return existing;
+      }
+      return this.prisma.serviceType.update({
+        where: { id: existing.id },
+        data: {
+          name: HASAR_TESPIT_SERVICE_NAME,
+          family: CONSULTANCY_SERVICE_FAMILY,
+          code: HASAR_TESPIT_SERVICE_CODE,
+          isSystem: true,
+          isActive: true,
+        },
+      });
+    }
+    return this.prisma.serviceType.create({
+      data: {
+        name: HASAR_TESPIT_SERVICE_NAME,
+        family: CONSULTANCY_SERVICE_FAMILY,
+        code: HASAR_TESPIT_SERVICE_CODE,
+        isSystem: true,
+        isActive: true,
+        sortOrder: 1,
+      },
+    });
+  }
+
+  private async resolveConsultancyServiceType(input: {
+    serviceKind: ReturnType<typeof parseClaimServiceKind>;
+    consultancyServiceTypeId?: unknown;
+  }) {
+    const requestedId = typeof input.consultancyServiceTypeId === 'string'
+      ? input.consultancyServiceTypeId.trim()
+      : '';
+    if (input.serviceKind === 'repair') {
+      return { serviceKind: input.serviceKind, consultancyServiceTypeId: null as string | null };
+    }
+    const tespi = await this.ensureHasarTespitServiceType();
+    if (requestedId) {
+      const row = await this.prisma.serviceType.findFirst({
+        where: { id: requestedId, family: CONSULTANCY_SERVICE_FAMILY, isActive: true },
+      });
+      if (!row) throw new BadRequestException('Danışmanlık hizmet türü bulunamadı');
+      return {
+        serviceKind: claimServiceKindFromConsultancyType(row),
+        consultancyServiceTypeId: row.id,
+      };
+    }
+    if (input.serviceKind === 'inspection') {
+      return { serviceKind: 'inspection' as const, consultancyServiceTypeId: tespi.id };
+    }
+    throw new BadRequestException('Danışmanlık hizmet türü zorunludur');
+  }
 
   private isFinanceLikeRole(roleCode: string | null | undefined): boolean {
     const code = String(roleCode ?? '').trim().toLowerCase();
@@ -664,6 +735,8 @@ export class ClaimFilesService {
     sort?: string;
     opsPreset?: string;
     search?: string;
+    hizmet?: string;
+    kaynak?: string;
   }, requestingUser?: { id: string; roleCode: string; vendorId?: string | null }) {
     const page = Number(params?.page) || 1;
     const limit = Math.min(Number(params?.limit) || 20, 100);
@@ -701,6 +774,10 @@ export class ClaimFilesService {
     if (params?.repairReportStatus) {
       baseWhere.repairReports = { some: { status: params.repairReportStatus } };
     }
+    const hizmetWhere = claimFileWhereForHizmet(params?.hizmet);
+    if (hizmetWhere) Object.assign(baseWhere, hizmetWhere);
+    const kaynakWhere = claimFileWhereForMusteriKaynak(params?.kaynak);
+    if (kaynakWhere) Object.assign(baseWhere, kaynakWhere);
 
     const statusCode = String(params?.statusCode ?? '').trim();
     const statusCodeLower = statusCode.toLowerCase();
@@ -1738,7 +1815,14 @@ export class ClaimFilesService {
     const customerSource = customerSourceRaw === 'private' ? 'private' : 'expert';
     const requireOfficeOwner = customerSourceRaw === 'private' || customerSourceRaw === 'expert';
     delete rest.customerSource;
-    const serviceKind = parseClaimServiceKind(rest.serviceKind);
+    const consultancyServiceTypeIdRaw = rest.consultancyServiceTypeId;
+    delete rest.consultancyServiceTypeId;
+    const resolvedService = await this.resolveConsultancyServiceType({
+      serviceKind: parseClaimServiceKind(rest.serviceKind),
+      consultancyServiceTypeId: consultancyServiceTypeIdRaw,
+    });
+    const serviceKind = resolvedService.serviceKind;
+    const consultancyServiceTypeId = resolvedService.consultancyServiceTypeId;
     delete rest.serviceKind;
     const siteContactName =
       typeof rest.siteContactName === 'string' ? rest.siteContactName.trim() || null : null;
@@ -1908,6 +1992,7 @@ export class ClaimFilesService {
           departmentFileSubjectId,
           departmentId: resolvedDepartmentId,
           serviceKind,
+          consultancyServiceTypeId,
           siteContactName,
           siteContactPhone,
           currentResponsibleRole: assignedOfficeUserId ? 'operasyon_sorumlusu' : null,

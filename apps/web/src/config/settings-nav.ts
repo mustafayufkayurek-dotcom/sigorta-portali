@@ -89,7 +89,6 @@ export const SETTINGS_LEGACY_REDIRECTS: Record<string, string> = {
   '/panel/ayarlar/kurulum': '/panel/ayarlar/sirket-bilgileri',
   '/panel/ayarlar/mail-kurulum': '/panel/ayarlar/e-posta-bildirimleri',
   '/panel/ayarlar/hizmet-branslari': '/panel/ayarlar/dosya-konulari',
-  '/panel/ayarlar/hizmet-turleri': '/panel/ayarlar/dosya-konulari',
   '/panel/ayarlar/ihbar-konulari': '/panel/ayarlar/dosya-konulari',
   '/panel/ayarlar/musteri-gruplari': '/panel/ayarlar/tanimlar',
   '/panel/ayarlar/musteri-gruplari/sigorta-sirketleri': '/panel/musteriler?openAdd=1&subType=sigorta_sirketi&entityType=corporate',

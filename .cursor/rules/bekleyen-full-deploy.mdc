@@ -1,11 +1,11 @@
 ---
-description: Canlı web v658 / backend v658
+description: Canlı web v659 / backend v659
 alwaysApply: true
 ---
 
-# Canlı (14.10.2026)
+# Canlı (29.10.2026)
 
-Canlı: web **v658** · backend **v658**. Geri alma: web **v657** / backend **v657**.
+Canlı: web **v659** · backend **v659**. Geri alma: web **v658** / backend **v658**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v659 (full):** Operasyon’da Danışmanlık (Hasar Tespit ve Ayarlar türleri). Yeni Dosya üç tuş durur. Yeni Özel Müşteri tam kart (Bireysel · Özel Müşteri). Operasyon alt menü alfabetik; ana menü sırası durur. Asistans Hizmetleri altında Hasar ve Acil Yardım. Hasar raporda 1.850.000 TL satış/maliyette durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v658 / backend v658.
 
 **v658 (full):** Acil yeni ihbar mail konusu **poliçe no / sigortalı / dosya no / dosya konusu**. Kartta Poliçe No durur. Hasar Yeni İhbar-ofis konusu aynı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v657 / backend v657.
 
@@ -193,4 +195,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v658** · backend **v658**.
+Canlı web **v659** · backend **v659**.

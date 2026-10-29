@@ -69,6 +69,13 @@ import {
 import { countExpertQueues, normalizeExpertQueueParam } from '@/utils/expert-portal-queues';
 import { fieldStaffInspectionStatus, fieldStaffAcilIsOpen, FIELD_STAFF_ASSIGNMENTS_HREF, FIELD_STAFF_ASSIGNMENTS_LABEL, FIELD_STAFF_CLAIMS_CHANGED_EVENT, FIELD_STAFF_COMPLETED_INSPECTIONS_HREF, FIELD_STAFF_COMPLETED_INSPECTIONS_LABEL } from '@/utils/field-staff-claim-view';
 import { fieldStaffIncludesAcil } from '@/app/panel/kullanicilar/_lib/user-invite-config';
+import {
+  buildOperasyonNavChildren,
+  isHasarHizmetNavActive,
+  HASAR_LIST_HIZMET_PARAM,
+  MUSTERI_KAYNAK_PARAM,
+} from '@/utils/operasyon-nav';
+import { useConsultancyNavTypes } from '@/hooks/useConsultancyNavTypes';
 import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -298,26 +305,26 @@ function useFieldAssignedNavCount(enabled: boolean, pathname: string): number {
   return count;
 }
 
-const OPERASYON_NAV_CHILDREN: NavigationLink[] = [
-  { title: 'Dosya Özeti', href: '/panel/operasyon', exactMatch: true },
-  { title: 'Gelen Kutusu', href: '/panel/operasyon/gelen-kutusu' },
-  { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
-  { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
-];
-
 function isOperasyonChildActive(
   pathname: string,
   href: string,
   opsFilter: string | null,
   exactMatch?: boolean,
+  hizmetFilter: string | null = null,
+  kaynakFilter: string | null = null,
 ): boolean {
   const [path, qs = ''] = href.split('?');
-  const hrefFilter = new URLSearchParams(qs).get('filter');
+  const params = new URLSearchParams(qs);
+  if (path === '/panel/hasar-dosyalari') {
+    return isHasarHizmetNavActive(pathname, href, hizmetFilter, kaynakFilter);
+  }
+  const hrefFilter = params.get('filter');
+  const hrefKaynak = params.get(MUSTERI_KAYNAK_PARAM);
   if (path === '/panel/operasyon' && hrefFilter === 'acil') {
-    return pathname === '/panel/operasyon' && opsFilter === 'acil';
+    return pathname === '/panel/operasyon' && opsFilter === 'acil' && (hrefKaynak || null) === (kaynakFilter || null);
   }
   if (path === '/panel/operasyon' && (exactMatch || !hrefFilter)) {
-    return pathname === '/panel/operasyon' && opsFilter !== 'acil';
+    return pathname === '/panel/operasyon' && opsFilter !== 'acil' && !kaynakFilter;
   }
   if (path === '/panel') return pathname === '/panel';
   return pathname === path || pathname.startsWith(`${path}/`);
@@ -350,6 +357,7 @@ function getPanelMainLinks({
   insuranceNavCounts,
   assistanceNavCounts,
   fieldAssignedCount,
+  consultancyNavTypes,
 }: {
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
@@ -362,9 +370,11 @@ function getPanelMainLinks({
   insuranceNavCounts?: InsurancePortalNavCounts;
   assistanceNavCounts?: InsurancePortalNavCounts;
   fieldAssignedCount?: number;
+  consultancyNavTypes?: { name: string; code?: string | null }[];
 }): NavigationLink[] {
   const opsBadge = pendingRevisionCount > 0 ? pendingRevisionCount : undefined;
-  return isExpert
+  const operasyonChildren = buildOperasyonNavChildren(consultancyNavTypes) as NavigationLink[];
+  const links = isExpert
     ? getExpertPortalNav(expertNavCounts)
     : isInsuranceCompanyUser
       ? getInsurancePortalNav(insuranceNavCounts)
@@ -379,7 +389,7 @@ function getPanelMainLinks({
               alertCount: opsBadge,
               icon: ClipboardList,
               groupOnly: true,
-              children: OPERASYON_NAV_CHILDREN,
+              children: operasyonChildren,
             },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
@@ -420,7 +430,7 @@ function getPanelMainLinks({
               alertCount: opsBadge,
               icon: ClipboardList,
               groupOnly: true,
-              children: OPERASYON_NAV_CHILDREN,
+              children: operasyonChildren,
             },
             { title: 'Müşteriler', href: '/panel/musteriler', icon: Users },
             { title: 'Tedarikçiler', href: '/panel/tedarikciler', icon: PackageCheck },
@@ -442,7 +452,7 @@ function getPanelMainLinks({
             icon: ClipboardList,
             groupStart: true,
             groupOnly: true,
-            children: OPERASYON_NAV_CHILDREN,
+            children: operasyonChildren,
           },
           { title: 'Personel', href: '/panel/personel-ozluk', icon: ClipboardList, groupStart: true },
           { title: 'Sahiplik', href: '/panel/sahiplik', icon: ShieldCheck },
@@ -459,6 +469,7 @@ function getPanelMainLinks({
           },
           { title: 'Ayarlar', href: '/panel/ayarlar', icon: Settings },
         ];
+  return links;
 }
 
 // ── Üst Navbar ────────────────────────────────────────────────────────────────
@@ -502,10 +513,12 @@ function Navbar({
   onToggleSidebar,
 }: NavbarProps & { companyLogo: string | null; companyName: string }) {
   // Yetki kontrolü: DB izinleri varsa öncelikli, yoksa role-default
-  const canSee = (path: string) =>
-    allowedScreens !== null
-      ? canSeeNavItemDynamic(path, allowedScreens, roleCode)
-      : canSeeNavItem(path, roleCode);
+  const canSee = (path: string) => {
+    const navPath = path.split('?')[0];
+    return allowedScreens !== null
+      ? canSeeNavItemDynamic(navPath, allowedScreens, roleCode)
+      : canSeeNavItem(navPath, roleCode);
+  };
 
   const identity = resolvePanelProfileIdentity({
     isAssistanceCompanyUser,
@@ -524,6 +537,8 @@ function Navbar({
   /** Mobil alt menü accordion — masaüstü sidebar ile aynı davranış */
   const [mobileExpandedGroups, setMobileExpandedGroups] = useState<Record<string, boolean>>({});
   const [mobileOpsFilter, setMobileOpsFilter] = useState<string | null>(null);
+  const [mobileHizmetFilter, setMobileHizmetFilter] = useState<string | null>(null);
+  const [mobileKaynakFilter, setMobileKaynakFilter] = useState<string | null>(null);
   const [profileDropOpen, setProfileDropOpen] = useState(false);
   const [quickActionOpen, setQuickActionOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -544,7 +559,10 @@ function Navbar({
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    setMobileOpsFilter(new URLSearchParams(window.location.search).get('filter'));
+    const params = new URLSearchParams(window.location.search);
+    setMobileOpsFilter(params.get('filter'));
+    setMobileHizmetFilter(params.get(HASAR_LIST_HIZMET_PARAM));
+    setMobileKaynakFilter(params.get(MUSTERI_KAYNAK_PARAM));
   }, [pathname, mobileMenuOpen]);
 
   // Ctrl+K / Cmd+K → arama aç
@@ -573,6 +591,7 @@ function Navbar({
   }, [onNotifClose]);
 
   const fieldAssignedCount = useFieldAssignedNavCount(isFieldStaff, pathname);
+  const consultancyNavTypes = useConsultancyNavTypes();
 
   const mainLinks = getPanelMainLinks({
     isExpert,
@@ -583,6 +602,7 @@ function Navbar({
     isFieldStaff,
     pendingRevisionCount,
     fieldAssignedCount,
+    consultancyNavTypes,
   });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
@@ -926,7 +946,10 @@ function Navbar({
                       const hasChildren = visibleChildren.length > 0;
                       const childIsActive = hasChildren
                         && visibleChildren.some((child) =>
-                          isOperasyonChildActive(pathname, child.href, mobileOpsFilter, child.exactMatch),
+                          isOperasyonChildActive(pathname, child.href, mobileOpsFilter, child.exactMatch, mobileHizmetFilter, mobileKaynakFilter)
+                          || (child.children ?? []).some((grand) =>
+                            isOperasyonChildActive(pathname, grand.href, mobileOpsFilter, grand.exactMatch, mobileHizmetFilter, mobileKaynakFilter),
+                          ),
                         );
                       const isExpanded = hasChildren
                         ? (mobileExpandedGroups[link.href] ?? childIsActive)
@@ -1003,12 +1026,46 @@ function Navbar({
                           {hasChildren && isExpanded ? (
                             <div className="ml-4 space-y-0.5 border-l border-slate-100 pl-2 dark:border-slate-800">
                               {visibleChildren.map((child) => {
+                                const grand = (child.children ?? []).filter((g) => canSee(g.href));
                                 const active = isOperasyonChildActive(
                                   pathname,
                                   child.href,
                                   mobileOpsFilter,
                                   child.exactMatch,
+                                  mobileHizmetFilter,
+                                  mobileKaynakFilter,
                                 );
+                                if (grand.length) {
+                                  return (
+                                    <div key={`${child.href}:${child.title}`} className="space-y-0.5">
+                                      <p className="px-3 pt-1 text-[11px] font-semibold text-slate-500">{child.title}</p>
+                                      {grand.map((g) => {
+                                        const gActive = isOperasyonChildActive(
+                                          pathname,
+                                          g.href,
+                                          mobileOpsFilter,
+                                          g.exactMatch,
+                                          mobileHizmetFilter,
+                                          mobileKaynakFilter,
+                                        );
+                                        return (
+                                          <Link
+                                            key={`${g.href}:${g.title}`}
+                                            href={g.href}
+                                            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-blue-50/60 hover:text-blue-700 dark:hover:bg-slate-800 ${
+                                              gActive
+                                                ? 'bg-blue-50/50 text-blue-700 dark:bg-slate-800 dark:text-blue-300'
+                                                : 'text-slate-600 dark:text-slate-300'
+                                            }`}
+                                            onClick={() => setMobileMenuOpen(false)}
+                                          >
+                                            <span className="min-w-0 whitespace-normal break-words">{g.title}</span>
+                                          </Link>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                }
                                 return (
                                   <Link
                                     key={`${child.href}:${child.title}`}
@@ -1125,10 +1182,13 @@ function PanelSidebar({
   // window.location üzerinden takip ediyoruz.
   const [activeQueueParam, setActiveQueueParam] = useState<string | null>(null);
   const [activeOpsFilter, setActiveOpsFilter] = useState<string | null>(null);
+  const [activeHizmetParam, setActiveHizmetParam] = useState<string | null>(null);
+  const [activeKaynakParam, setActiveKaynakParam] = useState<string | null>(null);
   const [activeTabParam, setActiveTabParam] = useState<string | null>(null);
   const [expertNavCounts, setExpertNavCounts] = useState<ExpertPortalNavCounts>({});
   const [insuranceNavCounts, setInsuranceNavCounts] = useState<InsurancePortalNavCounts>({});
   const fieldAssignedCount = useFieldAssignedNavCount(isFieldStaff, pathname);
+  const consultancyNavTypes = useConsultancyNavTypes();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1136,6 +1196,8 @@ function PanelSidebar({
       const params = new URLSearchParams(window.location.search);
       setActiveQueueParam(params.get('queue'));
       setActiveOpsFilter(params.get('filter'));
+      setActiveHizmetParam(params.get(HASAR_LIST_HIZMET_PARAM));
+      setActiveKaynakParam(params.get(MUSTERI_KAYNAK_PARAM));
       setActiveTabParam(params.get('tab'));
     };
     readQueue();
@@ -1205,15 +1267,20 @@ function PanelSidebar({
 
   const isOfficeStaff = isOfficeStaffRole(roleCode);
 
-  const canSee = (path: string) =>
-    allowedScreens !== null
-      ? canSeeNavItemDynamic(path, allowedScreens, roleCode)
-      : canSeeNavItem(path, roleCode);
+  const canSee = (path: string) => {
+    const navPath = path.split('?')[0];
+    return allowedScreens !== null
+      ? canSeeNavItemDynamic(navPath, allowedScreens, roleCode)
+      : canSeeNavItem(navPath, roleCode);
+  };
 
   const isActive = (href: string, exactMatch?: boolean) => {
     const [normalizedHref, hrefQueryString = ''] = href.split('?');
     if (normalizedHref === '/panel/operasyon' || normalizedHref.startsWith('/panel/operasyon/')) {
-      return isOperasyonChildActive(pathname, href, activeOpsFilter, exactMatch);
+      return isOperasyonChildActive(pathname, href, activeOpsFilter, exactMatch, activeHizmetParam, activeKaynakParam);
+    }
+    if (normalizedHref === '/panel/hasar-dosyalari') {
+      return isHasarHizmetNavActive(pathname, href, activeHizmetParam, activeKaynakParam);
     }
     const pathMatches = exactMatch
       ? pathname === normalizedHref
@@ -1247,6 +1314,7 @@ function PanelSidebar({
     insuranceNavCounts,
     assistanceNavCounts: insuranceNavCounts,
     fieldAssignedCount,
+    consultancyNavTypes,
   });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
@@ -1279,7 +1347,10 @@ function PanelSidebar({
     const visibleChildren = (link.children ?? []).filter((child) => canSee(child.href));
     const hasChildren = visibleChildren.length > 0;
     const childIsActive = hasChildren
-      ? visibleChildren.some((child) => isActive(child.href, child.exactMatch))
+      ? visibleChildren.some((child) =>
+          isActive(child.href, child.exactMatch)
+          || (child.children ?? []).some((grand) => isActive(grand.href, grand.exactMatch)),
+        )
       : false;
     const parentIsActive = link.groupOnly ? childIsActive : isActive(link.href, link.exactMatch);
     const isExpanded = hasChildren
@@ -1339,6 +1410,13 @@ function PanelSidebar({
             setActiveOpsFilter(new URLSearchParams(hrefQueryString).get('filter'));
           } else if (link.href.split('?')[0] === '/panel/operasyon') {
             setActiveOpsFilter(null);
+          }
+          if (link.href.split('?')[0] === '/panel/hasar-dosyalari') {
+            setActiveHizmetParam(new URLSearchParams(hrefQueryString).get(HASAR_LIST_HIZMET_PARAM));
+            setActiveKaynakParam(new URLSearchParams(hrefQueryString).get(MUSTERI_KAYNAK_PARAM));
+          }
+          if (link.href.split('?')[0] === '/panel/operasyon') {
+            setActiveKaynakParam(new URLSearchParams(hrefQueryString).get(MUSTERI_KAYNAK_PARAM));
           }
         }}
       >

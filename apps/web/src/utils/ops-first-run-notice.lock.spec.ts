@@ -82,6 +82,18 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(OPS_NOTICE.acilDosyaSorumlusuVekalet.body, /tüm Acil kuyruğunu/);
   });
 
+  it('Danışmanlık menü şeridi Hasar listesinde durur', () => {
+    const hasarListe = readFileSync(join(here, '../app/panel/hasar-dosyalari/page.tsx'), 'utf8');
+    assert.match(hasarListe, /OPS_NOTICE\.hasarDanismanlikHizmet/);
+    assert.match(hasarListe, /danismanlik-hizmet-ilk-kullanim-seridi/);
+    assert.equal(OPS_NOTICE.hasarDanismanlikHizmet.id, 'hasar-danismanlik-hizmet-v659');
+    assert.match(OPS_NOTICE.hasarDanismanlikHizmet.body, /Operasyon menüsündedir/);
+    assert.match(OPS_NOTICE.hasarDanismanlikHizmet.body, /Tanımlar/);
+    assert.doesNotMatch(OPS_NOTICE.hasarDanismanlikHizmet.body, /Google|API/);
+    const hasarForm = readFileSync(join(here, '../components/claim-files/ClaimNewForm.tsx'), 'utf8');
+    assert.doesNotMatch(hasarForm, /danismanlik-hizmet-ilk-kullanim-seridi/);
+  });
+
   it('Hasar ve Acil listesinde son canlı iş şeridi durur', () => {
     const hasarListe = readFileSync(join(here, '../app/panel/hasar-dosyalari/page.tsx'), 'utf8');
     const hasarDosya = readFileSync(join(here, '../app/panel/hasar-dosyalari/[id]/page.tsx'), 'utf8');

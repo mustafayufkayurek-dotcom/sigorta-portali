@@ -1,0 +1,36 @@
+# Danışmanlık Hizmet Türleri Kilidi
+
+**Kaynak (Mustafa · 29.10.2026):** Diğer hizmetler Hasar ve Acil listesinde yoktu. Dosya açarken üç hizmet tuşu zaten durur. Danışmanlık **sol Operasyon menüsüne** eklenir. Yeni Özel Müşteri mini form değil, **müşteri kartı**dır.
+
+**Temel cümle:** **Hasar Tespit Danışmanlık menüsündedir.** Yeni Dosya’da üç tuş durur. Özel müşteri kartı tam açılır.
+
+## Zorunlu
+
+1. Yeni Dosya hizmet: **Hasar Tespit | Hasar Onarım Ve Restorasyon | Danışmanlık** — iç içe değil.
+2. Operasyon sol menüde **Danışmanlık**; altında Hasar Tespit ve Tanımlar’dan eklenen türler. Liste `?hizmet=` ile süzülür.
+3. Yeni tür Ayarlar `/panel/ayarlar/hizmet-turleri` ekranından eklenir. Hasar Tespit silinmez.
+4. Hasar Tespit kaydı `serviceKind = inspection` kalır; tespit planı gizleme ve Onarıma Çevir durur.
+5. Yeni Özel Müşteri `/panel/musteriler` tam kartı açar. Kart **Bireysel · Özel Müşteri**dir. Sigorta / eksper / broker / asistans tipi bu akışta yok. Mini Şirket Adı / Vergi No / Telefon formu özel müşteri için yok. Kaydedince Yeni Dosya aynı müşteriyle açılır.
+6. Özel müşteri + tespit `ozel-musteri` departmanında kalır.
+
+## Yasak (açık onay yoksa)
+
+- Yeni Dosya’da Hasar Tespit’i Danışmanlık altına gömmek
+- Özel müşteriyi üç alanlık formla kaydetmek
+- Hasar Tespit’i silmek veya kapatmak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Menüde Danışmanlık yoksa, özel müşteri kartı açılmazsa veya üç tuş kaybolursa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+ packages/shared/src/claim-service-kind.lock.spec.ts \
+ apps/web/src/utils/operasyon-nav.lock.spec.ts \
+ apps/web/src/components/claim-files/claim-new-form.lock.spec.ts \
+ apps/web/src/app/panel/ayarlar/hizmet-turleri/danismanlik-hizmet-turleri.lock.spec.ts \
+ apps/web/src/utils/musteri-gruplari-add-context.lock.spec.ts
+```

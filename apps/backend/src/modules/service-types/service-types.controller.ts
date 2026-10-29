@@ -6,12 +6,14 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ServiceTypesService } from './service-types.service';
 import { RequirePermissions } from '@/common/decorators/permissions.decorator';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
+import { CONSULTANCY_SERVICE_FAMILY } from '@sigorta/shared';
 
 @ApiTags('service-types')
 @ApiBearerAuth()
@@ -20,11 +22,18 @@ import { PermissionsGuard } from '@/common/guards/permissions.guard';
 export class ServiceTypesController {
   constructor(private readonly serviceTypesService: ServiceTypesService) {}
 
+  @Get('active')
+  @ApiOperation({ summary: 'Aktif danışmanlık hizmet türlerini listele' })
+  async findActive(@Query('family') family?: string) {
+    const data = await this.serviceTypesService.findAllActive(family || CONSULTANCY_SERVICE_FAMILY);
+    return { success: true, data };
+  }
+
   @Get()
   @RequirePermissions('customer.view')
   @ApiOperation({ summary: 'Hizmet türlerini listele' })
-  async findAll() {
-    const data = await this.serviceTypesService.findAll();
+  async findAll(@Query('family') family?: string) {
+    const data = await this.serviceTypesService.findAll(family);
     return { success: true, data };
   }
 

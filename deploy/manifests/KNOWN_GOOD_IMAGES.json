@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-10-14",
-  "label": "v658-acil-ihbar-konu",
-  "description": "v658: Acil yeni ihbar mail konusu poliçe / sigortalı / dosya no / konu. Geri alma web v657 / backend v657.",
+  "updatedAt": "2026-10-29",
+  "label": "v659-operasyon-danismanlik-asistans-tutar",
+  "description": "v659: Danışmanlık menü, özel müşteri kartı, Operasyon alt alfabetik, Asistans Hizmetleri, rapor büyük tutar. Geri alma web v658 / backend v658.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v658-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v658-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v659-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v659-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v657-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v657-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v658-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v658-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

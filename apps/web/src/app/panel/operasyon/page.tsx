@@ -70,6 +70,11 @@ import { AcilSilentAssistanceStrip } from '@/components/crm/AcilSilentAssistance
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import {
+  MUSTERI_KAYNAK_PARAM,
+  acilListPageTitle,
+  normalizeMusteriKaynakParam,
+} from '@/utils/operasyon-nav';
+import {
   ACIL_PRODUCT_STAGE_FILTERS,
   BADGE_TONE_CLASS,
   EMERGENCY_STATUS_PRODUCT_LABELS,
@@ -390,6 +395,8 @@ function OperasyonPageContent() {
   const [opsStats, setOpsStats] = useState<OpsStats | null>(null);
   const [emailTarget, setEmailTarget] = useState<OperationSendEmailTarget | null>(null);
 
+  const urlKaynak = normalizeMusteriKaynakParam(searchParams.get(MUSTERI_KAYNAK_PARAM));
+  const acilPageTitle = acilListPageTitle(urlKaynak);
   const [filterType, setFilterType] = useState<'all' | 'hasar' | 'acil'>(() => {
     const filter = searchParams.get('filter');
     return filter === 'acil' || filter === 'hasar' || filter === 'all' ? filter : 'all';
@@ -449,11 +456,11 @@ function OperasyonPageContent() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = filterType === 'acil' ? 'Acil Yardım Dosyaları' : 'Dosya Özeti';
+    document.title = filterType === 'acil' ? acilPageTitle : 'Dosya Özeti';
     return () => {
       document.title = previous;
     };
-  }, [filterType]);
+  }, [filterType, acilPageTitle]);
 
   const patchClaimInsuredName = useCallback((claimId: string, insuredName: string) => {
     setClaims((prev) => prev.map((claim) => (
@@ -528,14 +535,17 @@ function OperasyonPageContent() {
     setCasesLoading(true);
     setCasesError('');
     try {
-      const raw = await apiClient.get<unknown>('/emergency/cases');
+      const raw = await apiClient.get<unknown>(
+        '/emergency/cases',
+        urlKaynak ? { kaynak: urlKaynak } : undefined,
+      );
       setCases(asList<EmergencyCase>(raw));
     } catch {
       setCases([]);
       setCasesError('Acil dosyalar yüklenemedi');
     }
     finally { setCasesLoading(false); }
-  }, [filterType, opsPreset]);
+  }, [filterType, opsPreset, urlKaynak]);
 
   useEffect(() => {
     loadClaims();
@@ -976,7 +986,7 @@ function OperasyonPageContent() {
         <a href="/panel" className="hover:text-brand-600 transition-colors">Dashboard</a>
         <span>/</span>
         {isAcilListMode ? (
-          <span className="text-slate-600 font-medium">Acil Yardım Dosyaları</span>
+          <span className="text-slate-600 font-medium">{acilPageTitle}</span>
         ) : (
           <span className="text-slate-600 font-medium">Dosya Özeti</span>
         )}
@@ -1005,7 +1015,7 @@ function OperasyonPageContent() {
             {isAcilListMode ? (
               <>
                 <h2 className="page-title">
-                  Acil Yardım Dosyaları
+                  {acilPageTitle}
                 </h2>
                 {!isLoading && (
                   <p className="page-subtitle">

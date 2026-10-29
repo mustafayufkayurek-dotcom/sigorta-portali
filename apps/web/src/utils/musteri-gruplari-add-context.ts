@@ -31,3 +31,19 @@ export function parseMusteriGrubuAddContext(
   if (!returnTo.startsWith('/panel/')) return null;
   return { returnTo, returnLabel, subType };
 }
+
+export const OZEL_MUSTERI_SUB_TYPE = 'private_customer';
+
+export function isYeniDosyaOzelMusteriAdd(
+  ctx: { returnTo?: string; subType?: string } | null | undefined,
+): boolean {
+  if (!ctx) return false;
+  const dest = String(ctx.returnTo ?? '');
+  return dest.includes('/panel/hasar-dosyalari') && dest.includes('yeni=1')
+    && String(ctx.subType ?? '') === OZEL_MUSTERI_SUB_TYPE;
+}
+
+export function entityTypeForMusteriAdd(subType: string, rawEntityType: string | null): 'individual' | 'corporate' {
+  if (subType === OZEL_MUSTERI_SUB_TYPE) return 'individual';
+  return rawEntityType === 'corporate' ? 'corporate' : 'individual';
+}
