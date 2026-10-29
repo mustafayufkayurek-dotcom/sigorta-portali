@@ -484,7 +484,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       if (showNewCustomerForm && customerSource !== 'private') {
         const cRes = await axios.post(`${API}/customers`, {
           type: 'corporate',
-          subType: customerSource === 'private' ? 'private_customer' : HASAR_EXPERT_CUSTOMER_SUB_TYPE,
+          subType: HASAR_EXPERT_CUSTOMER_SUB_TYPE,
           serviceType: 'hasar',
           companyName: toTitleCaseTR(newCustomerCompanyName.trim()),
           taxNumber: newCustomerTaxNumber.trim() || undefined,
