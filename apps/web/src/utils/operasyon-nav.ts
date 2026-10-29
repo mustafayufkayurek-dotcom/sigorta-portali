@@ -82,7 +82,7 @@ export function buildDanismanlikNavChildren(
 export function buildAsistansNavChildren(): OperasyonNavChild[] {
   return sortNavByTitleTr([
     { title: 'Acil Yardım', href: acilListHrefForKaynak(MUSTERI_KAYNAK_ASISTANS) },
-    { title: 'Hasar', href: hasarListHrefForKaynak(MUSTERI_KAYNAK_ASISTANS) },
+    { title: 'Hasar Onarım', href: '/panel/hasar-dosyalari' },
   ]);
 }
 
@@ -92,7 +92,6 @@ export function buildOperasyonNavChildren(
   const children: OperasyonNavChild[] = [
     { title: 'Dosya Özeti', href: '/panel/operasyon', exactMatch: true },
     { title: 'Gelen Kutusu', href: '/panel/operasyon/gelen-kutusu' },
-    { title: 'Hasar Dosyaları', href: '/panel/hasar-dosyalari' },
     { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
     {
       title: 'Danışmanlık',
@@ -102,7 +101,7 @@ export function buildOperasyonNavChildren(
     },
     {
       title: 'Asistans Hizmetleri',
-      href: hasarListHrefForKaynak(MUSTERI_KAYNAK_ASISTANS),
+      href: '/panel/hasar-dosyalari',
       groupOnly: true,
       children: buildAsistansNavChildren(),
     },
@@ -118,8 +117,8 @@ export function acilListPageTitle(kaynak?: string | null): string {
 export function hasarListPageTitle(hizmet: string | null, kaynak?: string | null): string {
   const kaynakCode = normalizeMusteriKaynakParam(kaynak);
   const code = normalizeHasarHizmetParam(hizmet);
-  if (kaynakCode === MUSTERI_KAYNAK_ASISTANS && !code) return 'Asistans Hasar';
-  if (!code) return 'Hasar Dosyaları';
+  if (kaynakCode === MUSTERI_KAYNAK_ASISTANS && !code) return 'Hasar Onarım';
+  if (!code) return 'Hasar Onarım';
   if (code === HASAR_HIZMET_TESPIT) return 'Hasar Tespit';
   if (code === HASAR_HIZMET_DANISMANLIK) return 'Danışmanlık';
   return code

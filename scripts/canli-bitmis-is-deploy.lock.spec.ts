@@ -33,6 +33,13 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
     assert.match(full, /exclude '\.env'/);
   });
 
+  it('kayıt güncellemesi düşerse ekran alınmaz', () => {
+    const full = readFileSync(join(here, 'deploy-full-production.sh'), 'utf8');
+    assert.match(full, /prisma migrate deploy/);
+    assert.match(full, /HATA: kayıt güncellemesi uygulanamadı/);
+    assert.doesNotMatch(full, /UYARI: prisma migrate deploy başarısız/);
+  });
+
   it('toplu kilit listesi kendi kapısını doğrular', () => {
     const src = readFileSync(join(here, 'smoke-canli-bitmis-is.sh'), 'utf8');
     assert.match(src, /smoke-acil-netlesen\.sh/);
@@ -40,6 +47,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
     assert.match(src, /smoke-panel-auth-gate\.sh/);
     assert.match(src, /smoke-outbound-mail\.sh/);
     assert.match(src, /smoke-finans-kart\.sh/);
+    assert.match(src, /field-open-list-smoke\.mjs/);
     assert.match(src, /pdf-preview-open\.lock\.spec/);
     assert.match(src, /customer-form-identity\.lock\.spec/);
     assert.match(src, /eksper-sigorta-matrix-removed\.lock\.spec/);
@@ -120,6 +128,26 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'tespit-notu-yazim.lock.spec',
       'repair-report-revise.lock.spec',
       'hasar-ek-onarim.lock.spec',
+      'file-recognized-partners.lock.spec',
+      'inbox-recipient-card.lock.spec',
+      'customer-open-address.lock.spec',
+      'system-admin-identity.lock.spec',
+      'authorized-person-name.lock.spec',
+      'customer-general-mailbox.lock.spec',
+      'operasyon-agi-canli-destek.lock.spec',
+      'hasar-dosya-irtibat.lock.spec',
+      'insurance-company-catalog.lock.spec',
+      'mali-mesuliyet.lock.spec',
+      'repair-damage-category.lock.spec',
+      'mali-mesuliyet-alanlari.lock.spec',
+      'report-pdf-layout.lock.spec',
+      'hasar-kapanis-butcesi.lock.spec',
+      'hasar-office-close.lock.spec',
+      'portal-file-flow-labels.lock.spec',
+      'inbound-form-fields.lock.spec',
+      'legal-public.lock.spec',
+      'csrf-origin.lock.spec',
+      'restore-missing-report-images.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

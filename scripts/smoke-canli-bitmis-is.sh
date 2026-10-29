@@ -9,6 +9,7 @@ cd "$REPO_ROOT"
 echo "=== Canlı bitmiş iş kilitleri ==="
 
 node --experimental-strip-types --test "$SCRIPT_DIR/canli-bitmis-is-deploy.lock.spec.ts"
+node "$SCRIPT_DIR/lib/field-open-list-smoke.mjs"
 
 FULL="$REPO_ROOT/scripts/deploy-full-production.sh"
 WEB="$REPO_ROOT/scripts/deploy-web-production.sh"
@@ -140,6 +141,64 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/repair-reports/repair-report-revise.lock.spec.ts \
   packages/shared/src/hasar-ek-onarim.lock.spec.ts \
   apps/backend/src/modules/finance/hasar-ek-onarim.lock.spec.ts \
-  apps/backend/src/modules/repair-reports/pdf/report-pdf-layout.lock.spec.ts
+  apps/backend/src/modules/repair-reports/pdf/report-pdf-layout.lock.spec.ts \
+  packages/shared/src/hasar-kapanis-butcesi.lock.spec.ts \
+  packages/shared/src/hasar-office-close.lock.spec.ts \
+  apps/backend/src/modules/claim-files/hasar-ofis-dosya-kapat.lock.spec.ts \
+  apps/web/src/utils/portal-file-flow-labels.lock.spec.ts \
+  packages/shared/src/inbound-form-fields.lock.spec.ts \
+  packages/shared/src/acil-digital-approval-pause.lock.spec.ts \
+  apps/backend/src/modules/file-documents/emergency-matbu-form.lock.spec.ts \
+  apps/web/src/app/panel/crm/crm-pazartesi.lock.spec.ts \
+  apps/web/src/components/eksper-portal/expert-dosyalar-actions.lock.spec.ts \
+  apps/web/src/components/hasar-operasyon-planlayicisi/hasar-templates.lock.spec.ts \
+  apps/web/src/components/finance/file-expense-work-group.lock.spec.ts \
+  packages/shared/src/file-expense-work-group-audit.lock.spec.ts \
+  apps/web/src/lib/legal-public.lock.spec.ts \
+  apps/backend/src/modules/repair-reports/email/report-dispatch-email.lock.spec.ts \
+  packages/shared/src/repair-report-pdf-draft.lock.spec.ts \
+  packages/shared/src/repair-report-expert.lock.spec.ts \
+  apps/web/src/utils/operation-customer-display.lock.spec.ts \
+  apps/web/src/utils/claim-list-column-fields.lock.spec.ts \
+  apps/web/src/app/panel/musteriler/yetkili-ad.lock.spec.ts \
+  apps/web/src/app/panel/musteriler/musteri-kpi.lock.spec.ts \
+  apps/web/src/components/operasyon/claim-file-header-actions-menu.lock.spec.ts \
+  packages/shared/src/acil-assistance-mail-decision.lock.spec.ts \
+  packages/shared/src/acil-insured-name.lock.spec.ts \
+  packages/shared/src/acil-locksmith-issue.lock.spec.ts \
+  packages/shared/src/acil-report-phrase-memory.lock.spec.ts \
+  apps/backend/src/modules/operation-inbox/inbound-location.lock.spec.ts \
+  apps/backend/src/modules/claim-files/vendor-area-match.lock.spec.ts \
+  apps/web/src/utils/vendor-region-proximity.lock.spec.ts \
+  apps/web/src/utils/vendor-service-domains.lock.spec.ts \
+  packages/shared/src/vendor-identity.lock.spec.ts \
+  apps/web/src/components/hasar-operasyon-planlayicisi/step-supplier-maket.lock.spec.ts \
+  apps/web/src/app/panel/asistans-portal/_components/asistans-portal-role-gate.lock.spec.ts \
+  apps/web/src/utils/emergency-cases-list.lock.spec.ts \
+  apps/web/src/utils/invoice-customer-name.lock.spec.ts \
+  apps/web/src/utils/invoice-request-work-items.lock.spec.ts \
+  apps/web/src/utils/finans-table-page.lock.spec.ts \
+  apps/web/src/utils/ops-list-page-size.lock.spec.ts \
+  apps/web/src/utils/customer-file-counts.lock.spec.ts \
+  apps/backend/src/modules/customers/customer-file-stats.lock.spec.ts \
+  apps/backend/src/modules/customers/customer-short-name.lock.spec.ts \
+  apps/backend/src/modules/invoices/invoice-edit-note.lock.spec.ts \
+  apps/backend/src/modules/document-types/document-type-scope.lock.spec.ts \
+  apps/backend/src/modules/finance/overhead-month-end.lock.spec.ts \
+  packages/shared/src/turkey-province-coords.lock.spec.ts \
+  apps/web/src/data/country-codes.lock.spec.ts \
+  apps/backend/src/common/security/csrf-origin.lock.spec.ts \
+  apps/backend/src/common/security/password-hash.lock.spec.ts \
+  apps/backend/src/common/security/sanitize-search.lock.spec.ts \
+  apps/web/src/utils/sanitize-html.lock.spec.ts \
+  apps/backend/src/modules/storage/storage-s3-errors.lock.spec.ts \
+  scripts/secret-vault-status.lock.spec.ts \
+  apps/backend/src/common/helpers/turkey-location-normalize.lock.spec.ts \
+  apps/backend/src/modules/dashboard/dashboard-role.lock.spec.ts \
+  apps/backend/src/modules/claim-files/acil-kpi-scope.lock.spec.ts \
+  apps/backend/src/modules/claim-files/hasar-kpi-scope.lock.spec.ts \
+  apps/web/src/features/dashboard/utils/dashboard-data-delivery.lock.spec.ts \
+  apps/web/src/utils/panel-profile-identity.lock.spec.ts \
+  scripts/restore-missing-report-images.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

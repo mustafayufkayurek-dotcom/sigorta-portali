@@ -25,24 +25,24 @@ describe('operasyon nav danışmanlık ve asistans kilidi', () => {
       'Danışmanlık',
       'Dosya Özeti',
       'Gelen Kutusu',
-      'Hasar Dosyaları',
     ]);
+    assert.ok(!titles.includes('Hasar Dosyaları'));
     const danismanlik = children.find((c) => c.title === 'Danışmanlık');
     assert.equal(danismanlik?.groupOnly, true);
     assert.equal(danismanlik?.children?.[0]?.title, 'Hasar Tespit');
     assert.match(danismanlik?.children?.[0]?.href ?? '', new RegExp(`${HASAR_LIST_HIZMET_PARAM}=${HASAR_HIZMET_TESPIT}`));
     const asistans = children.find((c) => c.title === 'Asistans Hizmetleri');
     assert.equal(asistans?.groupOnly, true);
-    assert.deepEqual(asistans?.children?.map((c) => c.title), ['Acil Yardım', 'Hasar']);
+    assert.deepEqual(asistans?.children?.map((c) => c.title), ['Acil Yardım', 'Hasar Onarım']);
     assert.match(asistans?.children?.[0]?.href ?? '', /filter=acil/);
     assert.match(asistans?.children?.[0]?.href ?? '', new RegExp(`${MUSTERI_KAYNAK_PARAM}=${MUSTERI_KAYNAK_ASISTANS}`));
-    assert.match(asistans?.children?.[1]?.href ?? '', new RegExp(`${MUSTERI_KAYNAK_PARAM}=${MUSTERI_KAYNAK_ASISTANS}`));
+    assert.equal(asistans?.children?.[1]?.href, '/panel/hasar-dosyalari');
   });
 
   it('liste başlığı ve seçili menü hizmete ve kaynağa göre durur', () => {
     assert.equal(hasarListPageTitle(HASAR_HIZMET_TESPIT), 'Hasar Tespit');
-    assert.equal(hasarListPageTitle(null), 'Hasar Dosyaları');
-    assert.equal(hasarListPageTitle(null, MUSTERI_KAYNAK_ASISTANS), 'Asistans Hasar');
+    assert.equal(hasarListPageTitle(null), 'Hasar Onarım');
+    assert.equal(hasarListPageTitle(null, MUSTERI_KAYNAK_ASISTANS), 'Hasar Onarım');
     assert.equal(acilListPageTitle(MUSTERI_KAYNAK_ASISTANS), 'Asistans Acil Yardım');
     assert.equal(
       isHasarHizmetNavActive('/panel/hasar-dosyalari', `/panel/hasar-dosyalari?${HASAR_LIST_HIZMET_PARAM}=${HASAR_HIZMET_TESPIT}`, HASAR_HIZMET_TESPIT),

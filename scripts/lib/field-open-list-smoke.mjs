@@ -82,10 +82,16 @@ try {
 }
 
 const service = read('apps/backend/src/modules/claim-files/claim-files.service.ts');
-if (!service.includes("statusCode === 'open'") || !service.includes('isClosedState: false')) {
+if (
+  (!service.includes("statusCode === 'open'") && !service.includes("statusCodeLower === 'open'"))
+  || !service.includes('isClosedState: false')
+) {
   fail('Backend statusCode=open isClosedState:false kullanmıyor');
 }
-if (!service.includes("statusCode === 'closed'") || !service.includes('isClosedState: true')) {
+if (
+  (!service.includes("statusCode === 'closed'") && !service.includes("statusCodeLower === 'closed'"))
+  || !service.includes('isClosedState: true')
+) {
   fail('Backend statusCode=closed isClosedState:true kullanmıyor');
 }
 pass('Backend open/closed kapalı bayrağına bağlı');

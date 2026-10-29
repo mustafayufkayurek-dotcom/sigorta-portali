@@ -122,7 +122,8 @@ done
 docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health
 echo '=== prisma migrate deploy ==='
 docker exec sigorta-backend sh -c 'cd /app/apps/backend && npx prisma migrate deploy' || {
-  echo 'UYARI: prisma migrate deploy başarısız — backend loglarını kontrol edin'
+  echo 'HATA: kayıt güncellemesi uygulanamadı — ekran alınmadı'
+  exit 1
 }
 docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health
 echo '=== Yeni web (backend sağlık sonrası) ==='

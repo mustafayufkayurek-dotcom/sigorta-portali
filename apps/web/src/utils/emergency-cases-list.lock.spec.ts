@@ -23,10 +23,10 @@ const apiClient = readFileSync(join(here, '../lib/api-client.ts'), 'utf8');
 
 describe('Acil liste kontrol kilidi', () => {
   it('Acil ekranında Hasar KPI filtresi listeyi boşaltmaz', () => {
-    assert.match(opsListe, /apiClient\.get<unknown>\('\/emergency\/cases'\)/);
+    assert.match(opsListe, /apiClient\.get<unknown>\(\s*'\/emergency\/cases'/);
     assert.match(opsListe, /asList<EmergencyCase>/);
     assert.match(opsListe, /acilList \|\|/);
-    assert.match(opsListe, /\[filterType, opsPreset\]/);
+    assert.match(opsListe, /\[filterType, opsPreset, urlKaynak\]/);
   });
 
   it('0 satırda tablo başlığı durur; sessiz boş klasör yok', () => {

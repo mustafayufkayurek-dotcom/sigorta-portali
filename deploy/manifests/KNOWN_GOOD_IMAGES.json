@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-10-29",
-  "label": "v659-operasyon-danismanlik-asistans-tutar",
-  "description": "v659: Danışmanlık menü, özel müşteri kartı, Operasyon alt alfabetik, Asistans Hizmetleri, rapor büyük tutar. Geri alma web v658 / backend v658.",
+  "updatedAt": "2026-10-30",
+  "label": "v660-hasar-onarim-kilit-kapi",
+  "description": "v660: Operasyon Hasar Onarım; Hasar Dosyaları menüden kalktı; bitmiş iş kapısı genişledi; kayıt güncellemesi düşerse ekran alınmaz. Geri alma web v659 / backend v659.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v659-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v659-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v660-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v660-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v658-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v658-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v659-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v659-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
