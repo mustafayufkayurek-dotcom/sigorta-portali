@@ -4693,6 +4693,8 @@ function EmergencyReportEditor({
                     defaultValue={report.findingsText ?? ''}
                     disabled={!isEditable}
                     onBlur={(e) => {
+                      const v = toTitleCaseTR(e.target.value.trim());
+                      if (v && v !== e.target.value) e.target.value = v;
                       if (e.target.value !== (report.findingsText ?? '')) {
                         axios.put(`${API}/repair-reports/${reportId}`, { findingsText: e.target.value }, { headers: authHeader() });
                       }
@@ -6516,7 +6518,8 @@ export default function RepairReportPage() {
               defaultValue={report.findingsText ?? ''}
               readOnly={!isEditable}
               onBlur={(e) => {
-                const val = e.target.value.trim();
+                const val = toTitleCaseTR(e.target.value.trim());
+                if (val && val !== e.target.value) e.target.value = val;
                 if (val) setFindingsError(null);
                 else if (isEditable) setFindingsError('Tespit Bulguları zorunludur.');
                 handleUpdateField('findingsText', e.target.value);
@@ -7455,7 +7458,7 @@ export default function RepairReportPage() {
                     type="tel"
                     value={externalApprovalForm.approverPhone}
                     onChange={(e) => setExternalApprovalForm((f) => ({ ...f, approverPhone: e.target.value }))}
-                    placeholder="05xx xxx xx xx"
+                    placeholder="532 133 4144"
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>

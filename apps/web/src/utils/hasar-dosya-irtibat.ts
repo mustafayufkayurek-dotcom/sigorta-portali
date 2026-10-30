@@ -7,7 +7,9 @@ function phoneDigits(raw: string): string {
 }
 
 function hasarTelefonGosterim(raw: string): string {
-  const d = phoneDigits(raw).replace(/^0+/, '');
+  let d = phoneDigits(raw);
+  if (d.startsWith('90') && d.length >= 12) d = d.slice(2);
+  d = d.replace(/^0+/, '');
   if (!d) return '';
   if (d.length === 10) return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
   return raw.trim();

@@ -8,6 +8,7 @@ import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
+import { PhoneInput } from '@/components/PhoneInput';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -57,16 +58,6 @@ function authHeaders(extra?: Record<string, string>) {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...extra,
   };
-}
-
-function maskPhoneSimple(raw: string): string {
-  const d = raw.replace(/\D/g, '').slice(0, 11);
-  if (d.length === 0) return '';
-  if (d.length <= 1) return d;
-  if (d.length <= 4) return `${d[0]} (${d.slice(1)}`;
-  if (d.length <= 7) return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4)}`;
-  if (d.length <= 9) return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4, 7)} ${d.slice(7)}`;
-  return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
 }
 
 function isUuid(value: string) {
@@ -125,7 +116,6 @@ function InsuranceIhbarModal({
   const [districts, setDistricts] = useState<DistrictOption[]>([]);
   const [ihbarKonulari, setIhbarKonulari] = useState<{ value: string; label: string }[]>([]);
   const [form, setForm] = useState<IhbarFormData>(EMPTY_FORM);
-  const [phoneDisplay, setPhoneDisplay] = useState('');
   const [errors, setErrors] = useState<Partial<Record<keyof IhbarFormData, string>>>({});
   const [saving, setSaving] = useState(false);
   const [loadingLookups, setLoadingLookups] = useState(true);
@@ -649,18 +639,11 @@ function InsuranceIhbarModal({
                   <label className="text-xs font-medium text-slate-600 block mb-1.5">
                     Telefon <span className="text-status-danger">*</span>
                   </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className={`input-base-sm ${errors.sigortaliTelefon ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
-                    placeholder="0 (5XX) XXX XX XX"
-                    value={phoneDisplay}
-                    maxLength={18}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
-                      setPhoneDisplay(maskPhoneSimple(digits));
-                      set('sigortaliTelefon', digits);
-                    }}
+                  <PhoneInput
+                    value={form.sigortaliTelefon}
+                    onChange={(v) => set('sigortaliTelefon', v)}
+                    placeholder="532 133 4144"
+                    className={errors.sigortaliTelefon ? 'border-red-400 ring-2 ring-status-danger/20' : ''}
                   />
                   {errors.sigortaliTelefon && <p className="text-xs text-status-danger mt-1">{errors.sigortaliTelefon}</p>}
                 </div>

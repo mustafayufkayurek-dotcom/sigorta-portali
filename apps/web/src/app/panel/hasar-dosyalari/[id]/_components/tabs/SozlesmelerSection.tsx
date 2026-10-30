@@ -8,6 +8,7 @@ import { openWhatsAppChat } from '@/utils/date-helpers';
 import { VendorContractPreviewModal, type VendorContractPreviewTarget } from '@/components/hasar-operasyon-planlayicisi/VendorContractPreviewModal';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
+import { PhoneInput } from '@/components/PhoneInput';
 
 const CONTRACT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   draft: { label: 'Taslak', color: 'bg-slate-100 text-slate-700' },
@@ -182,13 +183,13 @@ export function SozlesmelerSection({ claimId, hideHeader = false }: { claimId: s
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
             <h3 className="text-base font-semibold text-slate-800 mb-4">WhatsApp ile Gönder</h3>
             <label className="block text-xs font-medium text-slate-600 mb-1">Telefon Numarası</label>
-            <input
-              type="tel"
-              value={whatsappModal.phone}
-              onChange={(e) => setWhatsappModal({ ...whatsappModal, phone: e.target.value })}
-              placeholder="05xx xxx xx xx"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
-            />
+            <div className="mb-4">
+              <PhoneInput
+                value={whatsappModal.phone}
+                onChange={(phone) => setWhatsappModal({ ...whatsappModal, phone })}
+                placeholder="532 133 4144"
+              />
+            </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => setWhatsappModal(null)} className="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">İptal</button>
               <button

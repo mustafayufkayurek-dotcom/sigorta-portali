@@ -8,6 +8,7 @@ import { cardNotesToFormEntries } from '@/utils/card-notes';
 import { normalizeFormFreeText, toTitleCaseTR } from '@/utils/text-helpers';
 import { mergePrimaryIntoCustomerContacts } from '@sigorta/shared';
 import { collapseRepeatedAddressLine, customerCardOpenAddress } from '@/utils/customer-open-address';
+import { parseInternationalPhone } from '@/data/country-codes';
 
 export { collapseRepeatedAddressLine, customerCardOpenAddress } from '@/utils/customer-open-address';
 
@@ -257,25 +258,15 @@ export function subTypeActiveClass(color: CustomerSubTypeDef['color']): string {
   }
 }
 
-/** Uluslararası (+90…) ve yerel (0…) formatları destekler */
+/** Uluslararası (+90…) ve yerel (532…) formatları destekler; baştaki 0 istenmez */
 export function customerPhoneValidationError(
   phone: string,
-  phoneType: 'gsm' | 'landline' = 'gsm',
+  _phoneType: 'gsm' | 'landline' = 'gsm',
 ): string | null {
   if (!phone.trim()) return null;
-  const digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('90')) {
-    const localLen = digits.length - 2;
-    if (localLen > 0 && localLen < 10) {
-      return `Telefon numarası eksik (şu an ${localLen} hane)`;
-    }
-    return null;
-  }
-  if (digits.length > 0 && digits.length < 10) {
-    return `Telefon numarası çok kısa (şu an ${digits.length} hane)`;
-  }
-  if (digits.length === 11 && phoneType === 'gsm' && !digits.startsWith('0')) {
-    return 'Telefon numarası 0 ile başlamalıdır';
+  const { localDigits } = parseInternationalPhone(phone);
+  if (localDigits.length > 0 && localDigits.length < 10) {
+    return `Telefon numarası eksik (şu an ${localDigits.length} hane)`;
   }
   return null;
 }

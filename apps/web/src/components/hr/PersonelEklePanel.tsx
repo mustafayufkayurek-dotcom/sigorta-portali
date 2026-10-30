@@ -6,6 +6,7 @@ import { CalendarPlus, UserPlus, X } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { useToast } from '@/contexts/ToastContext';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { PhoneInput } from '@/components/PhoneInput';
 import {
   isCompleteTrDateValue,
   normalizeTrDateValue,
@@ -542,15 +543,10 @@ export function PersonelEklePanel({
               <label className="mb-1 block text-xs font-medium text-content-tertiary">
                 Kişisel GSM No
               </label>
-              <input
-                className={fieldClass}
+              <PhoneInput
                 value={personalGsm}
-                onChange={(e) => setPersonalGsm(e.target.value)}
-                placeholder="05XX XXX XX XX"
-                inputMode="tel"
-                required
-                aria-required
-                aria-label="Kişisel GSM No"
+                onChange={setPersonalGsm}
+                placeholder="532 133 4144"
               />
             </div>
 
@@ -558,15 +554,10 @@ export function PersonelEklePanel({
               <label className="mb-1 block text-xs font-medium text-content-tertiary">
                 Şirket GSM No
               </label>
-              <input
-                className={fieldClass}
+              <PhoneInput
                 value={companyGsm}
-                onChange={(e) => setCompanyGsm(e.target.value)}
-                placeholder="05XX XXX XX XX"
-                inputMode="tel"
-                required
-                aria-required
-                aria-label="Şirket GSM No"
+                onChange={setCompanyGsm}
+                placeholder="532 133 4144"
               />
             </div>
 

@@ -10,6 +10,7 @@ import { formatTryAmount } from '@/utils/format-try-amount';
 import { openWhatsAppChat } from '@/utils/date-helpers';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { API, authHeader } from './claim-detail-utils';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 
 type Kalem = { id: string; jobDescription: string; salesTotal: number };
 type Tespit = {
@@ -209,6 +210,10 @@ export function MaliMesuliyetMuvafakatTaslagi({
               rows={2}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
+              onBlur={(e) => {
+                const v = toTitleCaseTR(e.target.value.trim());
+                if (v) setRejectReason(v);
+              }}
               placeholder="Örn. alt kat kalemi eksik"
             />
             <ul className="mt-4 space-y-3">

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { PhoneInput } from '@/components/PhoneInput';
 import { ACIL_FILE_ONLY_VENDOR_NOTE, ACIL_POOL_VENDOR_NOTE } from '@/utils/acil-vendor-pool';
 import { VendorCandidateCard } from './VendorCandidateCard';
 
@@ -377,11 +378,10 @@ export function AlternativeVendorServicePanel({
             </p>
             <div>
               <label className="block text-xs text-slate-500 mb-1">Telefon *</label>
-              <input
-                type="tel"
+              <PhoneInput
                 value={phoneDraft}
-                onChange={(e) => setPhoneDraft(e.target.value)}
-                placeholder="05xx xxx xx xx"
+                onChange={setPhoneDraft}
+                placeholder="532 133 4144"
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

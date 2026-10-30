@@ -12,6 +12,8 @@ import { customerDisplayName } from '@/utils/customer-form-helpers';
 import { HASAR_EXPERT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
+import { PhoneInput } from '@/components/PhoneInput';
+import { parseInternationalPhone } from '@/data/country-codes';
 
 const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Düşük' },
@@ -133,12 +135,12 @@ export function DosyaBilgileriEditModal({
   const save = async () => {
     setError('');
     const name = toTitleCaseTR(insuredName.trim());
-    const phone = insuredPhone.replace(/\D/g, '').trim();
+    const phone = parseInternationalPhone(insuredPhone).international;
     const irtibatAd = toTitleCaseTR(siteContactName.trim());
-    const irtibatTel = siteContactPhone.replace(/\D/g, '').trim();
+    const irtibatTel = parseInternationalPhone(siteContactPhone).international;
     const policy = policyNo.trim();
     const konu = toTitleCaseTR(lossType.trim());
-    const ihbar = description.trim();
+    const ihbar = toTitleCaseTR(description.trim());
     const line = toTitleCaseTR(addressLine.trim());
     const cityName = city.trim();
     const districtName = district.trim();
@@ -261,11 +263,10 @@ export function DosyaBilgileriEditModal({
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Sigortalı Telefon</label>
-                <input
-                  className={fieldCls}
+                <PhoneInput
                   value={insuredPhone}
-                  onChange={(e) => setInsuredPhone(e.target.value)}
-                  placeholder="05XX XXX XX XX"
+                  onChange={setInsuredPhone}
+                  placeholder="532 133 4144"
                 />
               </div>
               <div>
@@ -282,11 +283,10 @@ export function DosyaBilgileriEditModal({
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">İrtibat Telefon</label>
-                <input
-                  className={fieldCls}
+                <PhoneInput
                   value={siteContactPhone}
-                  onChange={(e) => setSiteContactPhone(e.target.value)}
-                  placeholder="05XX XXX XX XX"
+                  onChange={setSiteContactPhone}
+                  placeholder="532 133 4144"
                 />
               </div>
               <div>
@@ -333,6 +333,10 @@ export function DosyaBilgileriEditModal({
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  onBlur={(e) => {
+                    const v = toTitleCaseTR(e.target.value.trim());
+                    if (v) setDescription(v);
+                  }}
                 />
               </div>
             </div>

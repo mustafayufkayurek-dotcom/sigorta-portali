@@ -143,28 +143,22 @@ export function validatePhone(phone: string, dialCode?: string, phoneLength?: nu
     };
   }
 
-  // Eski davranış (Türkiye varsayımı, geriye dönük uyumluluk)
-  if (!digits.startsWith('0')) {
-    return { valid: false, error: 'Telefon numarası 0 ile başlamalıdır' };
+  let local = digits.replace(/^0+/, '');
+  if (local.startsWith('90') && local.length >= 12) {
+    local = local.slice(2).replace(/^0+/, '');
+  }
+  if (local.length !== 10) {
+    return { valid: false, error: 'Telefon numarası 10 hane olmalıdır' };
   }
 
-  if (digits.length !== 11 && digits.length !== 10) {
-    return { valid: false, error: 'Telefon numarası 10-11 hane olmalıdır' };
-  }
-
-  const normalized = digits.length === 10 ? '0' + digits : digits;
-
-  // Mobil: 05XX
-  const isMobile = normalized[1] === '5';
-  // Sabit hat: 02XX, 03XX, 04XX
-  const isLandline = ['2', '3', '4'].includes(normalized[1]);
+  const isMobile = local[0] === '5';
+  const isLandline = ['2', '3', '4'].includes(local[0]);
 
   if (!isMobile && !isLandline) {
     return { valid: false, error: 'Geçersiz telefon numarası' };
   }
 
-  const localPart = normalized.slice(1);
-  const international = `+90${localPart}`;
+  const international = `+90${local}`;
 
   return { valid: true, formatted: formatPhoneDisplay(international), international };
 }

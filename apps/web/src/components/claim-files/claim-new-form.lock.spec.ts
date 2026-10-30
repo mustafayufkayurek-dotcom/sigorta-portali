@@ -23,6 +23,18 @@ describe('yeni dosya form lock', () => {
     assert.match(form, /Hizmet Türü/);
     assert.match(form, /İrtibat Ad Soyad/);
     assert.match(form, /İrtibat Telefon/);
+    assert.match(form, /İhbar Detayı/);
+    assert.match(form, /toTitleCaseTR\(description\.trim\(\)\)/);
+    assert.match(form, /if \(v\) setDescription\(v\)/);
+    const editModal = readFileSync(
+      join(here, '../../app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriEditModal.tsx'),
+      'utf8',
+    );
+    assert.match(editModal, /İhbar İçeriği/);
+    assert.match(editModal, /toTitleCaseTR\(description\.trim\(\)\)/);
+    const acilForm = readFileSync(join(here, '../emergency/EmergencyCaseNewForm.tsx'), 'utf8');
+    assert.match(acilForm, /toTitleCaseTR\(notes\.trim\(\)\)/);
+    assert.match(acilForm, /toTitleCaseTR\(findingsText\.trim\(\)\)/);
     assert.match(form, /rapora yazılmaz/);
     assert.match(form, /FieldHelpTip/);
     assert.match(form, /dosya-no-yardim/);
@@ -46,6 +58,11 @@ describe('yeni dosya form lock', () => {
     assert.doesNotMatch(form, /Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz\.<\/p>/);
     assert.match(form, /CLAIM_SERVICE_KINDS\.map/);
     assert.match(form, /sm:grid-cols-3/);
+    assert.match(form, /Danışmanlık Hizmet Türü/);
+    assert.match(form, /consultancyServiceTypeId/);
+    assert.match(form, /service-types\/active/);
+    assert.match(form, /isHasarTespitConsultancyType/);
+    assert.match(form, /data-field="consultancyServiceTypeId"/);
     assert.match(form, /Yeni Özel Müşteri/);
     assert.match(form, /\/panel\/musteriler/);
     assert.match(form, /subType: 'private_customer'/);

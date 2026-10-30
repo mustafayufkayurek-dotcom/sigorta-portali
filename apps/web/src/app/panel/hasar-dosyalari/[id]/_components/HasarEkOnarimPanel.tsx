@@ -189,6 +189,10 @@ export function HasarEkOnarimPanel({
             <textarea
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
+              onBlur={(e) => {
+                const v = toTitleCaseTR(e.target.value.trim());
+                if (v) setCancelReason(v);
+              }}
               rows={2}
               placeholder="Örn. eksper ek işi kabul etmedi"
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800"

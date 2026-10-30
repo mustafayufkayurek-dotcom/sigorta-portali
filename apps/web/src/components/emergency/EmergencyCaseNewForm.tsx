@@ -27,6 +27,7 @@ import { reportCaughtError } from '@/utils/report-caught-error';
 import { createInFlightGuard } from '@/utils/in-flight-guard';
 import SpeechToText from '@/components/SpeechToText';
 import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
+import { PhoneInput } from '@/components/PhoneInput';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 
@@ -36,69 +37,6 @@ const URGENCY_OPTIONS: { value: EmergencyUrgency; label: string; color: string }
   { value: 'YUKSEK', label: 'Yüksek', color: 'bg-orange-50 text-orange-700 border-orange-200' },
   { value: 'KRITIK', label: 'Kritik', color: 'bg-red-50 text-red-700 border-red-200' },
 ];
-
-function maskPhoneTR(rawDigits: string): string {
-  const d = rawDigits.replace(/\D/g, '').slice(0, 11);
-  if (d.length === 0) return '';
-  if (d.length <= 1) return d;
-  if (d.length <= 4) return `${d[0]} (${d.slice(1)}`;
-  if (d.length <= 7) return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4)}`;
-  if (d.length <= 9) return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4, 7)} ${d.slice(7)}`;
-  return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
-}
-function storageToMask(stored: string): string {
-  if (!stored) return '';
-  return maskPhoneTR(stored.replace(/\D/g, ''));
-}
-
-function TRPhoneInput({
-  value,
-  onChange,
-  onBlur,
-  className = '',
-  placeholder = '0 (5XX) XXX XX XX',
-  disabled,
-  hasError,
-}: {
-  value: string;
-  onChange: (raw: string) => void;
-  onBlur?: (raw: string) => void;
-  className?: string;
-  placeholder?: string;
-  disabled?: boolean;
-  hasError?: boolean;
-}) {
-  const [display, setDisplay] = useState(() => storageToMask(value));
-  useEffect(() => { setDisplay(storageToMask(value)); }, [value]);
-
-  const borderCls = hasError
-    ? 'border-red-400 ring-2 ring-status-danger/20 bg-red-50'
-    : 'border-slate-200 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-400';
-
-  return (
-    <input
-      type="text"
-      inputMode="numeric"
-      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none transition-colors ${borderCls} ${disabled ? 'bg-slate-50 text-slate-400' : ''} ${className}`}
-      placeholder={placeholder}
-      value={display}
-      disabled={disabled}
-      maxLength={18}
-      onChange={(e) => {
-        const rawDigits = e.target.value.replace(/\D/g, '').slice(0, 11);
-        setDisplay(maskPhoneTR(rawDigits));
-        onChange(rawDigits);
-      }}
-      onPaste={(e) => {
-        e.preventDefault();
-        const rawDigits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 11);
-        setDisplay(maskPhoneTR(rawDigits));
-        onChange(rawDigits);
-      }}
-      onBlur={() => { if (onBlur) onBlur(display.replace(/\D/g, '')); }}
-    />
-  );
-}
 
 type SelectedCustomer = {
   id: string;
@@ -392,7 +330,7 @@ export function EmergencyCaseNewForm({
   };
 
   const checkPhoneDuplicate = async (phone: string) => {
-    if (!phone || phone.length < 11) { setPhoneDupError(null); return; }
+    if (!phone || phone.replace(/\D/g, '').replace(/^90/, '').length < 10) { setPhoneDupError(null); return; }
     try {
       const res = await axios.get(`${API}/customers/check-duplicate?phone=${encodeURIComponent(phone)}`, { headers: authHeader() });
       const data = res.data.data;
@@ -498,8 +436,8 @@ export function EmergencyCaseNewForm({
         urgency,
         assignedVendorId: assignedVendorId || undefined,
         assignedUserId: assignedUserId || undefined,
-        notes: notes.trim() || undefined,
-        findingsText: findingsText.trim(),
+        notes: toTitleCaseTR(notes.trim()) || undefined,
+        findingsText: toTitleCaseTR(findingsText.trim()),
       });
       onSuccess(res.data.id);
     } catch (err: unknown) {
@@ -620,11 +558,12 @@ export function EmergencyCaseNewForm({
             </div>
             <div>
               <label className={label}>Telefon</label>
-              <TRPhoneInput
+              <PhoneInput
                 value={newCustomerPhone}
                 onChange={(v) => { setNewCustomerPhone(v); setPhoneDupError(null); }}
                 onBlur={checkPhoneDuplicate}
-                hasError={!!phoneDupError}
+                placeholder="532 133 4144"
+                className={phoneDupError ? 'border-red-400 ring-2 ring-status-danger/20' : ''}
               />
               {phoneDupError && <p className="text-xs text-status-danger mt-0.5">{phoneDupError}</p>}
             </div>
@@ -699,13 +638,13 @@ export function EmergencyCaseNewForm({
         ) : (
           <div className="min-w-0">
             <label className={label}>Sigortalı Telefonu</label>
-            <TRPhoneInput value={insuredPhone} onChange={setInsuredPhone} />
+            <PhoneInput value={insuredPhone} onChange={setInsuredPhone} placeholder="532 133 4144" />
           </div>
         )}
         {!isPanel && (
           <div className="min-w-0">
             <label className={label}>Sigortalı Telefonu</label>
-            <TRPhoneInput value={insuredPhone} onChange={setInsuredPhone} />
+            <PhoneInput value={insuredPhone} onChange={setInsuredPhone} placeholder="532 133 4144" />
           </div>
         )}
         <div className="col-span-2">
@@ -796,7 +735,7 @@ export function EmergencyCaseNewForm({
                   if (errors.findingsText) setErrors((prev) => ({ ...prev, findingsText: '' }));
                 }}
                 onBlur={(e) => {
-                  const v = e.target.value.trim();
+                  const v = toTitleCaseTR(e.target.value.trim());
                   if (v) setFindingsText(v);
                 }}
                 data-testid="tespit-bulgulari-input"
@@ -833,6 +772,10 @@ export function EmergencyCaseNewForm({
             placeholder="Opsiyonel"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+            onBlur={(e) => {
+              const v = toTitleCaseTR(e.target.value.trim());
+              if (v) setNotes(v);
+            }}
             data-testid="acil-dosya-notlari-input"
           />
         </div>

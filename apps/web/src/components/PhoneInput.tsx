@@ -106,10 +106,13 @@ export function PhoneInput({ value, onChange, onBlur, className = '', placeholde
       </button>
 
       <input
-        type="tel"
+        type="text"
         inputMode="numeric"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
         className={`min-w-0 flex-1 border-0 bg-transparent px-3 text-sm tabular-nums focus:outline-none focus:ring-0 ${disabled ? 'text-slate-400' : 'text-slate-800'}`}
-        placeholder={placeholder ?? selectedCountry.format}
+        placeholder={placeholder ?? (selectedCountry.code === 'TR' ? '532 133 4144' : selectedCountry.format)}
         value={displayLocal}
         disabled={disabled}
         onChange={(e) => handleLocalChange(e.target.value)}

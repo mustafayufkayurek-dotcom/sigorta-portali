@@ -1,11 +1,11 @@
 ---
-description: Canlı web v662 / backend v661
+description: Canlı web v663 / backend v661
 alwaysApply: true
 ---
 
 # Canlı (30.10.2026)
 
-Canlı: web **v662** · backend **v661**. Geri alma: web **v661** / backend **v661**.
+Canlı: web **v663** · backend **v661**. Geri alma: web **v662** / backend **v661**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v663 (yalnız web):** Telefon kutuları **532 133 4144**; başta 0 yok. İhbar Detayı ve aynı tür açıklama **Mustafa Yufkayürek** biçimine çekilir. Yeni Dosya’da Danışmanlık seçilince tür listesi durur. Backend **v661**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v662 / backend v661.
 
 **v662 (yalnız web):** Kurumsal müşteri kartında **Yetkili E-posta** Görev / Ünvan yanında durur. Backend **v661**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v661 / backend v661.
 
@@ -201,4 +203,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v662** · backend **v661**.
+Canlı web **v663** · backend **v661**.

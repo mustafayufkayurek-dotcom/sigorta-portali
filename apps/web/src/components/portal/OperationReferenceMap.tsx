@@ -11,7 +11,7 @@ import {
 import { referenceCategoryColor } from '@/utils/operation-reference-utils';
 import { buildPanelFileMarkerHtml, ensureHaritaPinSignalCss, escHaritaHtml } from '@/utils/harita-pin-signal';
 
-const DETAIL_CONTACT_PHONE_DISPLAY = '0 532 133 4144';
+const DETAIL_CONTACT_PHONE_DISPLAY = '532 133 4144';
 const DETAIL_CONTACT_PHONE_TEL = '+905321334144';
 
 const CATEGORY_LETTER: Record<ReferenceOperationCategory, string> = {

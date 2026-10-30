@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { TrDateInput } from '@/components/ui/TrDateInput';
+import { toTitleCaseTR } from '@/utils/text-helpers';
 import {
   AlertCircle,
   ArrowLeft,
@@ -998,7 +999,7 @@ export default function CrmPage() {
     try {
       await apiClient.post(`/crm/relationships/${selected.kind}/${selected.id}/notes`, {
         noteType: noteForm.noteType,
-        summary: noteForm.summary,
+        summary: toTitleCaseTR(noteForm.summary.trim()),
         body: noteForm.body,
         occurredAt: toIsoDate(noteForm.occurredAt),
         visibility: noteForm.visibility,
@@ -1022,8 +1023,8 @@ export default function CrmPage() {
     try {
       await apiClient.post(`/crm/relationships/${selected.kind}/${selected.id}/follow-ups`, {
         status: followUpForm.status,
-        title: followUpForm.result,
-        result: followUpForm.result,
+        title: toTitleCaseTR(followUpForm.result.trim()),
+        result: toTitleCaseTR(followUpForm.result.trim()),
         dueAt: toIsoDate(followUpForm.dueAt),
         visibility: followUpForm.visibility,
       });
@@ -1503,6 +1504,10 @@ export default function CrmPage() {
                           ref={noteSummaryRef}
                           value={noteForm.summary}
                           onChange={(event) => setNoteForm((prev) => ({ ...prev, summary: event.target.value }))}
+                          onBlur={(event) => {
+                            const v = toTitleCaseTR(event.target.value.trim());
+                            if (v) setNoteForm((prev) => ({ ...prev, summary: v }));
+                          }}
                           rows={3}
                           placeholder="Görüşme özeti"
                           className="min-h-[68px] rounded-md border border-slate-200 px-2.5 py-2 text-xs font-normal text-slate-700 outline-none focus:border-blue-400"
@@ -1551,6 +1556,10 @@ export default function CrmPage() {
                         <textarea
                           value={followUpForm.result}
                           onChange={(event) => setFollowUpForm((prev) => ({ ...prev, result: event.target.value }))}
+                          onBlur={(event) => {
+                            const v = toTitleCaseTR(event.target.value.trim());
+                            if (v) setFollowUpForm((prev) => ({ ...prev, result: v }));
+                          }}
                           rows={2}
                           placeholder="Sonraki aksiyon veya sonuç"
                           className="min-h-[60px] rounded-md border border-slate-200 px-2.5 py-2 text-xs font-normal text-slate-700 outline-none focus:border-blue-400"

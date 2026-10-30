@@ -230,7 +230,7 @@ export default function SirketBilgileriPage() {
               value={form.phone ?? ''}
               onChange={(e) => { setForm({ ...form, phone: e.target.value }); clearFieldError('phone'); }}
               onBlur={() => applyPhoneFormat('phone')}
-              placeholder="0532 123 45 67"
+              placeholder="532 133 4144"
             />
             {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
           </div>
@@ -310,7 +310,7 @@ export default function SirketBilgileriPage() {
                 value={form.payrollEmployerPhone ?? ''}
                 onChange={(e) => { setForm({ ...form, payrollEmployerPhone: e.target.value }); clearFieldError('payrollEmployerPhone'); }}
                 onBlur={() => applyPhoneFormat('payrollEmployerPhone')}
-                placeholder="0532 123 45 67"
+                placeholder="532 133 4144"
               />
               {fieldErrors.payrollEmployerPhone && <p className="mt-1 text-xs text-red-600">{fieldErrors.payrollEmployerPhone}</p>}
             </div>

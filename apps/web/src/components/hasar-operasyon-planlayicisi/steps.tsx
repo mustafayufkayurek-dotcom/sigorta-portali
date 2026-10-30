@@ -2145,6 +2145,10 @@ function StepFileClose() {
         <textarea
           value={reason}
           onChange={(e) => setReason(e.target.value)}
+          onBlur={(e) => {
+            const v = toTitleCaseTR(e.target.value.trim());
+            if (v) setReason(v);
+          }}
           rows={3}
           required
           className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-800"

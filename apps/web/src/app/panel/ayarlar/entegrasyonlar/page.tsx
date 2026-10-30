@@ -586,7 +586,7 @@ export default function EntegrasyonlarPage() {
                   <input
                     type="tel"
                     className={inputCls}
-                    placeholder="05XX XXX XX XX"
+                    placeholder="532 133 4144"
                     value={testPhone}
                     onChange={(e) => {
                       setTestPhone(e.target.value);

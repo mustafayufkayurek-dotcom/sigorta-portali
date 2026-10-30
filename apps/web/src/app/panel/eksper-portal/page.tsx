@@ -10,6 +10,7 @@ import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
+import { PhoneInput } from '@/components/PhoneInput';
 import { DashboardShell, DashboardHeader } from '@/app/panel/_components';
 import { ExpertPortalContactStrip } from '@/components/panel/expert-portal-contact-strip';
 import { PortalWeeklyTrendCard } from '@/components/panel/portal-weekly-trend-card';
@@ -134,16 +135,6 @@ type IhbarModalProps = {
   onSuccess: (fileNo: string) => void;
 };
 
-function maskPhoneSimple(raw: string): string {
-  const d = raw.replace(/\D/g, '').slice(0, 11);
-  if (d.length === 0) return '';
-  if (d.length <= 1) return d;
-  if (d.length <= 4) return `${d[0]} (${d.slice(1)}`;
-  if (d.length <= 7) return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4)}`;
-  if (d.length <= 9) return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4, 7)} ${d.slice(7)}`;
-  return `${d[0]} (${d.slice(1, 4)}) ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
-}
-
 function isUuid(value: string) {
   return /^[0-9a-fA-F-]{36}$/.test(value);
 }
@@ -207,7 +198,6 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     sigortaliAdi: '', sigortaliTelefon: '', il: '', ilce: '', adresDetay: '',
     hasarTarihi: '', aciklama: '',
   });
-  const [phoneDisplay, setPhoneDisplay] = useState('');
   const [errors, setErrors] = useState<Partial<Record<keyof IhbarFormData, string>>>({});
   const [saving, setSaving] = useState(false);
   const [loadingLookups, setLoadingLookups] = useState(true);
@@ -311,9 +301,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
       next.sigortaliAdi = toTitleCaseTR(fields.insuredName.trim());
     }
     if (typeof fields.insuredPhone === 'string' && fields.insuredPhone.trim()) {
-      const digits = fields.insuredPhone.replace(/\D/g, '').slice(-11);
-      next.sigortaliTelefon = digits;
-      setPhoneDisplay(maskPhoneSimple(digits));
+      next.sigortaliTelefon = fields.insuredPhone.trim();
     }
     if (fields.policyType === 'bireysel' || fields.policyType === 'ticari') {
       next.policeTuru = fields.policyType;
@@ -748,18 +736,11 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               <label className="text-xs font-medium text-slate-600 block mb-1.5">
                 Sigortalı Telefon <span className="text-status-danger">*</span>
               </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                className={`input-base-sm ${errors.sigortaliTelefon ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
-                placeholder="0 (5XX) XXX XX XX"
-                value={phoneDisplay}
-                maxLength={18}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
-                  setPhoneDisplay(maskPhoneSimple(digits));
-                  set('sigortaliTelefon', digits);
-                }}
+              <PhoneInput
+                value={form.sigortaliTelefon}
+                onChange={(v) => set('sigortaliTelefon', v)}
+                placeholder="532 133 4144"
+                className={errors.sigortaliTelefon ? 'border-red-400 ring-2 ring-status-danger/20' : ''}
               />
               {errors.sigortaliTelefon && <p className="text-xs text-status-danger mt-1">{errors.sigortaliTelefon}</p>}
             </div>

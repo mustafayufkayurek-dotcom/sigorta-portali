@@ -408,8 +408,8 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
         url: `${API}/tasks`,
         data: {
           claimFileId: claimId,
-          title: form.title.trim(),
-          description: form.description.trim() || undefined,
+          title: toTitleCaseTR(form.title.trim()),
+          description: toTitleCaseTR(form.description.trim()) || undefined,
           taskType: form.taskType,
           priority: form.priority,
           assignedUserId: form.assignedUserId || undefined,
@@ -523,8 +523,12 @@ export function GorevlerTab({ claimId, claim }: { claimId: string; claim: any })
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
+                onBlur={(e) => {
+                  const v = toTitleCaseTR(e.target.value.trim());
+                  if (v) setForm({ ...form, title: v });
+                }}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                placeholder="Örn. Tespitçi ile tekrar görüş"
+                placeholder="Örn. tespitçi ile tekrar görüş"
               />
             </div>
             <div>

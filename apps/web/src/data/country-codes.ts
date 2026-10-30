@@ -82,19 +82,17 @@ export function parseInternationalPhone(value: string): {
   let digits = compact.replace(/\D/g, '');
   if (digits.startsWith('00')) digits = digits.slice(2);
   if (digits.startsWith('90') && digits.length >= 12) {
-    const localDigits = digits.slice(2, 12);
+    const localDigits = digits.slice(2).replace(/^0+/, '').slice(0, 10);
     return {
       country: DEFAULT_COUNTRY,
       localDigits,
-      international: `+90${localDigits}`,
+      international: localDigits ? `+90${localDigits}` : '',
     };
   }
-  if (digits.startsWith('0') && digits.length === 11) {
-    digits = digits.slice(1);
-  }
+  digits = digits.replace(/^0+/, '');
   return {
     country: DEFAULT_COUNTRY,
-    localDigits: digits,
+    localDigits: digits.slice(0, DEFAULT_COUNTRY.phoneLength),
     international: toInternationalPhone(DEFAULT_COUNTRY.dialCode, digits),
   };
 }

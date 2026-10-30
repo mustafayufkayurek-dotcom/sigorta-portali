@@ -29,6 +29,9 @@ describe('danışmanlık hizmet türleri kilidi', () => {
     assert.doesNotMatch(page, /SettingsLegacyRedirect/);
     assert.match(form, /CLAIM_SERVICE_KINDS\.map/);
     assert.match(form, /sm:grid-cols-3/);
+    assert.match(form, /Danışmanlık Hizmet Türü/);
+    assert.match(form, /consultancyServiceTypeId/);
+    assert.match(form, /isHasarTespitConsultancyType/);
     assert.match(form, /\/panel\/musteriler/);
     assert.match(opsNav, /title: 'Danışmanlık'/);
     assert.match(opsNav, /HASAR_HIZMET_TESPIT/);

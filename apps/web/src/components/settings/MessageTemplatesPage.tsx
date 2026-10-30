@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import { MessageSquareText } from 'lucide-react';
+import { PhoneInput } from '@/components/PhoneInput';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import {
@@ -84,7 +85,7 @@ interface TemplateDefinition {
 const ACIL_VARIABLES = [
   { key: '{Dosya No}', label: 'Dosya No', sample: 'AY-2026-0042' },
   { key: '{Dosya Sorumlusu}', label: 'Dosya Sorumlusu', sample: 'Ayşe Demir' },
-  { key: '{Dosya Sorumlusu Telefon}', label: 'Dosya Sorumlusu Telefon', sample: '0532 000 00 00' },
+  { key: '{Dosya Sorumlusu Telefon}', label: 'Dosya Sorumlusu Telefon', sample: '532 133 4144' },
   { key: '{Sigortalı Ad}', label: 'Sigortalı Ad', sample: 'Ahmet Yılmaz' },
   { key: '{Dosya Konusu}', label: 'Dosya Konusu', sample: 'Çekici Hizmeti' },
 ];
@@ -197,7 +198,7 @@ const DEFINITIONS: TemplateDefinition[] = [
       { key: '{musteriAdi}', label: 'Sigortalı Ad', sample: 'Ahmet Yılmaz' },
       { key: '{dosyaNo}', label: 'Dosya No', sample: 'HD-2026-0042' },
       { key: '{sirketAdi}', label: 'Şirket Adı', sample: 'Meridyen Assistance' },
-      { key: '{sirketTelefon}', label: 'Şirket Telefon', sample: '0212 000 00 00' },
+      { key: '{sirketTelefon}', label: 'Şirket Telefon', sample: '212 000 00 00' },
     ],
   },
 ];
@@ -630,11 +631,10 @@ export function MessageTemplatesPage({ localPreview = false }: MessageTemplatesP
                 <div className="mt-4 space-y-3">
                   <div>
                     <label className={labelCls}>Telefon Numarası</label>
-                    <input
-                      className={inputCls}
+                    <PhoneInput
                       value={testPhone}
-                      onChange={(event) => setTestPhone(event.target.value)}
-                      placeholder="05XX XXX XX XX"
+                      onChange={setTestPhone}
+                      placeholder="532 133 4144"
                     />
                   </div>
                   <div>

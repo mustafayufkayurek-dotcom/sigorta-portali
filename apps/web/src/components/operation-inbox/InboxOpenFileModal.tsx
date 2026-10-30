@@ -16,6 +16,7 @@ import {
 import { API, authHeader } from '@/utils/api';
 import axios from 'axios';
 import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
+import { PhoneInput } from '@/components/PhoneInput';
 
 interface InsuranceCompany {
   id: string;
@@ -489,13 +490,15 @@ export function InboxOpenFileModal({
                   disabled={loading || usersLoading}
                 />
               </div>
-              <FieldInput
-                label="Sigortalı Telefonu"
-                value={insuredPhone}
-                onChange={onInsuredPhoneChange}
-                disabled={loading || usersLoading}
-                placeholder="05xx xxx xx xx"
-              />
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-600">Sigortalı Telefonu</label>
+                <PhoneInput
+                  value={insuredPhone}
+                  onChange={onInsuredPhoneChange}
+                  disabled={loading || usersLoading}
+                  placeholder="532 133 4144"
+                />
+              </div>
               <FieldInput
                 label="Dosya No"
                 value={fileNo}
