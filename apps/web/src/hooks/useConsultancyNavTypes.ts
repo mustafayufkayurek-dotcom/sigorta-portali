@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
+import { CONSULTANCY_SERVICE_FAMILY, parseServiceTypeListPayload } from '@sigorta/shared';
 import { fallbackConsultancyNavTypes } from '@/utils/operasyon-nav';
 
 export function useConsultancyNavTypes() {
@@ -11,11 +12,14 @@ export function useConsultancyNavTypes() {
   useEffect(() => {
     let alive = true;
     axios
-      .get(`${API}/service-types/active`, { headers: authHeader() })
+      .get(`${API}/service-types`, {
+        headers: authHeader(),
+        params: { family: CONSULTANCY_SERVICE_FAMILY },
+      })
       .then((res) => {
-        const rows = (res.data?.data ?? []) as { name?: string; code?: string | null }[];
-        const mapped = rows
-          .map((r) => ({ name: String(r.name ?? '').trim(), code: String(r.code ?? '').trim() }))
+        const mapped = parseServiceTypeListPayload(res.data)
+          .filter((r) => r.isActive !== false)
+          .map((r) => ({ name: r.name, code: String(r.code ?? '').trim() }))
           .filter((r) => r.name);
         if (alive && mapped.length) setTypes(mapped);
       })

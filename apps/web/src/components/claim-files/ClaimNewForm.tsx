@@ -32,10 +32,12 @@ import { parseInternationalPhone } from '@/data/country-codes';
 import {
   CLAIM_SERVICE_KIND_LABEL,
   CLAIM_SERVICE_KINDS,
+  CONSULTANCY_SERVICE_FAMILY,
   HASAR_FILE_INSURANCE_CATALOG_QUERY,
+  consultancyTypesForNewFile,
   filterInsuranceCatalogForHasarFileForm,
-  isHasarTespitConsultancyType,
   parseClaimServiceKind,
+  parseServiceTypeListPayload,
   type ClaimServiceKind,
 } from '@sigorta/shared';
 
@@ -175,7 +177,12 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             params: { role: 'office_staff', includeDelegates: 'hasar' },
           })
           .catch(() => ({ data: { data: [] } })),
-        axios.get(`${API}/service-types/active`, { headers: authHeader() }).catch(() => ({ data: { data: [] } })),
+        axios
+          .get(`${API}/service-types`, {
+            headers: authHeader(),
+            params: { family: CONSULTANCY_SERVICE_FAMILY },
+          })
+          .catch(() => null),
       ]);
       let companies: { id: string; name: string }[] = icRes.data.data || [];
       const me = meRes?.data?.data ?? meRes?.data?.user ?? meRes?.data;
@@ -216,8 +223,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       const normalized = subjects.map((s: string) => toTitleCaseTR(String(s).trim())).filter(Boolean);
       setClaimSubjects(normalized);
       setSubjectsLoadFailed(!subjectsRes);
-      const consultancyRows = ((consultancyRes.data?.data ?? []) as ConsultancyTypeOption[])
-        .filter((row) => row.id && String(row.name ?? '').trim() && !isHasarTespitConsultancyType(row));
+      const consultancyRows = consultancyTypesForNewFile(
+        parseServiceTypeListPayload(consultancyRes?.data),
+      );
       setConsultancyTypes(consultancyRows);
       setConsultancyServiceTypeId((prev) => {
         if (prev && consultancyRows.some((row) => row.id === prev)) return prev;
@@ -701,9 +709,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         </div>
       )}
       <div className={formGrid}>
-        <div className={`${spanFull} min-w-0`} data-field="serviceKind">
+        <div className="min-w-0" data-field="serviceKind">
           <label className={label}>Hizmet Türü <span className="text-status-danger">*</span></label>
-          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+          <div className="flex flex-wrap gap-1.5">
             {CLAIM_SERVICE_KINDS.map((kind) => (
               <button
                 key={kind}
@@ -719,7 +727,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
                     return n;
                   });
                 }}
-                className={`rounded-lg border px-2 py-1.5 text-[11px] font-semibold ${
+                className={`min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-[11px] font-semibold leading-tight ${
                   serviceKind === kind
                     ? 'border-brand-400 bg-brand-50 text-brand-800'
                     : errors.serviceKind
@@ -732,31 +740,32 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             ))}
           </div>
           {errors.serviceKind && <p className="text-xs text-status-danger mt-0.5">{errors.serviceKind}</p>}
-          {serviceKind === 'consultancy' ? (
-            <div className="mt-2 min-w-0" data-field="consultancyServiceTypeId">
-              <label className={`${label} flex items-center gap-1.5`}>
-                <span>Danışmanlık Hizmet Türü <span className="text-status-danger">*</span></span>
-                <FieldHelpTip text="Ayarlar’daki danışmanlık türleri. Hasar Tespit ayrı tuştadır." testId="danismanlik-hizmet-turu-yardim" />
-              </label>
-              <select
-                className={`${field} ${errors.consultancyServiceTypeId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
-                value={consultancyServiceTypeId}
-                onChange={(e) => {
-                  setConsultancyServiceTypeId(e.target.value);
-                  if (e.target.value) setErrors((p) => { const n = { ...p }; delete n.consultancyServiceTypeId; return n; });
-                }}
-              >
-                <option value="">Seçiniz...</option>
-                {consultancyTypes.map((row) => (
-                  <option key={row.id} value={row.id}>{row.name}</option>
-                ))}
-              </select>
-              {errors.consultancyServiceTypeId && (
-                <p className="text-xs text-status-danger mt-0.5">{errors.consultancyServiceTypeId}</p>
-              )}
-            </div>
-          ) : null}
         </div>
+        {serviceKind === 'consultancy' ? (
+          <div className="min-w-0" data-field="consultancyServiceTypeId">
+            <label className={`${label} flex items-center gap-1.5`}>
+              <span>Danışmanlık Hizmet Türü <span className="text-status-danger">*</span></span>
+              <FieldHelpTip text="Ayarlar’daki danışmanlık türleri. Hasar Tespit ayrı tuştadır." testId="danismanlik-hizmet-turu-yardim" />
+            </label>
+            <select
+              className={`${field} ${errors.consultancyServiceTypeId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
+              value={consultancyServiceTypeId}
+              required
+              onChange={(e) => {
+                setConsultancyServiceTypeId(e.target.value);
+                if (e.target.value) setErrors((p) => { const n = { ...p }; delete n.consultancyServiceTypeId; return n; });
+              }}
+            >
+              <option value="">Seçiniz...</option>
+              {consultancyTypes.map((row) => (
+                <option key={row.id} value={row.id}>{row.name}</option>
+              ))}
+            </select>
+            {errors.consultancyServiceTypeId && (
+              <p className="text-xs text-status-danger mt-0.5">{errors.consultancyServiceTypeId}</p>
+            )}
+          </div>
+        ) : null}
         <div className="min-w-0" data-field="assignedOfficeUserId">
           <label className={label}>Dosya Sorumlusu <span className="text-status-danger">*</span></label>
           <select

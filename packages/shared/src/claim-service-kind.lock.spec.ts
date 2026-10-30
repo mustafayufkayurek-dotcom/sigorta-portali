@@ -16,7 +16,9 @@ import {
   claimFileWhereForHizmet,
   claimFileWhereForMusteriKaynak,
   claimServiceKindFromConsultancyType,
+  consultancyTypesForNewFile,
   isHasarTespitConsultancyType,
+  parseServiceTypeListPayload,
 } from './claim-service-kind.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -49,6 +51,20 @@ describe('claim service kind lock', () => {
     assert.deepEqual(claimFileWhereForMusteriKaynak('asistans'), {
       customer: { subType: { in: ['asistan_firmasi', 'asistans_firmasi'] } },
     });
+  });
+
+  it('Yeni Dosya Danışmanlık listesi Ayarlar kaydını alır; Hasar Tespit ayrıdır', () => {
+    const rows = parseServiceTypeListPayload({
+      success: true,
+      data: [
+        { id: '1', name: 'Hasar Tespit', code: HASAR_TESPIT_SERVICE_CODE, isActive: true },
+        { id: '2', name: 'Sovtaj', code: 'sovtaj', isActive: true },
+        { id: '3', name: 'Kapalı', code: 'kapali', isActive: false },
+      ],
+    });
+    const listed = consultancyTypesForNewFile(rows);
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0].name, 'Sovtaj');
   });
 
   it('aynı tespitçi ikinci kez atanmaz', () => {

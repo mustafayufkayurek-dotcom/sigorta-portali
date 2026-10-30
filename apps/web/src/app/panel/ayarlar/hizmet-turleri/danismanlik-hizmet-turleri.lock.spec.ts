@@ -28,10 +28,12 @@ describe('danışmanlık hizmet türleri kilidi', () => {
     assert.match(page, /Hasar Tespit durur/);
     assert.doesNotMatch(page, /SettingsLegacyRedirect/);
     assert.match(form, /CLAIM_SERVICE_KINDS\.map/);
-    assert.match(form, /sm:grid-cols-3/);
+    assert.match(form, /flex flex-wrap gap-1\.5/);
     assert.match(form, /Danışmanlık Hizmet Türü/);
     assert.match(form, /consultancyServiceTypeId/);
-    assert.match(form, /isHasarTespitConsultancyType/);
+    assert.match(form, /consultancyTypesForNewFile/);
+    assert.match(form, /params: \{ family: CONSULTANCY_SERVICE_FAMILY \}/);
+    assert.match(service, /existing\.family !== CONSULTANCY_SERVICE_FAMILY/);
     assert.match(form, /\/panel\/musteriler/);
     assert.match(opsNav, /title: 'Danışmanlık'/);
     assert.match(opsNav, /HASAR_HIZMET_TESPIT/);

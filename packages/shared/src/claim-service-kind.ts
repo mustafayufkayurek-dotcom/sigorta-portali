@@ -124,3 +124,46 @@ export function isInspectorAlreadyAssigned(inspectorId: string | null | undefine
   const b = String(assignedId ?? '').trim();
   return Boolean(a && b && a === b);
 }
+
+export type ConsultancyTypeListRow = {
+  id: string;
+  name: string;
+  code?: string | null;
+  isActive?: boolean;
+};
+
+function asObject(raw: unknown): Record<string, unknown> | null {
+  return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null;
+}
+
+export function parseServiceTypeListPayload(raw: unknown): ConsultancyTypeListRow[] {
+  const root = asObject(raw);
+  const nested = root ? asObject(root.data) : null;
+  const list = Array.isArray(raw)
+    ? raw
+    : Array.isArray(root?.data)
+      ? root.data
+      : Array.isArray(nested?.data)
+        ? nested.data
+        : [];
+  return list
+    .map((row) => {
+      if (!row || typeof row !== 'object') return null;
+      const r = row as { id?: unknown; name?: unknown; code?: unknown };
+      const id = String(r.id ?? '').trim();
+      const name = String(r.name ?? '').trim();
+      if (!id || !name) return null;
+      return {
+        id,
+        name,
+        code: r.code == null ? null : String(r.code),
+        isActive: (row as { isActive?: unknown }).isActive !== false,
+      };
+    })
+    .filter((row): row is ConsultancyTypeListRow => Boolean(row));
+}
+
+/** Yeni Dosya Danışmanlık listesi — Hasar Tespit ayrı tuştadır */
+export function consultancyTypesForNewFile(rows: ConsultancyTypeListRow[]): ConsultancyTypeListRow[] {
+  return rows.filter((row) => row.isActive !== false && !isHasarTespitConsultancyType(row));
+}

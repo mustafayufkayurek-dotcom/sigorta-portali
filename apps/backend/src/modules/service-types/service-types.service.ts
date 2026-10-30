@@ -5,6 +5,7 @@ import {
   CONSULTANCY_SERVICE_FAMILY,
   HASAR_TESPIT_SERVICE_CODE,
   HASAR_TESPIT_SERVICE_NAME,
+  isHasarTespitConsultancyType,
 } from '@sigorta/shared';
 
 const DEFAULT_SERVICE_TYPES = [
@@ -108,7 +109,24 @@ export class ServiceTypesService {
     const existing = await this.prisma.serviceType.findFirst({
       where: { OR: [{ name }, { code }] },
     });
-    if (existing) throw new ConflictException('Bu isimde bir hizmet türü zaten mevcut');
+    if (existing) {
+      if (isHasarTespitConsultancyType(existing)) {
+        throw new ConflictException('Hasar Tespit zaten kayıtlıdır');
+      }
+      if (existing.family !== CONSULTANCY_SERVICE_FAMILY) {
+        return this.prisma.serviceType.update({
+          where: { id: existing.id },
+          data: {
+            name,
+            family: CONSULTANCY_SERVICE_FAMILY,
+            code: existing.code || code,
+            isActive: true,
+            isSystem: false,
+          },
+        });
+      }
+      throw new ConflictException('Bu isimde bir hizmet türü zaten mevcut');
+    }
     const max = await this.prisma.serviceType.aggregate({
       where: { family: CONSULTANCY_SERVICE_FAMILY },
       _max: { sortOrder: true },
