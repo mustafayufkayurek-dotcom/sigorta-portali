@@ -60,6 +60,9 @@ describe('yeni dosya form lock', () => {
     assert.match(form, /<option key=\{kind\} value=\{kind\}>/);
     assert.doesNotMatch(form, /data-field="serviceKind"[\s\S]{0,800}type="button"/);
     assert.doesNotMatch(form, /spanFull.*data-field="serviceKind"/);
+    assert.match(form, /newClaimOpeningCaption\(serviceKind\)/);
+    assert.doesNotMatch(form, /Hasar Dosyası Açılıyor/);
+    assert.match(form, /claimServiceKindFromListHizmet\(listHizmet\)/);
     assert.match(form, /Danışmanlık Hizmet Türü/);
     assert.match(form, /consultancyServiceTypeId/);
     assert.match(form, /params: \{ family: CONSULTANCY_SERVICE_FAMILY \}/);

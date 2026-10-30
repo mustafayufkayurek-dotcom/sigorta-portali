@@ -16,7 +16,9 @@ import {
   claimFileWhereForHizmet,
   claimFileWhereForMusteriKaynak,
   claimServiceKindFromConsultancyType,
+  claimServiceKindFromListHizmet,
   consultancyTypesForNewFile,
+  newClaimOpeningCaption,
   isHasarTespitConsultancyType,
   parseServiceTypeListPayload,
 } from './claim-service-kind.ts';
@@ -51,6 +53,14 @@ describe('claim service kind lock', () => {
     assert.deepEqual(claimFileWhereForMusteriKaynak('asistans'), {
       customer: { subType: { in: ['asistan_firmasi', 'asistans_firmasi'] } },
     });
+    assert.equal(claimServiceKindFromListHizmet('hasar-tespit'), 'inspection');
+    assert.equal(claimServiceKindFromListHizmet('danismanlik'), 'consultancy');
+    assert.equal(claimServiceKindFromListHizmet('sovtaj'), 'consultancy');
+    assert.equal(claimServiceKindFromListHizmet(''), 'repair');
+    assert.equal(parseClaimServiceKind('hasar-tespit'), 'inspection');
+    assert.equal(newClaimOpeningCaption('consultancy'), 'Danışmanlık Dosyası Açılıyor');
+    assert.equal(newClaimOpeningCaption('inspection'), 'Hasar Tespit Dosyası Açılıyor');
+    assert.equal(newClaimOpeningCaption('repair'), 'Hasar Dosyası Açılıyor');
   });
 
   it('Yeni Dosya Danışmanlık listesi Ayarlar kaydını alır; Hasar Tespit ayrıdır', () => {

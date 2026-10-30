@@ -34,8 +34,10 @@ import {
   CLAIM_SERVICE_KINDS,
   CONSULTANCY_SERVICE_FAMILY,
   HASAR_FILE_INSURANCE_CATALOG_QUERY,
+  claimServiceKindFromListHizmet,
   consultancyTypesForNewFile,
   filterInsuranceCatalogForHasarFileForm,
+  newClaimOpeningCaption,
   parseClaimServiceKind,
   parseServiceTypeListPayload,
   type ClaimServiceKind,
@@ -70,9 +72,10 @@ export type ClaimNewFormProps = {
   onSuccess: (claimId: string) => void;
   onCancel: () => void;
   prefillCustomerId?: string | null;
+  listHizmet?: string | null;
 };
 
-export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCustomerId }: ClaimNewFormProps) {
+export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCustomerId, listHizmet }: ClaimNewFormProps) {
   const isPanel = variant === 'panel';
   const field = isPanel ? inpCompact : inp;
   const label = isPanel ? lblCompact : lbl;
@@ -96,7 +99,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const [currentStatusId, setCurrentStatusId] = useState('');
 
   const [customerSource, setCustomerSource] = useState<'expert' | 'private'>('expert');
-  const [serviceKind, setServiceKind] = useState<ClaimServiceKind>('repair');
+  const [serviceKind, setServiceKind] = useState<ClaimServiceKind>(() => claimServiceKindFromListHizmet(listHizmet));
   const [consultancyTypes, setConsultancyTypes] = useState<ConsultancyTypeOption[]>([]);
   const [consultancyServiceTypeId, setConsultancyServiceTypeId] = useState('');
   const router = useRouter();
@@ -703,7 +706,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             <p className="text-xs text-emerald-800">
               <span className="font-medium">{selectedCustomerDisplayName}</span>
               {' · '}
-              {customerFileOrdinal}. Hasar Dosyası Açılıyor
+              {customerFileOrdinal}. {newClaimOpeningCaption(serviceKind)}
             </p>
           ) : null}
         </div>

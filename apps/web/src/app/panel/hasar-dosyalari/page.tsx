@@ -714,9 +714,10 @@ function ClaimFilesPageContent() {
         scrollContent={false}
       >
         <ClaimNewForm
-          key={formSession}
+          key={`${formSession}-${urlHizmet ?? 'onarim'}`}
           variant="panel"
           prefillCustomerId={prefillCustomerId}
+          listHizmet={urlHizmet}
           onCancel={() => setShowNewPanel(false)}
           onSuccess={handleCreateSuccess}
         />

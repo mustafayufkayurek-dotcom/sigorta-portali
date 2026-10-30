@@ -36,9 +36,24 @@ const INSPECTION_HIDDEN_STEPS = new Set([
 
 export function parseClaimServiceKind(raw: unknown): ClaimServiceKind {
   const v = String(raw ?? '').trim().toLowerCase();
-  if (v === 'inspection' || v === 'hasar_tespit' || v === 'tespit') return 'inspection';
+  if (v === 'inspection' || v === 'hasar_tespit' || v === 'hasar-tespit' || v === 'tespit') return 'inspection';
   if (v === 'consultancy' || v === 'danismanlik' || v === 'danışmanlık') return 'consultancy';
   return 'repair';
+}
+
+export function claimServiceKindFromListHizmet(raw: unknown): ClaimServiceKind {
+  const h = normalizeHasarListHizmet(raw);
+  if (!h) return 'repair';
+  if (h === HASAR_HIZMET_TESPIT) return 'inspection';
+  if (h === HASAR_HIZMET_DANISMANLIK) return 'consultancy';
+  if (h === 'repair' || h === 'onarim' || h === 'hasar-onarim') return 'repair';
+  return 'consultancy';
+}
+
+export function newClaimOpeningCaption(kind: ClaimServiceKind): string {
+  if (kind === 'inspection') return 'Hasar Tespit Dosyası Açılıyor';
+  if (kind === 'consultancy') return 'Danışmanlık Dosyası Açılıyor';
+  return 'Hasar Dosyası Açılıyor';
 }
 
 export function isInspectionServiceKind(raw: unknown): boolean {
