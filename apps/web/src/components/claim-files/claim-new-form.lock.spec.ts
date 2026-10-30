@@ -49,7 +49,7 @@ describe('yeni dosya form lock', () => {
     assert.match(form, /Yeni Özel Müşteri/);
     assert.match(form, /\/panel\/musteriler/);
     assert.match(form, /subType: 'private_customer'/);
-    assert.match(form, /entityType: 'individual'/);
+    assert.doesNotMatch(form, /entityType: 'individual'/);
     assert.match(form, /prefillCustomerId/);
     assert.doesNotMatch(form, /CLAIM_FILE_SERVICE_KIND_TOP/);
     assert.doesNotMatch(form, /Danışmanlık Hizmeti/);

@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-10-30",
-  "label": "v660-hasar-onarim-kilit-kapi",
-  "description": "v660: Operasyon Hasar Onarım; Hasar Dosyaları menüden kalktı; bitmiş iş kapısı genişledi; kayıt güncellemesi düşerse ekran alınmaz. Geri alma web v659 / backend v659.",
+  "label": "v661-ozel-musteri-tam-kart",
+  "description": "v661: Yeni Özel Müşteri tam kart; önce Kurumsal veya Bireysel; tip Özel Müşteri kilitli. Bireysel kişi formuna atlanmaz. Geri alma web v660 / backend v660.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v660-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v660-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v661-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v661-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v659-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v659-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v660-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v660-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

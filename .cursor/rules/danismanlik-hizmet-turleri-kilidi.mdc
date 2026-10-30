@@ -10,7 +10,7 @@
 2. Operasyon sol menüde **Danışmanlık**; altında Hasar Tespit ve Tanımlar’dan eklenen türler. Liste `?hizmet=` ile süzülür.
 3. Yeni tür Ayarlar `/panel/ayarlar/hizmet-turleri` ekranından eklenir. Hasar Tespit silinmez.
 4. Hasar Tespit kaydı `serviceKind = inspection` kalır; tespit planı gizleme ve Onarıma Çevir durur.
-5. Yeni Özel Müşteri `/panel/musteriler` tam kartı açar. Kart **Bireysel · Özel Müşteri**dir. Sigorta / eksper / broker / asistans tipi bu akışta yok. Mini Şirket Adı / Vergi No / Telefon formu özel müşteri için yok. Kaydedince Yeni Dosya aynı müşteriyle açılır.
+5. Yeni Özel Müşteri `/panel/musteriler` tam kartı açar. Önce **Kurumsal veya Bireysel** seçilir. Tip **Özel Müşteri** kilitlidir. Bireysel kişi formuna atlanmaz. Sigorta / eksper / broker / asistans tipi bu akışta yok. Mini üç alanlık form özel müşteri için yok. Kaydedince Yeni Dosya aynı müşteriyle açılır.
 6. Özel müşteri + tespit `ozel-musteri` departmanında kalır.
 
 ## Yasak (açık onay yoksa)

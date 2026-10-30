@@ -155,7 +155,7 @@ const emptyContact = (): ContactPerson => ({
 });
 const emptyContactInfo = (): ContactInfoItem => ({ type: 'phone', value: '', label: 'general' });
 const emptyForm = () => ({
-  customerType: 'individual' as 'individual' | 'corporate',
+  customerType: 'individual' as 'individual' | 'corporate' | '',
   subType: '' as '' | 'insured' | 'private_customer' | 'eksper' | 'sigorta_sirketi' | 'eksper_firmasi' | 'asistan_firmasi' | 'broker_firmasi',
   firstName: '', lastName: '', companyName: '', shortName: '',
   taxNumber: '', taxOffice: '', identityNo: '',
@@ -196,7 +196,7 @@ function CustomerSubTypePicker({
   identityFilled,
   onToggle,
 }: {
-  customerType: 'individual' | 'corporate';
+  customerType: 'individual' | 'corporate' | '';
   subTypes: CustomerSubTypeDef[];
   selectedSubType: string;
   required: boolean;
@@ -1476,7 +1476,9 @@ export default function MusterilerPage() {
 
     if (subType || searchParams.get('openAdd') === '1') {
       if (effectiveSubType) {
-        setTypeFilter(entityType);
+        if (entityType === 'individual' || entityType === 'corporate') {
+          setTypeFilter(entityType);
+        }
         setSubTypeFilter(effectiveSubType);
       }
       setForm({
@@ -1492,7 +1494,7 @@ export default function MusterilerPage() {
         showToast(
           'info',
           fromYeniDosya
-            ? 'Özel müşteri bireysel karttır. Ad, soyad ve iletişim bilgilerini doldurun; kaydedince Yeni Dosya açılır.'
+            ? 'Özel müşteri kartı. Önce kurumsal veya bireysel seçin; kaydedince Yeni Dosya açılır.'
             : `${ctx.returnLabel} için kurumsal cari ekliyorsunuz.`,
         );
       } else if (effectiveSubType) {
@@ -1508,8 +1510,8 @@ export default function MusterilerPage() {
   useEffect(() => {
     if (!showModal || !ozelMusteriAdd) return;
     setForm((p) => {
-      if (p.customerType === 'individual' && p.subType === OZEL_MUSTERI_SUB_TYPE) return p;
-      return { ...p, customerType: 'individual', subType: OZEL_MUSTERI_SUB_TYPE, serviceType: '', serviceBranches: [] };
+      if (p.subType === OZEL_MUSTERI_SUB_TYPE) return p;
+      return { ...p, subType: OZEL_MUSTERI_SUB_TYPE, serviceType: '', serviceBranches: [] };
     });
   }, [showModal, ozelMusteriAdd]);
 
@@ -1647,6 +1649,10 @@ export default function MusterilerPage() {
 
   const validateSection0 = (): Record<string, string> => {
     const errors: Record<string, string> = {};
+    if (form.customerType !== 'individual' && form.customerType !== 'corporate') {
+      errors.customerType = 'Kurumsal veya bireysel seçin';
+      return errors;
+    }
     if (!form.shortName.trim()) errors.shortName = 'Bu alan zorunludur';
     if (form.customerType === 'individual') {
       if (!form.firstName.trim()) errors.firstName = 'Bu alan zorunludur';
@@ -1676,6 +1682,7 @@ export default function MusterilerPage() {
         if (errors.identityNo) setIdentityNoError(errors.identityNo);
         if (errors.phone) setPhoneError(errors.phone);
         const labels = [];
+        if (errors.customerType) labels.push('Kurumsal veya Bireysel');
         if (errors.shortName) labels.push('Kısa Ad');
         if (errors.firstName) labels.push('Ad');
         if (errors.lastName) labels.push('Soyad');
@@ -1699,6 +1706,10 @@ export default function MusterilerPage() {
     const errors: Record<string, string> = {};
     const missingLabels: string[] = [];
 
+    if (form.customerType !== 'individual' && form.customerType !== 'corporate') {
+      errors.customerType = 'Kurumsal veya bireysel seçin';
+      missingLabels.push('Kurumsal veya Bireysel');
+    }
     if (!form.shortName.trim()) { errors.shortName = 'Bu alan zorunludur'; missingLabels.push('Kısa Ad'); }
     if (form.customerType === 'individual') {
       if (!form.firstName.trim()) { errors.firstName = 'Bu alan zorunludur'; missingLabels.push('Ad'); }
@@ -1709,7 +1720,7 @@ export default function MusterilerPage() {
         errors.identityNo = 'Geçersiz TC Kimlik Numarası';
         setIdentityNoError('Geçersiz TC Kimlik Numarası');
       }
-    } else {
+    } else if (form.customerType === 'corporate') {
       if (!form.companyName.trim()) { errors.companyName = 'Bu alan zorunludur'; missingLabels.push('Şirket Adı'); }
       if (requiresCustomerSubType(form.customerType) && !form.subType) {
         errors.subType = 'Alt tip seçimi zorunludur';
@@ -2872,25 +2883,39 @@ export default function MusterilerPage() {
               {activeSection === 0 && (
                 <div>
                   <SectionDivider emoji="👤" title="Önce Müşteri Tipi" />
-                  {ozelMusteriAdd ? (
-                    <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                      Özel müşteri bireysel kişidir. Sigorta, eksper, broker veya asistans firması değildir.
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                      Kurumsal veya bireysel seçin; ardından müşteri tipini belirleyin. Cari adı ve iletişim bilgileri tip seçildikten sonra açılır.
-                    </p>
-                  )}
-                  {!ozelMusteriAdd ? (
+                  <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                    {ozelMusteriAdd
+                      ? 'Önce kurumsal veya bireysel seçin. Müşteri tipi Özel Müşteri durur. Sigorta, eksper, broker veya asistans firması değildir.'
+                      : 'Kurumsal veya bireysel seçin; ardından müşteri tipini belirleyin. Cari adı ve iletişim bilgileri tip seçildikten sonra açılır.'}
+                  </p>
                   <div className="grid grid-cols-1 gap-3 mb-5 sm:grid-cols-2">
                     {CUSTOMER_TYPE_OPTIONS.map(({ val, label, emoji }) => (
                       <button key={val} type="button"
-                        onClick={() => { setForm((p) => ({ ...p, customerType: val, subType: '', serviceType: '', serviceBranches: [] })); setTcResult(null); setGibError(null); setTaxNoError(null); setFieldErrors({}); }}
+                        onClick={() => {
+                          setForm((p) => ({
+                            ...p,
+                            customerType: val,
+                            subType: ozelMusteriAdd ? OZEL_MUSTERI_SUB_TYPE : '',
+                            serviceType: '',
+                            serviceBranches: [],
+                          }));
+                          setTcResult(null);
+                          setGibError(null);
+                          setTaxNoError(null);
+                          setFieldErrors((prev) => {
+                            const n = { ...prev };
+                            delete n.customerType;
+                            delete n.subType;
+                            return n;
+                          });
+                        }}
                         className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium border-2 transition-all ${form.customerType === val ? val === 'individual' ? 'bg-purple-600 text-white border-purple-600' : 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
                         <span>{emoji}</span>{label}
                       </button>
                     ))}
                   </div>
+                  {fieldErrors.customerType ? (
+                    <p className="text-xs text-status-danger mb-3">{fieldErrors.customerType}</p>
                   ) : null}
 
                   <CustomerSubTypePicker
@@ -2916,7 +2941,11 @@ export default function MusterilerPage() {
                     }}
                   />
 
-                  {requiresCustomerSubType(form.customerType) && !form.subType ? (
+                  {form.customerType !== 'individual' && form.customerType !== 'corporate' ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                      Cari bilgileri için yukarıdan kurumsal veya bireysel seçin.
+                    </div>
+                  ) : requiresCustomerSubType(form.customerType) && !form.subType ? (
                     <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
                       Cari bilgileri için yukarıdan müşteri tipini seçin.
                     </div>

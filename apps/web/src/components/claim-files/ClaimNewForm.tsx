@@ -666,7 +666,6 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
                   const params = new URLSearchParams({
                     openAdd: '1',
                     subType: 'private_customer',
-                    entityType: 'individual',
                     returnTo: '/panel/hasar-dosyalari?yeni=1',
                     returnLabel: 'Yeni Dosya',
                   });

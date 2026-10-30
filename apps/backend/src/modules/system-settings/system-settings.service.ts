@@ -126,7 +126,7 @@ const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubType[] = [
   { value: 'asistan_firmasi', label: 'Asistans Firma', forType: 'corporate', color: 'orange' },
   { value: 'eksper_firmasi', label: 'Eksper Firması', forType: 'corporate', color: 'purple' },
   { value: 'insured', label: 'Sigortalı', forType: 'both', color: 'orange' },
-  { value: 'private_customer', label: 'Özel Müşteri', forType: 'individual', color: 'green' },
+  { value: 'private_customer', label: 'Özel Müşteri', forType: 'both', color: 'green' },
 ];
 
 function mergeCustomerSubTypes(stored: CustomerSubType[]): CustomerSubType[] {

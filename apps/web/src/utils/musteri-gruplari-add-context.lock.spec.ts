@@ -1,5 +1,5 @@
 /**
- * Yeni Özel Müşteri — bireysel kart, firma tipi değil.
+ * Yeni Özel Müşteri — tam kart; bireysel sayfaya atlanmaz.
  * Çalıştır: node --experimental-strip-types --test apps/web/src/utils/musteri-gruplari-add-context.lock.spec.ts
  */
 import assert from 'node:assert/strict';
@@ -16,9 +16,11 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe('yeni özel müşteri kartı kilidi', () => {
-  it('özel müşteri bireyseldir; Yeni Dosya dönüşü tanınır', () => {
+  it('özel müşteri tipi kilitli kalır; kurumsal veya bireysel seçilir', () => {
     assert.equal(OZEL_MUSTERI_SUB_TYPE, 'private_customer');
-    assert.equal(entityTypeForMusteriAdd('private_customer', 'corporate'), 'individual');
+    assert.equal(entityTypeForMusteriAdd('private_customer', 'corporate'), 'corporate');
+    assert.equal(entityTypeForMusteriAdd('private_customer', 'individual'), 'individual');
+    assert.equal(entityTypeForMusteriAdd('private_customer', null), '');
     assert.equal(entityTypeForMusteriAdd('eksper_firmasi', 'corporate'), 'corporate');
     assert.equal(
       isYeniDosyaOzelMusteriAdd({
@@ -29,13 +31,17 @@ describe('yeni özel müşteri kartı kilidi', () => {
     );
   });
 
-  it('Yeni Özel Müşteri formu bireysel Özel Müşteri ile açılır', () => {
+  it('Yeni Özel Müşteri bireysel forma atlamaz; tam kartta tip seçilir', () => {
     const form = readFileSync(join(here, '../components/claim-files/ClaimNewForm.tsx'), 'utf8');
     const page = readFileSync(join(here, '../app/panel/musteriler/page.tsx'), 'utf8');
+    const helpers = readFileSync(join(here, 'customer-form-helpers.ts'), 'utf8');
     assert.match(form, /subType: 'private_customer'/);
-    assert.match(form, /entityType: 'individual'/);
+    assert.doesNotMatch(form, /entityType: 'individual'/);
     assert.match(page, /isYeniDosyaOzelMusteriAdd/);
-    assert.match(page, /Özel müşteri bireysel kişidir/);
+    assert.match(page, /Önce kurumsal veya bireysel seçin/);
+    assert.doesNotMatch(page, /Özel müşteri bireysel kişidir/);
+    assert.match(page, /ozelMusteriAdd \? OZEL_MUSTERI_SUB_TYPE : ''/);
+    assert.match(helpers, /value: 'private_customer', label: 'Özel Müşteri', forType: 'both'/);
     assert.match(page, /\? 'Özel Müşteri'/);
   });
 });

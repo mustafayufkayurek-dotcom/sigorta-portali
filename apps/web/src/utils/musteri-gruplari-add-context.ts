@@ -43,7 +43,11 @@ export function isYeniDosyaOzelMusteriAdd(
     && String(ctx.subType ?? '') === OZEL_MUSTERI_SUB_TYPE;
 }
 
-export function entityTypeForMusteriAdd(subType: string, rawEntityType: string | null): 'individual' | 'corporate' {
-  if (subType === OZEL_MUSTERI_SUB_TYPE) return 'individual';
-  return rawEntityType === 'corporate' ? 'corporate' : 'individual';
+export function entityTypeForMusteriAdd(
+  subType: string,
+  rawEntityType: string | null,
+): 'individual' | 'corporate' | '' {
+  if (rawEntityType === 'corporate' || rawEntityType === 'individual') return rawEntityType;
+  if (subType === OZEL_MUSTERI_SUB_TYPE) return '';
+  return 'individual';
 }

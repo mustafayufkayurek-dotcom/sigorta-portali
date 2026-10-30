@@ -41,7 +41,7 @@ export const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubTypeDef[] = [
   { value: 'asistan_firmasi', label: 'Asistans Firma', forType: 'corporate', color: 'orange' },
   { value: 'eksper_firmasi', label: 'Eksper Firması', forType: 'corporate', color: 'purple' },
   { value: 'insured', label: 'Sigortalı', forType: 'both', color: 'orange' },
-  { value: 'private_customer', label: 'Özel Müşteri', forType: 'individual', color: 'green' },
+  { value: 'private_customer', label: 'Özel Müşteri', forType: 'both', color: 'green' },
 ];
 
 /** Eski kayıtlar için — yeni kayıtta seçilemez */
@@ -68,6 +68,9 @@ function withCanonicalCustomerSubTypeLabel(row: CustomerSubTypeDef): CustomerSub
   if (value === 'asistan_firmasi' || value === 'asistans_firmasi') {
     return { ...row, label: 'Asistans Firma' };
   }
+  if (value === 'private_customer') {
+    return { ...row, forType: 'both' };
+  }
   return row;
 }
 
@@ -84,10 +87,11 @@ export function mergeCustomerSubTypes(stored: CustomerSubTypeDef[]): CustomerSub
 
 export function customerSubTypesForPicker(
   subTypes: CustomerSubTypeDef[],
-  customerType: CustomerType,
+  customerType: CustomerType | '',
 ): CustomerSubTypeDef[] {
   return subTypes.filter((t) => {
     if (t.value === 'eksper') return false;
+    if (!customerType) return t.forType === 'both';
     if (customerType === 'individual' && CORPORATE_ONLY_SUB_TYPES.has(t.value)) return false;
     return t.forType === customerType || t.forType === 'both';
   });
@@ -221,7 +225,11 @@ export function customerFormIdentityBand(form: {
 }): { empty: boolean; title: string; side: string; extra: string } {
   const title = customerDisplayName(form);
   const empty = title === '—';
-  const typeLabel = form.customerType === 'individual' ? 'Bireysel' : 'Kurumsal';
+  const typeLabel = form.customerType === 'individual'
+    ? 'Bireysel'
+    : form.customerType === 'corporate'
+      ? 'Kurumsal'
+      : '';
   const subLabel = customerSubTypeLabel(form.subType);
   const side = [typeLabel, subLabel].filter(Boolean).join(' · ');
   const extra = [String(form.phone ?? '').trim(), String(form.city ?? '').trim()].filter(Boolean).join(' · ');
