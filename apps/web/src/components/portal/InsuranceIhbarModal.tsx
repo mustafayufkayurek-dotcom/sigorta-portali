@@ -127,7 +127,6 @@ function InsuranceIhbarModal({
     if (!open) return;
     setStep(1);
     setForm(EMPTY_FORM);
-    setPhoneDisplay('');
     setErrors({});
     setDistricts([]);
     setPhotos((prev) => {

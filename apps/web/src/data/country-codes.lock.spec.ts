@@ -46,11 +46,16 @@ describe('telefon gösterim kilidi', () => {
       join(here, '../app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriEditModal.tsx'),
       'utf8',
     );
-    for (const src of [claim, acil, duzenle]) {
+    const sigortaIhbar = readFileSync(
+      join(here, '../components/portal/InsuranceIhbarModal.tsx'),
+      'utf8',
+    );
+    for (const src of [claim, acil, duzenle, sigortaIhbar]) {
       assert.match(src, /PhoneInput/);
       assert.doesNotMatch(src, /0 \(5XX\) XXX XX XX/);
       assert.doesNotMatch(src, /05XX XXX XX XX/);
       assert.doesNotMatch(src, /function TRPhoneInput/);
+      assert.doesNotMatch(src, /setPhoneDisplay/);
     }
   });
 });
