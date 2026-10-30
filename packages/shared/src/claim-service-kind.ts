@@ -128,8 +128,8 @@ export function isInspectorAlreadyAssigned(inspectorId: string | null | undefine
 export type ConsultancyTypeListRow = {
   id: string;
   name: string;
-  code?: string | null;
-  isActive?: boolean;
+  code: string | null;
+  isActive: boolean;
 };
 
 function asObject(raw: unknown): Record<string, unknown> | null {
@@ -146,21 +146,21 @@ export function parseServiceTypeListPayload(raw: unknown): ConsultancyTypeListRo
       : Array.isArray(nested?.data)
         ? nested.data
         : [];
-  return list
-    .map((row) => {
-      if (!row || typeof row !== 'object') return null;
-      const r = row as { id?: unknown; name?: unknown; code?: unknown };
-      const id = String(r.id ?? '').trim();
-      const name = String(r.name ?? '').trim();
-      if (!id || !name) return null;
-      return {
-        id,
-        name,
-        code: r.code == null ? null : String(r.code),
-        isActive: (row as { isActive?: unknown }).isActive !== false,
-      };
-    })
-    .filter((row): row is ConsultancyTypeListRow => Boolean(row));
+  const out: ConsultancyTypeListRow[] = [];
+  for (const row of list) {
+    if (!row || typeof row !== 'object') continue;
+    const r = row as { id?: unknown; name?: unknown; code?: unknown; isActive?: unknown };
+    const id = String(r.id ?? '').trim();
+    const name = String(r.name ?? '').trim();
+    if (!id || !name) continue;
+    out.push({
+      id,
+      name,
+      code: r.code == null ? null : String(r.code),
+      isActive: r.isActive !== false,
+    });
+  }
+  return out;
 }
 
 /** Yeni Dosya Danışmanlık listesi — Hasar Tespit ayrı tuştadır */
