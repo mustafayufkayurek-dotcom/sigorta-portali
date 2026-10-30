@@ -47,4 +47,14 @@ describe('müşteri form kimlik bandı LOCK', () => {
     assert.match(personel, /personel-form-kimlik-bandi/);
     assert.match(personel, /from-emerald-600/);
   });
+
+  it('kurumsal kartta yetkili e-posta görev ünvanın yanındadır', () => {
+    const musteriler = readFileSync(join(here, '../app/panel/musteriler/page.tsx'), 'utf8');
+    const kurumsal = musteriler.slice(musteriler.indexOf('title="Kurumsal Bilgiler"'));
+    const gorev = kurumsal.indexOf('label="Görev / Ünvan"');
+    const yetkiliMail = kurumsal.indexOf('label="Yetkili E-posta"');
+    const telefon = kurumsal.indexOf('label="Telefon"');
+    assert.ok(gorev > 0 && yetkiliMail > gorev && yetkiliMail < telefon);
+    assert.doesNotMatch(kurumsal.slice(gorev, yetkiliMail), /label="Telefon"/);
+  });
 });

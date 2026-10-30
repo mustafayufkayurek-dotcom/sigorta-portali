@@ -3202,7 +3202,20 @@ export default function MusterilerPage() {
                             />
                           )}
                         </FormField>
-                        <div className="col-span-1 sm:col-span-2">
+                        <FormField label="Yetkili E-posta">
+                          <input type="text" inputMode="email" autoComplete="off" className={inp} placeholder="Örn. melis@sirket.com" value={form.email}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setForm((p) => ({ ...p, email: value }));
+                              syncPrimaryContact({ email: personMailboxFromList(value) || value });
+                              setEmailError(null);
+                              setEmailWarn(null);
+                              setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; });
+                            }}
+                            onBlur={() => { handleEmailBlur(); handleEmailDuplicateCheck(personMailboxFromList(form.email) || form.email); }} />
+                          {emailError && <p className="text-xs text-status-danger mt-1.5">{emailError}</p>}
+                          {!emailError && emailWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {emailWarn}</p>}
+                        </FormField>
                         <FormField label="Telefon" error={phoneError ?? undefined}>
                           <ContactPhoneField
                             phone={form.phone}
@@ -3226,21 +3239,6 @@ export default function MusterilerPage() {
                             onPhoneBlur={handlePhoneBlur}
                           />
                           {!phoneError && phoneWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {phoneWarn}</p>}
-                        </FormField>
-                        </div>
-                        <FormField label="Yetkili E-posta">
-                          <input type="text" inputMode="email" autoComplete="off" className={inp} placeholder="Örn. melis@sirket.com" value={form.email}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              setForm((p) => ({ ...p, email: value }));
-                              syncPrimaryContact({ email: personMailboxFromList(value) || value });
-                              setEmailError(null);
-                              setEmailWarn(null);
-                              setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; });
-                            }}
-                            onBlur={() => { handleEmailBlur(); handleEmailDuplicateCheck(personMailboxFromList(form.email) || form.email); }} />
-                          {emailError && <p className="text-xs text-status-danger mt-1.5">{emailError}</p>}
-                          {!emailError && emailWarn && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {emailWarn}</p>}
                         </FormField>
                         <FormField label="Genel E-posta">
                           <input type="text" inputMode="email" autoComplete="off" className={inp} placeholder="Örn. konut@sirket.com"
