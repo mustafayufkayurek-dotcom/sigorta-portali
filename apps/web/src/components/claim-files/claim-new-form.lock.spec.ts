@@ -58,6 +58,13 @@ describe('yeni dosya form lock', () => {
     assert.doesNotMatch(form, /Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz\.<\/p>/);
     assert.match(form, /CLAIM_SERVICE_KINDS\.map/);
     assert.match(form, /<option key=\{kind\} value=\{kind\}>/);
+    assert.match(form, /data-field="lossType"/);
+    assert.doesNotMatch(form, /prefs\.lossType/);
+    assert.doesNotMatch(form, /saveClaimNewPrefs/);
+    assert.doesNotMatch(form, /loadClaimNewPrefs/);
+    const addressFields = readFileSync(join(here, '../../constants/address-fields.ts'), 'utf8');
+    assert.match(addressFields, /provincePlaceholder: 'Seçiniz\.\.\.'/);
+    assert.match(addressFields, /districtPlaceholder: 'Seçiniz\.\.\.'/);
     assert.doesNotMatch(form, /data-field="serviceKind"[\s\S]{0,800}type="button"/);
     assert.doesNotMatch(form, /spanFull.*data-field="serviceKind"/);
     assert.match(form, /newClaimOpeningCaption\(serviceKind\)/);

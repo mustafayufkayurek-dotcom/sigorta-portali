@@ -136,6 +136,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'customer-general-mailbox.lock.spec',
       'operasyon-agi-canli-destek.lock.spec',
       'hasar-dosya-irtibat.lock.spec',
+      'hasar-randevu-alici.lock.spec',
       'insurance-company-catalog.lock.spec',
       'mali-mesuliyet.lock.spec',
       'repair-damage-category.lock.spec',

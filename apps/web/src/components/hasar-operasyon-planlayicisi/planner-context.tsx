@@ -24,7 +24,7 @@ import { normalizeTrDateValue } from '@/utils/tr-date-input';
 import { buildSupplierTaskMapFromNotes } from '@/utils/hasar-supplier-tasks';
 import { resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { isLegacyOpsCatchupBypassActive } from '@/utils/whatsapp-sent-confirm-gate';
-import { hasarCancelReasonOk, isHasarDigitalApprovalRelaxed, serializeHasarKapanisButce, EMPTY_HASAR_KAPANIS_BUTCE, type HasarKapanisButce } from '@sigorta/shared';
+import { hasarCancelReasonOk, hasarRandevuAlici, isHasarDigitalApprovalRelaxed, serializeHasarKapanisButce, EMPTY_HASAR_KAPANIS_BUTCE, type HasarKapanisButce } from '@sigorta/shared';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { UI_ACTION_TIMEOUT_MS } from '@/utils/ui-action-timeout';
@@ -254,8 +254,9 @@ export function PlannerProvider({
     if (waSeededForClaim.current === claimId) return;
     waSeededForClaim.current = claimId;
     const insured = pickTemplate(templates, HASAR_WA_TEMPLATE_TYPES.insuredAppointment);
-    setWaBody(interpolateHasarTemplate(insured.content, baseVars));
-  }, [templates, templatesLoading, claim.fileNo, claimId, baseVars]);
+    const alici = hasarRandevuAlici(claim);
+    setWaBody(interpolateHasarTemplate(insured.content, { ...baseVars, musteriAdi: alici.name }));
+  }, [templates, templatesLoading, claim.fileNo, claimId, baseVars, claim]);
 
   const refreshClaim = useCallback(async () => {
     if (onRefresh) {
@@ -266,8 +267,9 @@ export function PlannerProvider({
 
   const buildInsuredApptMessage = useCallback(() => {
     const t = pickTemplate(templates, HASAR_WA_TEMPLATE_TYPES.insuredAppointment);
-    return interpolateHasarTemplate(t.content, baseVars);
-  }, [templates, baseVars]);
+    const alici = hasarRandevuAlici(claim);
+    return interpolateHasarTemplate(t.content, { ...baseVars, musteriAdi: alici.name });
+  }, [templates, baseVars, claim]);
 
   const buildInspectorMessage = useCallback(() => {
     const t = pickTemplate(templates, HASAR_WA_TEMPLATE_TYPES.inspectorAppointment);
@@ -290,13 +292,17 @@ export function PlannerProvider({
     (recipientType: string) => {
       const type = templateTypeForRecipient(recipientType);
       const t = pickTemplate(templates, type);
+      if (recipientType === 'Sigortalı') {
+        const alici = hasarRandevuAlici(claim);
+        return interpolateHasarTemplate(t.content, { ...baseVars, musteriAdi: alici.name });
+      }
       return interpolateHasarTemplate(t.content, baseVars);
     },
-    [templates, baseVars],
+    [templates, baseVars, claim],
   );
 
   const resolveWaPhone = useCallback(() => {
-    if (waRecipientType === 'Sigortalı') return claim.insuredPhone;
+    if (waRecipientType === 'Sigortalı') return hasarRandevuAlici(claim).phone;
     if (waRecipientType === 'Tespitçi') {
       const insp = claim.inspectors.find((i) => i.id === assignedInspectorId);
       return insp?.phone ?? '';
@@ -336,7 +342,7 @@ export function PlannerProvider({
       const recipientName =
         input?.recipientName
         ?? (waRecipientType === 'Sigortalı'
-          ? claim.insuredName
+          ? hasarRandevuAlici(claim).name
           : waRecipientType === 'Tespitçi'
             ? claim.inspectors.find((i) => i.id === assignedInspectorId)?.name
             : claim.suppliers.find((s) => assignedSupplierIds.includes(s.id))?.name);

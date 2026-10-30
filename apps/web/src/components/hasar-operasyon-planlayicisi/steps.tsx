@@ -38,6 +38,7 @@ import {
   buildKapanisTahsilatWhatsAppMessage,
   filePreApprovalItemChoices,
   hasarCancelReasonOk,
+  hasarRandevuAlici,
   isHasarDigitalApprovalRelaxed,
   isInspectorAlreadyAssigned,
   isPreApprovalOtherJob,
@@ -355,6 +356,7 @@ export function StepInsuredAppointment() {
   const apptDateWrapRef = useRef<HTMLDivElement>(null);
   const apptTimeRef = useRef<HTMLInputElement>(null);
   const waText = buildInsuredApptMessage();
+  const randevuAlici = hasarRandevuAlici(claim);
   const apptEditable = canEdit;
 
   useEffect(() => {
@@ -455,8 +457,8 @@ export function StepInsuredAppointment() {
           </Field>
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
-          <a href={claim.insuredPhone ? `tel:${claim.insuredPhone.replace(/\s/g, '')}` : undefined}>
-            <Btn tone="secondary" disabled={!claim.insuredPhone}>
+          <a href={randevuAlici.phone ? `tel:${randevuAlici.phone.replace(/\s/g, '')}` : undefined}>
+            <Btn tone="secondary" disabled={!randevuAlici.phone}>
               <PhoneCall className="h-3 w-3" /> Ara
             </Btn>
           </a>
@@ -503,17 +505,21 @@ export function StepInsuredAppointment() {
           {templatesFromSettings ? ' (canlı şablon)' : ' (varsayılan)'}
         </p>
         <TemplatePreview title="Gönderilecek şablon" text={waText} />
-        <p className="mt-2 text-[11px] font-medium text-amber-800">Sigortalıya WhatsApp gönderimi zorunlu.</p>
+        <p className="mt-2 text-[11px] font-medium text-amber-800">
+          {randevuAlici.viaIrtibat
+            ? 'Randevu WhatsApp’ı irtibat kurulacak kişiye gider.'
+            : 'Sigortalıya WhatsApp gönderimi zorunlu.'}
+        </p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <WhatsAppOpenButton
-            phone={claim.insuredPhone}
+            phone={randevuAlici.phone}
             message={waText}
             onOpened={() => {
               void recordWhatsAppContact({
                 status: 'opened',
                 recipientType: 'insured',
-                recipientName: claim.insuredName,
-                phone: claim.insuredPhone,
+                recipientName: randevuAlici.name,
+                phone: randevuAlici.phone,
                 message: waText,
                 templateType: 'randevu',
               }).then((res) => {
@@ -527,8 +533,8 @@ export function StepInsuredAppointment() {
               void recordWhatsAppContact({
                 status: 'sent',
                 recipientType: 'insured',
-                recipientName: claim.insuredName,
-                phone: claim.insuredPhone,
+                recipientName: randevuAlici.name,
+                phone: randevuAlici.phone,
                 message: waText,
                 templateType: 'randevu',
               }).then((res) => {
@@ -1024,9 +1030,10 @@ export function StepWhatsApp({
   const assignedInspector = claim.inspectors.find((i) => i.id === assignedInspectorId);
   const assignedSupplier = claim.suppliers.find((s) => assignedSupplierIds.includes(s.id));
 
+  const randevuAlici = hasarRandevuAlici(claim);
   const recipientName =
     recipientType === 'Sigortalı'
-      ? claim.insuredName
+      ? randevuAlici.name
       : recipientType === 'Tespitçi'
         ? assignedInspector?.name ?? 'Tespitçi Seçilmedi'
         : recipientType === 'Tedarikçi'
@@ -1037,7 +1044,7 @@ export function StepWhatsApp({
 
   const phone =
     recipientType === 'Sigortalı'
-      ? claim.insuredPhone
+      ? randevuAlici.phone
       : recipientType === 'Tespitçi'
         ? assignedInspector?.phone ?? ''
           : recipientType === 'Tedarikçi'

@@ -15,8 +15,6 @@ import { toTitleCaseTR } from '@/utils/text-helpers';
 import { HASAR_EXPERT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import {
-  loadClaimNewPrefs,
-  saveClaimNewPrefs,
   todayTrDateDisplay,
 } from '@/utils/claim-new-form-helpers';
 import {
@@ -206,16 +204,11 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       );
       setInsuranceCompanies(companies);
 
-      const prefs = loadClaimNewPrefs();
-      const prefCompanyId = prefs.insuranceCompanyId;
-      if (prefCompanyId && companies.some((c) => c.id === prefCompanyId)) {
-        setInsuranceCompanyId(prefCompanyId);
-      } else if (isOfficeStaffRole(roleCode) && companies.length === 1) {
+      if (isOfficeStaffRole(roleCode) && companies.length === 1) {
         setInsuranceCompanyId(companies[0].id);
       } else {
         setInsuranceCompanyId('');
       }
-      if (prefs.lossType) setLossType(prefs.lossType);
 
       const subjectData = subjectsRes?.data?.data;
       const subjects = Array.isArray(subjectData?.hasar)
@@ -232,7 +225,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       setConsultancyTypes(consultancyRows);
       setConsultancyServiceTypeId((prev) => {
         if (prev && consultancyRows.some((row) => row.id === prev)) return prev;
-        return consultancyRows.length === 1 ? consultancyRows[0].id : '';
+        return '';
       });
     } catch (e) {
       reportCaughtError(e, 'Form seçenekleri yüklenemedi. Lütfen sayfayı yenileyin.');
@@ -513,7 +506,6 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       if (!createdId) {
         throw new Error('Oluşturulan dosya kimliği alınamadı');
       }
-      saveClaimNewPrefs({ lossType });
       onSuccess(createdId);
     } catch (err: unknown) {
       const errorText = getApiErrorMessage(err, 'Kayıt başarısız. Lütfen tekrar deneyin.');
@@ -722,7 +714,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
               const kind = parseClaimServiceKind(e.target.value);
               setServiceKind(kind);
               if (kind !== 'consultancy') setConsultancyServiceTypeId('');
-              else if (consultancyTypes.length === 1) setConsultancyServiceTypeId(consultancyTypes[0].id);
+              else setConsultancyServiceTypeId('');
               setErrors((p) => {
                 const n = { ...p };
                 delete n.serviceKind;

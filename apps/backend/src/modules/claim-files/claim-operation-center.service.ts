@@ -16,6 +16,7 @@ import {
   vendorsMissingRepairPhotos,
   isHasarDigitalApprovalRelaxed,
   parseHasPreApprovalWork,
+  hasarRandevuAlici,
 } from '@sigorta/shared';
 
 const MANUAL_DECISION_MIN_REASON = 10;
@@ -601,6 +602,13 @@ export class ClaimOperationCenterService {
     const duration = appointment.estimatedDurationMinutes
       ? `${appointment.estimatedDurationMinutes} Dakika`
       : 'Belirtilmedi';
+    const alici = hasarRandevuAlici({
+      siteContactName: claim.siteContactName,
+      siteContactPhone: claim.siteContactPhone,
+      insuredName,
+      insuredPhone: claim.insuredPhone,
+      customerPhone: claim.customer?.phone,
+    });
     const vars = {
       musteriAdi: insuredName,
       musteriTelefon: claim.insuredPhone ?? claim.customer?.phone ?? '',
@@ -623,8 +631,8 @@ export class ClaimOperationCenterService {
       targets.push({
         recipientType: 'insured',
         recipientId: claim.customerId,
-        recipientName: insuredName,
-        phone: claim.insuredPhone ?? claim.customer?.phone ?? null,
+        recipientName: alici.name || insuredName,
+        phone: alici.phone || null,
         templateType:
           purpose === 'repair'
             ? TEMPLATE_TYPES.WHATSAPP_HASAR_REPAIR_INSURED
@@ -662,7 +670,11 @@ export class ClaimOperationCenterService {
     const results = [];
     for (const target of targets) {
       const template = await this.templateService.getByType(target.templateType);
-      const message = this.templateService.interpolate(template.content, vars);
+      const messageVars =
+        target.recipientType === 'insured'
+          ? { ...vars, musteriAdi: alici.name || insuredName, musteriTelefon: alici.phone }
+          : vars;
+      const message = this.templateService.interpolate(template.content, messageVars);
       const url = this.waUrl(target.phone, message);
       const status = url ? 'ready' : 'failed';
       const event = await this.log(

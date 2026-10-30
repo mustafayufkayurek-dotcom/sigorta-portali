@@ -853,7 +853,7 @@ export function EmergencyCaseNewForm({
             disabled={lookupsLoading}
             data-testid="acil-dosya-sorumlusu-select"
           >
-            <option value="">{lookupsLoading ? 'Yükleniyor…' : 'Seçiniz'}</option>
+            <option value="">{lookupsLoading ? 'Yükleniyor…' : 'Seçiniz...'}</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
             ))}

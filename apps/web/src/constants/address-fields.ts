@@ -1,9 +1,9 @@
 /** Adres formu etiket ve placeholder'ları — Türkçe Title Case */
 export const ADDRESS_FIELD = {
   province: 'İl',
-  provincePlaceholder: 'İl Seçin...',
+  provincePlaceholder: 'Seçiniz...',
   district: 'İlçe',
-  districtPlaceholder: 'İlçe Seçin...',
+  districtPlaceholder: 'Seçiniz...',
   neighborhood: 'Mahalle',
   neighborhoodPlaceholder: 'Mahalle Adı',
   neighborhoodLoading: 'Mahalleler Yükleniyor…',
