@@ -1,9 +1,9 @@
-/** Yeni dosya hizmet türü — üç tuş durur; Danışmanlık listesi sol menüdedir */
+/** Yeni dosya hizmet türü — üç seçenek aşağı açılır; Danışmanlık listesi sol menüdedir */
 
 export const CLAIM_SERVICE_KINDS = ['inspection', 'repair', 'consultancy'] as const;
 export type ClaimServiceKind = (typeof CLAIM_SERVICE_KINDS)[number];
 
-/** Eski üst seçim — menü gruplaması; Yeni Dosya üç tuştur */
+/** Eski üst seçim — menü gruplaması; Yeni Dosya üç hizmet seçeneğidir */
 export const CLAIM_FILE_SERVICE_KIND_TOP = ['repair', 'consultancy'] as const;
 export type ClaimFileServiceKindTop = (typeof CLAIM_FILE_SERVICE_KIND_TOP)[number];
 

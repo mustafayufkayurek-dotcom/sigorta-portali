@@ -711,41 +711,34 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       <div className={formGrid}>
         <div className="min-w-0" data-field="serviceKind">
           <label className={label}>Hizmet Türü <span className="text-status-danger">*</span></label>
-          <div className="flex flex-wrap gap-1.5">
+          <select
+            className={`${field} ${errors.serviceKind ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
+            value={serviceKind}
+            required
+            onChange={(e) => {
+              const kind = parseClaimServiceKind(e.target.value);
+              setServiceKind(kind);
+              if (kind !== 'consultancy') setConsultancyServiceTypeId('');
+              else if (consultancyTypes.length === 1) setConsultancyServiceTypeId(consultancyTypes[0].id);
+              setErrors((p) => {
+                const n = { ...p };
+                delete n.serviceKind;
+                if (kind !== 'consultancy') delete n.consultancyServiceTypeId;
+                return n;
+              });
+            }}
+          >
             {CLAIM_SERVICE_KINDS.map((kind) => (
-              <button
-                key={kind}
-                type="button"
-                onClick={() => {
-                  setServiceKind(kind);
-                  if (kind !== 'consultancy') setConsultancyServiceTypeId('');
-                  else if (consultancyTypes.length === 1) setConsultancyServiceTypeId(consultancyTypes[0].id);
-                  setErrors((p) => {
-                    const n = { ...p };
-                    delete n.serviceKind;
-                    if (kind !== 'consultancy') delete n.consultancyServiceTypeId;
-                    return n;
-                  });
-                }}
-                className={`min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-[11px] font-semibold leading-tight ${
-                  serviceKind === kind
-                    ? 'border-brand-400 bg-brand-50 text-brand-800'
-                    : errors.serviceKind
-                      ? 'border-red-400 bg-red-50 text-slate-700'
-                      : 'border-slate-200 bg-white text-slate-600'
-                }`}
-              >
-                {CLAIM_SERVICE_KIND_LABEL[kind]}
-              </button>
+              <option key={kind} value={kind}>{CLAIM_SERVICE_KIND_LABEL[kind]}</option>
             ))}
-          </div>
+          </select>
           {errors.serviceKind && <p className="text-xs text-status-danger mt-0.5">{errors.serviceKind}</p>}
         </div>
         {serviceKind === 'consultancy' ? (
           <div className="min-w-0" data-field="consultancyServiceTypeId">
             <label className={`${label} flex items-center gap-1.5`}>
               <span>Danışmanlık Hizmet Türü <span className="text-status-danger">*</span></span>
-              <FieldHelpTip text="Ayarlar’daki danışmanlık türleri. Hasar Tespit ayrı tuştadır." testId="danismanlik-hizmet-turu-yardim" />
+              <FieldHelpTip text="Ayarlar’daki danışmanlık türleri. Hasar Tespit bu listede yoktur." testId="danismanlik-hizmet-turu-yardim" />
             </label>
             <select
               className={`${field} ${errors.consultancyServiceTypeId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}

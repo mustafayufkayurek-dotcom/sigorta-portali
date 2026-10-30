@@ -57,7 +57,8 @@ describe('yeni dosya form lock', () => {
     assert.doesNotMatch(form, /isOfficeStaffRole\(roleCode\) && scopedIds/);
     assert.doesNotMatch(form, /Bitişik yazabilirsiniz; boşluklar eşleştirmede dikkate alınmaz\.<\/p>/);
     assert.match(form, /CLAIM_SERVICE_KINDS\.map/);
-    assert.match(form, /flex flex-wrap gap-1\.5/);
+    assert.match(form, /<option key=\{kind\} value=\{kind\}>/);
+    assert.doesNotMatch(form, /data-field="serviceKind"[\s\S]{0,800}type="button"/);
     assert.doesNotMatch(form, /spanFull.*data-field="serviceKind"/);
     assert.match(form, /Danışmanlık Hizmet Türü/);
     assert.match(form, /consultancyServiceTypeId/);

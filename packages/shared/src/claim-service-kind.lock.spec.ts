@@ -38,7 +38,7 @@ describe('claim service kind lock', () => {
     assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'inspection' }), 'danismanlik');
   });
 
-  it('Yeni Dosya üç hizmet tuşudur; liste Danışmanlık menüsüyle süzülür', () => {
+  it('Yeni Dosya üç hizmet seçeneğidir; liste Danışmanlık menüsüyle süzülür', () => {
     assert.deepEqual([...CLAIM_SERVICE_KINDS], ['inspection', 'repair', 'consultancy']);
     assert.equal(CLAIM_SERVICE_KIND_LABEL.inspection, 'Hasar Tespit');
     assert.equal(isHasarTespitConsultancyType({ code: HASAR_TESPIT_SERVICE_CODE, name: 'Hasar Tespit' }), true);

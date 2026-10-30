@@ -20,7 +20,7 @@ const service = readFileSync(
 );
 
 describe('danışmanlık hizmet türleri kilidi', () => {
-  it('Tanımlar ekranı Hasar Tespit’i silmez; menüde Danışmanlık durur; Yeni Dosya üç tuştur', () => {
+  it('Tanımlar ekranı Hasar Tespit’i silmez; menüde Danışmanlık durur; Yeni Dosya üç hizmet seçeneğidir', () => {
     assert.match(page, /Danışmanlık Hizmet Türleri/);
     assert.match(page, /Hizmet Türü Ekle/);
     assert.match(page, /Örn\. sovtaj/);
@@ -28,7 +28,7 @@ describe('danışmanlık hizmet türleri kilidi', () => {
     assert.match(page, /Hasar Tespit durur/);
     assert.doesNotMatch(page, /SettingsLegacyRedirect/);
     assert.match(form, /CLAIM_SERVICE_KINDS\.map/);
-    assert.match(form, /flex flex-wrap gap-1\.5/);
+    assert.match(form, /<option key=\{kind\} value=\{kind\}>/);
     assert.match(form, /Danışmanlık Hizmet Türü/);
     assert.match(form, /consultancyServiceTypeId/);
     assert.match(form, /consultancyTypesForNewFile/);

@@ -1,11 +1,11 @@
 ---
-description: Canlı web v664 / backend v664
+description: Canlı web v665 / backend v664
 alwaysApply: true
 ---
 
 # Canlı (30.10.2026)
 
-Canlı: web **v664** · backend **v664**. Geri alma: web **v663** / backend **v661**.
+Canlı: web **v665** · backend **v664**. Geri alma: web **v664** / backend **v664**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v665 (yalnız web):** Yeni Dosya Hizmet Türü diğer kutular gibi aşağı açılır; tuş yığını yoktur. Üç seçenek durur. Danışmanlık seçilince tür listesi zorunludur. Backend **v664**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v664 / backend v664.
 
 **v664 (full):** Yeni Dosya’da Danışmanlık tür listesi Ayarlar kaydını gösterir; Hasar Tespit ayrı tuştur. Hizmet Türü tam satırı kaplamaz; tür seçimi zorunludur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v663 / backend v661.
 
@@ -205,4 +207,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v664** · backend **v664**.
+Canlı web **v665** · backend **v664**.
