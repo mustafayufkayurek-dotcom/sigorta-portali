@@ -49,6 +49,7 @@ import {
   customerFormIdentityBand,
   isHasarCustomerServiceType,
   titleCaseCustomerWrittenFields,
+  type CustomerSubType,
   type CustomerSubTypeDef,
 } from '@/utils/customer-form-helpers';
 import {
@@ -156,7 +157,7 @@ const emptyContact = (): ContactPerson => ({
 const emptyContactInfo = (): ContactInfoItem => ({ type: 'phone', value: '', label: 'general' });
 const emptyForm = () => ({
   customerType: 'individual' as 'individual' | 'corporate' | '',
-  subType: '' as '' | 'insured' | 'private_customer' | 'eksper' | 'sigorta_sirketi' | 'eksper_firmasi' | 'asistan_firmasi' | 'broker_firmasi',
+  subType: '' as CustomerSubType,
   firstName: '', lastName: '', companyName: '', shortName: '',
   taxNumber: '', taxOffice: '', identityNo: '',
   contactFirstName: '', contactLastName: '',
