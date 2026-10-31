@@ -213,6 +213,18 @@ export const OPS_NOTICE = {
     body:
       'Danışmanlık Operasyon menüsündedir. Hasar Tespit ve eklenen türler oradan açılır. Yeni tür gerektiğinde Tanımlar’dan eklenir.',
   },
+  hasarDosyaKanali: {
+    id: 'hasar-dosya-kanali-v668',
+    title: 'Dosya Kanalı',
+    body:
+      'Dosyayı biz açarız. Rapor ve yazışma Sigorta Şirketi, Acente, Broker ve Eksper listelerinden seçilen taraflara gider. Hepsi aynı olmak zorunda değildir.',
+  },
+  sahaTespitTopluSil: {
+    id: 'saha-tespit-toplu-sil-v668',
+    title: 'Toplu Resim Silme',
+    body:
+      'Tespit Fotoğrafları’nda Seç deyince birden fazla resmi işaretleyip Seçilenleri Sil ile birlikte silersiniz. Tek resmi çöp kutusundan silmek durur.',
+  },
 } as const;
 
 export function opsNoticeStorageKey(noticeId: string): string {

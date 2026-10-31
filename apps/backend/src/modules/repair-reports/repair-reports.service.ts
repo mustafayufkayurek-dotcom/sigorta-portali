@@ -24,7 +24,7 @@ import { ExternalApprovalsService } from '@/modules/external-approvals/external-
 import { normalizeReportImageCategory } from './report-image-category';
 import { resolveReportImageFilePath } from './report-image-paths';
 import { resolveReportCustomerMailRecipients } from './report-customer-mail-recipients';
-import { generalMailboxesFromContactInfos } from '@sigorta/shared';
+import { collectClaimFileChannelEmails, generalMailboxesFromContactInfos } from '@sigorta/shared';
 import {
   isExpertFirmCustomer,
   EXTRA_REPAIR_KIND,
@@ -82,6 +82,27 @@ const CLAIM_FILE_SAFE_SELECT = {
   insuranceCompany: true,
   currentStatus: { select: { id: true, code: true, name: true, color: true } },
   customer: { include: { contacts: { where: { phone: { not: null } }, orderBy: { isPrimary: 'desc' as const } } } },
+  channelAgencyCustomer: {
+    select: {
+      id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
+      contacts: { select: { email: true, isPrimary: true } },
+      contactInfos: { select: { type: true, label: true, value: true } },
+    },
+  },
+  channelBrokerCustomer: {
+    select: {
+      id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
+      contacts: { select: { email: true, isPrimary: true } },
+      contactInfos: { select: { type: true, label: true, value: true } },
+    },
+  },
+  channelExpertCustomer: {
+    select: {
+      id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
+      contacts: { select: { email: true, isPrimary: true } },
+      contactInfos: { select: { type: true, label: true, value: true } },
+    },
+  },
   propertyAddress: true,
   claimSubject: { select: { id: true, code: true, name: true } },
   assignedFieldUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
@@ -1213,10 +1234,32 @@ export class RepairReportsService {
           select: {
             id: true,
             fileNo: true,
+            insuranceCompany: { select: { id: true, name: true, contactEmail: true } },
             customer: {
               select: {
                 email: true,
                 companyName: true,
+                contacts: { select: { email: true, isPrimary: true } },
+                contactInfos: { select: { type: true, label: true, value: true } },
+              },
+            },
+            channelAgencyCustomer: {
+              select: {
+                email: true,
+                contacts: { select: { email: true, isPrimary: true } },
+                contactInfos: { select: { type: true, label: true, value: true } },
+              },
+            },
+            channelBrokerCustomer: {
+              select: {
+                email: true,
+                contacts: { select: { email: true, isPrimary: true } },
+                contactInfos: { select: { type: true, label: true, value: true } },
+              },
+            },
+            channelExpertCustomer: {
+              select: {
+                email: true,
                 contacts: { select: { email: true, isPrimary: true } },
                 contactInfos: { select: { type: true, label: true, value: true } },
               },
@@ -1258,6 +1301,12 @@ export class RepairReportsService {
       customerEmail: report.claimFile?.customer?.email,
       contacts: report.claimFile?.customer?.contacts,
       channelEmails: generalMailboxesFromContactInfos(report.claimFile?.customer?.contactInfos),
+      fileChannelEmails: collectClaimFileChannelEmails({
+        insuranceContactEmail: report.claimFile?.insuranceCompany?.contactEmail,
+        agency: report.claimFile?.channelAgencyCustomer,
+        broker: report.claimFile?.channelBrokerCustomer,
+        expert: report.claimFile?.channelExpertCustomer,
+      }),
       expertOfficeEmail: report.expertOffice?.email,
     });
     const { buffer: customerPdf } = await this.generatePdf(reportId, 'external');
@@ -1266,7 +1315,7 @@ export class RepairReportsService {
     }
     if (customerRecipients.length === 0) {
       throw new BadRequestException(
-        'Müşteri kartında e-posta yok. Adresi yazmadan rapor onaya gönderilemez.',
+        'Dosya kanalında veya müşteri kartında e-posta yok. Adresi yazmadan rapor onaya gönderilemez.',
       );
     }
     const appUrl = resolveAppUrl(this.config);

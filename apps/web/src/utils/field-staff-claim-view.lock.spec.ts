@@ -315,6 +315,16 @@ describe('field-staff-claim-view lock', () => {
     assert.match(photos, /capture="environment"/);
     assert.match(photos, /Kameradan/);
     assert.match(photos, /Galeriden/);
+    assert.match(photos, /saha-tespit-foto-sec/);
+    assert.match(photos, /saha-tespit-foto-secilenleri-sil/);
+    assert.match(photos, /saha-tespit-foto-tumunu-sec/);
+    assert.match(photos, /handleBulkDelete/);
+    assert.match(photos, /entity-documents\/\$\{id\}/);
+    assert.match(photos, /Seçilenleri Sil/);
+    assert.match(photos, /saha-tespit-toplu-sil-seridi/);
+    assert.match(photos, /OPS_NOTICE\.sahaTespitTopluSil/);
+    assert.match(photos, /shrinkInspectionPhoto/);
+    assert.match(photos, /runWithConcurrency/);
     assert.match(photos, /sürükleyip bırakarak/);
     assert.match(photos, /onDrop=\{readOnly \? undefined : onDropFiles\}/);
     assert.match(photos, /readOnly = false/);

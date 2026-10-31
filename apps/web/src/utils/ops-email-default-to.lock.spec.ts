@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { resolveOpsEmailDefaultTo } from './ops-email-default-to.ts';
+import { resolveClaimCorrespondenceDefaultTo, resolveOpsEmailDefaultTo } from './ops-email-default-to.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -23,8 +23,19 @@ describe('liste mail alıcısı LOCK', () => {
   it('Hasar ve operasyon listesi yardımcı fonksiyonu kullanır', () => {
     const hasar = readFileSync(join(here, '../app/panel/hasar-dosyalari/page.tsx'), 'utf8');
     const ops = readFileSync(join(here, '../app/panel/operasyon/page.tsx'), 'utf8');
-    assert.match(hasar, /resolveOpsEmailDefaultTo/);
-    assert.match(ops, /resolveOpsEmailDefaultTo/);
+    assert.match(hasar, /resolveClaimCorrespondenceDefaultTo/);
+    assert.match(ops, /resolveClaimCorrespondenceDefaultTo/);
     assert.doesNotMatch(hasar, /insuranceCompany\?\.contactEmail \?\? claim\.customer\?\.email/);
+  });
+
+  it('müşteri yoksa seçilen dosya kanalı yazışmaya düşer', () => {
+    const to = resolveClaimCorrespondenceDefaultTo({
+      customer: { email: null },
+      insuranceCompany: { contactEmail: 'hasar@allianz.com' },
+      channelAgencyCustomer: { email: 'acente@vadi.com' },
+      channelBrokerCustomer: null,
+      channelExpertCustomer: null,
+    });
+    assert.equal(to, 'hasar@allianz.com');
   });
 });

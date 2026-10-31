@@ -445,6 +445,31 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(panel, /Ek Onarım Aç/);
   });
 
+  it('Saha tespit toplu silme şeridi durur', () => {
+    const photos = readFileSync(
+      join(here, '../components/field-survey/FieldInspectionPhotosPanel.tsx'),
+      'utf8',
+    );
+    assert.equal(OPS_NOTICE.sahaTespitTopluSil.id, 'saha-tespit-toplu-sil-v668');
+    assert.match(OPS_NOTICE.sahaTespitTopluSil.body, /Seçilenleri Sil/);
+    assert.match(OPS_NOTICE.sahaTespitTopluSil.body, /Seç deyince/);
+    assert.doesNotMatch(OPS_NOTICE.sahaTespitTopluSil.body, /Google|API/);
+    assert.match(photos, /OpsFirstRunNotice/);
+    assert.match(photos, /saha-tespit-toplu-sil-seridi/);
+    assert.match(photos, /saha-tespit-foto-secilenleri-sil/);
+  });
+
+  it('Hasar Yeni Dosya kanal şeridi durur', () => {
+    const form = readFileSync(join(here, '../components/claim-files/ClaimNewForm.tsx'), 'utf8');
+    assert.equal(OPS_NOTICE.hasarDosyaKanali.id, 'hasar-dosya-kanali-v668');
+    assert.match(OPS_NOTICE.hasarDosyaKanali.body, /Dosyayı biz açarız/);
+    assert.match(OPS_NOTICE.hasarDosyaKanali.body, /Rapor ve yazışma/);
+    assert.doesNotMatch(OPS_NOTICE.hasarDosyaKanali.body, /Google/);
+    assert.match(form, /OpsFirstRunNotice/);
+    assert.match(form, /dosya-kanali-ilk-kullanim-seridi/);
+    assert.match(form, /Dosya Kanalı/);
+  });
+
   it('Gelen kutuda Kendime Al şeridi durur', () => {
     const page = readFileSync(join(here, '../app/panel/operasyon/gelen-kutusu/page.tsx'), 'utf8');
     assert.equal(OPS_NOTICE.gelenKutuKendimeAl.id, 'gelen-kutu-kendime-al-v632');

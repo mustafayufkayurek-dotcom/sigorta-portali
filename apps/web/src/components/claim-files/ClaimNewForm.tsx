@@ -25,13 +25,17 @@ import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { createInFlightGuard } from '@/utils/in-flight-guard';
 import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
+import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { PhoneInput } from '@/components/PhoneInput';
 import { parseInternationalPhone } from '@/data/country-codes';
 import {
+  CLAIM_FILE_CHANNELS,
   CLAIM_SERVICE_KIND_LABEL,
   CLAIM_SERVICE_KINDS,
   CONSULTANCY_SERVICE_FAMILY,
   HASAR_FILE_INSURANCE_CATALOG_QUERY,
+  claimFileChannelCreateFields,
   claimServiceKindFromListHizmet,
   consultancyTypesForNewFile,
   filterInsuranceCatalogForHasarFileForm,
@@ -59,6 +63,23 @@ type SelectedCustomer = {
 
 type PanelUser = { id: string; firstName?: string | null; lastName?: string | null };
 type ConsultancyTypeOption = { id: string; name: string; code?: string | null };
+type ChannelFirm = { id: string; name: string };
+
+function customersToChannelFirms(payload: unknown): ChannelFirm[] {
+  const nested = payload && typeof payload === 'object' && 'data' in payload
+    ? (payload as { data?: unknown }).data
+    : payload;
+  const rows = Array.isArray(nested) ? nested : [];
+  return rows
+    .map((row) => {
+      const c = row as SelectedCustomer & { id?: string };
+      const id = String(c.id ?? '').trim();
+      const name = customerDisplayName(c);
+      return { id, name };
+    })
+    .filter((row) => row.id && row.name && row.name !== '—')
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+}
 
 const inp = 'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400';
 const inpCompact = 'w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400';
@@ -89,6 +110,12 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const submitGuard = useRef(createInFlightGuard());
 
   const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
+  const [channelAgencyCustomerId, setChannelAgencyCustomerId] = useState('');
+  const [channelBrokerCustomerId, setChannelBrokerCustomerId] = useState('');
+  const [channelExpertCustomerId, setChannelExpertCustomerId] = useState('');
+  const [channelAgencyFirms, setChannelAgencyFirms] = useState<ChannelFirm[]>([]);
+  const [channelBrokerFirms, setChannelBrokerFirms] = useState<ChannelFirm[]>([]);
+  const [channelExpertFirms, setChannelExpertFirms] = useState<ChannelFirm[]>([]);
   const [fileNo, setFileNo] = useState('');
   const [lossType, setLossType] = useState('');
   const [notificationDate, setNotificationDate] = useState('');
@@ -162,7 +189,11 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
 
   const loadLookups = useCallback(async () => {
     try {
-      const [icRes, subjectsRes, meRes, staffRes, consultancyRes] = await Promise.all([
+      const channelFirmParams = (subType: string) => ({
+        headers: authHeader(),
+        params: { subType, status: 'active', limit: 1000, customerType: 'corporate' },
+      });
+      const [icRes, subjectsRes, meRes, staffRes, consultancyRes, agencyRes, brokerRes, expertRes] = await Promise.all([
         axios.get(`${API}/insurance-companies`, {
           headers: authHeader(),
           params: HASAR_FILE_INSURANCE_CATALOG_QUERY,
@@ -184,7 +215,13 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             params: { family: CONSULTANCY_SERVICE_FAMILY },
           })
           .catch(() => null),
+        axios.get(`${API}/customers`, channelFirmParams(CLAIM_FILE_CHANNELS[1].customerSubType!)).catch(() => ({ data: { data: [] } })),
+        axios.get(`${API}/customers`, channelFirmParams(CLAIM_FILE_CHANNELS[2].customerSubType!)).catch(() => ({ data: { data: [] } })),
+        axios.get(`${API}/customers`, channelFirmParams(CLAIM_FILE_CHANNELS[3].customerSubType!)).catch(() => ({ data: { data: [] } })),
       ]);
+      setChannelAgencyFirms(customersToChannelFirms(agencyRes.data));
+      setChannelBrokerFirms(customersToChannelFirms(brokerRes.data));
+      setChannelExpertFirms(customersToChannelFirms(expertRes.data));
       let companies: { id: string; name: string }[] = icRes.data.data || [];
       const me = meRes?.data?.data ?? meRes?.data?.user ?? meRes?.data;
       const roleCode = String(me?.role?.code ?? me?.roleCode ?? '').toLowerCase();
@@ -296,6 +333,13 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   useEffect(() => {
     setNotificationDate(todayTrDateDisplay());
   }, []);
+
+  useEffect(() => {
+    if (customerSource === 'private') return;
+    const id = String(selectedCustomer?.id ?? '').trim();
+    if (!id) return;
+    setChannelExpertCustomerId((prev) => prev || id);
+  }, [selectedCustomer?.id, customerSource]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -498,6 +542,11 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         consultancyServiceTypeId: serviceKind === 'consultancy' ? consultancyServiceTypeId || undefined : undefined,
         siteContactName: toTitleCaseTR(siteContactName.trim()) || undefined,
         siteContactPhone: parseInternationalPhone(siteContactPhone).international || undefined,
+        ...claimFileChannelCreateFields({
+          channelAgencyCustomerId,
+          channelBrokerCustomerId,
+          channelExpertCustomerId: channelExpertCustomerId || (customerSource !== 'private' ? customerId : '') || null,
+        }),
       };
       if (currentStatusId) payload.currentStatusId = currentStatusId;
 
@@ -688,8 +737,24 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     </>
   );
 
+  const expertChannelOptions = (() => {
+    const list = [...channelExpertFirms];
+    const id = String(selectedCustomer?.id ?? '').trim();
+    if (customerSource !== 'private' && id && !list.some((row) => row.id === id)) {
+      list.unshift({ id, name: selectedCustomerDisplayName ?? 'Eksper Ofisi' });
+    }
+    return list;
+  })();
+
   const dosyaSection = (
     <>
+      <OpsFirstRunNotice
+        compact
+        noticeId={OPS_NOTICE.hasarDosyaKanali.id}
+        title={OPS_NOTICE.hasarDosyaKanali.title}
+        body={OPS_NOTICE.hasarDosyaKanali.body}
+        testId="dosya-kanali-ilk-kullanim-seridi"
+      />
       {selectedCustomer && (
         <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2">
           {customerFileOrdinalLoading ? (
@@ -796,17 +861,6 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
           )}
           {errors.lossType && <p className="text-xs text-status-danger mt-0.5">{errors.lossType}</p>}
         </div>
-        <div className="min-w-0" data-field="insuranceCompanyId">
-          <label className={label}>
-            Sigorta Şirketi {customerSource === 'private' ? '' : <span className="text-status-danger">*</span>}
-            {customerSource === 'private' ? <span className="font-normal text-slate-400"> (Tercih)</span> : null}
-          </label>
-          <select className={`${field} w-full min-w-0 ${errors.insuranceCompanyId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`} value={insuranceCompanyId} onChange={(e) => setInsuranceCompanyId(e.target.value)}>
-            <option value="">Seçiniz...</option>
-            {insuranceCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          {errors.insuranceCompanyId && <p className="text-xs text-status-danger mt-0.5">{errors.insuranceCompanyId}</p>}
-        </div>
         <div className="min-w-0" data-field="fileNo">
           <label className={`${label} flex items-center gap-1.5`}>
             <span>Dosya No <span className="text-status-danger">*</span></span>
@@ -820,6 +874,46 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
           />
           {fileNoChecking && <p className="text-xs text-slate-400 mt-0.5">Kontrol ediliyor...</p>}
           {errors.fileNo && <p className="text-xs text-status-danger mt-0.5">{errors.fileNo}</p>}
+        </div>
+        <div className={`${spanFull} min-w-0`} data-field="dosyaKanali">
+          <p className={`${label} flex items-center gap-1.5`}>
+            <span>Dosya Kanalı</span>
+            <FieldHelpTip text="Dosyayı biz açarız. Rapor ve yazışma burada seçilen taraflara gider." testId="dosya-kanali-yardim" />
+          </p>
+          <div className="grid grid-cols-1 gap-3 min-w-0 sm:grid-cols-2 sm:gap-2">
+            <div className="min-w-0" data-field="insuranceCompanyId">
+              <label className={label}>
+                Sigorta Şirketi {customerSource === 'private' ? '' : <span className="text-status-danger">*</span>}
+                {customerSource === 'private' ? <span className="font-normal text-slate-400"> (Tercih)</span> : null}
+              </label>
+              <select className={`${field} w-full min-w-0 ${errors.insuranceCompanyId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`} value={insuranceCompanyId} onChange={(e) => setInsuranceCompanyId(e.target.value)}>
+                <option value="">Seçiniz...</option>
+                {insuranceCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              {errors.insuranceCompanyId && <p className="text-xs text-status-danger mt-0.5">{errors.insuranceCompanyId}</p>}
+            </div>
+            <div className="min-w-0" data-field="channelAgencyCustomerId">
+              <label className={label}>Acente</label>
+              <select className={`${field} w-full min-w-0`} value={channelAgencyCustomerId} onChange={(e) => setChannelAgencyCustomerId(e.target.value)}>
+                <option value="">Seçiniz...</option>
+                {channelAgencyFirms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="min-w-0" data-field="channelBrokerCustomerId">
+              <label className={label}>Broker</label>
+              <select className={`${field} w-full min-w-0`} value={channelBrokerCustomerId} onChange={(e) => setChannelBrokerCustomerId(e.target.value)}>
+                <option value="">Seçiniz...</option>
+                {channelBrokerFirms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="min-w-0" data-field="channelExpertCustomerId">
+              <label className={label}>Eksper</label>
+              <select className={`${field} w-full min-w-0`} value={channelExpertCustomerId} onChange={(e) => setChannelExpertCustomerId(e.target.value)}>
+                <option value="">Seçiniz...</option>
+                {expertChannelOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
         <div className={`${spanFull} min-w-0 border-t border-slate-100 pt-3 sm:pt-1`}>
           {!isPanel && <p className="text-[11px] font-medium text-slate-500 mb-2">Dosya Adresi</p>}
@@ -847,17 +941,6 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
                 {currentDistricts.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
-            <div className={spanFull}>
-              <label className={label}>{ADDRESS_FIELD.openAddress}</label>
-              <textarea
-                rows={isPanel ? 2 : 2}
-                className={`${field} resize-y min-h-[56px]`}
-                placeholder={ADDRESS_FIELD.openAddressPlaceholder}
-                value={openAddress}
-                onChange={(e) => setOpenAddress(e.target.value)}
-                onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setOpenAddress(v); }}
-              />
-            </div>
           </div>
         </div>
         <div className="min-w-0">
@@ -877,7 +960,18 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
           </label>
           <PhoneInput value={siteContactPhone} onChange={setSiteContactPhone} placeholder="532 133 4144" />
         </div>
-        <div className={spanFull}>
+        <div className={spanFull} data-field="openAddress">
+          <label className={label}>{ADDRESS_FIELD.openAddress}</label>
+          <textarea
+            rows={isPanel ? 2 : 2}
+            className={`${field} resize-y min-h-[56px]`}
+            placeholder={ADDRESS_FIELD.openAddressPlaceholder}
+            value={openAddress}
+            onChange={(e) => setOpenAddress(e.target.value)}
+            onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setOpenAddress(v); }}
+          />
+        </div>
+        <div className={spanFull} data-field="ihbarDetayi">
           <label className={label}>İhbar Detayı</label>
           <textarea
             rows={isPanel ? 2 : 4}

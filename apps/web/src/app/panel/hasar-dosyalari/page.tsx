@@ -35,7 +35,7 @@ import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPick
 import { OPS_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
 import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
-import { resolveOpsEmailDefaultTo } from '@/utils/ops-email-default-to';
+import { resolveClaimCorrespondenceDefaultTo } from '@/utils/ops-email-default-to';
 import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
 import { OpsListPageSizeSelect } from '@/components/operasyon/OpsListPageSizeSelect';
@@ -1067,10 +1067,7 @@ function ClaimFilesPageContent() {
                       fileNo={claimListFileNo(claim)}
                       pinnedIds={rowActions.pinnedIds}
                       reportId={rapor?.id ?? null}
-                      defaultEmailTo={resolveOpsEmailDefaultTo({
-                        customerEmail: claim.customer?.email,
-                        insuranceEmail: claim.insuranceCompany?.contactEmail,
-                      }) ?? null}
+                      defaultEmailTo={resolveClaimCorrespondenceDefaultTo(claim) ?? null}
                       onAddNote={() => {
                         setNoteFileId(claim.id);
                         setNoteFileNo(claimListFileNo(claim) === '—' ? undefined : claimListFileNo(claim));
@@ -1081,10 +1078,7 @@ function ClaimFilesPageContent() {
                           claimId: claim.id,
                           fileNo: claim.fileNo ?? claim.claimNo ?? '—',
                           reportId: rapor?.id ?? null,
-                          defaultTo: resolveOpsEmailDefaultTo({
-                        customerEmail: claim.customer?.email,
-                        insuranceEmail: claim.insuranceCompany?.contactEmail,
-                      }) ?? undefined,
+                          defaultTo: resolveClaimCorrespondenceDefaultTo(claim) ?? undefined,
                         })
                       }
                     />
@@ -1266,10 +1260,7 @@ function ClaimFilesPageContent() {
                             fileNo={claimListFileNo(claim)}
                             pinnedIds={rowActions.pinnedIds}
                             reportId={rapor?.id ?? null}
-                            defaultEmailTo={resolveOpsEmailDefaultTo({
-                        customerEmail: claim.customer?.email,
-                        insuranceEmail: claim.insuranceCompany?.contactEmail,
-                      }) ?? null}
+                            defaultEmailTo={resolveClaimCorrespondenceDefaultTo(claim) ?? null}
                             onAddNote={() => {
                               setNoteFileId(claim.id);
                               setNoteFileNo(claimListFileNo(claim) === '—' ? undefined : claimListFileNo(claim));
@@ -1280,10 +1271,7 @@ function ClaimFilesPageContent() {
                                 claimId: claim.id,
                                 fileNo: claim.fileNo ?? claim.claimNo ?? '—',
                                 reportId: rapor?.id ?? null,
-                                defaultTo: resolveOpsEmailDefaultTo({
-                        customerEmail: claim.customer?.email,
-                        insuranceEmail: claim.insuranceCompany?.contactEmail,
-                      }) ?? undefined,
+                                defaultTo: resolveClaimCorrespondenceDefaultTo(claim) ?? undefined,
                               })
                             }
                           />

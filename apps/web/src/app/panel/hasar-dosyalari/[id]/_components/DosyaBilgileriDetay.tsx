@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
-import { deriveOperationStage, resolveFileExpertDisplay } from '@sigorta/shared';
+import { claimFileChannelSummaryRows, deriveOperationStage, resolveFileExpertDisplay } from '@sigorta/shared';
 import { toTitleCaseTR, resolveClaimIhbarKonusu, formatDisplayLabel, formatHasarAdresi } from '@/utils/text-helpers';
 import { fmtDate } from './claim-detail-utils';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
@@ -149,7 +149,7 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
       telHref: hasarIrtibatTelHref(claim) || undefined,
     },
     { label: 'Dosya Konusu', value: resolveClaimIhbarKonusu(claim) },
-    { label: 'Sigorta Şirketi', value: claim.insuranceCompany?.name?.trim() || '—' },
+    ...claimFileChannelSummaryRows(claim).map((row) => ({ label: row.label, value: row.value })),
     { label: 'İhbar Tarihi', value: resolveIhbarTarihi(claim) },
     { label: 'Hasar Konusu', value: resolveHasarNedeni(claim, reportSummary ?? null) },
     { label: 'Öncelik', value: formatPriority(claim.priority) },

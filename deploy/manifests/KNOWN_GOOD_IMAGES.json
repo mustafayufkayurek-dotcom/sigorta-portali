@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-10-30",
-  "label": "v662-musteri-mail-gorev-yani",
-  "description": "v662 yalnız web: kurumsal kartta Yetkili E-posta Görev / Ünvan yanında. Backend v661. Geri alma web v661 / backend v661.",
+  "label": "v667-randevu-seciniz",
+  "description": "v667 full: randevu irtibata gider; Yeni Dosya seçimleri boş Seçiniz. Geri alma web v666 / backend v664.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v661-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v662-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v667-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v667-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v661-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v661-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v666-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v664-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

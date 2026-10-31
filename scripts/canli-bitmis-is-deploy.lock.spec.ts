@@ -112,6 +112,8 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'role-account-family.lock.spec',
       'personel-ekle.lock.spec',
       'claim-new-form.lock.spec',
+      'claim-file-channels.lock.spec',
+      'shrink-inspection-photo.lock.spec',
       'field-help-tip.lock.spec',
       'claim-service-kind.lock.spec',
       'operasyon-nav.lock.spec',

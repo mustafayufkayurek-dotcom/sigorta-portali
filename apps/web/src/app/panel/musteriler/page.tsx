@@ -759,6 +759,7 @@ const SUB_TYPE_FILTER_CHIPS: { value: string; label: string }[] = [
   { value: '', label: 'Tümü' },
   { value: 'sigorta_sirketi', label: 'Sigorta Şirketi' },
   { value: 'eksper_firmasi', label: 'Eksper Firması' },
+  { value: 'acente_firmasi', label: 'Acente' },
   { value: 'broker_firmasi', label: 'Broker Firması' },
   { value: 'asistan_firmasi', label: 'Asistans Firma' },
   { value: 'private_customer', label: 'Özel Müşteri' },

@@ -119,6 +119,8 @@ node --experimental-strip-types --test \
   apps/web/src/components/portal/operasyon-agi-canli-destek.lock.spec.ts \
   apps/web/src/app/dev/dev-production-closed.lock.spec.ts \
   apps/web/src/components/claim-files/claim-new-form.lock.spec.ts \
+  packages/shared/src/claim-file-channels.lock.spec.ts \
+  apps/web/src/utils/shrink-inspection-photo.lock.spec.ts \
   apps/web/src/utils/hasar-dosya-irtibat.lock.spec.ts \
   packages/shared/src/hasar-randevu-alici.lock.spec.ts \
   apps/web/src/components/ui/field-help-tip.lock.spec.ts \

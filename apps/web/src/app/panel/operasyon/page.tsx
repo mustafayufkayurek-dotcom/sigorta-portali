@@ -46,7 +46,7 @@ import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPick
 import { OPS_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
 import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
-import { resolveOpsEmailDefaultTo } from '@/utils/ops-email-default-to';
+import { resolveClaimCorrespondenceDefaultTo } from '@/utils/ops-email-default-to';
 import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
 import { OpsListPageSizeSelect } from '@/components/operasyon/OpsListPageSizeSelect';
@@ -619,10 +619,7 @@ function OperasyonPageContent() {
       updatedAt: claim.updatedAt ?? null,
       priority: claim.priority ?? null,
       reportId: claim.latestRepairReport?.id ?? null,
-      defaultEmailTo: resolveOpsEmailDefaultTo({
-        customerEmail: claim.customer?.email,
-        insuranceEmail: claim.insuranceCompany?.contactEmail,
-      }) ?? null,
+      defaultEmailTo: resolveClaimCorrespondenceDefaultTo(claim) ?? null,
       vendorPaid: claim.vendorPaid === true || claim.vendorPaid === false ? claim.vendorPaid : null,
     };
   });

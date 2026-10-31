@@ -9,6 +9,7 @@ import {
 import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
 import { generalMailboxesFromContactInfos, isAcilInspectionPhotoNotes } from '@sigorta/shared';
 import {
+  claimFileChannelCreateFields,
   claimFileWhereForHizmet,
   claimFileWhereForMusteriKaynak,
   claimServiceKindFromConsultancyType,
@@ -882,6 +883,9 @@ export class ClaimFilesService {
           slaDueAt: true,
           invoicedAmount: true,
           insuranceCompany: { select: { id: true, name: true, contactEmail: true } },
+          channelAgencyCustomer: { select: { id: true, email: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true } },
+          channelBrokerCustomer: { select: { id: true, email: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true } },
+          channelExpertCustomer: { select: { id: true, email: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true } },
           currentStatus: { select: { id: true, code: true, name: true, color: true } },
           propertyAddress: { select: { city: true, district: true, addressLine: true } },
           customer: {
@@ -1396,6 +1400,27 @@ export class ClaimFilesService {
         insuranceCompany: true,
         currentStatus: true,
         customer: true,
+        channelAgencyCustomer: {
+          select: {
+            id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
+            contacts: { select: { email: true, isPrimary: true } },
+            contactInfos: { select: { type: true, label: true, value: true } },
+          },
+        },
+        channelBrokerCustomer: {
+          select: {
+            id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
+            contacts: { select: { email: true, isPrimary: true } },
+            contactInfos: { select: { type: true, label: true, value: true } },
+          },
+        },
+        channelExpertCustomer: {
+          select: {
+            id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
+            contacts: { select: { email: true, isPrimary: true } },
+            contactInfos: { select: { type: true, label: true, value: true } },
+          },
+        },
         propertyAddress: true,
         assignedBranch: true,
         assignedFieldUser: { select: { id: true, firstName: true, lastName: true } },
@@ -1831,6 +1856,10 @@ export class ClaimFilesService {
       typeof rest.siteContactPhone === 'string' ? rest.siteContactPhone.replace(/\D/g, '') : '';
     const siteContactPhone = siteContactPhoneRaw || null;
     delete rest.siteContactPhone;
+    const channelFields = claimFileChannelCreateFields(rest);
+    delete rest.channelAgencyCustomerId;
+    delete rest.channelBrokerCustomerId;
+    delete rest.channelExpertCustomerId;
     let sourceChannel = typeof rest.sourceChannel === 'string' ? rest.sourceChannel.trim() : '';
     const earlyRoleCode = String(requestingUser?.roleCode ?? requestingUser?.role?.code ?? '').trim();
     if (earlyRoleCode === 'insurance_company_user' && !sourceChannel) {
@@ -1995,6 +2024,7 @@ export class ClaimFilesService {
           consultancyServiceTypeId,
           siteContactName,
           siteContactPhone,
+          ...channelFields,
           currentResponsibleRole: assignedOfficeUserId ? 'operasyon_sorumlusu' : null,
           currentResponsibleUserId: assignedOfficeUserId ?? null,
           lastActivityAt: new Date(),
@@ -2004,6 +2034,27 @@ export class ClaimFilesService {
           insuranceCompany: true,
           currentStatus: true,
           customer: true,
+          channelAgencyCustomer: {
+            select: {
+              id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
+              contacts: { select: { email: true, isPrimary: true } },
+              contactInfos: { select: { type: true, label: true, value: true } },
+            },
+          },
+          channelBrokerCustomer: {
+            select: {
+              id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
+              contacts: { select: { email: true, isPrimary: true } },
+              contactInfos: { select: { type: true, label: true, value: true } },
+            },
+          },
+          channelExpertCustomer: {
+            select: {
+              id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
+              contacts: { select: { email: true, isPrimary: true } },
+              contactInfos: { select: { type: true, label: true, value: true } },
+            },
+          },
           propertyAddress: true,
           claimSubject: { select: { name: true } },
           assignedFieldUser: { select: { id: true, firstName: true, lastName: true, email: true } },

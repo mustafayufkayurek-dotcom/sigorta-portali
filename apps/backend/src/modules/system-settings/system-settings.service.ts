@@ -122,6 +122,7 @@ export interface CustomerSubType {
 
 const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubType[] = [
   { value: 'sigorta_sirketi', label: 'Sigorta Şirketi', forType: 'corporate', color: 'blue' },
+  { value: 'acente_firmasi', label: 'Acente', forType: 'corporate', color: 'gray' },
   { value: 'broker_firmasi', label: 'Broker Firması', forType: 'corporate', color: 'gray' },
   { value: 'asistan_firmasi', label: 'Asistans Firma', forType: 'corporate', color: 'orange' },
   { value: 'eksper_firmasi', label: 'Eksper Firması', forType: 'corporate', color: 'purple' },

@@ -326,19 +326,6 @@ export function DosyaBilgileriEditModal({
                   placeholder="Örn. Konut Cam"
                 />
               </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">İhbar İçeriği</label>
-                <textarea
-                  className={`${fieldCls} resize-y min-h-[72px]`}
-                  rows={3}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  onBlur={(e) => {
-                    const v = toTitleCaseTR(e.target.value.trim());
-                    if (v) setDescription(v);
-                  }}
-                />
-              </div>
             </div>
 
             <div className="border-t border-slate-100 pt-3 space-y-3">
@@ -380,7 +367,7 @@ export function DosyaBilgileriEditModal({
                     ))}
                   </select>
                 </div>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2" data-field="openAddress">
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">{ADDRESS_FIELD.openAddress}</label>
                   <textarea
                     className={`${fieldCls} resize-y min-h-[56px]`}
@@ -392,6 +379,19 @@ export function DosyaBilgileriEditModal({
                       if (v) setAddressLine(v);
                     }}
                     placeholder={ADDRESS_FIELD.openAddressPlaceholder}
+                  />
+                </div>
+                <div className="sm:col-span-2" data-field="ihbarIcerigi">
+                  <label className="block text-xs font-medium text-slate-600 mb-1.5">İhbar İçeriği</label>
+                  <textarea
+                    className={`${fieldCls} resize-y min-h-[72px]`}
+                    rows={3}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    onBlur={(e) => {
+                      const v = toTitleCaseTR(e.target.value.trim());
+                      if (v) setDescription(v);
+                    }}
                   />
                 </div>
               </div>

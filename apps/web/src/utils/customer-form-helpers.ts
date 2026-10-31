@@ -19,6 +19,8 @@ export type CustomerSubType =
   | 'private_customer'
   | 'eksper'
   | 'sigorta_sirketi'
+  | 'acente_firmasi'
+  | 'broker_firmasi'
   | 'eksper_firmasi'
   | 'asistan_firmasi'
   | '';
@@ -38,6 +40,7 @@ export type CustomerSubTypeDef = {
 
 export const DEFAULT_CUSTOMER_SUB_TYPES: CustomerSubTypeDef[] = [
   { value: 'sigorta_sirketi', label: 'Sigorta Şirketi', forType: 'corporate', color: 'blue' },
+  { value: 'acente_firmasi', label: 'Acente', forType: 'corporate', color: 'gray' },
   { value: 'broker_firmasi', label: 'Broker Firması', forType: 'corporate', color: 'gray' },
   { value: 'asistan_firmasi', label: 'Asistans Firma', forType: 'corporate', color: 'orange' },
   { value: 'eksper_firmasi', label: 'Eksper Firması', forType: 'corporate', color: 'purple' },
@@ -58,6 +61,7 @@ const SUB_TYPE_LABELS: Record<string, string> = {
 
 const CORPORATE_ONLY_SUB_TYPES = new Set([
   'sigorta_sirketi',
+  'acente_firmasi',
   'broker_firmasi',
   'asistan_firmasi',
   'eksper_firmasi',
@@ -113,6 +117,7 @@ export function filterCustomerSubTypesForPanelUser(
 /** Alt tip seçildiğinde form altında gösterilen kısa yönlendirme metni */
 const SUB_TYPE_HINTS: Record<string, string> = {
   sigorta_sirketi: 'Sigorta şirketi bilgilerini giriniz. Branş seçimini aşağıdan tamamlayın.',
+  acente_firmasi: 'Acente bilgilerini giriniz.',
   broker_firmasi: 'Broker firması bilgilerini giriniz.',
   asistan_firmasi: 'Asistans firma bilgilerini giriniz.',
   eksper_firmasi: 'Eksper firması bilgilerini giriniz.',

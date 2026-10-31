@@ -329,6 +329,10 @@ model ClaimFile {
   priority              String    @default("medium")
   sourceChannel         String?   @map("source_channel")
   customerId            String?   @map("customer_id")
+  /// Rapor gidebilecek acente kartı (müşteri kaynağından ayrı)
+  channelAgencyCustomerId String? @map("channel_agency_customer_id")
+  channelBrokerCustomerId String? @map("channel_broker_customer_id")
+  channelExpertCustomerId String? @map("channel_expert_customer_id")
   propertyType          String?   @map("property_type")
   propertyAddressId     String?   @map("property_address_id")
   fileType              String?   @map("file_type")
@@ -404,6 +408,9 @@ model ClaimFile {
   insuranceCompany InsuranceCompany @relation(fields: [insuranceCompanyId], references: [id])
   currentStatus    ClaimStatus      @relation(fields: [currentStatusId], references: [id])
   customer         Customer?        @relation(fields: [customerId], references: [id])
+  channelAgencyCustomer Customer? @relation("ClaimChannelAgency", fields: [channelAgencyCustomerId], references: [id])
+  channelBrokerCustomer Customer? @relation("ClaimChannelBroker", fields: [channelBrokerCustomerId], references: [id])
+  channelExpertCustomer Customer? @relation("ClaimChannelExpert", fields: [channelExpertCustomerId], references: [id])
   propertyAddress  Address?         @relation("PropertyAddress", fields: [propertyAddressId], references: [id])
   assignedBranch   Branch?          @relation(fields: [assignedBranchId], references: [id])
   assignedFieldUser   User?         @relation("AssignedFieldUser", fields: [assignedFieldUserId], references: [id])
@@ -472,6 +479,9 @@ model ClaimFile {
   @@index([assignedOfficeUserId])
   @@index([assignedAdjusterId])
   @@index([consultancyServiceTypeId])
+  @@index([channelAgencyCustomerId])
+  @@index([channelBrokerCustomerId])
+  @@index([channelExpertCustomerId])
   @@map("claim_files")
 }
 
@@ -624,6 +634,9 @@ model Customer {
   catalogInsuranceCompany InsuranceCompany? @relation("InsuranceCompanyPortalCustomer", fields: [insuranceCompanyId], references: [id], onDelete: SetNull)
 
   claimFiles   ClaimFile[]
+  channelAgencyFiles ClaimFile[] @relation("ClaimChannelAgency")
+  channelBrokerFiles ClaimFile[] @relation("ClaimChannelBroker")
+  channelExpertFiles ClaimFile[] @relation("ClaimChannelExpert")
   contacts     CustomerContact[]
   contactInfos ContactInfo[]
   accessLogs   CustomerAccessLog[]

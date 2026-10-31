@@ -13,13 +13,23 @@ import { resolveReportCustomerMailRecipients } from './report-customer-mail-reci
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe('rapor müşteri maili LOCK', () => {
-  it('Sezgi kartı e-postasını alır; sigorta adresi karışmaz', () => {
+  it('Sezgi kartı e-postasını alır; seçilmeyen sigorta karışmaz', () => {
     const to = resolveReportCustomerMailRecipients({
       customerEmail: 'sezgi@sezgiglobal.com',
       contacts: [],
       expertOfficeEmail: null,
     });
     assert.deepEqual(to, ['sezgi@sezgiglobal.com']);
+  });
+
+  it('seçilen dosya kanalı rapora eklenir', () => {
+    const to = resolveReportCustomerMailRecipients({
+      customerEmail: 'sezgi@sezgiglobal.com',
+      contacts: [],
+      fileChannelEmails: ['hasar@allianz.com', 'acente@vadi.com'],
+      expertOfficeEmail: null,
+    });
+    assert.deepEqual(to, ['sezgi@sezgiglobal.com', 'hasar@allianz.com', 'acente@vadi.com']);
   });
 
   it('genel kutu rapor alıcısına eklenir', () => {
@@ -44,6 +54,7 @@ describe('rapor müşteri maili LOCK', () => {
   it('requestApproval müşteriye PDF gönderir; yönetici mailini yutmaz', () => {
     const src = readFileSync(join(here, 'repair-reports.service.ts'), 'utf8');
     assert.match(src, /resolveReportCustomerMailRecipients/);
+    assert.match(src, /collectClaimFileChannelEmails/);
     assert.match(src, /generalMailboxesFromContactInfos/);
     assert.match(src, /sendReport/);
     assert.match(src, /await this\.claimEventEmail\.onManagerApprovalRequested/);

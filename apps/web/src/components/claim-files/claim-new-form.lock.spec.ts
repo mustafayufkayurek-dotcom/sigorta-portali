@@ -24,6 +24,14 @@ describe('yeni dosya form lock', () => {
     assert.match(form, /İrtibat Ad Soyad/);
     assert.match(form, /İrtibat Telefon/);
     assert.match(form, /İhbar Detayı/);
+    {
+      const openAddr = form.indexOf('data-field="openAddress"');
+      const ihbar = form.indexOf('İhbar Detayı');
+      const irtibat = form.indexOf('İrtibat Ad Soyad');
+      assert.ok(openAddr > 0 && ihbar > openAddr, 'Açık Adres İhbar Detayı’nın üstündedir');
+      assert.ok(irtibat > 0 && irtibat < openAddr, 'İrtibat Açık Adres’in üstündedir');
+      assert.equal(form.slice(openAddr, ihbar).includes('İrtibat'), false);
+    }
     assert.match(form, /toTitleCaseTR\(description\.trim\(\)\)/);
     assert.match(form, /if \(v\) setDescription\(v\)/);
     const editModal = readFileSync(
@@ -31,8 +39,18 @@ describe('yeni dosya form lock', () => {
       'utf8',
     );
     assert.match(editModal, /İhbar İçeriği/);
+    {
+      const openAddr = editModal.indexOf('ADDRESS_FIELD.openAddress');
+      const ihbar = editModal.indexOf('İhbar İçeriği');
+      assert.ok(openAddr > 0 && ihbar > openAddr, 'Düzenle’de Açık Adres İhbar İçeriği’nin üstündedir');
+    }
     assert.match(editModal, /toTitleCaseTR\(description\.trim\(\)\)/);
     const acilForm = readFileSync(join(here, '../emergency/EmergencyCaseNewForm.tsx'), 'utf8');
+    {
+      const addr = acilForm.indexOf('ADDRESS_FIELD.openAddress');
+      const findings = acilForm.indexOf('id="tespit-bulgulari"');
+      assert.ok(addr > 0 && findings > addr, 'Acil Yeni Dosya’da Açık Adres Tespit Bulguları’nın üstündedir');
+    }
     assert.match(acilForm, /toTitleCaseTR\(notes\.trim\(\)\)/);
     assert.match(acilForm, /toTitleCaseTR\(findingsText\.trim\(\)\)/);
     assert.match(form, /rapora yazılmaz/);
@@ -52,6 +70,11 @@ describe('yeni dosya form lock', () => {
       'utf8',
     );
     assert.match(detay, /İrtibat Ad Soyad/);
+    {
+      const addr = detay.indexOf("label: 'Hasar Adresi'");
+      const ihbar = detay.indexOf("label: 'İhbar İçeriği'");
+      assert.ok(addr > 0 && ihbar > addr, 'Detay’da Hasar Adresi İhbar İçeriği’nin üstündedir');
+    }
     assert.match(detay, /hasarIrtibatAdi/);
     assert.match(form, /filterInsuranceCatalogForHasarFileForm/);
     assert.doesNotMatch(form, /isOfficeStaffRole\(roleCode\) && scopedIds/);
@@ -84,6 +107,13 @@ describe('yeni dosya form lock', () => {
     assert.doesNotMatch(form, /CLAIM_FILE_SERVICE_KIND_TOP/);
     assert.doesNotMatch(form, /Danışmanlık Hizmeti/);
     assert.doesNotMatch(form, /danismanlik-hizmet-ilk-kullanim-seridi/);
+    assert.match(form, /Dosya Kanalı/);
+    assert.match(form, /data-field="channelAgencyCustomerId"/);
+    assert.match(form, /data-field="channelBrokerCustomerId"/);
+    assert.match(form, /data-field="channelExpertCustomerId"/);
+    assert.match(form, /dosya-kanali-yardim/);
+    assert.match(form, /Dosyayı biz açarız/);
+    assert.doesNotMatch(form, /Dosyayı biz açarız\. Rapor ve yazışma burada seçilen taraflara gider\.<\/p>/);
   });
 
   it('sayfa başlığı i yasağı durur; alan yardımı ayrıdır', () => {
