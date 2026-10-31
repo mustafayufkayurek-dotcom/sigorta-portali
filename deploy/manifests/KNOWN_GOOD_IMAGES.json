@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-10-30",
-  "label": "v667-randevu-seciniz",
-  "description": "v667 full: randevu irtibata gider; Yeni Dosya seçimleri boş Seçiniz. Geri alma web v666 / backend v664.",
+  "updatedAt": "2026-10-31",
+  "label": "v668-dosya-kanali-tespit",
+  "description": "v668 full: dosya kanalı; açık adres ihbar üstünde; tespit toplu silme ve galeri küçültme. Geri alma web v667 / backend v667.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v667-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v667-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v668-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v668-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v666-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v664-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v667-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v667-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
