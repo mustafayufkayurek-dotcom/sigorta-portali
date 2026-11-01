@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-10-31",
-  "label": "v668-dosya-kanali-tespit",
-  "description": "v668 full: dosya kanalı; açık adres ihbar üstünde; tespit toplu silme ve galeri küçültme. Geri alma web v667 / backend v667.",
+  "updatedAt": "2026-11-01",
+  "label": "v669-yonetici-onay-pdf",
+  "description": "v669 full: yönetici onay mailinde iç PDF; tuş Yönetici Onayı. Geri alma web v668 / backend v668.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v668-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v668-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v669-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v669-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v667-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v667-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v668-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v668-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
