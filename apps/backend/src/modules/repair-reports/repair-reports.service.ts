@@ -42,6 +42,8 @@ import {
   repairItemResolvedSupplierTotal,
   claimFileReportGrandTotal,
   maliMesuliyetAlanToplami,
+  internalRepairPdfFilename,
+  packInlineMailAttachments,
 } from '@sigorta/shared';
 import {
   CreateRepairReportDto,
@@ -1360,14 +1362,14 @@ export class RepairReportsService {
         return `${name}: ${Math.round(amt).toLocaleString('tr-TR')} ₺`;
       })
       .join(' · ');
-    const attachments: Array<{ filename: string; content: Buffer; contentType?: string }> = [];
+    const photoAttachments: Array<{ filename: string; content: Buffer; contentType?: string }> = [];
     for (const img of report.images ?? []) {
       const filePath = resolveReportImageFilePath(img.storageKey);
       if (!filePath) continue;
       try {
         const buf = fs.readFileSync(filePath);
         if (buf.length > 4_000_000) continue;
-        attachments.push({
+        photoAttachments.push({
           filename: img.fileName || 'resim.jpg',
           content: buf,
           contentType: img.mimeType || 'image/jpeg',
@@ -1376,6 +1378,27 @@ export class RepairReportsService {
         /* yok */
       }
     }
+    let internalPdf: Buffer | null = null;
+    try {
+      const generated = await this.generatePdf(reportId, 'internal');
+      if (generated.buffer?.length) internalPdf = generated.buffer;
+    } catch (error) {
+      this.logger.error(
+        `Yönetici iç PDF oluşmadı: ${report.reportNo} | ${(error as Error)?.message ?? error}`,
+      );
+    }
+    const managerAttachments = packInlineMailAttachments([
+      ...(internalPdf
+        ? [
+            {
+              filename: internalRepairPdfFilename(report.reportNo),
+              content: internalPdf,
+              contentType: 'application/pdf',
+            },
+          ]
+        : []),
+      ...photoAttachments,
+    ]);
     const money = (n: number) => `${Math.round(n).toLocaleString('tr-TR')} ₺`;
     const waLines = [
       `Onay bekleyen rapor ${report.reportNo}`,
@@ -1409,7 +1432,7 @@ export class RepairReportsService {
           salesLabel: money(totalSales),
           costLabel: money(totalCost),
           profitLabel: money(totalSales - totalCost),
-          attachments,
+          attachments: managerAttachments,
         });
         if (!managerMail.sent) {
           this.logger.error(

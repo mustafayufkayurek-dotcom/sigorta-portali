@@ -1,11 +1,11 @@
 ---
-description: Canlı web v668 / backend v668
+description: Canlı web v669 / backend v669
 alwaysApply: true
 ---
 
-# Canlı (31.10.2026)
+# Canlı (01.11.2026)
 
-Canlı: web **v668** · backend **v668**. Geri alma: web **v667** / backend **v667**.
+Canlı: web **v669** · backend **v669**. Geri alma: web **v668** / backend **v668**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v669 (full):** Yönetici onay mailinde iç PDF durur; müşteriye, eksper ve dosya kanalına gitmez. Onay bekleyen raporda tuş **Yönetici Onayı**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v668 / backend v668.
 
 **v668 (full):** Dosya Kanalı (Sigorta / Acente / Broker / Eksper); rapor ve listedeki yazışma seçilen taraflara gider. Yeni Dosya’da Açık Adres İhbar Detayı’nın hemen üstünde. Tespitçi Toplu Silme ve galeri yükü küçültülerek birlikte gider. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v667 / backend v667.
 
@@ -213,4 +215,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v668** · backend **v668**.
+Canlı web **v669** · backend **v669**.

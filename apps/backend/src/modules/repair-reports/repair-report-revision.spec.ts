@@ -7,6 +7,7 @@ import {
   nextRepairReportVersionNo,
   repairReportClosesOnRevise,
   canApprovePendingRepairReport,
+  REPAIR_REPORT_MANAGER_APPROVE_LABEL,
 } from '@sigorta/shared';
 
 describe('repair-report-revision', () => {
@@ -46,5 +47,6 @@ describe('repair-report-revision', () => {
     expect(canApprovePendingRepairReport('ADMIN', 'pending_approval')).toBe(true);
     expect(canApprovePendingRepairReport('office_staff', 'pending_approval')).toBe(false);
     expect(canApprovePendingRepairReport('admin', 'draft')).toBe(false);
+    expect(REPAIR_REPORT_MANAGER_APPROVE_LABEL).toBe('Yönetici Onayı');
   });
 });

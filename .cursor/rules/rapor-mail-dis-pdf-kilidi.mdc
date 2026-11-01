@@ -1,32 +1,32 @@
 ---
-description: Giden rapor maili ekinde yalnız dış PDF — maliyet/bütçe yok
+description: Giden rapor maili — müşteriye yalnız dış PDF; iç PDF yalnız yöneticiye
 alwaysApply: true
 ---
 
-# Rapor Maili — Dış PDF Kilidi
+# Rapor Maili — Dış / İç PDF Kilidi
 
-**Kaynak (Mustafa · 24.08.2026):** Sezgi’ye giden mailde ek dış rapor PDF olmalı. Maliyet ve bütçeli iç PDF gitmez.
+**Kaynak (Mustafa · 24.08.2026 / netleşme 01.11.2026):** Sezgi’ye giden mailde ek dış rapor PDF olmalı. Yönetici onay mailinde iç PDF de durur. Maliyet ve bütçeli iç PDF **müşteriye gitmez.**
 
-**Temel cümle:** E-posta eki = **dış kullanım** onarım raporu. İç kullanım / maliyet / kâr PDF’si eklenmez.
+**Temel cümle:** Müşteri / eksper / dış onay eki = **dış kullanım** raporu. Yönetici onay maili ekinde **iç PDF** durur. İç PDF müşteri kutusuna düşmez.
 
 ## Zorunlu
 
-1. `sendReport`, `send-email`, onaya gönderim ve dış onay aynı kuralı kullanır: `generatePdf(..., 'external')` veya `pdfService.generate(..., 'external')`.
-2. Ek dosya adı `hasar-raporu-DIS-...pdf`. `hasar-raporu-IC-` yok.
+1. `sendReport`, `send-email`, müşteri onaya gönderim ve dış onay: `generatePdf(..., 'external')` veya `pdfService.generate(..., 'external')`. Ek adı `hasar-raporu-DIS-...pdf`.
+2. Yönetici `onManagerApprovalRequested` ekinde `hasar-raporu-IC-...pdf` durur. Alıcı yalnız Meridyen yönetici kutusudur (`canAttachInternalRepairPdf`).
 3. `SendEmailDto.viewType` iç PDF açmaz.
-4. Panelden PDF indirme (iç görünüm) ayrı kalır; yalnız **mail eki** kilitlidir.
+4. Panelden PDF indirme (iç görünüm) ayrı kalır.
 5. Rapor / dış onay / ayarlar test maili Hasar kutusundan gitmezse **gitti sayılmaz**. SMTP yeşili yetmez.
 6. Gönderim Graph **sendMail**; taslak 403’ü Mail.Send yok diye yazılmaz (`giden-mail-graph-sendmail-kilidi.mdc`).
 
 ## Yasak (açık onay yoksa)
 
-- Mail ekinde `viewType: 'internal'`
-- Maliyet / kâr sütunlu PDF’yi müşteri veya eksper kutusuna basmak
+- Müşteri, eksper, acente, broker veya ortak ihbar/hasar kutusuna `viewType: 'internal'` / `hasar-raporu-IC-`
+- Yönetici iç PDF’sini müşteri `sendReport` yoluna bağlamak
 - Bu kilidi “sadeleştirme” diye kaldırmak
 
 ## Durdurma
 
-İç PDF eklenirse → dur, aynı gün geri koy.
+İç PDF müşteriye giderse → dur, aynı gün geri koy.
 
 Regresyon:
 

@@ -34,7 +34,7 @@ import {
 } from '@/components/damage-reports/VendorQuotePopover';
 import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal, mergeRepairDamageCategories, repairDamageCategoryDisplay, repairDamageCategorySelectLabel, mahalSuggestionsForCategory, normalizeRepairDamageCategoryCode, MALI_MESULIYET_LOKASYON, MALI_MESULIYET_LOKASYON_ETIKET, formatMaliMesuliyetMahal, parseMaliMesuliyetMahal, maliMesuliyetDaireNoOk, EXTRA_REPAIR_COST_HEADING, EXTRA_REPAIR_COST_TOTAL_LABEL, type RepairDamageCategoryOption, type RepairMahalCatalogEntry } from '@sigorta/shared';
+import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, REPAIR_REPORT_MANAGER_APPROVE_LABEL, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal, mergeRepairDamageCategories, repairDamageCategoryDisplay, repairDamageCategorySelectLabel, mahalSuggestionsForCategory, normalizeRepairDamageCategoryCode, MALI_MESULIYET_LOKASYON, MALI_MESULIYET_LOKASYON_ETIKET, formatMaliMesuliyetMahal, parseMaliMesuliyetMahal, maliMesuliyetDaireNoOk, EXTRA_REPAIR_COST_HEADING, EXTRA_REPAIR_COST_TOTAL_LABEL, type RepairDamageCategoryOption, type RepairMahalCatalogEntry } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -6119,7 +6119,7 @@ export default function RepairReportPage() {
             onClick={() => void handleManagerApprove()}
             className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
           >
-            {managerApprovalBusy ? 'Kaydediliyor...' : 'Onayla'}
+            {managerApprovalBusy ? 'Kaydediliyor...' : REPAIR_REPORT_MANAGER_APPROVE_LABEL}
           </button>
           <button
             type="button"
@@ -6417,7 +6417,7 @@ export default function RepairReportPage() {
               onClick={() => void handleManagerApprove()}
               className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
             >
-              {managerApprovalBusy ? 'Kaydediliyor...' : 'Onayla'}
+              {managerApprovalBusy ? 'Kaydediliyor...' : REPAIR_REPORT_MANAGER_APPROVE_LABEL}
             </button>
             <button
               type="button"
@@ -7002,7 +7002,7 @@ export default function RepairReportPage() {
                   onClick={() => void handleManagerApprove()}
                   className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  {managerApprovalBusy ? 'Kaydediliyor...' : 'Onayla'}
+                  {managerApprovalBusy ? 'Kaydediliyor...' : REPAIR_REPORT_MANAGER_APPROVE_LABEL}
                 </button>
                 <button
                   type="button"

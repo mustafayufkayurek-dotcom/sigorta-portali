@@ -43,8 +43,11 @@ describe('hasar rapor revizyon durumu LOCK', () => {
     assert.match(revReq, /id: \{ not: report\.id \}/);
     assert.match(page, /canApprovePendingRepairReport/);
     assert.match(page, /yonetici-rapor-onay/);
+    assert.match(page, /REPAIR_REPORT_MANAGER_APPROVE_LABEL/);
     assert.match(page, /repair-reports\/\$\{reportId\}\/approve/);
     assert.match(page, /repair-reports\/\$\{reportId\}\/reject/);
     assert.match(shared, /canApprovePendingRepairReport/);
+    assert.match(shared, /Yönetici Onayı/);
+    assert.doesNotMatch(page, /managerApprovalBusy \? 'Kaydediliyor\.\.\.' : 'Onayla'/);
   });
 });

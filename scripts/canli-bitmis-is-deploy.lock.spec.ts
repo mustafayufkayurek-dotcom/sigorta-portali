@@ -109,6 +109,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'user-invite-config.lock.spec',
       'inbox-assignable-users.lock.spec',
       'repair-report-pdf-groups.lock.spec',
+      'repair-report-mail-pdf.lock.spec',
       'role-account-family.lock.spec',
       'personel-ekle.lock.spec',
       'claim-new-form.lock.spec',

@@ -1,5 +1,6 @@
 /**
- * Kilit: giden hasar raporu ekinde yalnız dış PDF (DIS). İç / maliyet PDF yok.
+ * Kilit: müşteri/eksper/dış onay ekinde yalnız dış PDF (DIS).
+ * İç PDF yalnız yönetici onay mailine; müşteriye gitmez.
  * Çalıştır: node --experimental-strip-types --test apps/backend/src/modules/repair-reports/report-mail-external-pdf.lock.spec.ts
  */
 import assert from 'node:assert/strict';
@@ -24,6 +25,23 @@ describe('rapor mail eki dış PDF LOCK', () => {
     assert.match(src, /generatePdf\(reportId, 'external'\)/);
     assert.doesNotMatch(src, /generatePdf\(reportId, dto\.viewType\)/);
     assert.match(src, /viewType: 'external'/);
+    assert.match(src, /pdfBuffer: customerPdf/);
+    assert.doesNotMatch(src, /pdfBuffer: internalPdf/);
+  });
+
+  it('yönetici onay mailine iç PDF ekler; müşteri sendReport iç PDF almaz', () => {
+    const src = readFileSync(join(here, 'repair-reports.service.ts'), 'utf8');
+    assert.match(src, /generatePdf\(reportId, 'internal'\)/);
+    assert.match(src, /internalRepairPdfFilename/);
+    assert.match(src, /onManagerApprovalRequested/);
+    const emailSrc = readFileSync(join(here, 'email/report-email.service.ts'), 'utf8');
+    assert.doesNotMatch(emailSrc, /hasar-raporu-IC-/);
+    const managerSrc = readFileSync(
+      join(here, '../notifications/email/claim-event-email.service.ts'),
+      'utf8',
+    );
+    assert.match(managerSrc, /filterRepairReportMailAttachments/);
+    assert.match(managerSrc, /İç rapor PDF ve resimler ekte/);
   });
 
   it('dış onay maili dış PDF ekler', () => {

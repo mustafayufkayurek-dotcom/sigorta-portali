@@ -113,6 +113,7 @@ node --experimental-strip-types --test \
   apps/web/src/components/ui/panel-flow-trail.lock.spec.ts \
   packages/shared/src/inbox-assignable-users.lock.spec.ts \
   packages/shared/src/repair-report-pdf-groups.lock.spec.ts \
+  packages/shared/src/repair-report-mail-pdf.lock.spec.ts \
   packages/shared/src/role-account-family.lock.spec.ts \
   packages/shared/src/customer-general-mailbox.lock.spec.ts \
   packages/shared/src/authorized-person-name.lock.spec.ts \

@@ -45,6 +45,7 @@ export function repairReportClosesOnRevise(status: string | null | undefined): b
 
 /** Maildeki yönetici onayı: yalnız bu roller. */
 export const REPAIR_REPORT_MANAGER_APPROVER_ROLES = ['admin', 'manager', 'ops_manager'] as const;
+export const REPAIR_REPORT_MANAGER_APPROVE_LABEL = 'Yönetici Onayı';
 
 export function canApprovePendingRepairReport(
   roleCode: unknown,

@@ -12,6 +12,7 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/notifications/email/file-closure-email.lock.spec.ts \
   apps/backend/src/modules/surveys/survey-monthly-report.lock.spec.ts \
   apps/backend/src/modules/repair-reports/report-mail-external-pdf.lock.spec.ts \
+  packages/shared/src/repair-report-mail-pdf.lock.spec.ts \
   apps/backend/src/modules/repair-reports/report-customer-mail-recipients.lock.spec.ts \
   apps/web/src/utils/ops-email-default-to.lock.spec.ts \
   apps/web/src/components/operasyon/operation-send-email-approval.lock.spec.ts \

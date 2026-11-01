@@ -8,7 +8,13 @@ import {
   panelRevizyonTalebiPath,
 } from '@/common/utils/panel-url';
 import { EmailService } from './email.service';
-import { claimFilePlaceLabel, formatEmergencyFileAddress, repairCompletedMailCopy } from '@sigorta/shared';
+import {
+  claimFilePlaceLabel,
+  filterRepairReportMailAttachments,
+  formatEmergencyFileAddress,
+  packInlineMailAttachments,
+  repairCompletedMailCopy,
+} from '@sigorta/shared';
 import {
   buildApprovalReminderEmailHtml,
   buildApprovalReminderEmailSubject,
@@ -499,7 +505,7 @@ export class ClaimEventEmailService {
       title: 'Rapor onayınızı bekliyor',
       preheader: `${params.reportNo} onay kuyruğunda.`,
       greeting: params.recipientName ? `Sayın ${params.recipientName},` : undefined,
-      bodyNote: 'Özet aşağıda. Resimler ekte; yoksa panelden bakın.',
+      bodyNote: 'Özet aşağıda. İç rapor PDF ve resimler ekte; yoksa panelden bakın.',
       rows: [
         { label: 'Dosya No', value: params.fileNo },
         { label: 'Rapor No', value: params.reportNo },
@@ -511,12 +517,15 @@ export class ClaimEventEmailService {
       actionUrl: buildPanelUrl(this.appUrl, panelOnarimRaporuPath(params.claimFileId, params.reportId)),
       actionLabel: 'Raporu Aç',
     });
+    const attachments = packInlineMailAttachments(
+      filterRepairReportMailAttachments(to, params.attachments ?? []),
+    ).map((a) => ({
+      filename: a.filename,
+      content: a.content,
+      contentType: a.contentType,
+    }));
     return this.email.sendEmail(to, `Onay bekleyen rapor: ${params.reportNo}`, html, {
-      attachments: params.attachments?.map((a) => ({
-        filename: a.filename,
-        content: a.content,
-        contentType: a.contentType,
-      })),
+      attachments,
     });
   }
 
