@@ -329,6 +329,9 @@ function FieldStaffVisitCard({
           {claim.siteContactPhone ? (
             <p className="mt-0.5 text-sm tabular-nums text-slate-700">{claim.siteContactPhone}</p>
           ) : null}
+          {claim.siteContactEmail ? (
+            <p className="mt-0.5 text-sm text-slate-700">{claim.siteContactEmail}</p>
+          ) : null}
         </div>
 
         <div className="rounded-xl border border-brand-100 bg-brand-50/30 px-3.5 py-3">

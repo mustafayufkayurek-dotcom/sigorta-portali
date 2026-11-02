@@ -148,6 +148,7 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
       value: irtibatTel || '—',
       telHref: hasarIrtibatTelHref(claim) || undefined,
     },
+    { label: 'İrtibat E-posta', value: String(claim.siteContactEmail ?? '').trim() || '—' },
     { label: 'Dosya Konusu', value: resolveClaimIhbarKonusu(claim) },
     ...claimFileChannelSummaryRows(claim).map((row) => ({ label: row.label, value: row.value })),
     { label: 'İhbar Tarihi', value: resolveIhbarTarihi(claim) },
@@ -212,6 +213,8 @@ function buildDosyaBilgileriOzet(claim: any, reportSummary?: any | null): {
   const stage = deriveOperationStage({
     claimStatusCode: claim.currentStatus?.code,
     reportStatus: reportSummary?.status ?? claim.newestRepairReportStatus ?? claim.latestRepairReport?.status,
+    extraRepairOpen: claim.extraRepairOpen,
+    serviceKind: claim.serviceKind,
   });
   const insuredPhone = typeof claim.insuredPhone === 'string' ? claim.insuredPhone.trim() : '';
   return {

@@ -9,9 +9,10 @@ import { NotificationsModule } from '@/modules/notifications/notifications.modul
 import { VendorRiskModule } from '@/modules/vendor-risk/vendor-risk.module';
 import { DamageRepairTemplatesModule } from '@/modules/damage-repair-templates/damage-repair-templates.module';
 import { ExternalApprovalsModule } from '@/modules/external-approvals/external-approvals.module';
+import { StorageModule } from '@/modules/storage/storage.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule, NotificationsModule, DamageRepairTemplatesModule, ExternalApprovalsModule, forwardRef(() => VendorRiskModule)],
+  imports: [PrismaModule, ConfigModule, NotificationsModule, DamageRepairTemplatesModule, ExternalApprovalsModule, StorageModule, forwardRef(() => VendorRiskModule)],
   controllers: [RepairReportsController],
   providers: [RepairReportsService, ReportPdfService, ReportEmailService],
   exports: [RepairReportsService],

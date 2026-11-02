@@ -73,6 +73,7 @@ export function DosyaBilgileriEditModal({
   const [insuredPhone, setInsuredPhone] = useState(claim.insuredPhone ?? '');
   const [siteContactName, setSiteContactName] = useState(claim.siteContactName ?? '');
   const [siteContactPhone, setSiteContactPhone] = useState(claim.siteContactPhone ?? '');
+  const [siteContactEmail, setSiteContactEmail] = useState(claim.siteContactEmail ?? '');
   const [policyNo, setPolicyNo] = useState(claim.policyNo ?? '');
   const [lossType, setLossType] = useState(() => {
     const konu = resolveClaimIhbarKonusu(claim);
@@ -161,6 +162,7 @@ export function DosyaBilgileriEditModal({
         insuredPhone: phone || null,
         siteContactName: irtibatAd || null,
         siteContactPhone: irtibatTel || null,
+        siteContactEmail: siteContactEmail.trim() || null,
         policyNo: policy,
         lossType: konu,
         description: ihbar || null,
@@ -186,6 +188,7 @@ export function DosyaBilgileriEditModal({
         insuredPhone: updated?.insuredPhone ?? (phone || null),
         siteContactName: updated?.siteContactName ?? (irtibatAd || null),
         siteContactPhone: updated?.siteContactPhone ?? (irtibatTel || null),
+        siteContactEmail: updated?.siteContactEmail ?? (siteContactEmail.trim() || null),
         policyNo: updated?.policyNo ?? policy,
         lossType: updated?.lossType ?? konu,
         description: updated?.description ?? (ihbar || null),
@@ -287,6 +290,21 @@ export function DosyaBilgileriEditModal({
                   value={siteContactPhone}
                   onChange={setSiteContactPhone}
                   placeholder="532 133 4144"
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
+                  <span>İrtibat E-posta</span>
+                  <FieldHelpTip text="Tespit planı bu kutuya gider. Boşsa mail gitmez." testId="duzenle-irtibat-eposta-yardim" />
+                </label>
+                <input
+                  className={fieldCls}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={siteContactEmail}
+                  onChange={(e) => setSiteContactEmail(e.target.value)}
+                  placeholder="Örn. ad@firma.com"
                 />
               </div>
               <div>

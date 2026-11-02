@@ -447,7 +447,7 @@ export class ClaimEventEmailService {
     return { sentCount: results.filter((x) => x.sent).length, results };
   }
 
-  /** Tespit planı — müşteriye (eksper / broker / sigorta kartı). Tercih kapısı yok. */
+  /** Tespit planı — yalnız dosyadaki irtibat kutusuna. Tercih kapısı yok. */
   async onInspectionPlanned(params: {
     recipientEmail: string;
     recipientName?: string | null;
@@ -460,7 +460,7 @@ export class ClaimEventEmailService {
   }) {
     const to = params.recipientEmail?.trim();
     if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-      return { sent: false as const, errorMsg: 'Müşteri e-postası yok veya geçersiz' };
+      return { sent: false as const, errorMsg: 'İrtibat e-postası yok veya geçersiz' };
     }
     return this.email.sendTemplateEmail(
       to,
@@ -469,7 +469,7 @@ export class ClaimEventEmailService {
         title: 'Tespit Planlaması',
         preheader: `${params.fileNo} için tespit randevusu netleşti.`,
         greeting: params.recipientName ? `Sayın ${params.recipientName},` : undefined,
-        bodyNote: 'Sigortalı ve saha tarafına randevu WhatsApp ile iletilir. Bu mail müşteri kaydınadır.',
+        bodyNote: 'Bu mail irtibat kurulacak kişiye gider. Kutu yoksa gönderilmez.',
         rows: [
           { label: 'Dosya No', value: params.fileNo },
           { label: 'Müşteri', value: params.customerName },

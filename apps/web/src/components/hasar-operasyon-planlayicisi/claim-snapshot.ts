@@ -178,6 +178,7 @@ export type PlannerClaimSnapshot = {
   serviceKind: string | null;
   siteContactName: string;
   siteContactPhone: string;
+  siteContactEmail: string;
   hasPreApprovalWork: boolean | null;
   preApprovalJobs: Array<{ id: string; name: string }>;
   kapanisButce: {
@@ -276,6 +277,7 @@ export function previewSnapshot(): PlannerClaimSnapshot {
     serviceKind: 'repair',
     siteContactName: '',
     siteContactPhone: '',
+    siteContactEmail: '',
     hasPreApprovalWork: false,
     preApprovalJobs: [],
     kapanisButce: { ...EMPTY_HASAR_KAPANIS_BUTCE },
@@ -403,6 +405,7 @@ type ClaimFileLite = {
   serviceKind?: string | null;
   siteContactName?: string | null;
   siteContactPhone?: string | null;
+  siteContactEmail?: string | null;
   hasPreApprovalWork?: boolean | null;
   preApprovalWorkJson?: string | null;
   kapanisButceJson?: string | null;
@@ -753,6 +756,7 @@ export function mapLiveSnapshot(
     serviceKind,
     siteContactName: String(claimFile?.siteContactName ?? '').trim(),
     siteContactPhone: String(claimFile?.siteContactPhone ?? '').trim(),
+    siteContactEmail: String(claimFile?.siteContactEmail ?? '').trim(),
     hasPreApprovalWork,
     preApprovalJobs,
     kapanisButce,

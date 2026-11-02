@@ -22,6 +22,7 @@ import {
   resolveEmergencyOperationLabel,
   tallyHasarOperationKpis,
   tallyAcilOperationKpis,
+  hasarProductStageClaimWhere,
 } from './operation-status.ts';
 
 describe('dış onay = Onay Bekliyor LOCK', () => {
@@ -130,9 +131,32 @@ describe('ürün dili aşama filtresi LOCK', () => {
     assert.equal(staffVisibleClaimStatusName('budget_preparing', 'Bütçe Hazırlanıyor'), 'Rapor Yazım Aşamasında');
     assert.equal(staffVisibleClaimStatusName('cancelled', 'İptal'), 'Dosya İptal Edildi');
     assert.equal(claimStatusProductLabel('adjuster_assigned'), 'Tespit Aşamasında');
+    assert.equal(
+      deriveOperationStage({ claimStatusCode: 'site_visit_done', serviceKind: 'inspection' }).label,
+      'Tespit Aşamasında',
+    );
+    assert.equal(
+      staffVisibleClaimStatusName('site_visit_planned', 'Onarım Aşamasında', 'inspection'),
+      'Tespit Aşamasında',
+    );
+    assert.equal(
+      deriveOperationStage({ claimStatusCode: 'site_visit_done', serviceKind: 'repair' }).label,
+      'Onarım Aşamasında',
+    );
     assert.deepEqual(hasarListStatusQuery('__stage__tespit'), {
       statusCode: 'pre_review,adjuster_assigned',
     });
+    const tespitWhere = hasarProductStageClaimWhere(['pre_review', 'adjuster_assigned']);
+    assert.ok(tespitWhere);
+    assert.equal(
+      JSON.stringify(tespitWhere).includes('inspection'),
+      true,
+    );
+    const onarimWhere = hasarProductStageClaimWhere(
+      HASAR_PRODUCT_STAGE_FILTERS.find((s) => s.id === 'onarim')!.codes,
+    );
+    assert.ok(onarimWhere);
+    assert.equal(JSON.stringify(onarimWhere).includes('NOT'), true);
     assert.deepEqual(hasarListStatusQuery('__open__'), { statusCode: 'open' });
     assert.equal(deriveOperationStage({ claimStatusCode: 'budget_revision_requested' }).label, 'Revizyon Talep Edildi');
     assert.equal(staffVisibleClaimStatusName('budget_revision_requested', 'Bütçe Revize Talep Edildi'), 'Revizyon Talep Edildi');

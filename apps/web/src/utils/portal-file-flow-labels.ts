@@ -1,3 +1,5 @@
+import { isInspectionServiceKind, OPERATION_STAGES, staffVisibleClaimStatusName } from '@sigorta/shared';
+
 /** Eksper ve sigorta portalında gösterilen dosya akışı etiketleri */
 
 export const PORTAL_ACTIVITY_LABELS: Record<string, string> = {
@@ -62,12 +64,20 @@ export const PORTAL_NEXT_STEP_HINTS: Record<string, string> = {
   COST_REPORT_SUBMITTED: 'Onay sonucu bekleniyor.',
 };
 
-export function portalStatusLabel(code: string | undefined, fallbackName?: string): string {
+export function portalStatusLabel(code: string | undefined, fallbackName?: string, serviceKind?: string | null): string {
   const overlay = String(fallbackName ?? '').trim();
   if (overlay === 'Reddedildi' || overlay === 'Revizyon Talep Edildi' || overlay === 'Kapalı · Ek Onarım') {
     return overlay;
   }
   if (code === 'budget_revision_requested') return 'Revizyon Talep Edildi';
+  const sahaCodes = new Set(['site_visit_planned', 'site_visit_done', 'INSPECTION_DONE']);
+  if (isInspectionServiceKind(serviceKind) && code && sahaCodes.has(code)) {
+    return 'Tespit Aşamasında';
+  }
+  const productLabels = Object.values(OPERATION_STAGES).map((stage) => stage.label);
+  if (productLabels.includes(overlay)) return overlay;
+  const staff = staffVisibleClaimStatusName(code, fallbackName, serviceKind);
+  if (staff && staff !== '—') return staff;
   if (code && PORTAL_STATUS_LABELS[code]) return PORTAL_STATUS_LABELS[code];
   const name = overlay.toLocaleLowerCase('tr-TR');
   if (/bütçe sun|butce sun|budget.?submit|onay bek/.test(name)) return 'Onay Bekliyor';

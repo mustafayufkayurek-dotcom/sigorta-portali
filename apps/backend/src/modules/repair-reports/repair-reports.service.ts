@@ -22,10 +22,13 @@ import {
 } from '@/modules/finance/hasar-extra-repair-link';
 import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
 import { normalizeReportImageCategory } from './report-image-category';
-import { resolveReportImageFilePath } from './report-image-paths';
+import { getReportImagesDir, resolveReportImageFilePath } from './report-image-paths';
+import { StorageService } from '@/modules/storage/storage.service';
 import { resolveReportCustomerMailRecipients } from './report-customer-mail-recipients';
 import { collectClaimFileChannelEmails, generalMailboxesFromContactInfos } from '@sigorta/shared';
 import {
+  ACIL_INSPECTION_PHOTO_NOTE,
+  isAcilInspectionPhotoNotes,
   isExpertFirmCustomer,
   EXTRA_REPAIR_KIND,
   partitionExtraRepairCostItems,
@@ -55,6 +58,7 @@ import {
   AddQuickRepairItemsDto,
 } from './dto/repair-reports.dto';
 import * as fs from 'fs';
+import * as path from 'path';
 import { randomUUID } from 'crypto';
 
 interface DownloadToken {
@@ -183,6 +187,7 @@ export class RepairReportsService {
     @Optional() private readonly damageRepairTemplates?: DamageRepairTemplatesService,
     @Optional() private readonly anomalyDetection?: AnomalyDetectionService,
     @Optional() private readonly vendorRisk?: VendorRiskService,
+    @Optional() private readonly storage?: StorageService,
   ) {}
 
   // ── Reports ─────────────────────────────────────────────────────────────────
@@ -365,11 +370,15 @@ export class RepairReportsService {
       },
     });
     await linkOpenExtraRepairToReport(this.prisma, claimFileId, created.id);
-    return created;
+    await this.attachClaimInspectionPhotosToReport(created.id, claimFileId);
+    return this.findReportWithInclude(created.id) ?? created;
   }
 
   async getReport(id: string) {
     await this.healInflatedSupplierTotals(id);
+    const loaded = await this.findReportWithInclude(id);
+    if (!loaded) throw new NotFoundException('Rapor bulunamadı');
+    await this.attachClaimInspectionPhotosToReport(loaded.id, loaded.claimFileId);
     const report = await this.findReportWithInclude(id);
     if (!report) throw new NotFoundException('Rapor bulunamadı');
 
@@ -909,6 +918,59 @@ export class RepairReportsService {
 
   // ── Images ────────────────────────────────────────────────────────────────
 
+  /** Saha tespit resimleri rapor Fotoğraflar altına ve PDF’e düşer. */
+  private async attachClaimInspectionPhotosToReport(reportId: string, claimFileId: string) {
+    if (!this.storage) return;
+    const docs = await this.prisma.entityDocument.findMany({
+      where: { entityType: 'claim_file', entityId: claimFileId },
+      orderBy: { createdAt: 'asc' },
+    });
+    const photos = docs.filter((doc) => {
+      const mime = String(doc.mimeType ?? '');
+      const looksImage = mime.startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(doc.fileName);
+      return looksImage && isAcilInspectionPhotoNotes(doc.notes);
+    });
+    if (!photos.length) return;
+    const existing = await this.prisma.reportImage.findMany({
+      where: { reportId },
+      select: { fileName: true, fileSize: true, caption: true },
+    });
+    const seen = new Set(existing.map((img) => `${img.fileName}|${img.fileSize}|${img.caption ?? ''}`));
+    let sortOrder = existing.length;
+    const dir = getReportImagesDir();
+    fs.mkdirSync(dir, { recursive: true });
+    for (const doc of photos) {
+      const caption = ACIL_INSPECTION_PHOTO_NOTE;
+      const key = `${doc.fileName}|${doc.fileSize}|${caption}`;
+      if (seen.has(key)) continue;
+      try {
+        const buf = await this.storage.download(doc.storageKey);
+        if (!buf.length) continue;
+        const ext = path.extname(doc.fileName) || '.jpg';
+        const storageKey = `tespit-${doc.id}${ext.toLowerCase()}`;
+        fs.writeFileSync(path.join(dir, storageKey), buf);
+        await this.prisma.reportImage.create({
+          data: {
+            reportId,
+            storageKey,
+            fileName: doc.fileName,
+            mimeType: doc.mimeType || 'image/jpeg',
+            fileSize: buf.length,
+            category: 'damage',
+            caption,
+            sortOrder,
+          },
+        });
+        sortOrder += 1;
+        seen.add(key);
+      } catch (err) {
+        this.logger.warn(
+          `Tespit resmi rapora alınamadı (${doc.id}): ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+  }
+
   async addImage(
     reportId: string,
     file: Express.Multer.File,
@@ -1030,6 +1092,11 @@ export class RepairReportsService {
   /** PDF için minimal claimFile — migrate edilmemiş skaler kolonlara dayanmaz */
   private async getReportForPdf(reportId: string) {
     await this.healInflatedSupplierTotals(reportId);
+    const head = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      select: { id: true, claimFileId: true },
+    });
+    if (head) await this.attachClaimInspectionPhotosToReport(head.id, head.claimFileId);
     const report = await this.prisma.repairReport.findUnique({
       where: { id: reportId },
       include: {

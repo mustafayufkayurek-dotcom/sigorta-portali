@@ -1,8 +1,11 @@
 /** Tespit/onarım randevu yazısı müşteri yetkilisine değil, dosyadaki irtibata gider. */
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export type HasarRandevuAliciInput = {
   siteContactName?: string | null;
   siteContactPhone?: string | null;
+  siteContactEmail?: string | null;
   insuredName?: string | null;
   insuredPhone?: string | null;
   customerPhone?: string | null;
@@ -27,4 +30,19 @@ export function hasarRandevuAlici(input: HasarRandevuAliciInput | null | undefin
     return { name: irtibatAd || insuredName, phone: irtibatTel, viaIrtibat: true };
   }
   return { name: insuredName, phone: insuredPhone, viaIrtibat: false };
+}
+
+export type HasarRandevuMailAlici = {
+  email: string;
+  name: string;
+};
+
+/** Tespit planı maili yalnız irtibat e-postasına gider; yoksa gitmez. */
+export function hasarRandevuMailAlici(
+  input: HasarRandevuAliciInput | null | undefined,
+): HasarRandevuMailAlici | null {
+  const email = trimText(input?.siteContactEmail).toLowerCase();
+  if (!email || !EMAIL_RE.test(email)) return null;
+  const name = trimText(input?.siteContactName);
+  return { email, name };
 }

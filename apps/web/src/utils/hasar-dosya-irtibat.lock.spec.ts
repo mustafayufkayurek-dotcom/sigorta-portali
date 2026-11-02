@@ -42,5 +42,8 @@ describe('hasar dosya irtibat lock', () => {
     assert.match(duzenle, /İrtibat Telefon/);
     assert.match(duzenle, /siteContactName/);
     assert.match(duzenle, /siteContactPhone/);
+    assert.match(duzenle, /İrtibat E-posta/);
+    assert.match(duzenle, /siteContactEmail/);
+    assert.match(detay, /İrtibat E-posta/);
   });
 });

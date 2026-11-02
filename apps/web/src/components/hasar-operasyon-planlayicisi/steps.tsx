@@ -383,10 +383,10 @@ export function StepInsuredAppointment() {
           <Field label="Telefon" icon={Phone} invalid={failedMandatoryKeys.includes('insured_phone')}>
             <Input value={claim.insuredPhone} readOnly />
           </Field>
-          {claim.siteContactName || claim.siteContactPhone ? (
+          {claim.siteContactName || claim.siteContactPhone || claim.siteContactEmail ? (
             <Field label="İrtibat">
               <Input
-                value={[claim.siteContactName, claim.siteContactPhone].filter(Boolean).join(' · ')}
+                value={[claim.siteContactName, claim.siteContactPhone, claim.siteContactEmail].filter(Boolean).join(' · ')}
                 readOnly
               />
             </Field>

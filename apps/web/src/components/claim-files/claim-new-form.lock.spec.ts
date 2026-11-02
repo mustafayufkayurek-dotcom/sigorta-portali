@@ -23,6 +23,9 @@ describe('yeni dosya form lock', () => {
     assert.match(form, /Hizmet Türü/);
     assert.match(form, /İrtibat Ad Soyad/);
     assert.match(form, /İrtibat Telefon/);
+    assert.match(form, /İrtibat E-posta/);
+    assert.match(form, /irtibat-eposta-yardim/);
+    assert.match(form, /siteContactEmail/);
     assert.match(form, /İhbar Detayı/);
     {
       const openAddr = form.indexOf('data-field="openAddress"');

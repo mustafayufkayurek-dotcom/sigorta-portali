@@ -132,6 +132,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const [assignedOfficeUserId, setAssignedOfficeUserId] = useState('');
   const [siteContactName, setSiteContactName] = useState('');
   const [siteContactPhone, setSiteContactPhone] = useState('');
+  const [siteContactEmail, setSiteContactEmail] = useState('');
   const [sessionUserId, setSessionUserId] = useState('');
   const [fileNoChecking, setFileNoChecking] = useState(false);
   const [fileNoError, setFileNoError] = useState<string | null>(null);
@@ -542,6 +543,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         consultancyServiceTypeId: serviceKind === 'consultancy' ? consultancyServiceTypeId || undefined : undefined,
         siteContactName: toTitleCaseTR(siteContactName.trim()) || undefined,
         siteContactPhone: parseInternationalPhone(siteContactPhone).international || undefined,
+        siteContactEmail: siteContactEmail.trim() || undefined,
         ...claimFileChannelCreateFields({
           channelAgencyCustomerId,
           channelBrokerCustomerId,
@@ -959,6 +961,21 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             <FieldHelpTip text="Yalnız tespit içindir; rapora yazılmaz." testId="irtibat-telefon-yardim" />
           </label>
           <PhoneInput value={siteContactPhone} onChange={setSiteContactPhone} placeholder="532 133 4144" />
+        </div>
+        <div className="min-w-0">
+          <label className={`${label} flex items-center gap-1.5`}>
+            <span>İrtibat E-posta</span>
+            <FieldHelpTip text="Tespit planı bu kutuya gider. Boşsa mail gitmez." testId="irtibat-eposta-yardim" />
+          </label>
+          <input
+            className={field}
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={siteContactEmail}
+            onChange={(e) => setSiteContactEmail(e.target.value)}
+            placeholder="Örn. ad@firma.com"
+          />
         </div>
         <div className={spanFull} data-field="openAddress">
           <label className={label}>{ADDRESS_FIELD.openAddress}</label>

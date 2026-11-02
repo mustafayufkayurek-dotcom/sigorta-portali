@@ -124,6 +124,7 @@ node --experimental-strip-types --test \
   apps/web/src/utils/shrink-inspection-photo.lock.spec.ts \
   apps/web/src/utils/hasar-dosya-irtibat.lock.spec.ts \
   packages/shared/src/hasar-randevu-alici.lock.spec.ts \
+  packages/shared/src/operation-status.lock.spec.ts \
   apps/web/src/components/ui/field-help-tip.lock.spec.ts \
   packages/shared/src/claim-service-kind.lock.spec.ts \
   apps/web/src/utils/operasyon-nav.lock.spec.ts \

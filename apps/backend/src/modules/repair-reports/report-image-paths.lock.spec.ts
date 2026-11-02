@@ -4,10 +4,11 @@
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-const root = join(__dirname);
+const root = dirname(fileURLToPath(import.meta.url));
 
 function read(rel: string): string {
   return readFileSync(join(root, rel), 'utf8');
@@ -34,9 +35,16 @@ describe('report-image-paths LOCK', () => {
   });
 
   it('main ServeStatic getUploadsRootDir kullanır', () => {
-    const main = readFileSync(join(__dirname, '../../main.ts'), 'utf8');
+    const main = readFileSync(join(root, '../../main.ts'), 'utf8');
     assert.match(main, /getUploadsRootDir/);
     assert.doesNotMatch(main, /useStaticAssets\(join\(process\.cwd\(\),\s*'uploads'\)/);
+  });
+
+  it('saha tespit resmi rapor altına bağlanır', () => {
+    const svc = read('repair-reports.service.ts');
+    assert.match(svc, /attachClaimInspectionPhotosToReport/);
+    assert.match(svc, /isAcilInspectionPhotoNotes/);
+    assert.match(svc, /ACIL_INSPECTION_PHOTO_NOTE/);
   });
 
   it('getUploadsRootDir export edilir', () => {

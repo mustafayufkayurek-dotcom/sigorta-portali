@@ -3,6 +3,10 @@
  * Gerçek kodlar aynı kalır; UI aşama / sonraki aksiyon / 72s bayrağı buradan türetilir.
  */
 
+function isInspectionServiceKind(kind?: string | null): boolean {
+  return String(kind ?? '').trim().toLowerCase() === 'inspection';
+}
+
 export const APPROVAL_WAITING_REPORT_STATUSES = [
   'pending_approval',
   'submitted',
@@ -295,6 +299,8 @@ export type DeriveOperationStageInput = {
   verbalDecision?: VerbalManualDecision | null;
   /** Kapalı dosyada açık ek onarım — kapanış kaydı durur. */
   extraRepairOpen?: boolean | null;
+  /** Hasar Tespit dosyasında saha kodu onarım yazılmaz. */
+  serviceKind?: string | null;
 };
 
 export function deriveOperationStageId(input: DeriveOperationStageInput): OperationStageId {
@@ -332,7 +338,14 @@ export function deriveOperationStageId(input: DeriveOperationStageInput): Operat
   }
   if (REPORT_WRITING.has(report) || claim === 'budget_preparing') return 'rapor_yaziliyor';
 
-  return CLAIM_CODE_TO_STAGE[claim] ?? 'ihbar_alindi';
+  const mapped = CLAIM_CODE_TO_STAGE[claim] ?? 'ihbar_alindi';
+  if (
+    isInspectionServiceKind(input.serviceKind)
+    && (mapped === 'saha_planlandi' || mapped === 'saha_tamamlandi')
+  ) {
+    return 'eksper_atandi';
+  }
+  return mapped;
 }
 
 export function deriveOperationStage(input: DeriveOperationStageInput): OperationStageMeta {
@@ -538,6 +551,48 @@ export function hasarListStatusQuery(statusFilter: string): { statusCode?: strin
   return {};
 }
 
+const INSPECTION_SAHA_CODES = ['site_visit_planned', 'site_visit_done'] as const;
+
+function sameCodeSet(left: string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) return false;
+  const a = [...left].sort();
+  const b = [...right].sort();
+  return a.every((code, i) => code === b[i]);
+}
+
+/** Liste süzgeci: Hasar Tespit saha kodu Tespit’te kalır, Onarım’a düşmez. */
+export function hasarProductStageClaimWhere(codes: string[]): Record<string, unknown> | null {
+  const tespit = HASAR_PRODUCT_STAGE_FILTERS.find((s) => s.id === 'tespit');
+  const onarim = HASAR_PRODUCT_STAGE_FILTERS.find((s) => s.id === 'onarim');
+  if (tespit && sameCodeSet(codes, tespit.codes)) {
+    return {
+      OR: [
+        { currentStatus: { code: { in: [...tespit.codes] } } },
+        {
+          AND: [
+            { serviceKind: 'inspection' },
+            { currentStatus: { code: { in: [...INSPECTION_SAHA_CODES] } } },
+          ],
+        },
+      ],
+    };
+  }
+  if (onarim && sameCodeSet(codes, onarim.codes)) {
+    return {
+      OR: [
+        { currentStatus: { code: { in: ['budget_approved', 'repair_planning', 'repair_in_progress'] } } },
+        {
+          AND: [
+            { currentStatus: { code: { in: [...INSPECTION_SAHA_CODES] } } },
+            { NOT: { serviceKind: 'inspection' } },
+          ],
+        },
+      ],
+    };
+  }
+  return null;
+}
+
 export function findHasarProductStageByClaimCode(code: string | null | undefined): ProductStageFilter | null {
   const needle = String(code ?? '').trim().toLowerCase();
   if (!needle) return null;
@@ -548,10 +603,12 @@ export function findHasarProductStageByClaimCode(code: string | null | undefined
 export function staffVisibleClaimStatusName(
   code?: string | null,
   fallbackName?: string | null,
+  serviceKind?: string | null,
 ): string {
   const claim = String(code ?? '').trim().toLowerCase();
-  const stageId = CLAIM_CODE_TO_STAGE[claim];
-  if (stageId) return OPERATION_STAGES[stageId].label;
+  if (CLAIM_CODE_TO_STAGE[claim]) {
+    return OPERATION_STAGES[deriveOperationStageId({ claimStatusCode: claim, serviceKind })].label;
+  }
   const fallback = String(fallbackName ?? '').trim();
   for (const forbidden of FORBIDDEN_STAFF_CLAIM_STATUS_LABELS) {
     if (fallback === forbidden) return deriveOperationStage({ claimStatusCode: claim }).label;
@@ -561,12 +618,13 @@ export function staffVisibleClaimStatusName(
 
 export function overlayClaimStatusProductName<T extends { code?: string | null; name?: string | null }>(
   row: T,
+  serviceKind?: string | null,
 ): T {
-  return { ...row, name: staffVisibleClaimStatusName(row.code, row.name) };
+  return { ...row, name: staffVisibleClaimStatusName(row.code, row.name, serviceKind) };
 }
 
-export function claimStatusProductLabel(code: string | null | undefined): string {
-  return staffVisibleClaimStatusName(code, null);
+export function claimStatusProductLabel(code: string | null | undefined, serviceKind?: string | null): string {
+  return staffVisibleClaimStatusName(code, null, serviceKind);
 }
 
 export const CLOSED_CLAIM_STATUS_CODES = ['closed', 'cancelled', 'completed'] as const;

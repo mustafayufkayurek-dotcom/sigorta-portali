@@ -68,6 +68,7 @@ import {
   FINANCE_TRANSFER_STATUS_CODES,
   deriveOperationStage,
   deriveOperationStageId,
+  hasarProductStageClaimWhere,
   hoursSince,
   isHasarWorkloadOpenStage,
   tallyHasarOperationKpis,
@@ -792,7 +793,14 @@ export class ClaimFilesService {
         .split(',')
         .map((c) => c.trim().toLowerCase())
         .filter(Boolean);
-      if (codes.length) baseWhere.currentStatus = { code: { in: codes } };
+      const stageWhere = hasarProductStageClaimWhere(codes);
+      if (stageWhere) {
+        const prevAnd = baseWhere.AND;
+        const extra = Array.isArray(prevAnd) ? prevAnd : prevAnd ? [prevAnd] : [];
+        baseWhere.AND = [...extra, stageWhere];
+      } else if (codes.length) {
+        baseWhere.currentStatus = { code: { in: codes } };
+      }
     } else if (statusCode) {
       baseWhere.currentStatus = { code: statusCodeLower };
     }
@@ -1107,6 +1115,7 @@ export class ClaimFilesService {
         reportStatus: row.repairReports[0]?.status ?? null,
         verbalDecision: verbalByClaim.get(row.id) ?? null,
         extraRepairOpen: row.extraWorkItems.length > 0,
+        serviceKind: (row as { serviceKind?: string | null }).serviceKind,
       });
       if (!isHasarWorkloadOpenStage(stageId)) excluded.push(row.id);
     }
@@ -1275,6 +1284,7 @@ export class ClaimFilesService {
         reportStatus: newestStatus ?? report?.status ?? null,
         verbalDecision: verbalByClaim.get(claim.id) ?? null,
         extraRepairOpen: Boolean((claim as { extraRepairOpen?: boolean }).extraRepairOpen),
+        serviceKind: (claim as { serviceKind?: string | null }).serviceKind,
       });
       const awaitingSince =
         report?.id && isApprovalWaitingReport(report.status)
@@ -1577,8 +1587,8 @@ export class ClaimFilesService {
 
     const overlayHistory = (withInspection.statusHistory ?? []).map((h) => ({
       ...h,
-      fromStatus: h.fromStatus ? overlayClaimStatusProductName(h.fromStatus) : h.fromStatus,
-      toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus) : h.toStatus,
+      fromStatus: h.fromStatus ? overlayClaimStatusProductName(h.fromStatus, claimFile.serviceKind) : h.fromStatus,
+      toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus, claimFile.serviceKind) : h.toStatus,
     }));
 
     const extraRepair = await this.prisma.extraWorkItem.findFirst({
@@ -1608,12 +1618,13 @@ export class ClaimFilesService {
       reportStatus: newestReport?.status ?? null,
       verbalDecision,
       extraRepairOpen,
+      serviceKind: claimFile.serviceKind,
     });
 
     return {
       ...withInspection,
       currentStatus: withInspection.currentStatus
-        ? { ...overlayClaimStatusProductName(withInspection.currentStatus), name: operationStatusLabel }
+        ? { ...overlayClaimStatusProductName(withInspection.currentStatus, claimFile.serviceKind), name: operationStatusLabel }
         : withInspection.currentStatus,
       statusHistory: overlayHistory,
       financialSummary: {
@@ -1856,6 +1867,13 @@ export class ClaimFilesService {
       typeof rest.siteContactPhone === 'string' ? rest.siteContactPhone.replace(/\D/g, '') : '';
     const siteContactPhone = siteContactPhoneRaw || null;
     delete rest.siteContactPhone;
+    const siteContactEmailRaw =
+      typeof rest.siteContactEmail === 'string' ? rest.siteContactEmail.trim().toLowerCase() : '';
+    const siteContactEmail =
+      siteContactEmailRaw && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(siteContactEmailRaw)
+        ? siteContactEmailRaw
+        : null;
+    delete rest.siteContactEmail;
     const channelFields = claimFileChannelCreateFields(rest);
     delete rest.channelAgencyCustomerId;
     delete rest.channelBrokerCustomerId;
@@ -2024,6 +2042,7 @@ export class ClaimFilesService {
           consultancyServiceTypeId,
           siteContactName,
           siteContactPhone,
+          siteContactEmail,
           ...channelFields,
           currentResponsibleRole: assignedOfficeUserId ? 'operasyon_sorumlusu' : null,
           currentResponsibleUserId: assignedOfficeUserId ?? null,
@@ -2325,6 +2344,10 @@ export class ClaimFilesService {
     }
     if (typeof rest.siteContactPhone === 'string') {
       rest.siteContactPhone = rest.siteContactPhone.replace(/\D/g, '') || null;
+    }
+    if (typeof rest.siteContactEmail === 'string') {
+      const email = rest.siteContactEmail.trim().toLowerCase();
+      rest.siteContactEmail = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
     }
     if (rest.hasPreApprovalWork === true || rest.hasPreApprovalWork === false) {
       rest.hasPreApprovalWork = Boolean(rest.hasPreApprovalWork);
@@ -3117,7 +3140,7 @@ export class ClaimFilesService {
     id: string,
     requestingUser?: { id: string; roleCode?: string | null; vendorId?: string | null },
   ) {
-    await this.findOne(id, requestingUser);
+    const file = await this.findOne(id, requestingUser);
 
     const history = await this.prisma.claimStatusHistory.findMany({
       where: { claimFileId: id },
@@ -3131,8 +3154,8 @@ export class ClaimFilesService {
 
     return history.map((h) => ({
       ...h,
-      fromStatus: h.fromStatus ? overlayClaimStatusProductName(h.fromStatus) : h.fromStatus,
-      toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus) : h.toStatus,
+      fromStatus: h.fromStatus ? overlayClaimStatusProductName(h.fromStatus, file.serviceKind) : h.fromStatus,
+      toStatus: h.toStatus ? overlayClaimStatusProductName(h.toStatus, file.serviceKind) : h.toStatus,
     }));
   }
 

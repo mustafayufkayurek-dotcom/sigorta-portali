@@ -8,7 +8,6 @@ import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { RepairReportsService } from '@/modules/repair-reports/repair-reports.service';
 import {
-  resolveApproval72hCustomerEmailPayload,
   resolveCustomerReminderEmail,
   resolveCustomerReminderTitle,
 } from './approval-72h-customer-email.rule';
@@ -17,6 +16,7 @@ import {
   isHasarDigitalApprovalRelaxed,
   parseHasPreApprovalWork,
   hasarRandevuAlici,
+  hasarRandevuMailAlici,
 } from '@sigorta/shared';
 
 const MANUAL_DECISION_MIN_REASON = 10;
@@ -467,33 +467,34 @@ export class ClaimOperationCenterService {
     location: string | null,
     actor: Actor,
   ) {
-    const resolved = resolveApproval72hCustomerEmailPayload({
-      fileNo: claim.fileNo,
-      insuredName: claim.insuredName,
-      customer: claim.customer,
-      insuranceCompany: claim.insuranceCompany,
-      propertyAddress: claim.propertyAddress,
+    const alici = hasarRandevuMailAlici({
+      siteContactName: claim.siteContactName,
+      siteContactEmail: claim.siteContactEmail,
     });
     const scheduledLabel = `${scheduledAt.toLocaleDateString('tr-TR')} ${scheduledAt.toLocaleTimeString('tr-TR', {
       hour: '2-digit',
       minute: '2-digit',
     })}`;
-    if (!resolved.ok) {
+    if (!alici) {
       await this.log(
         claim.id,
         actor,
         'NOTE_ADDED',
-        `Tespit planı müşteri maili gönderilmedi: ${resolved.reason}`,
-        { kind: 'inspection_plan_email', status: 'skipped', reason: resolved.reason },
+        'Tespit planı maili gönderilmedi: irtibat e-postası yok.',
+        { kind: 'inspection_plan_email', status: 'skipped', reason: 'irtibat_email_yok' },
       );
       return;
     }
+    const customerName =
+      (claim.customer as { shortName?: string | null; companyName?: string | null } | null)?.shortName
+      || (claim.customer as { companyName?: string | null } | null)?.companyName
+      || '—';
     const sent = await this.claimEventEmail.onInspectionPlanned({
-      recipientEmail: resolved.payload.recipientEmail,
-      recipientName: resolved.payload.recipientName,
-      fileNo: resolved.payload.fileNo,
-      customerName: resolved.payload.customerName,
-      insuredName: resolved.payload.insuredName,
+      recipientEmail: alici.email,
+      recipientName: alici.name,
+      fileNo: claim.fileNo,
+      customerName,
+      insuredName: claim.insuredName ?? '—',
       scheduledLabel,
       location: location?.trim() || '—',
       claimFileId: claim.id,
@@ -503,12 +504,12 @@ export class ClaimOperationCenterService {
       actor,
       'NOTE_ADDED',
       sent.sent
-        ? `Tespit planı müşteriye mail gitti (${resolved.payload.recipientEmail}).`
-        : `Tespit planı müşteri maili gönderilemedi.`,
+        ? `Tespit planı irtibata mail gitti (${alici.email}).`
+        : 'Tespit planı irtibat maili gönderilemedi.',
       {
         kind: 'inspection_plan_email',
         status: sent.sent ? 'sent' : 'failed',
-        to: resolved.payload.recipientEmail,
+        to: alici.email,
         purpose: 'tespit_planlama',
         errorMsg: 'errorMsg' in sent ? sent.errorMsg : null,
       },

@@ -25,4 +25,15 @@ describe('portal dosya durumu LOCK', () => {
   it('kapalı kod + ek onarım adı gizlenmez', () => {
     assert.equal(portalStatusLabel('closed', 'Kapalı · Ek Onarım'), 'Kapalı · Ek Onarım');
   });
+
+  it('Hasar Tespit saha kodu Tespit Aşamasında kalır', () => {
+    assert.equal(
+      portalStatusLabel('site_visit_done', 'Onarım Aşamasında', 'inspection'),
+      'Tespit Aşamasında',
+    );
+    assert.equal(
+      portalStatusLabel('site_visit_done', 'Tespit Aşamasında'),
+      'Tespit Aşamasında',
+    );
+  });
 });

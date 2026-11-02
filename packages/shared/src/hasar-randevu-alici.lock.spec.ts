@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { hasarRandevuAlici } from './hasar-randevu-alici.ts';
+import { hasarRandevuAlici, hasarRandevuMailAlici } from './hasar-randevu-alici.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +29,30 @@ describe('hasar randevu alıcı kilidi', () => {
     assert.equal(alici.viaIrtibat, false);
     assert.equal(alici.name, 'Ahmet Yılmaz');
     assert.equal(alici.phone, '5321334144');
+  });
+
+  it('tespit planı maili irtibat kutusuna gider; yetkiliye düşmez', () => {
+    assert.deepEqual(
+      hasarRandevuMailAlici({
+        siteContactName: 'Sena Eser',
+        siteContactEmail: 'sena@ornek.com',
+      }),
+      { email: 'sena@ornek.com', name: 'Sena Eser' },
+    );
+    assert.equal(
+      hasarRandevuMailAlici({
+        siteContactName: 'Sena Eser',
+        siteContactPhone: '905494398584',
+      }),
+      null,
+    );
+    const ops = readFileSync(
+      join(here, '../../../apps/backend/src/modules/claim-files/claim-operation-center.service.ts'),
+      'utf8',
+    );
+    assert.match(ops, /hasarRandevuMailAlici/);
+    assert.doesNotMatch(ops, /resolveApproval72hCustomerEmailPayload\(\{/);
+    assert.doesNotMatch(ops, /Tespit planı müşteriye mail gitti/);
   });
 
   it('planlayıcı ve kayıt kapısı irtibatı kullanır', () => {
