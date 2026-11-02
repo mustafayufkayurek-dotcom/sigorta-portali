@@ -1,11 +1,11 @@
 ---
-description: Canlı web v669 / backend v669
+description: Canlı web v670 / backend v670
 alwaysApply: true
 ---
 
-# Canlı (01.11.2026)
+# Canlı (02.11.2026)
 
-Canlı: web **v669** · backend **v669**. Geri alma: web **v668** / backend **v668**.
+Canlı: web **v670** · backend **v670**. Geri alma: web **v669** / backend **v669**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v670 (full):** Hasar Tespit saha işi **Tespit Aşamasında** kalır; Onarım yazılmaz. Tespit resmi raporun altında durur. Plan maili irtibat kutusuna gider; kutu yoksa gitmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v669 / backend v669.
 
 **v669 (full):** Yönetici onay mailinde iç PDF durur; müşteriye, eksper ve dosya kanalına gitmez. Onay bekleyen raporda tuş **Yönetici Onayı**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v668 / backend v668.
 
@@ -215,4 +217,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v669** · backend **v669**.
+Canlı web **v670** · backend **v670**.

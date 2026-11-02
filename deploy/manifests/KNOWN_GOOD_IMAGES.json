@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-11-01",
-  "label": "v669-yonetici-onay-pdf",
-  "description": "v669 full: yönetici onay mailinde iç PDF; tuş Yönetici Onayı. Geri alma web v668 / backend v668.",
+  "updatedAt": "2026-11-02",
+  "label": "v670-hasar-tespit-irtibat",
+  "description": "v670 full: Hasar Tespit saha Tespit Aşamasında; tespit resmi raporda; plan maili irtibat kutusuna. Geri alma web v669 / backend v669.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v669-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v669-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v670-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v670-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v668-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v668-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v669-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v669-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
