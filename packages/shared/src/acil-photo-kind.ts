@@ -24,3 +24,9 @@ export function isAcilInspectionPhotoNotes(notes?: string | null): boolean {
   if (!n.trim()) return true;
   return n.includes('tespit');
 }
+
+/** Hasar rapora yalnız «tespit» etiketli saha resmi kopyalanır; notsuz evrak PDF’i şişirmez. */
+export function isHasarTespitPhotoNotes(notes?: string | null): boolean {
+  if (isAcilAfterServicePhotoNotes(notes)) return false;
+  return foldNotes(notes).includes('tespit');
+}

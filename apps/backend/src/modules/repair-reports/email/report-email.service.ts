@@ -32,6 +32,7 @@ export class ReportEmailService {
     pdfBuffer: Buffer;
     reportNo: string;
     fileNo?: string | null;
+    documentTitle?: string | null;
     actionUrl?: string | null;
     portalUrl?: string | null;
     viewType?: 'external';
@@ -53,6 +54,7 @@ export class ReportEmailService {
     const html = buildReportDispatchEmailHtml({
       reportNo: opts.reportNo,
       fileNo: opts.fileNo,
+      documentTitle: opts.documentTitle,
       actionUrl: opts.actionUrl,
       portalUrl: opts.portalUrl,
     });
@@ -64,6 +66,7 @@ export class ReportEmailService {
         text: buildReportDispatchEmailText({
           reportNo: opts.reportNo,
           fileNo: opts.fileNo,
+          documentTitle: opts.documentTitle,
           actionUrl: opts.actionUrl,
         }),
         attachments: [

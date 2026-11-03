@@ -127,6 +127,7 @@ node --experimental-strip-types --test \
   packages/shared/src/operation-status.lock.spec.ts \
   apps/web/src/components/ui/field-help-tip.lock.spec.ts \
   packages/shared/src/claim-service-kind.lock.spec.ts \
+  apps/backend/src/modules/repair-reports/report-image-paths.lock.spec.ts \
   apps/web/src/utils/operasyon-nav.lock.spec.ts \
   apps/web/src/app/panel/ayarlar/hizmet-turleri/danismanlik-hizmet-turleri.lock.spec.ts \
   apps/web/src/utils/musteri-gruplari-add-context.lock.spec.ts \

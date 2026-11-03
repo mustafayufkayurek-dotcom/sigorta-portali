@@ -34,7 +34,7 @@ import {
 } from '@/components/damage-reports/VendorQuotePopover';
 import { claimListFileNo } from '@/utils/claim-list-column-fields';
 import { resolveIhbarTarihi } from '@/app/panel/hasar-dosyalari/[id]/_components/DosyaBilgileriDetay';
-import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, REPAIR_REPORT_MANAGER_APPROVE_LABEL, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal, mergeRepairDamageCategories, repairDamageCategoryDisplay, repairDamageCategorySelectLabel, mahalSuggestionsForCategory, normalizeRepairDamageCategoryCode, MALI_MESULIYET_LOKASYON, MALI_MESULIYET_LOKASYON_ETIKET, formatMaliMesuliyetMahal, parseMaliMesuliyetMahal, maliMesuliyetDaireNoOk, EXTRA_REPAIR_COST_HEADING, EXTRA_REPAIR_COST_TOTAL_LABEL, type RepairDamageCategoryOption, type RepairMahalCatalogEntry } from '@sigorta/shared';
+import { resolveFileExpertDisplay, REPAIR_REPORT_MAX_REVISION_MESSAGE, REPAIR_REPORT_MANAGER_APPROVE_LABEL, canApprovePendingRepairReport, canCreateRepairReportRevision, canStartRepairReportRevisionFromStatus, isRepairReportRevision, repairItemSalesTotal, repairItemSupplierTotal, repairItemResolvedSupplierTotal, repairReportRequiresPricedItems, hasarReportDocumentTitle, mergeRepairDamageCategories, repairDamageCategoryDisplay, repairDamageCategorySelectLabel, mahalSuggestionsForCategory, normalizeRepairDamageCategoryCode, MALI_MESULIYET_LOKASYON, MALI_MESULIYET_LOKASYON_ETIKET, formatMaliMesuliyetMahal, parseMaliMesuliyetMahal, maliMesuliyetDaireNoOk, EXTRA_REPAIR_COST_HEADING, EXTRA_REPAIR_COST_TOTAL_LABEL, type RepairDamageCategoryOption, type RepairMahalCatalogEntry } from '@sigorta/shared';
 import RepairItemsModal, {
   type SelectedRepairItem,
   DAMAGE_SIZE_OPTIONS,
@@ -189,7 +189,7 @@ function validateApprovalRequirements(report: any, findingsText: string): {
     return { ok: false, findingsError: 'Tespit Bulguları doldurulmadan onaya gönderilemez.' };
   }
   const items = report?.items ?? [];
-  if (items.length === 0) {
+  if (repairReportRequiresPricedItems(report?.claimFile?.serviceKind, report?.claimFile?.consultancyServiceType) && items.length === 0) {
     return { ok: false, itemsError: 'En az bir onarım kalemi eklenmeden onaya gönderilemez.' };
   }
   const totalSales = items.reduce((sum: number, item: any) => sum + repairItemSalesTotal(item), 0);
@@ -201,7 +201,8 @@ function validateApprovalRequirements(report: any, findingsText: string): {
   const headerSales = Number(report?.totalSalesAmount) || 0;
   const headerCost = Number(report?.totalSupplierCost) || 0;
   if (
-    totalSales <= 0
+    repairReportRequiresPricedItems(report?.claimFile?.serviceKind, report?.claimFile?.consultancyServiceType)
+    && totalSales <= 0
     && totalCost <= 0
     && totalLumpSum <= 0
     && headerSales <= 0
@@ -5980,6 +5981,7 @@ export default function RepairReportPage() {
         method: 'GET',
         url: `${API}/repair-reports/${reportId}/pdf?view=${view}`,
         responseType: 'blob',
+        timeout: 120_000,
       });
       const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
       if (failure) {
@@ -5995,10 +5997,16 @@ export default function RepairReportPage() {
       notify('success', 'PDF indiriliyor…');
     } catch (e: any) {
       let message = 'PDF indirilemedi. Lütfen tekrar deneyin.';
-      if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {
+      if (isUiActionTimeout(e)) {
+        message = UI_ACTION_TIMEOUT_MESSAGE;
+      } else if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {
         try {
           const text = await e.response.data.text();
-          message = JSON.parse(text)?.message ?? message;
+          const parsed = JSON.parse(text)?.message;
+          if (typeof parsed === 'string' && parsed.trim()) message = parsed;
+          else if (/502|504|Gateway Time-out|Bad Gateway/i.test(text)) {
+            message = 'PDF henüz hazırlanamadı. Lütfen birkaç saniye sonra tekrar deneyin.';
+          }
         } catch { /* ignore */ }
       } else if (e?.response?.data?.message) {
         message = e.response.data.message;
@@ -6019,6 +6027,7 @@ export default function RepairReportPage() {
         method: 'GET',
         url: `${API}/repair-reports/${reportId}/pdf?view=${view}`,
         responseType: 'blob',
+        timeout: 120_000,
         transformResponse: [(data) => data],
       });
       const failure = await readPdfPreviewFailure(res.data, String(res.headers['content-type'] ?? ''));
@@ -6046,7 +6055,9 @@ export default function RepairReportPage() {
         }
       }
       let message = 'PDF önizleme açılamadı.';
-      if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {
+      if (isUiActionTimeout(e)) {
+        message = UI_ACTION_TIMEOUT_MESSAGE;
+      } else if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {
         try {
           const text = await e.response.data.text();
           message = JSON.parse(text)?.message ?? message;
@@ -7198,7 +7209,7 @@ export default function RepairReportPage() {
                   try {
                     const res = await axios.get(`${API}/repair-reports/${reportId}/share-link`, { headers: authHeader() });
                     const { url } = res.data.data;
-                    const message = `Hasar Onarım Raporu (${report.reportNo}): ${url}`;
+                    const message = `${hasarReportDocumentTitle(report.claimFile?.serviceKind, report.claimFile?.consultancyServiceType)} (${report.reportNo}): ${url}`;
                     const vendorPhones = vendorRecipients
                       .filter((r) => selectedVendorKeys.includes(r.key))
                       .map((r) => r.phone);

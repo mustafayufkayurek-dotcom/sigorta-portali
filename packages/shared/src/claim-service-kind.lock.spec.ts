@@ -7,9 +7,12 @@ import {
   departmentCodeForNewClaim,
   INSPECTOR_ALREADY_ASSIGNED_MESSAGE,
   isInspectionServiceKind,
+  isHasarTespitClaim,
   isInspectorAlreadyAssigned,
   parseClaimServiceKind,
   plannerStepHiddenForServiceKind,
+  repairReportRequiresPricedItems,
+  hasarReportDocumentTitle,
   CLAIM_SERVICE_KINDS,
   CLAIM_SERVICE_KIND_LABEL,
   HASAR_TESPIT_SERVICE_CODE,
@@ -34,6 +37,17 @@ describe('claim service kind lock', () => {
     assert.equal(plannerStepHiddenForServiceKind('inspector', 'inspection'), false);
     assert.equal(plannerStepHiddenForServiceKind('file_close', 'inspection'), false);
     assert.equal(plannerStepHiddenForServiceKind('supplier', 'repair'), false);
+    assert.equal(repairReportRequiresPricedItems('inspection'), false);
+    assert.equal(repairReportRequiresPricedItems('repair'), true);
+    assert.equal(repairReportRequiresPricedItems('consultancy'), true);
+    assert.equal(
+      repairReportRequiresPricedItems('consultancy', { code: HASAR_TESPIT_SERVICE_CODE, name: 'Hasar Tespit' }),
+      false,
+    );
+    assert.equal(isHasarTespitClaim({ serviceKind: 'consultancy', consultancyServiceType: { code: HASAR_TESPIT_SERVICE_CODE } }), true);
+    assert.equal(plannerStepHiddenForServiceKind('supplier', 'consultancy', { code: HASAR_TESPIT_SERVICE_CODE }), true);
+    assert.equal(hasarReportDocumentTitle('inspection'), 'Hasar Tespit Raporu');
+    assert.equal(hasarReportDocumentTitle('repair'), 'Hasar Onarım Raporu');
     assert.equal(departmentCodeForNewClaim({ customerSource: 'private', serviceKind: 'inspection' }), 'ozel-musteri');
     assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'consultancy' }), 'danismanlik');
     assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'repair' }), 'hasar-onarim');
@@ -90,5 +104,27 @@ describe('claim service kind lock', () => {
     );
     assert.doesNotMatch(pdf, /siteContactName/);
     assert.doesNotMatch(pdf, /siteContactPhone/);
+  });
+
+  it('Hasar Tespit raporu kalemsiz onaya gider; irtibat kutusu yedek alıcıdır', () => {
+    const svc = readFileSync(
+      join(here, '../../../apps/backend/src/modules/repair-reports/repair-reports.service.ts'),
+      'utf8',
+    );
+    const claims = readFileSync(
+      join(here, '../../../apps/backend/src/modules/claim-files/claim-files.service.ts'),
+      'utf8',
+    );
+    const page = readFileSync(
+      join(here, '../../../apps/web/src/app/panel/hasar-dosyalari/[id]/onarim-raporu/[reportId]/page.tsx'),
+      'utf8',
+    );
+    assert.match(svc, /repairReportRequiresPricedItems/);
+    assert.match(svc, /siteContactEmail/);
+    assert.match(svc, /hasarReportDocumentTitle/);
+    assert.match(page, /repairReportRequiresPricedItems\(report\?\.claimFile\?\.serviceKind, report\?\.claimFile\?\.consultancyServiceType\)/);
+    assert.match(claims, /isHasarTespitConsultancyType/);
+    assert.match(claims, /convertInspectionToRepair/);
+    assert.match(claims, /consultancyServiceTypeId: null/);
   });
 });

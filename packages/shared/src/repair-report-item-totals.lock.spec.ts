@@ -143,7 +143,7 @@ describe('onarım raporu maliyet m² LOCK', () => {
   it('onaya gönderim kalem tutarını miktar ve birim fiyattan okur', () => {
     const fn = service.slice(
       service.indexOf('async requestApproval'),
-      service.indexOf('async requestApproval') + 4000,
+      service.indexOf('async requestApproval') + 5500,
     );
     assert.match(fn, /items:\s*\{\s*include:\s*\{\s*workGroup:/);
     assert.doesNotMatch(fn, /select:\s*\{\s*quantity: true/);
@@ -152,7 +152,9 @@ describe('onarım raporu maliyet m² LOCK', () => {
     assert.match(fn, /repairItemSalesTotal\(item\)/);
     assert.match(fn, /repairItemResolvedSupplierTotal\(item\)/);
     assert.match(fn, /Maliyet veya satış tutarı girilmeden onaya gönderilemez/);
+    assert.match(fn, /repairReportRequiresPricedItems/);
     assert.match(page, /function validateApprovalRequirements/);
+    assert.match(page, /repairReportRequiresPricedItems/);
     assert.match(page, /totalSalesAmount/);
     assert.match(page, /totalSupplierCost/);
     assert.match(page, /const beginRequestApproval = async/);

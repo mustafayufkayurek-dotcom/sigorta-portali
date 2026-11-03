@@ -25,7 +25,7 @@ import {
 } from './claim-snapshot';
 import { resolvePlannerEntry } from './planner-live-rules';
 import {
-  isInspectionServiceKind,
+  isHasarTespitClaim,
   plannerStepHiddenForServiceKind,
 } from '@sigorta/shared';
 
@@ -164,7 +164,7 @@ function PlanlayiciInner({
               {claim.completedCount}/{claim.totalCount} tamam
             </span>
           </h2>
-          {isInspectionServiceKind(claim.serviceKind) && canEdit ? (
+          {isHasarTespitClaim({ serviceKind: claim.serviceKind }) && canEdit ? (
             <button
               type="button"
               data-testid="onarima-cevir"

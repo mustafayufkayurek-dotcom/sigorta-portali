@@ -19,6 +19,8 @@ import {
   HASAR_TESPIT_SERVICE_CODE,
   HASAR_TESPIT_SERVICE_NAME,
   INSPECTOR_ALREADY_ASSIGNED_MESSAGE,
+  isHasarTespitClaim,
+  isHasarTespitConsultancyType,
   OFFICE_SETTINGS_CATALOG_LIMIT,
   parseClaimServiceKind,
 } from '@sigorta/shared';
@@ -1464,6 +1466,7 @@ export class ClaimFilesService {
           },
         },
         department: { select: { id: true, code: true, name: true, reportFormat: true, color: true } },
+        consultancyServiceType: { select: { id: true, code: true, name: true } },
         claimSubject: { select: { id: true, name: true } },
         departmentFileSubject: { select: { id: true, name: true } },
         statusHistory: {
@@ -1497,6 +1500,25 @@ export class ClaimFilesService {
 
     if (!claimFile) {
       throw new NotFoundException('Hasar dosyası bulunamadı');
+    }
+
+    const tespiType = (claimFile as { consultancyServiceType?: { code?: string | null; name?: string | null } | null })
+      .consultancyServiceType;
+    if (
+      parseClaimServiceKind((claimFile as { serviceKind?: string | null }).serviceKind) !== 'inspection'
+      && isHasarTespitConsultancyType(tespiType ?? {})
+    ) {
+      try {
+        await this.prisma.claimFile.update({
+          where: { id: claimFile.id },
+          data: { serviceKind: 'inspection' },
+        });
+        (claimFile as { serviceKind?: string }).serviceKind = 'inspection';
+      } catch (err) {
+        this.logger.warn(
+          `Hasar Tespit hizmet türü dosyaya yazılamadı (${claimFile.id}): ${err instanceof Error ? err.message : err}`,
+        );
+      }
     }
 
     const normalizedUser = normalizeRequestUser(requestingUser);
@@ -3405,10 +3427,15 @@ export class ClaimFilesService {
   ) {
     await this.assertHasarFileMutationAllowed(requestingUser);
     const file = await this.findOne(id, requestingUser);
-    if (parseClaimServiceKind((file as { serviceKind?: string | null }).serviceKind) !== 'inspection') {
+    if (!isHasarTespitClaim({
+      serviceKind: (file as { serviceKind?: string | null }).serviceKind,
+      consultancyServiceType: (file as {
+        consultancyServiceType?: { code?: string | null; name?: string | null } | null;
+      }).consultancyServiceType,
+    })) {
       return file;
     }
-    return this.update(id, { serviceKind: 'repair' }, requestingUser);
+    return this.update(id, { serviceKind: 'repair', consultancyServiceTypeId: null }, requestingUser);
   }
 
   async suggestResponsible(claimFileId: string, role: 'office_staff' | 'field_staff' = 'office_staff') {

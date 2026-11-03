@@ -403,6 +403,7 @@ type ClaimFileLite = {
   createdAt?: string;
   closedAt?: string | null;
   serviceKind?: string | null;
+  consultancyServiceType?: { code?: string | null; name?: string | null } | null;
   siteContactName?: string | null;
   siteContactPhone?: string | null;
   siteContactEmail?: string | null;
@@ -509,7 +510,7 @@ export function mapLiveSnapshot(
 
   const serviceKind = parseClaimServiceKind(claimFile?.serviceKind);
   const visibleSteps = PLANNER_VISIBLE_STEPS.filter(
-    (s) => !plannerStepHiddenForServiceKind(s.id, serviceKind),
+    (s) => !plannerStepHiddenForServiceKind(s.id, serviceKind, claimFile?.consultancyServiceType),
   );
   const completedCount = visibleSteps.filter((s) => stepStatuses[s.id] === 'done').length;
   const totalCount = visibleSteps.length;

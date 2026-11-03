@@ -28,6 +28,7 @@ import {
   repairItemSalesTotal,
   repairItemResolvedSupplierTotal,
   repairPdfItemGroupKind,
+  hasarReportDocumentTitle,
 } from '@sigorta/shared';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
 
@@ -122,6 +123,8 @@ interface ReportData {
     claimSubject?: { name?: string | null } | null;
     departmentFileSubject?: { name?: string | null } | null;
     assignedInspectorVendor?: { name?: string | null } | null;
+    serviceKind?: string | null;
+    consultancyServiceType?: { code?: string | null; name?: string | null } | null;
     assignedOfficeUser?: { firstName?: string | null; lastName?: string | null } | null;
     assignedAdjuster?: {
       firstName?: string | null;
@@ -304,12 +307,19 @@ export class ReportPdfService {
 
   async generate(report: ReportData, viewType: 'internal' | 'external'): Promise<Buffer> {
     try {
-      const images = await Promise.all(
-        (report.images ?? []).map(async (img) => ({
-          ...img,
-          dataUrl: img.dataUrl || (await reportImageToPdfDataUrl(img.storageKey, img.mimeType)),
-        })),
-      );
+      const MAX_PDF_IMAGES = 40;
+      const sourceImages = (report.images ?? []).slice(0, MAX_PDF_IMAGES);
+      const images: Array<(typeof sourceImages)[number] & { dataUrl?: string | null }> = [];
+      for (const img of sourceImages) {
+        try {
+          images.push({
+            ...img,
+            dataUrl: img.dataUrl || (await reportImageToPdfDataUrl(img.storageKey, img.mimeType)),
+          });
+        } catch {
+          images.push({ ...img, dataUrl: null });
+        }
+      }
       const isDraft = isRepairReportPdfDraft(report.status, report.approvalHistory);
       const usageMark = isDraft
         ? 'Taslak'
@@ -391,6 +401,7 @@ export class ReportPdfService {
     const browser = await puppeteer.launch({
       headless: true,
       executablePath,
+      protocolTimeout: 120_000,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     });
     try {
@@ -421,6 +432,12 @@ export class ReportPdfService {
     const isDraft = isRepairReportPdfDraft(report.status, report.approvalHistory);
     const identity = mapRepairReportPdfIdentity(report);
     const dash = (v: string) => (v ? escHtml(v) : '—');
+    const pdfTitle = hasarReportDocumentTitle(
+      report.claimFile?.serviceKind,
+      report.claimFile?.consultancyServiceType,
+    ) === 'Hasar Tespit Raporu'
+      ? 'Hasar Tespit Raporu'
+      : 'Hasar Tespit Ve Onarım Raporu';
 
     // ── FEATURE 6: Revizyon bilgisi ──
     const isRevision = (report.versionNo ?? 0) > 0;
@@ -1658,7 +1675,7 @@ export class ReportPdfService {
 <div class="report-header">
   ${headerBrandHtml}
   <div class="header-title-block">
-    <div class="header-title">Hasar Tespit Ve Onarım Raporu</div>
+    <div class="header-title">${escHtml(pdfTitle)}</div>
     ${isDraft
       ? '<div class="header-usage-badge header-usage-draft">Taslak</div>'
       : viewType === 'internal'

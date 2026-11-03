@@ -93,5 +93,7 @@ describe('onarım raporu PDF düzen LOCK', () => {
     assert.match(paths, /sharp\(/);
     assert.match(pdfSrc, /reportImageToPdfDataUrl/);
     assert.match(pdfSrc, /timeout: 60_000/);
+    assert.match(pdfSrc, /protocolTimeout: 120_000/);
+    assert.match(pdfSrc, /MAX_PDF_IMAGES/);
   });
 });

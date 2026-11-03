@@ -5,6 +5,7 @@ import { ClipboardList, FileText, ImagePlus, RefreshCw, type LucideIcon } from '
 import { FieldInspectionPhotosPanel } from '@/components/field-survey/FieldInspectionPhotosPanel';
 import { SmartMeasureList } from '@/components/smart-measures/SmartMeasureList';
 import { IletisimGunluguPanel } from './IletisimGunluguPanel';
+import { isHasarTespitClaim } from '@sigorta/shared';
 
 const inspectLinkClass =
   'inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700';
@@ -28,7 +29,13 @@ function JumpLink({
   );
 }
 
-export function RaporlarTespitBlok({ claimId }: { claimId: string }) {
+export function RaporlarTespitBlok({
+  claimId,
+  serviceKind,
+}: {
+  claimId: string;
+  serviceKind?: string | null;
+}) {
   const [photosOpen, setPhotosOpen] = useState(false);
 
   useEffect(() => {
@@ -48,6 +55,7 @@ export function RaporlarTespitBlok({ claimId }: { claimId: string }) {
         onTespitResimleri={openPhotos}
         onOnarim={() => jump('raporlar-onarim')}
         onRevizyon={() => jump('raporlar-revizyon')}
+        raporLabel={isHasarTespitClaim({ serviceKind }) ? 'Tespit raporları' : 'Onarım raporları'}
       />
       <section
         id="raporlar-olcum-tespit"
@@ -86,11 +94,13 @@ export function RaporlarJumpStrip({
   onTespitResimleri,
   onOnarim,
   onRevizyon,
+  raporLabel = 'Onarım raporları',
 }: {
   onOlcum?: () => void;
   onTespitResimleri?: () => void;
   onOnarim?: () => void;
   onRevizyon?: () => void;
+  raporLabel?: string;
 }) {
   const jump = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -120,7 +130,7 @@ export function RaporlarJumpStrip({
       </span>
       <JumpLink
         icon={FileText}
-        label="Onarım raporları"
+        label={raporLabel}
         onClick={() => onOnarim?.() ?? jump('raporlar-onarim')}
       />
       <span className="text-slate-300" aria-hidden>

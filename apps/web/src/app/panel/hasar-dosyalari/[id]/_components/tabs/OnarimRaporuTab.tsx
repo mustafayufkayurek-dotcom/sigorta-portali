@@ -21,7 +21,7 @@ import {
 import { fmtDateTime } from '@/utils/date-helpers';
 import { resolveDamageReasonOptions as loadDamageReasonOptions } from '@/utils/damage-reason-options';
 import { RevizyonTalepleriPanel } from './RevizyonlarTab';
-import { isRepairReportRevision } from '@sigorta/shared';
+import { isHasarTespitClaim, isRepairReportRevision } from '@sigorta/shared';
 
 type WizardStep = 'department' | 'type' | 'config';
 type DeptOption = { id: string; code: string; name: string; color: string; reportFormat: string };
@@ -673,7 +673,16 @@ function YeniRaporWizard({
   );
 }
 
-export function OnarimRaporuTab({ claimId, extraRepairOpen = false }: { claimId: string; extraRepairOpen?: boolean }) {
+export function OnarimRaporuTab({
+  claimId,
+  extraRepairOpen = false,
+  serviceKind,
+}: {
+  claimId: string;
+  extraRepairOpen?: boolean;
+  serviceKind?: string | null;
+}) {
+  const tespiRapor = isHasarTespitClaim({ serviceKind });
   const router = useRouter();
   const [reports, setReports] = useState<RepairReportListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -739,7 +748,7 @@ export function OnarimRaporuTab({ claimId, extraRepairOpen = false }: { claimId:
         </p>
       ) : null}
       <FinansPanelCard
-        title="Onarım Raporları"
+        title={tespiRapor ? 'Tespit Raporları' : 'Onarım Raporları'}
         subtitle="Orijinal, revize edilmiş ve onaylanmış rapor sürümleri — revizyon geçmişi her rapor kartında"
         action={
           reports.length > 0
@@ -754,7 +763,7 @@ export function OnarimRaporuTab({ claimId, extraRepairOpen = false }: { claimId:
       >
         {reports.length === 0 ? (
           <FinansEmptyState
-            title="Henüz Onarım Raporu Yok"
+            title={tespiRapor ? 'Henüz Tespit Raporu Yok' : 'Henüz Onarım Raporu Yok'}
             description="Departman ve hasar türü seçerek ilk raporu oluşturabilirsiniz."
           />
         ) : (

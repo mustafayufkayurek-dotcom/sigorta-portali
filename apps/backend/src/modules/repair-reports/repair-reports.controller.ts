@@ -32,13 +32,15 @@ function buildPdfFilename(opts: {
   insuranceCompanyName?: string | null;
   fileNo: string;
   view: 'internal' | 'external';
+  documentTitle?: string | null;
 }): string {
   const parts: string[] = [];
   if (opts.expertOfficeName) parts.push(toTitleCase(opts.expertOfficeName));
   if (opts.insuranceCompanyName) parts.push(toTitleCase(opts.insuranceCompanyName));
   const fileNo = opts.fileNo;
   const prefix = opts.view === 'internal' ? 'IC_' : 'DIS_';
-  const base = [...parts, `${fileNo} Hasar Onarım Raporu`].join(' - ');
+  const label = (opts.documentTitle || '').trim() || 'Hasar Onarım Raporu';
+  const base = [...parts, `${fileNo} ${label}`].join(' - ');
   return `${prefix}${base}.pdf`;
 }
 
@@ -82,6 +84,7 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { CostMaskingInterceptor } from '@/common/interceptors/cost-masking.interceptor';
 import { ApprovalContextService } from '@/modules/vendor-risk/approval-context.service';
 import { getReportImagesDir } from './report-image-paths';
+import { hasarReportDocumentTitle } from '@sigorta/shared';
 
 @Controller()
 @UseInterceptors(CostMaskingInterceptor)
@@ -144,7 +147,16 @@ export class RepairReportsController {
     const fileNo = (report.claimFile as any)?.fileNo ?? report.reportNo;
     const insuranceCompanyName = (report.claimFile as any)?.insuranceCompany?.name ?? null;
     const expertOfficeName = (report.expertOffice as any)?.companyName ?? null;
-    const filename = buildPdfFilename({ expertOfficeName, insuranceCompanyName, fileNo, view });
+    const filename = buildPdfFilename({
+      expertOfficeName,
+      insuranceCompanyName,
+      fileNo,
+      view,
+      documentTitle: hasarReportDocumentTitle(
+        (report.claimFile as { serviceKind?: string | null; consultancyServiceType?: { code?: string | null; name?: string | null } | null } | undefined)?.serviceKind,
+        (report.claimFile as { consultancyServiceType?: { code?: string | null; name?: string | null } | null } | undefined)?.consultancyServiceType,
+      ),
+    });
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': toContentDispositionAttachment(filename),

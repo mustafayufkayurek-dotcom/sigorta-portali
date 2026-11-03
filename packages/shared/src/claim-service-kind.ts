@@ -60,8 +60,41 @@ export function isInspectionServiceKind(raw: unknown): boolean {
   return parseClaimServiceKind(raw) === 'inspection';
 }
 
-export function plannerStepHiddenForServiceKind(stepId: string, serviceKind: unknown): boolean {
-  if (!isInspectionServiceKind(serviceKind)) return false;
+export type HasarTespitClaimHint = {
+  serviceKind?: unknown;
+  consultancyServiceType?: { code?: string | null; name?: string | null } | null;
+};
+
+/** Danışmanlık menüsündeki Hasar Tespit ile ayrı tuştaki tespit aynı iştir. */
+export function isHasarTespitClaim(input?: HasarTespitClaimHint | null): boolean {
+  if (!input) return false;
+  if (isInspectionServiceKind(input.serviceKind)) return true;
+  return isHasarTespitConsultancyType(input.consultancyServiceType ?? {});
+}
+
+/** Hasar Tespit raporunda iş kalemi ve tutar zorunlu değildir. */
+export function repairReportRequiresPricedItems(
+  serviceKind: unknown,
+  consultancyType?: { code?: string | null; name?: string | null } | null,
+): boolean {
+  return !isHasarTespitClaim({ serviceKind, consultancyServiceType: consultancyType });
+}
+
+export function hasarReportDocumentTitle(
+  serviceKind?: unknown,
+  consultancyType?: { code?: string | null; name?: string | null } | null,
+): string {
+  return isHasarTespitClaim({ serviceKind, consultancyServiceType: consultancyType })
+    ? 'Hasar Tespit Raporu'
+    : 'Hasar Onarım Raporu';
+}
+
+export function plannerStepHiddenForServiceKind(
+  stepId: string,
+  serviceKind: unknown,
+  consultancyType?: { code?: string | null; name?: string | null } | null,
+): boolean {
+  if (!isHasarTespitClaim({ serviceKind, consultancyServiceType: consultancyType })) return false;
   return INSPECTION_HIDDEN_STEPS.has(stepId);
 }
 

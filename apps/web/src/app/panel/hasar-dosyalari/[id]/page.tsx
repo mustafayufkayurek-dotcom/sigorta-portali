@@ -1908,8 +1908,12 @@ export default function ClaimFileDetailPage() {
           )}
           {activeGroup === 'raporlar' && (
             <div className="space-y-3">
-              <RaporlarTespitBlok claimId={id!} />
-              <OnarimRaporuTab claimId={id!} extraRepairOpen={Boolean(claim.extraRepairOpen)} />
+              <RaporlarTespitBlok claimId={id!} serviceKind={claim.serviceKind} />
+              <OnarimRaporuTab
+                claimId={id!}
+                extraRepairOpen={Boolean(claim.extraRepairOpen)}
+                serviceKind={claim.serviceKind}
+              />
             </div>
           )}
           {activeGroup === 'evraklar' && <EvraklarTab claimId={id!} claim={claim} />}

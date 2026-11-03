@@ -28,8 +28,10 @@ import { resolveReportCustomerMailRecipients } from './report-customer-mail-reci
 import { collectClaimFileChannelEmails, generalMailboxesFromContactInfos } from '@sigorta/shared';
 import {
   ACIL_INSPECTION_PHOTO_NOTE,
-  isAcilInspectionPhotoNotes,
+  isHasarTespitPhotoNotes,
   isExpertFirmCustomer,
+  repairReportRequiresPricedItems,
+  hasarReportDocumentTitle,
   EXTRA_REPAIR_KIND,
   partitionExtraRepairCostItems,
   REPAIR_REPORT_INITIAL_VERSION,
@@ -110,6 +112,10 @@ const CLAIM_FILE_SAFE_SELECT = {
     },
   },
   propertyAddress: true,
+  notificationDate: true,
+  fileDate: true,
+  serviceKind: true,
+  consultancyServiceType: { select: { id: true, code: true, name: true } },
   claimSubject: { select: { id: true, code: true, name: true } },
   assignedFieldUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
   assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
@@ -918,56 +924,65 @@ export class RepairReportsService {
 
   // ── Images ────────────────────────────────────────────────────────────────
 
-  /** Saha tespit resimleri rapor Fotoğraflar altına ve PDF’e düşer. */
+  /** Saha tespit resimleri rapor Fotoğraflar altına düşer. PDF bu kopyayı beklemez. */
   private async attachClaimInspectionPhotosToReport(reportId: string, claimFileId: string) {
     if (!this.storage) return;
-    const docs = await this.prisma.entityDocument.findMany({
-      where: { entityType: 'claim_file', entityId: claimFileId },
-      orderBy: { createdAt: 'asc' },
-    });
-    const photos = docs.filter((doc) => {
-      const mime = String(doc.mimeType ?? '');
-      const looksImage = mime.startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(doc.fileName);
-      return looksImage && isAcilInspectionPhotoNotes(doc.notes);
-    });
-    if (!photos.length) return;
-    const existing = await this.prisma.reportImage.findMany({
-      where: { reportId },
-      select: { fileName: true, fileSize: true, caption: true },
-    });
-    const seen = new Set(existing.map((img) => `${img.fileName}|${img.fileSize}|${img.caption ?? ''}`));
-    let sortOrder = existing.length;
-    const dir = getReportImagesDir();
-    fs.mkdirSync(dir, { recursive: true });
-    for (const doc of photos) {
-      const caption = ACIL_INSPECTION_PHOTO_NOTE;
-      const key = `${doc.fileName}|${doc.fileSize}|${caption}`;
-      if (seen.has(key)) continue;
-      try {
-        const buf = await this.storage.download(doc.storageKey);
-        if (!buf.length) continue;
-        const ext = path.extname(doc.fileName) || '.jpg';
-        const storageKey = `tespit-${doc.id}${ext.toLowerCase()}`;
-        fs.writeFileSync(path.join(dir, storageKey), buf);
-        await this.prisma.reportImage.create({
-          data: {
-            reportId,
-            storageKey,
-            fileName: doc.fileName,
-            mimeType: doc.mimeType || 'image/jpeg',
-            fileSize: buf.length,
-            category: 'damage',
-            caption,
-            sortOrder,
-          },
-        });
-        sortOrder += 1;
-        seen.add(key);
-      } catch (err) {
-        this.logger.warn(
-          `Tespit resmi rapora alınamadı (${doc.id}): ${err instanceof Error ? err.message : err}`,
-        );
+    const MAX_TESPT_PHOTOS = 48;
+    try {
+      const docs = await this.prisma.entityDocument.findMany({
+        where: { entityType: 'claim_file', entityId: claimFileId },
+        orderBy: { createdAt: 'asc' },
+      });
+      const photos = docs
+        .filter((doc) => {
+          const mime = String(doc.mimeType ?? '');
+          const looksImage = mime.startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(doc.fileName);
+          return looksImage && isHasarTespitPhotoNotes(doc.notes);
+        })
+        .slice(0, MAX_TESPT_PHOTOS);
+      if (!photos.length) return;
+      const existing = await this.prisma.reportImage.findMany({
+        where: { reportId },
+        select: { fileName: true, fileSize: true, caption: true },
+      });
+      const seen = new Set(existing.map((img) => `${img.fileName}|${img.fileSize}|${img.caption ?? ''}`));
+      let sortOrder = existing.length;
+      const dir = getReportImagesDir();
+      fs.mkdirSync(dir, { recursive: true });
+      for (const doc of photos) {
+        const caption = ACIL_INSPECTION_PHOTO_NOTE;
+        const key = `${doc.fileName}|${doc.fileSize}|${caption}`;
+        if (seen.has(key)) continue;
+        try {
+          const buf = await this.storage.download(doc.storageKey);
+          if (!buf.length) continue;
+          const ext = path.extname(doc.fileName) || '.jpg';
+          const storageKey = `tespit-${doc.id}${ext.toLowerCase()}`;
+          fs.writeFileSync(path.join(dir, storageKey), buf);
+          await this.prisma.reportImage.create({
+            data: {
+              reportId,
+              storageKey,
+              fileName: doc.fileName,
+              mimeType: doc.mimeType || 'image/jpeg',
+              fileSize: buf.length,
+              category: 'damage',
+              caption,
+              sortOrder,
+            },
+          });
+          sortOrder += 1;
+          seen.add(key);
+        } catch (err) {
+          this.logger.warn(
+            `Tespit resmi rapora alınamadı (${doc.id}): ${err instanceof Error ? err.message : err}`,
+          );
+        }
       }
+    } catch (err) {
+      this.logger.warn(
+        `Tespit resmi rapora bağlanamadı (${reportId}): ${err instanceof Error ? err.message : err}`,
+      );
     }
   }
 
@@ -1089,54 +1104,30 @@ export class RepairReportsService {
 
   // ── PDF & Email ────────────────────────────────────────────────────────────
 
-  /** PDF için minimal claimFile — migrate edilmemiş skaler kolonlara dayanmaz */
+  /** PDF — tespit resmi kopyası beklemez; eksper kolonu yoksa rapor yine açılır. */
   private async getReportForPdf(reportId: string) {
     await this.healInflatedSupplierTotals(reportId);
-    const head = await this.prisma.repairReport.findUnique({
-      where: { id: reportId },
-      select: { id: true, claimFileId: true },
-    });
-    if (head) await this.attachClaimInspectionPhotosToReport(head.id, head.claimFileId);
-    const report = await this.prisma.repairReport.findUnique({
-      where: { id: reportId },
-      include: {
-        claimFile: {
-          select: {
-            id: true,
-            fileNo: true,
-            claimNo: true,
-            lossType: true,
-            insuredName: true,
-            insuredPhone: true,
-            commercialTitle: true,
-            insuranceCompany: { select: { name: true } },
-            customer: { select: { fullName: true, companyName: true, entityType: true, subType: true, firstName: true, lastName: true } },
-            claimSubject: { select: { name: true } },
-            propertyAddress: { select: { city: true, district: true, addressLine: true } },
-            assignedOfficeUser: { select: { firstName: true, lastName: true } },
-            assignedInspectorVendor: { select: { name: true } },
-          },
-        },
-        expertOffice: {
-          select: { id: true, companyName: true, phone: true, email: true },
-        },
-        originalReport: { select: { id: true, reportNo: true, versionNo: true, createdAt: true } },
-        items: {
-          include: { workGroup: true, damageType: true },
-          orderBy: [{ workGroup: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
-        },
-        images: { orderBy: { sortOrder: 'asc' } },
-        damageTypes: { orderBy: { sortOrder: 'asc' } },
-        approvalHistory: {
-          include: {
-            user: { select: { id: true, firstName: true, lastName: true } },
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    });
+    const report = await this.findReportWithInclude(reportId);
     if (!report) throw new NotFoundException('Rapor bulunamadı');
-    return this.attachExtraRepairCostLayout(this.overlayReportItemMoney(report));
+
+    const earliestInbound = await this.prisma.inboundMessage.findFirst({
+      where: { claimFileId: report.claimFileId },
+      orderBy: { receivedAt: 'asc' },
+      select: { receivedAt: true },
+    });
+    const claim = report.claimFile as {
+      assignedInspectorVendor?: { name?: string | null } | null;
+      inboundReceivedAt?: Date | null;
+    } | null;
+    if (claim) {
+      claim.inboundReceivedAt = earliestInbound?.receivedAt ?? null;
+    }
+    const vendorName = claim?.assignedInspectorVendor?.name?.trim();
+    const withInspector =
+      !report.inspectorName?.trim() && vendorName
+        ? { ...report, inspectorName: vendorName }
+        : report;
+    return this.attachExtraRepairCostLayout(this.overlayReportItemMoney(withInspector));
   }
 
   async generatePdf(reportId: string, viewType: 'internal' | 'external'): Promise<{ buffer: Buffer; report: any }> {
@@ -1159,7 +1150,7 @@ export class RepairReportsService {
     if (!pdfBuffer?.length) {
       throw new BadRequestException('PDF oluşmadı — e-posta gönderilemez');
     }
-    const subject = dto.subject ?? `Hasar Onarım Raporu — ${report.reportNo}`;
+    const subject = dto.subject ?? `${hasarReportDocumentTitle(report.claimFile?.serviceKind, report.claimFile?.consultancyServiceType)} — ${report.reportNo}`;
     const appUrl = resolveAppUrl(this.config);
     const claimFileId = report.claimFileId ?? report.claimFile?.id;
     return this.emailService.sendReport({
@@ -1168,6 +1159,10 @@ export class RepairReportsService {
       pdfBuffer,
       reportNo: report.reportNo,
       fileNo: report.claimFile?.fileNo,
+      documentTitle: hasarReportDocumentTitle(
+        report.claimFile?.serviceKind,
+        report.claimFile?.consultancyServiceType,
+      ),
       actionUrl: claimFileId ? buildPanelUrl(appUrl, panelHasarDosyasiPath(claimFileId)) : undefined,
       portalUrl: appUrl,
       viewType: 'external',
@@ -1175,7 +1170,17 @@ export class RepairReportsService {
   }
 
   async getShareLink(reportId: string, userId: string) {
-    const report = await this.prisma.repairReport.findUnique({ where: { id: reportId } });
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      include: {
+        claimFile: {
+          select: {
+            serviceKind: true,
+            consultancyServiceType: { select: { code: true, name: true } },
+          },
+        },
+      },
+    });
     if (!report) throw new NotFoundException('Rapor bulunamadı');
 
     // Mevcut aktif paylaşım token'ını bul veya yeni oluştur
@@ -1207,9 +1212,13 @@ export class RepairReportsService {
 
     const baseUrl = buildAppPath(this.config, '');
     const url = `${baseUrl}/onay/${approval.token}`;
+    const docTitle = hasarReportDocumentTitle(
+      report.claimFile?.serviceKind,
+      report.claimFile?.consultancyServiceType,
+    );
     return {
       url,
-      whatsappUrl: `https://api.whatsapp.com/send?text=${encodeURIComponent(`Hasar Onarım Raporu: ${url}`)}`,
+      whatsappUrl: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${docTitle}: ${url}`)}`,
     };
   }
 
@@ -1303,6 +1312,9 @@ export class RepairReportsService {
           select: {
             id: true,
             fileNo: true,
+            serviceKind: true,
+            siteContactEmail: true,
+            consultancyServiceType: { select: { code: true, name: true } },
             insuranceCompany: { select: { id: true, name: true, contactEmail: true } },
             customer: {
               select: {
@@ -1345,7 +1357,11 @@ export class RepairReportsService {
     if (!report.findingsText?.trim()) {
       throw new BadRequestException('Tespit Bulguları doldurulmadan onaya gönderilemez.');
     }
-    if (report.items.length === 0) {
+    const requirePricedItems = repairReportRequiresPricedItems(
+      report.claimFile?.serviceKind,
+      report.claimFile?.consultancyServiceType,
+    );
+    if (requirePricedItems && report.items.length === 0) {
       throw new BadRequestException('En az bir onarım kalemi eklenmeden onaya gönderilemez.');
     }
     const totalSales = report.items.reduce((sum, item) => sum + repairItemSalesTotal(item), 0);
@@ -1357,7 +1373,8 @@ export class RepairReportsService {
     const headerSales = Number(report.totalSalesAmount ?? 0);
     const headerCost = Number(report.totalSupplierCost ?? 0);
     if (
-      totalSales <= 0
+      requirePricedItems
+      && totalSales <= 0
       && totalCost <= 0
       && totalLumpSum <= 0
       && !(headerSales > 0)
@@ -1378,6 +1395,17 @@ export class RepairReportsService {
       }),
       expertOfficeEmail: report.expertOffice?.email,
     });
+    const irtibatEmail = String(report.claimFile?.siteContactEmail ?? '').trim().toLowerCase();
+    if (
+      !repairReportRequiresPricedItems(
+        report.claimFile?.serviceKind,
+        report.claimFile?.consultancyServiceType,
+      )
+      && irtibatEmail.includes('@')
+      && !customerRecipients.includes(irtibatEmail)
+    ) {
+      customerRecipients.push(irtibatEmail);
+    }
     const { buffer: customerPdf } = await this.generatePdf(reportId, 'external');
     if (!customerPdf?.length) {
       throw new BadRequestException('Müşteri raporu PDF oluşmadı — e-posta gönderilemez.');
@@ -1392,10 +1420,14 @@ export class RepairReportsService {
     for (const recipient of customerRecipients) {
       const mailed = await this.emailService.sendReport({
         to: recipient,
-        subject: `Hasar Onarım Raporu — ${report.claimFile?.fileNo ?? report.reportNo}`,
+        subject: `${hasarReportDocumentTitle(report.claimFile?.serviceKind, report.claimFile?.consultancyServiceType)} — ${report.claimFile?.fileNo ?? report.reportNo}`,
         pdfBuffer: customerPdf,
         reportNo: report.reportNo,
         fileNo: report.claimFile?.fileNo,
+        documentTitle: hasarReportDocumentTitle(
+          report.claimFile?.serviceKind,
+          report.claimFile?.consultancyServiceType,
+        ),
         actionUrl: claimFileId ? buildPanelUrl(appUrl, panelHasarDosyasiPath(claimFileId)) : undefined,
         portalUrl: appUrl,
         viewType: 'external',

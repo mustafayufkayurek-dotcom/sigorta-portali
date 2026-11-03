@@ -23,6 +23,7 @@ function escapeHtml(text: string): string {
 export type ReportDispatchEmailData = {
   reportNo: string;
   fileNo?: string | null;
+  documentTitle?: string | null;
   actionUrl?: string | null;
   portalUrl?: string | null;
 };
@@ -32,7 +33,7 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
   const fileNo = escapeHtml((data.fileNo || '').trim() || '—');
   const logoUrl = escapeHtml(resolveWelcomeEmailLogoUrl(data.portalUrl ?? undefined));
   const actionUrl = data.actionUrl ? escapeHtml(data.actionUrl) : '';
-  const title = 'Hasar Onarım Raporu';
+  const title = (data.documentTitle || '').trim() || 'Hasar Onarım Raporu';
   const preheader = `${data.reportNo} numaralı dış kullanım raporu PDF ektedir.`;
 
   const actionButton = actionUrl
@@ -148,7 +149,7 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
 export function buildReportDispatchEmailText(data: ReportDispatchEmailData): string {
   const fileNo = (data.fileNo || '').trim() || '—';
   const lines = [
-    'Hasar Onarım Raporu',
+    (data.documentTitle || '').trim() || 'Hasar Onarım Raporu',
     `${data.reportNo} numaralı dış kullanım raporu PDF ektedir.`,
     `Dosya No: ${fileNo}`,
     `Rapor No: ${data.reportNo}`,

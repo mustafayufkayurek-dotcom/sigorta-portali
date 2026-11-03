@@ -11,6 +11,7 @@ import {
   ACIL_AFTER_SERVICE_PHOTO_NOTE,
   isAcilAfterServicePhotoNotes,
   isAcilInspectionPhotoNotes,
+  isHasarTespitPhotoNotes,
 } from './acil-photo-kind.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -23,6 +24,9 @@ describe('acil resim türü LOCK', () => {
     assert.equal(isAcilInspectionPhotoNotes('Tespit Fotoğrafı'), true);
     assert.equal(isAcilInspectionPhotoNotes('Dosya Kapanış Resmi'), false);
     assert.equal(isAcilInspectionPhotoNotes(''), true);
+    assert.equal(isHasarTespitPhotoNotes('Tespit Fotoğrafı'), true);
+    assert.equal(isHasarTespitPhotoNotes(''), false);
+    assert.equal(isHasarTespitPhotoNotes('Dosya Kapanış Resmi'), false);
   });
 
   it('kapanış PDF ve kutu aynı etiket ailesini kullanır', () => {

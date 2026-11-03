@@ -43,8 +43,9 @@ describe('report-image-paths LOCK', () => {
   it('saha tespit resmi rapor altına bağlanır', () => {
     const svc = read('repair-reports.service.ts');
     assert.match(svc, /attachClaimInspectionPhotosToReport/);
-    assert.match(svc, /isAcilInspectionPhotoNotes/);
+    assert.match(svc, /isHasarTespitPhotoNotes/);
     assert.match(svc, /ACIL_INSPECTION_PHOTO_NOTE/);
+    assert.doesNotMatch(svc.slice(svc.indexOf('private async getReportForPdf')), /attachClaimInspectionPhotosToReport/);
   });
 
   it('getUploadsRootDir export edilir', () => {
