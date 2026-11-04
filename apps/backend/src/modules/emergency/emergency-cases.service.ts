@@ -52,6 +52,7 @@ import {
   ACIL_ADRES_HIZMET_TALEP_KIND,
   ACIL_STATUS_SEQUENCE_MESSAGE,
   canAdvanceAcilStatus,
+  buildAcilListSearchWhere,
 } from '@sigorta/shared';
 import { VendorRecommendationService } from '@/modules/vendors/vendor-recommendation.service';
 import {
@@ -770,17 +771,12 @@ export class EmergencyCasesService {
         // boş süzgeç yok sayılır
       } else {
       const digits = q.replace(/[\s\-./]/g, '');
-      const or: Array<Record<string, unknown>> = [
-        { customerName: { contains: q, mode: 'insensitive' } },
-        { address: { contains: q, mode: 'insensitive' } },
-        { caseNo: { contains: q, mode: 'insensitive' } },
-        { fileNo: { contains: q, mode: 'insensitive' } },
-      ];
+      const extraOr: Array<Record<string, unknown>> = [];
       if (digits && digits !== q) {
-        or.push({ fileNo: { contains: digits, mode: 'insensitive' } });
-        or.push({ caseNo: { contains: digits, mode: 'insensitive' } });
+        extraOr.push({ fileNo: { contains: digits, mode: 'insensitive' } });
+        extraOr.push({ caseNo: { contains: digits, mode: 'insensitive' } });
       }
-      const scoped = mergeWhereAnd(where, { OR: or });
+      const scoped = mergeWhereAnd(where, buildAcilListSearchWhere(q, extraOr));
       Object.keys(where).forEach((k) => delete where[k]);
       Object.assign(where, scoped);
       }

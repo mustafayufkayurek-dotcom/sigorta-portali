@@ -119,6 +119,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'claim-service-kind.lock.spec',
       'report-image-paths.lock.spec',
       'operasyon-nav.lock.spec',
+      'list-search-tr.lock.spec',
       'danismanlik-hizmet-turleri.lock.spec',
       'musteri-gruplari-add-context.lock.spec',
       'repair-report-number-input.lock.spec',

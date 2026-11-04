@@ -1,5 +1,6 @@
 /**
  * Operasyon menüsü — alfabetik sıra, Danışmanlık, Asistans Hizmetleri.
+ * Acil Yardım yalnız Asistans altındadır; üstte ayrı satır yok.
  * Çalıştır: node --experimental-strip-types --test apps/web/src/utils/operasyon-nav.lock.spec.ts
  */
 import assert from 'node:assert/strict';
@@ -20,13 +21,13 @@ describe('operasyon nav danışmanlık ve asistans kilidi', () => {
     const children = buildOperasyonNavChildren();
     const titles = children.map((c) => c.title);
     assert.deepEqual(titles, [
-      'Acil Yardım Dosyaları',
       'Asistans Hizmetleri',
       'Danışmanlık',
       'Dosya Özeti',
       'Gelen Kutusu',
     ]);
     assert.ok(!titles.includes('Hasar Dosyaları'));
+    assert.ok(!titles.includes('Acil Yardım Dosyaları'));
     const danismanlik = children.find((c) => c.title === 'Danışmanlık');
     assert.equal(danismanlik?.groupOnly, true);
     assert.equal(danismanlik?.children?.[0]?.title, 'Hasar Tespit');

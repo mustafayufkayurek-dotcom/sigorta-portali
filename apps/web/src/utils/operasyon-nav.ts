@@ -92,7 +92,6 @@ export function buildOperasyonNavChildren(
   const children: OperasyonNavChild[] = [
     { title: 'Dosya Özeti', href: '/panel/operasyon', exactMatch: true },
     { title: 'Gelen Kutusu', href: '/panel/operasyon/gelen-kutusu' },
-    { title: 'Acil Yardım Dosyaları', href: '/panel/operasyon?filter=acil' },
     {
       title: 'Danışmanlık',
       href: hasarListHrefForHizmet(HASAR_HIZMET_DANISMANLIK),

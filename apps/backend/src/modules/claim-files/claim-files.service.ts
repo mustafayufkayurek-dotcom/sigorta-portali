@@ -23,7 +23,9 @@ import {
   isHasarTespitConsultancyType,
   OFFICE_SETTINGS_CATALOG_LIMIT,
   parseClaimServiceKind,
+  buildClaimFileListSearchWhere,
 } from '@sigorta/shared';
+import { sanitizeSearchQuery } from '@/common/security/sanitize-search';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
 import {
@@ -819,19 +821,11 @@ export class ClaimFilesService {
       baseWhere.slaDueAt = { lt: new Date() };
     }
 
-    if (params?.search?.trim()) {
-      const q = params.search.trim();
-      baseWhere.OR = [
-        { fileNo: { contains: q, mode: 'insensitive' } },
-        { claimNo: { contains: q, mode: 'insensitive' } },
-        { insuredName: { contains: q, mode: 'insensitive' } },
-        { customer: { shortName: { contains: q, mode: 'insensitive' } } },
-        { customer: { companyName: { contains: q, mode: 'insensitive' } } },
-        { customer: { fullName: { contains: q, mode: 'insensitive' } } },
-        { customer: { firstName: { contains: q, mode: 'insensitive' } } },
-        { customer: { lastName: { contains: q, mode: 'insensitive' } } },
-        { customer: { subType: { contains: q, mode: 'insensitive' } } },
-      ];
+    const searchQ = sanitizeSearchQuery(params?.search);
+    if (searchQ) {
+      const prevAnd = baseWhere.AND;
+      const extra = Array.isArray(prevAnd) ? prevAnd : prevAnd ? [prevAnd] : [];
+      baseWhere.AND = [...extra, buildClaimFileListSearchWhere(searchQ)];
     }
 
     this.applyOpsPresetWhere(baseWhere, params?.opsPreset, requestingUser);

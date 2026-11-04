@@ -58,6 +58,7 @@ export * from './emergency-findings-text';
 export * from './file-expense-work-group-audit';
 export * from './acil-vendor-whatsapp';
 export * from './acil-insured-name';
+export * from './list-search-tr';
 export * from './acil-inbox-file-owner';
 export * from './acil-file-owner-delegation';
 export * from './acil-digital-approval-pause';

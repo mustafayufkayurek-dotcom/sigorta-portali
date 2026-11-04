@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { compactFileNo } from '@sigorta/shared';
+import { compactFileNo, buildAcilListSearchWhere, buildClaimFileGlobalNameSearchAnd, turkishISearchVariants } from '@sigorta/shared';
 import {
   findClaimFileIdByCompactFileNo,
   findEmergencyCaseIdByCompactFileNo,
@@ -52,19 +52,17 @@ export class SearchService {
     const isFieldStaff = role === 'field_staff' || roleCode === 'FIELD_STAFF';
     const canSearchInbox = !isFieldStaff && role !== 'expert' && role !== 'insurance_company_user';
 
+    const qVars = turkishISearchVariants(q);
     const claimFileOr: Record<string, unknown>[] = [
-      { fileNo: { contains: q, mode: 'insensitive' } },
-      { claimNo: { contains: q, mode: 'insensitive' } },
-      { policyNo: { contains: q, mode: 'insensitive' } },
-      { description: { contains: q, mode: 'insensitive' } },
-      { insuredName: { contains: q, mode: 'insensitive' } },
-      { insuredPhone: { contains: q, mode: 'insensitive' } },
-      { commercialTitle: { contains: q, mode: 'insensitive' } },
-      { customer: { is: { fullName: { contains: q, mode: 'insensitive' } } } },
-      { customer: { is: { firstName: { contains: q, mode: 'insensitive' } } } },
-      { customer: { is: { lastName: { contains: q, mode: 'insensitive' } } } },
-      { customer: { is: { companyName: { contains: q, mode: 'insensitive' } } } },
-      { customer: { is: { phone: { contains: q, mode: 'insensitive' } } } },
+      ...qVars.flatMap((v) => [
+        { fileNo: { contains: v, mode: 'insensitive' as const } },
+        { claimNo: { contains: v, mode: 'insensitive' as const } },
+        { policyNo: { contains: v, mode: 'insensitive' as const } },
+        { description: { contains: v, mode: 'insensitive' as const } },
+        { insuredPhone: { contains: v, mode: 'insensitive' as const } },
+        { customer: { is: { phone: { contains: v, mode: 'insensitive' as const } } } },
+      ]),
+      buildClaimFileGlobalNameSearchAnd(q),
     ];
 
     const [claimFiles, emergencyCases, inboundMessages, customers, vendors, adjusters, invoices] = await Promise.all([
@@ -92,16 +90,10 @@ export class SearchService {
       isFieldStaff
         ? Promise.resolve([])
         : this.prisma.emergencyCase.findMany({
-            where: {
-              OR: [
-                { fileNo: { contains: q, mode: 'insensitive' } },
-                { caseNo: { contains: q, mode: 'insensitive' } },
-                { customerName: { contains: q, mode: 'insensitive' } },
-                { customerPhone: { contains: q, mode: 'insensitive' } },
-                { address: { contains: q, mode: 'insensitive' } },
-                { issueType: { contains: q, mode: 'insensitive' } },
-              ],
-            },
+            where: buildAcilListSearchWhere(q, qVars.flatMap((v) => [
+              { customerPhone: { contains: v, mode: 'insensitive' as const } },
+              { issueType: { contains: v, mode: 'insensitive' as const } },
+            ])),
             select: {
               id: true,
               fileNo: true,
