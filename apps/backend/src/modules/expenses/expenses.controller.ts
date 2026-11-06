@@ -63,6 +63,12 @@ export class ExpensesController {
     return { data };
   }
 
+  @Get('expense-customers')
+  async expenseCustomers(@Query('lane') lane?: string, @Query('q') q?: string) {
+    const data = await this.service.listCustomersForExpense(lane, q);
+    return { data };
+  }
+
   @Get('browse-files')
   async browseFiles(
     @Query('search') search?: string,

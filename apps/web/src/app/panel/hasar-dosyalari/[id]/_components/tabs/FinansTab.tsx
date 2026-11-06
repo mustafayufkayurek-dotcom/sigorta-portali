@@ -6,6 +6,7 @@ import { FinansOzetPanel } from './FinansOzetPanel';
 import { FaturalarTab } from './finans-subtabs';
 import { FileMasrafIsleme } from '@/components/finance/FileMasrafIsleme';
 import { ClaimFileGelirTahsilatPanel } from '@/components/finance/ClaimFileGelirTahsilatPanel';
+import { parseClaimServiceKind } from '@sigorta/shared';
 
 type FinansSubTab = 'ozet' | 'gelir-tahsilat' | 'gider-butce' | 'faturalar';
 
@@ -69,6 +70,7 @@ export function FinansTab({
       {subTab === 'gider-butce' && (
         <FileMasrafIsleme
           claimId={claimId}
+          fileBased={parseClaimServiceKind(claim?.serviceKind) === 'repair'}
           fileLabel={claim?.fileNo ?? claim?.claimNo}
           reportId={claim?.latestRepairReport?.id}
           supplierCostHint={

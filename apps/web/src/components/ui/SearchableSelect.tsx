@@ -29,6 +29,8 @@ interface SearchableSelectProps {
   inputClassName?: string;
   /** Tarayıcı adres/otomatik doldurma menüsünü kapatır */
   disableBrowserAutocomplete?: boolean;
+  /** Listenin altında durur. Sayfa değiştirmez. */
+  createAction?: { label: string; onSelect: () => void };
 }
 
 const normalizeSearchDigits = (s: string) => s.replace(/\D/g, '');
@@ -47,6 +49,7 @@ export function SearchableSelect({
   className = '',
   inputClassName = '',
   disableBrowserAutocomplete = false,
+  createAction,
 }: SearchableSelectProps) {
   const listId = useId();
   const inputName = useId().replace(/:/g, '');
@@ -119,8 +122,9 @@ export function SearchableSelect({
       {open && !disabled && (
         <div
           id={listId}
-          className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800"
+          className="absolute z-30 mt-1 flex max-h-56 w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800"
         >
+          <div className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <div className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{loadingText}</div>
           ) : filtered.length === 0 ? (
@@ -143,6 +147,20 @@ export function SearchableSelect({
               </button>
             ))
           )}
+          </div>
+          {createAction ? (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setOpen(false);
+                createAction.onSelect();
+              }}
+              className="block w-full border-t border-red-100 px-3 py-2 text-left text-xs font-semibold text-status-danger hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-950/30"
+            >
+              {createAction.label}
+            </button>
+          ) : null}
         </div>
       )}
     </div>

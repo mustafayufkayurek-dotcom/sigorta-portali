@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 export type PanelConfirmRequest = {
   title?: string;
@@ -24,11 +25,11 @@ export function PanelConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
   const actionLabel = confirmLabel ?? (danger ? 'Evet' : 'Tamam');
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[400] flex items-end justify-center bg-slate-900/45 p-0 sm:items-center sm:p-4">
       <div
         role="alertdialog"
         aria-modal="true"
@@ -67,6 +68,7 @@ export function PanelConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

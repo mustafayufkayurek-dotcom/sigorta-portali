@@ -39,11 +39,20 @@ import {
 import { normalizeTrDateValue, isCompleteTrDateValue, isoToTrDateDisplay } from '@/utils/tr-date-input';
 import { parseTrAmountInput, numberToTrAmountInput } from '@/utils/tr-amount-input';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { suggestAutoCode } from '@/utils/auto-code';
+import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 import { API, authHeader } from '@/utils/api';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { getAccessToken } from '@/utils/auth-session';
-import { financeOperationNo } from '@sigorta/shared';
+import {
+  financeOperationNo,
+  EXPENSE_LANE_LABEL,
+  expenseLaneFromSubject,
+  expenseSubjectForLane,
+  isCustomerExpenseLane,
+  type ExpenseLane,
+} from '@sigorta/shared';
 import {
   FileWorkGroupExpenseFields,
   type FileWorkGroupAuditLine,
@@ -97,7 +106,7 @@ interface FileLookupResult {
   hasApprovedBudget?: boolean;
   hasEkBudget?: boolean;
   canEnterExpense?: boolean;
-  blockReason?: 'NO_BUDGET' | null;
+  blockReason?: 'NO_BUDGET' | 'CUSTOMER_LANE' | null;
 }
 
 interface ExpenseCategoryGroup {
@@ -115,7 +124,7 @@ interface ExpenseCategoryFlat {
 
 const EXPENSE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'operationNo', label: 'İşlem No', defaultWidth: 128, minWidth: 110 },
-  { id: 'fileNo', label: 'Dosya No', defaultWidth: 160, minWidth: 120 },
+  { id: 'fileNo', label: 'Dosya / Müşteri', defaultWidth: 180, minWidth: 120 },
   { id: 'expensePlan', label: 'Bütçe Tipi', defaultWidth: 96, minWidth: 80 },
   { id: 'expenseGroupName', label: 'Masraf Grubu', defaultWidth: 112, minWidth: 88 },
   { id: 'expenseSubgroupName', label: 'Alt Grup', defaultWidth: 108, minWidth: 88 },
@@ -130,6 +139,9 @@ interface Expense {
   createdAt?:          string;
   fileCaseId:          string;
   fileNo:              string;
+  customerId:          string;
+  customerName:        string;
+  expenseLane:         ExpenseLane;
   expensePlan:         string;
   expenseGroupName:    string;
   expenseSubgroupName: string;
@@ -218,7 +230,9 @@ function parseExpenseCategoryFromRow(e: Record<string, unknown>) {
 }
 
 const EMPTY_FORM = {
+  expenseLane: '' as ExpenseLane | '',
   fileCaseId: '',
+  customerId: '',
   expensePlan: PLAN_BUTCE,
   expenseCategoryParentId: '',
   expenseCategoryId: '',
@@ -268,9 +282,11 @@ export default function MasraflarPage() {
       sortRowsByClientSort(expenses, clientSort, (e, key) => {
         switch (key) {
           case 'fileNo':
-            return e.fileNo;
+            return e.customerName || e.fileNo;
           case 'expensePlan':
-            return PLAN_META[e.expensePlan]?.label ?? e.expensePlan;
+            return isCustomerExpenseLane(e.expenseLane)
+              ? EXPENSE_LANE_LABEL[e.expenseLane]
+              : (PLAN_META[e.expensePlan]?.label ?? e.expensePlan);
           case 'expenseGroupName':
             return e.expenseGroupName;
           case 'expenseSubgroupName':
@@ -312,7 +328,10 @@ export default function MasraflarPage() {
 
   // Filtreler
   const [fPlan,     setFPlan]     = useState('');
+  const [fLane,     setFLane]     = useState<'' | 'danismanlik' | 'asistans'>('');
   const [fFile,     setFFile]     = useState('');
+  const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string }[]>([]);
+  const [customerQuery, setCustomerQuery] = useState('');
   const [fDateFrom, setFDateFrom] = useState(() => {
     const y = Number(searchParams.get('year'));
     const m = Number(searchParams.get('month') ?? '0');
@@ -489,30 +508,118 @@ export default function MasraflarPage() {
     setForm((f) => ({ ...f, expenseCategoryId: subId }));
   };
 
+  const [categoryDraft, setCategoryDraft] = useState<'group' | 'sub' | null>(null);
+  const [categoryDraftName, setCategoryDraftName] = useState('');
+  const [categoryDraftError, setCategoryDraftError] = useState('');
+  const [categoryDraftSaving, setCategoryDraftSaving] = useState(false);
+
+  const openCategoryDraft = (kind: 'group' | 'sub') => {
+    setCategoryDraft(kind);
+    setCategoryDraftName('');
+    setCategoryDraftError('');
+  };
+
+  const saveCategoryDraft = async () => {
+    const name = toTitleCaseTR(categoryDraftName.trim());
+    if (!name) {
+      setCategoryDraftError(categoryDraft === 'sub' ? 'Alt grup adı yazın.' : 'Masraf grubu adı yazın.');
+      return;
+    }
+    if (categoryDraft === 'sub' && !form.expenseCategoryParentId) {
+      setCategoryDraftError('Önce masraf grubunu seçin.');
+      return;
+    }
+    const siblings = categoryDraft === 'group'
+      ? categoryTree
+      : allSubgroups.filter((s) => s.parentId === form.expenseCategoryParentId);
+    if (siblings.some((s) => s.name.trim().toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr'))) {
+      setCategoryDraftError('Bu ad zaten duruyor.');
+      return;
+    }
+    setCategoryDraftSaving(true);
+    setCategoryDraftError('');
+    const sortOrder = computeAlphabeticSortOrder(name, siblings);
+    const baseCode = suggestAutoCode(categoryDraft === 'group' ? 'EXP' : 'ALT', name);
+    const parentId = categoryDraft === 'sub' ? form.expenseCategoryParentId : undefined;
+    const postCategory = (code: string) => axios.post(`${API}/expense-categories`, {
+      code,
+      name,
+      sortOrder,
+      ...(parentId ? { parentId } : {}),
+    }, { headers: authHeader() });
+    try {
+      let res;
+      try {
+        res = await postCategory(baseCode);
+      } catch (first: unknown) {
+        const raw = axios.isAxiosError(first) ? first.response?.data?.message : '';
+        const message = Array.isArray(raw) ? String(raw[0] ?? '') : String(raw ?? '');
+        if (!/kod/i.test(message)) throw first;
+        res = await postCategory(`${baseCode}_${Date.now().toString(36).slice(-4).toUpperCase()}`);
+      }
+      const createdId = String((res.data?.data as { id?: string } | undefined)?.id ?? '');
+      await loadCategories();
+      if (categoryDraft === 'group' && createdId) {
+        setForm((f) => ({ ...f, expenseCategoryParentId: createdId, expenseCategoryId: '' }));
+      } else if (createdId) {
+        setForm((f) => ({ ...f, expenseCategoryId: createdId }));
+      }
+      setCategoryDraft(null);
+      setCategoryDraftName('');
+    } catch (e: unknown) {
+      const raw = axios.isAxiosError(e) ? e.response?.data?.message : '';
+      const message = Array.isArray(raw) ? String(raw[0] ?? '') : String(raw ?? '');
+      setCategoryDraftError(message || 'Kaydedilemedi.');
+    } finally {
+      setCategoryDraftSaving(false);
+    }
+  };
+
   const load = useCallback(async () => {
     if (!getAccessToken()) return;
     setLoading(true);
     try {
       const params: Record<string, string> = {};
-      if (fPlan)     params['expensePlan'] = fPlan;
+      if (fLane === 'danismanlik') params['operationSubject'] = 'DANISMANLIK';
+      else if (fLane === 'asistans') params['operationSubject'] = 'ACIL_YARDIM';
+      else if (fPlan) params['expensePlan'] = fPlan;
       if (fFile)     params['fileCaseId']  = fFile;
       const dateFrom = normalizeTrDateValue(fDateFrom);
       const dateTo   = normalizeTrDateValue(fDateTo);
       if (dateFrom) params['dateFrom'] = dateFrom;
       if (dateTo)   params['dateTo']   = dateTo;
 
+      const budgetParams: Record<string, string> = {};
+      if (!fLane && fPlan) budgetParams['expensePlan'] = fPlan;
+      if (!fLane && fFile) budgetParams['fileCaseId'] = fFile;
+      if (dateFrom) budgetParams['dateFrom'] = dateFrom;
+      if (dateTo) budgetParams['dateTo'] = dateTo;
+
       const res = await axios.get(`${API}/expenses`, { headers: authHeader(), params });
-      const trackRes = await axios.get(`${API}/expenses/budget-tracking`, { headers: authHeader(), params });
+      const trackRes = await axios.get(`${API}/expenses/budget-tracking`, { headers: authHeader(), params: budgetParams });
       setBudgetFiles((trackRes.data?.files ?? []) as BudgetFileRow[]);
       setBudgetSummary((trackRes.data?.summary ?? null) as BudgetSummary | null);
       const rows = (res.data?.data ?? res.data ?? []) as Record<string, unknown>[];
       setExpenses(rows.map((e) => {
         const cat = parseExpenseCategoryFromRow(e);
+        const customer = (e['customer'] ?? {}) as Record<string, unknown>;
+        const customerName = String(
+          customer['shortName']
+          ?? customer['companyName']
+          ?? customer['fullName']
+          ?? [customer['firstName'], customer['lastName']].filter(Boolean).join(' ')
+          ?? '',
+        );
+        const expenseLane = expenseLaneFromSubject(e['operationSubject']);
         return {
           id:          String(e['id']),
           createdAt:   e['createdAt'] ? String(e['createdAt']) : undefined,
           fileCaseId:  String(e['fileCaseId'] ?? (e['fileCase'] as Record<string, unknown>)?.['id'] ?? ''),
           fileNo:      String(e['fileNo'] ?? (e['fileCase'] as Record<string, unknown>)?.['fileNo'] ?? ''),
+          customerId:  String(e['customerId'] ?? customer['id'] ?? ''),
+          customerName,
+          expenseLane,
+          operationSubject: String(e['operationSubject'] ?? ''),
           expensePlan: String(e['expensePlan'] ?? ''),
           expenseGroupName: cat.groupName,
           expenseSubgroupName: cat.subName,
@@ -528,9 +635,37 @@ export default function MasraflarPage() {
     } finally {
       setLoading(false);
     }
-  }, [fPlan, fFile, fDateFrom, fDateTo]);
+  }, [fPlan, fLane, fFile, fDateFrom, fDateTo]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!showForm || !isCustomerExpenseLane(form.expenseLane)) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      axios
+        .get(`${API}/expenses/expense-customers`, {
+          headers: authHeader(),
+          params: { lane: form.expenseLane, q: customerQuery.trim() || undefined },
+        })
+        .then((res) => {
+          if (cancelled) return;
+          const rows = (res.data?.data ?? []) as { id: string; name: string }[];
+          setCustomerOptions((prev) => {
+            const selected = prev.find((row) => row.id === form.customerId);
+            if (selected && !rows.some((row) => row.id === selected.id)) return [selected, ...rows];
+            return rows;
+          });
+        })
+        .catch(() => {
+          if (!cancelled) setCustomerOptions([]);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [showForm, form.expenseLane, form.customerId, customerQuery]);
 
   useEffect(() => {
     if (!form.fileCaseId || !showForm) return;
@@ -629,9 +764,12 @@ export default function MasraflarPage() {
   const handleSave = async (mode: SaveMode = 'close') => {
     setFormError('');
 
-    if (!form.fileCaseId)  return setFormError('Hasar dosyası seçimi zorunludur.');
-    if (!form.expensePlan) return setFormError('Bütçe tipi seçimi zorunludur.');
-    const useWorkGroupPath = form.expensePlan === PLAN_BUTCE;
+    if (!form.expenseLane) return setFormError('Masraf yolunu seçin.');
+    const customerLane = isCustomerExpenseLane(form.expenseLane);
+    if (!customerLane && !form.fileCaseId) return setFormError('Hasar dosyası seçimi zorunludur.');
+    if (customerLane && !form.customerId) return setFormError('Müşteri seçimi zorunludur.');
+    if (!customerLane && !form.expensePlan) return setFormError('Bütçe tipi seçimi zorunludur.');
+    const useWorkGroupPath = !customerLane && form.expensePlan === PLAN_BUTCE;
     if (useWorkGroupPath) {
       if (workGroups.length === 0) return setFormError('Raporda iş grubu yok. Masraf rapor satırından denetlenir.');
       if (!form.workGroupId) return setFormError('İş grubu seçimi zorunludur.');
@@ -652,22 +790,23 @@ export default function MasraflarPage() {
     if (!isCompleteTrDateValue(dateIso)) return setFormError('Geçerli bir tarih giriniz (GG.AA.YYYY).');
 
     const fileOpt = files.find((f) => f.id === form.fileCaseId);
-    if (form.expensePlan === PLAN_BUTCE && !fileOpt?.hasApprovedBudget && workGroups.length === 0 && !editId) {
+    if (!customerLane && form.expensePlan === PLAN_BUTCE && !fileOpt?.hasApprovedBudget && workGroups.length === 0 && !editId) {
       return setFormError('Onaylı bütçesi veya rapor iş grubu olmayan dosyaya masraf girilemez.');
     }
-    if (form.expensePlan === PLAN_EK && !fileOpt?.hasEkBudget && !editId) {
+    if (!customerLane && form.expensePlan === PLAN_EK && !fileOpt?.hasEkBudget && !editId) {
       return setFormError('Ek iş satış bütçesi tanımlı olmayan dosyaya ek iş masrafı girilemez.');
     }
 
     setSaving(true);
     try {
       const payload = {
-        fileCaseId: form.fileCaseId,
-        expensePlan: form.expensePlan,
+        fileCaseId: customerLane ? undefined : form.fileCaseId,
+        customerId: customerLane ? form.customerId : undefined,
+        expensePlan: customerLane ? undefined : form.expensePlan,
         ...(useWorkGroupPath
           ? { workGroupId: form.workGroupId, workSubGroupName: form.workSubGroupName.trim() || undefined }
           : { expenseCategoryId: form.expenseCategoryId || form.expenseCategoryParentId }),
-        operationSubject: form.operationSubject || 'HASAR_ONARIM',
+        operationSubject: expenseSubjectForLane(form.expenseLane as ExpenseLane),
         description: form.description ? toTitleCaseTR(form.description.trim()) : undefined,
         amount:      amountNum,
         date:        dateIso,
@@ -682,7 +821,9 @@ export default function MasraflarPage() {
       if (!editId && mode === 'new') {
         setForm({
           ...EMPTY_FORM,
-          fileCaseId:  form.fileCaseId,
+          expenseLane: form.expenseLane,
+          fileCaseId:  customerLane ? '' : form.fileCaseId,
+          customerId: customerLane ? form.customerId : '',
           expensePlan: form.expensePlan,
           expenseCategoryParentId: form.expenseCategoryParentId,
           expenseCategoryId: form.expenseCategoryId,
@@ -713,10 +854,16 @@ export default function MasraflarPage() {
     const subgroup = String(e.expenseSubgroupName ?? '');
     const [groupName, ...jobParts] = subgroup.split(' · ');
     const matchedGroup = workGroups.find((g) => g.workGroupName === groupName.trim());
+    setCustomerQuery('');
+    if (e.customerId && e.customerName) {
+      setCustomerOptions([{ id: e.customerId, name: e.customerName }]);
+    }
     setForm({
       ...EMPTY_FORM,
+      expenseLane: e.expenseLane,
       fileCaseId: e.fileCaseId,
-      expensePlan: e.expensePlan,
+      customerId: e.customerId,
+      expensePlan: e.expensePlan || PLAN_BUTCE,
       expenseCategoryParentId: e.expenseCategoryParentId,
       expenseCategoryId: e.expenseCategoryId,
       workGroupId: matchedGroup?.workGroupId ?? '',
@@ -725,7 +872,7 @@ export default function MasraflarPage() {
       amount: numberToTrAmountInput(e.amount),
       date: e.date?.slice(0, 10) ?? '',
       receiptImageUrl: '',
-      operationSubject: e.operationSubject ?? 'HASAR_ONARIM',
+      operationSubject: expenseSubjectForLane(e.expenseLane),
     });
     resetReceiptScan();
     openExpenseForm(true);
@@ -809,7 +956,11 @@ export default function MasraflarPage() {
 
   const formSaveBlockers = useMemo(() => {
     const blockers: string[] = [];
-    if (!form.fileCaseId) {
+    if (!form.expenseLane) {
+      blockers.push('Masraf yolunu seçin');
+    } else if (isCustomerExpenseLane(form.expenseLane)) {
+      if (!form.customerId) blockers.push('Müşteri seçin');
+    } else if (!form.fileCaseId) {
       blockers.push('Hasar dosyası seçin (dosya no veya sigortalı adı ile arayın)');
     } else if (!formFileEligible) {
       blockers.push(
@@ -818,7 +969,12 @@ export default function MasraflarPage() {
           : 'Seçilen dosyada onaylı bütçe veya rapor iş grubu yok',
       );
     }
-    if (form.expensePlan === PLAN_BUTCE) {
+    if (!form.expenseLane) {
+      /* yol seçilmeden diğer alanlar açılmaz */
+    } else if (isCustomerExpenseLane(form.expenseLane)) {
+      if (!form.expenseCategoryParentId) blockers.push('Masraf grubu seçin');
+      if (needsExpenseSubgroup && !form.expenseCategoryId) blockers.push('Masraf alt grubu seçin');
+    } else if (form.expensePlan === PLAN_BUTCE) {
       if (workGroups.length === 0) blockers.push('Raporda iş grubu yok');
       if (!form.workGroupId) blockers.push('İş grubu seçin');
       const selected = workGroups.find((g) => g.workGroupId === form.workGroupId);
@@ -836,7 +992,9 @@ export default function MasraflarPage() {
     if (!isCompleteTrDateValue(dateIso)) blockers.push('Geçerli bir tarih girin (GG.AA.YYYY)');
     return blockers;
   }, [
+    form.expenseLane,
     form.fileCaseId,
+    form.customerId,
     form.expensePlan,
     form.expenseCategoryParentId,
     form.expenseCategoryId,
@@ -850,7 +1008,9 @@ export default function MasraflarPage() {
     needsExpenseSubgroup,
   ]);
 
-  const formCanSave = formSaveBlockers.length === 0 && (Boolean(editId) || selectableFiles.length > 0);
+  const formCanSave = formSaveBlockers.length === 0 && (
+    isCustomerExpenseLane(form.expenseLane) || Boolean(editId) || selectableFiles.length > 0
+  );
 
   useEffect(() => {
     if (form.fileCaseId || editId || !fileSearch.trim()) return;
@@ -960,7 +1120,7 @@ export default function MasraflarPage() {
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Masraf İzleme</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Dosya bütçelerine karşı gerçekleşen masrafları izleyin; sapmayı anında görün
+            Üst kartlar yalnız Hasar dosyasını toplar. Danışmanlık ve asistans bu kartlara girmez.
           </p>
         </div>
         <FinansActionButton
@@ -975,8 +1135,7 @@ export default function MasraflarPage() {
       <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/20 px-4 py-3">
         <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Bütçe disiplini</p>
         <p className="text-xs text-amber-800/90 dark:text-amber-200/90 mt-1">
-          Masraf yalnızca <strong>onaylı bütçesi</strong> olan hasar dosyalarına (Dosya Bütçesi) veya{' '}
-          <strong>ek iş satışı kayıtlı</strong> dosyalara (Ek İşler) girilebilir. Bütçe yoksa önce hasar dosyası → Finans → Bütçe adımını tamamlayın.
+          Hasar masrafı dosyaya yazılır ve bütçe kartına girer. Danışmanlık ile asistans müşteriye yazılır; dosya bütçesine, sapmaya ve yönetim gideri havuzuna girmez.
         </p>
       </div>
 
@@ -1147,17 +1306,17 @@ export default function MasraflarPage() {
                 const file = files.find((f) => f.type.startsWith('image/'));
                 if (file) void handleReceiptScan(file);
               }}
-              className="rounded-xl border border-dashed border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20 p-4 transition-colors"
+              className="rounded-xl border border-dashed border-blue-200 bg-blue-50/50 px-3 py-2 transition-colors dark:border-blue-800 dark:bg-blue-950/20"
               activeClassName="border-blue-400 bg-blue-100/80 dark:bg-blue-900/40"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">Akıllı Fiş / Fatura Okuma</p>
-                  <p className="text-xs text-blue-700/80 dark:text-blue-300/80 mt-1">
-                    Kamerayla fişi çekin, galeriden seçin veya fiş görselini buraya sürükleyin; tutar, tarih ve açıklama otomatik doldurulur.
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Akıllı Fiş / Fatura Okuma</p>
+                  <p className="mt-0.5 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                    Fişi çekin, seçin veya sürükleyin. Tutar, tarih ve açıklama dolar.
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <input
                     ref={receiptCameraInputRef}
                     type="file"
@@ -1185,9 +1344,9 @@ export default function MasraflarPage() {
                     type="button"
                     disabled={scanning}
                     onClick={startReceiptCapture}
-                    className="inline-flex items-center gap-1.5 text-sm bg-brand-600 text-white px-4 py-2 rounded-xl hover:bg-brand-700 disabled:opacity-50 font-medium transition-colors"
+                    className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
                   >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
@@ -1197,24 +1356,24 @@ export default function MasraflarPage() {
                     type="button"
                     disabled={scanning}
                     onClick={() => receiptFileInputRef.current?.click()}
-                    className="text-sm border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-xl hover:bg-blue-100/60 dark:hover:bg-blue-900/30 disabled:opacity-50 font-medium transition-colors"
+                    className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-white disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
                     Dosyadan Seç
                   </button>
                 </div>
               </div>
               {scanInfo && (
-                <p className="mt-3 text-xs text-blue-800 dark:text-blue-200 bg-white/70 dark:bg-slate-900/40 rounded-lg px-3 py-2">
+                <p className="mt-2 rounded-lg bg-white/80 px-2.5 py-1.5 text-[11px] text-slate-600 dark:bg-slate-900/40 dark:text-slate-300">
                   {scanInfo}
                 </p>
               )}
               {(receiptPreview || form.receiptImageUrl) && (
-                <div className="mt-3 flex items-start gap-3">
+                <div className="mt-2 flex items-start gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={receiptPreview ?? form.receiptImageUrl}
                     alt="Yüklenen fiş"
-                    className="h-24 w-auto rounded-lg border border-blue-200 dark:border-blue-800 object-cover"
+                    className="h-14 w-auto rounded-lg border border-slate-200 object-cover dark:border-slate-600"
                   />
                   <p className="text-[11px] text-blue-700/70 dark:text-blue-300/70">
                     Görsel kaydedildi. Alanları kontrol edip dosyayı seçtikten sonra kaydedin.
@@ -1226,7 +1385,94 @@ export default function MasraflarPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+            <div className="md:col-span-2">
+              <label className={labelCls}>Masraf Yolu {requiredHint}</label>
+              {!form.expenseLane ? (
+                <div className="space-y-2">
+                  {([
+                    ['hasar', 'Hasar masrafı dosyaya yazılır. Bütçe kartı bu kaydı okur.'],
+                    ['danismanlik', 'Danışmanlık masrafı müşteriye yazılır. Dosya bütçesine girmez.'],
+                    ['asistans', 'Asistans masrafı asistans müşterisine yazılır. Dosya bütçesine girmez.'],
+                  ] as const).map(([lane, sentence]) => (
+                    <button
+                      key={lane}
+                      type="button"
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          expenseLane: lane,
+                          operationSubject: expenseSubjectForLane(lane),
+                          fileCaseId: '',
+                          customerId: '',
+                          workGroupId: '',
+                          workSubGroupName: '',
+                        }));
+                        setCustomerQuery('');
+                        setFileLookup(null);
+                      }}
+                      className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left hover:border-blue-300 hover:bg-blue-50/40 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-blue-700"
+                    >
+                      <span className="block text-sm font-medium text-slate-800 dark:text-slate-100">{EXPENSE_LANE_LABEL[lane]}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">{sentence}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-600 dark:bg-slate-800">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{EXPENSE_LANE_LABEL[form.expenseLane]}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {form.expenseLane === 'hasar'
+                        ? 'Dosya seçilir. Bu kayıt bütçe kartına girer.'
+                        : 'Müşteri seçilir. Bu kayıt dosya bütçesine girmez.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (form.fileCaseId || form.customerId) {
+                        const ok = await confirm('Masraf yolu değişince seçili dosya veya müşteri kalkar.');
+                        if (!ok) return;
+                      }
+                      setForm((prev) => ({
+                        ...prev,
+                        expenseLane: '',
+                        fileCaseId: '',
+                        customerId: '',
+                        workGroupId: '',
+                        workSubGroupName: '',
+                      }));
+                      setCustomerQuery('');
+                      setFileLookup(null);
+                    }}
+                    className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-white dark:border-slate-500 dark:text-slate-200"
+                  >
+                    Yolu Değiştir
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {isCustomerExpenseLane(form.expenseLane) && (
+              <div className="md:col-span-2">
+                <label className={labelCls}>
+                  Müşteri {requiredHint}
+                </label>
+                <SearchableSelect
+                  className="min-w-0"
+                  inputClassName={inputCls}
+                  options={customerOptions.map((row) => ({ value: row.id, label: row.name }))}
+                  value={form.customerId}
+                  onChange={(id) => setForm({ ...form, customerId: id })}
+                  onQueryChange={setCustomerQuery}
+                  placeholder={form.expenseLane === 'asistans' ? 'Asistans firması ara...' : 'Danışmanlık müşterisi ara...'}
+                  emptyText="Müşteri bulunamadı"
+                />
+              </div>
+            )}
+
             {/* Hasar Dosyası — arama ile seçim */}
+            {form.expenseLane === 'hasar' && (
             <div className="md:col-span-2">
               <label className={labelCls}>
                 İlgili Dosya / Sigortalı <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
@@ -1252,13 +1498,13 @@ export default function MasraflarPage() {
                   type="button"
                   onClick={() => setShowFilePicker(true)}
                   className="shrink-0 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-900/40"
-                  title="Hasar onarım, acil yardım veya özel müşteri listesinden dosya seç"
+                  title="Hasar onarım listesinden dosya seç"
                 >
                   Dosyadan Seç
                 </button>
               </div>
               <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-                Dosya numarasını hatırlamıyorsanız &quot;Dosyadan Seç&quot; ile hasar onarım, acil yardım veya özel müşteri listesinden seçin. Özel müşteride arama müşteri adı ile yapılır.
+                Dosya numarasını hatırlamıyorsanız &quot;Dosyadan Seç&quot; ile hasar onarım listesinden seçin.
               </p>
               {form.fileCaseId && (
                 <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
@@ -1284,7 +1530,9 @@ export default function MasraflarPage() {
                     <p className="text-xs text-slate-500 mt-0.5">Hasar no: {fileLookup.claimNo}</p>
                   )}
                   <p className="text-xs text-amber-800 dark:text-amber-200 mt-2">
-                    Dosya sistemde kayıtlı ancak onaylı bütçe veya ek iş satışı yok. Masraf girebilmek için önce bütçe oluşturup onaylatın.
+                    {fileLookup.blockReason === 'CUSTOMER_LANE'
+                      ? 'Bu dosya Hasar onarım değildir. Danışmanlık veya asistans masrafı müşteriye yazılır.'
+                      : 'Dosya sistemde kayıtlı ancak onaylı bütçe veya ek iş satışı yok. Masraf girebilmek için önce bütçe oluşturup onaylatın.'}
                   </p>
                   <a
                     href={fileLookup.id ? `/panel/hasar-dosyalari/${fileLookup.id}` : '/panel/hasar-dosyalari'}
@@ -1364,6 +1612,7 @@ export default function MasraflarPage() {
                 </p>
               )}
             </div>
+            )}
 
             <div className="md:col-span-2">
               <label className={labelCls}>İşlem No</label>
@@ -1384,6 +1633,7 @@ export default function MasraflarPage() {
             </div>
 
             {/* Masraf yeri — Bütçelenen / Ek İş */}
+            {form.expenseLane === 'hasar' && (
             <div className="md:col-span-2">
               <label className={labelCls} htmlFor="finans-masraf-plan">
                 Masraf yeri <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
@@ -1415,9 +1665,11 @@ export default function MasraflarPage() {
                   : 'Onaylı dosya bütçesine / rapor iş grubuna yazılır.'}
               </p>
             </div>
+            )}
 
+            {form.expenseLane && (
             <div className="md:col-span-2">
-              {form.expensePlan === PLAN_BUTCE ? (
+              {form.expenseLane === 'hasar' && form.expensePlan === PLAN_BUTCE ? (
                 <FileWorkGroupExpenseFields
                   groups={workGroups}
                   workGroupId={form.workGroupId}
@@ -1431,16 +1683,6 @@ export default function MasraflarPage() {
               <label className={labelCls}>
                 Masraf Grubu / Alt Grubu <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
               </label>
-              {categoryTree.length === 0 ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-3 text-xs text-amber-800 dark:text-amber-200">
-                  Masraf grupları yüklenemedi veya henüz tanımlı değil.{' '}
-                  <a href="/panel/ayarlar/masraf-kategorileri" className="font-semibold underline">
-                    Ayarlar → Masraf Kategorileri
-                  </a>
-                  {' '}sayfasından &quot;Varsayılanları Yükle&quot; ile başlayabilirsiniz.
-                </div>
-              ) : (
-                <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">Masraf Grubu</label>
@@ -1455,60 +1697,85 @@ export default function MasraflarPage() {
                       placeholder="Masraf grubu ara..."
                       emptyText="Masraf grubu bulunamadı"
                       inputClassName={inputCls}
+                      createAction={{
+                        label: '+ Yeni Masraf Grubu Ekle',
+                        onSelect: () => openCategoryDraft('group'),
+                      }}
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">Masraf Alt Grubu</label>
-                    {form.expenseCategoryParentId && categoryChildren.length === 0 && allSubgroups.length === 0 && !loadingChildren ? (
-                      <div className={`${inputCls} text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50`}>
-                        Bu grupta alt grup tanımlı değil — grup doğrudan kullanılacak.
-                        {' '}
-                        <a href="/panel/ayarlar/masraf-kategorileri" className="text-brand-600 underline">
-                          Alt grup ekle
-                        </a>
-                      </div>
-                    ) : form.expenseCategoryParentId && categoryChildren.length === 0 && allSubgroups.length > 0 ? (
-                      <SearchableSelect
-                        options={subgroupOptions}
-                        value={form.expenseCategoryId}
-                        onChange={handleSubgroupPick}
-                        placeholder="Tüm alt gruplarda ara..."
-                        emptyText="Alt grup bulunamadı"
-                        inputClassName={inputCls}
-                      />
-                    ) : form.expenseCategoryParentId ? (
-                      <SearchableSelect
-                        options={subgroupOptions}
-                        value={form.expenseCategoryId}
-                        onChange={handleSubgroupPick}
-                        placeholder={loadingChildren ? 'Yükleniyor...' : 'Alt grup ara...'}
-                        emptyText={loadingChildren ? 'Yükleniyor...' : 'Alt grup bulunamadı'}
-                        disabled={loadingChildren}
-                        inputClassName={inputCls}
-                      />
-                    ) : (
-                      <SearchableSelect
-                        options={subgroupOptions}
-                        value={form.expenseCategoryId}
-                        onChange={handleSubgroupPick}
-                        placeholder="Önce grup seçin veya alt grup ara..."
-                        emptyText="Alt grup bulunamadı"
-                        inputClassName={inputCls}
-                      />
-                    )}
+                    <SearchableSelect
+                      options={subgroupOptions}
+                      value={form.expenseCategoryId}
+                      onChange={handleSubgroupPick}
+                      placeholder={
+                        form.expenseCategoryParentId
+                          ? (loadingChildren ? 'Yükleniyor...' : 'Alt grup ara...')
+                          : 'Önce grup seçin veya alt grup ara...'
+                      }
+                      emptyText="Alt grup bulunamadı"
+                      disabled={loadingChildren}
+                      inputClassName={inputCls}
+                      createAction={{
+                        label: '+ Yeni Alt Grup Ekle',
+                        onSelect: () => openCategoryDraft('sub'),
+                      }}
+                    />
                   </div>
                 </div>
-                {allSubgroups.length === 0 && categoryTree.length > 0 && (
-                  <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-                    Sistemde henüz masraf alt grubu yok. Ayarlar → Masraf Kategorileri → ilgili gruba &quot;Alt Grup Ekle&quot; ile tanımlayın
-                    veya &quot;Varsayılanları Yükle&quot; ile hazır seti getirin.
-                  </p>
-                )}
-                </>
-              )}
+                {categoryDraft ? (
+                  <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800">
+                    <label className="block text-[11px] text-slate-500 mb-1">
+                      {categoryDraft === 'group' ? 'Yeni Masraf Grubu' : 'Yeni Alt Grup'}
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        className={inputCls}
+                        placeholder={categoryDraft === 'group' ? 'Örn. çatı malzemesi' : 'Örn. membran'}
+                        value={categoryDraftName}
+                        autoFocus
+                        onChange={(e) => setCategoryDraftName(e.target.value)}
+                        onBlur={(e) => {
+                          const v = toTitleCaseTR(e.target.value.trim());
+                          if (v) setCategoryDraftName(v);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            void saveCategoryDraft();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={categoryDraftSaving}
+                        onClick={() => { void saveCategoryDraft(); }}
+                        className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                      >
+                        {categoryDraftSaving ? 'Kaydediliyor' : 'Ekle'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCategoryDraft(null); setCategoryDraftError(''); }}
+                        className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600"
+                      >
+                        Vazgeç
+                      </button>
+                    </div>
+                    {categoryDraftError ? (
+                      <p className="mt-1.5 text-xs text-status-danger">{categoryDraftError}</p>
+                    ) : (
+                      <p className="mt-1.5 text-[11px] text-slate-500">
+                        Aynı ad Ayarlar → Masraf Kategorileri listesinde de durur.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
               </>
               )}
             </div>
+            )}
 
             {/* Açıklama */}
             <div className="md:col-span-2">
@@ -1620,13 +1887,22 @@ export default function MasraflarPage() {
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex flex-wrap gap-3 items-center">
         {/* Kategori */}
         <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-700/50 rounded-lg p-1">
-          {[{ v: '', l: 'Tümü' }, { v: PLAN_BUTCE, l: 'Dosya Bütçesi' }, { v: PLAN_EK, l: 'Ek İşler' }].map(({ v, l }) => (
+          {[
+            { v: '', lane: '' as const, l: 'Tümü' },
+            { v: PLAN_BUTCE, lane: '' as const, l: 'Dosya Bütçesi' },
+            { v: PLAN_EK, lane: '' as const, l: 'Ek İşler' },
+            { v: '', lane: 'danismanlik' as const, l: 'Danışmanlık' },
+            { v: '', lane: 'asistans' as const, l: 'Asistans' },
+          ].map(({ v, lane, l }) => (
             <button
-              key={v}
+              key={`${lane}-${v}-${l}`}
               type="button"
-              onClick={() => setFPlan(v)}
+              onClick={() => {
+                setFLane(lane);
+                setFPlan(lane ? '' : v);
+              }}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                fPlan === v
+                (lane ? fLane === lane : !fLane && fPlan === v)
                   ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-sm'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
@@ -1733,16 +2009,22 @@ export default function MasraflarPage() {
                       </PanelTableTd>
                     ),
                     fileNo: (
-                      <PanelTableTd key="fileNo" colId="fileNo" className="px-5 py-3.5" title={e.fileNo || undefined}>
-                        <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">
-                          {e.fileNo || '—'}
+                      <PanelTableTd key="fileNo" colId="fileNo" className="px-5 py-3.5" title={e.customerName || e.fileNo || undefined}>
+                        <span className={`${e.customerName ? 'text-xs font-medium' : 'font-mono text-xs font-semibold'} text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded`}>
+                          {e.customerName || e.fileNo || '—'}
                         </span>
                       </PanelTableTd>
                     ),
                     expensePlan: (
                       <PanelTableTd key="expensePlan" colId="expensePlan" className="px-5 py-3.5 max-w-0">
-                        <span className={`inline-flex max-w-full truncate items-center text-xs font-semibold px-2.5 py-0.5 rounded-full ${meta.badgeCls}`}>
-                          {meta.label}
+                        <span className={`inline-flex max-w-full truncate items-center text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                          e.expenseLane === 'asistans'
+                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200'
+                            : e.expenseLane === 'danismanlik'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'
+                              : meta.badgeCls
+                        }`}>
+                          {isCustomerExpenseLane(e.expenseLane) ? EXPENSE_LANE_LABEL[e.expenseLane] : meta.label}
                         </span>
                       </PanelTableTd>
                     ),

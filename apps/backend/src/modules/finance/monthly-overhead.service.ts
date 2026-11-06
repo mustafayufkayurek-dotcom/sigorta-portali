@@ -156,6 +156,7 @@ export class MonthlyOverheadService {
         isOverheadPool: true,
         overheadAllocatedAt: null,
         fileCaseId: null,
+        customerId: null,
         expenseGroup: 'YONETIM_GIDERLERI',
         date: { gte: periodStart, lte: periodEnd },
         approvalStatus: { in: ['APPROVED', 'PENDING'] },
@@ -487,6 +488,7 @@ export class MonthlyOverheadService {
       where: {
         isOverheadPool: true,
         fileCaseId: null,
+        customerId: null,
         expenseGroup: 'YONETIM_GIDERLERI',
         date: { gte: periodStart, lte: periodEnd },
         approvalStatus: { in: ['APPROVED', 'PENDING'] },
@@ -500,6 +502,7 @@ export class MonthlyOverheadService {
         isOverheadPool: true,
         overheadAllocatedAt: null,
         fileCaseId: null,
+        customerId: null,
         expenseGroup: 'YONETIM_GIDERLERI',
         date: { gte: periodStart, lte: periodEnd },
         approvalStatus: { in: ['APPROVED', 'PENDING'] },

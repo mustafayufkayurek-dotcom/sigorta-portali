@@ -432,6 +432,9 @@ export class VatReportService {
       include: {
         expenseCategory: { select: { name: true } },
         fileCase: { select: { fileNo: true } },
+        customer: {
+          select: { shortName: true, companyName: true, fullName: true, firstName: true, lastName: true },
+        },
       },
       orderBy: { date: 'asc' },
     });
@@ -445,9 +448,13 @@ export class VatReportService {
         description: e.description,
         category: e.expenseCategory?.name ?? e.expenseSubgroup,
         group: EXPENSE_GROUP_LABEL[e.expenseGroup] ?? e.expenseGroup,
-        fileNo: e.isOverheadPool ? null : e.fileCase?.fileNo ?? null,
+        fileNo: e.isOverheadPool || e.customerId ? null : e.fileCase?.fileNo ?? null,
         documentNo: null,
-        counterparty: null,
+        counterparty: e.customer
+          ? (e.customer.shortName || e.customer.companyName || e.customer.fullName
+            || [e.customer.firstName, e.customer.lastName].filter(Boolean).join(' ')
+            || null)
+          : null,
         status: e.approvalStatus,
         netAmount: net,
         vatRate: e.vatRate,

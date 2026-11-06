@@ -19,6 +19,11 @@ import {
   expenseMatchesWorkGroup,
   remainingWorkGroupBudget,
   workGroupExpenseOverLimitMessage,
+  customerMatchesExpenseLane,
+  expenseLaneFromSubject,
+  hasarFileBudgetExpenseWhere,
+  isCustomerExpenseLane,
+  type ExpenseLane,
 } from '@sigorta/shared';
 import {
   assertClaimFileAccess,
@@ -57,6 +62,7 @@ export class ExpensesService {
   private readonly claimFileExpenseSelect = {
     id: true,
     fileNo: true,
+    serviceKind: true,
     claimNo: true,
     insuredName: true,
     description: true,
@@ -401,6 +407,7 @@ export class ExpensesService {
       where: { id: fileCaseId },
       select: {
         fileNo: true,
+        serviceKind: true,
         approvedBudgetAmount: true,
         budgetVersions: {
           where: { status: 'approved' },
@@ -411,6 +418,11 @@ export class ExpensesService {
       },
     });
     if (!file) throw new NotFoundException('Hasar dosyası bulunamadı');
+    if (file.serviceKind !== 'repair') {
+      throw new BadRequestException(
+        'Bu dosya Hasar onarım değildir. Danışmanlık ve asistans masrafı müşteriye yazılır.',
+      );
+    }
 
     const plan = expensePlan ?? 'BUTCELENEN';
 
@@ -463,8 +475,8 @@ export class ExpensesService {
 
     const rows = await this.prisma.claimFile.findMany({
       where: searchFilter
-        ? { AND: [searchFilter, { OR: [...budgetOr] }] }
-        : { OR: [...budgetOr] },
+        ? { AND: [{ serviceKind: 'repair' }, searchFilter, { OR: [...budgetOr] }] }
+        : { AND: [{ serviceKind: 'repair' }, { OR: [...budgetOr] }] },
       select: this.claimFileExpenseSelect,
       take: 50,
       orderBy: { updatedAt: 'desc' },
@@ -500,6 +512,15 @@ export class ExpensesService {
     if (!file) return { found: false as const, query: q };
 
     const mapped = this.mapFileToEligibleOption(file);
+    if (file.serviceKind !== 'repair') {
+      return {
+        found: true as const,
+        query: q,
+        ...mapped,
+        canEnterExpense: false,
+        blockReason: 'CUSTOMER_LANE' as const,
+      };
+    }
     const canEnterExpense = mapped.hasApprovedBudget || mapped.hasEkBudget;
     return {
       found: true as const,
@@ -529,9 +550,13 @@ export class ExpensesService {
         : this.buildFileSearchFilter(params.search)
       : undefined;
 
-    const where = searchFilter
-      ? { AND: [searchFilter, this.browseSegmentWhere(segment)] }
-      : this.browseSegmentWhere(segment);
+    const where = {
+      AND: [
+        { serviceKind: 'repair' as const },
+        this.browseSegmentWhere(segment),
+        ...(searchFilter ? [searchFilter] : []),
+      ],
+    };
 
     const [total, rows] = await Promise.all([
       this.prisma.claimFile.count({ where }),
@@ -605,6 +630,17 @@ export class ExpensesService {
           createdBy: { select: { id: true, firstName: true, lastName: true } },
           approvedBy: { select: { id: true, firstName: true, lastName: true } },
           fileCase: { select: { id: true, fileNo: true } },
+          customer: {
+            select: {
+              id: true,
+              subType: true,
+              fullName: true,
+              companyName: true,
+              shortName: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
           expenseCategory: { include: { parent: true } },
         },
       }),
@@ -658,6 +694,73 @@ export class ExpensesService {
     };
   }
 
+  private async assertCustomerExpense(customerId: string | null | undefined, lane: ExpenseLane) {
+    if (!customerId) {
+      throw new BadRequestException('Müşteri seçimi zorunludur.');
+    }
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true, subType: true, status: true },
+    });
+    if (!customer || customer.status === 'blacklisted') {
+      throw new BadRequestException('Müşteri bulunamadı.');
+    }
+    if (!customerMatchesExpenseLane(customer.subType, lane)) {
+      throw new BadRequestException(
+        lane === 'asistans'
+          ? 'Asistans masrafı asistans firmasına yazılır.'
+          : 'Danışmanlık masrafı asistans firmasına yazılmaz.',
+      );
+    }
+  }
+
+  async listCustomersForExpense(laneRaw: string | undefined, search?: string) {
+    const lane = expenseLaneFromSubject(
+      laneRaw === 'danismanlik' ? 'DANISMANLIK' : laneRaw === 'asistans' ? 'ACIL_YARDIM' : 'HASAR_ONARIM',
+    );
+    if (!isCustomerExpenseLane(lane)) {
+      throw new BadRequestException('Müşteri listesi danışmanlık veya asistans içindir.');
+    }
+    const q = search?.trim();
+    const nameOr = q
+      ? [
+          { fullName: { contains: q, mode: 'insensitive' as const } },
+          { companyName: { contains: q, mode: 'insensitive' as const } },
+          { shortName: { contains: q, mode: 'insensitive' as const } },
+          { firstName: { contains: q, mode: 'insensitive' as const } },
+          { lastName: { contains: q, mode: 'insensitive' as const } },
+        ]
+      : undefined;
+    const asistansSub = { subType: { in: ['asistan_firmasi', 'asistans_firmasi'] } };
+    const rows = await this.prisma.customer.findMany({
+      where: {
+        status: { not: 'blacklisted' },
+        ...(lane === 'asistans' ? asistansSub : { NOT: asistansSub }),
+        ...(nameOr ? { OR: nameOr } : {}),
+      },
+      select: {
+        id: true,
+        subType: true,
+        fullName: true,
+        companyName: true,
+        shortName: true,
+        firstName: true,
+        lastName: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 30,
+    });
+    return rows
+      .filter((row) => customerMatchesExpenseLane(row.subType, lane))
+      .map((row) => ({
+        id: row.id,
+        subType: row.subType,
+        name: row.shortName || row.companyName || row.fullName
+          || [row.firstName, row.lastName].filter(Boolean).join(' ')
+          || 'Müşteri',
+      }));
+  }
+
   async create(dto: CreateExpenseDto, userId: string) {
     if (!dto.date || dto.amount == null) {
       throw new BadRequestException('Tarih ve tutar zorunludur');
@@ -675,6 +778,10 @@ export class ExpensesService {
       dto.expenseCategoryId = undefined;
     }
     const groupFields = await this.resolveGroupFields(dto);
+    const createLane = expenseLaneFromSubject(dto.operationSubject);
+    if (isCustomerExpenseLane(createLane) && groupFields.expenseGroup === 'YONETIM_GIDERLERI') {
+      throw new BadRequestException('Yönetim gideri müşteriye yazılmaz.');
+    }
     const isManagementPool = groupFields.expenseGroup === 'YONETIM_GIDERLERI';
 
     if (isManagementPool) {
@@ -693,6 +800,11 @@ export class ExpensesService {
           );
         }
       }
+    } else if (isCustomerExpenseLane(expenseLaneFromSubject(dto.operationSubject))) {
+      if (dto.fileCaseId) {
+        throw new BadRequestException('Danışmanlık ve asistans masrafı dosyaya yazılmaz. Müşteri seçin.');
+      }
+      await this.assertCustomerExpense(dto.customerId, expenseLaneFromSubject(dto.operationSubject));
     } else {
       if (!dto.fileCaseId) {
         throw new BadRequestException('Masraf girişi için hasar dosyası seçimi zorunludur.');
@@ -718,6 +830,7 @@ export class ExpensesService {
       }
     }
 
+    const customerLane = !isManagementPool && isCustomerExpenseLane(expenseLaneFromSubject(dto.operationSubject));
     const date = new Date(dto.date);
     const startOfYear = new Date(date.getFullYear(), 0, 1);
     const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / 86400000);
@@ -733,9 +846,10 @@ export class ExpensesService {
         expenseGroup: groupFields.expenseGroup as any,
         expenseSubgroup: groupFields.expenseSubgroup,
         expenseCategoryId: groupFields.expenseCategoryId,
-        expensePlan: isManagementPool ? null : (dto.expensePlan as any ?? null),
+        expensePlan: isManagementPool || customerLane ? null : (dto.expensePlan as any ?? null),
         operationSubject: dto.operationSubject as any ?? null,
-        fileCaseId: isManagementPool ? null : (dto.fileCaseId ?? null),
+        fileCaseId: isManagementPool || customerLane ? null : (dto.fileCaseId ?? null),
+        customerId: customerLane ? (dto.customerId ?? null) : null,
         isOverheadPool: isManagementPool,
         receiptImageUrl: dto.receiptImageUrl ?? null,
         createdById: userId,
@@ -766,13 +880,27 @@ export class ExpensesService {
           expenseCategoryId: previous.expenseCategoryId,
         };
     const isManagementPool = groupFields.expenseGroup === 'YONETIM_GIDERLERI';
-    const nextFileCaseId = isManagementPool ? null : (dto.fileCaseId !== undefined ? dto.fileCaseId : previous.fileCaseId);
-    const nextPlan = isManagementPool ? null : (dto.expensePlan !== undefined ? dto.expensePlan : previous.expensePlan);
+    const lane = expenseLaneFromSubject(dto.operationSubject ?? previous.operationSubject);
+    const customerLane = !isManagementPool && isCustomerExpenseLane(lane);
+    const nextFileCaseId = isManagementPool || customerLane
+      ? null
+      : (dto.fileCaseId !== undefined ? dto.fileCaseId : previous.fileCaseId);
+    const nextCustomerId = customerLane
+      ? (dto.customerId !== undefined ? dto.customerId : previous.customerId)
+      : null;
+    const nextPlan = isManagementPool || customerLane
+      ? null
+      : (dto.expensePlan !== undefined ? dto.expensePlan : previous.expensePlan);
 
     if (isManagementPool) {
       if (dto.fileCaseId) {
         throw new BadRequestException('Yönetim giderleri dosyaya bağlanamaz.');
       }
+    } else if (customerLane) {
+      if (dto.fileCaseId) {
+        throw new BadRequestException('Danışmanlık ve asistans masrafı dosyaya yazılmaz. Müşteri seçin.');
+      }
+      await this.assertCustomerExpense(nextCustomerId, lane);
     } else {
       if (!nextFileCaseId) {
         throw new BadRequestException('Masraf kaydında hasar dosyası zorunludur.');
@@ -788,10 +916,13 @@ export class ExpensesService {
     if (dto.vatRate !== undefined) data.vatRate = dto.vatRate;
     if (dto.vatIncluded !== undefined) data.vatIncluded = dto.vatIncluded;
     if (dto.description !== undefined) data.description = dto.description;
-    if (dto.expensePlan !== undefined) data.expensePlan = isManagementPool ? null : (dto.expensePlan ?? null);
+    if (dto.expensePlan !== undefined || customerLane || isManagementPool) {
+      data.expensePlan = nextPlan;
+    }
     if (dto.operationSubject !== undefined) data.operationSubject = dto.operationSubject ?? null;
-    if (dto.fileCaseId !== undefined || isManagementPool) {
+    if (dto.fileCaseId !== undefined || dto.operationSubject !== undefined || dto.customerId !== undefined || isManagementPool) {
       data.fileCaseId = nextFileCaseId;
+      data.customerId = nextCustomerId;
       data.isOverheadPool = isManagementPool;
     }
     if (dto.receiptImageUrl !== undefined) data.receiptImageUrl = dto.receiptImageUrl ?? null;
@@ -877,7 +1008,23 @@ export class ExpensesService {
     requestingUser?: RequestUser,
     insuranceCompanyIds?: string[],
   ) {
-    const where: Record<string, unknown> = {};
+    if (isCustomerExpenseLane(expenseLaneFromSubject(filters.operationSubject))) {
+      return {
+        summary: {
+          totalBudgetLimit: 0,
+          totalSpentButce: 0,
+          totalSpentEk: 0,
+          totalRemaining: 0,
+          totalVariance: 0,
+          usagePercent: null as number | null,
+          overBudgetFileCount: 0,
+          fileCount: 0,
+        },
+        files: [] as Array<Record<string, unknown>>,
+      };
+    }
+
+    const where: Record<string, unknown> = { AND: [hasarFileBudgetExpenseWhere()] };
     if (filters.dateFrom || filters.dateTo) {
       where.date = {};
       if (filters.dateFrom) (where.date as Record<string, Date>).gte = new Date(filters.dateFrom);
@@ -912,6 +1059,7 @@ export class ExpensesService {
     } else if (targetFileIds.length === 0) {
       const recent = await this.prisma.claimFile.findMany({
         where: {
+          serviceKind: 'repair',
           OR: [
             { expenses: { some: {} } },
             { approvedBudgetAmount: { gt: 0 } },
@@ -1041,6 +1189,7 @@ export class ExpensesService {
     const expenses = await this.prisma.expense.findMany({
       where: {
         date: { gte: startDate, lte: endDate },
+        ...hasarFileBudgetExpenseWhere(),
       },
       select: {
         amount: true,

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { hasarFileBudgetExpenseWhere } from '@sigorta/shared';
 import { vatReportPeriodBounds } from './vat-report-period';
 
 /**
@@ -208,6 +209,7 @@ export class FinancialSummaryService {
           where: {
             date: inPeriod,
             approvalStatus: { not: 'REJECTED' },
+            ...hasarFileBudgetExpenseWhere(),
           },
           _sum: { amount: true },
         }),

@@ -53,6 +53,10 @@ export class CreateExpenseDto {
   @IsString()
   fileCaseId?: string;
 
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
   /** Rapordaki iş grubu — bütçe denetimi bu satır üzerinden */
   @IsOptional()
   @IsString()
@@ -118,6 +122,10 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsString()
   fileCaseId?: string;
+
+  @IsOptional()
+  @IsString()
+  customerId?: string;
 
   @IsOptional()
   @IsString()

@@ -26,11 +26,13 @@ export function FileMasrafIsleme({
   fileLabel,
   reportId,
   supplierCostHint,
+  fileBased = true,
 }: {
   claimId: string;
   fileLabel?: string;
   reportId?: string | null;
   supplierCostHint?: number | null;
+  fileBased?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -89,12 +91,14 @@ export function FileMasrafIsleme({
       <div id="meridyen-operasyon-gideri">
       <FinansPanelCard
         title="Meridyen Operasyon Gideri"
-        subtitle="Hasar tespit, enkaz kaldırma, refakat bu dosyanın bütçesine yazılır"
-        action={{
+        subtitle={fileBased
+          ? 'Hasar tespit, enkaz kaldırma, refakat bu dosyanın bütçesine yazılır'
+          : 'Danışmanlık masrafı müşteriye yazılır. Finans → Masraf İzleme.'}
+        action={fileBased ? {
           label: 'Yeni Masraf Ekle',
           onClick: () => setOpen(true),
           variant: 'primary',
-        }}
+        } : undefined}
       >
         <FinansMetricGrid
           items={[
@@ -109,7 +113,9 @@ export function FileMasrafIsleme({
         ) : expenses.length === 0 ? (
           <FinansEmptyState
             title="Henüz Masraf Yok"
-            description="Hasar tespit, enkaz kaldırma, refakat için Yeni Masraf Ekle."
+            description={fileBased
+              ? 'Hasar tespit, enkaz kaldırma, refakat için Yeni Masraf Ekle.'
+              : 'Danışmanlık masrafı Finans → Masraf İzleme ekranında müşteriye yazılır.'}
           />
         ) : (
           <ul className="divide-y divide-slate-100">

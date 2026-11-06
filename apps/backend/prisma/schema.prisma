@@ -635,6 +635,7 @@ model Customer {
   catalogInsuranceCompany InsuranceCompany? @relation("InsuranceCompanyPortalCustomer", fields: [insuranceCompanyId], references: [id], onDelete: SetNull)
 
   claimFiles   ClaimFile[]
+  expenses     Expense[]
   channelAgencyFiles ClaimFile[] @relation("ClaimChannelAgency")
   channelBrokerFiles ClaimFile[] @relation("ClaimChannelBroker")
   channelExpertFiles ClaimFile[] @relation("ClaimChannelExpert")
@@ -3518,6 +3519,7 @@ model Expense {
   approvedAt        DateTime?               @map("approved_at")
   operationSubject  ExpenseOperationSubject? @map("operation_subject")
   fileCaseId        String?                 @map("file_case_id")
+  customerId        String?                 @map("customer_id")
   expenseCategoryId String?                 @map("expense_category_id")
   isOverheadPool    Boolean                 @default(false) @map("is_overhead_pool")
   overheadAllocatedAt DateTime?             @map("overhead_allocated_at")
@@ -3530,9 +3532,11 @@ model Expense {
   approvedBy  User?             @relation("ExpenseApprovedBy", fields: [approvedById], references: [id])
   createdBy   User              @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
   fileCase    ClaimFile?        @relation(fields: [fileCaseId], references: [id])
+  customer    Customer?         @relation(fields: [customerId], references: [id])
   expenseCategory ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id])
 
   @@index([expenseGroup])
+  @@index([customerId])
   @@index([expenseCategoryId])
   @@index([isOverheadPool])
   @@index([approvalStatus])
