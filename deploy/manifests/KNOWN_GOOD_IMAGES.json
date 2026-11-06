@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-11-04",
-  "label": "v672-menu-arama",
-  "description": "v672 full: Operasyon üstünden Acil Yardım Dosyaları kalkar; Hasar listesi adla da bulur. Geri alma web v671 / backend v671.",
+  "updatedAt": "2026-11-06",
+  "label": "v673-tespit-pdf",
+  "description": "v673 full: Danışmanlık tespit raporu PDF açılır. Geri alma web v672 / backend v672.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v672-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v672-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v673-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v673-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v671-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v671-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v672-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v672-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

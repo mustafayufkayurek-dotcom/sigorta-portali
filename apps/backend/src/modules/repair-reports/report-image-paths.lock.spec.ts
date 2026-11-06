@@ -48,6 +48,13 @@ describe('report-image-paths LOCK', () => {
     assert.doesNotMatch(svc.slice(svc.indexOf('private async getReportForPdf')), /attachClaimInspectionPhotosToReport/);
   });
 
+  it('Hasar PDF sorgusu dosyada olmayan fileDate istemez', () => {
+    const svc = read('repair-reports.service.ts');
+    const select = svc.slice(svc.indexOf('const CLAIM_FILE_SAFE_SELECT'), svc.indexOf('const REPORT_INCLUDE_CORE'));
+    assert.match(select, /notificationDate: true/);
+    assert.doesNotMatch(select, /fileDate/);
+  });
+
   it('getUploadsRootDir export edilir', () => {
     const paths = read('report-image-paths.ts');
     assert.match(paths, /export function getUploadsRootDir/);

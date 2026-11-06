@@ -113,7 +113,6 @@ const CLAIM_FILE_SAFE_SELECT = {
   },
   propertyAddress: true,
   notificationDate: true,
-  fileDate: true,
   serviceKind: true,
   consultancyServiceType: { select: { id: true, code: true, name: true } },
   claimSubject: { select: { id: true, code: true, name: true } },

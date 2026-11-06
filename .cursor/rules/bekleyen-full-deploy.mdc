@@ -1,11 +1,11 @@
 ---
-description: Canlı web v672 / backend v672
+description: Canlı web v673 / backend v673
 alwaysApply: true
 ---
 
-# Canlı (04.11.2026)
+# Canlı (06.11.2026)
 
-Canlı: web **v672** · backend **v672**. Geri alma: web **v671** / backend **v671**.
+Canlı: web **v673** · backend **v673**. Geri alma: web **v672** / backend **v672**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v673 (full):** Danışmanlık tespit raporu PDF açılır. Sorgu Hasar dosyasında olmayan tarih alanını istemez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v672 / backend v672.
 
 **v672 (full):** Operasyon menüsünün en üstündeki Acil Yardım Dosyaları kalkar; Acil yalnız Asistans Hizmetleri altındadır. Hasar listesinde Aydın Ziya Özgür adla da bulunur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v671 / backend v671.
 
@@ -221,4 +223,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v672** · backend **v672**.
+Canlı web **v673** · backend **v673**.
