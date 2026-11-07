@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-07",
-  "label": "v674-masraf-yolu",
-  "description": "v674 full: Danışmanlık ve asistans masrafı müşteriye yazılır. Hasar bütçe kartı müşteri masrafını toplamaz. Geri alma web v673 / backend v673.",
+  "label": "v675-tespit-pdf",
+  "description": "v675 full: Hasar Tespit raporu yeni sekmede açılır. Edge boş önizleme kalkar. Geri alma web v674 / backend v674.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v674-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v674-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v675-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v675-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v673-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v673-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v674-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v674-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

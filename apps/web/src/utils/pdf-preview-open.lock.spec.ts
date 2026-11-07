@@ -18,9 +18,24 @@ const helper = readFileSync(join(here, 'pdf-preview-open.ts'), 'utf8');
 
 describe('hasar pdf önizleme LOCK', () => {
   it('rapor sayfası önizlemeyi yardımcıdan açar; noopener yok', () => {
-    assert.match(reportPage, /presentPdfPreview\(/);
+    assert.match(reportPage, /presentPdfPreviewUrl\(/);
+    assert.match(reportPage, /\/pdf\?view=/);
+    assert.match(reportPage, /window\.open\('about:blank', 'hasar-rapor-pdf'\)/);
     assert.match(reportPage, /readPdfPreviewFailure\(/);
+    assert.doesNotMatch(reportPage, /presentPdfPreview\(res\.data/);
     assert.doesNotMatch(reportPage, /window\.open\(url, '_blank', 'noopener,noreferrer'\)/);
+  });
+
+  it('Hasar PDF ekranda açılır; indirme linki dosyayı kaydeder', () => {
+    const controller = readFileSync(
+      join(here, '../../../../apps/backend/src/modules/repair-reports/repair-reports.controller.ts'),
+      'utf8',
+    );
+    const getPdf = controller.slice(controller.indexOf("@Get('repair-reports/:id/pdf')"), controller.indexOf('// ── Email'));
+    assert.match(getPdf, /toContentDisposition\(filename, 'inline'\)/);
+    assert.match(helper, /presentPdfPreviewUrl/);
+    assert.match(helper, /Yeni Sekmede Aç/);
+    assert.match(helper, /z-index:10050/);
   });
 
   it('müşteri görünümü raporu aynı sayfada açar; yeni sekmeye bağlanmaz', () => {

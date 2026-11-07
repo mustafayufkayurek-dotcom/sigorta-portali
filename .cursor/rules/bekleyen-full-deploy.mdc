@@ -1,11 +1,11 @@
 ---
-description: Canlı web v674 / backend v674
+description: Canlı web v675 / backend v675
 alwaysApply: true
 ---
 
 # Canlı (07.11.2026)
 
-Canlı: web **v674** · backend **v674**. Geri alma: web **v673** / backend **v673**.
+Canlı: web **v675** · backend **v675**. Geri alma: web **v674** / backend **v674**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v675 (full):** Hasar Tespit raporu yeni sekmede açılır. Edge boş önizleme kalkar. Sekme kesilirse rapor aynı sayfada durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v674 / backend v674.
 
 **v674 (full):** Danışmanlık ve asistans masrafı müşteriye yazılır. Hasar masrafı dosyada kalır; üst kart, sapma ve dosya kârı müşteri masrafını toplamaz. Yol kilitlenir. Masraf grubu satırdan eklenir ve Ayarlar listesine düşer. Fiş okuma kutusu daralır. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v673 / backend v673.
 
@@ -225,4 +227,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v674** · backend **v674**.
+Canlı web **v675** · backend **v675**.

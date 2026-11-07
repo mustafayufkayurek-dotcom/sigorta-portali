@@ -1,8 +1,7 @@
 /**
  * Hasar onarım raporu PDF önizlemesi.
- * Edge/Chrome, blob adresini `noopener` ile açınca hata fırlatır;
- * personel «PDF önizleme açılamadı» görür, rapor aslında gelmiştir.
- * Yeni pencere kesilirse aynı sayfada önizleme durur.
+ * Edge, blob adresindeki PDF’i boş açar; personel dosya gelmiş olsa da «açılmadı» görür.
+ * Rapor aynı sitenin adresiyle açılır. Yeni pencere kesilirse aynı sayfada durur.
  */
 
 const PANEL_ID = 'hasar-pdf-onizleme';
@@ -92,7 +91,7 @@ function mountPdfPreviewPanel(url: string, title: string, print = false) {
     'position:fixed',
     'inset:0',
     'background:rgba(15,23,42,.45)',
-    'z-index:200',
+    'z-index:10050',
     'display:flex',
     'align-items:center',
     'justify-content:center',
@@ -156,7 +155,19 @@ function mountPdfPreviewPanel(url: string, title: string, print = false) {
     });
   }
 
-  bar.append(heading, close);
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  if (/^https?:\/\//i.test(url)) {
+    const open = document.createElement('a');
+    open.href = url;
+    open.target = '_blank';
+    open.rel = 'noopener';
+    open.textContent = 'Yeni Sekmede Aç';
+    open.style.cssText = 'border:1px solid #e2e8f0;background:#fff;color:#1e293b;border-radius:8px;padding:6px 12px;font-size:13px;text-decoration:none;';
+    actions.append(open);
+  }
+  actions.append(close);
+  bar.append(heading, actions);
   card.append(bar, frame);
   root.append(card);
   document.body.append(root);
@@ -196,6 +207,12 @@ export async function openSessionBlob(
 ): Promise<'tab' | 'panel' | null> {
   const url = URL.createObjectURL(blob);
   return presentBlobUrl(url, title, Boolean(opts?.print));
+}
+
+/** Edge blob PDF göstermez. Adres aynı sitenin raporudur; çerez oturumu gider. */
+export function presentPdfPreviewUrl(url: string, title: string): 'panel' {
+  mountPdfPreviewPanel(url, title, false);
+  return 'panel';
 }
 
 export async function presentPdfPreview(data: unknown, title: string): Promise<'tab' | 'panel' | null> {

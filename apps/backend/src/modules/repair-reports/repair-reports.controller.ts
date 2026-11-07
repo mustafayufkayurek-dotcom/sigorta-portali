@@ -45,7 +45,7 @@ function buildPdfFilename(opts: {
 }
 
 /** Node Content-Disposition header ASCII-only; Türkçe dosya adı kırıyordu (PDF 500) */
-function toContentDispositionAttachment(filename: string): string {
+function toContentDisposition(filename: string, disposition: 'inline' | 'attachment'): string {
   const ascii = filename
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -61,7 +61,7 @@ function toContentDispositionAttachment(filename: string): string {
     .trim()
     .slice(0, 180) || 'onarim-raporu.pdf';
   const utf8 = encodeURIComponent(filename).replace(/['()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
-  return `attachment; filename="${ascii}"; filename*=UTF-8''${utf8}`;
+  return `${disposition}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
 }
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -159,7 +159,7 @@ export class RepairReportsController {
     });
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': toContentDispositionAttachment(filename),
+      'Content-Disposition': toContentDisposition(filename, 'inline'),
     });
     res.send(buffer);
   }
@@ -327,7 +327,7 @@ export class RepairReportsController {
     });
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': toContentDispositionAttachment(filename),
+      'Content-Disposition': toContentDisposition(filename, 'attachment'),
     });
     res.send(buffer);
   }

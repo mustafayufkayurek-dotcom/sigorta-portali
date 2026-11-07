@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader, authAxios, ensureSessionBeforeMutation } from '@/utils/api';
-import { presentPdfPreview, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
+import { presentPdfPreviewUrl, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
 import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, X } from 'lucide-react';
@@ -4579,34 +4579,22 @@ function EmergencyReportEditor({
 
   const openPdfPreview = async (view: 'internal' | 'external') => {
     const title = view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü';
-    try {
-      const res = await axios.get(`${API}/repair-reports/${reportId}/pdf?view=${view}`, {
-        headers: authHeader(),
-        responseType: 'blob',
-        transformResponse: [(data) => data],
-      });
-      const failure = await readPdfPreviewFailure(res.data, String(res.headers['content-type'] ?? ''));
-      if (failure) {
-        notify('error', failure);
-        return;
-      }
-      const opened = await presentPdfPreview(res.data, title);
-      if (!opened) notify('error', 'PDF önizleme açılamadı.');
-    } catch (e) {
-      const payload = axios.isAxiosError(e) ? e.response?.data : undefined;
-      if (payload) {
-        const failure = await readPdfPreviewFailure(payload, String(axios.isAxiosError(e) ? e.response?.headers?.['content-type'] ?? '' : ''));
-        if (!failure) {
-          const opened = await presentPdfPreview(payload, title);
-          if (opened) return;
-        } else {
-          notify('error', failure);
-          return;
-        }
-      }
-      notify('error', 'PDF önizleme açılamadı.');
-      console.error(e);
+    const tab = window.open('about:blank', 'hasar-rapor-pdf');
+    if (!(await ensureSessionBeforeMutation())) {
+      tab?.close();
+      notify('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
+      return;
     }
+    const url = `${API}/repair-reports/${reportId}/pdf?view=${view}`;
+    if (tab && !tab.closed) {
+      try {
+        tab.location.replace(url);
+        return;
+      } catch {
+        tab.close();
+      }
+    }
+    presentPdfPreviewUrl(url, title);
   };
 
   const handleSubmitReport = async () => {
@@ -6017,57 +6005,23 @@ export default function RepairReportPage() {
   };
 
   const openPdfPreview = async (view: 'internal' | 'external') => {
+    const title = view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü';
+    const tab = window.open('about:blank', 'hasar-rapor-pdf');
     if (!(await ensureSessionBeforeMutation())) {
+      tab?.close();
       notify('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
       return;
     }
-    const title = view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü';
-    try {
-      const res = await authAxios<Blob>({
-        method: 'GET',
-        url: `${API}/repair-reports/${reportId}/pdf?view=${view}`,
-        responseType: 'blob',
-        timeout: 120_000,
-        transformResponse: [(data) => data],
-      });
-      const failure = await readPdfPreviewFailure(res.data, String(res.headers['content-type'] ?? ''));
-      if (failure) {
-        notify('error', failure);
+    const url = `${API}/repair-reports/${reportId}/pdf?view=${view}`;
+    if (tab && !tab.closed) {
+      try {
+        tab.location.replace(url);
         return;
+      } catch {
+        tab.close();
       }
-      const opened = await presentPdfPreview(res.data, title);
-      if (!opened) {
-        notify('error', 'PDF önizleme açılamadı.');
-      }
-    } catch (e: any) {
-      const payload = axios.isAxiosError(e) ? e.response?.data : undefined;
-      if (payload) {
-        const failure = await readPdfPreviewFailure(
-          payload,
-          String(axios.isAxiosError(e) ? e.response?.headers?.['content-type'] ?? '' : ''),
-        );
-        if (!failure) {
-          const opened = await presentPdfPreview(payload, title);
-          if (opened) return;
-        } else {
-          notify('error', failure);
-          return;
-        }
-      }
-      let message = 'PDF önizleme açılamadı.';
-      if (isUiActionTimeout(e)) {
-        message = UI_ACTION_TIMEOUT_MESSAGE;
-      } else if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {
-        try {
-          const text = await e.response.data.text();
-          message = JSON.parse(text)?.message ?? message;
-        } catch { /* ignore */ }
-      } else if (e?.response?.data?.message) {
-        message = e.response.data.message;
-      }
-      notify('error', message);
-      console.error(e);
     }
+    presentPdfPreviewUrl(url, title);
   };
 
   if (loading || !report) return <div className="text-slate-400 py-16 text-center">Yükleniyor...</div>;
