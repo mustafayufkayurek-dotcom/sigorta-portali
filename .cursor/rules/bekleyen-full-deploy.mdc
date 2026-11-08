@@ -1,11 +1,11 @@
 ---
-description: Canlı web v675 / backend v675
+description: Canlı web v676 / backend v676
 alwaysApply: true
 ---
 
-# Canlı (07.11.2026)
+# Canlı (08.11.2026)
 
-Canlı: web **v675** · backend **v675**. Geri alma: web **v674** / backend **v674**.
+Canlı: web **v676** · backend **v676**. Geri alma: web **v675** / backend **v675**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v676 (full):** Sol menüde Danışmanlık başlığı Ek Hizmetler. Hasar Onarım tek satır. Hasar Tespit ve Poliçe Yönetimi Ek Hizmetler altında. Yeni Dosya kaynağı Sigorta, Broker, Eksper ve Özel Müşteri. Sigorta seçilince dosya sorumlusu karttaki kişidir. Acente, broker ve eksper yeni kaydı müşteri kartından; kayıt bitince Yeni Dosya’ya dönülür. Broker ile açılışta acente sorulmaz. Hizmet listesi menüyle aynıdır. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v675 / backend v675.
 
 **v675 (full):** Hasar Tespit raporu yeni sekmede açılır. Edge boş önizleme kalkar. Sekme kesilirse rapor aynı sayfada durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v674 / backend v674.
 

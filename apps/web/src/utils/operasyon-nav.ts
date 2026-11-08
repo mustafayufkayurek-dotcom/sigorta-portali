@@ -1,3 +1,5 @@
+import { isHasarTespitConsultancyType } from '@sigorta/shared';
+
 export const HASAR_LIST_HIZMET_PARAM = 'hizmet';
 export const HASAR_HIZMET_DANISMANLIK = 'danismanlik';
 export const HASAR_HIZMET_TESPIT = 'hasar-tespit';
@@ -63,26 +65,31 @@ export function normalizeMusteriKaynakParam(raw: string | null | undefined): str
 }
 
 export function fallbackConsultancyNavTypes(): { name: string; code: string }[] {
-  return [{ name: 'Hasar Tespit', code: HASAR_HIZMET_TESPIT }];
+  return [{ name: 'Danışmanlık', code: HASAR_HIZMET_DANISMANLIK }];
 }
 
 export function buildDanismanlikNavChildren(
   types: { name: string; code?: string | null }[] | null | undefined,
 ): OperasyonNavChild[] {
-  const rows = (types ?? []).filter((t) => String(t.name ?? '').trim());
+  const rows = (types ?? [])
+    .filter((t) => String(t.name ?? '').trim())
+    .filter((t) => !isHasarTespitConsultancyType({ code: t.code, name: t.name }));
   const list = rows.length ? rows : fallbackConsultancyNavTypes();
-  return sortNavByTitleTr(
-    list.map((t) => {
-      const code = normalizeHasarHizmetParam(t.code) || HASAR_HIZMET_TESPIT;
-      return { title: String(t.name).trim(), href: hasarListHrefForHizmet(code) };
-    }),
-  );
+  const dynamic = list.map((t) => {
+    const code = normalizeHasarHizmetParam(t.code) || HASAR_HIZMET_DANISMANLIK;
+    return { title: String(t.name).trim(), href: hasarListHrefForHizmet(code) };
+  });
+  return sortNavByTitleTr([
+    ...dynamic,
+    { title: 'Hasar Tespit', href: hasarListHrefForHizmet(HASAR_HIZMET_TESPIT) },
+    { title: 'Poliçe Yönetimi', href: '/panel/danismanlik/police-yonetimi' },
+  ]);
 }
 
 export function buildAsistansNavChildren(): OperasyonNavChild[] {
   return sortNavByTitleTr([
     { title: 'Acil Yardım', href: acilListHrefForKaynak(MUSTERI_KAYNAK_ASISTANS) },
-    { title: 'Hasar Onarım', href: '/panel/hasar-dosyalari' },
+    { title: 'Hasar Onarım', href: hasarListHrefForHizmet('hasar-onarim') },
   ]);
 }
 
@@ -93,7 +100,7 @@ export function buildOperasyonNavChildren(
     { title: 'Dosya Özeti', href: '/panel/operasyon', exactMatch: true },
     { title: 'Gelen Kutusu', href: '/panel/operasyon/gelen-kutusu' },
     {
-      title: 'Danışmanlık',
+      title: 'Ek Hizmetler',
       href: hasarListHrefForHizmet(HASAR_HIZMET_DANISMANLIK),
       groupOnly: true,
       children: buildDanismanlikNavChildren(types),
@@ -118,6 +125,7 @@ export function hasarListPageTitle(hizmet: string | null, kaynak?: string | null
   const code = normalizeHasarHizmetParam(hizmet);
   if (kaynakCode === MUSTERI_KAYNAK_ASISTANS && !code) return 'Hasar Onarım';
   if (!code) return 'Hasar Onarım';
+  if (code === 'hasar-onarim' || code === 'repair' || code === 'onarim') return 'Hasar Onarım';
   if (code === HASAR_HIZMET_TESPIT) return 'Hasar Tespit';
   if (code === HASAR_HIZMET_DANISMANLIK) return 'Danışmanlık';
   return code

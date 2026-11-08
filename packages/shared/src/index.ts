@@ -38,6 +38,7 @@ export * from './file-finance-kpis';
 export * from './file-vendor-pay';
 export * from './supplier-assignment-guard';
 export * from './claim-service-kind';
+export * from './claim-customer-source';
 export * from './hasar-randevu-alici';
 export * from './claim-file-channels';
 export * from './claim-pre-approval';

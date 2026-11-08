@@ -209,9 +209,9 @@ export const OPS_NOTICE = {
   },
   hasarDanismanlikHizmet: {
     id: 'hasar-danismanlik-hizmet-v659',
-    title: 'Danışmanlık',
+    title: 'Ek Hizmetler',
     body:
-      'Danışmanlık Operasyon menüsündedir. Hasar Tespit ve eklenen türler oradan açılır. Yeni tür gerektiğinde Tanımlar’dan eklenir.',
+      'Ek Hizmetler Operasyon menüsündedir. Hasar Tespit, Danışmanlık ve Poliçe Yönetimi oradan açılır. Yeni tür gerektiğinde Tanımlar’dan eklenir.',
   },
   hasarDosyaKanali: {
     id: 'hasar-dosya-kanali-v668',

@@ -54,6 +54,15 @@ function emptyStateLabel(subTypeFilter: string | undefined, hasFilter: boolean):
   if (subTypeFilter === 'asistan_firmasi') {
     return hasFilter ? 'Asistan Firması Bulunamadı.' : 'Kayıtlı asistan firması bulunamadı.';
   }
+  if (subTypeFilter === 'sigorta_sirketi') {
+    return hasFilter ? 'Sigorta Şirketi Bulunamadı.' : 'Kayıtlı sigorta şirketi kartı yok.';
+  }
+  if (subTypeFilter === 'broker_firmasi') {
+    return hasFilter ? 'Broker Bulunamadı.' : 'Kayıtlı broker kartı yok.';
+  }
+  if (subTypeFilter === 'private_customer') {
+    return hasFilter ? 'Özel Müşteri Bulunamadı.' : 'Kayıtlı özel müşteri yok.';
+  }
   return hasFilter ? 'Müşteri Bulunamadı.' : 'Arama Yapın veya Tüm Müşterileri Görüntüleyin.';
 }
 
@@ -116,9 +125,13 @@ export function CustomerSelectModal({ open, onClose, onSelect, onCreateNew, subT
       ? 'Asistan Firması Seç'
       : subTypeFilter === 'eksper_firmasi' || subTypeFilter === 'eksper'
         ? 'Eksper Ofisi Seç'
-        : subTypeFilter
-          ? 'Müşteri Seç'
-          : 'Müşteri Seç';
+        : subTypeFilter === 'sigorta_sirketi'
+          ? 'Sigorta Şirketi Seç'
+          : subTypeFilter === 'broker_firmasi'
+            ? 'Broker Seç'
+            : subTypeFilter === 'private_customer'
+              ? 'Özel Müşteri Seç'
+              : 'Müşteri Seç';
 
   const displayName = (c: Customer) => customerDisplayName(c);
 

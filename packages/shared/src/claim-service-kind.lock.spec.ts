@@ -51,7 +51,9 @@ describe('claim service kind lock', () => {
     assert.equal(departmentCodeForNewClaim({ customerSource: 'private', serviceKind: 'inspection' }), 'ozel-musteri');
     assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'consultancy' }), 'danismanlik');
     assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'repair' }), 'hasar-onarim');
-    assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'inspection' }), 'danismanlik');
+    assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'inspection' }), 'hasar-onarim');
+    assert.equal(departmentCodeForNewClaim({ customerSource: 'insurance', serviceKind: 'inspection' }), 'hasar-onarim');
+    assert.equal(departmentCodeForNewClaim({ customerSource: 'broker', serviceKind: 'repair' }), 'hasar-onarim');
   });
 
   it('Yeni Dosya üç hizmet seçeneğidir; liste Danışmanlık menüsüyle süzülür', () => {
@@ -61,9 +63,7 @@ describe('claim service kind lock', () => {
     assert.equal(claimServiceKindFromConsultancyType({ code: HASAR_TESPIT_SERVICE_CODE, name: 'Hasar Tespit' }), 'inspection');
     assert.equal(claimServiceKindFromConsultancyType({ code: 'sovtaj', name: 'Sovtaj' }), 'consultancy');
     assert.deepEqual(claimFileWhereForHizmet('hasar-tespit'), { serviceKind: 'inspection' });
-    assert.deepEqual(claimFileWhereForHizmet('danismanlik'), {
-      serviceKind: { in: ['inspection', 'consultancy'] },
-    });
+    assert.deepEqual(claimFileWhereForHizmet('danismanlik'), { serviceKind: 'consultancy' });
     assert.deepEqual(claimFileWhereForMusteriKaynak('asistans'), {
       customer: { subType: { in: ['asistan_firmasi', 'asistans_firmasi'] } },
     });

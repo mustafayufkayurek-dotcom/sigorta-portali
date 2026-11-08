@@ -12,7 +12,6 @@ import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/
 import { normalizeTrDateValue, isCompleteTrDateValue } from '@/utils/tr-date-input';
 import { formatVendorAddress } from '@/utils/vendor-form-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
-import { HASAR_EXPERT_CUSTOMER_SUB_TYPE } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import {
   todayTrDateDisplay,
@@ -28,6 +27,7 @@ import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { PhoneInput } from '@/components/PhoneInput';
+import { buildMusteriGrubuAddHref } from '@/utils/musteri-gruplari-add-context';
 import { parseInternationalPhone } from '@/data/country-codes';
 import {
   CLAIM_FILE_CHANNELS,
@@ -35,6 +35,13 @@ import {
   CLAIM_SERVICE_KINDS,
   CONSULTANCY_SERVICE_FAMILY,
   HASAR_FILE_INSURANCE_CATALOG_QUERY,
+  CLAIM_CUSTOMER_SOURCES,
+  CLAIM_CUSTOMER_SOURCE_LABEL,
+  claimCustomerSourceAllowsPrivateAlongside,
+  claimCustomerSourceContactLabel,
+  claimCustomerSourceFromSubType,
+  claimCustomerSourceHidesChannel,
+  claimCustomerSourceSubType,
   claimFileChannelCreateFields,
   claimServiceKindFromListHizmet,
   consultancyTypesForNewFile,
@@ -42,12 +49,13 @@ import {
   newClaimOpeningCaption,
   parseClaimServiceKind,
   parseServiceTypeListPayload,
+  type ClaimCustomerSource,
   type ClaimServiceKind,
 } from '@sigorta/shared';
 
 
 
-type InsuranceCompany = { id: string; name: string };
+type InsuranceCompany = { id: string; name: string; email?: string | null };
 type ClaimStatus = { id: string; code: string; name: string };
 type SelectedCustomer = {
   id: string;
@@ -56,14 +64,18 @@ type SelectedCustomer = {
   firstName?: string | null;
   lastName?: string | null;
   companyName?: string | null;
+  shortName?: string | null;
   identityNo?: string | null;
   taxNumber?: string | null;
   phone?: string | null;
+  insuranceCompanyId?: string | null;
 };
+
+type SourceContact = { id: string; name: string; phone?: string | null; email?: string | null };
 
 type PanelUser = { id: string; firstName?: string | null; lastName?: string | null };
 type ConsultancyTypeOption = { id: string; name: string; code?: string | null };
-type ChannelFirm = { id: string; name: string };
+type ChannelFirm = { id: string; name: string; email?: string | null };
 
 function customersToChannelFirms(payload: unknown): ChannelFirm[] {
   const nested = payload && typeof payload === 'object' && 'data' in payload
@@ -75,7 +87,8 @@ function customersToChannelFirms(payload: unknown): ChannelFirm[] {
       const c = row as SelectedCustomer & { id?: string };
       const id = String(c.id ?? '').trim();
       const name = customerDisplayName(c);
-      return { id, name };
+      const email = String((c as { email?: string | null }).email ?? '').trim() || null;
+      return { id, name, email };
     })
     .filter((row) => row.id && row.name && row.name !== '—')
     .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
@@ -123,7 +136,11 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const [description, setDescription] = useState('');
   const [currentStatusId, setCurrentStatusId] = useState('');
 
-  const [customerSource, setCustomerSource] = useState<'expert' | 'private'>('expert');
+  const [customerSource, setCustomerSource] = useState<ClaimCustomerSource>('expert');
+  const [privateCustomer, setPrivateCustomer] = useState<SelectedCustomer | null>(null);
+  const [sourceContacts, setSourceContacts] = useState<SourceContact[]>([]);
+  const [sourceContactId, setSourceContactId] = useState('');
+  const [customerPickTarget, setCustomerPickTarget] = useState<'source' | 'private'>('source');
   const [serviceKind, setServiceKind] = useState<ClaimServiceKind>(() => claimServiceKindFromListHizmet(listHizmet));
   const [consultancyTypes, setConsultancyTypes] = useState<ConsultancyTypeOption[]>([]);
   const [consultancyServiceTypeId, setConsultancyServiceTypeId] = useState('');
@@ -223,7 +240,11 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       setChannelAgencyFirms(customersToChannelFirms(agencyRes.data));
       setChannelBrokerFirms(customersToChannelFirms(brokerRes.data));
       setChannelExpertFirms(customersToChannelFirms(expertRes.data));
-      let companies: { id: string; name: string }[] = icRes.data.data || [];
+      let companies: InsuranceCompany[] = (icRes.data.data || []).map((row: { id: string; name: string; contactEmail?: string | null }) => ({
+        id: row.id,
+        name: row.name,
+        email: row.contactEmail ?? null,
+      }));
       const me = meRes?.data?.data ?? meRes?.data?.user ?? meRes?.data;
       const roleCode = String(me?.role?.code ?? me?.roleCode ?? '').toLowerCase();
       const meId = String(me?.id ?? me?.userId ?? '');
@@ -291,20 +312,41 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     axios.get(`${API}/customers/${id}`, { headers: authHeader() }).then((res) => {
       const c = res.data?.data ?? res.data;
       if (!alive || !c?.id) return;
-      setSelectedCustomer({
+      const source = claimCustomerSourceFromSubType(c.subType);
+      const picked: SelectedCustomer = {
         id: String(c.id),
         subType: c.subType ?? null,
         fullName: c.fullName ?? null,
         firstName: c.firstName ?? null,
         lastName: c.lastName ?? null,
         companyName: c.companyName ?? null,
+        shortName: c.shortName ?? null,
         identityNo: c.identityNo ?? null,
         taxNumber: c.taxNumber ?? null,
         phone: c.phone ?? null,
-      });
-      setCustomerSource('private');
+        insuranceCompanyId: c.insuranceCompanyId ?? null,
+      };
+      setCustomerSource(source);
+      setSelectedCustomer(picked);
+      setCustomerSearch(customerDisplayName(picked));
       setShowNewCustomerForm(false);
-      setCustomerSearch('');
+      const contacts = Array.isArray(c.contacts) ? c.contacts : [];
+      setSourceContacts(
+        source === 'private'
+          ? []
+          : contacts
+            .map((row: { id?: string; name?: string; phone?: string | null; email?: string | null }) => ({
+              id: String(row.id ?? '').trim(),
+              name: String(row.name ?? '').trim(),
+              phone: row.phone ?? null,
+              email: row.email ?? null,
+            }))
+            .filter((row: SourceContact) => row.id && row.name),
+      );
+      if (source === 'insurance') {
+        const linked = String(c.insuranceCompanyId ?? '').trim();
+        if (linked) setInsuranceCompanyId(linked);
+      }
     }).catch(() => { /* kart seçimi sessizce durur */ });
     return () => { alive = false; };
   }, [prefillCustomerId]);
@@ -336,10 +378,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   }, []);
 
   useEffect(() => {
-    if (customerSource === 'private') return;
     const id = String(selectedCustomer?.id ?? '').trim();
-    if (!id) return;
-    setChannelExpertCustomerId((prev) => prev || id);
+    if (!id || customerSource === 'private') return;
+    if (customerSource === 'expert') setChannelExpertCustomerId(id);
+    if (customerSource === 'broker') setChannelBrokerCustomerId(id);
   }, [selectedCustomer?.id, customerSource]);
 
   useEffect(() => {
@@ -364,7 +406,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
           limit: '15',
           status: 'active',
         });
-        if (customerSource === 'private') params.set('subType', 'private_customer');
+        params.set('subType', claimCustomerSourceSubType(customerSource));
         const res = await axios.get(`${API}/customers?${params}`, { headers: authHeader() });
         const data = res.data.data || [];
         setCustomerResults(data.map((c: Record<string, unknown>) => ({
@@ -388,12 +430,50 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     }, 300);
   };
 
-  const handleSelectCustomerFromDropdown = (c: SelectedCustomer) => {
+  const applySourceCard = useCallback(async (c: SelectedCustomer) => {
     setSelectedCustomer(c);
     setCustomerSearch(customerDisplayName(c));
     setShowCustomerDropdown(false);
     setShowNewCustomerForm(false);
-    setErrors((prev) => { const e = { ...prev }; delete e.customer; return e; });
+    setSourceContactId('');
+    setSourceContacts([]);
+    setErrors((prev) => { const e = { ...prev }; delete e.customer; delete e.insuranceCompanyId; delete e.sourceContactId; return e; });
+    if (customerSource === 'private') return;
+    try {
+      const res = await axios.get(`${API}/customers/${c.id}`, { headers: authHeader() });
+      const card = res.data?.data ?? res.data;
+      const contacts = Array.isArray(card?.contacts) ? card.contacts : [];
+      setSourceContacts(
+        contacts
+          .map((row: { id?: string; name?: string; phone?: string | null; email?: string | null }) => ({
+            id: String(row.id ?? '').trim(),
+            name: String(row.name ?? '').trim(),
+            phone: row.phone ?? null,
+            email: row.email ?? null,
+          }))
+          .filter((row: SourceContact) => row.id && row.name),
+      );
+      if (customerSource === 'insurance') {
+        const linked = String(card?.insuranceCompanyId ?? c.insuranceCompanyId ?? '').trim();
+        if (linked) {
+          setInsuranceCompanyId(linked);
+        } else {
+          const cardName = customerDisplayName({
+            companyName: card?.companyName,
+            shortName: card?.shortName,
+            fullName: card?.fullName,
+          }).toLocaleLowerCase('tr-TR');
+          const match = insuranceCompanies.find((row) => row.name.toLocaleLowerCase('tr-TR') === cardName);
+          setInsuranceCompanyId(match?.id ?? '');
+        }
+      }
+    } catch {
+      setSourceContacts([]);
+    }
+  }, [customerSource, insuranceCompanies]);
+
+  const handleSelectCustomerFromDropdown = (c: SelectedCustomer) => {
+    void applySourceCard(c);
   };
 
   const checkPhoneDuplicate = async (phone: string) => {
@@ -434,7 +514,15 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const validateDosyaFields = (errs: Record<string, string>) => {
     if (!fileNo.trim()) errs.fileNo = 'Dosya numarası zorunludur.';
     if (fileNoError) errs.fileNo = fileNoError;
-    if (customerSource !== 'private' && !insuranceCompanyId) errs.insuranceCompanyId = 'Sigorta şirketi zorunludur.';
+    if (customerSource !== 'private' && customerSource !== 'insurance' && !insuranceCompanyId) {
+      errs.insuranceCompanyId = 'Sigorta şirketi zorunludur.';
+    }
+    if (customerSource === 'insurance' && !insuranceCompanyId) {
+      errs.insuranceCompanyId = 'Seçilen sigorta kartı şirket listesine bağlı değil.';
+    }
+    if (claimCustomerSourceContactLabel(customerSource) && sourceContacts.length > 0 && !sourceContactId) {
+      errs.sourceContactId = 'Karttaki dosya sorumlusu seçilmelidir.';
+    }
     if (!lossType) errs.lossType = 'Hasar konusu zorunludur.';
     if (!assignedOfficeUserId) errs.assignedOfficeUserId = 'Dosya sorumlusu zorunludur.';
     if (!serviceKind) errs.serviceKind = 'Hizmet türü zorunludur.';
@@ -467,7 +555,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       });
     }
     if (errs.customer) setOpenSections((p) => ({ ...p, eksper: true }));
-    if (errs.fileNo || errs.insuranceCompanyId || errs.lossType || errs.insuredName || errs.assignedOfficeUserId || errs.serviceKind || errs.consultancyServiceTypeId) {
+    if (errs.fileNo || errs.insuranceCompanyId || errs.lossType || errs.insuredName || errs.assignedOfficeUserId || errs.serviceKind || errs.consultancyServiceTypeId || errs.sourceContactId) {
       setOpenSections((p) => ({ ...p, dosya: true }));
     }
     return Object.keys(errs).length === 0;
@@ -487,13 +575,15 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       if (showNewCustomerForm && customerSource !== 'private') {
         const cRes = await axios.post(`${API}/customers`, {
           type: 'corporate',
-          subType: HASAR_EXPERT_CUSTOMER_SUB_TYPE,
+          subType: claimCustomerSourceSubType(customerSource),
           serviceType: 'hasar',
           companyName: toTitleCaseTR(newCustomerCompanyName.trim()),
           taxNumber: newCustomerTaxNumber.trim() || undefined,
           phone: newCustomerPhone || undefined,
         }, { headers: authHeader() });
         customerId = cRes.data.data.id;
+      } else if (privateCustomer?.id && customerSource !== 'private') {
+        customerId = privateCustomer.id;
       } else if (!customerId && insuredName.trim()) {
         const name = toTitleCaseTR(insuredName.trim());
         const parts = name.split(/\s+/).filter(Boolean);
@@ -545,9 +635,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         siteContactPhone: parseInternationalPhone(siteContactPhone).international || undefined,
         siteContactEmail: siteContactEmail.trim() || undefined,
         ...claimFileChannelCreateFields({
-          channelAgencyCustomerId,
-          channelBrokerCustomerId,
-          channelExpertCustomerId: channelExpertCustomerId || (customerSource !== 'private' ? customerId : '') || null,
+          channelAgencyCustomerId: customerSource === 'broker' ? null : channelAgencyCustomerId,
+          channelBrokerCustomerId: channelBrokerCustomerId || (customerSource === 'broker' ? selectedCustomer?.id : '') || null,
+          channelExpertCustomerId: channelExpertCustomerId || (customerSource === 'expert' ? selectedCustomer?.id : '') || null,
         }),
       };
       if (currentStatusId) payload.currentStatusId = currentStatusId;
@@ -573,18 +663,22 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       <div className="mb-3" data-field="customerSource">
         <label className={label}>Müşteri Kaynağı</label>
         <div className="grid grid-cols-2 gap-1.5">
-          {([
-            ['expert', 'Eksper Ofisi'],
-            ['private', 'Özel Müşteri'],
-          ] as const).map(([id, caption]) => (
+          {CLAIM_CUSTOMER_SOURCES.map((id) => (
             <button
               key={id}
               type="button"
               onClick={() => {
                 setCustomerSource(id);
                 setSelectedCustomer(null);
+                setPrivateCustomer(null);
+                setSourceContacts([]);
+                setSourceContactId('');
                 setCustomerSearch('');
                 setShowNewCustomerForm(false);
+                setInsuranceCompanyId('');
+                setChannelBrokerCustomerId('');
+                setChannelExpertCustomerId('');
+                if (id === 'broker') setChannelAgencyCustomerId('');
               }}
               className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${
                 customerSource === id
@@ -592,7 +686,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
                   : 'border-slate-200 bg-white text-slate-600'
               }`}
             >
-              {caption}
+              {CLAIM_CUSTOMER_SOURCE_LABEL[id]}
             </button>
           ))}
         </div>
@@ -619,7 +713,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       ) : !showNewCustomerForm ? (
         <>
           <div ref={customerSearchRef} className="relative">
-            <label className={label}>{customerSource === 'private' ? 'Özel Müşteri Ara' : 'Müşteri Ara'}</label>
+            <label className={label}>{CLAIM_CUSTOMER_SOURCE_LABEL[customerSource]} Ara</label>
             <input
               type="text"
               className={`${field} ${errors.customer ? 'border-red-400' : ''}`}
@@ -663,42 +757,89 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
             <button
               type="button"
-              onClick={() => setShowCustomerModal(true)}
+              onClick={() => { setCustomerPickTarget('source'); setShowCustomerModal(true); }}
               className="w-full px-3 py-2.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/50 sm:flex-1"
             >
               Listeden Seç
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (customerSource === 'private') {
-                  const params = new URLSearchParams({
-                    openAdd: '1',
-                    subType: 'private_customer',
-                    returnTo: '/panel/hasar-dosyalari?yeni=1',
-                    returnLabel: 'Yeni Dosya',
-                  });
-                  router.push(`/panel/musteriler?${params.toString()}`);
-                  return;
-                }
-                setShowNewCustomerForm(true);
-                setSelectedCustomer(null);
-                setCustomerSearch('');
-                setOpenSections((p) => ({ ...p, eksper: true }));
-              }}
+              onClick={() => openFullCustomerCard(claimCustomerSourceSubType(customerSource))}
               className="w-full px-3 py-2.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50 sm:flex-1"
             >
-              {customerSource === 'private' ? 'Yeni Özel Müşteri' : 'Yeni Eksper Ofisi'}
+              {`Yeni ${CLAIM_CUSTOMER_SOURCE_LABEL[customerSource]}`}
             </button>
           </div>
         </>
       ) : null}
 
-      {showNewCustomerForm && customerSource !== 'private' && (
+      {claimCustomerSourceContactLabel(customerSource) && (
+        <div className="mt-2" data-field="sourceContactId">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className={label}>
+              {claimCustomerSourceContactLabel(customerSource)}
+              {sourceContacts.length > 0 ? <span className="text-status-danger"> *</span> : null}
+            </label>
+            <button
+              type="button"
+              className="text-[11px] font-medium text-brand-700"
+              onClick={() => openSourceContactCard()}
+            >
+              Kişi Ekle
+            </button>
+          </div>
+          <select
+            className={`${field} ${errors.sourceContactId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
+            value={sourceContactId}
+            disabled={!selectedCustomer || sourceContacts.length === 0}
+            onChange={(e) => {
+              const id = e.target.value;
+              setSourceContactId(id);
+              const row = sourceContacts.find((item) => item.id === id);
+              if (!row) return;
+              setSiteContactName((prev) => (prev.trim() ? prev : toTitleCaseTR(row.name)));
+              setSiteContactPhone((prev) => (prev.trim() ? prev : String(row.phone ?? '')));
+              setSiteContactEmail((prev) => (prev.trim() ? prev : String(row.email ?? '')));
+              setErrors((p) => { const n = { ...p }; delete n.sourceContactId; return n; });
+            }}
+          >
+            <option value="">{!selectedCustomer ? 'Önce kartı seçin' : sourceContacts.length ? 'Seçiniz...' : 'Kartta yetkili kişi yok'}</option>
+            {sourceContacts.map((row) => (
+              <option key={row.id} value={row.id}>{row.name}</option>
+            ))}
+          </select>
+          {errors.sourceContactId && <p className="text-xs text-status-danger mt-0.5">{errors.sourceContactId}</p>}
+          {customerSource === 'insurance' && errors.insuranceCompanyId && (
+            <p className="text-xs text-status-danger mt-0.5" data-field="insuranceCompanyId">{errors.insuranceCompanyId}</p>
+          )}
+        </div>
+      )}
+
+      {claimCustomerSourceAllowsPrivateAlongside(customerSource) && (
+        <div className="mt-2" data-field="privateCustomer">
+          <label className={label}>Bu Dosyadaki Özel Müşteri</label>
+          {privateCustomer ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+              <span className="truncate font-medium text-slate-800">{customerDisplayName(privateCustomer)}</span>
+              <button type="button" className="text-xs font-medium text-brand-600" onClick={() => setPrivateCustomer(null)}>Kaldır</button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setCustomerPickTarget('private'); setShowCustomerModal(true); }}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50/50"
+            >
+              Özel Müşteri Bağla
+            </button>
+          )}
+        </div>
+      )}
+
+      {showNewCustomerForm && customerSource !== 'private' && customerSource !== 'insurance' && (
         <div className={`space-y-2 ${isPanel ? '' : 'space-y-3'} pt-1`}>
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-slate-600">
-              Yeni Eksper Ofisi
+              {`Yeni ${CLAIM_CUSTOMER_SOURCE_LABEL[customerSource]}`}
             </p>
             <button
               type="button"
@@ -739,10 +880,64 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     </>
   );
 
+  const yeniDosyaReturnTo = () => {
+    const params = new URLSearchParams({ yeni: '1' });
+    if (listHizmet) params.set('hizmet', listHizmet);
+    return `/panel/hasar-dosyalari?${params.toString()}`;
+  };
+
+  const openFullCustomerCard = (subType: string) => {
+    const returnTo = yeniDosyaReturnTo();
+    if (subType === 'private_customer') {
+      const params = new URLSearchParams({
+        openAdd: '1',
+        subType: 'private_customer',
+        returnTo,
+        returnLabel: 'Yeni Dosya',
+      });
+      router.push(`/panel/musteriler?${params.toString()}`);
+      return;
+    }
+    router.push(buildMusteriGrubuAddHref({
+      subType,
+      returnTo,
+      returnLabel: 'Yeni Dosya',
+    }));
+  };
+
+  const openSourceContactCard = () => {
+    const subType = claimCustomerSourceSubType(customerSource);
+    if (!selectedCustomer?.id) {
+      openFullCustomerCard(subType);
+      return;
+    }
+    const params = new URLSearchParams({
+      edit: selectedCustomer.id,
+      subType,
+      returnTo: yeniDosyaReturnTo(),
+      returnLabel: 'Yeni Dosya',
+    });
+    router.push(`/panel/musteriler?${params.toString()}`);
+  };
+
+  const openChannelCustomer = (subType: 'acente_firmasi' | 'broker_firmasi' | 'eksper_firmasi') => {
+    openFullCustomerCard(subType);
+  };
+
+  const channelAddLink = (subType: 'acente_firmasi' | 'broker_firmasi' | 'eksper_firmasi') => (
+    <button
+      type="button"
+      className="mt-1 text-[11px] font-medium text-brand-700"
+      onClick={() => openChannelCustomer(subType)}
+    >
+      Yeni Ekle
+    </button>
+  );
+
   const expertChannelOptions = (() => {
     const list = [...channelExpertFirms];
     const id = String(selectedCustomer?.id ?? '').trim();
-    if (customerSource !== 'private' && id && !list.some((row) => row.id === id)) {
+    if (customerSource === 'expert' && id && !list.some((row) => row.id === id)) {
       list.unshift({ id, name: selectedCustomerDisplayName ?? 'Eksper Ofisi' });
     }
     return list;
@@ -790,9 +985,19 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
               });
             }}
           >
-            {CLAIM_SERVICE_KINDS.map((kind) => (
-              <option key={kind} value={kind}>{CLAIM_SERVICE_KIND_LABEL[kind]}</option>
-            ))}
+            <optgroup label="Asistans Hizmetleri">
+              {CLAIM_SERVICE_KINDS.filter((kind) => kind === 'repair').map((kind) => (
+                <option key={kind} value={kind}>Hasar Onarım</option>
+              ))}
+            </optgroup>
+            <optgroup label="Ek Hizmetler">
+              {CLAIM_SERVICE_KINDS.filter((kind) => kind === 'consultancy' || kind === 'inspection')
+                .slice()
+                .sort((a, b) => CLAIM_SERVICE_KIND_LABEL[a].localeCompare(CLAIM_SERVICE_KIND_LABEL[b], 'tr'))
+                .map((kind) => (
+                  <option key={kind} value={kind}>{CLAIM_SERVICE_KIND_LABEL[kind]}</option>
+                ))}
+            </optgroup>
           </select>
           {errors.serviceKind && <p className="text-xs text-status-danger mt-0.5">{errors.serviceKind}</p>}
         </div>
@@ -883,38 +1088,42 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             <FieldHelpTip text="Dosyayı biz açarız. Rapor ve yazışma burada seçilen taraflara gider." testId="dosya-kanali-yardim" />
           </p>
           <div className="grid grid-cols-1 gap-3 min-w-0 sm:grid-cols-2 sm:gap-2">
-            <div className="min-w-0" data-field="insuranceCompanyId">
+            {!claimCustomerSourceHidesChannel(customerSource, 'insurance') && <div className="min-w-0" data-field="insuranceCompanyId">
               <label className={label}>
-                Sigorta Şirketi {customerSource === 'private' ? '' : <span className="text-status-danger">*</span>}
-                {customerSource === 'private' ? <span className="font-normal text-slate-400"> (Tercih)</span> : null}
+                Sigorta Şirketi {customerSource === 'private'
+                  ? <span className="font-normal text-slate-400"> Tercihe Bağlı</span>
+                  : <span className="text-status-danger"> *</span>}
               </label>
               <select className={`${field} w-full min-w-0 ${errors.insuranceCompanyId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`} value={insuranceCompanyId} onChange={(e) => setInsuranceCompanyId(e.target.value)}>
                 <option value="">Seçiniz...</option>
                 {insuranceCompanies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               {errors.insuranceCompanyId && <p className="text-xs text-status-danger mt-0.5">{errors.insuranceCompanyId}</p>}
-            </div>
-            <div className="min-w-0" data-field="channelAgencyCustomerId">
-              <label className={label}>Acente</label>
-              <select className={`${field} w-full min-w-0`} value={channelAgencyCustomerId} onChange={(e) => setChannelAgencyCustomerId(e.target.value)}>
-                <option value="">Seçiniz...</option>
-                {channelAgencyFirms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="min-w-0" data-field="channelBrokerCustomerId">
-              <label className={label}>Broker</label>
+            </div>}
+            {!claimCustomerSourceHidesChannel(customerSource, 'broker') && <div className="min-w-0" data-field="channelBrokerCustomerId">
+              <label className={label}>Broker <span className="font-normal text-slate-400">Tercihe Bağlı</span></label>
               <select className={`${field} w-full min-w-0`} value={channelBrokerCustomerId} onChange={(e) => setChannelBrokerCustomerId(e.target.value)}>
                 <option value="">Seçiniz...</option>
                 {channelBrokerFirms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-            </div>
-            <div className="min-w-0" data-field="channelExpertCustomerId">
-              <label className={label}>Eksper</label>
+              {channelAddLink('broker_firmasi')}
+            </div>}
+            {customerSource !== 'broker' && <div className="min-w-0" data-field="channelAgencyCustomerId">
+              <label className={label}>Acente <span className="font-normal text-slate-400">Tercihe Bağlı</span></label>
+              <select className={`${field} w-full min-w-0`} value={channelAgencyCustomerId} onChange={(e) => setChannelAgencyCustomerId(e.target.value)}>
+                <option value="">Seçiniz...</option>
+                {channelAgencyFirms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              {channelAddLink('acente_firmasi')}
+            </div>}
+            {!claimCustomerSourceHidesChannel(customerSource, 'expert') && <div className="min-w-0" data-field="channelExpertCustomerId">
+              <label className={label}>Eksper <span className="font-normal text-slate-400">Tercihe Bağlı</span></label>
               <select className={`${field} w-full min-w-0`} value={channelExpertCustomerId} onChange={(e) => setChannelExpertCustomerId(e.target.value)}>
                 <option value="">Seçiniz...</option>
                 {expertChannelOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-            </div>
+              {channelAddLink('eksper_firmasi')}
+            </div>}
           </div>
         </div>
         <div className={`${spanFull} min-w-0 border-t border-slate-100 pt-3 sm:pt-1`}>
@@ -1016,8 +1225,8 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const pagePanels = (
     <>
       <CollapsibleFormPanel
-        title={customerSource === 'private' ? 'Özel Müşteri' : 'Eksper Ofisi'}
-        hint={customerSource === 'private' ? 'Dosyanın bağlı olduğu özel müşteri kartı' : 'Dosyanın bağlı olduğu eksper ofisi'}
+        title={customerPickTarget === 'private' ? 'Özel Müşteri' : CLAIM_CUSTOMER_SOURCE_LABEL[customerSource]}
+        hint={customerPickTarget === 'private' ? 'Dosyanın bağlı olduğu özel müşteri kartı' : 'Dosyanın bağlı olduğu kart'}
         open={openSections.eksper}
         onToggle={() => toggleSection('eksper')}
         summary={eksperSummary}
@@ -1077,9 +1286,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         open={showCustomerModal}
         onClose={() => setShowCustomerModal(false)}
         hideTypeColumn
-        subTypeFilter={customerSource === 'private' ? 'private_customer' : HASAR_EXPERT_CUSTOMER_SUB_TYPE}
+        subTypeFilter={customerPickTarget === 'private' ? 'private_customer' : claimCustomerSourceSubType(customerSource)}
         onSelect={(c) => {
-          setSelectedCustomer({
+          const picked: SelectedCustomer = {
             id: c.id,
             subType: (c as { subType?: string | null }).subType ?? null,
             fullName: c.fullName,
@@ -1089,17 +1298,18 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             identityNo: c.identityNo,
             taxNumber: c.taxNumber,
             phone: c.phone,
-          });
-          setShowNewCustomerForm(false);
-          setCustomerSearch(customerDisplayName(c));
+          };
+          if (customerPickTarget === 'private') {
+            setPrivateCustomer(picked);
+            setShowCustomerModal(false);
+            setCustomerPickTarget('source');
+            return;
+          }
+          void applySourceCard(picked);
           setShowCustomerModal(false);
         }}
         onCreateNew={() => {
-          setShowNewCustomerForm(true);
-          setSelectedCustomer(null);
-          setCustomerSearch('');
-          setOpenSections((p) => ({ ...p, eksper: true }));
-          setShowCustomerModal(false);
+          openFullCustomerCard(customerPickTarget === 'private' ? 'private_customer' : claimCustomerSourceSubType(customerSource));
         }}
       />
     </>

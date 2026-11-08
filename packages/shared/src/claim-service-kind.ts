@@ -138,9 +138,7 @@ export function claimFileWhereForHizmet(raw: unknown): Record<string, unknown> |
   const h = normalizeHasarListHizmet(raw);
   if (!h) return null;
   if (h === HASAR_HIZMET_TESPIT) return { serviceKind: 'inspection' };
-  if (h === HASAR_HIZMET_DANISMANLIK) {
-    return { serviceKind: { in: ['inspection', 'consultancy'] } };
-  }
+  if (h === HASAR_HIZMET_DANISMANLIK) return { serviceKind: 'consultancy' };
   if (h === 'repair' || h === 'onarim' || h === 'hasar-onarim') return { serviceKind: 'repair' };
   const underscored = h.replace(/-/g, '_');
   return {
@@ -158,12 +156,11 @@ export function claimServiceKindFromConsultancyType(row: {
 }
 
 export function departmentCodeForNewClaim(input: {
-  customerSource: 'expert' | 'private';
+  customerSource: 'expert' | 'private' | 'broker' | 'insurance';
   serviceKind: ClaimServiceKind;
 }): string {
   if (input.serviceKind === 'consultancy') return 'danismanlik';
   if (input.customerSource === 'private') return 'ozel-musteri';
-  if (input.serviceKind === 'inspection') return 'danismanlik';
   return 'hasar-onarim';
 }
 

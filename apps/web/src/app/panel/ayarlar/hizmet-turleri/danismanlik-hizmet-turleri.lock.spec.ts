@@ -27,7 +27,9 @@ describe('danışmanlık hizmet türleri kilidi', () => {
     assert.match(page, /row\.isSystem/);
     assert.match(page, /Hasar Tespit durur/);
     assert.doesNotMatch(page, /SettingsLegacyRedirect/);
-    assert.match(form, /CLAIM_SERVICE_KINDS\.map/);
+    assert.match(form, /CLAIM_SERVICE_KINDS\.filter/);
+    assert.match(form, /optgroup label="Asistans Hizmetleri"/);
+    assert.match(form, /optgroup label="Ek Hizmetler"/);
     assert.match(form, /<option key=\{kind\} value=\{kind\}>/);
     assert.match(form, /Danışmanlık Hizmet Türü/);
     assert.match(form, /consultancyServiceTypeId/);
@@ -35,7 +37,8 @@ describe('danışmanlık hizmet türleri kilidi', () => {
     assert.match(form, /params: \{ family: CONSULTANCY_SERVICE_FAMILY \}/);
     assert.match(service, /existing\.family !== CONSULTANCY_SERVICE_FAMILY/);
     assert.match(form, /\/panel\/musteriler/);
-    assert.match(opsNav, /title: 'Danışmanlık'/);
+    assert.match(opsNav, /title: 'Ek Hizmetler'/);
+    assert.match(opsNav, /name: 'Danışmanlık'/);
     assert.match(opsNav, /HASAR_HIZMET_TESPIT/);
     assert.match(layout, /buildOperasyonNavChildren/);
     assert.match(nav, /\/panel\/ayarlar\/hizmet-turleri/);

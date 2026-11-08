@@ -1864,8 +1864,14 @@ export class ClaimFilesService {
 
     const insuranceCompanyIdRaw = typeof rest.insuranceCompanyId === 'string' ? rest.insuranceCompanyId.trim() : '';
     const customerSourceRaw = rest.customerSource;
-    const customerSource = customerSourceRaw === 'private' ? 'private' : 'expert';
-    const requireOfficeOwner = customerSourceRaw === 'private' || customerSourceRaw === 'expert';
+    const customerSource = customerSourceRaw === 'private'
+      ? 'private'
+      : customerSourceRaw === 'broker'
+        ? 'broker'
+        : customerSourceRaw === 'insurance'
+          ? 'insurance'
+          : 'expert';
+    const requireOfficeOwner = customerSource === 'private' || customerSource === 'expert' || customerSource === 'broker' || customerSource === 'insurance';
     delete rest.customerSource;
     const consultancyServiceTypeIdRaw = rest.consultancyServiceTypeId;
     delete rest.consultancyServiceTypeId;
@@ -1911,9 +1917,28 @@ export class ClaimFilesService {
     const departmentId = rest.departmentId ?? null;
 
     let insuranceCompanyId = insuranceCompanyIdRaw;
+    if (!insuranceCompanyId && customerSource === 'insurance' && rest.customerId) {
+      const card = await this.prisma.customer.findUnique({
+        where: { id: String(rest.customerId) },
+        select: { insuranceCompanyId: true, companyName: true, shortName: true },
+      });
+      insuranceCompanyId = String(card?.insuranceCompanyId ?? '').trim();
+      if (!insuranceCompanyId && card) {
+        const name = String(card.shortName || card.companyName || '').trim();
+        if (name) {
+          const company = await this.prisma.insuranceCompany.findFirst({
+            where: { name: { equals: name, mode: 'insensitive' } },
+            select: { id: true },
+          });
+          insuranceCompanyId = company?.id ?? '';
+        }
+      }
+    }
     if (!insuranceCompanyId) {
       if (customerSource === 'private') {
         insuranceCompanyId = await this.ensureOzelMusteriInsuranceCompanyId();
+      } else if (customerSource === 'insurance') {
+        throw new BadRequestException('Sigorta kartı şirket listesine bağlı değil.');
       } else {
         throw new BadRequestException('Sigorta şirketi zorunludur');
       }

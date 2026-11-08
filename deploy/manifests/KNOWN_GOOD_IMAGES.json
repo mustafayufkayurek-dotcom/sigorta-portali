@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-11-07",
-  "label": "v675-tespit-pdf",
-  "description": "v675 full: Hasar Tespit raporu yeni sekmede açılır. Edge boş önizleme kalkar. Geri alma web v674 / backend v674.",
+  "updatedAt": "2026-11-08",
+  "label": "v676-ek-hizmetler",
+  "description": "v676 full: Ek Hizmetler menüsü, Yeni Dosya kaynağı ve Poliçe Yönetimi. Geri alma web v675 / backend v675.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v675-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v675-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v676-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v676-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v674-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v674-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v675-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v675-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

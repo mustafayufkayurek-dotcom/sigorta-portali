@@ -1524,6 +1524,9 @@ export default function MusterilerPage() {
     if (!editId) return;
     editCustomerHandled.current = true;
 
+    const ctx = parseMusteriGrubuAddContext(searchParams);
+    if (ctx) setSettingsReturn(ctx);
+
     loadCustomerSources();
     loadCustomerSubTypes();
     openCustomerForEditById(editId);
@@ -1893,6 +1896,15 @@ export default function MusterilerPage() {
         setShowModal(false);
         resetForm();
         load();
+        if (settingsReturn && savedId && settingsReturn.returnTo.includes('yeni=1')) {
+          const url = new URL(settingsReturn.returnTo, 'http://yerel.panel');
+          url.searchParams.set('customerId', String(savedId));
+          const dest = `${url.pathname}${url.search}`;
+          setSettingsReturn(null);
+          showToast('success', 'Kart kaydedildi — Yeni Dosya açılıyor');
+          router.push(dest);
+          return;
+        }
         showToast('success', 'Müşteri Kaydı Güncellendi');
         if (savedId) {
           router.push(`/panel/musteriler/${savedId}`);
