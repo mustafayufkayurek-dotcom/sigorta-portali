@@ -3,11 +3,14 @@
  * Çalıştır: node --experimental-strip-types --test packages/shared/src/authorized-person-name.lock.spec.ts
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
   AUTHORIZED_PERSON_DIRTY_MESSAGE,
   isDirtyAuthorizedPersonName,
 } from './authorized-person-name.ts';
+
+const source = readFileSync(new URL('./authorized-person-name.ts', import.meta.url), 'utf8');
 
 describe('yetkili kişi adı LOCK', () => {
   it('firma adının kişi kutusuna bölünmesini keser', () => {
@@ -25,6 +28,27 @@ describe('yetkili kişi adı LOCK', () => {
         firstName: 'Anadolu',
         lastName: 'Sigorta',
         companyName: 'Anadolu Anonim Türk Sigorta Şirketi',
+      }),
+      true,
+    );
+  });
+
+  it('eksper ofisi kendi adıyla açılır', () => {
+    assert.equal(
+      isDirtyAuthorizedPersonName({
+        firstName: 'Gülseren',
+        lastName: 'Yakar',
+        companyName: 'Gülseren Yakar Sigorta Eksperlik',
+        shortName: 'Gülseren Yakar',
+      }),
+      false,
+    );
+    assert.equal(
+      isDirtyAuthorizedPersonName({
+        firstName: 'Gülseren Yakar Sigorta',
+        lastName: 'Eksperlik',
+        companyName: 'Gülseren Yakar Sigorta Eksperlik',
+        shortName: 'Gülseren Yakar',
       }),
       true,
     );
@@ -53,5 +77,11 @@ describe('yetkili kişi adı LOCK', () => {
   it('personel mesajı firma/API adı taşımaz', () => {
     assert.match(AUTHORIZED_PERSON_DIRTY_MESSAGE, /kişi adı/);
     assert.doesNotMatch(AUTHORIZED_PERSON_DIRTY_MESSAGE, /OpenAI|ChatGPT|API|Google/i);
+  });
+
+  it('kişi adı firma unvanının içinde diye kesilmez', () => {
+    assert.doesNotMatch(source, /personTokens\.every/);
+    assert.doesNotMatch(source, /Gülseren|Yakar/);
+    assert.match(source, /FIRM_TOKENS/);
   });
 });

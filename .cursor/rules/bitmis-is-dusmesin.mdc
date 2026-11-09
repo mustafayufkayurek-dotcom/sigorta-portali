@@ -62,6 +62,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 43. Hasar Tespit saha işi Onarım yazmaz. Tespit resmi raporun altında durur. Plan maili irtibat kutusuna gider; yoksa gitmez.
 44. Hasar Tespit raporu PDF açılır. Kalemsiz Onaya Gönder kesilmez. İrtibat kutusu yedek alıcıdır.
 45. Yeni Dosya müşteri kartına gidince yazılanlar durur. Dönünce form boşalmaz. Dosya kaydolunca bu yazı silinir. Yeni bir dosya açılınca eski yazı gelmez.
+46. Eksper ofisi kişinin kendi adıyla açılır. Yetkili kutusuna Gülseren Yakar yazılır. Sigorta, Ekspertiz, Limited yetkili kutusuna yazılırsa kayıt durur.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

@@ -117,6 +117,7 @@ node --experimental-strip-types --test \
   packages/shared/src/role-account-family.lock.spec.ts \
   packages/shared/src/customer-general-mailbox.lock.spec.ts \
   packages/shared/src/authorized-person-name.lock.spec.ts \
+  apps/backend/src/modules/customers/authorized-person-save.lock.spec.ts \
   apps/web/src/components/portal/operasyon-agi-canli-destek.lock.spec.ts \
   apps/web/src/app/dev/dev-production-closed.lock.spec.ts \
   apps/web/src/components/claim-files/claim-new-form.lock.spec.ts \

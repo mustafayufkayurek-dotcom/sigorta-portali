@@ -31,6 +31,14 @@ const FIRM_TOKENS = new Set([
   'mail',
   'eposta',
   'genel',
+  'eksper',
+  'eksperlik',
+  'hizmet',
+  'hizmetleri',
+  'musavirlik',
+  'müşavirlik',
+  'danismanlik',
+  'danışmanlık',
 ]);
 
 export function foldAuthorizedPersonText(value: string | null | undefined): string {
@@ -62,14 +70,16 @@ export function isDirtyAuthorizedPersonName(input: {
   if (!combined) return false;
 
   const personTokens = tokensOf(combined);
-  if (personTokens.some((t) => FIRM_TOKENS.has(t))) return true;
+  if (personTokens.some((token) => FIRM_TOKENS.has(token))) return true;
 
   const companyFolded = foldAuthorizedPersonText(input.companyName);
   const shortFolded = foldAuthorizedPersonText(input.shortName);
-  if (combined && (combined === companyFolded || combined === shortFolded)) return true;
+  const pastedTitle =
+    (companyFolded && combined === companyFolded && tokensOf(companyFolded).some((token) => FIRM_TOKENS.has(token)))
+    || (shortFolded && combined === shortFolded && tokensOf(shortFolded).some((token) => FIRM_TOKENS.has(token)));
+  if (pastedTitle) return true;
 
-  const companySet = new Set([...tokensOf(input.companyName), ...tokensOf(input.shortName)]);
-  if (personTokens.length >= 2 && personTokens.every((t) => companySet.has(t))) return true;
+  if (personTokens.length === 1 && (combined === companyFolded || combined === shortFolded)) return true;
 
   return false;
 }

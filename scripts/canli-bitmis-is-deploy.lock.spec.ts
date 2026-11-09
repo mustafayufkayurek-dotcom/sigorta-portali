@@ -139,6 +139,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'customer-open-address.lock.spec',
       'system-admin-identity.lock.spec',
       'authorized-person-name.lock.spec',
+      'authorized-person-save.lock.spec',
       'customer-general-mailbox.lock.spec',
       'operasyon-agi-canli-destek.lock.spec',
       'hasar-dosya-irtibat.lock.spec',

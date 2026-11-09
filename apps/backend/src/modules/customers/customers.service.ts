@@ -12,7 +12,6 @@ import {
   shouldReplaceCustomerContacts,
 } from '@sigorta/shared';
 import * as ExcelJS from 'exceljs';
-import { classifyAuthorizedPersonNamesWithAi } from './authorized-person-ai.util';
 import { resolveFileRecognizedPartners } from './customer-file-partners';
 import {
   applyCustomerFileStats,
@@ -122,15 +121,6 @@ export class CustomersService {
       ) {
         throw new BadRequestException(AUTHORIZED_PERSON_DIRTY_MESSAGE);
       }
-    }
-    const ai = await classifyAuthorizedPersonNamesWithAi({
-      companyName,
-      shortName,
-      names: samples,
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-    if (ai.dirtyIndexes.length > 0) {
-      throw new BadRequestException(AUTHORIZED_PERSON_DIRTY_MESSAGE);
     }
   }
 

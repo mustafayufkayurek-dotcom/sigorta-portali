@@ -21,7 +21,7 @@ Yalnızca JSON döndür:
 {"verdicts":[{"dirty":boolean,"confidence":number}]}
 Kurallar:
 - dirty=true: firma adı, unvan parçası, departman, marka; kişi adı değil
-- dirty=false: gerçek kişi adı
+- dirty=false: gerçek kişi adı. Firma unvanı bu kişiyle başlasa da ad ve soyad kişidir. Örnek: Gülseren Yakar, Gülseren Yakar Sigorta Eksperlik firmasının yetkilisidir.
 - confidence 0-1
 - Düzeltilmiş ad, önerilen isim veya başka metin YAZMA
 - verdicts uzunluğu names uzunluğu ile aynı olsun`;
