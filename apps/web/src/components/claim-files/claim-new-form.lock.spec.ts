@@ -106,6 +106,10 @@ describe('yeni dosya form lock', () => {
     assert.match(form, /yeniDosyaReturnTo/);
     assert.match(form, /<option key=\{kind\} value=\{kind\}>/);
     assert.match(form, /data-field="lossType"/);
+    assert.match(form, /departmentCodeForNewClaim/);
+    assert.match(form, /fetchDepartmentFileSubjectNames/);
+    assert.doesNotMatch(form, /ihbar-konulari/);
+    assert.doesNotMatch(form, /value="Diğer"/);
     assert.doesNotMatch(form, /prefs\.lossType/);
     assert.doesNotMatch(form, /saveClaimNewPrefs/);
     assert.doesNotMatch(form, /loadClaimNewPrefs/);

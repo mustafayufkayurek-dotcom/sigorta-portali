@@ -19,21 +19,20 @@ export async function fetchActiveFileSubjects(departmentId: string): Promise<Dam
     .map((row) => ({ code: row.code, name: row.name }));
 }
 
-/** Operasyon hattının dosya konularını hasar nedeni listesi olarak döner. */
+/** Operasyon hattının kendi dosya konularını döner. Başka hattın listesi karışmaz. */
 export async function resolveDamageReasonOptions(
   departmentId: string,
 ): Promise<DamageReasonOption[]> {
-  const reasons = await fetchActiveFileSubjects(departmentId);
-  if (reasons.length > 0) return reasons;
+  return fetchActiveFileSubjects(departmentId);
+}
 
+/** Yeni Dosya: seçilen hattın Ayarlar → Dosya Konuları listesi. Ad ayardaki gibi kalır. */
+export async function fetchDepartmentFileSubjectNames(departmentCode: string): Promise<string[]> {
   const departments = await apiGet<DeptRow[]>(`${API}/departments`);
-  const selected = departments.find((dept) => dept.id === departmentId);
-  const hasarDept = departments.find((dept) => dept.code === 'hasar-onarim');
-  if (hasarDept && selected?.code !== 'hasar-onarim') {
-    return fetchActiveFileSubjects(hasarDept.id);
-  }
-
-  return [];
+  const dept = departments.find((row) => row.code === departmentCode);
+  if (!dept) return [];
+  const rows = await fetchActiveFileSubjects(dept.id);
+  return rows.map((row) => row.name).filter(Boolean);
 }
 
 export async function fetchInboxFileSubjectNames(

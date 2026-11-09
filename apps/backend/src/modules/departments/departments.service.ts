@@ -265,9 +265,6 @@ export class DepartmentsService {
 
   async getFileSubjects(departmentId: string) {
     const dept = await this.findOne(departmentId);
-    if (dept.reportFormat === 'repair') {
-      await this.ensureDefaultRepairFileSubjects(departmentId);
-    }
     if (dept.code === 'acil-yardim' || dept.reportFormat === 'emergency') {
       await this.ensureAcilTesisatCatalog(departmentId);
     }
@@ -380,27 +377,6 @@ export class DepartmentsService {
           isSystem: true,
           status: 'active',
         },
-      });
-    }
-  }
-
-  /** Operasyon hattında aktif dosya konusu yoksa varsayılan hasar nedenlerini ekler. */
-  private async ensureDefaultRepairFileSubjects(departmentId: string) {
-    const activeCount = await this.prisma.departmentFileSubject.count({
-      where: { departmentId, status: 'active' },
-    });
-    if (activeCount > 0) return;
-
-    for (const subject of DEFAULT_REPAIR_FILE_SUBJECTS) {
-      await this.prisma.departmentFileSubject.upsert({
-        where: { departmentId_code: { departmentId, code: subject.code } },
-        create: {
-          ...subject,
-          departmentId,
-          isSystem: true,
-          status: 'active',
-        },
-        update: { status: 'active', name: subject.name, sortOrder: subject.sortOrder },
       });
     }
   }
@@ -520,9 +496,6 @@ export class DepartmentsService {
         where: { name: dept.name, status: 'active' },
       });
       if (byName && byName.code !== dept.code) {
-        if (dept.reportFormat === 'repair') {
-          await this.ensureDefaultRepairFileSubjects(byName.id);
-        }
         created.push(byName);
         continue;
       }
@@ -538,9 +511,6 @@ export class DepartmentsService {
           status: 'active',
         },
       });
-      if (dept.reportFormat === 'repair') {
-        await this.ensureDefaultRepairFileSubjects(row.id);
-      }
       created.push(row);
     }
     return created;

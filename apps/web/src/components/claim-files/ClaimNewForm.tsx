@@ -24,6 +24,7 @@ import { getApiErrorMessage } from '@/utils/api-error';
 import { reportCaughtError } from '@/utils/report-caught-error';
 import { createInFlightGuard } from '@/utils/in-flight-guard';
 import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
+import { fetchDepartmentFileSubjectNames } from '@/utils/damage-reason-options';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -44,6 +45,7 @@ import {
   claimCustomerSourceSubType,
   claimFileChannelCreateFields,
   claimServiceKindFromListHizmet,
+  departmentCodeForNewClaim,
   consultancyTypesForNewFile,
   filterInsuranceCatalogForHasarFileForm,
   newClaimOpeningCaption,
@@ -211,14 +213,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         headers: authHeader(),
         params: { subType, status: 'active', limit: 1000, customerType: 'corporate' },
       });
-      const [icRes, subjectsRes, meRes, staffRes, consultancyRes, agencyRes, brokerRes, expertRes] = await Promise.all([
+      const [icRes, meRes, staffRes, consultancyRes, agencyRes, brokerRes, expertRes] = await Promise.all([
         axios.get(`${API}/insurance-companies`, {
           headers: authHeader(),
           params: HASAR_FILE_INSURANCE_CATALOG_QUERY,
-        }),
-        axios.get(`${API}/system-settings/ihbar-konulari`, { headers: authHeader() }).catch((err) => {
-          reportCaughtError(err, 'Hasar konuları yüklenemedi. Lütfen sayfayı yenileyin.');
-          return null;
         }),
         axios.get(`${API}/auth/me`, { headers: authHeader() }).catch(() => null),
         axios
@@ -269,15 +267,6 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         setInsuranceCompanyId('');
       }
 
-      const subjectData = subjectsRes?.data?.data;
-      const subjects = Array.isArray(subjectData?.hasar)
-        ? subjectData.hasar
-        : Array.isArray(subjectData)
-          ? subjectData
-          : [];
-      const normalized = subjects.map((s: string) => toTitleCaseTR(String(s).trim())).filter(Boolean);
-      setClaimSubjects(normalized);
-      setSubjectsLoadFailed(!subjectsRes);
       const consultancyRows = consultancyTypesForNewFile(
         parseServiceTypeListPayload(consultancyRes?.data),
       );
@@ -288,9 +277,32 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       });
     } catch (e) {
       reportCaughtError(e, 'Form seçenekleri yüklenemedi. Lütfen sayfayı yenileyin.');
-      setSubjectsLoadFailed(true);
     }
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const departmentCode = departmentCodeForNewClaim({
+      customerSource,
+      serviceKind: parseClaimServiceKind(serviceKind),
+    });
+    void fetchDepartmentFileSubjectNames(departmentCode)
+      .then((names) => {
+        if (cancelled) return;
+        setClaimSubjects(names);
+        setSubjectsLoadFailed(false);
+        setLossType((prev) => (prev && names.includes(prev) ? prev : ''));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        reportCaughtError(err, 'Hasar konuları yüklenemedi. Lütfen sayfayı yenileyin.');
+        setClaimSubjects([]);
+        setSubjectsLoadFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerSource, serviceKind]);
 
   const loadStatuses = useCallback(async () => {
     try {
@@ -1061,10 +1073,12 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
           <select className={`${field} ${errors.lossType ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`} value={lossType} onChange={(e) => setLossType(e.target.value)}>
             <option value="">Seçiniz...</option>
             {claimSubjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
-            {claimSubjects.length === 0 && <option value="Diğer">Diğer</option>}
           </select>
           {subjectsLoadFailed && (
-            <p className="text-xs text-amber-600 mt-0.5">Hasar konuları yüklenemedi. «Diğer» seçilebilir veya sayfayı yenileyin.</p>
+            <p className="text-xs text-amber-600 mt-0.5">Hasar konuları yüklenemedi. Lütfen sayfayı yenileyin.</p>
+          )}
+          {!subjectsLoadFailed && claimSubjects.length === 0 && (
+            <p className="text-xs text-amber-600 mt-0.5">Bu hat için dosya konusu yok.</p>
           )}
           {errors.lossType && <p className="text-xs text-status-danger mt-0.5">{errors.lossType}</p>}
         </div>
