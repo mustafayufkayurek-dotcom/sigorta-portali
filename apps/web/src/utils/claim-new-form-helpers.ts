@@ -31,3 +31,77 @@ export function saveClaimNewPrefs(prefs: ClaimNewPrefs): void {
     localStorage.setItem(CLAIM_NEW_PREFS_KEY, JSON.stringify(prefs));
   } catch { /* quota */ }
 }
+
+/** Açık Yeni Dosya. Müşteri kartına gidince sayfa kapanır; yazılanlar bu oturumda durur. */
+export const YENI_DOSYA_TASLAK_KEY = 'meridyen:yeni-dosya-taslak';
+
+export type YeniDosyaTaslakCard = {
+  id: string;
+  subType?: string | null;
+  fullName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  companyName?: string | null;
+  shortName?: string | null;
+  identityNo?: string | null;
+  taxNumber?: string | null;
+  phone?: string | null;
+  insuranceCompanyId?: string | null;
+};
+
+export type YeniDosyaReturnSlot = 'source' | 'private' | 'agency' | 'broker' | 'expert';
+
+export type YeniDosyaTaslak = {
+  customerSource: string;
+  serviceKind: string;
+  consultancyServiceTypeId: string;
+  insuranceCompanyId: string;
+  channelAgencyCustomerId: string;
+  channelBrokerCustomerId: string;
+  channelExpertCustomerId: string;
+  fileNo: string;
+  lossType: string;
+  notificationDate: string;
+  insuredName: string;
+  description: string;
+  assignedOfficeUserId: string;
+  siteContactName: string;
+  siteContactPhone: string;
+  siteContactEmail: string;
+  sourceContactId: string;
+  customerSearch: string;
+  cityCode: string;
+  city: string;
+  district: string;
+  openAddress: string;
+  selectedCustomer: YeniDosyaTaslakCard | null;
+  privateCustomer: YeniDosyaTaslakCard | null;
+  returnSlot: YeniDosyaReturnSlot | '';
+};
+
+export function loadYeniDosyaTaslak(): YeniDosyaTaslak | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(YENI_DOSYA_TASLAK_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as YeniDosyaTaslak;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function saveYeniDosyaTaslak(draft: YeniDosyaTaslak): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(YENI_DOSYA_TASLAK_KEY, JSON.stringify(draft));
+  } catch { /* quota */ }
+}
+
+export function clearYeniDosyaTaslak(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(YENI_DOSYA_TASLAK_KEY);
+  } catch { /* ignore */ }
+}

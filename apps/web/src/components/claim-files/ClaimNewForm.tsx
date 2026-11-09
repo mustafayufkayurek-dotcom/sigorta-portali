@@ -14,7 +14,12 @@ import { formatVendorAddress } from '@/utils/vendor-form-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import {
+  clearYeniDosyaTaslak,
+  loadYeniDosyaTaslak,
+  saveYeniDosyaTaslak,
   todayTrDateDisplay,
+  type YeniDosyaReturnSlot,
+  type YeniDosyaTaslak,
 } from '@/utils/claim-new-form-helpers';
 import {
   customerDisplayName,
@@ -49,6 +54,7 @@ import {
   consultancyTypesForNewFile,
   filterInsuranceCatalogForHasarFileForm,
   newClaimOpeningCaption,
+  parseClaimCustomerSource,
   parseClaimServiceKind,
   parseServiceTypeListPayload,
   type ClaimCustomerSource,
@@ -106,10 +112,11 @@ export type ClaimNewFormProps = {
   onSuccess: (claimId: string) => void;
   onCancel: () => void;
   prefillCustomerId?: string | null;
+  prefillSlot?: string | null;
   listHizmet?: string | null;
 };
 
-export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCustomerId, listHizmet }: ClaimNewFormProps) {
+export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCustomerId, prefillSlot, listHizmet }: ClaimNewFormProps) {
   const isPanel = variant === 'panel';
   const field = isPanel ? inpCompact : inp;
   const label = isPanel ? lblCompact : lbl;
@@ -124,40 +131,46 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const [errors, setErrors] = useState<Record<string, string>>({});
   const submitGuard = useRef(createInFlightGuard());
 
-  const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
-  const [channelAgencyCustomerId, setChannelAgencyCustomerId] = useState('');
-  const [channelBrokerCustomerId, setChannelBrokerCustomerId] = useState('');
-  const [channelExpertCustomerId, setChannelExpertCustomerId] = useState('');
+  const [insuranceCompanyId, setInsuranceCompanyId] = useState(() => loadYeniDosyaTaslak()?.insuranceCompanyId ?? '');
+  const [channelAgencyCustomerId, setChannelAgencyCustomerId] = useState(() => loadYeniDosyaTaslak()?.channelAgencyCustomerId ?? '');
+  const [channelBrokerCustomerId, setChannelBrokerCustomerId] = useState(() => loadYeniDosyaTaslak()?.channelBrokerCustomerId ?? '');
+  const [channelExpertCustomerId, setChannelExpertCustomerId] = useState(() => loadYeniDosyaTaslak()?.channelExpertCustomerId ?? '');
   const [channelAgencyFirms, setChannelAgencyFirms] = useState<ChannelFirm[]>([]);
   const [channelBrokerFirms, setChannelBrokerFirms] = useState<ChannelFirm[]>([]);
   const [channelExpertFirms, setChannelExpertFirms] = useState<ChannelFirm[]>([]);
-  const [fileNo, setFileNo] = useState('');
-  const [lossType, setLossType] = useState('');
-  const [notificationDate, setNotificationDate] = useState('');
-  const [insuredName, setInsuredName] = useState('');
-  const [description, setDescription] = useState('');
+  const [fileNo, setFileNo] = useState(() => loadYeniDosyaTaslak()?.fileNo ?? '');
+  const [lossType, setLossType] = useState(() => loadYeniDosyaTaslak()?.lossType ?? '');
+  const [notificationDate, setNotificationDate] = useState(() => loadYeniDosyaTaslak()?.notificationDate || todayTrDateDisplay());
+  const [insuredName, setInsuredName] = useState(() => loadYeniDosyaTaslak()?.insuredName ?? '');
+  const [description, setDescription] = useState(() => loadYeniDosyaTaslak()?.description ?? '');
   const [currentStatusId, setCurrentStatusId] = useState('');
 
-  const [customerSource, setCustomerSource] = useState<ClaimCustomerSource>('expert');
-  const [privateCustomer, setPrivateCustomer] = useState<SelectedCustomer | null>(null);
+  const [customerSource, setCustomerSource] = useState<ClaimCustomerSource>(() => {
+    const saved = loadYeniDosyaTaslak()?.customerSource;
+    return saved ? parseClaimCustomerSource(saved) : 'expert';
+  });
+  const [privateCustomer, setPrivateCustomer] = useState<SelectedCustomer | null>(() => loadYeniDosyaTaslak()?.privateCustomer ?? null);
   const [sourceContacts, setSourceContacts] = useState<SourceContact[]>([]);
-  const [sourceContactId, setSourceContactId] = useState('');
+  const [sourceContactId, setSourceContactId] = useState(() => loadYeniDosyaTaslak()?.sourceContactId ?? '');
   const [customerPickTarget, setCustomerPickTarget] = useState<'source' | 'private'>('source');
-  const [serviceKind, setServiceKind] = useState<ClaimServiceKind>(() => claimServiceKindFromListHizmet(listHizmet));
+  const [serviceKind, setServiceKind] = useState<ClaimServiceKind>(() => {
+    const saved = loadYeniDosyaTaslak()?.serviceKind;
+    return saved ? parseClaimServiceKind(saved) : claimServiceKindFromListHizmet(listHizmet);
+  });
   const [consultancyTypes, setConsultancyTypes] = useState<ConsultancyTypeOption[]>([]);
-  const [consultancyServiceTypeId, setConsultancyServiceTypeId] = useState('');
+  const [consultancyServiceTypeId, setConsultancyServiceTypeId] = useState(() => loadYeniDosyaTaslak()?.consultancyServiceTypeId ?? '');
   const router = useRouter();
   const [officeUsers, setOfficeUsers] = useState<PanelUser[]>([]);
-  const [assignedOfficeUserId, setAssignedOfficeUserId] = useState('');
-  const [siteContactName, setSiteContactName] = useState('');
-  const [siteContactPhone, setSiteContactPhone] = useState('');
-  const [siteContactEmail, setSiteContactEmail] = useState('');
+  const [assignedOfficeUserId, setAssignedOfficeUserId] = useState(() => loadYeniDosyaTaslak()?.assignedOfficeUserId ?? '');
+  const [siteContactName, setSiteContactName] = useState(() => loadYeniDosyaTaslak()?.siteContactName ?? '');
+  const [siteContactPhone, setSiteContactPhone] = useState(() => loadYeniDosyaTaslak()?.siteContactPhone ?? '');
+  const [siteContactEmail, setSiteContactEmail] = useState(() => loadYeniDosyaTaslak()?.siteContactEmail ?? '');
   const [sessionUserId, setSessionUserId] = useState('');
   const [fileNoChecking, setFileNoChecking] = useState(false);
   const [fileNoError, setFileNoError] = useState<string | null>(null);
 
   const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<SelectedCustomer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<SelectedCustomer | null>(() => loadYeniDosyaTaslak()?.selectedCustomer ?? null);
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
 
   const [newCustomerCompanyName, setNewCustomerCompanyName] = useState('');
@@ -166,7 +179,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
 
   const [phoneDupError, setPhoneDupError] = useState<string | null>(null);
 
-  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerSearch, setCustomerSearch] = useState(() => loadYeniDosyaTaslak()?.customerSearch ?? '');
   const [customerResults, setCustomerResults] = useState<SelectedCustomer[]>([]);
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
@@ -176,10 +189,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const [customerFileOrdinal, setCustomerFileOrdinal] = useState<number | null>(null);
   const [customerFileOrdinalLoading, setCustomerFileOrdinalLoading] = useState(false);
 
-  const [cityCode, setCityCode] = useState('');
-  const [city, setCity] = useState('');
-  const [district, setDistrict] = useState('');
-  const [openAddress, setOpenAddress] = useState('');
+  const [cityCode, setCityCode] = useState(() => loadYeniDosyaTaslak()?.cityCode ?? '');
+  const [city, setCity] = useState(() => loadYeniDosyaTaslak()?.city ?? '');
+  const [district, setDistrict] = useState(() => loadYeniDosyaTaslak()?.district ?? '');
+  const [openAddress, setOpenAddress] = useState(() => loadYeniDosyaTaslak()?.openAddress ?? '');
 
   const [openSections, setOpenSections] = useState({ eksper: true, dosya: true });
 
@@ -249,11 +262,12 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       if (meId) setSessionUserId(meId);
       const staff = (staffRes.data?.data ?? []) as PanelUser[];
       setOfficeUsers(staff);
-      if (meId && staff.some((u) => u.id === meId)) {
-        setAssignedOfficeUserId(meId);
-      } else if (staff.length === 1) {
-        setAssignedOfficeUserId(staff[0].id);
-      }
+      setAssignedOfficeUserId((prev) => {
+        if (prev) return prev;
+        if (meId && staff.some((u) => u.id === meId)) return meId;
+        if (staff.length === 1) return staff[0].id;
+        return '';
+      });
       companies = filterInsuranceCatalogForHasarFileForm(
         companies,
         roleCode,
@@ -261,19 +275,20 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       );
       setInsuranceCompanies(companies);
 
-      if (isOfficeStaffRole(roleCode) && companies.length === 1) {
-        setInsuranceCompanyId(companies[0].id);
-      } else {
-        setInsuranceCompanyId('');
-      }
+      setInsuranceCompanyId((prev) => {
+        if (prev) return prev;
+        if (isOfficeStaffRole(roleCode) && companies.length === 1) return companies[0].id;
+        return '';
+      });
 
       const consultancyRows = consultancyTypesForNewFile(
         parseServiceTypeListPayload(consultancyRes?.data),
       );
       setConsultancyTypes(consultancyRows);
       setConsultancyServiceTypeId((prev) => {
-        if (prev && consultancyRows.some((row) => row.id === prev)) return prev;
-        return '';
+        if (!prev) return '';
+        if (consultancyRows.length === 0) return prev;
+        return consultancyRows.some((row) => row.id === prev) ? prev : '';
       });
     } catch (e) {
       reportCaughtError(e, 'Form seçenekleri yüklenemedi. Lütfen sayfayı yenileyin.');
@@ -324,7 +339,6 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     axios.get(`${API}/customers/${id}`, { headers: authHeader() }).then((res) => {
       const c = res.data?.data ?? res.data;
       if (!alive || !c?.id) return;
-      const source = claimCustomerSourceFromSubType(c.subType);
       const picked: SelectedCustomer = {
         id: String(c.id),
         subType: c.subType ?? null,
@@ -338,6 +352,18 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         phone: c.phone ?? null,
         insuranceCompanyId: c.insuranceCompanyId ?? null,
       };
+      const slot = String(prefillSlot ?? loadYeniDosyaTaslak()?.returnSlot ?? '').trim();
+      if (slot === 'agency' || slot === 'broker' || slot === 'expert') {
+        if (slot === 'agency') setChannelAgencyCustomerId(String(c.id));
+        if (slot === 'broker') setChannelBrokerCustomerId(String(c.id));
+        if (slot === 'expert') setChannelExpertCustomerId(String(c.id));
+        return;
+      }
+      if (slot === 'private') {
+        setPrivateCustomer(picked);
+        return;
+      }
+      const source = claimCustomerSourceFromSubType(c.subType);
       setCustomerSource(source);
       setSelectedCustomer(picked);
       setCustomerSearch(customerDisplayName(picked));
@@ -361,7 +387,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       }
     }).catch(() => { /* kart seçimi sessizce durur */ });
     return () => { alive = false; };
-  }, [prefillCustomerId]);
+  }, [prefillCustomerId, prefillSlot]);
 
   const loadCustomerClaimFileOrdinal = useCallback(async (customerId: string) => {
     setCustomerFileOrdinalLoading(true);
@@ -384,10 +410,6 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       setCustomerFileOrdinalLoading(false);
     }
   }, [selectedCustomer?.id, loadCustomerClaimFileOrdinal]);
-
-  useEffect(() => {
-    setNotificationDate(todayTrDateDisplay());
-  }, []);
 
   useEffect(() => {
     const id = String(selectedCustomer?.id ?? '').trim();
@@ -659,6 +681,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       if (!createdId) {
         throw new Error('Oluşturulan dosya kimliği alınamadı');
       }
+      clearYeniDosyaTaslak();
       onSuccess(createdId);
     } catch (err: unknown) {
       const errorText = getApiErrorMessage(err, 'Kayıt başarısız. Lütfen tekrar deneyin.');
@@ -776,7 +799,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             </button>
             <button
               type="button"
-              onClick={() => openFullCustomerCard(claimCustomerSourceSubType(customerSource))}
+              onClick={() => openFullCustomerCard(claimCustomerSourceSubType(customerSource), 'source')}
               className="w-full px-3 py-2.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50 sm:flex-1"
             >
               {`Yeni ${CLAIM_CUSTOMER_SOURCE_LABEL[customerSource]}`}
@@ -892,14 +915,74 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     </>
   );
 
-  const yeniDosyaReturnTo = () => {
+  const taslakSnapshot = (returnSlot: YeniDosyaReturnSlot | '' = ''): YeniDosyaTaslak => ({
+    customerSource,
+    serviceKind,
+    consultancyServiceTypeId,
+    insuranceCompanyId,
+    channelAgencyCustomerId,
+    channelBrokerCustomerId,
+    channelExpertCustomerId,
+    fileNo,
+    lossType,
+    notificationDate,
+    insuredName,
+    description,
+    assignedOfficeUserId,
+    siteContactName,
+    siteContactPhone,
+    siteContactEmail,
+    sourceContactId,
+    customerSearch,
+    cityCode,
+    city,
+    district,
+    openAddress,
+    selectedCustomer,
+    privateCustomer,
+    returnSlot,
+  });
+
+  useEffect(() => {
+    const keptSlot = loadYeniDosyaTaslak()?.returnSlot ?? '';
+    saveYeniDosyaTaslak(taslakSnapshot(keptSlot));
+  }, [
+    customerSource,
+    serviceKind,
+    consultancyServiceTypeId,
+    insuranceCompanyId,
+    channelAgencyCustomerId,
+    channelBrokerCustomerId,
+    channelExpertCustomerId,
+    fileNo,
+    lossType,
+    notificationDate,
+    insuredName,
+    description,
+    assignedOfficeUserId,
+    siteContactName,
+    siteContactPhone,
+    siteContactEmail,
+    sourceContactId,
+    customerSearch,
+    cityCode,
+    city,
+    district,
+    openAddress,
+    selectedCustomer,
+    privateCustomer,
+  ]);
+
+  const yeniDosyaReturnTo = (slot: YeniDosyaReturnSlot | '' = '') => {
     const params = new URLSearchParams({ yeni: '1' });
     if (listHizmet) params.set('hizmet', listHizmet);
+    if (slot) params.set('returnSlot', slot);
     return `/panel/hasar-dosyalari?${params.toString()}`;
   };
 
-  const openFullCustomerCard = (subType: string) => {
-    const returnTo = yeniDosyaReturnTo();
+  const openFullCustomerCard = (subType: string, slot: YeniDosyaReturnSlot) => {
+    saveYeniDosyaTaslak(taslakSnapshot(slot));
+    const returnTo = yeniDosyaReturnTo(slot);
     if (subType === 'private_customer') {
       const params = new URLSearchParams({
         openAdd: '1',
@@ -920,20 +1003,22 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const openSourceContactCard = () => {
     const subType = claimCustomerSourceSubType(customerSource);
     if (!selectedCustomer?.id) {
-      openFullCustomerCard(subType);
+      openFullCustomerCard(subType, 'source');
       return;
     }
+    saveYeniDosyaTaslak(taslakSnapshot('source'));
     const params = new URLSearchParams({
       edit: selectedCustomer.id,
       subType,
-      returnTo: yeniDosyaReturnTo(),
+      returnTo: yeniDosyaReturnTo('source'),
       returnLabel: 'Yeni Dosya',
     });
     router.push(`/panel/musteriler?${params.toString()}`);
   };
 
   const openChannelCustomer = (subType: 'acente_firmasi' | 'broker_firmasi' | 'eksper_firmasi') => {
-    openFullCustomerCard(subType);
+    const slot: YeniDosyaReturnSlot = subType === 'acente_firmasi' ? 'agency' : subType === 'broker_firmasi' ? 'broker' : 'expert';
+    openFullCustomerCard(subType, slot);
   };
 
   const channelAddLink = (subType: 'acente_firmasi' | 'broker_firmasi' | 'eksper_firmasi') => (
@@ -1323,7 +1408,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
           setShowCustomerModal(false);
         }}
         onCreateNew={() => {
-          openFullCustomerCard(customerPickTarget === 'private' ? 'private_customer' : claimCustomerSourceSubType(customerSource));
+          openFullCustomerCard(
+            customerPickTarget === 'private' ? 'private_customer' : claimCustomerSourceSubType(customerSource),
+            customerPickTarget === 'private' ? 'private' : 'source',
+          );
         }}
       />
     </>

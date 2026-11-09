@@ -75,6 +75,7 @@ export function relationshipTypeAppliesToArea(
   if (area === 'dosya') return false;
   const areas = (row.usageAreas ?? []).filter((item) => item !== 'dosya');
   if (areas.includes(area)) return true;
+  if (area === 'eksper' && areas.some((item) => item === 'eksper_firmasi' || item === 'expert')) return true;
   if (area === 'tedarikci') return isRelationshipVendorParentOn(areas);
   if (isRelationshipVendorChild(area)) {
     const hasChild = areas.some((item) => isRelationshipVendorChild(item));

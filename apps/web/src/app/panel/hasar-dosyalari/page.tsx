@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ClaimNewForm } from '@/components/claim-files/ClaimNewForm';
+import { clearYeniDosyaTaslak } from '@/utils/claim-new-form-helpers';
 import { ExpertFileNoteModal } from '@/components/eksper-portal/ExpertFileModals';
 import { useApiQuery } from '@/hooks/useApi';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -259,6 +260,7 @@ function ClaimFilesPageContent() {
   const urlHizmet = normalizeHasarHizmetParam(searchParams.get(HASAR_LIST_HIZMET_PARAM));
   const urlKaynak = normalizeMusteriKaynakParam(searchParams.get(MUSTERI_KAYNAK_PARAM));
   const [prefillCustomerId, setPrefillCustomerId] = useState<string | null>(null);
+  const [prefillSlot, setPrefillSlot] = useState<string | null>(null);
 
   // Filters state
   const [search, setSearch] = useState(urlSearch);
@@ -342,7 +344,8 @@ function ClaimFilesPageContent() {
   useEffect(() => {
     if (searchParams.get('yeni') !== '1') return;
     const customerId = searchParams.get('customerId')?.trim() || null;
-    if (customerId) setPrefillCustomerId(customerId);
+    setPrefillCustomerId(customerId);
+    setPrefillSlot(searchParams.get('returnSlot')?.trim() || null);
     setFormSession((s) => s + 1);
     setShowNewPanel(true);
     const next = new URLSearchParams();
@@ -492,6 +495,9 @@ function ClaimFilesPageContent() {
   };
 
   function openNewPanel() {
+    clearYeniDosyaTaslak();
+    setPrefillCustomerId(null);
+    setPrefillSlot(null);
     setFormSession((s) => s + 1);
     setShowNewPanel(true);
   }
@@ -717,6 +723,7 @@ function ClaimFilesPageContent() {
           key={`${formSession}-${urlHizmet ?? 'onarim'}`}
           variant="panel"
           prefillCustomerId={prefillCustomerId}
+          prefillSlot={prefillSlot}
           listHizmet={urlHizmet}
           onCancel={() => setShowNewPanel(false)}
           onSuccess={handleCreateSuccess}

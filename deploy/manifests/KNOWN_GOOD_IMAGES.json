@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-09",
-  "label": "v677-hasar-konusu",
-  "description": "v677 full: Yeni Dosya Hasar Konusu yalnız ilgili hattın Ayarlar listesini gösterir. Geri alma web v676 / backend v676.",
+  "label": "v678-yeni-dosya-taslak",
+  "description": "v678 yalnız web: Yeni Dosya müşteri kartına gidince yazılanlar durur. Backend v677. Geri alma web v677 / backend v677.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
     "backend": "app-backend:dalga2-agreement-hr-01-v677-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v677-amd64"
+    "web": "sigorta-web:dalga2-agreement-hr-01-v678-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v676-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v676-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v677-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v677-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

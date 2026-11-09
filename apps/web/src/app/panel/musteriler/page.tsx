@@ -2837,7 +2837,7 @@ export default function MusterilerPage() {
                     href={settingsReturn.returnTo}
                     className="inline-block mt-1.5 text-xs font-medium text-emerald-100 hover:text-white underline underline-offset-2"
                   >
-                    ← {settingsReturn.returnLabel} listesine dön
+                    ← {settingsReturn.returnTo.includes('yeni=1') ? settingsReturn.returnLabel : `${settingsReturn.returnLabel} listesine dön`}
                   </Link>
                 )}
               </div>

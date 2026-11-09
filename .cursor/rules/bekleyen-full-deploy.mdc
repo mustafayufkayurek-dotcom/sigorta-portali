@@ -1,11 +1,11 @@
 ---
-description: Canlı web v677 / backend v677
+description: Canlı web v678 / backend v677
 alwaysApply: true
 ---
 
 # Canlı (09.11.2026)
 
-Canlı: web **v677** · backend **v677**. Geri alma: web **v676** / backend **v676**.
+Canlı: web **v678** · backend **v677**. Geri alma: web **v677** / backend **v677**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v678 (yalnız web):** Yeni Dosya’dan eksper, acente, broker veya özel müşteri kartına gidince yazılanlar durur. Dönünce form boşalmaz; yeni kart yerine gelir. Dosya kaydolunca bu yazı silinir. Yeni bir dosya açılınca eski yazı gelmez. Backend **v677**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v677 / backend v677.
 
 **v677 (full):** Yeni Dosya Hasar Konusu yalnız o dosyanın hattındaki Ayarlar listesini gösterir. Başka hattın konusu karışmaz. Silinen konu Ayarlar açılınca geri yazılmaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v676 / backend v676.
 
@@ -231,4 +233,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v677** · backend **v677**.
+Canlı web **v678** · backend **v677**.

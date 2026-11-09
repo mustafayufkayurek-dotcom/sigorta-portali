@@ -61,6 +61,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 42. Kapalı Hasar dosyasında Ek Onarım açılır. Yeni dosya açılmaz. İlk kapanış durur. Durum Kapalı · Ek Onarım. Ek kalemler **Ek Onarım Maliyeti** altında durur; rapor altında **Ek Onarım Toplamı** yazar.
 43. Hasar Tespit saha işi Onarım yazmaz. Tespit resmi raporun altında durur. Plan maili irtibat kutusuna gider; yoksa gitmez.
 44. Hasar Tespit raporu PDF açılır. Kalemsiz Onaya Gönder kesilmez. İrtibat kutusu yedek alıcıdır.
+45. Yeni Dosya müşteri kartına gidince yazılanlar durur. Dönünce form boşalmaz. Dosya kaydolunca bu yazı silinir. Yeni bir dosya açılınca eski yazı gelmez.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

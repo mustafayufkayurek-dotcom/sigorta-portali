@@ -85,6 +85,7 @@ describe('ilişki türü kullanım alanı LOCK', () => {
     assert.equal(relationshipTypeAppliesToArea({ label: 'Broker Yetkili', usageAreas: ['broker_firmasi'] }, 'sigorta_sirketi'), false);
     assert.equal(relationshipTypeAppliesToArea({ label: 'Vekil', usageAreas: ['insured'] }, 'insured'), true);
     assert.equal(relationshipTypeAppliesToArea({ label: 'Vekil', usageAreas: ['insured'] }, 'eksper'), false);
+    assert.equal(relationshipTypeAppliesToArea({ label: 'Eski Eksper', usageAreas: ['eksper_firmasi'] }, 'eksper'), true);
     assert.equal(relationshipTypeAppliesToArea({ label: 'Vekil', usageAreas: ['musteri'] }, 'insured'), true);
     areas = toggleRelationshipCustomerChild(['musteri'], 'insured');
     assert.deepEqual(areas, ['insured']);
