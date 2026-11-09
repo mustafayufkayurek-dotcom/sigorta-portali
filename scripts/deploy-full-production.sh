@@ -111,7 +111,7 @@ EOF
 echo '=== Yeni backend (eski web ayakta) ==='
 docker compose -p $COMPOSE_PROJECT_NAME --env-file .env.production -f docker-compose.prod.yml -f docker-compose.override.yml up -d --no-deps backend
 ok=0
-for i in $(seq 1 30); do
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
   if docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health >/dev/null 2>&1; then
     ok=1
     break
