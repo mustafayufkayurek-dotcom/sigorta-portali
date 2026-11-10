@@ -1128,7 +1128,7 @@ export class RepairReportsService {
       !report.inspectorName?.trim() && vendorName
         ? { ...report, inspectorName: vendorName }
         : report;
-    const priced = this.attachExtraRepairCostLayout(this.overlayReportItemMoney(withInspector));
+    const priced = await this.attachExtraRepairCostLayout(this.overlayReportItemMoney(withInspector));
     const { card } = await serviceMailRouteForClaim(this.prisma, {
       serviceKind: priced.claimFile?.serviceKind,
       consultancyServiceType: priced.claimFile?.consultancyServiceType,
