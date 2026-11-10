@@ -340,6 +340,8 @@ model ClaimFile {
   /// inspection | repair | consultancy — boş kayıt onarım sayılır
   serviceKind           String?   @map("service_kind")
   consultancyServiceTypeId String? @map("consultancy_service_type_id")
+  /// Onay ve yazışma tarafları. Boşsa hizmet türünün varsayılanı okunur.
+  mailRouteJson         String?   @map("mail_route_json")
   siteContactName       String?   @map("site_contact_name")
   siteContactPhone      String?   @map("site_contact_phone")
   siteContactEmail      String?   @map("site_contact_email")
@@ -658,6 +660,8 @@ model CustomerContact {
   phone      String?
   email      String?
   isPrimary  Boolean  @default(false) @map("is_primary")
+  mailCopyApproval Boolean @default(false) @map("mail_copy_approval")
+  mailCopyInfo     Boolean @default(false) @map("mail_copy_info")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 

@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-11-09",
-  "label": "v679-yetkili-kisi-adi",
-  "description": "v679 full: Eksper ofisi kişinin kendi adıyla açılır. Geri alma web v678 / backend v677.",
+  "updatedAt": "2026-11-10",
+  "label": "v680-hizmet-karti",
+  "description": "v680 full: Hizmet kartı menü, mail, zorunlu taraf ve fiyatı bağlar. Müşteri yetkilisi kopya alır. Geri alma web v679 / backend v679.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v679-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v679-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v680-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v680-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v678-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v677-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v679-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v679-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

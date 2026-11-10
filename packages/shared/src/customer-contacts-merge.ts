@@ -8,6 +8,8 @@ export type CustomerContactWrite = {
   phone?: string | null;
   email?: string | null;
   isPrimary?: boolean;
+  mailCopyApproval?: boolean | null;
+  mailCopyInfo?: boolean | null;
 };
 
 export type CustomerPrimaryPerson = {
@@ -72,6 +74,23 @@ export function mergePrimaryIntoCustomerContacts(
   }
 
   return list.map((row, index) => ({ ...row, isPrimary: index === 0 }));
+}
+
+/** Müşteri kişisi asıl alıcı olmaz. İşaretli kişi onay veya yazışma mailinde kopya alır. */
+export function customerContactCopyEmails(
+  contacts: Array<{ email?: string | null; mailCopyApproval?: boolean | null; mailCopyInfo?: boolean | null }> | null | undefined,
+  lane: 'approval' | 'info',
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const row of contacts ?? []) {
+    if (lane === 'approval' ? !row?.mailCopyApproval : !row?.mailCopyInfo) continue;
+    const email = String(row?.email ?? '').trim().toLowerCase();
+    if (!email.includes('@') || seen.has(email)) continue;
+    seen.add(email);
+    out.push(email);
+  }
+  return out;
 }
 
 /** Boş liste mevcut kişileri silmez. */

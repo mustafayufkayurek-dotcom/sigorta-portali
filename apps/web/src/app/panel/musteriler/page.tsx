@@ -146,6 +146,8 @@ type ContactPerson = {
   phoneType: 'gsm' | 'landline';
   extensionNo: string;
   email: string;
+  mailCopyApproval?: boolean;
+  mailCopyInfo?: boolean;
 };
 type ContactInfoItem = { id?: string; type: string; value: string; label: string };
 
@@ -153,6 +155,7 @@ type ContactInfoItem = { id?: string; type: string; value: string; label: string
 
 const emptyContact = (): ContactPerson => ({
   firstName: '', lastName: '', role: '', phone: '', phoneType: 'gsm', extensionNo: '', email: '',
+  mailCopyApproval: false, mailCopyInfo: false,
 });
 const emptyContactInfo = (): ContactInfoItem => ({ type: 'phone', value: '', label: 'general' });
 const emptyForm = () => ({
@@ -234,6 +237,54 @@ function CustomerSubTypePicker({
       </div>
       {hasError && <p className="text-xs text-status-danger mt-1.5">Müşteri tipi seçimi zorunludur</p>}
       {selectedSubType && <CustomerSubTypeHintBanner subType={selectedSubType} identityFilled={identityFilled} />}
+    </div>
+  );
+}
+
+function MailCopySwitch({
+  label,
+  on,
+  onToggle,
+}: {
+  label: string;
+  on: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={onToggle}
+      className="inline-flex items-center gap-2 text-sm text-slate-700"
+    >
+      <span>{label}</span>
+      <span className={`relative h-5 w-10 rounded-full transition-colors ${on ? 'bg-brand-600' : 'bg-slate-200'}`}>
+        <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${on ? 'translate-x-5' : ''}`} />
+      </span>
+    </button>
+  );
+}
+
+function ContactMailCopies({
+  approval,
+  info,
+  onApproval,
+  onInfo,
+}: {
+  approval: boolean;
+  info: boolean;
+  onApproval: () => void;
+  onInfo: () => void;
+}) {
+  return (
+    <div className="col-span-1 sm:col-span-2">
+      <FormField label="Mail Kopyası" help="Açık olan kişi kopya alır. Asıl mail karşı tarafa gider.">
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <MailCopySwitch label="Onay Bilgilendirme" on={approval} onToggle={onApproval} />
+          <MailCopySwitch label="Yazışma Bilgilendirme" on={info} onToggle={onInfo} />
+        </div>
+      </FormField>
     </div>
   );
 }
@@ -3400,6 +3451,12 @@ export default function MusterilerPage() {
                                     if (person) upC(idx, 'email', person);
                                     if (extras.length) setContactInfos((prev) => appendGeneralMailboxes(prev, extras));
                                   }} /></FormField></div>
+                                  <ContactMailCopies
+                                    approval={c.mailCopyApproval === true}
+                                    info={c.mailCopyInfo === true}
+                                    onApproval={() => upContact(idx, { mailCopyApproval: c.mailCopyApproval !== true })}
+                                    onInfo={() => upContact(idx, { mailCopyInfo: c.mailCopyInfo !== true })}
+                                  />
                                 </div>
                               </div>
                             ))}
@@ -3483,6 +3540,12 @@ export default function MusterilerPage() {
                                 if (person) upC(idx, 'email', person);
                                 if (extras.length) setContactInfos((prev) => appendGeneralMailboxes(prev, extras));
                               }} /></FormField></div>
+                              <ContactMailCopies
+                                approval={c.mailCopyApproval === true}
+                                info={c.mailCopyInfo === true}
+                                onApproval={() => upContact(idx, { mailCopyApproval: c.mailCopyApproval !== true })}
+                                onInfo={() => upContact(idx, { mailCopyInfo: c.mailCopyInfo !== true })}
+                              />
                             </div>
                           </div>
                         ))}

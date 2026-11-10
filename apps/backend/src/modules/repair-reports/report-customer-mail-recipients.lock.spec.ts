@@ -55,6 +55,7 @@ describe('rapor müşteri maili LOCK', () => {
     const src = readFileSync(join(here, 'repair-reports.service.ts'), 'utf8');
     assert.match(src, /resolveReportCustomerMailRecipients/);
     assert.match(src, /collectClaimFileChannelEmails/);
+    assert.match(src, /resolveClaimMailRoute/);
     assert.match(src, /generalMailboxesFromContactInfos/);
     assert.match(src, /sendReport/);
     assert.match(src, /await this\.claimEventEmail\.onManagerApprovalRequested/);

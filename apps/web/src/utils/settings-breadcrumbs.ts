@@ -14,6 +14,7 @@ const DEFINITION_PAGE_LABELS: Record<string, string> = {
   '/panel/ayarlar/durumlar': 'Durumlar',
   '/panel/ayarlar/evrak-turleri': 'Evrak Türleri',
   '/panel/ayarlar/hizmet-turleri': 'Danışmanlık Hizmet Türleri',
+  '/panel/ayarlar/hizmet-kartlari': 'Hizmet Kartları',
   '/panel/ayarlar/hizmet-branslari': 'Dosya Konuları',
   '/panel/ayarlar/tedarikci-hizmet-kollari': 'Tedarikçi Hizmet Kolları',
   '/panel/ayarlar/is-gruplari': 'İş Grupları',

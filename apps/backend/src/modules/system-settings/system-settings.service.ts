@@ -711,6 +711,21 @@ export class SystemSettingsService {
     return values;
   }
 
+  async getHizmetKartlari(): Promise<unknown[]> {
+    try {
+      const value = await this.get('hizmet_kartlari');
+      return Array.isArray(value) ? value : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async setHizmetKartlari(values: unknown[]): Promise<unknown[]> {
+    const rows = Array.isArray(values) ? values : [];
+    await this.set('hizmet_kartlari', rows);
+    return rows;
+  }
+
   async getHrLeaveTypes(): Promise<HrLeaveTypeOption[]> {
     try {
       const value = await this.get('hr_leave_types');

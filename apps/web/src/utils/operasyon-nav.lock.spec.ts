@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   acilListPageTitle,
+  buildAsistansNavChildren,
   buildOperasyonNavChildren,
   HASAR_HIZMET_TESPIT,
   HASAR_LIST_HIZMET_PARAM,
@@ -47,6 +48,14 @@ describe('operasyon nav danışmanlık ve asistans kilidi', () => {
     assert.equal(hasar?.groupOnly, undefined);
     assert.equal(hasar?.children, undefined);
     assert.match(hasar?.href ?? '', /hizmet=hasar-onarim/);
+  });
+
+  it('yeni asistans hizmeti sol menüde aynı grubun altına düşer', () => {
+    const children = buildAsistansNavChildren([{ name: 'Cam İşleri', code: 'cam-isleri' }]);
+    assert.equal(children.some((c) => c.title === 'Cam İşleri'), true);
+    assert.match(children.find((c) => c.title === 'Cam İşleri')?.href ?? '', /hizmet=cam-isleri/);
+    assert.equal(children.some((c) => c.title === 'Hasar Onarım'), true);
+    assert.equal(children.some((c) => c.title === 'Acil Yardım'), true);
   });
 
   it('liste başlığı ve seçili menü hizmete ve kaynağa göre durur', () => {

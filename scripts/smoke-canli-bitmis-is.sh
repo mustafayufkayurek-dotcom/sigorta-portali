@@ -122,6 +122,8 @@ node --experimental-strip-types --test \
   apps/web/src/app/dev/dev-production-closed.lock.spec.ts \
   apps/web/src/components/claim-files/claim-new-form.lock.spec.ts \
   packages/shared/src/claim-file-channels.lock.spec.ts \
+  packages/shared/src/claim-mail-route.lock.spec.ts \
+  packages/shared/src/hizmet-karti.lock.spec.ts \
   apps/web/src/utils/shrink-inspection-photo.lock.spec.ts \
   apps/web/src/utils/hasar-dosya-irtibat.lock.spec.ts \
   packages/shared/src/hasar-randevu-alici.lock.spec.ts \

@@ -310,6 +310,8 @@ export function mapCustomerContactsToForm(
     role?: string | null;
     phone?: string | null;
     email?: string | null;
+    mailCopyApproval?: boolean | null;
+    mailCopyInfo?: boolean | null;
   }> = [],
   primary?: {
     firstName?: string | null;
@@ -332,9 +334,11 @@ export function mapCustomerContactsToForm(
           phoneType: 'gsm' as const,
           extensionNo: '',
           email: contact.email ?? '',
+          mailCopyApproval: contact.mailCopyApproval === true,
+          mailCopyInfo: contact.mailCopyInfo === true,
         };
       })
-    : [{ firstName: '', lastName: '', role: '', phone: '', phoneType: 'gsm' as const, extensionNo: '', email: '' }];
+    : [{ firstName: '', lastName: '', role: '', phone: '', phoneType: 'gsm' as const, extensionNo: '', email: '', mailCopyApproval: false, mailCopyInfo: false }];
 
   if (!primary) return mapped;
 
@@ -360,6 +364,8 @@ export function mapCustomerContactsToForm(
       phoneType: 'gsm' as const,
       extensionNo: '',
       email: String(row.email ?? ''),
+      mailCopyApproval: row.mailCopyApproval === true,
+      mailCopyInfo: row.mailCopyInfo === true,
     };
   });
 }

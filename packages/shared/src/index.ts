@@ -41,6 +41,8 @@ export * from './claim-service-kind';
 export * from './claim-customer-source';
 export * from './hasar-randevu-alici';
 export * from './claim-file-channels';
+export * from './claim-mail-route';
+export * from './hizmet-karti';
 export * from './claim-pre-approval';
 export * from './insurance-company-catalog';
 export * from './field-staff-area';

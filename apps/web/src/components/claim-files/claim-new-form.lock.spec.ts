@@ -152,6 +152,8 @@ describe('yeni dosya form lock', () => {
     assert.match(form, /Dosya Kanalı/);
     assert.match(form, /data-field="channelAgencyCustomerId"/);
     assert.match(form, /data-field="channelBrokerCustomerId"/);
+    assert.doesNotMatch(form, /Yazışma Tarafı/);
+    assert.doesNotMatch(form, /payload\.mailRoute/);
     assert.match(form, /data-field="channelExpertCustomerId"/);
     assert.match(form, /dosya-kanali-yardim/);
     assert.match(form, /Dosyayı biz açarız/);

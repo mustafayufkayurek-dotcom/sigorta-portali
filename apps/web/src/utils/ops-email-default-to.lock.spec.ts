@@ -38,4 +38,17 @@ describe('liste mail alıcısı LOCK', () => {
     });
     assert.equal(to, 'hasar@allianz.com');
   });
+
+  it('hizmet ayarı yazışmayı seçilen tarafa götürür', () => {
+    const to = resolveClaimCorrespondenceDefaultTo({
+      serviceKind: 'consultancy',
+      serviceMailRoute: { approval: ['broker'], correspondence: ['broker'] },
+      customer: { email: 'musteri@sigorta.com' },
+      insuranceCompany: { contactEmail: 'hasar@allianz.com' },
+      channelAgencyCustomer: null,
+      channelBrokerCustomer: { email: 'broker@ofis.com' },
+      channelExpertCustomer: { email: 'eksper@ofis.com' },
+    });
+    assert.equal(to, 'broker@ofis.com');
+  });
 });

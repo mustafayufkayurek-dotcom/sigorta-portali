@@ -24,7 +24,16 @@ import {
   OFFICE_SETTINGS_CATALOG_LIMIT,
   parseClaimServiceKind,
   buildClaimFileListSearchWhere,
+  claimMailRouteJson,
+  parseClaimMailRoute,
+  resolveClaimMailRoute,
+  findHizmetKarti,
+  hizmetKartiCodeForClaim,
+  hizmetRequiredPartyMessage,
+  missingHizmetRequiredParty,
+  customerContactCopyEmails,
 } from '@sigorta/shared';
+import { loadHizmetKartlari } from '@/common/hizmet-karti-store';
 import { sanitizeSearchQuery } from '@/common/security/sanitize-search';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
@@ -878,6 +887,9 @@ export class ClaimFilesService {
           lossType: true,
           productBranch: true,
           sourceChannel: true,
+          serviceKind: true,
+          mailRouteJson: true,
+          consultancyServiceType: { select: { code: true, name: true } },
           notificationDate: true,
           incidentDate: true,
           createdAt: true,
@@ -1897,9 +1909,30 @@ export class ClaimFilesService {
         : null;
     delete rest.siteContactEmail;
     const channelFields = claimFileChannelCreateFields(rest);
+    const hizmetCards = await loadHizmetKartlari(this.prisma);
+    const typeForCard = consultancyServiceTypeId
+      ? await this.prisma.serviceType.findUnique({
+        where: { id: consultancyServiceTypeId },
+        select: { code: true, name: true },
+      })
+      : null;
+    const hizmetCard = findHizmetKarti(hizmetCards, hizmetKartiCodeForClaim({
+      serviceKind,
+      consultancyServiceType: typeForCard,
+    }));
+    const missingParty = missingHizmetRequiredParty(hizmetCard, {
+      insurance: insuranceCompanyIdRaw,
+      broker: channelFields.channelBrokerCustomerId,
+      expert: channelFields.channelExpertCustomerId,
+    });
+    if (missingParty && !(missingParty === 'insurance' && customerSource === 'private')) {
+      throw new BadRequestException(hizmetRequiredPartyMessage(missingParty));
+    }
     delete rest.channelAgencyCustomerId;
     delete rest.channelBrokerCustomerId;
     delete rest.channelExpertCustomerId;
+    const incomingMailRoute = rest.mailRoute;
+    delete rest.mailRoute;
     let sourceChannel = typeof rest.sourceChannel === 'string' ? rest.sourceChannel.trim() : '';
     const earlyRoleCode = String(requestingUser?.roleCode ?? requestingUser?.role?.code ?? '').trim();
     if (earlyRoleCode === 'insurance_company_user' && !sourceChannel) {
@@ -2062,6 +2095,8 @@ export class ClaimFilesService {
         }
       }
 
+      const mailRoute = parseClaimMailRoute(incomingMailRoute);
+
       const created = await this.prisma.claimFile.create({
         data: {
           ...rest,
@@ -2084,6 +2119,7 @@ export class ClaimFilesService {
           siteContactName,
           siteContactPhone,
           siteContactEmail,
+          mailRouteJson: claimMailRouteJson(mailRoute),
           ...channelFields,
           currentResponsibleRole: assignedOfficeUserId ? 'operasyon_sorumlusu' : null,
           currentResponsibleUserId: assignedOfficeUserId ?? null,
@@ -3066,6 +3102,56 @@ export class ClaimFilesService {
       dispatches.push({ email, organizationName: organizationName.trim(), audience, greeting });
     };
 
+    const serviceRoute = await loadHizmetKartlari(this.prisma).then((cards) => {
+      const card = findHizmetKarti(cards, hizmetKartiCodeForClaim({
+        serviceKind: claimFile.serviceKind,
+        consultancyServiceType: claimFile.consultancyServiceType,
+      }));
+      return card
+        ? { approval: card.approvalParties, correspondence: card.correspondenceParties }
+        : null;
+    });
+    const route = resolveClaimMailRoute({
+      serviceKind: claimFile.serviceKind,
+      consultancyServiceType: claimFile.consultancyServiceType,
+      mailRouteJson: claimFile.mailRouteJson,
+      serviceMailRoute: serviceRoute,
+    });
+    if (route) {
+      const lane = new Set(route.correspondence);
+      const partyIds = [
+        lane.has('broker') ? claimFile.channelBrokerCustomerId : null,
+        lane.has('agency') ? claimFile.channelAgencyCustomerId : null,
+        lane.has('expert') ? claimFile.channelExpertCustomerId : null,
+      ].filter((id): id is string => Boolean(id));
+      const cards = partyIds.length
+        ? await this.prisma.customer.findMany({
+          where: { id: { in: partyIds } },
+          select: {
+            id: true,
+            email: true,
+            companyName: true,
+            fullName: true,
+            shortName: true,
+            contactFirstName: true,
+            contactLastName: true,
+            firstName: true,
+            lastName: true,
+            authorizedPerson: true,
+          },
+        })
+        : [];
+      const cardOf = (id?: string | null) => cards.find((row) => row.id === id);
+      if (lane.has('insurance')) add(claimFile.insuranceCompany?.contactEmail, insuranceCompanyName, 'other');
+      for (const party of ['broker', 'agency', 'expert'] as const) {
+        if (!lane.has(party)) continue;
+        const id = party === 'broker' ? claimFile.channelBrokerCustomerId
+          : party === 'agency' ? claimFile.channelAgencyCustomerId
+            : claimFile.channelExpertCustomerId;
+        const card = cardOf(id);
+        add(card?.email, customerFirmTitle(card), 'other', closureCardGreeting(card));
+      }
+    } else {
     add(claimFile.insuranceCompany?.contactEmail, insuranceCompanyName, 'other');
 
     const expertOfficeRows = await this.prisma.repairReport.findMany({
@@ -3137,6 +3223,7 @@ export class ClaimFilesService {
         add(mailbox, customerTitle, audience, customerGreeting);
       }
     }
+    }
 
     if (!dispatches.length) {
       this.logger.warn(`[Kapanış maili] ${fileNo}: dış alıcı yok`);
@@ -3144,7 +3231,16 @@ export class ClaimFilesService {
     }
 
     const subject = `Dosya Kapanışı – ${fileNo}`;
-    for (const item of dispatches) {
+    const infoCopyRows = claimFile.customer?.id
+      ? await this.prisma.customerContact.findMany({
+        where: { customerId: claimFile.customer.id },
+        select: { email: true, mailCopyInfo: true },
+      })
+      : [];
+    const infoCopies = customerContactCopyEmails(infoCopyRows, 'info')
+      .filter((email) => !dispatches.some((item) => item.email === email) && !isMeridyenInternalMailbox(email));
+    for (let index = 0; index < dispatches.length; index += 1) {
+      const item = dispatches[index];
       const data = {
         departmentName,
         organizationName: item.organizationName,
@@ -3167,6 +3263,7 @@ export class ClaimFilesService {
         {
           text: buildFileClosureEmailPlaintext(data),
           mailbox: 'HASAR',
+          cc: index === 0 ? infoCopies.map((email) => ({ email })) : undefined,
         },
       );
       if (!result.sent || result.via !== 'graph') {

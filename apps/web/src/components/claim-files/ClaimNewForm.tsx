@@ -57,7 +57,13 @@ import {
   parseClaimCustomerSource,
   parseClaimServiceKind,
   parseServiceTypeListPayload,
+  findHizmetKarti,
+  hizmetKartiCodeForClaim,
+  hizmetRequiredPartyMessage,
+  mergeHizmetKartlari,
+  missingHizmetRequiredParty,
   type ClaimCustomerSource,
+  type HizmetKarti,
   type ClaimServiceKind,
 } from '@sigorta/shared';
 
@@ -158,6 +164,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     return saved ? parseClaimServiceKind(saved) : claimServiceKindFromListHizmet(listHizmet);
   });
   const [consultancyTypes, setConsultancyTypes] = useState<ConsultancyTypeOption[]>([]);
+  const [hizmetKartlari, setHizmetKartlari] = useState<HizmetKarti[]>([]);
   const [consultancyServiceTypeId, setConsultancyServiceTypeId] = useState(() => loadYeniDosyaTaslak()?.consultancyServiceTypeId ?? '');
   const router = useRouter();
   const [officeUsers, setOfficeUsers] = useState<PanelUser[]>([]);
@@ -226,7 +233,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         headers: authHeader(),
         params: { subType, status: 'active', limit: 1000, customerType: 'corporate' },
       });
-      const [icRes, meRes, staffRes, consultancyRes, agencyRes, brokerRes, expertRes] = await Promise.all([
+      const [icRes, meRes, staffRes, consultancyRes, agencyRes, brokerRes, expertRes, cardsRes] = await Promise.all([
         axios.get(`${API}/insurance-companies`, {
           headers: authHeader(),
           params: HASAR_FILE_INSURANCE_CATALOG_QUERY,
@@ -247,7 +254,9 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         axios.get(`${API}/customers`, channelFirmParams(CLAIM_FILE_CHANNELS[1].customerSubType!)).catch(() => ({ data: { data: [] } })),
         axios.get(`${API}/customers`, channelFirmParams(CLAIM_FILE_CHANNELS[2].customerSubType!)).catch(() => ({ data: { data: [] } })),
         axios.get(`${API}/customers`, channelFirmParams(CLAIM_FILE_CHANNELS[3].customerSubType!)).catch(() => ({ data: { data: [] } })),
+        axios.get(`${API}/system-settings/hizmet-kartlari`, { headers: authHeader() }).catch(() => ({ data: { data: [] } })),
       ]);
+      setHizmetKartlari(mergeHizmetKartlari(cardsRes.data?.data ?? []));
       setChannelAgencyFirms(customersToChannelFirms(agencyRes.data));
       setChannelBrokerFirms(customersToChannelFirms(brokerRes.data));
       setChannelExpertFirms(customersToChannelFirms(expertRes.data));
@@ -563,6 +572,22 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     if (serviceKind === 'consultancy' && !consultancyServiceTypeId) {
       errs.consultancyServiceTypeId = 'Danışmanlık hizmet türü zorunludur.';
     }
+    const typeRow = consultancyTypes.find((row) => row.id === consultancyServiceTypeId);
+    const card = findHizmetKarti(hizmetKartlari, hizmetKartiCodeForClaim({
+      serviceKind,
+      consultancyServiceType: typeRow ? { code: typeRow.code, name: typeRow.name } : null,
+    }));
+    const missingParty = missingHizmetRequiredParty(card, {
+      insurance: insuranceCompanyId,
+      broker: channelBrokerCustomerId || (customerSource === 'broker' ? selectedCustomer?.id : ''),
+      expert: channelExpertCustomerId || (customerSource === 'expert' ? selectedCustomer?.id : ''),
+    });
+    if (missingParty && !(missingParty === 'insurance' && customerSource === 'private')) {
+      const field = missingParty === 'insurance' ? 'insuranceCompanyId'
+        : missingParty === 'broker' ? 'channelBrokerCustomerId'
+          : 'channelExpertCustomerId';
+      errs[field] = hizmetRequiredPartyMessage(missingParty);
+    }
     const ihbarToday = todayTrDateDisplay();
     if (!isPanel && !isCompleteTrDateValue(notificationDate || ihbarToday)) {
       errs.notificationDate = 'İhbar tarihi zorunludur (GG.AA.YYYY).';
@@ -589,7 +614,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       });
     }
     if (errs.customer) setOpenSections((p) => ({ ...p, eksper: true }));
-    if (errs.fileNo || errs.insuranceCompanyId || errs.lossType || errs.insuredName || errs.assignedOfficeUserId || errs.serviceKind || errs.consultancyServiceTypeId || errs.sourceContactId) {
+    if (errs.fileNo || errs.insuranceCompanyId || errs.lossType || errs.insuredName || errs.assignedOfficeUserId || errs.serviceKind || errs.consultancyServiceTypeId || errs.sourceContactId || errs.channelBrokerCustomerId || errs.channelExpertCustomerId) {
       setOpenSections((p) => ({ ...p, dosya: true }));
     }
     return Object.keys(errs).length === 0;
@@ -1201,10 +1226,11 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             </div>}
             {!claimCustomerSourceHidesChannel(customerSource, 'broker') && <div className="min-w-0" data-field="channelBrokerCustomerId">
               <label className={label}>Broker <span className="font-normal text-slate-400">Tercihe Bağlı</span></label>
-              <select className={`${field} w-full min-w-0`} value={channelBrokerCustomerId} onChange={(e) => setChannelBrokerCustomerId(e.target.value)}>
+              <select className={`${field} w-full min-w-0 ${errors.channelBrokerCustomerId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`} value={channelBrokerCustomerId} onChange={(e) => setChannelBrokerCustomerId(e.target.value)}>
                 <option value="">Seçiniz...</option>
                 {channelBrokerFirms.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              {errors.channelBrokerCustomerId && <p className="text-xs text-status-danger mt-0.5">{errors.channelBrokerCustomerId}</p>}
               {channelAddLink('broker_firmasi')}
             </div>}
             {customerSource !== 'broker' && <div className="min-w-0" data-field="channelAgencyCustomerId">
@@ -1217,10 +1243,11 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             </div>}
             {!claimCustomerSourceHidesChannel(customerSource, 'expert') && <div className="min-w-0" data-field="channelExpertCustomerId">
               <label className={label}>Eksper <span className="font-normal text-slate-400">Tercihe Bağlı</span></label>
-              <select className={`${field} w-full min-w-0`} value={channelExpertCustomerId} onChange={(e) => setChannelExpertCustomerId(e.target.value)}>
+              <select className={`${field} w-full min-w-0 ${errors.channelExpertCustomerId ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`} value={channelExpertCustomerId} onChange={(e) => setChannelExpertCustomerId(e.target.value)}>
                 <option value="">Seçiniz...</option>
                 {expertChannelOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              {errors.channelExpertCustomerId && <p className="text-xs text-status-danger mt-0.5">{errors.channelExpertCustomerId}</p>}
               {channelAddLink('eksper_firmasi')}
             </div>}
           </div>

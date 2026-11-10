@@ -233,6 +233,22 @@ export class SystemSettingsController {
     return { success: true, data };
   }
 
+  @Get('hizmet-kartlari')
+  @RequirePermissions('settings.view', 'customer.view')
+  @ApiOperation({ summary: 'Hizmet kartlarını getir' })
+  async getHizmetKartlari() {
+    const data = await this.service.getHizmetKartlari();
+    return { success: true, data };
+  }
+
+  @Put('hizmet-kartlari')
+  @RequirePermissions('settings.manage')
+  @ApiOperation({ summary: 'Hizmet kartlarını kaydet' })
+  async setHizmetKartlari(@Body() body: { values?: unknown[] }) {
+    const data = await this.service.setHizmetKartlari(body.values ?? []);
+    return { success: true, data };
+  }
+
   @Put('relationship-types')
   @RequirePermissions('settings.manage', 'vendor.create', 'customer.create', 'adjuster.create')
   @ApiOperation({ summary: 'İlgili kişi ilişki türlerini güncelle' })

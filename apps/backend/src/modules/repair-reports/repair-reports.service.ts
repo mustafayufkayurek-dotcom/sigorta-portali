@@ -25,7 +25,9 @@ import { normalizeReportImageCategory } from './report-image-category';
 import { getReportImagesDir, resolveReportImageFilePath } from './report-image-paths';
 import { StorageService } from '@/modules/storage/storage.service';
 import { resolveReportCustomerMailRecipients } from './report-customer-mail-recipients';
-import { collectClaimFileChannelEmails, generalMailboxesFromContactInfos } from '@sigorta/shared';
+import { collectClaimFileChannelEmails, customerContactCopyEmails, generalMailboxesFromContactInfos, resolveClaimMailRoute } from '@sigorta/shared';
+import { serviceMailRouteForClaim } from '@/common/hizmet-karti-store';
+import { isMeridyenInternalMailbox } from '@/modules/notifications/email/file-closure-email.template';
 import {
   ACIL_INSPECTION_PHOTO_NOTE,
   isHasarTespitPhotoNotes,
@@ -1126,7 +1128,12 @@ export class RepairReportsService {
       !report.inspectorName?.trim() && vendorName
         ? { ...report, inspectorName: vendorName }
         : report;
-    return this.attachExtraRepairCostLayout(this.overlayReportItemMoney(withInspector));
+    const priced = this.attachExtraRepairCostLayout(this.overlayReportItemMoney(withInspector));
+    const { card } = await serviceMailRouteForClaim(this.prisma, {
+      serviceKind: priced.claimFile?.serviceKind,
+      consultancyServiceType: priced.claimFile?.consultancyServiceType,
+    });
+    return { ...priced, showPrices: card ? card.reportPrice !== false : true };
   }
 
   async generatePdf(reportId: string, viewType: 'internal' | 'external'): Promise<{ buffer: Buffer; report: any }> {
@@ -1312,6 +1319,7 @@ export class RepairReportsService {
             id: true,
             fileNo: true,
             serviceKind: true,
+            mailRouteJson: true,
             siteContactEmail: true,
             consultancyServiceType: { select: { code: true, name: true } },
             insuranceCompany: { select: { id: true, name: true, contactEmail: true } },
@@ -1356,10 +1364,16 @@ export class RepairReportsService {
     if (!report.findingsText?.trim()) {
       throw new BadRequestException('Tespit Bulguları doldurulmadan onaya gönderilemez.');
     }
-    const requirePricedItems = repairReportRequiresPricedItems(
-      report.claimFile?.serviceKind,
-      report.claimFile?.consultancyServiceType,
-    );
+    const hizmetMail = await serviceMailRouteForClaim(this.prisma, {
+      serviceKind: report.claimFile?.serviceKind,
+      consultancyServiceType: report.claimFile?.consultancyServiceType,
+    });
+    const requirePricedItems = hizmetMail.card?.reportPrice === false
+      ? false
+      : repairReportRequiresPricedItems(
+        report.claimFile?.serviceKind,
+        report.claimFile?.consultancyServiceType,
+      );
     if (requirePricedItems && report.items.length === 0) {
       throw new BadRequestException('En az bir onarım kalemi eklenmeden onaya gönderilemez.');
     }
@@ -1382,18 +1396,30 @@ export class RepairReportsService {
       throw new BadRequestException('Maliyet veya satış tutarı girilmeden onaya gönderilemez.');
     }
 
-    const customerRecipients = resolveReportCustomerMailRecipients({
-      customerEmail: report.claimFile?.customer?.email,
-      contacts: report.claimFile?.customer?.contacts,
-      channelEmails: generalMailboxesFromContactInfos(report.claimFile?.customer?.contactInfos),
-      fileChannelEmails: collectClaimFileChannelEmails({
-        insuranceContactEmail: report.claimFile?.insuranceCompany?.contactEmail,
-        agency: report.claimFile?.channelAgencyCustomer,
-        broker: report.claimFile?.channelBrokerCustomer,
-        expert: report.claimFile?.channelExpertCustomer,
-      }),
-      expertOfficeEmail: report.expertOffice?.email,
+    const mailRoute = resolveClaimMailRoute({
+      serviceKind: report.claimFile?.serviceKind,
+      consultancyServiceType: report.claimFile?.consultancyServiceType,
+      mailRouteJson: report.claimFile?.mailRouteJson,
+      serviceMailRoute: hizmetMail.route,
     });
+    const approvalParties = new Set(mailRoute?.approval ?? []);
+    const channelMail = collectClaimFileChannelEmails({
+      insuranceContactEmail: !mailRoute || approvalParties.has('insurance')
+        ? report.claimFile?.insuranceCompany?.contactEmail
+        : null,
+      agency: !mailRoute || approvalParties.has('agency') ? report.claimFile?.channelAgencyCustomer : null,
+      broker: !mailRoute || approvalParties.has('broker') ? report.claimFile?.channelBrokerCustomer : null,
+      expert: !mailRoute || approvalParties.has('expert') ? report.claimFile?.channelExpertCustomer : null,
+    });
+    const customerRecipients = mailRoute
+      ? channelMail
+      : resolveReportCustomerMailRecipients({
+        customerEmail: report.claimFile?.customer?.email,
+        contacts: report.claimFile?.customer?.contacts,
+        channelEmails: generalMailboxesFromContactInfos(report.claimFile?.customer?.contactInfos),
+        fileChannelEmails: channelMail,
+        expertOfficeEmail: report.expertOffice?.email,
+      });
     const irtibatEmail = String(report.claimFile?.siteContactEmail ?? '').trim().toLowerCase();
     if (
       !repairReportRequiresPricedItems(
@@ -1411,14 +1437,29 @@ export class RepairReportsService {
     }
     if (customerRecipients.length === 0) {
       throw new BadRequestException(
-        'Dosya kanalında veya müşteri kartında e-posta yok. Adresi yazmadan rapor onaya gönderilemez.',
+        mailRoute
+          ? 'Seçilen mail tarafında e-posta yok. Adresi yazmadan rapor onaya gönderilemez.'
+          : 'Dosya kanalında veya müşteri kartında e-posta yok. Adresi yazmadan rapor onaya gönderilemez.',
       );
     }
     const appUrl = resolveAppUrl(this.config);
     const claimFileId = report.claimFileId ?? report.claimFile?.id;
-    for (const recipient of customerRecipients) {
+    const claimCustomer = claimFileId
+      ? await this.prisma.claimFile.findUnique({ where: { id: claimFileId }, select: { customerId: true } })
+      : null;
+    const copyRows = claimCustomer?.customerId
+      ? await this.prisma.customerContact.findMany({
+        where: { customerId: claimCustomer.customerId },
+        select: { email: true, mailCopyApproval: true },
+      })
+      : [];
+    const approvalCopies = customerContactCopyEmails(copyRows, 'approval')
+      .filter((email) => !customerRecipients.some((to) => to.toLowerCase() === email) && !isMeridyenInternalMailbox(email));
+    for (let index = 0; index < customerRecipients.length; index += 1) {
+      const recipient = customerRecipients[index];
       const mailed = await this.emailService.sendReport({
         to: recipient,
+        cc: index === 0 ? approvalCopies.map((email) => ({ email })) : undefined,
         subject: `${hasarReportDocumentTitle(report.claimFile?.serviceKind, report.claimFile?.consultancyServiceType)} — ${report.claimFile?.fileNo ?? report.reportNo}`,
         pdfBuffer: customerPdf,
         reportNo: report.reportNo,

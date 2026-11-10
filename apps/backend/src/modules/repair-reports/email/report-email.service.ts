@@ -36,6 +36,7 @@ export class ReportEmailService {
     actionUrl?: string | null;
     portalUrl?: string | null;
     viewType?: 'external';
+    cc?: Array<{ email: string; name?: string }>;
   }): Promise<SendReportEmailResult> {
     const to = String(opts.to ?? '').trim();
     if (!to || !to.includes('@')) {
@@ -76,6 +77,7 @@ export class ReportEmailService {
             contentType: 'application/pdf',
           },
         ],
+        cc: opts.cc,
       },
     );
 

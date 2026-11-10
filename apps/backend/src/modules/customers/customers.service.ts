@@ -553,6 +553,8 @@ export class CustomersService {
           phone: c.phone ?? null,
           email: c.email ?? null,
           isPrimary: c.isPrimary ?? false,
+          mailCopyApproval: c.mailCopyApproval === true,
+          mailCopyInfo: c.mailCopyInfo === true,
         })),
       });
     }
@@ -635,6 +637,8 @@ export class CustomersService {
             phone: c.phone ?? null,
             email: c.email ?? null,
             isPrimary: c.isPrimary ?? false,
+            mailCopyApproval: c.mailCopyApproval === true,
+            mailCopyInfo: c.mailCopyInfo === true,
           })),
         });
       }

@@ -46,7 +46,8 @@ import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPick
 import { OPS_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs';
 import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { OperationSendEmailModal, type OperationSendEmailTarget } from '@/components/operasyon/OperationSendEmailModal';
-import { resolveClaimCorrespondenceDefaultTo } from '@/utils/ops-email-default-to';
+import { claimWithHizmetMailRoute, resolveClaimCorrespondenceDefaultTo } from '@/utils/ops-email-default-to';
+import { useHizmetKartlari } from '@/hooks/useConsultancyNavTypes';
 import { OpsStripKpi } from '@/components/operasyon/OpsStripKpi';
 import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
 import { OpsListPageSizeSelect } from '@/components/operasyon/OpsListPageSizeSelect';
@@ -365,6 +366,7 @@ export default function OperasyonPage() {
 }
 
 function OperasyonPageContent() {
+  const hizmetKartlari = useHizmetKartlari();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showFinanceExtraAccessAcil } = usePanelAccess();
@@ -619,7 +621,7 @@ function OperasyonPageContent() {
       updatedAt: claim.updatedAt ?? null,
       priority: claim.priority ?? null,
       reportId: claim.latestRepairReport?.id ?? null,
-      defaultEmailTo: resolveClaimCorrespondenceDefaultTo(claim) ?? null,
+      defaultEmailTo: resolveClaimCorrespondenceDefaultTo(claimWithHizmetMailRoute(claim, hizmetKartlari)) ?? null,
       vendorPaid: claim.vendorPaid === true || claim.vendorPaid === false ? claim.vendorPaid : null,
     };
   });

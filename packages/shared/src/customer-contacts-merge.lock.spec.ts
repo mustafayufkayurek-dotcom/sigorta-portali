@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+  customerContactCopyEmails,
   mergePrimaryIntoCustomerContacts,
   shouldReplaceCustomerContacts,
 } from './customer-contacts-merge.ts';
@@ -76,5 +77,23 @@ describe('müşteri yetkili kişiler LOCK', () => {
     assert.match(detail, /mergePrimaryIntoCustomerContacts/);
     assert.match(detail, /const contactCount = mergePrimaryIntoCustomerContacts/);
     assert.doesNotMatch(detail, /const contactCount = contacts\.length/);
+  });
+
+  it('işaretli kişi onay veya yazışmada kopya alır', () => {
+    const rows = [
+      { email: 'satinalma@doganlar.com', mailCopyApproval: true, mailCopyInfo: false },
+      { email: 'muhasebe@doganlar.com', mailCopyApproval: true, mailCopyInfo: true },
+    ];
+    assert.deepEqual(customerContactCopyEmails(rows, 'approval'), [
+      'satinalma@doganlar.com',
+      'muhasebe@doganlar.com',
+    ]);
+    assert.deepEqual(customerContactCopyEmails(rows, 'info'), ['muhasebe@doganlar.com']);
+    const page = readFileSync(
+      join(here, '../../../apps/web/src/app/panel/musteriler/page.tsx'),
+      'utf8',
+    );
+    assert.match(page, /Onay Bilgilendirme/);
+    assert.match(page, /Yazışma Bilgilendirme/);
   });
 });

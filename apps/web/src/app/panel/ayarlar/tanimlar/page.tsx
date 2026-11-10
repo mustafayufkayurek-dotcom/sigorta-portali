@@ -15,6 +15,7 @@ type MetricKey =
   | 'workGroups'
   | 'claimSubjects'
   | 'consultancyServiceTypes'
+  | 'serviceCards'
   | 'documentTypes'
   | 'hrLeaveTypes';
 
@@ -122,6 +123,13 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
         tone: 'violet',
       },
       {
+        key: 'serviceCards',
+        title: 'Hizmet Kartları',
+        purpose: 'Asistans ve ek hizmetlerin menüsü, adımı ve mail tarafları.',
+        href: '/panel/ayarlar/hizmet-kartlari',
+        tone: 'violet',
+      },
+      {
         key: 'documentTypes',
         title: 'Evrak Türleri',
         purpose: 'Hizmet türüne bağlı evrak katalogları.',
@@ -207,6 +215,7 @@ export default function TanimlarPage() {
     workGroups: emptyMetric(),
     claimSubjects: emptyMetric(),
     consultancyServiceTypes: emptyMetric(),
+    serviceCards: emptyMetric(),
     documentTypes: emptyMetric(),
     hrLeaveTypes: emptyMetric(),
   });
@@ -225,6 +234,7 @@ export default function TanimlarPage() {
         workGroups,
         claimSubjects,
         consultancyServiceTypes,
+        serviceCards,
         documentTypes,
         hrLeaveTypes,
       ] = await Promise.all([
@@ -278,6 +288,10 @@ export default function TanimlarPage() {
           const items = extractArray(raw);
           return { total: items.length, active: countActive(items) };
         }),
+        safeMetric(axios.get(`${API}/system-settings/hizmet-kartlari`, { headers }), (raw) => {
+          const items = extractArray(raw);
+          return { total: items.length || 5, active: items.filter((row) => (row as { menuVisible?: boolean }).menuVisible !== false).length || 5 };
+        }),
         safeMetric(axios.get(`${API}/document-types`, { headers }), (raw) => {
           const items = extractArray(raw);
           return { total: items.length, active: countActive(items) };
@@ -298,6 +312,7 @@ export default function TanimlarPage() {
         workGroups,
         claimSubjects,
         consultancyServiceTypes,
+        serviceCards,
         documentTypes,
         hrLeaveTypes,
       });

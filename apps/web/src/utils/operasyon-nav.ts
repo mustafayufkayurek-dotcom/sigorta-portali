@@ -68,33 +68,71 @@ export function fallbackConsultancyNavTypes(): { name: string; code: string }[] 
   return [{ name: 'Danışmanlık', code: HASAR_HIZMET_DANISMANLIK }];
 }
 
+function hiddenSet(codes?: string[] | null): Set<string> {
+  return new Set((codes ?? []).map((code) => String(code).trim().toLowerCase()).filter(Boolean));
+}
+
 export function buildDanismanlikNavChildren(
   types: { name: string; code?: string | null }[] | null | undefined,
+  hiddenCodes?: string[] | null,
+  extra?: { name: string; code?: string | null }[] | null,
 ): OperasyonNavChild[] {
+  const hidden = hiddenSet(hiddenCodes);
   const rows = (types ?? [])
     .filter((t) => String(t.name ?? '').trim())
     .filter((t) => !isHasarTespitConsultancyType({ code: t.code, name: t.name }));
   const list = rows.length ? rows : fallbackConsultancyNavTypes();
   const dynamic = list.map((t) => {
     const code = normalizeHasarHizmetParam(t.code) || HASAR_HIZMET_DANISMANLIK;
-    return { title: String(t.name).trim(), href: hasarListHrefForHizmet(code) };
-  });
+    return { title: String(t.name).trim(), href: hasarListHrefForHizmet(code), code };
+  }).filter((row) => !hidden.has(row.code));
+  const known = new Set(dynamic.map((row) => row.code));
+  const added = (extra ?? [])
+    .map((row) => {
+      const title = String(row.name ?? '').trim();
+      const code = normalizeHasarHizmetParam(row.code) || '';
+      if (!title || !code || known.has(code) || hidden.has(code)) return null;
+      if (code === 'hasar-tespit' || code === 'police-yonetimi' || code === 'danismanlik') return null;
+      known.add(code);
+      return { title, href: hasarListHrefForHizmet(code) };
+    })
+    .filter((row): row is OperasyonNavChild => Boolean(row));
   return sortNavByTitleTr([
-    ...dynamic,
-    { title: 'Hasar Tespit', href: hasarListHrefForHizmet(HASAR_HIZMET_TESPIT) },
-    { title: 'Poliçe Yönetimi', href: '/panel/danismanlik/police-yonetimi' },
+    ...dynamic.map(({ title, href }) => ({ title, href })),
+    ...added,
+    ...(hidden.has('hasar-tespit') ? [] : [{ title: 'Hasar Tespit', href: hasarListHrefForHizmet(HASAR_HIZMET_TESPIT) }]),
+    ...(hidden.has('police-yonetimi') ? [] : [{ title: 'Poliçe Yönetimi', href: '/panel/danismanlik/police-yonetimi' }]),
   ]);
 }
 
-export function buildAsistansNavChildren(): OperasyonNavChild[] {
+export function buildAsistansNavChildren(
+  extra?: { name: string; code?: string | null; steps?: string | null }[] | null,
+  hiddenCodes?: string[] | null,
+): OperasyonNavChild[] {
+  const hidden = hiddenSet(hiddenCodes);
+  const added = (extra ?? [])
+    .map((row) => {
+      const title = String(row.name ?? '').trim();
+      const code = normalizeHasarHizmetParam(row.code) || '';
+      if (!title || !code || code === 'hasar-onarim' || code === 'acil' || hidden.has(code)) return null;
+      const href = row.steps === 'acil'
+        ? acilListHrefForKaynak(MUSTERI_KAYNAK_ASISTANS)
+        : hasarListHrefForHizmet(code);
+      return { title, href };
+    })
+    .filter((row): row is OperasyonNavChild => Boolean(row));
   return sortNavByTitleTr([
-    { title: 'Acil Yardım', href: acilListHrefForKaynak(MUSTERI_KAYNAK_ASISTANS) },
-    { title: 'Hasar Onarım', href: hasarListHrefForHizmet('hasar-onarim') },
+    ...(hidden.has('acil') ? [] : [{ title: 'Acil Yardım', href: acilListHrefForKaynak(MUSTERI_KAYNAK_ASISTANS) }]),
+    ...(hidden.has('hasar-onarim') ? [] : [{ title: 'Hasar Onarım', href: hasarListHrefForHizmet('hasar-onarim') }]),
+    ...added,
   ]);
 }
 
 export function buildOperasyonNavChildren(
   types?: { name: string; code?: string | null }[] | null,
+  asistansExtra?: { name: string; code?: string | null; steps?: string | null }[] | null,
+  hiddenCodes?: string[] | null,
+  ekExtra?: { name: string; code?: string | null }[] | null,
 ): OperasyonNavChild[] {
   const children: OperasyonNavChild[] = [
     { title: 'Dosya Özeti', href: '/panel/operasyon', exactMatch: true },
@@ -103,13 +141,13 @@ export function buildOperasyonNavChildren(
       title: 'Ek Hizmetler',
       href: hasarListHrefForHizmet(HASAR_HIZMET_DANISMANLIK),
       groupOnly: true,
-      children: buildDanismanlikNavChildren(types),
+      children: buildDanismanlikNavChildren(types, hiddenCodes, ekExtra),
     },
     {
       title: 'Asistans Hizmetleri',
       href: '/panel/hasar-dosyalari',
       groupOnly: true,
-      children: buildAsistansNavChildren(),
+      children: buildAsistansNavChildren(asistansExtra, hiddenCodes),
     },
   ];
   return sortNavByTitleTr(children);

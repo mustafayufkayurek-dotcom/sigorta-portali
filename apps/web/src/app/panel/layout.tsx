@@ -75,7 +75,7 @@ import {
   HASAR_LIST_HIZMET_PARAM,
   MUSTERI_KAYNAK_PARAM,
 } from '@/utils/operasyon-nav';
-import { useConsultancyNavTypes } from '@/hooks/useConsultancyNavTypes';
+import { useConsultancyNavTypes, useHizmetMenu } from '@/hooks/useConsultancyNavTypes';
 import { ACIL_OPERATION_ICON, HASAR_OPERATION_ICON } from '@/constants/operation-icons';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -358,6 +358,9 @@ function getPanelMainLinks({
   assistanceNavCounts,
   fieldAssignedCount,
   consultancyNavTypes,
+  asistansNavTypes,
+  hiddenCodes,
+  ekNavTypes,
 }: {
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
@@ -371,9 +374,12 @@ function getPanelMainLinks({
   assistanceNavCounts?: InsurancePortalNavCounts;
   fieldAssignedCount?: number;
   consultancyNavTypes?: { name: string; code?: string | null }[];
+  asistansNavTypes?: { name: string; code?: string | null; steps?: string | null }[];
+  hiddenCodes?: string[];
+  ekNavTypes?: { name: string; code?: string | null }[];
 }): NavigationLink[] {
   const opsBadge = pendingRevisionCount > 0 ? pendingRevisionCount : undefined;
-  const operasyonChildren = buildOperasyonNavChildren(consultancyNavTypes) as NavigationLink[];
+  const operasyonChildren = buildOperasyonNavChildren(consultancyNavTypes, asistansNavTypes, hiddenCodes, ekNavTypes) as NavigationLink[];
   const links = isExpert
     ? getExpertPortalNav(expertNavCounts)
     : isInsuranceCompanyUser
@@ -592,6 +598,7 @@ function Navbar({
 
   const fieldAssignedCount = useFieldAssignedNavCount(isFieldStaff, pathname);
   const consultancyNavTypes = useConsultancyNavTypes();
+  const hizmetMenu = useHizmetMenu();
 
   const mainLinks = getPanelMainLinks({
     isExpert,
@@ -603,6 +610,9 @@ function Navbar({
     pendingRevisionCount,
     fieldAssignedCount,
     consultancyNavTypes,
+    asistansNavTypes: hizmetMenu.asistansExtra,
+    hiddenCodes: hizmetMenu.hiddenCodes,
+    ekNavTypes: hizmetMenu.ekExtra,
   });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
@@ -1189,6 +1199,7 @@ function PanelSidebar({
   const [insuranceNavCounts, setInsuranceNavCounts] = useState<InsurancePortalNavCounts>({});
   const fieldAssignedCount = useFieldAssignedNavCount(isFieldStaff, pathname);
   const consultancyNavTypes = useConsultancyNavTypes();
+  const hizmetMenu = useHizmetMenu();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1315,6 +1326,9 @@ function PanelSidebar({
     assistanceNavCounts: insuranceNavCounts,
     fieldAssignedCount,
     consultancyNavTypes,
+    asistansNavTypes: hizmetMenu.asistansExtra,
+    hiddenCodes: hizmetMenu.hiddenCodes,
+    ekNavTypes: hizmetMenu.ekExtra,
   });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));

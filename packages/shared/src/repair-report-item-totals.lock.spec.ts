@@ -127,8 +127,8 @@ describe('onarım raporu maliyet m² LOCK', () => {
     assert.match(page, /repairItemSalesTotal/);
     assert.match(service, /repairItemSupplierTotal\(priced\)/);
     assert.match(pdfSrc, /itemSupplierTotal\(item\)/);
-    assert.match(pdfSrc, /fmtCurrency\(supplierTotal\)/);
-    assert.match(pdfSrc, /fmtCurrency\(salesTotal\)/);
+    assert.match(pdfSrc, /this\.money\(supplierTotal\)/);
+    assert.match(pdfSrc, /this\.money\(salesTotal\)/);
     assert.match(service, /healInflatedSupplierTotals/);
     assert.match(service, /repairItemSupplierNeedsHeal/);
     assert.match(service, /supplierOnly/);

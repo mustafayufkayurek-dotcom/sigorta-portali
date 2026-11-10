@@ -77,6 +77,8 @@ export type YeniDosyaTaslak = {
   selectedCustomer: YeniDosyaTaslakCard | null;
   privateCustomer: YeniDosyaTaslakCard | null;
   returnSlot: YeniDosyaReturnSlot | '';
+  mailApproval?: string[];
+  mailCorrespondence?: string[];
 };
 
 export function loadYeniDosyaTaslak(): YeniDosyaTaslak | null {

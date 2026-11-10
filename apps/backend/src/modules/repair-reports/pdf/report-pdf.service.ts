@@ -98,6 +98,7 @@ interface ReportData {
   goodsDamageTotal: number;
   totalSupplierCost: number;
   totalSalesAmount: number;
+  showPrices?: boolean;
   grossProfit: number;
   grossMarginPct: number;
   expertOfficeId?: string | null;
@@ -236,7 +237,7 @@ function qrBlockHtml(qrMarkup: string): string {
   </div>`;
 }
 
-function fmtCurrency(n: number): string {
+function formatTlAmount(n: number): string {
   return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '\u00a0TL';
 }
 
@@ -302,6 +303,12 @@ const LEGAL_NOTES_DEFAULT = [
 export class ReportPdfService {
   private readonly logger = new Logger(ReportPdfService.name);
   private logoDataUrlCache: string | null | undefined;
+  private showPrices = true;
+
+  private money(n: number): string {
+    if (!this.showPrices) return '';
+    return formatTlAmount(n);
+  }
 
   constructor(private readonly config: ConfigService) {}
 
@@ -426,6 +433,7 @@ export class ReportPdfService {
   }
 
   private buildHtml(report: ReportData, viewType: 'internal' | 'external'): string {
+    this.showPrices = report.showPrices !== false;
     // Dynamic base URL — falls back to APP_BASE_URL then APP_URL
     const appUrl = resolveAppUrl(this.config);
 
@@ -495,7 +503,7 @@ export class ReportPdfService {
           const unitPrice = isLumpsum ? (item.lumpSumPrice ?? 0) : item.salesUnitPrice;
           const qty = isLumpsum ? '—' : String(item.quantity);
           const unit = isLumpsum ? 'Maktuen' : escHtml(item.unit);
-          const unitPriceStr = isLumpsum ? '—' : fmtCurrency(unitPrice);
+          const unitPriceStr = isLumpsum ? '—' : this.money(unitPrice);
           const catCode = (item.damageCategory ?? 'bina').toLowerCase();
           const catDotClass = catCode === 'esya'
             ? 'cat-dot-esya'
@@ -519,10 +527,10 @@ export class ReportPdfService {
               <td class="job-desc-cell">${formatJobDescriptionCell(item)}</td>
               <td class="text-center">${qty}</td>
               <td class="text-center">${unit}</td>
-              <td class="text-right">${fmtCurrency(supplierTotal)}</td>
-              <td class="text-right">${fmtCurrency(salesTotal)}</td>
+              <td class="text-right">${this.money(supplierTotal)}</td>
+              <td class="text-right">${this.money(salesTotal)}</td>
               <td class="text-right"><span class="${marginCls}">%${marginPct.toFixed(1)}</span></td>
-              <td class="text-right amount-cell">${fmtCurrency(salesTotal)}</td>
+              <td class="text-right amount-cell">${this.money(salesTotal)}</td>
             </tr>`;
           } else {
             const descNote = (item.description ?? '').trim();
@@ -536,7 +544,7 @@ export class ReportPdfService {
               <td class="text-center">${qty}</td>
               <td class="text-center">${unit}</td>
               <td class="text-right">${unitPriceStr}</td>
-              <td class="text-right amount-cell">${fmtCurrency(salesTotal)}</td>
+              <td class="text-right amount-cell">${this.money(salesTotal)}</td>
             </tr>`;
           }
         }
@@ -544,7 +552,7 @@ export class ReportPdfService {
         html += `
         <tr class="group-total-row">
           <td colspan="${subtotalColSpan}" class="text-right subtotal-label">${escHtml(pdfGroupTotalLabel(group.label, pdfGroupKind))}</td>
-          <td class="text-right subtotal-amount">${fmtCurrency(groupSalesTotal)}</td>
+          <td class="text-right subtotal-amount">${this.money(groupSalesTotal)}</td>
         </tr>`;
       }
       return html;
@@ -623,31 +631,31 @@ export class ReportPdfService {
     const extraCostBand = extraCostItems.length ? `
   <div class="repair-total-band">
     <div class="repair-total-label">${EXTRA_REPAIR_COST_TOTAL_LABEL}</div>
-    <div class="repair-total-value">${fmtCurrency(extraCostTotal)}</div>
+    <div class="repair-total-value">${this.money(extraCostTotal)}</div>
   </div>` : '';
     const extraCategoryBands = extraCategoryParts.map((part) => {
       const total = part.items.reduce((s, i) => s + itemSalesTotal(i), 0);
       return `
   <div class="repair-total-band">
     <div class="repair-total-label">${pdfCategoryTotalLabel(part.code)}</div>
-    <div class="repair-total-value">${fmtCurrency(total)}</div>
+    <div class="repair-total-value">${this.money(total)}</div>
   </div>`;
     }).join('');
     const categoryTotalBands = showSplitCategoryTotals ? `
   ${showBinaTotal ? `
   <div class="repair-total-band">
     <div class="repair-total-label">${pdfCategoryTotalLabel('bina')}</div>
-    <div class="repair-total-value">${fmtCurrency(binaTotal || report.buildingDamageTotal)}</div>
+    <div class="repair-total-value">${this.money(binaTotal || report.buildingDamageTotal)}</div>
   </div>` : ''}
   ${showEsyaTotal ? `
   <div class="repair-total-band">
     <div class="repair-total-label">${pdfCategoryTotalLabel('esya')}</div>
-    <div class="repair-total-value">${fmtCurrency(esyaTotal || report.goodsDamageTotal)}</div>
+    <div class="repair-total-value">${this.money(esyaTotal || report.goodsDamageTotal)}</div>
   </div>` : ''}
   ${showDemirbasTotal ? `
   <div class="repair-total-band">
     <div class="repair-total-label">${pdfCategoryTotalLabel('demirbas')}</div>
-    <div class="repair-total-value">${fmtCurrency(demirbasTotal)}</div>
+    <div class="repair-total-value">${this.money(demirbasTotal)}</div>
   </div>` : ''}
   ${extraCategoryBands}` : '';
     const externalTotalsHtml = `
@@ -656,7 +664,7 @@ export class ReportPdfService {
   ${extraCostBand}
   <div class="repair-total-band repair-total-band-grand">
     <div class="repair-total-label">${PDF_GRAND_TOTAL_LABEL}</div>
-    <div class="repair-total-value">${fmtCurrency(computedSalesAmount)}</div>
+    <div class="repair-total-value">${this.money(computedSalesAmount)}</div>
   </div>
 </div>`;
 
@@ -689,9 +697,9 @@ export class ReportPdfService {
       const mCls = dtMargin >= 20 ? 'margin-ok' : dtMargin >= 10 ? 'margin-mid' : 'margin-low';
       return `<tr>
         <td>${escHtml(dt.damageTypeName)}</td>
-        ${viewType === 'internal' ? `<td class="text-right">${fmtCurrency(dtSupplier)}</td>` : ''}
-        <td class="text-right" style="font-weight:600;">${fmtCurrency(dtSales)}</td>
-        ${viewType === 'internal' ? `<td class="text-right">${fmtCurrency(dtSales - dtSupplier)}</td><td class="text-right"><span class="${mCls}">%${dtMargin.toFixed(1)}</span></td>` : ''}
+        ${viewType === 'internal' ? `<td class="text-right">${this.money(dtSupplier)}</td>` : ''}
+        <td class="text-right" style="font-weight:600;">${this.money(dtSales)}</td>
+        ${viewType === 'internal' ? `<td class="text-right">${this.money(dtSales - dtSupplier)}</td><td class="text-right"><span class="${mCls}">%${dtMargin.toFixed(1)}</span></td>` : ''}
       </tr>`;
     }).join('')}
   </tbody>
@@ -1753,25 +1761,25 @@ ${viewType === 'external' ? externalTotalsHtml : `
   <div class="totals-grid">
     ${showSplitCategoryTotals && showBinaTotal ? `
     <div class="total-label">${pdfCategoryTotalLabel('bina')}</div>
-    <div class="total-amount">${fmtCurrency(binaTotal || report.buildingDamageTotal)}</div>` : ''}
+    <div class="total-amount">${this.money(binaTotal || report.buildingDamageTotal)}</div>` : ''}
     ${showSplitCategoryTotals && showEsyaTotal ? `
     <div class="total-label">${pdfCategoryTotalLabel('esya')}</div>
-    <div class="total-amount">${fmtCurrency(esyaTotal || report.goodsDamageTotal)}</div>` : ''}
+    <div class="total-amount">${this.money(esyaTotal || report.goodsDamageTotal)}</div>` : ''}
     ${showSplitCategoryTotals && showDemirbasTotal ? `
     <div class="total-label">${pdfCategoryTotalLabel('demirbas')}</div>
-    <div class="total-amount">${fmtCurrency(demirbasTotal)}</div>` : ''}
+    <div class="total-amount">${this.money(demirbasTotal)}</div>` : ''}
     ${showSplitCategoryTotals ? extraCategoryParts.map((part) => `
     <div class="total-label">${pdfCategoryTotalLabel(part.code)}</div>
-    <div class="total-amount">${fmtCurrency(part.items.reduce((s, i) => s + itemSalesTotal(i), 0))}</div>`).join('') : ''}
+    <div class="total-amount">${this.money(part.items.reduce((s, i) => s + itemSalesTotal(i), 0))}</div>`).join('') : ''}
     ${extraCostItems.length ? `
     <div class="total-label">${EXTRA_REPAIR_COST_TOTAL_LABEL}</div>
-    <div class="total-amount">${fmtCurrency(extraCostTotal)}</div>` : ''}
+    <div class="total-amount">${this.money(extraCostTotal)}</div>` : ''}
     <div class="grand-total-label">${PDF_GRAND_TOTAL_LABEL}</div>
-    <div class="grand-total-amount">${fmtCurrency(computedSalesAmount)}</div>
+    <div class="grand-total-amount">${this.money(computedSalesAmount)}</div>
     <div class="total-label" style="margin-top:8px;color:#64748b;">Toplam Maliyet</div>
-    <div class="total-amount" style="margin-top:8px;color:#64748b;">${fmtCurrency(computedSupplierCost)}</div>
+    <div class="total-amount" style="margin-top:8px;color:#64748b;">${this.money(computedSupplierCost)}</div>
     <div class="total-label" style="color:#64748b;">Brüt Kâr</div>
-    <div class="total-amount" style="color:${computedGrossProfit >= 0 ? '#16a34a' : '#dc2626'};">${fmtCurrency(computedGrossProfit)}</div>
+    <div class="total-amount" style="color:${computedGrossProfit >= 0 ? '#16a34a' : '#dc2626'};">${this.money(computedGrossProfit)}</div>
     <div class="total-label" style="color:#64748b;">Marj</div>
     <div class="total-amount" style="color:${computedGrossMarginPct >= 20 ? '#16a34a' : computedGrossMarginPct >= 10 ? '#d97706' : '#dc2626'};">%${computedGrossMarginPct.toFixed(1)}</div>
   </div>
