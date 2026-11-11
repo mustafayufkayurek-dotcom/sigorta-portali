@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { matchDepartmentForFileSubjects } from '@sigorta/shared';
 import { API, authHeader } from '@/utils/api';
 
 export type DamageReasonOption = { code: string; name: string };
@@ -29,7 +30,7 @@ export async function resolveDamageReasonOptions(
 /** Yeni Dosya: seçilen hattın Ayarlar → Dosya Konuları listesi. Ad ayardaki gibi kalır. */
 export async function fetchDepartmentFileSubjectNames(departmentCode: string): Promise<string[]> {
   const departments = await apiGet<DeptRow[]>(`${API}/departments`);
-  const dept = departments.find((row) => row.code === departmentCode);
+  const dept = matchDepartmentForFileSubjects(departments, departmentCode);
   if (!dept) return [];
   const rows = await fetchActiveFileSubjects(dept.id);
   return rows.map((row) => row.name).filter(Boolean);
@@ -41,7 +42,7 @@ export async function fetchInboxFileSubjectNames(
   const code = kind === 'emergency' ? 'acil-yardim' : 'hasar-onarim';
   try {
     const departments = await apiGet<DeptRow[]>(`${API}/departments`);
-    const dept = departments.find((d) => d.code === code);
+    const dept = matchDepartmentForFileSubjects(departments, code);
     if (dept) {
       const rows = await fetchActiveFileSubjects(dept.id);
       if (rows.length > 0) return rows.map((r) => r.name);

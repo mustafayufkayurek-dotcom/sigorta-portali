@@ -33,6 +33,7 @@ import {
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { persistAlphabeticSortOrders, sortByNameTR } from '@/utils/definition-sort-order';
 import { normalizeFormFreeText } from '@/utils/text-helpers';
+import { matchDepartmentForFileSubjects } from '@sigorta/shared';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
 
@@ -52,11 +53,7 @@ type KonuTabId = (typeof KONU_TABS)[number]['id'];
 const emptyForm = { code: '', name: '', status: 'active' };
 
 function resolveDepartment(depts: Department[], tab: (typeof KONU_TABS)[number]): Department | null {
-  return (
-    depts.find((d) => d.code === tab.departmentCode) ??
-    depts.find((d) => d.name.localeCompare(tab.name, 'tr', { sensitivity: 'base' }) === 0) ??
-    null
-  );
+  return matchDepartmentForFileSubjects(depts, tab.departmentCode) ?? null;
 }
 
 export default function DosyaKonulariPage() {

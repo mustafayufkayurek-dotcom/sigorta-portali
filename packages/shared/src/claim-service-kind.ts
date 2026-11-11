@@ -155,6 +155,31 @@ export function claimServiceKindFromConsultancyType(row: {
   return isHasarTespitConsultancyType(row) ? 'inspection' : 'consultancy';
 }
 
+const FILE_SUBJECT_LINE_NAME: Record<string, string> = {
+  'hasar-onarim': 'Hasar Onarım',
+  'acil-yardim': 'Acil Yardım',
+  'ozel-musteri': 'Özel Müşteri',
+  danismanlik: 'Danışmanlık',
+  sovtaj: 'Sovtaj',
+};
+
+/** Yeni Dosya, Ayarlar’daki aynı hat sekmesini okur. Kod büyük yazılsa da ad eşleşir. */
+export function matchDepartmentForFileSubjects<T extends { code: string; name: string }>(
+  departments: T[],
+  departmentCode: string,
+): T | undefined {
+  const code = String(departmentCode ?? '').trim();
+  if (!code) return undefined;
+  const exact = departments.find((row) => row.code === code);
+  if (exact) return exact;
+  const folded = code.toLocaleLowerCase('tr-TR');
+  const byCode = departments.find((row) => row.code.toLocaleLowerCase('tr-TR') === folded);
+  if (byCode) return byCode;
+  const expected = FILE_SUBJECT_LINE_NAME[folded];
+  if (!expected) return undefined;
+  return departments.find((row) => row.name.localeCompare(expected, 'tr', { sensitivity: 'base' }) === 0);
+}
+
 export function departmentCodeForNewClaim(input: {
   customerSource: 'expert' | 'private' | 'broker' | 'insurance';
   serviceKind: ClaimServiceKind;

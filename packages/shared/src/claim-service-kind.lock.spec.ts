@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   departmentCodeForNewClaim,
+  matchDepartmentForFileSubjects,
   INSPECTOR_ALREADY_ASSIGNED_MESSAGE,
   isInspectionServiceKind,
   isHasarTespitClaim,
@@ -54,6 +55,15 @@ describe('claim service kind lock', () => {
     assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'inspection' }), 'hasar-onarim');
     assert.equal(departmentCodeForNewClaim({ customerSource: 'insurance', serviceKind: 'inspection' }), 'hasar-onarim');
     assert.equal(departmentCodeForNewClaim({ customerSource: 'broker', serviceKind: 'repair' }), 'hasar-onarim');
+    const lines = [
+      { code: 'HASAR_ONARIM', name: 'Hasar Onarım' },
+      { code: 'DEPT_DANISMANLIK', name: 'Danışmanlık' },
+      { code: 'sovtaj', name: 'Sovtaj' },
+    ];
+    assert.equal(matchDepartmentForFileSubjects(lines, 'hasar-onarim')?.code, 'HASAR_ONARIM');
+    assert.equal(matchDepartmentForFileSubjects(lines, 'danismanlik')?.code, 'DEPT_DANISMANLIK');
+    assert.equal(matchDepartmentForFileSubjects(lines, 'hasar-onarim')?.name, 'Hasar Onarım');
+    assert.equal(matchDepartmentForFileSubjects(lines, 'sovtaj')?.code, 'sovtaj');
   });
 
   it('Yeni Dosya üç hizmet seçeneğidir; liste Danışmanlık menüsüyle süzülür', () => {

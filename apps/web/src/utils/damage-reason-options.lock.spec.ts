@@ -19,7 +19,10 @@ describe('hasar nedeni listesi kilidi', () => {
     const fn = src.slice(start, end);
     assert.match(fn, /return fetchActiveFileSubjects\(departmentId\)/);
     assert.doesNotMatch(fn, /hasar-onarim/);
-    assert.match(src, /export async function fetchDepartmentFileSubjectNames/);
-    assert.match(src, /row\.code === departmentCode/);
+    const fetchStart = src.indexOf('export async function fetchDepartmentFileSubjectNames');
+    const fetchEnd = src.indexOf('export async function fetchInboxFileSubjectNames');
+    const fetchFn = src.slice(fetchStart, fetchEnd);
+    assert.match(fetchFn, /matchDepartmentForFileSubjects/);
+    assert.doesNotMatch(fetchFn, /claim-subjects/);
   });
 });
