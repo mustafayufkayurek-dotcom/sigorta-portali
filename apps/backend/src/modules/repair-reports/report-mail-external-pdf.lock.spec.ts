@@ -22,7 +22,9 @@ describe('rapor mail eki dış PDF LOCK', () => {
 
   it('send-email ve onaya gönderim dış PDF üretir', () => {
     const src = readFileSync(join(here, 'repair-reports.service.ts'), 'utf8');
-    assert.match(src, /generatePdf\(reportId, 'external'\)/);
+    assert.match(src, /generatePdf\(reportId, 'external', fit\)/);
+    assert.match(src, /const pdfBuffer = await this\.externalMailPdf\(reportId\)/);
+    assert.match(src, /const customerPdf = await this\.externalMailPdf\(reportId\)/);
     assert.doesNotMatch(src, /generatePdf\(reportId, dto\.viewType\)/);
     assert.match(src, /viewType: 'external'/);
     assert.match(src, /pdfBuffer: customerPdf/);
