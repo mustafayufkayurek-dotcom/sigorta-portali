@@ -101,6 +101,15 @@ describe('yeni dosya form lock', () => {
     const agencyAt = form.indexOf('data-field="channelAgencyCustomerId"');
     assert.ok(brokerAt > 0 && agencyAt > brokerAt, 'Broker kutusu Acente’nin önündedir');
     assert.match(form, /claimCustomerSourceContactLabel/);
+    assert.match(form, /customerSource !== 'broker'/);
+    {
+      const contact = form.indexOf('data-field="sourceContactId"');
+      const next = form.indexOf('data-field="privateCustomer"');
+      const block = form.slice(contact, next);
+      const brokerGate = block.indexOf("customerSource !== 'broker'");
+      const copy = block.indexOf('setSiteContactName');
+      assert.ok(brokerGate > 0 && copy > brokerGate, 'Broker kişisi irtibat kutusuna yazılmaz');
+    }
     assert.match(form, /Kişi Ekle/);
     assert.match(form, /edit: selectedCustomer\.id/);
     assert.match(form, /yeniDosyaReturnTo/);

@@ -855,11 +855,14 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
             onChange={(e) => {
               const id = e.target.value;
               setSourceContactId(id);
-              const row = sourceContacts.find((item) => item.id === id);
-              if (!row) return;
-              setSiteContactName((prev) => (prev.trim() ? prev : toTitleCaseTR(row.name)));
-              setSiteContactPhone((prev) => (prev.trim() ? prev : String(row.phone ?? '')));
-              setSiteContactEmail((prev) => (prev.trim() ? prev : String(row.email ?? '')));
+              if (customerSource !== 'broker') {
+                const row = sourceContacts.find((item) => item.id === id);
+                if (row) {
+                  setSiteContactName((prev) => (prev.trim() ? prev : toTitleCaseTR(row.name)));
+                  setSiteContactPhone((prev) => (prev.trim() ? prev : String(row.phone ?? '')));
+                  setSiteContactEmail((prev) => (prev.trim() ? prev : String(row.email ?? '')));
+                }
+              }
               setErrors((p) => { const n = { ...p }; delete n.sourceContactId; return n; });
             }}
           >
