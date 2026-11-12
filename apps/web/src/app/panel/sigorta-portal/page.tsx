@@ -14,6 +14,7 @@ import InsuranceIhbarModal from '@/components/portal/InsuranceIhbarModal';
 import { InsuranceDetailedStatsModal } from '@/components/portal/InsuranceDetailedStatsModal';
 import { PortalWeeklyTrendCard } from '@/components/panel/portal-weekly-trend-card';
 import { fmtDateTime } from '@/utils/date-helpers';
+import { formatClaimNotificationAt } from '@sigorta/shared';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import {
   classifyInsuranceMonitoringFile,
@@ -488,7 +489,7 @@ export default function SigortaPortalPage() {
                             <span className="mt-0.5 block truncate text-xs text-slate-500">
                               {formatClaimSubjectLabel(file.lossType, undefined, file.subject)}
                               {file.notificationDate || file.createdAt
-                                ? ` · ${fmtDateTime(file.notificationDate || file.createdAt)}`
+                                ? ` · ${formatClaimNotificationAt(file.notificationDate, file.createdAt)}`
                                 : ''}
                               {file.lastActivityAt || file.updatedAt
                                 ? ` · ${formatRelativeTr(file.lastActivityAt || file.updatedAt)}`

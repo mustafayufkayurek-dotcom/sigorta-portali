@@ -3,10 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { resolveAppUrl } from '@/common/utils/app-url';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EmailService } from '@/modules/notifications/email/email.service';
-import { acilYeniIhbarSubject, yeniIhbarSubject } from '@/modules/notifications/email/email.template';
-import { resolveAcilInsuredName } from '@sigorta/shared';
+import {
+  acilYeniIhbarSubject,
+  ihbarCustomerSubjectLabel,
+  yeniIhbarSubject,
+} from '@/modules/notifications/email/email.template';
+import { claimChannelFirmLabel, resolveAcilInsuredName } from '@sigorta/shared';
+import { claimFileSubjectName } from '@/common/helpers/ihbar-konusu.helper';
 import { extractHeuristicFields } from './inbound-heuristic-parser';
 import { buildInboxIhbarEmailTemplate } from './inbox-ihbar-email';
+import { unownedInboxSummaryRows } from './unowned-inbox-mail';
 
 export type InboxNotificationType =
   | 'inbox_assigned'
@@ -96,6 +102,12 @@ export class OperationInboxNotificationService {
     mailboxLabel: string;
     urgency: 'HIGH' | 'NORMAL';
     reason: string;
+    fileNo?: string | null;
+    customerName?: string | null;
+    insuredName?: string | null;
+    fileSubject?: string | null;
+    city?: string | null;
+    district?: string | null;
   }): Promise<void> {
     const managers = await this.prisma.user.findMany({
       where: {
@@ -108,9 +120,21 @@ export class OperationInboxNotificationService {
     if (!managers.length) return;
 
     const title = params.urgency === 'HIGH'
-      ? 'Acil — Sahiplenilmemiş İhbar'
-      : 'Sahiplenilmemiş Gelen Kutu Mesajı';
-    const body = `${params.mailboxLabel}: "${params.subject}" — ${params.reason}`;
+      ? 'Acil — Sahiplenilmemiş Yeni İhbar'
+      : 'Sahiplenilmemiş Yeni İhbar';
+    const fileNo = params.fileNo?.trim();
+    const body = fileNo
+      ? `${params.mailboxLabel}: ${fileNo} — ${params.reason}`
+      : `${params.mailboxLabel} — ${params.reason}`;
+    const rows = unownedInboxSummaryRows({
+      fileNo: params.fileNo,
+      customerName: params.customerName,
+      insuredName: params.insuredName,
+      fileSubject: params.fileSubject,
+      rawSubject: params.subject,
+      city: params.city,
+      district: params.district,
+    });
 
     for (const mgr of managers) {
       await this.createInApp({
@@ -129,12 +153,7 @@ export class OperationInboxNotificationService {
           title,
           {
             title,
-            preheader: body,
-            rows: [
-              { label: 'Konu', value: params.subject },
-              { label: 'Kutu', value: params.mailboxLabel },
-              { label: 'Neden', value: params.reason },
-            ],
+            rows,
             actionUrl: `${this.appUrl}/panel/operasyon/gelen-kutusu`,
             actionLabel: 'Gelen Kutusunu Aç',
           },
@@ -179,7 +198,10 @@ export class OperationInboxNotificationService {
       let district: string | null = null;
       let address: string | null = null;
       let notificationAt: Date | null = null;
-      let expertOfficeShortName = '';
+      let fileCreatedAt: Date | null = null;
+      let ihbarCustomerName = '';
+      let brokerName: string | null = null;
+      let agencyName: string | null = null;
       let policyNo: string | null = null;
 
       if (params.fileType === 'hasar') {
@@ -193,21 +215,24 @@ export class OperationInboxNotificationService {
             customer: { select: { fullName: true, companyName: true, shortName: true, subType: true } },
             insuranceCompany: { select: { name: true } },
             claimSubject: { select: { name: true } },
+            departmentFileSubject: { select: { name: true } },
+            channelBrokerCustomer: { select: { shortName: true, companyName: true, fullName: true, firstName: true, lastName: true } },
+            channelAgencyCustomer: { select: { shortName: true, companyName: true, fullName: true, firstName: true, lastName: true } },
             propertyAddress: { select: { addressLine: true, city: true, district: true } },
           },
         }).catch(() => null);
         customerLongName = (claim?.customer?.companyName || claim?.customer?.fullName || '').trim();
-        const customerSub = String(claim?.customer?.subType || '');
-        if (customerSub === 'eksper_firmasi' || customerSub === 'eksper') {
-          expertOfficeShortName = String(claim?.customer?.shortName || '').trim();
-        }
         insuranceCompanyName = claim?.insuranceCompany?.name ?? null;
-        fileSubject = claim?.claimSubject?.name || claim?.lossType || null;
+        ihbarCustomerName = ihbarCustomerSubjectLabel(claim?.customer, insuranceCompanyName);
+        fileSubject = claim ? claimFileSubjectName(claim) : null;
+        brokerName = claim?.channelBrokerCustomer ? claimChannelFirmLabel(claim.channelBrokerCustomer) : null;
+        agencyName = claim?.channelAgencyCustomer ? claimChannelFirmLabel(claim.channelAgencyCustomer) : null;
         insuredName = claim?.insuredName ?? null;
         city = claim?.propertyAddress?.city ?? null;
         district = claim?.propertyAddress?.district ?? null;
         address = claim?.propertyAddress?.addressLine ?? null;
-        notificationAt = claim?.notificationDate ?? claim?.createdAt ?? null;
+        notificationAt = claim?.notificationDate ?? null;
+        fileCreatedAt = claim?.createdAt ?? null;
       } else {
         const acil = await this.prisma.emergencyCase.findUnique({
           where: { id: params.fileId },
@@ -273,7 +298,7 @@ export class OperationInboxNotificationService {
           fileNo: params.fileNo,
           fileSubject,
         })
-        : yeniIhbarSubject(expertOfficeShortName);
+        : yeniIhbarSubject(ihbarCustomerName, fileSubject);
 
       await this.emailService.sendIfPreferred(
         params.userId,
@@ -284,7 +309,10 @@ export class OperationInboxNotificationService {
           fileType: params.fileType,
           fileNo: params.fileNo,
           notificationAt,
+          fileCreatedAt,
           insuranceCompanyName,
+          brokerName,
+          agencyName,
           assistantCompanyName,
           customerLongName,
           fileSubject,

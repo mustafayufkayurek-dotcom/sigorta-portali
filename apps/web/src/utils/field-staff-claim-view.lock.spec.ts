@@ -17,6 +17,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(util, /fieldStaffInsuredName/);
     assert.match(util, /fieldStaffPhone/);
     assert.match(util, /fieldStaffAddress/);
+    assert.match(util, /fieldStaffPlaceConflict/);
+    assert.match(util, /fieldStaffPlaceLine/);
     assert.match(util, /fieldStaffClaimSubject/);
     assert.match(util, /resolveClaimDosyaKonusu/);
     assert.match(util, /fieldStaffDirectionsUrl/);
@@ -152,8 +154,8 @@ describe('field-staff-claim-view lock', () => {
     assert.match(util, /fieldStaffClaimSubject/);
     assert.match(util, /resolveClaimDosyaKonusu/);
     assert.match(helpers, /departmentFileSubject\?\.name/);
-    const deptIdx = helpers.indexOf('const deptName = claim.departmentFileSubject');
-    const subjectIdx = helpers.indexOf('const subjectName = claim.claimSubject');
+    const deptIdx = helpers.indexOf('const deptName = readableDosyaKonusu(claim.departmentFileSubject');
+    const subjectIdx = helpers.indexOf('const subjectName = readableDosyaKonusu(claim.claimSubject');
     assert.ok(deptIdx > 0 && subjectIdx > deptIdx);
     const home = read('../features/dashboard/components/admin/field-operations-home.tsx');
     const completed = read('../features/dashboard/components/admin/field-completed-inspections-page.tsx');

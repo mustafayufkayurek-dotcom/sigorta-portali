@@ -560,7 +560,7 @@ export class EmergencyCasesService {
         city: dto.city,
         district: dto.district,
         issueType: dto.issueType,
-        urgency: dto.urgency ?? 'NORMAL',
+        urgency: dto.urgency,
         fileDate,
         assignedVendorId: dto.assignedVendorId,
         assignedUserId: dto.assignedUserId ?? userId,

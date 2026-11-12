@@ -210,6 +210,12 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/claim-files/hasar-kpi-scope.lock.spec.ts \
   apps/web/src/features/dashboard/utils/dashboard-data-delivery.lock.spec.ts \
   apps/web/src/utils/panel-profile-identity.lock.spec.ts \
-  scripts/restore-missing-report-images.lock.spec.ts
+  scripts/restore-missing-report-images.lock.spec.ts \
+  apps/backend/src/common/backend-build-root.lock.spec.ts \
+  apps/backend/src/common/helpers/preserve-chosen-file-subject.lock.spec.ts \
+  apps/backend/src/modules/claim-files/claim-file-info-mail.lock.spec.ts \
+  apps/backend/src/modules/operation-inbox/unowned-inbox-mail.lock.spec.ts \
+  packages/shared/src/address-place-guard.lock.spec.ts \
+  packages/shared/src/claim-notification-at.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

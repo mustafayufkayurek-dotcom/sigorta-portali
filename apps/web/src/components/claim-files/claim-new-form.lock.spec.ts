@@ -47,7 +47,10 @@ describe('yeni dosya form lock', () => {
       const ihbar = editModal.indexOf('İhbar İçeriği');
       assert.ok(openAddr > 0 && ihbar > openAddr, 'Düzenle’de Açık Adres İhbar İçeriği’nin üstündedir');
     }
-    assert.match(editModal, /toTitleCaseTR\(description\.trim\(\)\)/);
+    assert.match(form, /Konumu Bul/);
+    assert.match(form, /readClaimAddressPlace/);
+    assert.match(editModal, /Konumu Bul/);
+    assert.match(editModal, /readClaimAddressPlace/);
     const acilForm = readFileSync(join(here, '../emergency/EmergencyCaseNewForm.tsx'), 'utf8');
     {
       const addr = acilForm.indexOf('ADDRESS_FIELD.openAddress');

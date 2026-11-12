@@ -14,6 +14,7 @@ import { ClaimFilesService } from '../claim-files/claim-files.service';
 import { CustomersService } from '../customers/customers.service';
 import { OperationInboxNotificationService } from './operation-inbox-notification.service';
 import { extractHeuristicFields } from './inbound-heuristic-parser';
+import { threadFilePlace, unownedInboxCustomerName } from './unowned-inbox-mail';
 import { resolveCityDistrictFromAddress } from './inbound-location.util';
 
 export interface CustomerMatchCandidate {
@@ -703,12 +704,56 @@ export class InboundRoutingService {
     suggestion.escalatedAt = new Date().toISOString();
     await this.persistRouting(message, suggestion);
 
+    const assistantName = suggestion.assistantCustomerMatch.status === 'found'
+      ? suggestion.assistantCustomerMatch.customer?.name
+      : null;
+    const matchedCustomer = suggestion.customerMatch.status === 'found'
+      ? suggestion.customerMatch.customer?.name
+      : null;
+    const place = threadFilePlace(
+      { city: suggestion.city, district: suggestion.district },
+      await this.earlierThreadPlaces(message),
+    );
+
     void this.inboxNotifications.notifyUnownedEscalation({
       messageId: message.id,
       subject: message.subject,
       mailboxLabel: MAILBOX_LABELS[message.mailbox],
       urgency: extracted.urgency === 'HIGH' ? 'HIGH' : 'NORMAL',
       reason,
+      fileNo: suggestion.mailFields?.fileNo,
+      customerName: unownedInboxCustomerName({
+        assistantName,
+        customerName: matchedCustomer,
+      }),
+      insuredName: suggestion.mailFields?.insuredName || suggestion.insuredName,
+      fileSubject: suggestion.mailFields?.fileSubject,
+      city: place.city,
+      district: place.district,
+    });
+  }
+
+  /** Aynı yazışmadaki ilk ihbarın ili. Bu yazının kendi adresi varsa ona bakılmaz. */
+  private async earlierThreadPlaces(
+    message: InboundMessage,
+  ): Promise<Array<{ city: string | null; district: string | null }>> {
+    const conversationId = message.conversationId?.trim();
+    if (!conversationId) return [];
+    const rows = await this.prisma.inboundMessage.findMany({
+      where: {
+        conversationId,
+        id: { not: message.id },
+        receivedAt: { lt: message.receivedAt },
+      },
+      orderBy: { receivedAt: 'asc' },
+      select: { aiExtractedJson: true },
+    });
+    return rows.map((row) => {
+      const routing = this.parseStoredRouting(row.aiExtractedJson);
+      return {
+        city: routing?.city?.trim() || null,
+        district: routing?.district?.trim() || null,
+      };
     });
   }
 

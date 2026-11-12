@@ -1,16 +1,18 @@
 import type { NotificationEmailTemplateData } from '../notifications/email/email.template';
-import { formatIhbarMailAddress } from '@sigorta/shared';
+import { formatClaimNotificationAt, formatIhbarMailAddress } from '@sigorta/shared';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
-import {
-  formatNotificationDateTime,
-  notificationDash,
-} from '../notifications/email/email-notification-tone';
+import { notificationDash } from '../notifications/email/email-notification-tone';
 
 export type InboxIhbarEmailSummary = {
   fileType: 'hasar' | 'acil';
   fileNo: string;
   notificationAt?: Date | string | null;
+  /** Dosya açılış anı: gün olarak gelen ihbar tarihine saat verir. */
+  fileCreatedAt?: Date | string | null;
   insuranceCompanyName?: string | null;
+  /** Dosya broker / acente üzerinden yönetiliyorsa Sigorta Şirketi’nin üstünde durur. */
+  brokerName?: string | null;
+  agencyName?: string | null;
   assistantCompanyName?: string | null;
   customerLongName?: string | null;
   fileSubject?: string | null;
@@ -23,6 +25,7 @@ export type InboxIhbarEmailSummary = {
   portalUrl?: string;
   /** Atayan kişinin Kullanıcılar’daki Görev yazısı */
   assignedByJobTitle?: string | null;
+  title?: string;
 };
 
 export const HASAR_ASSIGNED_BY_HEADING_SUFFIX = 'Tarafından Atanmıştır';
@@ -54,9 +57,15 @@ export function buildInboxIhbarEmailRows(
     city: summary.city,
   });
   const rows: Array<{ label: string; value: string }> = [
-    { label: 'İhbar Tarihi', value: formatNotificationDateTime(summary.notificationAt) },
-    { label: companyLabel, value: companyValue },
+    { label: 'İhbar Tarihi', value: formatClaimNotificationAt(summary.notificationAt, summary.fileCreatedAt) },
   ];
+  if (summary.fileType === 'hasar') {
+    const broker = summary.brokerName?.trim();
+    const agency = summary.agencyName?.trim();
+    if (broker) rows.push({ label: 'Broker', value: broker });
+    if (agency) rows.push({ label: 'Acente', value: agency });
+  }
+  rows.push({ label: companyLabel, value: companyValue });
   if (summary.fileType === 'acil') {
     rows.push({ label: 'Poliçe No', value: notificationDash(summary.policyNo) });
   }
@@ -74,7 +83,7 @@ export function buildInboxIhbarEmailTemplate(
   summary: InboxIhbarEmailSummary,
 ): NotificationEmailTemplateData {
   return {
-    title: 'Yeni İhbar Dosyası',
+    title: summary.title?.trim() || 'Yeni İhbar Dosyası',
     titleSuffix: hasarAssignedByHeading(summary.assignedByJobTitle),
     badgeLabel: inboxIhbarDepartmentLabel(summary.fileType),
     kickerLabel: '',

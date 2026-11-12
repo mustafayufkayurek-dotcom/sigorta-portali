@@ -151,6 +151,8 @@ describe('rapor mail konuları', () => {
     );
     expect(yeniIhbarSubject('Fidar')).toBe('Yeni İhbar-Fidar');
     expect(yeniIhbarSubject('')).toBe('Yeni İhbar');
+    expect(yeniIhbarSubject('Doğanlar Mobilya', 'Sel-Seylap')).toBe('Yeni İhbar-Doğanlar Mobilya-Sel-Seylap');
+    expect(yeniIhbarSubject('Doğanlar Mobilya', 'Belirtilmemiş')).toBe('Yeni İhbar-Doğanlar Mobilya');
     expect(
       acilYeniIhbarSubject({
         policyNo: '1573577325',
@@ -230,11 +232,11 @@ describe('buildLoginApprovalCodeHtml', () => {
     expect(html).toContain('Giriş Kodu');
     expect(html).toContain('2 8 1 3 9 8');
     expect(html).toContain('font-size:28px');
-    expect(html).toContain('title="Kopyala"');
-    expect(html).toContain('navigator.clipboard');
-    expect(html).toContain('data-code="281398"');
+    expect(html).not.toContain('giris-kodu-kopyala');
+    expect(html).not.toContain('onclick=');
+    expect(html).toContain('user-select:all');
+    expect(html).toContain('giriş ekranında Yapıştır’a basın');
     expect(html).not.toContain('/giris/kopyala');
-    expect(html).not.toContain('<a id="giris-kodu-kopyala"');
     expect(html).toContain('width="120"');
     expect(html).toContain('Giriş Onayı');
     expect(html).not.toContain('Sayı 2 8 1 3 9 8');

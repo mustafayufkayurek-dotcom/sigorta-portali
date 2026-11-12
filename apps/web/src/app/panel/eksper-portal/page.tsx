@@ -9,6 +9,7 @@ import { FileDropZone } from '@/components/ui/FileDropZone';
 import { FieldHelpTip } from '@/components/ui/FieldHelpTip';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { CLAIM_PRIORITY_OPTIONS, isClaimPriority } from '@/utils/claim-priority';
 import { getAccessToken } from '@/utils/auth-session';
 import { PhoneInput } from '@/components/PhoneInput';
 import { DashboardShell, DashboardHeader } from '@/app/panel/_components';
@@ -120,6 +121,7 @@ type IhbarFormData = {
   adresDetay: string;
   hasarTarihi: string;
   aciklama: string;
+  priority: string;
 };
 
 type ProvinceOption = { id: string; plateCode: number; name: string };
@@ -196,7 +198,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     dosyaNo: '', policeTuru: '', konu: '', sigortaSirketi: '',
     ticariUnvan: '', vergiDairesi: '', vergiNo: '',
     sigortaliAdi: '', sigortaliTelefon: '', il: '', ilce: '', adresDetay: '',
-    hasarTarihi: '', aciklama: '',
+    hasarTarihi: '', aciklama: '', priority: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof IhbarFormData, string>>>({});
   const [saving, setSaving] = useState(false);
@@ -236,7 +238,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
           const subjects = konuBody.data ?? [];
           setIhbarKonulari(subjects.map((s: any) => ({ value: s.code, label: s.name })));
         } else {
-          setLookupError(normalizeApiMessage(konuBody, 'İhbar konuları yüklenemedi'));
+          setLookupError(normalizeApiMessage(konuBody, 'Dosya konuları yüklenemedi'));
         }
       } catch {
         if (active) setLookupError('Form verileri yüklenemedi');
@@ -414,6 +416,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     const e: Partial<Record<keyof IhbarFormData, string>> = {};
     if (!data.policeTuru) e.policeTuru = 'Zorunlu alan';
     if (!data.konu) e.konu = 'Zorunlu alan';
+    if (!isClaimPriority(data.priority)) e.priority = 'Öncelik zorunludur';
     if (!data.sigortaSirketi || !isUuid(data.sigortaSirketi)) e.sigortaSirketi = 'Lütfen listeden geçerli bir sigorta şirketi seçin';
     if (!data.sigortaliAdi.trim()) e.sigortaliAdi = 'Zorunlu alan';
     if (!data.sigortaliTelefon || data.sigortaliTelefon.replace(/\D/g, '').length < 10) e.sigortaliTelefon = 'Geçerli telefon giriniz';
@@ -472,7 +475,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
         description: normalizedForm.aciklama.trim() || undefined,
         incidentDate: toIsoDate(normalizedForm.hasarTarihi) ?? new Date().toISOString(),
         notificationDate: new Date().toISOString(),
-        priority: 'normal',
+        priority: normalizedForm.priority,
         sourceChannel: 'expert_portal',
         insuredName: normalizedForm.sigortaliAdi.trim(),
         insuredPhone: normalizedForm.sigortaliTelefon.replace(/\D/g, ''),
@@ -598,10 +601,9 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
             </div>
           </FileDropZone>
 
-          {/* İhbar Konusu */}
           <div>
             <label className="text-xs font-medium text-slate-600 block mb-1.5">
-              İhbar Konusu <span className="text-status-danger">*</span>
+              Dosya Konusu <span className="text-status-danger">*</span>
             </label>
             <select
               className={`input-base-sm text-base sm:text-sm ${errors.konu ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
@@ -616,6 +618,24 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
               <p className="text-xs text-amber-600 mt-1">{lookupError}</p>
             )}
             {errors.konu && <p className="text-xs text-status-danger mt-1">{errors.konu}</p>}
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-600 block mb-1.5">
+              Öncelik <span className="text-status-danger">*</span>
+            </label>
+            <select
+              className={`input-base-sm text-base sm:text-sm ${errors.priority ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
+              data-testid="eksper-ihbar-oncelik"
+              value={form.priority}
+              onChange={(e) => set('priority', e.target.value)}
+            >
+              <option value="">Seçiniz...</option>
+              {CLAIM_PRIORITY_OPTIONS.map((row) => (
+                <option key={row.value} value={row.value}>{row.label}</option>
+              ))}
+            </select>
+            {errors.priority && <p className="text-xs text-status-danger mt-1">{errors.priority}</p>}
           </div>
 
           {/* Sigorta Şirketi */}

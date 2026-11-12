@@ -67,6 +67,11 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 48. Müşteri yetkilisi onay veya yazışma mailinde kopya alır. Asıl mail karşı tarafa gider. Satınalma, muhasebe veya ikisi birden işaretlenir.
 49. Hasar Onarım listesinde hizmet türü boş eski dosya durur. Sayfa 100 veya 150 seçilince sunucu o kadarını kesmeden getirir. Toplam, gelen satır sayısı değildir.
 50. Hasar raporu onaya giderken eksper adresi müşteri kartındaysa oraya gider. Seçilen tarafta adres yoksa karttaki adres kullanılır. Kartta adres varken «e-posta yok» çıkmaz.
+51. Sahiplenilmemiş Yeni İhbar maili dosya numarası, müşteri, sigortalı, dosya konusu, il ve ilçe yazar; il yoksa zincirdeki ilk ihbarın ili okunur.
+52. Açık adres seçilen ille çelişirse kayıt durur. Tespitçi ekranında Dosya İl İlçe durur; çelişkide yol tarifi açılmaz. Backend derlemesi `dist/main` çıkar.
+53. Dosya Bilgilerini Düzenle: Dosya Konusu seçilen konudur. Kayıt dosya sorumlusuna mail atar; sorumlu değişince yeni sorumluya da gider. Tahmini Onarım Bitiş yok; Sigorta Şirketi, Broker, Acente durur. Öncelik her açılışta zorunludur.
+54. Hasar Yeni İhbar konu satırı Yeni İhbar-İhbarı Yapan Müşteri-Dosya Konusu. İhbar Tarihi 03:00 yazmaz. Broker / Acente varsa Sigorta Şirketi’nin üstündedir. Belirtilmemiş basılmaz.
+55. Giriş Onayı mailinde çalışmayan kopyala ikonu yoktur; kod bir dokunuşta seçilir, giriş ekranında Yapıştır doldurur.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

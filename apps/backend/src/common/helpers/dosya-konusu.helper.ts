@@ -1,5 +1,4 @@
 import {
-  isInboundIhbarNoteText,
   mapInboundCategoryKnown,
   mapInboundLossTypeToMeridyen,
 } from '@sigorta/shared';
@@ -12,7 +11,7 @@ export async function resolveDepartmentFileSubjectByLabel(
   departmentId?: string | null,
 ): Promise<{ id: string; name: string } | null> {
   const trimmed = label?.trim();
-  if (!trimmed || isInboundIhbarNoteText(trimmed)) return null;
+  if (!trimmed || trimmed.length > 80 || /^gelen kutusu ihbar/i.test(trimmed)) return null;
 
   const canonical =
     mapInboundLossTypeToMeridyen(trimmed)

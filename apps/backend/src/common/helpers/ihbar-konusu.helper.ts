@@ -37,13 +37,39 @@ export function sanitizeInboundLossType(raw?: string | null, fileSubject?: strin
   return fromRawCategory || 'Belirtilmemiş';
 }
 
+/** Ayarlar listesinden seçilen konu durur. Uzun ihbar notu konu olmaz. */
+export function preserveChosenFileSubject(raw: string, sanitized: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return sanitized || 'Belirtilmemiş';
+  if (/^belirtilmemi[sş]$/i.test(trimmed)) return 'Belirtilmemiş';
+  if (/^gelen kutusu ihbar/i.test(trimmed) || trimmed.length > 48) {
+    return sanitized && sanitized !== 'Belirtilmemiş' ? sanitized : 'Belirtilmemiş';
+  }
+  if (sanitized && sanitized !== 'Belirtilmemiş') return sanitized;
+  return trimmed;
+}
+
+/** Mail ve kartta Dosya Konusu: Ayarlar konusu, sonra eski konu, sonra yazılan konu. */
+export function claimFileSubjectName(claim: {
+  departmentFileSubject?: { name?: string | null } | null;
+  claimSubject?: { name?: string | null } | null;
+  lossType?: string | null;
+}): string | null {
+  const candidates = [claim.departmentFileSubject?.name, claim.claimSubject?.name, claim.lossType];
+  for (const raw of candidates) {
+    const name = String(raw ?? '').trim();
+    if (name && !/^belirtilmemi[sş]$/i.test(name)) return name;
+  }
+  return null;
+}
+
 /** Canonical etiketten ClaimSubject id çöz */
 export async function resolveClaimSubjectIdByLabel(
   prisma: PrismaService,
   label?: string | null,
 ): Promise<string | null> {
   const trimmed = label?.trim();
-  if (!trimmed || isInboundIhbarNoteText(trimmed)) return null;
+  if (!trimmed || trimmed.length > 80 || /^gelen kutusu ihbar/i.test(trimmed)) return null;
 
   const exact = await prisma.claimSubject.findFirst({
     where: { name: { equals: trimmed, mode: 'insensitive' }, isActive: true },

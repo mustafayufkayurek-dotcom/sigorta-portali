@@ -1,4 +1,4 @@
-import { formatMeridyenDisplayLabel, isInboundIhbarNoteText, mapInboundCategoryKnown, mapInboundLossTypeToMeridyen } from '@sigorta/shared';
+import { formatMeridyenDisplayLabel, mapInboundCategoryKnown, mapInboundLossTypeToMeridyen } from '@sigorta/shared';
 import { formatEmergencyFileAddress } from '@/utils/emergency-file-address';
 
 /**
@@ -154,6 +154,16 @@ function finalizeDosyaKonusuLabel(raw: string): string {
   return formatMeridyenDisplayLabel(mapped ?? raw);
 }
 
+function readableDosyaKonusu(raw?: string | null): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  if (/^belirtilmemi[sş]$/i.test(trimmed)) return null;
+  if (/^gelen kutusu ihbar/i.test(trimmed)) return null;
+  if (trimmed.length > 48 || trimmed.includes('\n')) return null;
+  if (/[.!?;:]/.test(trimmed) && trimmed.length > 24) return null;
+  return trimmed;
+}
+
 /**
  * Dosya konusu — Ayarlar → Dosya Konuları kanonik adı öncelikli.
  * Müşteri/personel hatalı serbest metin girmişse katalog veya terminoloji eşlemesiyle düzeltilir.
@@ -162,22 +172,22 @@ export function resolveClaimDosyaKonusu(
   claim: ClaimIhbarKonusuSource,
   catalogNames?: string[],
 ): string {
-  const deptName = claim.departmentFileSubject?.name?.trim();
-  if (deptName && !isInboundIhbarNoteText(deptName)) {
+  const deptName = readableDosyaKonusu(claim.departmentFileSubject?.name);
+  if (deptName) {
     return finalizeDosyaKonusuLabel(
       matchCatalogName(deptName, catalogNames) ?? deptName,
     );
   }
 
-  const subjectName = claim.claimSubject?.name?.trim();
-  if (subjectName && !isInboundIhbarNoteText(subjectName)) {
+  const subjectName = readableDosyaKonusu(claim.claimSubject?.name);
+  if (subjectName) {
     return finalizeDosyaKonusuLabel(
       matchCatalogName(subjectName, catalogNames) ?? subjectName,
     );
   }
 
-  const lossRaw = claim.lossType?.trim();
-  if (lossRaw && !isInboundIhbarNoteText(lossRaw)) {
+  const lossRaw = readableDosyaKonusu(claim.lossType);
+  if (lossRaw) {
     const fromCatalog = matchCatalogName(lossRaw, catalogNames);
     if (fromCatalog) return finalizeDosyaKonusuLabel(fromCatalog);
 
@@ -186,9 +196,7 @@ export function resolveClaimDosyaKonusu(
       ?? mapInboundCategoryKnown(lossRaw);
     if (mapped) return mapped;
 
-    if (lossRaw.length <= 48 && !lossRaw.includes('\n')) {
-      return finalizeDosyaKonusuLabel(lossRaw);
-    }
+    return finalizeDosyaKonusuLabel(lossRaw);
   }
 
   return '—';

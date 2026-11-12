@@ -6,6 +6,7 @@
 
 import { formatHasarAdresi, resolveClaimDosyaKonusu } from '@/utils/text-helpers';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
+import { readClaimAddressPlace } from '@/utils/claim-address-place';
 
 export type FieldStaffClaimLite = {
   insuredName?: string | null;
@@ -34,6 +35,22 @@ export function fieldStaffPhone(claim: FieldStaffClaimLite): string {
 
 export function fieldStaffAddress(claim: FieldStaffClaimLite): string {
   return formatHasarAdresi(claim.propertyAddress);
+}
+
+/** Açık adres dosyadaki il ile çelişirse tespitçiye yol tarifi açılmaz. */
+export function fieldStaffPlaceConflict(claim: FieldStaffClaimLite): string | null {
+  const address = claim.propertyAddress;
+  if (!address) return null;
+  const place = readClaimAddressPlace(address.addressLine || '', address.city, address.district);
+  if (!place.conflict) return null;
+  return place.conflict.replace('Kayıt durdu.', 'Bu adrese yol tarifi açılmaz.');
+}
+
+export function fieldStaffPlaceLine(claim: FieldStaffClaimLite): string {
+  const district = claim.propertyAddress?.district?.trim() || '';
+  const city = claim.propertyAddress?.city?.trim() || '';
+  if (district && city) return `${district} · ${city}`;
+  return district || city || '—';
 }
 
 /**

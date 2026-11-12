@@ -10,6 +10,9 @@ import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinan
 import { generalMailboxesFromContactInfos, isAcilInspectionPhotoNotes } from '@sigorta/shared';
 import {
   claimFileChannelCreateFields,
+  claimChannelFirmLabel,
+  normalizeClaimNotificationDate,
+  optionalClaimChannelCustomerId,
   CLAIM_LIST_PAGE_MAX,
   claimFileWhereForHizmet,
   claimFileWhereForMusteriKaynak,
@@ -33,6 +36,7 @@ import {
   hizmetRequiredPartyMessage,
   missingHizmetRequiredParty,
   customerContactCopyEmails,
+  readOpenAddressPlace,
 } from '@sigorta/shared';
 import { loadHizmetKartlari } from '@/common/hizmet-karti-store';
 import { sanitizeSearchQuery } from '@/common/security/sanitize-search';
@@ -60,6 +64,7 @@ import {
 } from '@/common/utils/file-no-helpers';
 import { buildWhatsAppMeUrl, normalizeWhatsAppPhone } from '@/common/utils/whatsapp-phone';
 import { toTitleCaseTR } from '@/common/utils/text-helpers';
+import { PROVINCES } from '@/common/data/turkey-locations';
 import {
   buildVendorNearbyWhere,
   buildSupplierFallbackWhere,
@@ -69,7 +74,10 @@ import {
 import { mergeAssignableStaffWithDelegates } from './assignable-file-owners';
 import { resolveInsuranceCompanyIdsForCustomer } from '@/modules/customers/customer-file-stats';
 import { resolveCityDistrictFromAddress } from '@/modules/operation-inbox/inbound-location.util';
+import { ihbarCustomerSubjectLabel } from '@/modules/notifications/email/email.template';
 import {
+  claimFileSubjectName,
+  preserveChosenFileSubject,
   resolveClaimSubjectIdByLabel,
   sanitizeInboundLossType,
 } from '@/common/helpers/ihbar-konusu.helper';
@@ -383,13 +391,19 @@ export class ClaimFilesService {
     district?: string | null;
     address?: string | null;
     notificationAt?: Date | string | null;
+    fileCreatedAt?: Date | string | null;
+    brokerName?: string | null;
+    agencyName?: string | null;
     expertOfficeShortName?: string | null;
+    ihbarCustomerName?: string | null;
+    /** Dosya sorumlusu değişince, işlemi yapan yeni sorumlu da mail alır. */
+    forceNewOwner?: boolean;
   }) {
     if (!this.claimEventEmail) return;
     const u = params.officeUser;
     if (!u?.id || !u.email) return;
     if (params.previousOfficeUserId && params.previousOfficeUserId === u.id) return;
-    if (params.actorId && params.actorId === u.id) return;
+    if (!params.forceNewOwner && params.actorId && params.actorId === u.id) return;
     const name = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
     let assignedByJobTitle: string | null = null;
     if (params.actorId) {
@@ -413,8 +427,61 @@ export class ClaimFilesService {
       district: params.district,
       address: params.address,
       notificationAt: params.notificationAt,
+      fileCreatedAt: params.fileCreatedAt,
+      brokerName: params.brokerName,
+      agencyName: params.agencyName,
       expertOfficeShortName: params.expertOfficeShortName,
+      ihbarCustomerName: params.ihbarCustomerName,
       assignedByJobTitle,
+    });
+  }
+
+  private async notifyClaimFileInfoUpdated(params: {
+    user?: {
+      id: string;
+      email?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+    } | null;
+    fileNo: string;
+    customerName: string;
+    claimFileId: string;
+    insuranceCompanyName?: string | null;
+    fileSubject?: string | null;
+    insuredName?: string | null;
+    city?: string | null;
+    district?: string | null;
+    address?: string | null;
+    priority?: string | null;
+    ownerName?: string | null;
+    expertOfficeShortName?: string | null;
+    notificationAt?: Date | string | null;
+    fileCreatedAt?: Date | string | null;
+    brokerName?: string | null;
+    agencyName?: string | null;
+  }) {
+    if (!this.claimEventEmail) return;
+    const user = params.user;
+    if (!user?.id || !user.email) return;
+    void this.claimEventEmail.onClaimFileInfoUpdated({
+      recipientEmail: user.email,
+      recipientUserId: user.id,
+      fileNo: params.fileNo,
+      customer: params.customerName,
+      claimFileId: params.claimFileId,
+      insuranceCompanyName: params.insuranceCompanyName,
+      fileSubject: params.fileSubject,
+      insuredName: params.insuredName,
+      city: params.city,
+      district: params.district,
+      address: params.address,
+      priority: params.priority,
+      ownerName: params.ownerName,
+      expertOfficeShortName: params.expertOfficeShortName,
+      notificationAt: params.notificationAt,
+      fileCreatedAt: params.fileCreatedAt,
+      brokerName: params.brokerName,
+      agencyName: params.agencyName,
     });
   }
 
@@ -433,7 +500,11 @@ export class ClaimFilesService {
     insuredName?: string | null;
     address?: string | null;
     notificationAt?: Date | string | null;
+    fileCreatedAt?: Date | string | null;
+    brokerName?: string | null;
+    agencyName?: string | null;
     expertOfficeShortName?: string | null;
+    ihbarCustomerName?: string | null;
   }) {
     if (!this.claimEventEmail || !this.claimResponsibilities) return;
     const city = params.city?.trim();
@@ -466,7 +537,11 @@ export class ClaimFilesService {
         district: params.district,
         address: params.address,
         notificationAt: params.notificationAt,
+        fileCreatedAt: params.fileCreatedAt,
+        brokerName: params.brokerName,
+        agencyName: params.agencyName,
         expertOfficeShortName: params.expertOfficeShortName,
+        ihbarCustomerName: params.ihbarCustomerName,
       });
       void this.createInAppNotification({
         userId: watcher.id,
@@ -1913,6 +1988,9 @@ export class ClaimFilesService {
         ? siteContactEmailRaw
         : null;
     delete rest.siteContactEmail;
+    if (rest.notificationDate !== undefined) {
+      rest.notificationDate = normalizeClaimNotificationDate(rest.notificationDate) ?? undefined;
+    }
     const channelFields = claimFileChannelCreateFields(rest);
     const hizmetCards = await loadHizmetKartlari(this.prisma);
     const typeForCard = consultancyServiceTypeId
@@ -1947,7 +2025,8 @@ export class ClaimFilesService {
     const claimNo = typeof rest.claimNo === 'string' ? rest.claimNo.trim() : '';
     const productBranch = typeof rest.productBranch === 'string' ? rest.productBranch.trim() : '';
     let lossType = typeof rest.lossType === 'string' ? rest.lossType.trim() : '';
-    lossType = sanitizeInboundLossType(lossType);
+    const chosenLossType = lossType;
+    lossType = preserveChosenFileSubject(chosenLossType, sanitizeInboundLossType(lossType));
 
     // Domain Ayrıştırma: claimSubjectId tercih, departmentFileSubjectId backward-compat
     let claimSubjectId = rest.claimSubjectId ?? null;
@@ -1991,6 +2070,12 @@ export class ClaimFilesService {
     if (!claimNo) throw new BadRequestException('Hasar numarası zorunludur');
     if (!productBranch) throw new BadRequestException('Ürün branşı zorunludur');
     if (!lossType) throw new BadRequestException('Hasar türü zorunludur');
+    const rawPriority = typeof rest.priority === 'string' ? rest.priority.trim().toLowerCase() : '';
+    const priorityAllowed = new Set(['low', 'normal', 'medium', 'high', 'critical']);
+    if (sourceChannel !== 'email_inbox' && !priorityAllowed.has(rawPriority)) {
+      throw new BadRequestException('Öncelik zorunludur');
+    }
+    if (priorityAllowed.has(rawPriority)) rest.priority = rawPriority;
 
     if (!claimSubjectId && lossType !== 'Belirtilmemiş') {
       claimSubjectId = await resolveClaimSubjectIdByLabel(this.prisma, lossType);
@@ -2009,6 +2094,8 @@ export class ClaimFilesService {
     if (!propertyAddressId && propertyAddressText) {
       const city = typeof data.city === 'string' ? data.city.trim() || '' : '';
       const district = typeof data.district === 'string' ? data.district.trim() || '' : '';
+      const place = readOpenAddressPlace(propertyAddressText, PROVINCES, { city, district });
+      if (place.conflict) throw new BadRequestException(place.conflict);
       const address = await this.prisma.address.create({
         data: {
           city: city || 'Belirtilmemiş',
@@ -2158,6 +2245,7 @@ export class ClaimFilesService {
           },
           propertyAddress: true,
           claimSubject: { select: { name: true } },
+          departmentFileSubject: { select: { name: true } },
           assignedFieldUser: { select: { id: true, firstName: true, lastName: true, email: true } },
           assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, email: true } },
         },
@@ -2250,12 +2338,16 @@ export class ClaimFilesService {
             claimFileId: created.id,
             customerLongName,
             insuranceCompanyName: created.insuranceCompany?.name ?? null,
-            fileSubject: (created as any).claimSubject?.name || created.lossType,
+            fileSubject: claimFileSubjectName(created),
             insuredName: created.insuredName,
             city: (created as any)?.propertyAddress?.city ?? null,
             district: (created as any)?.propertyAddress?.district ?? null,
             address: (created as any)?.propertyAddress?.addressLine ?? null,
-            notificationAt: created.notificationDate || created.createdAt,
+            notificationAt: created.notificationDate,
+          fileCreatedAt: created.createdAt,
+          brokerName: created.channelBrokerCustomer ? claimChannelFirmLabel(created.channelBrokerCustomer) : null,
+          agencyName: created.channelAgencyCustomer ? claimChannelFirmLabel(created.channelAgencyCustomer) : null,
+          ihbarCustomerName: ihbarCustomerSubjectLabel(created.customer as any, created.insuranceCompany?.name),
             expertOfficeShortName,
           });
         }
@@ -2271,12 +2363,16 @@ export class ClaimFilesService {
           customerName: customerLongName || customerName,
           claimFileId: created.id,
           insuranceCompanyName: created.insuranceCompany?.name ?? null,
-          fileSubject: (created as any).claimSubject?.name || created.lossType,
+          fileSubject: claimFileSubjectName(created),
           insuredName: created.insuredName,
           city: (created as any)?.propertyAddress?.city ?? null,
           district: (created as any)?.propertyAddress?.district ?? null,
           address: (created as any)?.propertyAddress?.addressLine ?? null,
-          notificationAt: created.notificationDate || created.createdAt,
+          notificationAt: created.notificationDate,
+          fileCreatedAt: created.createdAt,
+          brokerName: created.channelBrokerCustomer ? claimChannelFirmLabel(created.channelBrokerCustomer) : null,
+          agencyName: created.channelAgencyCustomer ? claimChannelFirmLabel(created.channelAgencyCustomer) : null,
+          ihbarCustomerName: ihbarCustomerSubjectLabel(created.customer as any, created.insuranceCompany?.name),
           expertOfficeShortName,
         });
         this.notifyHasarRegionWatchers({
@@ -2295,7 +2391,11 @@ export class ClaimFilesService {
           insuranceCompanyName: created.insuranceCompany?.name ?? null,
           insuredName: created.insuredName,
           address: (created as any)?.propertyAddress?.addressLine ?? null,
-          notificationAt: created.notificationDate || created.createdAt,
+          notificationAt: created.notificationDate,
+          fileCreatedAt: created.createdAt,
+          brokerName: created.channelBrokerCustomer ? claimChannelFirmLabel(created.channelBrokerCustomer) : null,
+          agencyName: created.channelAgencyCustomer ? claimChannelFirmLabel(created.channelAgencyCustomer) : null,
+          ihbarCustomerName: ihbarCustomerSubjectLabel(created.customer as any, created.insuranceCompany?.name),
           expertOfficeShortName,
         });
       }
@@ -2413,9 +2513,12 @@ export class ClaimFilesService {
       rest.description = rest.description.trim() || null;
     }
 
-    if (typeof rest.priority === 'string') {
-      const p = rest.priority.trim().toLowerCase();
-      rest.priority = p || undefined;
+    if (rest.priority !== undefined) {
+      const p = String(rest.priority ?? '').trim().toLowerCase();
+      if (!new Set(['low', 'normal', 'medium', 'high', 'critical']).has(p)) {
+        throw new BadRequestException('Öncelik zorunludur');
+      }
+      rest.priority = p;
     }
 
     if (typeof rest.serviceKind === 'string') {
@@ -2450,7 +2553,8 @@ export class ClaimFilesService {
     }
 
     if (typeof rest.lossType === 'string') {
-      rest.lossType = sanitizeInboundLossType(rest.lossType.trim());
+      const chosenLossType = rest.lossType.trim();
+      rest.lossType = preserveChosenFileSubject(chosenLossType, sanitizeInboundLossType(chosenLossType));
       if (!rest.departmentFileSubjectId && rest.lossType !== 'Belirtilmemiş') {
         const deptSubject = await resolveDepartmentFileSubjectByLabel(
           this.prisma,
@@ -2486,6 +2590,11 @@ export class ClaimFilesService {
             ? rawAddressLine
             : (existingAny.propertyAddress?.addressLine ?? '');
       const nextLine = String(nextLineRaw).trim();
+      const place = readOpenAddressPlace(nextLine, PROVINCES, {
+        city: nextCity,
+        district: nextDistrict,
+      });
+      if (place.conflict) throw new BadRequestException(place.conflict);
 
       if (existingAny.propertyAddressId) {
         await this.prisma.address.update({
@@ -2562,6 +2671,16 @@ export class ClaimFilesService {
     delete rest.claimSubject;
     delete rest.departmentFileSubject;
     delete rest.currentStatus;
+    const notifyFileOwner = rest.notifyFileOwner === true;
+    delete rest.notifyFileOwner;
+    if (rest.insuranceCompanyId !== undefined) {
+      const icId = typeof rest.insuranceCompanyId === 'string' ? rest.insuranceCompanyId.trim() : '';
+      if (!icId) throw new BadRequestException('Sigorta şirketi zorunludur');
+      rest.insuranceCompanyId = icId;
+    }
+    for (const key of ['channelAgencyCustomerId', 'channelBrokerCustomerId', 'channelExpertCustomerId'] as const) {
+      if (rest[key] !== undefined) rest[key] = optionalClaimChannelCustomerId(rest[key]);
+    }
 
     const previousOfficeUserId = existingAny.assignedOfficeUserId ?? null;
     const updated = await this.prisma.claimFile.update({
@@ -2572,6 +2691,9 @@ export class ClaimFilesService {
         propertyAddress: true,
         customer: true,
         assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, email: true } },
+        insuranceCompany: { select: { id: true, name: true } },
+        channelAgencyCustomer: { select: { id: true, shortName: true, companyName: true, fullName: true, firstName: true, lastName: true } },
+        channelBrokerCustomer: { select: { id: true, shortName: true, companyName: true, fullName: true, firstName: true, lastName: true } },
         claimSubject: { select: { id: true, name: true } },
         departmentFileSubject: { select: { id: true, name: true } },
       },
@@ -2581,14 +2703,60 @@ export class ClaimFilesService {
       (updated as any).customer?.fullName
       ?? (updated as any).customer?.companyName
       ?? 'Bilinmiyor';
-    this.notifyHasarOfficeOwnerAssigned({
-      actorId: requestingUser?.id ?? null,
-      previousOfficeUserId,
-      officeUser: (updated as any).assignedOfficeUser,
+    const nextOffice = (updated as any).assignedOfficeUser as {
+      id: string;
+      email?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+    } | null;
+    const nextOfficeId = (updated as any).assignedOfficeUserId ?? null;
+    const ownerChanged = (previousOfficeUserId ?? null) !== (nextOfficeId ?? null);
+    const fileSubject = claimFileSubjectName(updated as any);
+    const expertOfficeShortName = await this.resolveExpertOfficeShortName({
+      customer: (updated as any).customer,
+      assignedAdjusterId: (updated as any).assignedAdjusterId ?? null,
+    });
+    const brokerCustomer = (updated as any).channelBrokerCustomer;
+    const agencyCustomer = (updated as any).channelAgencyCustomer;
+    const ownerName = `${nextOffice?.firstName ?? ''} ${nextOffice?.lastName ?? ''}`.trim() || null;
+    const mailFacts = {
       fileNo: (updated as any).fileNo,
       customerName,
       claimFileId: id,
+      insuranceCompanyName: (updated as any).insuranceCompany?.name ?? null,
+      fileSubject,
+      insuredName: (updated as any).insuredName ?? null,
+      city: (updated as any).propertyAddress?.city ?? null,
+      district: (updated as any).propertyAddress?.district ?? null,
+      address: (updated as any).propertyAddress?.addressLine ?? null,
+      notificationAt: (updated as any).notificationDate ?? null,
+      fileCreatedAt: (updated as any).createdAt ?? null,
+      brokerName: brokerCustomer ? claimChannelFirmLabel(brokerCustomer) : null,
+      agencyName: agencyCustomer ? claimChannelFirmLabel(agencyCustomer) : null,
+      expertOfficeShortName,
+      ihbarCustomerName: ihbarCustomerSubjectLabel((updated as any).customer, (updated as any).insuranceCompany?.name),
+    };
+    this.notifyHasarOfficeOwnerAssigned({
+      actorId: requestingUser?.id ?? null,
+      previousOfficeUserId,
+      forceNewOwner: ownerChanged,
+      officeUser: nextOffice,
+      ...mailFacts,
     });
+    if (notifyFileOwner && !(ownerChanged && !previousOfficeUserId)) {
+      const infoUser = ownerChanged && previousOfficeUserId && previousOfficeUserId !== nextOfficeId
+        ? await this.prisma.user.findUnique({
+          where: { id: previousOfficeUserId },
+          select: { id: true, email: true, firstName: true, lastName: true },
+        })
+        : nextOffice;
+      void this.notifyClaimFileInfoUpdated({
+        user: infoUser,
+        ...mailFacts,
+        priority: (updated as any).priority ?? null,
+        ownerName,
+      });
+    }
     return updated;
   }
 
@@ -2729,6 +2897,21 @@ export class ClaimFilesService {
         fileNo: (claimFile as any).fileNo,
         customerName,
         claimFileId: id,
+        insuranceCompanyName: (claimFile as any).insuranceCompany?.name ?? null,
+        fileSubject: claimFileSubjectName(claimFile as any),
+        insuredName: (claimFile as any).insuredName ?? null,
+        city: (claimFile as any).propertyAddress?.city ?? null,
+        district: (claimFile as any).propertyAddress?.district ?? null,
+        address: (claimFile as any).propertyAddress?.addressLine ?? null,
+        notificationAt: (claimFile as any).notificationDate ?? null,
+        fileCreatedAt: (claimFile as any).createdAt ?? null,
+        brokerName: (claimFile as any).channelBrokerCustomer
+          ? claimChannelFirmLabel((claimFile as any).channelBrokerCustomer)
+          : null,
+        agencyName: (claimFile as any).channelAgencyCustomer
+          ? claimChannelFirmLabel((claimFile as any).channelAgencyCustomer)
+          : null,
+        ihbarCustomerName: ihbarCustomerSubjectLabel((claimFile as any).customer, (claimFile as any).insuranceCompany?.name),
       });
     }
 
@@ -3076,7 +3259,8 @@ export class ClaimFilesService {
       );
     const insuredName = String(claimFile.insuredName || '').trim();
     const insuredPhone = String(claimFile.insuredPhone || '').trim();
-    const notificationAt = claimFile.notificationDate || claimFile.createdAt || null;
+    const notificationAt = claimFile.notificationDate || null;
+    const fileCreatedAt = claimFile.createdAt || null;
     const closedAt = claimFile.closedAt || new Date();
 
     let fileFeeAmount = Number(claimFile.financialSummary?.fileFeeRevenue || 0);
@@ -3256,6 +3440,7 @@ export class ClaimFilesService {
         insuredName,
         insuredPhone,
         notificationAt,
+        fileCreatedAt,
         closedAt,
         fileFeeAmount: fileFeeAmount > 0 ? fileFeeAmount : null,
         audience: item.audience,

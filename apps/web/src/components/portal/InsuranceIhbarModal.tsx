@@ -9,6 +9,7 @@ import { TrDateInput } from '@/components/ui/TrDateInput';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { getAccessToken } from '@/utils/auth-session';
 import { PhoneInput } from '@/components/PhoneInput';
+import { CLAIM_PRIORITY_OPTIONS, isClaimPriority } from '@/utils/claim-priority';
 
 const _apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 const API = _apiBase.endsWith('/api/v1') ? _apiBase : `${_apiBase}/api/v1`;
@@ -38,6 +39,7 @@ type IhbarFormData = {
   adresDetay: string;
   hasarTarihi: string;
   aciklama: string;
+  priority: string;
 };
 
 type ProvinceOption = { id: string; plateCode: number; name: string };
@@ -101,6 +103,7 @@ const EMPTY_FORM: IhbarFormData = {
   adresDetay: '',
   hasarTarihi: '',
   aciklama: '',
+  priority: '',
 };
 
 function InsuranceIhbarModal({
@@ -160,7 +163,7 @@ function InsuranceIhbarModal({
           const subjects = konuBody.data ?? [];
           setIhbarKonulari(subjects.map((s: { code: string; name: string }) => ({ value: s.code, label: s.name })));
         } else {
-          setLookupError(normalizeApiMessage(konuBody, 'İhbar konuları yüklenemedi'));
+          setLookupError(normalizeApiMessage(konuBody, 'Dosya konuları yüklenemedi'));
         }
       } catch {
         if (active) setLookupError('Form verileri yüklenemedi');
@@ -240,7 +243,7 @@ function InsuranceIhbarModal({
     }
   }, [photos.length, showToast]);
 
-  const STEP1_KEYS: (keyof IhbarFormData)[] = ['dosyaNo', 'policeTuru', 'konu', 'ticariUnvan'];
+  const STEP1_KEYS: (keyof IhbarFormData)[] = ['dosyaNo', 'policeTuru', 'konu', 'priority', 'ticariUnvan'];
   const STEP2_KEYS: (keyof IhbarFormData)[] = ['sigortaliAdi', 'sigortaliTelefon', 'il', 'ilce', 'adresDetay'];
   const STEP3_KEYS: (keyof IhbarFormData)[] = ['hasarTarihi'];
 
@@ -251,6 +254,7 @@ function InsuranceIhbarModal({
       if (!data.dosyaNo.trim()) e.dosyaNo = 'Dosya numarası zorunludur';
       if (!data.policeTuru) e.policeTuru = 'Zorunlu alan';
       if (!data.konu) e.konu = 'Zorunlu alan';
+      if (!isClaimPriority(data.priority)) e.priority = 'Öncelik zorunludur';
       if (data.policeTuru === 'ticari') {
         if (!data.ticariUnvan.trim()) e.ticariUnvan = 'Zorunlu alan';
       }
@@ -362,7 +366,7 @@ function InsuranceIhbarModal({
         description: normalizedForm.aciklama.trim() || undefined,
         incidentDate: toIsoDate(normalizedForm.hasarTarihi) ?? new Date().toISOString(),
         notificationDate: new Date().toISOString(),
-        priority: 'normal',
+        priority: normalizedForm.priority,
         sourceChannel: 'insurance_portal',
         insuredName: normalizedForm.sigortaliAdi.trim(),
         insuredPhone: normalizedForm.sigortaliTelefon.replace(/\D/g, ''),
@@ -515,7 +519,7 @@ function InsuranceIhbarModal({
 
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1.5">
-                  İhbar Konusu <span className="text-status-danger">*</span>
+                  Dosya Konusu <span className="text-status-danger">*</span>
                 </label>
                 <select
                   className={`input-base-sm text-base sm:text-sm ${errors.konu ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
@@ -530,6 +534,24 @@ function InsuranceIhbarModal({
                   <p className="text-xs text-status-warning mt-1">{lookupError}</p>
                 )}
                 {errors.konu && <p className="text-xs text-status-danger mt-1">{errors.konu}</p>}
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1.5">
+                  Öncelik <span className="text-status-danger">*</span>
+                </label>
+                <select
+                  className={`input-base-sm text-base sm:text-sm ${errors.priority ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
+                  data-testid="sigorta-ihbar-oncelik"
+                  value={form.priority}
+                  onChange={(e) => set('priority', e.target.value)}
+                >
+                  <option value="">Seçiniz...</option>
+                  {CLAIM_PRIORITY_OPTIONS.map((row) => (
+                    <option key={row.value} value={row.value}>{row.label}</option>
+                  ))}
+                </select>
+                {errors.priority && <p className="text-xs text-status-danger mt-1">{errors.priority}</p>}
               </div>
 
               <div>

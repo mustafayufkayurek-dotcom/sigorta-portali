@@ -104,10 +104,25 @@ export function onarimRaporuRequestSubject(
   return joinMailSubjectParts(insuranceCompanyName, fileNo, 'Onay Talep');
 }
 
-/** Yeni ihbar konu: Yeni İhbar-{Eksper Ofisi Kısa Ad} */
-export function yeniIhbarSubject(expertOfficeShortName?: string | null): string {
-  const shortName = String(expertOfficeShortName ?? '').trim();
-  return shortName ? `Yeni İhbar-${shortName}` : 'Yeni İhbar';
+/** Yeni ihbar konu: Yeni İhbar-{İhbarı Yapan Müşteri}-{Dosya Konusu} */
+export function yeniIhbarSubject(
+  ihbarCustomerName?: string | null,
+  fileSubject?: string | null,
+): string {
+  const subject = String(fileSubject ?? '').trim();
+  return joinMailSubjectParts(
+    'Yeni İhbar',
+    ihbarCustomerName,
+    /^belirtilmemi[sş]$/i.test(subject) ? '' : subject,
+  );
+}
+
+/** İhbarı yapan müşteri: kartın kısa adı; kart yoksa sigorta şirketi. */
+export function ihbarCustomerSubjectLabel(
+  customer?: { shortName?: string | null; companyName?: string | null; fullName?: string | null } | null,
+  insuranceCompanyName?: string | null,
+): string {
+  return expertOfficeSubjectLabel(customer) || String(insuranceCompanyName ?? '').trim();
 }
 
 /** Acil yeni ihbar konu: poliçe / sigortalı / dosya no / dosya konusu */
@@ -568,26 +583,20 @@ export function buildNotificationEmailHtml(data: NotificationEmailTemplateData):
 </html>`;
 }
 
-/** Giriş onayı — canlı satır; bitişik 6 hane yazılmaz. Kopyala ikonu sayfa açmaz. */
+/**
+ * Giriş onayı — bitişik 6 hane yazılmaz. Mail programları tıklama komutu çalıştırmaz;
+ * kopyala ikonu konmaz. Kod tek dokunuşta seçilir, giriş ekranında Yapıştır doldurur.
+ */
 export function buildLoginApprovalCodeHtml(mailNumber: string): string {
   const spaced = String(mailNumber ?? '').trim();
-  const compact = spaced.replace(/\D/g, '').slice(0, 6);
-  const copyIcon =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><rect x="9" y="9" width="13" height="13" rx="2" stroke="#1E5AA8" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="#1E5AA8" stroke-width="2"/></svg>';
-  const copyOnClick =
-    "try{var c=this.getAttribute('data-code')||'';if(!c)return false;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(c);}else{var t=document.createElement('textarea');t.value=c;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);}this.setAttribute('title','Kopyalandı');}catch(e){}return false;";
 
   return `
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 12px;">
                 <tr>
-                  <td style="padding:0 14px 0 0;vertical-align:middle;">
+                  <td style="vertical-align:middle;">
                     <div style="font-size:12px;font-weight:700;color:#64748B;margin:0 0 6px;">Giriş Kodu</div>
-                    <div style="font-size:28px;line-height:1.2;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;color:#0F172A;-webkit-user-select:all;user-select:all;">${escapeHtml(spaced)}</div>
-                  </td>
-                  <td style="vertical-align:bottom;padding:0 0 4px;">
-                    <span id="giris-kodu-kopyala" role="button" title="Kopyala" data-code="${escapeHtml(compact)}" onclick="${copyOnClick}" style="display:inline-block;width:26px;height:26px;border:1px solid #CBD5E1;border-radius:6px;background:#F8FAFC;text-align:center;line-height:24px;cursor:pointer;">
-                      ${copyIcon}
-                    </span>
+                    <div id="giris-kodu" style="font-size:28px;line-height:1.2;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;color:#0F172A;-webkit-user-select:all;user-select:all;">${escapeHtml(spaced)}</div>
+                    <div style="font-size:12px;line-height:1.5;color:#64748B;margin:8px 0 0;">Kodun üzerine dokunup kopyalayın; giriş ekranında Yapıştır’a basın.</div>
                   </td>
                 </tr>
               </table>`;

@@ -23,10 +23,25 @@ describe('acil yeni ihbar konu LOCK', () => {
     );
     assert.match(template, /export function acilYeniIhbarSubject/);
     assert.match(template, /filter\(Boolean\)\.join\(' \/ '\)/);
-    assert.match(template, /Yeni İhbar-\$\{shortName\}/);
     assert.match(notify, /acilYeniIhbarSubject/);
     assert.match(notify, /fileType === 'acil'/);
     assert.match(rows, /label: 'Poliçe No'/);
     assert.match(rows, /fileType === 'acil'/);
+  });
+
+  it('Hasar konu: Yeni İhbar-İhbarı Yapan Müşteri-Dosya Konusu', () => {
+    const template = readFileSync(join(here, 'email.template.ts'), 'utf8');
+    const notify = readFileSync(
+      join(here, '../../operation-inbox/operation-inbox-notification.service.ts'),
+      'utf8',
+    );
+    const events = readFileSync(join(here, 'claim-event-email.service.ts'), 'utf8');
+    assert.match(template, /joinMailSubjectParts\(\s*'Yeni İhbar',\s*ihbarCustomerName,/);
+    assert.match(template, /export function ihbarCustomerSubjectLabel/);
+    assert.match(notify, /yeniIhbarSubject\(ihbarCustomerName, fileSubject\)/);
+    assert.equal(
+      (events.match(/yeniIhbarSubject\(params\.ihbarCustomerName \|\| params\.expertOfficeShortName, params\.fileSubject\)/g) ?? []).length,
+      2,
+    );
   });
 });

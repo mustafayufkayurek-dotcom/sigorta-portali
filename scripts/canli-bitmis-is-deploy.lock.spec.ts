@@ -159,6 +159,12 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'legal-public.lock.spec',
       'csrf-origin.lock.spec',
       'restore-missing-report-images.lock.spec',
+      'backend-build-root.lock.spec',
+      'preserve-chosen-file-subject.lock.spec',
+      'claim-file-info-mail.lock.spec',
+      'unowned-inbox-mail.lock.spec',
+      'address-place-guard.lock.spec',
+      'claim-notification-at.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

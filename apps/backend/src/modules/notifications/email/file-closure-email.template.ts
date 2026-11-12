@@ -1,5 +1,5 @@
 import { resolveWelcomeEmailLogoUrl } from './email-brand.util';
-import { isMeridyenInternalMailbox } from '@sigorta/shared';
+import { formatClaimNotificationAt, isMeridyenInternalMailbox } from '@sigorta/shared';
 
 export { isMeridyenInternalMailbox };
 
@@ -10,6 +10,7 @@ export type FileClosureEmailData = {
   organizationName: string;
   greeting?: string;
   notificationAt?: Date | string | null;
+  fileCreatedAt?: Date | string | null;
   insuranceCompanyName?: string | null;
   fileNo: string;
   fileSubject?: string | null;
@@ -123,7 +124,7 @@ export function buildFileClosureEmailRows(
   data: FileClosureEmailData,
 ): Array<{ label: string; value: string }> {
   const rows: Array<{ label: string; value: string }> = [
-    { label: 'İhbar Tarihi', value: formatClosureDateTime(data.notificationAt) },
+    { label: 'İhbar Tarihi', value: formatClaimNotificationAt(data.notificationAt, data.fileCreatedAt) },
     { label: 'Sigorta şirketi', value: dash(data.insuranceCompanyName) },
     { label: 'Dosya No', value: dash(data.fileNo) },
     { label: 'Dosya Konusu', value: dash(data.fileSubject) },

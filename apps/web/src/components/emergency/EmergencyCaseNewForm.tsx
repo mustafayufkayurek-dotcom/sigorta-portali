@@ -79,7 +79,7 @@ export function EmergencyCaseNewForm({
   const isCustomerLocked = Boolean(lockedCustomerId);
   const field = isPanel ? inpCompact : inp;
   const label = isPanel ? lblCompact : lbl;
-  const issueTypeLabel = isCustomerLocked ? 'Dosya Konusu' : 'İhbar Konusu';
+  const issueTypeLabel = 'Dosya Konusu';
 
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -94,7 +94,7 @@ export function EmergencyCaseNewForm({
   const [fileNoChecking, setFileNoChecking] = useState(false);
   const [fileDate, setFileDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [issueType, setIssueType] = useState('');
-  const [urgency, setUrgency] = useState<EmergencyUrgency>('NORMAL');
+  const [urgency, setUrgency] = useState<EmergencyUrgency | ''>('');
   const [insuredName, setInsuredName] = useState('');
   const [insuredPhone, setInsuredPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -379,6 +379,7 @@ export function EmergencyCaseNewForm({
     if (fileNoError) errs.fileNo = fileNoError;
     if (!isPanel && !fileDate) errs.fileDate = 'Dosya tarihi zorunludur.';
     if (!issueType) errs.issueType = `${issueTypeLabel} seçiniz.`;
+    if (!urgency) errs.urgency = 'Öncelik zorunludur.';
     if (!insuredName.trim()) errs.insuredName = 'Sigortalı adı soyadı zorunludur.';
     if (!address.trim()) errs.address = 'Adres zorunludur.';
     if (!findingsText.trim()) errs.findingsText = 'Tespit Bulguları zorunludur.';
@@ -387,7 +388,7 @@ export function EmergencyCaseNewForm({
     }
     setErrors(errs);
     if (errs.assistant) setOpenSections((p) => ({ ...p, asistans: true }));
-    if (errs.fileNo || errs.issueType || errs.insuredName || errs.address || errs.findingsText) {
+    if (errs.fileNo || errs.issueType || errs.urgency || errs.insuredName || errs.address || errs.findingsText) {
       setOpenSections((p) => ({ ...p, dosya: true }));
     }
     if (errs.assignedUserId) {
@@ -423,6 +424,7 @@ export function EmergencyCaseNewForm({
         ? new Date(normalizeTrDateValue(todayTrDateDisplay())).toISOString()
         : new Date(fileDate).toISOString();
 
+      if (!urgency) return;
       const res = await createCase({
         customerName: toTitleCaseTR(insuredName.trim()),
         customerPhone: insuredPhone || undefined,
@@ -647,14 +649,17 @@ export function EmergencyCaseNewForm({
             <PhoneInput value={insuredPhone} onChange={setInsuredPhone} placeholder="532 133 4144" />
           </div>
         )}
-        <div className="col-span-2">
-          <label className={label}>Aciliyet</label>
+        <div className="col-span-2" data-testid="acil-oncelik">
+          <label className={label}>Öncelik <span className="text-status-danger">*</span></label>
           <div className={`grid grid-cols-4 ${isPanel ? 'gap-1.5' : 'gap-2 sm:grid-cols-4'}`}>
             {URGENCY_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setUrgency(opt.value)}
+                onClick={() => {
+                  setUrgency(opt.value);
+                  setErrors((prev) => ({ ...prev, urgency: '' }));
+                }}
                 className={`${isPanel ? 'py-1.5 text-[11px]' : 'py-2 text-xs'} font-medium rounded-lg border transition-all ${
                   urgency === opt.value
                     ? `${opt.color} ring-2 ring-offset-1 ring-current`
@@ -665,6 +670,7 @@ export function EmergencyCaseNewForm({
               </button>
             ))}
           </div>
+          {errors.urgency && <p className="text-xs text-status-danger mt-1">{errors.urgency}</p>}
         </div>
         <div className="col-span-2 min-w-0 pt-1 border-t border-slate-100">
           {!isPanel && <p className="text-[11px] font-medium text-slate-500 mb-2">Dosya Adresi</p>}

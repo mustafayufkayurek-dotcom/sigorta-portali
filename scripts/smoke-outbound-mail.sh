@@ -10,6 +10,8 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/notifications/email/manual-decision-email.lock.spec.ts \
   apps/backend/src/modules/notifications/email/acil-yeni-ihbar-subject.lock.spec.ts \
   apps/backend/src/modules/claim-files/hasar-office-assign-mail.lock.spec.ts \
+  packages/shared/src/claim-notification-at.lock.spec.ts \
+  apps/backend/src/modules/claim-files/claim-file-info-mail.lock.spec.ts \
   apps/backend/src/modules/notifications/email/file-closure-email.lock.spec.ts \
   apps/backend/src/modules/surveys/survey-monthly-report.lock.spec.ts \
   apps/backend/src/modules/repair-reports/report-mail-external-pdf.lock.spec.ts \

@@ -38,9 +38,9 @@ export class CreateEmergencyCaseDto {
   @IsNotEmpty()
   fileDate!: string;
 
-  @IsEnum(EmergencyUrgency)
-  @IsOptional()
-  urgency?: EmergencyUrgency;
+  @IsEnum(EmergencyUrgency, { message: 'Öncelik zorunludur' })
+  @IsNotEmpty({ message: 'Öncelik zorunludur' })
+  urgency!: EmergencyUrgency;
 
   @IsString()
   @IsOptional()

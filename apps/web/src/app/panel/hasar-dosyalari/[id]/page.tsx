@@ -44,6 +44,8 @@ import {
   FIELD_STAFF_END_INSPECTION_TOAST,
   FIELD_STAFF_HIDDEN_CLAIM_TABS,
   fieldStaffAddress,
+  fieldStaffPlaceConflict,
+  fieldStaffPlaceLine,
   fieldStaffDirectionsUrl,
   fieldStaffInspectionBadgeClass,
   fieldStaffInspectionStatus,
@@ -256,7 +258,9 @@ function FieldStaffVisitCard({
   const insuredLine = fieldStaffInsuredName(claim);
   const insuredPhone = fieldStaffPhone(claim);
   const addressLine = fieldStaffAddress(claim);
-  const directionsUrl = fieldStaffDirectionsUrl(addressLine);
+  const placeLine = fieldStaffPlaceLine(claim);
+  const placeConflict = fieldStaffPlaceConflict(claim);
+  const directionsUrl = placeConflict ? null : fieldStaffDirectionsUrl(addressLine);
   const inspection = fieldStaffInspectionStatus(claim);
 
   return (
@@ -309,6 +313,11 @@ function FieldStaffVisitCard({
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" strokeWidth={1.75} aria-hidden />
             <span>{addressLine}</span>
           </p>
+          <p className="mt-3 text-[11px] font-medium text-slate-500">Dosya İl İlçe</p>
+          <p className="mt-1 text-sm font-semibold text-slate-950" data-testid="saha-dosya-il-ilce">{placeLine}</p>
+          {placeConflict ? (
+            <p className="mt-2 text-sm font-medium text-red-700" data-testid="saha-konum-uyarisi">{placeConflict}</p>
+          ) : null}
           {directionsUrl ? (
             <a
               href={directionsUrl}

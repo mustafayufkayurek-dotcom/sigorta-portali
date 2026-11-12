@@ -30,6 +30,15 @@ import {
 } from './email.template';
 import { buildInboxIhbarEmailTemplate } from '@/modules/operation-inbox/inbox-ihbar-email';
 
+function claimPriorityMailLabel(value?: string | null): string {
+  const key = String(value ?? '').trim().toLowerCase();
+  if (key === 'low' || key === 'dusuk') return 'Düşük';
+  if (key === 'medium' || key === 'orta') return 'Orta';
+  if (key === 'high' || key === 'yuksek') return 'Yüksek';
+  if (key === 'critical' || key === 'kritik') return 'Kritik';
+  return 'Normal';
+}
+
 @Injectable()
 export class ClaimEventEmailService {
   private readonly appUrl: string;
@@ -55,18 +64,25 @@ export class ClaimEventEmailService {
     district?: string | null;
     address?: string | null;
     notificationAt?: Date | string | null;
+    fileCreatedAt?: Date | string | null;
+    brokerName?: string | null;
+    agencyName?: string | null;
     expertOfficeShortName?: string | null;
+    ihbarCustomerName?: string | null;
   }) {
     const actionUrl = buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId));
     await this.email.sendIfPreferred(
       params.recipientUserId,
       'newClaimFile',
       params.recipientEmail,
-      yeniIhbarSubject(params.expertOfficeShortName),
+      yeniIhbarSubject(params.ihbarCustomerName || params.expertOfficeShortName, params.fileSubject),
       buildInboxIhbarEmailTemplate({
         fileType: 'hasar',
         fileNo: params.fileNo,
         notificationAt: params.notificationAt,
+        fileCreatedAt: params.fileCreatedAt,
+        brokerName: params.brokerName,
+        agencyName: params.agencyName,
         customerLongName: params.customerLongName,
         insuranceCompanyName: params.insuranceCompanyName,
         fileSubject: params.fileSubject,
@@ -95,7 +111,11 @@ export class ClaimEventEmailService {
     district?: string | null;
     address?: string | null;
     notificationAt?: Date | string | null;
+    fileCreatedAt?: Date | string | null;
+    brokerName?: string | null;
+    agencyName?: string | null;
     expertOfficeShortName?: string | null;
+    ihbarCustomerName?: string | null;
     assignedByJobTitle?: string | null;
   }) {
     const actionUrl = buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId));
@@ -103,11 +123,14 @@ export class ClaimEventEmailService {
       params.recipientUserId,
       'claimAssignment',
       params.recipientEmail,
-      yeniIhbarSubject(params.expertOfficeShortName),
+      yeniIhbarSubject(params.ihbarCustomerName || params.expertOfficeShortName, params.fileSubject),
       buildInboxIhbarEmailTemplate({
         fileType: 'hasar',
         fileNo: params.fileNo,
         notificationAt: params.notificationAt,
+        fileCreatedAt: params.fileCreatedAt,
+        brokerName: params.brokerName,
+        agencyName: params.agencyName,
         customerLongName: params.customer,
         insuranceCompanyName: params.insuranceCompanyName,
         fileSubject: params.fileSubject,
@@ -119,6 +142,64 @@ export class ClaimEventEmailService {
         portalUrl: this.appUrl,
         assignedByJobTitle: params.assignedByJobTitle,
       }),
+    );
+  }
+
+  /** Dosya bilgisi kaydı — güncel kart dosya sorumlusuna gider. */
+  async onClaimFileInfoUpdated(params: {
+    recipientEmail: string;
+    recipientUserId: string;
+    fileNo: string;
+    customer: string;
+    claimFileId: string;
+    insuranceCompanyName?: string | null;
+    fileSubject?: string | null;
+    insuredName?: string | null;
+    city?: string | null;
+    district?: string | null;
+    address?: string | null;
+    priority?: string | null;
+    ownerName?: string | null;
+    expertOfficeShortName?: string | null;
+    ihbarCustomerName?: string | null;
+    notificationAt?: Date | string | null;
+    fileCreatedAt?: Date | string | null;
+    brokerName?: string | null;
+    agencyName?: string | null;
+  }) {
+    const actionUrl = buildPanelUrl(this.appUrl, panelHasarDosyasiPath(params.claimFileId));
+    const template = buildInboxIhbarEmailTemplate({
+      fileType: 'hasar',
+      title: 'Dosya Bilgileri Güncellendi',
+      fileNo: params.fileNo,
+      notificationAt: params.notificationAt,
+      fileCreatedAt: params.fileCreatedAt,
+      brokerName: params.brokerName,
+      agencyName: params.agencyName,
+      customerLongName: params.customer,
+      insuranceCompanyName: params.insuranceCompanyName,
+      fileSubject: params.fileSubject,
+      insuredName: params.insuredName,
+      city: params.city,
+      district: params.district,
+      address: params.address,
+      actionUrl,
+      portalUrl: this.appUrl,
+    });
+    template.rows = [
+      ...template.rows,
+      { label: 'Öncelik', value: claimPriorityMailLabel(params.priority) },
+      ...(params.expertOfficeShortName?.trim()
+        ? [{ label: 'Eksper Ofisi', value: params.expertOfficeShortName.trim() }]
+        : []),
+      { label: 'Dosya Sorumlusu', value: params.ownerName?.trim() || '—' },
+    ];
+    await this.email.sendIfPreferred(
+      params.recipientUserId,
+      'claimAssignment',
+      params.recipientEmail,
+      `Dosya Bilgileri Güncellendi: ${params.fileNo}`,
+      template,
     );
   }
 

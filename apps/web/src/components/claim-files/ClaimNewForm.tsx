@@ -11,6 +11,8 @@ import { ADDRESS_FIELD } from '@/constants/address-fields';
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { normalizeTrDateValue, isCompleteTrDateValue } from '@/utils/tr-date-input';
 import { formatVendorAddress } from '@/utils/vendor-form-helpers';
+import { applyClaimAddressPlace, readClaimAddressPlace } from '@/utils/claim-address-place';
+import { CLAIM_PRIORITY_OPTIONS, isClaimPriority } from '@/utils/claim-priority';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import {
@@ -146,6 +148,10 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const [channelExpertFirms, setChannelExpertFirms] = useState<ChannelFirm[]>([]);
   const [fileNo, setFileNo] = useState(() => loadYeniDosyaTaslak()?.fileNo ?? '');
   const [lossType, setLossType] = useState(() => loadYeniDosyaTaslak()?.lossType ?? '');
+  const [priority, setPriority] = useState(() => {
+    const saved = loadYeniDosyaTaslak()?.priority ?? '';
+    return isClaimPriority(saved) ? saved : '';
+  });
   const [notificationDate, setNotificationDate] = useState(() => loadYeniDosyaTaslak()?.notificationDate || todayTrDateDisplay());
   const [insuredName, setInsuredName] = useState(() => loadYeniDosyaTaslak()?.insuredName ?? '');
   const [description, setDescription] = useState(() => loadYeniDosyaTaslak()?.description ?? '');
@@ -319,7 +325,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       })
       .catch((err) => {
         if (cancelled) return;
-        reportCaughtError(err, 'Hasar konuları yüklenemedi. Lütfen sayfayı yenileyin.');
+        reportCaughtError(err, 'Dosya konuları yüklenemedi. Lütfen sayfayı yenileyin.');
         setClaimSubjects([]);
         setSubjectsLoadFailed(true);
       });
@@ -566,7 +572,8 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     if (claimCustomerSourceContactLabel(customerSource) && sourceContacts.length > 0 && !sourceContactId) {
       errs.sourceContactId = 'Karttaki dosya sorumlusu seçilmelidir.';
     }
-    if (!lossType) errs.lossType = 'Hasar konusu zorunludur.';
+    if (!lossType) errs.lossType = 'Dosya konusu zorunludur.';
+    if (!isClaimPriority(priority)) errs.priority = 'Öncelik zorunludur.';
     if (!assignedOfficeUserId) errs.assignedOfficeUserId = 'Dosya sorumlusu zorunludur.';
     if (!serviceKind) errs.serviceKind = 'Hizmet türü zorunludur.';
     if (serviceKind === 'consultancy' && !consultancyServiceTypeId) {
@@ -593,6 +600,8 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       errs.notificationDate = 'İhbar tarihi zorunludur (GG.AA.YYYY).';
     }
     if (!insuredName.trim()) errs.insuredName = 'Sigortalı adı soyadı zorunludur.';
+    const placeConflict = readClaimAddressPlace(openAddress, city, district).conflict;
+    if (placeConflict) errs.openAddress = placeConflict;
   };
 
   const validateEksperFields = (errs: Record<string, string>) => {
@@ -614,7 +623,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
       });
     }
     if (errs.customer) setOpenSections((p) => ({ ...p, eksper: true }));
-    if (errs.fileNo || errs.insuranceCompanyId || errs.lossType || errs.insuredName || errs.assignedOfficeUserId || errs.serviceKind || errs.consultancyServiceTypeId || errs.sourceContactId || errs.channelBrokerCustomerId || errs.channelExpertCustomerId) {
+    if (errs.fileNo || errs.insuranceCompanyId || errs.lossType || errs.priority || errs.insuredName || errs.assignedOfficeUserId || errs.serviceKind || errs.consultancyServiceTypeId || errs.sourceContactId || errs.channelBrokerCustomerId || errs.channelExpertCustomerId) {
       setOpenSections((p) => ({ ...p, dosya: true }));
     }
     return Object.keys(errs).length === 0;
@@ -681,7 +690,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         lossType,
         incidentDate: ihbarIso,
         notificationDate: ihbarIso,
-        priority: 'normal',
+        priority,
         description: toTitleCaseTR(description.trim()) || undefined,
         insuredName: toTitleCaseTR(insuredName.trim()),
         customerId: customerId || undefined,
@@ -953,6 +962,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     channelExpertCustomerId,
     fileNo,
     lossType,
+    priority,
     notificationDate,
     insuredName,
     description,
@@ -984,6 +994,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     channelExpertCustomerId,
     fileNo,
     lossType,
+    priority,
     notificationDate,
     insuredName,
     description,
@@ -1182,18 +1193,36 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
           {errors.insuredName && <p className="text-xs text-status-danger mt-0.5">{errors.insuredName}</p>}
         </div>
         <div className="min-w-0" data-field="lossType">
-          <label className={label}>Hasar Konusu <span className="text-status-danger">*</span></label>
+          <label className={label}>Dosya Konusu <span className="text-status-danger">*</span></label>
           <select className={`${field} ${errors.lossType ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`} value={lossType} onChange={(e) => setLossType(e.target.value)}>
             <option value="">Seçiniz...</option>
             {claimSubjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
           </select>
           {subjectsLoadFailed && (
-            <p className="text-xs text-amber-600 mt-0.5">Hasar konuları yüklenemedi. Lütfen sayfayı yenileyin.</p>
+            <p className="text-xs text-amber-600 mt-0.5">Dosya konuları yüklenemedi. Lütfen sayfayı yenileyin.</p>
           )}
           {!subjectsLoadFailed && claimSubjects.length === 0 && (
             <p className="text-xs text-amber-600 mt-0.5">Bu hat için dosya konusu yok.</p>
           )}
           {errors.lossType && <p className="text-xs text-status-danger mt-0.5">{errors.lossType}</p>}
+        </div>
+        <div className="min-w-0" data-field="priority">
+          <label className={label}>Öncelik <span className="text-status-danger">*</span></label>
+          <select
+            className={`${field} ${errors.priority ? 'border-red-400 ring-2 ring-status-danger/20' : ''}`}
+            data-testid="yeni-dosya-oncelik"
+            value={priority}
+            onChange={(e) => {
+              setPriority(e.target.value);
+              if (e.target.value) setErrors((p) => { const n = { ...p }; delete n.priority; return n; });
+            }}
+          >
+            <option value="">Seçiniz...</option>
+            {CLAIM_PRIORITY_OPTIONS.map((row) => (
+              <option key={row.value} value={row.value}>{row.label}</option>
+            ))}
+          </select>
+          {errors.priority && <p className="text-xs text-status-danger mt-0.5">{errors.priority}</p>}
         </div>
         <div className="min-w-0" data-field="fileNo">
           <label className={`${label} flex items-center gap-1.5`}>
@@ -1316,15 +1345,55 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
           />
         </div>
         <div className={spanFull} data-field="openAddress">
-          <label className={label}>{ADDRESS_FIELD.openAddress}</label>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className={label}>{ADDRESS_FIELD.openAddress}</label>
+            <button
+              type="button"
+              className="shrink-0 text-xs font-semibold text-brand-700 hover:text-brand-800"
+              onClick={() => {
+                const found = applyClaimAddressPlace(openAddress);
+                if (!found.city || found.conflict?.includes('birden fazla')) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    openAddress: found.conflict || 'Adreste il okunamadı. İl ve ilçeyi adresle aynı seçin.',
+                  }));
+                  return;
+                }
+                const prov = STATIC_PROVINCES.find((row) => row.name === found.city);
+                if (!prov) return;
+                setCityCode(prov.code);
+                setCity(prov.name);
+                const districtNames = STATIC_DISTRICTS[prov.code] ?? [];
+                setDistrict(found.district && districtNames.includes(found.district) ? found.district : '');
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.openAddress;
+                  return next;
+                });
+              }}
+            >
+              Konumu Bul
+            </button>
+          </div>
           <textarea
             rows={isPanel ? 2 : 2}
             className={`${field} resize-y min-h-[56px]`}
             placeholder={ADDRESS_FIELD.openAddressPlaceholder}
             value={openAddress}
-            onChange={(e) => setOpenAddress(e.target.value)}
+            onChange={(e) => {
+              setOpenAddress(e.target.value);
+              setErrors((prev) => {
+                if (!prev.openAddress) return prev;
+                const next = { ...prev };
+                delete next.openAddress;
+                return next;
+              });
+            }}
             onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setOpenAddress(v); }}
           />
+          {errors.openAddress ? (
+            <p className="mt-1 text-xs font-medium text-red-700">{errors.openAddress}</p>
+          ) : null}
         </div>
         <div className={spanFull} data-field="ihbarDetayi">
           <label className={label}>İhbar Detayı</label>

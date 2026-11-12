@@ -61,6 +61,7 @@ export type YeniDosyaTaslak = {
   channelExpertCustomerId: string;
   fileNo: string;
   lossType: string;
+  priority: string;
   notificationDate: string;
   insuredName: string;
   description: string;

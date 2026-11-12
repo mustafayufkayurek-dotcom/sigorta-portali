@@ -39,8 +39,11 @@ describe('giriş e-posta kodu kaynak LOCK', () => {
     const template = readFileSync(join(here, '../notifications/email/email.template.ts'), 'utf8');
     assert.match(template, /export function buildLoginApprovalCodeHtml/);
     assert.match(template, /Giriş Kodu/);
-    assert.match(template, /title="Kopyala"/);
-    assert.match(template, /navigator\.clipboard/);
+    // Mail programları onclick çalıştırmaz: çalışmayan kopyala ikonu geri gelmez.
+    assert.doesNotMatch(template, /giris-kodu-kopyala/);
+    assert.doesNotMatch(template, /onclick=/);
+    assert.match(template, /id="giris-kodu"[^>]*user-select:all/);
+    assert.match(template, /giriş ekranında Yapıştır’a basın/);
     assert.doesNotMatch(template, /\/giris\/kopyala/);
     assert.doesNotMatch(template, /<a id="giris-kodu-kopyala"/);
     assert.doesNotMatch(template, /Sayı \$\{escapeHtml\(spaced\)\}/);

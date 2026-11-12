@@ -167,10 +167,6 @@ export function buildDosyaBilgileriFields(claim: any, reportSummary?: any | null
   if (claim.policyNo?.trim()) {
     supplementary.push({ label: 'Poliçe No', value: claim.policyNo.trim() });
   }
-  const ihbarKonusu = resolveClaimIhbarKonusu(claim);
-  if (ihbarKonusu !== '—') {
-    supplementary.push({ label: 'İhbar Konusu', value: ihbarKonusu });
-  }
   if (claim.sourceChannel?.trim()) {
     supplementary.push({ label: 'Kaynak Kanal', value: toTitleCaseTR(claim.sourceChannel.trim()) });
   }
@@ -256,7 +252,11 @@ function InsuredNameEditor({
     setSaving(true);
     setError('');
     try {
-      await axios.patch(`${API}/claim-files/${claimId}`, { insuredName: name }, { headers: authHeader() });
+      await axios.patch(
+        `${API}/claim-files/${claimId}`,
+        { insuredName: name, notifyFileOwner: true },
+        { headers: authHeader() },
+      );
       onSaved(name);
     } catch (e: unknown) {
       const msg = axios.isAxiosError(e)
