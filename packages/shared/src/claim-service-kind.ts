@@ -134,12 +134,18 @@ export function claimFileWhereForMusteriKaynak(raw: unknown): Record<string, unk
   return { customer: { subType: { in: [...ASISTANS_CUSTOMER_SUB_TYPES] } } };
 }
 
+/** Liste kutusu 150’ye kadar ister. Sunucu bunu kesmez. */
+export const CLAIM_LIST_PAGE_MAX = 150;
+
 export function claimFileWhereForHizmet(raw: unknown): Record<string, unknown> | null {
   const h = normalizeHasarListHizmet(raw);
   if (!h) return null;
   if (h === HASAR_HIZMET_TESPIT) return { serviceKind: 'inspection' };
   if (h === HASAR_HIZMET_DANISMANLIK) return { serviceKind: 'consultancy' };
-  if (h === 'repair' || h === 'onarim' || h === 'hasar-onarim') return { serviceKind: 'repair' };
+  // Eski dosyada hizmet türü boştur. Hasar Onarım listesinde durur.
+  if (h === 'repair' || h === 'onarim' || h === 'hasar-onarim') {
+    return { OR: [{ serviceKind: 'repair' }, { serviceKind: null }] };
+  }
   const underscored = h.replace(/-/g, '_');
   return {
     serviceKind: 'consultancy',

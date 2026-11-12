@@ -1,11 +1,11 @@
 ---
-description: Canlı web v682 / backend v680
+description: Canlı web v682 / backend v683
 alwaysApply: true
 ---
 
 # Canlı (12.11.2026)
 
-Canlı: web **v682** · backend **v680**. Geri alma: web **v681** / backend **v680**.
+Canlı: web **v682** · backend **v683**. Geri alma: web **v682** / backend **v680**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v683 (yalnız backend):** Hasar Onarım listesinde hizmet türü boş eski dosya durur. Sayfa 100 veya 150 seçilince sunucu 100’de kesmez. Web **v682**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v682 / backend v680.
 
 **v682 (yalnız web):** Broker seçilince karttaki kişi irtibat kutularına yazılmaz. Ad, telefon ve e-posta sigortalı için boş kalır; personel yazar. Backend **v680**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v681 / backend v680.
 
@@ -241,4 +243,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v682** · backend **v680**.
+Canlı web **v682** · backend **v683**.

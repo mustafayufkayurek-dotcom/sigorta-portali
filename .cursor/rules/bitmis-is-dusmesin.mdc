@@ -65,6 +65,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 46. Eksper ofisi kişinin kendi adıyla açılır. Yetkili kutusuna Gülseren Yakar yazılır. Sigorta, Ekspertiz, Limited yetkili kutusuna yazılırsa kayıt durur.
 47. Mail tarafı dosya açılışında sorulmaz. Hizmetin maili, o hizmetin Ayarlar kaydındadır. Birden fazla taraf seçilebilir. Menü, adım, fiyat ve zorunlu taraf aynı karttan işler.
 48. Müşteri yetkilisi onay veya yazışma mailinde kopya alır. Asıl mail karşı tarafa gider. Satınalma, muhasebe veya ikisi birden işaretlenir.
+49. Hasar Onarım listesinde hizmet türü boş eski dosya durur. Sayfa 100 veya 150 seçilince sunucu o kadarını kesmeden getirir. Toplam, gelen satır sayısı değildir.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

@@ -1,0 +1,36 @@
+---
+description: Hasar Onarım listesi eski dosyayı düşürmez; sayfa 150’de kesilmez
+alwaysApply: true
+---
+
+# Hasar Listesi — Eski Dosya Ve Sayfa Boyutu
+
+**Kaynak (Mustafa · 12.11.2026):** Dosya sorumlusu 100 seçse de 14 dosya görüyordu. Kutu değişiyordu. Liste, hizmet türü boş eski dosyayı saymıyordu. Eski kilit yalnız kutudaki sayılara bakıyordu.
+
+**Temel cümle:** Hasar Onarım listesinde **eski dosya durur.** Seçilen sayfa boyutu **sunucuda da geçer.** 150 kesilmez.
+
+## Zorunlu
+
+1. `claimFileWhereForHizmet('hasar-onarim')` onarım dosyasını ve hizmet türü boş dosyayı birlikte alır.
+2. Hasar Tespit yalnız tespit dosyasıdır. Danışmanlık yalnız danışmanlık dosyasıdır. Eski dosya bu iki listeye kaymaz.
+3. Hasar listesi seçilen `limit` ile ister. Sunucu `CLAIM_LIST_PAGE_MAX` (150) üstünde keser, 100’de kesmez.
+4. Alt yazı sunucunun toplamıdır. Gelen satır sayısı toplam sanılmaz.
+5. Kilit, kutu listesine ek olarak bu iki kapıyı da okur. Her alım `smoke-canli-bitmis-is.sh` içinde çalışır.
+
+## Yasak (açık onay yoksa)
+
+- Hasar Onarım’ı yalnız `serviceKind: 'repair'` yapmak
+- Sayfa boyutu kilidini yine yalnız 10/20/50/100/150 dizisine indirmek
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+100 seçilince eski dosya yine yoksa veya toplam gelen satır sayısıysa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+  packages/shared/src/claim-service-kind.lock.spec.ts \
+  apps/web/src/utils/ops-list-page-size.lock.spec.ts
+```

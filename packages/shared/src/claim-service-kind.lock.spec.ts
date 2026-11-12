@@ -17,6 +17,7 @@ import {
   CLAIM_SERVICE_KINDS,
   CLAIM_SERVICE_KIND_LABEL,
   HASAR_TESPIT_SERVICE_CODE,
+  CLAIM_LIST_PAGE_MAX,
   claimFileWhereForHizmet,
   claimFileWhereForMusteriKaynak,
   claimServiceKindFromConsultancyType,
@@ -74,6 +75,10 @@ describe('claim service kind lock', () => {
     assert.equal(claimServiceKindFromConsultancyType({ code: 'sovtaj', name: 'Sovtaj' }), 'consultancy');
     assert.deepEqual(claimFileWhereForHizmet('hasar-tespit'), { serviceKind: 'inspection' });
     assert.deepEqual(claimFileWhereForHizmet('danismanlik'), { serviceKind: 'consultancy' });
+    assert.deepEqual(claimFileWhereForHizmet('hasar-onarim'), {
+      OR: [{ serviceKind: 'repair' }, { serviceKind: null }],
+    });
+    assert.equal(CLAIM_LIST_PAGE_MAX, 150);
     assert.deepEqual(claimFileWhereForMusteriKaynak('asistans'), {
       customer: { subType: { in: ['asistan_firmasi', 'asistans_firmasi'] } },
     });
@@ -136,5 +141,18 @@ describe('claim service kind lock', () => {
     assert.match(claims, /isHasarTespitConsultancyType/);
     assert.match(claims, /convertInspectionToRepair/);
     assert.match(claims, /consultancyServiceTypeId: null/);
+  });
+
+  it('Hasar Onarım eski dosyayı düşürmez; sayfa 150’de kesilmez', () => {
+    const claims = readFileSync(
+      join(here, '../../../apps/backend/src/modules/claim-files/claim-files.service.ts'),
+      'utf8',
+    );
+    assert.match(claims, /CLAIM_LIST_PAGE_MAX/);
+    assert.match(
+      claims,
+      /Math\.min\(Math\.max\(Number\(params\?\.limit\) \|\| 20, 1\), CLAIM_LIST_PAGE_MAX\)/,
+    );
+    assert.doesNotMatch(claims, /Number\(params\?\.limit\) \|\| 20, 100/);
   });
 });
