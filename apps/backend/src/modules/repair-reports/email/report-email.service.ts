@@ -35,6 +35,12 @@ export class ReportEmailService {
     insuranceCompanyName?: string | null;
     fileSubject?: string | null;
     documentTitle?: string | null;
+    ownerName?: string | null;
+    ownerPhone?: string | null;
+    ownerEmail?: string | null;
+    operationRegion?: string | null;
+    operationCity?: string | null;
+    operationDistrict?: string | null;
     actionUrl?: string | null;
     portalUrl?: string | null;
     viewType?: 'external';
@@ -62,6 +68,12 @@ export class ReportEmailService {
       documentTitle: opts.documentTitle,
       actionUrl: opts.actionUrl,
       portalUrl: opts.portalUrl,
+      ownerName: opts.ownerName,
+      ownerPhone: opts.ownerPhone,
+      ownerEmail: opts.ownerEmail,
+      operationRegion: opts.operationRegion,
+      operationCity: opts.operationCity,
+      operationDistrict: opts.operationDistrict,
     });
     const result = await this.email.sendEmail(
       to,
@@ -75,6 +87,12 @@ export class ReportEmailService {
           fileSubject: opts.fileSubject,
           documentTitle: opts.documentTitle,
           actionUrl: opts.actionUrl,
+          ownerName: opts.ownerName,
+          ownerPhone: opts.ownerPhone,
+          ownerEmail: opts.ownerEmail,
+          operationRegion: opts.operationRegion,
+          operationCity: opts.operationCity,
+          operationDistrict: opts.operationDistrict,
         }),
         attachments: [
           {

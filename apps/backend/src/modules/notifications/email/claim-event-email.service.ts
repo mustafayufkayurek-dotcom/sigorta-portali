@@ -397,6 +397,7 @@ export class ClaimEventEmailService {
     actorName: string;
     claimFileId?: string | null;
     emergencyCaseId?: string | null;
+    customerName?: string | null;
     customerEmail?: string | null;
     managerEmails: string[];
   }) {
@@ -417,6 +418,7 @@ export class ClaimEventEmailService {
       title: actionLabel,
       preheader: `${params.fileNo} için ${actionLabel.toLowerCase()} kaydı oluşturuldu.`,
       rows: [
+        { label: 'Müşteri', value: params.customerName?.trim() || '—' },
         { label: 'Dosya No', value: params.fileNo },
         { label: 'İşlem', value: actionLabel },
         { label: 'Kaydeden', value: params.actorName || '—' },

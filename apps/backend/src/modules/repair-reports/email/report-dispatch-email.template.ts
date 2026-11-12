@@ -1,13 +1,8 @@
-import { resolveWelcomeEmailLogoUrl } from '@/modules/notifications/email/email-brand.util';
-
 /**
- * Onarım raporu teslim maili — operasyon bildirimi kartı, teal palet.
- * Operasyon mavisi ve 72s turuncusu kullanılmaz; PDF teslimi ayrı renk.
+ * Onarım raporu teslim maili.
+ * Kaynak: meridyen-birebir-referans.html. Maliyet ve kâr cümlesi yok.
+ * E-posta istemcisi esnek yerleşimi keser; düzen tablodur. JavaScript yok.
  */
-
-const TEAL_DEEP = '#042F2E';
-const TEAL_MID = '#115E59';
-const TEAL = '#0F766E';
 
 function escapeHtml(text: string): string {
   return text
@@ -18,6 +13,42 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;');
 }
 
+function icon(name: 'paperclip' | 'arrow' | 'phone' | 'mail', size: number, color: string): string {
+  const paths: Record<typeof name, string> = {
+    paperclip:
+      '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+    arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+    phone:
+      '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+    mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  };
+  const gap = name === 'arrow' ? 'margin-left:12px;' : 'margin-right:7px;';
+  return `<span style="display:inline-block;vertical-align:middle;${gap}line-height:0;"><svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;">${paths[name]}</svg></span>`;
+}
+
+function dash(value?: string | null): string {
+  const text = (value || '').trim();
+  return text || '—';
+}
+
+export function formatReportMailPhone(raw?: string | null): string | null {
+  const digits = String(raw ?? '').replace(/\D/g, '');
+  let local = digits;
+  if (local.startsWith('90') && local.length > 10) local = local.slice(-10);
+  if (local.startsWith('0') && local.length === 11) local = local.slice(1);
+  if (local.length !== 10) return (raw || '').trim() || null;
+  return `${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
+}
+
+export function reportMailPhoneHref(raw?: string | null): string {
+  const digits = String(raw ?? '').replace(/\D/g, '');
+  let local = digits;
+  if (local.startsWith('90') && local.length > 10) local = local.slice(-10);
+  if (local.startsWith('0') && local.length === 11) local = local.slice(1);
+  if (local.length === 10) return `+90${local}`;
+  return digits ? `+${digits}` : '';
+}
+
 export type ReportDispatchEmailData = {
   reportNo: string;
   fileNo?: string | null;
@@ -26,138 +57,227 @@ export type ReportDispatchEmailData = {
   documentTitle?: string | null;
   actionUrl?: string | null;
   portalUrl?: string | null;
+  ownerName?: string | null;
+  ownerPhone?: string | null;
+  ownerEmail?: string | null;
+  operationRegion?: string | null;
+  operationCity?: string | null;
+  operationDistrict?: string | null;
 };
 
-export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): string {
-  const reportNo = escapeHtml(data.reportNo);
-  const fileNo = escapeHtml((data.fileNo || '').trim() || '—');
-  const insuranceCompany = escapeHtml((data.insuranceCompanyName || '').trim() || '—');
-  const fileSubject = escapeHtml((data.fileSubject || '').trim() || '—');
-  const logoUrl = escapeHtml(resolveWelcomeEmailLogoUrl(data.portalUrl ?? undefined));
-  const actionUrl = data.actionUrl ? escapeHtml(data.actionUrl) : '';
-  const title = (data.documentTitle || '').trim() || 'Hasar Onarım Raporu';
-  const preheader = `${data.reportNo} numaralı dış kullanım raporu PDF ektedir.`;
+export function reportMailSignature(claim?: {
+  assignedOfficeUser?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  } | null;
+  propertyAddress?: { city?: string | null; district?: string | null } | null;
+} | null): Pick<
+  ReportDispatchEmailData,
+  'ownerName' | 'ownerPhone' | 'ownerEmail' | 'operationRegion' | 'operationCity' | 'operationDistrict'
+> {
+  const user = claim?.assignedOfficeUser;
+  const ownerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || null;
+  const city = (claim?.propertyAddress?.city || '').trim();
+  const district = (claim?.propertyAddress?.district || '').trim();
+  return {
+    ownerName,
+    ownerPhone: formatReportMailPhone(user?.phone),
+    ownerEmail: (user?.email || '').trim() || null,
+    operationCity: city || null,
+    operationDistrict: district || null,
+    operationRegion: [city, district].filter(Boolean).join('-') || null,
+  };
+}
 
-  const actionButton = actionUrl
-    ? `
-              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 10px;">
-                <tr>
-                  <td align="center" style="padding:0 0 8px;">
-                    <a href="${actionUrl}"
-                       style="display:inline-block;background:${TEAL};color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:14px;font-weight:800;box-shadow:0 4px 12px rgba(15,118,110,.28);">
-                      Dosyayı Görüntüle
-                    </a>
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="font-size:12px;color:#64748B;padding-bottom:8px;">
-                    PDF ektedir. Buton çalışmazsa panele giriş yapıp ilgili kaydı arayın.
-                  </td>
-                </tr>
-              </table>`
-    : `
-              <p style="margin:0 0 10px;font-size:13px;line-height:1.55;color:#64748B;text-align:center;">
-                PDF ektedir. Panele giriş yapıp ilgili kaydı arayın.
-              </p>`;
+function logoSrc(portalUrl?: string | null): string {
+  const raw = (portalUrl || '').trim();
+  if (!raw) return 'meridyen-logo.jpg';
+  try {
+    return `${new URL(raw).origin}/meridyen-logo.jpg`;
+  } catch {
+    return 'meridyen-logo.jpg';
+  }
+}
+
+export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): string {
+  const dosyaNo = escapeHtml(dash(data.fileNo));
+  const sigorta = escapeHtml(dash(data.insuranceCompanyName));
+  const konu = escapeHtml(dash(data.fileSubject));
+  const raporNo = escapeHtml(dash(data.reportNo));
+  const url = escapeHtml((data.actionUrl || '').trim() || '#');
+  const sorumlu = escapeHtml(dash(data.ownerName));
+  const telefonGorunen = escapeHtml(dash(data.ownerPhone));
+  const telefonUluslararasi = escapeHtml(reportMailPhoneHref(data.ownerPhone));
+  const email = escapeHtml((data.ownerEmail || '').trim());
+  const il = escapeHtml((data.operationCity || '').trim());
+  const ilce = escapeHtml((data.operationDistrict || '').trim());
+  const bolge = [il, ilce].filter(Boolean).join('-');
+  const logo = escapeHtml(logoSrc(data.portalUrl));
+  const phoneLink = (data.ownerPhone || '').trim()
+    ? `<a href="tel:${telefonUluslararasi}" style="color:#174b8a;text-decoration:none;font-size:12px;font-weight:500;">${icon('phone', 14, '#174b8a')}<span style="vertical-align:middle;">${telefonGorunen}</span></a>`
+    : '';
+  const mailLink = email
+    ? `<a href="mailto:${email}" style="color:#174b8a;text-decoration:none;font-size:12px;font-weight:500;">${icon('mail', 14, '#174b8a')}<span style="vertical-align:middle;">E-posta Gönder</span></a>`
+    : '';
+  const regionRow = bolge
+    ? `<div style="margin-top:5px;font-size:12px;line-height:1.6;color:#617180;"><span style="font-size:11px;">Operasyon Bölgesi</span> <span>${bolge} Network</span></div>`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>${escapeHtml(title)}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Meridyen Rapor Bildirimi</title>
+  <style>
+    @media (max-width:440px) {
+      .m-pad { padding-left:22px !important; padding-right:22px !important; }
+      .m-dept { padding-left:22px !important; padding-right:22px !important; }
+      .m-logo { width:160px !important; height:61px !important; }
+      .m-title { font-size:23px !important; }
+      .m-stack, .m-meta { display:block !important; width:100% !important; max-width:100% !important; border-left:0 !important; padding-left:0 !important; box-sizing:border-box !important; }
+      .m-meta { padding-top:14px !important; }
+      .m-links { white-space:normal !important; text-align:left !important; padding-top:4px !important; }
+    }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#E2E8F0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#E2E8F0;padding:32px 16px;">
-    <tr><td align="center">
-      <table width="640" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;max-width:640px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #E2E8F0;box-shadow:0 8px 24px rgba(15,23,42,.06);">
-
-        <tr>
-          <td style="padding:14px 24px;background:#ffffff;border-bottom:2px solid ${TEAL};">
-            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-              <tr>
-                <td style="vertical-align:middle;">
-                  <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748B;">Rapor Bildirimi</div>
-                </td>
-                <td align="right" style="vertical-align:middle;">
-                  <img src="${logoUrl}" alt="Meridyen Asistans" width="120" style="display:block;width:120px;max-width:100%;height:auto;margin:0 0 0 auto;border:0;outline:none;text-decoration:none;"/>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:22px 24px 20px;background:linear-gradient(135deg,${TEAL_DEEP} 0%,${TEAL_MID} 55%,${TEAL} 100%);">
-            <div style="display:inline-block;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#FFFFFF;font-size:11px;font-weight:700;letter-spacing:.04em;padding:5px 10px;border-radius:999px;margin-bottom:12px;">Dış kullanım PDF</div>
-            <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;font-weight:800;color:#ffffff;">${escapeHtml(title)}</h1>
-            <p style="margin:0;font-size:14px;line-height:1.55;color:rgba(255,255,255,.88);">${escapeHtml(preheader)}</p>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:26px 24px 8px;background:#ffffff;">
-            <p style="margin:0 0 18px;font-size:14px;line-height:1.65;color:#64748B;">İlgili kaydı inceleyebilir, süreci panel üzerinden takip edebilirsiniz.</p>
-
-            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 22px;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;background:#ffffff;">
-              <tr>
-                <td colspan="2" style="padding:14px 16px;background:#F8FAFC;font-size:13px;font-weight:800;color:${TEAL_MID};border-bottom:1px solid #E2E8F0;">
-                  Özet
-                </td>
-              </tr>
-              <tr>
-                <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#ffffff;">Dosya No</td>
-                <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;font-weight:800;font-variant-numeric:tabular-nums;background:#ffffff;">${fileNo}</td>
-              </tr>
-              <tr>
-                <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#F8FAFC;">Sigorta Şirketi</td>
-                <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;font-weight:700;background:#F8FAFC;">${insuranceCompany}</td>
-              </tr>
-              <tr>
-                <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#ffffff;">Dosya Konusu</td>
-                <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;font-weight:700;background:#ffffff;">${fileSubject}</td>
-              </tr>
-              <tr>
-                <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#F8FAFC;">Rapor No</td>
-                <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;font-weight:800;font-variant-numeric:tabular-nums;background:#F8FAFC;">${reportNo}</td>
-              </tr>
-              <tr>
-                <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#ffffff;">Ek</td>
-                <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;background:#ffffff;">Dış kullanım PDF</td>
-              </tr>
-            </table>
-
-            ${actionButton}
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:18px 24px 22px;background:#F8FAFC;border-top:1px solid #E2E8F0;">
-            <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:${TEAL_MID};text-align:center;">Meridyen Asistans</p>
-            <p style="margin:0;font-size:11px;line-height:1.5;color:#94A3B8;text-align:center;">
-              Bu e-posta otomatik olarak gönderilmiştir.<br/>Safran Birleşik Hizmetler Alt Kuruluşudur.
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
+<body style="margin:0;padding:0;background:#e9eef2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#152c40;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#e9eef2;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:660px;background:#ffffff;border:1px solid #dde5eb;border-radius:6px;table-layout:fixed;">
+          <tr>
+            <td class="m-pad" style="padding:20px 32px 0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <img class="m-logo" src="${logo}" alt="Meridyen Asistans" width="184" height="71" style="display:block;width:184px;height:71px;border:0;background:#ffffff;">
+                  </td>
+                  <td align="right" valign="middle" style="font-size:11px;line-height:1.6;color:#617180;padding-left:12px;">
+                    Rapor Bildirimi
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:14px 0 0;">
+              <div class="m-dept" style="background:#102c44;color:#f6f9fc;font-size:12px;line-height:1.6;padding:12px 32px;">
+                Hasar Onarım Ve Restorasyon Departmanı
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="m-pad" style="padding:27px 32px 0;">
+              <h1 class="m-title" style="margin:0;font-size:25px;line-height:1.35;letter-spacing:-0.5px;font-weight:600;color:#152c40;overflow-wrap:anywhere;">
+                Dosya Değerlendirmeniz Bekleniyor
+              </h1>
+              <p style="margin:20px 0 0;font-size:13px;line-height:1.65;font-weight:600;color:#152c40;">
+                Sayın Eksperimiz,
+              </p>
+              <p style="margin:8px 0 0;font-size:13px;line-height:1.75;color:#617180;overflow-wrap:anywhere;">
+                İlgili dosyaya ait Hasar Onarım Raporu’nu bilgi ve değerlendirmenize sunarız. Değerlendirmenizi aşağıdaki bağlantı üzerinden iletmenizi rica ederiz.
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:22px;border-top:1px solid #dde5eb;border-bottom:1px solid #dde5eb;">
+                <tr>
+                  <td class="m-stack" width="37%" valign="top" style="width:37%;padding:16px 16px 16px 0;">
+                    <div style="font-size:11px;color:#617180;">Dosya No</div>
+                    <div style="margin-top:5px;font-size:29px;font-weight:600;letter-spacing:0.5px;line-height:1.3;color:#152c40;">${dosyaNo}</div>
+                  </td>
+                  <td class="m-meta" valign="top" style="padding:16px 0 16px 22px;border-left:1px solid #dde5eb;">
+                    <div style="font-size:11px;color:#617180;">Sigorta Şirketi</div>
+                    <div style="margin-top:2px;font-size:14px;font-weight:600;color:#152c40;">${sigorta}</div>
+                    <div style="margin-top:10px;font-size:11px;color:#617180;">Hasar Konusu</div>
+                    <div style="margin-top:2px;font-size:14px;font-weight:600;color:#152c40;">${konu}</div>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:18px;background:#f3f6f8;border-radius:4px;">
+                <tr>
+                  <td width="58" valign="middle" style="padding:13px 0 13px 16px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td align="center" width="42" height="48" style="width:42px;height:48px;background:#ffffff;border:1px solid #dde5eb;border-radius:3px;color:#174b8a;font-size:11px;font-weight:600;">
+                          PDF
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td valign="middle" style="padding:13px 16px;">
+                    <div style="font-size:14px;font-weight:600;line-height:1.4;color:#152c40;">Hasar Onarım Raporu</div>
+                    <div style="font-size:12px;line-height:1.6;color:#617180;">Rapor No: ${raporNo}</div>
+                    <div style="margin-top:5px;font-size:11px;line-height:1.5;color:#617180;">
+                      ${icon('paperclip', 12, '#617180')}<span style="vertical-align:middle;">E-posta Ekinde Sunulmuştur</span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:20px;">
+                <tr>
+                  <td align="center" bgcolor="#102c44" style="border-radius:4px;background:#102c44;">
+                    <a href="${url}" target="_blank" style="display:block;min-height:52px;padding:16px;color:#f6f9fc;text-decoration:none;font-size:14px;line-height:1.5;font-weight:600;">
+                      Dosyayı İncele Ve Değerlendir${icon('arrow', 16, '#f6f9fc')}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:10px 0 0;text-align:center;font-size:11px;line-height:1.6;color:#617180;">
+                Bağlantı üzerinden dosya bilgilerine ve değerlendirme alanına ulaşabilirsiniz.
+              </p>
+              <p style="margin:23px 0 0;font-size:12px;line-height:1.6;color:#617180;">Saygılarımızla,</p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:7px;border-left:2px solid #dde5eb;">
+                <tr>
+                  <td style="padding-left:12px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td valign="middle" style="padding:6px 10px 6px 0;">
+                          <div style="font-size:13px;font-weight:600;line-height:1.4;color:#152c40;">${sorumlu}</div>
+                          <div style="font-size:11px;line-height:1.5;color:#617180;">Dosya Sorumlusu</div>
+                        </td>
+                        <td class="m-links" align="right" valign="middle" style="font-size:12px;line-height:1.4;">
+                          ${phoneLink}${phoneLink && mailLink ? '<span style="display:inline-block;width:16px;"></span>' : ''}${mailLink}
+                        </td>
+                      </tr>
+                    </table>
+                    ${regionRow}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="m-pad" style="padding:15px 32px;background:#f3f6f8;border-top:1px solid #dde5eb;font-size:11px;line-height:1.7;color:#617180;">
+              Bu e-posta otomatik olarak gönderilmiştir.<br>
+              Meridyen Assistance · Safran Birleşik Hizmetler Alt Kuruluşudur.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
   </table>
 </body>
 </html>`;
 }
 
 export function buildReportDispatchEmailText(data: ReportDispatchEmailData): string {
-  const fileNo = (data.fileNo || '').trim() || '—';
   const lines = [
-    (data.documentTitle || '').trim() || 'Hasar Onarım Raporu',
-    `${data.reportNo} numaralı dış kullanım raporu PDF ektedir.`,
-    `Dosya No: ${fileNo}`,
-    `Sigorta Şirketi: ${(data.insuranceCompanyName || '').trim() || '—'}`,
-    `Dosya Konusu: ${(data.fileSubject || '').trim() || '—'}`,
+    'Dosya Değerlendirmeniz Bekleniyor',
+    'Sayın Eksperimiz,',
+    'İlgili dosyaya ait Hasar Onarım Raporu bilgi ve değerlendirmenize sunulmuştur. Rapor ektedir.',
+    `Dosya No: ${dash(data.fileNo)}`,
+    `Sigorta Şirketi: ${dash(data.insuranceCompanyName)}`,
+    `Hasar Konusu: ${dash(data.fileSubject)}`,
     `Rapor No: ${data.reportNo}`,
-    'Ek: Dış kullanım PDF',
+    `Dosya Sorumlusu: ${dash(data.ownerName)}`,
   ];
+  const ownerPhone = (data.ownerPhone || '').trim();
+  if (ownerPhone) lines.push(`Telefon: ${ownerPhone}`);
+  const region = [data.operationCity, data.operationDistrict].filter(Boolean).join('-')
+    || (data.operationRegion || '').trim();
+  if (region) lines.push(`Operasyon Bölgesi: ${region} Network`);
   if (data.actionUrl) lines.push(data.actionUrl);
   return lines.join('\n');
 }

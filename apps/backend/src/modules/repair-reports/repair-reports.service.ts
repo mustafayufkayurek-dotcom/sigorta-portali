@@ -12,6 +12,7 @@ import { buildPanelUrl, panelHasarDosyasiPath } from '@/common/utils/panel-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { ReportPdfService } from './pdf/report-pdf.service';
 import { ReportEmailService } from './email/report-email.service';
+import { reportMailSignature } from './email/report-dispatch-email.template';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { AnomalyDetectionService } from '@/modules/vendor-risk/anomaly-detection.service';
 import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
@@ -121,7 +122,7 @@ const CLAIM_FILE_SAFE_SELECT = {
   consultancyServiceType: { select: { id: true, code: true, name: true } },
   claimSubject: { select: { id: true, code: true, name: true } },
   assignedFieldUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
-  assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
+  assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
   assignedAdjuster: { select: { id: true, firstName: true, lastName: true, phone: true } },
   assignedSupplier: { select: { id: true, name: true, phone: true, authorizedPhone: true } },
   supplierAssignments: {
@@ -1196,6 +1197,7 @@ export class RepairReportsService {
       actionUrl: claimFileId ? buildPanelUrl(appUrl, panelHasarDosyasiPath(claimFileId)) : undefined,
       portalUrl: appUrl,
       viewType: 'external',
+      ...reportMailSignature(report.claimFile),
     });
   }
 
@@ -1348,6 +1350,8 @@ export class RepairReportsService {
             consultancyServiceType: { select: { code: true, name: true } },
             insuranceCompany: { select: { id: true, name: true, contactEmail: true } },
             claimSubject: { select: { name: true } },
+            propertyAddress: { select: { city: true, district: true } },
+            assignedOfficeUser: { select: { firstName: true, lastName: true, phone: true, email: true } },
             customer: {
               select: {
                 email: true,
@@ -1508,6 +1512,7 @@ export class RepairReportsService {
         actionUrl: claimFileId ? buildPanelUrl(appUrl, panelHasarDosyasiPath(claimFileId)) : undefined,
         portalUrl: appUrl,
         viewType: 'external',
+        ...reportMailSignature(report.claimFile),
       });
       if (!mailed.success) {
         throw new BadRequestException(

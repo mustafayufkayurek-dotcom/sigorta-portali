@@ -904,6 +904,7 @@ export class ClaimOperationCenterService {
       reason,
       actorName,
       claimFileId: claim.id,
+      customerName: customerTitle,
       customerEmail,
       managerEmails: managers.map((m) => m.email).filter(Boolean) as string[],
     });

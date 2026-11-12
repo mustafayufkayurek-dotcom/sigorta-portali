@@ -8,7 +8,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ExternalApprovalsService } from './external-approvals.service';
-import { SendExternalApprovalDto, RespondExternalApprovalDto } from './dto/external-approvals.dto';
+import { SendExternalApprovalDto, RespondExternalApprovalDto, NoteExternalOpinionDto } from './dto/external-approvals.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Public } from '@/common/decorators/public.decorator';
 import { isAssistanceCompanyRoleCode } from '@sigorta/shared';
@@ -115,5 +115,14 @@ export class ExternalApprovalsController {
     @Body() dto: RespondExternalApprovalDto,
   ) {
     return this.service.respond(token, dto);
+  }
+
+  @Public()
+  @Post('external-approvals/:token/opinion')
+  async noteOpinion(
+    @Param('token') token: string,
+    @Body() dto: NoteExternalOpinionDto,
+  ) {
+    return this.service.noteOpinion(token, dto.comments);
   }
 }

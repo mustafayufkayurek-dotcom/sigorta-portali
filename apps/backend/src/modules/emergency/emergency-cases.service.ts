@@ -63,6 +63,7 @@ import {
 import type { SendMailOptions } from 'nodemailer';
 import {
   resolveCustomerReminderEmail,
+  resolveCustomerReminderTitle,
 } from '@/modules/claim-files/approval-72h-customer-email.rule';
 import { sanitizeAuditValue } from '@/modules/audit-logs/audit-log.sanitizer';
 import {
@@ -2052,6 +2053,7 @@ export class EmergencyCasesService {
     });
 
     const customerEmail = resolveCustomerReminderEmail(emergencyCase.customer);
+    const customerName = resolveCustomerReminderTitle(emergencyCase.customer);
     const fileNo = emergencyCase.fileNo || emergencyCase.caseNo;
 
     void this.claimEventEmail.onManualDecision({
@@ -2060,6 +2062,7 @@ export class EmergencyCasesService {
       reason,
       actorName,
       emergencyCaseId: emergencyCase.id,
+      customerName,
       customerEmail,
       managerEmails: managers.map((m) => m.email).filter(Boolean) as string[],
     });

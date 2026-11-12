@@ -136,13 +136,14 @@ export class ExternalApprovalsService {
             claimFile: {
               include: { insuranceCompany: true, customer: true, propertyAddress: true },
             },
+            expertOffice: { select: { companyName: true, fullName: true, shortName: true, subType: true, entityType: true } },
             items: { include: { workGroup: true, damageType: true }, orderBy: [{ workGroup: { sortOrder: 'asc' } }, { sortOrder: 'asc' }] },
             damageTypes: { orderBy: { sortOrder: 'asc' } },
             images: { orderBy: { sortOrder: 'asc' } },
             createdBy: { select: { id: true, firstName: true, lastName: true } },
           },
         },
-        sentBy: { select: { id: true, firstName: true, lastName: true } },
+        sentBy: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
       },
     });
 
@@ -177,6 +178,10 @@ export class ExternalApprovalsService {
 
     const newStatus = dto.action === 'approved' ? 'approved' : 'rejected';
     const reportStatus = dto.action === 'approved' ? 'externally_approved' : 'externally_rejected';
+    const commentText = dto.comments?.trim() || '';
+    if (dto.action === 'rejected' && !commentText) {
+      throw new BadRequestException('Lütfen ret gerekçesini yazın.');
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.externalApproval.update({
@@ -184,7 +189,9 @@ export class ExternalApprovalsService {
         data: {
           status: newStatus,
           respondedAt: new Date(),
-          comments: dto.comments,
+          ...(dto.action === 'rejected' || commentText
+            ? { comments: commentText || null }
+            : {}),
         },
       });
 
@@ -229,6 +236,53 @@ export class ExternalApprovalsService {
     }
 
     return { message: dto.action === 'approved' ? 'Onay verildi' : 'Red bildirildi' };
+  }
+
+  async noteOpinion(token: string, comments: string) {
+    const text = comments.trim();
+    if (!text) throw new BadRequestException('Lütfen görüşünüzü yazın.');
+
+    const approval = await this.prisma.externalApproval.findUnique({ where: { token } });
+    if (!approval) throw new NotFoundException('Geçersiz onay linki');
+    if (approval.status === 'expired' || approval.expiresAt < new Date()) {
+      throw new BadRequestException('Bu onay linkinin süresi dolmuş');
+    }
+    if (approval.status !== 'pending') {
+      throw new BadRequestException('Bu onay isteği zaten yanıtlanmış');
+    }
+
+    await this.prisma.externalApproval.update({
+      where: { token },
+      data: { comments: text },
+    });
+    await this.prisma.reportApprovalHistory.create({
+      data: {
+        reportId: approval.reportId,
+        userId: approval.sentByUserId,
+        action: 'external_opinion',
+        reason: text,
+      },
+    });
+    try {
+      await this.prisma.notification.create({
+        data: {
+          userId: approval.sentByUserId,
+          type: 'external_approval_opinion',
+          title: 'Görüş İletildi',
+          body: 'Dosya onay durumu değişmedi. Görüş kayda geçti.',
+          channel: 'in_app',
+          status: 'pending',
+          relatedEntityType: 'external_approval',
+          relatedEntityId: approval.id,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Görüş bildirimi oluşturulamadı: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+
+    return { message: 'Görüşünüz alındı. Dosyanın onay durumu değişmedi.' };
   }
 
   // ── Authenticated: ID ile yanıt ver (portal kullanıcıları) ────────────────

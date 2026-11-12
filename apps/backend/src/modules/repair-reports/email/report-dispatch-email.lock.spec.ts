@@ -15,12 +15,17 @@ const service = readFileSync(join(here, 'report-email.service.ts'), 'utf8');
 describe('onarım raporu teslim maili LOCK', () => {
   it('referans kart + teal; düz cümle ve operasyon mavisi yok', () => {
     assert.match(src, /Rapor Bildirimi/);
+    assert.match(src, /Dosya Değerlendirmeniz Bekleniyor/);
+    assert.match(src, /Hasar Onarım Ve Restorasyon Departmanı/);
+    assert.match(src, /Sayın Eksperimiz/);
     assert.match(src, /Hasar Onarım Raporu/);
-    assert.match(src, /Dış kullanım PDF/);
-    assert.match(src, /#0F766E/);
-    assert.match(src, /Dosyayı Görüntüle/);
+    assert.match(src, /E-posta Ekinde Sunulmuştur/);
+    assert.match(src, /Dosyayı İncele Ve Değerlendir/);
     assert.match(src, /Sigorta Şirketi/);
-    assert.match(src, /Dosya Konusu/);
+    assert.match(src, /Hasar Konusu/);
+    assert.match(src, /Dosya Sorumlusu/);
+    assert.match(src, /Operasyon Bölgesi/);
+    assert.match(src, /meridyen-logo\.jpg/);
     assert.doesNotMatch(src, /Maliyet veya kâr/);
     assert.doesNotMatch(src, /kâr sütunu/);
     assert.doesNotMatch(src, /#1E5AA8/);
