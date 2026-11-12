@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-12",
-  "label": "v686-rapor-mail-onay-logo",
-  "description": "v686 full: Rapor maili boyut ve alıcı özeti. Onay sayfası logosu ve görüş kutusu. Geri alma web v685 / backend v684.",
+  "label": "v687-rapor-onay-musteri",
+  "description": "v687 full: Rapor maili onaylanan kart. Dış onay ekranı. Manuel karar mailinde müşteri adı. Geri alma web v686 / backend v686.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v686-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v686-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v687-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v687-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v685-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v684-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v686-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v686-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
