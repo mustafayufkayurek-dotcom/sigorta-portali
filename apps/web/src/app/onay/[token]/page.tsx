@@ -23,15 +23,15 @@ function phoneParts(raw?: string | null): { label: string; tel: string } | null 
 
 function previewFacts() {
   if (process.env.NODE_ENV === 'production') return null;
-  return (require('./onay-onizleme') as { onayOnizleme: {
-    fileNo: string;
-    insurance: string;
-    insured: string;
-    district: string;
-    city: string;
-    owner: string;
-    phone: string;
-  } }).onayOnizleme;
+  return {
+    fileNo: '20902600042',
+    insurance: 'Ray Sigorta',
+    insured: 'Ayşe Aycan Totkanlı',
+    district: 'Üsküdar',
+    city: 'İstanbul',
+    owner: 'Aslı Güngör',
+    phone: '+905336330713',
+  };
 }
 
 function initials(name: string): string {
