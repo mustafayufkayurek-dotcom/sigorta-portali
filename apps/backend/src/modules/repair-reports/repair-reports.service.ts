@@ -31,6 +31,7 @@ import { isMeridyenInternalMailbox } from '@/modules/notifications/email/file-cl
 import {
   ACIL_INSPECTION_PHOTO_NOTE,
   isHasarTespitPhotoNotes,
+  claimApprovalExpertParty,
   isExpertFirmCustomer,
   repairReportRequiresPricedItems,
   hasarReportDocumentTitle,
@@ -1327,6 +1328,9 @@ export class RepairReportsService {
               select: {
                 email: true,
                 companyName: true,
+                fullName: true,
+                entityType: true,
+                subType: true,
                 contacts: { select: { email: true, isPrimary: true } },
                 contactInfos: { select: { type: true, label: true, value: true } },
               },
@@ -1409,17 +1413,24 @@ export class RepairReportsService {
         : null,
       agency: !mailRoute || approvalParties.has('agency') ? report.claimFile?.channelAgencyCustomer : null,
       broker: !mailRoute || approvalParties.has('broker') ? report.claimFile?.channelBrokerCustomer : null,
-      expert: !mailRoute || approvalParties.has('expert') ? report.claimFile?.channelExpertCustomer : null,
+      expert: !mailRoute || approvalParties.has('expert')
+        ? claimApprovalExpertParty({
+          channelExpert: report.claimFile?.channelExpertCustomer,
+          customer: report.claimFile?.customer,
+        })
+        : null,
     });
-    const customerRecipients = mailRoute
-      ? channelMail
-      : resolveReportCustomerMailRecipients({
-        customerEmail: report.claimFile?.customer?.email,
-        contacts: report.claimFile?.customer?.contacts,
-        channelEmails: generalMailboxesFromContactInfos(report.claimFile?.customer?.contactInfos),
-        fileChannelEmails: channelMail,
-        expertOfficeEmail: report.expertOffice?.email,
-      });
+    const cardRecipients = () => resolveReportCustomerMailRecipients({
+      customerEmail: report.claimFile?.customer?.email,
+      contacts: report.claimFile?.customer?.contacts,
+      channelEmails: generalMailboxesFromContactInfos(report.claimFile?.customer?.contactInfos),
+      fileChannelEmails: channelMail,
+      expertOfficeEmail: report.expertOffice?.email,
+    });
+    const customerRecipients = mailRoute ? channelMail : cardRecipients();
+    if (customerRecipients.length === 0) {
+      customerRecipients.push(...cardRecipients());
+    }
     const irtibatEmail = String(report.claimFile?.siteContactEmail ?? '').trim().toLowerCase();
     if (
       !repairReportRequiresPricedItems(

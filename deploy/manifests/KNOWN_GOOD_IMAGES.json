@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-12",
-  "label": "v683-hasar-liste-eski-dosya",
-  "description": "v683 yalnız backend: Hasar Onarım eski dosyayı düşürmez. Sayfa 150’de kesilmez. Web v682. Geri alma web v682 / backend v680.",
+  "label": "v684-hasar-rapor-onay-mail",
+  "description": "v684 yalnız backend: Hasar raporu onayı karttaki eksper adresine gider. Web v682. Geri alma web v682 / backend v683.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v683-amd64",
+    "backend": "app-backend:dalga2-agreement-hr-01-v684-amd64",
     "web": "sigorta-web:dalga2-agreement-hr-01-v682-amd64"
   },
   "rollbackImages": {
     "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v682-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v680-amd64"
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v683-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

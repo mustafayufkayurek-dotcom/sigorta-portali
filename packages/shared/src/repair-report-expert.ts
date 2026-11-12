@@ -87,6 +87,16 @@ export function isExpertFirmCustomer(
   return false;
 }
 
+/** Onay mailinde eksper: kanal kartı, yoksa dosyanın eksper müşterisi. Özel müşteri buraya düşmez. */
+export function claimApprovalExpertParty<T extends Parameters<typeof isExpertFirmCustomer>[0]>(input: {
+  channelExpert?: T | null;
+  customer?: T | null;
+}): T | null {
+  if (input.channelExpert) return input.channelExpert;
+  if (isExpertFirmCustomer(input.customer)) return input.customer ?? null;
+  return null;
+}
+
 function resolveCustomerExpertName(source: RepairReportExpertSource): string | null {
   const customer = source.claimFile?.customer;
   if (!isExpertFirmCustomer(customer)) return null;

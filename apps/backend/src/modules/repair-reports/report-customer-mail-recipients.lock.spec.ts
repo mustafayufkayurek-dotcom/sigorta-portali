@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { claimApprovalExpertParty } from '../../../../../packages/shared/src/repair-report-expert.ts';
 import { resolveReportCustomerMailRecipients } from './report-customer-mail-recipients.ts';
 
 
@@ -51,9 +52,40 @@ describe('rapor müşteri maili LOCK', () => {
     assert.deepEqual(to, ['sezgi@sezgiglobal.com']);
   });
 
+  it('eksper adresi müşteri kartındaysa onay oraya gider; özel müşteri eksper sayılmaz', () => {
+    const expert = claimApprovalExpertParty({
+      channelExpert: null,
+      customer: { subType: 'eksper_firmasi', email: 'info@m-nihalsigorta.com', companyName: 'M-Nihal' },
+    });
+    assert.equal(expert?.email, 'info@m-nihalsigorta.com');
+    assert.equal(
+      claimApprovalExpertParty({
+        channelExpert: { subType: 'eksper_firmasi', email: 'kanal@ofis.com', companyName: 'Kanal' },
+        customer: { subType: 'eksper_firmasi', email: 'kart@ofis.com', companyName: 'Kart' },
+      })?.email,
+      'kanal@ofis.com',
+    );
+    assert.equal(
+      claimApprovalExpertParty({
+        channelExpert: null,
+        customer: { subType: 'private_customer', email: 'musteri@firma.com', companyName: 'Firma' },
+      }),
+      null,
+    );
+    assert.equal(
+      claimApprovalExpertParty({
+        channelExpert: null,
+        customer: { subType: null, entityType: 'corporate', email: 'muhammed.catal@osemas.com.tr', companyName: 'Osem' },
+      })?.email,
+      'muhammed.catal@osemas.com.tr',
+    );
+  });
+
   it('requestApproval müşteriye PDF gönderir; yönetici mailini yutmaz', () => {
     const src = readFileSync(join(here, 'repair-reports.service.ts'), 'utf8');
     assert.match(src, /resolveReportCustomerMailRecipients/);
+    assert.match(src, /claimApprovalExpertParty/);
+    assert.match(src, /customerRecipients\.length === 0/);
     assert.match(src, /collectClaimFileChannelEmails/);
     assert.match(src, /resolveClaimMailRoute/);
     assert.match(src, /generalMailboxesFromContactInfos/);

@@ -1,0 +1,35 @@
+---
+description: Hasar raporu onayı karttaki eksper adresine gider
+alwaysApply: true
+---
+
+# Hasar Raporu Onay Maili — Alıcı
+
+**Kaynak (Mustafa · 12.11.2026):** Onaya Gönder kutusunda müşteri adresi duruyordu. Sağ üst «Seçilen mail tarafında e-posta yok» dedi. Sigorta şirketinde adres yoktu. Eksper adresi müşteri kartındaydı.
+
+**Temel cümle:** Kartta adres varken rapor **kesilmez.** Eksper karttaysa onay **oraya gider.**
+
+## Zorunlu
+
+1. `claimApprovalExpertParty`: kanal eksper kartı varsa o. Yoksa müşteri eksper firmasıysa kartın adresi. Özel müşteri eksper sayılmaz.
+2. Seçilen tarafta hiç adres yoksa kutuda görünen kart adresi kullanılır (`customerRecipients.length === 0`).
+3. Sigorta şirketinin boş adresi, karttaki adresi yok saydırmaz.
+4. Yönetici iç özeti ayrı kalır. Müşteriye iç PDF gitmez.
+5. Kilit `report-customer-mail-recipients.lock.spec.ts`. Her alım `smoke-outbound-mail.sh` içinde çalışır.
+
+## Yasak (açık onay yoksa)
+
+- Hizmet kartı tarafı dolu diye karttaki adresi tamamen kesmek
+- Özel müşteriyi eksper ofisi saymak
+- Bu kilidi “sadeleştirme” diye kaldırmak
+
+## Durdurma
+
+Kartta adres varken yine «e-posta yok» çıkarsa → **dur, aynı gün geri koy.**
+
+Regresyon:
+
+```bash
+node --experimental-strip-types --test \
+  apps/backend/src/modules/repair-reports/report-customer-mail-recipients.lock.spec.ts
+```
