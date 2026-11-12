@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { ToastProvider } from '@/contexts/ToastContext';
-import { useToast } from '@/contexts/ToastContext';
+import { Info, Mail, Phone } from 'lucide-react';
+import { ToastProvider, useToast } from '@/contexts/ToastContext';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 
@@ -11,10 +11,57 @@ interface PageProps {
   params: { token: string };
 }
 
+function phoneParts(raw?: string | null): { label: string; tel: string } | null {
+  const digits = String(raw ?? '').replace(/\D/g, '');
+  const local = digits.startsWith('90') ? digits.slice(2) : digits.replace(/^0/, '');
+  if (local.length !== 10) return null;
+  return {
+    label: `${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6, 8)} ${local.slice(8)}`,
+    tel: `+90${local}`,
+  };
+}
+
+function previewFacts() {
+  if (process.env.NODE_ENV === 'production') return null;
+  return {
+    fileNo: '20902600042',
+    insurance: 'Ray Sigorta',
+    insured: 'Ayşe Aycan Totkanlı',
+    district: 'Üsküdar',
+    city: 'İstanbul',
+    owner: 'Aslı Güngör',
+    phone: '+905336330713',
+  };
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((part) => part[0]).join('').toLocaleUpperCase('tr-TR');
+}
+
+function Shell({ children, preview }: { children: React.ReactNode; preview?: boolean }) {
+  return (
+    <div className="min-h-screen bg-[#eef2f7] px-4 py-8 text-slate-800 sm:px-6 sm:py-10">
+      <div className="mx-auto w-full max-w-5xl rounded-2xl border border-slate-200/80 bg-white px-5 py-6 shadow-sm sm:px-8 sm:py-8">
+        {children}
+      </div>
+      {preview ? (
+        <p className="mx-auto mt-6 max-w-5xl text-center text-xs text-slate-400">
+          Tasarım önizlemesi · Bu ekrandaki işlemler gerçek dosyaya kaydedilmez.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function ApprovalPageInner({ token }: { token: string }) {
   const { showToast } = useToast();
+  const sample = previewFacts();
+  const preview = token === 'gorunum' && sample != null;
 
-  const [state, setState] = useState<'loading' | 'ready' | 'already_responded' | 'expired' | 'error'>('loading');
+  const [state, setState] = useState<'loading' | 'ready' | 'already_responded' | 'expired' | 'error'>(
+    preview ? 'ready' : 'loading',
+  );
   const [data, setData] = useState<any>(null);
   const [comments, setComments] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -22,6 +69,7 @@ function ApprovalPageInner({ token }: { token: string }) {
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
+    if (preview) return;
     axios
       .get(`${API}/external-approvals/token/${token}`)
       .then((res) => {
@@ -37,11 +85,11 @@ function ApprovalPageInner({ token }: { token: string }) {
           setState('error');
         }
       });
-  }, [token]);
+  }, [token, preview]);
 
   const handleRespond = useCallback(async (action: 'approved' | 'rejected') => {
-    if (action === 'rejected' && !comments.trim()) {
-      showToast('warning', 'Lütfen Ret Nedenini Belirtiniz');
+    if (preview) {
+      setSubmitted(action);
       return;
     }
     setSubmitting(true);
@@ -49,238 +97,203 @@ function ApprovalPageInner({ token }: { token: string }) {
       await axios.post(`${API}/external-approvals/${token}/respond`, { action, comments });
       setSubmitted(action);
     } catch (e: any) {
-      showToast('error', e.response?.data?.message ?? 'İşlem Başarısız');
+      showToast('error', e.response?.data?.message ?? 'İşlem tamamlanamadı');
     } finally {
       setSubmitting(false);
     }
-  }, [token, comments, showToast]);
+  }, [token, comments, showToast, preview]);
 
-  // ── Yükleniyor ────────────────────────────────────────────────────────────
+  const shareNote = useCallback(() => {
+    const text = comments.trim();
+    if (!text) {
+      showToast('warning', 'Görüşünüzü yazın');
+      return;
+    }
+    showToast('success', preview
+      ? 'Görüşünüz not edildi. Bu önizlemede dosyaya yazılmaz.'
+      : 'Görüşünüz kararınıza eklendi. Onayla veya Reddet ile gider.');
+  }, [comments, preview, showToast]);
+
   if (state === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <p className="text-gray-500 text-sm">Yükleniyor...</p>
-      </div>
+      <Shell>
+        <p className="py-16 text-center text-sm text-slate-500">Yükleniyor</p>
+      </Shell>
     );
   }
 
-  // ── Hata ─────────────────────────────────────────────────────────────────
-  if (state === 'error') {
+  if (state === 'error' || state === 'expired' || state === 'already_responded' || submitted) {
+    const approved = (submitted ?? data?.status) === 'approved';
+    const title = state === 'error'
+      ? 'Bağlantı Açılmadı'
+      : state === 'expired'
+        ? 'Bağlantı Kapandı'
+        : approved
+          ? 'Onayınız Alındı'
+          : 'Reddiniz Kayda Geçti';
+    const body = state === 'error'
+      ? (errorMsg || 'Bu onay bağlantısı geçersiz.')
+      : state === 'expired'
+        ? 'Bu yazının süresi doldu. Dosya sorumlusu yeni bir yazı gönderir.'
+        : approved
+          ? 'Dosya işleme alındı. Başka bir işlem gerekmez.'
+          : 'Notunuz dosyada durur. Dosya sorumlusu bakar.';
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-status-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">Geçersiz Bağlantı</h2>
-          <p className="text-gray-500 text-sm">{errorMsg || 'Bu Onay Bağlantısı Geçersiz veya Bulunamadı.'}</p>
-        </div>
-      </div>
+      <Shell preview={preview}>
+        <p className="text-[11px] font-medium tracking-[0.16em] text-slate-400">
+          Hasar Onarım Ve Restorasyon Departmanı
+        </p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{title}</h1>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">{body}</p>
+      </Shell>
     );
   }
 
-  // ── Süre dolmuş ───────────────────────────────────────────────────────────
-  if (state === 'expired') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">Bağlantı Süresi Doldu</h2>
-          <p className="text-gray-500 text-sm">Bu Onay Bağlantısının Geçerlilik Süresi Dolmuş. Lütfen İlgili Kişiyle İletişime Geçin.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Yanıt verilmiş ────────────────────────────────────────────────────────
-  if (state === 'already_responded' || submitted) {
-    const action = submitted ?? data?.status;
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-        <div className="text-center max-w-sm">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${action === 'approved' ? 'bg-green-100' : 'bg-red-100'}`}>
-            {action === 'approved' ? (
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="w-8 h-8 text-status-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-          </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">
-            {action === 'approved' ? 'Onay Verildi' : 'Rapor Reddedildi'}
-          </h2>
-          <p className="text-gray-500 text-sm">
-            {action === 'approved'
-              ? 'Teşekkürler! Onayınız Başarıyla Kaydedildi.'
-              : 'Ret Bilginiz Kaydedildi. İlgili Ekip En Kısa Sürede İletişime Geçecektir.'}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Rapor inceleme + yanıt formu ─────────────────────────────────────────
-  const report = data?.report;
-  const claimFile = report?.claimFile;
+  const claimFile = data?.report?.claimFile;
+  const district = preview ? sample.district : (claimFile?.propertyAddress?.district || '');
+  const city = preview ? sample.city : (claimFile?.propertyAddress?.city || '');
+  const owner = preview
+    ? sample.owner
+    : [data?.sentBy?.firstName, data?.sentBy?.lastName].filter(Boolean).join(' ');
+  const phone = phoneParts(preview ? sample.phone : data?.sentBy?.phone);
+  const ownerEmail = String(data?.sentBy?.email ?? '').trim();
+  const fileNo = preview ? sample.fileNo : (claimFile?.fileNo || '—');
+  const insurance = preview ? sample.insurance : (claimFile?.insuranceCompany?.name || '—');
+  const insured = preview ? sample.insured : (claimFile?.insuredName || '—');
+  const network = [city, district].filter(Boolean).join('-');
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto space-y-5">
-        {/* Başlık */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs text-gray-400">Hasar Onarım Raporu Onay Talebi</p>
-              <h1 className="text-xl font-bold text-gray-900">{report?.reportNo}</h1>
-              {data?.versionNo > 0 && (
-                <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block">
-                  v{report?.versionNo}
+    <Shell preview={preview}>
+      <p className="text-[11px] font-medium tracking-[0.16em] text-slate-400">
+        Hasar Onarım Ve Restorasyon Departmanı
+      </p>
+      <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-[2rem]">
+        Dosya Değerlendirmeniz Bekleniyor
+      </h1>
+      <p className="mt-2 text-sm text-slate-500">
+        Dosya bilgilerini inceleyerek kararınızı iletebilirsiniz.
+      </p>
+
+      <div className="mt-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+        <div className="space-y-4">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-base font-semibold text-slate-900">Dosya Özeti</h2>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                Onay Bekliyor
+              </span>
+            </div>
+            <p className="mt-4 text-3xl font-bold tracking-tight text-slate-900">{fileNo}</p>
+            <p className="mt-1 text-sm text-slate-400">Hasar Dosya Numarası</p>
+            <div className="mt-4 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+              <div>
+                <p className="text-sm text-slate-400">Sigortalı</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{insured}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Sigorta Şirketi</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{insurance}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">İlçe</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{district || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">İl</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{city || '—'}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
+                {initials(owner || 'Meridyen')}
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">Dosya Sorumlusu</p>
+                <p className="text-sm font-semibold text-slate-900">{owner || '—'}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium text-blue-600">
+              {phone ? (
+                <a href={`tel:${phone.tel}`} className="inline-flex items-center gap-2 hover:text-blue-700">
+                  <Phone className="h-4 w-4" strokeWidth={1.75} />
+                  {phone.label}
+                </a>
+              ) : null}
+              {ownerEmail ? (
+                <a href={`mailto:${ownerEmail}`} className="inline-flex items-center gap-2 hover:text-blue-700">
+                  <Mail className="h-4 w-4" strokeWidth={1.75} />
+                  E-posta Gönder
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-2">
+                  <Mail className="h-4 w-4" strokeWidth={1.75} />
+                  E-posta Gönder
                 </span>
               )}
             </div>
-            <span className="bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full font-medium flex-shrink-0">
-              {data?.approverType === 'expert' ? 'Eksper Onayı' : 'Sigorta Şirketi Onayı'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
-            <div>
-              <p className="text-xs text-gray-400">Hasar Dosya No</p>
-              <p className="font-medium text-gray-800">{claimFile?.fileNo ?? '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Sigorta Şirketi</p>
-              <p className="font-medium text-gray-800">{claimFile?.insuranceCompany?.name ?? '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Müşteri</p>
-              <p className="font-medium text-gray-800">
-                {claimFile?.customer ? `${claimFile.customer.firstName ?? ''} ${claimFile.customer.lastName ?? ''}`.trim() || claimFile.customer.companyName : '—'}
+            {network ? (
+              <p className="mt-4 border-t border-slate-100 pt-3 text-sm text-slate-500">
+                Operasyon Bölgesi
+                <span className="ml-2 font-semibold text-slate-800">{network} Network</span>
               </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Rapor Tarihi</p>
-              <p className="font-medium text-gray-800">
-                {report?.reportDate ? new Date(report.reportDate).toLocaleDateString('tr-TR') : '—'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Toplam Tutar</p>
-              <p className="font-medium text-gray-800">
-                {report?.totalSalesAmount != null
-                  ? new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(report.totalSalesAmount)
-                  : '—'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Onay Son Tarihi</p>
-              <p className="font-medium text-gray-800">
-                {data?.expiresAt ? new Date(data.expiresAt).toLocaleString('tr-TR') : '—'}
-              </p>
-            </div>
-          </div>
+            ) : null}
+          </section>
         </div>
 
-        {/* Rapor Kalemleri */}
-        {report?.items?.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-700">Onarım Kalemleri</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 text-xs text-gray-500">
-                    <th className="text-center px-4 py-2 font-medium">İş Grubu</th>
-                    <th className="text-center px-4 py-2 font-medium">Tanım</th>
-                    <th className="text-right px-4 py-2 font-medium">Miktar</th>
-                    <th className="text-right px-4 py-2 font-medium">Birim Fiyat</th>
-                    <th className="text-right px-4 py-2 font-medium">Toplam</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.items.map((item: any, i: number) => (
-                    <tr key={item.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                      <td className="px-4 py-2 text-gray-600">{item.workGroup?.name ?? '—'}</td>
-                      <td className="px-4 py-2 text-gray-800">{item.description || item.jobDescription}</td>
-                      <td className="px-4 py-2 text-right text-gray-600">{item.quantity} {item.unit}</td>
-                      <td className="px-4 py-2 text-right text-gray-600">
-                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(item.salesUnitPrice)}
-                      </td>
-                      <td className="px-4 py-2 text-right font-medium text-gray-900">
-                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(item.salesTotal)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-gray-200 bg-blue-50">
-                    <td colSpan={4} className="px-4 py-2 font-semibold text-gray-700 text-right">Genel Toplam</td>
-                    <td className="px-4 py-2 text-right font-bold text-gray-900">
-                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(report.totalSalesAmount ?? 0)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Tespitler */}
-        {report?.findingsText && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-2">Tespit ve Değerlendirme</h2>
-            <p className="text-sm text-gray-600 whitespace-pre-line">{report.findingsText}</p>
-          </div>
-        )}
-
-        {/* Yanıt Formu */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Onay Kararınız</h2>
-
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-600 mb-1">Yorum / Açıklama (Red Durumunda Zorunlu)</label>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <h2 className="text-base font-semibold text-slate-900">Lütfen Dosya Durumunu Bildirin</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Dosya bilgilerini inceleyip uygun seçeneği seçebilirsiniz.
+          </p>
+          <button
+            type="button"
+            onClick={() => handleRespond('approved')}
+            disabled={submitting}
+            className="mt-4 h-11 w-full rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            Dosyayı Onayla
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRespond('rejected')}
+            disabled={submitting}
+            className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+          >
+            Reddet
+          </button>
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <h3 className="text-sm font-semibold text-slate-900">
+              Görüşünüz <span className="font-normal text-slate-400">(isteğe bağlı)</span>
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Kararınızdan bağımsız olarak görüş paylaşabilirsiniz.
+            </p>
             <textarea
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              rows={3}
-              placeholder="Varsa Açıklama veya Ret Nedeninizi Buraya Yazınız..."
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              rows={4}
+              placeholder="Eklemek istediğiniz bir görüş varsa yazabilirsiniz."
+              className="mt-3 w-full resize-none rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500"
             />
-          </div>
-
-          <div className="flex gap-3">
             <button
-              onClick={() => handleRespond('rejected')}
-              disabled={submitting}
-              className="flex-1 border border-red-200 text-red-600 rounded-xl py-3 text-sm font-medium hover:bg-red-50 disabled:opacity-60 transition-colors"
+              type="button"
+              onClick={shareNote}
+              className="mt-3 h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              {submitting ? 'İşleniyor...' : 'Reddet'}
-            </button>
-            <button
-              onClick={() => handleRespond('approved')}
-              disabled={submitting}
-              className="flex-1 bg-green-600 text-white rounded-xl py-3 text-sm font-medium hover:bg-green-700 disabled:opacity-60 transition-colors"
-            >
-              {submitting ? 'İşleniyor...' : 'Onayla'}
+              Görüş Bildir
             </button>
           </div>
-        </div>
-
-        <p className="text-center text-xs text-gray-400 pb-4">
-          Bu Sayfa Güvenli Token ile Korunmaktadır. Onay Bilgileriniz Şifreli Olarak Saklanır.
-        </p>
+          <p className="mt-4 flex items-start gap-2 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-400">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            Giriş yapmanız gerekmez. İlettiğiniz karar dosyanıza kaydedilir.
+          </p>
+        </section>
       </div>
-    </div>
+    </Shell>
   );
 }
 

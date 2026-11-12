@@ -1,11 +1,11 @@
 ---
-description: Canlı web v682 / backend v684
+description: Canlı web v685 / backend v684
 alwaysApply: true
 ---
 
 # Canlı (12.11.2026)
 
-Canlı: web **v682** · backend **v684**. Geri alma: web **v682** / backend **v683**.
+Canlı: web **v685** · backend **v684**. Geri alma: web **v682** / backend **v684**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v685 (yalnız web):** Dış onay sayfası dosya özeti, dosya sorumlusu ve karar kutusudur. Giriş gerekmez. Örnek dosya canlı adreste açılmaz. Backend **v684**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v682 / backend v684.
 
 **v684 (yalnız backend):** Hasar raporu onaya giderken eksper adresi müşteri kartındaysa oraya gider. Seçilen tarafta adres yoksa karttaki adres kullanılır. Web **v682**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v682 / backend v683.
 
@@ -245,4 +247,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur.
 
-Canlı web **v682** · backend **v684**.
+Canlı web **v685** · backend **v684**.
