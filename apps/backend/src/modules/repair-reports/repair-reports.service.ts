@@ -1148,7 +1148,7 @@ export class RepairReportsService {
     let last = Buffer.alloc(0);
     for (const fit of fits) {
       const { buffer } = await this.generatePdf(reportId, 'external', fit);
-      last = buffer;
+      last = Buffer.from(buffer);
       if (buffer.length > 0 && buffer.length <= REPAIR_REPORT_MAIL_INLINE_MAX_BYTES) return buffer;
     }
     return last;
