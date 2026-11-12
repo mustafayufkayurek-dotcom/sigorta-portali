@@ -88,12 +88,24 @@ export function isExpertFirmCustomer(
 }
 
 /** Onay mailinde eksper: kanal kartı, yoksa dosyanın eksper müşterisi. Özel müşteri buraya düşmez. */
-export function claimApprovalExpertParty<T extends Parameters<typeof isExpertFirmCustomer>[0]>(input: {
-  channelExpert?: T | null;
-  customer?: T | null;
-}): T | null {
+export function claimApprovalExpertParty(input: {
+  channelExpert?: {
+    email?: string | null;
+    contacts?: Array<{ email?: string | null; isPrimary?: boolean | null }> | null;
+    contactInfos?: Array<{ type?: string | null; label?: string | null; value?: string | null }> | null;
+  } | null;
+  customer?: ({
+    email?: string | null;
+    contacts?: Array<{ email?: string | null; isPrimary?: boolean | null }> | null;
+    contactInfos?: Array<{ type?: string | null; label?: string | null; value?: string | null }> | null;
+  } & Parameters<typeof isExpertFirmCustomer>[0]) | null;
+}): {
+  email?: string | null;
+  contacts?: Array<{ email?: string | null; isPrimary?: boolean | null }> | null;
+  contactInfos?: Array<{ type?: string | null; label?: string | null; value?: string | null }> | null;
+} | null {
   if (input.channelExpert) return input.channelExpert;
-  if (isExpertFirmCustomer(input.customer)) return input.customer ?? null;
+  if (input.customer && isExpertFirmCustomer(input.customer)) return input.customer;
   return null;
 }
 
