@@ -55,6 +55,17 @@ describe('report-image-paths LOCK', () => {
     assert.doesNotMatch(select, /fileDate/);
   });
 
+  it('webp ve png PDF içine jpeg olarak girer; küçük dosya olduğu gibi gömülmez', () => {
+    const paths = read('report-image-paths.ts');
+    const fn = paths.slice(paths.indexOf('export async function reportImageToPdfDataUrl'));
+    assert.match(fn, /isJpegMime\(mime\)/);
+    assert.match(fn, /data:image\/jpeg;base64/);
+    assert.doesNotMatch(fn, /return reportImageToDataUrl/);
+    const svc = read('repair-reports.service.ts');
+    assert.match(svc, /externalMailPdf/);
+    assert.match(svc, /REPAIR_REPORT_MAIL_INLINE_MAX_BYTES/);
+  });
+
   it('getUploadsRootDir export edilir', () => {
     const paths = read('report-image-paths.ts');
     assert.match(paths, /export function getUploadsRootDir/);

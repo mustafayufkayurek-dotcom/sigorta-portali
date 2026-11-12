@@ -19,10 +19,22 @@ describe('onarım raporu teslim maili LOCK', () => {
     assert.match(src, /Dış kullanım PDF/);
     assert.match(src, /#0F766E/);
     assert.match(src, /Dosyayı Görüntüle/);
+    assert.match(src, /Sigorta Şirketi/);
+    assert.match(src, /Dosya Konusu/);
+    assert.doesNotMatch(src, /Maliyet veya kâr/);
+    assert.doesNotMatch(src, /kâr sütunu/);
     assert.doesNotMatch(src, /#1E5AA8/);
     assert.doesNotMatch(src, /#C2410C/);
     assert.doesNotMatch(src, /Operasyon Bildirimi/);
     assert.match(service, /buildReportDispatchEmailHtml/);
+    assert.match(service, /insuranceCompanyName/);
+    assert.match(service, /fileSubject/);
+    const reports = readFileSync(join(here, '../repair-reports.service.ts'), 'utf8');
+    assert.equal(
+      (reports.match(/insuranceCompanyName: report\.claimFile\?\.insuranceCompany\?\.name,/g) ?? []).length,
+      2,
+    );
+    assert.equal((reports.match(/fileSubject:/g) ?? []).length, 2);
     assert.doesNotMatch(service, /Hasar Onarım Raporu \(\$\{opts\.reportNo\}\) ektedir/);
   });
 });

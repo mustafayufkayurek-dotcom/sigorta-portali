@@ -22,7 +22,7 @@ import {
 } from '@/modules/finance/hasar-extra-repair-link';
 import { ExternalApprovalsService } from '@/modules/external-approvals/external-approvals.service';
 import { normalizeReportImageCategory } from './report-image-category';
-import { getReportImagesDir, resolveReportImageFilePath } from './report-image-paths';
+import { getReportImagesDir, resolveReportImageFilePath, type PdfImageFit } from './report-image-paths';
 import { StorageService } from '@/modules/storage/storage.service';
 import { resolveReportCustomerMailRecipients } from './report-customer-mail-recipients';
 import { collectClaimFileChannelEmails, customerContactCopyEmails, generalMailboxesFromContactInfos, resolveClaimMailRoute } from '@sigorta/shared';
@@ -52,6 +52,7 @@ import {
   maliMesuliyetAlanToplami,
   internalRepairPdfFilename,
   packInlineMailAttachments,
+  REPAIR_REPORT_MAIL_INLINE_MAX_BYTES,
 } from '@sigorta/shared';
 import {
   CreateRepairReportDto,
@@ -1137,12 +1138,32 @@ export class RepairReportsService {
     return { ...priced, showPrices: card ? card.reportPrice !== false : true };
   }
 
-  async generatePdf(reportId: string, viewType: 'internal' | 'external'): Promise<{ buffer: Buffer; report: any }> {
+  /** Dış rapor maili 3 MB altına inene kadar fotoğraf küçülür. Sayı tek başına yetmez. */
+  private async externalMailPdf(reportId: string): Promise<Buffer> {
+    const fits: Array<PdfImageFit | undefined> = [
+      undefined,
+      { maxEdge: 1000, quality: 58, maxBytes: 80_000 },
+      { maxEdge: 720, quality: 46, maxBytes: 45_000 },
+    ];
+    let last = Buffer.alloc(0);
+    for (const fit of fits) {
+      const { buffer } = await this.generatePdf(reportId, 'external', fit);
+      last = buffer;
+      if (buffer.length > 0 && buffer.length <= REPAIR_REPORT_MAIL_INLINE_MAX_BYTES) return buffer;
+    }
+    return last;
+  }
+
+  async generatePdf(
+    reportId: string,
+    viewType: 'internal' | 'external',
+    imageFit?: PdfImageFit,
+  ): Promise<{ buffer: Buffer; report: any }> {
     // PDF kök nedeni: getReport() claimFile include ile şema gerisi kolonları isterdi.
     // PDF yalnız gerekli alanları select eder.
     const report = await this.getReportForPdf(reportId);
     try {
-      const buffer = await this.pdfService.generate(report as any, viewType);
+      const buffer = await this.pdfService.generate(report as any, viewType, imageFit);
       return { buffer, report };
     } catch (error) {
       this.logger.error(`PDF generation failed for report ${reportId}: ${(error as Error)?.message ?? error}`);
@@ -1153,7 +1174,7 @@ export class RepairReportsService {
   async sendEmail(reportId: string, dto: SendEmailDto) {
     const report = await this.getReport(reportId);
     // PDF önce — ek yoksa sendReport FAIL eder
-    const { buffer: pdfBuffer } = await this.generatePdf(reportId, 'external');
+    const pdfBuffer = await this.externalMailPdf(reportId);
     if (!pdfBuffer?.length) {
       throw new BadRequestException('PDF oluşmadı — e-posta gönderilemez');
     }
@@ -1166,6 +1187,8 @@ export class RepairReportsService {
       pdfBuffer,
       reportNo: report.reportNo,
       fileNo: report.claimFile?.fileNo,
+      insuranceCompanyName: report.claimFile?.insuranceCompany?.name,
+      fileSubject: report.claimFile?.claimSubject?.name,
       documentTitle: hasarReportDocumentTitle(
         report.claimFile?.serviceKind,
         report.claimFile?.consultancyServiceType,
@@ -1324,6 +1347,7 @@ export class RepairReportsService {
             siteContactEmail: true,
             consultancyServiceType: { select: { code: true, name: true } },
             insuranceCompany: { select: { id: true, name: true, contactEmail: true } },
+            claimSubject: { select: { name: true } },
             customer: {
               select: {
                 email: true,
@@ -1442,7 +1466,7 @@ export class RepairReportsService {
     ) {
       customerRecipients.push(irtibatEmail);
     }
-    const { buffer: customerPdf } = await this.generatePdf(reportId, 'external');
+    const customerPdf = await this.externalMailPdf(reportId);
     if (!customerPdf?.length) {
       throw new BadRequestException('Müşteri raporu PDF oluşmadı — e-posta gönderilemez.');
     }
@@ -1475,6 +1499,8 @@ export class RepairReportsService {
         pdfBuffer: customerPdf,
         reportNo: report.reportNo,
         fileNo: report.claimFile?.fileNo,
+        insuranceCompanyName: report.claimFile?.insuranceCompany?.name,
+        fileSubject: report.claimFile?.claimSubject?.name,
         documentTitle: hasarReportDocumentTitle(
           report.claimFile?.serviceKind,
           report.claimFile?.consultancyServiceType,

@@ -107,26 +107,56 @@ export function reportImageToDataUrl(
 
 const PDF_IMAGE_BYTES = 180_000;
 
-/** PDF’ye gömülecek fotoğraf — büyük telefon resmi Chrome’u düşürmesin. */
+export type PdfImageFit = {
+  maxEdge: number;
+  quality: number;
+  maxBytes: number;
+};
+
+const DEFAULT_PDF_IMAGE_FIT: PdfImageFit = {
+  maxEdge: 1400,
+  quality: 72,
+  maxBytes: PDF_IMAGE_BYTES,
+};
+
+function isJpegMime(mime: string): boolean {
+  return /jpe?g/i.test(mime);
+}
+
+/**
+ * PDF’ye gömülecek fotoğraf.
+ * WebP ve PNG olduğu gibi gömülürse sayfa şişer; mail sınırı aşılır.
+ * Yalnız küçük JPEG aynen kalır. Diğerleri JPEG olur.
+ */
 export async function reportImageToPdfDataUrl(
   storageKey: string | null | undefined,
   mimeType?: string | null,
+  fit: PdfImageFit = DEFAULT_PDF_IMAGE_FIT,
 ): Promise<string | null> {
   const filePath = resolveReportImageFilePath(storageKey);
   if (!filePath) return null;
+  let original: Buffer;
   try {
-    const original = fs.readFileSync(filePath);
-    if (!original.length) return null;
-    if (original.length <= PDF_IMAGE_BYTES) {
-      return `data:${mimeFromPath(filePath, mimeType)};base64,${original.toString('base64')}`;
-    }
+    original = fs.readFileSync(filePath);
+  } catch {
+    return null;
+  }
+  if (!original.length) return null;
+  const mime = mimeFromPath(filePath, mimeType);
+  if (isJpegMime(mime) && original.length <= fit.maxBytes) {
+    return `data:${mime};base64,${original.toString('base64')}`;
+  }
+  try {
     const compressed = await sharp(original)
       .rotate()
-      .resize({ width: 1400, height: 1400, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 72, mozjpeg: true })
+      .resize({ width: fit.maxEdge, height: fit.maxEdge, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: fit.quality, mozjpeg: true })
       .toBuffer();
     return `data:image/jpeg;base64,${compressed.toString('base64')}`;
   } catch {
-    return reportImageToDataUrl(storageKey, mimeType);
+    if (isJpegMime(mime) && original.length <= fit.maxBytes) {
+      return `data:${mime};base64,${original.toString('base64')}`;
+    }
+    return null;
   }
 }

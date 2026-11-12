@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as puppeteer from 'puppeteer';
 import encodeQR from '@/common/utils/vendor/paulmillr-qr/encode';
-import { reportImageToPdfDataUrl } from '../report-image-paths';
+import { reportImageToPdfDataUrl, type PdfImageFit } from '../report-image-paths';
 import {
   mapRepairReportPdfIdentity,
   PDF_FINDINGS_LEAD,
@@ -312,7 +312,11 @@ export class ReportPdfService {
 
   constructor(private readonly config: ConfigService) {}
 
-  async generate(report: ReportData, viewType: 'internal' | 'external'): Promise<Buffer> {
+  async generate(
+    report: ReportData,
+    viewType: 'internal' | 'external',
+    imageFit?: PdfImageFit,
+  ): Promise<Buffer> {
     try {
       const MAX_PDF_IMAGES = 40;
       const sourceImages = (report.images ?? []).slice(0, MAX_PDF_IMAGES);
@@ -321,7 +325,7 @@ export class ReportPdfService {
         try {
           images.push({
             ...img,
-            dataUrl: img.dataUrl || (await reportImageToPdfDataUrl(img.storageKey, img.mimeType)),
+            dataUrl: img.dataUrl || (await reportImageToPdfDataUrl(img.storageKey, img.mimeType, imageFit)),
           });
         } catch {
           images.push({ ...img, dataUrl: null });

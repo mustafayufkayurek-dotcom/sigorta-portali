@@ -39,6 +39,19 @@ function initials(name: string): string {
   return parts.slice(0, 2).map((part) => part[0]).join('').toLocaleUpperCase('tr-TR');
 }
 
+function Mark() {
+  return (
+    <img
+      src="/meridyen-logo-asistans.jpg"
+      alt="Meridyen Asistans"
+      width={952}
+      height={359}
+      className="h-20 w-auto max-w-[13.5rem] shrink-0 object-contain object-right"
+      style={{ objectViewBox: 'inset(22% 3% 23% 4%)' }}
+    />
+  );
+}
+
 function Shell({ children, preview }: { children: React.ReactNode; preview?: boolean }) {
   return (
     <div className="min-h-screen bg-[#eef2f7] px-4 py-8 text-slate-800 sm:px-6 sm:py-10">
@@ -143,7 +156,10 @@ function ApprovalPageInner({ token }: { token: string }) {
         <p className="text-[11px] font-medium tracking-[0.16em] text-slate-400">
           Hasar Onarım Ve Restorasyon Departmanı
         </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{title}</h1>
+        <div className="mt-2 flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{title}</h1>
+          <Mark />
+        </div>
         <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">{body}</p>
       </Shell>
     );
@@ -167,9 +183,12 @@ function ApprovalPageInner({ token }: { token: string }) {
       <p className="text-[11px] font-medium tracking-[0.16em] text-slate-400">
         Hasar Onarım Ve Restorasyon Departmanı
       </p>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-[2rem]">
-        Dosya Değerlendirmeniz Bekleniyor
-      </h1>
+      <div className="mt-2 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[2rem]">
+          Dosya Değerlendirmeniz Bekleniyor
+        </h1>
+        <Mark />
+      </div>
       <p className="mt-2 text-sm text-slate-500">
         Dosya bilgilerini inceleyerek kararınızı iletebilirsiniz.
       </p>
@@ -277,7 +296,7 @@ function ApprovalPageInner({ token }: { token: string }) {
               onChange={(e) => setComments(e.target.value)}
               rows={4}
               placeholder="Eklemek istediğiniz bir görüş varsa yazabilirsiniz."
-              className="mt-3 w-full resize-none rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500"
+              className="mt-3 max-h-72 min-h-[4.5rem] w-full resize-y rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500"
             />
             <button
               type="button"

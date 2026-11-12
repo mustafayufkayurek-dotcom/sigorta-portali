@@ -32,6 +32,8 @@ export class ReportEmailService {
     pdfBuffer: Buffer;
     reportNo: string;
     fileNo?: string | null;
+    insuranceCompanyName?: string | null;
+    fileSubject?: string | null;
     documentTitle?: string | null;
     actionUrl?: string | null;
     portalUrl?: string | null;
@@ -55,6 +57,8 @@ export class ReportEmailService {
     const html = buildReportDispatchEmailHtml({
       reportNo: opts.reportNo,
       fileNo: opts.fileNo,
+      insuranceCompanyName: opts.insuranceCompanyName,
+      fileSubject: opts.fileSubject,
       documentTitle: opts.documentTitle,
       actionUrl: opts.actionUrl,
       portalUrl: opts.portalUrl,
@@ -67,6 +71,8 @@ export class ReportEmailService {
         text: buildReportDispatchEmailText({
           reportNo: opts.reportNo,
           fileNo: opts.fileNo,
+          insuranceCompanyName: opts.insuranceCompanyName,
+          fileSubject: opts.fileSubject,
           documentTitle: opts.documentTitle,
           actionUrl: opts.actionUrl,
         }),

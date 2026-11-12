@@ -8,8 +8,6 @@ import { resolveWelcomeEmailLogoUrl } from '@/modules/notifications/email/email-
 const TEAL_DEEP = '#042F2E';
 const TEAL_MID = '#115E59';
 const TEAL = '#0F766E';
-const TEAL_SOFT = '#F0FDFA';
-const TEAL_LINE = '#99F6E4';
 
 function escapeHtml(text: string): string {
   return text
@@ -23,6 +21,8 @@ function escapeHtml(text: string): string {
 export type ReportDispatchEmailData = {
   reportNo: string;
   fileNo?: string | null;
+  insuranceCompanyName?: string | null;
+  fileSubject?: string | null;
   documentTitle?: string | null;
   actionUrl?: string | null;
   portalUrl?: string | null;
@@ -31,6 +31,8 @@ export type ReportDispatchEmailData = {
 export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): string {
   const reportNo = escapeHtml(data.reportNo);
   const fileNo = escapeHtml((data.fileNo || '').trim() || '—');
+  const insuranceCompany = escapeHtml((data.insuranceCompanyName || '').trim() || '—');
+  const fileSubject = escapeHtml((data.fileSubject || '').trim() || '—');
   const logoUrl = escapeHtml(resolveWelcomeEmailLogoUrl(data.portalUrl ?? undefined));
   const actionUrl = data.actionUrl ? escapeHtml(data.actionUrl) : '';
   const title = (data.documentTitle || '').trim() || 'Hasar Onarım Raporu';
@@ -108,21 +110,20 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
                 <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;font-weight:800;font-variant-numeric:tabular-nums;background:#ffffff;">${fileNo}</td>
               </tr>
               <tr>
+                <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#F8FAFC;">Sigorta Şirketi</td>
+                <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;font-weight:700;background:#F8FAFC;">${insuranceCompany}</td>
+              </tr>
+              <tr>
+                <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#ffffff;">Dosya Konusu</td>
+                <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;font-weight:700;background:#ffffff;">${fileSubject}</td>
+              </tr>
+              <tr>
                 <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#F8FAFC;">Rapor No</td>
                 <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;font-weight:800;font-variant-numeric:tabular-nums;background:#F8FAFC;">${reportNo}</td>
               </tr>
               <tr>
                 <td style="width:34%;padding:13px 16px;border-top:1px solid #E2E8F0;font-size:13px;font-weight:700;color:#64748B;background:#ffffff;">Ek</td>
                 <td style="padding:13px 16px;border-top:1px solid #E2E8F0;font-size:14px;color:#0F172A;background:#ffffff;">Dış kullanım PDF</td>
-              </tr>
-            </table>
-
-            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 22px;background:${TEAL_SOFT};border:1px solid ${TEAL_LINE};border-left:4px solid ${TEAL};border-radius:10px;">
-              <tr>
-                <td style="padding:14px 16px;">
-                  <div style="font-size:12px;font-weight:800;color:${TEAL};margin-bottom:4px;">Ek</div>
-                  <div style="font-size:13px;line-height:1.55;color:${TEAL_MID};">Maliyet veya kâr sütunu bu e-postada yoktur. Yalnız dış kullanım raporu eklenir.</div>
-                </td>
               </tr>
             </table>
 
@@ -152,6 +153,8 @@ export function buildReportDispatchEmailText(data: ReportDispatchEmailData): str
     (data.documentTitle || '').trim() || 'Hasar Onarım Raporu',
     `${data.reportNo} numaralı dış kullanım raporu PDF ektedir.`,
     `Dosya No: ${fileNo}`,
+    `Sigorta Şirketi: ${(data.insuranceCompanyName || '').trim() || '—'}`,
+    `Dosya Konusu: ${(data.fileSubject || '').trim() || '—'}`,
     `Rapor No: ${data.reportNo}`,
     'Ek: Dış kullanım PDF',
   ];
