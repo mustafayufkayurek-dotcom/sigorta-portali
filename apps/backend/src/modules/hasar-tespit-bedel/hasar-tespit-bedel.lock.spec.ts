@@ -67,6 +67,21 @@ describe('Hasar Tespit hizmet bedeli arka taraf LOCK', () => {
     assert.match(app, /HasarTespitBedelModule/);
   });
 
+  it('her adres rol kapısından geçer; dosya sorumlusu hesabı görmez', () => {
+    const ctl = read('hasar-tespit-bedel.controller.ts');
+    const routes = ctl.match(/@(Get|Put|Post)\(/g) ?? [];
+    const gates = ctl.match(/assertBedelRole\(req\);/g) ?? [];
+    assert.ok(routes.length >= 8);
+    assert.equal(gates.length, routes.length);
+    assert.match(ctl, /canSeeHasarTespitBedel\(req\?\.user\?\.roleCode\)/);
+    const svc = read('hasar-tespit-bedel.service.ts');
+    assert.match(svc, /description: `\$\{satir\.ad\} · \$\{file\.fileNo\}`/);
+    assert.match(svc, /description: 'Hasar Tespit Hizmet Bedeli gelire düşürüldü\.'/);
+    const claims = readFileSync(join(here, '../claim-files/claim-files.service.ts'), 'utf8');
+    assert.match(claims, /if \(canSeeHasarTespitBedel\(requestingUser\?\.roleCode\)\) return rows;/);
+    assert.match(claims, /kind === HASAR_TESPIT_BEDEL_LOG_KIND \? \{ \.\.\.row, metadata: \{ kind \} \} : row/);
+  });
+
   it('canlı alım kapısında durur', () => {
     const smoke = readFileSync(join(here, '../../../../../scripts/smoke-canli-bitmis-is.sh'), 'utf8');
     assert.match(smoke, /hasar-tespit-bedel\/hasar-tespit-bedel\.lock\.spec/);

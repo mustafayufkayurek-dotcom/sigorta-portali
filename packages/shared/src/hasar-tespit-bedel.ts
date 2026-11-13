@@ -4,6 +4,16 @@
  * Personel satırları görür, düzeltir ve «Gelire Düşür» der. Yazılım tutarı kendiliğinden işlemez.
  */
 
+/** Hesabı yönetici ve finans görür; dosya sorumlusu görmez (Mustafa · 13.11.2026). */
+const HASAR_TESPIT_BEDEL_ROLES = new Set(['admin', 'finance', 'finans', 'accountant']);
+
+export function canSeeHasarTespitBedel(roleCode: string | null | undefined): boolean {
+  const role = String(roleCode ?? '').trim().toLowerCase().replace(/-/g, '_');
+  return HASAR_TESPIT_BEDEL_ROLES.has(role);
+}
+
+export const HASAR_TESPIT_BEDEL_YETKI_MESAJI = 'Hizmet bedeli hesabı yönetici ve finanstadır.';
+
 export const HASAR_TESPIT_ARAC_AYAR_KEY = 'hasar_tespit_arac_giderleri';
 export const HASAR_TESPIT_TARIFE_KEY = 'hasar_tespit_tarifeleri';
 export const HASAR_TESPIT_BEDEL_LOG_KIND = 'hasar_tespit_bedel_hesabi';

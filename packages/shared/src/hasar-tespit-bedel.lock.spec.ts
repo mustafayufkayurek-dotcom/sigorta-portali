@@ -13,6 +13,7 @@ import {
   ayCalismaGunu,
   bedelGiderKategorisi,
   bedelGiderSatirlari,
+  canSeeHasarTespitBedel,
   gecisSatirlari,
   hesaplaHasarTespitBedeli,
   normalizeHasarTespitArac,
@@ -109,6 +110,16 @@ describe('Hasar Tespit hizmet bedeli LOCK', () => {
     assert.equal(bedelGiderKategorisi('yakit').kategoriKodu, 'OPR_ARAC_YAKIT');
     assert.equal(bedelGiderKategorisi('arac_kira').kategoriKodu, 'OPR_ARAC_KIRA');
     assert.equal(bedelGiderKategorisi('gecis:osmangazi').altGrup, 'Araç Giderleri – Köprü Ve Otoyol');
+  });
+
+  it('hesabı yönetici ve finans görür; dosya sorumlusu görmez', () => {
+    assert.equal(canSeeHasarTespitBedel('admin'), true);
+    assert.equal(canSeeHasarTespitBedel('finance'), true);
+    assert.equal(canSeeHasarTespitBedel('FINANS'), true);
+    assert.equal(canSeeHasarTespitBedel('office_staff'), false);
+    assert.equal(canSeeHasarTespitBedel('manager'), false);
+    assert.equal(canSeeHasarTespitBedel('field_staff'), false);
+    assert.equal(canSeeHasarTespitBedel(null), false);
   });
 
   it('varsayılan geçişlerde uydurma ücret yok', () => {

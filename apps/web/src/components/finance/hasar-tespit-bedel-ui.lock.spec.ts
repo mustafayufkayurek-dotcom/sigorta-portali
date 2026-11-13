@@ -13,9 +13,13 @@ const web = join(here, '../..');
 const read = (p: string) => readFileSync(join(web, p), 'utf8');
 
 describe('Hasar Tespit hizmet bedeli ekran LOCK', () => {
-  it('dosya gelir panelinde yalnız tespit dosyasında Hizmet Bedeli Hesapla durur', () => {
+  it('dosya gelir panelinde yalnız tespit dosyasında ve yalnız yönetici / finansa Hizmet Bedeli Hesapla durur', () => {
     const panel = read('components/finance/ClaimFileGelirTahsilatPanel.tsx');
-    assert.match(panel, /isInspectionServiceKind\(claim\?\.serviceKind\) \? \(\s*<button[\s\S]*?hasar-tespit-bedel-hesapla/);
+    assert.match(panel, /const bedelHesabi = bedelYetki && isInspectionServiceKind\(claim\?\.serviceKind\)/);
+    assert.match(panel, /setBedelYetki\(canSeeHasarTespitBedelClient\(\)\)/);
+    assert.match(panel, /\{bedelHesabi \? \(\s*<button[\s\S]*?hasar-tespit-bedel-hesapla/);
+    const role = read('utils/hasar-tespit-bedel-role.ts');
+    assert.match(role, /canSeeHasarTespitBedel\(/);
     assert.match(panel, /Hizmet Bedeli Hesapla/);
     assert.match(panel, /<HasarTespitBedelHesapPanel claimId=\{claimId\}/);
   });
@@ -40,7 +44,8 @@ describe('Hasar Tespit hizmet bedeli ekran LOCK', () => {
     assert.match(arac, /Ücretli Otoyollar/);
     const musteri = read('app/panel/musteriler/[id]/page.tsx');
     assert.match(musteri, /Hasar Tespit Tarifesi/);
-    assert.match(musteri, /<CustomerHasarTespitTarifeTab customerId=/);
+    assert.match(musteri, /activeTab === 'tarife' && canSeeHasarTespitBedel\(userRoleCode\) && <CustomerHasarTespitTarifeTab customerId=/);
+    assert.match(musteri, /tab\.id !== 'tarife' \|\| \(canSeeHasarTespitBedel\(userRoleCode\)/);
     const tarife = read('components/customers/CustomerHasarTespitTarifeTab.tsx');
     assert.match(tarife, /Maliyetler \+ Hizmet Payı|TARIFE_YONTEM_LABEL/);
     assert.match(tarife, /Örn\. rapor hazırlama/);

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { Calculator, FileSpreadsheet, Trash2 } from 'lucide-react';
 import { HasarTespitBedelHesapPanel } from '@/components/finance/HasarTespitBedelHesapPanel';
+import { canSeeHasarTespitBedelClient } from '@/utils/hasar-tespit-bedel-role';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
@@ -132,6 +133,9 @@ export function ClaimFileGelirTahsilatPanel({
   const [tahsilat, setTahsilat] = useState(() => emptyTahsilat(claim?.collectionParty, claim?.serviceKind));
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [bedelYetki, setBedelYetki] = useState(false);
+  useEffect(() => { setBedelYetki(canSeeHasarTespitBedelClient()); }, []);
+  const bedelHesabi = bedelYetki && isInspectionServiceKind(claim?.serviceKind);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -340,7 +344,7 @@ export function ClaimFileGelirTahsilatPanel({
           >
             Yeni Tahsilat
           </button>
-          {isInspectionServiceKind(claim?.serviceKind) ? (
+          {bedelHesabi ? (
             <button
               type="button"
               data-testid="hasar-tespit-bedel-hesapla"
@@ -440,7 +444,7 @@ export function ClaimFileGelirTahsilatPanel({
         )}
       </FinansPanelCard>
 
-      {isInspectionServiceKind(claim?.serviceKind) ? (
+      {bedelHesabi ? (
         <SlidePanel
           open={drawer === 'bedel'}
           onClose={() => setDrawer(null)}

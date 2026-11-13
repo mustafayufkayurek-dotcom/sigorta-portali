@@ -7,7 +7,12 @@ import {
   normalizeRequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
 import { canViewFileFinancials, normalizeFinancialVisibilityConfig, resolveFinancialVisibilityConfig, canManageFinancialVisibility } from '@/common/helpers/financial-visibility.helper';
-import { generalMailboxesFromContactInfos, isAcilInspectionPhotoNotes } from '@sigorta/shared';
+import {
+  HASAR_TESPIT_BEDEL_LOG_KIND,
+  canSeeHasarTespitBedel,
+  generalMailboxesFromContactInfos,
+  isAcilInspectionPhotoNotes,
+} from '@sigorta/shared';
 import {
   claimFileChannelCreateFields,
   claimChannelFirmLabel,
@@ -4647,10 +4652,15 @@ export class ClaimFilesService {
     requestingUser?: { id: string; roleCode?: string | null; vendorId?: string | null },
   ) {
     await this.findOne(fileId, requestingUser);
-    return this.prisma.fileActivityLog.findMany({
+    const rows = await this.prisma.fileActivityLog.findMany({
       where: { claimFileId: fileId },
       include: { actor: { select: { id: true, firstName: true, lastName: true, role: { select: { name: true, code: true } } } } },
       orderBy: { createdAt: 'desc' },
+    });
+    if (canSeeHasarTespitBedel(requestingUser?.roleCode)) return rows;
+    return rows.map((row) => {
+      const kind = (row.metadata as { kind?: string } | null)?.kind;
+      return kind === HASAR_TESPIT_BEDEL_LOG_KIND ? { ...row, metadata: { kind } } : row;
     });
   }
 

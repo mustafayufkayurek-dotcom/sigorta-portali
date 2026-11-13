@@ -290,7 +290,7 @@ export class HasarTespitBedelService {
         billed: true,
         vatRate: 20,
         entryDate: new Date().toISOString().slice(0, 10),
-        notes: `Hizmet Bedeli Hesabı · ${sonuc.toplamKm.toLocaleString('tr-TR')} km`,
+        notes: 'Hizmet Bedeli Hesabı',
       } as any,
       userId,
     );
@@ -310,7 +310,7 @@ export class HasarTespitBedelService {
             amount: satir.tutar,
             vatRate: 20,
             vatIncluded: true,
-            description: `${satir.ad} · ${file.fileNo} · ${satir.aciklama}`,
+            description: `${satir.ad} · ${file.fileNo}`,
             ...(category ? { expenseCategoryId: category.id } : { expenseGroup: 'OPERASYON_GIDERLERI', expenseSubgroup: kat.altGrup }),
             expensePlan: 'BUTCELENEN',
             fileCaseId: claimFileId,
@@ -331,7 +331,7 @@ export class HasarTespitBedelService {
         action: 'NOTE_ADDED' as any,
         actorId: userId,
         actorRole: String(user?.roleCode ?? 'office_staff'),
-        description: `Hasar Tespit Hizmet Bedeli hesaplandı ve gelire düşürüldü: ${sonuc.bedel.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL +KDV`,
+        description: 'Hasar Tespit Hizmet Bedeli gelire düşürüldü.',
         metadata: {
           kind: HASAR_TESPIT_BEDEL_LOG_KIND,
           cikisAdresi: body.cikisAdresi ?? null,

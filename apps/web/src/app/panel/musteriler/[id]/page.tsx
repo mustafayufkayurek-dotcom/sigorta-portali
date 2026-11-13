@@ -13,7 +13,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { fmtDate } from '@/utils/date-helpers';
 import { formatDisplayLabel, toTitleCaseTR } from '@/utils/text-helpers';
 import { customerSubTypeLabel, customerDisplayName, CUSTOMER_RELATION_SECTION_TITLE, customerServiceTypeLabel, formatCustomerUpdatedMeta, isHasarCustomerServiceType, collapseRepeatedAddressLine, customerCardOpenAddress } from '@/utils/customer-form-helpers';
-import { mergePrimaryIntoCustomerContacts, generalMailboxFromContactInfos } from '@sigorta/shared';
+import { mergePrimaryIntoCustomerContacts, generalMailboxFromContactInfos, canSeeHasarTespitBedel } from '@sigorta/shared';
 import { isPortalCustomerSubType } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { CustomerPortalUsersPanel } from '@/components/customers/CustomerPortalUsersPanel';
 import { CustomerHasarTespitTarifeTab } from '@/components/customers/CustomerHasarTespitTarifeTab';
@@ -950,7 +950,7 @@ export default function CustomerDetailPage() {
       {/* ── Tabs ── */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm mb-5 overflow-x-auto">
         <div className="flex min-w-max">
-          {TABS.filter((tab) => tab.id !== 'tarife' || (!isFieldStaff && customer.subType !== 'insured')).map((tab) => (
+          {TABS.filter((tab) => tab.id !== 'tarife' || (canSeeHasarTespitBedel(userRoleCode) && customer.subType !== 'insured')).map((tab) => (
             <button type="button" key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 activeTab === tab.id
@@ -973,7 +973,7 @@ export default function CustomerDetailPage() {
       {activeTab === 'profil' && <CustomerProfilTab customer={customer} isFieldStaff={isFieldStaff} onReload={load} onEdit={() => router.push(`/panel/musteriler?edit=${id}`)} />}
       {activeTab === 'yetkili' && <YetkiliIletisimTab customer={customer} canInvite={!isFieldStaff} />}
       {activeTab === 'dosyalar' && <CustomerDosyalarTab customerId={id!} />}
-      {activeTab === 'tarife' && !isFieldStaff && <CustomerHasarTespitTarifeTab customerId={id!} canEdit={!isFieldStaff} />}
+      {activeTab === 'tarife' && canSeeHasarTespitBedel(userRoleCode) && <CustomerHasarTespitTarifeTab customerId={id!} canEdit />}
       {activeTab === 'harita' && (
         <FieldOperationsMap customerId={id!} compact showNotice />
       )}
