@@ -1,11 +1,11 @@
 ---
-description: Canlı web v687 / backend v687
+description: Canlı web v688 / backend v688
 alwaysApply: true
 ---
 
-# Canlı (12.11.2026)
+# Canlı (13.11.2026)
 
-Canlı: web **v687** · backend **v687**. Geri alma: web **v686** / backend **v686**.
+Canlı: web **v688** · backend **v688**. Geri alma: web **v687** / backend **v687**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v688 (full):** Sahiplenilmemiş Yeni İhbar maili dosya numarası, müşteri, sigortalı, dosya konusu, il ve ilçe yazar; il yoksa zincirdeki ilk ihbarın ili okunur. Yeni dosyada açık adres ile seçilen il çelişirse kayıt durur; tespitçi ekranında Dosya İl İlçe durur, çelişkide yol tarifi açılmaz. Backend il listesi kendi kaynağında; derleme `dist/main`. Dosya Bilgilerini Düzenle: etiket Dosya Konusu, seçilen konu korunur; kayıt dosya sorumlusuna **Dosya Bilgileri Güncellendi** maili atar; sorumlu değişince yeni sorumluya atama, eskisine güncelleme maili gider; Tahmini Onarım Bitiş yok; Sigorta Şirketi (zorunlu), Broker, Acente durur. Öncelik her açılışta zorunludur (Yeni Dosya, sigorta ve eksper ihbarı, Acil, düzenleme); gelen kutusu kendisi yazar. Hasar Yeni İhbar konusu **Yeni İhbar-İhbarı Yapan Müşteri-Dosya Konusu**; İhbar Tarihi 03:00 yazmaz; Broker / Acente Sigorta Şirketi’nin üstünde; Belirtilmemiş basılmaz; Ata ile giden mail dolu. Eski 26 dosyanın ihbar saati açılış anına çekildi (2026 YE 1845/1 dahil). Giriş Onayı mailinde çalışmayan kopyala ikonu kalktı; kod bir dokunuşta seçilir, Yapıştır doldurur. Route Gate smoke saha Personel Özlük puantaj iznine uyduruldu. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v687 / backend v687.
 
 **v687 (full):** Onaya giden rapor maili onaylanan karttır. Departman şeridi, dosya numarası, sigorta şirketi ve hasar konusu, rapor eki ve Dosyayı İncele Ve Değerlendir durur. Dosya sorumlusu, telefon, e-posta ve bölge yazılır. Maliyet ve kâr cümlesi yoktur. Dış onay ekranında orijinal Meridyen Asistans logosu içerikle sol hizadadır. Telefon 0533 633 07 13 biçimindedir. Dosya numarasının altında eksper ofisi ve rapor bedeli durur. Görüş yazmadan onay verilir. Ret gerekçesi yalnız Reddet deyince açılır. Görüş, dosyanın onayını değiştirmez. Sağ kart soldakiyle aynı hizada biter. Önizleme yazısı canlıda durmaz. Manuel onay, red ve revizyon mailinde Dosya No üstünde müşteri kartındaki ad durur. Kartta ad yoksa çizgi görünür. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v686 / backend v686.
 
@@ -249,11 +251,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-1. **Sahiplenilmemiş yeni ihbar maili:** Başlık Sahiplenilmemiş Yeni İhbar. Mavi bantta ham konu yok. Özet: dosya numarası, müşteri, sigortalı, dosya konusu, dosya il ve ilçe. Bu yazıda il yoksa aynı zincirdeki ilk ihbarın ili okunur. Elif Manuoğlu Kara dosyasında bu il Ankara, ilçe Çankaya.
-2. **Yeni dosyada konum:** Açık adres ile seçilen il uyuşmazsa kayıt durur. Konumu Bul, adresten okunan il ve ilçeyi yazar. Posta kodu ili doğrular. Mahalle adı ilçe sanılmaz. Tespitçi ekranında Dosya İl İlçe durur. Adres ile il çelişirse yol tarifi açılmaz. Arka taraf il listesini kendi kaynağından okur; derleme `dist/main` olarak çıkar, konteyner açılır (`backend-build-root.lock.spec.ts`).
-3. **Dosya Bilgilerini Düzenle ve öncelik:** Etiket **Dosya Konusu**; açılışta seçilen konu «Belirtilmemiş» olmaz. Düzenleme kaydolunca dosya sorumlusuna **Dosya Bilgileri Güncellendi** maili gider. Dosya sorumlusu değişince yeni sorumluya atama maili gider; eski sorumluya güncelleme maili gider. Kutuda **Tahmini Onarım Bitiş** yok. **Sigorta Şirketi** (zorunlu), **Broker** ve **Acente** seçilir; Eksper Ofisi durur. **Öncelik** her açılışta zorunludur: Yeni Dosya’da Hasar Konusu altında, sigorta ve eksper ihbarında Dosya Konusu altında, Acil’de Öncelik, düzenleme kutusunda. Gelen kutudan açılan dosya önceliği kendisi yazar.
-   **İhbar maili:** Hasar konu satırı **Yeni İhbar-İhbarı Yapan Müşteri-Dosya Konusu** (müşteri kartının kısa adı: eksper, sigorta, broker, özel müşteri; kart yoksa sigorta şirketi). Konu yoksa son parça yazılmaz; «Belirtilmemiş» yazılmaz. Acil konusu değişmez. İhbar Tarihi mailin gittiği saattir; gün olarak gelen tarih 03:00 yazmaz. Geçmiş güne girilen tarihte saat uydurulmaz. Aynı kural atama, bölge, güncelleme, kapanış maili ve sigorta portalında durur. Dosya Konusu Ayarlar konusundan okunur; «Belirtilmemiş» basılmaz. Dosya broker veya acente üzerinden açıldıysa **Broker** / **Acente** satırı Sigorta Şirketi’nin üstünde durur; seçilmediyse satır çıkmaz. Ata ile değişen sorumluya giden mail de dolu gider. Alımda `scripts/repair-claim-notification-time.sql` eski 03:00 kayıtlarını açılış saatine çeker (2026 YE 1845/1 dahil).
-4. **Giriş Onayı maili:** Çalışmayan kopyala ikonu kalkar (mail programları tıklama komutu çalıştırmaz). Koda bir dokunuşta 6 rakam seçilir. Altında «Kodun üzerine dokunup kopyalayın; giriş ekranında Yapıştır’a basın.» yazar. Giriş ekranındaki Yapıştır durur.
-5. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur. Bitmiş işi yok; bu alıma girmedi.
+1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur. Bitmiş işi yok.
 
-Canlı web **v687** · backend **v687**.
+Canlı web **v688** · backend **v688**.

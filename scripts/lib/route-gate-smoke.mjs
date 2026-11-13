@@ -88,7 +88,9 @@ const CASES = [
   ['RG-04', 'Yetkili → yetkili', 'MANAGER', '/panel/pazartesi-toplantisi', true],
   ['RG-05', 'Yetkisiz → korunan', 'field_staff', '/panel/finans', false],
   ['RG-05b', 'Yetkisiz → korunan', 'field_staff', '/panel/carilerim', false],
-  ['RG-05c', 'Yetkisiz → korunan', 'field_staff', '/panel/personel-ozluk', false],
+  ['RG-05c', 'Yetkisiz → korunan', 'field_staff', '/panel/personel-yonetimi', false],
+  // v616: saha personeli kendi puantajını Personel Özlük’ten onaylar (bitmiş iş 9).
+  ['RG-05d', 'Yetkili → yetkili', 'field_staff', '/panel/personel-ozluk', true],
   ['RG-06', 'Yetkisiz → korunan', 'office_staff', '/panel/kullanicilar', false],
   ['RG-07', 'Yetkisiz → korunan', 'office_staff', '/panel/pazartesi-toplantisi', false],
   ['RG-08', 'Yetkisiz → korunan', 'admin', '/panel/bildirimler', false],

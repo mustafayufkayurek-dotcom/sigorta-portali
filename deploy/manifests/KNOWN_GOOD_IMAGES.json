@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-11-12",
-  "label": "v687-rapor-onay-musteri",
-  "description": "v687 full: Rapor maili onaylanan kart. Dış onay ekranı. Manuel karar mailinde müşteri adı. Geri alma web v686 / backend v686.",
+  "updatedAt": "2026-11-13",
+  "label": "v688-ihbar-duzenle-oncelik-konum",
+  "description": "v688 full: Yeni İhbar konu ve ihbar saati, Broker/Acente satırı, Dosya Bilgilerini Düzenle (Sigorta/Broker/Acente, sorumluya mail), zorunlu öncelik, yeni dosya konum kapısı, sahiplenilmemiş ihbar maili, giriş kodu maili. Geri alma web v687 / backend v687.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v687-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v687-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v688-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v688-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v686-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v686-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v687-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v687-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
