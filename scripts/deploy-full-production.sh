@@ -45,9 +45,20 @@ echo "=== Alım sırasında disk temizliği bekler ==="
 run_remote "mkdir -p $REMOTE_APP/logs && touch $REMOTE_APP/logs/disk-watchdog.hold"
 trap 'run_remote "rm -f $REMOTE_APP/logs/disk-watchdog.hold" || true' EXIT
 
+# Tam alım iki image derler (~10 GB geçici yer). 13.11.2026: 9 GB ile başlayan v691 diski doldurdu, veritabanı durdu.
+FULL_DEPLOY_MIN_FREE_GB="${FULL_DEPLOY_MIN_FREE_GB:-12}"
+BUILD_STEP_MIN_FREE_GB="${BUILD_STEP_MIN_FREE_GB:-4}"
+
 if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   echo "=== Sunucu disk (kod kopyalamadan önce) ==="
-  run_remote "FREE=\$(df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'); echo \"Disk boş: \${FREE} GB (minimum 5 GB)\"; [ \"\${FREE}\" -ge 5 ] || { echo 'HATA: Sunucuda yeterli disk yok — kod kopyalanmaz. scripts/server-disk-maintenance.sh'; exit 1; }"
+  run_remote "free_gb() { df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'; }
+FREE=\$(free_gb); echo \"Disk boş: \${FREE} GB (minimum ${FULL_DEPLOY_MIN_FREE_GB} GB)\"
+if [ \"\${FREE}\" -lt ${FULL_DEPLOY_MIN_FREE_GB} ]; then
+  echo 'Disk az — güvenli temizlik (uploads ve yedek durur)'
+  bash $REMOTE_APP/scripts/server-disk-maintenance.sh >/dev/null 2>&1 || true
+  FREE=\$(free_gb); echo \"Temizlik sonrası boş: \${FREE} GB\"
+fi
+[ \"\${FREE}\" -ge ${FULL_DEPLOY_MIN_FREE_GB} ] || { echo 'HATA: Sunucuda yeterli disk yok — alım başlamadı, canlı aynı kaldı.'; exit 1; }"
   rsync -avz --delete \
     --exclude node_modules --exclude .next --exclude dist --exclude .DS_Store --exclude '._*' \
     --exclude '.env' --exclude '.env.local' --exclude '.env.*.local' \
@@ -90,15 +101,45 @@ fi
 
 run_remote "set -e
 cd $REMOTE_APP
+free_gb() { df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'; }
+disk_gate() {
+  FREE=\$(free_gb)
+  echo \"Disk boş (\$1): \${FREE} GB (minimum ${BUILD_STEP_MIN_FREE_GB} GB)\"
+  [ \"\${FREE}\" -ge ${BUILD_STEP_MIN_FREE_GB} ] || { echo \"HATA: \$1 için disk yetmez — canlı servislere dokunulmadı.\"; exit 1; }
+}
+db_gate() {
+  docker exec sigorta-postgres pg_isready -q || { echo 'HATA: veritabanı hazır değil — canlı servislere dokunulmadı.'; exit 1; }
+}
 bash scripts/pre-deploy-safety.sh $DEPLOY_TAG
+disk_gate 'backend derleme'
 echo '=== docker build backend ==='
 docker build -f Dockerfile.backend -t $BACKEND_IMAGE .
+docker builder prune -af >/dev/null 2>&1 || true
+disk_gate 'web derleme'
 echo '=== docker build web ==='
 WEB_BUILD_FLAGS=''
 if [ \"\${NO_CACHE:-}\" = '1' ]; then WEB_BUILD_FLAGS='--no-cache'; fi
 docker build -f Dockerfile.web -t $WEB_IMAGE \$WEB_BUILD_FLAGS --build-arg NEXT_PUBLIC_API_URL=$API_URL .
+docker builder prune -af >/dev/null 2>&1 || true
+disk_gate 'servis değişimi'
+db_gate
 TS=\$(date +%Y%m%d_%H%M%S)
 cp -f docker-compose.override.yml backups/override_pre_\${TS}.yml
+PREV_OVERRIDE=backups/override_pre_\${TS}.yml
+backend_rollback() {
+  echo \"HATA: \$1 — önceki backend’e dönülüyor\"
+  cp -f \"\$PREV_OVERRIDE\" docker-compose.override.yml
+  docker compose -p $COMPOSE_PROJECT_NAME --env-file .env.production -f docker-compose.prod.yml -f docker-compose.override.yml up -d --no-deps backend
+  for i in \$(seq 1 30); do
+    if docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health >/dev/null 2>&1; then
+      echo 'Önceki backend ayakta; canlı eski sürümde kaldı.'
+      exit 1
+    fi
+    sleep 6
+  done
+  echo 'HATA: önceki backend de sağlık vermedi — veritabanı ve disk kontrol edilmeli.'
+  exit 1
+}
 cat > docker-compose.override.yml <<EOF
 services:
   backend:
@@ -118,7 +159,7 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27
   fi
   sleep 6
 done
-[ \"\$ok\" = 1 ] || { echo 'HATA: yeni backend sağlık vermedi'; exit 1; }
+[ \"\$ok\" = 1 ] || backend_rollback 'yeni backend sağlık vermedi'
 docker exec sigorta-backend wget -qO- http://localhost:3000/api/v1/health
 echo '=== prisma migrate deploy ==='
 docker exec sigorta-backend sh -c 'cd /app/apps/backend && npx prisma migrate deploy' || {

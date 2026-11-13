@@ -46,10 +46,11 @@ describe('disk bekçisi LOCK', () => {
     assert.match(maint, /uploads arşivlerine ve canlı uploads/);
   });
 
-  it('alım kapısı 5 GB ile aynı eşiği kullanır', () => {
+  it('alım kapısı bekçinin 5 GB eşiğinden düşük değildir', () => {
     const script = readFileSync(join(here, 'disk-watchdog.sh'), 'utf8');
     const deploy = readFileSync(join(here, 'deploy-full-production.sh'), 'utf8');
-    assert.match(deploy, /minimum 5 GB/);
+    const gate = Number(deploy.match(/FULL_DEPLOY_MIN_FREE_GB:-(\d+)/)?.[1] ?? 0);
+    assert.ok(gate >= 5, `alım kapısı ${gate} GB`);
     assert.match(script, /df -k \//);
     assert.match(deploy, /server-disk-maintenance\.sh/);
   });

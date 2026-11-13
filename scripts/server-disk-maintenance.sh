@@ -61,6 +61,30 @@ fi
 log "Dangling image temizliği (tam prune -af YAPILMAZ)"
 docker image prune -f 2>/dev/null || true
 
+# Eski uygulama sürümleri: korunanlar (canlı + geri alma + çalışan) ve her depoda en yeni KEEP_RELEASES sürüm durur.
+# Her backend image ~2,4 GB; 13.11.2026’da dokuz eski sürüm diski doldurdu.
+KEEP_RELEASES="${KEEP_RELEASES:-4}"
+RUNNING_IMAGES="$(docker ps --format '{{.Image}}' 2>/dev/null || true)"
+for repo in app-backend sigorta-web; do
+  mapfile -t _tags < <(docker images "$repo" --format '{{.Repository}}:{{.Tag}}' 2>/dev/null \
+    | grep -E -- '-v[0-9]+-amd64$' \
+    | awk -F'-v' '{ v=$NF; sub(/-amd64$/,"",v); print v" "$0 }' | sort -rn | awk '{ print $2 }' || true)
+  idx=0
+  for img in "${_tags[@]}"; do
+    idx=$((idx + 1))
+    [ "$idx" -le "$KEEP_RELEASES" ] && continue
+    keep=0
+    for p in "${PROTECTED_IMAGES[@]}"; do [ "$p" = "$img" ] && keep=1; done
+    printf '%s\n' "$RUNNING_IMAGES" | grep -qx "$img" && keep=1
+    if [ "$keep" = 1 ]; then
+      log "  eski ama korunuyor: $img"
+      continue
+    fi
+    log "  eski sürüm kaldırılıyor: $img"
+    docker rmi "$img" >/dev/null 2>&1 || log "  kaldırılamadı (kullanımda): $img"
+  done
+done
+
 # Dangling volume
 docker volume prune -f 2>/dev/null || true
 

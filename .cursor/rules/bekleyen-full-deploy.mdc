@@ -1,11 +1,11 @@
 ---
-description: Canlı web v690 / backend v690
+description: Canlı web v690 / backend v691
 alwaysApply: true
 ---
 
 # Canlı (13.11.2026)
 
-Canlı: web **v690** · backend **v690**. Geri alma: web **v689** / backend **v689**.
+Canlı: web **v690** · backend **v691**. Geri alma: web **v689** / backend **v690**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v691 (yalnız backend):** Revizyon eski raporun fotoğrafını aynı dosyayla taşır; revizyondan fotoğraf çıkarılınca eski raporun resmi artık diskten silinmez (2026 YB 25469’un 4 fotoğrafı yedekten geri kondu). Web **v690**. İlk deneme 13.11.2026 22:29’da disk dolunca durdu: tam alım 9 GB ile başlamış, iki derleme ve aynı sunucudaki başka projenin derlemesi diski sıfırladı, veritabanı kendini korumaya aldı, canlı yaklaşık 10 dakika 502 verdi; veri kaybı yok. Kalıcı önlem: tam alım 12 GB, yalnız web 8 GB boş ister, yetmezse güvenli temizlik, yine yetmezse başlamaz; derlemeler arası kalıntı silinir, servis değişmeden disk ve veritabanı bakılır; yeni backend açılmazsa önceki backend’e kendiliğinden dönülür; bakım canlı, geri alma ve en yeni dört sürüm dışındaki eski görüntüyü kaldırır (kilit `deploy-disk-gate.lock.spec.ts`). Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v689 / backend v690.
 
 **v690 (full):** Hasar listesinde Dosya Konusu ve Dosya No kesilmez; ortalanmış hücre sığmazsa «…» ile kısalır. Kartlar listenin hizmet süzgeciyle sayar. Açık adreste yol / cadde / sokak adındaki il veya ilçe çelişki sayılmaz; adreste il yoksa seçilen il esastır. Hasar Tespit açılışında «Açılış Bildirimi Gönder» seçime bağlıdır; **Hasar Tespit Süreci Başlatıldı** maili ilk muhataba gider (Sigorta → Broker → Eksper); İş Birliği alanı yalnız broker / acente alıcısında. Yazışmada Kime aynı sırayla dolar. Microsoft geçici hatasında mail 3 kez denenir (35 sn); «Mail gitmedi, adres sorunu değil» yazar; yanıt kutusu kilitlenmez. Hasar Tespit raporu fiyatlı basılır; onay Sigorta, Broker, Eksper. Tespitte rapor toplamı gelir / bütçe değildir; 6 eski dosyanın şişen bütçesi sıfırlandı (gelir ve fatura dokunulmadı). Hizmet bedeli Finans → Gelir’den Dosya Müşterisi adına girilir; rapor müşteriye gidince satış fatura talebi açılır. Kapanış onarım beklemez; durum **Tespit Raporu Onaylandı**; mailler tespit dilinde; tespit masrafı dosyaya yazılır. Alımda 2026 YB 25469 reddedilen raporun 4 fotoğrafı diskte yoktu; sabah yedeğinden geri kondu. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v689 / backend v689.
 
@@ -255,8 +257,7 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-1. **Revizyonda resim silmek eski raporun resmini silmez:** Revizyon eski raporun fotoğrafını aynı dosyayla taşır. Revizyondan fotoğraf çıkarılınca dosya diskten de siliniyordu; eski rapor resmi kayboluyordu (2026 YB 25469, 4 fotoğraf; yedekten geri kondu). Artık başka rapor aynı dosyayı kullanıyorsa yalnız kayıt silinir, dosya diskte kalır. Kilit `report-image-shared-key.lock.spec.ts`. Yalnız backend.
-2. **Hasar Tespit Hizmet Bedeli Hesapla:** Ayarlar’da araç giderleri (aylık kira, Pazar hariç gün, km aşım ücreti, yakıt türü ve tüketimi, köprü / otoyol tablosu). Müşteri kartında tarife (sabit bedel, ek kalemler, hizmet payı). Dosyada çıkış adresi → tespit adresi rota km, köprü / otoyol satırları, günlük akaryakıt fiyatı, km aşım, araç kira payı; satır satır tablo. «Gelire Düşür» hizmet bedelini gelire, yakıt / köprü / km aşım / kira payını dosya giderine yazar. Önce lokalde gösterilir.
-3. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur. Bitmiş işi yok.
+1. **Hasar Tespit Hizmet Bedeli Hesapla (lokalde hazır):** Ayarlar → Tanımlar Merkezi → **Hasar Tespit Araç Giderleri** (aylık kira, Pazar hariç gün, km aşım ücreti, yakıt türü ve tüketimi, köprü / tünel ve ücretli otoyol tablosu; ücretler boş gelir, uydurma rakam yok). Müşteri kartında **Hasar Tespit Tarifesi** sekmesi (Sabit Bedel veya Maliyetler + Hizmet Payı, ek kalemler, asgari / azami). Tespit dosyasında Finans → **Hizmet Bedeli Hesapla**: çıkış adresinden tespit adresine rota km, rota üstündeki köprü / tünel kendiliğinden, otoyol km’si, günlük akaryakıt fiyatı (il / ilçe, KDV dahil; düzeltilebilir), km aşımı her km, araç kira payı; satır satır tablo ve eksik fiyat uyarısı. **Gelire Düşür** hizmet bedelini dosya müşterisi adına gelire, yakıt / köprü / km aşımı / kira payını dosya giderine yazar; hesap dosya geçmişinde durur; ikinci kez gelire düşmez. Kayıt yapısı değişmez (Ayarlar kaydı). Kilitler `hasar-tespit-bedel.lock.spec.ts` (ortak + arka taraf) ve `hasar-tespit-bedel-ui.lock.spec.ts`. Web + backend.
+2. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur. Bitmiş işi yok.
 
-Canlı web **v690** · backend **v690**.
+Canlı web **v690** · backend **v691**.

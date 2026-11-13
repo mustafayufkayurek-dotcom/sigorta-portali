@@ -220,6 +220,10 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/operation-inbox/inbox-sync-single-run.lock.spec.ts \
   apps/backend/src/modules/notifications/email/hasar-tespit-acilis-email.lock.spec.ts \
   apps/backend/src/modules/finance/hasar-tespit-hizmet-bedeli.lock.spec.ts \
-  apps/backend/src/modules/repair-reports/report-image-shared-key.lock.spec.ts
+  apps/backend/src/modules/repair-reports/report-image-shared-key.lock.spec.ts \
+  packages/shared/src/hasar-tespit-bedel.lock.spec.ts \
+  apps/backend/src/modules/hasar-tespit-bedel/hasar-tespit-bedel.lock.spec.ts \
+  apps/web/src/components/finance/hasar-tespit-bedel-ui.lock.spec.ts \
+  scripts/deploy-disk-gate.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

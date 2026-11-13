@@ -50,7 +50,13 @@ trap 'run_remote "rm -f $REMOTE_APP/logs/disk-watchdog.hold" || true' EXIT
 
 if [ "$SKIP_RSYNC" != "--skip-rsync" ]; then
   echo "=== Sunucu disk (kod kopyalamadan önce) ==="
-  run_remote "FREE=\$(df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'); echo \"Disk boş: \${FREE} GB (minimum 5 GB)\"; [ \"\${FREE}\" -ge 5 ] || { echo 'HATA: Sunucuda yeterli disk yok — kod kopyalanmaz. scripts/server-disk-maintenance.sh'; exit 1; }"
+  run_remote "free_gb() { df -BG / | awk 'NR==2 { gsub(/G/,\"\",\$4); print \$4 }'; }
+FREE=\$(free_gb); echo \"Disk boş: \${FREE} GB (minimum 8 GB)\"
+if [ \"\${FREE}\" -lt 8 ]; then
+  bash $REMOTE_APP/scripts/server-disk-maintenance.sh >/dev/null 2>&1 || true
+  FREE=\$(free_gb); echo \"Temizlik sonrası boş: \${FREE} GB\"
+fi
+[ \"\${FREE}\" -ge 8 ] || { echo 'HATA: Sunucuda yeterli disk yok — alım başlamadı, canlı aynı kaldı.'; exit 1; }"
   echo "=== rsync apps/web ==="
   rsync -avz --delete \
     --exclude node_modules --exclude .next --exclude dist --exclude .DS_Store --exclude '._*' \
@@ -92,6 +98,9 @@ cd $REMOTE_APP
 bash scripts/pre-deploy-safety.sh $DEPLOY_TAG
 echo '=== docker build web ==='
 docker build -f Dockerfile.web -t $WEB_IMAGE $WEB_NO_CACHE --build-arg NEXT_PUBLIC_API_URL=$API_URL .
+docker builder prune -af >/dev/null 2>&1 || true
+[ "\$(df -BG / | awk 'NR==2 { gsub(/G/,"",\$4); print \$4 }')" -ge 3 ] || { echo 'HATA: web derleme sonrası disk yetmez — canlı web değişmedi.'; exit 1; }
+docker exec sigorta-postgres pg_isready -q || { echo 'HATA: veritabanı hazır değil — canlı web değişmedi.'; exit 1; }
 MERIDYEN_HITS=\$(docker run --rm --entrypoint sh $WEB_IMAGE -c 'grep -RhoaF https://app.meridyen-tr.com/api/v1 apps/web/.next/static 2>/dev/null | wc -l' | tr -d ' ')
 if [ "\${MERIDYEN_HITS:-0}" -lt 20 ]; then
   echo "HATA: production API adresi derlemeye gomulmemis (hits=\$MERIDYEN_HITS) — canliya alma."
