@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { FileSpreadsheet, Trash2 } from 'lucide-react';
+import { Calculator, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { HasarTespitBedelHesapPanel } from '@/components/finance/HasarTespitBedelHesapPanel';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
@@ -35,7 +36,7 @@ import {
   resolveFileFeeCollectionSource,
 } from '@sigorta/shared';
 
-type Drawer = 'gelir' | 'tahsilat' | null;
+type Drawer = 'gelir' | 'tahsilat' | 'bedel' | null;
 
 function claimCollectionSource(claim?: {
   collectionParty?: string | null;
@@ -339,6 +340,17 @@ export function ClaimFileGelirTahsilatPanel({
           >
             Yeni Tahsilat
           </button>
+          {isInspectionServiceKind(claim?.serviceKind) ? (
+            <button
+              type="button"
+              data-testid="hasar-tespit-bedel-hesapla"
+              onClick={() => setDrawer('bedel')}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-600 bg-white px-3.5 py-2 text-xs font-medium text-brand-700 hover:bg-brand-50"
+            >
+              <Calculator className="h-3.5 w-3.5" strokeWidth={1.75} />
+              Hizmet Bedeli Hesapla
+            </button>
+          ) : null}
           <button
             type="button"
             disabled={rows.length === 0}
@@ -427,6 +439,20 @@ export function ClaimFileGelirTahsilatPanel({
           </div>
         )}
       </FinansPanelCard>
+
+      {isInspectionServiceKind(claim?.serviceKind) ? (
+        <SlidePanel
+          open={drawer === 'bedel'}
+          onClose={() => setDrawer(null)}
+          title="Hizmet Bedeli Hesapla"
+          width={560}
+          scrollContent={false}
+        >
+          {drawer === 'bedel' ? (
+            <HasarTespitBedelHesapPanel claimId={claimId} onDone={() => { void load(); }} />
+          ) : null}
+        </SlidePanel>
+      ) : null}
 
       <SlidePanel
         open={drawer === 'gelir'}

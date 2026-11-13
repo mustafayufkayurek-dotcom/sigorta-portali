@@ -99,6 +99,12 @@ export const OPS_NOTICE = {
     body:
       'Rapor onaylanınca burada fatura kime kesilsin sorulur. Finansa talep et deyince finans kuyruğuna düşer. Bu seçim Finans’te tekrar sorulmaz. Sigortalı ödemeli dosyada tahsilat sigortalıdan, fatura sigortalıya kesilir; sigorta şirketi carisine yazılmaz.',
   },
+  hasarTespitBedelHesapla: {
+    id: 'hasar-tespit-bedel-hesapla-v692',
+    title: 'Hizmet bedeli hesabı',
+    body:
+      'Çıkış adresini yazıp Rotayı Hesapla deyin; km, köprü ve otoyol satırları gelir. Akaryakıt fiyatı günlük okunur, kutudan düzeltilebilir. Tarife müşteri kartından, araç giderleri Ayarlar’dan gelir. Gelire Düşür hizmet bedelini gelire, yakıt, köprü, km aşımı ve kira payını dosya giderine yazar.',
+  },
   hasarGelirFaturali: {
     id: 'hasar-gelir-faturali-v549',
     title: 'Gelir kaydı',

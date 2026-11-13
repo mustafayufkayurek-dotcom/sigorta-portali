@@ -44,6 +44,7 @@ export * from './hasar-randevu-alici';
 export * from './claim-file-channels';
 export * from './claim-notification-at';
 export * from './hasar-tespit-muhatap';
+export * from './hasar-tespit-bedel';
 export * from './claim-mail-route';
 export * from './hizmet-karti';
 export * from './claim-pre-approval';

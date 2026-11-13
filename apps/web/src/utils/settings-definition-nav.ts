@@ -11,6 +11,7 @@ export const DEFINITION_SETTINGS_PAGES = [
   '/panel/ayarlar/dosya-konulari',
   '/panel/ayarlar/hizmet-turleri',
   '/panel/ayarlar/hizmet-kartlari',
+  '/panel/ayarlar/hasar-tespit-arac',
   '/panel/ayarlar/durumlar',
   '/panel/ayarlar/evrak-turleri',
   '/panel/ayarlar/tedarikci-hizmet-kollari',

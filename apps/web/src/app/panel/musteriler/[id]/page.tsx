@@ -16,6 +16,7 @@ import { customerSubTypeLabel, customerDisplayName, CUSTOMER_RELATION_SECTION_TI
 import { mergePrimaryIntoCustomerContacts, generalMailboxFromContactInfos } from '@sigorta/shared';
 import { isPortalCustomerSubType } from '@/app/panel/kullanicilar/_lib/user-invite-config';
 import { CustomerPortalUsersPanel } from '@/components/customers/CustomerPortalUsersPanel';
+import { CustomerHasarTespitTarifeTab } from '@/components/customers/CustomerHasarTespitTarifeTab';
 import { customerFileCounts } from '@/utils/customer-file-counts';
 import { FileRecognizedPartners } from '@/components/customers/FileRecognizedPartners';
 import { FieldOperationsMap } from '@/components/operasyon/FieldOperationsMap';
@@ -71,12 +72,13 @@ const BRANCH_COLORS = [
   '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
 ];
 
-type CustomerTab = 'profil' | 'yetkili' | 'iletisim' | 'dosyalar' | 'harita' | 'evraklar' | 'analiz';
+type CustomerTab = 'profil' | 'yetkili' | 'iletisim' | 'dosyalar' | 'tarife' | 'harita' | 'evraklar' | 'analiz';
 
 const TABS: { id: CustomerTab; label: string; icon: string }[] = [
   { id: 'profil', label: 'Profil', icon: '👤' },
   { id: 'yetkili', label: 'Yetkili & İletişim', icon: '📡' },
   { id: 'dosyalar', label: 'Hasar Dosyaları', icon: '📂' },
+  { id: 'tarife', label: 'Hasar Tespit Tarifesi', icon: '🧾' },
   { id: 'harita', label: 'Harita', icon: '🗺️' },
   { id: 'evraklar', label: 'Evraklar', icon: '📄' },
   { id: 'analiz', label: 'Branş Analizi', icon: '📊' },
@@ -948,7 +950,7 @@ export default function CustomerDetailPage() {
       {/* ── Tabs ── */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm mb-5 overflow-x-auto">
         <div className="flex min-w-max">
-          {TABS.map((tab) => (
+          {TABS.filter((tab) => tab.id !== 'tarife' || (!isFieldStaff && customer.subType !== 'insured')).map((tab) => (
             <button type="button" key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 activeTab === tab.id
@@ -971,6 +973,7 @@ export default function CustomerDetailPage() {
       {activeTab === 'profil' && <CustomerProfilTab customer={customer} isFieldStaff={isFieldStaff} onReload={load} onEdit={() => router.push(`/panel/musteriler?edit=${id}`)} />}
       {activeTab === 'yetkili' && <YetkiliIletisimTab customer={customer} canInvite={!isFieldStaff} />}
       {activeTab === 'dosyalar' && <CustomerDosyalarTab customerId={id!} />}
+      {activeTab === 'tarife' && !isFieldStaff && <CustomerHasarTespitTarifeTab customerId={id!} canEdit={!isFieldStaff} />}
       {activeTab === 'harita' && (
         <FieldOperationsMap customerId={id!} compact showNotice />
       )}

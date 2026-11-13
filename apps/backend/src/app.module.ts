@@ -79,6 +79,7 @@ import { FileDocumentsModule } from './modules/file-documents/file-documents.mod
 import { InvoiceRequestsModule } from './modules/invoice-requests/invoice-requests.module';
 import { SurveysModule } from './modules/surveys/surveys.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
+import { HasarTespitBedelModule } from './modules/hasar-tespit-bedel/hasar-tespit-bedel.module';
 import { RegionsModule } from './modules/regions/regions.module';
 import { SearchModule } from './modules/search/search.module';
 import { ServiceTypesModule } from './modules/service-types/service-types.module';
@@ -216,6 +217,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     InvoiceRequestsModule,
     SurveysModule,
     ExpensesModule,
+    HasarTespitBedelModule,
     RegionsModule,
     SearchModule,
     ServiceTypesModule,

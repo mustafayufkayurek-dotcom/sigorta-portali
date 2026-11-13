@@ -16,6 +16,7 @@ type MetricKey =
   | 'claimSubjects'
   | 'consultancyServiceTypes'
   | 'serviceCards'
+  | 'hasarTespitArac'
   | 'documentTypes'
   | 'hrLeaveTypes';
 
@@ -130,6 +131,13 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
         tone: 'violet',
       },
       {
+        key: 'hasarTespitArac',
+        title: 'Hasar Tespit Araç Giderleri',
+        purpose: 'Araç kirası, km aşımı, yakıt ve köprü / otoyol ücretleri; hizmet bedeli hesabı bunlarla yapılır.',
+        href: '/panel/ayarlar/hasar-tespit-arac',
+        tone: 'violet',
+      },
+      {
         key: 'documentTypes',
         title: 'Evrak Türleri',
         purpose: 'Hizmet türüne bağlı evrak katalogları.',
@@ -216,6 +224,7 @@ export default function TanimlarPage() {
     claimSubjects: emptyMetric(),
     consultancyServiceTypes: emptyMetric(),
     serviceCards: emptyMetric(),
+    hasarTespitArac: emptyMetric(),
     documentTypes: emptyMetric(),
     hrLeaveTypes: emptyMetric(),
   });
@@ -235,6 +244,7 @@ export default function TanimlarPage() {
         claimSubjects,
         consultancyServiceTypes,
         serviceCards,
+        hasarTespitArac,
         documentTypes,
         hrLeaveTypes,
       ] = await Promise.all([
@@ -292,6 +302,25 @@ export default function TanimlarPage() {
           const items = extractArray(raw);
           return { total: items.length || 5, active: items.filter((row) => (row as { menuVisible?: boolean }).menuVisible !== false).length || 5 };
         }),
+        safeMetric(axios.get(`${API}/hasar-tespit-bedel/arac`, { headers }), (raw) => {
+          const a = ((raw as { data?: unknown })?.data ?? {}) as {
+            aylikKira?: number | null;
+            kmAsimUcreti?: number | null;
+            tuketimL100?: number | null;
+            gecisler?: Array<{ ucret?: number | null }>;
+          };
+          const eksik = [
+            a.aylikKira == null ? 'araç kirası' : null,
+            a.kmAsimUcreti == null ? 'km aşım' : null,
+            a.tuketimL100 == null ? 'yakıt tüketimi' : null,
+          ].filter(Boolean);
+          const gecis = a.gecisler ?? [];
+          return {
+            total: gecis.length,
+            active: null,
+            note: eksik.length ? `Girilmemiş: ${eksik.join(', ')}` : `${gecis.filter((g) => g.ucret != null).length} geçiş ücretli`,
+          };
+        }),
         safeMetric(axios.get(`${API}/document-types`, { headers }), (raw) => {
           const items = extractArray(raw);
           return { total: items.length, active: countActive(items) };
@@ -313,6 +342,7 @@ export default function TanimlarPage() {
         claimSubjects,
         consultancyServiceTypes,
         serviceCards,
+        hasarTespitArac,
         documentTypes,
         hrLeaveTypes,
       });
