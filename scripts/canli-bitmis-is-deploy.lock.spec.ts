@@ -168,6 +168,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'inbox-sync-single-run.lock.spec',
       'hasar-tespit-acilis-email.lock.spec',
       'hasar-tespit-hizmet-bedeli.lock.spec',
+      'report-image-shared-key.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

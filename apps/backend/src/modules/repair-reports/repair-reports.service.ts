@@ -1079,17 +1079,21 @@ export class RepairReportsService {
   async deleteImage(imageId: string) {
     const img = await this.prisma.reportImage.findUnique({ where: { id: imageId } });
     if (!img) throw new NotFoundException('Fotoğraf bulunamadı');
-    try {
-      const filePath = resolveReportImageFilePath(img.storageKey);
-      if (filePath) fs.unlinkSync(filePath);
-      if (img.annotatedKey) {
-        const annotated = resolveReportImageFilePath(img.annotatedKey);
-        if (annotated) fs.unlinkSync(annotated);
-      }
-    } catch {
-      /* dosya yoksa DB kaydı yine silinir */
-    }
     await this.prisma.reportImage.delete({ where: { id: imageId } });
+    // Revizyon eski raporun resmini aynı anahtarla taşır; başka kayıt kullanıyorsa dosya diskte kalır.
+    for (const key of [img.storageKey, img.annotatedKey]) {
+      if (!key) continue;
+      const stillUsed = await this.prisma.reportImage.count({
+        where: { OR: [{ storageKey: key }, { annotatedKey: key }] },
+      });
+      if (stillUsed > 0) continue;
+      try {
+        const filePath = resolveReportImageFilePath(key);
+        if (filePath) fs.unlinkSync(filePath);
+      } catch {
+        /* dosya yoksa DB kaydı yine silinir */
+      }
+    }
     return { message: 'Fotoğraf silindi' };
   }
 
