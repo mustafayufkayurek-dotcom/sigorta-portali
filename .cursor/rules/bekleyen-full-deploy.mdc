@@ -1,11 +1,11 @@
 ---
-description: Canlı web v688 / backend v688
+description: Canlı web v689 / backend v689
 alwaysApply: true
 ---
 
 # Canlı (13.11.2026)
 
-Canlı: web **v688** · backend **v688**. Geri alma: web **v687** / backend **v687**.
+Canlı: web **v689** · backend **v689**. Geri alma: web **v688** / backend **v688**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v689 (full):** Gelen kutusu eşitlemesinde iki kopya aynı posta kutusunu aynı anda çekmez; ikinci gelen bekler veya atlar. Planlı tur tek iş koyar. Microsoft hatası kod ile yazılır (502/503/504 geçici; yeniden deneme tamamlar); boş «senkron başarısız —» kalmaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v688 / backend v688.
 
 **v688 (full):** Sahiplenilmemiş Yeni İhbar maili dosya numarası, müşteri, sigortalı, dosya konusu, il ve ilçe yazar; il yoksa zincirdeki ilk ihbarın ili okunur. Yeni dosyada açık adres ile seçilen il çelişirse kayıt durur; tespitçi ekranında Dosya İl İlçe durur, çelişkide yol tarifi açılmaz. Backend il listesi kendi kaynağında; derleme `dist/main`. Dosya Bilgilerini Düzenle: etiket Dosya Konusu, seçilen konu korunur; kayıt dosya sorumlusuna **Dosya Bilgileri Güncellendi** maili atar; sorumlu değişince yeni sorumluya atama, eskisine güncelleme maili gider; Tahmini Onarım Bitiş yok; Sigorta Şirketi (zorunlu), Broker, Acente durur. Öncelik her açılışta zorunludur (Yeni Dosya, sigorta ve eksper ihbarı, Acil, düzenleme); gelen kutusu kendisi yazar. Hasar Yeni İhbar konusu **Yeni İhbar-İhbarı Yapan Müşteri-Dosya Konusu**; İhbar Tarihi 03:00 yazmaz; Broker / Acente Sigorta Şirketi’nin üstünde; Belirtilmemiş basılmaz; Ata ile giden mail dolu. Eski 26 dosyanın ihbar saati açılış anına çekildi (2026 YE 1845/1 dahil). Giriş Onayı mailinde çalışmayan kopyala ikonu kalktı; kod bir dokunuşta seçilir, Yapıştır doldurur. Route Gate smoke saha Personel Özlük puantaj iznine uyduruldu. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v687 / backend v687.
 
@@ -253,4 +255,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur. Bitmiş işi yok.
 
-Canlı web **v688** · backend **v688**.
+Canlı web **v689** · backend **v689**.

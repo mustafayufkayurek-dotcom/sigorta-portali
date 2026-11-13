@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-13",
-  "label": "v688-ihbar-duzenle-oncelik-konum",
-  "description": "v688 full: Yeni İhbar konu ve ihbar saati, Broker/Acente satırı, Dosya Bilgilerini Düzenle (Sigorta/Broker/Acente, sorumluya mail), zorunlu öncelik, yeni dosya konum kapısı, sahiplenilmemiş ihbar maili, giriş kodu maili. Geri alma web v687 / backend v687.",
+  "label": "v689-gelen-kutusu-tek-esitleme",
+  "description": "v689 full: Gelen kutusu eşitlemesi tek işlem (kilit, planlı tur tek iş, Graph hata kodu). v688 işleri durur. Geri alma web v688 / backend v688.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v688-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v688-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v689-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v689-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v687-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v687-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v688-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v688-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
