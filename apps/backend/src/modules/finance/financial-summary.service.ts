@@ -48,7 +48,12 @@ export class FinancialSummaryService {
         .filter((r) => r.collectionSource === 'insured')
         .reduce((s, r) => s + r.collectedAmount, 0);
 
-      const totalCollected = collectedFromInsurer + collectedFromInsured;
+      // Hasar Tespit hizmet bedeli dosya müşterisinden tahsil edilir.
+      const collectedFromCustomer = revenues
+        .filter((r) => r.collectionSource === 'customer')
+        .reduce((s, r) => s + r.collectedAmount, 0);
+
+      const totalCollected = collectedFromInsurer + collectedFromInsured + collectedFromCustomer;
       const outstandingBalance = totalRevenue - totalCollected;
 
       // ── Gider kırılımı ─────────────────────────────────────────────────────

@@ -20,7 +20,7 @@ export class CreateClaimFileRevenueDto {
 
   @IsString()
   @IsNotEmpty()
-  @IsIn(['insurance_company', 'insured'])
+  @IsIn(['insurance_company', 'insured', 'customer'])
   collectionSource!: string;
 
   @IsString()

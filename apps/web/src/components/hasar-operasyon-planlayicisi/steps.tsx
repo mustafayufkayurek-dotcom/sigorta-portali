@@ -41,6 +41,7 @@ import {
   hasarRandevuAlici,
   isHasarDigitalApprovalRelaxed,
   isInspectorAlreadyAssigned,
+  isInspectionServiceKind,
   isPreApprovalOtherJob,
   preApprovalJobsSelectionOk,
   preApprovalOtherTextOk,
@@ -1898,6 +1899,8 @@ function StepFileClose() {
   const [reason, setReason] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const dropped = claim.kapanisButce.remainingRepairDropped;
+  // Hasar Tespit onarım yapmaz: kapanış bütçesi yolu yok; hizmet bedeli Finans → Gelir’den.
+  const inspection = isInspectionServiceKind(claim.serviceKind);
   const billable = claim.kapanisButce.hasBillable;
   const financeGider = claim.claimId
     ? `/panel/hasar-dosyalari/${claim.claimId}?grup=finans&alt=gider-butce`
@@ -2002,7 +2005,12 @@ function StepFileClose() {
             Tüm işlemler bitti. Altta Dosyayı Kapat deyince kapanış maili gider.
           </p>
         )}
-        {!dropped && canEdit ? (
+        {inspection ? (
+          <p className="mt-2 text-xs leading-relaxed text-slate-600" data-testid="hasar-tespit-kapanis-bedel">
+            Hasar Tespit Hizmet Bedeli Finans → Gelir’den girilir. Rapor müşteriye gidince satış fatura talebi kendiliğinden açılır.
+          </p>
+        ) : null}
+        {!dropped && canEdit && !inspection ? (
           <button
             type="button"
             data-testid="hasar-kalan-onarim-yok"

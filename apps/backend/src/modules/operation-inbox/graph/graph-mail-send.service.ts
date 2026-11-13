@@ -122,17 +122,7 @@ export class GraphMailSendService {
       },
     };
 
-    const res = await firstValueFrom(
-      this.http.post(url, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-        validateStatus: () => true,
-      }),
-    );
+    const res = await this.postWithTransientRetry(url, payload, token, action, mailboxAddress);
 
     if (res.status >= 400) {
       const err = this.buildSendError(res.status, res.data);
@@ -235,20 +225,12 @@ export class GraphMailSendService {
 
     // Mail.Send yeter. Taslak yok. Kopya aynı sendMail gövdesinin ccRecipients alanıdır; ayrı gönderim yok.
     const sendMailUrl = `${this.graphBase}/users/${encodedUser}/sendMail`;
-    const sendMailRes = await firstValueFrom(
-      this.http.post(
-        sendMailUrl,
-        { message: messagePayload, saveToSentItems: true },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-          validateStatus: () => true,
-        },
-      ),
+    const sendMailRes = await this.postWithTransientRetry(
+      sendMailUrl,
+      { message: messagePayload, saveToSentItems: true },
+      token,
+      'sendMail',
+      mailboxAddress,
     );
     if (sendMailRes.status >= 400) {
       this.logGraphFailure('sendMail', mailboxAddress, sendMailRes.status, sendMailRes.data);
@@ -291,6 +273,40 @@ export class GraphMailSendService {
     }));
   }
 
+  /** Microsoft geçici hata (429/5xx) verirse kısa aralıkla yeniden dener; adres / izin hatası beklemez. */
+  private async postWithTransientRetry(
+    url: string,
+    payload: unknown,
+    token: string,
+    op: string,
+    mailboxAddress: string,
+  ): Promise<{ status: number; data: unknown }> {
+    let last: { status: number; data: unknown; headers?: Record<string, unknown> } = { status: 0, data: null };
+    const startedAt = Date.now();
+    for (let attempt = 1; attempt <= GRAPH_SEND_MAX_ATTEMPTS; attempt += 1) {
+      last = await firstValueFrom(
+        this.http.post(url, payload, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          validateStatus: () => true,
+        }),
+      );
+      if (!isTransientGraphStatus(last.status) || attempt === GRAPH_SEND_MAX_ATTEMPTS) break;
+      const waitMs = graphRetryDelayMs(attempt, last.headers?.['retry-after']);
+      // nginx 60 sn keser; ekran hata derken arkadan gönderip çift mail üretmesin.
+      if (Date.now() - startedAt + waitMs > GRAPH_SEND_RETRY_BUDGET_MS) break;
+      this.logger.warn(
+        `Graph ${op} geçici hata (${mailboxAddress}) HTTP ${last.status}; ${attempt + 1}. deneme ${waitMs} ms sonra`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+    return last;
+  }
+
   private logGraphFailure(op: string, mailboxAddress: string, status: number, data: unknown): void {
     const graphErr = (data as { error?: { message?: string; code?: string } })?.error;
     this.logger.warn(
@@ -331,6 +347,28 @@ export class GraphMailSendService {
       );
     }
 
+    if (isTransientGraphStatus(status)) {
+      return new BadRequestException(
+        `${GRAPH_TRANSIENT_SEND_MESSAGE} (HTTP ${status})`,
+      );
+    }
+
     return new BadRequestException(msg || `E-posta gönderilemedi (HTTP ${status})`);
   }
+}
+
+export const GRAPH_SEND_MAX_ATTEMPTS = 3;
+export const GRAPH_SEND_RETRY_BUDGET_MS = 35_000;
+export const GRAPH_TRANSIENT_SEND_MESSAGE =
+  'Microsoft geçici olarak yanıt vermedi; mail gitmedi. Adres sorunu değil. Birkaç dakika sonra Gönder ile yeniden deneyin';
+
+export function isTransientGraphStatus(status: number): boolean {
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+/** 1. tekrar 2 sn, 2. tekrar 5 sn; Microsoft Retry-After derse en çok 10 sn. */
+export function graphRetryDelayMs(attempt: number, retryAfter?: unknown): number {
+  const seconds = Number(Array.isArray(retryAfter) ? retryAfter[0] : retryAfter);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.min(seconds, 10) * 1000;
+  return attempt === 1 ? 2000 : 5000;
 }

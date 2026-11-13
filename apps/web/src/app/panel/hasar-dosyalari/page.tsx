@@ -160,11 +160,12 @@ const STATUS_CODE_BADGE: Record<string, string> = {
   COST_REPORT_SUBMITTED:   'bg-green-100 text-green-700',
 };
 
-function ClaimStatusBadge({ status, reportStatus, approval72hExceeded, operationStatusLabel }: {
+function ClaimStatusBadge({ status, reportStatus, approval72hExceeded, operationStatusLabel, serviceKind }: {
   status?: { code?: string; name?: string; color?: string } | null;
   reportStatus?: string | null;
   approval72hExceeded?: boolean;
   operationStatusLabel?: string | null;
+  serviceKind?: string | null;
 }) {
   if (!status) return <span className="badge badge-gray">N/A</span>;
   const code = status.code ?? '';
@@ -173,6 +174,7 @@ function ClaimStatusBadge({ status, reportStatus, approval72hExceeded, operation
       claimStatusCode: code,
       reportStatus,
       approval72hExceeded,
+      serviceKind,
     })
     || portalStatusLabel(code, status.name);
   const cls = STATUS_CODE_BADGE[code];
@@ -411,11 +413,15 @@ function ClaimFilesPageContent() {
     reportWriting?: number;
     reportApproval?: number;
   }>(
-    ['claim-files-operation-stats', officeStaffUserId],
+    ['claim-files-operation-stats', officeStaffUserId, urlHizmet, urlKaynak],
     '/claim-files/operation-stats',
     {
       enabled: !isFieldStaff,
-      params: officeStaffUserId ? { assignedOfficeUserId: officeStaffUserId } : undefined,
+      params: {
+        ...(officeStaffUserId ? { assignedOfficeUserId: officeStaffUserId } : {}),
+        ...(urlHizmet ? { [HASAR_LIST_HIZMET_PARAM]: urlHizmet } : {}),
+        ...(urlKaynak ? { [MUSTERI_KAYNAK_PARAM]: urlKaynak } : {}),
+      },
     },
   );
 
@@ -1020,6 +1026,7 @@ function ClaimFilesPageContent() {
                         reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
                         approval72hExceeded={Boolean(claim.approval72hExceeded)}
                         operationStatusLabel={claim.operationStatusLabel}
+                        serviceKind={claim.serviceKind}
                       />
                     </div>
                   </div>
@@ -1149,7 +1156,7 @@ function ClaimFilesPageContent() {
 
                   const cells: Record<string, ReactNode> = {
                     fileNo: (
-                      <PanelTableTd key="fileNo" colId="fileNo" className="table-td font-mono text-xs font-semibold text-slate-900">
+                      <PanelTableTd key="fileNo" colId="fileNo" wrap className="table-td font-mono text-xs font-semibold text-slate-900">
                         <span className="inline-flex flex-wrap items-center gap-1">
                           {claimListFileNo(claim)}
                           {claim.approval72hExceeded ? (
@@ -1178,7 +1185,7 @@ function ClaimFilesPageContent() {
                       <PanelTableTd key="date" colId="date" className="table-td text-slate-400 text-xs">{fmtDate(claim.createdAt)}</PanelTableTd>
                     ),
                     subject: (
-                      <PanelTableTd key="subject" colId="subject" align="center" className="table-td-center text-xs max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
+                      <PanelTableTd key="subject" colId="subject" align="center" wrap className="table-td-center text-xs max-w-[140px]" title={resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}>
                         {resolveClaimDosyaKonusu(claim, dosyaKonusuCatalog)}
                       </PanelTableTd>
                     ),
@@ -1189,6 +1196,7 @@ function ClaimFilesPageContent() {
                           reportStatus={claim.newestRepairReportStatus ?? claim.latestRepairReport?.status}
                           approval72hExceeded={Boolean(claim.approval72hExceeded)}
                           operationStatusLabel={claim.operationStatusLabel}
+                          serviceKind={claim.serviceKind}
                         />
                       </PanelTableTd>
                     ),

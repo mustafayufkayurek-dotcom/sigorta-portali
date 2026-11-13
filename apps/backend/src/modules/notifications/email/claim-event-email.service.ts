@@ -24,7 +24,7 @@ import {
   buildNotificationEmailHtml,
   buildRaporOnaylandiEmailHtml,
   formatSnPersonGreeting,
-  RAPOR_ONAYLANDI_INTRO,
+  raporOnaylandiIntro,
   raporOnaylandiSubject,
   yeniIhbarSubject,
 } from './email.template';
@@ -216,6 +216,7 @@ export class ClaimEventEmailService {
     recipientFirstName?: string | null;
     recipientLastName?: string | null;
     expertOfficeName?: string | null;
+    inspection?: boolean;
   }) {
     await this.email.sendEmail(
       params.recipientEmail,
@@ -225,12 +226,12 @@ export class ClaimEventEmailService {
         fileNo: params.fileNo,
         approvedBy: params.approvedBy,
         greeting: formatSnPersonGreeting(params.recipientFirstName, params.recipientLastName),
-        intro: RAPOR_ONAYLANDI_INTRO,
+        intro: raporOnaylandiIntro(Boolean(params.inspection)),
         actionUrl: buildPanelUrl(this.appUrl, panelOnarimRaporuPath(params.claimFileId, params.reportId)),
         portalUrl: this.appUrl,
       }),
       {
-        text: `Eksper onarım raporunu onaylanmıştır. Operasyon planlama aşamasına geçiniz. Dosya: ${params.fileNo}`,
+        text: `${raporOnaylandiIntro(Boolean(params.inspection)).replace('\n', ' ')} Dosya: ${params.fileNo}`,
         mailbox: 'HASAR',
       },
     );

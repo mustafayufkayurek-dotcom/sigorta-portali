@@ -137,7 +137,6 @@ export function InboxReplyModal({
 
   const signal = outboundMailSignal({
     sending: loading,
-    failed: failedNow,
     lastReplyAt: sentNow ? new Date().toISOString() : detail?.lastReplyAt,
     lastReplyReadAt: detail?.lastReplyReadAt,
     lastReplyFailedAt: detail?.lastReplyFailedAt,
@@ -184,7 +183,8 @@ export function InboxReplyModal({
 
   if (!open || !messageId) return null;
 
-  const locked = loading || addingFiles || sentNow || signal === 'read' || signal === 'replied' || signal === 'failed';
+  // Geri çevrilen veya gönderilemeyen yazı yeniden gönderilir; kutu kilitlenmez.
+  const locked = loading || addingFiles || sentNow || signal === 'read' || signal === 'replied';
   const canSend = !locked && body.trim().length >= 3;
 
   const addFiles = async (list: File[]) => {
@@ -369,7 +369,7 @@ export function InboxReplyModal({
         )}
 
         <div className="mb-4">
-          <OutboundMailSignalStrip signal={signal} />
+          <OutboundMailSignalStrip signal={signal} sendError={failedNow} />
         </div>
 
         <label className="block text-xs font-medium text-slate-600 mb-1.5">

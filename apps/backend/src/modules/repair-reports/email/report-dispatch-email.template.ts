@@ -101,7 +101,15 @@ function logoSrc(portalUrl?: string | null): string {
   }
 }
 
+/** Hasar Tespit dosyasında belge adı ve hitap tespit dilidir; onarım metni değişmez. */
+function dispatchWording(documentTitle?: string | null): { belge: string; hitap: string } {
+  return String(documentTitle ?? '').trim() === 'Hasar Tespit Raporu'
+    ? { belge: 'Hasar Tespit Raporu', hitap: 'Sayın Yetkili,' }
+    : { belge: 'Hasar Onarım Raporu', hitap: 'Sayın Eksperimiz,' };
+}
+
 export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): string {
+  const wording = dispatchWording(data.documentTitle);
   const dosyaNo = escapeHtml(dash(data.fileNo));
   const sigorta = escapeHtml(dash(data.insuranceCompanyName));
   const konu = escapeHtml(dash(data.fileSubject));
@@ -176,10 +184,10 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
                 Dosya Değerlendirmeniz Bekleniyor
               </h1>
               <p style="margin:20px 0 0;font-size:13px;line-height:1.65;font-weight:600;color:#152c40;">
-                Sayın Eksperimiz,
+                ${wording.hitap}
               </p>
               <p style="margin:8px 0 0;font-size:13px;line-height:1.75;color:#617180;overflow-wrap:anywhere;">
-                İlgili dosyaya ait Hasar Onarım Raporu’nu bilgi ve değerlendirmenize sunarız. Değerlendirmenizi aşağıdaki bağlantı üzerinden iletmenizi rica ederiz.
+                İlgili dosyaya ait ${wording.belge}’nu bilgi ve değerlendirmenize sunarız. Değerlendirmenizi aşağıdaki bağlantı üzerinden iletmenizi rica ederiz.
               </p>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:22px;border-top:1px solid #dde5eb;border-bottom:1px solid #dde5eb;">
                 <tr>
@@ -207,7 +215,7 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
                     </table>
                   </td>
                   <td valign="middle" style="padding:13px 16px;">
-                    <div style="font-size:14px;font-weight:600;line-height:1.4;color:#152c40;">Hasar Onarım Raporu</div>
+                    <div style="font-size:14px;font-weight:600;line-height:1.4;color:#152c40;">${wording.belge}</div>
                     <div style="font-size:12px;line-height:1.6;color:#617180;">Rapor No: ${raporNo}</div>
                     <div style="margin-top:5px;font-size:11px;line-height:1.5;color:#617180;">
                       ${icon('paperclip', 12, '#617180')}<span style="vertical-align:middle;">E-posta Ekinde Sunulmuştur</span>
@@ -263,10 +271,11 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
 }
 
 export function buildReportDispatchEmailText(data: ReportDispatchEmailData): string {
+  const wording = dispatchWording(data.documentTitle);
   const lines = [
     'Dosya Değerlendirmeniz Bekleniyor',
-    'Sayın Eksperimiz,',
-    'İlgili dosyaya ait Hasar Onarım Raporu bilgi ve değerlendirmenize sunulmuştur. Rapor ektedir.',
+    wording.hitap,
+    `İlgili dosyaya ait ${wording.belge} bilgi ve değerlendirmenize sunulmuştur. Rapor ektedir.`,
     `Dosya No: ${dash(data.fileNo)}`,
     `Sigorta Şirketi: ${dash(data.insuranceCompanyName)}`,
     `Hasar Konusu: ${dash(data.fileSubject)}`,

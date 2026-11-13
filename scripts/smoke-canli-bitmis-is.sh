@@ -217,6 +217,8 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/operation-inbox/unowned-inbox-mail.lock.spec.ts \
   packages/shared/src/address-place-guard.lock.spec.ts \
   packages/shared/src/claim-notification-at.lock.spec.ts \
-  apps/backend/src/modules/operation-inbox/inbox-sync-single-run.lock.spec.ts
+  apps/backend/src/modules/operation-inbox/inbox-sync-single-run.lock.spec.ts \
+  apps/backend/src/modules/notifications/email/hasar-tespit-acilis-email.lock.spec.ts \
+  apps/backend/src/modules/finance/hasar-tespit-hizmet-bedeli.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

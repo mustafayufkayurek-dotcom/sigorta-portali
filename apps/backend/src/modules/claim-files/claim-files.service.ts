@@ -11,6 +11,10 @@ import { generalMailboxesFromContactInfos, isAcilInspectionPhotoNotes } from '@s
 import {
   claimFileChannelCreateFields,
   claimChannelFirmLabel,
+  formatClaimNotificationAt,
+  hasarTespitIlkMuhatap,
+  HASAR_TESPIT_REPORT_SENT_STATUSES,
+  isInspectionServiceKind,
   normalizeClaimNotificationDate,
   optionalClaimChannelCustomerId,
   CLAIM_LIST_PAGE_MAX,
@@ -75,6 +79,10 @@ import { mergeAssignableStaffWithDelegates } from './assignable-file-owners';
 import { resolveInsuranceCompanyIdsForCustomer } from '@/modules/customers/customer-file-stats';
 import { resolveCityDistrictFromAddress } from '@/modules/operation-inbox/inbound-location.util';
 import { ihbarCustomerSubjectLabel } from '@/modules/notifications/email/email.template';
+import {
+  buildHasarTespitAcilisEmailHtml,
+  hasarTespitAcilisSubject,
+} from '@/modules/notifications/email/hasar-tespit-acilis-email';
 import {
   claimFileSubjectName,
   preserveChosenFileSubject,
@@ -1224,7 +1232,7 @@ export class ClaimFilesService {
   /** Operasyon KPI — Hasar ve Acil kartları listedeki Durum etiketiyle aynı kuraldan sayılır. */
   async getOperationStats(
     requestingUser?: { id: string; roleCode: string; vendorId?: string | null },
-    params?: { assignedOfficeUserId?: string },
+    params?: { assignedOfficeUserId?: string; hizmet?: string; kaynak?: string },
   ) {
     const todayRange = this.istanbulDayRange();
 
@@ -1249,6 +1257,14 @@ export class ClaimFilesService {
     }
 
     const claimScopeWhere = await this.applyClaimFileDelegationScope(extraWhere, requestingUser);
+    // Kartlar listenin hizmet / müşteri kaynağı süzgeciyle aynı dosyaları sayar.
+    const listFilters = [
+      claimFileWhereForHizmet(params?.hizmet),
+      claimFileWhereForMusteriKaynak(params?.kaynak),
+    ].filter((w): w is Record<string, unknown> => Boolean(w));
+    const stageWhere = listFilters.length
+      ? { AND: [claimScopeWhere, ...listFilters] }
+      : claimScopeWhere;
 
     const [
       stageRows,
@@ -1259,7 +1275,7 @@ export class ClaimFilesService {
       emergencyRows,
     ] = await Promise.all([
       this.prisma.claimFile.findMany({
-        where: claimScopeWhere as any,
+        where: stageWhere as any,
         select: {
           id: true,
           createdAt: true,
@@ -1929,7 +1945,8 @@ export class ClaimFilesService {
     requestingUser?: { id?: string; userId?: string; roleCode?: string; role?: { code?: string } },
   ) {
     await this.assertHasarFileMutationAllowed(requestingUser);
-    const { fileNo: userFileNo, propertyAddress: _pa, city: _city, district: _district, ...rest } = data;
+    const { fileNo: userFileNo, propertyAddress: _pa, city: _city, district: _district, sendOpeningNotice: sendOpeningNoticeRaw, ...rest } = data;
+    const sendOpeningNotice = sendOpeningNoticeRaw === true;
     const fileNo = (typeof userFileNo === 'string' && userFileNo.trim()) ? userFileNo.trim() : '';
 
     if (!fileNo) {
@@ -2397,6 +2414,12 @@ export class ClaimFilesService {
           agencyName: created.channelAgencyCustomer ? claimChannelFirmLabel(created.channelAgencyCustomer) : null,
           ihbarCustomerName: ihbarCustomerSubjectLabel(created.customer as any, created.insuranceCompany?.name),
           expertOfficeShortName,
+        });
+      }
+
+      if (sendOpeningNotice && created.serviceKind === 'inspection') {
+        void this.sendHasarTespitOpeningNotice(created, requestingUser).catch((err) => {
+          this.logger.warn(`Hasar Tespit açılış bildirimi: ${err instanceof Error ? err.message : String(err)}`);
         });
       }
 
@@ -3167,12 +3190,13 @@ export class ClaimFilesService {
   }
 
   private async assertOfficeCloseReady(claimFileId: string) {
-    const [file, report, invoice] = await Promise.all([
+    const [file, report, invoice, sentReport] = await Promise.all([
       this.prisma.claimFile.findUnique({
         where: { id: claimFileId },
         select: {
           currentStatus: { select: { code: true } },
           kapanisButceJson: true,
+          serviceKind: true,
         },
       }),
       this.prisma.repairReport.findFirst({
@@ -3186,9 +3210,15 @@ export class ClaimFilesService {
         },
         select: { id: true },
       }),
+      this.prisma.repairReport.findFirst({
+        where: { claimFileId, status: { in: [...HASAR_TESPIT_REPORT_SENT_STATUSES] } },
+        select: { id: true },
+      }),
     ]);
     const kapanis = parseHasarKapanisButce(file?.kapanisButceJson);
     const missing = hasarOfficeCloseMissing({
+      inspection: isInspectionServiceKind(file?.serviceKind),
+      reportSentToCustomer: Boolean(sentReport),
       statusCode: file?.currentStatus?.code,
       hasApprovedReport: Boolean(report),
       remainingRepairDropped: kapanis.remainingRepairDropped,
@@ -3263,8 +3293,16 @@ export class ClaimFilesService {
     const fileCreatedAt = claimFile.createdAt || null;
     const closedAt = claimFile.closedAt || new Date();
 
+    const inspectionFile = isInspectionServiceKind(claimFile.serviceKind);
     let fileFeeAmount = Number(claimFile.financialSummary?.fileFeeRevenue || 0);
-    if (!(fileFeeAmount > 0)) {
+    if (inspectionFile) {
+      // Hasar Tespit: bedel dosyaya girilen hizmet bedelidir (KDV hariç); rapor toplamı tespit edilen hasardır.
+      const fees = await this.prisma.claimFileRevenue.findMany({
+        where: { claimFileId, revenueType: 'file_fee', status: { not: 'cancelled' } },
+        select: { amount: true },
+      });
+      fileFeeAmount = fees.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    } else if (!(fileFeeAmount > 0)) {
       const approved = await this.prisma.repairReport.findFirst({
         where: {
           claimFileId,
@@ -3417,6 +3455,42 @@ export class ClaimFilesService {
     if (!dispatches.length) {
       this.logger.warn(`[Kapanış maili] ${fileNo}: dış alıcı yok`);
       return;
+    }
+
+    if (inspectionFile && dispatches.length === 0) {
+      // Hasar Tespit ilk muhatap: Sigorta → Broker → Eksper (kartta adres olan ilk taraf).
+      const partyCards = await this.prisma.customer.findMany({
+        where: {
+          id: {
+            in: [claimFile.channelBrokerCustomerId, claimFile.channelExpertCustomerId].filter(
+              (id): id is string => Boolean(id),
+            ),
+          },
+        },
+        select: {
+          id: true,
+          email: true,
+          companyName: true,
+          fullName: true,
+          shortName: true,
+          contactFirstName: true,
+          contactLastName: true,
+          firstName: true,
+          lastName: true,
+          authorizedPerson: true,
+        },
+      });
+      const broker = partyCards.find((row) => row.id === claimFile.channelBrokerCustomerId);
+      const expert = partyCards.find((row) => row.id === claimFile.channelExpertCustomerId);
+      const first = hasarTespitIlkMuhatap({
+        insurance: { name: insuranceCompanyName, email: claimFile.insuranceCompany?.contactEmail },
+        broker: broker ? { name: customerFirmTitle(broker), email: broker.email } : null,
+        expert: expert ? { name: customerFirmTitle(expert), email: expert.email } : null,
+      });
+      if (first) {
+        const card = first.party === 'broker' ? broker : first.party === 'expert' ? expert : null;
+        add(first.email, first.name, 'other', card ? closureCardGreeting(card) : 'Sn. Yetkili,');
+      }
     }
 
     const subject = `Dosya Kapanışı – ${fileNo}`;
@@ -4096,6 +4170,88 @@ export class ClaimFilesService {
       }),
     ]);
     return status.id;
+  }
+
+  /** Formda «Açılış Bildirimi Gönder» seçilirse ilk muhataba (Sigorta → Broker → Eksper) Hasar kutusundan gider. */
+  private async sendHasarTespitOpeningNotice(
+    created: any,
+    requestingUser?: { id?: string; userId?: string; roleCode?: string; role?: { code?: string } },
+  ) {
+    const actorId = String(requestingUser?.id ?? requestingUser?.userId ?? created.assignedOfficeUserId ?? '').trim();
+    const actorRole = String(requestingUser?.roleCode ?? requestingUser?.role?.code ?? 'office_staff');
+    const log = (description: string, metadata: Record<string, unknown>) =>
+      actorId
+        ? this.logActivity({
+          claimFileId: created.id,
+          action: 'NOTE_ADDED',
+          actorId,
+          actorRole,
+          description,
+          metadata: { kind: 'hasar_tespit_opening_notice', ...metadata },
+        }).catch(() => undefined)
+        : Promise.resolve();
+
+    const cardEmail = (c: any): string | null => {
+      if (!c) return null;
+      const direct = String(c.email ?? '').trim();
+      if (direct) return direct;
+      const contacts = Array.isArray(c.contacts) ? c.contacts : [];
+      const primary = contacts.find((row: any) => row?.isPrimary && String(row?.email ?? '').trim());
+      const any = primary ?? contacts.find((row: any) => String(row?.email ?? '').trim());
+      return any ? String(any.email).trim() : null;
+    };
+    const muhatap = hasarTespitIlkMuhatap({
+      insurance: { name: created.insuranceCompany?.name, email: created.insuranceCompany?.contactEmail },
+      broker: created.channelBrokerCustomer
+        ? { name: claimChannelFirmLabel(created.channelBrokerCustomer), email: cardEmail(created.channelBrokerCustomer) }
+        : null,
+      expert: created.channelExpertCustomer
+        ? { name: claimChannelFirmLabel(created.channelExpertCustomer), email: cardEmail(created.channelExpertCustomer) }
+        : null,
+    });
+    if (!muhatap || !this.emailService) {
+      await log('Açılış bildirimi gönderilmedi: sigorta, broker ve eksperde e-posta yok.', { status: 'skipped' });
+      return;
+    }
+
+    const owner = created.assignedOfficeUserId
+      ? await this.prisma.user.findUnique({
+        where: { id: created.assignedOfficeUserId },
+        select: { firstName: true, lastName: true, phone: true, email: true },
+      })
+      : null;
+    const html = buildHasarTespitAcilisEmailHtml({
+      organizationName: muhatap.name,
+      recipientParty: muhatap.party,
+      insuranceCompanyName: created.insuranceCompany?.name ?? null,
+      fileNo: created.fileNo,
+      insuredName: created.insuredName ?? null,
+      fileSubject: claimFileSubjectName(created),
+      city: created.propertyAddress?.city ?? null,
+      district: created.propertyAddress?.district ?? null,
+      notificationAtLabel: formatClaimNotificationAt(created.notificationDate, created.createdAt),
+      openedAt: created.createdAt,
+      ownerName: owner ? `${owner.firstName ?? ''} ${owner.lastName ?? ''}`.trim() : null,
+      ownerPhone: owner?.phone ?? null,
+      ownerEmail: owner?.email ?? null,
+    });
+    const result = await this.emailService.sendEmail(
+      muhatap.email,
+      hasarTespitAcilisSubject(created.insuranceCompany?.name, created.fileNo),
+      html,
+    );
+    const sent = Boolean(result?.sent);
+    await log(
+      sent
+        ? `Açılış bildirimi ${muhatap.name || 'ilk muhatap'} adresine gitti (${muhatap.email}).`
+        : `Açılış bildirimi gönderilemedi (${muhatap.email}).`,
+      {
+        status: sent ? 'sent' : 'failed',
+        to: muhatap.email,
+        party: muhatap.party,
+        errorMsg: sent ? null : (result as { errorMsg?: string })?.errorMsg ?? null,
+      },
+    );
   }
 
   private async logActivity(params: {

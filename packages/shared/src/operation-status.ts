@@ -27,6 +27,7 @@ export const OPERATION_STAGE_ORDER = [
   'rapor_reddedildi',
   'revizyon_talep_edildi',
   'onaylandi',
+  'tespit_onaylandi',
   'onarim',
   'fatura',
   'odeme',
@@ -111,6 +112,13 @@ export const OPERATION_STAGES: Record<OperationStageId, OperationStageMeta> = {
     label: 'Onarım Aşamasında',
     tone: 'green',
     nextAction: 'Tedarikçi / onarım planı',
+  },
+  /** Hasar Tespit: onarım yoktur; rapor onaylanınca sıradaki iş hizmet bedeli ve faturadır. */
+  tespit_onaylandi: {
+    id: 'tespit_onaylandi',
+    label: 'Tespit Raporu Onaylandı',
+    tone: 'green',
+    nextAction: 'Hizmet bedeli ve fatura',
   },
   onarim: {
     id: 'onarim',
@@ -333,6 +341,9 @@ export function deriveOperationStageId(input: DeriveOperationStageInput): Operat
 
   if (claim === 'closed' || claim === 'completed') return 'dosya_kapandi';
 
+  if (REPORT_APPROVED.has(report) && isInspectionServiceKind(input.serviceKind)) {
+    return 'tespit_onaylandi';
+  }
   if (REPORT_APPROVED.has(report) && !['repair_planning', 'repair_in_progress', 'repair_completed', 'invoice_pending', 'invoice_submitted', 'payment_pending', 'partially_collected'].includes(claim)) {
     return 'onaylandi';
   }
@@ -580,10 +591,10 @@ export function hasarProductStageClaimWhere(codes: string[]): Record<string, unk
   if (onarim && sameCodeSet(codes, onarim.codes)) {
     return {
       OR: [
-        { currentStatus: { code: { in: ['budget_approved', 'repair_planning', 'repair_in_progress'] } } },
+        { currentStatus: { code: { in: ['repair_planning', 'repair_in_progress'] } } },
         {
           AND: [
-            { currentStatus: { code: { in: [...INSPECTION_SAHA_CODES] } } },
+            { currentStatus: { code: { in: ['budget_approved', ...INSPECTION_SAHA_CODES] } } },
             { NOT: { serviceKind: 'inspection' } },
           ],
         },

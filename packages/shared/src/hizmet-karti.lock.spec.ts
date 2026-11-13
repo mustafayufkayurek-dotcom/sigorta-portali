@@ -48,4 +48,12 @@ describe('hizmet kartı LOCK', () => {
     assert.equal(missingHizmetRequiredParty(danismanlik, { broker: '' }), 'broker');
     assert.equal(missingHizmetRequiredParty(danismanlik, { broker: 'kart-1' }), null);
   });
+
+  it('Hasar Tespit fiyatlı hasar raporudur: birim fiyat, iş grubu toplamı, genel toplam basılır; broker raporu alır', () => {
+    const tespit = findHizmetKarti(mergeHizmetKartlari(null), 'hasar-tespit');
+    assert.equal(tespit?.reportPrice, true);
+    assert.equal(tespit?.steps, 'hasar');
+    assert.deepEqual(tespit?.approvalParties, ['insurance', 'broker', 'expert']);
+    assert.equal(hizmetKartiCodeForClaim({ serviceKind: 'inspection' }), 'hasar-tespit');
+  });
 });

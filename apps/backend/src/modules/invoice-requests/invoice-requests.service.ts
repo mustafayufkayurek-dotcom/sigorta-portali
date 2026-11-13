@@ -11,7 +11,12 @@ import { FileDocumentsService } from '../file-documents/file-documents.service';
 import { SurveysService } from '@/modules/surveys/surveys.service';
 import { InvoicesService } from '@/modules/invoices/invoices.service';
 import { staffDisplayName } from '@/modules/invoices/invoice-edit-note';
-import { isAcilDigitalApprovalRequired } from '@sigorta/shared';
+import {
+  HASAR_TESPIT_FEE_DESCRIPTION,
+  HASAR_TESPIT_REPORT_SENT_STATUSES,
+  isAcilDigitalApprovalRequired,
+  isInspectionServiceKind,
+} from '@sigorta/shared';
 import {
   BulkInvoiceRequestsDto,
   CreateInvoiceRequestDto,
@@ -84,6 +89,70 @@ export class InvoiceRequestsService {
         );
       }
     }
+  }
+
+  /**
+   * Hasar Tespit: rapor müşteriye gönderilince ve hizmet bedeli girilince satış fatura talebi açılır.
+   * Tutar rapor toplamı değil, dosyaya elle girilen Hasar Tespit Hizmet Bedeli’dir. Fatura dosya müşterisine.
+   * Hangisi sonra olursa o an tetikler; ikinci talep açılmaz.
+   */
+  async ensureHasarTespitInvoiceRequest(
+    claimFileId: string,
+    userId: string,
+  ): Promise<{ created: boolean; reason?: 'not_inspection' | 'report_not_sent' | 'fee_missing' | 'exists' }> {
+    const claim = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      select: {
+        id: true,
+        fileNo: true,
+        serviceKind: true,
+        customer: { select: { shortName: true, companyName: true, fullName: true } },
+      },
+    });
+    if (!claim || !isInspectionServiceKind(claim.serviceKind)) return { created: false, reason: 'not_inspection' };
+
+    const sentReport = await this.prisma.repairReport.findFirst({
+      where: { claimFileId, status: { in: [...HASAR_TESPIT_REPORT_SENT_STATUSES] } },
+      select: { id: true },
+    });
+    if (!sentReport) return { created: false, reason: 'report_not_sent' };
+
+    const fees = await this.prisma.claimFileRevenue.findMany({
+      where: { claimFileId, revenueType: 'file_fee', status: { not: 'cancelled' } },
+      select: { description: true, amount: true, vatRate: true },
+    });
+    const totalAmount = fees.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    if (!fees.length || totalAmount <= 0) return { created: false, reason: 'fee_missing' };
+
+    const existing = await this.prisma.invoiceRequest.findFirst({
+      where: { claimFileId, status: { in: ['pending', 'approved', 'invoiced'] } },
+      select: { id: true },
+    });
+    if (existing) return { created: false, reason: 'exists' };
+
+    const customerName =
+      claim.customer?.companyName?.trim()
+      || claim.customer?.fullName?.trim()
+      || claim.customer?.shortName?.trim()
+      || 'Dosya Müşterisi';
+    await this.create(
+      {
+        serviceType: 'claim',
+        claimFileId,
+        fileNo: claim.fileNo,
+        insuranceCompanyName: customerName,
+        totalAmount,
+        workItemsSummary: fees.map((row) => ({
+          description: `${row.description?.trim() || HASAR_TESPIT_FEE_DESCRIPTION} — ${claim.fileNo}`,
+          amount: Number(row.amount || 0),
+          vatRate: Number(row.vatRate || 0),
+        })),
+        notes: `Fatura kime: Dosya Müşterisi — ${customerName}`,
+      } as CreateInvoiceRequestDto,
+      userId,
+      { skipClosureCheck: true },
+    );
+    return { created: true };
   }
 
   // ── Oluşturma ─────────────────────────────────────────────────────────────

@@ -161,6 +161,24 @@ export function raporOnaylandiSubject(
 export const RAPOR_ONAYLANDI_INTRO =
   'Eksper onarım raporunu onaylanmıştır.\nOperasyon planlama aşamasına geçiniz.';
 
+/** Hasar Tespit dosyasında onarım yoktur; metin tespit diliyle gider. Onarım metni değişmez. */
+export const HASAR_TESPIT_RAPOR_ONAYLANDI_INTRO =
+  'Eksper hasar tespit raporunu onaylamıştır.\nHizmet bedeli ve fatura aşamasına geçiniz.';
+export const ONAY_TALEP_INTRO = 'Hasar onarım raporu onay ve görüşleriniz beklemektedir.';
+export const HASAR_TESPIT_ONAY_TALEP_INTRO = 'Hasar tespit raporu onay ve görüşleriniz beklemektedir.';
+
+export function raporOnaylandiIntro(inspection: boolean): string {
+  return inspection ? HASAR_TESPIT_RAPOR_ONAYLANDI_INTRO : RAPOR_ONAYLANDI_INTRO;
+}
+
+export function onayTalepIntro(inspection: boolean): string {
+  return inspection ? HASAR_TESPIT_ONAY_TALEP_INTRO : ONAY_TALEP_INTRO;
+}
+
+export function raporTuruKucuk(inspection: boolean): string {
+  return inspection ? 'hasar tespit raporu' : 'hasar onarım raporu';
+}
+
 export function buildNewClaimFileEmailHtml(params: {
   fileNo: string;
   customer: string;

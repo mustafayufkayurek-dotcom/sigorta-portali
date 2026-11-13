@@ -27,8 +27,10 @@ import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { API, authHeader, fmtCurrency, fmtDate } from '@/app/panel/hasar-dosyalari/[id]/_components/claim-detail-utils';
 import { withAvansNote } from '@sigorta/shared';
 import {
+  HASAR_TESPIT_FEE_DESCRIPTION,
   defaultPaymentPayerType,
   financeCounterpartyLabel,
+  isInspectionServiceKind,
   resolveClaimRevenueVat,
   resolveFileFeeCollectionSource,
 } from '@sigorta/shared';
@@ -39,10 +41,12 @@ function claimCollectionSource(claim?: {
   collectionParty?: string | null;
   insuranceCompanyId?: string | null;
   insuranceCompany?: { id?: string | null } | null;
+  serviceKind?: string | null;
 }) {
   return resolveFileFeeCollectionSource({
     collectionParty: claim?.collectionParty,
     insuranceCompanyId: claim?.insuranceCompanyId ?? claim?.insuranceCompany?.id,
+    serviceKind: claim?.serviceKind,
   });
 }
 
@@ -53,6 +57,10 @@ function claimCollectionSourceName(claim?: {
   insuredName?: string | null;
 }) {
   const source = claimCollectionSource(claim);
+  if (source === 'customer') {
+    const c = (claim as { customer?: { shortName?: string | null; companyName?: string | null; fullName?: string | null } | null })?.customer;
+    return c?.companyName?.trim() || c?.fullName?.trim() || c?.shortName?.trim() || 'Müşteri adı dosyada yok';
+  }
   if (source === 'insured') {
     return claim?.insuredName?.trim() || 'Sigortalı adı dosyada yok';
   }
@@ -63,10 +71,11 @@ const emptyGelir = (claim?: {
   collectionParty?: string | null;
   insuranceCompanyId?: string | null;
   insuranceCompany?: { id?: string | null } | null;
+  serviceKind?: string | null;
 }) => ({
   revenueType: 'file_fee',
   collectionSource: claimCollectionSource(claim),
-  description: '',
+  description: isInspectionServiceKind(claim?.serviceKind) ? HASAR_TESPIT_FEE_DESCRIPTION : '',
   amount: '',
   billed: true,
   vatRate: '20',
@@ -76,10 +85,10 @@ const emptyGelir = (claim?: {
 
 type PaymentPayerType = 'insurance_company' | 'insured' | 'vendor' | 'customer';
 
-const emptyTahsilat = (collectionParty?: string | null) => ({
+const emptyTahsilat = (collectionParty?: string | null, serviceKind?: string | null) => ({
   paymentType: 'incoming' as string,
   method: 'eft',
-  payerType: defaultPaymentPayerType(collectionParty) as PaymentPayerType,
+  payerType: (isInspectionServiceKind(serviceKind) ? 'customer' : defaultPaymentPayerType(collectionParty)) as PaymentPayerType,
   payerId: '',
   amount: 0,
   currency: 'TRY',
@@ -119,7 +128,7 @@ export function ClaimFileGelirTahsilatPanel({
   const [loading, setLoading] = useState(true);
   const [drawer, setDrawer] = useState<Drawer>(null);
   const [gelir, setGelir] = useState(() => emptyGelir(claim));
-  const [tahsilat, setTahsilat] = useState(() => emptyTahsilat(claim?.collectionParty));
+  const [tahsilat, setTahsilat] = useState(() => emptyTahsilat(claim?.collectionParty, claim?.serviceKind));
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -164,7 +173,9 @@ export function ClaimFileGelirTahsilatPanel({
         id: `rev-${r.id}`,
         kind: 'gelir',
         date: r.entryDate ?? r.createdAt,
-        islem: r.revenueType === 'extra_work' ? 'Ekstra İş' : 'Dosya Bedeli',
+        islem: r.revenueType === 'extra_work'
+          ? 'Ekstra İş'
+          : r.collectionSource === 'customer' ? HASAR_TESPIT_FEE_DESCRIPTION : 'Dosya Bedeli',
         billed: r.billed !== false,
         aciklama: r.description || 'Gelir',
         borc: Number(r.totalAmount ?? r.amount ?? 0),
@@ -269,7 +280,7 @@ export function ClaimFileGelirTahsilatPanel({
         });
       }
       showToast('success', tahsilat.paymentType === 'incoming' ? 'Tahsilat Kaydedildi' : 'Ödeme Kaydedildi');
-      setTahsilat(emptyTahsilat(claim?.collectionParty));
+      setTahsilat(emptyTahsilat(claim?.collectionParty, claim?.serviceKind));
       setReceiptFile(null);
       await load();
       if (!andNew) setDrawer(null);
@@ -323,7 +334,7 @@ export function ClaimFileGelirTahsilatPanel({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
-            onClick={() => { setTahsilat(emptyTahsilat(claim?.collectionParty)); setDrawer('tahsilat'); }}
+            onClick={() => { setTahsilat(emptyTahsilat(claim?.collectionParty, claim?.serviceKind)); setDrawer('tahsilat'); }}
             className="inline-flex items-center rounded-lg border border-brand-600 bg-white px-3.5 py-2 text-xs font-medium text-brand-700 hover:bg-brand-50"
           >
             Yeni Tahsilat
@@ -480,7 +491,7 @@ export function ClaimFileGelirTahsilatPanel({
               <div>
                 <FinansFieldLabel>Gelir Tipi</FinansFieldLabel>
                 <select value={gelir.revenueType} onChange={(e) => setGelir({ ...gelir, revenueType: e.target.value, extraWorkItemId: '' })} className={finansInputClass}>
-                  <option value="file_fee">Dosya Bedeli</option>
+                  <option value="file_fee">{isInspectionServiceKind(claim?.serviceKind) ? HASAR_TESPIT_FEE_DESCRIPTION : 'Dosya Bedeli'}</option>
                   <option value="extra_work">Ekstra İş</option>
                 </select>
               </div>

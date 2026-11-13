@@ -166,6 +166,8 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'address-place-guard.lock.spec',
       'claim-notification-at.lock.spec',
       'inbox-sync-single-run.lock.spec',
+      'hasar-tespit-acilis-email.lock.spec',
+      'hasar-tespit-hizmet-bedeli.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }
@@ -175,6 +177,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
     assert.match(outbound, /inbox-reply-attachment\.lock\.spec/);
     assert.match(outbound, /file-owner-mail-copy\.lock\.spec/);
     assert.match(outbound, /acil-yeni-ihbar-subject\.lock\.spec/);
+    assert.match(outbound, /graph-send-transient-retry\.lock\.spec/);
     const acil = readFileSync(join(here, 'smoke-acil-netlesen.sh'), 'utf8');
     assert.match(acil, /outbound-mail-signal\.lock\.spec/);
     assert.match(acil, /yazisma|inbox-reply-quote/);

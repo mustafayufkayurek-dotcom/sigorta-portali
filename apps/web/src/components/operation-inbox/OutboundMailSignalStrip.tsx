@@ -32,9 +32,25 @@ function seenClass(signal: OutboundMailSignal): string {
 interface Props {
   signal: OutboundMailSignal;
   compact?: boolean;
+  /** Gönderim anında hata (Microsoft / ek). Adres geri çevirisi değildir; yeniden gönderilir. */
+  sendError?: boolean;
 }
 
-export function OutboundMailSignalStrip({ signal, compact = false }: Props) {
+export function OutboundMailSignalStrip({ signal, compact = false, sendError = false }: Props) {
+  if (sendError && signal !== 'sending') {
+    return (
+      <div className={compact ? '' : 'rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5'} data-testid="outbound-send-error">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="badge badge-red">Gönderilemedi</span>
+        </div>
+        {!compact && (
+          <p className="text-[11px] text-red-700 mt-1.5">
+            Mail gitmedi. Adres geri çevirmedi; nedeni aşağıda yazar. Yazı ve ekler duruyor, Gönder ile yeniden deneyin.
+          </p>
+        )}
+      </div>
+    );
+  }
   return (
     <div className={compact ? '' : 'rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5'}>
       <div className="flex flex-wrap items-center gap-1.5">

@@ -62,6 +62,11 @@ describe('masraf yolu LOCK', () => {
     );
     assert.match(svc, /isCustomerExpenseLane/);
     assert.match(svc, /Danışmanlık ve asistans masrafı dosyaya yazılmaz/);
-    assert.match(svc, /serviceKind !== 'repair'/);
+    // Danışmanlık dosyası masraf yazmaz; Hasar Tespit ve hizmet türü boş eski onarım dosyası yazar (13.11.2026).
+    assert.match(svc, /if \(kind === 'consultancy'\) \{/);
+    assert.match(svc, /if \(kind === 'inspection'\) return kind;/);
+    assert.match(svc, /OR: \[\{ serviceKind: null \}, \{ serviceKind: \{ in: \['repair', 'inspection'\] \} \}\]/);
+    assert.match(svc, /plan === 'BUTCELENEN' && fileKind !== 'inspection'/);
+    assert.doesNotMatch(svc, /\{ serviceKind: 'repair' \}/);
   });
 });

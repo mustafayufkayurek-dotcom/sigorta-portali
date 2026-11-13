@@ -70,7 +70,7 @@ export function FinansTab({
       {subTab === 'gider-butce' && (
         <FileMasrafIsleme
           claimId={claimId}
-          fileBased={parseClaimServiceKind(claim?.serviceKind) === 'repair'}
+          fileBased={parseClaimServiceKind(claim?.serviceKind) !== 'consultancy'}
           fileLabel={claim?.fileNo ?? claim?.claimNo}
           reportId={claim?.latestRepairReport?.id}
           supplierCostHint={

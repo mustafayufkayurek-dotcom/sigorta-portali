@@ -73,6 +73,12 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 54. Hasar Yeni İhbar konu satırı Yeni İhbar-İhbarı Yapan Müşteri-Dosya Konusu. İhbar Tarihi 03:00 yazmaz. Broker / Acente varsa Sigorta Şirketi’nin üstündedir. Belirtilmemiş basılmaz.
 55. Giriş Onayı mailinde çalışmayan kopyala ikonu yoktur; kod bir dokunuşta seçilir, giriş ekranında Yapıştır doldurur.
 56. Gelen kutusu eşitlemesi: aynı posta kutusunu aynı anda tek işlem çeker; planlı tur tek iş koyar; Microsoft hatası kod ile yazılır, boş «senkron başarısız —» kalmaz.
+57. Hasar listesinde ortalanmış hücre iki yandan kesilmez; Dosya Konusu ve Dosya No tam okunur. Kartlar listenin hizmet süzgeciyle sayar (Hasar Tespit listesi Tespit dosyasını sayar).
+58. Açık adreste «Eskişehir Yolu», «Ankara Caddesi», «Kemer Sokak» gibi yol adı il / ilçe sayılmaz; adreste il yoksa seçilen il esastır. Yalnız adreste açıkça yazan başka il kaydı durdurur.
+59. Hasar Tespit Yeni Dosya’da «Açılış Bildirimi Gönder» seçilirse Hasar Tespit Süreci Başlatıldı maili ilk muhataba (Sigorta → Broker → Eksper) Hasar kutusundan gider; seçilmezse gitmez; dosya geçmişine yazılır. Broker / acente alıcısında İş Birliği alanı durur. Yazışmada Kime aynı sırayla dolar.
+60. Microsoft geçici hata (429/500/502/503/504) verirse mail kendiliğinden yeniden denenir (en çok 3 deneme, 35 sn). Gönderim hatası «Kutu maili geri çevirdi» yazmaz; «Mail gitmedi, adres sorunu değil» der. Yanıt kutusu kilitlenmez; yazı ve ekler durur, Gönder ile yeniden gönderilir.
+61. Hasar Tespit raporu fiyatlı hasar raporudur (Hasar Onarım ve Restorasyon altında; dosya bazında broker / özel müşteriye). PDF’te birim fiyat, bedel, iş grubu toplamı ve rapor genel toplamı basılır. Onay maili Sigorta, Broker ve Eksper’e gider. Kalemsiz Onaya Gönder kesilmez.
+62. Hasar Tespit’te rapor toplamı tespit edilen hasardır; gelir, bütçe ve panoya yazılmaz. Hasar Tespit Hizmet Bedeli Finans → Gelir’den elle girilir, dosya müşterisine faturalanır. Rapor müşteriye gidince (veya bedel sonra girilince) satış fatura talebi açılır. Kapanış onarım bitişi beklemez; rapor gitmiş ve talep açılmış olmalı. Onaylanan tespit «Tespit Raporu Onaylandı» yazar. Tespit masrafı dosyaya yazılır.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

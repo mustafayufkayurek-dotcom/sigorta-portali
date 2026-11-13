@@ -3,9 +3,13 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  Optional,
 } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '@/prisma/prisma.service';
+import { InvoiceRequestsService } from '@/modules/invoice-requests/invoice-requests.service';
 import {
+  isInspectionServiceKind,
   resolveFileFeeCollectionSource,
   resolveClaimRevenueVat,
   shouldCreateApprovedFileFee,
@@ -17,7 +21,10 @@ import { CreateClaimFileRevenueDto } from './dto/create-claim-file-revenue.dto';
 export class ClaimFileRevenueService {
   private readonly logger = new Logger(ClaimFileRevenueService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly moduleRef?: ModuleRef,
+  ) {}
 
   async create(claimFileId: string, dto: CreateClaimFileRevenueDto, userId: string) {
     const claim = await this.assertClaimFileExists(claimFileId);
@@ -47,6 +54,7 @@ export class ClaimFileRevenueService {
         collectionSource: resolveFileFeeCollectionSource({
           collectionParty: claim.collectionParty,
           insuranceCompanyId: claim.insuranceCompanyId,
+          serviceKind: claim.serviceKind,
         }),
         description: dto.description,
         amount: dto.amount,
@@ -72,6 +80,16 @@ export class ClaimFileRevenueService {
     });
 
     await this.recalcSummary(claimFileId);
+    if (dto.revenueType === 'file_fee' && isInspectionServiceKind(claim.serviceKind)) {
+      // Rapor müşteriye gittiyse Hasar Tespit Hizmet Bedeli girilince fatura talebi açılır.
+      try {
+        await this.moduleRef
+          ?.get(InvoiceRequestsService, { strict: false })
+          ?.ensureHasarTespitInvoiceRequest(claimFileId, userId);
+      } catch (err) {
+        this.logger.warn(`Hasar Tespit fatura talebi (${claimFileId}): ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
     return revenue;
   }
 
@@ -144,6 +162,13 @@ export class ClaimFileRevenueService {
    * Onay ≠ gelir kaydı değildi; Gelir sekmesi boş kalıyordu.
    */
   async ensureFileFeeFromApprovedReport(claimFileId: string): Promise<void> {
+    // Hasar Tespit: rapor toplamı tespit edilen hasardır, gelir değildir. Hizmet bedeli elle girilir.
+    const kind = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      select: { serviceKind: true },
+    });
+    if (isInspectionServiceKind(kind?.serviceKind)) return;
+
     const existing = await this.prisma.claimFileRevenue.findFirst({
       where: { claimFileId, revenueType: 'file_fee', status: { not: 'cancelled' } },
       select: { id: true },
@@ -229,7 +254,12 @@ export class ClaimFileRevenueService {
         .filter((r) => r.collectionSource === 'insured')
         .reduce((s, r) => s + r.collectedAmount, 0);
 
-      const totalCollected = collectedFromInsurer + collectedFromInsured;
+      // Hasar Tespit hizmet bedeli dosya müşterisinden tahsil edilir.
+      const collectedFromCustomer = revenues
+        .filter((r) => r.collectionSource === 'customer')
+        .reduce((s, r) => s + r.collectedAmount, 0);
+
+      const totalCollected = collectedFromInsurer + collectedFromInsured + collectedFromCustomer;
       const outstandingBalance = totalRevenue - totalCollected;
 
       await this.prisma.claimFinancialSummary.upsert({
@@ -265,7 +295,7 @@ export class ClaimFileRevenueService {
   private async assertClaimFileExists(id: string) {
     const cf = await this.prisma.claimFile.findUnique({
       where: { id },
-      select: { id: true, collectionParty: true, insuranceCompanyId: true },
+      select: { id: true, collectionParty: true, insuranceCompanyId: true, serviceKind: true },
     });
     if (!cf) throw new NotFoundException(`ClaimFile ${id} bulunamadı`);
     return cf;

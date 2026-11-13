@@ -51,6 +51,7 @@ import {
   claimCustomerSourceHidesChannel,
   claimCustomerSourceSubType,
   claimFileChannelCreateFields,
+  hasarTespitIlkMuhatap,
   claimServiceKindFromListHizmet,
   departmentCodeForNewClaim,
   consultancyTypesForNewFile,
@@ -146,6 +147,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
   const [channelAgencyFirms, setChannelAgencyFirms] = useState<ChannelFirm[]>([]);
   const [channelBrokerFirms, setChannelBrokerFirms] = useState<ChannelFirm[]>([]);
   const [channelExpertFirms, setChannelExpertFirms] = useState<ChannelFirm[]>([]);
+  const [sendOpeningNotice, setSendOpeningNotice] = useState(false);
   const [fileNo, setFileNo] = useState(() => loadYeniDosyaTaslak()?.fileNo ?? '');
   const [lossType, setLossType] = useState(() => loadYeniDosyaTaslak()?.lossType ?? '');
   const [priority, setPriority] = useState(() => {
@@ -698,6 +700,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
         assignedOfficeUserId,
         customerSource,
         serviceKind: parseClaimServiceKind(serviceKind),
+        sendOpeningNotice: parseClaimServiceKind(serviceKind) === 'inspection' && sendOpeningNotice,
         consultancyServiceTypeId: serviceKind === 'consultancy' ? consultancyServiceTypeId || undefined : undefined,
         siteContactName: toTitleCaseTR(siteContactName.trim()) || undefined,
         siteContactPhone: parseInternationalPhone(siteContactPhone).international || undefined,
@@ -1079,6 +1082,12 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     return list;
   })();
 
+  const openingNoticeMuhatap = hasarTespitIlkMuhatap({
+    insurance: insuranceCompanies.find((row) => row.id === insuranceCompanyId) ?? null,
+    broker: channelBrokerFirms.find((row) => row.id === channelBrokerCustomerId) ?? null,
+    expert: expertChannelOptions.find((row) => row.id === channelExpertCustomerId) ?? null,
+  });
+
   const dosyaSection = (
     <>
       <OpsFirstRunNotice
@@ -1283,6 +1292,24 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
               {channelAddLink('eksper_firmasi')}
             </div>}
           </div>
+          {parseClaimServiceKind(serviceKind) === 'inspection' && (
+            <label className="mt-3 flex min-w-0 cursor-pointer items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5" data-testid="hasar-tespit-acilis-bildirimi">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+                checked={sendOpeningNotice}
+                onChange={(e) => setSendOpeningNotice(e.target.checked)}
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-slate-800">Açılış Bildirimi Gönder</span>
+                <span className="block text-xs text-slate-500">
+                  {openingNoticeMuhatap
+                    ? `Hasar Tespit Süreci Başlatıldı maili ${openingNoticeMuhatap.name || 'ilk muhataba'} adresine gider (${openingNoticeMuhatap.email}).`
+                    : 'Sıra Sigorta, Broker, Eksper. Seçili kartlarda e-posta görünmüyor; adres bulunamazsa bildirim gitmez.'}
+                </span>
+              </span>
+            </label>
+          )}
         </div>
         <div className={`${spanFull} min-w-0 border-t border-slate-100 pt-3 sm:pt-1`}>
           {!isPanel && <p className="text-[11px] font-medium text-slate-500 mb-2">Dosya Adresi</p>}

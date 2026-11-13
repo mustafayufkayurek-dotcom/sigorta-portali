@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException, Optional, F
 import { canViewFileFinancials } from '@/common/helpers/financial-visibility.helper';
 import { PrismaService } from '@/prisma/prisma.service';
 import { FinancialSummaryService } from './financial-summary.service';
-import { coerceSalesInvoiceCounterparty, evaluateFrozenFinanceUpdate, financeAdjustAuditPayload, FINANCIAL_CORRECTION_NEEDED, invoiceTouchesFrozenMoneyFields, isInsuredCollectionParty } from '@sigorta/shared';
+import { coerceSalesInvoiceCounterparty, evaluateFrozenFinanceUpdate, financeAdjustAuditPayload, FINANCIAL_CORRECTION_NEEDED, invoiceTouchesFrozenMoneyFields, isInsuredCollectionParty, isInspectionServiceKind } from '@sigorta/shared';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { appendInvoiceEditNote, staffDisplayName } from './invoice-edit-note';
@@ -480,18 +480,26 @@ export class InvoicesService {
         collectionParty: true,
         insuranceCompanyId: true,
         insuredName: true,
+        serviceKind: true,
+        customerId: true,
       },
     });
     if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
 
-    const counterpartyType = coerceSalesInvoiceCounterparty({
-      collectionParty: claimFile.collectionParty,
-      invoiceType: 'sales',
-      counterpartyType: 'insurance_company',
-    });
-    const counterpartyId = counterpartyType === 'insured'
-      ? null
-      : (params.insuranceCompanyId ?? claimFile.insuranceCompanyId ?? null);
+    // Hasar Tespit hizmet bedeli dosya müşterisine (broker / özel müşteri) kesilir.
+    const inspectionFee = isInspectionServiceKind(claimFile.serviceKind);
+    const counterpartyType = inspectionFee
+      ? 'customer'
+      : coerceSalesInvoiceCounterparty({
+        collectionParty: claimFile.collectionParty,
+        invoiceType: 'sales',
+        counterpartyType: 'insurance_company',
+      });
+    const counterpartyId = inspectionFee
+      ? (claimFile.customerId ?? null)
+      : counterpartyType === 'insured'
+        ? null
+        : (params.insuranceCompanyId ?? claimFile.insuranceCompanyId ?? null);
 
     const invoice = await this.prisma.invoice.create({
       data: {

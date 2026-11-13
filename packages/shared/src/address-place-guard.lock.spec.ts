@@ -54,4 +54,35 @@ describe('açık adres konum kilidi', () => {
     assert.equal(place.conflict, null);
     assert.equal(place.city, null);
   });
+
+  it('yol, cadde, sokak ve bulvar adındaki il / ilçe çelişki sayılmaz', () => {
+    const wide = [
+      ...catalog,
+      { plateCode: 26, name: 'Eskişehir', districts: ['Odunpazarı'] },
+      { plateCode: 42, name: 'Konya', districts: ['Selçuklu'] },
+      { plateCode: 35, name: 'İzmir', districts: ['Konak'] },
+      { plateCode: 43, name: 'Kütahya', districts: ['Dumlupınar'] },
+      { plateCode: 7, name: 'Antalya', districts: ['Kemer', 'Muratpaşa'] },
+    ];
+    for (const [address, city, district] of [
+      ['Eskişehir Yolu No:12 Çankaya', 'Ankara', 'Çankaya'],
+      ['Konya Yolu Üzeri No:3', 'Ankara', 'Yenimahalle'],
+      ['Ankara Caddesi No:5 Kadıköy', 'İstanbul', 'Kadıköy'],
+      ['İzmir Cd. No:4 Kızılay', 'Ankara', 'Çankaya'],
+      ['Dumlupınar Bulvarı No:346 Ankara', 'Ankara', ''],
+      ['Merkez Mahallesi Kemer Sokak No:1', 'Antalya', 'Muratpaşa'],
+    ]) {
+      assert.equal(readOpenAddressPlace(address, wide, { city, district }).conflict, null, address);
+    }
+  });
+
+  it('adreste il yoksa aynı adlı başka ilin ilçesi değil seçilen il esastır', () => {
+    const twin = [
+      { plateCode: 6, name: 'Ankara', districts: ['Gölbaşı', 'Çankaya'] },
+      { plateCode: 2, name: 'Adıyaman', districts: ['Gölbaşı'] },
+    ];
+    const place = readOpenAddressPlace('Atatürk Mahallesi Gölbaşı', twin, { city: 'Ankara', district: 'Gölbaşı' });
+    assert.equal(place.conflict, null);
+    assert.equal(place.city, 'Ankara');
+  });
 });

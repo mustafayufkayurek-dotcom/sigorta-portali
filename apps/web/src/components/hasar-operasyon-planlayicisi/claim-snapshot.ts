@@ -8,6 +8,8 @@ import { PLANNER_STEPS, PLANNER_VISIBLE_STEPS } from './types';
 import {
   hasarCancelActorName,
   hasarOfficeCloseMissing,
+  HASAR_TESPIT_REPORT_SENT_STATUSES,
+  isInspectionServiceKind,
   isDigitalApprovalBundleReady,
   parseClaimServiceKind,
   parseHasPreApprovalWork,
@@ -473,6 +475,10 @@ export function mapLiveSnapshot(
   const fileCancelled = String(statusCode ?? '').toLowerCase() === 'cancelled';
   const fileClosed = Boolean(!fileCancelled && (claimFile?.currentStatus?.isClosedState || claimFile?.closedAt || statusCode === 'closed'));
   const closeMissing = hasarOfficeCloseMissing({
+    inspection: isInspectionServiceKind(claimFile?.serviceKind),
+    reportSentToCustomer: (HASAR_TESPIT_REPORT_SENT_STATUSES as readonly string[]).includes(
+      String(claimFile?.latestRepairReport?.status ?? ''),
+    ),
     statusCode,
     hasApprovedReport: pipeline.hasApproved,
     remainingRepairDropped: kapanisButce.remainingRepairDropped,
@@ -491,6 +497,7 @@ export function mapLiveSnapshot(
         reason: String(cancelRow.note ?? '').trim(),
       }
     : null;
+  const plannerServiceKind = parseClaimServiceKind(claimFile?.serviceKind);
   const stepStatuses = computePlannerStepStatuses({
     hasAppointment: hasAppt,
     hasInspector,
@@ -506,7 +513,7 @@ export function mapLiveSnapshot(
     hasClosureSurvey: hasClosureSurveyWa(activity),
     hasDocsUpload,
     hasFileClosed: fileClosed || fileCancelled,
-  });
+  }, (id) => plannerStepHiddenForServiceKind(id, plannerServiceKind, claimFile?.consultancyServiceType));
 
   const serviceKind = parseClaimServiceKind(claimFile?.serviceKind);
   const visibleSteps = PLANNER_VISIBLE_STEPS.filter(

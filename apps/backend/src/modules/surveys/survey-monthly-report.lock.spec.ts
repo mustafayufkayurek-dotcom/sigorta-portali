@@ -78,11 +78,14 @@ describe('aylık anket raporu LOCK', () => {
     assert.match(ext, /buildExternalApprovalSummaryHtml/);
     assert.match(ext, /title: 'Onay Talep'/);
     assert.match(ext, /onarimRaporuRequestSubject/);
-    assert.match(ext, /Hasar onarım raporu onay ve görüşleriniz beklemektedir/);
+    // Onarım metni şablonda tek yerde; Hasar Tespit dosyasında tespit dili (13.11.2026 onay).
+    assert.match(chrome, /Hasar onarım raporu onay ve görüşleriniz beklemektedir/);
+    assert.match(ext, /intro: onayTalepIntro\(isInspectionServiceKind\(pdfReport\.claimFile\?\.serviceKind\)\)/);
     assert.match(ext, /sendExpertApprovedStaffEmail/);
     assert.match(ext, /raporOnaylandiSubject/);
-    assert.match(ext, /Eksper onarım raporunu onaylanmıştır/);
-    assert.match(ext, /Operasyon planlama aşamasına geçiniz/);
+    assert.match(chrome, /Eksper onarım raporunu onaylanmıştır/);
+    assert.match(chrome, /Operasyon planlama aşamasına geçiniz/);
+    assert.match(ext, /intro: raporOnaylandiIntro\(isInspectionServiceKind\(approval\.report\?\.claimFile\?\.serviceKind\)\)/);
     assert.doesNotMatch(ext, /Hasar Onarım Raporu Onay Talebi/);
     assert.doesNotMatch(ext, /Operasyon Bildirimi/);
     assert.match(chrome, /joinMailSubjectParts\(insuranceCompanyName, fileNo, 'Onay Talep'\)/);

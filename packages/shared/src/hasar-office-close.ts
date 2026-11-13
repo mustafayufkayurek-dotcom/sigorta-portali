@@ -19,10 +19,19 @@ export function hasarOfficeCloseMissing(input: {
   infoWhatsappAt?: string | null;
   closeBudgetStartedAt?: string | null;
   hasInvoiceRequest?: boolean;
+  /** Hasar Tespit: onarım yoktur; rapor müşteriye gider, hizmet bedeli faturalanır. */
+  inspection?: boolean;
+  reportSentToCustomer?: boolean;
 }): string[] {
   const code = String(input.statusCode ?? '').trim().toLowerCase();
   if (code === 'closed') return [];
   if (code === 'cancelled') return ['İptal edilmiş dosya kapatılmaz'];
+  if (input.inspection) {
+    const missing: string[] = [];
+    if (!input.reportSentToCustomer) missing.push('Tespit raporu müşteriye gönderilmedi');
+    if (!input.hasInvoiceRequest) missing.push('Hasar Tespit Hizmet Bedeli fatura talebi');
+    return missing;
+  }
   if (input.remainingRepairDropped) {
     if (input.hasBillable === null || input.hasBillable === undefined) {
       return ['Fatura edilecek masraf / hizmet sorusu'];

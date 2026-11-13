@@ -190,6 +190,8 @@ export function plannerDocsUploadDone(
 
 export function computePlannerStepStatuses(
   flags: PlannerStepFlags,
+  /** Hizmet türüne göre gizli adım (ör. Hasar Tespit’te tedarikçi) sıradaki işi kapmaz. */
+  isHiddenForService?: (id: StepId) => boolean,
 ): Record<StepId, StepStatus> {
   const done: Record<StepId, boolean> = {
     insured_appointment: flags.hasAppointment,
@@ -214,7 +216,7 @@ export function computePlannerStepStatuses(
       result[id] = 'done';
       continue;
     }
-    if (!isPlannerStepOnScreen(id)) {
+    if (!isPlannerStepOnScreen(id) || isHiddenForService?.(id)) {
       result[id] = 'future';
       continue;
     }

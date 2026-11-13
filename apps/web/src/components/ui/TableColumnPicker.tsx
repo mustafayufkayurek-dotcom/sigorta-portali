@@ -740,13 +740,21 @@ export function PanelTableTd({ colId, className = '', children, title, align = '
     wrap === true
       ? 'max-w-full whitespace-normal break-words [overflow-wrap:anywhere] leading-snug'
       : 'truncate whitespace-nowrap';
+  // Esnek kutuda ortalanan uzun metin iki yandan kesilir, «…» gelmez; kırpma iç satırda yapılır.
+  const centeredTruncate = wrap !== true && align !== 'left';
   return (
     <td
       className={`max-w-0 overflow-hidden align-middle ${alignClass} ${className}`}
       style={width ? tableCellStyle(width) : undefined}
       title={title}
     >
-      <div className={`${innerClass} ${wrapClass}`.trim()}>{children}</div>
+      {centeredTruncate ? (
+        <div className={innerClass}>
+          <span className="block min-w-0 max-w-full truncate whitespace-nowrap">{children}</span>
+        </div>
+      ) : (
+        <div className={`${innerClass} ${wrapClass}`.trim()}>{children}</div>
+      )}
     </td>
   );
 }

@@ -58,13 +58,14 @@ export const BUILTIN_HIZMET_KARTLARI: HizmetKarti[] = [
     fixed: true,
   },
   {
+    // Hasar Onarım ve Restorasyon altında tespit: dosya bazında broker / özel müşteriye fiyatlı rapor yazılır.
     code: 'hasar-tespit',
     name: 'Hasar Tespit',
     group: 'ek',
     menuVisible: true,
-    steps: 'danismanlik',
-    reportPrice: false,
-    approvalParties: ['insurance', 'expert'],
+    steps: 'hasar',
+    reportPrice: true,
+    approvalParties: ['insurance', 'broker', 'expert'],
     correspondenceParties: ['insurance'],
     requiredParties: ['insurance'],
     fixed: true,

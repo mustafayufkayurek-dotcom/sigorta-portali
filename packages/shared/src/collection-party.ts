@@ -19,11 +19,25 @@ export function isInsuredCollectionParty(value?: string | null): boolean {
   return value === COLLECTION_PARTY.insured;
 }
 
-/** Onaylı rapordan düşen dosya bedeli kime yazılır. */
+/** Hasar Tespit hizmet bedeli dosyanın müşterisine (broker / özel müşteri) faturalanır. */
+export const FILE_FEE_CUSTOMER_SOURCE = 'customer' as const;
+export const HASAR_TESPIT_FEE_DESCRIPTION = 'Hasar Tespit Hizmet Bedeli';
+/** Rapor müşteriye gönderildi (Onaya Gönder sonrası) — Hasar Tespit fatura talebi bu andan sonra açılır. */
+export const HASAR_TESPIT_REPORT_SENT_STATUSES = [
+  'pending_approval',
+  'approved',
+  'sent_for_external_approval',
+  'externally_approved',
+  'externally_rejected',
+] as const;
+
+/** Dosya bedeli kime yazılır. Hasar Tespit: dosya müşterisi. */
 export function resolveFileFeeCollectionSource(input: {
   collectionParty?: string | null;
   insuranceCompanyId?: string | null;
-}): 'insurance_company' | 'insured' {
+  serviceKind?: string | null;
+}): 'insurance_company' | 'insured' | 'customer' {
+  if (String(input.serviceKind ?? '').trim().toLowerCase() === 'inspection') return FILE_FEE_CUSTOMER_SOURCE;
   if (isInsuredCollectionParty(input.collectionParty)) return 'insured';
   return input.insuranceCompanyId ? 'insurance_company' : 'insured';
 }

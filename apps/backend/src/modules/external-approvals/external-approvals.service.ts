@@ -22,7 +22,11 @@ import {
   expertOfficeSubjectLabel,
   raporOnaylandiSubject,
   buildRaporOnaylandiEmailHtml,
+  onayTalepIntro,
+  raporOnaylandiIntro,
+  raporTuruKucuk,
 } from '@/modules/notifications/email/email.template';
+import { isInspectionServiceKind } from '@sigorta/shared';
 import { buildPanelUrl, panelOnarimRaporuPath } from '@/common/utils/panel-url';
 import { SendExternalApprovalDto, RespondExternalApprovalDto } from './dto/external-approvals.dto';
 
@@ -120,7 +124,12 @@ export class ExternalApprovalsService {
     }
 
     const publicUrl = this.buildPublicUrl(token);
-    const whatsappUrl = this.buildWhatsAppUrl(token, report.reportNo, dto.approverPhone);
+    const whatsappUrl = this.buildWhatsAppUrl(
+      token,
+      report.reportNo,
+      dto.approverPhone,
+      isInspectionServiceKind(report.claimFile?.serviceKind),
+    );
 
     return { data: { ...approval, publicUrl, whatsappUrl } };
   }
@@ -612,9 +621,9 @@ export class ExternalApprovalsService {
     return buildAppPath(this.config, `/onay/${token}`);
   }
 
-  private buildWhatsAppUrl(token: string, reportNo: string, phone?: string): string {
+  private buildWhatsAppUrl(token: string, reportNo: string, phone?: string, inspection = false): string {
     const url = this.buildPublicUrl(token);
-    const message = `${reportNo} numaralı hasar onarım raporunu onaylamanız bekleniyor: ${url}`;
+    const message = `${reportNo} numaralı ${raporTuruKucuk(inspection)}nu onaylamanız bekleniyor: ${url}`;
     return buildWhatsAppMeUrl(phone, message) ?? `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
   }
 
@@ -633,6 +642,7 @@ export class ExternalApprovalsService {
             claimFile: {
               select: {
                 fileNo: true,
+                serviceKind: true,
                 insuranceCompany: { select: { name: true } },
               },
             },
@@ -674,12 +684,12 @@ export class ExternalApprovalsService {
         fileNo,
         approvedBy,
         greeting,
-        intro: 'Eksper onarım raporunu onaylanmıştır.\nOperasyon planlama aşamasına geçiniz.',
+        intro: raporOnaylandiIntro(isInspectionServiceKind(approval.report?.claimFile?.serviceKind)),
         actionUrl,
         portalUrl: buildAppPath(this.config, '/giris'),
       }),
       {
-        text: `Eksper onarım raporunu onaylanmıştır. Operasyon planlama aşamasına geçiniz. Dosya: ${fileNo}`,
+        text: `${raporOnaylandiIntro(isInspectionServiceKind(approval.report?.claimFile?.serviceKind)).replace('\n', ' ')} Dosya: ${fileNo}`,
         mailbox: 'HASAR',
       },
     );
@@ -706,6 +716,8 @@ export class ExternalApprovalsService {
             fileNo: true,
             claimNo: true,
             lossType: true,
+            serviceKind: true,
+            consultancyServiceType: { select: { code: true, name: true } },
             insuredName: true,
             insuredPhone: true,
             commercialTitle: true,
@@ -796,7 +808,7 @@ export class ExternalApprovalsService {
         title: 'Onay Talep',
         organizationName,
         greeting,
-        intro: 'Hasar onarım raporu onay ve görüşleriniz beklemektedir.',
+        intro: onayTalepIntro(isInspectionServiceKind(pdfReport.claimFile?.serviceKind)),
         bodyHtml: buildExternalApprovalSummaryHtml({
           insuranceCompanyName,
           fileNo: pdfReport.claimFile?.fileNo ?? '',
@@ -808,7 +820,7 @@ export class ExternalApprovalsService {
         portalUrl: buildAppPath(this.config, '/giris'),
       }),
       {
-        text: `${pdfReport.reportNo} numaralı hasar onarım raporu onayınızı bekliyor: ${approvalUrl}`,
+        text: `${pdfReport.reportNo} numaralı ${raporTuruKucuk(isInspectionServiceKind(pdfReport.claimFile?.serviceKind))} onayınızı bekliyor: ${approvalUrl}`,
         attachments: [
           {
             filename: `hasar-raporu-DIS-${pdfReport.reportNo}.pdf`,

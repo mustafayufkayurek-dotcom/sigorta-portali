@@ -5,7 +5,9 @@ import {
   Optional,
   Logger,
 } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '@/prisma/prisma.service';
+import { InvoiceRequestsService } from '@/modules/invoice-requests/invoice-requests.service';
 import { ConfigService } from '@nestjs/config';
 import { buildAppPath, resolveAppUrl } from '@/common/utils/app-url';
 import { buildPanelUrl, panelHasarDosyasiPath } from '@/common/utils/panel-url';
@@ -35,6 +37,7 @@ import {
   claimApprovalExpertParty,
   isExpertFirmCustomer,
   repairReportRequiresPricedItems,
+  isInspectionServiceKind,
   hasarReportDocumentTitle,
   EXTRA_REPAIR_KIND,
   partitionExtraRepairCostItems,
@@ -198,7 +201,33 @@ export class RepairReportsService {
     @Optional() private readonly anomalyDetection?: AnomalyDetectionService,
     @Optional() private readonly vendorRisk?: VendorRiskService,
     @Optional() private readonly storage?: StorageService,
+    @Optional() private readonly moduleRef?: ModuleRef,
   ) {}
+
+  /** Hasar Tespit: rapor müşteriye gidince hizmet bedeliyle satış fatura talebi; bedel yoksa dosyaya not düşer. */
+  private async ensureHasarTespitInvoiceRequest(claimFileId: string, userId: string): Promise<void> {
+    try {
+      const requests = this.moduleRef?.get(InvoiceRequestsService, { strict: false });
+      if (!requests) return;
+      const result = await requests.ensureHasarTespitInvoiceRequest(claimFileId, userId);
+      if (result.created || result.reason === 'fee_missing') {
+        await this.prisma.fileActivityLog.create({
+          data: {
+            claimFileId,
+            action: 'NOTE_ADDED' as any,
+            actorId: userId,
+            actorRole: 'office_staff',
+            description: result.created
+              ? 'Hasar Tespit Hizmet Bedeli için satış fatura talebi finansa gitti.'
+              : 'Rapor müşteriye gitti. Fatura talebi için Finans → Gelir’e Hasar Tespit Hizmet Bedeli girin.',
+            metadata: { kind: 'hasar_tespit_invoice_request', created: result.created, reason: result.reason ?? null },
+          },
+        }).catch(() => undefined);
+      }
+    } catch (err) {
+      this.logger.warn(`Hasar Tespit fatura talebi (${claimFileId}): ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   // ── Reports ─────────────────────────────────────────────────────────────────
 
@@ -900,6 +929,12 @@ export class RepairReportsService {
       },
     });
     if (!latest) return;
+    // Hasar Tespit: rapor toplamı tespit edilen hasardır; bütçe / beklenen gelir değildir.
+    const kind = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      select: { serviceKind: true },
+    });
+    if (isInspectionServiceKind(kind?.serviceKind)) return;
     await this.prisma.claimFile.update({
       where: { id: claimFileId },
       data: {
@@ -1534,6 +1569,7 @@ export class RepairReportsService {
     });
 
     await this.syncClaimFromLatestReport(report.claimFileId);
+    await this.ensureHasarTespitInvoiceRequest(report.claimFileId, userId);
 
     const lineSummary = report.items
       .slice(0, 12)
@@ -1709,6 +1745,7 @@ export class RepairReportsService {
         reportId,
         recipientFirstName: (report.createdBy as any)?.firstName,
         recipientLastName: (report.createdBy as any)?.lastName,
+        inspection: isInspectionServiceKind((report.claimFile as { serviceKind?: string | null } | null)?.serviceKind),
       });
     }
 

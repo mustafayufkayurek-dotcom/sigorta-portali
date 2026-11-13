@@ -164,7 +164,6 @@ export function InboxComposeModal({
 
   const signal = outboundMailSignal({
     sending: loading,
-    failed: failedNow,
     lastReplyAt: sentNow ? new Date().toISOString() : null,
   });
 
@@ -252,7 +251,7 @@ export function InboxComposeModal({
             Paylaşımlı kutudan yeni e-posta gönderin.
           </p>
           <div className="mb-4">
-            <OutboundMailSignalStrip signal={signal} />
+            <OutboundMailSignalStrip signal={signal} sendError={failedNow} />
           </div>
 
           <label className="block text-xs font-medium text-slate-600 mb-1.5">

@@ -26,6 +26,10 @@ function escapeReg(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** «Eskişehir Yolu», «Ankara Caddesi», «Kemer Sokak», «Gölbaşı Mahallesi» il / ilçe değildir. */
+const STREET_OR_PLACE_SUFFIX =
+  /^[\s.,-]*(?:mah(?:alle(?:si)?)?|cad(?:de(?:si)?)?|cd|sok(?:ak|agi)?|sk|bulv(?:ar(?:i)?)?|blv|yol(?:u)?|cevre\s*yolu|asfalt(?:i)?|otoyol(?:u)?|meydan(?:i)?|kavsag(?:i)?|kopru(?:su)?|site(?:si)?|apt|apartman(?:i)?|plaza|avm|carsi(?:si)?|pasaj(?:i)?|mevki(?:i)?|uzeri|giris(?:i)?|cikis(?:i)?|istasyon(?:u)?|durag(?:i)?)\b/;
+
 function wordHits(text: string, name: string): number[] {
   const folded = foldPlace(name);
   if (folded.length < 4 || folded === 'merkez') return [];
@@ -33,8 +37,8 @@ function wordHits(text: string, name: string): number[] {
   const hits: number[] = [];
   for (const match of text.matchAll(re)) {
     const at = (match.index ?? 0) + match[0].length - folded.length;
-    const after = text.slice(at + folded.length, at + folded.length + 12);
-    if (/^\s*mah(?:alle(?:si)?)?\b/.test(after)) continue;
+    const after = text.slice(at + folded.length, at + folded.length + 16);
+    if (STREET_OR_PLACE_SUFFIX.test(after)) continue;
     hits.push(at);
   }
   return hits;
@@ -81,12 +85,17 @@ export function readOpenAddressPlace(
   }
 
   const city = citySignals[0] ?? null;
+  // Adreste il yazmıyorsa yukarıda seçilen il esastır; aynı adlı başka ilin ilçesi çelişki sayılmaz.
+  const selectedProvince = !city && selected?.city?.trim()
+    ? catalog.find((row) => foldPlace(row.name) === foldPlace(selected.city as string)) ?? null
+    : null;
+  const districtScope = city ?? selectedProvince;
   type DistrictHit = { name: string; province: AddressPlaceProvince; at: number };
   const districtHits: DistrictHit[] = [];
   for (const province of catalog) {
     const names = [...province.districts].sort((a, b) => b.length - a.length);
     for (const name of names) {
-      if (city && province.plateCode !== city.plateCode) continue;
+      if (districtScope && province.plateCode !== districtScope.plateCode) continue;
       for (const at of wordHits(text, name)) {
         const covered = districtHits.some((hit) => at >= hit.at && at < hit.at + hit.name.length);
         if (covered) continue;

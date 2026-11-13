@@ -1,4 +1,5 @@
 import {
+  HASAR_TESPIT_MUHATAP_SIRASI,
   findHizmetKarti,
   hizmetKartiCodeForClaim,
   mailRouteFromHizmetKarti,
@@ -59,6 +60,13 @@ export function resolveClaimCorrespondenceDefaultTo(claim: {
     for (const party of route.correspondence) {
       const email = String(byParty[party] ?? '').trim();
       if (email.includes('@')) return email;
+    }
+    // Hasar Tespit: tercih edilen tarafta adres yoksa Sigorta → Broker → Eksper.
+    if (hizmetKartiCodeForClaim(claim) === 'hasar-tespit') {
+      for (const party of HASAR_TESPIT_MUHATAP_SIRASI) {
+        const email = String(byParty[party] ?? '').trim();
+        if (email.includes('@')) return email;
+      }
     }
     return undefined;
   }

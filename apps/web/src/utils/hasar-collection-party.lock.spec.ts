@@ -57,7 +57,8 @@ describe('sigortalı ödemeli tahsilat LOCK', () => {
     const gelir = read('../components/finance/ClaimFileGelirTahsilatPanel.tsx');
     assert.match(gelir, /option value="insured">Sigortalı/);
     assert.match(gelir, /defaultPaymentPayerType/);
-    assert.match(gelir, /payerType: defaultPaymentPayerType/);
+    // Hasar Tespit hizmet bedeli müşteriden; onarım dosyası eski kuralla (13.11.2026).
+    assert.match(gelir, /payerType: \(isInspectionServiceKind\(serviceKind\) \? 'customer' : defaultPaymentPayerType\(collectionParty\)\)/);
     const payDto = read('../../../backend/src/modules/payments/dto/create-payment.dto.ts');
     assert.match(payDto, /'insured'/);
     const paySvc = read('../../../backend/src/modules/payments/payments.service.ts');

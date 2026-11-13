@@ -24,12 +24,18 @@ import {
   hasarFileBudgetExpenseWhere,
   isCustomerExpenseLane,
   type ExpenseLane,
+  parseClaimServiceKind,
 } from '@sigorta/shared';
 import {
   assertClaimFileAccess,
   buildClaimFileRelationScope,
   RequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
+
+/** Hasar dosyası masrafı: onarım, Hasar Tespit ve hizmet türü boş eski onarım dosyası. Danışmanlık müşteriye yazılır. */
+const HASAR_FILE_EXPENSE_KIND_WHERE = {
+  OR: [{ serviceKind: null }, { serviceKind: { in: ['repair', 'inspection'] } }],
+};
 
 @Injectable()
 export class ExpensesService {
@@ -418,11 +424,14 @@ export class ExpensesService {
       },
     });
     if (!file) throw new NotFoundException('Hasar dosyası bulunamadı');
-    if (file.serviceKind !== 'repair') {
+    const kind = parseClaimServiceKind(file.serviceKind);
+    if (kind === 'consultancy') {
       throw new BadRequestException(
         'Bu dosya Hasar onarım değildir. Danışmanlık ve asistans masrafı müşteriye yazılır.',
       );
     }
+    // Hasar Tespit onarım bütçesi taşımaz; tespit masrafı dosyaya yazılır, bütçe aranmaz.
+    if (kind === 'inspection') return kind;
 
     const plan = expensePlan ?? 'BUTCELENEN';
 
@@ -433,7 +442,7 @@ export class ExpensesService {
           `${file.fileNo} dosyasında ek iş satış bütçesi tanımlı değil. Masraf girişi için önce dosyada ek iş satışını kaydedin.`,
         );
       }
-      return;
+      return kind;
     }
 
     const { limit } = this.resolveApprovedBudgetLimit(file);
@@ -458,6 +467,7 @@ export class ExpensesService {
         );
       }
     }
+    return kind;
   }
 
   async getEligibleFiles(search?: string) {
@@ -475,8 +485,8 @@ export class ExpensesService {
 
     const rows = await this.prisma.claimFile.findMany({
       where: searchFilter
-        ? { AND: [{ serviceKind: 'repair' }, searchFilter, { OR: [...budgetOr] }] }
-        : { AND: [{ serviceKind: 'repair' }, { OR: [...budgetOr] }] },
+        ? { AND: [HASAR_FILE_EXPENSE_KIND_WHERE, searchFilter, { OR: [...budgetOr, { serviceKind: 'inspection' }] }] }
+        : { AND: [HASAR_FILE_EXPENSE_KIND_WHERE, { OR: [...budgetOr, { serviceKind: 'inspection' }] }] },
       select: this.claimFileExpenseSelect,
       take: 50,
       orderBy: { updatedAt: 'desc' },
@@ -512,7 +522,10 @@ export class ExpensesService {
     if (!file) return { found: false as const, query: q };
 
     const mapped = this.mapFileToEligibleOption(file);
-    if (file.serviceKind !== 'repair') {
+    if (parseClaimServiceKind(file.serviceKind) === 'inspection') {
+      return { found: true as const, query: q, ...mapped, canEnterExpense: true, blockReason: null };
+    }
+    if (parseClaimServiceKind(file.serviceKind) === 'consultancy') {
       return {
         found: true as const,
         query: q,
@@ -552,7 +565,7 @@ export class ExpensesService {
 
     const where = {
       AND: [
-        { serviceKind: 'repair' as const },
+        HASAR_FILE_EXPENSE_KIND_WHERE,
         this.browseSegmentWhere(segment),
         ...(searchFilter ? [searchFilter] : []),
       ],
@@ -809,9 +822,9 @@ export class ExpensesService {
       if (!dto.fileCaseId) {
         throw new BadRequestException('Masraf girişi için hasar dosyası seçimi zorunludur.');
       }
-      await this.assertFileEligibleForExpense(dto.fileCaseId, dto.expensePlan);
+      const fileKind = await this.assertFileEligibleForExpense(dto.fileCaseId, dto.expensePlan);
       const plan = dto.expensePlan ?? 'BUTCELENEN';
-      if (plan === 'BUTCELENEN') {
+      if (plan === 'BUTCELENEN' && fileKind !== 'inspection') {
         const audit = await this.getWorkGroupExpenseAudit(dto.fileCaseId);
         if (audit.groups.length > 0) {
           if (!dto.workGroupId) {
@@ -1059,11 +1072,15 @@ export class ExpensesService {
     } else if (targetFileIds.length === 0) {
       const recent = await this.prisma.claimFile.findMany({
         where: {
-          serviceKind: 'repair',
-          OR: [
-            { expenses: { some: {} } },
-            { approvedBudgetAmount: { gt: 0 } },
-            { budgetVersions: { some: { status: 'approved', totalAmount: { gt: 0 } } } },
+          AND: [
+            HASAR_FILE_EXPENSE_KIND_WHERE,
+            {
+              OR: [
+                { expenses: { some: {} } },
+                { approvedBudgetAmount: { gt: 0 } },
+                { budgetVersions: { some: { status: 'approved', totalAmount: { gt: 0 } } } },
+              ],
+            },
           ],
         },
         select: { id: true },

@@ -79,13 +79,15 @@ export class ClaimFilesController {
   async operationStats(
     @CurrentUser() user: any,
     @Query('assignedOfficeUserId') assignedOfficeUserId?: string,
+    @Query('hizmet') hizmet?: string,
+    @Query('kaynak') kaynak?: string,
   ) {
     const data = await this.claimFilesService.getOperationStats(
       {
         id: user?.id ?? user?.userId,
         roleCode: user?.roleCode ?? user?.role?.code,
       },
-      { assignedOfficeUserId },
+      { assignedOfficeUserId, hizmet, kaynak },
     );
     return { success: true, data };
   }

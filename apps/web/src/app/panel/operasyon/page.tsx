@@ -579,6 +579,7 @@ function OperasyonPageContent() {
       ?? deriveOperationStage({
         claimStatusCode: claim.currentStatus?.code,
         reportStatus: claim.newestRepairReportStatus ?? claim.latestRepairReport?.status,
+        serviceKind: claim.serviceKind,
       });
     return {
       kind: 'hasar' as const,
