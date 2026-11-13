@@ -1,11 +1,11 @@
 ---
-description: Canlı web v689 / backend v689
+description: Canlı web v690 / backend v690
 alwaysApply: true
 ---
 
 # Canlı (13.11.2026)
 
-Canlı: web **v689** · backend **v689**. Geri alma: web **v688** / backend **v688**.
+Canlı: web **v690** · backend **v690**. Geri alma: web **v689** / backend **v689**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v690 (full):** Hasar listesinde Dosya Konusu ve Dosya No kesilmez; ortalanmış hücre sığmazsa «…» ile kısalır. Kartlar listenin hizmet süzgeciyle sayar. Açık adreste yol / cadde / sokak adındaki il veya ilçe çelişki sayılmaz; adreste il yoksa seçilen il esastır. Hasar Tespit açılışında «Açılış Bildirimi Gönder» seçime bağlıdır; **Hasar Tespit Süreci Başlatıldı** maili ilk muhataba gider (Sigorta → Broker → Eksper); İş Birliği alanı yalnız broker / acente alıcısında. Yazışmada Kime aynı sırayla dolar. Microsoft geçici hatasında mail 3 kez denenir (35 sn); «Mail gitmedi, adres sorunu değil» yazar; yanıt kutusu kilitlenmez. Hasar Tespit raporu fiyatlı basılır; onay Sigorta, Broker, Eksper. Tespitte rapor toplamı gelir / bütçe değildir; 6 eski dosyanın şişen bütçesi sıfırlandı (gelir ve fatura dokunulmadı). Hizmet bedeli Finans → Gelir’den Dosya Müşterisi adına girilir; rapor müşteriye gidince satış fatura talebi açılır. Kapanış onarım beklemez; durum **Tespit Raporu Onaylandı**; mailler tespit dilinde; tespit masrafı dosyaya yazılır. Alımda 2026 YB 25469 reddedilen raporun 4 fotoğrafı diskte yoktu; sabah yedeğinden geri kondu. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v689 / backend v689.
 
 **v689 (full):** Gelen kutusu eşitlemesinde iki kopya aynı posta kutusunu aynı anda çekmez; ikinci gelen bekler veya atlar. Planlı tur tek iş koyar. Microsoft hatası kod ile yazılır (502/503/504 geçici; yeniden deneme tamamlar); boş «senkron başarısız —» kalmaz. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v688 / backend v688.
 
@@ -253,11 +255,8 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-1. **Liste, adres ve kartlar:** Hasar listesinde Dosya Konusu ve Dosya No kesilmez; uzun konu alt satıra geçer. Ortalanmış hücreler bütün listelerde iki yandan kesilmez, sığmazsa «…» ile kısalır. Kartlar listenin hizmet süzgeciyle sayar (Hasar Tespit listesi yalnız tespit dosyalarını sayar). Açık adreste yol / cadde / sokak / bulvar adındaki il veya ilçe çelişki sayılmaz; adreste il yazmıyorsa yukarıda seçilen il esastır (Gölbaşı Ankara seçiliyse Adıyaman sayılmaz). 30 Ekim’de açılan 8 Hasar Tespit dosyasında konu açılışta kaybolmuş; kayıtlı kaynak yok, Düzenle’den bir kez girilir.
-2. **Hasar Tespit açılış bildirimi:** Yeni Dosya’da Hasar Tespit seçilince «Açılış Bildirimi Gönder» kutusu durur; yanında kime gideceği yazar. İşaretlenirse **Hasar Tespit Süreci Başlatıldı** maili ilk muhataba gider: Sigorta, e-postası yoksa Broker, o da yoksa Eksper. Kutu Hasar; gönderim dosya geçmişine yazılır. Tasarım onaylı broker / acente kartıdır (logo 174×67 orijinal kırpım, lacivert bant, Dosya Bilgileri, dosya sorumlusu, {İl}-{İlçe} Network); İş Birliği alanı yalnız broker / acente alıcısında durur, düğme dosya sorumlusuna mail açar. Hasar Tespit yazışmasında Kime aynı sırayla dolar (Allianz’da adres yokken Howden).
-3. **Mail gönderimi Microsoft geçici hatası:** 13.11.2026 Remed yazışması (cennet.durur@remed.com.tr) adres yüzünden değil, Microsoft’un HTTP 503/502 geçici hatasıyla gitmedi; aynı gün kapanış, giriş kodu ve rapor maillerinde de oldu. Mail artık geçici hatada kendiliğinden 3 kez denenir (2 sn, 5 sn; toplam 35 sn, çift mail yok). Gönderim hatası «Kutu maili geri çevirdi» yazmaz; «Mail gitmedi, adres sorunu değil» der. Yanıt kutusu kilitlenmez; yazı ve ekler durur, Gönder ile yeniden gönderilir. Gerçek geri çevirme bildirimi eski metniyle durur.
-4. **Hasar Tespit raporu fiyatlı:** Hizmet kartında Hasar Tespit «Raporda Fiyat» kapalıydı; PDF birim fiyat, bedel, iş grubu toplamı ve rapor genel toplamını boş basıyordu. Personelin girdiği fiyatlar kayıtlıydı (örn. RPT-2026YE1810/1 17 kalem, 495.470 TL). Artık fiyatlar basılır. Kart adımı Hasar Onarım; onay maili Sigorta, Broker ve Eksper’e gider. Kalemsiz Onaya Gönder durur.
-5. **Hasar Tespit hizmet bedeli ve fatura:** Rapor toplamı gelir / bütçe / pano değildir (eski 6 dosyanın şişen bütçesi `scripts/repair-inspection-budget-reset.sql` ile sıfırlanır; gelir ve fatura dokunulmaz). Hizmet bedeli Finans → Gelir’den girilir; taraf Dosya Müşterisi. Rapor müşteriye gidince satış fatura talebi hizmet bedeliyle açılır; bedel sonra girilirse o an açılır; fatura dosya müşterisine kesilir. Kapanış: rapor gitti + talep açıldı; «Kalan onarım yok» yolu tespitte yok. Onaylanan dosya «Tespit Raporu Onaylandı». Kapanış maili hizmet bedeli + ilk muhatap. Dış onay, rapor onaylandı ve rapor teslim mailleri tespit dilinde (onarım metni değişmez). Tespit masrafı dosyaya yazılır; hizmet türü boş 32 eski onarım dosyası da masrafa açılır. Planlayıcı gizli adımda takılmaz. Onarıma Çevir’de tespit bedeli ayrı kalır.
-6. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur. Bitmiş işi yok.
+1. **Revizyonda resim silmek eski raporun resmini silmez:** Revizyon eski raporun fotoğrafını aynı dosyayla taşır. Revizyondan fotoğraf çıkarılınca dosya diskten de siliniyordu; eski rapor resmi kayboluyordu (2026 YB 25469, 4 fotoğraf; yedekten geri kondu). Artık başka rapor aynı dosyayı kullanıyorsa yalnız kayıt silinir, dosya diskte kalır. Kilit `report-image-shared-key.lock.spec.ts`. Yalnız backend.
+2. **Hasar Tespit Hizmet Bedeli Hesapla:** Ayarlar’da araç giderleri (aylık kira, Pazar hariç gün, km aşım ücreti, yakıt türü ve tüketimi, köprü / otoyol tablosu). Müşteri kartında tarife (sabit bedel, ek kalemler, hizmet payı). Dosyada çıkış adresi → tespit adresi rota km, köprü / otoyol satırları, günlük akaryakıt fiyatı, km aşım, araç kira payı; satır satır tablo. «Gelire Düşür» hizmet bedelini gelire, yakıt / köprü / km aşım / kira payını dosya giderine yazar. Önce lokalde gösterilir.
+3. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur. Bitmiş işi yok.
 
-Canlı web **v689** · backend **v689**.
+Canlı web **v690** · backend **v690**.

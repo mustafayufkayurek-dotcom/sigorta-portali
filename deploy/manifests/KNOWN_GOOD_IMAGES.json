@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-13",
-  "label": "v689-gelen-kutusu-tek-esitleme",
-  "description": "v689 full: Gelen kutusu eşitlemesi tek işlem (kilit, planlı tur tek iş, Graph hata kodu). v688 işleri durur. Geri alma web v688 / backend v688.",
+  "label": "v690-hasar-tespit-bedel-liste",
+  "description": "v690 full: Hasar Tespit fiyatlı rapor, hizmet bedeli ve fatura; liste/adres/kartlar; açılış bildirimi; Microsoft geçici hatada yeniden deneme. Tespit bütçe şişmesi 6 dosyada sıfırlandı. Geri alma web v689 / backend v689.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v689-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v689-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v690-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v690-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v688-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v688-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v689-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v689-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
