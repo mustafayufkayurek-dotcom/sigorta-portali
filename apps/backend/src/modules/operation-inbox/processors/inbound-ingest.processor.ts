@@ -30,13 +30,19 @@ import {
   CLASSIFY_JOB_OPTIONS,
   INBOUND_CLASSIFY_QUEUE,
   INBOUND_INGEST_QUEUE,
+  INBOX_SYNC_BUSY_RETRY_MS,
+  INBOX_SYNC_LOCK_TTL_MS,
   INGEST_JOB_SYNC_MAILBOX,
   INBOUND_SYNC_CUTOFF_ISO,
+  inboxSyncLockKey,
   isInboundBeforeSyncCutoff,
   SYNC_JOB_OPTIONS,
   SYNC_MAX_PAGES_PER_JOB,
   SyncMailboxJobData,
 } from '../operation-inbox.constants';
+
+const RELEASE_LOCK_SCRIPT =
+  "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
 
 @Processor(INBOUND_INGEST_QUEUE)
 export class InboundIngestProcessor {
@@ -56,12 +62,30 @@ export class InboundIngestProcessor {
   @Process(INGEST_JOB_SYNC_MAILBOX)
   async handleSyncMailbox(job: Job<SyncMailboxJobData>) {
     const { mailbox, nextLink, pageCount = 0 } = job.data;
+    const lockKey = inboxSyncLockKey(mailbox);
+    const lockToken = randomUUID();
+    const acquired = await this.ingestQueue.client.set(lockKey, lockToken, 'PX', INBOX_SYNC_LOCK_TTL_MS, 'NX');
+    if (acquired !== 'OK') {
+      if (nextLink) {
+        await this.ingestQueue.add(
+          INGEST_JOB_SYNC_MAILBOX,
+          { mailbox, nextLink, pageCount },
+          { ...SYNC_JOB_OPTIONS, delay: INBOX_SYNC_BUSY_RETRY_MS },
+        );
+      }
+      this.logger.debug(`${mailbox}: başka işlem çekiyor — bu tur atlandı`);
+      return { mailbox, created: 0, updated: 0, skipped: 0, continued: Boolean(nextLink), busy: true };
+    }
     try {
       return await this.runSyncMailbox(mailbox, nextLink, pageCount);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`${mailbox}: senkron başarısız — ${message}`);
       throw err;
+    } finally {
+      await this.ingestQueue.client
+        .eval(RELEASE_LOCK_SCRIPT, 1, lockKey, lockToken)
+        .catch(() => undefined);
     }
   }
 

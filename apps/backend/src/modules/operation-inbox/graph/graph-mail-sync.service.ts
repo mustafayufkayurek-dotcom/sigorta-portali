@@ -62,7 +62,7 @@ export class GraphMailSyncService {
   /** Graph delta token süresi dolduğunda dönen hata */
   isStaleDeltaError(message: string): boolean {
     const lower = message.toLowerCase();
-    return lower.includes('sync state') && lower.includes('not found');
+    return (lower.includes('sync state') && lower.includes('not found')) || lower.includes('syncstatenotfound');
   }
 
   async clearDeltaLink(mailbox: InboundMailbox): Promise<void> {
@@ -138,8 +138,15 @@ export class GraphMailSyncService {
     );
 
     if (res.status >= 400) {
-      const graphMsg = (res.data as { error?: { message?: string } })?.error?.message;
-      throw new Error(graphMsg ?? `Graph delta isteği başarısız (HTTP ${res.status})`);
+      const graphError = (res.data as { error?: { message?: string; code?: string } })?.error;
+      const graphMsg = graphError?.message?.trim();
+      const graphCode = graphError?.code?.trim();
+      const detail = [graphCode, graphMsg].filter(Boolean).join(': ');
+      throw new Error(
+        detail
+          ? `Graph delta isteği başarısız (HTTP ${res.status}) — ${detail}`
+          : `Graph delta isteği başarısız (HTTP ${res.status})`,
+      );
     }
 
     return {

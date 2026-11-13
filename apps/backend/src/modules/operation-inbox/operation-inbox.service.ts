@@ -56,6 +56,7 @@ import {
   INGEST_JOB_SYNC_MAILBOX,
   SHARED_MAILBOXES,
   SYNC_JOB_OPTIONS,
+  scheduledInboxSyncJobId,
 } from './operation-inbox.constants';
 
 interface AiExtractedFields {
@@ -1730,7 +1731,9 @@ export class OperationInboxService {
       const job = await this.ingestQueue.add(
         INGEST_JOB_SYNC_MAILBOX,
         { mailbox },
-        SYNC_JOB_OPTIONS,
+        opts?.scheduled
+          ? { ...SYNC_JOB_OPTIONS, jobId: scheduledInboxSyncJobId(mailbox), removeOnComplete: 50 }
+          : SYNC_JOB_OPTIONS,
       );
       jobIds.push(String(job.id));
     }

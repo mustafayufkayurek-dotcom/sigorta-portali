@@ -165,6 +165,7 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
       'unowned-inbox-mail.lock.spec',
       'address-place-guard.lock.spec',
       'claim-notification-at.lock.spec',
+      'inbox-sync-single-run.lock.spec',
     ]) {
       assert.match(src, new RegExp(lock.replace(/\./g, '\\.')));
     }

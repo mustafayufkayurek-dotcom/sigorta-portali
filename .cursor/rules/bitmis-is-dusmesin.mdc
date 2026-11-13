@@ -72,6 +72,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 53. Dosya Bilgilerini Düzenle: Dosya Konusu seçilen konudur. Kayıt dosya sorumlusuna mail atar; sorumlu değişince yeni sorumluya da gider. Tahmini Onarım Bitiş yok; Sigorta Şirketi, Broker, Acente durur. Öncelik her açılışta zorunludur.
 54. Hasar Yeni İhbar konu satırı Yeni İhbar-İhbarı Yapan Müşteri-Dosya Konusu. İhbar Tarihi 03:00 yazmaz. Broker / Acente varsa Sigorta Şirketi’nin üstündedir. Belirtilmemiş basılmaz.
 55. Giriş Onayı mailinde çalışmayan kopyala ikonu yoktur; kod bir dokunuşta seçilir, giriş ekranında Yapıştır doldurur.
+56. Gelen kutusu eşitlemesi: aynı posta kutusunu aynı anda tek işlem çeker; planlı tur tek iş koyar; Microsoft hatası kod ile yazılır, boş «senkron başarısız —» kalmaz.
 
 `scripts/smoke-canli-bitmis-is.sh` bu maddelerin kilitlerini çalıştırır. Listeden düşürmek yasak.
 

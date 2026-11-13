@@ -56,6 +56,20 @@ export interface SyncMailboxJobData {
   pageCount?: number;
 }
 
+/** PM2 iki kopya çalışır: aynı kutuyu aynı anda tek işlem çeker. */
+export const INBOX_SYNC_LOCK_TTL_MS = 10 * 60_000;
+export const INBOX_SYNC_BUSY_RETRY_MS = 20_000;
+export const INBOX_SYNC_SLOT_MS = 10 * 60_000;
+
+export function inboxSyncLockKey(mailbox: string): string {
+  return `inbox-sync-lock:${mailbox}`;
+}
+
+/** Planlı tur: iki kopyanın zamanlayıcısı aynı tura tek iş koyar. */
+export function scheduledInboxSyncJobId(mailbox: string, now: number = Date.now()): string {
+  return `scheduled-sync:${mailbox}:${Math.floor(now / INBOX_SYNC_SLOT_MS)}`;
+}
+
 export const SYNC_JOB_OPTIONS = {
   attempts: 3,
   backoff: { type: 'exponential' as const, delay: 15_000 },
