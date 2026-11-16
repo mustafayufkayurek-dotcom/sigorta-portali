@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-16",
-  "label": "v693-onaya-gonder-konu",
-  "description": "v693 full: Onaya Gönder alıcı tik seçimi, sabit Meridyen CC, okundu teyidi; Dosya Konusu düzenlemede Tadilat kalmaz. Geri alma web v692 / backend v692.",
+  "label": "v694-finans-omurga-onaya-sablon",
+  "description": "v694 full: Finans omurga (cari/dönem/Merkez kurulum) + personel yasal hesap; Onaya Gönder kişi seçimi, şablon Önizle. Geri alma web v693 / backend v693.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v693-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v693-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v694-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v694-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v692-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v692-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v693-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v693-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -45,6 +45,8 @@
     "/panel/asistans-portal",
     "/panel/asistans-portal/dosyalar",
     "/panel/personel-ozluk",
+    "/panel/finans",
+    "/panel/finans/cariler",
     "/panel/finans/faturalar",
     "/panel/finans/fatura-talepleri"
   ]

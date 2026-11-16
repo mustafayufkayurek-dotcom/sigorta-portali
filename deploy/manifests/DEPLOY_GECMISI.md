@@ -8,18 +8,26 @@
 
 ---
 
-## Canlı durum (16 Kasım 2026 — web v693 / backend v693)
+## Canlı durum (16 Kasım 2026 — web v694 / backend v694)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v693-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v693-amd64` | canlı |
-| **Rollback** | Web **v692** / Backend **v692** | manifest `rollbackImages` |
-| **Etiket** | `v693-onaya-gonder-konu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v694-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v694-amd64` | canlı |
+| **Rollback** | Web **v693** / Backend **v693** | manifest `rollbackImages` |
+| **Etiket** | `v694-finans-omurga-onaya-sablon` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v694 — Full (16 Kasım 2026) — Finans omurga + Onaya Gönder şablon önizleme
+
+- Finans: cari hesap, dönem kapanışı, Merkez kurulum checklist / seyir; personel yasal hesap / ücret
+- Onaya Gönder: kişi bazlı Kime/Bilgi; Hasar Tespit hitabı ve imza; dosya sorumlusu otomatik Bilgi; mail gitmeden Önizle şablonu
+- Kayıt güncellemesi: party_accounts, party_account_contact, finans_donem_kapanis, hr_personel_yasal_hesap
+- Disk alım öncesi 14 GB; health ok; Route Gate PARTIAL (oturum şifresi yok)
+- Geri alma web **v693** / backend **v693**
 
 ### v693 — Full (16 Kasım 2026) — Onaya Gönder seçim + Dosya Konusu düzeltme
 

@@ -1,11 +1,11 @@
 ---
-description: Canlı web v693 / backend v693
+description: Canlı web v694 / backend v694
 alwaysApply: true
 ---
 
 # Canlı (16.11.2026)
 
-Canlı: web **v693** · backend **v693**. Geri alma: web **v692** / backend **v692**.
+Canlı: web **v694** · backend **v694**. Geri alma: web **v693** / backend **v693**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v694 (full):** Finans omurga (cari, dönem kapanışı, Merkez kurulum checklist / seyir) + personel yasal hesap / ücret. Onaya Gönder: kişi bazlı Kime/Bilgi, Hasar Tespit hitabı ve imza, dosya sorumlusu otomatik Bilgi, mail gitmeden **Önizle** şablonu. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v693** / backend **v693**.
 
 **v693 (full):** Onaya Gönder’de tercih edilen alıcılar **tik ile** seçilir; yalnız işaretlenenlere gider. Cc’de gönderen Meridyen personeli **Platform Mail Kopyası** (oturumdan, silinemez). Okundu teyidi açık. Dosya Konusu düzenlemede eski Tadilat department kaydı kalmaz; hizmet hattından yeniden bağlanır. (7 Tadilat dosyası canlıda daha önce Sel-Seylap yapıldı.) Finans omurga / personel WIP alınmadı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web v692 / backend v692.
 
@@ -261,7 +263,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur. Bitmiş işi yok.
-2. **Finans omurga + personel yasal hesap (lokal WIP):** Cari / dönem / personel ücret — canlıya alınmadı; tezgâhta durur.
+Bekleyen paket yok.
 
-Canlı web **v693** · backend **v693**.
+Canlı web **v694** · backend **v694**.
