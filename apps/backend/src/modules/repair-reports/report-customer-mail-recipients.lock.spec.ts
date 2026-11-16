@@ -85,12 +85,24 @@ describe('rapor müşteri maili LOCK', () => {
     const src = readFileSync(join(here, 'repair-reports.service.ts'), 'utf8');
     assert.match(src, /resolveReportCustomerMailRecipients/);
     assert.match(src, /claimApprovalExpertParty/);
-    assert.match(src, /customerRecipients\.length === 0/);
+    assert.match(src, /allowedRecipients\.length === 0/);
     assert.match(src, /collectClaimFileChannelEmails/);
     assert.match(src, /resolveClaimMailRoute/);
     assert.match(src, /generalMailboxesFromContactInfos/);
     assert.match(src, /sendReport/);
     assert.match(src, /await this\.claimEventEmail\.onManagerApprovalRequested/);
     assert.doesNotMatch(src, /void this\.claimEventEmail\.onManagerApprovalRequested/);
+  });
+
+  it('onaya gönderimde alıcı seçimi, sabit bilgilendirme CC ve okundu teyidi durur', () => {
+    const src = readFileSync(join(here, 'repair-reports.service.ts'), 'utf8');
+    const email = readFileSync(join(here, 'email/report-email.service.ts'), 'utf8');
+    assert.match(src, /filterSelectedApprovalEmails/);
+    assert.match(src, /resolveApprovalInformCc/);
+    assert.match(src, /mergeApprovalMailCc/);
+    assert.match(src, /buildPlatformMailCopyNotice/);
+    assert.match(src, /requestReadReceipt:\s*true/);
+    assert.match(src, /En az bir tercih edilen alıcı seçilmelidir/);
+    assert.match(email, /requestReadReceipt:\s*opts\.requestReadReceipt !== false/);
   });
 });

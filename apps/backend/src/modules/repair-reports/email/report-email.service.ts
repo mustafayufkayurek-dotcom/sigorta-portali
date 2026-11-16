@@ -45,6 +45,10 @@ export class ReportEmailService {
     portalUrl?: string | null;
     viewType?: 'external';
     cc?: Array<{ email: string; name?: string }>;
+    copyNoticeHtml?: string;
+    copyNoticeText?: string;
+    /** Varsayılan açık — okundu teyidi. */
+    requestReadReceipt?: boolean;
   }): Promise<SendReportEmailResult> {
     const to = String(opts.to ?? '').trim();
     if (!to || !to.includes('@')) {
@@ -102,6 +106,9 @@ export class ReportEmailService {
           },
         ],
         cc: opts.cc,
+        copyNoticeHtml: opts.copyNoticeHtml,
+        copyNoticeText: opts.copyNoticeText,
+        requestReadReceipt: opts.requestReadReceipt !== false,
       },
     );
 

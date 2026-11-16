@@ -46,6 +46,7 @@ export * from './claim-notification-at';
 export * from './hasar-tespit-muhatap';
 export * from './hasar-tespit-bedel';
 export * from './claim-mail-route';
+export * from './claim-approval-mail-selection';
 export * from './hizmet-karti';
 export * from './claim-pre-approval';
 export * from './insurance-company-catalog';

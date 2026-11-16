@@ -152,6 +152,13 @@ export class EmailService {
       return { sent: false, errorMsg, emailLogId: logEntry.id };
     }
 
+    const bodyHtml = options?.copyNoticeHtml
+      ? prependFileOwnerCopyNotice(html, options.copyNoticeHtml)
+      : html;
+    const bodyText = options?.copyNoticeText && options?.text
+      ? `${options.copyNoticeText}\n\n${options.text}`
+      : options?.text;
+
     const mailbox: InboundMailbox = options?.mailbox === 'IHBAR' ? 'IHBAR' : 'HASAR';
     const graphReady = await this.graphMailSend.isOutboundReady();
     if (graphReady) {
@@ -161,7 +168,7 @@ export class EmailService {
           mailbox,
           recipients,
           subject,
-          html,
+          bodyHtml,
           graphAttachments,
           visibleCc,
           options?.readReceiptTo,
@@ -200,8 +207,8 @@ export class EmailService {
         from: transport.from,
         to: recipients.join(', '),
         subject,
-        html,
-        text: options?.text,
+        html: bodyHtml,
+        text: bodyText,
         cc: visibleCc?.map((item) => item.email).filter(Boolean).join(', ') || undefined,
         attachments: options?.attachments,
         headers: options?.readReceiptTo?.length

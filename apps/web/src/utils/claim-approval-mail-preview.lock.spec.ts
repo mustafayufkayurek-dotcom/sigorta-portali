@@ -26,7 +26,7 @@ describe('Onaya Gönder tercih edilen alıcı LOCK', () => {
     assert.ok(rows.every((row) => row.label !== 'Müşteri'));
   });
 
-  it('rapor Onaya Gönder kutusu tercih edilen alıcıyı gösterir', () => {
+  it('rapor Onaya Gönder kutusu tercih seçimi, sabit CC ve okundu teyidi gösterir', () => {
     const page = readFileSync(
       join(
         here,
@@ -37,6 +37,15 @@ describe('Onaya Gönder tercih edilen alıcı LOCK', () => {
     assert.match(page, /onaya-gonder-tercih-alici/);
     assert.match(page, /claimApprovalMailPreview/);
     assert.match(page, /Tercih Edilen Alıcı/);
+    assert.match(page, /selectedApprovalEmails/);
+    assert.match(page, /type="checkbox"/);
+    assert.match(page, /onaya-gonder-bilgi-cc/);
+    assert.match(page, /resolveApprovalInformCc/);
+    assert.match(page, /PLATFORM_MAIL_COPY_TITLE/);
+    assert.match(page, /kaldırılamaz/);
+    assert.match(page, /onaya-gonder-okundu-teyidi/);
+    assert.match(page, /Okundu Teyidi/);
+    assert.match(page, /selectedEmails:\s*selectedApprovalEmails/);
     assert.doesNotMatch(page, /Müşteri kartındaki e-postaya rapor PDF/);
   });
 

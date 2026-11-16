@@ -2464,6 +2464,9 @@ export class ClaimFilesService {
       assignedOfficeUserId?: string | null;
       collectionParty?: string | null;
       collectionPartyLocked?: boolean;
+      customerSource?: string | null;
+      serviceKind?: string | null;
+      consultancyServiceType?: { code?: string | null; name?: string | null } | null;
     };
 
     const {
@@ -2590,20 +2593,35 @@ export class ClaimFilesService {
     if (typeof rest.lossType === 'string') {
       const chosenLossType = rest.lossType.trim();
       rest.lossType = preserveChosenFileSubject(chosenLossType, sanitizeInboundLossType(chosenLossType));
-      if (!rest.departmentFileSubjectId && rest.lossType !== 'Belirtilmemiş') {
-        const deptSubject = await resolveDepartmentFileSubjectByLabel(
+      // Konu değişince eski Tadilat (yanlış department) kaydı ekranda kalmasın.
+      if (rest.lossType && rest.lossType !== 'Belirtilmemiş') {
+        const source = String(existingAny.customerSource ?? 'expert');
+        const customerSource = source === 'private' || source === 'broker' || source === 'insurance'
+          ? source
+          : 'expert';
+        const deptCode = departmentCodeForNewClaim({
+          customerSource,
+          serviceKind: parseClaimServiceKind(rest.serviceKind ?? existingAny.serviceKind),
+          consultancyServiceType: existingAny.consultancyServiceType ?? null,
+        });
+        let subjectDeptId = await this.resolveDepartmentIdByCode(deptCode);
+        if (!subjectDeptId && deptCode === 'hasar-tespit') {
+          subjectDeptId = await this.resolveDepartmentIdByCode('hasar-onarim');
+        }
+        let deptSubject = await resolveDepartmentFileSubjectByLabel(
           this.prisma,
           rest.lossType,
-          rest.departmentId ?? existingAny.departmentId ?? null,
+          subjectDeptId,
         );
-        if (deptSubject) {
-          rest.departmentFileSubjectId = deptSubject.id;
-          rest.lossType = deptSubject.name;
+        if (!deptSubject) {
+          deptSubject = await resolveDepartmentFileSubjectByLabel(this.prisma, rest.lossType, null);
         }
-      }
-      if (!rest.claimSubjectId && rest.lossType && rest.lossType !== 'Belirtilmemiş') {
-        const subjectId = await resolveClaimSubjectIdByLabel(this.prisma, rest.lossType);
-        if (subjectId) rest.claimSubjectId = subjectId;
+        rest.departmentFileSubjectId = deptSubject?.id ?? null;
+        if (deptSubject) rest.lossType = deptSubject.name;
+        rest.claimSubjectId = await resolveClaimSubjectIdByLabel(this.prisma, rest.lossType);
+      } else {
+        rest.departmentFileSubjectId = null;
+        rest.claimSubjectId = null;
       }
     }
 

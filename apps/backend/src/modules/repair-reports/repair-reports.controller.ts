@@ -78,6 +78,7 @@ import {
   CreateDamageTypeDto,
   SendEmailDto,
   AddQuickRepairItemsDto,
+  RequestApprovalDto,
 } from './dto/repair-reports.dto';
 import { ReviseReportDto } from './dto/revise-report.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -335,8 +336,12 @@ export class RepairReportsController {
   // ── Approval Workflow ─────────────────────────────────────────────────────
 
   @Post('repair-reports/:id/request-approval')
-  async requestApproval(@Param('id') id: string, @CurrentUser() user: any) {
-    const data = await this.service.requestApproval(id, user.id);
+  async requestApproval(
+    @Param('id') id: string,
+    @Body() dto: RequestApprovalDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.requestApproval(id, user.id, dto);
     return { data };
   }
 

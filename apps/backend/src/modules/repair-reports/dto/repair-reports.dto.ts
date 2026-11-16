@@ -277,3 +277,11 @@ export class AddQuickRepairItemsDto {
   @Type(() => QuickRepairItemDto)
   items!: QuickRepairItemDto[];
 }
+
+export class RequestApprovalDto {
+  /** Personelin işaretlediği tercih edilen alıcılar. Boş/yoksa izinli kanalın tamamı. */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  selectedEmails?: string[];
+}

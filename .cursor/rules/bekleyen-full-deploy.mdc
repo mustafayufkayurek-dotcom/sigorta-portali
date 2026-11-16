@@ -259,7 +259,9 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-1. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur. Bitmiş işi yok.
-2. **Finans omurga + personel yasal hesap (lokal WIP):** Cari / dönem / personel ücret — canlıya alınmadı; tezgâhta durur.
+1. **Onaya Gönder tercih seçimi (lokalde hazır):** Tercih edilen alıcılar tik ile seçilir; yalnız işaretlenenlere gider. Cc’de gönderen Meridyen personeli Platform Mail Kopyası (oturumdan, silinemez). Okundu teyidi açık. Web + backend.
+2. **Dosya Konusu düzeltme (kod lokalde hazır):** Düzenle’de konu değişince eski Tadilat department kaydı ekranda kalmaz; hizmet hattından yeniden bağlanır. Dosya sorumlusu Sel-Seylap vb. seçebilir. Backend. **Canlı veri (16.11.2026 yapıldı):** 2026YE1884/1 Metrocity, 1841/1 Çekmeköy, 1810/1 Gaziosmanpaşa, 1790/1 Doğtaş Kadıköy, 1795/1 Esenyurt, 1794/1 Vadi İstanbul, 1796/1 Fatih → **Sel-Seylap** (eski Tadilat department bağı koptu).
+3. **Tadilat / dekorasyon firmaları için ürünleştirme:** Hasar yazılımı bu işe göre sadeleştirilip başka firmalara sunulacak. Ayrı konuşulur. Bitmiş işi yok.
+4. **Finans omurga + personel yasal hesap (lokal WIP):** Cari / dönem / personel ücret — canlıya alınmadı; tezgâhta durur.
 
 Canlı web **v692** · backend **v692**.

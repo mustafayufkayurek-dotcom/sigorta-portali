@@ -12,15 +12,21 @@ alwaysApply: true
 ## Zorunlu
 
 1. `claimApprovalExpertParty`: kanal eksper kartı varsa o. Yoksa müşteri eksper firmasıysa kartın adresi. Özel müşteri eksper sayılmaz.
-2. Seçilen tarafta hiç adres yoksa kutuda görünen kart adresi kullanılır (`customerRecipients.length === 0`).
+2. Seçilen tarafta hiç adres yoksa kutuda görünen kart adresi kullanılır (`allowedRecipients.length === 0`).
 3. Sigorta şirketinin boş adresi, karttaki adresi yok saydırmaz.
 4. Yönetici iç özeti ayrı kalır. Müşteriye iç PDF gitmez.
-5. Kilit `report-customer-mail-recipients.lock.spec.ts`. Her alım `smoke-outbound-mail.sh` içinde çalışır.
+5. Onaya Gönder kutusu tercih edilen alıcıları **tik ile** seçtirir; yalnız işaretlenenlere gider (`selectedEmails` + `filterSelectedApprovalEmails`).
+6. Gönderen Meridyen personeli Cc’de **Platform Mail Kopyası** olarak durur; adres oturumdan gelir, kodda gömülü değildir, silinemez (`resolveApprovalInformCc`).
+7. Okundu teyidi açıktır (`requestReadReceipt: true`); kutuda görünür, kapatılamaz.
+8. Kilit `report-customer-mail-recipients.lock.spec.ts` + `claim-approval-mail-selection.lock.spec.ts` + `claim-approval-mail-preview.lock.spec.ts`. Her alım `smoke-outbound-mail.sh` içinde çalışır.
 
 ## Yasak (açık onay yoksa)
 
 - Hizmet kartı tarafı dolu diye karttaki adresi tamamen kesmek
 - Özel müşteriyi eksper ofisi saymak
+- Tüm taraflara zorunlu gönderip tercihi kaldırmak
+- Bilgilendirme Cc’sini sabit e-posta ile gömmek veya silinebilir yapmak
+- Okundu teyidini kapatmak
 - Bu kilidi “sadeleştirme” diye kaldırmak
 
 ## Durdurma
@@ -31,5 +37,7 @@ Regresyon:
 
 ```bash
 node --experimental-strip-types --test \
+  packages/shared/src/claim-approval-mail-selection.lock.spec.ts \
+  apps/web/src/utils/claim-approval-mail-preview.lock.spec.ts \
   apps/backend/src/modules/repair-reports/report-customer-mail-recipients.lock.spec.ts
 ```

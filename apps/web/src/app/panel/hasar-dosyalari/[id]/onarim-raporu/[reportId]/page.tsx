@@ -53,6 +53,11 @@ import {
   claimApprovalMailPreview,
 } from '@/utils/claim-approval-mail-preview';
 import {
+  PLATFORM_MAIL_COPY_TITLE,
+  platformMailCopyLineLabel,
+  resolveApprovalInformCc,
+} from '@sigorta/shared';
+import {
   repairReportStatusBadge,
   repairReportStatusLabel,
 } from '@/utils/repair-report-status';
@@ -4922,6 +4927,7 @@ export default function RepairReportPage() {
   const [showRequestApprovalModal, setShowRequestApprovalModal] = useState(false);
   const [requestingApproval, setRequestingApproval] = useState(false);
   const [confirmSendWithoutImages, setConfirmSendWithoutImages] = useState(false);
+  const [selectedApprovalEmails, setSelectedApprovalEmails] = useState<string[]>([]);
   const [itemsApprovalError, setItemsApprovalError] = useState<string | null>(null);
   const [approvalHistory, setApprovalHistory] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -5228,6 +5234,19 @@ export default function RepairReportPage() {
       : claimApprovalFallbackCustomerEmail(report?.claimFile?.customer?.email)),
     [approvalMailRows.length, report?.claimFile?.customer?.email],
   );
+  const approvalSelectableEmails = useMemo(() => {
+    if (approvalMailRows.length > 0) return approvalMailRows.map((row) => row.email);
+    return approvalFallbackCustomerMail ? [approvalFallbackCustomerMail] : [];
+  }, [approvalMailRows, approvalFallbackCustomerMail]);
+  const approvalInformCc = useMemo(
+    () => resolveApprovalInformCc({
+      email: currentUser?.email,
+      firstName: currentUser?.firstName,
+      lastName: currentUser?.lastName,
+      name: `${String(currentUser?.firstName ?? '').trim()} ${String(currentUser?.lastName ?? '').trim()}`.trim(),
+    }),
+    [currentUser],
+  );
 
   const insuredName = useMemo(
     () => resolveHasarInsuredName(report?.claimFile ?? {}),
@@ -5457,6 +5476,10 @@ export default function RepairReportPage() {
     }
     const hasImages = (report?.images?.length ?? 0) > 0;
     if (!hasImages && !confirmSendWithoutImages) return;
+    if (selectedApprovalEmails.length === 0) {
+      notify('warning', 'En az bir tercih edilen alıcı seçilmelidir.');
+      return;
+    }
 
     setRequestingApproval(true);
     try {
@@ -5464,14 +5487,15 @@ export default function RepairReportPage() {
         await axios.put(`${API}/repair-reports/${reportId}`, pendingFields, { headers: authHeader() });
         setPendingFields({});
       }
-      await axios.post(`${API}/repair-reports/${reportId}/request-approval`, {}, { headers: authHeader() });
+      await axios.post(
+        `${API}/repair-reports/${reportId}/request-approval`,
+        { selectedEmails: selectedApprovalEmails },
+        { headers: authHeader() },
+      );
       setShowRequestApprovalModal(false);
       setConfirmSendWithoutImages(false);
       setItemsApprovalError(null);
-      const preferredMails = approvalMailRows.map((row) => row.email);
-      const mailedTo = preferredMails.length > 0
-        ? preferredMails.join(', ')
-        : claimApprovalFallbackCustomerEmail(report?.claimFile?.customer?.email);
+      const mailedTo = selectedApprovalEmails.join(', ');
       notify(
         'success',
         mailedTo
@@ -5563,6 +5587,11 @@ export default function RepairReportPage() {
     }
     setItemsApprovalError(null);
     setConfirmSendWithoutImages(false);
+    setSelectedApprovalEmails(
+      approvalMailRows.length > 0
+        ? approvalMailRows.map((row) => row.email)
+        : (approvalFallbackCustomerMail ? [approvalFallbackCustomerMail] : []),
+    );
     setShowRequestApprovalModal(true);
   };
 
@@ -7230,7 +7259,7 @@ export default function RepairReportPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <h3 className="text-base font-bold text-slate-900 mb-1">Onaya Gönder — Son Teyit</h3>
             <p className="text-xs text-slate-500 mb-4">
-              Rapor PDF tercih edilen mail tarafına gider. Yöneticiye ayrıca iç onay özeti gider.
+              Rapor PDF yalnız işaretlediğiniz tarafa gider. Yöneticiye ayrıca iç onay özeti gider.
             </p>
 
             <div className="space-y-3">
@@ -7238,24 +7267,88 @@ export default function RepairReportPage() {
                 <p className="text-xs font-medium text-slate-500 mb-2">Tercih Edilen Alıcı</p>
                 {approvalMailRows.length > 0 ? (
                   <ul className="space-y-2">
-                    {approvalMailRows.map((row) => (
-                      <li key={`${row.party}-${row.email}`} className="text-sm">
-                        <p className="font-semibold text-slate-900">{row.label}</p>
-                        <p className="text-xs text-slate-600">{row.name || '—'}</p>
-                        <p className="mt-0.5 font-medium text-slate-800">{row.email}</p>
-                      </li>
-                    ))}
+                    {approvalMailRows.map((row) => {
+                      const checked = selectedApprovalEmails.includes(row.email);
+                      return (
+                        <li key={`${row.party}-${row.email}`}>
+                          <label className="flex items-start gap-2.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                setSelectedApprovalEmails((prev) => (
+                                  checked
+                                    ? prev.filter((email) => email !== row.email)
+                                    : [...prev, row.email]
+                                ));
+                              }}
+                              className="mt-1 rounded border-slate-300 text-brand-600"
+                              data-testid={`onaya-gonder-alici-${row.party}`}
+                            />
+                            <span className="text-sm min-w-0">
+                              <span className="block font-semibold text-slate-900">{row.label}</span>
+                              <span className="block text-xs text-slate-600">{row.name || '—'}</span>
+                              <span className="mt-0.5 block font-medium text-slate-800">{row.email}</span>
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : approvalFallbackCustomerMail ? (
-                  <div>
-                    <p className="text-sm font-semibold text-amber-800">Kanal e-postası yok — kart adresi yedek</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">{approvalFallbackCustomerMail}</p>
-                  </div>
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedApprovalEmails.includes(approvalFallbackCustomerMail)}
+                      onChange={() => {
+                        setSelectedApprovalEmails((prev) => (
+                          prev.includes(approvalFallbackCustomerMail)
+                            ? []
+                            : [approvalFallbackCustomerMail]
+                        ));
+                      }}
+                      className="mt-1 rounded border-slate-300 text-brand-600"
+                    />
+                    <span className="text-sm min-w-0">
+                      <span className="block text-sm font-semibold text-amber-800">Kanal e-postası yok — kart adresi yedek</span>
+                      <span className="mt-1 block font-medium text-slate-900">{approvalFallbackCustomerMail}</span>
+                    </span>
+                  </label>
                 ) : (
                   <p className="text-sm font-semibold text-amber-700">
                     Tercih edilen tarafta e-posta yok. Dosya kanalı adreslerini kontrol edin.
                   </p>
                 )}
+                {approvalSelectableEmails.length > 0 && selectedApprovalEmails.length === 0 ? (
+                  <p className="mt-2 text-xs font-medium text-amber-700">En az bir alıcı işaretleyin.</p>
+                ) : null}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3" data-testid="onaya-gonder-bilgi-cc">
+                <p className="text-xs font-medium text-slate-500 mb-1">Cc · {PLATFORM_MAIL_COPY_TITLE}</p>
+                {approvalInformCc ? (
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 text-sm">
+                      <p className="font-semibold text-slate-900">
+                        {platformMailCopyLineLabel(currentUser?.role?.code ?? currentUser?.roleCode)}
+                      </p>
+                      <p className="text-xs text-slate-600">{approvalInformCc.name || '—'}</p>
+                      <p className="mt-0.5 font-medium text-slate-800">{approvalInformCc.email}</p>
+                      <p className="mt-1 text-[11px] text-slate-500">Bilgilendirme kopyası — kaldırılamaz.</p>
+                    </div>
+                    <span className="shrink-0 rounded-md bg-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-700">
+                      Sabit
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-700">Oturum e-postası bulunamadı; bilgilendirme kopyası yazılamadı.</p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3" data-testid="onaya-gonder-okundu-teyidi">
+                <p className="text-xs font-medium text-slate-500 mb-1">Okundu Teyidi</p>
+                <p className="text-sm font-semibold text-slate-900">Açık</p>
+                <p className="mt-1 text-[11px] text-slate-500">Alıcı okuduğunda iz düşer. Kapatılamaz.</p>
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -7307,14 +7400,22 @@ export default function RepairReportPage() {
               <button
                 type="button"
                 onClick={handleRequestApproval}
-                disabled={requestingApproval || ((report.images?.length ?? 0) === 0 && !confirmSendWithoutImages)}
+                disabled={
+                  requestingApproval
+                  || selectedApprovalEmails.length === 0
+                  || ((report.images?.length ?? 0) === 0 && !confirmSendWithoutImages)
+                }
                 className="flex-1 bg-yellow-500 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-yellow-600 disabled:opacity-50"
               >
                 {requestingApproval ? 'Gönderiliyor…' : 'Onaya Gönder'}
               </button>
               <button
                 type="button"
-                onClick={() => { setShowRequestApprovalModal(false); setConfirmSendWithoutImages(false); }}
+                onClick={() => {
+                  setShowRequestApprovalModal(false);
+                  setConfirmSendWithoutImages(false);
+                  setSelectedApprovalEmails([]);
+                }}
                 disabled={requestingApproval}
                 className="flex-1 border border-slate-200 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
               >

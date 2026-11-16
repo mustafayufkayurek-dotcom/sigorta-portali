@@ -28,7 +28,16 @@ import { normalizeReportImageCategory } from './report-image-category';
 import { getReportImagesDir, resolveReportImageFilePath, type PdfImageFit } from './report-image-paths';
 import { StorageService } from '@/modules/storage/storage.service';
 import { resolveReportCustomerMailRecipients } from './report-customer-mail-recipients';
-import { collectClaimFileChannelEmails, customerContactCopyEmails, generalMailboxesFromContactInfos, resolveClaimMailRoute } from '@sigorta/shared';
+import {
+  buildPlatformMailCopyNotice,
+  collectClaimFileChannelEmails,
+  customerContactCopyEmails,
+  filterSelectedApprovalEmails,
+  generalMailboxesFromContactInfos,
+  mergeApprovalMailCc,
+  resolveApprovalInformCc,
+  resolveClaimMailRoute,
+} from '@sigorta/shared';
 import { serviceMailRouteForClaim } from '@/common/hizmet-karti-store';
 import { isMeridyenInternalMailbox } from '@/modules/notifications/email/file-closure-email.template';
 import {
@@ -66,6 +75,7 @@ import {
   CreateDamageTypeDto,
   SendEmailDto,
   AddQuickRepairItemsDto,
+  RequestApprovalDto,
 } from './dto/repair-reports.dto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -1370,7 +1380,7 @@ export class RepairReportsService {
     });
   }
 
-  async requestApproval(reportId: string, userId: string) {
+  async requestApproval(reportId: string, userId: string, dto?: RequestApprovalDto) {
     const report = await this.prisma.repairReport.findUnique({
       where: { id: reportId },
       include: {
@@ -1495,9 +1505,9 @@ export class RepairReportsService {
       fileChannelEmails: channelMail,
       expertOfficeEmail: report.expertOffice?.email,
     });
-    const customerRecipients = mailRoute ? channelMail : cardRecipients();
-    if (customerRecipients.length === 0) {
-      customerRecipients.push(...cardRecipients());
+    const allowedRecipients = mailRoute ? [...channelMail] : cardRecipients();
+    if (allowedRecipients.length === 0) {
+      allowedRecipients.push(...cardRecipients());
     }
     const irtibatEmail = String(report.claimFile?.siteContactEmail ?? '').trim().toLowerCase();
     if (
@@ -1506,20 +1516,27 @@ export class RepairReportsService {
         report.claimFile?.consultancyServiceType,
       )
       && irtibatEmail.includes('@')
-      && !customerRecipients.includes(irtibatEmail)
+      && !allowedRecipients.includes(irtibatEmail)
     ) {
-      customerRecipients.push(irtibatEmail);
+      allowedRecipients.push(irtibatEmail);
     }
     const customerPdf = await this.externalMailPdf(reportId);
     if (!customerPdf?.length) {
       throw new BadRequestException('Müşteri raporu PDF oluşmadı — e-posta gönderilemez.');
     }
-    if (customerRecipients.length === 0) {
+    if (allowedRecipients.length === 0) {
       throw new BadRequestException(
         mailRoute
           ? 'Seçilen mail tarafında e-posta yok. Adresi yazmadan rapor onaya gönderilemez.'
           : 'Dosya kanalında veya müşteri kartında e-posta yok. Adresi yazmadan rapor onaya gönderilemez.',
       );
+    }
+    const customerRecipients = filterSelectedApprovalEmails(
+      allowedRecipients,
+      dto?.selectedEmails,
+    );
+    if (customerRecipients.length === 0) {
+      throw new BadRequestException('En az bir tercih edilen alıcı seçilmelidir.');
     }
     const appUrl = resolveAppUrl(this.config);
     const claimFileId = report.claimFileId ?? report.claimFile?.id;
@@ -1534,11 +1551,37 @@ export class RepairReportsService {
       : [];
     const approvalCopies = customerContactCopyEmails(copyRows, 'approval')
       .filter((email) => !customerRecipients.some((to) => to.toLowerCase() === email) && !isMeridyenInternalMailbox(email));
+    const sender = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: { select: { code: true } },
+      },
+    });
+    const informCc = resolveApprovalInformCc(sender);
+    const mailCc = mergeApprovalMailCc({
+      informCc,
+      extraCc: approvalCopies.map((email) => ({ email })),
+      toEmails: customerRecipients,
+    });
+    const informNotice = informCc
+      ? buildPlatformMailCopyNotice({
+        counterpartName: report.claimFile?.insuranceCompany?.name,
+        counterpartAddress: customerRecipients[0],
+        sender: informCc,
+        roleCode: sender?.role?.code,
+      })
+      : null;
     for (let index = 0; index < customerRecipients.length; index += 1) {
       const recipient = customerRecipients[index];
       const mailed = await this.emailService.sendReport({
         to: recipient,
-        cc: index === 0 ? approvalCopies.map((email) => ({ email })) : undefined,
+        cc: index === 0 ? mailCc : undefined,
+        copyNoticeHtml: index === 0 ? informNotice?.html : undefined,
+        copyNoticeText: index === 0 ? informNotice?.plain : undefined,
+        requestReadReceipt: true,
         subject: `${hasarReportDocumentTitle(report.claimFile?.serviceKind, report.claimFile?.consultancyServiceType)} — ${report.claimFile?.fileNo ?? report.reportNo}`,
         pdfBuffer: customerPdf,
         reportNo: report.reportNo,

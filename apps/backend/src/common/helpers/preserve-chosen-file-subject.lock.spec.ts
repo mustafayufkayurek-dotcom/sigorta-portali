@@ -35,4 +35,12 @@ describe('seçilen dosya konusu LOCK', () => {
     const src = readFileSync(join(here, '../../modules/claim-files/claim-files.service.ts'), 'utf8');
     assert.equal((src.match(/preserveChosenFileSubject\(/g) ?? []).length, 2);
   });
+
+  it('düzenlemede Dosya Konusu değişince eski department konusu (Tadilat) kalmaz', () => {
+    const src = readFileSync(join(here, '../../modules/claim-files/claim-files.service.ts'), 'utf8');
+    assert.match(src, /Konu değişince eski Tadilat/);
+    assert.match(src, /departmentCodeForNewClaim/);
+    assert.match(src, /rest\.departmentFileSubjectId = deptSubject\?\.id \?\? null/);
+    assert.match(src, /rest\.claimSubjectId = await resolveClaimSubjectIdByLabel/);
+  });
 });
