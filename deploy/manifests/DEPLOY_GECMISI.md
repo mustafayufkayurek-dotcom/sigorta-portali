@@ -8,18 +8,25 @@
 
 ---
 
-## Canlı durum (16 Kasım 2026 — web v692 / backend v692)
+## Canlı durum (16 Kasım 2026 — web v693 / backend v693)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v692-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v692-amd64` | canlı |
-| **Rollback** | Web **v690** / Backend **v691** | manifest `rollbackImages` |
-| **Etiket** | `v692-hasar-tespit-konu-mail` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v693-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v693-amd64` | canlı |
+| **Rollback** | Web **v692** / Backend **v692** | manifest `rollbackImages` |
+| **Etiket** | `v693-onaya-gonder-konu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v693 — Full (16 Kasım 2026) — Onaya Gönder seçim + Dosya Konusu düzeltme
+
+- Onaya Gönder: alıcı tik seçimi; Cc Platform Mail Kopyası (oturum, silinemez); okundu teyidi
+- Dosya Konusu düzenlemede eski Tadilat department bağı kopar
+- Disk alım öncesi 17 GB; health ok; Redis kısa degraded sonra up
+- Geri alma web **v692** / backend **v692**
 
 ### v692 — Full (16 Kasım 2026) — Hasar Tespit konu + tercih edilen alıcı + hizmet bedeli
 
