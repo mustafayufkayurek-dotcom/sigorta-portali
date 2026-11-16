@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowDownLeft, ArrowUpRight, Banknote } from 'lucide-react';
 import { FinanceRowActions, printFinanceSlip, vendorEkstreHref } from '@/components/finance/FinanceRowActions';
@@ -302,15 +303,22 @@ export default function TahsilatlarPage() {
         testId="finans-odeme-kuyruk-ilk-kullanim-seridi"
       />
 
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="inline-flex items-center gap-1.5 text-xl font-bold text-slate-900 dark:text-white">
           Tahsilatlar ve Ödemeler
           <HintIcon text={
             queue === 'payable'
-              ? 'Tedarikçi hakediş ve avans bu sekmede durur. Ayrı sayfa değildir.'
-              : 'Tedarikçi ödemesi ayrı sayfa değildir. Tedarikçi Ödeme Kuyruğu sekmesinde durur.'
+              ? 'Tedarikçi hakediş ve avans bu sekmede durur. Ayrı sayfa değildir. Ödendi carisine işler.'
+              : 'Tahsilat müşteri carisine işler. Tedarikçi ödemesi Tedarikçi Ödeme Kuyruğu sekmesindedir.'
           } />
         </h2>
+        <Link
+          href="/panel/finans/cariler"
+          data-testid="tahsilat-cariler-link"
+          className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Cariler
+        </Link>
       </div>
 
       {/* Kompakt özet şeridi — tek satır, alacak/borç ayrımı */}
@@ -550,14 +558,18 @@ export default function TahsilatlarPage() {
                               status: financePaymentStatusLabel(p.status),
                               note: p.note,
                             })}
-                            ekstreHref={p.payerType === 'vendor'
-                              ? vendorEkstreHref({
-                                vendorId: p.payerId,
-                                statementId: p.vendorStatementItem?.statement?.id,
-                                fromFile: claimFileId || p.claimFileId,
-                                fileNo: p.claimFile?.fileNo,
-                              })
-                              : null}
+                            ekstreHref={
+                              p.partyAccountId
+                                ? `/panel/finans/cariler/${p.partyAccountId}`
+                                : p.payerType === 'vendor'
+                                  ? vendorEkstreHref({
+                                      vendorId: p.payerId,
+                                      statementId: p.vendorStatementItem?.statement?.id,
+                                      fromFile: claimFileId || p.claimFileId,
+                                      fileNo: p.claimFile?.fileNo,
+                                    })
+                                  : null
+                            }
                             onMarkPaid={!isFileOwner && (p.status === 'pending' || p.status === 'correction_needed') && p.paymentType === 'outgoing'
                               ? () => void markPaid(p.id)
                               : undefined}

@@ -63,7 +63,21 @@ export type ReportDispatchEmailData = {
   operationRegion?: string | null;
   operationCity?: string | null;
   operationDistrict?: string | null;
+  /** Hasar Tespit hitabında soyad; onarımda kullanılmaz. */
+  recipientSurname?: string | null;
 };
+
+/** Kişi adından soyad; firma / tek kelime boş kalır. */
+export function approvalRecipientSurname(name?: string | null): string {
+  const raw = String(name ?? '').trim();
+  if (!raw) return '';
+  if (/(sigorta|broker|eksper|ltd|a\.?\s?ş|assistance|asistans|şirket|firma|demo|pilot)/i.test(raw)) {
+    return '';
+  }
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return '';
+  return parts[parts.length - 1] ?? '';
+}
 
 export function reportMailSignature(claim?: {
   assignedOfficeUser?: {
@@ -102,14 +116,28 @@ function logoSrc(portalUrl?: string | null): string {
 }
 
 /** Hasar Tespit dosyasında belge adı ve hitap tespit dilidir; onarım metni değişmez. */
-function dispatchWording(documentTitle?: string | null): { belge: string; hitap: string } {
-  return String(documentTitle ?? '').trim() === 'Hasar Tespit Raporu'
-    ? { belge: 'Hasar Tespit Raporu', hitap: 'Sayın Yetkili,' }
-    : { belge: 'Hasar Onarım Raporu', hitap: 'Sayın Eksperimiz,' };
+function dispatchWording(
+  documentTitle?: string | null,
+  recipientSurname?: string | null,
+): { belge: string; hitap: string; intro: string } {
+  if (String(documentTitle ?? '').trim() === 'Hasar Tespit Raporu') {
+    const soyad = String(recipientSurname ?? '').trim();
+    return {
+      belge: 'Hasar Tespit Raporu',
+      hitap: soyad ? `Sayın ${soyad},` : 'Sayın Yetkili,',
+      intro: 'Dosyaya ait Hasar Tespit Raporu ekte bilgilerinize sunarız.',
+    };
+  }
+  return {
+    belge: 'Hasar Onarım Raporu',
+    hitap: 'Sayın Eksperimiz,',
+    intro:
+      'İlgili dosyaya ait Hasar Onarım Raporu’nu bilgi ve değerlendirmenize sunarız. Değerlendirmenizi aşağıdaki bağlantı üzerinden iletmenizi rica ederiz.',
+  };
 }
 
 export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): string {
-  const wording = dispatchWording(data.documentTitle);
+  const wording = dispatchWording(data.documentTitle, data.recipientSurname);
   const dosyaNo = escapeHtml(dash(data.fileNo));
   const sigorta = escapeHtml(dash(data.insuranceCompanyName));
   const konu = escapeHtml(dash(data.fileSubject));
@@ -123,6 +151,7 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
   const ilce = escapeHtml((data.operationDistrict || '').trim());
   const bolge = [il, ilce].filter(Boolean).join('-');
   const logo = escapeHtml(logoSrc(data.portalUrl));
+  const intro = escapeHtml(wording.intro);
   const phoneLink = (data.ownerPhone || '').trim()
     ? `<a href="tel:${telefonUluslararasi}" style="color:#174b8a;text-decoration:none;font-size:12px;font-weight:500;">${icon('phone', 14, '#174b8a')}<span style="vertical-align:middle;">${telefonGorunen}</span></a>`
     : '';
@@ -184,10 +213,10 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
                 Dosya Değerlendirmeniz Bekleniyor
               </h1>
               <p style="margin:20px 0 0;font-size:13px;line-height:1.65;font-weight:600;color:#152c40;">
-                ${wording.hitap}
+                ${escapeHtml(wording.hitap)}
               </p>
               <p style="margin:8px 0 0;font-size:13px;line-height:1.75;color:#617180;overflow-wrap:anywhere;">
-                İlgili dosyaya ait ${wording.belge}’nu bilgi ve değerlendirmenize sunarız. Değerlendirmenizi aşağıdaki bağlantı üzerinden iletmenizi rica ederiz.
+                ${intro}
               </p>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:22px;border-top:1px solid #dde5eb;border-bottom:1px solid #dde5eb;">
                 <tr>
@@ -271,11 +300,11 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
 }
 
 export function buildReportDispatchEmailText(data: ReportDispatchEmailData): string {
-  const wording = dispatchWording(data.documentTitle);
+  const wording = dispatchWording(data.documentTitle, data.recipientSurname);
   const lines = [
     'Dosya Değerlendirmeniz Bekleniyor',
     wording.hitap,
-    `İlgili dosyaya ait ${wording.belge} bilgi ve değerlendirmenize sunulmuştur. Rapor ektedir.`,
+    wording.intro,
     `Dosya No: ${dash(data.fileNo)}`,
     `Sigorta Şirketi: ${dash(data.insuranceCompanyName)}`,
     `Hasar Konusu: ${dash(data.fileSubject)}`,

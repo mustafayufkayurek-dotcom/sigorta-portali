@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, TrendingUp, TrendingDown, Wallet, Receipt, Hash, Scale, CalendarDays, Banknote } from 'lucide-react';
 
 type ActionConfig = {
@@ -33,13 +34,15 @@ export function FinansActionButton({
   active = false,
   disabled,
   showPlus = true,
-}: ActionConfig & { disabled?: boolean }) {
+  testId,
+}: ActionConfig & { disabled?: boolean; testId?: string }) {
   const styles = actionVariants[variant][active ? 'active' : 'idle'];
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      data-testid={testId}
       className={`inline-flex items-center gap-1.5 shrink-0 rounded-lg px-3.5 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${styles}`}
     >
       {showPlus && !active && variant !== 'neutral' && <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />}
@@ -140,11 +143,65 @@ export function FinansFormPanel({
   );
 }
 
-export function FinansDataTable({ children }: { children: ReactNode }) {
+export function FinansDataTable({
+  children,
+  embedded = false,
+}: {
+  children: ReactNode;
+  /** Kart içinde (noPadding) kullanıldığında dış çerçeveyi kaldırır. */
+  embedded?: boolean;
+}) {
   return (
-    <div className="rounded-lg border border-slate-200 overflow-hidden">
+    <div className={embedded ? 'overflow-hidden' : 'overflow-hidden rounded-lg border border-slate-200'}>
       <table className="w-full text-sm">{children}</table>
     </div>
+  );
+}
+
+/** Finans Merkezi / Hedef İncele ile aynı açılır pencere kabuğu. */
+export function FinansModal({
+  open,
+  title,
+  subtitle,
+  children,
+  footer,
+  testId,
+  size = 'md',
+  ariaLabel,
+}: {
+  open: boolean;
+  title: string;
+  subtitle?: ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
+  testId?: string;
+  size?: 'md' | 'lg';
+  ariaLabel?: string;
+}) {
+  if (!open || typeof document === 'undefined') return null;
+  const width = size === 'lg' ? 'max-w-lg' : 'max-w-md';
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[400] flex items-end justify-center bg-slate-900/45 p-0 sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={ariaLabel ?? title}
+      data-testid={testId}
+    >
+      <div
+        className={`flex max-h-[min(92vh,100dvh)] w-full ${width} flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl`}
+      >
+        <div className="shrink-0 border-b border-slate-100 px-5 py-4">
+          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+          {subtitle ? <div className="mt-1 text-xs text-slate-500">{subtitle}</div> : null}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        {footer ? (
+          <div className="shrink-0 border-t border-slate-100 bg-slate-50/50 px-5 py-3">{footer}</div>
+        ) : null}
+      </div>
+    </div>,
+    document.body,
   );
 }
 

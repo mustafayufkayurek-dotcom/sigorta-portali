@@ -39,6 +39,12 @@ export const FINANCE_MODULES: FinanceModuleItem[] = [
     action: 'Masraf kalemi dosyaya bağlanır, kategori ipucuna göre kaydedilir.',
   },
   {
+    title: 'Cariler',
+    href: FINANS_KART_YOL.cariler,
+    purpose: 'Şirket cari hesabı: müşteri, tedarikçi, kredi kartı, vergi. Açılış ve ekstre burada.',
+    action: 'Hesap ekleyin, açılış bakiyesini yazın, ekstreye bakın.',
+  },
+  {
     title: 'Carilerim',
     href: '/panel/carilerim',
     purpose: 'Atanmış müşteri ve dosya ilişkilerini tek yerde gösterir.',

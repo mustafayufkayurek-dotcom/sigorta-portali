@@ -9,7 +9,9 @@ import { TrAmountInput } from '@/components/ui/TrAmountInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ExpenseFilePickerModal, type ExpensePickerHasarFile } from '@/components/finance/ExpenseFilePickerModal';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { FinansHedefBaglamSeridi } from '@/components/finance/FinansHedefBaglamSeridi';
 import { FinansActionButton, FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import { hedefCiroDonYol, isHedefCiroDon } from '@/utils/finans-merkez-kart';
 import { FinansTablePager } from '@/components/finance/FinansTablePager';
 import { PinnableRowActions } from '@/components/portal/PinnableRowActions';
 import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
@@ -233,6 +235,7 @@ const EMPTY_FORM = {
   expenseLane: '' as ExpenseLane | '',
   fileCaseId: '',
   customerId: '',
+  partyAccountId: '',
   expensePlan: PLAN_BUTCE,
   expenseCategoryParentId: '',
   expenseCategoryId: '',
@@ -332,6 +335,11 @@ export default function MasraflarPage() {
   const [fFile,     setFFile]     = useState('');
   const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string }[]>([]);
   const [customerQuery, setCustomerQuery] = useState('');
+  const [partyAccounts, setPartyAccounts] = useState<{ id: string; name: string; kindLabel: string }[]>([]);
+  const [showInlineCari, setShowInlineCari] = useState(false);
+  const [inlineCariSaving, setInlineCariSaving] = useState(false);
+  const [inlineCariName, setInlineCariName] = useState('');
+  const [inlineCariKind, setInlineCariKind] = useState('kredi_karti');
   const [fDateFrom, setFDateFrom] = useState(() => {
     const y = Number(searchParams.get('year'));
     const m = Number(searchParams.get('month') ?? '0');
@@ -431,6 +439,21 @@ export default function MasraflarPage() {
   }, []);
 
   useEffect(() => { loadCategories(); }, [loadCategories]);
+
+  const loadPartyAccounts = useCallback(async () => {
+    if (!getAccessToken()) return;
+    try {
+      const res = await axios.get(`${API}/finance/party-accounts`, { headers: authHeader() });
+      const rows = (res.data?.data ?? []) as Array<{ id: string; name: string; kindLabel: string }>;
+      setPartyAccounts(rows.map((r) => ({ id: r.id, name: r.name, kindLabel: r.kindLabel })));
+    } catch {
+      setPartyAccounts([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPartyAccounts();
+  }, [loadPartyAccounts]);
 
   const parentNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -768,6 +791,7 @@ export default function MasraflarPage() {
     const customerLane = isCustomerExpenseLane(form.expenseLane);
     if (!customerLane && !form.fileCaseId) return setFormError('Hasar dosyası seçimi zorunludur.');
     if (customerLane && !form.customerId) return setFormError('Müşteri seçimi zorunludur.');
+    if (!editId && !form.partyAccountId) return setFormError('Ödeme kaynağı cari seçimi zorunludur.');
     if (!customerLane && !form.expensePlan) return setFormError('Bütçe tipi seçimi zorunludur.');
     const useWorkGroupPath = !customerLane && form.expensePlan === PLAN_BUTCE;
     if (useWorkGroupPath) {
@@ -802,6 +826,7 @@ export default function MasraflarPage() {
       const payload = {
         fileCaseId: customerLane ? undefined : form.fileCaseId,
         customerId: customerLane ? form.customerId : undefined,
+        partyAccountId: form.partyAccountId || undefined,
         expensePlan: customerLane ? undefined : form.expensePlan,
         ...(useWorkGroupPath
           ? { workGroupId: form.workGroupId, workSubGroupName: form.workSubGroupName.trim() || undefined }
@@ -1084,6 +1109,18 @@ export default function MasraflarPage() {
     setShowForm(true);
   };
 
+  /** Sabit Giderler → Masraf Ekle: form aynı sayfada açılır. */
+  useEffect(() => {
+    if (searchParams.get('yeni') !== '1') return;
+    setEditId(null);
+    setForm({ ...EMPTY_FORM });
+    setFormError('');
+    setFileSearch('');
+    setFileLookup(null);
+    setAnalyticsOpen(false);
+    setShowForm(true);
+  }, [searchParams]);
+
   const closeExpenseForm = () => {
     setShowForm(false);
     setEditId(null);
@@ -1109,11 +1146,26 @@ export default function MasraflarPage() {
     <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>
   );
 
+  const hedefBaglam = isHedefCiroDon(searchParams.get('don'));
+  const baglamYear = Number(searchParams.get('year')) || new Date().getFullYear();
+  const baglamMonth = Number(searchParams.get('month')) || new Date().getMonth() + 1;
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 min-h-screen bg-white -mx-4 -my-6 px-4 py-6 sm:-m-6 sm:p-6">
 
-      <FinansSubpageBreadcrumb current="Masraflar" />
+      <FinansSubpageBreadcrumb
+        current="Masraflar"
+        backHref={hedefBaglam ? hedefCiroDonYol(baglamYear, baglamMonth) : undefined}
+        backLabel={hedefBaglam ? 'Hedef Ciroya Dön' : undefined}
+      />
+      {hedefBaglam ? (
+        <FinansHedefBaglamSeridi
+          year={baglamYear}
+          month={baglamMonth}
+          aciklama="Yönetim Giderleri kaydı ekleyin (dosya seçilmez). Bitince Hedef Ciroya dönün."
+        />
+      ) : null}
 
       {/* Başlık */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1468,6 +1520,98 @@ export default function MasraflarPage() {
                   placeholder={form.expenseLane === 'asistans' ? 'Asistans firması ara...' : 'Danışmanlık müşterisi ara...'}
                   emptyText="Müşteri bulunamadı"
                 />
+              </div>
+            )}
+
+            {form.expenseLane && (
+              <div className="md:col-span-2" data-testid="masraf-cari-kaynak">
+                <label className={labelCls}>
+                  Ödeme Kaynağı (Cari) {requiredHint}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <SearchableSelect
+                    className="min-w-0 flex-1"
+                    inputClassName={inputCls}
+                    options={partyAccounts.map((row) => ({
+                      value: row.id,
+                      label: `${row.name} · ${row.kindLabel}`,
+                    }))}
+                    value={form.partyAccountId}
+                    onChange={(id) => setForm({ ...form, partyAccountId: id })}
+                    placeholder="Kredi kartı veya tedarikçi cari ara..."
+                    emptyText="Cari bulunamadı — aşağıdan ekleyin"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowInlineCari((v) => !v)}
+                    className="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    {showInlineCari ? 'Kapat' : '+ Cari Ekle'}
+                  </button>
+                </div>
+                {showInlineCari && (
+                  <div className="mt-2 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3">
+                    <input
+                      type="text"
+                      value={inlineCariName}
+                      onChange={(e) => setInlineCariName(e.target.value)}
+                      onBlur={() =>
+                        setInlineCariName((v) => (v ? toTitleCaseTR(v.trim()) : ''))
+                      }
+                      className={inputCls}
+                      placeholder="Örn. garanti kredi kartı"
+                    />
+                    <select
+                      value={inlineCariKind}
+                      onChange={(e) => setInlineCariKind(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="kredi_karti">Kredi Kartı</option>
+                      <option value="tedarikci">Tedarikçi</option>
+                      <option value="banka">Banka</option>
+                      <option value="diger">Diğer</option>
+                    </select>
+                    <button
+                      type="button"
+                      disabled={inlineCariSaving}
+                      onClick={() => {
+                        void (async () => {
+                          const name = toTitleCaseTR(inlineCariName.trim());
+                          if (name.length < 2) {
+                            setFormError('Cari adı zorunludur.');
+                            return;
+                          }
+                          setInlineCariSaving(true);
+                          try {
+                            const res = await axios.post(
+                              `${API}/finance/party-accounts`,
+                              { name, kind: inlineCariKind },
+                              { headers: authHeader() },
+                            );
+                            const created = res.data?.data;
+                            await loadPartyAccounts();
+                            if (created?.id) {
+                              setForm((f) => ({ ...f, partyAccountId: created.id }));
+                            }
+                            setShowInlineCari(false);
+                            setInlineCariName('');
+                            setFormError('');
+                          } catch (err: unknown) {
+                            const msg = axios.isAxiosError(err)
+                              ? (err.response?.data?.message ?? 'Cari eklenemedi')
+                              : 'Cari eklenemedi';
+                            setFormError(String(msg));
+                          } finally {
+                            setInlineCariSaving(false);
+                          }
+                        })();
+                      }}
+                      className="rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                    >
+                      {inlineCariSaving ? 'Kaydediliyor...' : 'Kaydet Ve Seç'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

@@ -3,7 +3,9 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   HR_ATTENDANCE_ENTRY_TYPE,
@@ -42,9 +44,21 @@ import {
   roleReceivesAttendanceReminders,
 } from './hr-attendance-reminder.helper';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
+import {
+  AcceptPersonelYasalHesapDto,
+  PatchPersonelUcretDto,
+  SendPersonelYasalAccountantDto,
+} from './dto/personel-yasal-hesap.dto';
 import { RecordActivityBeatDto } from './dto/record-activity-beat.dto';
-import { workHoursGateApplies } from '@sigorta/shared';
+import {
+  canAcceptPersonelYasalHesap,
+  proposePersonelYasalHesap,
+  workHoursGateApplies,
+  type PersonelYasalHesapSonuc,
+} from '@sigorta/shared';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
+import { PartyAccountsService } from '@/modules/finance/party-accounts.service';
+import { EmailService } from '@/modules/notifications/email/email.service';
 
 type AuthUser = {
   id?: string;
@@ -53,11 +67,28 @@ type AuthUser = {
   permissions?: string[];
 };
 
+const MONTH_LABELS_TR = [
+  'Ocak',
+  'Şubat',
+  'Mart',
+  'Nisan',
+  'Mayıs',
+  'Haziran',
+  'Temmuz',
+  'Ağustos',
+  'Eylül',
+  'Ekim',
+  'Kasım',
+  'Aralık',
+];
+
 @Injectable()
 export class HrService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly systemSettings: SystemSettingsService,
+    @Optional() private readonly partyAccounts?: PartyAccountsService,
+    @Optional() private readonly email?: EmailService,
   ) {}
 
   private toDateOnly(value: string | Date): Date {
@@ -341,6 +372,9 @@ export class HrService {
         userId: p.userId,
         personnelNo: p.personnelNo,
         hireDate: p.hireDate,
+        monthlyGrossSalary:
+          p.monthlyGrossSalary == null ? null : Number(p.monthlyGrossSalary),
+        yasalKabulAt: p.yasalKabulAt,
         status: p.status,
         user: p.user,
         department: p.department,
@@ -804,6 +838,13 @@ export class HrService {
       personnelNo = await this.nextPersonnelNo(user);
     }
 
+    const grossPatch =
+      dto.monthlyGrossSalary === undefined
+        ? undefined
+        : dto.monthlyGrossSalary == null
+          ? null
+          : Math.max(0, Number(dto.monthlyGrossSalary) || 0);
+
     const profile = existing
       ? await this.prisma.hrEmployeeProfile.update({
           where: { id: existing.id },
@@ -816,6 +857,7 @@ export class HrService {
             ...(dto.managerUserId !== undefined
               ? { managerUserId: dto.managerUserId }
               : {}),
+            ...(grossPatch !== undefined ? { monthlyGrossSalary: grossPatch } : {}),
             status: 'active',
           },
           include: {
@@ -830,6 +872,7 @@ export class HrService {
             personnelNo: personnelNo ?? null,
             departmentId: dto.departmentId ?? null,
             managerUserId: dto.managerUserId ?? null,
+            monthlyGrossSalary: grossPatch ?? null,
             status: 'active',
           },
           include: {
@@ -855,9 +898,257 @@ export class HrService {
           Number(balance.usedDays) -
           Number(balance.pendingDays),
       },
-      note:
-        'Kıdem ve ihbar tazminatı hesabı sonraki fazdadır; bu adım yalnızca yıllık izin hakedişini günceller.',
     };
+  }
+
+  private istanbulYearMonth(now = new Date()): { year: number; month: number } {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Istanbul',
+      year: 'numeric',
+      month: '2-digit',
+    }).formatToParts(now);
+    const year = Number(parts.find((p) => p.type === 'year')?.value);
+    const month = Number(parts.find((p) => p.type === 'month')?.value);
+    return { year, month };
+  }
+
+  private async loadProfileForYasal(profileId: string) {
+    const profile = await this.prisma.hrEmployeeProfile.findUnique({
+      where: { id: profileId },
+      include: {
+        user: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+    if (!profile) throw new NotFoundException('Personel bulunamadı');
+    return profile;
+  }
+
+  private proposeFromProfile(profile: {
+    monthlyGrossSalary: number | null;
+    hireDate: Date | null;
+    terminationDate: Date | null;
+  }): PersonelYasalHesapSonuc {
+    return proposePersonelYasalHesap({
+      brutAylik: Number(profile.monthlyGrossSalary) || 0,
+      iseGiris: profile.hireDate
+        ? profile.hireDate.toISOString().slice(0, 10)
+        : null,
+      istenCikis: profile.terminationDate
+        ? profile.terminationDate.toISOString().slice(0, 10)
+        : undefined,
+    });
+  }
+
+  async getPersonelYasalHesap(user: AuthUser, profileId: string) {
+    this.assertCanSupervise(user);
+    const profile = await this.loadProfileForYasal(profileId);
+    const oneri = this.proposeFromProfile(profile);
+    const company = await this.systemSettings.getCompanyInfo();
+    const fullName =
+      `${profile.user.firstName ?? ''} ${profile.user.lastName ?? ''}`.trim() ||
+      'Personel';
+    return {
+      profileId: profile.id,
+      userId: profile.userId,
+      fullName,
+      hireDate: profile.hireDate,
+      monthlyGrossSalary:
+        profile.monthlyGrossSalary == null
+          ? null
+          : Number(profile.monthlyGrossSalary),
+      oneri,
+      kabul: profile.yasalKabulJson ?? null,
+      kabulAt: profile.yasalKabulAt,
+      accountantEmail: company.accountantEmail?.trim() || '',
+      uyari:
+        'Rakamlar yol göstericidir; resmi bordro veya SGK bildirimi yerine geçmez. Kabul edince bu ayın net ücreti personel carisine yazılır.',
+    };
+  }
+
+  async patchPersonelUcret(
+    user: AuthUser,
+    profileId: string,
+    dto: PatchPersonelUcretDto,
+  ) {
+    this.assertCanSupervise(user);
+    const profile = await this.loadProfileForYasal(profileId);
+    const monthlyGrossSalary = Math.max(0, Number(dto.monthlyGrossSalary) || 0);
+    const updated = await this.prisma.hrEmployeeProfile.update({
+      where: { id: profile.id },
+      data: { monthlyGrossSalary },
+      include: {
+        user: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+    const oneri = this.proposeFromProfile(updated);
+    return {
+      profileId: updated.id,
+      monthlyGrossSalary: Number(updated.monthlyGrossSalary) || 0,
+      oneri,
+    };
+  }
+
+  async acceptPersonelYasalHesap(
+    user: AuthUser,
+    profileId: string,
+    dto: AcceptPersonelYasalHesapDto,
+  ) {
+    this.assertCanSupervise(user);
+    const actorId = user.id || user.userId;
+    if (!actorId) throw new ForbiddenException('Oturum gerekli');
+
+    const profile = await this.loadProfileForYasal(profileId);
+    const oneri = this.proposeFromProfile(profile);
+    if (!canAcceptPersonelYasalHesap(oneri)) {
+      throw new BadRequestException(
+        'Kabul etmek için önce aylık brüt ücreti girin.',
+      );
+    }
+
+    const { year: defY, month: defM } = this.istanbulYearMonth();
+    const year = dto.year ?? defY;
+    const month = dto.month ?? defM;
+    const periodLabel = `${MONTH_LABELS_TR[month - 1]} ${year}`;
+    const fullName =
+      `${profile.user.firstName ?? ''} ${profile.user.lastName ?? ''}`.trim() ||
+      'Personel';
+
+    const kabulPayload = {
+      ...oneri,
+      year,
+      month,
+      periodLabel,
+      acceptedAt: new Date().toISOString(),
+      acceptedByUserId: actorId,
+    };
+
+    const updated = await this.prisma.hrEmployeeProfile.update({
+      where: { id: profile.id },
+      data: {
+        yasalKabulJson: kabulPayload as unknown as Prisma.InputJsonValue,
+        yasalKabulAt: new Date(),
+      },
+    });
+
+    let partyEntryId: string | null = null;
+    if (this.partyAccounts) {
+      const entry = await this.partyAccounts.postPersonelMaasBorc({
+        personnelUserId: profile.userId,
+        employeeProfileId: profile.id,
+        year,
+        month,
+        netAmount: oneri.netAylik,
+        entryDate: new Date(Date.UTC(year, month - 1, 1)),
+        description: `Maaş borcu — ${fullName} — ${periodLabel}`,
+        actorUserId: actorId,
+        displayName: fullName,
+      });
+      partyEntryId = entry?.id ?? null;
+    }
+
+    return {
+      profileId: updated.id,
+      kabulAt: updated.yasalKabulAt,
+      kabul: kabulPayload,
+      partyEntryId,
+      message: partyEntryId
+        ? `Hesap kabul edildi. ${periodLabel} net ücreti personel carisine yazıldı.`
+        : `Hesap kabul edildi (${periodLabel}).`,
+    };
+  }
+
+  async sendPersonelYasalToAccountant(
+    user: AuthUser,
+    profileId: string,
+    dto: SendPersonelYasalAccountantDto,
+  ) {
+    this.assertCanSupervise(user);
+    if (!this.email) {
+      throw new BadRequestException('E-posta servisi hazır değil');
+    }
+    const to = dto.to.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      throw new BadRequestException('Geçerli bir e-posta adresi girin');
+    }
+
+    const profile = await this.loadProfileForYasal(profileId);
+    const oneri = this.proposeFromProfile(profile);
+    if (!canAcceptPersonelYasalHesap(oneri)) {
+      throw new BadRequestException(
+        'Göndermek için önce aylık brüt ücreti girin.',
+      );
+    }
+
+    const { year: defY, month: defM } = this.istanbulYearMonth();
+    const year = dto.year ?? defY;
+    const month = dto.month ?? defM;
+    const periodLabel = `${MONTH_LABELS_TR[month - 1]} ${year}`;
+    const fullName =
+      `${profile.user.firstName ?? ''} ${profile.user.lastName ?? ''}`.trim() ||
+      'Personel';
+    const hire =
+      profile.hireDate?.toISOString().slice(0, 10) || 'Belirtilmemiş';
+
+    const summaryText = [
+      `Personel: ${fullName}`,
+      `İşe Giriş: ${hire}`,
+      `Dönem: ${periodLabel}`,
+      `Brüt Aylık: ${oneri.brutAylik.toLocaleString('tr-TR')} TL`,
+      `İşçi SGK: ${oneri.isciSgk.toLocaleString('tr-TR')} TL`,
+      `Gelir Vergisi (tahmini): ${oneri.gelirVergisiTahmini.toLocaleString('tr-TR')} TL`,
+      `Damga: ${oneri.damga.toLocaleString('tr-TR')} TL`,
+      `Net Aylık: ${oneri.netAylik.toLocaleString('tr-TR')} TL`,
+      `İşveren SGK: ${oneri.isverenSgk.toLocaleString('tr-TR')} TL`,
+      `İşveren Toplam Maliyet: ${oneri.isverenToplamMaliyet.toLocaleString('tr-TR')} TL`,
+      `Kıdem Yıl: ${oneri.kidemYil}`,
+      `Kıdem Tazminatı (öneri): ${oneri.kidemTazminati.toLocaleString('tr-TR')} TL`,
+      `İhbar: ${oneri.ihbarHafta} hafta / ${oneri.ihbarTazminati.toLocaleString('tr-TR')} TL`,
+    ].join('\n');
+
+    const disclaimer =
+      'Bu özet yol göstericidir; resmi bordro veya SGK bildirimi yerine geçmez. Nihai kayıt mali müşavir ve muhasebe sürecindedir.';
+    const messageBlock = dto.message?.trim()
+      ? `<p><strong>Not:</strong> ${this.escapeHtml(dto.message.trim())}</p>`
+      : '';
+
+    const htmlBody = `
+      <p>Merhaba,</p>
+      <p>${this.escapeHtml(fullName)} için ${this.escapeHtml(periodLabel)} ücret hesap özeti aşağıdadır.</p>
+      ${messageBlock}
+      <p><strong>Özet</strong></p>
+      <pre style="font-family: sans-serif; white-space: pre-wrap;">${this.escapeHtml(summaryText)}</pre>
+      <p style="font-size:12px;color:#64748b;">${this.escapeHtml(disclaimer)}</p>
+    `;
+
+    const result = await this.email.sendEmail(
+      to,
+      `Ücret Hesabı — ${fullName} — ${periodLabel}`,
+      htmlBody,
+      {
+        text: `${fullName} — ${periodLabel}\n\n${summaryText}\n\n${disclaimer}`,
+      },
+    );
+    if (!result.sent) {
+      return {
+        success: false,
+        message:
+          result.errorMsg ||
+          'E-posta gönderilemedi. Ayarlar → E-posta Bildirimleri mail kurulumunu kontrol edin.',
+      };
+    }
+    return { success: true, message: 'Özet mali müşavire gönderildi.' };
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   async getSummary(user: AuthUser) {

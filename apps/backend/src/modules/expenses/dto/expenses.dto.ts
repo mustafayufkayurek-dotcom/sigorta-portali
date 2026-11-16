@@ -57,6 +57,11 @@ export class CreateExpenseDto {
   @IsString()
   customerId?: string;
 
+  /** Ödeme / borç kaynağı cari (kredi kartı, tedarikçi vb.) */
+  @IsOptional()
+  @IsString()
+  partyAccountId?: string;
+
   /** Rapordaki iş grubu — bütçe denetimi bu satır üzerinden */
   @IsOptional()
   @IsString()
@@ -126,6 +131,10 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsString()
   customerId?: string;
+
+  @IsOptional()
+  @IsString()
+  partyAccountId?: string;
 
   @IsOptional()
   @IsString()

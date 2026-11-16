@@ -8,10 +8,14 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+  carilerHedefBaglamYol,
   FINANS_KART_YOL,
+  hedefCiroDonYol,
+  masrafEkleYol,
   masrafYol,
   netSonucYol,
   pendingTahsilatKartTutari,
+  sabitGiderHedefBaglamYol,
   tahsilEdilenYol,
 } from './finans-merkez-kart.ts';
 
@@ -45,12 +49,18 @@ describe('finans merkez kart yolları LOCK', () => {
     assert.match(tahsilEdilenYol(2026, 9), /year=2026/);
     assert.match(tahsilEdilenYol(2026, 9), /month=9/);
     assert.match(masrafYol(2026, 9), /masraflar\?year=2026&month=9/);
+    assert.match(masrafEkleYol(2026, 9), /masraflar\?.*yeni=1/);
+    assert.match(masrafEkleYol(2026, 9, { don: 'hedef-ciro' }), /don=hedef-ciro/);
+    assert.match(hedefCiroDonYol(2026, 9), /incele=hedef/);
+    assert.match(carilerHedefBaglamYol(2026, 9), /don=hedef-ciro/);
+    assert.match(sabitGiderHedefBaglamYol(2026, 9), /don=hedef-ciro/);
     assert.match(netSonucYol(2026, 9), /dosya-pl\?year=2026&month=9/);
     assert.equal(
       FINANS_KART_YOL.faturaBekleyen,
       '/panel/finans/fatura-talepleri',
     );
     assert.equal(FINANS_KART_YOL.faturaTalepleri, '/panel/finans/fatura-talepleri');
+    assert.equal(FINANS_KART_YOL.cariler, '/panel/finans/cariler');
   });
 
   it('Finans Merkezi ve listeler bu yolları okur', () => {

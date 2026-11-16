@@ -16,6 +16,7 @@ export const FINANS_TABLE_PAGE_KEYS = {
   portfolyo: 'finans-table-page:portfolyo-pl',
   dosyaPl: 'finans-table-page:dosya-pl',
   banka: 'finans-table-page:banka-hesaplari',
+  cariler: 'finans-table-page:cariler',
   kdv: 'finans-table-page:kdv-raporu',
   masraflar: 'finans-table-page:masraflar',
   tahsilatlar: 'finans-table-page:tahsilatlar',

@@ -13,6 +13,7 @@ import { clearAuth, ensureValidSession, getAccessToken, hasValidSessionScope, re
 import { installAxiosAuthInterceptors } from '@/utils/setup-axios-auth';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { FinansOncelikliGorevModal } from '@/components/finance/FinansOncelikliGorevModal';
+import { FinansDonemDisiplinModal } from '@/components/finance/FinansDonemDisiplinModal';
 import { WorkHoursPanelGate, type WorkHoursPanelGateHandle } from '@/components/hr/WorkHoursPanelGate';
 import { AttendancePanelGate } from '@/components/hr/AttendancePanelGate';
 import { PanelActivityHeartbeat } from '@/components/hr/PanelActivityHeartbeat';
@@ -1688,6 +1689,46 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         const status = axios.isAxiosError(error) ? error.response?.status : undefined;
         const transientOutage = !status || status >= 500 || status === 429;
         if (transientOutage) {
+          // Kısa kesintide oturum silinmez; logo’da kilitlenmemesi için kayıtlı kullanıcıyı bas.
+          try {
+            const raw = localStorage.getItem('user');
+            const stored = raw ? JSON.parse(raw) : null;
+            if (stored?.id) {
+              setUser(stored);
+              const role = stored?.role?.code ?? '';
+              setAllowedScreens(getDefaultScreensForRole(role));
+            }
+          } catch {
+            /* kayıtlı kullanıcı okunamadı */
+          }
+          window.setTimeout(() => {
+            const retryToken = getAccessToken();
+            if (!retryToken || !hasValidSessionScope()) return;
+            axios
+              .get(`${apiBase}/auth/me`, {
+                headers: { Authorization: `Bearer ${retryToken}` },
+              })
+              .then((retryResponse) => {
+                const me = retryResponse.data?.data ?? retryResponse.data;
+                if (!me?.id) return;
+                setUser(me);
+                localStorage.setItem('user', JSON.stringify(me));
+                window.dispatchEvent(new Event('meridyen:user-updated'));
+                return axios.get(`${apiBase}/users/me/permissions`, {
+                  headers: { Authorization: `Bearer ${retryToken}` },
+                });
+              })
+              .then((permResponse) => {
+                if (!permResponse) return;
+                const data = permResponse.data?.data ?? permResponse.data;
+                if (Array.isArray(data?.screens) && data.screens.length > 0) {
+                  setAllowedScreens(data.screens);
+                }
+              })
+              .catch(() => {
+                /* yeniden deneme; oturum silinmez */
+              });
+          }, 1500);
           return;
         }
         clearAuth({ preserveRememberedEmail: isRememberMePreferred() });
@@ -2196,6 +2237,18 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                   {children}
                 </div>
               </ErrorBoundary>
+              <FinansDonemDisiplinModal
+                enabled={
+                  !loading
+                  && authChecked
+                  && Boolean(user)
+                  && !mustChangePassword
+                  && !isPortalUser
+                  && !isFieldStaff
+                  && (isFinance || isOfficeStaffRole(roleCode))
+                }
+                canClosePeriod={isFinance}
+              />
             </ToastProvider>
           </div>
         </main>

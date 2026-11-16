@@ -7,6 +7,7 @@ import {
   FINANS_FATURA_ROW_ACTIONS,
   FINANS_FATURA_TALEP_ROW_ACTIONS,
   FINANS_MASRAF_ROW_ACTIONS,
+  FINANS_PARTY_CARI_ROW_ACTIONS,
   FINANS_TAHSILAT_ROW_ACTIONS,
   MUSTERI_ROW_ACTIONS,
   ONAYLAR_ROW_ACTIONS,
@@ -44,6 +45,20 @@ test('iç listelerde önerilen işlemler kolona düşer', () => {
   assert.ok(!defaultPinnedActionIds(FINANS_FATURA_TALEP_ROW_ACTIONS).includes('cancel'));
   assert.ok(defaultPinnedActionIds(FINANS_MASRAF_ROW_ACTIONS).includes('edit'));
   assert.ok(!defaultPinnedActionIds(FINANS_MASRAF_ROW_ACTIONS).includes('delete'));
+  assert.ok(defaultPinnedActionIds(FINANS_PARTY_CARI_ROW_ACTIONS).includes('ekstre'));
+  assert.ok(defaultPinnedActionIds(FINANS_PARTY_CARI_ROW_ACTIONS).includes('edit'));
+  assert.ok(defaultPinnedActionIds(FINANS_PARTY_CARI_ROW_ACTIONS).includes('mail'));
+  assert.ok(defaultPinnedActionIds(FINANS_PARTY_CARI_ROW_ACTIONS).includes('whatsapp'));
+  assert.ok(!defaultPinnedActionIds(FINANS_PARTY_CARI_ROW_ACTIONS).includes('ara'));
+  assert.ok(FINANS_PARTY_CARI_ROW_ACTIONS.find((a) => a.id === 'mail')?.suggested);
+  assert.ok(FINANS_PARTY_CARI_ROW_ACTIONS.find((a) => a.id === 'whatsapp')?.suggested);
+  assert.ok(FINANS_PARTY_CARI_ROW_ACTIONS.find((a) => a.id === 'ara')?.suggested);
+  assert.ok(FINANS_PARTY_CARI_ROW_ACTIONS.some((a) => a.id === 'ara'));
+  assert.ok(FINANS_PARTY_CARI_ROW_ACTIONS.some((a) => a.id === 'kopyala'));
+  assert.ok(defaultPinnedActionIds(FINANS_PARTY_CARI_ROW_ACTIONS).length <= 4);
+  assert.ok(FINANS_PARTY_CARI_ROW_ACTIONS.some((a) => a.id === 'pasif'));
+  assert.ok(FINANS_PARTY_CARI_ROW_ACTIONS.some((a) => a.id === 'yazdir'));
+  assert.ok(FINANS_PARTY_CARI_ROW_ACTIONS.some((a) => a.id === 'excel'));
   assert.ok(defaultPinnedActionIds(ADMIN_USER_ROW_ACTIONS).includes('resetPwd'));
   assert.ok(MUSTERI_ROW_ACTIONS.find((a) => a.id === 'archive')?.suggested);
   assert.ok(TEDARIKCI_ROW_ACTIONS.find((a) => a.id === 'delete')?.suggested);

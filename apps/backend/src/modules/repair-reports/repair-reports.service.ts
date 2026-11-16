@@ -14,7 +14,10 @@ import { buildPanelUrl, panelHasarDosyasiPath } from '@/common/utils/panel-url';
 import { buildWhatsAppMeUrl } from '@/common/utils/whatsapp-phone';
 import { ReportPdfService } from './pdf/report-pdf.service';
 import { ReportEmailService } from './email/report-email.service';
-import { reportMailSignature } from './email/report-dispatch-email.template';
+import {
+  approvalRecipientSurname,
+  reportMailSignature,
+} from './email/report-dispatch-email.template';
 import { ClaimEventEmailService } from '@/modules/notifications/email/claim-event-email.service';
 import { AnomalyDetectionService } from '@/modules/vendor-risk/anomaly-detection.service';
 import { VendorRiskService } from '@/modules/vendor-risk/vendor-risk.service';
@@ -35,6 +38,7 @@ import {
   filterSelectedApprovalEmails,
   generalMailboxesFromContactInfos,
   mergeApprovalMailCc,
+  resolveApprovalFileOwnerCc,
   resolveApprovalInformCc,
   resolveClaimMailRoute,
 } from '@sigorta/shared';
@@ -111,21 +115,21 @@ const CLAIM_FILE_SAFE_SELECT = {
   channelAgencyCustomer: {
     select: {
       id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
-      contacts: { select: { email: true, isPrimary: true } },
+      contacts: { select: { id: true, name: true, email: true, isPrimary: true } },
       contactInfos: { select: { type: true, label: true, value: true } },
     },
   },
   channelBrokerCustomer: {
     select: {
       id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
-      contacts: { select: { email: true, isPrimary: true } },
+      contacts: { select: { id: true, name: true, email: true, isPrimary: true } },
       contactInfos: { select: { type: true, label: true, value: true } },
     },
   },
   channelExpertCustomer: {
     select: {
       id: true, companyName: true, shortName: true, fullName: true, firstName: true, lastName: true, email: true,
-      contacts: { select: { email: true, isPrimary: true } },
+      contacts: { select: { id: true, name: true, email: true, isPrimary: true } },
       contactInfos: { select: { type: true, label: true, value: true } },
     },
   },
@@ -1189,6 +1193,84 @@ export class RepairReportsService {
     return { ...priced, showPrices: card ? card.reportPrice !== false : true };
   }
 
+  /** Onaya gönderim hitabı için e-posta → görünen ad (kişi tercih, yoksa kurum). */
+  private approvalRecipientDisplayNames(claimFile: {
+    insuranceCompany?: { name?: string | null; contactEmail?: string | null } | null;
+    channelAgencyCustomer?: {
+      email?: string | null;
+      name?: string | null;
+      companyName?: string | null;
+      shortName?: string | null;
+      contacts?: Array<{ name?: string | null; email?: string | null }> | null;
+    } | null;
+    channelBrokerCustomer?: {
+      email?: string | null;
+      name?: string | null;
+      companyName?: string | null;
+      shortName?: string | null;
+      contacts?: Array<{ name?: string | null; email?: string | null }> | null;
+    } | null;
+    channelExpertCustomer?: {
+      email?: string | null;
+      name?: string | null;
+      companyName?: string | null;
+      shortName?: string | null;
+      contacts?: Array<{ name?: string | null; email?: string | null }> | null;
+    } | null;
+    customer?: {
+      email?: string | null;
+      name?: string | null;
+      companyName?: string | null;
+      shortName?: string | null;
+      contacts?: Array<{ name?: string | null; email?: string | null }> | null;
+    } | null;
+  } | null | undefined): Map<string, string> {
+    const out = new Map<string, string>();
+    const push = (email?: string | null, name?: string | null) => {
+      const key = String(email ?? '').trim().toLowerCase();
+      const label = String(name ?? '').trim();
+      if (!key.includes('@') || !label || out.has(key)) return;
+      out.set(key, label);
+    };
+    const orgName = (row?: {
+      shortName?: string | null;
+      companyName?: string | null;
+      name?: string | null;
+    } | null) =>
+      String(row?.shortName ?? row?.companyName ?? row?.name ?? '').trim();
+    const walk = (row?: {
+      email?: string | null;
+      shortName?: string | null;
+      companyName?: string | null;
+      name?: string | null;
+      contacts?: Array<{ name?: string | null; email?: string | null }> | null;
+    } | null) => {
+      if (!row) return;
+      const org = orgName(row);
+      for (const contact of row.contacts ?? []) {
+        push(contact?.email, String(contact?.name ?? '').trim() || org);
+      }
+      push(row.email, org);
+    };
+    push(claimFile?.insuranceCompany?.contactEmail, claimFile?.insuranceCompany?.name);
+    walk(claimFile?.channelAgencyCustomer);
+    walk(claimFile?.channelBrokerCustomer);
+    walk(
+      claimApprovalExpertParty({
+        channelExpert: claimFile?.channelExpertCustomer,
+        customer: claimFile?.customer,
+      }) as {
+        email?: string | null;
+        shortName?: string | null;
+        companyName?: string | null;
+        name?: string | null;
+        contacts?: Array<{ name?: string | null; email?: string | null }> | null;
+      } | null,
+    );
+    walk(claimFile?.customer);
+    return out;
+  }
+
   /** Dış rapor maili 3 MB altına inene kadar fotoğraf küçülür. Sayı tek başına yetmez. */
   private async externalMailPdf(reportId: string): Promise<Buffer> {
     const fits: Array<PdfImageFit | undefined> = [
@@ -1416,21 +1498,27 @@ export class RepairReportsService {
             channelAgencyCustomer: {
               select: {
                 email: true,
-                contacts: { select: { email: true, isPrimary: true } },
+                companyName: true,
+                shortName: true,
+                contacts: { select: { id: true, name: true, email: true, isPrimary: true } },
                 contactInfos: { select: { type: true, label: true, value: true } },
               },
             },
             channelBrokerCustomer: {
               select: {
                 email: true,
-                contacts: { select: { email: true, isPrimary: true } },
+                companyName: true,
+                shortName: true,
+                contacts: { select: { id: true, name: true, email: true, isPrimary: true } },
                 contactInfos: { select: { type: true, label: true, value: true } },
               },
             },
             channelExpertCustomer: {
               select: {
                 email: true,
-                contacts: { select: { email: true, isPrimary: true } },
+                companyName: true,
+                shortName: true,
+                contacts: { select: { id: true, name: true, email: true, isPrimary: true } },
                 contactInfos: { select: { type: true, label: true, value: true } },
               },
             },
@@ -1536,8 +1624,13 @@ export class RepairReportsService {
       dto?.selectedEmails,
     );
     if (customerRecipients.length === 0) {
-      throw new BadRequestException('En az bir tercih edilen alıcı seçilmelidir.');
+      throw new BadRequestException('En az bir Kime alıcısı seçilmelidir.');
     }
+    const selectedCc = (
+      dto?.selectedCcEmails?.length
+        ? filterSelectedApprovalEmails(allowedRecipients, dto.selectedCcEmails)
+        : []
+    ).filter((email) => !customerRecipients.some((to) => to.toLowerCase() === email.toLowerCase()));
     const appUrl = resolveAppUrl(this.config);
     const claimFileId = report.claimFileId ?? report.claimFile?.id;
     const claimCustomer = claimFileId
@@ -1561,9 +1654,14 @@ export class RepairReportsService {
       },
     });
     const informCc = resolveApprovalInformCc(sender);
+    const fileOwnerCc = resolveApprovalFileOwnerCc(report.claimFile?.assignedOfficeUser);
     const mailCc = mergeApprovalMailCc({
       informCc,
-      extraCc: approvalCopies.map((email) => ({ email })),
+      extraCc: [
+        ...(fileOwnerCc ? [fileOwnerCc] : []),
+        ...selectedCc.map((email) => ({ email })),
+        ...approvalCopies.map((email) => ({ email })),
+      ],
       toEmails: customerRecipients,
     });
     const informNotice = informCc
@@ -1574,8 +1672,10 @@ export class RepairReportsService {
         roleCode: sender?.role?.code,
       })
       : null;
+    const recipientNameByEmail = this.approvalRecipientDisplayNames(report.claimFile);
     for (let index = 0; index < customerRecipients.length; index += 1) {
       const recipient = customerRecipients[index];
+      const recipientName = recipientNameByEmail.get(recipient.trim().toLowerCase()) ?? '';
       const mailed = await this.emailService.sendReport({
         to: recipient,
         cc: index === 0 ? mailCc : undefined,
@@ -1592,6 +1692,7 @@ export class RepairReportsService {
           report.claimFile?.serviceKind,
           report.claimFile?.consultancyServiceType,
         ),
+        recipientSurname: approvalRecipientSurname(recipientName),
         actionUrl: claimFileId ? buildPanelUrl(appUrl, panelHasarDosyasiPath(claimFileId)) : undefined,
         portalUrl: appUrl,
         viewType: 'external',

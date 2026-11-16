@@ -4,6 +4,8 @@ import {
   BadRequestException,
   Logger,
   Optional,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -16,6 +18,7 @@ import {
   STANDARD_SALES_VAT_RATE,
 } from '@sigorta/shared';
 import { CreateClaimFileRevenueDto } from './dto/create-claim-file-revenue.dto';
+import { PartyAccountsService } from './party-accounts.service';
 
 @Injectable()
 export class ClaimFileRevenueService {
@@ -24,6 +27,9 @@ export class ClaimFileRevenueService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly moduleRef?: ModuleRef,
+    @Optional()
+    @Inject(forwardRef(() => PartyAccountsService))
+    private readonly partyAccounts?: PartyAccountsService,
   ) {}
 
   async create(claimFileId: string, dto: CreateClaimFileRevenueDto, userId: string) {
@@ -80,6 +86,24 @@ export class ClaimFileRevenueService {
     });
 
     await this.recalcSummary(claimFileId);
+    if (claim.customerId && this.partyAccounts) {
+      try {
+        await this.partyAccounts.postGelirBorc({
+          customerId: claim.customerId,
+          revenueId: revenue.id,
+          amount: Number(revenue.totalAmount) || Number(revenue.amount) || 0,
+          entryDate: revenue.entryDate,
+          description:
+            revenue.description?.trim() ||
+            (dto.revenueType === 'file_fee' ? 'Dosya Bedeli' : 'Gelir'),
+          userId,
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Gelir cariye yazılamadı (${revenue.id}): ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
     if (dto.revenueType === 'file_fee' && isInspectionServiceKind(claim.serviceKind)) {
       // Rapor müşteriye gittiyse Hasar Tespit Hizmet Bedeli girilince fatura talebi açılır.
       try {
@@ -295,7 +319,13 @@ export class ClaimFileRevenueService {
   private async assertClaimFileExists(id: string) {
     const cf = await this.prisma.claimFile.findUnique({
       where: { id },
-      select: { id: true, collectionParty: true, insuranceCompanyId: true, serviceKind: true },
+      select: {
+        id: true,
+        customerId: true,
+        collectionParty: true,
+        insuranceCompanyId: true,
+        serviceKind: true,
+      },
     });
     if (!cf) throw new NotFoundException(`ClaimFile ${id} bulunamadı`);
     return cf;

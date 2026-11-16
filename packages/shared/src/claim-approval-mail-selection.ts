@@ -60,6 +60,16 @@ export function resolveApprovalInformCc(sender?: {
   return { email, name: name || email };
 }
 
+/** Dosya sorumlusu — Onaya Gönder’de otomatik Bilgi (Cc); ortak kutu yok. */
+export function resolveApprovalFileOwnerCc(owner?: {
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  name?: string | null;
+} | null): ApprovalInformCc | null {
+  return resolveApprovalInformCc(owner);
+}
+
 export function mergeApprovalMailCc(input: {
   informCc: ApprovalInformCc | null;
   extraCc?: Array<{ email: string; name?: string }>;

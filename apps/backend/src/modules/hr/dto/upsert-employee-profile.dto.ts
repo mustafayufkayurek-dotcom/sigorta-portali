@@ -1,4 +1,14 @@
-import { IsDateString, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class UpsertEmployeeProfileDto {
   @IsUUID()
@@ -48,4 +58,12 @@ export class UpsertEmployeeProfileDto {
   @IsString()
   @MaxLength(16)
   bloodType?: string | null;
+
+  /** Aylık brüt ücret (TL) — C8 yasal hesap */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10_000_000)
+  @Type(() => Number)
+  monthlyGrossSalary?: number | null;
 }

@@ -27,6 +27,11 @@ import {
 import { SendAttendanceAccountantDto } from './dto/send-attendance-accountant.dto';
 import { RecordActivityBeatDto } from './dto/record-activity-beat.dto';
 import { UpsertEmployeeProfileDto } from './dto/upsert-employee-profile.dto';
+import {
+  AcceptPersonelYasalHesapDto,
+  PatchPersonelUcretDto,
+  SendPersonelYasalAccountantDto,
+} from './dto/personel-yasal-hesap.dto';
 import { CreateHrAssetDto } from './dto/create-hr-asset.dto';
 import { HrAttendanceExportService } from './hr-attendance-export.service';
 import { HrAttendanceReminderService } from './hr-attendance-reminder.service';
@@ -127,6 +132,53 @@ export class HrController {
     @Body() dto: UpsertEmployeeProfileDto,
   ) {
     const data = await this.hrService.upsertEmployeeProfile(user, dto);
+    return { data };
+  }
+
+  @Get('employees/:id/yasal-hesap')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async getPersonelYasalHesap(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+    @Param('id') id: string,
+  ) {
+    const data = await this.hrService.getPersonelYasalHesap(user, id);
+    return { data };
+  }
+
+  @Patch('employees/:id/ucret')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async patchPersonelUcret(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+    @Param('id') id: string,
+    @Body() dto: PatchPersonelUcretDto,
+  ) {
+    const data = await this.hrService.patchPersonelUcret(user, id, dto);
+    return { data };
+  }
+
+  @Post('employees/:id/yasal-hesap/accept')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async acceptPersonelYasalHesap(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+    @Param('id') id: string,
+    @Body() dto: AcceptPersonelYasalHesapDto,
+  ) {
+    const data = await this.hrService.acceptPersonelYasalHesap(user, id, dto ?? {});
+    return { data };
+  }
+
+  @Post('employees/:id/yasal-hesap/send-accountant')
+  @RequirePlatformModule(PLATFORM_MODULE_CODES.PERSONNEL)
+  @RequirePermissions('hr.supervise', 'hr.leave.approve', 'hr.attendance.manage')
+  async sendPersonelYasalAccountant(
+    @CurrentUser() user: { id: string; roleCode?: string; permissions?: string[] },
+    @Param('id') id: string,
+    @Body() dto: SendPersonelYasalAccountantDto,
+  ) {
+    const data = await this.hrService.sendPersonelYasalToAccountant(user, id, dto);
     return { data };
   }
 

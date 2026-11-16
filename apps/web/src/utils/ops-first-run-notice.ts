@@ -46,10 +46,22 @@ export const OPS_NOTICE = {
       'İş bitince bu dosyanın tedarikçisine hakediş verilir. Ödendi veya ödenmedi kaydı finansa göndermeden önce bu dosyada sizin işinizdir. Finansa gittikten sonra Ödendi işlemini finans personeli yapar. Finans tarafında işlem yapamazsınız. İşlemi yapan adıyla kaydolur. Vade uygulanmaz.',
   },
   finansTedarikciKuyruk: {
-    id: 'finans-tedarikci-kuyruk-v555',
+    id: 'finans-tedarikci-kuyruk-v555b',
     title: 'Ödeme Kuyruğu',
     body:
-      'Hasar hakediş ve avans burada durur. Acil’de Ödendi işlemini finans personeli yapar; dosya sorumlusu finans tarafında işlem yapamaz, yalnız kendi dosyasında finansa göndermeden önce kayıt düşer. İşlemi yapan kaydolur. Acil’de vade yoktur. Hasar’da 15 veya 30 gün vade durur.',
+      'Hasar hakediş ve avans burada durur. Tamamlanan tahsilat müşteri carisine, tedarikçi ödemesi tedarikçi carisine işler; Cari Hesap Ekstresi şirket carisini açar. Acil’de Ödendi işlemini finans personeli yapar; dosya sorumlusu finans tarafında işlem yapamaz, yalnız kendi dosyasında finansa göndermeden önce kayıt düşer. İşlemi yapan kaydolur. Acil’de vade yoktur. Hasar’da 15 veya 30 gün vade durur.',
+  },
+  finansCariOmurga: {
+    id: 'finans-cari-omurga-v692c',
+    title: 'Şirket Carisi',
+    body:
+      'Burada müşteri, tedarikçi, kredi kartı ve vergi gibi cari hesaplar durur. Açılış bakiyesi yazılır. Masraf ve ödeme aynı hesaba işler. Satırda Mail Gönder, WhatsApp ve Ara ile cari sahibine bakiyeyi iletebilirsiniz; telefon ve e-posta Düzenle’den yazılır. Kurulum adımları Finans Merkezi’ndedir.',
+  },
+  finansDonemSonu: {
+    id: 'finans-donem-sonu-v692',
+    title: 'Dönem Sonu Kapanış',
+    body:
+      'Yıl bitince 31 Aralık bakiyeleri burada kilitlenir. Yeni muhasebe dönemi açılmaz; bakiyeler başka yıla aktarılmaz. Kapalı yıla hareket yazılamaz. Kapanış listesi yıl sonu fotoğrafıdır.',
   },
   hasarListeSonDegisiklik: {
     id: 'hasar-liste-v536',

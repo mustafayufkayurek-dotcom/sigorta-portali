@@ -70,6 +70,9 @@ describe('panel oturum kapısı LOCK', () => {
   it('sunucu kısa kesilince oturum silinmez', () => {
     assert.match(panelLayout, /transientOutage/);
     assert.match(panelLayout, /status >= 500/);
+    assert.match(panelLayout, /localStorage\.getItem\('user'\)/);
+    assert.match(panelLayout, /setUser\(stored\)/);
+    assert.match(panelLayout, /1500/);
     const axiosAuth = readFileSync(join(here, '../utils/setup-axios-auth.ts'), 'utf8');
     assert.match(axiosAuth, /error\.response\?\.status !== 401/);
   });

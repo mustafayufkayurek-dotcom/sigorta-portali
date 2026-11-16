@@ -279,9 +279,15 @@ export class AddQuickRepairItemsDto {
 }
 
 export class RequestApprovalDto {
-  /** Personelin işaretlediği tercih edilen alıcılar. Boş/yoksa izinli kanalın tamamı. */
+  /** Personelin işaretlediği Kime alıcıları. Boş/yoksa izinli kanalın tamamı. */
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   selectedEmails?: string[];
+
+  /** Personelin işaretlediği Bilgi (Cc) alıcıları — yönetici Platform Mail Kopyası ile karışmaz. */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  selectedCcEmails?: string[];
 }

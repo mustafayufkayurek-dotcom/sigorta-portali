@@ -280,8 +280,10 @@ export function HrAssignedAssetsPanel({
     }
   };
 
+  const personScoped = Boolean(employeeProfileId || employeeName);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid={personScoped ? 'personel-zimmet-liste' : 'zimmet-genel'}>
       <section className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-slate-100/90 px-4 py-3 sm:px-5">
           <div className="flex items-start gap-3">
@@ -290,11 +292,11 @@ export function HrAssignedAssetsPanel({
             </div>
             <div>
               <h3 className="text-base font-semibold text-content-primary">
-                {employeeProfileId || employeeName ? 'Zimmetli Demirbaşlar' : 'Zimmet'}
+                {personScoped ? 'Zimmetli Demirbaşlar' : 'Zimmet'}
               </h3>
               <p className="mt-0.5 max-w-xl text-xs text-content-tertiary">
-                {employeeName
-                  ? `${employeeName} Adına Zimmetlenen Demirbaşlar`
+                {personScoped
+                  ? `${employeeName || 'Personel'} · ${totals.total} kayıt · marka, model ve seri no listede durur`
                   : 'Admin Ve Finans — Tüm Personelin Zimmetli Demirbaşları'}
               </p>
             </div>
@@ -318,7 +320,7 @@ export function HrAssignedAssetsPanel({
           </div>
         </div>
 
-        {!employeeProfileId && !employeeName ? (
+        {!personScoped ? (
           <div className="grid grid-cols-2 gap-3 bg-slate-50/50 p-4 sm:grid-cols-4 sm:p-5">
             {(
               [
@@ -328,7 +330,6 @@ export function HrAssignedAssetsPanel({
                   hint: 'Kayıtlı demirbaş',
                   value: totals.total,
                   icon: Package,
-                  tone: 'brand' as const,
                 },
                 {
                   key: 'phone',
@@ -336,7 +337,6 @@ export function HrAssignedAssetsPanel({
                   hint: 'Aktif zimmet',
                   value: totals.phones,
                   icon: Smartphone,
-                  tone: 'brand' as const,
                 },
                 {
                   key: 'laptop',
@@ -344,7 +344,6 @@ export function HrAssignedAssetsPanel({
                   hint: 'Aktif zimmet',
                   value: totals.laptops,
                   icon: Laptop,
-                  tone: 'brand' as const,
                 },
                 {
                   key: 'people',
@@ -352,7 +351,6 @@ export function HrAssignedAssetsPanel({
                   hint: 'Zimmeti olan',
                   value: totals.employees,
                   icon: Users,
-                  tone: 'brand' as const,
                 },
               ] as const
             ).map((card) => {
@@ -415,9 +413,16 @@ export function HrAssignedAssetsPanel({
 
       {!preview && assetsQuery.isLoading ? (
         <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
-      ) : !preview && assetsQuery.isError && canAdd ? (
-        <div className="space-y-3 rounded-2xl border border-dashed border-border p-8 text-center">
-          <p className="text-sm text-content-tertiary">Bu filtrede zimmet kaydı yok.</p>
+      ) : !preview && assetsQuery.isError ? (
+        <div className="space-y-3 rounded-2xl border border-dashed border-status-danger/30 p-8 text-center">
+          <p className="text-sm text-status-danger">Zimmet listesi yüklenemedi. Lütfen tekrar deneyin.</p>
+          <button
+            type="button"
+            onClick={() => void assetsQuery.refetch()}
+            className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-content-primary hover:bg-slate-50"
+          >
+            Tekrar Dene
+          </button>
         </div>
       ) : scoped.length === 0 ? (
         <div className="space-y-3 rounded-2xl border border-dashed border-border p-8 text-center">
@@ -433,30 +438,53 @@ export function HrAssignedAssetsPanel({
             </button>
           ) : null}
         </div>
-      ) : employeeProfileId || employeeName ? (
-        <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
-          {scoped.map((asset) => {
-            const meta = categoryMeta(String(asset.category));
-            const Icon = meta.icon;
-            return (
-              <div key={asset.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50">
-                    <Icon className="h-4 w-4 text-brand-600" />
+      ) : personScoped ? (
+        <div
+          className="overflow-hidden rounded-2xl border border-border bg-surface"
+          data-testid="personel-zimmet-satirlar"
+        >
+          <div className="hidden border-b border-border bg-slate-50 px-4 py-2 text-[11px] font-semibold text-content-tertiary sm:grid sm:grid-cols-[1.2fr_1fr_1fr_0.9fr] sm:gap-3">
+            <span>Tür / Demirbaş</span>
+            <span>Marka · Model</span>
+            <span>Seri No</span>
+            <span>Zimmet Tarihi</span>
+          </div>
+          <div className="divide-y divide-border">
+            {scoped.map((asset) => {
+              const meta = categoryMeta(String(asset.category));
+              const Icon = meta.icon;
+              return (
+                <div
+                  key={asset.id}
+                  className="grid gap-2 px-4 py-3 sm:grid-cols-[1.2fr_1fr_1fr_0.9fr] sm:items-center sm:gap-3"
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50">
+                      <Icon className="h-4 w-4 text-brand-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-content-primary">{asset.name}</p>
+                      <p className="mt-0.5 text-[11px] text-content-tertiary">{meta.label}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-content-primary">{asset.name}</p>
-                    <p className="mt-0.5 text-[11px] text-content-tertiary">
-                      {meta.label} · Marka: {asset.brand} · Model: {asset.model}
-                    </p>
-                    <p className="mt-1 text-[11px] text-content-secondary">
-                      Seri No: {asset.serialNo} · Zimmet: {formatDate(asset.assignedAt)}
-                    </p>
-                  </div>
+                  <p className="text-sm text-content-secondary">
+                    <span className="sm:hidden text-[11px] text-content-tertiary">Marka · Model: </span>
+                    {asset.brand} · {asset.model}
+                  </p>
+                  <p className="font-mono text-xs text-content-secondary">
+                    <span className="sm:hidden font-sans text-[11px] text-content-tertiary">
+                      Seri No:{' '}
+                    </span>
+                    {asset.serialNo}
+                  </p>
+                  <p className="text-sm tabular-nums text-content-secondary">
+                    <span className="sm:hidden text-[11px] text-content-tertiary">Zimmet: </span>
+                    {formatDate(asset.assignedAt)}
+                  </p>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       ) : (
         <div className="table-container">

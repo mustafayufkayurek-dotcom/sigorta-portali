@@ -1,4 +1,13 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, Optional, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  Optional,
+  ForbiddenException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { FinancialSummaryService } from '../invoices/financial-summary.service';
@@ -8,6 +17,7 @@ import { LogoSyncService } from '../logo-integration/services/logo-sync.service'
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
 import { CacheService } from '../../cache/cache.service';
 import { StorageService } from '@/modules/storage/storage.service';
+import { PartyAccountsService } from '@/modules/finance/party-accounts.service';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 import {
@@ -77,6 +87,9 @@ export class PaymentsService {
     private readonly auditLogsService: AuditLogsService,
     private readonly storage: StorageService,
     @Optional() private readonly logoSync?: LogoSyncService,
+    @Optional()
+    @Inject(forwardRef(() => PartyAccountsService))
+    private readonly partyAccounts?: PartyAccountsService,
   ) {}
 
   private buildWhere(
@@ -261,6 +274,7 @@ export class PaymentsService {
             select: {
               id: true,
               fileNo: true,
+              customerId: true,
               assignedOfficeUserId: true,
               currentResponsibleUserId: true,
               assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
@@ -295,12 +309,26 @@ export class PaymentsService {
     ]);
 
     const data = await this.enrichWithVendorNames(rawData);
+    const withCari = await Promise.all(
+      data.map(async (row) => {
+        const partyAccountId = this.partyAccounts
+          ? await this.partyAccounts.resolvePartyAccountIdForPayment({
+              paymentType: row.paymentType,
+              payerType: row.payerType,
+              payerId: row.payerId,
+              claimCustomerId: row.claimFile?.customerId ?? null,
+            })
+          : null;
+        return {
+          ...row,
+          queueSource: row.emergencyCaseId ? 'acil_hakedis' : null,
+          partyAccountId,
+        };
+      }),
+    );
 
     return {
-      data: data.map((row) => ({
-        ...row,
-        queueSource: row.emergencyCaseId ? 'acil_hakedis' : null,
-      })),
+      data: withCari,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
       summary,
     };
@@ -515,6 +543,7 @@ export class PaymentsService {
     // P&L Faz 3: Gelen ödeme → ClaimFileRevenue.collectedAmount güncelle
     if (payment.status === 'completed') {
       await this.syncPaymentToRevenue(payment.id, dto.claimFileId, dto.amount);
+      await this.syncPaymentToPartyAccount(payment.id, userId);
     }
 
     if (!isInsuredCollectionParty(payerType)) {
@@ -661,6 +690,7 @@ export class PaymentsService {
     } else {
       await this.syncPaymentToRevenue(payment.id, params.claimFileId, params.amount);
     }
+    await this.syncPaymentToPartyAccount(payment.id, params.userId);
 
     if (!isInsuredCollectionParty(payerType)) {
       this.triggerLogoPaymentSync(payment.id, payment.paymentType).catch(() => {});
@@ -801,9 +831,78 @@ export class PaymentsService {
       if (payment.emergencyCaseId) {
         await this.recordAcilHakedisPaidBy(payment.emergencyCaseId, userId);
       }
+      await this.syncPaymentToPartyAccount(updated.id, userId);
     }
 
     return updated;
+  }
+
+  /** Tamamlanan tahsilat / ödeme → şirket carisi (idempotent). */
+  private async syncPaymentToPartyAccount(paymentId: string, userId?: string | null) {
+    if (!this.partyAccounts) return;
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: {
+        claimFile: {
+          select: {
+            id: true,
+            fileNo: true,
+            customerId: true,
+            customer: {
+              select: { shortName: true, companyName: true, fullName: true },
+            },
+          },
+        },
+      },
+    });
+    if (!payment || payment.status !== 'completed') return;
+    const actorId = userId || payment.createdByUserId;
+    const amount = Number(payment.amount) || 0;
+    if (amount <= 0) return;
+
+    try {
+      if (payment.paymentType === 'incoming' && payment.claimFile?.customerId) {
+        const customerName =
+          payment.claimFile.customer?.shortName ||
+          payment.claimFile.customer?.companyName ||
+          payment.claimFile.customer?.fullName ||
+          null;
+        await this.partyAccounts.postTahsilatAlacak({
+          customerId: payment.claimFile.customerId,
+          paymentId: payment.id,
+          amount,
+          entryDate: payment.paymentDate,
+          description: `Tahsilat${payment.claimFile.fileNo ? ` · ${payment.claimFile.fileNo}` : ''}`,
+          userId: actorId,
+          customerName,
+        });
+        return;
+      }
+
+      if (
+        payment.paymentType === 'outgoing' &&
+        payment.payerType === 'vendor' &&
+        payment.payerId
+      ) {
+        const vendor = await this.prisma.vendor.findUnique({
+          where: { id: payment.payerId },
+          select: { name: true },
+        });
+        await this.partyAccounts.postOdemeBorc({
+          vendorId: payment.payerId,
+          paymentId: payment.id,
+          amount,
+          entryDate: payment.paymentDate,
+          description: `Ödeme${payment.claimFile?.fileNo ? ` · ${payment.claimFile.fileNo}` : ''}`,
+          userId: actorId,
+          vendorName: vendor?.name,
+        });
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Ödeme cariye yazılamadı (${paymentId}): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   /** Acil kuyruk Ödendi — dosyada da damga ve işlemi yapan kaydı. Hasar satırına girmez. */

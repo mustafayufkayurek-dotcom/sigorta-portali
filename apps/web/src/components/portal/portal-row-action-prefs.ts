@@ -77,6 +77,22 @@ export const FINANS_MASRAF_ROW_ACTIONS: PortalRowActionDef[] = [
   { id: 'delete', label: 'Sil', defaultPinned: false },
 ];
 
+export const FINANS_PARTY_CARI_ROW_ACTIONS: PortalRowActionDef[] = [
+  { id: 'ekstre', label: 'Ekstre', defaultPinned: true },
+  { id: 'edit', label: 'Düzenle', defaultPinned: true },
+  { id: 'mail', label: 'Mail Gönder', defaultPinned: true, suggested: true },
+  { id: 'whatsapp', label: 'WhatsApp', defaultPinned: true, suggested: true },
+  { id: 'ara', label: 'Ara', defaultPinned: false, suggested: true },
+  { id: 'kopyala', label: 'Bakiye Kopyala', defaultPinned: false, suggested: true },
+  { id: 'hareket', label: 'Hareket Ekle', defaultPinned: false },
+  { id: 'kart', label: 'Kartı Aç', defaultPinned: false },
+  { id: 'yazdir', label: 'Yazdır', defaultPinned: false },
+  { id: 'excel', label: 'Excel Ekstre', defaultPinned: false },
+  { id: 'pasif', label: 'Pasife Al', defaultPinned: false },
+  { id: 'aktif', label: 'Aktife Al', defaultPinned: false },
+];
+
+/** Atanmış müşteri listesi (Carilerim) — şirket cari hesabı değildir. */
 export const FINANS_CARI_ROW_ACTIONS: PortalRowActionDef[] = [
   { id: 'view', label: 'Detay', defaultPinned: true },
 ];

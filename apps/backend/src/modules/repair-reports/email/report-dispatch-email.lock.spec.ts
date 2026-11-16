@@ -19,6 +19,9 @@ describe('onarım raporu teslim maili LOCK', () => {
     assert.match(src, /Hasar Onarım Ve Restorasyon Departmanı/);
     assert.match(src, /Sayın Eksperimiz/);
     assert.match(src, /Hasar Onarım Raporu/);
+    assert.match(src, /ekte bilgilerinize sunarız/);
+    assert.match(src, /approvalRecipientSurname/);
+    assert.match(src, /recipientSurname/);
     assert.match(src, /E-posta Ekinde Sunulmuştur/);
     assert.match(src, /Dosyayı İncele Ve Değerlendir/);
     assert.match(src, /Sigorta Şirketi/);
@@ -34,6 +37,7 @@ describe('onarım raporu teslim maili LOCK', () => {
     assert.match(service, /buildReportDispatchEmailHtml/);
     assert.match(service, /insuranceCompanyName/);
     assert.match(service, /fileSubject/);
+    assert.match(service, /recipientSurname/);
     const reports = readFileSync(join(here, '../repair-reports.service.ts'), 'utf8');
     assert.equal(
       (reports.match(/insuranceCompanyName: report\.claimFile\?\.insuranceCompany\?\.name,/g) ?? []).length,

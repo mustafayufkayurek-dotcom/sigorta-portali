@@ -1,0 +1,60 @@
+---
+description: Proje geneli ürün kalitesi ve teslim — dil, ortak bileşen, akış halleri, kanıt
+alwaysApply: true
+---
+
+# Ürün Kalitesi Ve Teslim Standardı
+
+Mustafa amacı ve iş kuralını söyler. Yerleşim, metin, boşluk, okunabilirlik ve etkileşim **ajanın işidir**; rutin karar kullanıcıya sorulmaz.
+
+Bu kural `gorunum-birligi`, `enterprise-ui-hasar-referansi`, `turkce-yazim-kulturu`, `renk-psikolojisi`, `lokal-tek-panel-sayfa`, `sirket-sahibi-rejim`, `bitmis-is-dusmesin` ile birlikte okunur. Çelişirse **kilitli iş kuralı** üstündür; tasarım gerekçesiyle kilit açılmaz.
+
+## Ortak bileşen ve referans (yollar)
+
+| Ne | Nerede |
+|---|---|
+| Operasyon / dosya kabuğu | `/panel/hasar-dosyalari/[id]` · `enterprise-ui-hasar-referansi` |
+| Finans kart / boş / modal / form | `apps/web/src/components/finance/FinansPanelUI.tsx` (`FinansPanelCard`, `FinansEmptyState`, `FinansModal`, `FinansFormPanel`) |
+| Onay / silme kutusu | `apps/web/src/components/ui/PanelConfirmDialog.tsx` · `use-panel-confirm` |
+| Alan etiketi + i açıklama | `apps/web/src/components/settings/SettingsUI.tsx` (`SettingsFieldLabel`) |
+| TL yazımı | `apps/web/src/utils/format-try-amount.ts` (`formatTryAmount`) |
+| Tutar girişi | `apps/web/src/utils/tr-amount-input.ts` |
+| İlk kullanım şeridi | `apps/web/src/components/operasyon/OpsFirstRunNotice.tsx` |
+| Liste tablosu | `panelTableLayoutStyle` / `PanelTableColGroup` · `liste-sutun-genislik-kilidi` |
+| Personel özlük çekmecesi | `apps/web/src/components/hr/HrEmployeeDossierDrawer.tsx` |
+
+Yeni varyant yok: aynı iş aynı bileşende. Yoksa **yeniden kullanılabilir** ekle; sayfaya özel kopya yasak.
+
+## Dil ve işlem adı (ürün parçası)
+
+- Doğal kurumsal Türkçe. Geliştirici / iç süreç notu ekrana konmaz.
+- Düğme **gerçek işlemi** anlatır: Kaydet ≠ Hesapla ≠ Kabul ≠ Gönder. Beklerken de aynı aile (`Kabul Ediliyor…`, `Gönderiliyor…` — kabulde «Kaydediliyor» yok).
+- Alan etiketi zaten duruyorsa düğmede alanı tekrar etme (`Aylık Brüt Ücret` yanında **Kaydet**; «Brütü Kaydet» yok).
+- Hedef/adres farklıysa ad açık kalır (`Havuza Kaydet`, `Mali Müşavire Gönder`).
+
+### Kısa terim sözlüğü
+
+| Kavram | Kullan | Kullanma |
+|---|---|---|
+| Kayıt | Kaydet | Brütü Kaydet, Veriyi Yaz |
+| Öneri onayı | Kabul / Kabul Et | Kaydet (kabul için) |
+| Dışarı iletim | Gönder / …e Gönder | Kaydet Ve Bitir (yanlış) |
+| Para birimi | `12.500,00 TL` (`formatTryAmount`) | ₺ önek, `0,00 TL` (hesapsız) |
+| Yok / girilmemiş | `—` veya boş metin | Sahte sıfır |
+| Dosya konusu | Dosya Konusu | Hasar Nedeni (yanlış yerde) |
+
+## Akış halleri
+
+Yüklenme, boş, hata, eksik girdi, yetkisizlik, kayıt bekler — hepsi. Başarısız işlemde form silinmez. Çift tıklama / çift gönderim kesilir. **Hesaplanmamış ≠ gerçek sıfır.** Geri alınamayan işlemde `PanelConfirmDialog`.
+
+## Kusur sınıfı
+
+Tek ekranı yamayıp bırakma. Ortak bileşen mi, kopya mı, tek kullanım mı? Ortak nedeni düzelt; benzer kullanımları tara; ilgisiz kilitli ekrana dokunma.
+
+## Kapsam
+
+Profesyonelleştirme diye alan / onay / iş kuralı ekleme. Tenant, yetki, geçmiş dönem korunur. Canlıya alma yalnız Mustafa «canlıya al» deyince.
+
+## Teslim (kanıt)
+
+Kısaca: ne değişti · hangi ortak standart · masaüstü/mobil veya lokal panelde ne bakıldı · kalan risk. Ekran görülmediyse «görsel doğrulandı» denmez. Derleme ≠ kabul.

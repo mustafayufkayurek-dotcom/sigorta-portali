@@ -68,11 +68,38 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     const finansHome = readFileSync(join(here, '../app/panel/finans/page.tsx'), 'utf8');
     assert.match(tahsilat, /finans-odeme-kuyruk-ilk-kullanim-seridi/);
     assert.match(finansHome, /finans-odeme-kuyruk-ilk-kullanim-seridi/);
-    assert.equal(OPS_NOTICE.finansTedarikciKuyruk.id, 'finans-tedarikci-kuyruk-v555');
+    assert.equal(OPS_NOTICE.finansTedarikciKuyruk.id, 'finans-tedarikci-kuyruk-v555b');
     assert.match(OPS_NOTICE.finansTedarikciKuyruk.body, /finans tarafında işlem yapamaz/);
+    assert.match(OPS_NOTICE.finansTedarikciKuyruk.body, /müşteri carisine/);
     assert.match(tahsilat, /emergencyCaseId/);
     assert.match(tahsilat, /acil_hakedis/);
     assert.match(tahsilat, /Vade yok/);
+    assert.match(tahsilat, /partyAccountId/);
+    assert.match(tahsilat, /tahsilat-cariler-link/);
+    assert.match(tahsilat, /\/panel\/finans\/cariler/);
+  });
+
+  it('Finans cari omurga şeridi durur', () => {
+    const cariler = readFileSync(join(here, '../app/panel/finans/cariler/page.tsx'), 'utf8');
+    const donemSonu = readFileSync(
+      join(here, '../app/panel/finans/cariler/donem-sonu/page.tsx'),
+      'utf8',
+    );
+    assert.match(cariler, /OPS_NOTICE\.finansCariOmurga/);
+    assert.match(cariler, /finans-cari-ilk-kullanim-seridi/);
+    assert.equal(OPS_NOTICE.finansCariOmurga.id, 'finans-cari-omurga-v692c');
+    assert.match(OPS_NOTICE.finansCariOmurga.body, /Finans Merkezi/);
+    assert.match(OPS_NOTICE.finansCariOmurga.body, /Açılış bakiyesi/);
+    assert.match(OPS_NOTICE.finansCariOmurga.body, /Mail Gönder/);
+    assert.match(OPS_NOTICE.finansCariOmurga.body, /WhatsApp/);
+    assert.match(OPS_NOTICE.finansCariOmurga.body, /Kurulum adımları Finans Merkezi/);
+    assert.doesNotMatch(OPS_NOTICE.finansCariOmurga.body, /Google|API/);
+    assert.match(donemSonu, /OPS_NOTICE\.finansDonemSonu/);
+    assert.match(donemSonu, /finans-donem-sonu-seridi/);
+    assert.equal(OPS_NOTICE.finansDonemSonu.id, 'finans-donem-sonu-v692');
+    assert.match(OPS_NOTICE.finansDonemSonu.body, /31 Aralık/);
+    assert.match(OPS_NOTICE.finansDonemSonu.body, /aktarılmaz/);
+    assert.doesNotMatch(OPS_NOTICE.finansDonemSonu.body, /Google|API/);
   });
 
   it('Acil yeni dosyada vekalet şeridi durur', () => {

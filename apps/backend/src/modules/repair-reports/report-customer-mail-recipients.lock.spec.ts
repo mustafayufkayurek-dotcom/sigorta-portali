@@ -99,10 +99,12 @@ describe('rapor müşteri maili LOCK', () => {
     const email = readFileSync(join(here, 'email/report-email.service.ts'), 'utf8');
     assert.match(src, /filterSelectedApprovalEmails/);
     assert.match(src, /resolveApprovalInformCc/);
+    assert.match(src, /resolveApprovalFileOwnerCc/);
+    assert.match(src, /assignedOfficeUser/);
     assert.match(src, /mergeApprovalMailCc/);
     assert.match(src, /buildPlatformMailCopyNotice/);
     assert.match(src, /requestReadReceipt:\s*true/);
-    assert.match(src, /En az bir tercih edilen alıcı seçilmelidir/);
+    assert.match(src, /En az bir Kime alıcısı seçilmelidir/);
     assert.match(email, /requestReadReceipt:\s*opts\.requestReadReceipt !== false/);
   });
 });

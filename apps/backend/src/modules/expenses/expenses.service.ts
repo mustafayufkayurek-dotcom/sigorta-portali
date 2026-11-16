@@ -3,6 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
+  forwardRef,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
@@ -14,6 +17,7 @@ import { ReceiptScanResult } from './receipt-scan.types';
 import { extractReceiptFieldsFromImage } from './receipt-scan.util';
 import { resolveExpenseCategoryFields } from './expense-category-resolver.util';
 import { isOverheadCategoryCode } from '../finance/overhead.constants';
+import { PartyAccountsService } from '../finance/party-accounts.service';
 import {
   canPostWorkGroupExpense,
   expenseMatchesWorkGroup,
@@ -46,6 +50,9 @@ export class ExpensesService {
     private prisma: PrismaService,
     private config: ConfigService,
     private readonly auditLogsService: AuditLogsService,
+    @Optional()
+    @Inject(forwardRef(() => PartyAccountsService))
+    private readonly partyAccounts?: PartyAccountsService,
   ) {
     this.minioBucket = this.config.get<string>('MINIO_BUCKET', '') || this.config.get<string>('S3_BUCKET', 'uploads');
     try {
@@ -849,6 +856,14 @@ export class ExpensesService {
     const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / 86400000);
     const weekNumber = Math.ceil((dayOfYear + 1) / 7);
 
+    if (dto.partyAccountId) {
+      const account = await this.prisma.partyAccount.findFirst({
+        where: { id: dto.partyAccountId, isActive: true },
+        select: { id: true },
+      });
+      if (!account) throw new BadRequestException('Seçilen cari hesap bulunamadı.');
+    }
+
     const created = await this.prisma.expense.create({
       data: {
         date,
@@ -863,6 +878,7 @@ export class ExpensesService {
         operationSubject: dto.operationSubject as any ?? null,
         fileCaseId: isManagementPool || customerLane ? null : (dto.fileCaseId ?? null),
         customerId: customerLane ? (dto.customerId ?? null) : null,
+        partyAccountId: dto.partyAccountId ?? null,
         isOverheadPool: isManagementPool,
         receiptImageUrl: dto.receiptImageUrl ?? null,
         createdById: userId,
@@ -873,6 +889,17 @@ export class ExpensesService {
         expenseCategory: { include: { parent: true } },
       },
     });
+
+    if (dto.partyAccountId && this.partyAccounts) {
+      await this.partyAccounts.postExpenseDebit({
+        accountId: dto.partyAccountId,
+        expenseId: created.id,
+        amount: Number(dto.amount),
+        entryDate: date,
+        description: dto.description?.trim() || 'Masraf',
+        userId,
+      });
+    }
     this.auditLogsService.log({
       entityType: 'Expense',
       entityId: created.id,

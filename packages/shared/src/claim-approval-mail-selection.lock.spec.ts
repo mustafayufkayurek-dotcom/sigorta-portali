@@ -7,6 +7,7 @@ import { describe, it } from 'node:test';
 import {
   filterSelectedApprovalEmails,
   mergeApprovalMailCc,
+  resolveApprovalFileOwnerCc,
   resolveApprovalInformCc,
 } from './claim-approval-mail-selection.ts';
 
@@ -35,6 +36,18 @@ describe('onaya gönder alıcı seçimi LOCK', () => {
     assert.equal(resolveApprovalInformCc({ email: 'hasar@safranbh.com' }), null);
   });
 
+  it('dosya sorumlusu otomatik Bilgi adresidir; ortak kutu yok', () => {
+    assert.deepEqual(
+      resolveApprovalFileOwnerCc({
+        email: 'sorumlu@meridyen-tr.com',
+        firstName: 'Ayşe',
+        lastName: 'Yılmaz',
+      }),
+      { email: 'sorumlu@meridyen-tr.com', name: 'Ayşe Yılmaz' },
+    );
+    assert.equal(resolveApprovalFileOwnerCc({ email: 'hasar@meridyen-tr.com' }), null);
+  });
+
   it('CC Kime ile çakışmaz; bilgilendirme silinemez sırada ilk durur', () => {
     const cc = mergeApprovalMailCc({
       informCc: { email: 'ofis@meridyen-tr.com', name: 'Dosya Sorumlusu' },
@@ -43,11 +56,15 @@ describe('onaya gönder alıcı seçimi LOCK', () => {
     });
     assert.deepEqual(cc, [{ email: 'yetkili@musteri.com', name: 'Yetkili' }]);
     const withInform = mergeApprovalMailCc({
-      informCc: { email: 'ofis@meridyen-tr.com', name: 'Dosya Sorumlusu' },
-      extraCc: [{ email: 'yetkili@musteri.com' }],
+      informCc: { email: 'gonderen@meridyen-tr.com', name: 'Gönderen' },
+      extraCc: [
+        { email: 'sorumlu@meridyen-tr.com', name: 'Dosya Sorumlusu' },
+        { email: 'yetkili@musteri.com' },
+      ],
       toEmails: ['broker@ornek.com'],
     });
-    assert.equal(withInform[0]?.email, 'ofis@meridyen-tr.com');
-    assert.equal(withInform[1]?.email, 'yetkili@musteri.com');
+    assert.equal(withInform[0]?.email, 'gonderen@meridyen-tr.com');
+    assert.equal(withInform[1]?.email, 'sorumlu@meridyen-tr.com');
+    assert.equal(withInform[2]?.email, 'yetkili@musteri.com');
   });
 });

@@ -6,9 +6,16 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { FinansHedefBaglamSeridi } from '@/components/finance/FinansHedefBaglamSeridi';
 import { API, authHeader } from '@/utils/api';
 import { getAccessToken } from '@/utils/auth-session';
 import { formatTryAmount } from '@/utils/format-try-amount';
+import {
+  FINANS_HEDEF_DON,
+  hedefCiroDonYol,
+  isHedefCiroDon,
+  masrafEkleYol,
+} from '@/utils/finans-merkez-kart';
 import { useToast } from '@/contexts/ToastContext';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
@@ -188,9 +195,23 @@ export default function SabitGiderlerPage() {
     return parts.join(' · ');
   }, [preview?.breakdown]);
 
+  const hedefBaglam = isHedefCiroDon(searchParams.get('don'));
+  const masrafEkleHref = masrafEkleYol(year, month, hedefBaglam ? { don: FINANS_HEDEF_DON } : undefined);
+
   return (
     <div className="space-y-6 min-h-screen bg-white -mx-4 -my-6 px-4 py-6 sm:-m-6 sm:p-6">
-      <FinansSubpageBreadcrumb current="Sabit Giderler" />
+      <FinansSubpageBreadcrumb
+        current="Sabit Giderler"
+        backHref={hedefBaglam ? hedefCiroDonYol(year, month) : undefined}
+        backLabel={hedefBaglam ? 'Hedef Ciroya Dön' : undefined}
+      />
+      {hedefBaglam ? (
+        <FinansHedefBaglamSeridi
+          year={year}
+          month={month}
+          aciklama="Bu ayın yönetim giderini ekleyin; ardından Havuzdan Aktar. Bitince Hedef Ciroya dönün."
+        />
+      ) : null}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Yönetim Giderleri & Dağıtım</h2>
@@ -294,11 +315,27 @@ export default function SabitGiderlerPage() {
       <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/20 px-4 py-3">
         <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">İş akışı</p>
         <p className="text-xs text-blue-800/90 dark:text-blue-200/90 mt-1">
-          1) Giderleri{' '}
-          <Link href="/panel/finans/masraflar" className="underline font-medium">Masraf İzleme</Link>
-          {' '}→ Yönetim Giderleri havuzuna kaydedin → 2) <strong>Havuzdan Aktar</strong> → 3) Eşit dağıtım ile tüm operasyon dosyalarına paylaştırın.
-          Danışmanlık hattı dosya numarası taşımadığı için dağıtıma dahil değildir.
+          1) <strong>Masraf Ekle</strong> ile Yönetim Giderleri kaydı açın (kira, maaş, araç; dosya seçilmez) →
+          2) <strong>Havuzdan Aktar</strong> → 3) Dosyalara eşit dağıtın. Danışmanlık dağıtıma dahil değildir.
         </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href={masrafEkleHref}
+            className="inline-flex items-center rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+            data-testid="sabit-gider-masraf-ekle"
+          >
+            Masraf Ekle
+          </Link>
+          <button
+            type="button"
+            onClick={handleSyncPool}
+            disabled={syncing || isAllocated}
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            data-testid="sabit-gider-havuzdan-aktar"
+          >
+            {syncing ? 'Aktarılıyor...' : 'Havuzdan Aktar'}
+          </button>
+        </div>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>}
@@ -326,21 +363,47 @@ export default function SabitGiderlerPage() {
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
         <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700 flex-wrap gap-2">
           <p className="text-sm font-semibold">{year}/{String(month).padStart(2, '0')} — Havuz Özeti</p>
-          <button
-            type="button"
-            onClick={handleSyncPool}
-            disabled={syncing || isAllocated}
-            className="text-xs border border-slate-300 dark:border-slate-600 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700"
-          >
-            {syncing ? 'Aktarılıyor...' : 'Havuzdan Aktar'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={masrafEkleHref}
+              className="text-xs border border-brand-300 bg-brand-50 text-brand-800 px-3 py-1.5 rounded-lg hover:bg-brand-100 dark:border-brand-700 dark:bg-brand-950/40 dark:text-brand-100"
+            >
+              Masraf Ekle
+            </Link>
+            <button
+              type="button"
+              onClick={handleSyncPool}
+              disabled={syncing || isAllocated}
+              className="text-xs border border-slate-300 dark:border-slate-600 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700"
+            >
+              {syncing ? 'Aktarılıyor...' : 'Havuzdan Aktar'}
+            </button>
+          </div>
         </div>
 
         {loading ? (
           <div className="p-6 text-center text-sm text-slate-400">Yükleniyor...</div>
         ) : entries.length === 0 ? (
-          <div className="p-6 text-center text-sm text-slate-400">
-            Bu dönem için aktarılmış kayıt yok. Masraf İzleme havuzundan <strong>Havuzdan Aktar</strong> ile getirin.
+          <div className="p-6 text-center space-y-3" data-testid="sabit-gider-bos-hal">
+            <p className="text-sm text-slate-500">
+              Bu dönem için aktarılmış kayıt yok. Önce yönetim gideri ekleyin, sonra havuza aktarın.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link
+                href={masrafEkleHref}
+                className="inline-flex items-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+              >
+                Masraf Ekle
+              </Link>
+              <button
+                type="button"
+                onClick={handleSyncPool}
+                disabled={syncing || isAllocated}
+                className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100"
+              >
+                {syncing ? 'Aktarılıyor...' : 'Havuzdan Aktar'}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="divide-y divide-slate-50 dark:divide-slate-700">

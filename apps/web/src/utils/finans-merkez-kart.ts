@@ -37,7 +37,19 @@ export const FINANS_KART_YOL = {
   tedarikciOdeme: '/panel/finans/tahsilatlar?queue=payable',
   faturaTalepleri: '/panel/finans/fatura-talepleri',
   faturaBekleyen: '/panel/finans/fatura-talepleri',
+  cariler: '/panel/finans/cariler',
+  donemSonu: '/panel/finans/cariler/donem-sonu',
+  masraflar: '/panel/finans/masraflar',
 } as const;
+
+/** Dönem uyarı «Şimdilik Devam» — mali dönem/yıl + İstanbul günü. */
+export function finansDonemUyariDismissKey(
+  kind: 'mali_donem' | 'mali_yil',
+  key: string,
+  istanbulDayIso: string,
+): string {
+  return `finans-donem-uyari-dismiss:${kind}:${key}:${istanbulDayIso.slice(0, 10)}`;
+}
 
 export function tahsilEdilenYol(year: number, month: number): string {
   return `/panel/finans/tahsilatlar?queue=completed&paymentType=incoming&${financePeriodQuery(year, month)}`;
@@ -45,6 +57,18 @@ export function tahsilEdilenYol(year: number, month: number): string {
 
 export function masrafYol(year: number, month: number): string {
   return `/panel/finans/masraflar?${financePeriodQuery(year, month)}`;
+}
+
+/** Sabit gider / yönetim havuzu için Masraf İzleme’de ekleme formunu açar. */
+export function masrafEkleYol(
+  year: number,
+  month: number,
+  opts?: { don?: string },
+): string {
+  const q = new URLSearchParams(financePeriodQuery(year, month));
+  q.set('yeni', '1');
+  if (opts?.don) q.set('don', opts.don);
+  return `/panel/finans/masraflar?${q.toString()}`;
 }
 
 export function netSonucYol(year: number, month: number): string {
@@ -55,4 +79,27 @@ export function sabitGiderYol(year: number, month: number): string {
   const periodYear = month > 0 ? year : new Date().getFullYear();
   const periodMonth = month > 0 ? month : new Date().getMonth() + 1;
   return `/panel/finans/sabit-giderler?year=${periodYear}&month=${periodMonth}`;
+}
+
+/** Hedef Ciro penceresinden Cariler / Sabit Giderler — dönüş bağlamı korunur. */
+export const FINANS_HEDEF_DON = 'hedef-ciro';
+
+export function isHedefCiroDon(don: string | null | undefined): boolean {
+  return don === FINANS_HEDEF_DON;
+}
+
+export function hedefCiroDonYol(year: number, month: number): string {
+  return `/panel/finans?incele=hedef&${financePeriodQuery(year, month)}`;
+}
+
+export function carilerHedefBaglamYol(year: number, month: number): string {
+  const q = new URLSearchParams(financePeriodQuery(year, month));
+  q.set('don', FINANS_HEDEF_DON);
+  return `/panel/finans/cariler?${q.toString()}`;
+}
+
+export function sabitGiderHedefBaglamYol(year: number, month: number): string {
+  const periodYear = month > 0 ? year : new Date().getFullYear();
+  const periodMonth = month > 0 ? month : new Date().getMonth() + 1;
+  return `/panel/finans/sabit-giderler?year=${periodYear}&month=${periodMonth}&don=${FINANS_HEDEF_DON}`;
 }

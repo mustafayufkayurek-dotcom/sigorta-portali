@@ -133,7 +133,7 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
       {
         key: 'hasarTespitArac',
         title: 'Hasar Tespit Araç Giderleri',
-        purpose: 'Araç kirası, km aşımı, yakıt ve köprü / otoyol ücretleri; hizmet bedeli hesabı bunlarla yapılır.',
+        purpose: 'Yakıt ve km aşımı burada; araç kirası Sabit Giderler’de; köprü ücreti rut planında önerilir.',
         href: '/panel/ayarlar/hasar-tespit-arac',
         tone: 'violet',
       },
@@ -304,21 +304,20 @@ export default function TanimlarPage() {
         }),
         safeMetric(axios.get(`${API}/hasar-tespit-bedel/arac`, { headers }), (raw) => {
           const a = ((raw as { data?: unknown })?.data ?? {}) as {
-            aylikKira?: number | null;
             kmAsimUcreti?: number | null;
             tuketimL100?: number | null;
-            gecisler?: Array<{ ucret?: number | null }>;
+            varsayilanCikisAdresi?: string | null;
           };
           const eksik = [
-            a.aylikKira == null ? 'araç kirası' : null,
             a.kmAsimUcreti == null ? 'km aşım' : null,
             a.tuketimL100 == null ? 'yakıt tüketimi' : null,
           ].filter(Boolean);
-          const gecis = a.gecisler ?? [];
           return {
-            total: gecis.length,
+            total: 1,
             active: null,
-            note: eksik.length ? `Girilmemiş: ${eksik.join(', ')}` : `${gecis.filter((g) => g.ucret != null).length} geçiş ücretli`,
+            note: eksik.length
+              ? `Girilmemiş: ${eksik.join(', ')}`
+              : (a.varsayilanCikisAdresi ? 'Yakıt ayarı hazır · kira Sabit Giderler’de' : 'Yakıt ayarı hazır'),
           };
         }),
         safeMetric(axios.get(`${API}/document-types`, { headers }), (raw) => {

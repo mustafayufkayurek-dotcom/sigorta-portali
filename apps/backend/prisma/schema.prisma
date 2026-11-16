@@ -204,6 +204,9 @@ model User {
   // Masraf İzleme
   createdExpenses            Expense[]                 @relation("ExpenseCreatedBy")
   approvedExpenses           Expense[]                 @relation("ExpenseApprovedBy")
+  createdPartyAccounts       PartyAccount[]            @relation("CreatedPartyAccounts")
+  createdPartyAccountEntries PartyAccountEntry[]       @relation("CreatedPartyAccountEntries")
+  closedFinansDonemler       FinansDonemKapanis[]      @relation("FinansDonemKapanisClosedBy")
 
   // Ofis-Saha İş Akışı
   fileActivityLogs           FileActivityLog[]         @relation("FileActivityActor")
@@ -638,6 +641,7 @@ model Customer {
 
   claimFiles   ClaimFile[]
   expenses     Expense[]
+  partyAccounts PartyAccount[]
   channelAgencyFiles ClaimFile[] @relation("ClaimChannelAgency")
   channelBrokerFiles ClaimFile[] @relation("ClaimChannelBroker")
   channelExpertFiles ClaimFile[] @relation("ClaimChannelExpert")
@@ -1074,6 +1078,7 @@ model Vendor {
   inspectorAssignedClaimFiles ClaimFile[]  @relation("AssignedInspectorVendor")
   claimFileSupplierLinks   ClaimFileSupplier[]
   importedDiscoveryCandidates VendorDiscoveryCandidate[] @relation("ImportedDiscoveryVendor")
+  partyAccounts            PartyAccount[]
 
   @@index([status])
   @@index([category])
@@ -3524,6 +3529,7 @@ model Expense {
   operationSubject  ExpenseOperationSubject? @map("operation_subject")
   fileCaseId        String?                 @map("file_case_id")
   customerId        String?                 @map("customer_id")
+  partyAccountId    String?                 @map("party_account_id")
   expenseCategoryId String?                 @map("expense_category_id")
   isOverheadPool    Boolean                 @default(false) @map("is_overhead_pool")
   overheadAllocatedAt DateTime?             @map("overhead_allocated_at")
@@ -3537,16 +3543,106 @@ model Expense {
   createdBy   User              @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
   fileCase    ClaimFile?        @relation(fields: [fileCaseId], references: [id])
   customer    Customer?         @relation(fields: [customerId], references: [id])
+  partyAccount PartyAccount?    @relation(fields: [partyAccountId], references: [id])
   expenseCategory ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id])
 
   @@index([expenseGroup])
   @@index([customerId])
+  @@index([partyAccountId])
   @@index([expenseCategoryId])
   @@index([isOverheadPool])
   @@index([approvalStatus])
   @@index([date])
   @@index([createdById])
   @@map("expenses")
+}
+
+/// Şirket cari hesabı — açılış + hareket = reel bakiye.
+model PartyAccount {
+  id                 String    @id @default(uuid())
+  code               String?   @unique
+  name               String
+  kind               String
+  /// musteri | tedarikci | kredi_karti | kredi | vergi | sgk | banka | diger
+  cardLast4          String?   @map("card_last4")
+  cardLabel          String?   @map("card_label")
+  contactPhone       String?   @map("contact_phone")
+  contactEmail       String?   @map("contact_email")
+  linkedCustomerId   String?   @map("linked_customer_id")
+  linkedVendorId     String?   @map("linked_vendor_id")
+  notes              String?
+  isActive           Boolean   @default(true) @map("is_active")
+  createdByUserId    String    @map("created_by_user_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  createdBy  User                @relation("CreatedPartyAccounts", fields: [createdByUserId], references: [id])
+  customer   Customer?           @relation(fields: [linkedCustomerId], references: [id])
+  vendor     Vendor?             @relation(fields: [linkedVendorId], references: [id])
+  entries    PartyAccountEntry[]
+  expenses   Expense[]
+
+  @@index([kind])
+  @@index([isActive])
+  @@index([linkedCustomerId])
+  @@index([linkedVendorId])
+  @@map("party_accounts")
+}
+
+model PartyAccountEntry {
+  id              String   @id @default(uuid())
+  accountId       String   @map("account_id")
+  entryDate       DateTime @map("entry_date") @db.Date
+  description     String
+  /// Borç sütunu (TL)
+  debitAmount     Decimal  @default(0) @map("debit_amount") @db.Decimal(14, 2)
+  /// Alacak sütunu (TL)
+  creditAmount    Decimal  @default(0) @map("credit_amount") @db.Decimal(14, 2)
+  sourceKind      String   @map("source_kind")
+  /// acilis | manuel | masraf | odeme | tahsilat | gelir | fatura
+  sourceId        String?  @map("source_id")
+  createdByUserId String   @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  account   PartyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdBy User         @relation("CreatedPartyAccountEntries", fields: [createdByUserId], references: [id])
+
+  @@index([accountId, entryDate])
+  @@index([sourceKind, sourceId])
+  @@map("party_account_entries")
+}
+
+/// Yıl sonu kapanış bakiyesi — yeni dönem / aktarım yok; kilitli fotoğraf.
+model FinansDonemKapanis {
+  id             String   @id @default(uuid())
+  year           Int      @unique
+  asOfDate       DateTime @map("as_of_date") @db.Date
+  note           String?
+  closedByUserId String   @map("closed_by_user_id")
+  closedAt       DateTime @default(now()) @map("closed_at")
+
+  closedBy User                     @relation("FinansDonemKapanisClosedBy", fields: [closedByUserId], references: [id])
+  lines    FinansDonemKapanisSatir[]
+
+  @@index([closedAt])
+  @@map("finans_donem_kapanis")
+}
+
+model FinansDonemKapanisSatir {
+  id            String  @id @default(uuid())
+  kapanisId     String  @map("kapanis_id")
+  accountId     String  @map("account_id")
+  accountName   String  @map("account_name")
+  accountKind   String  @map("account_kind")
+  toplamBorc    Decimal @default(0) @map("toplam_borc") @db.Decimal(14, 2)
+  toplamAlacak  Decimal @default(0) @map("toplam_alacak") @db.Decimal(14, 2)
+  netBakiye     Decimal @default(0) @map("net_bakiye") @db.Decimal(14, 2)
+
+  kapanis FinansDonemKapanis @relation(fields: [kapanisId], references: [id], onDelete: Cascade)
+
+  @@index([kapanisId])
+  @@index([accountId])
+  @@map("finans_donem_kapanis_satir")
 }
 
 // ─── Fiyat Listesi & Bölgesel Zam Sistemi ─────────────────────────────────────
@@ -3778,6 +3874,11 @@ model HrEmployeeProfile {
   employmentType      String    @default("indefinite") @map("employment_type")
   hireDate            DateTime? @map("hire_date") @db.Date
   terminationDate     DateTime? @map("termination_date") @db.Date
+  /// Aylık brüt ücret (TL) — C8 yasal hesap girdisi
+  monthlyGrossSalary  Float?    @map("monthly_gross_salary")
+  /// Son kabul edilen yasal hesap özeti (net / maliyet / kıdem…)
+  yasalKabulJson      Json?     @map("yasal_kabul_json")
+  yasalKabulAt        DateTime? @map("yasal_kabul_at")
   departmentId        String?   @map("department_id")
   managerUserId       String?   @map("manager_user_id")
   status              String    @default("active")

@@ -41,6 +41,8 @@ export class ReportEmailService {
     operationRegion?: string | null;
     operationCity?: string | null;
     operationDistrict?: string | null;
+    /** Hasar Tespit hitabı için alıcı soyadı. */
+    recipientSurname?: string | null;
     actionUrl?: string | null;
     portalUrl?: string | null;
     viewType?: 'external';
@@ -78,6 +80,7 @@ export class ReportEmailService {
       operationRegion: opts.operationRegion,
       operationCity: opts.operationCity,
       operationDistrict: opts.operationDistrict,
+      recipientSurname: opts.recipientSurname,
     });
     const result = await this.email.sendEmail(
       to,
@@ -97,6 +100,7 @@ export class ReportEmailService {
           operationRegion: opts.operationRegion,
           operationCity: opts.operationCity,
           operationDistrict: opts.operationDistrict,
+          recipientSurname: opts.recipientSurname,
         }),
         attachments: [
           {

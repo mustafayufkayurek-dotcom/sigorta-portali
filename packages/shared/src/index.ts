@@ -45,6 +45,8 @@ export * from './claim-file-channels';
 export * from './claim-notification-at';
 export * from './hasar-tespit-muhatap';
 export * from './hasar-tespit-bedel';
+export * from './finans-cari';
+export * from './personel-yasal-hesap';
 export * from './claim-mail-route';
 export * from './claim-approval-mail-selection';
 export * from './hizmet-karti';

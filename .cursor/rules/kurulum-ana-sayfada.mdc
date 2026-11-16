@@ -1,0 +1,34 @@
+---
+description: Kurulum ve ilk açılış işleri alt sayfada değil, ilgili ana sayfada checklist; biten satır kalkar
+alwaysApply: true
+---
+
+# Kurulum Ana Sayfada
+
+**Kaynak (Mustafa · 15.11.2026):** Finans kurulumu Cariler’deydi; hedef ciro bulunamadı. Kurulum yalnız cari değil tüm konular içindi. Sahibi teknik yöntem önermez; sektörde kabul görmüş yol uygulanır.
+
+**Temel cümle:** Kurulum işi **iş listesinde / detay sayfasında değil**, o işin **ana sayfasında** checklist’tir. Adım bitince **satırdan kalkar.** Bütünü bitince kutu kaybolur. Bu yöntem Finans cari ile sınırlı değildir; panelde her kurulum aynı kapıdadır.
+
+## Sektör yöntemi (uygula)
+
+Xero / QuickBooks / Logo tarzı ilk açılış listesi: ana ekranda checklist, her satır bir iş, tamamlanınca satır düşer, iş bitince liste yok olur. Yeni «kurulum sayfası» veya kalıcı sarı duvar üretme. Unutulan dönem kapanışı ana ekranda hatırlatılır; kilitleme yazılım onay penceresiyle olur (tarayıcı `confirm` değil).
+
+## Zorunlu
+
+1. Finans kurulum adımları `/panel/finans` (Finans Merkezi) üzerindedir: cari tanım, açılış bakiyesi, masraf kaynağı. Cariler, masraf, tahsilat gibi iş sayfalarında kurulum onay kutusu yoktur.
+2. Eksik adım satır satır görünür; her satırda o adımı bitiren tuş veya net yön vardır. Adım bitince satır kalkar; hepsi bitince kutu kalkar.
+3. Kurulum açıkken Merkez’de yalnız checklist; seyir / KPI yığını açılmaz. Kurulum bitince üstte **Şirket Seyri**; ayrı «seyir sayfası» menüsü yok.
+4. Dönem sonu Merkez’den açılır; kapatılabilir yıl varken Merkez’de **Dönemi Kapat / Şimdilik Devam Et** uyarısı durur.
+5. Başka departman/moduül kurulumu da kendi ana sayfasında checklist olur; iş listesine gömülmez.
+6. Mustafa’dan «nasıl kuralım» teknik yöntemi istenmez. En yakın sektör yöntemi seçilir, uygulanır, kilitlenir.
+
+## Yasak (açık onay yoksa)
+
+- Kurulum onayını Cariler / Masraflar gibi iş listesine gömmek
+- Bitmiş adımı ekranda bırakmak
+- Kurulum açıkken seyir + KPI duvarını birlikte basmak
+- Sahibinden kurulum UX’i tarif ettirmek
+
+## Durdurma
+
+Kurulum yine iş sayfasında kalırsa, biten satır düşmezse veya Merkez karışık rakam duvarına dönerse → **dur, ana sayfa checklist / sade seyir’e çek.**

@@ -48,4 +48,11 @@ describe('onarım büyük tutar kilidi', () => {
     const evalLater = commit.indexOf('evaluateAmountExpression');
     assert.ok(amountFirst >= 0 && evalLater > amountFirst);
   });
+
+  it('hücre toplamı 18217.13 yazımını 1.821.713 yapmaz', () => {
+    assert.equal(parseTrGroupedOrDecimal('18217.13'), 18217.13);
+    assert.equal(parseTrGroupedOrDecimal('18.217,13'), 18217.13);
+    assert.notEqual(parseTrAmountInput('18217.13'), 18217.13);
+    assert.match(page, /function rowMoney\(raw: string\): number \{\s*return parseTrGroupedOrDecimal\(raw\)/);
+  });
 });
