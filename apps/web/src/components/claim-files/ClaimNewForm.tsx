@@ -314,9 +314,13 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
 
   useEffect(() => {
     let cancelled = false;
+    const selectedConsultancy = consultancyTypes.find((row) => row.id === consultancyServiceTypeId) ?? null;
     const departmentCode = departmentCodeForNewClaim({
       customerSource,
       serviceKind: parseClaimServiceKind(serviceKind),
+      consultancyServiceType: selectedConsultancy
+        ? { code: selectedConsultancy.code, name: selectedConsultancy.name }
+        : null,
     });
     void fetchDepartmentFileSubjectNames(departmentCode)
       .then((names) => {
@@ -334,7 +338,7 @@ export function ClaimNewForm({ variant = 'page', onSuccess, onCancel, prefillCus
     return () => {
       cancelled = true;
     };
-  }, [customerSource, serviceKind]);
+  }, [customerSource, serviceKind, consultancyServiceTypeId, consultancyTypes]);
 
   const loadStatuses = useCallback(async () => {
     try {

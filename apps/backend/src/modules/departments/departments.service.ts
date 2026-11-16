@@ -488,6 +488,14 @@ export class DepartmentsService {
         reportFormat: 'repair',
         sortOrder: 5,
       },
+      {
+        code: 'hasar-tespit',
+        name: 'Hasar Tespit',
+        description: 'Hasar tespit dosya konuları',
+        color: '#0EA5E9',
+        reportFormat: 'repair',
+        sortOrder: 6,
+      },
     ];
 
     const created = [];

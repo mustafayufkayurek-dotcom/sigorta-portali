@@ -27,13 +27,26 @@ export async function resolveDamageReasonOptions(
   return fetchActiveFileSubjects(departmentId);
 }
 
-/** Yeni Dosya: seçilen hattın Ayarlar → Dosya Konuları listesi. Ad ayardaki gibi kalır. */
-export async function fetchDepartmentFileSubjectNames(departmentCode: string): Promise<string[]> {
-  const departments = await apiGet<DeptRow[]>(`${API}/departments`);
+async function subjectNamesForCode(
+  departments: DeptRow[],
+  departmentCode: string,
+): Promise<string[]> {
   const dept = matchDepartmentForFileSubjects(departments, departmentCode);
   if (!dept) return [];
   const rows = await fetchActiveFileSubjects(dept.id);
   return rows.map((row) => row.name).filter(Boolean);
+}
+
+/** Yeni Dosya / düzenle: seçilen hattın Ayarlar → Dosya Konuları. Hasar Tespit boşsa Hasar Onarım yedeği. */
+export async function fetchDepartmentFileSubjectNames(departmentCode: string): Promise<string[]> {
+  const departments = await apiGet<DeptRow[]>(`${API}/departments`);
+  const primary = await subjectNamesForCode(departments, departmentCode);
+  if (primary.length > 0) return primary;
+  const folded = String(departmentCode ?? '').trim().toLocaleLowerCase('tr-TR');
+  if (folded === 'hasar-tespit') {
+    return subjectNamesForCode(departments, 'hasar-onarim');
+  }
+  return [];
 }
 
 export async function fetchInboxFileSubjectNames(

@@ -82,8 +82,7 @@ function isBlankFileSubject(value: string | null | undefined): boolean {
 }
 
 function departmentCodeForClaim(claim: any): string {
-  const code = String(claim?.department?.code ?? '').trim();
-  if (code) return code;
+  // Hizmet hattı esas: eski department=danismanlik kaydı Tadilat listesini basmaz.
   const source = String(claim?.customerSource ?? 'expert');
   const customerSource = source === 'private' || source === 'broker' || source === 'insurance'
     ? source
@@ -91,6 +90,7 @@ function departmentCodeForClaim(claim: any): string {
   return departmentCodeForNewClaim({
     customerSource,
     serviceKind: parseClaimServiceKind(claim?.serviceKind),
+    consultancyServiceType: claim?.consultancyServiceType ?? null,
   });
 }
 

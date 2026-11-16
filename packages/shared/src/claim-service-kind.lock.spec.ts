@@ -50,18 +50,28 @@ describe('claim service kind lock', () => {
     assert.equal(plannerStepHiddenForServiceKind('supplier', 'consultancy', { code: HASAR_TESPIT_SERVICE_CODE }), true);
     assert.equal(hasarReportDocumentTitle('inspection'), 'Hasar Tespit Raporu');
     assert.equal(hasarReportDocumentTitle('repair'), 'Hasar Onarım Raporu');
-    assert.equal(departmentCodeForNewClaim({ customerSource: 'private', serviceKind: 'inspection' }), 'ozel-musteri');
+    assert.equal(departmentCodeForNewClaim({ customerSource: 'private', serviceKind: 'inspection' }), 'hasar-tespit');
     assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'consultancy' }), 'danismanlik');
     assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'repair' }), 'hasar-onarim');
-    assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'inspection' }), 'hasar-onarim');
-    assert.equal(departmentCodeForNewClaim({ customerSource: 'insurance', serviceKind: 'inspection' }), 'hasar-onarim');
+    assert.equal(departmentCodeForNewClaim({ customerSource: 'expert', serviceKind: 'inspection' }), 'hasar-tespit');
+    assert.equal(departmentCodeForNewClaim({ customerSource: 'insurance', serviceKind: 'inspection' }), 'hasar-tespit');
+    assert.equal(
+      departmentCodeForNewClaim({
+        customerSource: 'expert',
+        serviceKind: 'consultancy',
+        consultancyServiceType: { code: 'hasar_tespit', name: 'Hasar Tespit' },
+      }),
+      'hasar-tespit',
+    );
     assert.equal(departmentCodeForNewClaim({ customerSource: 'broker', serviceKind: 'repair' }), 'hasar-onarim');
     const lines = [
       { code: 'HASAR_ONARIM', name: 'Hasar Onarım' },
+      { code: 'hasar-tespit', name: 'Hasar Tespit' },
       { code: 'DEPT_DANISMANLIK', name: 'Danışmanlık' },
       { code: 'sovtaj', name: 'Sovtaj' },
     ];
     assert.equal(matchDepartmentForFileSubjects(lines, 'hasar-onarim')?.code, 'HASAR_ONARIM');
+    assert.equal(matchDepartmentForFileSubjects(lines, 'hasar-tespit')?.code, 'hasar-tespit');
     assert.equal(matchDepartmentForFileSubjects(lines, 'danismanlik')?.code, 'DEPT_DANISMANLIK');
     assert.equal(matchDepartmentForFileSubjects(lines, 'hasar-onarim')?.name, 'Hasar Onarım');
     assert.equal(matchDepartmentForFileSubjects(lines, 'sovtaj')?.code, 'sovtaj');

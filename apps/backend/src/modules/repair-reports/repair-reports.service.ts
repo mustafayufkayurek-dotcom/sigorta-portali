@@ -122,6 +122,7 @@ const CLAIM_FILE_SAFE_SELECT = {
   propertyAddress: true,
   notificationDate: true,
   serviceKind: true,
+  mailRouteJson: true,
   consultancyServiceType: { select: { id: true, code: true, name: true } },
   claimSubject: { select: { id: true, code: true, name: true } },
   assignedFieldUser: { select: { id: true, firstName: true, lastName: true, phone: true } },

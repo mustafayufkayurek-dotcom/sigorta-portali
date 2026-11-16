@@ -49,6 +49,10 @@ import {
 } from '@/utils/quick-repair-damage-types';
 import { resolveHasarInsuredName } from '@/utils/claim-insured-display';
 import {
+  claimApprovalFallbackCustomerEmail,
+  claimApprovalMailPreview,
+} from '@/utils/claim-approval-mail-preview';
+import {
   repairReportStatusBadge,
   repairReportStatusLabel,
 } from '@/utils/repair-report-status';
@@ -5206,6 +5210,25 @@ export default function RepairReportPage() {
     [report],
   );
 
+  const approvalMailRows = useMemo(
+    () => claimApprovalMailPreview({
+      serviceKind: report?.claimFile?.serviceKind,
+      consultancyServiceType: report?.claimFile?.consultancyServiceType,
+      mailRouteJson: report?.claimFile?.mailRouteJson,
+      insuranceCompany: report?.claimFile?.insuranceCompany,
+      channelAgencyCustomer: report?.claimFile?.channelAgencyCustomer,
+      channelBrokerCustomer: report?.claimFile?.channelBrokerCustomer,
+      channelExpertCustomer: report?.claimFile?.channelExpertCustomer,
+    }),
+    [report?.claimFile],
+  );
+  const approvalFallbackCustomerMail = useMemo(
+    () => (approvalMailRows.length > 0
+      ? ''
+      : claimApprovalFallbackCustomerEmail(report?.claimFile?.customer?.email)),
+    [approvalMailRows.length, report?.claimFile?.customer?.email],
+  );
+
   const insuredName = useMemo(
     () => resolveHasarInsuredName(report?.claimFile ?? {}),
     [report?.claimFile],
@@ -5445,11 +5468,14 @@ export default function RepairReportPage() {
       setShowRequestApprovalModal(false);
       setConfirmSendWithoutImages(false);
       setItemsApprovalError(null);
-      const customerMail = String(report?.claimFile?.customer?.email ?? '').trim();
+      const preferredMails = approvalMailRows.map((row) => row.email);
+      const mailedTo = preferredMails.length > 0
+        ? preferredMails.join(', ')
+        : claimApprovalFallbackCustomerEmail(report?.claimFile?.customer?.email);
       notify(
         'success',
-        customerMail
-          ? `Onaya alındı. Rapor PDF müşteriye gönderildi: ${customerMail}`
+        mailedTo
+          ? `Onaya alındı. Rapor PDF tercih edilen alıcıya gönderildi: ${mailedTo}`
           : 'Onaya alındı.',
       );
       await load();
@@ -7204,15 +7230,32 @@ export default function RepairReportPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <h3 className="text-base font-bold text-slate-900 mb-1">Onaya Gönder — Son Teyit</h3>
             <p className="text-xs text-slate-500 mb-4">
-              Müşteri kartındaki e-postaya rapor PDF’si gider. Yöneticiye ayrıca iç onay özeti gider.
+              Rapor PDF tercih edilen mail tarafına gider. Yöneticiye ayrıca iç onay özeti gider.
             </p>
 
             <div className="space-y-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-medium text-slate-500 mb-1">Müşteri e-posta</p>
-                <p className="text-sm font-semibold text-slate-900">
-                  {String(report?.claimFile?.customer?.email ?? '').trim() || 'Kartta e-posta yok'}
-                </p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3" data-testid="onaya-gonder-tercih-alici">
+                <p className="text-xs font-medium text-slate-500 mb-2">Tercih Edilen Alıcı</p>
+                {approvalMailRows.length > 0 ? (
+                  <ul className="space-y-2">
+                    {approvalMailRows.map((row) => (
+                      <li key={`${row.party}-${row.email}`} className="text-sm">
+                        <p className="font-semibold text-slate-900">{row.label}</p>
+                        <p className="text-xs text-slate-600">{row.name || '—'}</p>
+                        <p className="mt-0.5 font-medium text-slate-800">{row.email}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : approvalFallbackCustomerMail ? (
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">Kanal e-postası yok — kart adresi yedek</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">{approvalFallbackCustomerMail}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm font-semibold text-amber-700">
+                    Tercih edilen tarafta e-posta yok. Dosya kanalı adreslerini kontrol edin.
+                  </p>
+                )}
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">

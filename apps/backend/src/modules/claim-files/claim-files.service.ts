@@ -2151,8 +2151,15 @@ export class ClaimFilesService {
       let assignedOfficeUserId = rest.assignedOfficeUserId ?? null;
       let resolvedDepartmentId = departmentId ?? null;
       if (!resolvedDepartmentId && sourceChannel !== 'expert_portal' && sourceChannel !== 'insurance_portal') {
-        const deptCode = departmentCodeForNewClaim({ customerSource, serviceKind });
+        const deptCode = departmentCodeForNewClaim({
+          customerSource,
+          serviceKind,
+          consultancyServiceType: typeForCard,
+        });
         resolvedDepartmentId = await this.resolveDepartmentIdByCode(deptCode);
+        if (!resolvedDepartmentId && deptCode === 'hasar-tespit') {
+          resolvedDepartmentId = await this.resolveDepartmentIdByCode('hasar-onarim');
+        }
       }
 
       if (

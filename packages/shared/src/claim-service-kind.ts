@@ -163,6 +163,7 @@ export function claimServiceKindFromConsultancyType(row: {
 
 const FILE_SUBJECT_LINE_NAME: Record<string, string> = {
   'hasar-onarim': 'Hasar Onarım',
+  'hasar-tespit': 'Hasar Tespit',
   'acil-yardim': 'Acil Yardım',
   'ozel-musteri': 'Özel Müşteri',
   danismanlik: 'Danışmanlık',
@@ -186,10 +187,24 @@ export function matchDepartmentForFileSubjects<T extends { code: string; name: s
   return departments.find((row) => row.name.localeCompare(expected, 'tr', { sensitivity: 'base' }) === 0);
 }
 
+/**
+ * Dosya Konusu listesi hizmet hattındandır.
+ * Hasar Tespit → hasar-tespit (yoksa çağıran hasar-onarim yedeği okur).
+ * Dosyadaki eski department kodu (ör. danismanlik) Tadilat listesini basmaz.
+ */
 export function departmentCodeForNewClaim(input: {
   customerSource: 'expert' | 'private' | 'broker' | 'insurance';
   serviceKind: ClaimServiceKind;
+  consultancyServiceType?: { code?: string | null; name?: string | null } | null;
 }): string {
+  if (
+    isHasarTespitClaim({
+      serviceKind: input.serviceKind,
+      consultancyServiceType: input.consultancyServiceType,
+    })
+  ) {
+    return HASAR_HIZMET_TESPIT;
+  }
   if (input.serviceKind === 'consultancy') return 'danismanlik';
   if (input.customerSource === 'private') return 'ozel-musteri';
   return 'hasar-onarim';

@@ -42,6 +42,7 @@ type FileSubject = { id: string; code: string; name: string; sortOrder: number; 
 
 const KONU_TABS = [
   { id: 'hasar-onarim', name: 'Hasar Onarım', color: '#3B82F6', departmentCode: 'hasar-onarim' },
+  { id: 'hasar-tespit', name: 'Hasar Tespit', color: '#0EA5E9', departmentCode: 'hasar-tespit' },
   { id: 'acil-yardim', name: 'Acil Yardım', color: '#EF4444', departmentCode: 'acil-yardim' },
   { id: 'ozel-musteri', name: 'Özel Müşteri', color: '#10B981', departmentCode: 'ozel-musteri' },
   { id: 'danismanlik', name: 'Danışmanlık', color: '#8B5CF6', departmentCode: 'danismanlik' },
