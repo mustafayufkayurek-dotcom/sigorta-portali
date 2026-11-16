@@ -309,7 +309,7 @@ export default function TahsilatlarPage() {
           <HintIcon text={
             queue === 'payable'
               ? 'Tedarikçi hakediş ve avans bu sekmede durur. Ayrı sayfa değildir. Ödendi carisine işler.'
-              : 'Tahsilat müşteri carisine işler. Tedarikçi ödemesi Tedarikçi Ödeme Kuyruğu sekmesindedir.'
+              : 'Tahsilat müşteri carisine işler. Tedarikçi ödemesi ayrı sayfa değildir. Tedarikçi Ödeme Kuyruğu sekmesinde durur.'
           } />
         </h2>
         <Link
