@@ -2,24 +2,33 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 6 Ekim 2026
+**Son güncelleme:** 16 Kasım 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (6 Ekim 2026 — web v649 / backend v649)
+## Canlı durum (16 Kasım 2026 — web v692 / backend v692)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v649-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v649-amd64` | canlı |
-| **Rollback** | Web **v648** / Backend **v648** | manifest `rollbackImages` |
-| **Etiket** | `v649-tespit-not-onay` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v692-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v692-amd64` | canlı |
+| **Rollback** | Web **v690** / Backend **v691** | manifest `rollbackImages` |
+| **Etiket** | `v692-hasar-tespit-konu-mail` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v692 — Full (16 Kasım 2026) — Hasar Tespit konu + tercih edilen alıcı + hizmet bedeli
+
+- Dosya Konusu hizmet hattından (Tadilat / danışmanlık karışmaz); Ayarlar Hasar Tespit sekmesi
+- Onaya Gönder Tercih Edilen Alıcı (Sigorta → Broker → Eksper)
+- Hasar Tespit Hizmet Bedeli Hesapla (yönetici / finans)
+- Finans omurga ve personel yasal hesap WIP alınmadı
+- Disk alım öncesi 20 GB; health ok; Redis kısa degraded sonra up; Route Gate PARTIAL (oturum şifresi yok)
+- Geri alma web **v690** / backend **v691**
 
 ### v649 — Full (6 Ekim 2026) — Tespit not, ihbar, ön onaylı mail, yönetici onay
 
