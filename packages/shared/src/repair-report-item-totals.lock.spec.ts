@@ -161,7 +161,8 @@ describe('onarım raporu maliyet m² LOCK', () => {
     assert.match(page, /itemsTableRef\.current\?\.prepareGlobalSave\(\)/);
     assert.match(page, /itemsTableRef\.current\?\.saveAllDirtyRows\(\)/);
     assert.match(page, /function rowTotalsInput/);
-    assert.match(page, /parseTrAmountInput\(raw\)/);
+    assert.match(page, /parseTrGroupedOrDecimal\(raw\)/);
+    assert.doesNotMatch(page, /function rowMoney\(raw: string\): number \{\s*return parseTrAmountInput\(raw\)/);
     assert.equal(repairItemSalesTotal({ quantity: 2, salesUnitPrice: 15000, salesTotal: 1 }), 30000);
     assert.equal(
       repairItemSalesTotal({ salesTotal: 61240, quantity: 0, salesUnitPrice: 0 }),
