@@ -1,11 +1,11 @@
 ---
-description: Canlı web v696 / backend v696
+description: Canlı web v697 / backend v697
 alwaysApply: true
 ---
 
 # Canlı (17.11.2026)
 
-Canlı: web **v696** · backend **v696**. Geri alma: web **v695** / backend **v695**.
+Canlı: web **v697** · backend **v697**. Geri alma: web **v696** / backend **v696**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v697 (full):** Finans omurga canlıya alındı — Merkez kurulum checklist / seyir (Nakit + Gelir/Gider/Kâr, eksi kâr −); cari (çift rol, bireysel T.C. / kurumsal vergi, birleştirme, Tamamlanan eksik cari); tahsilat / masraf; banka-nakit; hedef ciro; sabit gider (Sabit Gider Ekle); dönem kapanışı. Backend’de Finans–Ayarlar–Gelen Kutu modül döngüsü kesildi (ayakta kalır). Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v696** / backend **v696**.
 
 **v696 (full):** Raporu Gönder’de tek Kime (diğerleri Bilgi); hitap Sn. soyad. Hasar Tespit: bedeli yönetici/finans girer, dosya sorumlusu Fatura Talebi Aç; rapor zorunlu değil. Finans WIP alınmadı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v695** / backend **v695**.
 
@@ -267,10 +269,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Finans WIP (lokalde hazır, canlıya alınmadı — «canlıya al» deyince):
-- Cari / tahsilat / masraf omurga; Tahsilat Ekle; Tamamlanan eksik cari sırayla yaz; çift cari birleştir
-- Sigorta carisi; banka/nakit; Seyir Nakit + Gelir/Gider/Kâr (− işaretli)
-- Çift rollü cari: Cari Rol; ikiz kart; bireysel T.C. / kurumsal vergi zorunlu; her iki listede rozet
-- C0–C9 omurga (kurulum → cari → ekstre → masraf → kart/borç → tahsilat/gelir → seyir → hedef → personel yasal → sabit) lokalde bitti
+Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v696** · backend **v696**.
+Canlı web **v697** · backend **v697**.

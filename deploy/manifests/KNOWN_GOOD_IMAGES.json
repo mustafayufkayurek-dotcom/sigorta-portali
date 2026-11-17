@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-17",
-  "label": "v695-raporu-gonder-pdf-bcc",
-  "description": "v695 full: Raporu Gönder; Gizli alıcı; mesaj içi imza; yalnız PDF önizleme (mail şablon önizlemesi kalktı). Finans WIP alınmadı. Geri alma web v694 / backend v694.",
+  "label": "v697-finans-omurga",
+  "description": "v697 full: Finans omurga (kurulum checklist / seyir / cari çift rol / tahsilat-masraf / banka-nakit / hedef / sabit gider / dönem). Geri alma web v696 / backend v696.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v695-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v695-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v697-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v697-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v694-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v694-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v696-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v696-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
