@@ -15,9 +15,14 @@ const read = (p: string) => readFileSync(join(web, p), 'utf8');
 describe('Hasar Tespit hizmet bedeli ekran LOCK', () => {
   it('dosya gelir panelinde yalnız tespit dosyasında ve yalnız yönetici / finansa Hizmet Bedeli Hesapla durur', () => {
     const panel = read('components/finance/ClaimFileGelirTahsilatPanel.tsx');
-    assert.match(panel, /const bedelHesabi = bedelYetki && isInspectionServiceKind\(claim\?\.serviceKind\)/);
+    assert.match(
+      panel,
+      /const bedelHesabi = bedelYetki && (?:inspectionFile|isInspectionServiceKind\(claim\?\.serviceKind\))/,
+    );
     assert.match(panel, /setBedelYetki\(canSeeHasarTespitBedelClient\(\)\)/);
     assert.match(panel, /\{bedelHesabi \? \(\s*<button[\s\S]*?hasar-tespit-bedel-hesapla/);
+    assert.match(panel, /data-testid="hasar-tespit-fatura-talebi"/);
+    assert.match(panel, /invoice-requests\/hasar-tespit\/\$\{claimId\}/);
     const role = read('utils/hasar-tespit-bedel-role.ts');
     assert.match(role, /canSeeHasarTespitBedel\(/);
     assert.match(panel, /Hizmet Bedeli Hesapla/);
