@@ -1,6 +1,7 @@
 import {
   CLAIM_MAIL_PARTY_LABEL,
   HASAR_TESPIT_MUHATAP_SIRASI,
+  buildClaimApprovalMailSubject,
   hasarReportDocumentTitle,
   hizmetKartiCodeForClaim,
   resolveClaimMailRoute,
@@ -178,6 +179,62 @@ export function claimApprovalFileOwnerContact(owner?: {
   };
 }
 
+/** Müşteri kartındaki genel e-posta — Alıcılar listesinde seçilebilir. */
+export function claimApprovalCustomerCardContact(customer?: {
+  email?: string | null;
+  shortName?: string | null;
+  companyName?: string | null;
+  fullName?: string | null;
+  name?: string | null;
+} | null): MailContact | null {
+  const email = String(customer?.email ?? '').trim();
+  if (!email.includes('@')) return null;
+  const name =
+    String(customer?.shortName ?? '').trim()
+    || String(customer?.companyName ?? '').trim()
+    || String(customer?.fullName ?? '').trim()
+    || String(customer?.name ?? '').trim()
+    || email;
+  return {
+    id: 'customer-card',
+    name,
+    role: 'Müşteri Kartı',
+    email,
+  };
+}
+
+export function mergeClaimApprovalCustomerCardContact(
+  contacts: MailContact[],
+  customer?: {
+    email?: string | null;
+    shortName?: string | null;
+    companyName?: string | null;
+    fullName?: string | null;
+    name?: string | null;
+  } | null,
+): MailContact[] {
+  const row = claimApprovalCustomerCardContact(customer);
+  if (!row) return contacts;
+  const key = row.email.trim().toLowerCase();
+  if (contacts.some((c) => c.email.trim().toLowerCase() === key)) return contacts;
+  return [row, ...contacts];
+}
+
+/** Tercih edilen kanal + müşteri kartı genel adresi varsayılan Kime. */
+export function claimApprovalDefaultToEmailsWithCustomerCard(
+  contacts: MailContact[],
+  preferredEmails: string[],
+  customerEmail?: string | null,
+): string[] {
+  const defaults = claimApprovalDefaultToEmails(contacts, preferredEmails);
+  const card = String(customerEmail ?? '').trim();
+  if (!card.includes('@')) return defaults;
+  const key = foldEmail(card);
+  if (defaults.some((email) => foldEmail(email) === key)) return defaults;
+  if (!contacts.some((row) => foldEmail(row.email) === key)) return defaults;
+  return [...defaults, card];
+}
+
 export function mergeClaimApprovalFileOwnerContact(
   contacts: MailContact[],
   owner?: {
@@ -195,13 +252,13 @@ export function mergeClaimApprovalFileOwnerContact(
 
 /** Varsayılan seçime dosya sorumlusunu Bilgi olarak ekler (Kime’deyse dokunmaz). */
 export function withClaimApprovalFileOwnerCc(
-  recipients: Array<MailContact & { delivery: 'to' | 'cc' }>,
+  recipients: Array<MailContact & { delivery: 'to' | 'cc' | 'bcc' }>,
   owner?: {
     email?: string | null;
     firstName?: string | null;
     lastName?: string | null;
   } | null,
-): Array<MailContact & { delivery: 'to' | 'cc' }> {
+): Array<MailContact & { delivery: 'to' | 'cc' | 'bcc' }> {
   const row = claimApprovalFileOwnerContact(owner);
   if (!row) return recipients;
   const key = row.email.trim().toLowerCase();
@@ -216,6 +273,7 @@ export function claimApprovalMailTextPreview(input: {
   reportNo?: string | null;
   insuranceCompanyName?: string | null;
   fileSubject?: string | null;
+  customerName?: string | null;
   /** İlk Kime alıcısının adı — Hasar Tespit hitabında soyad. */
   recipientName?: string | null;
   ownerName?: string | null;
@@ -225,6 +283,7 @@ export function claimApprovalMailTextPreview(input: {
   subject: string;
   greeting: string;
   body: string;
+  messageText: string;
   documentTitle: string;
   fileNo: string;
   insuranceCompanyName: string;
@@ -247,14 +306,17 @@ export function claimApprovalMailTextPreview(input: {
   const fileSubject = String(input.fileSubject ?? '').trim() || '—';
   const isTespit = documentTitle === 'Hasar Tespit Raporu';
   const soyad = claimApprovalRecipientSurname(input.recipientName);
+  const greeting = isTespit
+    ? (soyad ? `Sayın ${soyad},` : 'Sayın Yetkili,')
+    : 'Sayın Eksperimiz,';
+  const body = isTespit
+    ? 'Dosyaya ait Hasar Tespit Raporu ekte bilgilerinize sunarız.'
+    : `Dosyaya ait ${documentTitle} ekte yer almaktadır. İncelemenizi ve onayınızı rica ederiz.`;
   return {
-    subject: `${documentTitle} — ${fileNo}`,
-    greeting: isTespit
-      ? (soyad ? `Sayın ${soyad},` : 'Sayın Yetkili,')
-      : 'Sayın Eksperimiz,',
-    body: isTespit
-      ? 'Dosyaya ait Hasar Tespit Raporu ekte bilgilerinize sunarız.'
-      : `Dosyaya ait ${documentTitle} ekte yer almaktadır. İncelemenizi ve onayınızı rica ederiz.`,
+    subject: buildClaimApprovalMailSubject(documentTitle, input.customerName, fileNo),
+    greeting,
+    body,
+    messageText: `${greeting}\n\n${body}`,
     documentTitle,
     fileNo,
     insuranceCompanyName,
@@ -264,7 +326,23 @@ export function claimApprovalMailTextPreview(input: {
     attachmentLabel: `${documentTitle}.pdf`,
     signatureName: String(input.ownerName ?? '').trim() || '—',
     signatureTitle: 'Dosya Sorumlusu',
-    signaturePhone: String(input.ownerPhone ?? '').trim(),
+    signaturePhone: formatApprovalSignaturePhone(input.ownerPhone),
     signatureEmail: String(input.ownerEmail ?? '').trim(),
   };
+}
+
+/** İmza satırı: 0533 633 0713 (baştaki 0 durur). */
+export function formatApprovalSignaturePhone(phone?: string | null): string {
+  const raw = String(phone ?? '').trim();
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '');
+  const local = digits.startsWith('90') && digits.length >= 12
+    ? digits.slice(2)
+    : digits.startsWith('0')
+      ? digits.slice(1)
+      : digits;
+  if (local.length === 10) {
+    return `0${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
+  }
+  return raw;
 }

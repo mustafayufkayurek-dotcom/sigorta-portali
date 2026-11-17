@@ -43,10 +43,14 @@ export class ReportEmailService {
     operationDistrict?: string | null;
     /** Hasar Tespit hitabı için alıcı soyadı. */
     recipientSurname?: string | null;
+    /** Personelin yazdığı açık mesaj — şablon hitap/gövdeyi ezer. */
+    messageGreeting?: string | null;
+    messageBody?: string | null;
     actionUrl?: string | null;
     portalUrl?: string | null;
     viewType?: 'external';
     cc?: Array<{ email: string; name?: string }>;
+    bcc?: Array<{ email: string; name?: string }>;
     copyNoticeHtml?: string;
     copyNoticeText?: string;
     /** Varsayılan açık — okundu teyidi. */
@@ -66,7 +70,7 @@ export class ReportEmailService {
     }
 
     const filename = `hasar-raporu-DIS-${opts.reportNo}.pdf`;
-    const html = buildReportDispatchEmailHtml({
+    const dispatchData = {
       reportNo: opts.reportNo,
       fileNo: opts.fileNo,
       insuranceCompanyName: opts.insuranceCompanyName,
@@ -81,27 +85,16 @@ export class ReportEmailService {
       operationCity: opts.operationCity,
       operationDistrict: opts.operationDistrict,
       recipientSurname: opts.recipientSurname,
-    });
+      messageGreeting: opts.messageGreeting,
+      messageBody: opts.messageBody,
+    };
+    const html = buildReportDispatchEmailHtml(dispatchData);
     const result = await this.email.sendEmail(
       to,
       opts.subject,
       html,
       {
-        text: buildReportDispatchEmailText({
-          reportNo: opts.reportNo,
-          fileNo: opts.fileNo,
-          insuranceCompanyName: opts.insuranceCompanyName,
-          fileSubject: opts.fileSubject,
-          documentTitle: opts.documentTitle,
-          actionUrl: opts.actionUrl,
-          ownerName: opts.ownerName,
-          ownerPhone: opts.ownerPhone,
-          ownerEmail: opts.ownerEmail,
-          operationRegion: opts.operationRegion,
-          operationCity: opts.operationCity,
-          operationDistrict: opts.operationDistrict,
-          recipientSurname: opts.recipientSurname,
-        }),
+        text: buildReportDispatchEmailText(dispatchData),
         attachments: [
           {
             filename,
@@ -110,6 +103,7 @@ export class ReportEmailService {
           },
         ],
         cc: opts.cc,
+        bcc: opts.bcc,
         copyNoticeHtml: opts.copyNoticeHtml,
         copyNoticeText: opts.copyNoticeText,
         requestReadReceipt: opts.requestReadReceipt !== false,

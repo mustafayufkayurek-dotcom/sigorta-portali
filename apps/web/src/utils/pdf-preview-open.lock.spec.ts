@@ -17,12 +17,13 @@ const reportPage = readFileSync(
 const helper = readFileSync(join(here, 'pdf-preview-open.ts'), 'utf8');
 
 describe('hasar pdf önizleme LOCK', () => {
-  it('rapor sayfası önizlemeyi yardımcıdan açar; noopener yok', () => {
-    assert.match(reportPage, /presentPdfPreviewUrl\(/);
+  it('rapor sayfası önizlemeyi oturumla bayttan açar; noopener yok', () => {
+    assert.match(reportPage, /presentPdfPreview\(/);
     assert.match(reportPage, /\/pdf\?view=/);
-    assert.match(reportPage, /window\.open\('about:blank', 'hasar-rapor-pdf'\)/);
+    assert.match(reportPage, /authAxios/);
     assert.match(reportPage, /readPdfPreviewFailure\(/);
-    assert.doesNotMatch(reportPage, /presentPdfPreview\(res\.data/);
+    assert.doesNotMatch(reportPage, /presentPdfPreviewUrl\(/);
+    assert.doesNotMatch(reportPage, /window\.open\('about:blank', 'hasar-rapor-pdf'\)/);
     assert.doesNotMatch(reportPage, /window\.open\(url, '_blank', 'noopener,noreferrer'\)/);
   });
 

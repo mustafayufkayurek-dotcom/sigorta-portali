@@ -147,6 +147,7 @@ export class GraphMailSendService {
     cc?: Array<{ email: string; name?: string }>,
     readReceiptTo?: string[],
     requestReadReceipt = true,
+    bcc?: Array<{ email: string; name?: string }>,
   ): Promise<void> {
     const config = await this.loadGraphConfig();
     if (!config.active) {
@@ -181,6 +182,11 @@ export class GraphMailSendService {
       mailboxAddress,
     );
     const ccByEmail = new Map((cc ?? []).map((item) => [item.email.trim().toLowerCase(), item]));
+    const outboundBcc = filterSoftwareMailboxRecipients(
+      (bcc ?? []).map((item) => item.email),
+      mailboxAddress,
+    );
+    const bccByEmail = new Map((bcc ?? []).map((item) => [item.email.trim().toLowerCase(), item]));
 
     const encodedUser = encodeURIComponent(mailboxAddress);
     const trimmed = body.trim();
@@ -200,6 +206,19 @@ export class GraphMailSendService {
         ? {
             ccRecipients: outboundCc.map((address) => {
               const item = ccByEmail.get(address.toLowerCase());
+              return {
+                emailAddress: {
+                  address,
+                  ...(item?.name?.trim() ? { name: item.name.trim() } : {}),
+                },
+              };
+            }),
+          }
+        : {}),
+      ...(outboundBcc.length
+        ? {
+            bccRecipients: outboundBcc.map((address) => {
+              const item = bccByEmail.get(address.toLowerCase());
               return {
                 emailAddress: {
                   address,

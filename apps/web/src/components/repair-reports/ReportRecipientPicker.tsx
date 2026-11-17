@@ -8,7 +8,7 @@ export type MailContact = {
   role: string;
   email: string;
 };
-export type MailRecipient = MailContact & { delivery: 'to' | 'cc' };
+export type MailRecipient = MailContact & { delivery: 'to' | 'cc' | 'bcc' };
 
 const keyOf = (email: string) => email.trim().toLowerCase();
 const validEmail = (email: string) => /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email);
@@ -42,6 +42,8 @@ export function ReportRecipientPicker({
   }, [contacts, extra, value]);
   const selected = new Map(value.map(row => [keyOf(row.email), row]));
   const toCount = value.filter(row => row.delivery === 'to').length;
+  const ccCount = value.filter(row => row.delivery === 'cc').length;
+  const bccCount = value.filter(row => row.delivery === 'bcc').length;
   const fieldClass = 'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-60';
 
   function addRecipient() {
@@ -78,30 +80,58 @@ export function ReportRecipientPicker({
                 <span className="block break-all text-xs text-slate-600">{row.email}</span>
               </label>
               <select aria-label={`${row.name} için alıcı türü`} disabled={disabled || !current}
-                value={current?.delivery ?? 'to'} className={`${fieldClass} w-24 shrink-0`}
+                value={current?.delivery ?? 'to'} className={`${fieldClass} w-28 shrink-0`}
                 onChange={event => {
-                  const delivery = event.target.value === 'cc' ? 'cc' : 'to';
+                  const raw = event.target.value;
+                  const delivery = raw === 'cc' ? 'cc' : raw === 'bcc' ? 'bcc' : 'to';
                   onChange(value.map(item => keyOf(item.email) === key ? { ...item, delivery } : item));
                 }}>
-                <option value="to">Kime</option><option value="cc">Bilgi</option>
+                <option value="to">Kime</option>
+                <option value="cc">Bilgi</option>
+                <option value="bcc">Gizli</option>
               </select>
             </div>
           );
         })}
       </div>
-      {allowManual && <div className="mt-3">
-        <label htmlFor={`${prefix}-extra`} className="sr-only">Başka e-posta adresi</label>
-        <div className="flex flex-wrap gap-2">
-          <input id={`${prefix}-extra`} type="email" value={emailInput} placeholder="Başka bir e-posta adresi"
-            aria-describedby={error ? `${prefix}-error` : undefined} aria-invalid={Boolean(error)}
-            onChange={event => { setEmailInput(event.target.value); setError(''); }}
-            onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addRecipient(); } }}
-            className={`${fieldClass} min-w-0 flex-1`} />
-          <button type="button" onClick={addRecipient} className={fieldClass}>Alıcı ekle</button>
+      {allowManual ? (
+        <div className="mt-3" data-testid="onaya-gonder-ek-alici">
+          <p className="mb-1.5 text-xs font-medium text-slate-600">Ek satır — başka e-posta</p>
+          <label htmlFor={`${prefix}-extra`} className="sr-only">Başka e-posta adresi</label>
+          <div className="flex flex-wrap gap-2">
+            <input
+              id={`${prefix}-extra`}
+              type="email"
+              value={emailInput}
+              placeholder="ornek@firma.com"
+              aria-describedby={error ? `${prefix}-error` : undefined}
+              aria-invalid={Boolean(error)}
+              onChange={(event) => {
+                setEmailInput(event.target.value);
+                setError('');
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  addRecipient();
+                }
+              }}
+              className={`${fieldClass} min-w-0 flex-1`}
+            />
+            <button type="button" onClick={addRecipient} className={`${fieldClass} font-medium`}>
+              Satır Ekle
+            </button>
+          </div>
+          {error ? (
+            <p id={`${prefix}-error`} role="alert" className="mt-1 text-sm text-red-700">
+              {error}
+            </p>
+          ) : null}
         </div>
-        {error && <p id={`${prefix}-error`} role="alert" className="mt-1 text-sm text-red-700">{error}</p>}
-      </div>}
-      <p aria-live="polite" className="mt-3 text-xs text-slate-600">{value.length} alıcı seçildi · {toCount} Kime · {value.length - toCount} Bilgi (Cc)</p>
+      ) : null}
+      <p aria-live="polite" className="mt-3 text-xs text-slate-600">
+        {value.length} alıcı seçildi · {toCount} Kime · {ccCount} Bilgi · {bccCount} Gizli
+      </p>
     </fieldset>
   );
 }
@@ -113,12 +143,15 @@ export function buildRecipientPayload(recipients: MailRecipient[]) {
   for (const recipient of recipients) {
     const key = keyOf(recipient.email);
     if (!validEmail(recipient.email.trim())) throw new Error('Geçersiz e-posta adresi.');
-    if (recipient.delivery !== 'to' && recipient.delivery !== 'cc') throw new Error('Geçersiz alıcı türü.');
+    if (recipient.delivery !== 'to' && recipient.delivery !== 'cc' && recipient.delivery !== 'bcc') {
+      throw new Error('Geçersiz alıcı türü.');
+    }
     if (seen.has(key)) throw new Error('Aynı adres birden fazla kez seçilemez.');
     seen.add(key);
   }
   const to = recipients.filter(row => row.delivery === 'to').map(row => row.email.trim());
   const cc = recipients.filter(row => row.delivery === 'cc').map(row => row.email.trim());
+  const bcc = recipients.filter(row => row.delivery === 'bcc').map(row => row.email.trim());
   if (!to.length) throw new Error('En az bir Kime alıcısı seçin.');
-  return { to, cc };
+  return { to, cc, bcc };
 }

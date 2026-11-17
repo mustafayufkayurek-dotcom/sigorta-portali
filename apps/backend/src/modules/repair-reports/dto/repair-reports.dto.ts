@@ -290,4 +290,15 @@ export class RequestApprovalDto {
   @IsArray()
   @IsString({ each: true })
   selectedCcEmails?: string[];
+
+  /** Personelin işaretlediği Gizli (Bcc) alıcıları — Kime/Bilgi ile çakışmaz. */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  selectedBccEmails?: string[];
+
+  /** Açık mesaj kutusu — hitap + gövde. Boşsa şablon metni. */
+  @IsOptional()
+  @IsString()
+  messageText?: string;
 }

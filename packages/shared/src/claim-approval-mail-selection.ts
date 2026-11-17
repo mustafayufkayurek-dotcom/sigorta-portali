@@ -3,6 +3,50 @@ export type ApprovalInformCc = {
   name: string;
 };
 
+/** Onaya Gönder konusu: Hasar Tespit Raporu/Doğanlar Mobilya Grubu/Dosya No */
+export function buildClaimApprovalMailSubject(
+  documentTitle: string,
+  customerName: string | null | undefined,
+  fileNo: string | null | undefined,
+): string {
+  const title = String(documentTitle ?? '').trim() || 'Hasar Onarım Raporu';
+  const customer = String(customerName ?? '').trim() || '—';
+  const no = String(fileNo ?? '').trim() || '—';
+  return `${title}/${customer}/${no}`;
+}
+
+export function claimApprovalCustomerDisplayName(customer?: {
+  shortName?: string | null;
+  companyName?: string | null;
+  fullName?: string | null;
+  name?: string | null;
+} | null): string {
+  return (
+    String(customer?.shortName ?? '').trim()
+    || String(customer?.companyName ?? '').trim()
+    || String(customer?.fullName ?? '').trim()
+    || String(customer?.name ?? '').trim()
+  );
+}
+
+/** Yazım kutusundan hitap + gövde ayırır. */
+export function splitClaimApprovalMessageText(text: string | null | undefined): {
+  greeting: string;
+  body: string;
+} {
+  const normalized = String(text ?? '').replace(/\r\n/g, '\n').trim();
+  if (!normalized) return { greeting: '', body: '' };
+  const lines = normalized.split('\n');
+  const first = (lines[0] ?? '').trim();
+  if (/^Sayın\b/i.test(first)) {
+    return {
+      greeting: first,
+      body: lines.slice(1).join('\n').replace(/^\n+/, '').trim(),
+    };
+  }
+  return { greeting: '', body: normalized };
+}
+
 function foldEmail(email?: string | null): string {
   return String(email ?? '').trim().toLowerCase();
 }
@@ -17,10 +61,11 @@ function isSharedOperationalMailbox(email?: string | null): boolean {
   return host === 'meridyen-tr.com' || host.endsWith('.meridyen-tr.com');
 }
 
-/** Onaya Gönder: personel işaretlediği adresler; yalnız izinli listeden geçer. */
+/** Onaya Gönder: personel işaretlediği adresler; varsayılan yalnız izinli listeden. */
 export function filterSelectedApprovalEmails(
   allowedEmails: string[],
   selectedEmails?: string[] | null,
+  options?: { allowManualExtra?: boolean },
 ): string[] {
   const allowed = new Map<string, string>();
   for (const raw of allowedEmails) {
@@ -35,12 +80,19 @@ export function filterSelectedApprovalEmails(
   const out: string[] = [];
   const seen = new Set<string>();
   for (const raw of selectedEmails) {
-    const key = foldEmail(raw);
+    const email = String(raw ?? '').trim();
+    const key = foldEmail(email);
     if (!key.includes('@') || seen.has(key)) continue;
     const allowedEmail = allowed.get(key);
-    if (!allowedEmail) continue;
-    seen.add(key);
-    out.push(allowedEmail);
+    if (allowedEmail) {
+      seen.add(key);
+      out.push(allowedEmail);
+      continue;
+    }
+    if (options?.allowManualExtra && !/[\s,;<>]/.test(email)) {
+      seen.add(key);
+      out.push(email);
+    }
   }
   return out;
 }

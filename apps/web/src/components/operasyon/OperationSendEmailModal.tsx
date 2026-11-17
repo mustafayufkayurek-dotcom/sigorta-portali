@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { API, authHeader } from '@/utils/api';
+import { API, authAxios, authHeader, ensureSessionBeforeMutation } from '@/utils/api';
 import { useToast } from '@/contexts/ToastContext';
 import {
   ReportRecipientPicker,
   buildRecipientPayload,
   type MailRecipient,
 } from '@/components/repair-reports/ReportRecipientPicker';
-import { ReportApprovalMailPreview } from '@/components/repair-reports/ReportApprovalMailPreview';
+import { ReportApprovalMailComposeFields } from '@/components/repair-reports/ReportApprovalMailPreview';
+import { presentPdfPreview, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
 import {
   claimApprovalFallbackCustomerEmail,
   claimApprovalMailPreview,
@@ -17,15 +18,13 @@ import {
 } from '@/utils/claim-approval-mail-preview';
 import {
   claimApprovalMailContacts,
-  claimApprovalDefaultToEmails,
+  claimApprovalDefaultToEmailsWithCustomerCard,
   claimApprovalMailTextPreview,
+  mergeClaimApprovalCustomerCardContact,
   mergeClaimApprovalFileOwnerContact,
   withClaimApprovalFileOwnerCc,
 } from '@/utils/claim-approval-mail-contacts';
-import {
-  PLATFORM_MAIL_COPY_TITLE,
-  resolveApprovalInformCc,
-} from '@sigorta/shared';
+import { claimApprovalCustomerDisplayName } from '@sigorta/shared';
 
 export type OperationSendEmailTarget = {
   claimId: string;
@@ -47,7 +46,13 @@ type LoadedClaim = {
   channelAgencyCustomer?: unknown;
   channelBrokerCustomer?: unknown;
   channelExpertCustomer?: unknown;
-  customer?: { email?: string | null } | null;
+  customer?: {
+    email?: string | null;
+    shortName?: string | null;
+    companyName?: string | null;
+    fullName?: string | null;
+    name?: string | null;
+  } | null;
   claimSubject?: { name?: string | null } | null;
   departmentFileSubject?: { name?: string | null } | null;
   lossType?: string | null;
@@ -72,34 +77,17 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
   const [claim, setClaim] = useState<LoadedClaim | null>(null);
   const [reportNo, setReportNo] = useState<string | null>(null);
   const [recipients, setRecipients] = useState<MailRecipient[]>([]);
-  const [step, setStep] = useState<'compose' | 'preview'>('compose');
-  const [sessionUser, setSessionUser] = useState<{
-    email?: string;
-    firstName?: string;
-    lastName?: string;
-  } | null>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('user') ?? localStorage.getItem('currentUser');
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as {
-        email?: string;
-        firstName?: string;
-        lastName?: string;
-      };
-      setSessionUser(parsed);
-    } catch {
-      setSessionUser(null);
-    }
-  }, []);
+  const [messageText, setMessageText] = useState('');
+  const [messageSeed, setMessageSeed] = useState('');
+  const [pdfPreviewing, setPdfPreviewing] = useState(false);
 
   useEffect(() => {
     if (!target?.reportId) {
       setClaim(null);
       setReportNo(null);
       setRecipients([]);
-      setStep('compose');
+      setMessageText('');
+      setMessageSeed('');
       setLoadError(target && !target.reportId ? 'Bu dosyada onarım raporu bulunamadı. Önce rapor oluşturun.' : null);
       return;
     }
@@ -107,7 +95,6 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
     setLoading(true);
     setLoadError(null);
     setRecipients([]);
-    setStep('compose');
     axios
       .get(`${API}/repair-reports/${target.reportId}`, { headers: authHeader() })
       .then((res) => {
@@ -126,9 +113,10 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
           channelBrokerCustomer: claimFile.channelBrokerCustomer as never,
           channelExpertCustomer: claimFile.channelExpertCustomer as never,
         });
+        const withCustomer = mergeClaimApprovalCustomerCardContact(rows, claimFile.customer);
         const fallback = claimApprovalFallbackCustomerEmail(claimFile.customer?.email);
-        const baseContacts = rows.length > 0
-          ? rows
+        const baseContacts = withCustomer.length > 0
+          ? withCustomer
           : fallback
             ? [{ id: 'fallback:customer', name: 'Kart Adresi', role: 'Yedek alıcı', email: fallback }]
             : [];
@@ -147,7 +135,11 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
             channelExpertCustomer: claimFile.channelExpertCustomer as never,
           }),
         );
-        const defaults = claimApprovalDefaultToEmails(contacts, preferred);
+        const defaults = claimApprovalDefaultToEmailsWithCustomerCard(
+          contacts,
+          preferred,
+          claimFile.customer?.email,
+        );
         const defaultEmails = defaults.length > 0
           ? defaults
           : contacts
@@ -189,8 +181,9 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
       channelBrokerCustomer: claim.channelBrokerCustomer as never,
       channelExpertCustomer: claim.channelExpertCustomer as never,
     });
-    const base = rows.length > 0
-      ? rows
+    const withCustomer = mergeClaimApprovalCustomerCardContact(rows, claim.customer);
+    const base = withCustomer.length > 0
+      ? withCustomer
       : (() => {
         const fallback = claimApprovalFallbackCustomerEmail(claim.customer?.email);
         return fallback
@@ -213,6 +206,7 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
       fileSubject: claim?.claimSubject?.name
         ?? claim?.departmentFileSubject?.name
         ?? claim?.lossType,
+      customerName: claimApprovalCustomerDisplayName(claim?.customer),
       recipientName: firstTo?.name,
       ownerName: ownerName || null,
       ownerPhone: owner?.phone ?? null,
@@ -220,27 +214,60 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
     });
   }, [claim, reportNo, target?.fileNo, recipients]);
 
-  const informCc = useMemo(
-    () => resolveApprovalInformCc({
-      email: sessionUser?.email,
-      firstName: sessionUser?.firstName,
-      lastName: sessionUser?.lastName,
-      name: `${String(sessionUser?.firstName ?? '').trim()} ${String(sessionUser?.lastName ?? '').trim()}`.trim(),
-    }),
-    [sessionUser],
-  );
+  useEffect(() => {
+    if (!target?.reportId || loading || loadError) return;
+    const seed = mailText.messageText;
+    if (!messageText || messageText === messageSeed) {
+      setMessageText(seed);
+      setMessageSeed(seed);
+    }
+  }, [target?.reportId, loading, loadError, mailText.messageText, messageText, messageSeed]);
 
   const toCount = recipients.filter((row) => row.delivery === 'to').length;
   const ccCount = recipients.filter((row) => row.delivery === 'cc').length;
+  const bccCount = recipients.filter((row) => row.delivery === 'bcc').length;
 
   if (!target) return null;
+
+  const openExternalPdf = async () => {
+    if (!target.reportId || pdfPreviewing) return;
+    setPdfPreviewing(true);
+    try {
+      if (!(await ensureSessionBeforeMutation())) {
+        showToast('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
+        return;
+      }
+      const res = await authAxios<Blob>({
+        method: 'GET',
+        url: `${API}/repair-reports/${target.reportId}/pdf?view=external`,
+        responseType: 'blob',
+        timeout: 120_000,
+      });
+      const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+      if (failure) {
+        showToast('error', failure);
+        return;
+      }
+      const opened = await presentPdfPreview(res.data, 'Müşteri Görünümü');
+      if (!opened) showToast('error', 'PDF önizleme açılamadı.');
+    } catch (e: unknown) {
+      const msg = axios.isAxiosError(e)
+        ? e.response?.data?.message ?? e.message
+        : e instanceof Error
+          ? e.message
+          : 'PDF önizleme açılamadı.';
+      showToast('error', Array.isArray(msg) ? msg.join(', ') : String(msg));
+    } finally {
+      setPdfPreviewing(false);
+    }
+  };
 
   const submit = async () => {
     if (!target.reportId) {
       showToast('error', 'Bu dosyada onarım raporu yok — PDF oluşamaz, e-posta gönderilemez.');
       return;
     }
-    let payload: { to: string[]; cc: string[] };
+    let payload: { to: string[]; cc: string[]; bcc: string[] };
     try {
       payload = buildRecipientPayload(recipients);
     } catch (err: unknown) {
@@ -251,7 +278,12 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
     try {
       await axios.post(
         `${API}/repair-reports/${target.reportId}/request-approval`,
-        { selectedEmails: payload.to, selectedCcEmails: payload.cc },
+        {
+          selectedEmails: payload.to,
+          selectedCcEmails: payload.cc,
+          selectedBccEmails: payload.bcc,
+          messageText: messageText || mailText.messageText,
+        },
         { headers: authHeader() },
       );
       showToast(
@@ -287,7 +319,7 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
         <div className="shrink-0 border-b border-slate-100 px-5 py-4">
           <p className="text-[11px] font-semibold tracking-wide text-brand-600">Meridyen · Rapor Gönderimi</p>
           <h3 id="ops-email-title" className="mt-1 text-lg font-semibold text-slate-900">
-            Raporu Onaya Gönder
+            Raporu Gönder
           </h3>
           <p className="mt-0.5 text-sm text-slate-500">
             Dosya {target.fileNo}
@@ -312,32 +344,35 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
             <p className="text-sm text-slate-500">Alıcılar yükleniyor…</p>
           )}
 
-          {!loading && target.reportId && !loadError && step === 'compose' && (
+          {!loading && target.reportId && !loadError && (
             <>
               <ReportRecipientPicker
                 contacts={contacts}
                 value={recipients}
                 onChange={setRecipients}
                 disabled={busy}
-                allowManual={false}
+                allowManual
               />
 
-              <div data-testid="onaya-gonder-mail-metni">
+              <div>
                 <p className="text-sm font-semibold text-slate-900">Konu</p>
                 <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
                   {mailText.subject}
                 </p>
-                <p className="mt-1.5 text-[11px] text-slate-500">
-                  Gönderimden önce Önizle ile giden şablonu görün.
-                </p>
               </div>
 
-              <p className="text-xs text-slate-500" data-testid="onaya-gonder-bilgi-cc">
-                {PLATFORM_MAIL_COPY_TITLE}
-                {informCc ? ` · ${informCc.email}` : ''}
-                {' · '}Dosya sorumlusu otomatik Bilgi alır
-                {' — '}yöneticiye iç özet ayrı gider; dış e-postaya eklenmez.
-              </p>
+              <ReportApprovalMailComposeFields
+                messageText={messageText || mailText.messageText}
+                onMessageChange={setMessageText}
+                signatureName={mailText.signatureName}
+                signatureTitle={mailText.signatureTitle}
+                signaturePhone={mailText.signaturePhone}
+                signatureEmail={mailText.signatureEmail}
+                attachmentLabel={mailText.attachmentLabel}
+                reportNo={mailText.reportNo}
+                disabled={busy || pdfPreviewing}
+                onPreviewPdf={() => void openExternalPdf()}
+              />
 
               <div
                 className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2"
@@ -353,28 +388,6 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
               </div>
             </>
           )}
-
-          {!loading && target.reportId && !loadError && step === 'preview' && (
-            <ReportApprovalMailPreview
-              fileNo={target.fileNo}
-              fileSubject={mailText.fileSubject}
-              subject={mailText.subject}
-              greeting={mailText.greeting}
-              body={mailText.body}
-              signatureName={mailText.signatureName}
-              signatureTitle={mailText.signatureTitle}
-              signaturePhone={mailText.signaturePhone}
-              signatureEmail={mailText.signatureEmail}
-              attachmentLabel={mailText.attachmentLabel}
-              reportNo={mailText.reportNo}
-              toRecipients={recipients
-                .filter((row) => row.delivery === 'to')
-                .map((row) => ({ name: row.name, email: row.email }))}
-              ccRecipients={recipients
-                .filter((row) => row.delivery === 'cc')
-                .map((row) => ({ name: row.name, email: row.email }))}
-            />
-          )}
         </div>
 
         <div className="shrink-0 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
@@ -382,51 +395,28 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
             <p className="text-xs text-slate-600" aria-live="polite">
               {recipients.length} alıcı seçildi
               <span className="mt-0.5 block">
-                {toCount} Kime · {ccCount} Bilgi (Cc)
+                {toCount} Kime · {ccCount} Bilgi · {bccCount} Gizli
               </span>
             </p>
-            <div className="flex gap-2">
-              {step === 'preview' ? (
-                <button
-                  type="button"
-                  onClick={() => setStep('compose')}
-                  disabled={busy}
-                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-600 hover:bg-white disabled:opacity-50"
-                  data-testid="onaya-gonder-geri"
-                >
-                  Geri
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={busy}
-                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-600 hover:bg-white disabled:opacity-50"
-                >
-                  İptal
-                </button>
-              )}
-              {step === 'compose' ? (
-                <button
-                  type="button"
-                  onClick={() => setStep('preview')}
-                  disabled={busy || !target.reportId || loading || !!loadError || toCount === 0}
-                  className="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                  data-testid="onaya-gonder-onizle"
-                >
-                  Önizle
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void submit()}
-                  disabled={busy || !target.reportId || toCount === 0}
-                  className="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                  data-testid="ops-email-submit"
-                >
-                  {busy ? 'Gönderiliyor…' : 'Onaya Gönder'}
-                </button>
-              )}
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={busy}
+                data-testid="ops-email-iptal"
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              >
+                İptal
+              </button>
+              <button
+                type="button"
+                onClick={() => void submit()}
+                disabled={busy || !target.reportId || toCount === 0}
+                className="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                data-testid="ops-email-submit"
+              >
+                {busy ? 'Gönderiliyor…' : 'Raporu Gönder'}
+              </button>
             </div>
           </div>
         </div>

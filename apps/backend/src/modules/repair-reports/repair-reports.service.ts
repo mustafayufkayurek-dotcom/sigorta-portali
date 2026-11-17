@@ -35,12 +35,15 @@ import {
   buildPlatformMailCopyNotice,
   collectClaimFileChannelEmails,
   customerContactCopyEmails,
+  buildClaimApprovalMailSubject,
+  claimApprovalCustomerDisplayName,
   filterSelectedApprovalEmails,
   generalMailboxesFromContactInfos,
   mergeApprovalMailCc,
   resolveApprovalFileOwnerCc,
   resolveApprovalInformCc,
   resolveClaimMailRoute,
+  splitClaimApprovalMessageText,
 } from '@sigorta/shared';
 import { serviceMailRouteForClaim } from '@/common/hizmet-karti-store';
 import { isMeridyenInternalMailbox } from '@/modules/notifications/email/file-closure-email.template';
@@ -1487,6 +1490,7 @@ export class RepairReportsService {
             customer: {
               select: {
                 email: true,
+                shortName: true,
                 companyName: true,
                 fullName: true,
                 entityType: true,
@@ -1622,15 +1626,29 @@ export class RepairReportsService {
     const customerRecipients = filterSelectedApprovalEmails(
       allowedRecipients,
       dto?.selectedEmails,
+      { allowManualExtra: true },
     );
     if (customerRecipients.length === 0) {
       throw new BadRequestException('En az bir Kime alıcısı seçilmelidir.');
     }
     const selectedCc = (
       dto?.selectedCcEmails?.length
-        ? filterSelectedApprovalEmails(allowedRecipients, dto.selectedCcEmails)
+        ? filterSelectedApprovalEmails(allowedRecipients, dto.selectedCcEmails, {
+            allowManualExtra: true,
+          })
         : []
     ).filter((email) => !customerRecipients.some((to) => to.toLowerCase() === email.toLowerCase()));
+    const selectedBcc = (
+      dto?.selectedBccEmails?.length
+        ? filterSelectedApprovalEmails(allowedRecipients, dto.selectedBccEmails, {
+            allowManualExtra: true,
+          })
+        : []
+    ).filter(
+      (email) =>
+        !customerRecipients.some((to) => to.toLowerCase() === email.toLowerCase())
+        && !selectedCc.some((cc) => cc.toLowerCase() === email.toLowerCase()),
+    );
     const appUrl = resolveAppUrl(this.config);
     const claimFileId = report.claimFileId ?? report.claimFile?.id;
     const claimCustomer = claimFileId
@@ -1664,6 +1682,13 @@ export class RepairReportsService {
       ],
       toEmails: customerRecipients,
     });
+    const mailBcc = selectedBcc
+      .filter(
+        (email) =>
+          !mailCc.some((row) => row.email.toLowerCase() === email.toLowerCase())
+          && (!informCc || informCc.email.toLowerCase() !== email.toLowerCase()),
+      )
+      .map((email) => ({ email }));
     const informNotice = informCc
       ? buildPlatformMailCopyNotice({
         counterpartName: report.claimFile?.insuranceCompany?.name,
@@ -1673,25 +1698,39 @@ export class RepairReportsService {
       })
       : null;
     const recipientNameByEmail = this.approvalRecipientDisplayNames(report.claimFile);
+    const documentTitle = hasarReportDocumentTitle(
+      report.claimFile?.serviceKind,
+      report.claimFile?.consultancyServiceType,
+    );
+    const customerName = claimApprovalCustomerDisplayName(report.claimFile?.customer);
+    const mailSubject = buildClaimApprovalMailSubject(
+      documentTitle,
+      customerName,
+      report.claimFile?.fileNo ?? report.reportNo,
+    );
+    const hasCustomMessage = String(dto?.messageText ?? '').trim().length > 0;
+    const messageParts = hasCustomMessage
+      ? splitClaimApprovalMessageText(dto?.messageText)
+      : { greeting: '', body: '' };
     for (let index = 0; index < customerRecipients.length; index += 1) {
       const recipient = customerRecipients[index];
       const recipientName = recipientNameByEmail.get(recipient.trim().toLowerCase()) ?? '';
       const mailed = await this.emailService.sendReport({
         to: recipient,
         cc: index === 0 ? mailCc : undefined,
+        bcc: index === 0 && mailBcc.length ? mailBcc : undefined,
         copyNoticeHtml: index === 0 ? informNotice?.html : undefined,
         copyNoticeText: index === 0 ? informNotice?.plain : undefined,
         requestReadReceipt: true,
-        subject: `${hasarReportDocumentTitle(report.claimFile?.serviceKind, report.claimFile?.consultancyServiceType)} — ${report.claimFile?.fileNo ?? report.reportNo}`,
+        subject: mailSubject,
         pdfBuffer: customerPdf,
         reportNo: report.reportNo,
         fileNo: report.claimFile?.fileNo,
         insuranceCompanyName: report.claimFile?.insuranceCompany?.name,
         fileSubject: report.claimFile?.claimSubject?.name,
-        documentTitle: hasarReportDocumentTitle(
-          report.claimFile?.serviceKind,
-          report.claimFile?.consultancyServiceType,
-        ),
+        documentTitle,
+        messageGreeting: hasCustomMessage ? messageParts.greeting : undefined,
+        messageBody: hasCustomMessage ? messageParts.body : undefined,
         recipientSurname: approvalRecipientSurname(recipientName),
         actionUrl: claimFileId ? buildPanelUrl(appUrl, panelHasarDosyasiPath(claimFileId)) : undefined,
         portalUrl: appUrl,

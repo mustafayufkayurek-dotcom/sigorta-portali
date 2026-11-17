@@ -65,6 +65,9 @@ export type ReportDispatchEmailData = {
   operationDistrict?: string | null;
   /** Hasar Tespit hitabında soyad; onarımda kullanılmaz. */
   recipientSurname?: string | null;
+  /** Personelin açık mesaj kutusundan; varsa şablon hitap/gövdeyi ezer. */
+  messageGreeting?: string | null;
+  messageBody?: string | null;
 };
 
 /** Kişi adından soyad; firma / tek kelime boş kalır. */
@@ -136,8 +139,21 @@ function dispatchWording(
   };
 }
 
+function resolveDispatchWording(data: ReportDispatchEmailData): { belge: string; hitap: string; intro: string } {
+  const base = dispatchWording(data.documentTitle, data.recipientSurname);
+  const hasCustom =
+    data.messageGreeting != null
+    || data.messageBody != null;
+  if (!hasCustom) return base;
+  return {
+    belge: base.belge,
+    hitap: String(data.messageGreeting ?? '').trim(),
+    intro: String(data.messageBody ?? '').trim(),
+  };
+}
+
 export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): string {
-  const wording = dispatchWording(data.documentTitle, data.recipientSurname);
+  const wording = resolveDispatchWording(data);
   const dosyaNo = escapeHtml(dash(data.fileNo));
   const sigorta = escapeHtml(dash(data.insuranceCompanyName));
   const konu = escapeHtml(dash(data.fileSubject));
@@ -151,7 +167,7 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
   const ilce = escapeHtml((data.operationDistrict || '').trim());
   const bolge = [il, ilce].filter(Boolean).join('-');
   const logo = escapeHtml(logoSrc(data.portalUrl));
-  const intro = escapeHtml(wording.intro);
+  const intro = escapeHtml(wording.intro).replace(/\n/g, '<br>');
   const phoneLink = (data.ownerPhone || '').trim()
     ? `<a href="tel:${telefonUluslararasi}" style="color:#174b8a;text-decoration:none;font-size:12px;font-weight:500;">${icon('phone', 14, '#174b8a')}<span style="vertical-align:middle;">${telefonGorunen}</span></a>`
     : '';
@@ -212,12 +228,12 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
               <h1 class="m-title" style="margin:0;font-size:25px;line-height:1.35;letter-spacing:-0.5px;font-weight:600;color:#152c40;overflow-wrap:anywhere;">
                 Dosya Değerlendirmeniz Bekleniyor
               </h1>
-              <p style="margin:20px 0 0;font-size:13px;line-height:1.65;font-weight:600;color:#152c40;">
-                ${escapeHtml(wording.hitap)}
-              </p>
-              <p style="margin:8px 0 0;font-size:13px;line-height:1.75;color:#617180;overflow-wrap:anywhere;">
-                ${intro}
-              </p>
+              ${wording.hitap
+                ? `<p style="margin:20px 0 0;font-size:13px;line-height:1.65;font-weight:600;color:#152c40;">${escapeHtml(wording.hitap)}</p>`
+                : ''}
+              ${intro
+                ? `<p style="margin:${wording.hitap ? '8px' : '20px'} 0 0;font-size:13px;line-height:1.75;color:#617180;overflow-wrap:anywhere;">${intro}</p>`
+                : ''}
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:22px;border-top:1px solid #dde5eb;border-bottom:1px solid #dde5eb;">
                 <tr>
                   <td class="m-stack" width="37%" valign="top" style="width:37%;padding:16px 16px 16px 0;">
@@ -300,7 +316,7 @@ export function buildReportDispatchEmailHtml(data: ReportDispatchEmailData): str
 }
 
 export function buildReportDispatchEmailText(data: ReportDispatchEmailData): string {
-  const wording = dispatchWording(data.documentTitle, data.recipientSurname);
+  const wording = resolveDispatchWording(data);
   const lines = [
     'Dosya Değerlendirmeniz Bekleniyor',
     wording.hitap,

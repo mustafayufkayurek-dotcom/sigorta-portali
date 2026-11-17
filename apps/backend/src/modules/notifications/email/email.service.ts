@@ -28,6 +28,7 @@ export type EmailSendOptions = {
   /** Varsayılan HASAR — rapor/eksper. Acil ihbar kutusundan gitsin diye IHBAR. */
   mailbox?: InboundMailbox;
   cc?: Array<{ email: string; name?: string }>;
+  bcc?: Array<{ email: string; name?: string }>;
   /** Okundu belgesi bu adreslere de düşer (hoş geldin yönetici kopyası). */
   readReceiptTo?: string[];
   copyNoticeHtml?: string;
@@ -143,6 +144,9 @@ export class EmailService {
     const visibleCc = options?.cc
       ? options.cc.filter((item) => filterSoftwareMailboxRecipients([item.email]).length > 0)
       : undefined;
+    const visibleBcc = options?.bcc
+      ? options.bcc.filter((item) => filterSoftwareMailboxRecipients([item.email]).length > 0)
+      : undefined;
     if (!recipients.length) {
       const errorMsg = 'Geçerli bir alıcı e-posta adresi yok.';
       await this.prisma.emailLog.update({
@@ -173,6 +177,7 @@ export class EmailService {
           visibleCc,
           options?.readReceiptTo,
           options?.requestReadReceipt !== false,
+          visibleBcc,
         );
         await this.prisma.emailLog.update({
           where: { id: logEntry.id },
@@ -210,6 +215,7 @@ export class EmailService {
         html: bodyHtml,
         text: bodyText,
         cc: visibleCc?.map((item) => item.email).filter(Boolean).join(', ') || undefined,
+        bcc: visibleBcc?.map((item) => item.email).filter(Boolean).join(', ') || undefined,
         attachments: options?.attachments,
         headers: options?.readReceiptTo?.length
           ? { 'Disposition-Notification-To': options.readReceiptTo.join(', ') }

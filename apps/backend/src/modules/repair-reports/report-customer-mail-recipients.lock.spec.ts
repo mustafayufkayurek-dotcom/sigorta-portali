@@ -94,10 +94,17 @@ describe('rapor müşteri maili LOCK', () => {
     assert.doesNotMatch(src, /void this\.claimEventEmail\.onManagerApprovalRequested/);
   });
 
-  it('onaya gönderimde alıcı seçimi, sabit bilgilendirme CC ve okundu teyidi durur', () => {
+  it('onaya gönderimde alıcı seçimi, sabit bilgilendirme CC, Bcc ve okundu teyidi durur', () => {
     const src = readFileSync(join(here, 'repair-reports.service.ts'), 'utf8');
     const email = readFileSync(join(here, 'email/report-email.service.ts'), 'utf8');
+    const dto = readFileSync(join(here, 'dto/repair-reports.dto.ts'), 'utf8');
     assert.match(src, /filterSelectedApprovalEmails/);
+    assert.match(src, /selectedBccEmails/);
+    assert.match(src, /bcc:\s*index === 0 && mailBcc\.length \? mailBcc : undefined/);
+    assert.match(src, /buildClaimApprovalMailSubject/);
+    assert.match(src, /claimApprovalCustomerDisplayName/);
+    assert.match(src, /splitClaimApprovalMessageText/);
+    assert.match(src, /messageText/);
     assert.match(src, /resolveApprovalInformCc/);
     assert.match(src, /resolveApprovalFileOwnerCc/);
     assert.match(src, /assignedOfficeUser/);
@@ -105,6 +112,11 @@ describe('rapor müşteri maili LOCK', () => {
     assert.match(src, /buildPlatformMailCopyNotice/);
     assert.match(src, /requestReadReceipt:\s*true/);
     assert.match(src, /En az bir Kime alıcısı seçilmelidir/);
+    assert.match(dto, /selectedBccEmails/);
+    assert.match(dto, /messageText/);
+    assert.match(email, /bcc:\s*opts\.bcc/);
+    assert.match(email, /messageGreeting/);
+    assert.match(email, /messageBody/);
     assert.match(email, /requestReadReceipt:\s*opts\.requestReadReceipt !== false/);
   });
 });

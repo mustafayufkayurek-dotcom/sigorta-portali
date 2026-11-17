@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader, authAxios, ensureSessionBeforeMutation } from '@/utils/api';
-import { presentPdfPreviewUrl, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
+import { presentPdfPreview, readPdfPreviewFailure } from '@/utils/pdf-preview-open';
 import React, { useEffect, useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, X } from 'lucide-react';
@@ -55,8 +55,9 @@ import {
 } from '@/utils/claim-approval-mail-preview';
 import {
   claimApprovalMailContacts,
-  claimApprovalDefaultToEmails,
+  claimApprovalDefaultToEmailsWithCustomerCard,
   claimApprovalMailTextPreview,
+  mergeClaimApprovalCustomerCardContact,
   mergeClaimApprovalFileOwnerContact,
   withClaimApprovalFileOwnerCc,
 } from '@/utils/claim-approval-mail-contacts';
@@ -65,11 +66,8 @@ import {
   buildRecipientPayload,
   type MailRecipient,
 } from '@/components/repair-reports/ReportRecipientPicker';
-import { ReportApprovalMailPreview } from '@/components/repair-reports/ReportApprovalMailPreview';
-import {
-  PLATFORM_MAIL_COPY_TITLE,
-  resolveApprovalInformCc,
-} from '@sigorta/shared';
+import { ReportApprovalMailComposeFields } from '@/components/repair-reports/ReportApprovalMailPreview';
+import { claimApprovalCustomerDisplayName } from '@sigorta/shared';
 import {
   repairReportStatusBadge,
   repairReportStatusLabel,
@@ -4607,22 +4605,36 @@ function EmergencyReportEditor({
 
   const openPdfPreview = async (view: 'internal' | 'external') => {
     const title = view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü';
-    const tab = window.open('about:blank', 'hasar-rapor-pdf');
     if (!(await ensureSessionBeforeMutation())) {
-      tab?.close();
       notify('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
       return;
     }
-    const url = `${API}/repair-reports/${reportId}/pdf?view=${view}`;
-    if (tab && !tab.closed) {
-      try {
-        tab.location.replace(url);
+    try {
+      const res = await authAxios<Blob>({
+        method: 'GET',
+        url: `${API}/repair-reports/${reportId}/pdf?view=${view}`,
+        responseType: 'blob',
+        timeout: 120_000,
+      });
+      const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+      if (failure) {
+        notify('error', failure);
         return;
-      } catch {
-        tab.close();
       }
+      const opened = await presentPdfPreview(res.data, title);
+      if (!opened) notify('error', 'PDF önizleme açılamadı.');
+    } catch (e: unknown) {
+      let message = 'PDF önizleme açılamadı.';
+      if (isUiActionTimeout(e)) message = UI_ACTION_TIMEOUT_MESSAGE;
+      else if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {
+        try {
+          const text = await e.response.data.text();
+          const parsed = JSON.parse(text)?.message;
+          if (typeof parsed === 'string' && parsed.trim()) message = parsed;
+        } catch { /* ignore */ }
+      }
+      notify('error', message);
     }
-    presentPdfPreviewUrl(url, title);
   };
 
   const handleSubmitReport = async () => {
@@ -4945,7 +4957,9 @@ export default function RepairReportPage() {
   const [dosyaBilgiOpen, setDosyaBilgiOpen] = useState(true);
   const [showRequestApprovalModal, setShowRequestApprovalModal] = useState(false);
   const [requestingApproval, setRequestingApproval] = useState(false);
-  const [approvalMailStep, setApprovalMailStep] = useState<'compose' | 'preview'>('compose');
+  const [approvalMessageText, setApprovalMessageText] = useState('');
+  const [approvalMessageSeed, setApprovalMessageSeed] = useState('');
+  const [approvalPdfPreviewing, setApprovalPdfPreviewing] = useState(false);
   const [confirmSendWithoutImages, setConfirmSendWithoutImages] = useState(false);
   const [approvalRecipients, setApprovalRecipients] = useState<MailRecipient[]>([]);
   const [itemsApprovalError, setItemsApprovalError] = useState<string | null>(null);
@@ -5259,8 +5273,9 @@ export default function RepairReportPage() {
         channelBrokerCustomer: report?.claimFile?.channelBrokerCustomer,
         channelExpertCustomer: report?.claimFile?.channelExpertCustomer,
       });
-      const base = rows.length > 0
-        ? rows
+      const withCustomer = mergeClaimApprovalCustomerCardContact(rows, report?.claimFile?.customer);
+      const base = withCustomer.length > 0
+        ? withCustomer
         : (() => {
           const fallback = claimApprovalFallbackCustomerEmail(report?.claimFile?.customer?.email);
           return fallback
@@ -5284,27 +5299,36 @@ export default function RepairReportPage() {
       fileSubject: report?.claimFile?.claimSubject?.name
         ?? report?.claimFile?.departmentFileSubject?.name
         ?? report?.claimFile?.lossType,
+      customerName: claimApprovalCustomerDisplayName(report?.claimFile?.customer),
       recipientName: firstTo?.name,
       ownerName: ownerName || null,
       ownerPhone: owner?.phone ?? null,
       ownerEmail: owner?.email ?? null,
     });
   }, [report, approvalRecipients]);
-  const approvalInformCc = useMemo(
-    () => resolveApprovalInformCc({
-      email: currentUser?.email,
-      firstName: currentUser?.firstName,
-      lastName: currentUser?.lastName,
-      name: `${String(currentUser?.firstName ?? '').trim()} ${String(currentUser?.lastName ?? '').trim()}`.trim(),
-    }),
-    [currentUser],
-  );
+  useEffect(() => {
+    if (!showRequestApprovalModal) return;
+    const seed = approvalMailText.messageText;
+    if (!approvalMessageText || approvalMessageText === approvalMessageSeed) {
+      setApprovalMessageText(seed);
+      setApprovalMessageSeed(seed);
+    }
+  }, [
+    showRequestApprovalModal,
+    approvalMailText.messageText,
+    approvalMessageText,
+    approvalMessageSeed,
+  ]);
   const selectedApprovalToEmails = useMemo(
     () => approvalRecipients.filter((row) => row.delivery === 'to').map((row) => row.email),
     [approvalRecipients],
   );
   const selectedApprovalCcEmails = useMemo(
     () => approvalRecipients.filter((row) => row.delivery === 'cc').map((row) => row.email),
+    [approvalRecipients],
+  );
+  const selectedApprovalBccEmails = useMemo(
+    () => approvalRecipients.filter((row) => row.delivery === 'bcc').map((row) => row.email),
     [approvalRecipients],
   );
 
@@ -5536,7 +5560,7 @@ export default function RepairReportPage() {
     }
     const hasImages = (report?.images?.length ?? 0) > 0;
     if (!hasImages && !confirmSendWithoutImages) return;
-    let payload: { to: string[]; cc: string[] };
+    let payload: { to: string[]; cc: string[]; bcc: string[] };
     try {
       payload = buildRecipientPayload(approvalRecipients);
     } catch (err: any) {
@@ -5552,12 +5576,19 @@ export default function RepairReportPage() {
       }
       await axios.post(
         `${API}/repair-reports/${reportId}/request-approval`,
-        { selectedEmails: payload.to, selectedCcEmails: payload.cc },
+        {
+          selectedEmails: payload.to,
+          selectedCcEmails: payload.cc,
+          selectedBccEmails: payload.bcc,
+          messageText: approvalMessageText || approvalMailText.messageText,
+        },
         { headers: authHeader() },
       );
       setShowRequestApprovalModal(false);
       setConfirmSendWithoutImages(false);
       setApprovalRecipients([]);
+      setApprovalMessageText('');
+      setApprovalMessageSeed('');
       setItemsApprovalError(null);
       const mailedTo = payload.to.join(', ');
       notify(
@@ -5652,7 +5683,11 @@ export default function RepairReportPage() {
     setItemsApprovalError(null);
     setConfirmSendWithoutImages(false);
     const preferred = claimApprovalMailPreviewEmails(approvalMailRows);
-    const defaults = claimApprovalDefaultToEmails(approvalMailContactsList, preferred);
+    const defaults = claimApprovalDefaultToEmailsWithCustomerCard(
+      approvalMailContactsList,
+      preferred,
+      report?.claimFile?.customer?.email,
+    );
     const defaultEmails = defaults.length > 0
       ? defaults
       : approvalMailContactsList
@@ -5665,8 +5700,9 @@ export default function RepairReportPage() {
     setApprovalRecipients(
       withClaimApprovalFileOwnerCc(toRecipients, report?.claimFile?.assignedOfficeUser),
     );
-    setApprovalMailStep('compose');
     setConfirmSendWithoutImages(false);
+    setApprovalMessageText('');
+    setApprovalMessageSeed('');
     setShowRequestApprovalModal(true);
   };
 
@@ -6136,22 +6172,36 @@ export default function RepairReportPage() {
 
   const openPdfPreview = async (view: 'internal' | 'external') => {
     const title = view === 'internal' ? 'Tam Görünüm' : 'Müşteri Görünümü';
-    const tab = window.open('about:blank', 'hasar-rapor-pdf');
     if (!(await ensureSessionBeforeMutation())) {
-      tab?.close();
       notify('error', 'Oturum süresi doldu. Sayfayı yenileyin veya tekrar giriş yapın.');
       return;
     }
-    const url = `${API}/repair-reports/${reportId}/pdf?view=${view}`;
-    if (tab && !tab.closed) {
-      try {
-        tab.location.replace(url);
+    try {
+      const res = await authAxios<Blob>({
+        method: 'GET',
+        url: `${API}/repair-reports/${reportId}/pdf?view=${view}`,
+        responseType: 'blob',
+        timeout: 120_000,
+      });
+      const failure = await readPdfPreviewFailure(res.data as Blob, String(res.headers['content-type'] ?? ''));
+      if (failure) {
+        notify('error', failure);
         return;
-      } catch {
-        tab.close();
       }
+      const opened = await presentPdfPreview(res.data, title);
+      if (!opened) notify('error', 'PDF önizleme açılamadı.');
+    } catch (e: unknown) {
+      let message = 'PDF önizleme açılamadı.';
+      if (isUiActionTimeout(e)) message = UI_ACTION_TIMEOUT_MESSAGE;
+      else if (axios.isAxiosError(e) && e.response?.data instanceof Blob) {
+        try {
+          const text = await e.response.data.text();
+          const parsed = JSON.parse(text)?.message;
+          if (typeof parsed === 'string' && parsed.trim()) message = parsed;
+        } catch { /* ignore */ }
+      }
+      notify('error', message);
     }
-    presentPdfPreviewUrl(url, title);
   };
 
   if (loading || !report) return <div className="text-slate-400 py-16 text-center">Yükleniyor...</div>;
@@ -6243,7 +6293,7 @@ export default function RepairReportPage() {
           onClick={beginRequestApproval}
           className="text-xs bg-yellow-500 text-white px-3 py-1.5 rounded-lg hover:bg-yellow-600"
         >
-          Onaya Gönder
+          Raporu Gönder
         </button>
       )}
       {showExternalChannelButton && (
@@ -7339,7 +7389,7 @@ export default function RepairReportPage() {
           <div className="flex max-h-[min(92vh,100dvh)] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl">
             <div className="shrink-0 border-b border-slate-100 px-5 py-4">
               <p className="text-[11px] font-semibold tracking-wide text-brand-600">Meridyen · Rapor Gönderimi</p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-900">Raporu Onaya Gönder</h3>
+              <h3 className="mt-1 text-lg font-semibold text-slate-900">Raporu Gönder</h3>
               <p className="mt-0.5 text-sm text-slate-500">
                 Dosya {report?.claimFile?.fileNo || '—'}
                 {approvalMailText.fileSubject && approvalMailText.fileSubject !== '—'
@@ -7349,85 +7399,66 @@ export default function RepairReportPage() {
             </div>
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
-              {approvalMailStep === 'compose' && (
-                <>
-                  <ReportRecipientPicker
-                    contacts={approvalMailContactsList}
-                    value={approvalRecipients}
-                    onChange={setApprovalRecipients}
-                    disabled={requestingApproval}
-                    allowManual={false}
-                  />
+              <ReportRecipientPicker
+                contacts={approvalMailContactsList}
+                value={approvalRecipients}
+                onChange={setApprovalRecipients}
+                disabled={requestingApproval}
+                allowManual
+              />
 
-                  <div data-testid="onaya-gonder-mail-metni">
-                    <p className="text-sm font-semibold text-slate-900">Konu</p>
-                    <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
-                      {approvalMailText.subject}
-                    </p>
-                    <p className="mt-1.5 text-[11px] text-slate-500">
-                      Gönderimden önce Önizle ile giden şablonu görün.
-                    </p>
-                  </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Konu</p>
+                <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                  {approvalMailText.subject}
+                </p>
+              </div>
 
-                  <p className="text-xs text-slate-500" data-testid="onaya-gonder-bilgi-cc">
-                    {PLATFORM_MAIL_COPY_TITLE}
-                    {approvalInformCc ? ` · ${approvalInformCc.email}` : ''}
-                    {' · '}Dosya sorumlusu otomatik Bilgi alır
-                    {' — '}yöneticiye iç özet ayrı gider; dış e-postaya eklenmez.
+              <ReportApprovalMailComposeFields
+                messageText={approvalMessageText || approvalMailText.messageText}
+                onMessageChange={setApprovalMessageText}
+                signatureName={approvalMailText.signatureName}
+                signatureTitle={approvalMailText.signatureTitle}
+                signaturePhone={approvalMailText.signaturePhone}
+                signatureEmail={approvalMailText.signatureEmail}
+                attachmentLabel={approvalMailText.attachmentLabel}
+                reportNo={approvalMailText.reportNo}
+                onPreviewPdf={() => {
+                  if (approvalPdfPreviewing) return;
+                  setApprovalPdfPreviewing(true);
+                  void openPdfPreview('external').finally(() => setApprovalPdfPreviewing(false));
+                }}
+                disabled={requestingApproval || approvalPdfPreviewing}
+              />
+
+              <div
+                className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2"
+                data-testid="onaya-gonder-okundu-teyidi"
+              >
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium text-slate-500">Okundu Teyidi</p>
+                  <p className="text-[11px] text-slate-500">Alıcı okuyunca iz düşer · kapatılamaz</p>
+                </div>
+                <span className="shrink-0 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                  Açık
+                </span>
+              </div>
+
+              {(report.images?.length ?? 0) === 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-1.5">
+                  <p className="text-[11px] leading-4 text-amber-800">
+                    Bu raporda henüz fotoğraf yok. Resim eklemeden göndermek istediğinizden emin misiniz?
                   </p>
-
-                  <div
-                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2"
-                    data-testid="onaya-gonder-okundu-teyidi"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-medium text-slate-500">Okundu Teyidi</p>
-                      <p className="text-[11px] text-slate-500">Alıcı okuyunca iz düşer · kapatılamaz</p>
-                    </div>
-                    <span className="shrink-0 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-                      Açık
-                    </span>
-                  </div>
-
-                  {(report.images?.length ?? 0) === 0 && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-1.5">
-                      <p className="text-[11px] leading-4 text-amber-800">
-                        Bu raporda henüz fotoğraf yok. Resim eklemeden göndermek istediğinizden emin misiniz?
-                      </p>
-                      <label className="flex cursor-pointer items-start gap-2 text-xs text-amber-900">
-                        <input
-                          type="checkbox"
-                          checked={confirmSendWithoutImages}
-                          onChange={(e) => setConfirmSendWithoutImages(e.target.checked)}
-                          className="mt-0.5 rounded border-amber-300 text-amber-600"
-                        />
-                        <span>Resim eklemeden onaya göndermeyi onaylıyorum</span>
-                      </label>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {approvalMailStep === 'preview' && (
-                <ReportApprovalMailPreview
-                  fileNo={String(report?.claimFile?.fileNo ?? '—')}
-                  fileSubject={approvalMailText.fileSubject}
-                  subject={approvalMailText.subject}
-                  greeting={approvalMailText.greeting}
-                  body={approvalMailText.body}
-                  signatureName={approvalMailText.signatureName}
-                  signatureTitle={approvalMailText.signatureTitle}
-                  signaturePhone={approvalMailText.signaturePhone}
-                  signatureEmail={approvalMailText.signatureEmail}
-                  attachmentLabel={approvalMailText.attachmentLabel}
-                  reportNo={approvalMailText.reportNo}
-                  toRecipients={approvalRecipients
-                    .filter((row) => row.delivery === 'to')
-                    .map((row) => ({ name: row.name, email: row.email }))}
-                  ccRecipients={approvalRecipients
-                    .filter((row) => row.delivery === 'cc')
-                    .map((row) => ({ name: row.name, email: row.email }))}
-                />
+                  <label className="flex cursor-pointer items-start gap-2 text-xs text-amber-900">
+                    <input
+                      type="checkbox"
+                      checked={confirmSendWithoutImages}
+                      onChange={(e) => setConfirmSendWithoutImages(e.target.checked)}
+                      className="mt-0.5 rounded border-amber-300 text-amber-600"
+                    />
+                    <span>Resim eklemeden onaya göndermeyi onaylıyorum</span>
+                  </label>
+                </div>
               )}
             </div>
 
@@ -7436,64 +7467,38 @@ export default function RepairReportPage() {
                 <p className="text-xs text-slate-600" aria-live="polite">
                   {approvalRecipients.length} alıcı seçildi
                   <span className="mt-0.5 block">
-                    {selectedApprovalToEmails.length} Kime · {selectedApprovalCcEmails.length} Bilgi (Cc)
+                    {selectedApprovalToEmails.length} Kime · {selectedApprovalCcEmails.length} Bilgi · {selectedApprovalBccEmails.length} Gizli
                   </span>
                 </p>
-                <div className="flex gap-2">
-                  {approvalMailStep === 'preview' ? (
-                    <button
-                      type="button"
-                      onClick={() => setApprovalMailStep('compose')}
-                      disabled={requestingApproval}
-                      className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-600 hover:bg-white disabled:opacity-50"
-                      data-testid="onaya-gonder-geri"
-                    >
-                      Geri
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowRequestApprovalModal(false);
-                        setConfirmSendWithoutImages(false);
-                        setApprovalMailStep('compose');
-                        setApprovalRecipients([]);
-                      }}
-                      disabled={requestingApproval}
-                      className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm text-slate-600 hover:bg-white disabled:opacity-50"
-                    >
-                      İptal
-                    </button>
-                  )}
-                  {approvalMailStep === 'compose' ? (
-                    <button
-                      type="button"
-                      onClick={() => setApprovalMailStep('preview')}
-                      disabled={
-                        requestingApproval
-                        || selectedApprovalToEmails.length === 0
-                        || ((report.images?.length ?? 0) === 0 && !confirmSendWithoutImages)
-                      }
-                      className="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                      data-testid="onaya-gonder-onizle"
-                    >
-                      Önizle
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleRequestApproval}
-                      disabled={
-                        requestingApproval
-                        || selectedApprovalToEmails.length === 0
-                        || ((report.images?.length ?? 0) === 0 && !confirmSendWithoutImages)
-                      }
-                      className="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                      data-testid="onaya-gonder-submit"
-                    >
-                      {requestingApproval ? 'Gönderiliyor…' : 'Onaya Gönder'}
-                    </button>
-                  )}
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRequestApprovalModal(false);
+                      setConfirmSendWithoutImages(false);
+                      setApprovalRecipients([]);
+                      setApprovalMessageText('');
+                      setApprovalMessageSeed('');
+                    }}
+                    disabled={requestingApproval}
+                    data-testid="onaya-gonder-iptal"
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRequestApproval}
+                    disabled={
+                      requestingApproval
+                      || selectedApprovalToEmails.length === 0
+                      || ((report.images?.length ?? 0) === 0 && !confirmSendWithoutImages)
+                    }
+                    className="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                    data-testid="onaya-gonder-submit"
+                  >
+                    {requestingApproval ? 'Gönderiliyor…' : 'Raporu Gönder'}
+                  </button>
                 </div>
               </div>
             </div>

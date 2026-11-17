@@ -92,7 +92,8 @@ describe('platform mail kopyası LOCK', () => {
       'utf8',
     );
     assert.match(send, /ccRecipients/);
-    assert.doesNotMatch(send, /bccRecipients/);
+    assert.match(send, /bccRecipients/);
+    assert.match(send, /Kopya aynı sendMail gövdesinin ccRecipients alanıdır/);
     assert.match(send, /Asıl yazı gitmezse kopya da gitmez/);
     const inbox = readFileSync(
       new URL('../../../apps/backend/src/modules/operation-inbox/operation-inbox.service.ts', import.meta.url),

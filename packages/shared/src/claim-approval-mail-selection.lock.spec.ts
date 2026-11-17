@@ -5,10 +5,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  buildClaimApprovalMailSubject,
+  claimApprovalCustomerDisplayName,
   filterSelectedApprovalEmails,
   mergeApprovalMailCc,
   resolveApprovalFileOwnerCc,
   resolveApprovalInformCc,
+  splitClaimApprovalMessageText,
 } from './claim-approval-mail-selection.ts';
 
 describe('onaya gönder alıcı seçimi LOCK', () => {
@@ -17,6 +20,17 @@ describe('onaya gönder alıcı seçimi LOCK', () => {
     assert.deepEqual(
       filterSelectedApprovalEmails(allowed, ['eksper@ornek.com', 'yabanci@x.com']),
       ['eksper@ornek.com'],
+    );
+  });
+
+  it('elle eklenen adres allowManualExtra ile geçer', () => {
+    assert.deepEqual(
+      filterSelectedApprovalEmails(
+        ['broker@ornek.com'],
+        ['broker@ornek.com', 'gizli@ornek.com'],
+        { allowManualExtra: true },
+      ),
+      ['broker@ornek.com', 'gizli@ornek.com'],
     );
   });
 
@@ -46,6 +60,24 @@ describe('onaya gönder alıcı seçimi LOCK', () => {
       { email: 'sorumlu@meridyen-tr.com', name: 'Ayşe Yılmaz' },
     );
     assert.equal(resolveApprovalFileOwnerCc({ email: 'hasar@meridyen-tr.com' }), null);
+  });
+
+  it('konu müşteri adı ve dosya no ile yazılır', () => {
+    assert.equal(
+      buildClaimApprovalMailSubject('Hasar Tespit Raporu', 'Doğanlar Mobilya Grubu', '2026 YE 1'),
+      'Hasar Tespit Raporu/Doğanlar Mobilya Grubu/2026 YE 1',
+    );
+    assert.equal(
+      claimApprovalCustomerDisplayName({ shortName: 'Doğanlar', companyName: 'Doğanlar Mobilya Grubu' }),
+      'Doğanlar',
+    );
+  });
+
+  it('açık mesaj kutusundan hitap ve gövde ayrılır', () => {
+    assert.deepEqual(
+      splitClaimApprovalMessageText('Sayın Yetkili,\n\nDosyaya ait rapor ekte.'),
+      { greeting: 'Sayın Yetkili,', body: 'Dosyaya ait rapor ekte.' },
+    );
   });
 
   it('CC Kime ile çakışmaz; bilgilendirme silinemez sırada ilk durur', () => {
