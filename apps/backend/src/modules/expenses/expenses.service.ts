@@ -839,10 +839,25 @@ export class ExpensesService {
       if (!dto.fileCaseId) {
         throw new BadRequestException('Masraf girişi için hasar dosyası seçimi zorunludur.');
       }
-      await this.assertFileEligibleForExpense(dto.fileCaseId, dto.expensePlan);
-      // Masraf kalemi (expense category) ile yazılır. İş grubu seçimi zorunlu değildir;
-      // verilmişse yalnız o satır bütçesine göre üst sınır bakılır.
-      if (dto.workGroupId && (dto.expensePlan ?? 'BUTCELENEN') === 'BUTCELENEN') {
+      const fileKind = await this.assertFileEligibleForExpense(dto.fileCaseId, dto.expensePlan);
+      const plan = dto.expensePlan ?? 'BUTCELENEN';
+      if (plan === 'BUTCELENEN' && fileKind !== 'inspection') {
+        const audit = await this.getWorkGroupExpenseAudit(dto.fileCaseId);
+        if (audit.groups.length > 0) {
+          if (!dto.workGroupId) {
+            throw new BadRequestException('Rapordaki iş grubunu seçin. Masraf bu satırdan denetlenir.');
+          }
+          const line = audit.groups.find((g) => g.workGroupId === dto.workGroupId);
+          if (line && line.jobDefinitions.length > 0 && !String(dto.workSubGroupName ?? '').trim()) {
+            throw new BadRequestException('İş tanımı seçimi zorunludur.');
+          }
+          await this.assertWorkGroupExpenseBudget({
+            fileCaseId: dto.fileCaseId,
+            workGroupId: dto.workGroupId,
+            amount: dto.amount,
+          });
+        }
+      } else if (dto.workGroupId && plan === 'BUTCELENEN') {
         await this.assertWorkGroupExpenseBudget({
           fileCaseId: dto.fileCaseId,
           workGroupId: dto.workGroupId,
