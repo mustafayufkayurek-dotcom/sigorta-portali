@@ -1,11 +1,11 @@
 ---
-description: Canlı web v695 / backend v695
+description: Canlı web v696 / backend v696
 alwaysApply: true
 ---
 
 # Canlı (17.11.2026)
 
-Canlı: web **v695** · backend **v695**. Geri alma: web **v694** / backend **v694**.
+Canlı: web **v696** · backend **v696**. Geri alma: web **v695** / backend **v695**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v696 (full):** Raporu Gönder’de tek Kime (diğerleri Bilgi); hitap Sn. soyad. Hasar Tespit: bedeli yönetici/finans girer, dosya sorumlusu Fatura Talebi Aç; rapor zorunlu değil. Finans WIP alınmadı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v695** / backend **v695**.
 
 **v695 (full):** Raporu Gönder (eski Onaya Gönder tuşu); Gizli alıcı; mesaj içi elektronik imza; yalnız PDF önizleme (mail şablon önizlemesi kalktı). Finans WIP alınmadı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v694** / backend **v694**.
 
@@ -265,6 +267,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Bekleyen paket yok.
+Finans WIP (cari ekran / tahsilat-cari bağ / masraf / tarih kilidi) — henüz alınmadı.
 
-Canlı web **v695** · backend **v695**.
+Canlı web **v696** · backend **v696**.
