@@ -2,24 +2,32 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 16 Kasım 2026
+**Son güncelleme:** 17 Kasım 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (16 Kasım 2026 — web v694 / backend v694)
+## Canlı durum (17 Kasım 2026 — web v695 / backend v695)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v694-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v694-amd64` | canlı |
-| **Rollback** | Web **v693** / Backend **v693** | manifest `rollbackImages` |
-| **Etiket** | `v694-finans-omurga-onaya-sablon` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v695-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v695-amd64` | canlı |
+| **Rollback** | Web **v694** / Backend **v694** | manifest `rollbackImages` |
+| **Etiket** | `v695-raporu-gonder-pdf-bcc` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v695 — Full (17 Kasım 2026) — Raporu Gönder + PDF / Gizli alıcı
+
+- Tuş adı **Raporu Gönder**; Gizli (Bcc) alıcı; mesaj kutusunda elektronik imza
+- Mail şablon önizlemesi kalktı; yalnız oturumlu PDF önizleme
+- Konu: belge / müşteri / dosya no; finans WIP alınmadı
+- Health ok; Redis kısa degraded sonra up; Route Gate PARTIAL (oturum şifresi yok)
+- Geri alma web **v694** / backend **v694**
 
 ### v694 — Full (16 Kasım 2026) — Finans omurga + Onaya Gönder şablon önizleme
 

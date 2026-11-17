@@ -1,11 +1,11 @@
 ---
-description: Canlı web v694 / backend v694
+description: Canlı web v695 / backend v695
 alwaysApply: true
 ---
 
-# Canlı (16.11.2026)
+# Canlı (17.11.2026)
 
-Canlı: web **v694** · backend **v694**. Geri alma: web **v693** / backend **v693**.
+Canlı: web **v695** · backend **v695**. Geri alma: web **v694** / backend **v694**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v695 (full):** Raporu Gönder (eski Onaya Gönder tuşu); Gizli alıcı; mesaj içi elektronik imza; yalnız PDF önizleme (mail şablon önizlemesi kalktı). Finans WIP alınmadı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v694** / backend **v694**.
 
 **v694 (full):** Finans omurga (cari, dönem kapanışı, Merkez kurulum checklist / seyir) + personel yasal hesap / ücret. Onaya Gönder: kişi bazlı Kime/Bilgi, Hasar Tespit hitabı ve imza, dosya sorumlusu otomatik Bilgi, mail gitmeden **Önizle** şablonu. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v693** / backend **v693**.
 
@@ -265,4 +267,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Bekleyen paket yok.
 
-Canlı web **v694** · backend **v694**.
+Canlı web **v695** · backend **v695**.

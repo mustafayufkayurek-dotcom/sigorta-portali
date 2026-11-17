@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-11-16",
-  "label": "v694-finans-omurga-onaya-sablon",
-  "description": "v694 full: Finans omurga (cari/dönem/Merkez kurulum) + personel yasal hesap; Onaya Gönder kişi seçimi, şablon Önizle. Geri alma web v693 / backend v693.",
+  "updatedAt": "2026-11-17",
+  "label": "v695-raporu-gonder-pdf-bcc",
+  "description": "v695 full: Raporu Gönder; Gizli alıcı; mesaj içi imza; yalnız PDF önizleme (mail şablon önizlemesi kalktı). Finans WIP alınmadı. Geri alma web v694 / backend v694.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v694-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v694-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v695-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v695-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v693-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v693-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v694-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v694-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
