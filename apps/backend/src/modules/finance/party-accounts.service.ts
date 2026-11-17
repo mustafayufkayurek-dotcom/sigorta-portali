@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
-import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 import {
   CARI_TUR_LABEL,
   FINANS_DONEM_KAPALI_MESAJ,
@@ -92,10 +91,21 @@ function istanbulDateIso(value: Date | string): string {
 
 @Injectable()
 export class PartyAccountsService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly settings: SystemSettingsService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
+
+  /** Ayarlar servisine bağlanmadan okur — modül döngüsü oluşmaz. */
+  private async readSetting(key: string): Promise<unknown> {
+    const setting = await this.prisma.systemSetting.findUnique({ where: { key } });
+    return setting?.value ?? null;
+  }
+
+  private async writeSetting(key: string, value: unknown): Promise<void> {
+    await this.prisma.systemSetting.upsert({
+      where: { key },
+      update: { value: value as Prisma.InputJsonValue },
+      create: { key, value: value as Prisma.InputJsonValue },
+    });
+  }
 
   async getKurulum(): Promise<{
     kurulum: FinansKurulumDurum;
@@ -103,7 +113,7 @@ export class PartyAccountsService {
     eksikler: string[];
     hesapSayisi: number;
   }> {
-    const raw = await this.settings.get(FINANS_KURULUM_AYAR_KEY);
+    const raw = await this.readSetting(FINANS_KURULUM_AYAR_KEY);
     const kurulum = normalizeFinansKurulum(raw);
     const hesapSayisi = await this.prisma.partyAccount.count({
       where: { isActive: true },
@@ -121,7 +131,7 @@ export class PartyAccountsService {
     seyirAcik: boolean;
     eksikler: string[];
   }> {
-    const raw = await this.settings.get(FINANS_KURULUM_AYAR_KEY);
+    const raw = await this.readSetting(FINANS_KURULUM_AYAR_KEY);
     const current = normalizeFinansKurulum(raw);
     const next: FinansKurulumDurum = { ...current };
 
@@ -138,7 +148,7 @@ export class PartyAccountsService {
       next.seyirAcik = dto.seyirAcik;
     }
 
-    await this.settings.set(FINANS_KURULUM_AYAR_KEY, next);
+    await this.writeSetting(FINANS_KURULUM_AYAR_KEY, next);
     return {
       kurulum: next,
       seyirAcik: canShowFinansSeyir(next),
@@ -147,10 +157,10 @@ export class PartyAccountsService {
   }
 
   private async markCariTanimli() {
-    const raw = await this.settings.get(FINANS_KURULUM_AYAR_KEY);
+    const raw = await this.readSetting(FINANS_KURULUM_AYAR_KEY);
     const current = normalizeFinansKurulum(raw);
     if (current.cariTanim === true) return;
-    await this.settings.set(FINANS_KURULUM_AYAR_KEY, {
+    await this.writeSetting(FINANS_KURULUM_AYAR_KEY, {
       ...current,
       cariTanim: true,
     });
@@ -175,7 +185,7 @@ export class PartyAccountsService {
   async getSeyirOzet(query?: { year?: number; month?: number }) {
     const setup = await this.getKurulum();
     const hedefKayit = normalizeFinansHedefCiro(
-      await this.settings.get(FINANS_HEDEF_CIRO_AYAR_KEY),
+      await this.readSetting(FINANS_HEDEF_CIRO_AYAR_KEY),
     );
     const now = new Date();
     const year =
@@ -354,7 +364,7 @@ export class PartyAccountsService {
       );
     }
     const current = normalizeFinansHedefCiro(
-      await this.settings.get(FINANS_HEDEF_CIRO_AYAR_KEY),
+      await this.readSetting(FINANS_HEDEF_CIRO_AYAR_KEY),
     );
     const next = { ...current };
 
@@ -401,7 +411,7 @@ export class PartyAccountsService {
       next.kabulAt = new Date().toISOString();
     }
 
-    await this.settings.set(FINANS_HEDEF_CIRO_AYAR_KEY, next);
+    await this.writeSetting(FINANS_HEDEF_CIRO_AYAR_KEY, next);
     return this.getSeyirOzet();
   }
 
@@ -414,7 +424,7 @@ export class PartyAccountsService {
   }
 
   private async listClosedMaliDonemler(): Promise<string[]> {
-    const raw = await this.settings.get(FINANS_MALI_DONEM_KAPANIS_AYAR_KEY);
+    const raw = await this.readSetting(FINANS_MALI_DONEM_KAPANIS_AYAR_KEY);
     return normalizeFinansMaliDonemKapanis(raw).closed;
   }
 
@@ -698,7 +708,7 @@ export class PartyAccountsService {
       );
     }
     const current = normalizeFinansMaliDonemKapanis(
-      await this.settings.get(FINANS_MALI_DONEM_KAPANIS_AYAR_KEY),
+      await this.readSetting(FINANS_MALI_DONEM_KAPANIS_AYAR_KEY),
     );
     if (current.closed.includes(periodKey)) {
       return {
@@ -707,7 +717,7 @@ export class PartyAccountsService {
         alreadyClosed: true as const,
       };
     }
-    await this.settings.set(FINANS_MALI_DONEM_KAPANIS_AYAR_KEY, {
+    await this.writeSetting(FINANS_MALI_DONEM_KAPANIS_AYAR_KEY, {
       closed: [...current.closed, periodKey],
     });
     return {
@@ -1872,7 +1882,7 @@ export class PartyAccountsService {
 
   private async loadHedefCiroKayit() {
     return normalizeFinansHedefCiro(
-      await this.settings.get(FINANS_HEDEF_CIRO_AYAR_KEY),
+      await this.readSetting(FINANS_HEDEF_CIRO_AYAR_KEY),
     );
   }
 

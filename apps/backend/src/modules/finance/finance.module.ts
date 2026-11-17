@@ -1,7 +1,6 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
-import { SystemSettingsModule } from '@/modules/system-settings/system-settings.module';
 import {
   ExtraWorkItemController,
   ClaimFileRevenueController,
@@ -18,7 +17,8 @@ import { PartyAccountsController } from './party-accounts.controller';
 import { PartyAccountsService } from './party-accounts.service';
 
 @Module({
-  imports: [PrismaModule, NotificationsModule, forwardRef(() => SystemSettingsModule)],
+  // SystemSettingsModule alınmaz: Ayarlar → Gelen Kutu → Hasar → Tedarikçi → Finans döngüsü backend’i düşürür.
+  imports: [PrismaModule, NotificationsModule],
   controllers: [
     ExtraWorkItemController,
     ClaimFileRevenueController,
