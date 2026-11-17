@@ -25,6 +25,7 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { CariTahsilatAlModal } from '@/components/finance/CariTahsilatAlModal';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import {
@@ -33,7 +34,13 @@ import {
   type ClientSortState,
 } from '@/utils/panel-table-sort';
 import { formatTryAmount } from '@/utils/format-try-amount';
-import { HASAR_AVANS_YARI_USTU_ETIKET, isAvansYariUstuNote, financePaymentStatusLabel } from '@sigorta/shared';
+import {
+  HASAR_AVANS_YARI_USTU_ETIKET,
+  isAvansYariUstuNote,
+  financePaymentStatusLabel,
+  financePaymentMethodDisplay,
+  finansPaymentCariEtiket,
+} from '@sigorta/shared';
 import { isOfficeStaffRole, usePanelRoleCode } from '@/hooks/usePanelRole';
 import { HintIcon } from '@/components/ui/HintIcon';
 import { FinansTablePager } from '@/components/finance/FinansTablePager';
@@ -52,7 +59,8 @@ const PAYMENT_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'fileCase', label: 'Dosya', defaultWidth: 128, minWidth: 100 },
   { id: 'paymentType', label: 'Yön', defaultWidth: 96, minWidth: 80 },
   { id: 'counterparty', label: 'Taraf / Kanal', defaultWidth: 140, minWidth: 100 },
-  { id: 'method', label: 'Yöntem', defaultWidth: 96, minWidth: 80 },
+  { id: 'cari', label: 'Cari', defaultWidth: 168, minWidth: 128 },
+  { id: 'method', label: 'Yöntem', defaultWidth: 168, minWidth: 140 },
   { id: 'amount', label: 'Tutar', defaultWidth: 108, minWidth: 88 },
   { id: 'avansUyari', label: 'Avans uyarısı', defaultWidth: 128, minWidth: 108 },
   { id: 'status', label: 'Durum', defaultWidth: 108, minWidth: 88 },
@@ -65,10 +73,6 @@ function fmtDate(d: string | null | undefined) {
 function fmtCurrency(n: number | null | undefined) {
   return formatTryAmount(n, { fractionDigits: 0 });
 }
-
-const METHOD_LABEL: Record<string, string> = {
-  eft: 'EFT', havale: 'Havale', credit_card: 'Kredi Kartı', cash: 'Nakit', offset: 'Mahsuplaşma', check: 'Çek',
-};
 
 const CHANNEL_LABEL: Record<string, string> = {
   online_kart: 'Online kart',
@@ -136,6 +140,7 @@ export default function TahsilatlarPage() {
     pendingOutgoing: 0, dueOutgoing: 0, pendingOutgoingCount: 0, dueOutgoingCount: 0, pendingOnlineLinks: 0,
   });
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
+  const [showCariTahsilat, setShowCariTahsilat] = useState(false);
   const tableColumns = usePanelTableColumns('table-cols:finans-tahsilatlar', PAYMENT_TABLE_COLUMNS);
   const rowActions = usePortalRowActionPrefs('row-actions:finans-tahsilatlar-v1', FINANS_TAHSILAT_ROW_ACTIONS);
 
@@ -163,7 +168,7 @@ export default function TahsilatlarPage() {
           case 'counterparty':
             return p.counterpartyName ?? p.channel ?? '';
           case 'method':
-            return METHOD_LABEL[p.method] ?? p.method ?? '';
+            return financePaymentMethodDisplay(p.method, p.paymentType);
           case 'amount':
             return p.amount ?? 0;
           case 'avansUyari':
@@ -309,17 +314,39 @@ export default function TahsilatlarPage() {
           <HintIcon text={
             queue === 'payable'
               ? 'Tedarikçi hakediş ve avans bu sekmede durur. Ayrı sayfa değildir. Ödendi carisine işler.'
-              : 'Tahsilat müşteri carisine işler. Tedarikçi ödemesi ayrı sayfa değildir. Tedarikçi Ödeme Kuyruğu sekmesinde durur.'
+              : 'Yeni tahsilat müşteri carisine yazılır; dosya bakiyesine dokunulmaz. Tedarikçi ödemesi Tedarikçi Ödeme Kuyruğu sekmesindedir.'
           } />
         </h2>
-        <Link
-          href="/panel/finans/cariler"
-          data-testid="tahsilat-cariler-link"
-          className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Cariler
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {!isFileOwner ? (
+            <button
+              type="button"
+              onClick={() => setShowCariTahsilat(true)}
+              data-testid="tahsilatlar-yeni-tahsilat"
+              className="inline-flex items-center rounded-lg bg-brand-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-brand-700"
+            >
+              Yeni Tahsilat
+            </button>
+          ) : null}
+          <Link
+            href="/panel/finans/cariler"
+            data-testid="tahsilat-cariler-link"
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Cariler
+          </Link>
+        </div>
       </div>
+
+      <CariTahsilatAlModal
+        open={showCariTahsilat}
+        onClose={() => setShowCariTahsilat(false)}
+        onSaved={() => {
+          // Tamamlanan kuyruğa geç — dosyasız cari tahsilat pending listesinde durmaz;
+          // load, queue değişince kendiliğinden çalışır.
+          switchQueue('completed');
+        }}
+      />
 
       {/* Kompakt özet şeridi — tek satır, alacak/borç ayrımı */}
       <FinanceSummaryStrip
@@ -381,10 +408,10 @@ export default function TahsilatlarPage() {
           className="border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:text-slate-200"
         >
           <option value="">Tüm Yöntemler</option>
-          <option value="eft">EFT</option>
-          <option value="havale">Havale</option>
+          <option value="eft">Havale/Eft</option>
           <option value="credit_card">Kredi Kartı</option>
           <option value="cash">Nakit</option>
+          <option value="offset">Mahsuplaşma</option>
         </select>
         {(search || filters.method) && (
           <button type="button" onClick={() => { setSearch(''); setFilters({ method: '', page: 1, limit: filters.limit }); }} className="text-sm text-slate-500 underline">
@@ -456,9 +483,7 @@ export default function TahsilatlarPage() {
                       paymentDate: (
                         <PanelTableTd key="paymentDate" colId="paymentDate" wrap className="px-4 py-3 text-xs">
                           <div className="text-slate-700 dark:text-slate-200">{fmtDate(p.paymentDate)}</div>
-                          {p.queueSource === 'acil_hakedis' ? (
-                            <div className="text-[10px] mt-0.5 font-medium text-slate-500">Vade yok</div>
-                          ) : p.dueDate && p.status === 'pending' ? (
+                          {p.dueDate && p.status === 'pending' ? (
                             <div className={`text-[10px] mt-0.5 ${isOverdue ? 'text-red-600 font-semibold' : 'text-slate-400'}`}>
                               Vade: {fmtDate(p.dueDate)}
                             </div>
@@ -496,8 +521,43 @@ export default function TahsilatlarPage() {
                           )}
                         </PanelTableTd>
                       ),
+                      cari: (() => {
+                        const cariEtiket = finansPaymentCariEtiket({
+                          status: p.status,
+                          partyAccountId: p.partyAccountId,
+                          paymentType: p.paymentType,
+                        });
+                        const toneClass =
+                          cariEtiket.tone === 'posted'
+                            ? 'text-emerald-700'
+                            : cariEtiket.tone === 'queued'
+                              ? 'text-slate-500'
+                              : cariEtiket.tone === 'missing'
+                                ? 'text-amber-700'
+                                : 'text-slate-400';
+                        return (
+                          <PanelTableTd key="cari" colId="cari" className="px-4 py-3 text-xs">
+                            {p.partyAccountId ? (
+                              <Link
+                                href={`/panel/finans/cariler/${p.partyAccountId}`}
+                                data-testid="tahsilat-satir-cari-link"
+                                className="font-medium text-brand-700 hover:underline"
+                              >
+                                {p.partyAccountName || 'Cari Kartı'}
+                              </Link>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                            <div className={`mt-0.5 text-[10px] font-medium ${toneClass}`} data-testid="tahsilat-satir-cari-durum">
+                              {cariEtiket.label}
+                            </div>
+                          </PanelTableTd>
+                        );
+                      })(),
                       method: (
-                        <PanelTableTd key="method" colId="method" className="px-4 py-3 text-xs">{METHOD_LABEL[p.method] ?? p.method}</PanelTableTd>
+                        <PanelTableTd key="method" colId="method" wrap className="px-4 py-3 text-xs text-slate-700 dark:text-slate-200">
+                          {financePaymentMethodDisplay(p.method, p.paymentType)}
+                        </PanelTableTd>
                       ),
                       amount: (
                         <PanelTableTd key="amount" colId="amount" className="px-4 py-3 text-right font-bold">{fmtCurrency(p.amount)}</PanelTableTd>

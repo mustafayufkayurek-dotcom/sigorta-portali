@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { FileSpreadsheet, Mail, MessageCircle, Phone } from 'lucide-react';
-import { buildCariBakiyeIletisimMesaji, cariBakiyeMetin } from '@sigorta/shared';
+import { buildCariBakiyeIletisimMesaji, cariBakiyeMetin, finansIslemTarihiDonemUyarisi } from '@sigorta/shared';
 import { API, authHeader } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { formatTryAmount } from '@/utils/format-try-amount';
-import { numberToTrAmountInput, parseTrAmountInput } from '@/utils/tr-amount-input';
+import { parseTrAmountInput } from '@/utils/tr-amount-input';
+import { isCompleteTrDateValue, normalizeTrDateValue } from '@/utils/tr-date-input';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { downloadCsv } from '@/utils/download-csv';
 import { openWhatsAppChat } from '@/utils/date-helpers';
@@ -24,10 +25,14 @@ import {
   FinansPanelCard,
   finansInputClass,
 } from '@/components/finance/FinansPanelUI';
+import { CariTahsilatAlModal } from '@/components/finance/CariTahsilatAlModal';
+import { TrAmountInput } from '@/components/ui/TrAmountInput';
+import { TrDateInput } from '@/components/ui/TrDateInput';
 
 type Account = {
   id: string;
   name: string;
+  kind?: string;
   kindLabel: string;
   notes: string | null;
   toplamBorc: number;
@@ -38,6 +43,7 @@ type Account = {
   netBakiye: number;
   cardLast4: string | null;
   cardLabel: string | null;
+  linkedCustomerId?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
   resolvedPhone?: string | null;
@@ -101,6 +107,7 @@ export default function FinansCariEkstrePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [showTahsilat, setShowTahsilat] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     entryDate: new Date().toISOString().slice(0, 10),
@@ -150,12 +157,17 @@ export default function FinansCariEkstrePage() {
       showToast('warning', 'Açıklama Zorunludur');
       return;
     }
+    const entryDate = normalizeTrDateValue(form.entryDate);
+    if (!isCompleteTrDateValue(entryDate)) {
+      showToast('warning', 'Tarih Zorunludur');
+      return;
+    }
     setSaving(true);
     try {
       const res = await axios.post(
         `${API}/finance/party-accounts/${id}/entries`,
         {
-          entryDate: form.entryDate,
+          entryDate,
           description,
           debitAmount: form.yon === 'alacak' ? amount : 0,
           creditAmount: form.yon === 'borc' ? amount : 0,
@@ -317,15 +329,43 @@ export default function FinansCariEkstrePage() {
             <FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={1.75} />
             Excel&apos;e Aktar
           </button>
+          {(account?.kind === 'musteri' || account?.kind === 'musteri_tedarikci') &&
+          account.linkedCustomerId ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false);
+                setShowTahsilat(true);
+              }}
+              data-testid="cari-tahsilat-al-ac"
+              className="inline-flex items-center rounded-lg bg-brand-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-brand-700"
+            >
+              Tahsilat Ekle
+            </button>
+          ) : null}
           <FinansActionButton
             label={showForm ? 'Formu Kapat' : 'Hareket Ekle'}
-            onClick={() => setShowForm((v) => !v)}
+            onClick={() => {
+              setShowTahsilat(false);
+              setShowForm((v) => !v);
+            }}
             variant={showForm ? 'neutral' : 'primary'}
             active={showForm}
             showPlus={!showForm}
           />
         </div>
       </div>
+
+      <CariTahsilatAlModal
+        open={showTahsilat}
+        onClose={() => setShowTahsilat(false)}
+        onSaved={() => load()}
+        fixedCustomer={
+          account?.linkedCustomerId
+            ? { customerId: account.linkedCustomerId, label: account.name }
+            : null
+        }
+      />
 
       {account && (
         <FinansKpiStrip
@@ -353,12 +393,26 @@ export default function FinansCariEkstrePage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <FinansFieldLabel required>Tarih</FinansFieldLabel>
-              <input
-                type="date"
+              <TrDateInput
                 value={form.entryDate}
-                onChange={(e) => setForm({ ...form, entryDate: e.target.value })}
+                onChange={(entryDate) => setForm({ ...form, entryDate })}
                 className={finansInputClass}
               />
+              {(() => {
+                const dateIso = normalizeTrDateValue(form.entryDate);
+                const uyari =
+                  isCompleteTrDateValue(dateIso) ? finansIslemTarihiDonemUyarisi(dateIso) : null;
+                if (!uyari) return null;
+                return (
+                  <p
+                    className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+                    data-testid="cari-hareket-tarih-donem-uyari"
+                    role="status"
+                  >
+                    {uyari}
+                  </p>
+                );
+              })()}
             </div>
             <div>
               <FinansFieldLabel required>Borç / Alacak</FinansFieldLabel>
@@ -378,13 +432,9 @@ export default function FinansCariEkstrePage() {
             </div>
             <div>
               <FinansFieldLabel required>Tutar</FinansFieldLabel>
-              <input
-                type="text"
-                inputMode="decimal"
+              <TrAmountInput
                 value={form.amount}
-                onChange={(e) =>
-                  setForm({ ...form, amount: numberToTrAmountInput(e.target.value) })
-                }
+                onChange={(amount) => setForm({ ...form, amount })}
                 className={finansInputClass}
                 placeholder="0"
               />

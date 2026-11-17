@@ -37,6 +37,58 @@ export function financePaymentStatusLabel(status: string | null | undefined): st
   return String(status ?? '—');
 }
 
+/** EFT ve Havale tek yöntem: Havale/Eft (kayıt kodu eft; eski havale aynı etikette). */
+export const FINANS_ODEME_YONTEM_HAVALE_EFT = 'eft';
+
+export const FINANS_ODEME_YONTEM_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: FINANS_ODEME_YONTEM_HAVALE_EFT, label: 'Havale/Eft' },
+  { value: 'credit_card', label: 'Kredi Kartı' },
+  { value: 'cash', label: 'Nakit' },
+  { value: 'offset', label: 'Mahsuplaşma' },
+];
+
+export function financePaymentMethodLabel(method?: string | null): string {
+  const code = normalizeStatus(method);
+  if (code === 'eft' || code === 'havale') return 'Havale/Eft';
+  if (code === 'credit_card') return 'Kredi Kartı';
+  if (code === 'cash') return 'Nakit';
+  if (code === 'offset' || code === 'mahsup' || code === 'mahsuplasma') return 'Mahsuplaşma';
+  if (code === 'online_kart') return 'Online Kart';
+  if (code === 'check' || code === 'cek') return 'Çek';
+  return method?.trim() ? String(method) : '—';
+}
+
+/** Liste / fiş: yönteme göre peşin veya vadeli ifade. */
+export function financePaymentMethodDisplay(
+  method?: string | null,
+  paymentType?: string | null,
+): string {
+  const code = normalizeStatus(method);
+  const incoming = normalizeStatus(paymentType) === 'incoming';
+  const pesin = incoming ? 'Peşin Tahsilat' : 'Peşin Ödeme';
+  const vadeli = incoming ? 'Vadeli Tahsilat' : 'Vadeli Ödeme';
+  switch (code) {
+    case 'credit_card':
+      return `${pesin} → Kredi Kartı`;
+    case 'cash':
+      return `${pesin} → Nakit`;
+    case 'eft':
+    case 'havale':
+      return `${pesin} → Havale/Eft`;
+    case 'online_kart':
+      return `${pesin} → Online Kart`;
+    case 'check':
+    case 'cek':
+      return `${vadeli} → Çek`;
+    case 'offset':
+    case 'mahsup':
+    case 'mahsuplasma':
+      return 'Mahsuplaşma';
+    default:
+      return method?.trim() ? String(method) : '—';
+  }
+}
+
 export function paymentTouchesFrozenMoneyFields(dto: {
   amount?: number;
   paymentDate?: string;

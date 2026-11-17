@@ -1,10 +1,16 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { applyTitleCase } from '@/common/utils/text-helpers';
 import { buildWhatsAppMeUrl, normalizeWhatsAppPhone } from '@/common/utils/whatsapp-phone';
 import { VendorRecommendationService } from './vendor-recommendation.service';
 import { VendorCostMemoryService } from '@/modules/vendor-cost-memory/vendor-cost-memory.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
+import { PartyAccountsService } from '@/modules/finance/party-accounts.service';
 import {
   compareAccountHolderToVendor,
   formatIbanForMessage,
@@ -25,6 +31,7 @@ export class VendorsService {
     private readonly vendorRecommendation: VendorRecommendationService,
     private readonly vendorCostMemory: VendorCostMemoryService,
     private readonly auditLogsService: AuditLogsService,
+    @Optional() private partyAccounts?: PartyAccountsService,
   ) {}
 
   private mapVendorContactInput(c: any, vendorId: string) {
@@ -170,16 +177,27 @@ export class VendorsService {
             take: 1,
             select: { entryDate: true },
           },
+          partyAccounts: {
+            where: { isActive: true },
+            select: { id: true, kind: true, linkedCustomerId: true },
+            take: 1,
+            orderBy: { createdAt: 'asc' },
+          },
         },
       }),
       this.prisma.vendor.count({ where }),
     ]);
 
-    const data = rows.map(({ costEntries, createdByUser, ...v }) => ({
-      ...v,
-      createdByUser,
-      lastJobDate: costEntries[0]?.entryDate ?? null,
-    }));
+    const data = rows.map(({ costEntries, createdByUser, partyAccounts, ...v }) => {
+      const pa = partyAccounts[0];
+      return {
+        ...v,
+        createdByUser,
+        lastJobDate: costEntries[0]?.entryDate ?? null,
+        cariRol: pa?.kind ?? 'tedarikci',
+        linkedCustomerId: pa?.linkedCustomerId ?? null,
+      };
+    });
 
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
@@ -227,10 +245,22 @@ export class VendorsService {
         contactInfos: {
           orderBy: { createdAt: 'asc' },
         },
+        partyAccounts: {
+          where: { isActive: true },
+          select: { id: true, kind: true, linkedCustomerId: true },
+          take: 1,
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
     if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
-    return vendor;
+    const { partyAccounts, ...vendorRest } = vendor;
+    const pa = partyAccounts[0];
+    return {
+      ...vendorRest,
+      cariRol: pa?.kind ?? 'tedarikci',
+      linkedCustomerId: pa?.linkedCustomerId ?? null,
+    };
   }
 
   private sanitizeVendorWriteData(
@@ -324,7 +354,7 @@ export class VendorsService {
   }
 
   async create(data: any, createdByUserId?: string) {
-    const { serviceAreas, workGroupIds, contacts, contactInfos, ...rest } = data;
+    const { serviceAreas, workGroupIds, contacts, contactInfos, cariRol, ...rest } = data;
     const vendorData = this.sanitizeVendorWriteData(rest);
     this.assertVendorIdentity(vendorData as { entityType?: string | null; identityNo?: string | null; taxNumber?: string | null });
     const vendor = await this.prisma.vendor.create({
@@ -369,6 +399,20 @@ export class VendorsService {
           label: ci.label ?? 'general',
         })),
       });
+    }
+
+    if (this.partyAccounts && createdByUserId) {
+      try {
+        await this.partyAccounts.ensureVendorAccount({
+          vendorId: vendor.id,
+          userId: createdByUserId,
+          name: vendor.name,
+          cariRol: cariRol ?? 'tedarikci',
+        });
+      } catch (e) {
+        if (String(cariRol) === 'musteri_tedarikci') throw e;
+        /* tek roller cari sonradan ödemede açılır */
+      }
     }
 
     return this.findOne(vendor.id);

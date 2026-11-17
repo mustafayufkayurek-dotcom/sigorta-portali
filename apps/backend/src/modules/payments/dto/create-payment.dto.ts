@@ -2,9 +2,10 @@ import { IsString, IsOptional, IsNumber, IsDateString, IsIn } from 'class-valida
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePaymentDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Boşsa müşteri carisi tahsilatı (dosyaya yazılmaz)' })
+  @IsOptional()
   @IsString()
-  claimFileId!: string;
+  claimFileId?: string;
 
   @ApiProperty({ enum: ['incoming', 'outgoing'] })
   @IsIn(['incoming', 'outgoing'])

@@ -61,6 +61,7 @@ describe('finans merkez kart yolları LOCK', () => {
     );
     assert.equal(FINANS_KART_YOL.faturaTalepleri, '/panel/finans/fatura-talepleri');
     assert.equal(FINANS_KART_YOL.cariler, '/panel/finans/cariler');
+    assert.equal(FINANS_KART_YOL.bankaHesaplari, '/panel/finans/banka-hesaplari');
   });
 
   it('Finans Merkezi ve listeler bu yolları okur', () => {

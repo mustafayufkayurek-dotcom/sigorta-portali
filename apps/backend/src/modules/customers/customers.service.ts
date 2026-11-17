@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  Optional,
+} from '@nestjs/common';
 import { EmergencyStatus } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
+import { PartyAccountsService } from '@/modules/finance/party-accounts.service';
 import { isFieldStaff } from '@/common/helpers/field-staff.helper';
 import { isInsuranceCompanyUser, RequestUser } from '@/common/helpers/claim-file-scope.helper';
 import { applyTitleCase } from '@/common/utils/text-helpers';
@@ -35,6 +42,7 @@ export class CustomersService {
   constructor(
     private prisma: PrismaService,
     private systemSettings: SystemSettingsService,
+    @Optional() private partyAccounts?: PartyAccountsService,
   ) {}
 
   private async assertCustomerSubTypeIfRequired(data: Record<string, unknown>): Promise<void> {
@@ -394,6 +402,12 @@ export class CustomersService {
           contacts: true,
           _count: { select: { claimFiles: true } },
           claimFiles: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } },
+          partyAccounts: {
+            where: { isActive: true },
+            select: { id: true, kind: true, linkedVendorId: true },
+            take: 1,
+            orderBy: { createdAt: 'asc' },
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -401,11 +415,14 @@ export class CustomersService {
     ]);
 
     const stats = await attachCustomerFileStats(this.prisma, rawData);
-    const data = rawData.map(({ claimFiles, ...rest }) => {
+    const data = rawData.map(({ claimFiles, partyAccounts, ...rest }) => {
       const stat = stats.get(rest.id);
+      const pa = partyAccounts[0];
       return {
         ...applyCustomerFileStats(rest, stat),
         lastActivityDate: stat?.lastActivity ?? claimFiles[0]?.createdAt ?? null,
+        cariRol: pa?.kind ?? 'musteri',
+        linkedVendorId: pa?.linkedVendorId ?? null,
       };
     });
 
@@ -423,13 +440,25 @@ export class CustomersService {
         contactInfos: { orderBy: { createdAt: 'asc' } },
         updatedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
         _count: { select: { claimFiles: true } },
+        partyAccounts: {
+          where: { isActive: true },
+          select: { id: true, kind: true, linkedVendorId: true },
+          take: 1,
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
     if (!customer) {
       throw new NotFoundException('Müşteri bulunamadı');
     }
     const stats = await attachCustomerFileStats(this.prisma, [customer]);
-    const withStats = applyCustomerFileStats(customer, stats.get(customer.id));
+    const { partyAccounts, ...customerRest } = customer;
+    const pa = partyAccounts[0];
+    const withStats = {
+      ...applyCustomerFileStats(customerRest, stats.get(customer.id)),
+      cariRol: pa?.kind ?? 'musteri',
+      linkedVendorId: pa?.linkedVendorId ?? null,
+    };
     const insuranceIds = await resolveInsuranceCompanyIdsForCustomer(this.prisma, customer);
     const claimWhere = insuranceIds.length
       ? { OR: [{ customerId: id }, { insuranceCompanyId: { in: insuranceIds } }] }
@@ -491,7 +520,7 @@ export class CustomersService {
   }
 
   async create(data: any, actorUserId?: string) {
-    const { contacts, contactInfos, customerType, ...rest } = data as any;
+    const { contacts, contactInfos, customerType, cariRol, ...rest } = data as any;
     this.sanitizeCustomerWriteData(rest);
     await this.assertCustomerSubTypeIfRequired(rest);
     await this.assertInsuranceCatalogBind(rest);
@@ -575,12 +604,26 @@ export class CustomersService {
       }
     }
 
+    if (this.partyAccounts && actorUserId) {
+      try {
+        await this.partyAccounts.ensureCustomerAccount({
+          customerId: customer.id,
+          userId: actorUserId,
+          name: customer.shortName || customer.companyName || customer.fullName,
+          cariRol: cariRol ?? 'musteri',
+        });
+      } catch (e) {
+        if (String(cariRol) === 'musteri_tedarikci') throw e;
+        /* tek roller cari sonradan tahsilatta açılır */
+      }
+    }
+
     return this.findOne(customer.id);
   }
 
   async update(id: string, data: any, actorUserId?: string) {
     const existing = await this.findOne(id);
-    const { contacts, contactInfos, customerType, ...rest } = data as any;
+    const { contacts, contactInfos, customerType, cariRol: _cariRol, ...rest } = data as any;
     this.sanitizeCustomerWriteData(rest);
     await this.assertCustomerSubTypeIfRequired(rest);
     await this.assertInsuranceCatalogBind(rest, existing);

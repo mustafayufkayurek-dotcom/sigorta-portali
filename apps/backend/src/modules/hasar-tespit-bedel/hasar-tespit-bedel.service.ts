@@ -316,6 +316,7 @@ export class HasarTespitBedelService {
             fileCaseId: claimFileId,
           } as any,
           userId,
+          { requirePartyAccount: false },
         );
         if (created?.id) giderIds.push(created.id);
       } catch (err) {

@@ -119,13 +119,16 @@ export class PaymentsController {
 
   @Post('payments')
   @RequirePermissions('payment.create')
-  @ApiOperation({ summary: 'Yeni ödeme kaydet' })
+  @ApiOperation({ summary: 'Yeni ödeme / müşteri carisi tahsilatı kaydet' })
   async create(@Body() dto: CreatePaymentDto, @CurrentUser() user: any) {
     const { requestingUser } = await this.resolveScope(user);
-    await this.claimFilesService.findOne(dto.claimFileId, {
-      id: requestingUser?.id ?? user.id,
-      roleCode: requestingUser?.roleCode ?? user.roleCode,
-    });
+    const claimFileId = typeof dto.claimFileId === 'string' ? dto.claimFileId.trim() : '';
+    if (claimFileId) {
+      await this.claimFilesService.findOne(claimFileId, {
+        id: requestingUser?.id ?? user.id,
+        roleCode: requestingUser?.roleCode ?? user.roleCode,
+      });
+    }
     const data = await this.service.create(dto, user.id);
     return { success: true, data };
   }

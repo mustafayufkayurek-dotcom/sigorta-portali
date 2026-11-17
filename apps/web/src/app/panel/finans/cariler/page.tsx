@@ -19,18 +19,16 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import {
-  CARI_ACILIS_YON_LABEL,
+  CARI_TUR_GRUPLARI,
   CARI_TUR_LABEL,
   buildCariBakiyeIletisimMesaji,
   cariBakiyeMetin,
-  cariVarsayilanAcilisYon,
-  type CariAcilisYon,
   type CariTur,
 } from '@sigorta/shared';
 import { API, authHeader } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { formatTryAmount } from '@/utils/format-try-amount';
-import { numberToTrAmountInput, parseTrAmountInput } from '@/utils/tr-amount-input';
+import { parseTrAmountInput } from '@/utils/tr-amount-input';
 import { toTitleCaseTR } from '@/utils/text-helpers';
 import { downloadCsv } from '@/utils/download-csv';
 import { openWhatsAppChat } from '@/utils/date-helpers';
@@ -42,10 +40,16 @@ import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBread
 import { FinansHedefBaglamSeridi } from '@/components/finance/FinansHedefBaglamSeridi';
 import { hedefCiroDonYol, isHedefCiroDon } from '@/utils/finans-merkez-kart';
 import {
+  CariHesapFormFields,
+  CARI_HESAP_EMPTY_FORM,
+  newCariHesapForm,
+  type CariHesapFormValues,
+} from '@/components/finance/CariHesapFormFields';
+import {
   FinansActionButton,
+  FinansDrawer,
   FinansEmptyState,
   FinansFieldLabel,
-  FinansFormPanel,
   FinansKpiStrip,
   FinansPanelCard,
   finansInputClass,
@@ -116,8 +120,6 @@ const CARI_TABLE_COLUMNS: TableColumnDef[] = [
   { ...FINANS_ACTIONS_COLUMN, defaultWidth: 188, minWidth: 172 },
 ];
 
-const TUR_OPTIONS = Object.entries(CARI_TUR_LABEL) as [CariTur, string][];
-
 function money(n: number) {
   return formatTryAmount(n, { fractionDigits: 2 });
 }
@@ -127,17 +129,7 @@ function moneyCell(n: number) {
   return money(n);
 }
 
-const EMPTY_FORM = {
-  name: '',
-  kind: 'kredi_karti' as CariTur,
-  cardLast4: '',
-  cardLabel: '',
-  contactPhone: '',
-  contactEmail: '',
-  notes: '',
-  openingAmount: '',
-  openingDirection: 'borc' as CariAcilisYon,
-};
+const EMPTY_FORM: CariHesapFormValues = { ...CARI_HESAP_EMPTY_FORM };
 
 export default function FinansCarilerPage() {
   const router = useRouter();
@@ -220,13 +212,8 @@ export default function FinansCarilerPage() {
   }, [rows]);
 
   const openNew = () => {
-    const kind: CariTur = 'kredi_karti';
     setEditId(null);
-    setForm({
-      ...EMPTY_FORM,
-      kind,
-      openingDirection: cariVarsayilanAcilisYon(kind),
-    });
+    setForm(newCariHesapForm('kredi_karti'));
     setShowForm(true);
   };
 
@@ -241,7 +228,7 @@ export default function FinansCarilerPage() {
       contactEmail: row.contactEmail || row.resolvedEmail || '',
       notes: row.notes ?? '',
       openingAmount: '',
-      openingDirection: cariVarsayilanAcilisYon(row.kind),
+      openingDirection: newCariHesapForm(row.kind).openingDirection,
     });
     setShowForm(true);
   };
@@ -452,10 +439,24 @@ export default function FinansCarilerPage() {
         <div>
           <h2 className="text-xl font-bold text-slate-900">Cariler</h2>
           <p className="mt-0.5 text-sm text-slate-500">
-            Cari hesap listesi · Borç / Alacak / Bakiye
+            Defter görünümü · Borç / Alacak / Bakiye. Müşteri ve tedarikçi kartı sol menüden açılır.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/panel/musteriler"
+            className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            data-testid="cari-musteri-kartina-git"
+          >
+            Müşteri Kartı
+          </Link>
+          <Link
+            href="/panel/tedarikciler"
+            className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            data-testid="cari-tedarikci-kartina-git"
+          >
+            Tedarikçi Kartı
+          </Link>
           <button
             type="button"
             onClick={exportExcel}
@@ -467,18 +468,11 @@ export default function FinansCarilerPage() {
             Excel&apos;e Aktar
           </button>
           <FinansActionButton
-            label={showForm ? 'Formu Kapat' : 'Yeni Cari'}
-            onClick={() => {
-              if (showForm) {
-                setShowForm(false);
-                setEditId(null);
-                return;
-              }
-              openNew();
-            }}
-            variant={showForm ? 'neutral' : 'primary'}
-            active={showForm}
-            showPlus={!showForm}
+            label="Şirket Carisi"
+            onClick={openNew}
+            variant="primary"
+            showPlus
+            testId="cari-sirket-hesabi-ac"
           />
         </div>
       </div>
@@ -496,176 +490,43 @@ export default function FinansCarilerPage() {
         ]}
       />
 
-      {showForm && (
-        <FinansFormPanel
-          title={editId ? 'Cari Hesabı Düzenle' : 'Yeni Cari Hesap'}
-          onCancel={() => {
-            setShowForm(false);
-            setEditId(null);
-          }}
-          onSubmit={() => {
-            void handleSave();
-          }}
-          saving={saving}
-        >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <FinansFieldLabel required>Cari Hesap Adı</FinansFieldLabel>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                onBlur={() =>
-                  setForm((f) => ({ ...f, name: f.name ? toTitleCaseTR(f.name.trim()) : '' }))
-                }
-                className={finansInputClass}
-                placeholder="Örn. garanti kredi kartı"
-              />
-            </div>
-            <div>
-              <FinansFieldLabel required>Hesap Türü</FinansFieldLabel>
-              <select
-                value={form.kind}
-                onChange={(e) => {
-                  const kind = e.target.value as CariTur;
-                  setForm((f) => ({
-                    ...f,
-                    kind,
-                    openingDirection: cariVarsayilanAcilisYon(kind),
-                  }));
-                }}
-                className={finansInputClass}
-              >
-                {TUR_OPTIONS.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <FinansFieldLabel required>Açıklama</FinansFieldLabel>
-              <input
-                type="text"
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                onBlur={() =>
-                  setForm((f) => ({ ...f, notes: f.notes ? toTitleCaseTR(f.notes.trim()) : '' }))
-                }
-                className={finansInputClass}
-                placeholder="Örn. ekstre kesim tarihi ayın 5’i"
-                data-testid="cari-aciklama"
-              />
-            </div>
-            <div>
-              <FinansFieldLabel>Telefon</FinansFieldLabel>
-              <input
-                type="tel"
-                value={form.contactPhone}
-                onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
-                onBlur={() =>
-                  setForm((f) => ({
-                    ...f,
-                    contactPhone: f.contactPhone
-                      ? formatPhoneGrouped(f.contactPhone.trim()) || f.contactPhone.trim()
-                      : '',
-                  }))
-                }
-                className={finansInputClass}
-                placeholder="532 133 4144"
-                data-testid="cari-telefon"
-              />
-            </div>
-            <div>
-              <FinansFieldLabel>E-posta</FinansFieldLabel>
-              <input
-                type="email"
-                value={form.contactEmail}
-                onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-                className={finansInputClass}
-                placeholder="ornek@firma.com"
-                data-testid="cari-eposta"
-              />
-            </div>
-            {form.kind === 'kredi_karti' && (
-              <>
-                <div>
-                  <FinansFieldLabel>Kart Son 4 Hane</FinansFieldLabel>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={4}
-                    value={form.cardLast4}
-                    onChange={(e) =>
-                      setForm({ ...form, cardLast4: e.target.value.replace(/\D/g, '').slice(0, 4) })
-                    }
-                    className={finansInputClass}
-                    placeholder="4144"
-                  />
-                </div>
-                <div>
-                  <FinansFieldLabel>Kart Etiketi</FinansFieldLabel>
-                  <input
-                    type="text"
-                    value={form.cardLabel}
-                    onChange={(e) => setForm({ ...form, cardLabel: e.target.value })}
-                    onBlur={() =>
-                      setForm((f) => ({
-                        ...f,
-                        cardLabel: f.cardLabel ? toTitleCaseTR(f.cardLabel.trim()) : '',
-                      }))
-                    }
-                    className={finansInputClass}
-                    placeholder="Örn. şirket kartı"
-                  />
-                </div>
-              </>
-            )}
-            {!editId && (
-              <>
-                <div>
-                  <FinansFieldLabel>Açılış Tutarı</FinansFieldLabel>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={form.openingAmount}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        openingAmount: numberToTrAmountInput(e.target.value),
-                      })
-                    }
-                    className={finansInputClass}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <FinansFieldLabel>Borç / Alacak</FinansFieldLabel>
-                  <select
-                    value={form.openingDirection}
-                    onChange={(e) =>
-                      setForm({ ...form, openingDirection: e.target.value as CariAcilisYon })
-                    }
-                    className={finansInputClass}
-                    data-testid="cari-acilis-yon"
-                  >
-                    {(Object.entries(CARI_ACILIS_YON_LABEL) as [CariAcilisYon, string][]).map(
-                      ([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    Borç: cari bize borçlu · Alacak: biz cariye borçluyuz
-                  </p>
-                </div>
-              </>
-            )}
+      <FinansDrawer
+        open={showForm}
+        title={editId ? 'Cari Hesabı Düzenle' : 'Şirket Carisi'}
+        subtitle="Kredi kartı, banka, vergi, SGK veya kredi hesabı. Müşteri / tedarikçi sol menüden açılır."
+        testId="cari-hesap-cekmece"
+        onClose={() => {
+          setShowForm(false);
+          setEditId(null);
+        }}
+        footer={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <FinansActionButton
+              label="İptal"
+              onClick={() => {
+                setShowForm(false);
+                setEditId(null);
+              }}
+              variant="neutral"
+              showPlus={false}
+              disabled={saving}
+            />
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                void handleSave();
+              }}
+              className="inline-flex items-center rounded-lg border border-brand-600 bg-brand-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-brand-700 transition-colors disabled:opacity-50"
+              data-testid="cari-hesap-cekmece-kaydet"
+            >
+              {saving ? 'Kaydediliyor…' : 'Kaydet'}
+            </button>
           </div>
-        </FinansFormPanel>
-      )}
+        }
+      >
+        <CariHesapFormFields form={form} setForm={setForm} showOpening={!editId} />
+      </FinansDrawer>
 
       <div className="flex max-w-2xl flex-wrap items-end gap-3">
         <div className="w-[148px] shrink-0">
@@ -679,10 +540,14 @@ export default function FinansCarilerPage() {
             className={finansInputClass}
           >
             <option value="">Tümü</option>
-            {TUR_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
+            {CARI_TUR_GRUPLARI.map((grup) => (
+              <optgroup key={grup.label} label={grup.label}>
+                {grup.kinds.map((value) => (
+                  <option key={value} value={value}>
+                    {CARI_TUR_LABEL[value]}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>

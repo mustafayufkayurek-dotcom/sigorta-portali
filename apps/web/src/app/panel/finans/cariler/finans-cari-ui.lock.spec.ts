@@ -33,9 +33,42 @@ describe('Finans cari UI LOCK', () => {
       'utf8',
     );
 
-    assert.match(list, /cari-aciklama/);
-    assert.match(list, /Açıklama/);
+    assert.match(list, /CariHesapFormFields/);
+    assert.match(list, /FinansDrawer/);
+    assert.match(list, /cari-hesap-cekmece/);
+    assert.doesNotMatch(list, /FinansFormPanel/);
     assert.match(list, /cari-excel-aktar/);
+    const cariForm = readFileSync(
+      join(here, '../../../../components/finance/CariHesapFormFields.tsx'),
+      'utf8',
+    );
+    const cariModal = readFileSync(
+      join(here, '../../../../components/finance/CariHesapCreateModal.tsx'),
+      'utf8',
+    );
+    assert.match(cariForm, /cari-hesap-form-alanlari/);
+    assert.match(cariForm, /cari-aciklama/);
+    assert.match(cariForm, /Açıklama/);
+    assert.match(cariForm, /cari-telefon/);
+    assert.match(cariForm, /cari-eposta/);
+    assert.match(cariForm, /cari-acilis-yon/);
+    assert.match(cariForm, /CARI_SIRKET_TUR_GRUPLARI/);
+    assert.match(cariForm, /optgroup/);
+    assert.match(cariForm, /newCariHesapForm\(kind: CariTur = 'kredi_karti'\)/);
+    assert.doesNotMatch(cariForm, /CARI_TUR_GRUPLARI/);
+    assert.match(list, /cari-musteri-kartina-git/);
+    assert.match(list, /cari-tedarikci-kartina-git/);
+    assert.match(list, /cari-sirket-hesabi-ac/);
+    assert.match(list, /Şirket Carisi/);
+    assert.match(shared, /musteri_tedarikci/);
+    assert.match(shared, /Müşteri Ve Tedarikçi/);
+    assert.match(shared, /CARI_SIRKET_TUR_GRUPLARI/);
+    assert.match(shared, /cariKarsiTarafListeSayfalari/);
+    assert.match(shared, /isCariMusteriRolu/);
+    assert.match(shared, /cariTurFilterKinds/);
+    assert.match(cariModal, /masraf-cari-kart-ac/);
+    assert.match(cariModal, /Yeni Cari Hesap/);
+    assert.match(cariModal, /CariHesapFormFields/);
     assert.doesNotMatch(list, /cari-donem-sonu/);
     assert.match(list, /Excel/);
     const donem = readFileSync(join(here, 'donem-sonu/page.tsx'), 'utf8');
@@ -68,11 +101,9 @@ describe('Finans cari UI LOCK', () => {
     assert.match(list, /Bakiye Kopyala/);
     assert.match(list, /openWhatsAppChat/);
     assert.match(list, /mailto:/);
-    assert.match(list, /cari-telefon/);
-    assert.match(list, /cari-eposta/);
     assert.match(list, /buildCariBakiyeIletisimMesaji/);
     assert.match(list, /cariBakiyeMetin/);
-    assert.match(list, /Borç \/ Alacak/);
+    assert.match(cariForm, /Borç \/ Alacak/);
     assert.match(list, /table-cols:finans-cariler-v3/);
     assert.match(list, /defaultWidth: 200/);
     assert.match(list, /defaultWidth: 148/);
@@ -93,12 +124,42 @@ describe('Finans cari UI LOCK', () => {
     assert.match(detail, /cariBakiyeMetin/);
     assert.match(detail, /Borç \/ Alacak/);
     assert.match(detail, /yazdir/);
+    assert.match(detail, /cari-tahsilat-al-ac/);
+    assert.match(detail, /CariTahsilatAlModal/);
+    assert.match(detail, /Tahsilat Ekle/);
+    assert.match(detail, /TrDateInput/);
+    assert.match(detail, /finansIslemTarihiDonemUyarisi/);
+    assert.match(detail, /cari-hareket-tarih-donem-uyari/);
+
+    const tahsilatModal = readFileSync(
+      join(here, '../../../../components/finance/CariTahsilatAlModal.tsx'),
+      'utf8',
+    );
+    assert.match(tahsilatModal, /finansIslemTarihiDonemUyarisi/);
+    assert.match(tahsilatModal, /cari-tahsilat-tarih-donem-uyari/);
+    assert.match(tahsilatModal, /Kayıt durdurulmaz|finansIslemTarihiDonemUyarisi/);
 
     assert.match(home, /finans-merkez-kurulum-seridi/);
     assert.match(home, /finans-kurulum-adim-listesi/);
     assert.match(home, /finans-sirket-seyir-baslik/);
     assert.match(home, /Şirket Seyri/);
+    assert.match(home, /finans-seyir-donem-ozet/);
+    assert.match(home, /finans-seyir-gelir/);
+    assert.match(home, /finans-seyir-gider/);
+    assert.match(home, /finans-seyir-kar/);
     assert.match(home, /finans-seyir-cari-ozet/);
+    assert.match(home, /finans-seyir-nakit/);
+    assert.match(home, /FINANS_KART_YOL\.bankaHesaplari/);
+    assert.match(home, /seyir!\.nakit/);
+    assert.match(home, /seyir!\.gelir/);
+    assert.match(home, /seyir!\.gider/);
+    assert.match(home, /seyir!\.kar/);
+    assert.match(home, /seyir!\.kar < 0/);
+    assert.match(home, /−\$\{formatTryAmount\(Math\.abs\(seyir!\.kar\)/);
+    assert.match(home, /params: \{ year, month \}/);
+    assert.match(home, /netSonucYol/);
+    assert.match(home, /masrafYol/);
+    assert.match(home, /tahsilEdilenYol/);
     assert.match(home, /finans-hedef-ciro-onerisi/);
     assert.match(home, /finans-hedef-ciro-kabul/);
     assert.match(home, /finans-hedef-ciro-incele/);
@@ -117,7 +178,7 @@ describe('Finans cari UI LOCK', () => {
     assert.match(home, /FinansPanelCard/);
     assert.match(home, /FinansDataTable/);
     assert.match(home, /TrAmountInput/);
-    assert.match(home, /Yeni Gider/);
+    assert.match(home, /Sabit Gider Ekle/);
     assert.match(home, /Gideri Tanımla/);
     assert.match(home, /finans-sabit-gider-tanim-form/);
     assert.match(home, /finans-sabit-gider-tanim-ozet/);
@@ -129,12 +190,24 @@ describe('Finans cari UI LOCK', () => {
     assert.match(home, /size="lg"/);
     assert.match(home, /finans-isletme-sabit-ad/);
     assert.match(home, /finans-isletme-sabit-kategori/);
+    assert.match(home, /finans-isletme-sabit-cari-alan/);
+    assert.match(home, /Ödeme Kaynağı \(Cari\)/);
+    assert.match(home, /partyAccountId: sabitPartyAccountId/);
     assert.match(home, /finans-isletme-sabit-tutar/);
     assert.match(home, /finans-isletme-sabit-baslangic/);
     assert.match(home, /finans-isletme-sabit-temizle/);
     assert.match(home, /finans-isletme-sabit-ekle/);
     assert.match(home, /finans-isletme-sabit-toplam/);
     assert.match(home, /finans-isletme-sabit-liste/);
+    assert.match(home, /finans-isletme-sabit-cari/);
+    assert.match(home, /finans-isletme-sabit-dusum/);
+    assert.match(home, /Bu Ayı Cariye Düş/);
+    assert.match(home, /isletme-sabit\/dusum/);
+    assert.match(home, /cariye yazıldı/);
+    assert.match(home, /finans-isletme-sabit-donem-uyari/);
+    assert.match(home, /finansIslemDonemSecimUyarisi/);
+    assert.doesNotMatch(home, /Bu ay bekliyor/);
+    assert.match(home, /ödeme kaydı değildir/);
     assert.match(home, />Gider</);
     assert.match(home, /Aylık Tutar/);
     assert.match(home, />Durum</);
@@ -144,13 +217,16 @@ describe('Finans cari UI LOCK', () => {
     assert.doesNotMatch(home, /FinansFormPanel/);
     assert.doesNotMatch(home, /finans-aylik-isletme-sabiti/);
     assert.doesNotMatch(home, /Aylık İşletme Sabiti/);
-    assert.doesNotMatch(home, /Sabit Gider Ekle/);
+    assert.doesNotMatch(home, /Yeni Gider/);
     assert.doesNotMatch(home, /Gerçekleşen Ciro/);
     assert.doesNotMatch(home, /Net Kâr/);
     assert.match(home, /toTitleCaseTR/);
     assert.match(home, /sabitEkleAcik/);
-    assert.match(home, /finans-hedef-sabit-karta-git/);
-    assert.match(home, /Sabit Gider Yönetimine Git/);
+    assert.doesNotMatch(home, /finans-hedef-sabit-karta-git/);
+    assert.doesNotMatch(home, /Sabit Gider Yönetimine Git/);
+    assert.doesNotMatch(home, /finans-hedef-konu-cariler/);
+    assert.doesNotMatch(home, /acIsletmeSabitKart/);
+    assert.doesNotMatch(home, /carilerHedefBaglamYol/);
     assert.match(home, /isletmeSabitKalemleri/);
     assert.match(home, /kaydetIsletmeSabit/);
     assert.doesNotMatch(home, /finans-isletme-sabit-ekle-satir/);
@@ -158,7 +234,6 @@ describe('Finans cari UI LOCK', () => {
     assert.doesNotMatch(home, />Kalem</);
     assert.doesNotMatch(home, /Kira, maaş, araç/);
     assert.doesNotMatch(home, /Örn\. 45000/);
-    assert.match(home, /carilerHedefBaglamYol/);
     assert.match(home, /incele=hedef|incele.*hedef/);
     assert.match(home, /Sıfır hedef/);
     assert.doesNotMatch(home, /finans-hedef-ciro-sabit-input/);
@@ -205,8 +280,36 @@ describe('Finans cari UI LOCK', () => {
     assert.match(shared, /maliDonemPromptFromLastPosting/);
     assert.match(shared, /addCalendarMonthsIso/);
     assert.match(shared, /proposeFinansHedefCiro/);
+    assert.match(shared, /splitFinansSeyirBakiyeleri/);
+    assert.match(shared, /buildFinansSeyirDonemKarZarar/);
+    assert.match(shared, /CARI_KARSI_TARAF_ROL_LABEL/);
+    assert.match(shared, /normalizeCariKarsiTarafRol/);
+    assert.match(shared, /cariRolFromPartyKind/);
+    assert.match(shared, /cariCiftRolKimlikHatasi/);
+    assert.match(shared, /bireysel kartta T\.C\. kimlik/);
+    const musteriPage = readFileSync(
+      join(here, '../../musteriler/page.tsx'),
+      'utf8',
+    );
+    const tedarikciPage = readFileSync(
+      join(here, '../../tedarikciler/page.tsx'),
+      'utf8',
+    );
+    assert.match(musteriPage, /musteri-cari-rol/);
+    assert.match(tedarikciPage, /tedarikci-cari-rol/);
+    assert.match(musteriPage, /musteri_tedarikci/);
+    assert.match(tedarikciPage, /musteri_tedarikci/);
+    assert.match(musteriPage, /CARI_KARSI_TARAF_ROL_LABEL/);
+    assert.match(tedarikciPage, /CARI_KARSI_TARAF_ROL_LABEL/);
+    assert.match(shared, /bankaCariKodu/);
+    assert.match(shared, /NAKIT_KASA_CARI_KODU/);
     assert.match(shared, /Masraf kaynağı/);
     assert.match(shared, /label: 'Borç'/);
     assert.doesNotMatch(shared, /Borç Bakiyesi \(Alacağımız\)/);
+
+    const banka = readFileSync(join(here, '../banka-hesaplari/page.tsx'), 'utf8');
+    assert.match(banka, /banka-hesap-cari-link/);
+    assert.match(banka, /partyAccountId/);
+    assert.match(banka, /Cari Ekstre/);
   });
 });

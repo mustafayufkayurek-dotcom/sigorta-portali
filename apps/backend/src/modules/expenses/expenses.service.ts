@@ -25,6 +25,8 @@ import {
   workGroupExpenseOverLimitMessage,
   customerMatchesExpenseLane,
   expenseLaneFromSubject,
+  EXPENSE_PARTY_ACCOUNT_REQUIRED_MESSAGE,
+  hasExpensePartyAccountId,
   hasarFileBudgetExpenseWhere,
   isCustomerExpenseLane,
   type ExpenseLane,
@@ -781,9 +783,17 @@ export class ExpensesService {
       }));
   }
 
-  async create(dto: CreateExpenseDto, userId: string) {
+  async create(
+    dto: CreateExpenseDto,
+    userId: string,
+    opts?: { requirePartyAccount?: boolean },
+  ) {
     if (!dto.date || dto.amount == null) {
       throw new BadRequestException('Tarih ve tutar zorunludur');
+    }
+    const requirePartyAccount = opts?.requirePartyAccount !== false;
+    if (requirePartyAccount && !hasExpensePartyAccountId(dto.partyAccountId)) {
+      throw new BadRequestException(EXPENSE_PARTY_ACCOUNT_REQUIRED_MESSAGE);
     }
     if (dto.workGroupId && dto.fileCaseId) {
       const wg = await this.prisma.workGroup.findUnique({
@@ -829,24 +839,15 @@ export class ExpensesService {
       if (!dto.fileCaseId) {
         throw new BadRequestException('Masraf girişi için hasar dosyası seçimi zorunludur.');
       }
-      const fileKind = await this.assertFileEligibleForExpense(dto.fileCaseId, dto.expensePlan);
-      const plan = dto.expensePlan ?? 'BUTCELENEN';
-      if (plan === 'BUTCELENEN' && fileKind !== 'inspection') {
-        const audit = await this.getWorkGroupExpenseAudit(dto.fileCaseId);
-        if (audit.groups.length > 0) {
-          if (!dto.workGroupId) {
-            throw new BadRequestException('Rapordaki iş grubunu seçin. Masraf bu satırdan denetlenir.');
-          }
-          const line = audit.groups.find((g) => g.workGroupId === dto.workGroupId);
-          if (line && line.jobDefinitions.length > 0 && !String(dto.workSubGroupName ?? '').trim()) {
-            throw new BadRequestException('İş tanımı seçimi zorunludur.');
-          }
-          await this.assertWorkGroupExpenseBudget({
-            fileCaseId: dto.fileCaseId,
-            workGroupId: dto.workGroupId,
-            amount: dto.amount,
-          });
-        }
+      await this.assertFileEligibleForExpense(dto.fileCaseId, dto.expensePlan);
+      // Masraf kalemi (expense category) ile yazılır. İş grubu seçimi zorunlu değildir;
+      // verilmişse yalnız o satır bütçesine göre üst sınır bakılır.
+      if (dto.workGroupId && (dto.expensePlan ?? 'BUTCELENEN') === 'BUTCELENEN') {
+        await this.assertWorkGroupExpenseBudget({
+          fileCaseId: dto.fileCaseId,
+          workGroupId: dto.workGroupId,
+          amount: dto.amount,
+        });
       }
     }
 
@@ -856,9 +857,12 @@ export class ExpensesService {
     const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / 86400000);
     const weekNumber = Math.ceil((dayOfYear + 1) / 7);
 
-    if (dto.partyAccountId) {
+    const partyAccountId = hasExpensePartyAccountId(dto.partyAccountId)
+      ? dto.partyAccountId.trim()
+      : null;
+    if (partyAccountId) {
       const account = await this.prisma.partyAccount.findFirst({
-        where: { id: dto.partyAccountId, isActive: true },
+        where: { id: partyAccountId, isActive: true },
         select: { id: true },
       });
       if (!account) throw new BadRequestException('Seçilen cari hesap bulunamadı.');
@@ -878,7 +882,7 @@ export class ExpensesService {
         operationSubject: dto.operationSubject as any ?? null,
         fileCaseId: isManagementPool || customerLane ? null : (dto.fileCaseId ?? null),
         customerId: customerLane ? (dto.customerId ?? null) : null,
-        partyAccountId: dto.partyAccountId ?? null,
+        partyAccountId,
         isOverheadPool: isManagementPool,
         receiptImageUrl: dto.receiptImageUrl ?? null,
         createdById: userId,
@@ -890,9 +894,9 @@ export class ExpensesService {
       },
     });
 
-    if (dto.partyAccountId && this.partyAccounts) {
-      await this.partyAccounts.postExpenseDebit({
-        accountId: dto.partyAccountId,
+    if (partyAccountId && this.partyAccounts) {
+      await this.partyAccounts.syncExpenseDebit({
+        accountId: partyAccountId,
         expenseId: created.id,
         amount: Number(dto.amount),
         entryDate: date,
@@ -978,11 +982,42 @@ export class ExpensesService {
       if (dto.expenseSubgroup) data.expenseSubgroup = dto.expenseSubgroup;
     }
 
+    const previousPartyId = hasExpensePartyAccountId(previous.partyAccountId)
+      ? String(previous.partyAccountId).trim()
+      : null;
+    let nextPartyId = previousPartyId;
+    if (dto.partyAccountId !== undefined) {
+      if (!hasExpensePartyAccountId(dto.partyAccountId)) {
+        throw new BadRequestException(EXPENSE_PARTY_ACCOUNT_REQUIRED_MESSAGE);
+      }
+      nextPartyId = dto.partyAccountId.trim();
+      const account = await this.prisma.partyAccount.findFirst({
+        where: { id: nextPartyId, isActive: true },
+        select: { id: true },
+      });
+      if (!account) throw new BadRequestException('Seçilen cari hesap bulunamadı.');
+      data.partyAccountId = nextPartyId;
+    } else if (!previousPartyId) {
+      throw new BadRequestException(EXPENSE_PARTY_ACCOUNT_REQUIRED_MESSAGE);
+    }
+
     const updated = await this.prisma.expense.update({
       where: { id },
       data: data as any,
       include: { expenseCategory: { include: { parent: true } } },
     });
+
+    if (nextPartyId && this.partyAccounts) {
+      await this.partyAccounts.syncExpenseDebit({
+        accountId: nextPartyId,
+        expenseId: id,
+        amount: Number(updated.amount),
+        entryDate: updated.date,
+        description: String(updated.description ?? '').trim() || 'Masraf',
+        userId: _userId,
+      });
+    }
+
     this.auditLogsService.log({
       entityType: 'Expense',
       entityId: id,
@@ -996,6 +1031,9 @@ export class ExpensesService {
 
   async remove(id: string) {
     const previous = await this.findOne(id);
+    if (this.partyAccounts) {
+      await this.partyAccounts.voidExpenseDebit(id);
+    }
     await this.prisma.expense.delete({ where: { id } });
     this.auditLogsService.log({
       entityType: 'Expense',

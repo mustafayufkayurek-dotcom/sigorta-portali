@@ -14,6 +14,7 @@ import {
 const CARI_TUR_LIST = [
   'musteri',
   'tedarikci',
+  'musteri_tedarikci',
   'kredi_karti',
   'kredi',
   'vergi',

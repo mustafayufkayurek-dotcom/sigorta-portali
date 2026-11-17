@@ -267,6 +267,10 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Finans WIP (cari ekran / tahsilat-cari bağ / masraf / tarih kilidi) — henüz alınmadı.
+Finans WIP (lokalde hazır, canlıya alınmadı — «canlıya al» deyince):
+- Cari / tahsilat / masraf omurga; Tahsilat Ekle; Tamamlanan eksik cari sırayla yaz; çift cari birleştir
+- Sigorta carisi; banka/nakit; Seyir Nakit + Gelir/Gider/Kâr (− işaretli)
+- Çift rollü cari: Cari Rol; ikiz kart; bireysel T.C. / kurumsal vergi zorunlu; her iki listede rozet
+- C0–C9 omurga (kurulum → cari → ekstre → masraf → kart/borç → tahsilat/gelir → seyir → hedef → personel yasal → sabit) lokalde bitti
 
 Canlı web **v696** · backend **v696**.

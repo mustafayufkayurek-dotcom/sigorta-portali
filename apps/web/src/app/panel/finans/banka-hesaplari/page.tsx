@@ -2,6 +2,7 @@
 
 import { API, authHeader } from '@/utils/api';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import axios from 'axios';
 import {
   usePanelTableColumns,
@@ -36,7 +37,7 @@ import { FinansTablePager } from '@/components/finance/FinansTablePager';
 import { FINANS_ACTIONS_COLUMN, FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
 
 const BANK_ACCOUNT_TABLE_COLUMNS: TableColumnDef[] = [
-  { id: 'bankName', label: 'Banka', defaultWidth: 140, minWidth: 100 },
+  { id: 'bankName', label: 'Banka', defaultWidth: 160, minWidth: 120 },
   { id: 'branchName', label: 'Şube', defaultWidth: 120, minWidth: 88 },
   { id: 'iban', label: 'IBAN', defaultWidth: 200, minWidth: 140 },
   { id: 'currency', label: 'Para Birimi', defaultWidth: 96, minWidth: 72 },
@@ -124,7 +125,9 @@ export default function BankaHesaplariPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Banka Hesapları</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Tahsilat ve ödeme için kayıtlı hesaplar.</p>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Tahsilat ve ödeme için kayıtlı hesaplar. Her hesap şirket carisine bağlanır.
+          </p>
         </div>
         <FinansActionButton
           label={showForm ? 'Formu Kapat' : 'Yeni Hesap'}
@@ -214,7 +217,22 @@ export default function BankaHesaplariPage() {
                   {tableColumns.prefs.orderedVisibleColumns.map((col) => {
                     switch (col.id) {
                       case 'bankName':
-                        return <PanelTableTd key={col.id} colId="bankName" className="px-4 py-3 font-medium text-slate-800">{acc.bankName}</PanelTableTd>;
+                        return (
+                          <PanelTableTd key={col.id} colId="bankName" className="px-4 py-3">
+                            <p className="font-medium text-slate-800">{acc.bankName}</p>
+                            {acc.partyAccountId ? (
+                              <Link
+                                href={`/panel/finans/cariler/${acc.partyAccountId}`}
+                                className="mt-0.5 inline-block text-[11px] font-medium text-brand-700 hover:underline"
+                                data-testid="banka-hesap-cari-link"
+                              >
+                                Cari Ekstre
+                              </Link>
+                            ) : (
+                              <p className="mt-0.5 text-[11px] text-slate-400">Cari kayıtta açılır</p>
+                            )}
+                          </PanelTableTd>
+                        );
                       case 'branchName':
                         return <PanelTableTd key={col.id} colId="branchName" className="px-4 py-3 text-slate-600">{acc.branchName ?? '—'}</PanelTableTd>;
                       case 'iban':

@@ -205,6 +205,55 @@ export function FinansModal({
   );
 }
 
+/** Sağdan açılan cari / finans formu — liste sayfada kalır. */
+export function FinansDrawer({
+  open,
+  title,
+  subtitle,
+  children,
+  footer,
+  onClose,
+  testId,
+  ariaLabel,
+}: {
+  open: boolean;
+  title: string;
+  subtitle?: ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
+  onClose: () => void;
+  testId?: string;
+  ariaLabel?: string;
+}) {
+  if (!open || typeof document === 'undefined') return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[400]" data-testid={testId}>
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-900/40"
+        aria-label="Kapat"
+        onClick={onClose}
+      />
+      <aside
+        className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel ?? title}
+      >
+        <div className="shrink-0 border-b border-slate-100 px-5 py-4">
+          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+          {subtitle ? <div className="mt-1 text-xs text-slate-500">{subtitle}</div> : null}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        {footer ? (
+          <div className="shrink-0 border-t border-slate-100 bg-slate-50/50 px-5 py-3">{footer}</div>
+        ) : null}
+      </aside>
+    </div>,
+    document.body,
+  );
+}
+
 export const finansInputClass =
   'w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 

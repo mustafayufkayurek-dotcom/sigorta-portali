@@ -1,5 +1,5 @@
 /**
- * Tarih kutusu GG.AA.YYYY yazınca tarayıcı kırmızı çerçeve basmasın.
+ * Tarih kutusu: satıra odaklanınca klavyeden yazılır; takvim ikondan / ↓.
  * Çalıştır: node --experimental-strip-types --test apps/web/src/components/ui/tr-date-input.lock.spec.ts
  */
 import assert from 'node:assert/strict';
@@ -16,10 +16,28 @@ const tahsilat = readFileSync(
 );
 
 describe('tarih kutusu kırmızı çerçeve LOCK', () => {
-  it('metin tarihi sayısal inputMode ile doğrulatmaz', () => {
+  it('klavye ile yazılır; yazım odakta draft tutar', () => {
     assert.doesNotMatch(src, /inputMode="numeric"/);
+    assert.match(src, /inputMode="text"/);
     assert.match(src, /autoComplete="off"/);
     assert.match(src, /spellCheck=\{false\}/);
+    assert.match(src, /handleTrDateInputChange/);
+    assert.match(src, /tr-date-text/);
+    assert.match(src, /tr-date-calendar/);
+    assert.match(src, /Takvimden seç/);
+    assert.match(src, /setFocused\(true\)/);
+    assert.match(src, /setDraft/);
+    assert.doesNotMatch(src, /nativeOverlay/);
+    assert.doesNotMatch(src, /pointer: coarse/);
+    // Odakta showPicker yok — yazımı bozmaz
+    assert.doesNotMatch(src, /onFocus=\{\(\) => \{\s*setFocused\(true\);\s*openPicker/);
+  });
+
+  it('takvim ikondan ve ok tuşuyla açılır', () => {
+    assert.match(src, /ArrowDown/);
+    assert.match(src, /openPicker/);
+    assert.match(src, /showPicker/);
+    assert.match(src, /onMouseDown=\{\(e\) => \{/);
   });
 
   it('gizli type=date :invalid gölgesini basmaz', () => {

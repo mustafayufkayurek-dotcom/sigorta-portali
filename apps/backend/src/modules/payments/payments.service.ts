@@ -28,8 +28,10 @@ import {
 } from '@/common/helpers/claim-file-scope.helper';
 import {
   AVANS_REF_PREFIX,
+  CARI_TAHSILAT_MUSTERI_REQUIRED_MESSAGE,
   coerceIncomingPayerType,
   isAvansPayment,
+  isCariOnlyCustomerTahsilat,
   isInsuredCollectionParty,
   PAYMENT_RECORD_ACCESS_MESSAGE,
   canViewPaymentRecord,
@@ -104,7 +106,11 @@ export class PaymentsService {
     if (params.payerType) where.payerType = params.payerType;
     if (params.paymentType) where.paymentType = params.paymentType;
     if (params.status) where.status = params.status;
-    if (params.method) where.method = params.method;
+    if (params.method === 'eft' || params.method === 'havale') {
+      where.method = { in: ['eft', 'havale'] };
+    } else if (params.method) {
+      where.method = params.method;
+    }
 
     if (params.queue === 'collection') {
       where.paymentType = 'incoming';
@@ -236,16 +242,49 @@ export class PaymentsService {
 
   private async enrichWithVendorNames<T extends { payerType: string; payerId: string | null }>(rows: T[]) {
     const vendorIds = [...new Set(rows.filter((r) => r.payerType === 'vendor' && r.payerId).map((r) => r.payerId!))];
-    if (!vendorIds.length) return rows.map((r) => ({ ...r, vendorName: null as string | null }));
+    const customerIds = [
+      ...new Set(rows.filter((r) => r.payerType === 'customer' && r.payerId).map((r) => r.payerId!)),
+    ];
+    if (!vendorIds.length && !customerIds.length) {
+      return rows.map((r) => ({ ...r, vendorName: null as string | null }));
+    }
 
-    const vendors = await this.prisma.vendor.findMany({
-      where: { id: { in: vendorIds } },
-      select: { id: true, name: true },
-    });
-    const map = new Map(vendors.map((v) => [v.id, v.name]));
+    const [vendors, customers] = await Promise.all([
+      vendorIds.length
+        ? this.prisma.vendor.findMany({
+            where: { id: { in: vendorIds } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([] as { id: string; name: string }[]),
+      customerIds.length
+        ? this.prisma.customer.findMany({
+            where: { id: { in: customerIds } },
+            select: { id: true, shortName: true, companyName: true, fullName: true },
+          })
+        : Promise.resolve(
+            [] as {
+              id: string;
+              shortName: string | null;
+              companyName: string | null;
+              fullName: string | null;
+            }[],
+          ),
+    ]);
+    const vendorMap = new Map(vendors.map((v) => [v.id, v.name]));
+    const customerMap = new Map(
+      customers.map((c) => [
+        c.id,
+        c.shortName || c.companyName || c.fullName || null,
+      ]),
+    );
     return rows.map((r) => ({
       ...r,
-      vendorName: r.payerType === 'vendor' && r.payerId ? map.get(r.payerId) ?? null : null,
+      vendorName:
+        r.payerType === 'vendor' && r.payerId
+          ? vendorMap.get(r.payerId) ?? null
+          : r.payerType === 'customer' && r.payerId
+            ? customerMap.get(r.payerId) ?? null
+            : null,
     }));
   }
 
@@ -275,6 +314,7 @@ export class PaymentsService {
               id: true,
               fileNo: true,
               customerId: true,
+              insuranceCompanyId: true,
               assignedOfficeUserId: true,
               currentResponsibleUserId: true,
               assignedOfficeUser: { select: { id: true, firstName: true, lastName: true } },
@@ -309,20 +349,55 @@ export class PaymentsService {
     ]);
 
     const data = await this.enrichWithVendorNames(rawData);
+    // Tamamlanmış satırda cari yoksa sırayla yaz (eski kayıt / seed; paralel çift cari açmaz).
+    if (this.partyAccounts) {
+      for (const row of data) {
+        if (row.status !== 'completed') continue;
+        const claimCustomerId =
+          row.claimFile?.customerId ??
+          (row.payerType === 'customer' ? row.payerId : null);
+        const claimInsuranceCompanyId =
+          row.claimFile?.insuranceCompanyId ??
+          (row.payerType === 'insurance_company' ? row.payerId : null);
+        const needsVendor =
+          row.paymentType === 'outgoing' && row.payerType === 'vendor' && !!row.payerId;
+        const needsCustomer =
+          row.paymentType === 'incoming' &&
+          !!(claimCustomerId || (row.payerType === 'customer' && row.payerId));
+        const needsInsurance =
+          row.paymentType === 'incoming' && !!claimInsuranceCompanyId && !claimCustomerId;
+        if (!needsVendor && !needsCustomer && !needsInsurance) continue;
+        const existing = await this.partyAccounts.resolvePartyAccountForPayment({
+          paymentType: row.paymentType,
+          payerType: row.payerType,
+          payerId: row.payerId,
+          claimCustomerId,
+          claimInsuranceCompanyId,
+        });
+        if (existing) continue;
+        await this.syncPaymentToPartyAccount(row.id, row.createdByUserId);
+      }
+    }
     const withCari = await Promise.all(
       data.map(async (row) => {
-        const partyAccountId = this.partyAccounts
-          ? await this.partyAccounts.resolvePartyAccountIdForPayment({
+        const party = this.partyAccounts
+          ? await this.partyAccounts.resolvePartyAccountForPayment({
               paymentType: row.paymentType,
               payerType: row.payerType,
               payerId: row.payerId,
-              claimCustomerId: row.claimFile?.customerId ?? null,
+              claimCustomerId:
+                row.claimFile?.customerId ??
+                (row.payerType === 'customer' ? row.payerId : null),
+              claimInsuranceCompanyId:
+                row.claimFile?.insuranceCompanyId ??
+                (row.payerType === 'insurance_company' ? row.payerId : null),
             })
           : null;
         return {
           ...row,
           queueSource: row.emergencyCaseId ? 'acil_hakedis' : null,
-          partyAccountId,
+          partyAccountId: party?.id ?? null,
+          partyAccountName: party?.name ?? null,
         };
       }),
     );
@@ -464,11 +539,33 @@ export class PaymentsService {
   }
 
   async create(dto: CreatePaymentDto, userId: string) {
-    const claimFile = await this.prisma.claimFile.findUnique({ where: { id: dto.claimFileId } });
-    if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
-
+    const claimFileId = optionalPaymentFkId(dto.claimFileId);
     const invoiceId = optionalPaymentFkId(dto.invoiceId);
     const bankAccountId = optionalPaymentFkId(dto.bankAccountId);
+
+    if (
+      !claimFileId &&
+      isCariOnlyCustomerTahsilat({
+        claimFileId: null,
+        paymentType: dto.paymentType,
+        payerType: dto.payerType,
+        payerId: dto.payerId,
+      })
+    ) {
+      return this.createCariOnlyTahsilat(dto, userId, {
+        invoiceId,
+        bankAccountId,
+        payerId: String(dto.payerId).trim(),
+      });
+    }
+
+    if (!claimFileId) {
+      throw new BadRequestException(CARI_TAHSILAT_MUSTERI_REQUIRED_MESSAGE);
+    }
+
+    const claimFile = await this.prisma.claimFile.findUnique({ where: { id: claimFileId } });
+    if (!claimFile) throw new NotFoundException('Hasar dosyası bulunamadı');
+
     if (invoiceId) {
       const invoice = await this.prisma.invoice.findUnique({ where: { id: invoiceId } });
       if (!invoice) throw new NotFoundException('Fatura bulunamadı');
@@ -498,7 +595,7 @@ export class PaymentsService {
 
     const payment = await this.prisma.payment.create({
       data: {
-        claimFileId: dto.claimFileId,
+        claimFileId,
         paymentType: dto.paymentType,
         paymentDate: new Date(dto.paymentDate),
         amount: dto.amount,
@@ -532,17 +629,15 @@ export class PaymentsService {
       });
     }
 
-    // Update linked invoice status if applicable
     if (invoiceId && payment.status === 'completed') {
       await this.updateInvoicePaymentStatus(invoiceId);
     }
 
-    await this.financialSummary.recalculate(dto.claimFileId);
+    await this.financialSummary.recalculate(claimFileId);
     await this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
 
-    // P&L Faz 3: Gelen ödeme → ClaimFileRevenue.collectedAmount güncelle
     if (payment.status === 'completed') {
-      await this.syncPaymentToRevenue(payment.id, dto.claimFileId, dto.amount);
+      await this.syncPaymentToRevenue(payment.id, claimFileId, dto.amount);
       await this.syncPaymentToPartyAccount(payment.id, userId);
     }
 
@@ -550,6 +645,67 @@ export class PaymentsService {
       this.triggerLogoPaymentSync(payment.id, payment.paymentType).catch(() => {});
     }
 
+    return payment;
+  }
+
+  /** Müşteri carisi tahsilatı — dosya bakiyesi / dosya geliri yazılmaz. */
+  private async createCariOnlyTahsilat(
+    dto: CreatePaymentDto,
+    userId: string,
+    ids: { invoiceId: string | null; bankAccountId: string | null; payerId: string },
+  ) {
+    if (Number(dto.amount) <= 0) {
+      throw new BadRequestException('Tutar sıfırdan büyük olmalıdır');
+    }
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: ids.payerId },
+      select: { id: true, shortName: true, companyName: true, fullName: true },
+    });
+    if (!customer) throw new NotFoundException('Müşteri bulunamadı');
+
+    if (ids.invoiceId) {
+      const invoice = await this.prisma.invoice.findUnique({ where: { id: ids.invoiceId } });
+      if (!invoice) throw new NotFoundException('Fatura bulunamadı');
+    }
+
+    const status = dto.status ?? 'completed';
+    const payment = await this.prisma.payment.create({
+      data: {
+        claimFileId: null,
+        paymentType: 'incoming',
+        paymentDate: new Date(dto.paymentDate),
+        amount: dto.amount,
+        currency: dto.currency ?? 'TRY',
+        method: dto.method,
+        payerType: 'customer',
+        payerId: ids.payerId,
+        invoiceId: ids.invoiceId,
+        referenceNo: dto.referenceNo ?? null,
+        status,
+        bankAccountId: ids.bankAccountId,
+        note: dto.note ?? null,
+        createdByUserId: userId,
+      },
+    });
+    this.auditLogsService.log({
+      entityType: 'Payment',
+      entityId: payment.id,
+      action: 'CREATE',
+      newValue: payment,
+      userId,
+    });
+    if (payment.status === 'completed') {
+      this.auditLogsService.log({
+        entityType: 'Payment',
+        entityId: payment.id,
+        action: 'APPROVE',
+        newValue: { status: payment.status },
+        userId,
+      });
+      await this.syncPaymentToPartyAccount(payment.id, userId);
+    }
+    await this.cache.invalidatePattern('cache:dashboard:*').catch(() => {});
+    this.triggerLogoPaymentSync(payment.id, payment.paymentType).catch(() => {});
     return payment;
   }
 
@@ -848,9 +1004,11 @@ export class PaymentsService {
             id: true,
             fileNo: true,
             customerId: true,
+            insuranceCompanyId: true,
             customer: {
               select: { shortName: true, companyName: true, fullName: true },
             },
+            insuranceCompany: { select: { id: true, name: true } },
           },
         },
       },
@@ -876,26 +1034,92 @@ export class PaymentsService {
           userId: actorId,
           customerName,
         });
-        return;
-      }
-
-      if (
-        payment.paymentType === 'outgoing' &&
-        payment.payerType === 'vendor' &&
-        payment.payerId
+      } else if (
+        payment.paymentType === 'incoming' &&
+        payment.payerType === 'customer' &&
+        payment.payerId &&
+        !payment.claimFileId
       ) {
-        const vendor = await this.prisma.vendor.findUnique({
+        const customer = await this.prisma.customer.findUnique({
           where: { id: payment.payerId },
-          select: { name: true },
+          select: { shortName: true, companyName: true, fullName: true },
         });
-        await this.partyAccounts.postOdemeBorc({
-          vendorId: payment.payerId,
+        const customerName =
+          customer?.shortName || customer?.companyName || customer?.fullName || null;
+        await this.partyAccounts.postTahsilatAlacak({
+          customerId: payment.payerId,
           paymentId: payment.id,
           amount,
           entryDate: payment.paymentDate,
-          description: `Ödeme${payment.claimFile?.fileNo ? ` · ${payment.claimFile.fileNo}` : ''}`,
+          description: 'Tahsilat',
           userId: actorId,
-          vendorName: vendor?.name,
+          customerName,
+        });
+      } else {
+        const insuranceCompanyId =
+          (payment.paymentType === 'incoming' && payment.payerType === 'insurance_company'
+            ? payment.payerId
+            : null) ||
+          payment.claimFile?.insuranceCompanyId ||
+          null;
+        if (payment.paymentType === 'incoming' && insuranceCompanyId) {
+          const insuranceName =
+            payment.claimFile?.insuranceCompany?.name ||
+            (await this.prisma.insuranceCompany
+              .findUnique({
+                where: { id: insuranceCompanyId },
+                select: { name: true },
+              })
+              .then((r) => r?.name ?? null));
+          await this.partyAccounts.postTahsilatAlacakInsurance({
+            insuranceCompanyId,
+            paymentId: payment.id,
+            amount,
+            entryDate: payment.paymentDate,
+            description: `Tahsilat${payment.claimFile?.fileNo ? ` · ${payment.claimFile.fileNo}` : ''}`,
+            userId: actorId,
+            insuranceName,
+          });
+        } else if (
+          payment.paymentType === 'outgoing' &&
+          payment.payerType === 'vendor' &&
+          payment.payerId
+        ) {
+          const vendor = await this.prisma.vendor.findUnique({
+            where: { id: payment.payerId },
+            select: { name: true },
+          });
+          await this.partyAccounts.postOdemeBorc({
+            vendorId: payment.payerId,
+            paymentId: payment.id,
+            amount,
+            entryDate: payment.paymentDate,
+            description: `Ödeme${payment.claimFile?.fileNo ? ` · ${payment.claimFile.fileNo}` : ''}`,
+            userId: actorId,
+            vendorName: vendor?.name,
+          });
+        }
+      }
+
+      const bankAccountId =
+        typeof payment.bankAccountId === 'string' && payment.bankAccountId.trim()
+          ? payment.bankAccountId.trim()
+          : null;
+      const useNakitKasa = payment.method === 'cash' && !bankAccountId;
+      if (bankAccountId || useNakitKasa) {
+        const fileSuffix = payment.claimFile?.fileNo ? ` · ${payment.claimFile.fileNo}` : '';
+        await this.partyAccounts.postNakitHareket({
+          paymentId: payment.id,
+          amount,
+          entryDate: payment.paymentDate,
+          description:
+            payment.paymentType === 'incoming'
+              ? `Nakit giriş${fileSuffix}`
+              : `Nakit çıkış${fileSuffix}`,
+          userId: actorId,
+          direction: payment.paymentType === 'incoming' ? 'giris' : 'cikis',
+          bankAccountId,
+          useNakitKasa,
         });
       }
     } catch (err) {

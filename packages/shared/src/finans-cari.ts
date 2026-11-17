@@ -7,9 +7,15 @@
 
 export const FINANS_KURULUM_AYAR_KEY = 'finans_kurulum';
 
+/**
+ * Cari türü — Logo / Xero ön muhasebe modeli.
+ * Karşı taraf: Müşteri | Tedarikçi | Müşteri Ve Tedarikçi (Alıcı+Satıcı).
+ * Ödeme araçları ve yükümlülük ayrı grupta.
+ */
 export type CariTur =
   | 'musteri'
   | 'tedarikci'
+  | 'musteri_tedarikci'
   | 'kredi_karti'
   | 'kredi'
   | 'vergi'
@@ -20,6 +26,7 @@ export type CariTur =
 export const CARI_TUR_LABEL: Record<CariTur, string> = {
   musteri: 'Müşteri',
   tedarikci: 'Tedarikçi',
+  musteri_tedarikci: 'Müşteri Ve Tedarikçi',
   kredi_karti: 'Kredi Kartı',
   kredi: 'Kredi',
   vergi: 'Vergi',
@@ -27,6 +34,172 @@ export const CARI_TUR_LABEL: Record<CariTur, string> = {
   banka: 'Banka',
   diger: 'Diğer',
 };
+
+/**
+ * Ön muhasebe kart ayrımı (Logo / Xero):
+ * - Karşı taraf kartı → sol menü Müşteriler / Tedarikçiler (operasyon kartı).
+ * - Finans → Cariler = defter (bakiye / ekstre); karşı taraf burada yeniden açılmaz.
+ * - Müşteri Ve Tedarikçi → hem Müşteriler hem Tedarikçiler listesinde görünür.
+ */
+export const CARI_KARSI_TARAF_TURLERI = [
+  'musteri',
+  'tedarikci',
+  'musteri_tedarikci',
+] as const satisfies readonly CariTur[];
+
+/** Finans’tan elle açılan şirket carileri (ödeme aracı / yükümlülük). */
+export const CARI_SIRKET_TURLERI = [
+  'banka',
+  'kredi_karti',
+  'kredi',
+  'vergi',
+  'sgk',
+  'diger',
+] as const satisfies readonly CariTur[];
+
+/** Form / filtre: sektörde kullanılan gruplar (Logo Alıcı/Satıcı/AS). */
+export const CARI_TUR_GRUPLARI: ReadonlyArray<{
+  label: string;
+  kinds: readonly CariTur[];
+}> = [
+  {
+    label: 'Karşı Taraf',
+    kinds: CARI_KARSI_TARAF_TURLERI,
+  },
+  {
+    label: 'Ödeme Araçları',
+    kinds: ['banka', 'kredi_karti'],
+  },
+  {
+    label: 'Yükümlülük',
+    kinds: ['kredi', 'vergi', 'sgk'],
+  },
+  {
+    label: 'Diğer',
+    kinds: ['diger'],
+  },
+];
+
+/** Finans Yeni Cari çekmecesi — yalnız şirket hesapları. */
+export const CARI_SIRKET_TUR_GRUPLARI: ReadonlyArray<{
+  label: string;
+  kinds: readonly CariTur[];
+}> = [
+  {
+    label: 'Ödeme Araçları',
+    kinds: ['banka', 'kredi_karti'],
+  },
+  {
+    label: 'Yükümlülük',
+    kinds: ['kredi', 'vergi', 'sgk'],
+  },
+  {
+    label: 'Diğer',
+    kinds: ['diger'],
+  },
+];
+
+export function isCariKarsiTarafTur(tur: unknown): boolean {
+  return (
+    tur === 'musteri' || tur === 'tedarikci' || tur === 'musteri_tedarikci'
+  );
+}
+
+export function isCariSirketTur(tur: unknown): boolean {
+  return (
+    tur === 'banka' ||
+    tur === 'kredi_karti' ||
+    tur === 'kredi' ||
+    tur === 'vergi' ||
+    tur === 'sgk' ||
+    tur === 'diger'
+  );
+}
+
+/** Tahsilat / satış tarafı: müşteri veya çift roller. */
+export function isCariMusteriRolu(tur: unknown): boolean {
+  return tur === 'musteri' || tur === 'musteri_tedarikci';
+}
+
+/** Ödeme / alış tarafı: tedarikçi veya çift roller. */
+export function isCariTedarikciRolu(tur: unknown): boolean {
+  return tur === 'tedarikci' || tur === 'musteri_tedarikci';
+}
+
+/**
+ * Çift rollerin menü görünümü — Logo Alıcı+Satıcı / Xero Contact.
+ * Müşteri → yalnız Müşteriler. Tedarikçi → yalnız Tedarikçiler.
+ * Müşteri Ve Tedarikçi → her iki listede.
+ */
+export function cariKarsiTarafListeSayfalari(
+  tur: unknown,
+): Array<'musteriler' | 'tedarikciler'> {
+  if (tur === 'musteri') return ['musteriler'];
+  if (tur === 'tedarikci') return ['tedarikciler'];
+  if (tur === 'musteri_tedarikci') return ['musteriler', 'tedarikciler'];
+  return [];
+}
+
+/** Liste süzgecinde Müşteri seçilince çift roller de gelir (Logo AS). */
+export function cariTurFilterKinds(tur: CariTur): CariTur[] {
+  if (tur === 'musteri') return ['musteri', 'musteri_tedarikci'];
+  if (tur === 'tedarikci') return ['tedarikci', 'musteri_tedarikci'];
+  return [tur];
+}
+
+/** Kart açılışında seçilen karşı taraf rolü (Müşteriler / Tedarikçiler formu). */
+export type CariKarsiTarafRol = 'musteri' | 'tedarikci' | 'musteri_tedarikci';
+
+export const CARI_KARSI_TARAF_ROL_LABEL: Record<CariKarsiTarafRol, string> = {
+  musteri: 'Müşteri',
+  tedarikci: 'Tedarikçi',
+  musteri_tedarikci: 'Müşteri Ve Tedarikçi',
+};
+
+export function isCariKarsiTarafRol(v: unknown): v is CariKarsiTarafRol {
+  return v === 'musteri' || v === 'tedarikci' || v === 'musteri_tedarikci';
+}
+
+export function normalizeCariKarsiTarafRol(
+  v: unknown,
+  fallback: CariKarsiTarafRol,
+): CariKarsiTarafRol {
+  return isCariKarsiTarafRol(v) ? v : fallback;
+}
+
+/** Aktif cari kaydından kart rozeti. */
+export function cariRolFromPartyKind(kind: unknown): CariKarsiTarafRol | null {
+  if (kind === 'musteri' || kind === 'tedarikci' || kind === 'musteri_tedarikci') {
+    return kind;
+  }
+  return null;
+}
+
+/**
+ * Müşteri Ve Tedarikçi ikizi için kimlik:
+ * kurumsal → vergi no; bireysel → T.C. kimlik no.
+ * Uygunsa null; değilse personel mesajı.
+ */
+export function cariCiftRolKimlikHatasi(input: {
+  entityType?: string | null;
+  taxNumber?: string | null;
+  identityNo?: string | null;
+}): string | null {
+  const entity = String(input.entityType ?? '').toLowerCase();
+  const isCorporate = entity === 'corporate';
+  if (isCorporate) {
+    const tax = String(input.taxNumber ?? '').replace(/\D/g, '');
+    if (tax.length < 10) {
+      return 'Müşteri Ve Tedarikçi için kurumsal kartta vergi numarası zorunludur';
+    }
+    return null;
+  }
+  const tc = String(input.identityNo ?? '').replace(/\D/g, '');
+  if (tc.length !== 11) {
+    return 'Müşteri Ve Tedarikçi için bireysel kartta T.C. kimlik numarası zorunludur';
+  }
+  return null;
+}
 
 /**
  * Açılış yönü (muhasebe sütunu):
@@ -48,14 +221,89 @@ export type CariHareketKaynak =
   | 'tahsilat'
   | 'gelir'
   | 'fatura'
-  | 'maas';
+  | 'maas'
+  | 'sabit'
+  | 'nakit';
+
+/** Banka hesabı carisi kodu — BankAccount.id ile birebir. */
+export function bankaCariKodu(bankAccountId: string): string {
+  return `banka-${String(bankAccountId || '').trim()}`;
+}
+
+/** Eldeki nakit kasa carisi (method=cash). */
+export const NAKIT_KASA_CARI_KODU = 'nakit-kasa';
+
+/** Banka / kasa carisi — Seyir’de nakit; karşı taraf borcuna karışmaz. */
+export function isFinansNakitCariTur(tur: unknown): boolean {
+  return tur === 'banka';
+}
+
+/**
+ * Seyir ayrımı: banka bakiyesi nakit; diğer cariler alacak / borç.
+ * Banka net > 0 → nakit. Banka net < 0 (eksi bakiye) → cari borç sayılır.
+ */
+export function splitFinansSeyirBakiyeleri(
+  accounts: Array<{ kind?: string | null; netBakiye?: number | null }>,
+): { cariAlacak: number; cariBorc: number; nakit: number } {
+  let cariAlacak = 0;
+  let cariBorc = 0;
+  let nakit = 0;
+  for (const row of accounts) {
+    const net = round2(Number(row.netBakiye) || 0);
+    if (isFinansNakitCariTur(row.kind)) {
+      if (net > 0.005) nakit = round2(nakit + net);
+      else if (net < -0.005) cariBorc = round2(cariBorc + Math.abs(net));
+      continue;
+    }
+    if (net > 0.005) cariAlacak = round2(cariAlacak + net);
+    else if (net < -0.005) cariBorc = round2(cariBorc + Math.abs(net));
+  }
+  return { cariAlacak, cariBorc, nakit };
+}
+
+/**
+ * Şirket Seyri dönem kâr/zarar — tüm hatlar.
+ * Gelir: Hasar dosya geliri + Acil gelir.
+ * Gider: Masraf İzleme + Acil gider (çift sayım yok).
+ * Kâr = gelir − gider. Sahte sıfır üretilmez; kaynaklar 0 olabilir.
+ */
+export function buildFinansSeyirDonemKarZarar(input: {
+  hasarGelir?: number | null;
+  acilGelir?: number | null;
+  masrafGider?: number | null;
+  acilGider?: number | null;
+}): {
+  hasarGelir: number;
+  acilGelir: number;
+  masrafGider: number;
+  acilGider: number;
+  gelir: number;
+  gider: number;
+  kar: number;
+} {
+  const hasarGelir = round2(Math.max(0, Number(input.hasarGelir) || 0));
+  const acilGelir = round2(Math.max(0, Number(input.acilGelir) || 0));
+  const masrafGider = round2(Math.max(0, Number(input.masrafGider) || 0));
+  const acilGider = round2(Math.max(0, Number(input.acilGider) || 0));
+  const gelir = round2(hasarGelir + acilGelir);
+  const gider = round2(masrafGider + acilGider);
+  return {
+    hasarGelir,
+    acilGelir,
+    masrafGider,
+    acilGider,
+    gelir,
+    gider,
+    kar: round2(gelir - gider),
+  };
+}
 
 export interface FinansKurulumDurum {
   /** En az bir cari tanımlandı veya «şimdilik yok» onaylandı */
   cariTanim: boolean | 'yok';
   /** Açılış bakiyeleri gözden geçirildi / işlendi */
   acilisGozdenGecirildi: boolean;
-  /** Masraf kaynağı kuralı açık (sonraki aşama) */
+  /** Masraf kaynağı kuralı onaylandı (yeni masraf cari seçilmeden kaydolmaz) */
   masrafKaynak: boolean;
   /** Seyir paneli açılsın mı */
   seyirAcik: boolean;
@@ -95,6 +343,64 @@ export function finansKurulumEksikleri(k: FinansKurulumDurum): string[] {
   if (!k.acilisGozdenGecirildi) eksik.push('Açılış bakiyesi gözden geçirme');
   if (!k.masrafKaynak) eksik.push('Masraf kaynağı');
   return eksik;
+}
+
+/** Personel masrafında ödeme kaynağı cari zorunlu. */
+export const EXPENSE_PARTY_ACCOUNT_REQUIRED_MESSAGE =
+  'Ödeme kaynağı cari seçimi zorunludur.';
+
+export function hasExpensePartyAccountId(v: unknown): v is string {
+  return typeof v === 'string' && v.trim().length > 0;
+}
+
+/** Dosyasız müşteri tahsilatı — yalnız cariye yazılır. */
+export const CARI_TAHSILAT_MUSTERI_REQUIRED_MESSAGE =
+  'Müşteri carisi tahsilatı için müşteri seçimi zorunludur.';
+
+export function isCariOnlyCustomerTahsilat(input: {
+  claimFileId?: string | null;
+  paymentType?: string | null;
+  payerType?: string | null;
+  payerId?: string | null;
+}): boolean {
+  const claimId = typeof input.claimFileId === 'string' ? input.claimFileId.trim() : '';
+  const payerId = typeof input.payerId === 'string' ? input.payerId.trim() : '';
+  return (
+    !claimId &&
+    input.paymentType === 'incoming' &&
+    input.payerType === 'customer' &&
+    payerId.length > 0
+  );
+}
+
+/**
+ * Tahsilat / ödeme satırında cari izi.
+ * Tamamlanan tahsilat müşteri carisine, tedarikçi ödemesi tedarikçi carisine işler.
+ */
+export function finansPaymentCariEtiket(input: {
+  status?: string | null;
+  partyAccountId?: string | null;
+  paymentType?: string | null;
+}): { label: string; tone: 'posted' | 'queued' | 'missing' | 'none' } {
+  const hasCari =
+    typeof input.partyAccountId === 'string' && input.partyAccountId.trim().length > 0;
+  const completed = input.status === 'completed';
+  if (completed && hasCari) {
+    return { label: 'Cariye yazıldı', tone: 'posted' };
+  }
+  if (!completed && hasCari) {
+    return {
+      label:
+        input.paymentType === 'incoming'
+          ? 'Tahsilat sonrası cariye işler'
+          : 'Ödeme sonrası cariye işler',
+      tone: 'queued',
+    };
+  }
+  if (completed && !hasCari) {
+    return { label: 'Cari bağlanamadı', tone: 'missing' };
+  }
+  return { label: '—', tone: 'none' };
 }
 
 export function isCariTur(v: unknown): v is CariTur {
@@ -162,7 +468,7 @@ export function buildCariBakiyeIletisimMesaji(input: {
 
 /** Kredi kartı / tedarikçi / kredi için varsayılan açılış yönü = borcumuz. */
 export function cariVarsayilanAcilisYon(tur: CariTur): CariAcilisYon {
-  if (tur === 'musteri') return 'alacak';
+  if (tur === 'musteri' || tur === 'musteri_tedarikci') return 'alacak';
   if (tur === 'banka') return 'alacak';
   return 'borc';
 }
@@ -430,6 +736,8 @@ export type FinansIsletmeSabitKalemi = {
   /** null = Süresiz */
   bitis: string | null;
   durum: FinansIsletmeSabitDurum;
+  /** Ödeme kaynağı cari — masraf ile aynı kapı; eski kayıtlarda boş olabilir. */
+  partyAccountId: string;
 };
 
 export type FinansHedefCiroKayit = {
@@ -494,6 +802,104 @@ export function resolveFinansHedefSabitGider(
   return t > 0.005 ? round2(t) : 0;
 }
 
+/** Cari hareket sourceId — aynı kalem + ay ikinci kez düşmez. */
+export function finansIsletmeSabitSourceId(
+  kalemId: string,
+  year: number,
+  month: number,
+): string {
+  const y = Math.trunc(Number(year));
+  const m = Math.trunc(Number(month));
+  const id = String(kalemId ?? '').trim().slice(0, 40);
+  return `sabit:${id}:${y}-${String(m).padStart(2, '0')}`;
+}
+
+function ayGunAraligi(year: number, month: number): { start: string; end: string } {
+  const y = Math.trunc(Number(year));
+  const m = Math.trunc(Number(month));
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const mm = String(m).padStart(2, '0');
+  return {
+    start: `${y}-${mm}-01`,
+    end: `${y}-${mm}-${String(last).padStart(2, '0')}`,
+  };
+}
+
+/**
+ * Kalem o ay için cariye düşülebilir mi?
+ * Aktif + cari + tutar + başlangıç/bitiş ayı kapsar.
+ */
+export function finansIsletmeSabitAktifAyda(
+  kalem: FinansIsletmeSabitKalemi | null | undefined,
+  year: number,
+  month: number,
+): boolean {
+  if (!kalem || kalem.durum !== 'aktif') return false;
+  if (!String(kalem.partyAccountId ?? '').trim()) return false;
+  const tutar = Number(kalem.aylikTutar);
+  if (!Number.isFinite(tutar) || tutar <= 0.005) return false;
+  const { start, end } = ayGunAraligi(year, month);
+  if (kalem.baslangic && kalem.baslangic > end) return false;
+  if (kalem.bitis && kalem.bitis < start) return false;
+  return true;
+}
+
+export type FinansIsletmeSabitDusumOzet = {
+  year: number;
+  month: number;
+  posted: number;
+  skippedAlready: number;
+  skippedNoCari: number;
+  skippedInactive: number;
+  postedKalemIds: string[];
+};
+
+/** Dönem günü (cari hareket tarihi): ayın 1’i. */
+export function finansIsletmeSabitEntryDateIso(year: number, month: number): string {
+  const y = Math.trunc(Number(year));
+  const m = Math.trunc(Number(month));
+  return `${y}-${String(m).padStart(2, '0')}-01`;
+}
+
+/**
+ * İşlem tarihi bugünün ayından farklıysa uyarı metni.
+ * Kayıt engellenmez — fiş/fatura geç gelebilir; yeni ay da serbest.
+ */
+export function finansIslemTarihiDonemUyarisi(
+  entryDateIso: string,
+  todayIso?: string,
+): string | null {
+  const entry = String(entryDateIso ?? '').slice(0, 10);
+  const today = String(todayIso ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(entry) || !/^\d{4}-\d{2}-\d{2}$/.test(today)) return null;
+  const entryYm = entry.slice(0, 7);
+  const todayYm = today.slice(0, 7);
+  if (entryYm === todayYm) return null;
+  const y = Number(entryYm.slice(0, 4));
+  const m = Number(entryYm.slice(5, 7));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return null;
+  const label = `${String(m).padStart(2, '0')}.${y}`;
+  if (entryYm > todayYm) {
+    return `Tarih ${label} dönemine (yeni ay) ait. Kayıt durdurulmaz; fiş/fatura geç gelebildiği için dönemi kontrol ederek devam edin.`;
+  }
+  return `Tarih ${label} dönemine (önceki ay) ait. Kayıt durdurulmaz; fiş/fatura geç gelebildiği için dönemi kontrol ederek devam edin.`;
+}
+
+/** Seçilen yıl/ay, bugünün ayından farklıysa aynı uyarı kapısı. */
+export function finansIslemDonemSecimUyarisi(
+  year: number,
+  month: number,
+  todayIso?: string,
+): string | null {
+  const y = Math.trunc(Number(year));
+  const m = Math.trunc(Number(month));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return null;
+  return finansIslemTarihiDonemUyarisi(
+    `${y}-${String(m).padStart(2, '0')}-01`,
+    todayIso,
+  );
+}
+
 export function normalizeFinansIsletmeSabitKalemi(raw: unknown): FinansIsletmeSabitKalemi | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
@@ -513,6 +919,8 @@ export function normalizeFinansIsletmeSabitKalemi(raw: unknown): FinansIsletmeSa
         ? o.bitis.trim()
         : null;
   const durum: FinansIsletmeSabitDurum = o.durum === 'pasif' ? 'pasif' : 'aktif';
+  const partyAccountId =
+    typeof o.partyAccountId === 'string' ? o.partyAccountId.trim().slice(0, 64) : '';
   return {
     id,
     ad,
@@ -522,6 +930,7 @@ export function normalizeFinansIsletmeSabitKalemi(raw: unknown): FinansIsletmeSa
     baslangic,
     bitis,
     durum,
+    partyAccountId,
   };
 }
 
@@ -565,6 +974,7 @@ export function normalizeFinansHedefCiro(raw: unknown): FinansHedefCiroKayit {
           baslangic: today,
           bitis: null,
           durum: 'aktif',
+          partyAccountId: '',
         },
       ];
     }

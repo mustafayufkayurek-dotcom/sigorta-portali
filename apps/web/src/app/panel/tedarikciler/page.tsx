@@ -24,6 +24,7 @@ import { DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { LocationPickerModal, LocationPreview, type LatLng } from '@/components/LocationPickerModal';
 import { relativeTime } from '@/utils/date-helpers';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { CARI_KARSI_TARAF_ROL_LABEL, cariCiftRolKimlikHatasi } from '@sigorta/shared';
 import { geocodeAddressCascade } from '@/utils/geocode-address';
 import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
@@ -325,6 +326,8 @@ const emptyForm = () => ({
   contractStartDate: '', contractEndDate: '', contractNotes: '',
   category: 'hasar' as VendorCategory,
   canActAsInspector: false,
+  /** Finans karşı taraf rolü — çift rol her iki listede görünür. */
+  cariRol: 'tedarikci' as 'tedarikci' | 'musteri_tedarikci',
 });
 
 type PendingDoc = {
@@ -1620,6 +1623,22 @@ export default function VendorsPage() {
       errors.taxNumber = 'Vergi numarası zorunludur';
       missingLabels.push('Vergi No');
     }
+    if (!editVendor && form.cariRol === 'musteri_tedarikci') {
+      const kimlik = cariCiftRolKimlikHatasi({
+        entityType: form.entityType,
+        taxNumber: form.taxNumber,
+        identityNo: form.identityNo,
+      });
+      if (kimlik) {
+        if (form.entityType === 'individual') {
+          errors.identityNo = kimlik;
+          missingLabels.push('TC Kimlik No');
+        } else {
+          errors.taxNumber = kimlik;
+          missingLabels.push('Vergi No');
+        }
+      }
+    }
 
     const resolvedPhone = resolveVendorPrimaryPhone(form.phone, contacts, contactInfos);
     const phoneErr = vendorPhoneRequiredError(resolvedPhone, form.phoneType);
@@ -1705,6 +1724,7 @@ export default function VendorsPage() {
           : (form.type ? toTitleCaseTR(form.type) : undefined),
         category: form.category,
         canActAsInspector: !!form.canActAsInspector,
+        ...(!editVendor ? { cariRol: form.cariRol } : {}),
         address: form.address || null, city: form.city || null, district: form.district || null,
         neighborhood: form.neighborhood || null, streetName: form.streetName || null,
         buildingNo: form.buildingNo || null, doorNo: form.doorNo || null,
@@ -2326,6 +2346,11 @@ export default function VendorsPage() {
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                       <span>{vendorEntityTypeLabel(v.entityType)}</span>
+                      {v.cariRol === 'musteri_tedarikci' ? (
+                        <span className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800 border border-sky-100">
+                          {CARI_KARSI_TARAF_ROL_LABEL.musteri_tedarikci}
+                        </span>
+                      ) : null}
                       {v.city ? (
                         <span className="inline-flex items-center gap-1">
                           {Icon.mapPin}
@@ -2649,6 +2674,33 @@ export default function VendorsPage() {
                       </button>
                     ))}
                   </div>
+
+                  {!editVendor ? (
+                    <div className="mb-6 max-w-sm" data-testid="tedarikci-cari-rol">
+                      <label className="mb-1.5 block text-xs font-medium text-slate-700">
+                        Cari Rol
+                      </label>
+                      <select
+                        value={form.cariRol}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            cariRol: e.target.value as 'tedarikci' | 'musteri_tedarikci',
+                          }))
+                        }
+                        className={inp}
+                      >
+                        <option value="tedarikci">{CARI_KARSI_TARAF_ROL_LABEL.tedarikci}</option>
+                        <option value="musteri_tedarikci">
+                          {CARI_KARSI_TARAF_ROL_LABEL.musteri_tedarikci}
+                        </option>
+                      </select>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Müşteri Ve Tedarikçi seçilirse kart her iki listede durur.
+                        Bireyselde T.C. kimlik, kurumsalda vergi numarası zorunludur.
+                      </p>
+                    </div>
+                  ) : null}
 
                   {/* Tür */}
                   <SectionDivider icon={Icon.briefcase} title="Tedarikçi Türü" />

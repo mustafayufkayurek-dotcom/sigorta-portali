@@ -769,8 +769,7 @@ export function ClaimFileGelirTahsilatPanel({
               <div>
                 <FinansFieldLabel>Yöntem</FinansFieldLabel>
                 <select value={tahsilat.method} onChange={(e) => setTahsilat({ ...tahsilat, method: e.target.value })} className={finansInputClass}>
-                  <option value="eft">EFT</option>
-                  <option value="havale">Havale</option>
+                  <option value="eft">Havale/Eft</option>
                   <option value="credit_card">Kredi Kartı</option>
                   <option value="cash">Nakit</option>
                   <option value="offset">Mahsuplaşma</option>

@@ -1048,7 +1048,13 @@ export function FaturalarTab({ claimId, claim }: { claimId: string; claim: any }
 }
 
 const PAYMENT_TYPE_LABEL: Record<string, string> = { incoming: 'Gelen', outgoing: 'Giden' };
-const PAYMENT_METHOD_LABEL: Record<string, string> = { eft: 'EFT', havale: 'Havale', credit_card: 'Kredi Kartı', cash: 'Nakit', offset: 'Mahsuplaşma' };
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  eft: 'Havale/Eft',
+  havale: 'Havale/Eft',
+  credit_card: 'Kredi Kartı',
+  cash: 'Nakit',
+  offset: 'Mahsuplaşma',
+};
 
 export function TahsilatlarTab({ claimId, claim }: { claimId: string; claim?: any }) {
   const { showToast } = useToast();
@@ -1248,8 +1254,7 @@ export function TahsilatlarTab({ claimId, claim }: { claimId: string; claim?: an
                     onChange={(e) => setForm({ ...form, method: e.target.value })}
                     className={finansInputClass}
                   >
-                    <option value="eft">EFT</option>
-                    <option value="havale">Havale</option>
+                    <option value="eft">Havale/Eft</option>
                     <option value="credit_card">Kredi Kartı</option>
                     <option value="cash">Nakit</option>
                     <option value="offset">Mahsuplaşma</option>

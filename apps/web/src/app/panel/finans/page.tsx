@@ -21,21 +21,35 @@ import {
   finansInputClass,
 } from '@/components/finance/FinansPanelUI';
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { useToast } from '@/contexts/ToastContext';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
-import { carilerHedefBaglamYol, FINANS_KART_YOL } from '@/utils/finans-merkez-kart';
+import {
+  FINANS_KART_YOL,
+  masrafYol,
+  netSonucYol,
+  tahsilEdilenYol,
+} from '@/utils/finans-merkez-kart';
 import { API, authHeader } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { parseTrAmountInput } from '@/utils/tr-amount-input';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { getAccessToken } from '@/utils/auth-session';
 import type {
+  FinansIsletmeSabitDusumOzet,
   FinansIsletmeSabitKalemi,
   FinansIsletmeSabitKategori,
   FinansKurulumDurum,
 } from '@sigorta/shared';
-import { FINANS_ISLETME_SABIT_KATEGORILER, sumFinansIsletmeSabit } from '@sigorta/shared';
+import {
+  FINANS_ISLETME_SABIT_KATEGORILER,
+  finansIslemDonemSecimUyarisi,
+  finansIsletmeSabitAktifAyda,
+  sumFinansIsletmeSabit,
+} from '@sigorta/shared';
 
 type KurulumState = {
   kurulum: FinansKurulumDurum;
@@ -57,7 +71,11 @@ type HedefDetay = {
 type SeyirState = {
   cariAlacak: number;
   cariBorc: number;
+  nakit: number;
   hesapSayisi: number;
+  gelir: number;
+  gider: number;
+  kar: number;
   hedefCiro: number | null;
   hedefDetay: HedefDetay | null;
   hedefKabul: number | null;
@@ -73,6 +91,7 @@ function yeniSabitKalemId(): string {
 
 export default function FinansDashboard() {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const router = useRouter();
   const searchParams = useSearchParams();
   const now = new Date();
@@ -81,6 +100,8 @@ export default function FinansDashboard() {
   const [modulesOpen, setModulesOpen] = useState(false);
   const [kurulum, setKurulum] = useState<KurulumState | null>(null);
   const [seyir, setSeyir] = useState<SeyirState | null>(null);
+  const [sabitDusulenIds, setSabitDusulenIds] = useState<string[]>([]);
+  const [sabitDusuyor, setSabitDusuyor] = useState(false);
   const [kurulumKaydediliyor, setKurulumKaydediliyor] = useState(false);
   const [hedefKaydediliyor, setHedefKaydediliyor] = useState(false);
   const [hedefInceleAcik, setHedefInceleAcik] = useState(false);
@@ -92,12 +113,20 @@ export default function FinansDashboard() {
   const [sabitBitisSuresiz, setSabitBitisSuresiz] = useState(true);
   const [sabitKaydediliyor, setSabitKaydediliyor] = useState(false);
   const [sabitEkleAcik, setSabitEkleAcik] = useState(false);
+  const [sabitPartyAccountId, setSabitPartyAccountId] = useState('');
+  const [partyAccounts, setPartyAccounts] = useState<
+    { id: string; name: string; kindLabel: string }[]
+  >([]);
 
   const applySeyirData = (data: {
     seyirAcik?: boolean;
     cariAlacak?: number;
     cariBorc?: number;
+    nakit?: number;
     hesapSayisi?: number;
+    gelir?: number;
+    gider?: number;
+    kar?: number;
     hedefCiro?: Partial<HedefDetay> | null;
     hedefKabul?: number | null;
     hedefKabulAt?: string | null;
@@ -142,7 +171,11 @@ export default function FinansDashboard() {
       setSeyir({
         cariAlacak: Number(data.cariAlacak) || 0,
         cariBorc: Number(data.cariBorc) || 0,
+        nakit: Number(data.nakit) || 0,
         hesapSayisi: Number(data.hesapSayisi) || 0,
+        gelir: Number(data.gelir) || 0,
+        gider: Number(data.gider) || 0,
+        kar: Number(data.kar) || 0,
         hedefCiro: onerilen,
         hedefDetay: detay,
         hedefKabul: kabulRaw != null && kabulRaw > 0 ? kabulRaw : null,
@@ -176,14 +209,63 @@ export default function FinansDashboard() {
       });
 
     axios
-      .get(`${API}/finance/party-accounts/seyir-ozet`, { headers: authHeader() })
+      .get(`${API}/finance/party-accounts/seyir-ozet`, {
+        headers: authHeader(),
+        params: { year, month },
+      })
       .then((r) => applySeyirData(r.data?.data))
       .catch(() => setSeyir(null));
-  }, []);
+  }, [year, month]);
 
   useEffect(() => {
     loadKurulumVeSeyir();
   }, [loadKurulumVeSeyir]);
+
+  const loadSabitDusumDurum = useCallback(() => {
+    if (!getAccessToken()) return;
+    axios
+      .get(`${API}/finance/party-accounts/isletme-sabit/dusum`, {
+        headers: authHeader(),
+        params: { year, month },
+      })
+      .then((r) => {
+        const ids = r.data?.data?.postedKalemIds;
+        setSabitDusulenIds(Array.isArray(ids) ? ids.map(String) : []);
+      })
+      .catch(() => setSabitDusulenIds([]));
+  }, [year, month]);
+
+  useEffect(() => {
+    loadSabitDusumDurum();
+  }, [loadSabitDusumDurum, seyir?.isletmeSabitKalemleri.length]);
+
+  useEffect(() => {
+    if (!getAccessToken()) return;
+    let cancelled = false;
+    axios
+      .get(`${API}/finance/party-accounts`, { headers: authHeader() })
+      .then((res) => {
+        if (cancelled) return;
+        const rows = (res.data?.data ?? []) as Array<{
+          id: string;
+          name: string;
+          kindLabel: string;
+        }>;
+        setPartyAccounts(
+          rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            kindLabel: r.kindLabel,
+          })),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setPartyAccounts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /** Cariler’den dönüşte İncele penceresi yeniden açılır. */
   useEffect(() => {
@@ -250,6 +332,7 @@ export default function FinansDashboard() {
     setSabitBaslangic(new Date().toISOString().slice(0, 10));
     setSabitBitis('');
     setSabitBitisSuresiz(true);
+    setSabitPartyAccountId('');
   };
 
   const kaydetIsletmeSabit = async (kalemler: FinansIsletmeSabitKalemi[]) => {
@@ -310,6 +393,10 @@ export default function FinansDashboard() {
       showToast('error', 'Bitiş tarihi geçersiz');
       return;
     }
+    if (!sabitPartyAccountId) {
+      showToast('error', 'Ödeme kaynağı cari seçimi zorunludur');
+      return;
+    }
     const kalem: FinansIsletmeSabitKalemi = {
       id: yeniSabitKalemId(),
       ad,
@@ -319,6 +406,7 @@ export default function FinansDashboard() {
       baslangic: sabitBaslangic,
       bitis,
       durum: 'aktif',
+      partyAccountId: sabitPartyAccountId,
     };
     const ok = await kaydetIsletmeSabit([...seyir.isletmeSabitKalemleri, kalem]);
     if (ok) {
@@ -332,17 +420,57 @@ export default function FinansDashboard() {
     void kaydetIsletmeSabit(seyir.isletmeSabitKalemleri.filter((k) => k.id !== id));
   };
 
-  const acIsletmeSabitKart = () => {
-    setHedefInceleAcik(false);
-    requestAnimationFrame(() => {
-      document.getElementById('finans-sabit-gider-yonetimi')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
+  const handleSabitAylikDusum = async () => {
+    if (!seyir || sabitDusuyor) return;
+    const aday = seyir.isletmeSabitKalemleri.filter((k) =>
+      finansIsletmeSabitAktifAyda(k, year, month),
+    );
+    if (aday.length === 0) {
+      showToast('error', 'Bu ay düşülecek aktif sabit gider yok');
+      return;
+    }
+    const bekleyen = aday.filter((k) => !sabitDusulenIds.includes(k.id));
+    if (bekleyen.length === 0) {
+      showToast('success', 'Bu ayın sabit giderleri cariye zaten düşülmüş');
+      return;
+    }
+    const donemEtiket = `${String(month).padStart(2, '0')}.${year}`;
+    const ok = await confirm({
+      title: 'Sabit Giderleri Cariye Düş',
+      message: `${donemEtiket} dönemi için ${bekleyen.length} kalem seçili carilere yazılacak. Bu işlem ödeme kaydı değildir; aynı ay ikinci kez yazılmaz.`,
+      confirmLabel: 'Cariye Düş',
+      cancelLabel: 'Vazgeç',
+      danger: false,
     });
+    if (!ok) return;
+    setSabitDusuyor(true);
+    try {
+      const r = await axios.post(
+        `${API}/finance/party-accounts/isletme-sabit/dusum`,
+        { year, month },
+        { headers: { ...authHeader(), 'Content-Type': 'application/json' } },
+      );
+      const ozet = r.data?.data as FinansIsletmeSabitDusumOzet | undefined;
+      const ids = Array.isArray(ozet?.postedKalemIds)
+        ? ozet!.postedKalemIds.map(String)
+        : [];
+      setSabitDusulenIds(ids);
+      const yeni = Number(ozet?.posted) || 0;
+      if (yeni > 0) {
+        showToast('success', `${yeni} sabit gider cariye düşüldü`);
+      } else {
+        showToast('success', 'Yeni düşüm yok — mevcut kayıtlar duruyor');
+      }
+      loadKurulumVeSeyir();
+    } catch (e: unknown) {
+      showToast('error', getApiErrorMessage(e, 'Cariye düşülemedi'));
+    } finally {
+      setSabitDusuyor(false);
+    }
   };
 
   const sabitFormTutar = parseTrAmountInput(sabitTutarInput);
+  const sabitDonemUyarisi = finansIslemDonemSecimUyarisi(year, month);
 
   const kurulumAcik = kurulum != null && !kurulum.seyirAcik;
   const cariTanimEksik = kurulumAcik && kurulum.kurulum.cariTanim === false;
@@ -456,7 +584,12 @@ export default function FinansDashboard() {
                 className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-white/80 px-3 py-2"
                 data-testid="finans-kurulum-adim-masraf"
               >
-                <span className="flex-1 font-medium text-amber-950">Masraf kaynağı</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-amber-950">Masraf kaynağı</p>
+                  <p className="mt-0.5 text-xs text-amber-900/80">
+                    Yeni masraf cari seçilmeden kaydolmaz.
+                  </p>
+                </div>
                 <Link
                   href={FINANS_KART_YOL.masraflar}
                   className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-xs font-medium text-amber-950 hover:bg-amber-100"
@@ -485,6 +618,54 @@ export default function FinansDashboard() {
               Şirket Seyri
             </h2>
             <div
+              className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+              data-testid="finans-seyir-donem-ozet"
+            >
+              <Link
+                href={tahsilEdilenYol(year, month)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 hover:border-brand-300"
+                data-testid="finans-seyir-gelir"
+              >
+                <p className="text-xs font-medium text-slate-500">Gelir</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  {formatTryAmount(seyir!.gelir, { fractionDigits: 0 })}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  Seçili dönem · Hasar Ve Acil
+                </p>
+              </Link>
+              <Link
+                href={masrafYol(year, month)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 hover:border-brand-300"
+                data-testid="finans-seyir-gider"
+              >
+                <p className="text-xs font-medium text-slate-500">Gider</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  {formatTryAmount(seyir!.gider, { fractionDigits: 0 })}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  Masraf Ve Acil · {String(month).padStart(2, '0')}.{year}
+                </p>
+              </Link>
+              <Link
+                href={netSonucYol(year, month)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 hover:border-brand-300"
+                data-testid="finans-seyir-kar"
+              >
+                <p className="text-xs font-medium text-slate-500">Kâr</p>
+                <p
+                  className={`mt-1 text-lg font-semibold tabular-nums ${
+                    seyir!.kar < 0 ? 'text-rose-700' : 'text-slate-900'
+                  }`}
+                >
+                  {seyir!.kar < 0
+                    ? `−${formatTryAmount(Math.abs(seyir!.kar), { fractionDigits: 0 })}`
+                    : formatTryAmount(seyir!.kar, { fractionDigits: 0 })}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">Gelir − Gider</p>
+              </Link>
+            </div>
+            <div
               className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
               data-testid="finans-seyir-cari-ozet"
             >
@@ -509,14 +690,17 @@ export default function FinansDashboard() {
                 <p className="mt-0.5 text-[11px] text-slate-400">Ödenecek</p>
               </Link>
               <Link
-                href={FINANS_KART_YOL.cariler}
+                href={FINANS_KART_YOL.bankaHesaplari}
                 className="rounded-xl border border-slate-200 bg-white px-4 py-3 hover:border-brand-300"
+                data-testid="finans-seyir-nakit"
               >
-                <p className="text-xs font-medium text-slate-500">Cari Hesap</p>
+                <p className="text-xs font-medium text-slate-500">Nakit</p>
                 <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
-                  {seyir!.hesapSayisi}
+                  {formatTryAmount(seyir!.nakit, { fractionDigits: 0 })}
                 </p>
-                <p className="mt-0.5 text-[11px] text-slate-400">Aktif kart</p>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  Banka Ve Kasa · {seyir!.hesapSayisi} cari
+                </p>
               </Link>
               <div
                 className="rounded-xl border border-slate-200 bg-white px-4 py-3"
@@ -578,7 +762,7 @@ export default function FinansDashboard() {
                 </span>
               }
               action={{
-                label: 'Yeni Gider',
+                label: 'Sabit Gider Ekle',
                 onClick: acSabitKalemEkle,
                 variant: 'primary',
               }}
@@ -592,58 +776,114 @@ export default function FinansDashboard() {
                   Sabit gider yok
                 </p>
               ) : (
-                <FinansDataTable embedded>
-                  <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/50 text-left text-xs text-slate-500">
-                      <th className="px-4 py-2.5 font-medium">Gider</th>
-                      <th className="w-36 px-3 py-2.5 text-right font-medium">Aylık Tutar</th>
-                      <th className="w-24 px-3 py-2.5 font-medium">Durum</th>
-                      <th className="w-12 px-2 py-2.5">
-                        <span className="sr-only">İşlemler</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody data-testid="finans-isletme-sabit-liste">
-                    {seyir!.isletmeSabitKalemleri.map((k) => (
-                      <tr
-                        key={k.id}
-                        className="border-b border-slate-50 last:border-0"
-                        data-testid="finans-isletme-sabit-satir"
+                <>
+                  <div className="space-y-2 border-b border-slate-100 px-4 py-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-slate-500">
+                        Üstteki dönem ({String(month).padStart(2, '0')}.{year}) için cariye yazılır.
+                        Ödeme kaydı değildir.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={sabitDusuyor || sabitKaydediliyor}
+                        onClick={() => void handleSabitAylikDusum()}
+                        className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                        data-testid="finans-isletme-sabit-dusum"
                       >
-                        <td className="px-4 py-2.5 text-sm text-slate-800">
-                          <span className="font-medium">{k.ad}</span>
-                          {k.kategori ? (
-                            <span className="mt-0.5 block text-xs text-slate-400">{k.kategori}</span>
-                          ) : null}
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-700">
-                          {formatTryAmount(k.aylikTutar, { fractionDigits: 0 })}
-                        </td>
-                        <td className="px-3 py-2.5 text-sm">
-                          <span
-                            className={
-                              k.durum === 'pasif' ? 'text-slate-500' : 'font-medium text-emerald-700'
-                            }
-                          >
-                            {k.durum === 'pasif' ? 'Pasif' : 'Aktif'}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2.5 text-right">
-                          <button
-                            type="button"
-                            disabled={sabitKaydediliyor}
-                            onClick={() => handleSabitKalemSil(k.id)}
-                            className="inline-flex rounded p-1 text-slate-400 hover:bg-slate-50 hover:text-red-600 disabled:opacity-60"
-                            aria-label={`${k.ad} sil`}
-                            data-testid="finans-isletme-sabit-sil"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
+                        {sabitDusuyor ? 'Düşülüyor…' : 'Bu Ayı Cariye Düş'}
+                      </button>
+                    </div>
+                    {sabitDonemUyarisi ? (
+                      <p
+                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+                        data-testid="finans-isletme-sabit-donem-uyari"
+                        role="status"
+                      >
+                        {sabitDonemUyarisi}
+                      </p>
+                    ) : null}
+                  </div>
+                  <FinansDataTable embedded>
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/50 text-left text-xs text-slate-500">
+                        <th className="px-4 py-2.5 font-medium">Gider</th>
+                        <th className="px-3 py-2.5 font-medium">Ödeme Kaynağı</th>
+                        <th className="w-36 px-3 py-2.5 text-right font-medium">Aylık Tutar</th>
+                        <th className="w-28 px-3 py-2.5 font-medium">Durum</th>
+                        <th className="w-12 px-2 py-2.5">
+                          <span className="sr-only">İşlemler</span>
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </FinansDataTable>
+                    </thead>
+                    <tbody data-testid="finans-isletme-sabit-liste">
+                      {seyir!.isletmeSabitKalemleri.map((k) => {
+                        const cari = partyAccounts.find((p) => p.id === k.partyAccountId);
+                        const dusuldu = sabitDusulenIds.includes(k.id);
+                        return (
+                        <tr
+                          key={k.id}
+                          className="border-b border-slate-50 last:border-0"
+                          data-testid="finans-isletme-sabit-satir"
+                        >
+                          <td className="px-4 py-2.5 text-sm text-slate-800">
+                            <span className="font-medium">{k.ad}</span>
+                            {k.kategori ? (
+                              <span className="mt-0.5 block text-xs text-slate-400">{k.kategori}</span>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-2.5 text-sm text-slate-700">
+                            {k.partyAccountId && cari ? (
+                              <Link
+                                href={`/panel/finans/cariler/${encodeURIComponent(k.partyAccountId)}`}
+                                className="font-medium text-brand-700 hover:underline"
+                                data-testid="finans-isletme-sabit-cari"
+                              >
+                                {cari.name}
+                              </Link>
+                            ) : k.partyAccountId ? (
+                              <span className="text-slate-500">Cari bağlı</span>
+                            ) : (
+                              <span className="text-amber-700">Cari seçilmedi</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-700">
+                            {formatTryAmount(k.aylikTutar, { fractionDigits: 0 })}
+                          </td>
+                          <td className="px-3 py-2.5 text-sm">
+                            <span
+                              className={
+                                k.durum === 'pasif' ? 'text-slate-500' : 'font-medium text-slate-700'
+                              }
+                            >
+                              {k.durum === 'pasif' ? 'Pasif' : 'Aktif'}
+                            </span>
+                            {dusuldu ? (
+                              <span
+                                className="mt-0.5 block text-[11px] font-medium text-slate-600"
+                                data-testid="finans-isletme-sabit-dusuldu"
+                              >
+                                {String(month).padStart(2, '0')}.{year} cariye yazıldı
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-2 py-2.5 text-right">
+                            <button
+                              type="button"
+                              disabled={sabitKaydediliyor}
+                              onClick={() => handleSabitKalemSil(k.id)}
+                              className="inline-flex rounded p-1 text-slate-400 hover:bg-slate-50 hover:text-red-600 disabled:opacity-60"
+                              aria-label={`${k.ad} sil`}
+                              data-testid="finans-isletme-sabit-sil"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                        );
+                      })}
+                    </tbody>
+                  </FinansDataTable>
+                </>
               )}
             </FinansPanelCard>
           </div>
@@ -729,6 +969,30 @@ export default function FinansDashboard() {
                 </option>
               ))}
             </select>
+          </div>
+          <div data-testid="finans-isletme-sabit-cari-alan">
+            <FinansFieldLabel required>Ödeme Kaynağı (Cari)</FinansFieldLabel>
+            <SearchableSelect
+              options={partyAccounts.map((row) => ({
+                value: row.id,
+                label: `${row.name} · ${row.kindLabel}`,
+              }))}
+              value={sabitPartyAccountId}
+              onChange={setSabitPartyAccountId}
+              placeholder="Kredi kartı, banka veya tedarikçi cari ara..."
+              emptyText="Cari bulunamadı — önce Cariler’den ekleyin"
+              inputClassName={finansInputClass}
+            />
+            {sabitPartyAccountId ? (
+              <div className="mt-2">
+                <Link
+                  href={`/panel/finans/cariler/${encodeURIComponent(sabitPartyAccountId)}`}
+                  className="text-xs font-medium text-brand-700 hover:underline"
+                >
+                  Cari Kartı Aç
+                </Link>
+              </div>
+            ) : null}
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div data-testid="finans-isletme-sabit-tutar">
@@ -899,29 +1163,6 @@ export default function FinansDashboard() {
                             ? 'Cari borç yok. Sabit tanımlı; borç eklenince öneri güçlenir.'
                             : 'Aylık işletme sabiti tanımlanmamış.'}
                       </p>
-                      {sabitToplam <= 0.005 ? (
-                        <button
-                          type="button"
-                          onClick={acIsletmeSabitKart}
-                          className="w-full rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-                          data-testid="finans-hedef-sabit-karta-git"
-                        >
-                          Sabit Gider Yönetimine Git
-                        </button>
-                      ) : null}
-                      {(seyir?.cariBorc ?? 0) <= 0.005 ? (
-                        <p className="text-xs text-slate-500">
-                          Cari borç için{' '}
-                          <Link
-                            href={carilerHedefBaglamYol(year, month)}
-                            className="font-medium text-brand-700 underline"
-                            data-testid="finans-hedef-konu-cariler"
-                          >
-                            Cariler
-                          </Link>
-                          ; dönünce bu pencere açılır.
-                        </p>
-                      ) : null}
                     </div>
                   )}
                 </div>
@@ -938,6 +1179,7 @@ export default function FinansDashboard() {
             document.body,
           )
         : null}
+      {dialog}
     </DashboardShell>
   );
 }

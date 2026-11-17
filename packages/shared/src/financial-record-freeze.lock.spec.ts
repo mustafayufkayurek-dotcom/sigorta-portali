@@ -7,7 +7,10 @@ import {
   FINANCIAL_CORRECTION_ADMIN_MESSAGE,
   FINANCIAL_CORRECTION_NEEDED,
   FINANCIAL_FREEZE_MESSAGE,
+  FINANS_ODEME_YONTEM_OPTIONS,
   evaluateFrozenFinanceUpdate,
+  financePaymentMethodDisplay,
+  financePaymentMethodLabel,
   financePaymentStatusLabel,
   isPaidOrApprovedFinanceStatus,
 } from './financial-record-freeze.ts';
@@ -86,5 +89,26 @@ describe('ödenmiş finansal kayıt dondurma LOCK', () => {
     assert.match(invoices, /evaluateFrozenFinanceUpdate/);
     assert.match(acil, /isPaidOrApprovedFinanceStatus/);
     assert.equal(financePaymentStatusLabel('correction_needed'), 'Düzeltme Gerekli');
+  });
+
+  it('ödeme yöntemi peşin / vadeli ifade ile yazılır', () => {
+    assert.equal(
+      financePaymentMethodDisplay('credit_card', 'outgoing'),
+      'Peşin Ödeme → Kredi Kartı',
+    );
+    assert.equal(financePaymentMethodDisplay('cash', 'outgoing'), 'Peşin Ödeme → Nakit');
+    assert.equal(financePaymentMethodDisplay('eft', 'outgoing'), 'Peşin Ödeme → Havale/Eft');
+    assert.equal(financePaymentMethodDisplay('havale', 'outgoing'), 'Peşin Ödeme → Havale/Eft');
+    assert.equal(
+      financePaymentMethodDisplay('credit_card', 'incoming'),
+      'Peşin Tahsilat → Kredi Kartı',
+    );
+    assert.equal(financePaymentMethodDisplay('check', 'outgoing'), 'Vadeli Ödeme → Çek');
+    assert.equal(financePaymentMethodDisplay('offset', 'outgoing'), 'Mahsuplaşma');
+    assert.equal(financePaymentMethodLabel('eft'), 'Havale/Eft');
+    assert.equal(financePaymentMethodLabel('havale'), 'Havale/Eft');
+    assert.ok(FINANS_ODEME_YONTEM_OPTIONS.some((o) => o.label === 'Havale/Eft'));
+    assert.equal(FINANS_ODEME_YONTEM_OPTIONS.some((o) => o.label === 'EFT'), false);
+    assert.equal(FINANS_ODEME_YONTEM_OPTIONS.some((o) => o.label === 'Havale'), false);
   });
 });

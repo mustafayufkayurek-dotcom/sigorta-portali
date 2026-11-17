@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
@@ -37,13 +38,15 @@ type TabId = 'hasar' | 'ozel' | 'acil';
 
 function budgetHint(file: ExpensePickerHasarFile, expensePlan: string) {
   const ok = expensePlan === PLAN_EK ? file.hasEkBudget : file.hasApprovedBudget;
-  const planLabel = expensePlan === PLAN_EK ? 'Ek İşler' : 'Dosya Bütçesi';
   if (ok) {
-    return { tone: 'ok' as const, text: `${planLabel} uygun` };
+    return {
+      tone: 'ok' as const,
+      text: expensePlan === PLAN_EK ? 'Ek iş bütçesi hazır' : 'Dosya bütçesi hazır',
+    };
   }
   return {
     tone: 'warn' as const,
-    text: expensePlan === PLAN_EK ? 'Ek iş bütçesi yok' : 'Bütçe onayı gerekli',
+    text: expensePlan === PLAN_EK ? 'Ek iş bütçesi yok' : 'Bütçe onayı yok',
   };
 }
 
@@ -213,14 +216,19 @@ export function ExpenseFilePickerModal({
                   )}
                 </td>
               )}
-              <td className="px-4 py-3">
-                <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                  hint.tone === 'ok'
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                }`}>
+              <td className="px-4 py-3" data-testid="masraf-dosya-butce-durum">
+                <p
+                  className={`text-xs font-medium leading-snug ${
+                    hint.tone === 'ok'
+                      ? 'text-slate-700 dark:text-slate-200'
+                      : 'text-slate-600 dark:text-slate-300'
+                  }`}
+                >
                   {hint.text}
-                </span>
+                </p>
+                {hint.tone !== 'ok' ? (
+                  <p className="mt-0.5 text-[11px] text-slate-500">Önce bütçe onayı gerekir</p>
+                ) : null}
               </td>
               <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-end gap-1.5">
@@ -248,8 +256,17 @@ export function ExpenseFilePickerModal({
     </table>
   );
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+  if (!open || typeof document === 'undefined') return null;
+
+  // SlidePanel (z-200/210) üstünde; blur yok — flu görünüm kalıcı kesilir.
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[420] flex items-center justify-center bg-slate-900/45 p-4"
+      data-testid="masraf-dosya-sec-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Dosya Seç"
+    >
       <div className="flex max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-700">
           <div>
@@ -380,6 +397,7 @@ export function ExpenseFilePickerModal({
         )}
 
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

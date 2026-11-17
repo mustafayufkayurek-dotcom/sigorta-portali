@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -39,16 +40,16 @@ export class BankAccountsController {
   @Post()
   @RequirePermissions('bank_account.create')
   @ApiOperation({ summary: 'Yeni banka hesabı' })
-  async create(@Body() dto: any) {
-    const data = await this.service.create(dto);
+  async create(@Body() dto: any, @Req() req: any) {
+    const data = await this.service.create(dto, req.user?.id);
     return { success: true, data };
   }
 
   @Patch(':id')
   @RequirePermissions('bank_account.update')
   @ApiOperation({ summary: 'Banka hesabı güncelle' })
-  async update(@Param('id') id: string, @Body() dto: any) {
-    const data = await this.service.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: any, @Req() req: any) {
+    const data = await this.service.update(id, dto, req.user?.id);
     return { success: true, data };
   }
 

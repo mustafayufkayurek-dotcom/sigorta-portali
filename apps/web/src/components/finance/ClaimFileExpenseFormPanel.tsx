@@ -12,17 +12,17 @@ import { TrAmountInput } from '@/components/ui/TrAmountInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { SlidePanel } from '@/components/SlidePanel';
 import { ReceiptCameraModal, prefersNativeCameraCapture } from '@/components/ReceiptCameraModal';
+import { CariHesapCreateModal } from '@/components/finance/CariHesapCreateModal';
+import { CariHesapOzetModal } from '@/components/finance/CariHesapOzetModal';
 import { API, authHeader } from '@/utils/api';
 import { normalizeTrDateValue, isCompleteTrDateValue } from '@/utils/tr-date-input';
 import { parseTrAmountInput, numberToTrAmountInput } from '@/utils/tr-amount-input';
 import { toTitleCaseTR } from '@/utils/text-helpers';
+import { suggestAutoCode } from '@/utils/auto-code';
+import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 import { ACIKLAMA_YARDIM } from '@/utils/aciklama-yardim';
 import { formatTryAmount } from '@/utils/format-try-amount';
-import { financeOperationNo } from '@sigorta/shared';
-import {
-  FileWorkGroupExpenseFields,
-  type FileWorkGroupAuditLine,
-} from '@/components/finance/FileWorkGroupExpenseFields';
+import { financeOperationNo, finansIslemTarihiDonemUyarisi } from '@sigorta/shared';
 
 const PLAN_BUTCE = 'BUTCELENEN';
 const PLAN_EK = 'EKSTRA_SATIS_MASRAFI';
@@ -68,10 +68,18 @@ export function ClaimFileExpenseFormPanel({
   const [lastSavedOpNo, setLastSavedOpNo] = useState<string | null>(null);
   const [expenseCategoryParentId, setExpenseCategoryParentId] = useState('');
   const [expenseCategoryId, setExpenseCategoryId] = useState('');
-  const [workGroupId, setWorkGroupId] = useState('');
-  const [workSubGroupName, setWorkSubGroupName] = useState('');
-  const [workGroups, setWorkGroups] = useState<FileWorkGroupAuditLine[]>([]);
+  const [partyAccountId, setPartyAccountId] = useState('');
+  const [partyAccounts, setPartyAccounts] = useState<
+    { id: string; name: string; kindLabel: string; linkedVendorId: string | null; cardLast4: string | null }[]
+  >([]);
+  const [showCariCreate, setShowCariCreate] = useState(false);
+  const [cariOzetId, setCariOzetId] = useState<string | null>(null);
+  const [categoryDraft, setCategoryDraft] = useState<'group' | 'sub' | null>(null);
+  const [categoryDraftName, setCategoryDraftName] = useState('');
+  const [categoryDraftError, setCategoryDraftError] = useState('');
+  const [categoryDraftSaving, setCategoryDraftSaving] = useState(false);
   const [description, setDescription] = useState('');
+  const [documentType, setDocumentType] = useState<'' | 'Kasa Fişi' | 'Fatura'>('');
   const [documentNo, setDocumentNo] = useState('');
   const [amount, setAmount] = useState('');
   const [vatRate, setVatRate] = useState('');
@@ -105,8 +113,11 @@ export function ClaimFileExpenseFormPanel({
     setExpensePlan(PLAN_BUTCE);
     setExpenseCategoryParentId('');
     setExpenseCategoryId('');
-    setWorkGroupId('');
-    setWorkSubGroupName('');
+    setPartyAccountId('');
+    setShowCariCreate(false);
+    setCategoryDraft(null);
+    setCategoryDraftName('');
+    setCategoryDraftError('');
     setDescription('');
     setDocumentNo('');
     setAmount('');
@@ -119,6 +130,35 @@ export function ClaimFileExpenseFormPanel({
     setLastSavedOpNo(null);
   }, []);
 
+  const loadCategories = useCallback(async () => {
+    const [treeRes, flatRes] = await Promise.all([
+      axios.get(`${API}/expense-categories`, { headers: authHeader() }),
+      axios.get(`${API}/expense-categories/flat`, { headers: authHeader() }),
+    ]);
+    setCategoryTree((treeRes.data?.data ?? []) as CategoryGroup[]);
+    setCategoryFlat((flatRes.data?.data ?? []) as CategoryFlat[]);
+  }, []);
+
+  const loadPartyAccounts = useCallback(async () => {
+    const res = await axios.get(`${API}/finance/party-accounts`, { headers: authHeader() });
+    const rows = (res.data?.data ?? []) as Array<{
+      id: string;
+      name: string;
+      kindLabel: string;
+      linkedVendorId?: string | null;
+      cardLast4?: string | null;
+    }>;
+    setPartyAccounts(
+      rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        kindLabel: r.kindLabel,
+        linkedVendorId: r.linkedVendorId ?? null,
+        cardLast4: r.cardLast4 ?? null,
+      })),
+    );
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     resetForm();
@@ -127,23 +167,15 @@ export function ClaimFileExpenseFormPanel({
     setMetaError('');
     (async () => {
       try {
-        const [treeRes, flatRes, trackRes, auditRes] = await Promise.all([
-          axios.get(`${API}/expense-categories`, { headers: authHeader() }),
-          axios.get(`${API}/expense-categories/flat`, { headers: authHeader() }),
+        const [trackRes] = await Promise.all([
           axios.get(`${API}/expenses/budget-tracking`, {
             headers: authHeader(),
             params: { fileCaseId: claimFileId },
           }),
-          axios.get(`${API}/expenses/work-group-audit`, {
-            headers: authHeader(),
-            params: { fileCaseId: claimFileId },
-          }),
+          loadCategories(),
+          loadPartyAccounts(),
         ]);
         if (cancelled) return;
-        setCategoryTree((treeRes.data?.data ?? []) as CategoryGroup[]);
-        setCategoryFlat((flatRes.data?.data ?? []) as CategoryFlat[]);
-        setWorkGroups((auditRes.data?.groups ?? auditRes.data?.data?.groups ?? []) as FileWorkGroupAuditLine[]);
-        // Finans Masraf İzleme ile aynı şekil: { files, summary }
         const trackFiles = (trackRes.data?.files ?? trackRes.data?.data?.files ?? []) as Array<Record<string, unknown>>;
         const row = trackFiles.find((f) => String(f['fileCaseId'] ?? f['id'] ?? '') === claimFileId)
           ?? trackFiles[0]
@@ -172,7 +204,6 @@ export function ClaimFileExpenseFormPanel({
         if (!cancelled) {
           setCategoryTree([]);
           setCategoryFlat([]);
-          setWorkGroups([]);
           setEligibility({ hasApprovedBudget: false, hasEkBudget: false });
           setBudgetHint(null);
           const msg = axios.isAxiosError(err)
@@ -185,7 +216,7 @@ export function ClaimFileExpenseFormPanel({
       }
     })();
     return () => { cancelled = true; };
-  }, [open, claimFileId, resetForm]);
+  }, [open, claimFileId, resetForm, loadCategories, loadPartyAccounts]);
 
   const parentNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -249,12 +280,15 @@ export function ClaimFileExpenseFormPanel({
     categoryChildren.length > 0
     || allSubgroups.some((s) => s.parentId === expenseCategoryParentId);
 
-  const useWorkGroupPath = expensePlan === PLAN_BUTCE;
-
   const planEligible =
     expensePlan === PLAN_EK
       ? Boolean(eligibility?.hasEkBudget)
-      : Boolean(eligibility?.hasApprovedBudget) || workGroups.length > 0;
+      : Boolean(eligibility?.hasApprovedBudget);
+
+  const selectedParty = useMemo(
+    () => partyAccounts.find((p) => p.id === partyAccountId) ?? null,
+    [partyAccounts, partyAccountId],
+  );
 
   const masrafAmounts = useMemo(() => {
     const gross = parseTrAmountInput(amount) ?? 0;
@@ -265,6 +299,69 @@ export function ClaimFileExpenseFormPanel({
     return { gross, rate, matrah, vatAmount };
   }, [amount, vatRate]);
 
+  const openCategoryDraft = (kind: 'group' | 'sub') => {
+    setCategoryDraft(kind);
+    setCategoryDraftName('');
+    setCategoryDraftError('');
+  };
+
+  const saveCategoryDraft = async () => {
+    const name = toTitleCaseTR(categoryDraftName.trim());
+    if (!name) {
+      setCategoryDraftError(categoryDraft === 'sub' ? 'Alt grup adı yazın.' : 'Masraf grubu adı yazın.');
+      return;
+    }
+    if (categoryDraft === 'sub' && !expenseCategoryParentId) {
+      setCategoryDraftError('Önce masraf grubunu seçin.');
+      return;
+    }
+    const siblings = categoryDraft === 'group'
+      ? categoryTree
+      : allSubgroups.filter((s) => s.parentId === expenseCategoryParentId);
+    if (siblings.some((s) => s.name.trim().toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr'))) {
+      setCategoryDraftError('Bu ad zaten duruyor.');
+      return;
+    }
+    setCategoryDraftSaving(true);
+    setCategoryDraftError('');
+    const sortOrder = computeAlphabeticSortOrder(name, siblings);
+    const baseCode = suggestAutoCode(categoryDraft === 'group' ? 'EXP' : 'ALT', name);
+    const parentId = categoryDraft === 'sub' ? expenseCategoryParentId : undefined;
+    const postCategory = (code: string) => axios.post(`${API}/expense-categories`, {
+      code,
+      name,
+      sortOrder,
+      ...(parentId ? { parentId } : {}),
+    }, { headers: authHeader() });
+    try {
+      let res;
+      try {
+        res = await postCategory(baseCode);
+      } catch (first: unknown) {
+        const raw = axios.isAxiosError(first) ? first.response?.data?.message : '';
+        const message = Array.isArray(raw) ? String(raw[0] ?? '') : String(raw ?? '');
+        if (!/kod/i.test(message)) throw first;
+        res = await postCategory(`${baseCode}_${Date.now().toString(36).slice(-4).toUpperCase()}`);
+      }
+      const createdId = String((res.data?.data as { id?: string } | undefined)?.id ?? '');
+      await loadCategories();
+      if (categoryDraft === 'group' && createdId) {
+        setExpenseCategoryParentId(createdId);
+        setExpenseCategoryId('');
+      } else if (createdId) {
+        setExpenseCategoryId(createdId);
+      }
+      setCategoryDraft(null);
+      setCategoryDraftName('');
+    } catch (e: unknown) {
+      const raw = axios.isAxiosError(e) ? e.response?.data?.message : '';
+      const message = Array.isArray(raw) ? String(raw[0] ?? '') : String(raw ?? '');
+      setCategoryDraftError(message || 'Kaydedilemedi.');
+    } finally {
+      setCategoryDraftSaving(false);
+    }
+  };
+
   const formSaveBlockers = useMemo(() => {
     const blockers: string[] = [];
     if (!expensePlan) blockers.push('Masraf yeri seçin');
@@ -272,23 +369,12 @@ export function ClaimFileExpenseFormPanel({
       blockers.push(
         expensePlan === PLAN_EK
           ? 'Bu dosyada ek iş bütçesi yok'
-          : 'Bu dosyada onaylı bütçe veya rapor iş grubu yok',
+          : 'Bu dosyada onaylı bütçe yok',
       );
     }
-    if (useWorkGroupPath) {
-      if (workGroups.length === 0) blockers.push('Raporda iş grubu yok');
-      if (!workGroupId) blockers.push('İş grubu seçin');
-      const selected = workGroups.find((g) => g.workGroupId === workGroupId);
-      if (selected && selected.jobDefinitions.length > 0 && !workSubGroupName.trim()) {
-        blockers.push('İş tanımı seçin');
-      }
-      if (selected && masrafAmounts.gross > 0 && masrafAmounts.gross - selected.remaining > 0.009) {
-        blockers.push('İş grubu bütçesini aşıyor');
-      }
-    } else {
-      if (!expenseCategoryParentId) blockers.push('Masraf grubu seçin');
-      if (needsSubgroup && !expenseCategoryId) blockers.push('Masraf alt grubu seçin');
-    }
+    if (!partyAccountId) blockers.push('Ödeme kaynağı cari seçin');
+    if (!expenseCategoryParentId) blockers.push('Masraf kalemi (grup) seçin');
+    if (needsSubgroup && !expenseCategoryId) blockers.push('Masraf kalemi (alt grup) seçin');
     if (masrafAmounts.gross <= 0) blockers.push('Geçerli tutar girin');
     if (!description.trim()) blockers.push(ACIKLAMA_YARDIM.masraf);
     if (!isCompleteTrDateValue(normalizeTrDateValue(date))) blockers.push('Geçerli tarih girin (GG.AA.YYYY)');
@@ -296,16 +382,13 @@ export function ClaimFileExpenseFormPanel({
   }, [
     expensePlan,
     planEligible,
+    partyAccountId,
     expenseCategoryParentId,
     needsSubgroup,
     expenseCategoryId,
     masrafAmounts.gross,
     date,
     description,
-    useWorkGroupPath,
-    workGroups,
-    workGroupId,
-    workSubGroupName,
   ]);
 
   const formCanSave = formSaveBlockers.length === 0;
@@ -373,8 +456,8 @@ export function ClaimFileExpenseFormPanel({
     if (masrafAmounts.gross <= 0 || !dateIso) return;
 
     const descParts: string[] = [];
+    if (documentType) descParts.push(documentType);
     if (documentNo.trim()) descParts.push(`Belge No: ${documentNo.trim()}`);
-    if (workSubGroupName.trim()) descParts.push(`İş tanımı: ${workSubGroupName.trim()}`);
     if (description.trim()) descParts.push(toTitleCaseTR(description.trim()));
 
     setSaving(true);
@@ -383,10 +466,9 @@ export function ClaimFileExpenseFormPanel({
         `${API}/expenses`,
         {
           fileCaseId: claimFileId,
+          partyAccountId,
           expensePlan: allowExtraWorkPlan ? expensePlan : PLAN_BUTCE,
-          ...(useWorkGroupPath
-            ? { workGroupId, workSubGroupName: workSubGroupName.trim() || undefined }
-            : { expenseCategoryId: expenseCategoryId || expenseCategoryParentId }),
+          expenseCategoryId: expenseCategoryId || expenseCategoryParentId,
           operationSubject: 'HASAR_ONARIM',
           description: descParts.length ? descParts.join(' · ') : undefined,
           amount: masrafAmounts.gross,
@@ -518,12 +600,14 @@ export function ClaimFileExpenseFormPanel({
           </span>
         </div>
 
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-          <span className="text-[11px] text-slate-500 shrink-0">İşlem No</span>
-          <span className="text-sm font-mono font-medium text-slate-800">
-            {lastSavedOpNo ?? 'Kayıt Sonrası Oluşur'}
-          </span>
-        </div>
+        {lastSavedOpNo ? (
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2" data-testid="claim-file-islem-no">
+            <span className="text-[11px] text-slate-500 shrink-0">İşlem No</span>
+            <span className="text-sm font-mono font-medium text-slate-800">
+              {lastSavedOpNo}
+            </span>
+          </div>
+        ) : null}
 
         {budgetHint && (
           <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
@@ -578,29 +662,68 @@ export function ClaimFileExpenseFormPanel({
             Tarih {requiredHint}
           </label>
           <TrDateInput className={inputCls} value={date} onChange={setDate} />
+          {(() => {
+            const dateIso = normalizeTrDateValue(date);
+            const uyari =
+              isCompleteTrDateValue(dateIso) ? finansIslemTarihiDonemUyarisi(dateIso) : null;
+            if (!uyari) return null;
+            return (
+              <p
+                className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+                data-testid="claim-file-tarih-donem-uyari"
+                role="status"
+              >
+                {uyari}
+              </p>
+            );
+          })()}
         </div>
 
-        {useWorkGroupPath ? (
-          <FileWorkGroupExpenseFields
-            groups={workGroups}
-            workGroupId={workGroupId}
-            workSubGroupName={workSubGroupName}
-            onWorkGroup={setWorkGroupId}
-            onJob={setWorkSubGroupName}
-            inputClassName={inputCls}
-          />
-        ) : (
-        <div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={labelCls} htmlFor="claim-file-belge-turu">
+              Belge Türü
+            </label>
+            <select
+              id="claim-file-belge-turu"
+              className={inputCls}
+              value={documentType}
+              onChange={(e) =>
+                setDocumentType(e.target.value as '' | 'Kasa Fişi' | 'Fatura')
+              }
+              data-testid="claim-file-belge-turu"
+            >
+              <option value="">Seçiniz...</option>
+              <option value="Kasa Fişi">Kasa Fişi</option>
+              <option value="Fatura">Fatura</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="claim-file-belge-no">
+              Belge No
+            </label>
+            <input
+              id="claim-file-belge-no"
+              className={inputCls}
+              placeholder="Örn. 1425"
+              value={documentNo}
+              onChange={(e) => setDocumentNo(e.target.value)}
+              data-testid="claim-file-belge-no"
+            />
+          </div>
+        </div>
+
+        <div data-testid="claim-file-masraf-kalem">
           <label className={labelCls}>
-            Masraf Grubu / Alt Grubu {requiredHint}
+            Masraf Kalemi {requiredHint}
           </label>
           {metaLoading ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-              Masraf grupları yükleniyor…
+              Masraf kalemleri yükleniyor…
             </div>
           ) : categoryTree.length === 0 && !metaError ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 mb-2">
-              Masraf grubu yok. Arama satırına yazıp listeden ekleyebilir veya{' '}
+              Masraf kalemi yok. Satırdan ekleyebilir veya{' '}
               <a href="/panel/ayarlar/masraf-kategorileri" className="font-semibold underline">
                 Ayarlar → Masraf Kategorileri
               </a>
@@ -608,51 +731,159 @@ export function ClaimFileExpenseFormPanel({
             </div>
           ) : null}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <SearchableSelect
-              options={groupOptions}
-              value={expenseCategoryParentId}
-              onChange={(id) => {
-                setExpenseCategoryParentId(id);
-                setExpenseCategoryId('');
-              }}
-              placeholder="Masraf grubu ara..."
-              emptyText="Masraf grubu bulunamadı"
-              inputClassName={inputCls}
-            />
-            <SearchableSelect
-              options={subgroupOptions}
-              value={expenseCategoryId}
-              onChange={(subId) => {
-                const global = allSubgroups.find((s) => s.id === subId);
-                if (global) {
-                  setExpenseCategoryParentId(global.parentId);
+            <div>
+              <label className="block text-[11px] text-slate-500 mb-1">Masraf Grubu</label>
+              <SearchableSelect
+                options={groupOptions}
+                value={expenseCategoryParentId}
+                onChange={(id) => {
+                  setExpenseCategoryParentId(id);
+                  setExpenseCategoryId('');
+                }}
+                placeholder="Masraf grubu ara..."
+                emptyText="Masraf grubu bulunamadı"
+                inputClassName={inputCls}
+                createAction={{
+                  label: '+ Yeni Masraf Grubu Ekle',
+                  onSelect: () => openCategoryDraft('group'),
+                }}
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] text-slate-500 mb-1">Masraf Alt Grubu</label>
+              <SearchableSelect
+                options={subgroupOptions}
+                value={expenseCategoryId}
+                onChange={(subId) => {
+                  const global = allSubgroups.find((s) => s.id === subId);
+                  if (global) {
+                    setExpenseCategoryParentId(global.parentId);
+                    setExpenseCategoryId(subId);
+                    return;
+                  }
                   setExpenseCategoryId(subId);
-                  return;
+                }}
+                placeholder={
+                  expenseCategoryParentId
+                    ? (loadingChildren ? 'Yükleniyor...' : 'Alt grup ara...')
+                    : 'Önce grup seçin veya alt grup ara...'
                 }
-                setExpenseCategoryId(subId);
-              }}
-              placeholder={
-                !expenseCategoryParentId
-                  ? 'Önce grup seçin…'
-                  : loadingChildren
-                    ? 'Yükleniyor...'
-                    : 'Alt grup ara...'
-              }
-              emptyText="Alt grup bulunamadı"
-              disabled={loadingChildren || !expenseCategoryParentId}
-              inputClassName={inputCls}
-            />
+                emptyText="Alt grup bulunamadı"
+                disabled={loadingChildren}
+                inputClassName={inputCls}
+                createAction={{
+                  label: '+ Yeni Alt Grup Ekle',
+                  onSelect: () => openCategoryDraft('sub'),
+                }}
+              />
+            </div>
           </div>
+          {categoryDraft ? (
+            <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <label className="block text-[11px] text-slate-500 mb-1">
+                {categoryDraft === 'group' ? 'Yeni Masraf Grubu' : 'Yeni Alt Grup'}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  className={inputCls}
+                  placeholder={categoryDraft === 'group' ? 'Örn. çatı malzemesi' : 'Örn. membran'}
+                  value={categoryDraftName}
+                  autoFocus
+                  onChange={(e) => setCategoryDraftName(e.target.value)}
+                  onBlur={(e) => {
+                    const v = toTitleCaseTR(e.target.value.trim());
+                    if (v) setCategoryDraftName(v);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void saveCategoryDraft();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={categoryDraftSaving}
+                  onClick={() => { void saveCategoryDraft(); }}
+                  className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                >
+                  {categoryDraftSaving ? 'Kaydediliyor' : 'Ekle'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setCategoryDraft(null); setCategoryDraftError(''); }}
+                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600"
+                >
+                  Vazgeç
+                </button>
+              </div>
+              {categoryDraftError ? (
+                <p className="mt-1.5 text-xs text-status-danger">{categoryDraftError}</p>
+              ) : (
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  Aynı ad Ayarlar → Masraf Kategorileri listesinde de durur.
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
-        )}
 
-        <div>
-          <label className={labelCls}>Belge No</label>
-          <input
-            className={inputCls}
-            placeholder="Fiş / Fatura no"
-            value={documentNo}
-            onChange={(e) => setDocumentNo(e.target.value)}
+        <div data-testid="claim-file-masraf-cari">
+          <label className={labelCls}>
+            Ödeme Kaynağı (Cari) {requiredHint}
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <SearchableSelect
+              className="min-w-0 flex-1"
+              inputClassName={inputCls}
+              options={partyAccounts.map((row) => ({
+                value: row.id,
+                label: `${row.name} · ${row.kindLabel}`,
+              }))}
+              value={partyAccountId}
+              onChange={setPartyAccountId}
+              placeholder="Kredi kartı veya tedarikçi cari ara..."
+              emptyText="Cari bulunamadı — Yeni Cari ile açın"
+            />
+            <button
+              type="button"
+              onClick={() => setShowCariCreate(true)}
+              className="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              data-testid="claim-file-yeni-cari"
+            >
+              + Yeni Cari
+            </button>
+          </div>
+          {selectedParty ? (
+            <div
+              className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"
+              data-testid="claim-file-masraf-cari-kart"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-800">{selectedParty.name}</p>
+                <p className="text-xs text-slate-500">
+                  {selectedParty.kindLabel}
+                  {selectedParty.cardLast4 ? ` · ****${selectedParty.cardLast4}` : ''}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCariOzetId((cur) => (cur === selectedParty.id ? null : selectedParty.id))
+                  }
+                  className="rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-800 hover:bg-brand-100"
+                  data-testid="claim-file-cari-ozet-ac"
+                >
+                  {cariOzetId === selectedParty.id ? 'Cari Özeti Gizle' : 'Cari Kartı Aç'}
+                </button>
+              </div>
+            </div>
+          ) : null}
+          <CariHesapOzetModal
+            open={Boolean(cariOzetId)}
+            accountId={cariOzetId}
+            onClose={() => setCariOzetId(null)}
           />
         </div>
 
@@ -762,6 +993,17 @@ export function ClaimFileExpenseFormPanel({
         open={showCameraModal}
         onClose={() => setShowCameraModal(false)}
         onCapture={(file) => void handleReceiptScan(file)}
+      />
+
+      <CariHesapCreateModal
+        open={showCariCreate}
+        onClose={() => setShowCariCreate(false)}
+        onCreated={(account) => {
+          void loadPartyAccounts().then(() => {
+            setPartyAccountId(account.id);
+            setFormError('');
+          });
+        }}
       />
     </>
   );

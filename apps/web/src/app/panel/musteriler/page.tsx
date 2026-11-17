@@ -78,6 +78,7 @@ import { MUSTERI_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs
 import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
 import { Building2, UserRound, Users } from 'lucide-react';
+import { CARI_KARSI_TARAF_ROL_LABEL, cariCiftRolKimlikHatasi } from '@sigorta/shared';
 import { listedCustomerShortLabel } from '@/utils/operation-customer-display';
 import {
   PanelTableColumnPicker,
@@ -175,6 +176,8 @@ const emptyForm = () => ({
   serviceType: '' as '' | 'hasar' | 'acil_yardim',
   serviceBranches: [] as string[],
   privateServiceType: '' as string,
+  /** Finans karşı taraf rolü — çift rol her iki listede görünür. */
+  cariRol: 'musteri' as 'musteri' | 'musteri_tedarikci',
 });
 
 const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-status-success/30 focus:border-emerald-400 transition-colors';
@@ -1723,6 +1726,17 @@ export default function MusterilerPage() {
         errors.subType = 'Alt tip seçimi zorunludur';
       }
     }
+    if (!editingCustomerId && form.cariRol === 'musteri_tedarikci') {
+      const kimlik = cariCiftRolKimlikHatasi({
+        entityType: form.customerType,
+        taxNumber: form.taxNumber,
+        identityNo: form.identityNo,
+      });
+      if (kimlik) {
+        if (form.customerType === 'individual') errors.identityNo = kimlik;
+        else errors.taxNumber = kimlik;
+      }
+    }
     if (form.phone) {
       const phoneErr = customerPhoneValidationError(form.phone, form.phoneType);
       if (phoneErr) errors.phone = phoneErr;
@@ -1782,6 +1796,25 @@ export default function MusterilerPage() {
         errors.subType = 'Alt tip seçimi zorunludur';
         missingLabels.push('Alt Tip');
       }
+    }
+    if (!editingCustomerId && form.cariRol === 'musteri_tedarikci') {
+      const kimlik = cariCiftRolKimlikHatasi({
+        entityType: form.customerType,
+        taxNumber: form.taxNumber,
+        identityNo: form.identityNo,
+      });
+      if (kimlik) {
+        if (form.customerType === 'individual') {
+          errors.identityNo = kimlik;
+          setIdentityNoError(kimlik);
+          missingLabels.push('TC Kimlik No');
+        } else {
+          errors.taxNumber = kimlik;
+          missingLabels.push('Vergi No');
+        }
+      }
+    }
+    if (form.customerType === 'corporate') {
       const yetkiliDirty =
         isDirtyAuthorizedPersonName({
           firstName: form.contactFirstName,
@@ -1922,6 +1955,7 @@ export default function MusterilerPage() {
         serviceBranches: form.subType === 'sigorta_sirketi' ? form.serviceBranches : [],
         contacts: savedContacts,
         contactInfos: savedContactInfos.filter((ci) => ci.value.trim()),
+        ...(!editingCustomerId ? { cariRol: form.cariRol } : {}),
       };
       if (form.customerType === 'individual') {
         payload.firstName = written.firstName; payload.lastName = written.lastName;
@@ -2594,6 +2628,11 @@ export default function MusterilerPage() {
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${c.customerType === 'individual' ? 'bg-purple-50 text-purple-700' : 'bg-emerald-50 text-emerald-700'}`}>
                           {c.customerType === 'individual' ? 'Bireysel' : 'Kurumsal'}
                         </span>
+                        {c.cariRol === 'musteri_tedarikci' ? (
+                          <span className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800 border border-sky-100">
+                            {CARI_KARSI_TARAF_ROL_LABEL.musteri_tedarikci}
+                          </span>
+                        ) : null}
                         {subTypeLabel ? (
                           <span className="inline-flex rounded-full bg-slate-50 px-2 py-0.5 text-[10px] text-slate-600">{subTypeLabel}</span>
                         ) : null}
@@ -2981,6 +3020,33 @@ export default function MusterilerPage() {
                   </div>
                   {fieldErrors.customerType ? (
                     <p className="text-xs text-status-danger mb-3">{fieldErrors.customerType}</p>
+                  ) : null}
+
+                  {!editingCustomerId ? (
+                    <div className="mb-5 max-w-sm" data-testid="musteri-cari-rol">
+                      <label className="mb-1.5 block text-xs font-medium text-slate-700">
+                        Cari Rol
+                      </label>
+                      <select
+                        value={form.cariRol}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            cariRol: e.target.value as 'musteri' | 'musteri_tedarikci',
+                          }))
+                        }
+                        className={inp}
+                      >
+                        <option value="musteri">{CARI_KARSI_TARAF_ROL_LABEL.musteri}</option>
+                        <option value="musteri_tedarikci">
+                          {CARI_KARSI_TARAF_ROL_LABEL.musteri_tedarikci}
+                        </option>
+                      </select>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Müşteri Ve Tedarikçi seçilirse kart her iki listede durur.
+                        Bireyselde T.C. kimlik, kurumsalda vergi numarası zorunludur.
+                      </p>
+                    </div>
                   ) : null}
 
                   <CustomerSubTypePicker

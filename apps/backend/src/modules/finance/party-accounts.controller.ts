@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -62,9 +63,17 @@ export class PartyAccountsController {
 
   @Get('seyir-ozet')
   @RequirePermissions('payment.view')
-  @ApiOperation({ summary: 'Şirket Seyri — cari alacak / borç özeti' })
-  async seyirOzet() {
-    const data = await this.service.getSeyirOzet();
+  @ApiOperation({ summary: 'Şirket Seyri — cari + dönem gelir/gider/kâr' })
+  async seyirOzet(
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+  ) {
+    const y = year != null && year !== '' ? Number(year) : undefined;
+    const m = month != null && month !== '' ? Number(month) : undefined;
+    const data = await this.service.getSeyirOzet({
+      year: Number.isFinite(y) ? y : undefined,
+      month: Number.isFinite(m) ? m : undefined,
+    });
     return { success: true, data };
   }
 
@@ -121,6 +130,37 @@ export class PartyAccountsController {
     return { success: true, data };
   }
 
+  @Get('isletme-sabit/dusum')
+  @RequirePermissions('payment.view')
+  @ApiOperation({ summary: 'İşletme sabiti — ayda cariye düşülen kalemler' })
+  async listIsletmeSabitDusum(
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+  ) {
+    const data = await this.service.listIsletmeSabitDusumDurum(
+      Number(year),
+      Number(month),
+    );
+    return { success: true, data };
+  }
+
+  @Post('isletme-sabit/dusum')
+  @RequirePermissions('payment.update')
+  @ApiOperation({
+    summary: 'Aktif işletme sabitlerini seçilen ayda cariye düş (ödeme değildir)',
+  })
+  async postIsletmeSabitDusum(
+    @Body() body: { year?: number; month?: number },
+    @Request() req: any,
+  ) {
+    const data = await this.service.postIsletmeSabitAylikDusum({
+      year: Number(body?.year),
+      month: Number(body?.month),
+      actorUserId: req.user?.id ?? 'system',
+    });
+    return { success: true, data };
+  }
+
   @Get(':id')
   @RequirePermissions('payment.view')
   @ApiOperation({ summary: 'Cari hesap özeti' })
@@ -134,6 +174,22 @@ export class PartyAccountsController {
   @ApiOperation({ summary: 'Cari ekstre' })
   async statement(@Param('id') id: string) {
     const data = await this.service.getStatement(id);
+    return { success: true, data };
+  }
+
+  @Post('ensure-vendor')
+  @RequirePermissions('payment.create')
+  @ApiOperation({ summary: 'Tedarikçi kartından cari aç veya mevcut bağlananı döndür' })
+  async ensureVendor(@Body() body: { vendorId?: string }, @Request() req: any) {
+    const vendorId = String(body?.vendorId ?? '').trim();
+    if (!vendorId) {
+      throw new BadRequestException('Tedarikçi seçimi zorunludur.');
+    }
+    const ensured = await this.service.ensureVendorAccount({
+      vendorId,
+      userId: req.user?.id ?? 'system',
+    });
+    const data = await this.service.findOne(ensured.id);
     return { success: true, data };
   }
 
