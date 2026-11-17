@@ -468,6 +468,7 @@ export function mapCustomerRecordToForm(
     serviceType,
     serviceBranches,
     privateServiceType: '',
+    cariRol: customer.cariRol === 'musteri_tedarikci' ? 'musteri_tedarikci' as const : 'musteri' as const,
   };
   return titleCaseCustomerWrittenFields(mapped);
 }

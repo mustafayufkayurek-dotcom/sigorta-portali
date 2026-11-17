@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';

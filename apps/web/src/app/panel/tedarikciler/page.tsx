@@ -1541,6 +1541,7 @@ export default function VendorsPage() {
       contractNotes: v.contractNotes ?? '',
       category: loadCategory,
       canActAsInspector: !!v.canActAsInspector,
+      cariRol: v.cariRol === 'musteri_tedarikci' ? 'musteri_tedarikci' : 'tedarikci',
     });
     applyServiceBranchFields(
       Array.isArray(v.serviceBranches) ? v.serviceBranches : [],
