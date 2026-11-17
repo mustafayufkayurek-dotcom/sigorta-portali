@@ -12,6 +12,9 @@ export type MailContact = {
 export type MailRecipient = MailContact & { delivery: 'to' | 'cc' | 'bcc' };
 export { enforceSingleApprovalTo };
 
+const keyOf = (email: string) => email.trim().toLowerCase();
+const validEmail = (email: string) => /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email);
+
 /** Controlled selection: the parent owns the draft and submits it to the real API. */
 export function ReportRecipientPicker({
   contacts,
