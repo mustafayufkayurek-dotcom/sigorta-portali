@@ -34,7 +34,8 @@ import { OperationInboxScheduler } from './operation-inbox.scheduler';
     StorageModule,
     NotificationsModule,
     GraphMailModule,
-    ClaimFilesModule,
+    // Finance → SystemSettings → OperationInbox → ClaimFiles döngüsü: ClaimFiles henüz tanımsız kalmasın.
+    forwardRef(() => ClaimFilesModule),
     ClaimResponsibilitiesModule,
     forwardRef(() => CustomersModule),
     EmergencyModule,

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
 import { SystemSettingsModule } from '@/modules/system-settings/system-settings.module';
@@ -18,7 +18,7 @@ import { PartyAccountsController } from './party-accounts.controller';
 import { PartyAccountsService } from './party-accounts.service';
 
 @Module({
-  imports: [PrismaModule, NotificationsModule, SystemSettingsModule],
+  imports: [PrismaModule, NotificationsModule, forwardRef(() => SystemSettingsModule)],
   controllers: [
     ExtraWorkItemController,
     ClaimFileRevenueController,
