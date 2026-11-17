@@ -22,7 +22,7 @@ export function isInsuredCollectionParty(value?: string | null): boolean {
 /** Hasar Tespit hizmet bedeli dosyanın müşterisine (broker / özel müşteri) faturalanır. */
 export const FILE_FEE_CUSTOMER_SOURCE = 'customer' as const;
 export const HASAR_TESPIT_FEE_DESCRIPTION = 'Hasar Tespit Hizmet Bedeli';
-/** Rapor müşteriye gönderildi (Onaya Gönder sonrası) — Hasar Tespit fatura talebi bu andan sonra açılır. */
+/** Tespit raporu müşteriye / onaya gitti (kapanış özeti vb.). Fatura talebi için zorunlu değildir. */
 export const HASAR_TESPIT_REPORT_SENT_STATUSES = [
   'pending_approval',
   'approved',

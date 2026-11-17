@@ -1,7 +1,9 @@
 import {
   CLAIM_MAIL_PARTY_LABEL,
   HASAR_TESPIT_MUHATAP_SIRASI,
+  approvalRecipientSurname,
   buildClaimApprovalMailSubject,
+  claimApprovalGreeting,
   hasarReportDocumentTitle,
   hizmetKartiCodeForClaim,
   resolveClaimMailRoute,
@@ -38,6 +40,10 @@ function foldEmail(email?: string | null): string {
 }
 
 function partyDisplayName(row: ChannelParty, fallback: string): string {
+  const contacts = Array.isArray(row?.contacts) ? row!.contacts! : [];
+  const primary = contacts.find((c) => c?.isPrimary) ?? contacts[0];
+  const contactPerson = String(primary?.name ?? '').trim();
+  if (contactPerson) return contactPerson;
   const short = String(row?.shortName ?? '').trim();
   if (short) return short;
   const company = String(row?.companyName ?? row?.name ?? '').trim();
@@ -110,12 +116,7 @@ export function claimApprovalMailContacts(input: {
     const row = byParty[party];
     if (!row) continue;
     const orgName = partyDisplayName(row as ChannelParty, role);
-    pushContact(out, seen, {
-      id: `${party}:org`,
-      name: orgName,
-      role,
-      email: row.email,
-    });
+    // Kişi adı kurumdan önce — aynı e-postada Sn. Türkiye yerine Sn. Çakar kalsın.
     const contacts = Array.isArray((row as ChannelParty)?.contacts) ? (row as ChannelParty)!.contacts! : [];
     for (const [index, contact] of contacts.entries()) {
       const personName = String(contact?.name ?? '').trim() || orgName;
@@ -137,6 +138,12 @@ export function claimApprovalMailContacts(input: {
         email: info?.value,
       });
     }
+    pushContact(out, seen, {
+      id: `${party}:org`,
+      name: orgName,
+      role,
+      email: row.email,
+    });
   }
   return out;
 }
@@ -150,16 +157,26 @@ export function claimApprovalDefaultToEmails(contacts: MailContact[], preferredE
     .map((row) => row.email);
 }
 
-/** Kişi adından soyad; firma / tek kelime boş kalır. */
+/** Kişi adından soyad; firma / ülke / tek kelime boş kalır. */
 export function claimApprovalRecipientSurname(name?: string | null): string {
-  const raw = String(name ?? '').trim();
-  if (!raw) return '';
-  if (/(sigorta|broker|eksper|ltd|a\.?\s?ş|assistance|asistans|şirket|firma|demo|pilot)/i.test(raw)) {
-    return '';
+  return approvalRecipientSurname(name);
+}
+
+/**
+ * Mesaj hitabı için ad: Kime’deki ilk **kişi** (soyadı çıkan).
+ * Allianz Pilot / Howden Demo gibi firma satırını atlar; Sn. Çakar / Sn. Güngör üretir.
+ */
+export function claimApprovalFirstToGreetingName(
+  recipients: Array<{ delivery?: string; name?: string | null }>,
+): string {
+  for (const row of recipients) {
+    if (row.delivery !== 'to') continue;
+    const name = String(row.name ?? '').trim();
+    if (!name) continue;
+    if (approvalRecipientSurname(name)) return name;
   }
-  const parts = raw.split(/\s+/).filter(Boolean);
-  if (parts.length < 2) return '';
-  return parts[parts.length - 1] ?? '';
+  // Firma-only Kime: kişi yoksa boş — Sn. Yetkili
+  return '';
 }
 
 /** Dosya sorumlusu — Alıcılar listesinde Bilgi satırı. */
@@ -305,9 +322,8 @@ export function claimApprovalMailTextPreview(input: {
   const insuranceCompanyName = String(input.insuranceCompanyName ?? '').trim() || '—';
   const fileSubject = String(input.fileSubject ?? '').trim() || '—';
   const isTespit = documentTitle === 'Hasar Tespit Raporu';
-  const soyad = claimApprovalRecipientSurname(input.recipientName);
   const greeting = isTespit
-    ? (soyad ? `Sayın ${soyad},` : 'Sayın Yetkili,')
+    ? claimApprovalGreeting(input.recipientName)
     : 'Sayın Eksperimiz,';
   const body = isTespit
     ? 'Dosyaya ait Hasar Tespit Raporu ekte bilgilerinize sunarız.'

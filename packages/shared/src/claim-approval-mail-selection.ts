@@ -29,6 +29,37 @@ export function claimApprovalCustomerDisplayName(customer?: {
   );
 }
 
+/**
+ * Kişi adından soyad. Firma / ülke / unvan (Howden Türkiye, Doğanlar Mobilya Grb.) boş kalır.
+ * Örn. Ali Çakar → Çakar; Aslı Güngör → Güngör.
+ */
+export function approvalRecipientSurname(name?: string | null): string {
+  const raw = String(name ?? '').trim();
+  if (!raw) return '';
+  if (
+    /(sigorta|broker|eksper|ltd\.?|a\.?\s?ş\.?|assistance|asistans|şirket|firma|demo|pilot|türkiye|turkey|holding|grubu|\bgrb\.?\b|group|mobilya|howden|meridyen|san\.?|tic\.?|\bas\b|anonim|limited|şubesi|ofisi|müşteri)/i.test(
+      raw,
+    )
+  ) {
+    return '';
+  }
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return '';
+  const last = parts[parts.length - 1] ?? '';
+  if (/^(türkiye|turkey|grubu|grb\.?|group|holding|ltd\.?|a\.?ş\.?)$/i.test(last)) return '';
+  return last;
+}
+
+/** Hasar Tespit hitabı: Sn. Çakar, — kişi yoksa Sn. Yetkili, */
+export function claimApprovalGreeting(nameOrSurname?: string | null): string {
+  const raw = String(nameOrSurname ?? '').trim();
+  if (!raw) return 'Sn. Yetkili,';
+  const soyad =
+    approvalRecipientSurname(raw)
+    || (!/\s/.test(raw) && approvalRecipientSurname(`Kişi ${raw}`) === raw ? raw : '');
+  return soyad ? `Sn. ${soyad},` : 'Sn. Yetkili,';
+}
+
 /** Yazım kutusundan hitap + gövde ayırır. */
 export function splitClaimApprovalMessageText(text: string | null | undefined): {
   greeting: string;
@@ -38,7 +69,7 @@ export function splitClaimApprovalMessageText(text: string | null | undefined): 
   if (!normalized) return { greeting: '', body: '' };
   const lines = normalized.split('\n');
   const first = (lines[0] ?? '').trim();
-  if (/^Sayın\b/i.test(first)) {
+  if (/^(Sayın\b|Sn\.)/i.test(first)) {
     return {
       greeting: first,
       body: lines.slice(1).join('\n').replace(/^\n+/, '').trim(),

@@ -115,7 +115,7 @@ export const OPS_NOTICE = {
     id: 'hasar-tespit-bedel-hesapla-v692',
     title: 'Hizmet bedeli hesabı',
     body:
-      'Çıkış adresini yazıp Rotayı Hesapla deyin; km, köprü ve otoyol satırları gelir. Akaryakıt fiyatı günlük okunur, kutudan düzeltilebilir. Tarife müşteri kartından, araç giderleri Ayarlar’dan gelir. Gelire Düşür hizmet bedelini gelire, yakıt, köprü, km aşımı ve kira payını dosya giderine yazar.',
+      'Çıkış adresini yazıp Rotayı Hesapla deyin; km, köprü ve otoyol satırları gelir. Akaryakıt fiyatı günlük okunur, kutudan düzeltilebilir. Tarife müşteri kartından, araç giderleri Ayarlar’dan gelir. Gelire Düşür hizmet bedelini gelire yazar. Fatura talebini dosya sorumlusu bedel girdikten sonra Fatura Talebi Aç ile açar; rapor zorunlu değildir.',
   },
   hasarGelirFaturali: {
     id: 'hasar-gelir-faturali-v549',

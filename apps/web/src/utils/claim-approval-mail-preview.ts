@@ -23,11 +23,15 @@ type ChannelParty = {
   fullName?: string | null;
   firstName?: string | null;
   lastName?: string | null;
-  contacts?: Array<{ email?: string | null; isPrimary?: boolean | null }> | null;
+  contacts?: Array<{ name?: string | null; email?: string | null; isPrimary?: boolean | null }> | null;
   contactInfos?: Array<{ type?: string | null; label?: string | null; value?: string | null }> | null;
 } | null | undefined;
 
 function partyName(row: ChannelParty, fallback: string): string {
+  const contacts = Array.isArray(row?.contacts) ? row!.contacts! : [];
+  const primary = contacts.find((c) => c?.isPrimary) ?? contacts[0];
+  const contactPerson = String(primary?.name ?? '').trim();
+  if (contactPerson) return contactPerson;
   const short = String(row?.shortName ?? '').trim();
   if (short) return short;
   const company = String(row?.companyName ?? row?.name ?? '').trim();

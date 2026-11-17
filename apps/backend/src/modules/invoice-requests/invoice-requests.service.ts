@@ -13,7 +13,6 @@ import { InvoicesService } from '@/modules/invoices/invoices.service';
 import { staffDisplayName } from '@/modules/invoices/invoice-edit-note';
 import {
   HASAR_TESPIT_FEE_DESCRIPTION,
-  HASAR_TESPIT_REPORT_SENT_STATUSES,
   isAcilDigitalApprovalRequired,
   isInspectionServiceKind,
 } from '@sigorta/shared';
@@ -92,14 +91,14 @@ export class InvoiceRequestsService {
   }
 
   /**
-   * Hasar Tespit: rapor müşteriye gönderilince ve hizmet bedeli girilince satış fatura talebi açılır.
-   * Tutar rapor toplamı değil, dosyaya elle girilen Hasar Tespit Hizmet Bedeli’dir. Fatura dosya müşterisine.
-   * Hangisi sonra olursa o an tetikler; ikinci talep açılmaz.
+   * Hasar Tespit: dosya sorumlusu satış fatura talebini açar.
+   * Bedel yönetici / finans tarafından Gelir’e (veya Hizmet Bedeli Hesapla ile) yazılmış olmalıdır.
+   * Rapor zorunlu değildir. İkinci talep açılmaz.
    */
   async ensureHasarTespitInvoiceRequest(
     claimFileId: string,
     userId: string,
-  ): Promise<{ created: boolean; reason?: 'not_inspection' | 'report_not_sent' | 'fee_missing' | 'exists' }> {
+  ): Promise<{ created: boolean; reason?: 'not_inspection' | 'fee_missing' | 'exists' }> {
     const claim = await this.prisma.claimFile.findUnique({
       where: { id: claimFileId },
       select: {
@@ -110,12 +109,6 @@ export class InvoiceRequestsService {
       },
     });
     if (!claim || !isInspectionServiceKind(claim.serviceKind)) return { created: false, reason: 'not_inspection' };
-
-    const sentReport = await this.prisma.repairReport.findFirst({
-      where: { claimFileId, status: { in: [...HASAR_TESPIT_REPORT_SENT_STATUSES] } },
-      select: { id: true },
-    });
-    if (!sentReport) return { created: false, reason: 'report_not_sent' };
 
     const fees = await this.prisma.claimFileRevenue.findMany({
       where: { claimFileId, revenueType: 'file_fee', status: { not: 'cancelled' } },
@@ -153,6 +146,33 @@ export class InvoiceRequestsService {
       { skipClosureCheck: true },
     );
     return { created: true };
+  }
+
+  /** Dosya sorumlusu / ofis: bedel girilmiş Hasar Tespit dosyasında fatura talebi açar. */
+  async requestHasarTespitInvoice(claimFileId: string, userId: string) {
+    const result = await this.ensureHasarTespitInvoiceRequest(claimFileId, userId);
+    if (result.created) {
+      await this.prisma.fileActivityLog.create({
+        data: {
+          claimFileId,
+          action: 'NOTE_ADDED' as any,
+          actorId: userId,
+          actorRole: 'office_staff',
+          description: 'Hasar Tespit Hizmet Bedeli için satış fatura talebi finansa gitti.',
+          metadata: { kind: 'hasar_tespit_invoice_request', created: true },
+        },
+      }).catch(() => undefined);
+      return { created: true as const };
+    }
+    if (result.reason === 'fee_missing') {
+      throw new BadRequestException(
+        'Fatura talebi için önce yönetici veya finans personeli Hasar Tespit Hizmet Bedeli’ni Gelir’e yazmalıdır.',
+      );
+    }
+    if (result.reason === 'not_inspection') {
+      throw new BadRequestException('Bu işlem yalnız Hasar Tespit dosyalarında kullanılır.');
+    }
+    return { created: false as const, reason: 'exists' as const };
   }
 
   // ── Oluşturma ─────────────────────────────────────────────────────────────

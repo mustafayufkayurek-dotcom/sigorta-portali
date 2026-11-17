@@ -28,7 +28,7 @@ export function hasarOfficeCloseMissing(input: {
   if (code === 'cancelled') return ['İptal edilmiş dosya kapatılmaz'];
   if (input.inspection) {
     const missing: string[] = [];
-    if (!input.reportSentToCustomer) missing.push('Tespit raporu müşteriye gönderilmedi');
+    // Rapor zorunlu değil; bedeli finans girer, dosya sorumlusu fatura talebi açar.
     if (!input.hasInvoiceRequest) missing.push('Hasar Tespit Hizmet Bedeli fatura talebi');
     return missing;
   }

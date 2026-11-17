@@ -88,7 +88,7 @@ describe('dosya kanalı LOCK', () => {
         broker: null,
         expert: { email: 'ofis@doganlar.com', contacts: [{ email: 'sena@doganlar.com', isPrimary: true }] },
       }),
-      ['hasar@allianz.com', 'acente@vadi.com', 'ofis@doganlar.com', 'sena@doganlar.com'],
+      ['hasar@allianz.com', 'acente@vadi.com', 'sena@doganlar.com', 'ofis@doganlar.com'],
     );
     assert.deepEqual(
       collectClaimFileChannelEmails({

@@ -56,6 +56,7 @@ import {
 import {
   claimApprovalMailContacts,
   claimApprovalDefaultToEmailsWithCustomerCard,
+  claimApprovalFirstToGreetingName,
   claimApprovalMailTextPreview,
   mergeClaimApprovalCustomerCardContact,
   mergeClaimApprovalFileOwnerContact,
@@ -64,6 +65,7 @@ import {
 import {
   ReportRecipientPicker,
   buildRecipientPayload,
+  enforceSingleApprovalTo,
   type MailRecipient,
 } from '@/components/repair-reports/ReportRecipientPicker';
 import { ReportApprovalMailComposeFields } from '@/components/repair-reports/ReportApprovalMailPreview';
@@ -5287,7 +5289,6 @@ export default function RepairReportPage() {
     [report?.claimFile],
   );
   const approvalMailText = useMemo(() => {
-    const firstTo = approvalRecipients.find((row) => row.delivery === 'to');
     const owner = report?.claimFile?.assignedOfficeUser;
     const ownerName = `${String(owner?.firstName ?? '').trim()} ${String(owner?.lastName ?? '').trim()}`.trim();
     return claimApprovalMailTextPreview({
@@ -5300,7 +5301,7 @@ export default function RepairReportPage() {
         ?? report?.claimFile?.departmentFileSubject?.name
         ?? report?.claimFile?.lossType,
       customerName: claimApprovalCustomerDisplayName(report?.claimFile?.customer),
-      recipientName: firstTo?.name,
+      recipientName: claimApprovalFirstToGreetingName(approvalRecipients),
       ownerName: ownerName || null,
       ownerPhone: owner?.phone ?? null,
       ownerEmail: owner?.email ?? null,
@@ -5688,17 +5689,30 @@ export default function RepairReportPage() {
       preferred,
       report?.claimFile?.customer?.email,
     );
-    const defaultEmails = defaults.length > 0
-      ? defaults
-      : approvalMailContactsList
-        .filter((row) => row.id !== 'file-owner')
-        .slice(0, 1)
-        .map((row) => row.email);
-    const toRecipients = approvalMailContactsList
-      .filter((row) => defaultEmails.some((email) => email.trim().toLowerCase() === row.email.trim().toLowerCase()))
-      .map((row) => ({ ...row, delivery: 'to' as const }));
+    // Tercih eşleşmezse veya boşsa: ilk muhatap (dosya sorumlusu hariç) Kime olsun.
+    const fallbackEmails = approvalMailContactsList
+      .filter((row) => row.id !== 'file-owner')
+      .map((row) => row.email);
+    const defaultEmails = (defaults.length > 0 ? defaults : fallbackEmails.slice(0, 1))
+      .filter((email) =>
+        approvalMailContactsList.some(
+          (row) => row.email.trim().toLowerCase() === email.trim().toLowerCase(),
+        ),
+      );
+    const ensuredEmails = defaultEmails.length > 0 ? defaultEmails : fallbackEmails.slice(0, 1);
+    // Tek Kime: ilk tercih Kime, diğer tercih edilenler Bilgi.
+    const primaryTo = ensuredEmails[0] ?? '';
+    const selectedRows = approvalMailContactsList
+      .filter((row) => ensuredEmails.some((email) => email.trim().toLowerCase() === row.email.trim().toLowerCase()))
+      .map((row) => ({
+        ...row,
+        delivery: (row.email.trim().toLowerCase() === primaryTo.trim().toLowerCase() ? 'to' : 'cc') as 'to' | 'cc',
+      }));
     setApprovalRecipients(
-      withClaimApprovalFileOwnerCc(toRecipients, report?.claimFile?.assignedOfficeUser),
+      enforceSingleApprovalTo(
+        withClaimApprovalFileOwnerCc(selectedRows, report?.claimFile?.assignedOfficeUser),
+        primaryTo,
+      ),
     );
     setConfirmSendWithoutImages(false);
     setApprovalMessageText('');

@@ -73,10 +73,34 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     assert.match(OPS_NOTICE.finansTedarikciKuyruk.body, /müşteri carisine/);
     assert.match(tahsilat, /emergencyCaseId/);
     assert.match(tahsilat, /acil_hakedis/);
-    assert.match(tahsilat, /Vade yok/);
+    assert.doesNotMatch(tahsilat, /Vade yok/);
+    assert.match(tahsilat, /financePaymentMethodDisplay/);
     assert.match(tahsilat, /partyAccountId/);
+    assert.match(tahsilat, /partyAccountName/);
+    assert.match(tahsilat, /finansPaymentCariEtiket/);
+    assert.match(tahsilat, /id: 'cari'/);
+    assert.match(tahsilat, /tahsilat-satir-cari-link/);
+    assert.match(tahsilat, /tahsilat-satir-cari-durum/);
     assert.match(tahsilat, /tahsilat-cariler-link/);
+    assert.match(tahsilat, /tahsilatlar-yeni-tahsilat/);
+    assert.match(tahsilat, /CariTahsilatAlModal/);
     assert.match(tahsilat, /\/panel\/finans\/cariler/);
+    const dosyaTahsilat = readFileSync(
+      join(here, '../components/finance/ClaimFileGelirTahsilatPanel.tsx'),
+      'utf8',
+    );
+    assert.match(dosyaTahsilat, /hasar-tahsilat-cari-not/);
+    assert.match(dosyaTahsilat, /Cariye İşlendi/);
+    assert.match(dosyaTahsilat, /hasar-dosya-sirket-cari-link|hasar-dosya-cariler-link/);
+    const cariEkstre = readFileSync(join(here, '../app/panel/finans/cariler/[id]/page.tsx'), 'utf8');
+    assert.match(cariEkstre, /cari-tahsilat-al-ac/);
+    assert.match(cariEkstre, /CariTahsilatAlModal/);
+    const cariModal = readFileSync(
+      join(here, '../components/finance/CariTahsilatAlModal.tsx'),
+      'utf8',
+    );
+    assert.match(cariModal, /payerType: 'customer'/);
+    assert.match(cariModal, /Dosya bakiyesine dokunulmaz/);
   });
 
   it('Finans cari omurga şeridi durur', () => {

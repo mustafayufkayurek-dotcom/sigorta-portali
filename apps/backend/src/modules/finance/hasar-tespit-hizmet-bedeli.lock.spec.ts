@@ -1,7 +1,7 @@
 /**
- * Hasar Tespit — Hizmet Bedeli ve Fatura (Mustafa · 13.11.2026).
- * Rapor toplamı tespit edilen hasardır; gelir, bütçe, pano değildir. Hizmet bedeli dosyaya elle girilir,
- * dosya müşterisine faturalanır. Rapor müşteriye gidince satış fatura talebi açılır. Onarım bitişi beklenmez.
+ * Hasar Tespit — Hizmet Bedeli ve Fatura (Mustafa · 13.11.2026 / netleşme 17.11.2026).
+ * Rapor toplamı tespit edilen hasardır; gelir, bütçe, pano değildir. Hizmet bedelini yönetici / finans girer.
+ * Dosya sorumlusu Fatura Talebi Aç ile satış talebi açar. Rapor zorunlu değildir. Onarım bitişi beklenmez.
  * Çalıştır: node --experimental-strip-types --test apps/backend/src/modules/finance/hasar-tespit-hizmet-bedeli.lock.spec.ts
  */
 import assert from 'node:assert/strict';
@@ -34,26 +34,41 @@ describe('Hasar Tespit hizmet bedeli LOCK', () => {
     assert.match(panel, /isInspectionServiceKind\(claim\?\.serviceKind\) \? HASAR_TESPIT_FEE_DESCRIPTION : ''/);
   });
 
-  it('rapor müşteriye gidince veya bedel sonra girilince fatura talebi; fatura dosya müşterisine', () => {
+  it('bedel finansa; fatura talebini dosya sorumlusu açar; rapor şart değil', () => {
     const requests = read('../invoice-requests/invoice-requests.service.ts');
     assert.match(requests, /async ensureHasarTespitInvoiceRequest\(/);
-    assert.match(requests, /status: \{ in: \[\.\.\.HASAR_TESPIT_REPORT_SENT_STATUSES\] \}/);
+    assert.match(requests, /async requestHasarTespitInvoice\(/);
+    assert.doesNotMatch(requests, /report_not_sent/);
+    assert.doesNotMatch(requests, /HASAR_TESPIT_REPORT_SENT_STATUSES/);
     assert.match(requests, /reason: 'fee_missing'/);
     assert.match(requests, /status: \{ in: \['pending', 'approved', 'invoiced'\] \}/);
-    assert.match(read('../repair-reports/repair-reports.service.ts'), /await this\.ensureHasarTespitInvoiceRequest\(report\.claimFileId, userId\);/);
-    assert.match(read('claim-file-revenue.service.ts'), /ensureHasarTespitInvoiceRequest\(claimFileId, userId\)/);
+    const controller = read('../invoice-requests/invoice-requests.controller.ts');
+    assert.match(controller, /@Post\('hasar-tespit\/:claimFileId'\)/);
+    assert.doesNotMatch(read('claim-file-revenue.service.ts'), /ensureHasarTespitInvoiceRequest/);
+    assert.doesNotMatch(read('../repair-reports/repair-reports.service.ts'), /ensureHasarTespitInvoiceRequest/);
+    const panel = read('../../../../web/src/components/finance/ClaimFileGelirTahsilatPanel.tsx');
+    assert.match(panel, /data-testid="hasar-tespit-fatura-talebi"/);
+    assert.match(panel, /invoice-requests\/hasar-tespit\/\$\{claimId\}/);
     const invoices = read('../invoices/invoices.service.ts');
     assert.match(invoices, /const inspectionFee = isInspectionServiceKind\(claimFile\.serviceKind\);/);
     assert.match(invoices, /\? \(claimFile\.customerId \?\? null\)/);
   });
 
-  it('kapanış onarım bitişi beklemez; rapor gitmiş ve fatura talebi açılmış olmalı', () => {
+  it('kapanış onarım bitişi beklemez; fatura talebi yeter (rapor zorunlu değil)', () => {
     assert.deepEqual(hasarOfficeCloseMissing({ inspection: true, statusCode: 'budget_approved' }), [
-      'Tespit raporu müşteriye gönderilmedi',
       'Hasar Tespit Hizmet Bedeli fatura talebi',
     ]);
     assert.deepEqual(
-      hasarOfficeCloseMissing({ inspection: true, statusCode: 'budget_approved', reportSentToCustomer: true, hasInvoiceRequest: true }),
+      hasarOfficeCloseMissing({ inspection: true, statusCode: 'budget_approved', hasInvoiceRequest: true }),
+      [],
+    );
+    assert.deepEqual(
+      hasarOfficeCloseMissing({
+        inspection: true,
+        statusCode: 'budget_approved',
+        reportSentToCustomer: true,
+        hasInvoiceRequest: true,
+      }),
       [],
     );
     assert.ok(hasarOfficeCloseMissing({ statusCode: 'budget_approved', hasApprovedReport: true }).includes('Onarım bitişi'));

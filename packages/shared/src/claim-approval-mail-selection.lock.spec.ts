@@ -5,8 +5,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  approvalRecipientSurname,
   buildClaimApprovalMailSubject,
   claimApprovalCustomerDisplayName,
+  claimApprovalGreeting,
   filterSelectedApprovalEmails,
   mergeApprovalMailCc,
   resolveApprovalFileOwnerCc,
@@ -75,9 +77,23 @@ describe('onaya gönder alıcı seçimi LOCK', () => {
 
   it('açık mesaj kutusundan hitap ve gövde ayrılır', () => {
     assert.deepEqual(
+      splitClaimApprovalMessageText('Sn. Yetkili,\n\nDosyaya ait rapor ekte.'),
+      { greeting: 'Sn. Yetkili,', body: 'Dosyaya ait rapor ekte.' },
+    );
+    assert.deepEqual(
       splitClaimApprovalMessageText('Sayın Yetkili,\n\nDosyaya ait rapor ekte.'),
       { greeting: 'Sayın Yetkili,', body: 'Dosyaya ait rapor ekte.' },
     );
+  });
+
+  it('hitap birinci alıcının soyadıdır; firma/ülke soyad sayılmaz', () => {
+    assert.equal(approvalRecipientSurname('Ali Çakar'), 'Çakar');
+    assert.equal(approvalRecipientSurname('Aslı Güngör'), 'Güngör');
+    assert.equal(approvalRecipientSurname('Howden Türkiye'), '');
+    assert.equal(approvalRecipientSurname('Doğanlar Mobilya Grb.'), '');
+    assert.equal(claimApprovalGreeting('Ali Çakar'), 'Sn. Çakar,');
+    assert.equal(claimApprovalGreeting('Howden Türkiye'), 'Sn. Yetkili,');
+    assert.equal(claimApprovalGreeting('Çakar'), 'Sn. Çakar,');
   });
 
   it('CC Kime ile çakışmaz; bilgilendirme silinemez sırada ilk durur', () => {

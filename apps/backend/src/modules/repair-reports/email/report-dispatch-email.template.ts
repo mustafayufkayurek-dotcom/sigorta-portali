@@ -3,6 +3,12 @@
  * Kaynak: meridyen-birebir-referans.html. Maliyet ve kâr cümlesi yok.
  * E-posta istemcisi esnek yerleşimi keser; düzen tablodur. JavaScript yok.
  */
+import {
+  approvalRecipientSurname,
+  claimApprovalGreeting,
+} from '@sigorta/shared';
+
+export { approvalRecipientSurname };
 
 function escapeHtml(text: string): string {
   return text
@@ -70,18 +76,6 @@ export type ReportDispatchEmailData = {
   messageBody?: string | null;
 };
 
-/** Kişi adından soyad; firma / tek kelime boş kalır. */
-export function approvalRecipientSurname(name?: string | null): string {
-  const raw = String(name ?? '').trim();
-  if (!raw) return '';
-  if (/(sigorta|broker|eksper|ltd|a\.?\s?ş|assistance|asistans|şirket|firma|demo|pilot)/i.test(raw)) {
-    return '';
-  }
-  const parts = raw.split(/\s+/).filter(Boolean);
-  if (parts.length < 2) return '';
-  return parts[parts.length - 1] ?? '';
-}
-
 export function reportMailSignature(claim?: {
   assignedOfficeUser?: {
     firstName?: string | null;
@@ -124,10 +118,9 @@ function dispatchWording(
   recipientSurname?: string | null,
 ): { belge: string; hitap: string; intro: string } {
   if (String(documentTitle ?? '').trim() === 'Hasar Tespit Raporu') {
-    const soyad = String(recipientSurname ?? '').trim();
     return {
       belge: 'Hasar Tespit Raporu',
-      hitap: soyad ? `Sayın ${soyad},` : 'Sayın Yetkili,',
+      hitap: claimApprovalGreeting(recipientSurname),
       intro: 'Dosyaya ait Hasar Tespit Raporu ekte bilgilerinize sunarız.',
     };
   }
@@ -145,9 +138,14 @@ function resolveDispatchWording(data: ReportDispatchEmailData): { belge: string;
     data.messageGreeting != null
     || data.messageBody != null;
   if (!hasCustom) return base;
+  // Açık mesaj gövdesi personelden; hitap alıcı soyadından (Howden Türkiye → Sn. Yetkili / Sn. Çakar).
+  const soyadHitap = String(data.documentTitle ?? '').trim() === 'Hasar Tespit Raporu'
+    ? claimApprovalGreeting(data.recipientSurname)
+    : '';
+  const customHitap = String(data.messageGreeting ?? '').trim();
   return {
     belge: base.belge,
-    hitap: String(data.messageGreeting ?? '').trim(),
+    hitap: soyadHitap || customHitap || base.hitap,
     intro: String(data.messageBody ?? '').trim(),
   };
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useMemo, useState } from 'react';
+import { enforceSingleApprovalTo } from '@/utils/report-recipient-single-to';
 
 export type MailContact = {
   id: string;
@@ -9,9 +10,7 @@ export type MailContact = {
   email: string;
 };
 export type MailRecipient = MailContact & { delivery: 'to' | 'cc' | 'bcc' };
-
-const keyOf = (email: string) => email.trim().toLowerCase();
-const validEmail = (email: string) => /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email);
+export { enforceSingleApprovalTo };
 
 /** Controlled selection: the parent owns the draft and submits it to the real API. */
 export function ReportRecipientPicker({
@@ -55,14 +54,16 @@ export function ReportRecipientPicker({
     }
     const row = { id: `manual:${keyOf(email)}`, name: 'Ek alıcı', role: 'Elle eklenen', email };
     setExtra(prev => [...prev, row]);
-    onChange([...value, { ...row, delivery: 'to' }]);
+    onChange(enforceSingleApprovalTo([...value, { ...row, delivery: 'to' }], email));
     setEmailInput(''); setError('');
   }
 
   return (
     <fieldset disabled={disabled} className="min-w-0">
       <legend className="text-sm font-semibold text-slate-900">Alıcılar</legend>
-      <p className="mt-1 text-xs text-slate-500">Dosyadaki birden fazla muhatabı seçebilirsiniz.</p>
+      <p className="mt-1 text-xs text-slate-500">
+        Kime yalnız bir kişidir (hitap onun soyadı). Diğer seçilenler Bilgi’ye alınır.
+      </p>
       {rows.length === 0 && <p className="py-4 text-sm text-slate-600">Dosyada e-posta adresi bulunan muhatap yok.</p>}
       <div className="mt-2 divide-y divide-slate-200">
         {rows.map((row, index) => {
@@ -72,9 +73,13 @@ export function ReportRecipientPicker({
           return (
             <div key={key} className="flex items-center gap-3 py-3">
               <input id={id} type="checkbox" checked={Boolean(current)} className="h-5 w-5 shrink-0 accent-blue-600"
-                onChange={event => onChange(event.target.checked
-                  ? [...value, { ...row, delivery: 'to' }]
-                  : value.filter(item => keyOf(item.email) !== key))} />
+                onChange={event => {
+                  if (event.target.checked) {
+                    onChange(enforceSingleApprovalTo([...value, { ...row, delivery: 'to' }], row.email));
+                  } else {
+                    onChange(enforceSingleApprovalTo(value.filter(item => keyOf(item.email) !== key)));
+                  }
+                }} />
               <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
                 <span className="block text-sm font-medium text-slate-900">{row.name} <span className="text-xs font-normal text-slate-500">· {row.role}</span></span>
                 <span className="block break-all text-xs text-slate-600">{row.email}</span>
@@ -83,8 +88,14 @@ export function ReportRecipientPicker({
                 value={current?.delivery ?? 'to'} className={`${fieldClass} w-28 shrink-0`}
                 onChange={event => {
                   const raw = event.target.value;
-                  const delivery = raw === 'cc' ? 'cc' : raw === 'bcc' ? 'bcc' : 'to';
-                  onChange(value.map(item => keyOf(item.email) === key ? { ...item, delivery } : item));
+                  if (raw === 'to') {
+                    onChange(enforceSingleApprovalTo(value, row.email));
+                    return;
+                  }
+                  const delivery = raw === 'bcc' ? 'bcc' : 'cc';
+                  onChange(enforceSingleApprovalTo(
+                    value.map(item => keyOf(item.email) === key ? { ...item, delivery } : item),
+                  ));
                 }}>
                 <option value="to">Kime</option>
                 <option value="cc">Bilgi</option>
@@ -149,9 +160,11 @@ export function buildRecipientPayload(recipients: MailRecipient[]) {
     if (seen.has(key)) throw new Error('Aynı adres birden fazla kez seçilemez.');
     seen.add(key);
   }
-  const to = recipients.filter(row => row.delivery === 'to').map(row => row.email.trim());
-  const cc = recipients.filter(row => row.delivery === 'cc').map(row => row.email.trim());
-  const bcc = recipients.filter(row => row.delivery === 'bcc').map(row => row.email.trim());
+  const normalized = enforceSingleApprovalTo(recipients);
+  const to = normalized.filter(row => row.delivery === 'to').map(row => row.email.trim());
+  const cc = normalized.filter(row => row.delivery === 'cc').map(row => row.email.trim());
+  const bcc = normalized.filter(row => row.delivery === 'bcc').map(row => row.email.trim());
   if (!to.length) throw new Error('En az bir Kime alıcısı seçin.');
+  if (to.length > 1) throw new Error('Kime yalnız bir alıcı olabilir; diğerleri Bilgi’ye alınır.');
   return { to, cc, bcc };
 }

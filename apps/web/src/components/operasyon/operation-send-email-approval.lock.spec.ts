@@ -23,6 +23,7 @@ describe('liste onay maili LOCK', () => {
     assert.doesNotMatch(src, /allowManual=\{false\}/);
     assert.match(src, /mergeClaimApprovalCustomerCardContact/);
     assert.match(src, /claimApprovalDefaultToEmailsWithCustomerCard/);
+    assert.match(src, /enforceSingleApprovalTo/);
     assert.match(src, /claimApprovalMailTextPreview/);
     assert.match(src, /ReportApprovalMailComposeFields/);
     assert.match(src, /presentPdfPreview/);

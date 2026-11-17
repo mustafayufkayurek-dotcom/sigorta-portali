@@ -7,6 +7,7 @@ import { useToast } from '@/contexts/ToastContext';
 import {
   ReportRecipientPicker,
   buildRecipientPayload,
+  enforceSingleApprovalTo,
   type MailRecipient,
 } from '@/components/repair-reports/ReportRecipientPicker';
 import { ReportApprovalMailComposeFields } from '@/components/repair-reports/ReportApprovalMailPreview';
@@ -19,6 +20,7 @@ import {
 import {
   claimApprovalMailContacts,
   claimApprovalDefaultToEmailsWithCustomerCard,
+  claimApprovalFirstToGreetingName,
   claimApprovalMailTextPreview,
   mergeClaimApprovalCustomerCardContact,
   mergeClaimApprovalFileOwnerContact,
@@ -140,17 +142,26 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
           preferred,
           claimFile.customer?.email,
         );
-        const defaultEmails = defaults.length > 0
-          ? defaults
-          : contacts
-            .filter((row) => row.id !== 'file-owner')
-            .slice(0, 1)
-            .map((row) => row.email);
-        const toRecipients = contacts
-          .filter((row) => defaultEmails.some((email) => email.trim().toLowerCase() === row.email.trim().toLowerCase()))
-          .map((row) => ({ ...row, delivery: 'to' as const }));
+        const fallbackEmails = contacts
+          .filter((row) => row.id !== 'file-owner')
+          .map((row) => row.email);
+        const defaultEmails = (defaults.length > 0 ? defaults : fallbackEmails.slice(0, 1))
+          .filter((email) =>
+            contacts.some((row) => row.email.trim().toLowerCase() === email.trim().toLowerCase()),
+          );
+        const ensuredEmails = defaultEmails.length > 0 ? defaultEmails : fallbackEmails.slice(0, 1);
+        const primaryTo = ensuredEmails[0] ?? '';
+        const selectedRows = contacts
+          .filter((row) => ensuredEmails.some((email) => email.trim().toLowerCase() === row.email.trim().toLowerCase()))
+          .map((row) => ({
+            ...row,
+            delivery: (row.email.trim().toLowerCase() === primaryTo.trim().toLowerCase() ? 'to' : 'cc') as 'to' | 'cc',
+          }));
         setRecipients(
-          withClaimApprovalFileOwnerCc(toRecipients, claimFile.assignedOfficeUser),
+          enforceSingleApprovalTo(
+            withClaimApprovalFileOwnerCc(selectedRows, claimFile.assignedOfficeUser),
+            primaryTo,
+          ),
         );
       })
       .catch((err: unknown) => {
@@ -194,7 +205,6 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
   }, [claim]);
 
   const mailText = useMemo(() => {
-    const firstTo = recipients.find((row) => row.delivery === 'to');
     const owner = claim?.assignedOfficeUser;
     const ownerName = `${String(owner?.firstName ?? '').trim()} ${String(owner?.lastName ?? '').trim()}`.trim();
     return claimApprovalMailTextPreview({
@@ -207,7 +217,7 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
         ?? claim?.departmentFileSubject?.name
         ?? claim?.lossType,
       customerName: claimApprovalCustomerDisplayName(claim?.customer),
-      recipientName: firstTo?.name,
+      recipientName: claimApprovalFirstToGreetingName(recipients),
       ownerName: ownerName || null,
       ownerPhone: owner?.phone ?? null,
       ownerEmail: owner?.email ?? null,

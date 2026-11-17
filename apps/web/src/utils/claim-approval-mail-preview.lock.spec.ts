@@ -13,11 +13,14 @@ import {
   claimApprovalMailContacts,
   claimApprovalDefaultToEmails,
   claimApprovalDefaultToEmailsWithCustomerCard,
+  claimApprovalFirstToGreetingName,
+  claimApprovalRecipientSurname,
   formatApprovalSignaturePhone,
   mergeClaimApprovalCustomerCardContact,
   mergeClaimApprovalFileOwnerContact,
   withClaimApprovalFileOwnerCc,
 } from './claim-approval-mail-contacts.ts';
+import { enforceSingleApprovalTo } from './report-recipient-single-to.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -58,6 +61,7 @@ describe('Onaya Gönder tercih edilen alıcı LOCK', () => {
     assert.match(page, /mergeClaimApprovalCustomerCardContact/);
     assert.match(page, /mergeClaimApprovalFileOwnerContact/);
     assert.match(page, /withClaimApprovalFileOwnerCc/);
+    assert.match(page, /enforceSingleApprovalTo/);
     assert.match(page, /buildRecipientPayload/);
     assert.match(page, /approvalRecipients/);
     assert.match(page, /selectedEmails:\s*payload\.to/);
@@ -94,12 +98,23 @@ describe('Onaya Gönder tercih edilen alıcı LOCK', () => {
     assert.match(mailCompose, /ReportApprovalMailComposeFields/);
     assert.doesNotMatch(mailCompose, /onaya-gonder-sablon-onizleme/);
     assert.match(picker, /Alıcılar/);
+    assert.match(picker, /Kime yalnız bir kişidir/);
+    assert.match(picker, /enforceSingleApprovalTo/);
     assert.match(picker, /Kime/);
     assert.match(picker, /Bilgi/);
     assert.match(picker, /Gizli/);
     assert.match(picker, /value="bcc"/);
     assert.match(picker, /onaya-gonder-ek-alici/);
     assert.match(picker, /Satır Ekle/);
+  });
+
+  it('ikinci Kime otomatik Bilgi olur; hitap tek muhatapta kalır', () => {
+    const a = { id: '1', name: 'Ali Çakar', role: 'Broker', email: 'ali@howden.com', delivery: 'to' as const };
+    const b = { id: '2', name: 'Ayşe Demir', role: 'Eksper', email: 'ayse@eksper.com', delivery: 'to' as const };
+    const out = enforceSingleApprovalTo([a, b], b.email);
+    assert.equal(out.find((r) => r.email === b.email)?.delivery, 'to');
+    assert.equal(out.find((r) => r.email === a.email)?.delivery, 'cc');
+    assert.equal(out.filter((r) => r.delivery === 'to').length, 1);
   });
 
   it('hazır mail metni konu, gövde ve imza telefonunu gösterir', () => {
@@ -116,9 +131,9 @@ describe('Onaya Gönder tercih edilen alıcı LOCK', () => {
       ownerEmail: 'mustafa@meridyen-tr.com',
     });
     assert.equal(preview.subject, 'Hasar Tespit Raporu/Doğanlar Mobilya Grubu/2026 YE 1');
-    assert.equal(preview.greeting, 'Sayın Demir,');
+    assert.equal(preview.greeting, 'Sn. Demir,');
     assert.equal(preview.body, 'Dosyaya ait Hasar Tespit Raporu ekte bilgilerinize sunarız.');
-    assert.match(preview.messageText, /Sayın Demir,/);
+    assert.match(preview.messageText, /Sn\. Demir,/);
     assert.equal(preview.attachmentNote, 'Hasar Tespit Raporu PDF eki gider.');
     assert.equal(preview.signatureName, 'Mustafa Yufkayürek');
     assert.equal(preview.signatureTitle, 'Dosya Sorumlusu');
@@ -185,6 +200,35 @@ describe('Onaya Gönder tercih edilen alıcı LOCK', () => {
       claimApprovalDefaultToEmails(contacts, ['sigorta@ornek.com']).length,
       1,
     );
+  });
+
+  it('aynı e-postada kişi adı kurumdan önce; hitap Sn. soyad', () => {
+    const contacts = claimApprovalMailContacts({
+      serviceKind: 'inspection',
+      insuranceCompany: { name: 'Allianz Pilot', contactEmail: 'hasar@allianz.com' },
+      channelBrokerCustomer: {
+        shortName: 'Howden Türkiye',
+        email: 'claims@howden.com',
+        contacts: [{ id: '1', name: 'Ali Çakar', email: 'claims@howden.com', isPrimary: true }],
+      },
+    });
+    const howden = contacts.find((row) => row.email === 'claims@howden.com');
+    assert.equal(howden?.name, 'Ali Çakar');
+    assert.equal(claimApprovalRecipientSurname('Howden Türkiye'), '');
+    assert.equal(claimApprovalRecipientSurname('Ali Çakar'), 'Çakar');
+    // Firma Kime önce gelse bile kişi soyadı alınır
+    const recipients = [
+      { id: 'insurance:org', name: 'Allianz Pilot', role: 'Sigorta', email: 'hasar@allianz.com', delivery: 'to' as const },
+      { ...howden!, delivery: 'to' as const },
+    ];
+    assert.equal(claimApprovalFirstToGreetingName(recipients), 'Ali Çakar');
+    const preview = claimApprovalMailTextPreview({
+      serviceKind: 'inspection',
+      fileNo: '2026 YE 1',
+      recipientName: claimApprovalFirstToGreetingName(recipients),
+    });
+    assert.equal(preview.greeting, 'Sn. Çakar,');
+    assert.match(preview.messageText, /^Sn\. Çakar,\n\nDosyaya ait Hasar Tespit Raporu/);
   });
 
   it('Dosya Bilgileri düzenle hizmet hattından konu okur; department koduna kör bakmaz', () => {

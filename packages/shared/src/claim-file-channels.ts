@@ -92,11 +92,12 @@ function emailsFromChannelParty(party: ClaimFileChannelMailParty): string[] {
   if (!party) return [];
   const seen = new Set<string>();
   const out: string[] = [];
-  pushUniqueEmails(out, seen, party.email);
+  // Önce birincil kişi — hitap Sn. soyad için kişi kutusu tercih.
   const contacts = Array.isArray(party.contacts) ? party.contacts : [];
-  const primary = contacts.find((row) => row?.isPrimary);
+  const primary = contacts.find((row) => row?.isPrimary) ?? contacts[0];
   pushUniqueEmails(out, seen, primary?.email ?? null);
   for (const row of contacts) pushUniqueEmails(out, seen, row?.email ?? null);
+  pushUniqueEmails(out, seen, party.email);
   for (const info of party.contactInfos ?? []) {
     const kind = String(info?.type ?? '').trim();
     const label = String(info?.label ?? 'general').trim().toLowerCase();

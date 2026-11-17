@@ -7,9 +7,7 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
-import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '@/prisma/prisma.service';
-import { InvoiceRequestsService } from '@/modules/invoice-requests/invoice-requests.service';
 import {
   isInspectionServiceKind,
   resolveFileFeeCollectionSource,
@@ -26,7 +24,6 @@ export class ClaimFileRevenueService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() private readonly moduleRef?: ModuleRef,
     @Optional()
     @Inject(forwardRef(() => PartyAccountsService))
     private readonly partyAccounts?: PartyAccountsService,
@@ -104,16 +101,8 @@ export class ClaimFileRevenueService {
         );
       }
     }
-    if (dto.revenueType === 'file_fee' && isInspectionServiceKind(claim.serviceKind)) {
-      // Rapor müşteriye gittiyse Hasar Tespit Hizmet Bedeli girilince fatura talebi açılır.
-      try {
-        await this.moduleRef
-          ?.get(InvoiceRequestsService, { strict: false })
-          ?.ensureHasarTespitInvoiceRequest(claimFileId, userId);
-      } catch (err) {
-        this.logger.warn(`Hasar Tespit fatura talebi (${claimFileId}): ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
+    // Hasar Tespit fatura talebini dosya sorumlusu açar (POST invoice-requests/hasar-tespit/:id).
+    // Bedel burada yazılır; talep kendiliğinden açılmaz.
     return revenue;
   }
 

@@ -46,6 +46,13 @@ export class InvoiceRequestsController {
     return { success: true, data };
   }
 
+  /** Hasar Tespit: dosya sorumlusu bedel girilmiş dosyada satış fatura talebi açar. */
+  @Post('hasar-tespit/:claimFileId')
+  async requestHasarTespit(@Param('claimFileId') claimFileId: string, @Request() req: any) {
+    const data = await this.service.requestHasarTespitInvoice(claimFileId, req.user.id);
+    return { success: true, data };
+  }
+
   @Get('emergency-case/:emergencyCaseId')
   async findByEmergencyCase(@Param('emergencyCaseId') emergencyCaseId: string) {
     const data = await this.service.findByEmergencyCase(emergencyCaseId);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import axios from 'axios';
 import { Calculator, FileSpreadsheet, Trash2 } from 'lucide-react';
 import { HasarTespitBedelHesapPanel } from '@/components/finance/HasarTespitBedelHesapPanel';
@@ -125,6 +126,7 @@ export function ClaimFileGelirTahsilatPanel({
   const [revenues, setRevenues] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoiceRequests, setInvoiceRequests] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [extraWorks, setExtraWorks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,28 +135,48 @@ export function ClaimFileGelirTahsilatPanel({
   const [tahsilat, setTahsilat] = useState(() => emptyTahsilat(claim?.collectionParty, claim?.serviceKind));
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [requestingFatura, setRequestingFatura] = useState(false);
   const [bedelYetki, setBedelYetki] = useState(false);
   useEffect(() => { setBedelYetki(canSeeHasarTespitBedelClient()); }, []);
-  const bedelHesabi = bedelYetki && isInspectionServiceKind(claim?.serviceKind);
+  const inspectionFile = isInspectionServiceKind(claim?.serviceKind);
+  const bedelHesabi = bedelYetki && inspectionFile;
+  const hasTespitFee = useMemo(
+    () =>
+      revenues.some(
+        (r) =>
+          r.revenueType === 'file_fee' &&
+          r.status !== 'cancelled' &&
+          Number(r.amount ?? r.totalAmount ?? 0) > 0,
+      ),
+    [revenues],
+  );
+  const hasActiveInvoiceRequest = useMemo(
+    () => invoiceRequests.some((r) => ['pending', 'approved', 'invoiced'].includes(String(r.status ?? ''))),
+    [invoiceRequests],
+  );
+  const canRequestTespitFatura = inspectionFile && hasTespitFee && !hasActiveInvoiceRequest;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [rev, pay, inv, ven, ew] = await Promise.all([
+      const [rev, pay, inv, ven, ew, reqs] = await Promise.all([
         axios.get(`${API}/claim-files/${claimId}/revenues`, { headers: authHeader() }),
         axios.get(`${API}/claim-files/${claimId}/payments`, { headers: authHeader() }),
         axios.get(`${API}/claim-files/${claimId}/invoices`, { headers: authHeader() }),
         axios.get(`${API}/vendors?limit=200&status=active`, { headers: authHeader() }),
         axios.get(`${API}/claim-files/${claimId}/extra-works`, { headers: authHeader() }),
+        axios.get(`${API}/invoice-requests/claim-file/${claimId}`, { headers: authHeader() }).catch(() => ({ data: { data: [] } })),
       ]);
       setRevenues(rev.data.data ?? rev.data ?? []);
       setPayments(pay.data.data ?? []);
       setInvoices(inv.data.data ?? []);
       setVendors(ven.data.data?.vendors ?? ven.data.data ?? []);
       setExtraWorks(ew.data.data ?? ew.data ?? []);
+      setInvoiceRequests(reqs.data?.data ?? reqs.data ?? []);
     } catch {
       setRevenues([]);
       setPayments([]);
+      setInvoiceRequests([]);
     } finally {
       setLoading(false);
     }
@@ -211,6 +233,18 @@ export function ClaimFileGelirTahsilatPanel({
   const totalGelir = rows.filter((r) => r.kind === 'gelir').reduce((s, r) => s + r.borc, 0);
   const totalTahsilat = rows.filter((r) => r.kind === 'tahsilat').reduce((s, r) => s + r.alacak, 0);
   const kalan = totalGelir - totalTahsilat;
+
+  const sirketCari = useMemo(() => {
+    const withCari = payments.find(
+      (p: { partyAccountId?: string | null; partyAccountName?: string | null }) =>
+        typeof p.partyAccountId === 'string' && p.partyAccountId.trim().length > 0,
+    ) as { partyAccountId?: string; partyAccountName?: string | null } | undefined;
+    if (!withCari?.partyAccountId) return null;
+    return {
+      id: withCari.partyAccountId,
+      name: withCari.partyAccountName?.trim() || 'Şirket Carisi',
+    };
+  }, [payments]);
 
   const gelirVat = useMemo(
     () =>
@@ -284,7 +318,17 @@ export function ClaimFileGelirTahsilatPanel({
           headers: { ...authHeader(), 'Content-Type': 'multipart/form-data' },
         });
       }
-      showToast('success', tahsilat.paymentType === 'incoming' ? 'Tahsilat Kaydedildi' : 'Ödeme Kaydedildi');
+      const completed = tahsilat.status === 'completed';
+      showToast(
+        'success',
+        tahsilat.paymentType === 'incoming'
+          ? completed
+            ? 'Tahsilat Kaydedildi · Cariye İşlendi'
+            : 'Tahsilat Kaydedildi'
+          : completed
+            ? 'Ödeme Kaydedildi · Cariye İşlendi'
+            : 'Ödeme Kaydedildi',
+      );
       setTahsilat(emptyTahsilat(claim?.collectionParty, claim?.serviceKind));
       setReceiptFile(null);
       await load();
@@ -319,6 +363,28 @@ export function ClaimFileGelirTahsilatPanel({
     }
   };
 
+  const handleRequestTespitFatura = async () => {
+    if (!canRequestTespitFatura || requestingFatura) return;
+    setRequestingFatura(true);
+    try {
+      const res = await axios.post(
+        `${API}/invoice-requests/hasar-tespit/${claimId}`,
+        {},
+        { headers: authHeader() },
+      );
+      const created = res.data?.data?.created !== false;
+      showToast(
+        'success',
+        created ? 'Fatura talebi finansa gitti.' : 'Bu dosya için fatura talebi zaten açık.',
+      );
+      await load();
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Fatura talebi açılamadı');
+    } finally {
+      setRequestingFatura(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <OnlineCollectionLinksPanel
@@ -329,7 +395,7 @@ export function ClaimFileGelirTahsilatPanel({
 
       <FinansPanelCard
         title="Cari Hesap Ekstresi"
-        subtitle="Gelir borç, tahsilat alacak — bakiye kalan alacak"
+        subtitle="Dosya bakiyesi: gelir borç, tahsilat alacak. Tamamlanan tahsilat / ödeme şirket carisine de işler."
         action={{
           label: 'Yeni Gelir',
           onClick: () => { setGelir(emptyGelir(claim)); setDrawer('gelir'); },
@@ -344,6 +410,23 @@ export function ClaimFileGelirTahsilatPanel({
           >
             Yeni Tahsilat
           </button>
+          {sirketCari ? (
+            <Link
+              href={`/panel/finans/cariler/${sirketCari.id}`}
+              data-testid="hasar-dosya-sirket-cari-link"
+              className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {sirketCari.name}
+            </Link>
+          ) : (
+            <Link
+              href="/panel/finans/cariler"
+              data-testid="hasar-dosya-cariler-link"
+              className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Cariler
+            </Link>
+          )}
           {bedelHesabi ? (
             <button
               type="button"
@@ -354,6 +437,25 @@ export function ClaimFileGelirTahsilatPanel({
               <Calculator className="h-3.5 w-3.5" strokeWidth={1.75} />
               Hizmet Bedeli Hesapla
             </button>
+          ) : null}
+          {canRequestTespitFatura ? (
+            <button
+              type="button"
+              data-testid="hasar-tespit-fatura-talebi"
+              disabled={requestingFatura}
+              onClick={() => void handleRequestTespitFatura()}
+              className="inline-flex items-center rounded-lg border border-emerald-600 bg-white px-3.5 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+            >
+              {requestingFatura ? 'Talep Açılıyor…' : 'Fatura Talebi Aç'}
+            </button>
+          ) : null}
+          {inspectionFile && hasActiveInvoiceRequest ? (
+            <span
+              data-testid="hasar-tespit-fatura-talebi-acik"
+              className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600"
+            >
+              Fatura Talebi Açık
+            </span>
           ) : null}
           <button
             type="button"
@@ -635,6 +737,14 @@ export function ClaimFileGelirTahsilatPanel({
           onSubmit={(e) => e.preventDefault()}
         >
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <p
+              className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600"
+              data-testid="hasar-tahsilat-cari-not"
+            >
+              {tahsilat.paymentType === 'outgoing'
+                ? 'Tamamlanan tedarikçi ödemesi tedarikçi carisine borç olarak işler.'
+                : 'Tamamlanan tahsilat müşteri carisine alacak olarak işler.'}
+            </p>
             <FinansFormSection title="Tahsilat Bilgileri">
               <div>
                 <FinansFieldLabel>Yön</FinansFieldLabel>
