@@ -314,7 +314,7 @@ export default function TahsilatlarPage() {
           <HintIcon text={
             queue === 'payable'
               ? 'Tedarikçi hakediş ve avans bu sekmede durur. Ayrı sayfa değildir. Ödendi carisine işler.'
-              : 'Yeni tahsilat müşteri carisine yazılır; dosya bakiyesine dokunulmaz. Tedarikçi ödemesi Tedarikçi Ödeme Kuyruğu sekmesindedir.'
+              : 'Tahsilat müşteri carisine işler. Tedarikçi ödemesi ayrı sayfa değildir. Tedarikçi Ödeme Kuyruğu sekmesinde durur.'
           } />
         </h2>
         <div className="flex flex-wrap gap-2">
