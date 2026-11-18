@@ -41,6 +41,8 @@ export const FINANS_KART_YOL = {
   donemSonu: '/panel/finans/cariler/donem-sonu',
   masraflar: '/panel/finans/masraflar',
   bankaHesaplari: '/panel/finans/banka-hesaplari',
+  kdvRaporu: '/panel/finans/kdv-raporu',
+  masrafKategorileri: '/panel/ayarlar/masraf-kategorileri',
 } as const;
 
 /** Dönem uyarı «Şimdilik Devam» — mali dönem/yıl + İstanbul günü. */

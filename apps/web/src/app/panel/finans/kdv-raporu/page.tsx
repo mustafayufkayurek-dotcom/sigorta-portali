@@ -131,6 +131,14 @@ interface VatReport {
   };
   operationalSection: { summary: VatSummary; lines: VatLine[] };
   compare?: { invoiceNetPayable: number; operationalNetPayable: number; difference: number; note: string };
+  lostVatSection?: {
+    lostVat: number;
+    recoveryVat: number;
+    netLostVat: number;
+    lostCount: number;
+    recoveryCount: number;
+    lines: VatLine[];
+  };
   notes: string[];
 }
 
@@ -381,6 +389,62 @@ export default function KdvRaporuPage() {
               <LinesTable lines={displayLines} summary={report.summary} showDirection={method !== 'invoice_sales' && method !== 'invoice_purchase'} />
             </FinansPanelCard>
           )}
+
+          {report.lostVatSection ? (
+            <div data-testid="kdv-kayip-bolum">
+              <FinansPanelCard
+                title="Kayıp KDV"
+                subtitle={annual ? `${year} yılı` : report.period.label}
+              >
+                <FinansKpiStrip
+                  tone="light"
+                  items={[
+                    {
+                      label: 'Kayıp KDV',
+                      value: fmtCurrency(report.lostVatSection.lostVat),
+                      accent: report.lostVatSection.lostVat > 0 ? 'text-red-600' : 'text-slate-400',
+                    },
+                    {
+                      label: 'Harici Telafi',
+                      value: fmtCurrency(report.lostVatSection.recoveryVat),
+                      accent: report.lostVatSection.recoveryVat > 0 ? 'text-emerald-600' : 'text-slate-400',
+                    },
+                    {
+                      label: 'Net Kayıp',
+                      value: fmtCurrency(report.lostVatSection.netLostVat),
+                      accent: report.lostVatSection.netLostVat > 0 ? 'text-amber-600' : 'text-slate-800',
+                    },
+                  ]}
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  Belgesiz masraf KDV’si kayıptır ({report.lostVatSection.lostCount} kayıt).
+                  Harici Masraf’taki belgeli fiş ve fatura telafi eder ({report.lostVatSection.recoveryCount} kayıt).
+                </p>
+                {report.lostVatSection.lines.length > 0 ? (
+                  <div className="mt-3">
+                    <LinesTable
+                      lines={report.lostVatSection.lines}
+                      summary={{
+                        outputNet: 0,
+                        outputVat: 0,
+                        outputGross: 0,
+                        outputCount: 0,
+                        inputNet: report.lostVatSection.lines.reduce((s, l) => s + l.netAmount, 0),
+                        inputVat: report.lostVatSection.lostVat + report.lostVatSection.recoveryVat,
+                        inputGross: report.lostVatSection.lines.reduce((s, l) => s + l.grossAmount, 0),
+                        inputCount: report.lostVatSection.lines.length,
+                        netVatPayable: report.lostVatSection.netLostVat,
+                        netVatCredit: 0,
+                      }}
+                      showDirection={false}
+                    />
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-slate-400">Bu dönemde kayıp veya telafi kaydı yok.</p>
+                )}
+              </FinansPanelCard>
+            </div>
+          ) : null}
 
           <p className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-200 dark:border-slate-700 pt-3">
             {report.methodology.formula}. Taslak fatura girer; iptal girmez. Resmi beyanname değildir.

@@ -16,12 +16,13 @@ function read(rel: string) {
 }
 
 describe('alan açıklaması i kilidi', () => {
-  it('FieldHelpTip tıklanınca açılır; sayfa başlığı i ayrı durur', () => {
+  it('FieldHelpTip tıklanınca ve üzerine gelince açılır; sayfa başlığı i ayrı durur', () => {
     const tip = read('components/ui/FieldHelpTip.tsx');
     const hint = read('components/ui/HintIcon.tsx');
     assert.match(tip, /export function FieldHelpTip/);
     assert.match(tip, /export function FieldLabel/);
     assert.match(tip, /onClick/);
+    assert.match(tip, /onMouseEnter/);
     assert.match(tip, /aria-label="Açıklama"/);
     assert.match(hint, /return null/);
   });

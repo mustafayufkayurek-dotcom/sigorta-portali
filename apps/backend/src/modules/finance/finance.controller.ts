@@ -265,4 +265,16 @@ export class FinanceAnalyticsController {
       : 'invoice_settlement';
     return this.vatReportService.getReport(year, month > 0 ? month : undefined, m);
   }
+
+  @Get('masraf-kdv-oranlari')
+  async getMasrafKdvOranlari() {
+    const data = await this.vatReportService.getMasrafKdvOranlari();
+    return { success: true, data };
+  }
+
+  @Post('masraf-kdv-oranlari')
+  async setMasrafKdvOranlari(@Body() body: { rates?: unknown }) {
+    const data = await this.vatReportService.setMasrafKdvOranlari(body?.rates);
+    return { success: true, data };
+  }
 }

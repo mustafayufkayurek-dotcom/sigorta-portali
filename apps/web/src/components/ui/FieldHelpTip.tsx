@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
-/** Alan açıklaması — başlık i yasağı durur; yalnız kutu yanında tıklanınca okunur. */
+/** Alan açıklaması — başlık i yasağı durur; kutu yanında üzerine gelince veya tıklanınca okunur. */
 export function FieldHelpTip({
   text,
   children,
@@ -16,6 +16,7 @@ export function FieldHelpTip({
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const panelId = useId();
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -26,10 +27,32 @@ export function FieldHelpTip({
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
+  useEffect(() => () => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current);
+  }, []);
+
   if (content == null || content === '') return null;
 
+  const clearLeave = () => {
+    if (leaveTimer.current) {
+      clearTimeout(leaveTimer.current);
+      leaveTimer.current = null;
+    }
+  };
+
   return (
-    <span ref={wrapRef} className="relative inline-flex shrink-0 align-middle">
+    <span
+      ref={wrapRef}
+      className="relative inline-flex shrink-0 align-middle"
+      onMouseEnter={() => {
+        clearLeave();
+        setOpen(true);
+      }}
+      onMouseLeave={() => {
+        clearLeave();
+        leaveTimer.current = setTimeout(() => setOpen(false), 120);
+      }}
+    >
       <button
         type="button"
         data-testid={testId ?? 'field-help-tip'}

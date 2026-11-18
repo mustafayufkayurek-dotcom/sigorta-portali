@@ -89,14 +89,13 @@ export function SlidePanel({
         )}
 
         {open && !docked ? (
-          <div className="px-4 pt-3 sm:px-5">
-            <OpsFirstRunNotice
-              noticeId={OPS_NOTICE.sagPanelKaydir.id}
-              title={OPS_NOTICE.sagPanelKaydir.title}
-              body={OPS_NOTICE.sagPanelKaydir.body}
-              testId="sag-panel-kaydir-seridi"
-            />
-          </div>
+          <OpsFirstRunNotice
+            noticeId={OPS_NOTICE.sagPanelKaydir.id}
+            title={OPS_NOTICE.sagPanelKaydir.title}
+            body={OPS_NOTICE.sagPanelKaydir.body}
+            testId="sag-panel-kaydir-seridi"
+            className="mx-4 mt-3 sm:mx-5"
+          />
         ) : null}
 
         <div

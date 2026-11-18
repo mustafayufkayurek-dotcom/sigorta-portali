@@ -3511,6 +3511,7 @@ enum ExpenseOperationSubject {
   OZEL_OPERASYON
   DANISMANLIK
   TEKNE_YAT
+  HARICI_MASRAF
 }
 
 model Expense {
@@ -3519,6 +3520,8 @@ model Expense {
   amount            Decimal                 @db.Decimal(12, 2)
   vatRate           Int                     @default(20) @map("vat_rate")
   vatIncluded       Boolean                 @default(true) @map("vat_included")
+  /// false = belgesiz → KDV kayıp KDV’ye yazılır
+  hasTaxDocument    Boolean                 @default(true) @map("has_tax_document")
   description       String?
   expenseGroup      ExpenseGroup            @map("expense_group")
   expenseSubgroup   String                  @map("expense_subgroup")

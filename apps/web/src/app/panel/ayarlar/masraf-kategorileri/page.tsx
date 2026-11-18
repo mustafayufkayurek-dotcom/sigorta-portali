@@ -26,6 +26,10 @@ import {
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 import { useToast } from '@/contexts/ToastContext';
+import {
+  DEFAULT_MASRAF_KDV_ORANLARI,
+  normalizeMasrafKdvOranlari,
+} from '@sigorta/shared';
 
 
 type ExpenseItem = {
@@ -76,16 +80,25 @@ export default function MasrafKategorileriPage() {
   const [deleteItem, setDeleteItem] = useState<ExpenseItem | null>(null);
 
   const [deleting, setDeleting] = useState(false);
+  const [kdvOranlari, setKdvOranlari] = useState<number[]>([...DEFAULT_MASRAF_KDV_ORANLARI]);
+  const [kdvDraft, setKdvDraft] = useState('');
+  const [kdvSaving, setKdvSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/expense-categories`, {
-        headers: authHeader(),
-        params: { includeInactive: true },
-      });
+      const [res, kdvRes] = await Promise.all([
+        axios.get(`${API}/expense-categories`, {
+          headers: authHeader(),
+          params: { includeInactive: true },
+        }),
+        axios
+          .get(`${API}/finance/analytics/masraf-kdv-oranlari`, { headers: authHeader() })
+          .catch(() => ({ data: { data: [...DEFAULT_MASRAF_KDV_ORANLARI] } })),
+      ]);
       const data: ExpenseGroup[] = res.data.data ?? [];
       setGroups(data);
+      setKdvOranlari(normalizeMasrafKdvOranlari(kdvRes.data?.data ?? kdvRes.data));
       setExpandedGroups((prev) => {
         if (prev.size > 0) return prev;
         return new Set(data.slice(0, 2).map((g) => g.id));
@@ -98,6 +111,46 @@ export default function MasrafKategorileriPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const saveKdvOranlari = async (next: number[]) => {
+    const normalized = normalizeMasrafKdvOranlari(next);
+    setKdvSaving(true);
+    try {
+      const res = await axios.post(
+        `${API}/finance/analytics/masraf-kdv-oranlari`,
+        { rates: normalized },
+        { headers: authHeader() },
+      );
+      setKdvOranlari(normalizeMasrafKdvOranlari(res.data?.data ?? normalized));
+      showToast('success', 'KDV oranları kaydedildi');
+    } catch (e: unknown) {
+      showToast('error', formatSettingsApiError(e, 'KDV oranları kaydedilemedi'));
+    } finally {
+      setKdvSaving(false);
+    }
+  };
+
+  const addKdvOran = async () => {
+    const n = Number(String(kdvDraft).replace(',', '.'));
+    if (!Number.isFinite(n) || n < 0 || n > 100) {
+      showToast('error', 'Geçerli bir oran girin (0–100)');
+      return;
+    }
+    if (kdvOranlari.some((r) => r === n)) {
+      showToast('error', 'Bu oran zaten listede');
+      return;
+    }
+    setKdvDraft('');
+    await saveKdvOranlari([...kdvOranlari, n]);
+  };
+
+  const removeKdvOran = async (rate: number) => {
+    if (kdvOranlari.length <= 1) {
+      showToast('error', 'En az bir KDV oranı kalmalıdır');
+      return;
+    }
+    await saveKdvOranlari(kdvOranlari.filter((r) => r !== rate));
+  };
 
   const handleSeed = async () => {
     setSeeding(true);
@@ -329,6 +382,66 @@ export default function MasrafKategorileriPage() {
         </div>
       }
     >
+      <div
+        className="mb-4 rounded-2xl border border-slate-200 bg-white p-4"
+        data-testid="masraf-kdv-oranlari-ayar"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Masraf KDV Oranları</h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Masraf formunda seçilen oranlar. Varsayılan %1, %10, %20; ekleyip çıkarabilirsiniz.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="Örn. 8"
+              value={kdvDraft}
+              onChange={(e) => setKdvDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void addKdvOran();
+                }
+              }}
+              className={`${inputCls} w-24`}
+              data-testid="masraf-kdv-oran-ekle-input"
+            />
+            <button
+              type="button"
+              disabled={kdvSaving}
+              onClick={() => { void addKdvOran(); }}
+              className="rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+              data-testid="masraf-kdv-oran-ekle"
+            >
+              Oran Ekle
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {kdvOranlari.map((rate) => (
+            <span
+              key={rate}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700"
+            >
+              %{rate}
+              <button
+                type="button"
+                disabled={kdvSaving || kdvOranlari.length <= 1}
+                onClick={() => { void removeKdvOran(rate); }}
+                className="rounded-full px-1 text-slate-400 hover:bg-white hover:text-red-600 disabled:opacity-40"
+                aria-label={`%${rate} oranını çıkar`}
+                data-testid={`masraf-kdv-oran-sil-${rate}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative max-w-sm flex-1">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -25,6 +25,11 @@ export class CreateExpenseDto {
   @IsBoolean()
   vatIncluded?: boolean;
 
+  /** false = belgesiz → KDV kayıp KDV’ye yazılır */
+  @IsOptional()
+  @IsBoolean()
+  hasTaxDocument?: boolean;
+
   @IsOptional()
   @IsString()
   description?: string;
@@ -99,6 +104,10 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsBoolean()
   vatIncluded?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  hasTaxDocument?: boolean;
 
   @IsOptional()
   @IsString()

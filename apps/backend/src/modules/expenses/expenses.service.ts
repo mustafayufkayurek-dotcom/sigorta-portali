@@ -29,6 +29,7 @@ import {
   hasExpensePartyAccountId,
   hasarFileBudgetExpenseWhere,
   isCustomerExpenseLane,
+  isHariciExpenseLane,
   type ExpenseLane,
   parseClaimServiceKind,
 } from '@sigorta/shared';
@@ -830,6 +831,10 @@ export class ExpensesService {
           );
         }
       }
+    } else if (isHariciExpenseLane(expenseLaneFromSubject(dto.operationSubject))) {
+      if (dto.fileCaseId || dto.customerId) {
+        throw new BadRequestException('Harici masraf dosyaya veya müşteriye yazılmaz.');
+      }
     } else if (isCustomerExpenseLane(expenseLaneFromSubject(dto.operationSubject))) {
       if (dto.fileCaseId) {
         throw new BadRequestException('Danışmanlık ve asistans masrafı dosyaya yazılmaz. Müşteri seçin.');
@@ -866,7 +871,9 @@ export class ExpensesService {
       }
     }
 
-    const customerLane = !isManagementPool && isCustomerExpenseLane(expenseLaneFromSubject(dto.operationSubject));
+    const createSubjectLane = expenseLaneFromSubject(dto.operationSubject);
+    const customerLane = !isManagementPool && isCustomerExpenseLane(createSubjectLane);
+    const hariciLane = !isManagementPool && isHariciExpenseLane(createSubjectLane);
     const date = new Date(dto.date);
     const startOfYear = new Date(date.getFullYear(), 0, 1);
     const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / 86400000);
@@ -889,13 +896,14 @@ export class ExpensesService {
         amount: dto.amount,
         vatRate: dto.vatRate ?? 20,
         vatIncluded: dto.vatIncluded ?? true,
+        hasTaxDocument: dto.hasTaxDocument !== false,
         description: dto.description,
         expenseGroup: groupFields.expenseGroup as any,
         expenseSubgroup: groupFields.expenseSubgroup,
         expenseCategoryId: groupFields.expenseCategoryId,
-        expensePlan: isManagementPool || customerLane ? null : (dto.expensePlan as any ?? null),
+        expensePlan: isManagementPool || customerLane || hariciLane ? null : (dto.expensePlan as any ?? null),
         operationSubject: dto.operationSubject as any ?? null,
-        fileCaseId: isManagementPool || customerLane ? null : (dto.fileCaseId ?? null),
+        fileCaseId: isManagementPool || customerLane || hariciLane ? null : (dto.fileCaseId ?? null),
         customerId: customerLane ? (dto.customerId ?? null) : null,
         partyAccountId,
         isOverheadPool: isManagementPool,
@@ -941,19 +949,24 @@ export class ExpensesService {
     const isManagementPool = groupFields.expenseGroup === 'YONETIM_GIDERLERI';
     const lane = expenseLaneFromSubject(dto.operationSubject ?? previous.operationSubject);
     const customerLane = !isManagementPool && isCustomerExpenseLane(lane);
-    const nextFileCaseId = isManagementPool || customerLane
+    const hariciLane = !isManagementPool && isHariciExpenseLane(lane);
+    const nextFileCaseId = isManagementPool || customerLane || hariciLane
       ? null
       : (dto.fileCaseId !== undefined ? dto.fileCaseId : previous.fileCaseId);
     const nextCustomerId = customerLane
       ? (dto.customerId !== undefined ? dto.customerId : previous.customerId)
       : null;
-    const nextPlan = isManagementPool || customerLane
+    const nextPlan = isManagementPool || customerLane || hariciLane
       ? null
       : (dto.expensePlan !== undefined ? dto.expensePlan : previous.expensePlan);
 
     if (isManagementPool) {
       if (dto.fileCaseId) {
         throw new BadRequestException('Yönetim giderleri dosyaya bağlanamaz.');
+      }
+    } else if (hariciLane) {
+      if (dto.fileCaseId || dto.customerId) {
+        throw new BadRequestException('Harici masraf dosyaya veya müşteriye yazılmaz.');
       }
     } else if (customerLane) {
       if (dto.fileCaseId) {
@@ -974,12 +987,13 @@ export class ExpensesService {
     if (dto.amount !== undefined) data.amount = dto.amount;
     if (dto.vatRate !== undefined) data.vatRate = dto.vatRate;
     if (dto.vatIncluded !== undefined) data.vatIncluded = dto.vatIncluded;
+    if (dto.hasTaxDocument !== undefined) data.hasTaxDocument = dto.hasTaxDocument;
     if (dto.description !== undefined) data.description = dto.description;
-    if (dto.expensePlan !== undefined || customerLane || isManagementPool) {
+    if (dto.expensePlan !== undefined || customerLane || hariciLane || isManagementPool) {
       data.expensePlan = nextPlan;
     }
     if (dto.operationSubject !== undefined) data.operationSubject = dto.operationSubject ?? null;
-    if (dto.fileCaseId !== undefined || dto.operationSubject !== undefined || dto.customerId !== undefined || isManagementPool) {
+    if (dto.fileCaseId !== undefined || dto.operationSubject !== undefined || dto.customerId !== undefined || isManagementPool || hariciLane) {
       data.fileCaseId = nextFileCaseId;
       data.customerId = nextCustomerId;
       data.isOverheadPool = isManagementPool;

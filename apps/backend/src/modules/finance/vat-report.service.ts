@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { isAcilSalesVatBasis, STANDARD_SALES_VAT_RATE } from '@sigorta/shared';
+import {
+  FINANS_MASRAF_KDV_ORANLARI_AYAR_KEY,
+  isAcilSalesVatBasis,
+  normalizeMasrafKdvOranlari,
+  resolveExpenseVatFate,
+  STANDARD_SALES_VAT_RATE,
+  type ExpenseVatFate,
+} from '@sigorta/shared';
 import { PrismaService } from '@/prisma/prisma.service';
 import { toGrossAmount, toNetAmount } from './overhead.constants';
 import { VAT_COUNTED_INVOICE_STATUSES, vatReportPeriodBounds } from './vat-report-period';
@@ -36,6 +43,8 @@ export interface VatReportLine {
   vatAmount: number;
   grossAmount: number;
   direction: 'input' | 'output';
+  /** Masraf: indirilecek | kayıp | harici telafi */
+  vatFate?: ExpenseVatFate;
 }
 
 export interface VatSettlementSummary {
@@ -108,6 +117,15 @@ export interface VatReportResult {
     operationalNetPayable: number;
     difference: number;
     note: string;
+  };
+  /** Belgesiz masraf KDV’si (indirilemez) ve harici telafi */
+  lostVatSection: {
+    lostVat: number;
+    recoveryVat: number;
+    netLostVat: number;
+    lostCount: number;
+    recoveryCount: number;
+    lines: VatReportLine[];
   };
   notes: string[];
 }
@@ -285,6 +303,23 @@ function aggregateSection(lines: VatReportLine[]): Omit<VatReportSection, 'lines
 export class VatReportService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getMasrafKdvOranlari(): Promise<number[]> {
+    const row = await this.prisma.systemSetting.findUnique({
+      where: { key: FINANS_MASRAF_KDV_ORANLARI_AYAR_KEY },
+    });
+    return normalizeMasrafKdvOranlari(row?.value);
+  }
+
+  async setMasrafKdvOranlari(rates: unknown): Promise<number[]> {
+    const next = normalizeMasrafKdvOranlari(rates);
+    await this.prisma.systemSetting.upsert({
+      where: { key: FINANS_MASRAF_KDV_ORANLARI_AYAR_KEY },
+      update: { value: next },
+      create: { key: FINANS_MASRAF_KDV_ORANLARI_AYAR_KEY, value: next },
+    });
+    return next;
+  }
+
   async getReport(year: number, month?: number, method: VatReportMethod = 'invoice_settlement'): Promise<VatReportResult> {
     const { from, to } = vatReportPeriodBounds(year, month);
 
@@ -298,7 +333,22 @@ export class VatReportService {
 
     const invoiceAgg = aggregateSection(invoiceLines);
     const operationalLines = await this.collectOperationalLines(from, to, year, month);
-    const operationalAgg = aggregateSection(operationalLines);
+    const operationalForSummary = operationalLines.filter(
+      (l) => l.vatFate !== 'lost' && l.vatFate !== 'recovery',
+    );
+    const operationalAgg = aggregateSection(operationalForSummary);
+    const lostLines = operationalLines.filter((l) => l.vatFate === 'lost');
+    const recoveryLines = operationalLines.filter((l) => l.vatFate === 'recovery');
+    const lostVat = round2(lostLines.reduce((s, l) => s + l.vatAmount, 0));
+    const recoveryVat = round2(recoveryLines.reduce((s, l) => s + l.vatAmount, 0));
+    const lostVatSection = {
+      lostVat,
+      recoveryVat,
+      netLostVat: round2(Math.max(0, lostVat - recoveryVat)),
+      lostCount: lostLines.length,
+      recoveryCount: recoveryLines.length,
+      lines: [...lostLines, ...recoveryLines],
+    };
 
     const invoiceSection = {
       ...invoiceAgg,
@@ -309,6 +359,7 @@ export class VatReportService {
     const notes: string[] = [
       'Fatura mahsupunda iptal dışındaki satış ve alış faturaları (taslak dahil) döneme göre alınır.',
       'Operasyonel satış KDV: Hasar’da onaylı rapor geliri, Acil’de kapanış geliri. Masraf KDV her masraf satırından. Resmi beyan için fatura mahsupu esas alınmalıdır.',
+      'Belgesiz masraf KDV’si kayıp KDV’dir; Harici Masraf’taki belgeli fiş/fatura kayıp KDV telafisidir. İkisi indirilecek KDV’ye karışmaz.',
       'Net KDV pozisyonu bilgilendirme amaçlıdır — beyanname için mali müşavirin onayı gerekir.',
     ];
 
@@ -361,6 +412,7 @@ export class VatReportService {
       lines,
       invoiceSection,
       operationalSection: operationalAgg,
+      lostVatSection,
       notes,
     };
 
@@ -441,6 +493,10 @@ export class VatReportService {
 
     for (const e of expenses) {
       const { net, vat, gross } = splitFromStoredAmount(Number(e.amount), e.vatRate, e.vatIncluded);
+      const vatFate = resolveExpenseVatFate({
+        hasTaxDocument: e.hasTaxDocument,
+        operationSubject: e.operationSubject,
+      });
       lines.push({
         id: e.id,
         source: 'expense',
@@ -448,7 +504,9 @@ export class VatReportService {
         description: e.description,
         category: e.expenseCategory?.name ?? e.expenseSubgroup,
         group: EXPENSE_GROUP_LABEL[e.expenseGroup] ?? e.expenseGroup,
-        fileNo: e.isOverheadPool || e.customerId ? null : e.fileCase?.fileNo ?? null,
+        fileNo: e.isOverheadPool || e.customerId || vatFate === 'recovery'
+          ? null
+          : e.fileCase?.fileNo ?? null,
         documentNo: null,
         counterparty: e.customer
           ? (e.customer.shortName || e.customer.companyName || e.customer.fullName
@@ -461,6 +519,7 @@ export class VatReportService {
         vatAmount: vat,
         grossAmount: gross,
         direction: 'input',
+        vatFate,
       });
     }
 

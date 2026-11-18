@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';
+import { FieldLabel } from '@/components/ui/FieldHelpTip';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -13,7 +15,7 @@ import { CariHesapOzetModal } from '@/components/finance/CariHesapOzetModal';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
 import { FinansHedefBaglamSeridi } from '@/components/finance/FinansHedefBaglamSeridi';
 import { FinansActionButton, FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
-import { hedefCiroDonYol, isHedefCiroDon } from '@/utils/finans-merkez-kart';
+import { FINANS_KART_YOL, hedefCiroDonYol, isHedefCiroDon } from '@/utils/finans-merkez-kart';
 import { FinansTablePager } from '@/components/finance/FinansTablePager';
 import { PinnableRowActions } from '@/components/portal/PinnableRowActions';
 import { PortalRowActionsPicker } from '@/components/portal/PortalRowActionsPicker';
@@ -51,11 +53,18 @@ import { formatTryAmount } from '@/utils/format-try-amount';
 import { getAccessToken } from '@/utils/auth-session';
 import {
   financeOperationNo,
+  DEFAULT_MASRAF_KDV_ORANLARI,
   EXPENSE_LANE_LABEL,
+  expenseDocumentModeFromFlag,
   expenseLaneFromSubject,
   expenseSubjectForLane,
   finansIslemTarihiDonemUyarisi,
+  hasTaxDocumentFromMode,
   isCustomerExpenseLane,
+  isHariciExpenseLane,
+  normalizeMasrafKdvOranlari,
+  splitGrossVat,
+  type ExpenseDocumentMode,
   type ExpenseLane,
 } from '@sigorta/shared';
 import { financeIsoPeriod } from '@/utils/finans-merkez-kart';
@@ -161,6 +170,8 @@ interface Expense {
   expenseCategoryParentId: string;
   description:         string;
   amount:              number;
+  vatRate:             number;
+  hasTaxDocument:      boolean;
   date:                string;
   operationSubject?:   string;
 }
@@ -253,10 +264,12 @@ const EMPTY_FORM = {
   expenseCategoryId: '',
   workGroupId: '',
   workSubGroupName: '',
+  documentMode: 'belgeli' as ExpenseDocumentMode,
   documentType: '' as '' | (typeof BELGE_TURU_OPTIONS)[number],
   documentNo: '',
   description: '',
   amount: '',
+  vatRate: String(DEFAULT_MASRAF_KDV_ORANLARI[DEFAULT_MASRAF_KDV_ORANLARI.length - 1] ?? 20),
   date: new Date().toISOString().slice(0, 10),
   receiptImageUrl: '',
   operationSubject: 'HASAR_ONARIM' as string,
@@ -298,6 +311,7 @@ export default function MasraflarPage() {
   const [categoryChildren, setCategoryChildren] = useState<{ id: string; name: string }[]>([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
   const [workGroups, setWorkGroups] = useState<FileWorkGroupAuditLine[]>([]);
+  const [masrafKdvOranlari, setMasrafKdvOranlari] = useState<number[]>([...DEFAULT_MASRAF_KDV_ORANLARI]);
   const [loading,  setLoading]  = useState(true);
 
   const tableColumns = usePanelTableColumns('table-cols:finans-masraflar', EXPENSE_TABLE_COLUMNS);
@@ -315,7 +329,7 @@ export default function MasraflarPage() {
           case 'fileNo':
             return e.customerName || e.fileNo;
           case 'expensePlan':
-            return isCustomerExpenseLane(e.expenseLane)
+            return isCustomerExpenseLane(e.expenseLane) || isHariciExpenseLane(e.expenseLane)
               ? EXPENSE_LANE_LABEL[e.expenseLane]
               : (PLAN_META[e.expensePlan]?.label ?? e.expensePlan);
           case 'expenseGroupName':
@@ -359,7 +373,7 @@ export default function MasraflarPage() {
 
   // Filtreler
   const [fPlan,     setFPlan]     = useState('');
-  const [fLane,     setFLane]     = useState<'' | 'danismanlik' | 'asistans'>('');
+  const [fLane,     setFLane]     = useState<'' | 'danismanlik' | 'asistans' | 'harici'>('');
   const [fFile,     setFFile]     = useState('');
   const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string }[]>([]);
   const [customerQuery, setCustomerQuery] = useState('');
@@ -455,15 +469,28 @@ export default function MasraflarPage() {
   const loadCategories = useCallback(async () => {
     if (!getAccessToken()) return;
     try {
-      const [treeRes, flatRes] = await Promise.all([
+      const [treeRes, flatRes, kdvRes] = await Promise.all([
         axios.get(`${API}/expense-categories`, { headers: authHeader() }),
         axios.get(`${API}/expense-categories/flat`, { headers: authHeader() }),
+        axios
+          .get(`${API}/finance/analytics/masraf-kdv-oranlari`, { headers: authHeader() })
+          .catch(() => ({ data: { data: [...DEFAULT_MASRAF_KDV_ORANLARI] } })),
       ]);
       setCategoryTree((treeRes.data?.data ?? []) as ExpenseCategoryGroup[]);
       setCategoryFlat((flatRes.data?.data ?? []) as ExpenseCategoryFlat[]);
+      const rates = normalizeMasrafKdvOranlari(kdvRes.data?.data ?? kdvRes.data);
+      setMasrafKdvOranlari(rates);
+      setForm((f) => {
+        if (rates.some((r) => String(r) === f.vatRate)) return f;
+        return {
+          ...f,
+          vatRate: String(rates[rates.length - 1] ?? DEFAULT_MASRAF_KDV_ORANLARI[2] ?? 20),
+        };
+      });
     } catch {
       setCategoryTree([]);
       setCategoryFlat([]);
+      setMasrafKdvOranlari([...DEFAULT_MASRAF_KDV_ORANLARI]);
     }
   }, []);
 
@@ -580,6 +607,10 @@ export default function MasraflarPage() {
   const [categoryDraftName, setCategoryDraftName] = useState('');
   const [categoryDraftError, setCategoryDraftError] = useState('');
   const [categoryDraftSaving, setCategoryDraftSaving] = useState(false);
+  const [kdvDraftOpen, setKdvDraftOpen] = useState(false);
+  const [kdvDraft, setKdvDraft] = useState('');
+  const [kdvDraftError, setKdvDraftError] = useState('');
+  const [kdvDraftSaving, setKdvDraftSaving] = useState(false);
 
   const openCategoryDraft = (kind: 'group' | 'sub') => {
     setCategoryDraft(kind);
@@ -643,6 +674,46 @@ export default function MasraflarPage() {
     }
   };
 
+  const openKdvDraft = () => {
+    setKdvDraftOpen(true);
+    setKdvDraft('');
+    setKdvDraftError('');
+  };
+
+  const saveKdvDraft = async () => {
+    const n = Number(String(kdvDraft).replace(',', '.').trim());
+    if (!Number.isFinite(n) || n < 0 || n > 100) {
+      setKdvDraftError('Geçerli bir oran girin (0–100).');
+      return;
+    }
+    const rounded = Math.round(n * 100) / 100;
+    if (masrafKdvOranlari.some((r) => r === rounded)) {
+      setKdvDraftError('Bu oran zaten listede.');
+      return;
+    }
+    setKdvDraftSaving(true);
+    setKdvDraftError('');
+    try {
+      const next = normalizeMasrafKdvOranlari([...masrafKdvOranlari, rounded]);
+      const res = await axios.post(
+        `${API}/finance/analytics/masraf-kdv-oranlari`,
+        { rates: next },
+        { headers: authHeader() },
+      );
+      const rates = normalizeMasrafKdvOranlari(res.data?.data ?? next);
+      setMasrafKdvOranlari(rates);
+      setForm((f) => ({ ...f, vatRate: String(rounded) }));
+      setKdvDraftOpen(false);
+      setKdvDraft('');
+    } catch (e: unknown) {
+      const raw = axios.isAxiosError(e) ? e.response?.data?.message : '';
+      const message = Array.isArray(raw) ? String(raw[0] ?? '') : String(raw ?? '');
+      setKdvDraftError(message || 'Oran kaydedilemedi.');
+    } finally {
+      setKdvDraftSaving(false);
+    }
+  };
+
   const load = useCallback(async () => {
     if (!getAccessToken()) return;
     setLoading(true);
@@ -650,6 +721,7 @@ export default function MasraflarPage() {
       const params: Record<string, string> = {};
       if (fLane === 'danismanlik') params['operationSubject'] = 'DANISMANLIK';
       else if (fLane === 'asistans') params['operationSubject'] = 'ACIL_YARDIM';
+      else if (fLane === 'harici') params['operationSubject'] = 'HARICI_MASRAF';
       else if (fPlan) params['expensePlan'] = fPlan;
       if (fFile)     params['fileCaseId']  = fFile;
       const dateFrom = normalizeTrDateValue(fDateFrom);
@@ -696,6 +768,8 @@ export default function MasraflarPage() {
           expenseCategoryParentId: cat.parentId,
           description: String(e['description'] ?? ''),
           amount:      Number(e['amount'] ?? 0),
+          vatRate:     Number(e['vatRate'] ?? 20),
+          hasTaxDocument: e['hasTaxDocument'] !== false,
           date:        String(e['date'] ?? ''),
         };
       }));
@@ -835,10 +909,12 @@ export default function MasraflarPage() {
 
     if (!form.expenseLane) return setFormError('Masraf yolunu seçin.');
     const customerLane = isCustomerExpenseLane(form.expenseLane);
-    if (!customerLane && !form.fileCaseId) return setFormError('Hasar dosyası seçimi zorunludur.');
+    const hariciLane = isHariciExpenseLane(form.expenseLane);
+    const hasarLane = form.expenseLane === 'hasar';
+    if (hasarLane && !form.fileCaseId) return setFormError('Hasar dosyası seçimi zorunludur.');
     if (customerLane && !form.customerId) return setFormError('Müşteri seçimi zorunludur.');
     if (!form.partyAccountId) return setFormError('Ödeme kaynağı cari seçimi zorunludur.');
-    if (!customerLane && !form.expensePlan) return setFormError('Bütçe tipi seçimi zorunludur.');
+    if (hasarLane && !form.expensePlan) return setFormError('Bütçe tipi seçimi zorunludur.');
     if (!form.expenseCategoryParentId) return setFormError('Masraf kalemi (grup) seçimi zorunludur.');
     {
       const needsSubgroup =
@@ -850,28 +926,36 @@ export default function MasraflarPage() {
     }
     const amountNum = parseTrAmountInput(form.amount);
     if (amountNum == null || amountNum <= 0) return setFormError('Geçerli bir tutar giriniz.');
+    const vatRateNum = Number(form.vatRate);
+    if (!Number.isFinite(vatRateNum) || vatRateNum < 0) return setFormError('KDV oranı seçiniz.');
     const dateIso = normalizeTrDateValue(form.date);
     if (!isCompleteTrDateValue(dateIso)) return setFormError('Geçerli bir tarih giriniz (GG.AA.YYYY).');
+    if (form.documentMode === 'belgeli' && hariciLane && !form.documentType) {
+      return setFormError('Harici masraf için belge türü seçiniz.');
+    }
 
     const fileOpt = files.find((f) => f.id === form.fileCaseId);
-    if (!customerLane && form.expensePlan === PLAN_BUTCE && !fileOpt?.hasApprovedBudget && workGroups.length === 0 && !editId) {
+    if (hasarLane && form.expensePlan === PLAN_BUTCE && !fileOpt?.hasApprovedBudget && workGroups.length === 0 && !editId) {
       return setFormError('Onaylı bütçesi olmayan dosyaya masraf girilemez.');
     }
-    if (!customerLane && form.expensePlan === PLAN_EK && !fileOpt?.hasEkBudget && !editId) {
+    if (hasarLane && form.expensePlan === PLAN_EK && !fileOpt?.hasEkBudget && !editId) {
       return setFormError('Ek iş satış bütçesi tanımlı olmayan dosyaya ek iş masrafı girilemez.');
     }
 
     setSaving(true);
     try {
       const payload = {
-        fileCaseId: customerLane ? undefined : form.fileCaseId,
+        fileCaseId: hasarLane ? form.fileCaseId : undefined,
         customerId: customerLane ? form.customerId : undefined,
         partyAccountId: form.partyAccountId,
-        expensePlan: customerLane ? undefined : form.expensePlan,
+        expensePlan: hasarLane ? form.expensePlan : undefined,
         expenseCategoryId: form.expenseCategoryId || form.expenseCategoryParentId,
         operationSubject: expenseSubjectForLane(form.expenseLane as ExpenseLane),
         description: composeMasrafDescription(form),
         amount:      amountNum,
+        vatRate:     vatRateNum,
+        vatIncluded: true,
+        hasTaxDocument: hasTaxDocumentFromMode(form.documentMode),
         date:        dateIso,
         receiptImageUrl: form.receiptImageUrl || undefined,
       };
@@ -902,12 +986,14 @@ export default function MasraflarPage() {
         setForm({
           ...EMPTY_FORM,
           expenseLane: form.expenseLane,
-          fileCaseId:  customerLane ? '' : form.fileCaseId,
+          fileCaseId:  hasarLane ? form.fileCaseId : '',
           customerId: customerLane ? form.customerId : '',
           partyAccountId: form.partyAccountId,
           expensePlan: form.expensePlan,
           expenseCategoryParentId: form.expenseCategoryParentId,
           expenseCategoryId: form.expenseCategoryId,
+          documentMode: form.documentMode,
+          vatRate: form.vatRate,
           date:        new Date().toISOString().slice(0, 10),
         });
         setEditId(null);
@@ -950,8 +1036,10 @@ export default function MasraflarPage() {
       expenseCategoryId: e.expenseCategoryId,
       workGroupId: matchedGroup?.workGroupId ?? '',
       workSubGroupName: jobParts.join(' · ').trim(),
+      documentMode: expenseDocumentModeFromFlag(e.hasTaxDocument),
       description: e.description,
       amount: numberToTrAmountInput(e.amount),
+      vatRate: String(e.vatRate ?? 20),
       date: e.date?.slice(0, 10) ?? '',
       receiptImageUrl: '',
       operationSubject: expenseSubjectForLane(e.expenseLane),
@@ -1042,26 +1130,25 @@ export default function MasraflarPage() {
       blockers.push('Masraf yolunu seçin');
     } else if (isCustomerExpenseLane(form.expenseLane)) {
       if (!form.customerId) blockers.push('Müşteri seçin');
-    } else if (!form.fileCaseId) {
-      blockers.push('Hasar dosyası seçin (dosya no veya sigortalı adı ile arayın)');
-    } else if (!formFileEligible) {
-      blockers.push(
-        form.expensePlan === PLAN_EK
-          ? 'Seçilen dosyada ek iş satış bütçesi yok'
-          : 'Seçilen dosyada onaylı bütçe yok',
-      );
+    } else if (form.expenseLane === 'hasar') {
+      if (!form.fileCaseId) {
+        blockers.push('Hasar dosyası seçin (dosya no veya sigortalı adı ile arayın)');
+      } else if (!formFileEligible) {
+        blockers.push(
+          form.expensePlan === PLAN_EK
+            ? 'Seçilen dosyada ek iş satış bütçesi yok'
+            : 'Seçilen dosyada onaylı bütçe yok',
+        );
+      }
     }
-    if (!form.expenseLane) {
-      /* yol seçilmeden diğer alanlar açılmaz */
-    } else if (isCustomerExpenseLane(form.expenseLane)) {
+    if (!form.partyAccountId) blockers.push('Ödeme kaynağı cari seçin');
+    if (form.expenseLane) {
       if (!form.expenseCategoryParentId) blockers.push('Masraf grubu seçin');
       if (needsExpenseSubgroup && !form.expenseCategoryId) blockers.push('Masraf alt grubu seçin');
-    } else {
-      if (!form.expenseCategoryParentId) blockers.push('Masraf kalemi (grup) seçin');
-      if (needsExpenseSubgroup && !form.expenseCategoryId) blockers.push('Masraf kalemi (alt grup) seçin');
     }
     const amountNum = parseTrAmountInput(form.amount);
     if (amountNum == null || amountNum <= 0) blockers.push('Geçerli bir tutar girin');
+    if (!form.vatRate) blockers.push('KDV oranı seçin');
     if (!form.description.trim()) blockers.push('Açıklama yazın');
     const dateIso = normalizeTrDateValue(form.date);
     if (!isCompleteTrDateValue(dateIso)) blockers.push('Geçerli bir tarih girin (GG.AA.YYYY)');
@@ -1070,10 +1157,12 @@ export default function MasraflarPage() {
     form.expenseLane,
     form.fileCaseId,
     form.customerId,
+    form.partyAccountId,
     form.expensePlan,
     form.expenseCategoryParentId,
     form.expenseCategoryId,
     form.amount,
+    form.vatRate,
     form.date,
     form.description,
     formFileEligible,
@@ -1081,8 +1170,16 @@ export default function MasraflarPage() {
   ]);
 
   const formCanSave = formSaveBlockers.length === 0 && (
-    isCustomerExpenseLane(form.expenseLane) || Boolean(editId) || selectableFiles.length > 0
+    form.expenseLane === 'hasar'
+      ? (Boolean(editId) || selectableFiles.length > 0)
+      : Boolean(form.expenseLane)
   );
+
+  const masrafVatSplit = useMemo(() => {
+    const amountNum = parseTrAmountInput(form.amount) ?? 0;
+    const rate = Number(form.vatRate);
+    return splitGrossVat(amountNum, Number.isFinite(rate) ? rate : 0);
+  }, [form.amount, form.vatRate]);
 
   const masrafTarihDonemUyarisi = useMemo(() => {
     const dateIso = normalizeTrDateValue(form.date);
@@ -1190,6 +1287,9 @@ export default function MasraflarPage() {
     setLastSavedOpNo('');
     setShowCariCreate(false);
     setCariOzetId(null);
+    setKdvDraftOpen(false);
+    setKdvDraft('');
+    setKdvDraftError('');
     resetReceiptScan();
   };
 
@@ -1203,10 +1303,24 @@ export default function MasraflarPage() {
 
   // CSS sınıfları
   const inputCls = 'w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors';
-  const labelCls = 'block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1';
+  const fieldLabelCls = 'mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400';
   const requiredHint = (
-    <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>
+    <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
   );
+
+  const masrafYoluHelp = !form.expenseLane
+    ? 'Hasar dosyaya, danışmanlık/asistans müşteriye, Harici kayıp KDV telafisine yazılır.'
+    : form.expenseLane === 'hasar'
+      ? 'Dosya seçilir. Bu kayıt bütçe kartına girer.'
+      : form.expenseLane === 'harici'
+        ? 'Piyasadan toplanan fiş ve fatura. Belgeli kayıt kayıp KDV telafisine yazılır.'
+        : 'Müşteri seçilir. Bu kayıt dosya bütçesine girmez.';
+
+  const belgeDurumuHelp = form.documentMode === 'belgesiz'
+    ? 'Belgesiz masrafın KDV’si kayıp KDV’ye yazılır; dönem ve yıl bazında KDV Raporu’nda görülür.'
+    : form.expenseLane === 'harici'
+      ? 'Harici belgeli masraf kayıp KDV telafisine yazılır.'
+      : 'Belgeli masrafın KDV’si indirilecek KDV’ye yazılır.';
 
   const hedefBaglam = isHedefCiroDon(searchParams.get('don'));
   const baglamYear = Number(searchParams.get('year')) || new Date().getFullYear();
@@ -1237,20 +1351,46 @@ export default function MasraflarPage() {
             Üst kartlar yalnız Hasar dosyasını toplar. Danışmanlık ve asistans bu kartlara girmez.
           </p>
         </div>
-        <FinansActionButton
-          label={showForm ? 'Formu Kapat' : 'Masraf Ekle'}
-          onClick={() => (showForm ? closeExpenseForm() : openExpenseForm())}
-          variant={showForm ? 'neutral' : 'primary'}
-          active={showForm}
-          showPlus={!showForm}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={FINANS_KART_YOL.kdvRaporu}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            data-testid="masraf-kdv-raporu-link"
+          >
+            KDV Raporu
+          </Link>
+          <Link
+            href={FINANS_KART_YOL.masrafKategorileri}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            data-testid="masraf-kategori-ayar-link"
+          >
+            Masraf Kategorileri
+          </Link>
+          <FinansActionButton
+            label={showForm ? 'Formu Kapat' : 'Masraf Ekle'}
+            onClick={() => (showForm ? closeExpenseForm() : openExpenseForm())}
+            variant={showForm ? 'neutral' : 'primary'}
+            active={showForm}
+            showPlus={!showForm}
+          />
+        </div>
       </div>
 
       <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/20 px-4 py-3">
-        <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Bütçe disiplini</p>
-        <p className="text-xs text-amber-800/90 dark:text-amber-200/90 mt-1">
-          Hasar masrafı dosyaya yazılır ve bütçe kartına girer. Danışmanlık ile asistans müşteriye yazılır; dosya bütçesine, sapmaya ve yönetim gideri havuzuna girmez.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Bütçe Disiplini</p>
+            <p className="text-xs text-amber-800/90 dark:text-amber-200/90 mt-1">
+              Hasar dosyaya, danışmanlık/asistans müşteriye yazılır. Harici ve belgesiz KDV kayıp / telafi olarak KDV Raporu’na düşer.
+            </p>
+          </div>
+          <Link
+            href={FINANS_KART_YOL.kdvRaporu}
+            className="shrink-0 text-xs font-semibold text-amber-900 underline hover:text-amber-950"
+          >
+            Kayıp KDV’yi Gör
+          </Link>
+        </div>
       </div>
 
       <FinansKpiStrip
@@ -1370,7 +1510,14 @@ export default function MasraflarPage() {
                           onClick={() => setFFile(row.fileCaseId)}
                         >
                           <td className="px-3 py-1.5">
-                            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{row.fileNo}</span>
+                            <Link
+                              href={`/panel/hasar-dosyalari/${row.fileCaseId}`}
+                              className="font-mono font-semibold text-brand-700 hover:underline"
+                              onClick={(ev) => ev.stopPropagation()}
+                              title="Dosyayı aç"
+                            >
+                              {row.fileNo}
+                            </Link>
                             <p className="text-[10px] text-slate-400">{BUDGET_SOURCE_LABEL[row.budgetSource]}</p>
                           </td>
                           <td className="px-3 py-1.5 text-right whitespace-nowrap">{row.budgetLimit > 0 ? fmt(row.budgetLimit) : '—'}</td>
@@ -1408,15 +1555,11 @@ export default function MasraflarPage() {
         onClose={closeExpenseForm}
         title={editId ? 'Masrafı Düzenle' : 'Yeni Masraf Ekle'}
         width={520}
+        scrollContent={false}
       >
-        <div className="p-5 space-y-4">
-          {formError && (
-            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-2.5 text-xs text-red-700 dark:text-red-400">
-              {formError}
-            </div>
-          )}
-
-          {!editId && (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-testid="masraf-form-kabuk">
+          {/* Akıllı fiş — başlığın hemen altında sabit */}
+          <div className="shrink-0 border-b border-slate-100 bg-white px-3 pb-2 pt-0 sm:px-4" data-testid="masraf-akilli-fis">
             <FileDropZone
               accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
               disabled={scanning}
@@ -1425,13 +1568,13 @@ export default function MasraflarPage() {
                 const file = files.find((f) => f.type.startsWith('image/'));
                 if (file) void handleReceiptScan(file);
               }}
-              className="rounded-xl border border-dashed border-blue-200 bg-blue-50/50 px-3 py-2 transition-colors dark:border-blue-800 dark:bg-blue-950/20"
-              activeClassName="border-blue-400 bg-blue-100/80 dark:bg-blue-900/40"
+              className="rounded-lg border border-dashed border-brand-200 bg-brand-50/50 px-3 py-1.5 transition-colors dark:border-brand-800 dark:bg-brand-950/20"
+              activeClassName="border-brand-400 bg-brand-100/80 dark:bg-brand-900/40"
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Akıllı Fiş / Fatura Okuma</p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">Akıllı Fiş / Fatura Okuma</p>
+                  <p className="text-[11px] leading-4 text-slate-500 dark:text-slate-400">
                     Fişi çekin, seçin veya sürükleyin. Tutar, tarih ve açıklama dolar.
                   </p>
                 </div>
@@ -1463,12 +1606,8 @@ export default function MasraflarPage() {
                     type="button"
                     disabled={scanning}
                     onClick={startReceiptCapture}
-                    className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
                     {scanning ? 'Okunuyor...' : 'Kamerayla Tara'}
                   </button>
                   <button
@@ -1482,32 +1621,44 @@ export default function MasraflarPage() {
                 </div>
               </div>
               {scanInfo && (
-                <p className="mt-2 rounded-lg bg-white/80 px-2.5 py-1.5 text-[11px] text-slate-600 dark:bg-slate-900/40 dark:text-slate-300">
+                <p className="mt-1.5 rounded-md bg-white/80 px-2 py-1 text-[11px] text-slate-600 dark:bg-slate-900/40 dark:text-slate-300">
                   {scanInfo}
                 </p>
               )}
               {(receiptPreview || form.receiptImageUrl) && (
-                <div className="mt-2 flex items-start gap-2">
+                <div className="mt-1.5 flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={receiptPreview ?? form.receiptImageUrl}
                     alt="Yüklenen fiş"
-                    className="h-14 w-auto rounded-lg border border-slate-200 object-cover dark:border-slate-600"
+                    className="h-12 w-auto rounded-md border border-slate-200 object-cover dark:border-slate-600"
                   />
-                  <p className="text-[11px] text-blue-700/70 dark:text-blue-300/70">
-                    Görsel kaydedildi. Alanları kontrol edip dosyayı seçtikten sonra kaydedin.
+                  <p className="text-[11px] text-brand-700/80 dark:text-brand-300/80">
+                    Okundu — tutar ve tarihi kontrol edin.
                   </p>
                 </div>
               )}
             </FileDropZone>
+          </div>
+
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pt-2 pb-3 sm:px-4">
+          {formError && (
+            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-2.5 text-xs text-red-700 dark:text-red-400">
+              {formError}
+            </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
 
             <div className="md:col-span-2" data-testid="masraf-yolu-select">
-              <label className={labelCls} htmlFor="finans-masraf-yolu">
+              <FieldLabel
+                htmlFor="finans-masraf-yolu"
+                className={fieldLabelCls}
+                help={masrafYoluHelp}
+                testId="masraf-yolu-help"
+              >
                 Masraf Yolu {requiredHint}
-              </label>
+              </FieldLabel>
               <select
                 id="finans-masraf-yolu"
                 className={inputCls}
@@ -1558,21 +1709,15 @@ export default function MasraflarPage() {
                 <option value="hasar">{EXPENSE_LANE_LABEL.hasar}</option>
                 <option value="danismanlik">{EXPENSE_LANE_LABEL.danismanlik}</option>
                 <option value="asistans">{EXPENSE_LANE_LABEL.asistans}</option>
+                <option value="harici">{EXPENSE_LANE_LABEL.harici}</option>
               </select>
-              {form.expenseLane ? (
-                <p className="mt-1 text-xs text-slate-500">
-                  {form.expenseLane === 'hasar'
-                    ? 'Dosya seçilir. Bu kayıt bütçe kartına girer.'
-                    : 'Müşteri seçilir. Bu kayıt dosya bütçesine girmez.'}
-                </p>
-              ) : null}
             </div>
 
             {isCustomerExpenseLane(form.expenseLane) && (
               <div className="md:col-span-2">
-                <label className={labelCls}>
+                <FieldLabel className={fieldLabelCls} help="Danışmanlık veya asistans müşteri kartı seçilir.">
                   Müşteri {requiredHint}
-                </label>
+                </FieldLabel>
                 <SearchableSelect
                   className="min-w-0"
                   inputClassName={inputCls}
@@ -1588,9 +1733,12 @@ export default function MasraflarPage() {
 
             {form.expenseLane && (
               <div className="md:col-span-2" data-testid="masraf-cari-kaynak">
-                <label className={labelCls}>
+                <FieldLabel
+                  className={fieldLabelCls}
+                  help="Ödemenin çıktığı kredi kartı veya tedarikçi cari. Yoksa Yeni Cari ile açılır."
+                >
                   Ödeme Kaynağı (Cari) {requiredHint}
-                </label>
+                </FieldLabel>
                 <div className="flex flex-wrap gap-2">
                   <SearchableSelect
                     className="min-w-0 flex-1"
@@ -1629,6 +1777,13 @@ export default function MasraflarPage() {
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
+                        <Link
+                          href={`/panel/finans/cariler/${encodeURIComponent(selected.id)}`}
+                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          data-testid="masraf-cari-sayfa"
+                        >
+                          Cari Sayfası
+                        </Link>
                         <button
                           type="button"
                           onClick={() =>
@@ -1654,9 +1809,13 @@ export default function MasraflarPage() {
             {/* Hasar Dosyası — arama ile seçim */}
             {form.expenseLane === 'hasar' && (
             <div className="md:col-span-2">
-              <label className={labelCls}>
-                İlgili Dosya / Sigortalı <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
-              </label>
+              <FieldLabel
+                className={fieldLabelCls}
+                help="Dosya no veya sigortalı adı ile arayın. Hatırlamıyorsanız Dosyadan Seç ile listeden alın."
+                testId="masraf-dosya-help"
+              >
+                İlgili Dosya / Sigortalı {requiredHint}
+              </FieldLabel>
               <div className="flex gap-2">
                 <SearchableSelect
                   className="min-w-0 flex-1"
@@ -1683,9 +1842,6 @@ export default function MasraflarPage() {
                   Dosyadan Seç
                 </button>
               </div>
-              <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-                Dosya numarasını hatırlamıyorsanız &quot;Dosyadan Seç&quot; ile hasar onarım listesinden seçin.
-              </p>
               {form.fileCaseId && (
                 <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                   {(() => {
@@ -1693,7 +1849,14 @@ export default function MasraflarPage() {
                     if (!sel) return null;
                     return (
                       <>
-                        Seçili: <span className="font-medium text-slate-700 dark:text-slate-200">{sel.fileNo}</span>
+                        Seçili:{' '}
+                        <Link
+                          href={`/panel/hasar-dosyalari/${sel.id}`}
+                          className="font-medium text-brand-700 underline hover:text-brand-800"
+                          data-testid="masraf-secili-dosya-link"
+                        >
+                          {sel.fileNo}
+                        </Link>
                         {sel.description ? ` — ${sel.description}` : ''}
                       </>
                     );
@@ -1745,7 +1908,13 @@ export default function MasraflarPage() {
                 <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-600 dark:bg-slate-800/40">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
-                      {selectedFileBudget.fileNo} — Bütçe Durumu
+                      <Link
+                        href={`/panel/hasar-dosyalari/${form.fileCaseId}`}
+                        className="text-brand-700 underline hover:text-brand-800"
+                      >
+                        {selectedFileBudget.fileNo}
+                      </Link>
+                      {' '}— Bütçe Durumu
                     </p>
                     <span className={`text-xs font-medium ${STATUS_META[selectedFileBudget.status].cls}`}>
                       {STATUS_META[selectedFileBudget.status].label}
@@ -1790,7 +1959,7 @@ export default function MasraflarPage() {
 
             {(editId || lastSavedOpNo) ? (
               <div className="md:col-span-2" data-testid="masraf-islem-no">
-                <label className={labelCls}>İşlem No</label>
+                <FieldLabel className={fieldLabelCls}>İşlem No</FieldLabel>
                 <input
                   readOnly
                   className={`${inputCls} bg-slate-50 font-mono text-slate-700 dark:bg-slate-800 dark:text-slate-200`}
@@ -1813,46 +1982,138 @@ export default function MasraflarPage() {
               </div>
             ) : null}
 
-            {/* Masraf yeri — Bütçelenen / Ek İş */}
-            {form.expenseLane === 'hasar' && (
-            <div className="md:col-span-2">
-              <label className={labelCls} htmlFor="finans-masraf-plan">
-                Masraf yeri <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
-              </label>
-              <select
-                id="finans-masraf-plan"
-                value={form.expensePlan}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setForm((f) => {
-                    const file = files.find((x) => x.id === f.fileCaseId);
-                    const fileOk = file && (next === PLAN_EK ? file.hasEkBudget : file.hasApprovedBudget);
-                    return {
-                      ...f,
-                      expensePlan: next,
-                      fileCaseId: fileOk ? f.fileCaseId : '',
-                    };
-                  });
-                }}
-                className={inputCls}
-                data-testid="finans-masraf-plan"
-              >
-                <option value={PLAN_BUTCE}>Bütçelenen</option>
-                <option value={PLAN_EK}>Ek İş</option>
-              </select>
-              <p className="mt-1 text-[11px] text-slate-500">
-                {form.expensePlan === PLAN_EK
-                  ? 'Ek iş bütçesine yazılır; kâr ayrı görünür.'
-                  : 'Onaylı dosya bütçesine yazılır. Masraf kalemi satırdan seçilir veya eklenir.'}
-              </p>
-            </div>
-            )}
+            {form.expenseLane ? (
+              <div className="md:col-span-2" data-testid="masraf-belge-modu">
+                <FieldLabel
+                  className={fieldLabelCls}
+                  help={(
+                    <>
+                      {belgeDurumuHelp}{' '}
+                      <Link href={FINANS_KART_YOL.kdvRaporu} className="font-semibold text-brand-700 underline">
+                        KDV Raporu
+                      </Link>
+                    </>
+                  )}
+                  testId="masraf-belge-help"
+                >
+                  Belge Durumu {requiredHint}
+                </FieldLabel>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { id: 'belgeli' as const, label: 'Belgeli' },
+                      { id: 'belgesiz' as const, label: 'Belgesiz' },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          documentMode: opt.id,
+                          documentType: opt.id === 'belgesiz' ? '' : f.documentType,
+                          documentNo: opt.id === 'belgesiz' ? '' : f.documentNo,
+                        }))
+                      }
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                        form.documentMode === opt.id
+                          ? 'border-brand-500 bg-brand-50 text-brand-800'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                      data-testid={`masraf-belge-${opt.id}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
-            {/* Tarih → Belge → Masraf kalemi → Tutar → Açıklama */}
-            <div className="md:col-span-2" data-testid="masraf-tarih-alan">
-              <label className={labelCls}>
-                Tarih <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
-              </label>
+            {form.documentMode === 'belgeli' ? (
+              <>
+                <div>
+                  <FieldLabel htmlFor="finans-masraf-belge-turu" className={fieldLabelCls}>
+                    Belge Türü
+                    {form.expenseLane === 'harici' ? requiredHint : null}
+                  </FieldLabel>
+                  <select
+                    id="finans-masraf-belge-turu"
+                    className={inputCls}
+                    value={form.documentType}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        documentType: e.target.value as typeof form.documentType,
+                      })
+                    }
+                    data-testid="masraf-belge-turu"
+                  >
+                    <option value="">Seçiniz...</option>
+                    {BELGE_TURU_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <FieldLabel htmlFor="finans-masraf-belge-no" className={fieldLabelCls}>
+                    Belge No
+                  </FieldLabel>
+                  <input
+                    id="finans-masraf-belge-no"
+                    className={inputCls}
+                    placeholder="Örn. 1425"
+                    value={form.documentNo}
+                    onChange={(e) => setForm({ ...form, documentNo: e.target.value })}
+                    data-testid="masraf-belge-no"
+                  />
+                </div>
+              </>
+            ) : null}
+
+            {form.expenseLane === 'hasar' ? (
+              <div>
+                <FieldLabel
+                  htmlFor="finans-masraf-plan"
+                  className={fieldLabelCls}
+                  help={
+                    form.expensePlan === PLAN_EK
+                      ? 'Ek iş bütçesine yazılır; kâr ayrı görünür.'
+                      : 'Onaylı dosya bütçesine yazılır.'
+                  }
+                >
+                  Masraf Yeri {requiredHint}
+                </FieldLabel>
+                <select
+                  id="finans-masraf-plan"
+                  value={form.expensePlan}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setForm((f) => {
+                      const file = files.find((x) => x.id === f.fileCaseId);
+                      const fileOk = file && (next === PLAN_EK ? file.hasEkBudget : file.hasApprovedBudget);
+                      return {
+                        ...f,
+                        expensePlan: next,
+                        fileCaseId: fileOk ? f.fileCaseId : '',
+                      };
+                    });
+                  }}
+                  className={inputCls}
+                  data-testid="finans-masraf-plan"
+                >
+                  <option value={PLAN_BUTCE}>Bütçelenen</option>
+                  <option value={PLAN_EK}>Ek İş</option>
+                </select>
+              </div>
+            ) : null}
+
+            <div data-testid="masraf-tarih-alan" className={form.expenseLane === 'hasar' ? '' : 'md:col-span-2'}>
+              <FieldLabel className={fieldLabelCls} help="İşlem tarihi mali döneme yazılır.">
+                Tarih {requiredHint}
+              </FieldLabel>
               <TrDateInput
                 className={inputCls}
                 value={form.date}
@@ -1869,53 +2130,24 @@ export default function MasraflarPage() {
               ) : null}
             </div>
 
-            <div>
-              <label className={labelCls} htmlFor="finans-masraf-belge-turu">
-                Belge Türü
-              </label>
-              <select
-                id="finans-masraf-belge-turu"
-                className={inputCls}
-                value={form.documentType}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    documentType: e.target.value as typeof form.documentType,
-                  })
-                }
-                data-testid="masraf-belge-turu"
-              >
-                <option value="">Seçiniz...</option>
-                {BELGE_TURU_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className={labelCls} htmlFor="finans-masraf-belge-no">
-                Belge No
-              </label>
-              <input
-                id="finans-masraf-belge-no"
-                className={inputCls}
-                placeholder="Örn. 1425"
-                value={form.documentNo}
-                onChange={(e) => setForm({ ...form, documentNo: e.target.value })}
-                data-testid="masraf-belge-no"
-              />
-            </div>
-
             {form.expenseLane && (
             <div className="md:col-span-2" data-testid="masraf-kalem-alanlari">
-              <label className={labelCls}>
-                Masraf Kalemi <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
-              </label>
+              <FieldLabel
+                className={fieldLabelCls}
+                help={(
+                  <>
+                    Grup ve alt grup Ayarlar listesinde de durur.{' '}
+                    <Link href={FINANS_KART_YOL.masrafKategorileri} className="font-semibold text-brand-700 underline">
+                      Masraf Kategorileri
+                    </Link>
+                  </>
+                )}
+              >
+                Masraf Kalemi {requiredHint}
+              </FieldLabel>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">Masraf Grubu</label>
+                    <p className="mb-1 text-[11px] text-slate-500 dark:text-slate-400">Masraf Grubu</p>
                     <SearchableSelect
                       options={groupOptions}
                       value={form.expenseCategoryParentId}
@@ -1934,7 +2166,7 @@ export default function MasraflarPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1">Masraf Alt Grubu</label>
+                    <p className="mb-1 text-[11px] text-slate-500 dark:text-slate-400">Masraf Alt Grubu</p>
                     <SearchableSelect
                       options={subgroupOptions}
                       value={form.expenseCategoryId}
@@ -1956,9 +2188,9 @@ export default function MasraflarPage() {
                 </div>
                 {categoryDraft ? (
                   <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800">
-                    <label className="block text-[11px] text-slate-500 mb-1">
+                    <p className="mb-1 text-[11px] text-slate-500">
                       {categoryDraft === 'group' ? 'Yeni Masraf Grubu' : 'Yeni Alt Grup'}
-                    </label>
+                    </p>
                     <div className="flex gap-2">
                       <input
                         className={inputCls}
@@ -1995,20 +2227,16 @@ export default function MasraflarPage() {
                     </div>
                     {categoryDraftError ? (
                       <p className="mt-1.5 text-xs text-status-danger">{categoryDraftError}</p>
-                    ) : (
-                      <p className="mt-1.5 text-[11px] text-slate-500">
-                        Aynı ad Ayarlar → Masraf Kategorileri listesinde de durur.
-                      </p>
-                    )}
+                    ) : null}
                   </div>
                 ) : null}
             </div>
             )}
 
-            <div className="md:col-span-2">
-              <label className={labelCls}>
-                Tutar (TL) <span className="text-xs font-normal text-slate-400">(Zorunlu)</span>
-              </label>
+            <div>
+              <FieldLabel className={fieldLabelCls} help="Girilen tutar KDV dahildir. Matrah ve KDV aşağıda ayrılır.">
+                Tutar — KDV Dahil (TL) {requiredHint}
+              </FieldLabel>
               <TrAmountInput
                 className={inputCls}
                 placeholder="0"
@@ -2017,8 +2245,115 @@ export default function MasraflarPage() {
               />
             </div>
 
+            <div data-testid="masraf-kdv-oran-alan">
+              <FieldLabel
+                htmlFor="finans-masraf-kdv-oran"
+                className={fieldLabelCls}
+                help={(
+                  <>
+                    Liste Ayarlar’dan gelir; burada da yeni oran eklenir.{' '}
+                    <Link href={FINANS_KART_YOL.masrafKategorileri} className="font-semibold text-brand-700 underline">
+                      Masraf Kategorileri
+                    </Link>
+                  </>
+                )}
+                testId="masraf-kdv-oran-help"
+              >
+                KDV Oranı {requiredHint}
+              </FieldLabel>
+              <div className="flex gap-2">
+                <select
+                  id="finans-masraf-kdv-oran"
+                  className={inputCls}
+                  value={form.vatRate}
+                  onChange={(e) => setForm({ ...form, vatRate: e.target.value })}
+                  data-testid="masraf-kdv-oran"
+                >
+                  {masrafKdvOranlari.map((rate) => (
+                    <option key={rate} value={String(rate)}>
+                      %{rate}
+                    </option>
+                  ))}
+                </select>
+                {!kdvDraftOpen ? (
+                  <button
+                    type="button"
+                    onClick={openKdvDraft}
+                    className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:border-slate-600 dark:hover:bg-slate-800"
+                    data-testid="masraf-kdv-oran-ekle-ac"
+                  >
+                    + Oran
+                  </button>
+                ) : null}
+              </div>
+              {kdvDraftOpen ? (
+                <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800">
+                  <p className="mb-1 text-[11px] text-slate-500">Yeni KDV Oranı</p>
+                  <div className="flex gap-2">
+                    <input
+                      className={inputCls}
+                      inputMode="decimal"
+                      placeholder="Örn. 8"
+                      value={kdvDraft}
+                      autoFocus
+                      onChange={(e) => setKdvDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void saveKdvDraft();
+                        }
+                      }}
+                      data-testid="masraf-kdv-oran-ekle-input"
+                    />
+                    <button
+                      type="button"
+                      disabled={kdvDraftSaving}
+                      onClick={() => { void saveKdvDraft(); }}
+                      className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                      data-testid="masraf-kdv-oran-ekle"
+                    >
+                      {kdvDraftSaving ? 'Kaydediliyor' : 'Ekle'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setKdvDraftOpen(false); setKdvDraftError(''); }}
+                      className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 dark:border-slate-600 dark:text-slate-300"
+                    >
+                      Vazgeç
+                    </button>
+                  </div>
+                  {kdvDraftError ? (
+                    <p className="mt-1.5 text-xs text-status-danger">{kdvDraftError}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-600 dark:bg-slate-800/40" data-testid="masraf-kdv-ozet">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-[10px] text-slate-500">Matrah</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {formatTryAmount(masrafVatSplit.matrah)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500">KDV</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {formatTryAmount(masrafVatSplit.vatAmount)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500">Genel Toplam</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {formatTryAmount(masrafVatSplit.genelToplam)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="md:col-span-2">
-              <label className={labelCls}>Açıklama {requiredHint}</label>
+              <FieldLabel className={fieldLabelCls}>Açıklama {requiredHint}</FieldLabel>
               <input
                 className={inputCls}
                 placeholder="Örn. çatı kaplama malzemesi"
@@ -2033,24 +2368,25 @@ export default function MasraflarPage() {
           </div>
 
           {!formCanSave && formSaveBlockers.length > 0 && (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-600 dark:bg-slate-800/50">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Kaydetmek için eksikler:</p>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-600 dark:bg-slate-800/50">
+              <p className="mb-1 text-xs font-semibold text-slate-600 dark:text-slate-300">Kaydetmek için eksikler:</p>
               <ul className="space-y-1">
                 {formSaveBlockers.map((b) => (
-                  <li key={b} className="text-xs text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
-                    <span className="text-status-danger mt-0.5">•</span>
+                  <li key={b} className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="mt-0.5 text-status-danger">•</span>
                     {b}
                   </li>
                 ))}
               </ul>
             </div>
           )}
+          </div>
 
-          <div className="flex items-center justify-end gap-2 mt-5 pt-4 pb-4 border-t border-slate-100 dark:border-slate-700">
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 bg-white px-3 py-3 sm:px-4 dark:border-slate-700">
             <button
               type="button"
               onClick={closeExpenseForm}
-              className="text-sm text-slate-500 dark:text-slate-400 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
             >
               İptal
             </button>
@@ -2059,7 +2395,7 @@ export default function MasraflarPage() {
                 type="button"
                 onClick={() => handleSave('close')}
                 disabled={saving || !formCanSave}
-                className="text-sm bg-brand-600 text-white px-6 py-2 rounded-xl hover:bg-brand-700 disabled:opacity-50 font-medium transition-colors"
+                className="rounded-xl bg-brand-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
               >
                 {saving ? 'Kaydediliyor...' : 'Güncelle'}
               </button>
@@ -2069,7 +2405,7 @@ export default function MasraflarPage() {
                   type="button"
                   onClick={() => handleSave('close')}
                   disabled={saving || !formCanSave}
-                  className="text-sm text-slate-600 dark:text-slate-300 px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
                 >
                   Kaydet ve Kapat
                 </button>
@@ -2077,7 +2413,7 @@ export default function MasraflarPage() {
                   type="button"
                   onClick={() => handleSave('new')}
                   disabled={saving || !formCanSave}
-                  className="text-sm bg-brand-600 text-white px-6 py-2 rounded-xl hover:bg-brand-700 disabled:opacity-50 font-medium transition-colors"
+                  className="rounded-xl bg-brand-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
                 >
                   {saving ? 'Kaydediliyor...' : 'Kaydet ve Yeni'}
                 </button>
@@ -2122,6 +2458,7 @@ export default function MasraflarPage() {
             { v: PLAN_EK, lane: '' as const, l: 'Ek İşler' },
             { v: '', lane: 'danismanlik' as const, l: 'Danışmanlık' },
             { v: '', lane: 'asistans' as const, l: 'Asistans' },
+            { v: '', lane: 'harici' as const, l: 'Harici' },
           ].map(({ v, lane, l }) => (
             <button
               key={`${lane}-${v}-${l}`}
@@ -2239,9 +2576,25 @@ export default function MasraflarPage() {
                     ),
                     fileNo: (
                       <PanelTableTd key="fileNo" colId="fileNo" className="px-5 py-3.5" title={e.customerName || e.fileNo || undefined}>
-                        <span className={`${e.customerName ? 'text-xs font-medium' : 'font-mono text-xs font-semibold'} text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded`}>
-                          {e.customerName || e.fileNo || '—'}
-                        </span>
+                        {e.fileCaseId && e.fileNo ? (
+                          <Link
+                            href={`/panel/hasar-dosyalari/${e.fileCaseId}`}
+                            className="font-mono text-xs font-semibold text-brand-700 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded hover:underline"
+                          >
+                            {e.fileNo}
+                          </Link>
+                        ) : e.customerId && e.customerName ? (
+                          <Link
+                            href={`/panel/musteriler/${e.customerId}`}
+                            className="text-xs font-medium text-brand-700 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded hover:underline"
+                          >
+                            {e.customerName}
+                          </Link>
+                        ) : (
+                          <span className={`${e.customerName ? 'text-xs font-medium' : 'font-mono text-xs font-semibold'} text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded`}>
+                            {e.customerName || e.fileNo || '—'}
+                          </span>
+                        )}
                       </PanelTableTd>
                     ),
                     expensePlan: (
@@ -2251,9 +2604,13 @@ export default function MasraflarPage() {
                             ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200'
                             : e.expenseLane === 'danismanlik'
                               ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'
-                              : meta.badgeCls
+                              : e.expenseLane === 'harici'
+                                ? 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200'
+                                : meta.badgeCls
                         }`}>
-                          {isCustomerExpenseLane(e.expenseLane) ? EXPENSE_LANE_LABEL[e.expenseLane] : meta.label}
+                          {isCustomerExpenseLane(e.expenseLane) || isHariciExpenseLane(e.expenseLane)
+                            ? EXPENSE_LANE_LABEL[e.expenseLane]
+                            : meta.label}
                         </span>
                       </PanelTableTd>
                     ),
