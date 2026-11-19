@@ -943,9 +943,11 @@ export class ClaimFilesService {
     }
 
     const expertOfficeCustomerIds =
-      normalizedUser?.roleCode === 'expert'
+      normalizedUser?.roleCode === 'expert' || normalizedUser?.roleCode === 'adjuster'
         ? await this.getExpertOfficeCustomerIds(normalizedUser.id)
-        : undefined;
+        : normalizedUser?.roleCode === 'broker_user'
+          ? await this.getBrokerOfficeCustomerIds(normalizedUser.id)
+          : undefined;
 
     let where = applyClaimFileListScope(
       scopedWhere,
@@ -1177,9 +1179,11 @@ export class ClaimFilesService {
       where = mergeWhereAnd(where, delegationWhere);
     }
     const expertOfficeCustomerIds =
-      normalizedUser?.roleCode === 'expert'
+      normalizedUser?.roleCode === 'expert' || normalizedUser?.roleCode === 'adjuster'
         ? await this.getExpertOfficeCustomerIds(normalizedUser.id)
-        : undefined;
+        : normalizedUser?.roleCode === 'broker_user'
+          ? await this.getBrokerOfficeCustomerIds(normalizedUser.id)
+          : undefined;
     return applyClaimFileListScope(
       where,
       normalizedUser,
@@ -1665,7 +1669,7 @@ export class ClaimFilesService {
       }
     }
 
-    if (normalizedUser?.roleCode === 'expert') {
+    if (normalizedUser?.roleCode === 'expert' || normalizedUser?.roleCode === 'adjuster') {
       const officeIds = await this.getExpertOfficeCustomerIds(normalizedUser.id);
       const viaOffice =
         Boolean(claimFile.customerId) && officeIds.includes(String(claimFile.customerId));
@@ -1678,6 +1682,18 @@ export class ClaimFilesService {
             select: { id: true },
           })));
       if (!hasExpertAccess) {
+        throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
+      }
+    }
+
+    if (normalizedUser?.roleCode === 'broker_user') {
+      const officeIds = await this.getBrokerOfficeCustomerIds(normalizedUser.id);
+      const viaBrokerChannel =
+        Boolean((claimFile as { channelBrokerCustomerId?: string | null }).channelBrokerCustomerId)
+        && officeIds.includes(String((claimFile as { channelBrokerCustomerId?: string | null }).channelBrokerCustomerId));
+      const viaCustomer =
+        Boolean(claimFile.customerId) && officeIds.includes(String(claimFile.customerId));
+      if (!viaBrokerChannel && !viaCustomer) {
         throw new ForbiddenException('Bu dosyaya erişim izniniz bulunmamaktadır');
       }
     }
@@ -3896,10 +3912,15 @@ export class ClaimFilesService {
       where: { id: userId },
       select: {
         email: true,
+        portalCustomerId: true,
         adjuster: { select: { company: true, email: true } },
       },
     });
     if (!user) return [];
+
+    if (user.portalCustomerId) {
+      return [user.portalCustomerId];
+    }
 
     const company = user.adjuster?.company?.trim();
     const emails = [user.email, user.adjuster?.email]
@@ -3927,6 +3948,16 @@ export class ClaimFilesService {
       take: 20,
     });
     return rows.map((r) => r.id);
+  }
+
+  /** Broker kullanıcının bağlı broker firması müşteri id’leri. */
+  async getBrokerOfficeCustomerIds(userId: string): Promise<string[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { portalCustomerId: true },
+    });
+    if (!user?.portalCustomerId) return [];
+    return [user.portalCustomerId];
   }
 
   /**

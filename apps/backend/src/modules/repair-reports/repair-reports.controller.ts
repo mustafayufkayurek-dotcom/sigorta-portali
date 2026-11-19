@@ -79,6 +79,7 @@ import {
   SendEmailDto,
   AddQuickRepairItemsDto,
   RequestApprovalDto,
+  NotifyCustomerApprovalDto,
 } from './dto/repair-reports.dto';
 import { ReviseReportDto } from './dto/revise-report.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -348,6 +349,16 @@ export class RepairReportsController {
   @Post('repair-reports/:id/approve')
   async approveReport(@Param('id') id: string, @CurrentUser() user: any) {
     const data = await this.service.approveReport(id, user.id);
+    return { data };
+  }
+
+  @Post('repair-reports/:id/notify-customer-approval')
+  async notifyCustomerApproval(
+    @Param('id') id: string,
+    @Body() dto: NotifyCustomerApprovalDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.notifyCustomerApproval(id, user.id, dto);
     return { data };
   }
 

@@ -531,7 +531,7 @@ function IhbarModal({ onClose, onSuccess }: IhbarModalProps) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
-        <a href="/panel/eksper-portal" className="hover:text-brand-600 transition-colors">Eksper Paneli</a>
+        <a href="/panel/eksper-portal" className="hover:text-brand-600 transition-colors">Portal</a>
         <span>/</span>
         <span className="text-slate-600 font-medium">Yeni İhbar</span>
       </nav>
@@ -1264,7 +1264,12 @@ export default function EksperPortalPage() {
     const raw = localStorage.getItem('user');
     if (!raw) { router.push('/giris'); return; }
     const u = JSON.parse(raw);
-    if (u?.role?.code !== 'expert') { setLoading(false); setAccessDenied(true); return; }
+    const roleCode = String(u?.role?.code ?? '').trim().toLowerCase();
+    if (roleCode !== 'expert' && roleCode !== 'adjuster' && roleCode !== 'broker_user') {
+      setLoading(false);
+      setAccessDenied(true);
+      return;
+    }
     setUser(u);
 
     const expertUserId = u.id;
@@ -1332,15 +1337,21 @@ export default function EksperPortalPage() {
           </svg>
         </div>
         <div className="text-center">
-          <p className="text-base font-semibold text-slate-800">Bu sayfa eksperler içindir</p>
-          <p className="text-sm text-slate-500 mt-1">Eksper Portalı yalnızca eksper rolündeki kullanıcılar tarafından kullanılabilir.</p>
+          <p className="text-base font-semibold text-slate-800">Bu sayfaya erişiminiz yok</p>
+          <p className="text-sm text-slate-500 mt-1">Bu portal yalnız eksper ve broker firma kullanıcıları içindir.</p>
         </div>
         <Link href="/panel" className="mt-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700">Dashboard&apos;a Dön</Link>
       </div>
     );
   }
 
-  const userName = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : 'Eksper';
+  const roleCode = String(user?.role?.code ?? '').trim().toLowerCase();
+  const isBroker = roleCode === 'broker_user';
+  const firmTitle = String(user?.portalCustomerName ?? '').trim();
+  const portalTitle = isBroker ? (firmTitle || 'Broker Paneli') : (firmTitle || 'Eksper Paneli');
+  const userName = user
+    ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+    : (isBroker ? 'Broker' : 'Eksper');
 
   // Düşük hacimde ibre «yarı dolu» görünmesin — taban ölçek 50
   const gaugeMax = Math.max(50, assignedCount, reviewCount, reportCount, onaylananCount);
@@ -1415,7 +1426,7 @@ export default function EksperPortalPage() {
 
         <div className="space-y-3 border-b border-slate-200/80 pb-3 dark:border-slate-800 [&>div:first-child]:border-b-0 [&>div:first-child]:pb-0">
           <DashboardHeader
-            title="Eksper Paneli"
+            title={portalTitle}
             subtitle={`Hoş Geldiniz, ${userName}`}
             hideDefaultActions
             actions={<ExpertPortalContactStrip compact />}

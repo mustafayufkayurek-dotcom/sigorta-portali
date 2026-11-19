@@ -4978,6 +4978,9 @@ export default function RepairReportPage() {
   });
   const [externalApprovals, setExternalApprovals] = useState<any[]>([]);
   const [sendingExternal, setSendingExternal] = useState(false);
+  const [showCustomerApprovalModal, setShowCustomerApprovalModal] = useState(false);
+  const [customerApprovedAmountInput, setCustomerApprovedAmountInput] = useState('');
+  const [sendingCustomerApproval, setSendingCustomerApproval] = useState(false);
   const [managerApprovalBusy, setManagerApprovalBusy] = useState(false);
   const [showRejectReason, setShowRejectReason] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -5261,8 +5264,9 @@ export default function RepairReportPage() {
       channelAgencyCustomer: report?.claimFile?.channelAgencyCustomer,
       channelBrokerCustomer: report?.claimFile?.channelBrokerCustomer,
       channelExpertCustomer: report?.claimFile?.channelExpertCustomer,
+      expertOffice: report?.expertOffice,
     }),
-    [report?.claimFile],
+    [report?.claimFile, report?.expertOffice],
   );
   const approvalMailContactsList = useMemo(
     () => {
@@ -5274,6 +5278,7 @@ export default function RepairReportPage() {
         channelAgencyCustomer: report?.claimFile?.channelAgencyCustomer,
         channelBrokerCustomer: report?.claimFile?.channelBrokerCustomer,
         channelExpertCustomer: report?.claimFile?.channelExpertCustomer,
+        expertOffice: report?.expertOffice,
       });
       const withCustomer = mergeClaimApprovalCustomerCardContact(rows, report?.claimFile?.customer);
       const base = withCustomer.length > 0
@@ -5297,9 +5302,7 @@ export default function RepairReportPage() {
       fileNo: report?.claimFile?.fileNo,
       reportNo: report?.reportNo,
       insuranceCompanyName: report?.claimFile?.insuranceCompany?.name,
-      fileSubject: report?.claimFile?.claimSubject?.name
-        ?? report?.claimFile?.departmentFileSubject?.name
-        ?? report?.claimFile?.lossType,
+      fileSubject: resolveClaimIhbarKonusu(report?.claimFile ?? {}),
       customerName: claimApprovalCustomerDisplayName(report?.claimFile?.customer),
       recipientName: claimApprovalFirstToGreetingName(approvalRecipients),
       ownerName: ownerName || null,
@@ -5551,6 +5554,34 @@ export default function RepairReportPage() {
     finally { setSendingExternal(false); }
   };
 
+  const handleNotifyCustomerApproval = async () => {
+    const amount = parseTrAmountInput(customerApprovedAmountInput);
+    if (amount == null || amount <= 0) {
+      notify('warning', 'Onaylanan bedeli giriniz.');
+      return;
+    }
+    const ok = await askConfirm(
+      'Müşteriye Onay Bildirimi Yapılacaktır. Onaylıyor musunuz?',
+    );
+    if (!ok) return;
+    setSendingCustomerApproval(true);
+    try {
+      await axios.post(
+        `${API}/repair-reports/${reportId}/notify-customer-approval`,
+        { approvedAmount: amount },
+        { headers: authHeader() },
+      );
+      setShowCustomerApprovalModal(false);
+      setCustomerApprovedAmountInput('');
+      notify('success', 'Müşteriye onay bildirimi gönderildi.');
+      await load();
+    } catch (e: any) {
+      notify('error', e?.response?.data?.message ?? 'Müşteri bildirimi gönderilemedi.');
+    } finally {
+      setSendingCustomerApproval(false);
+    }
+  };
+
   const handleRequestApproval = async () => {
     const findingsText = getEffectiveFindingsText(report, pendingFields, bulgularTextareaRef.current);
     const validation = validateApprovalRequirements(report, findingsText);
@@ -5683,6 +5714,18 @@ export default function RepairReportPage() {
     }
     setItemsApprovalError(null);
     setConfirmSendWithoutImages(false);
+
+    const documentTitle = hasarReportDocumentTitle(
+      report?.claimFile?.serviceKind,
+      report?.claimFile?.consultancyServiceType,
+    );
+    if (documentTitle === 'Hasar Tespit Raporu' && fileExpert.missing) {
+      const okWithoutExpert = await askConfirm(
+        'Bu tespit raporunda eksper bilgisi girilmemiş. Eksper bilgisi olmadan göndermek istediğinizden emin misiniz?',
+      );
+      if (!okWithoutExpert) return;
+    }
+
     const preferred = claimApprovalMailPreviewEmails(approvalMailRows);
     const defaults = claimApprovalDefaultToEmailsWithCustomerCard(
       approvalMailContactsList,
@@ -6324,6 +6367,19 @@ export default function RepairReportPage() {
           className="text-xs border border-blue-200 bg-blue-50 text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-100"
         >
           E-posta / WhatsApp ile Gönder
+        </button>
+      )}
+      {(report.status === 'approved' || report.status === 'externally_approved') && !isFieldStaff && (
+        <button
+          type="button"
+          data-testid="musteriye-onay-bildir"
+          onClick={() => {
+            setCustomerApprovedAmountInput('');
+            setShowCustomerApprovalModal(true);
+          }}
+          className="text-xs border border-emerald-200 bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-lg hover:bg-emerald-100"
+        >
+          Müşteriye Onay Bildir
         </button>
       )}
       <div className="hidden sm:block h-6 w-px bg-slate-200" aria-hidden />
@@ -7553,6 +7609,56 @@ export default function RepairReportPage() {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {showCustomerApprovalModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/45 p-0 sm:items-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Müşteriye onay bildir"
+        >
+          <div className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
+            <h3 className="text-lg font-semibold text-slate-900">Müşteriye Onay Bildir</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Broker veya eksper mutabakatı sonrası onaylanan bedeli yazın. Müşteri kartına «Dosyanıza onay alınmıştır» maili gider.
+            </p>
+            <label className="mt-4 block text-sm font-medium text-slate-700">
+              Onaylanan Bedel
+              <input
+                type="text"
+                inputMode="decimal"
+                value={customerApprovedAmountInput}
+                onChange={(e) => setCustomerApprovedAmountInput(e.target.value)}
+                placeholder="Örn. 12.500,00"
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                data-testid="musteri-onay-bedel"
+              />
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={sendingCustomerApproval}
+                onClick={() => {
+                  setShowCustomerApprovalModal(false);
+                  setCustomerApprovedAmountInput('');
+                }}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              >
+                İptal
+              </button>
+              <button
+                type="button"
+                disabled={sendingCustomerApproval}
+                onClick={() => void handleNotifyCustomerApproval()}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                data-testid="musteri-onay-gonder"
+              >
+                {sendingCustomerApproval ? 'Gönderiliyor…' : 'Gönder'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -36,9 +36,13 @@ export type InsurancePortalNavCounts = {
  * FINAL MASTER — Eksper sidebar.
  * Özet rozet yalnız «Onay Bekliyor».
  */
-export function getExpertPortalNav(counts?: ExpertPortalNavCounts): PortalNavItem[] {
+export function getExpertPortalNav(
+  counts?: ExpertPortalNavCounts,
+  options?: { homeTitle?: string | null },
+): PortalNavItem[] {
+  const homeTitle = String(options?.homeTitle ?? '').trim() || 'Eksper Paneli';
   return [
-    { title: 'Eksper Paneli', href: '/panel/eksper-portal', icon: LayoutDashboard, exactMatch: true },
+    { title: homeTitle, href: '/panel/eksper-portal', icon: LayoutDashboard, exactMatch: true },
     {
       title: 'Dosyalarım',
       href: '/panel/eksper-portal/dosyalar',
@@ -107,6 +111,7 @@ export function getAssistancePortalNav(counts?: AssistancePortalNavCounts): Port
 /** Mobil alt çubuk — kısa etiketler */
 export const PORTAL_BOTTOM_SHORT_LABELS: Record<string, string> = {
   'Eksper Paneli': 'Panel',
+  'Broker Paneli': 'Panel',
   Dosyalarım: 'Dosyalarım',
   'Onay Bekliyor': 'Onay',
   'İnceleme Bekleyenler': 'Onay',

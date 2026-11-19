@@ -44,7 +44,20 @@ import { ClipboardList, FileText, FolderOpen, ShieldCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const EKSPER_PORTAL_HOME = '/panel/eksper-portal';
-const EKSPER_PORTAL_LABEL = 'Eksper Paneli';
+
+function resolveExpertPortalLabel(): string {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    if (!raw) return 'Eksper Paneli';
+    const u = JSON.parse(raw);
+    const role = String(u?.role?.code ?? '').trim().toLowerCase();
+    const firm = String(u?.portalCustomerName ?? '').trim();
+    if (role === 'broker_user') return firm || 'Broker Paneli';
+    return firm || 'Eksper Paneli';
+  } catch {
+    return 'Eksper Paneli';
+  }
+}
 
 const CENTERED_TABLE_COLS = new Set(['subject', 'status', 'delayDays', 'createdAt', 'actions']);
 
@@ -118,6 +131,7 @@ export default function EksperDosyalarPage() {
   const pageCopy = queuePageCopy(queue);
   const activeQueue = normalizeExpertQueueParam(queue);
   const hideDelayDays = activeQueue === 'rapor' || activeQueue === 'onaylanan';
+  const EKSPER_PORTAL_LABEL = resolveExpertPortalLabel();
 
   const [files, setFiles] = useState<ClaimFile[]>([]);
   const [loading, setLoading] = useState(true);

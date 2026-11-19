@@ -2854,7 +2854,10 @@ export default function KullanicilarPage() {
                   )}
                 </FormField>
                 {selectedOfficeId ? (
-                  <div className="space-y-2" data-testid="eksper-ofisi-personel-listesi">
+                  <div
+                    className="space-y-2"
+                    data-testid={form.userTask === 'expert' ? 'eksper-ofisi-personel-listesi' : 'ofis-personel-listesi'}
+                  >
                     <p className="text-sm font-semibold text-slate-800">Bu ofiste kayıtlı personel</p>
                     {officeUsersLoading ? (
                       <p className="text-xs text-slate-500">Yükleniyor…</p>

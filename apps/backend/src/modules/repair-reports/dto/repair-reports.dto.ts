@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn, IsNumber, IsObject, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, IsObject, IsBoolean, IsArray, ValidateNested, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateRepairReportDto {
@@ -301,4 +301,12 @@ export class RequestApprovalDto {
   @IsOptional()
   @IsString()
   messageText?: string;
+}
+
+/** Broker / eksper mutabakatı sonrası müşteriye onay bildirimi. */
+export class NotifyCustomerApprovalDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.01)
+  approvedAmount!: number;
 }

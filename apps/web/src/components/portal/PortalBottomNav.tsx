@@ -12,13 +12,14 @@ import {
 
 type PortalBottomNavProps = {
   variant: 'expert' | 'insurance' | 'assistance';
+  expertHomeTitle?: string | null;
 };
 
-export default function PortalBottomNav({ variant }: PortalBottomNavProps) {
+export default function PortalBottomNav({ variant, expertHomeTitle }: PortalBottomNavProps) {
   const pathname = usePathname();
   const links =
     variant === 'expert'
-      ? getExpertPortalNav()
+      ? getExpertPortalNav(undefined, { homeTitle: expertHomeTitle || 'Eksper Paneli' })
       : variant === 'assistance'
         ? getAssistancePortalNav()
         : getInsurancePortalNav();

@@ -4,6 +4,7 @@ import {
   type OperationAreaCode,
 } from '../app/panel/kullanicilar/_lib/user-invite-config';
 import { isFieldStaffRole, isFinanceRole, isOfficeStaffRole, roleAllowedForNav } from '../hooks/usePanelRole';
+import { isExpertPortalRole } from './expert-portal-role';
 import panelRouteAccessRules from './panel-route-access.rules.json';
 
 export type PanelUserLike = {
@@ -27,7 +28,11 @@ function normalizeRoleCode(roleCode: string): string {
 
 export function isPortalRole(roleCode: string): boolean {
   const role = normalizeRoleCode(roleCode);
-  return role === 'expert' || role === 'insurance_company_user' || isAssistanceCompanyRoleCode(role);
+  return (
+    isExpertPortalRole(role)
+    || role === 'insurance_company_user'
+    || isAssistanceCompanyRoleCode(role)
+  );
 }
 
 /** Portal deep-link / refresh: yalnızca kendi portal ağacı + profil (+ /panel ana yönlendirme) */
@@ -37,7 +42,7 @@ export function portalAllowsPath(roleCode: string, pathname: string): boolean {
   if (pathname === '/panel') return true;
 
   const role = normalizeRoleCode(roleCode);
-  if (role === 'expert') {
+  if (isExpertPortalRole(role)) {
     return pathname === '/panel/eksper-portal' || pathname.startsWith('/panel/eksper-portal/');
   }
   if (role === 'insurance_company_user') {
@@ -51,7 +56,7 @@ export function portalAllowsPath(roleCode: string, pathname: string): boolean {
 
 export function getSafePanelHomePath(roleCode: string): string {
   const role = normalizeRoleCode(roleCode);
-  if (role === 'expert') return '/panel/eksper-portal';
+  if (isExpertPortalRole(role)) return '/panel/eksper-portal';
   if (role === 'insurance_company_user') return '/panel/sigorta-portal';
   if (isAssistanceCompanyRoleCode(role)) return '/panel/asistans-portal';
   if (isFinanceRole(role)) return '/panel/finans';

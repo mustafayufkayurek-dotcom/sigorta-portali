@@ -23,6 +23,7 @@ import {
 import {
   buildNotificationEmailHtml,
   buildRaporOnaylandiEmailHtml,
+  buildTransactionalEmailHtml,
   formatSnPersonGreeting,
   raporOnaylandiIntro,
   raporOnaylandiSubject,
@@ -651,4 +652,60 @@ export class ClaimEventEmailService {
       nextStepText: copy.nextStepText,
     });
   }
+
+  /**
+   * Broker / eksper mutabakatı sonrası — müşteriye «dosyanıza onay alınmıştır».
+   * Hasar kutusundan gider.
+   */
+  async onCustomerFileApprovalNotice(params: {
+    customerEmail: string;
+    customerName?: string | null;
+    fileNo: string;
+    /** Sigortalı / dosya adı */
+    fileName?: string | null;
+    /** İlçe · İl */
+    placeLabel?: string | null;
+    approvedAmountLabel: string;
+    claimFileId: string;
+    insuranceCompanyName?: string | null;
+    fileSubject?: string | null;
+  }) {
+    const to = params.customerEmail?.trim();
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      return { sent: false as const, errorMsg: 'Müşteri e-postası yok' };
+    }
+    const fileNo = String(params.fileNo ?? '').trim() || '—';
+    const fileName = String(params.fileName ?? '').trim() || '—';
+    const placeLabel = String(params.placeLabel ?? '').trim() || '—';
+    const amount = String(params.approvedAmountLabel ?? '').trim() || '—';
+    const subject = `Dosyanıza Onay Alınmıştır — ${fileNo}`;
+    const greetingName = String(params.customerName ?? '').trim();
+    const html = buildTransactionalEmailHtml({
+      title: 'Dosyanıza Onay Alınmıştır',
+      greeting: greetingName ? `Sayın ${greetingName},` : 'Sayın Yetkili,',
+      intro:
+        `Dosyanız için broker / eksper mutabakatı tamamlanmış ve onay alınmıştır.\n\n`
+        + `Onaylanan bedel: ${amount}`,
+      bodyHtml: `
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;font-size:14px;color:#334155;">
+          <tr><td style="padding:4px 0;"><strong>Dosya No</strong></td><td style="padding:4px 0;">${escapeBasic(fileNo)}</td></tr>
+          <tr><td style="padding:4px 0;"><strong>Dosya Adı</strong></td><td style="padding:4px 0;">${escapeBasic(fileName)}</td></tr>
+          <tr><td style="padding:4px 0;"><strong>İl / İlçe</strong></td><td style="padding:4px 0;">${escapeBasic(placeLabel)}</td></tr>
+          <tr><td style="padding:4px 0;"><strong>Onaylanan Bedel</strong></td><td style="padding:4px 0;">${escapeBasic(amount)}</td></tr>
+          <tr><td style="padding:4px 0;"><strong>Sigorta Şirketi</strong></td><td style="padding:4px 0;">${escapeBasic(String(params.insuranceCompanyName ?? '').trim() || '—')}</td></tr>
+          <tr><td style="padding:4px 0;"><strong>Dosya Konusu</strong></td><td style="padding:4px 0;">${escapeBasic(String(params.fileSubject ?? '').trim() || '—')}</td></tr>
+        </table>`,
+      portalUrl: this.appUrl,
+      footerNote: 'Bu yazı bilgilendirme amaçlıdır.',
+    });
+    return this.email.sendEmail(to, subject, html, { mailbox: 'HASAR' });
+  }
+}
+
+function escapeBasic(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

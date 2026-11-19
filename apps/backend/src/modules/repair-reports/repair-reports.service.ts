@@ -44,6 +44,7 @@ import {
   splitClaimApprovalMessageText,
 } from '@sigorta/shared';
 import { serviceMailRouteForClaim } from '@/common/hizmet-karti-store';
+import { claimFileSubjectName } from '@/common/helpers/ihbar-konusu.helper';
 import { isMeridyenInternalMailbox } from '@/modules/notifications/email/file-closure-email.template';
 import {
   ACIL_INSPECTION_PHOTO_NOTE,
@@ -67,6 +68,7 @@ import {
   repairItemSupplierNeedsHeal,
   repairItemResolvedSupplierTotal,
   claimFileReportGrandTotal,
+  claimFilePlaceLabel,
   maliMesuliyetAlanToplami,
   internalRepairPdfFilename,
   packInlineMailAttachments,
@@ -81,6 +83,7 @@ import {
   SendEmailDto,
   AddQuickRepairItemsDto,
   RequestApprovalDto,
+  NotifyCustomerApprovalDto,
 } from './dto/repair-reports.dto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -140,6 +143,7 @@ const CLAIM_FILE_SAFE_SELECT = {
   mailRouteJson: true,
   consultancyServiceType: { select: { id: true, code: true, name: true } },
   claimSubject: { select: { id: true, code: true, name: true } },
+  departmentFileSubject: { select: { id: true, name: true } },
   assignedFieldUser: { select: { id: true, firstName: true, lastName: true, phone: true } },
   assignedOfficeUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
   assignedAdjuster: { select: { id: true, firstName: true, lastName: true, phone: true } },
@@ -1296,7 +1300,7 @@ export class RepairReportsService {
       reportNo: report.reportNo,
       fileNo: report.claimFile?.fileNo,
       insuranceCompanyName: report.claimFile?.insuranceCompany?.name,
-      fileSubject: report.claimFile?.claimSubject?.name,
+      fileSubject: claimFileSubjectName(report.claimFile),
       documentTitle: hasarReportDocumentTitle(
         report.claimFile?.serviceKind,
         report.claimFile?.consultancyServiceType,
@@ -1456,7 +1460,9 @@ export class RepairReportsService {
             siteContactEmail: true,
             consultancyServiceType: { select: { code: true, name: true } },
             insuranceCompany: { select: { id: true, name: true, contactEmail: true } },
+            lossType: true,
             claimSubject: { select: { name: true } },
+            departmentFileSubject: { select: { name: true } },
             propertyAddress: { select: { city: true, district: true } },
             assignedOfficeUser: { select: { firstName: true, lastName: true, phone: true, email: true } },
             customer: {
@@ -1699,7 +1705,7 @@ export class RepairReportsService {
         reportNo: report.reportNo,
         fileNo: report.claimFile?.fileNo,
         insuranceCompanyName: report.claimFile?.insuranceCompany?.name,
-        fileSubject: report.claimFile?.claimSubject?.name,
+        fileSubject: claimFileSubjectName(report.claimFile),
         documentTitle,
         messageGreeting: hasCustomMessage ? messageParts.greeting : undefined,
         messageBody: hasCustomMessage ? messageParts.body : undefined,
@@ -1927,6 +1933,114 @@ export class RepairReportsService {
     await this.syncClaimFromLatestReport(report.claimFileId);
 
     return this.getReport(reportId);
+  }
+
+  /**
+   * Broker / eksper mutabakatı sonrası onaylanan bedeli kaydeder ve müşteriye bildirir.
+   */
+  async notifyCustomerApproval(
+    reportId: string,
+    userId: string,
+    dto: NotifyCustomerApprovalDto,
+  ) {
+    const amount = Number(dto.approvedAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('Onaylanan bedel girilmelidir.');
+    }
+
+    const report = await this.prisma.repairReport.findUnique({
+      where: { id: reportId },
+      include: {
+        claimFile: {
+          select: {
+            id: true,
+            fileNo: true,
+            insuredName: true,
+            lossType: true,
+            claimSubject: { select: { name: true } },
+            departmentFileSubject: { select: { name: true } },
+            insuranceCompany: { select: { name: true } },
+            propertyAddress: { select: { city: true, district: true } },
+            customer: {
+              select: {
+                email: true,
+                shortName: true,
+                companyName: true,
+                fullName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    const allowed = new Set(['approved', 'externally_approved']);
+    if (!allowed.has(report.status)) {
+      throw new BadRequestException(
+        'Müşteriye onay bildirimi yalnız onaylanmış raporda gönderilir.',
+      );
+    }
+
+    const customerEmail = String(report.claimFile?.customer?.email ?? '').trim();
+    if (!customerEmail.includes('@')) {
+      throw new BadRequestException('Müşteri kartında e-posta yok.');
+    }
+
+    const amountLabel = `${amount.toLocaleString('tr-TR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} TL`;
+    const customerName =
+      String(report.claimFile?.customer?.shortName ?? '').trim()
+      || String(report.claimFile?.customer?.companyName ?? '').trim()
+      || String(report.claimFile?.customer?.fullName ?? '').trim()
+      || null;
+    const fileSubject =
+      String(report.claimFile?.claimSubject?.name ?? '').trim()
+      || String(report.claimFile?.departmentFileSubject?.name ?? '').trim()
+      || String(report.claimFile?.lossType ?? '').trim()
+      || null;
+    const fileName = String(report.claimFile?.insuredName ?? '').trim() || null;
+    const placeLabel = claimFilePlaceLabel(
+      report.claimFile?.propertyAddress?.city,
+      report.claimFile?.propertyAddress?.district,
+    );
+
+    if (!this.claimEventEmail) {
+      throw new BadRequestException('Mail servisi hazır değil.');
+    }
+    const sent = await this.claimEventEmail.onCustomerFileApprovalNotice({
+      customerEmail,
+      customerName,
+      fileNo: report.claimFile?.fileNo ?? report.reportNo,
+      fileName,
+      placeLabel,
+      approvedAmountLabel: amountLabel,
+      claimFileId: report.claimFileId,
+      insuranceCompanyName: report.claimFile?.insuranceCompany?.name ?? null,
+      fileSubject,
+    });
+    if (!sent?.sent) {
+      throw new BadRequestException(
+        (sent as { errorMsg?: string })?.errorMsg || 'Müşteri maili gitmedi.',
+      );
+    }
+
+    await this.prisma.reportApprovalHistory.create({
+      data: {
+        reportId,
+        userId,
+        action: 'customer_approval_notified',
+        reason: `Onaylanan bedel: ${amountLabel}`,
+      },
+    });
+
+    return {
+      sent: true,
+      to: customerEmail,
+      approvedAmount: amount,
+      approvedAmountLabel: amountLabel,
+    };
   }
 
   async rejectReport(reportId: string, userId: string, reason: string) {

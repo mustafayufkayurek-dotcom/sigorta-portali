@@ -61,7 +61,7 @@ export function applyClaimFileListScope(
     });
   }
 
-  if (user?.roleCode === 'expert') {
+  if (user?.roleCode === 'expert' || user?.roleCode === 'adjuster') {
     const expertOr: Array<Record<string, unknown>> = [
       { assignedAdjusterId: user.id },
       {
@@ -74,6 +74,20 @@ export function applyClaimFileListScope(
       expertOr.push({ customerId: { in: expertOfficeCustomerIds } });
     }
     scopes.push({ OR: expertOr });
+  }
+
+  if (user?.roleCode === 'broker_user') {
+    const brokerOr: Array<Record<string, unknown>> = [];
+    if (expertOfficeCustomerIds?.length) {
+      brokerOr.push({ channelBrokerCustomerId: { in: expertOfficeCustomerIds } });
+      brokerOr.push({ customerId: { in: expertOfficeCustomerIds } });
+    }
+    if (brokerOr.length) {
+      scopes.push({ OR: brokerOr });
+    } else {
+      // Bağlı firma yoksa boş liste (hiç dosya)
+      scopes.push({ id: '__broker_no_office__' });
+    }
   }
 
   return mergeWhereAnd(...scopes);

@@ -131,9 +131,10 @@ describe('Onaya Gönder tercih edilen alıcı LOCK', () => {
       ownerEmail: 'mustafa@meridyen-tr.com',
     });
     assert.equal(preview.subject, 'Hasar Tespit Raporu/Doğanlar Mobilya Grubu/2026 YE 1');
-    assert.equal(preview.greeting, 'Sn. Demir,');
-    assert.equal(preview.body, 'Dosyaya ait Hasar Tespit Raporu ekte bilgilerinize sunarız.');
-    assert.match(preview.messageText, /Sn\. Demir,/);
+    assert.equal(preview.greeting, 'Ayşe Hanım Merhaba,');
+    assert.match(preview.body, /Dosyaya Ait Hasar Tespit Raporunu Ekte Bilgilerinize Sunar;/);
+    assert.match(preview.body, /Olumlu İş Birliğimizin Devamını Dileriz\./);
+    assert.match(preview.messageText, /Ayşe Hanım Merhaba,/);
     assert.equal(preview.attachmentNote, 'Hasar Tespit Raporu PDF eki gider.');
     assert.equal(preview.signatureName, 'Mustafa Yufkayürek');
     assert.equal(preview.signatureTitle, 'Dosya Sorumlusu');
@@ -202,7 +203,7 @@ describe('Onaya Gönder tercih edilen alıcı LOCK', () => {
     );
   });
 
-  it('aynı e-postada kişi adı kurumdan önce; hitap Sn. soyad', () => {
+  it('aynı e-postada kişi adı kurumdan önce; hitap Ad Bey Merhaba', () => {
     const contacts = claimApprovalMailContacts({
       serviceKind: 'inspection',
       insuranceCompany: { name: 'Allianz Pilot', contactEmail: 'hasar@allianz.com' },
@@ -216,7 +217,7 @@ describe('Onaya Gönder tercih edilen alıcı LOCK', () => {
     assert.equal(howden?.name, 'Ali Çakar');
     assert.equal(claimApprovalRecipientSurname('Howden Türkiye'), '');
     assert.equal(claimApprovalRecipientSurname('Ali Çakar'), 'Çakar');
-    // Firma Kime önce gelse bile kişi soyadı alınır
+    // Firma Kime önce gelse bile kişi adı alınır
     const recipients = [
       { id: 'insurance:org', name: 'Allianz Pilot', role: 'Sigorta', email: 'hasar@allianz.com', delivery: 'to' as const },
       { ...howden!, delivery: 'to' as const },
@@ -227,8 +228,11 @@ describe('Onaya Gönder tercih edilen alıcı LOCK', () => {
       fileNo: '2026 YE 1',
       recipientName: claimApprovalFirstToGreetingName(recipients),
     });
-    assert.equal(preview.greeting, 'Sn. Çakar,');
-    assert.match(preview.messageText, /^Sn\. Çakar,\n\nDosyaya ait Hasar Tespit Raporu/);
+    assert.equal(preview.greeting, 'Ali Bey Merhaba,');
+    assert.match(
+      preview.messageText,
+      /^Ali Bey Merhaba,\n\nDosyaya Ait Hasar Tespit Raporunu Ekte Bilgilerinize Sunar;/,
+    );
   });
 
   it('Dosya Bilgileri düzenle hizmet hattından konu okur; department koduna kör bakmaz', () => {

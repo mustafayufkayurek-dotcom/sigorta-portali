@@ -5,6 +5,7 @@
  */
 import {
   approvalRecipientSurname,
+  CLAIM_APPROVAL_TESPIT_BODY,
   claimApprovalGreeting,
 } from '@sigorta/shared';
 
@@ -121,7 +122,7 @@ function dispatchWording(
     return {
       belge: 'Hasar Tespit Raporu',
       hitap: claimApprovalGreeting(recipientSurname),
-      intro: 'Dosyaya ait Hasar Tespit Raporu ekte bilgilerinize sunarız.',
+      intro: CLAIM_APPROVAL_TESPIT_BODY,
     };
   }
   return {
@@ -138,7 +139,7 @@ function resolveDispatchWording(data: ReportDispatchEmailData): { belge: string;
     data.messageGreeting != null
     || data.messageBody != null;
   if (!hasCustom) return base;
-  // Açık mesaj gövdesi personelden; hitap alıcı soyadından (Howden Türkiye → Sn. Yetkili / Sn. Çakar).
+  // Açık mesaj gövdesi personelden; hitap alıcı adından (Görkem Bey Merhaba / Merhaba).
   const soyadHitap = String(data.documentTitle ?? '').trim() === 'Hasar Tespit Raporu'
     ? claimApprovalGreeting(data.recipientSurname)
     : '';

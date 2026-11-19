@@ -584,6 +584,15 @@ export class AuthService {
             },
           },
         },
+        portalCustomer: {
+          select: {
+            id: true,
+            companyName: true,
+            fullName: true,
+            shortName: true,
+            subType: true,
+          },
+        },
       },
     });
 
@@ -597,6 +606,13 @@ export class AuthService {
       'acil_yardim',
     );
 
+    const portalCustomerName = (
+      user.portalCustomer?.companyName
+      ?? user.portalCustomer?.fullName
+      ?? user.portalCustomer?.shortName
+      ?? ''
+    ).trim() || null;
+
     return {
       id: user.id,
       email: user.email,
@@ -606,6 +622,8 @@ export class AuthService {
       phone: user.phone,
       status: user.status,
       adjusterId: user.adjusterId ?? null,
+      portalCustomerId: user.portalCustomerId ?? null,
+      portalCustomerName,
       role: {
         id: user.role.id,
         code: user.role.code,
@@ -628,7 +646,9 @@ export class AuthService {
         subType: s.customer.subType,
       })),
       customerShortName:
-        (user.userAssistantCustomerScopes[0]?.customer.shortName ?? '').trim() || null,
+        (user.userAssistantCustomerScopes[0]?.customer.shortName ?? '').trim()
+        || (user.portalCustomer?.shortName ?? '').trim()
+        || null,
       departmentMemberships: user.departmentMemberships.map((m) => ({
         departmentId: m.departmentId,
         isPrimary: m.isPrimary,

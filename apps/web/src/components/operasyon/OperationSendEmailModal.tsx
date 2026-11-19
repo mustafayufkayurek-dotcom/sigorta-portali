@@ -27,6 +27,7 @@ import {
   withClaimApprovalFileOwnerCc,
 } from '@/utils/claim-approval-mail-contacts';
 import { claimApprovalCustomerDisplayName } from '@sigorta/shared';
+import { resolveClaimIhbarKonusu } from '@/utils/text-helpers';
 
 export type OperationSendEmailTarget = {
   claimId: string;
@@ -213,9 +214,7 @@ export function OperationSendEmailModal({ target, onClose }: Props) {
       fileNo: claim?.fileNo ?? target?.fileNo,
       reportNo,
       insuranceCompanyName: claim?.insuranceCompany?.name,
-      fileSubject: claim?.claimSubject?.name
-        ?? claim?.departmentFileSubject?.name
-        ?? claim?.lossType,
+      fileSubject: resolveClaimIhbarKonusu(claim ?? {}),
       customerName: claimApprovalCustomerDisplayName(claim?.customer),
       recipientName: claimApprovalFirstToGreetingName(recipients),
       ownerName: ownerName || null,

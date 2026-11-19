@@ -31,6 +31,10 @@ import {
   hasPanelRouteAccess,
   userOperationArea,
 } from '@/utils/panel-access';
+import {
+  expertPortalBrandLabel,
+  expertPortalHomeTitle,
+} from '@/utils/expert-portal-role';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { apiClient } from '@/lib/api-client';
@@ -344,6 +348,7 @@ interface PanelSidebarProps {
   allowedScreens: string[] | null;
   collapsed: boolean;
   hidden?: boolean;
+  expertPortalHomeTitle?: string | null;
 }
 
 function getPanelMainLinks({
@@ -362,6 +367,7 @@ function getPanelMainLinks({
   asistansNavTypes,
   hiddenCodes,
   ekNavTypes,
+  expertPortalHomeTitle,
 }: {
   isExpert: boolean;
   isInsuranceCompanyUser: boolean;
@@ -378,11 +384,14 @@ function getPanelMainLinks({
   asistansNavTypes?: { name: string; code?: string | null; steps?: string | null }[];
   hiddenCodes?: string[];
   ekNavTypes?: { name: string; code?: string | null }[];
+  expertPortalHomeTitle?: string | null;
 }): NavigationLink[] {
   const opsBadge = pendingRevisionCount > 0 ? pendingRevisionCount : undefined;
   const operasyonChildren = buildOperasyonNavChildren(consultancyNavTypes, asistansNavTypes, hiddenCodes, ekNavTypes) as NavigationLink[];
   const links = isExpert
-    ? getExpertPortalNav(expertNavCounts)
+    ? getExpertPortalNav(expertNavCounts, {
+        homeTitle: expertPortalHomeTitle || 'Eksper Paneli',
+      })
     : isInsuranceCompanyUser
       ? getInsurancePortalNav(insuranceNavCounts)
       : isAssistanceCompanyUser
@@ -614,6 +623,10 @@ function Navbar({
     asistansNavTypes: hizmetMenu.asistansExtra,
     hiddenCodes: hizmetMenu.hiddenCodes,
     ekNavTypes: hizmetMenu.ekExtra,
+    expertPortalHomeTitle: expertPortalHomeTitle(
+      roleCode,
+      (user as { portalCustomerName?: string | null } | null)?.portalCustomerName,
+    ),
   });
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
 
@@ -1185,6 +1198,7 @@ function PanelSidebar({
   allowedScreens,
   collapsed,
   hidden = false,
+  expertPortalHomeTitle: expertPortalHomeTitleProp,
 }: PanelSidebarProps) {
   const [expandedGroupOverrides, setExpandedGroupOverrides] = useState<Record<string, boolean>>({});
   // Eksper Portalı'nda Dosyalarım / Onay Bekliyor / Rapor Bekleyenler / Onaylanan Dosyalar
@@ -1330,6 +1344,7 @@ function PanelSidebar({
     asistansNavTypes: hizmetMenu.asistansExtra,
     hiddenCodes: hizmetMenu.hiddenCodes,
     ekNavTypes: hizmetMenu.ekExtra,
+    expertPortalHomeTitle: expertPortalHomeTitleProp || expertPortalBrandLabel(roleCode),
   });
 
   const visibleMainLinks = isPortalUser ? mainLinks : mainLinks.filter((link) => canSee(link.href));
@@ -1990,10 +2005,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const roleCode: string = user?.role?.code ?? '';
   const operationArea = userOperationArea(user);
-  const isExpert = roleCode === 'expert';
+  const isExpert = roleCode === 'expert' || roleCode === 'adjuster' || roleCode === 'broker_user';
   const isInsuranceCompanyUser = roleCode === 'insurance_company_user';
   const isAssistanceCompanyUser = isAssistanceCompanyRoleCode(roleCode);
   const isPortalUser = isExpert || isInsuranceCompanyUser || isAssistanceCompanyUser;
+  const portalHomeTitle = expertPortalHomeTitle(
+    roleCode,
+    (user as { portalCustomerName?: string | null } | null)?.portalCustomerName,
+  );
   const isFinance = isFinanceRole(roleCode);
   const isFieldStaff = isFieldStaffRole(roleCode);
   const showAcilYardim = canAccessAcilYardim(roleCode, operationArea, user?.operationalAccessGrants);
@@ -2027,7 +2046,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const safeHomePath = getSafePanelHomePath(roleCode);
   const safeHomeLabel =
     safeHomePath === '/panel/eksper-portal'
-      ? 'Eksper Paneline Dön'
+      ? `${expertPortalBrandLabel(roleCode)}ne Dön`
       : safeHomePath === '/panel/sigorta-portal'
         ? 'Dosya Takibe Dön'
         : safeHomePath === '/panel/asistans-portal'
@@ -2161,6 +2180,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             allowedScreens={allowedScreens}
             collapsed={sidebarCollapsed}
             hidden={mustChangePassword}
+            expertPortalHomeTitle={portalHomeTitle}
           />
           {/* overflow-x-clip: hidden/auto ara scrollport oluşturup sticky thead’i kırmaz (v329) */}
           <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-clip bg-slate-50/90 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:bg-slate-950">
@@ -2255,7 +2275,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         {isPortalUser && !mustChangePassword ? (
           <>
             <PortalWhatsAppLiveSupport />
-            <PortalBottomNav variant={isExpert ? 'expert' : isAssistanceCompanyUser ? 'assistance' : 'insurance'} />
+            <PortalBottomNav
+              variant={isExpert ? 'expert' : isAssistanceCompanyUser ? 'assistance' : 'insurance'}
+              expertHomeTitle={portalHomeTitle}
+            />
           </>
         ) : null}
           </div>

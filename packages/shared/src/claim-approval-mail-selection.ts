@@ -50,15 +50,64 @@ export function approvalRecipientSurname(name?: string | null): string {
   return last;
 }
 
-/** Hasar Tespit hitabı: Sn. Çakar, — kişi yoksa Sn. Yetkili, */
-export function claimApprovalGreeting(nameOrSurname?: string | null): string {
-  const raw = String(nameOrSurname ?? '').trim();
-  if (!raw) return 'Sn. Yetkili,';
-  const soyad =
-    approvalRecipientSurname(raw)
-    || (!/\s/.test(raw) && approvalRecipientSurname(`Kişi ${raw}`) === raw ? raw : '');
-  return soyad ? `Sn. ${soyad},` : 'Sn. Yetkili,';
+/** Sık geçen kadın adları — Bey/Hanım seçimi (tam liste değildir). */
+const TR_FEMALE_FIRST_NAMES = new Set(
+  [
+    'ayşe', 'ayse', 'fatma', 'emine', 'hatice', 'zeynep', 'elif', 'merve',
+    'aslı', 'asli', 'selin', 'deniz', 'esra', 'büşra', 'busra', 'gül', 'gul',
+    'özge', 'ozge', 'pınar', 'pinar', 'seda', 'sevil', 'serap', 'şeyma', 'seyma',
+    'tuğba', 'tugba', 'yasemin', 'yeliz', 'yıldız', 'yildiz', 'zehra', 'nur', 'dilek',
+    'hande', 'hülya', 'hulya', 'irem', 'i̇rem', 'melis', 'meltem', 'nil', 'nilüfer',
+    'nilufer', 'özlem', 'ozlem', 'sibel', 'songül', 'songul', 'tülin', 'tulin',
+    'gonca', 'damla', 'ceren', 'burcu', 'bahar', 'banu', 'berna', 'betül', 'betul',
+    'canan', 'çiğdem', 'cigdem', 'derya', 'duygu', 'ece', 'eda', 'ebru', 'filiz',
+    'fulya', 'gamze', 'gizem', 'gönül', 'gonul', 'hale', 'hilal', 'ilknur', 'inci',
+    'jale', 'kübra', 'kubra', 'leyla', 'lale', 'mine', 'naciye', 'nazlı', 'nazli',
+    'neslihan', 'nevin', 'nihan', 'nuran', 'nuray', 'nurcan', 'pelin', 'pervin',
+    'rukiye', 'safiye', 'sati', 'şükran', 'sukran', 'sevgi', 'sevim', 'süheyla',
+    'suheyla', 'şule', 'sule', 'tuba', 'ülkü', 'ulku', 'ümmü', 'ummu', 'vesile',
+  ].map((n) => n.normalize('NFC').toLocaleLowerCase('tr-TR')),
+);
+
+/** Kişi adından ilk ad (firma satırında boş). */
+export function approvalRecipientFirstName(name?: string | null): string {
+  const raw = String(name ?? '').trim();
+  if (!raw) return '';
+  if (approvalRecipientSurname(raw) === '' && /\s/.test(raw)) return '';
+  // Tek kelime: soyad sanılan eski kullanımda da ilk ad gibi kullanılır (Görkem).
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) {
+    // Firma tek kelime değilse (Demo vb.) — soyad kuralı yoksa kişi kabul
+    if (/(sigorta|broker|eksper|ltd|şirket|firma|grubu|grb|holding|group|mobilya|howden|meridyen)/i.test(parts[0]!)) {
+      return '';
+    }
+    return parts[0]!;
+  }
+  // En az iki kelime ve soyad çıkıyorsa kişi — ilk kelime ad
+  if (approvalRecipientSurname(raw)) return parts[0]!;
+  return '';
 }
+
+export function approvalRecipientHonorific(firstName?: string | null): 'Bey' | 'Hanım' {
+  const key = String(firstName ?? '').trim().normalize('NFC').toLocaleLowerCase('tr-TR');
+  if (key && TR_FEMALE_FIRST_NAMES.has(key)) return 'Hanım';
+  return 'Bey';
+}
+
+/**
+ * Hasar Tespit hitabı (Raporu Gönder): «Görkem Bey Merhaba,»
+ * Kişi yoksa: «Merhaba,»
+ */
+export function claimApprovalGreeting(nameOrSurname?: string | null): string {
+  const first = approvalRecipientFirstName(nameOrSurname);
+  if (!first) return 'Merhaba,';
+  return `${first} ${approvalRecipientHonorific(first)} Merhaba,`;
+}
+
+/** Hasar Tespit gövde — ekran onayı. */
+export const CLAIM_APPROVAL_TESPIT_BODY =
+  'Dosyaya Ait Hasar Tespit Raporunu Ekte Bilgilerinize Sunar;\nOlumlu İş Birliğimizin Devamını Dileriz.';
 
 /** Yazım kutusundan hitap + gövde ayırır. */
 export function splitClaimApprovalMessageText(text: string | null | undefined): {
@@ -69,7 +118,10 @@ export function splitClaimApprovalMessageText(text: string | null | undefined): 
   if (!normalized) return { greeting: '', body: '' };
   const lines = normalized.split('\n');
   const first = (lines[0] ?? '').trim();
-  if (/^(Sayın\b|Sn\.)/i.test(first)) {
+  if (
+    /^(Sayın\b|Sn\.)/i.test(first)
+    || /\bMerhaba,?$/i.test(first)
+  ) {
     return {
       greeting: first,
       body: lines.slice(1).join('\n').replace(/^\n+/, '').trim(),

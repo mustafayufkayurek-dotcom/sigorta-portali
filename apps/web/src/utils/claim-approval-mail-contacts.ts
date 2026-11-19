@@ -3,6 +3,7 @@ import {
   HASAR_TESPIT_MUHATAP_SIRASI,
   approvalRecipientSurname,
   buildClaimApprovalMailSubject,
+  CLAIM_APPROVAL_TESPIT_BODY,
   claimApprovalGreeting,
   hasarReportDocumentTitle,
   hizmetKartiCodeForClaim,
@@ -81,6 +82,8 @@ export function claimApprovalMailContacts(input: {
   channelAgencyCustomer?: ChannelParty;
   channelBrokerCustomer?: ChannelParty;
   channelExpertCustomer?: ChannelParty;
+  /** Rapor / dosya eksper ofisi — kanal boşken tercihte durur. */
+  expertOffice?: ChannelParty;
 }): MailContact[] {
   const route: ClaimMailRoute | null = resolveClaimMailRoute({
     serviceKind: input.serviceKind,
@@ -93,11 +96,16 @@ export function claimApprovalMailContacts(input: {
     consultancyServiceType: input.consultancyServiceType,
   });
   const parties: ClaimMailParty[] = route?.approval?.length
-    ? route.approval
+    ? [...route.approval]
     : hizmet === 'hasar-tespit'
       ? [...HASAR_TESPIT_MUHATAP_SIRASI]
       : (['insurance', 'expert'] as ClaimMailParty[]);
 
+  const expertParty = input.channelExpertCustomer ?? input.expertOffice ?? null;
+  // Eksper maili tercihte durur — rota eksper yazmasa da seçilebilir.
+  if (expertParty && !parties.includes('expert')) {
+    parties.push('expert');
+  }
   const byParty: Record<ClaimMailParty, ChannelParty | { email?: string | null; name?: string | null }> = {
     insurance: {
       email: input.insuranceCompany?.contactEmail,
@@ -106,7 +114,7 @@ export function claimApprovalMailContacts(input: {
     },
     agency: input.channelAgencyCustomer,
     broker: input.channelBrokerCustomer,
-    expert: input.channelExpertCustomer,
+    expert: expertParty,
   };
 
   const out: MailContact[] = [];
@@ -326,7 +334,7 @@ export function claimApprovalMailTextPreview(input: {
     ? claimApprovalGreeting(input.recipientName)
     : 'Sayın Eksperimiz,';
   const body = isTespit
-    ? 'Dosyaya ait Hasar Tespit Raporu ekte bilgilerinize sunarız.'
+    ? CLAIM_APPROVAL_TESPIT_BODY
     : `Dosyaya ait ${documentTitle} ekte yer almaktadır. İncelemenizi ve onayınızı rica ederiz.`;
   return {
     subject: buildClaimApprovalMailSubject(documentTitle, input.customerName, fileNo),

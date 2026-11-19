@@ -19,8 +19,8 @@ describe('onarım raporu teslim maili LOCK', () => {
     assert.match(src, /Hasar Onarım Ve Restorasyon Departmanı/);
     assert.match(src, /Sayın Eksperimiz/);
     assert.match(src, /Hasar Onarım Raporu/);
-    assert.match(src, /ekte bilgilerinize sunarız/);
-    assert.match(src, /approvalRecipientSurname/);
+    assert.match(src, /CLAIM_APPROVAL_TESPIT_BODY/);
+    assert.match(src, /claimApprovalGreeting/);
     assert.match(src, /recipientSurname/);
     assert.match(src, /E-posta Ekinde Sunulmuştur/);
     assert.match(src, /Dosyayı İncele Ve Değerlendir/);
@@ -44,6 +44,18 @@ describe('onarım raporu teslim maili LOCK', () => {
       2,
     );
     assert.equal((reports.match(/fileSubject:/g) ?? []).length, 2);
+    assert.match(reports, /claimFileSubjectName/);
+    assert.equal(
+      (reports.match(/fileSubject: claimFileSubjectName\(report\.claimFile\)/g) ?? []).length,
+      2,
+      'Rapor maili Dosya Konusu yalnız claimSubject ile kesilmez',
+    );
+    assert.doesNotMatch(
+      reports,
+      /fileSubject: report\.claimFile\?\.claimSubject\?\.name/,
+    );
+    assert.match(reports, /departmentFileSubject: \{ select: \{[^}]*name: true/);
     assert.doesNotMatch(service, /Hasar Onarım Raporu \(\$\{opts\.reportNo\}\) ektedir/);
   });
 });
+

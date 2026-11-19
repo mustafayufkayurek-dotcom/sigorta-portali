@@ -86,14 +86,16 @@ describe('onaya gönder alıcı seçimi LOCK', () => {
     );
   });
 
-  it('hitap birinci alıcının soyadıdır; firma/ülke soyad sayılmaz', () => {
+  it('hitap birinci alıcının adı + Bey/Hanım Merhaba; firma satırı Merhaba', () => {
     assert.equal(approvalRecipientSurname('Ali Çakar'), 'Çakar');
     assert.equal(approvalRecipientSurname('Aslı Güngör'), 'Güngör');
     assert.equal(approvalRecipientSurname('Howden Türkiye'), '');
     assert.equal(approvalRecipientSurname('Doğanlar Mobilya Grb.'), '');
-    assert.equal(claimApprovalGreeting('Ali Çakar'), 'Sn. Çakar,');
-    assert.equal(claimApprovalGreeting('Howden Türkiye'), 'Sn. Yetkili,');
-    assert.equal(claimApprovalGreeting('Çakar'), 'Sn. Çakar,');
+    assert.equal(claimApprovalGreeting('Ali Çakar'), 'Ali Bey Merhaba,');
+    assert.equal(claimApprovalGreeting('Görkem Yılmaz'), 'Görkem Bey Merhaba,');
+    assert.equal(claimApprovalGreeting('Aslı Güngör'), 'Aslı Hanım Merhaba,');
+    assert.equal(claimApprovalGreeting('Howden Türkiye'), 'Merhaba,');
+    assert.equal(claimApprovalGreeting('Görkem'), 'Görkem Bey Merhaba,');
   });
 
   it('CC Kime ile çakışmaz; bilgilendirme silinemez sırada ilk durur', () => {

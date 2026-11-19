@@ -213,6 +213,14 @@ node --experimental-strip-types --test \
   scripts/restore-missing-report-images.lock.spec.ts \
   apps/backend/src/common/backend-build-root.lock.spec.ts \
   apps/backend/src/common/helpers/preserve-chosen-file-subject.lock.spec.ts \
+  apps/backend/src/common/helpers/claim-file-subject-name.lock.spec.ts \
+  apps/backend/src/common/helpers/claim-file-broker-scope.lock.spec.ts \
+  apps/backend/src/modules/repair-reports/customer-approval-notice.lock.spec.ts \
+  apps/backend/src/modules/repair-reports/pdf/report-pdf-layout.lock.spec.ts \
+  apps/web/src/utils/expert-portal-role.lock.spec.ts \
+  apps/web/src/utils/claim-approval-expert-mail.lock.spec.ts \
+  apps/web/src/utils/claim-approval-mail-preview.lock.spec.ts \
+  packages/shared/src/claim-approval-mail-selection.lock.spec.ts \
   apps/backend/src/modules/claim-files/claim-file-info-mail.lock.spec.ts \
   apps/backend/src/modules/operation-inbox/unowned-inbox-mail.lock.spec.ts \
   packages/shared/src/address-place-guard.lock.spec.ts \

@@ -592,8 +592,12 @@ export class ReportPdfService {
       : `<div class="header-brand">Meridyen Assistance</div>`;
 
     const approvalHistory = report.approvalHistory ?? [];
+    const isHasarTespitPdf = pdfTitle === 'Hasar Tespit Raporu';
     const fileDistrict = toTitleCaseTR(report.claimFile?.propertyAddress?.district ?? '')?.trim() || '';
-    const inspectorWho = fileDistrict ? `${fileDistrict} Network` : '';
+    /** Hasar Tespit: sabit tespitçi. Onarım: ilçe Network. */
+    const inspectorWho = isHasarTespitPdf
+      ? 'Mustafa Yufkayürek'
+      : (fileDistrict ? `${fileDistrict} Network` : '');
     const fileOwnerWho = formatPersonName(
       report.claimFile?.assignedOfficeUser?.firstName,
       report.claimFile?.assignedOfficeUser?.lastName,
@@ -603,6 +607,21 @@ export class ReportPdfService {
       if (namesLooselyMatch(who, fileOwnerWho)) return true;
       return entry.action === 'pending_approval';
     });
+    const approverTrail = approvalHistory.filter(
+      (entry) => entry.action === 'approved' || entry.action === 'externally_approved',
+    );
+    const approverFromHistory = formatPersonName(
+      approverTrail[approverTrail.length - 1]?.user?.firstName,
+      approverTrail[approverTrail.length - 1]?.user?.lastName,
+    );
+    /** Hasar Tespit: Raporu Onaylayan yalnız onay geçmişinden dolar (eksper ofisi yedeği yok). */
+    const expertOfficeWho = [
+      report.expertOffice?.fullName,
+      report.expertOffice?.companyName,
+    ].map((v) => String(v ?? '').trim()).find(Boolean) || '';
+    const approverWho = isHasarTespitPdf
+      ? (approverFromHistory || '')
+      : (approverFromHistory || expertOfficeWho);
     const signatureBoxHtml = (label: string, who: string, fallbackWhen: Date | string, trail: ApprovalHistoryEntry[]) => {
       const when = trail[trail.length - 1]?.createdAt ?? fallbackWhen;
       return `
@@ -614,9 +633,17 @@ export class ReportPdfService {
   </div>`;
     };
     const signatureSectionHtml = `
-<div class="signature-section">
+<div class="signature-section${isHasarTespitPdf ? ' signature-section-tespit' : ''}">
   ${signatureBoxHtml('Tespiti Yapan', inspectorWho, report.reportDate, [])}
   ${signatureBoxHtml('Dosya Sorumlusu', fileOwnerWho, report.createdAt ?? report.reportDate, fileOwnerTrail)}
+  ${isHasarTespitPdf
+    ? signatureBoxHtml(
+        'Raporu Onaylayan',
+        approverWho,
+        report.createdAt ?? report.reportDate,
+        approverTrail,
+      )
+    : ''}
 </div>`;
 
     const showEsyaTotal = esyaItems.length > 0 || (report.goodsDamageTotal ?? 0) > 0;
@@ -1442,6 +1469,14 @@ export class ReportPdfService {
     padding-top: 12px;
     border-top: 2px solid #e2e8f0;
     page-break-inside: avoid;
+  }
+
+  .signature-section-tespit {
+    gap: 16px;
+  }
+
+  .signature-section-tespit .signature-box {
+    max-width: 220px;
   }
 
   .signature-box {

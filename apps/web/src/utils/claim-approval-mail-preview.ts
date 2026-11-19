@@ -73,6 +73,7 @@ export function claimApprovalMailPreview(input: {
   channelAgencyCustomer?: ChannelParty;
   channelBrokerCustomer?: ChannelParty;
   channelExpertCustomer?: ChannelParty;
+  expertOffice?: ChannelParty;
 }): ApprovalMailPreviewRow[] {
   const route: ClaimMailRoute | null = resolveClaimMailRoute({
     serviceKind: input.serviceKind,
@@ -85,22 +86,26 @@ export function claimApprovalMailPreview(input: {
     consultancyServiceType: input.consultancyServiceType,
   });
   const parties: ClaimMailParty[] = route?.approval?.length
-    ? route.approval
+    ? [...route.approval]
     : hizmet === 'hasar-tespit'
       ? [...HASAR_TESPIT_MUHATAP_SIRASI]
       : (['insurance', 'expert'] as ClaimMailParty[]);
 
+  const expertParty = input.channelExpertCustomer ?? input.expertOffice ?? null;
+  if (expertParty && !parties.includes('expert')) {
+    parties.push('expert');
+  }
   const channel = {
     insuranceContactEmail: input.insuranceCompany?.contactEmail,
     agency: input.channelAgencyCustomer,
     broker: input.channelBrokerCustomer,
-    expert: input.channelExpertCustomer,
+    expert: expertParty,
   };
   const nameByParty: Record<ClaimMailParty, ChannelParty> = {
     insurance: input.insuranceCompany as ChannelParty,
     agency: input.channelAgencyCustomer,
     broker: input.channelBrokerCustomer,
-    expert: input.channelExpertCustomer,
+    expert: expertParty,
   };
 
   const out: ApprovalMailPreviewRow[] = [];

@@ -71,11 +71,21 @@ describe('onarım raporu PDF düzen LOCK', () => {
     assert.match(pdfSrc, /Dijital imza izi ·/);
     assert.match(pdfSrc, /signature-stamp-inline/);
     assert.match(pdfSrc, /\$\{fileDistrict\} Network/);
+    assert.match(pdfSrc, /Mustafa Yufkayürek/);
+    assert.match(pdfSrc, /isHasarTespitPdf/);
+    assert.match(pdfSrc, /Raporu Onaylayan/);
+    assert.match(pdfSrc, /signature-section-tespit/);
     const stamp = pdfSrc.indexOf('signature-stamp-inline');
     const line = pdfSrc.indexOf('signature-line', stamp);
     assert.ok(stamp > 0 && line > stamp, 'dijital iz çizginin üstünde olmalı');
     assert.match(pdfSrc, /signatureBoxHtml\('Tespiti Yapan'/);
     assert.match(pdfSrc, /signatureBoxHtml\('Dosya Sorumlusu'/);
+    assert.match(pdfSrc, /signatureBoxHtml\(\s*'Raporu Onaylayan'/);
+    assert.match(pdfSrc, /isHasarTespitPdf\s*\?\s*\(approverFromHistory/);
+    assert.doesNotMatch(
+      pdfSrc.slice(pdfSrc.indexOf('isHasarTespitPdf'), pdfSrc.indexOf('signatureBoxHtml')),
+      /approverWho = approverFromHistory \|\| expertOfficeWho/,
+    );
     assert.match(reportsSrc, /assignedInspectorVendor:/);
   });
 
