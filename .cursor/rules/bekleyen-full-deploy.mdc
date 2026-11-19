@@ -1,11 +1,11 @@
 ---
-description: Canlı web v698 / backend v698
+description: Canlı web v699 / backend v699
 alwaysApply: true
 ---
 
-# Canlı (18.11.2026)
+# Canlı (19.11.2026)
 
-Canlı: web **v698** · backend **v698**. Geri alma: web **v697** / backend **v697**.
+Canlı: web **v699** · backend **v699**. Geri alma: web **v698** / backend **v698**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v699 (full):** Broker eksper portalını firma ünvanıyla açar. Raporu Gönder hitabı Ad Bey/Hanım Merhaba; gövde Olumlu İş Birliği / ekte bilgilerinize sunarız. Onay sonrası onay bedeli + Müşteriye Onay Bildir (önce onay kutusu); mailde Dosya No, Dosya Adı, İl İlçe. Hasar Tespit PDF: Tespiti Yapan Mustafa Yufkayürek; Raporu Onaylayan yalnız onay sonrası. Hasar Konusu mailde dosya konusundan. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v698** / backend **v698**.
 
 **v698 (full):** Masraf belgesi (belgeli/belgesiz), Harici masraf yolu, KDV dahil tutar + matrah/KDV özeti, oran listesi Ayarlar’dan ve formdan ekleme, kayıp KDV raporu. Form sıkı; Akıllı Fiş üstte. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v697** / backend **v697**.
 
@@ -273,4 +275,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v698** · backend **v698**.
+Canlı web **v699** · backend **v699**.

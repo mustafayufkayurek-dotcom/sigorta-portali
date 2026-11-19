@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-11-18",
-  "label": "v698-masraf-kdv-belge-harici",
-  "description": "v698 full: Masraf belgesi / Harici yol / KDV dahil tutar ve oran (Ayarlar + formdan ekle); kayıp KDV raporu. Geri alma web v697 / backend v697.",
+  "updatedAt": "2026-11-19",
+  "label": "v699-broker-rapor-musteri-onay",
+  "description": "v699 full: Broker eksper portalı; Raporu Gönder Ad Bey/Hanım Merhaba + Olumlu İş Birliği; müşteri onay bildirimi (Dosya Adı/İl İlçe); Hasar Tespit PDF imza; Hasar Konusu. Geri alma web v698 / backend v698.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v698-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v698-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v699-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v699-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v697-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v697-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v698-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v698-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
