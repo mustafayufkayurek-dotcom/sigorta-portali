@@ -35,6 +35,7 @@ export * from './mali-mesuliyet';
 export * from './role-account-family';
 export * from './claim-file-stage';
 export * from './operation-status';
+export * from './approval-72h-reminder';
 export * from './file-finance-kpis';
 export * from './file-vendor-pay';
 export * from './supplier-assignment-guard';

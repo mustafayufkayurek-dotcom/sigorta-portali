@@ -182,8 +182,8 @@ export function buildApprovalReminderEmailHtml(data: ApprovalReminderEmailData):
               Safran Birleşik Hizmetler Yan Kuruluşudur.
             </p>
             <p style="margin:0;font-size:11px;line-height:1.5;color:#A8A29E;text-align:center;">
-              Bu e-posta onay gecikmesi nedeniyle müşteriye otomatik gönderilmiştir.<br/>
-              Operasyon atama bildirimlerinden bağımsız bir hatırlatmadır.
+              Bu e-posta dosya sorumlusu tarafından onay muhatabına gönderilmiş hatırlatmadır.<br/>
+              Operasyon atama bildirimlerinden bağımsızdır.
             </p>
           </td>
         </tr>

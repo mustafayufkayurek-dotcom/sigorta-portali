@@ -29,18 +29,18 @@ describe('approval-72h.rule', () => {
     expect(out[0].hoursWaiting).toBeGreaterThanOrEqual(72);
   });
 
-  it('merges responsible + managers', () => {
+  it('yalnız dosya sorumlusuna gider', () => {
     const ids = resolveNotifyUserIds(
-      { ...base, awaitingSince: new Date() },
-      ['mgr1', 'u1'],
+      { ...base, assignedFieldUserId: 'field1', awaitingSince: new Date() },
+      ['mgr1'],
     );
-    expect(ids.sort()).toEqual(['mgr1', 'u1']);
+    expect(ids.sort()).toEqual(['u1']);
   });
 
   it('builds Turkish notification copy', () => {
     const n = buildApproval72hNotification({ fileNo: 'H-99', hoursWaiting: 80 });
-    expect(n.title).toContain('72 Saat');
-    expect(n.body).toContain('Onay Talep Et');
+    expect(n.title).toContain('Onay Süresi Geçti');
+    expect(n.body).toContain('hatırlatma maili gönderilsin mi');
     expect(n.body).toContain('H-99');
   });
 

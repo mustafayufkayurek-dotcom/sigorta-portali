@@ -94,8 +94,6 @@ import { HasarSilentOfficeStrip } from '@/components/crm/HasarSilentOfficeStrip'
 import { HasarSilentOwnerReport } from '@/components/crm/HasarSilentOwnerReport';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { acilVendorPayLabel, acilVendorPayTone } from '@/utils/acil-vendor-pay';
-
-
 const fmtAmount = (n: number | undefined | null) => formatTryAmount(n, { fractionDigits: 0 });
 
 type InsuranceCompany = { id: string; name: string };
@@ -412,6 +410,7 @@ function ClaimFilesPageContent() {
     approvalPending?: number;
     reportWriting?: number;
     reportApproval?: number;
+    approval72h?: number;
   }>(
     ['claim-files-operation-stats', officeStaffUserId, urlHizmet, urlKaynak],
     '/claim-files/operation-stats',

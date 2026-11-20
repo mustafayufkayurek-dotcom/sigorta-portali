@@ -109,6 +109,12 @@ import {
   tallyHasarOperationKpis,
   tallyAcilOperationKpis,
   isApproval72hExceeded,
+  buildApproval72hReminderRecipients,
+  buildApproval72hOwnerDialogMessage,
+  filterConfirmedApproval72hEmails,
+  APPROVAL_72H_OWNER_PROMPT_TITLE,
+  APPROVAL_72H_FROM_DISPLAY_NAME,
+  APPROVAL_72H_REMINDER_SENT_TYPE,
   isApprovalWaitingReport,
   resolveOperationStatusLabel,
   SUPPLIER_CANNOT_BE_INSPECTOR_MESSAGE,
@@ -1766,6 +1772,17 @@ export class ClaimFilesService {
       serviceKind: claimFile.serviceKind,
     });
 
+    let approval72hExceeded = false;
+    if (latestReport && isApprovalWaitingReport(latestReport.status)) {
+      const awaitingHistory = await this.prisma.reportApprovalHistory.findFirst({
+        where: { reportId: latestReport.id, action: { in: ['pending_approval', 'submitted'] } },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+      const awaitingSince = awaitingHistory?.createdAt ?? latestReport.updatedAt ?? null;
+      approval72hExceeded = Boolean(awaitingSince && isApproval72hExceeded(awaitingSince));
+    }
+
     return {
       ...withInspection,
       currentStatus: withInspection.currentStatus
@@ -1783,6 +1800,7 @@ export class ClaimFilesService {
       extraRepair,
       extraRepairOpen,
       operationStatusLabel,
+      approval72hExceeded,
       activeDelegation,
       financialVisibilityConfig: resolveFinancialVisibilityConfig(claimFile),
       canViewFinancials: requestingUser
@@ -4938,5 +4956,219 @@ export class ClaimFilesService {
     }
 
     return vendors;
+  }
+
+  private async loadApproval72hReminderClaim(claimFileId: string) {
+    const claim = await this.prisma.claimFile.findUnique({
+      where: { id: claimFileId },
+      select: {
+        id: true,
+        fileNo: true,
+        insuredName: true,
+        serviceKind: true,
+        mailRouteJson: true,
+        assignedOfficeUserId: true,
+        currentResponsibleUserId: true,
+        propertyAddress: { select: { city: true, district: true } },
+        insuranceCompany: { select: { id: true, name: true, contactEmail: true } },
+        consultancyServiceType: { select: { code: true, name: true } },
+        channelAgencyCustomer: {
+          select: {
+            id: true,
+            email: true,
+            companyName: true,
+            shortName: true,
+            fullName: true,
+            firstName: true,
+            lastName: true,
+            contacts: { select: { id: true, name: true, email: true, isPrimary: true }, take: 20 },
+            contactInfos: { select: { type: true, label: true, value: true }, take: 20 },
+          },
+        },
+        channelBrokerCustomer: {
+          select: {
+            id: true,
+            email: true,
+            companyName: true,
+            shortName: true,
+            fullName: true,
+            firstName: true,
+            lastName: true,
+            contacts: { select: { id: true, name: true, email: true, isPrimary: true }, take: 20 },
+            contactInfos: { select: { type: true, label: true, value: true }, take: 20 },
+          },
+        },
+        channelExpertCustomer: {
+          select: {
+            id: true,
+            email: true,
+            companyName: true,
+            shortName: true,
+            fullName: true,
+            firstName: true,
+            lastName: true,
+            contacts: { select: { id: true, name: true, email: true, isPrimary: true }, take: 20 },
+            contactInfos: { select: { type: true, label: true, value: true }, take: 20 },
+          },
+        },
+        repairReports: {
+          orderBy: [{ versionNo: 'desc' }, { createdAt: 'desc' }],
+          take: 1,
+          select: {
+            id: true,
+            updatedAt: true,
+            expertOffice: {
+              select: {
+                id: true,
+                email: true,
+                companyName: true,
+                shortName: true,
+                fullName: true,
+                firstName: true,
+                lastName: true,
+                contacts: { select: { id: true, name: true, email: true, isPrimary: true }, take: 20 },
+                contactInfos: { select: { type: true, label: true, value: true }, take: 20 },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!claim) throw new NotFoundException('Dosya bulunamadı.');
+    return claim;
+  }
+
+  private assertApproval72hReminderActor(
+    claim: { assignedOfficeUserId?: string | null; currentResponsibleUserId?: string | null },
+    actor: { id?: string; userId?: string; roleCode?: string; role?: { code?: string } },
+  ) {
+    const actorId = actor?.id ?? actor?.userId;
+    const role = String(actor?.roleCode ?? actor?.role?.code ?? '').toLowerCase();
+    const isAdmin = role === 'admin' || role === 'manager' || role === 'ops_manager';
+    if (isAdmin) return;
+    if (!actorId) throw new ForbiddenException('İşlemi yapan kullanıcı bulunamadı.');
+    const owners = [claim.assignedOfficeUserId, claim.currentResponsibleUserId].filter(Boolean);
+    if (!owners.includes(actorId)) {
+      throw new ForbiddenException('Onay hatırlatması yalnız dosya sorumlusu tarafından gönderilir.');
+    }
+  }
+
+  async getApproval72hReminderOptions(
+    claimFileId: string,
+    actor: { id?: string; userId?: string; roleCode?: string; role?: { code?: string } },
+  ) {
+    const claim = await this.loadApproval72hReminderClaim(claimFileId);
+    this.assertApproval72hReminderActor(claim, actor);
+    const recipients = buildApproval72hReminderRecipients({
+      serviceKind: claim.serviceKind,
+      consultancyServiceType: claim.consultancyServiceType,
+      mailRouteJson: claim.mailRouteJson,
+      insuranceCompany: claim.insuranceCompany,
+      channelAgencyCustomer: claim.channelAgencyCustomer,
+      channelBrokerCustomer: claim.channelBrokerCustomer,
+      channelExpertCustomer: claim.channelExpertCustomer,
+      expertOffice: claim.repairReports[0]?.expertOffice ?? null,
+    });
+    return {
+      claimFileId: claim.id,
+      fileNo: claim.fileNo,
+      insuredName: claim.insuredName ?? null,
+      title: APPROVAL_72H_OWNER_PROMPT_TITLE,
+      message: buildApproval72hOwnerDialogMessage({
+        fileNo: claim.fileNo,
+        insuredName: claim.insuredName,
+      }),
+      fromDisplayName: APPROVAL_72H_FROM_DISPLAY_NAME,
+      recipients,
+      preferredEmails: recipients.filter((r) => r.preferred).map((r) => r.email),
+    };
+  }
+
+  async sendApproval72hReminder(
+    claimFileId: string,
+    selectedEmails: string[],
+    actor: { id?: string; userId?: string; roleCode?: string; role?: { code?: string } },
+  ) {
+    const claim = await this.loadApproval72hReminderClaim(claimFileId);
+    this.assertApproval72hReminderActor(claim, actor);
+    const recipients = buildApproval72hReminderRecipients({
+      serviceKind: claim.serviceKind,
+      consultancyServiceType: claim.consultancyServiceType,
+      mailRouteJson: claim.mailRouteJson,
+      insuranceCompany: claim.insuranceCompany,
+      channelAgencyCustomer: claim.channelAgencyCustomer,
+      channelBrokerCustomer: claim.channelBrokerCustomer,
+      channelExpertCustomer: claim.channelExpertCustomer,
+      expertOffice: claim.repairReports[0]?.expertOffice ?? null,
+    });
+    const confirmed = filterConfirmedApproval72hEmails(selectedEmails ?? [], recipients);
+    if (!confirmed.length) {
+      throw new BadRequestException('Hatırlatma için onay muhatabı seçilmedi veya adres izinli listede değil.');
+    }
+    if (!this.claimEventEmail) {
+      throw new BadRequestException('Mail servisi hazır değil.');
+    }
+
+    const city = String(claim.propertyAddress?.city ?? '').trim();
+    const district = String(claim.propertyAddress?.district ?? '').trim();
+    const cityDistrict = city && district ? `${city} / ${district}` : city || district;
+    const insuranceCompanyName = String(claim.insuranceCompany?.name ?? '').trim();
+    const insuredName = String(claim.insuredName ?? '').trim();
+    if (!insuranceCompanyName || !insuredName || !cityDistrict) {
+      throw new BadRequestException('Dosya özeti eksik — hatırlatma gönderilemez.');
+    }
+
+    const report = claim.repairReports[0];
+    const awaitingHistory = report
+      ? await this.prisma.reportApprovalHistory.findFirst({
+          where: { reportId: report.id, action: { in: ['pending_approval', 'submitted'] } },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        })
+      : null;
+    const awaitingSince = awaitingHistory?.createdAt ?? report?.updatedAt ?? new Date();
+    const hoursWaiting = hoursSince(awaitingSince) ?? 72;
+
+    const byEmail = new Map(recipients.map((r) => [r.email.trim().toLowerCase(), r]));
+    const sentTo: string[] = [];
+    const errors: string[] = [];
+    for (const email of confirmed) {
+      const row = byEmail.get(email.trim().toLowerCase());
+      const result = await this.claimEventEmail.onApproval72hCustomerReminder({
+        recipientEmail: email,
+        recipientName: row?.name ?? null,
+        fileNo: claim.fileNo,
+        customerName: row?.name || row?.role || 'Onay Muhatabı',
+        insuranceCompanyName,
+        insuredName,
+        cityDistrict,
+        hoursWaiting,
+        claimFileId: claim.id,
+      });
+      if (result.sent) sentTo.push(email);
+      else errors.push(result.errorMsg ?? email);
+    }
+
+    if (!sentTo.length) {
+      throw new BadRequestException(errors[0] || 'Hatırlatma maili gönderilemedi.');
+    }
+
+    const actorId = actor?.id ?? actor?.userId;
+    if (actorId) {
+      await this.prisma.notification.create({
+        data: {
+          userId: actorId,
+          type: APPROVAL_72H_REMINDER_SENT_TYPE,
+          title: 'Onay Hatırlatması Gönderildi',
+          body: `${claim.fileNo} → ${sentTo.join(', ')}`,
+          channel: 'email',
+          status: 'read',
+          relatedEntityType: 'claim_file',
+          relatedEntityId: claim.id,
+        },
+      });
+    }
+
+    return { sentTo, skipped: errors };
   }
 }

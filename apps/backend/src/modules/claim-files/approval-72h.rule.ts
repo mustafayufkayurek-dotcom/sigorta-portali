@@ -1,10 +1,12 @@
 import {
   APPROVAL_WAITING_REPORT_STATUSES,
+  APPROVAL_72H_OWNER_PROMPT_TYPE,
+  buildApproval72hOwnerNotification,
   isApproval72hExceeded,
   hoursSince,
 } from '@sigorta/shared';
 
-export const APPROVAL_72H_NOTIFY_TYPE = 'approval_72h_exceeded';
+export const APPROVAL_72H_NOTIFY_TYPE = APPROVAL_72H_OWNER_PROMPT_TYPE;
 
 /** Dosya onayı alınmış / iş onarıma geçmiş — eksper hatırlatması kesilir. */
 export const CLAIM_CODES_APPROVAL_ALREADY_TAKEN = [
@@ -87,12 +89,12 @@ export function filterExceededCandidates(
     }));
 }
 
-export function resolveNotifyUserIds(row: Approval72hCandidate, managerIds: string[]): string[] {
+/** Hatırlatma penceresi yalnız dosya sorumlusuna. */
+export function resolveNotifyUserIds(row: Approval72hCandidate, _managerIds: string[] = []): string[] {
+  void _managerIds;
   const ids = new Set<string>();
   if (row.assignedOfficeUserId) ids.add(row.assignedOfficeUserId);
-  if (row.assignedFieldUserId) ids.add(row.assignedFieldUserId);
   if (row.currentResponsibleUserId) ids.add(row.currentResponsibleUserId);
-  for (const m of managerIds) ids.add(m);
   return [...ids];
 }
 
@@ -104,8 +106,6 @@ export function buildApproval72hNotification(params: {
   fileNo: string;
   hoursWaiting: number;
 }): { title: string; body: string } {
-  return {
-    title: '72 Saat Onay Uyarısı',
-    body: `${params.fileNo} dosyasında onay ${params.hoursWaiting} saattir bekliyor. Onay Talep Et.`,
-  };
+  void params.hoursWaiting;
+  return buildApproval72hOwnerNotification(params.fileNo);
 }

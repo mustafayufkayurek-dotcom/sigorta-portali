@@ -299,6 +299,40 @@ export class ClaimFilesController {
     return { success: true, data };
   }
 
+  @Get(':id/approval-72h-reminder')
+  @RequirePermissions('claim_file.view')
+  @ApiOperation({ summary: '72s onay hatırlatması — dosya sorumlusu alıcı seçenekleri' })
+  async getApproval72hReminder(@Param('id') id: string, @CurrentUser() user: any) {
+    const data = await this.claimFilesService.getApproval72hReminderOptions(id, {
+      id: user?.id ?? user?.userId,
+      userId: user?.userId ?? user?.id,
+      roleCode: user?.roleCode ?? user?.role?.code,
+      role: user?.role,
+    });
+    return { success: true, data };
+  }
+
+  @Post(':id/approval-72h-reminder')
+  @RequirePermissions('claim_file.update')
+  @ApiOperation({ summary: '72s onay hatırlatması — dosya sorumlusu onaylı gönderim' })
+  async sendApproval72hReminder(
+    @Param('id') id: string,
+    @Body() body: { emails?: string[] },
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.claimFilesService.sendApproval72hReminder(
+      id,
+      Array.isArray(body?.emails) ? body.emails : [],
+      {
+        id: user?.id ?? user?.userId,
+        userId: user?.userId ?? user?.id,
+        roleCode: user?.roleCode ?? user?.role?.code,
+        role: user?.role,
+      },
+    );
+    return { success: true, data };
+  }
+
   @Get(':id/suggest-responsible')
   @RequirePermissions('claim_file.view')
   @ApiOperation({ summary: 'Bölge ve iş yüküne göre dosya sorumlusu veya saha tespitçisi önerisi' })

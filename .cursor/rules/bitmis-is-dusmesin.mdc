@@ -27,7 +27,7 @@ Aşağıdakiler bu kuralın canlı kapısındadır. Liste kuralı daraltmaz.
 8. Ödendi finans personelindedir. İşlemi yapan kaydolur.
 9. Puantaj: gün sonu mail, yönetici çanı, mesai nabzı. Mail giden hesap kendi gününü Devam’dan onaylar. Saha personeli kadroya eklenince aynı onaya girer. Müşteri ve tedarikçi girmez.
 10. Acil saha atama dosya sorumlusunda. Tedarikçiden ayrı.
-11. 72 saat onay maili, onay alınmış dosyada kesilir.
+11. 72 saat onay hatırlatması otomatik müşteriye gitmez; dosya sorumlusu penceresiyle gider (Dosya No + Sigortalı açık); panele veya dosyaya girince pencere açılır, şerit yok; onay alınmış dosyada kesilir.
 12. Tedarikçi WhatsApp: Dosya Konusu, konum, teyit.
 13. Satış fatura listesi: Hasar ve Acil ayrı.
 14. Gelen kutuda yeni yazı da dosya ekler.

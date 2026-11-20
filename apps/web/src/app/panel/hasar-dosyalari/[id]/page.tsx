@@ -77,6 +77,7 @@ import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import { HasarDosyaKabukSkeleton } from '@/components/ui/skeletons/HasarDosyaKabukSkeleton';
 import { HasarEkOnarimPanel } from './_components/HasarEkOnarimPanel';
+import { Approval72hReminderDialog } from '@/components/hasar/Approval72hReminderDialog';
 
 function normalizeRoleCode(roleCode?: string | null): string | null {
   if (!roleCode) return null;
@@ -95,6 +96,22 @@ function getCurrentUserRole(): string | null {
     }
     return null;
   } catch { return null; }
+}
+
+function getCurrentUserId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    for (const key of ['user', 'currentUser']) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const u = JSON.parse(raw);
+      const id = String(u?.id ?? u?.userId ?? '').trim();
+      if (id) return id;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function buildHasarHeaderBandParts(input: {
@@ -1669,6 +1686,7 @@ export default function ClaimFileDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeGroup, setActiveGroup] = useState<GroupTab>(initialGroup);
   const [userRoleCode, setUserRoleCode] = useState<string | null>(null);
+  const [approval72hPromptOpen, setApproval72hPromptOpen] = useState(false);
 
   useEffect(() => {
     setUserRoleCode(getCurrentUserRole());
@@ -1720,6 +1738,49 @@ export default function ClaimFileDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    if (loading || !claim || !id || isFieldStaff) return;
+
+    const userId = getCurrentUserId();
+    const role = userRoleCode ?? '';
+    const isOwner =
+      Boolean(userId)
+      && (
+        userId === claim.assignedOfficeUserId
+        || userId === claim.assignedOfficeUser?.id
+        || userId === claim.currentResponsibleUserId
+        || userId === claim.currentResponsibleUser?.id
+      );
+    const isAdmin = role === 'admin' || role === 'manager' || role === 'ops_manager';
+    const canAct = isOwner || isAdmin;
+
+    const forced = aksiyonParam === 'onay-hatirlat';
+    const exceeded = Boolean(claim.approval72hExceeded);
+    if (!forced && !exceeded) return;
+    if (!canAct) {
+      if (forced) router.replace(`/panel/hasar-dosyalari/${id}`, { scroll: false });
+      return;
+    }
+
+    const storageKey = `approval-72h-prompt:${id}`;
+    if (!forced) {
+      try {
+        const last = Number(sessionStorage.getItem(storageKey) || '0');
+        if (Number.isFinite(last) && Date.now() - last < 72 * 60 * 60 * 1000) return;
+      } catch {
+        /* ignore */
+      }
+    }
+
+    setApproval72hPromptOpen(true);
+    try {
+      sessionStorage.setItem(storageKey, String(Date.now()));
+    } catch {
+      /* ignore */
+    }
+    if (forced) router.replace(`/panel/hasar-dosyalari/${id}`, { scroll: false });
+  }, [loading, claim, id, isFieldStaff, userRoleCode, aksiyonParam, router]);
+
   if (loading) {
     return <HasarDosyaKabukSkeleton />;
   }
@@ -1753,6 +1814,13 @@ export default function ClaimFileDetailPage() {
 
   return (
     <div>
+      <Approval72hReminderDialog
+        claimId={String(id)}
+        fileNo={claim.fileNo}
+        insuredName={claim.insuredName}
+        open={approval72hPromptOpen}
+        onClose={() => setApproval72hPromptOpen(false)}
+      />
       <DosyaSayfaUstu
         claim={claim}
         onBack={() => {

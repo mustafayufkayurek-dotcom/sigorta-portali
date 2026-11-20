@@ -41,6 +41,9 @@ describe('operasyon giden mail LOCK', () => {
     assert.match(src, /isOutboundReady/);
     assert.match(src, /Mail\.Send yeter/);
     assert.match(src, /sendMailUrl/);
+    assert.match(src, /fromDisplayName/);
+    assert.match(src, /name: displayName/);
+    assert.match(src, /Meridyen/);
     assert.doesNotMatch(src, /createUploadSession/);
     assert.doesNotMatch(src, /messages\/\$\{messageId\}\/send/);
     assert.doesNotMatch(src, /Mail\.ReadWrite/);

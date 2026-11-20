@@ -417,8 +417,8 @@ export class ClaimEventEmailService {
   }
 
   /**
-   * 72s onay hatırlatması — müşteriye.
-   * Atama mailinden ayrı şablon (turuncu / charcoal); tercih kapısı yok (müşteri paneli dışı).
+   * 72s onay hatırlatması — dosya sorumlusu onayından sonra muhataba.
+   * Atama mailinden ayrı şablon (turuncu / charcoal). Otomatik müşteri gönderimi yok.
    */
   async onApproval72hCustomerReminder(params: {
     recipientEmail: string;
@@ -440,7 +440,7 @@ export class ClaimEventEmailService {
 
     // İkinci kapı — scheduler dışında çağrı olsa bile eksik/yanlış içerik gitmez
     if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-      return { sent: false as const, errorMsg: 'Müşteri e-postası yok veya geçersiz' };
+      return { sent: false as const, errorMsg: 'Alıcı e-postası yok veya geçersiz' };
     }
     if (!fileNo || !customerName || !insuranceCompanyName || !insuredName || !cityDistrict) {
       return { sent: false as const, errorMsg: 'Dosya özeti eksik — mail gönderilmedi' };

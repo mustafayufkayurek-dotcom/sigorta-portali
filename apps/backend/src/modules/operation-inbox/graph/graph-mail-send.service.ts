@@ -148,6 +148,7 @@ export class GraphMailSendService {
     readReceiptTo?: string[],
     requestReadReceipt = true,
     bcc?: Array<{ email: string; name?: string }>,
+    fromDisplayName?: string | null,
   ): Promise<void> {
     const config = await this.loadGraphConfig();
     if (!config.active) {
@@ -196,9 +197,21 @@ export class GraphMailSendService {
       'Rapor eki çok büyük. Dış rapor PDF ile gönderilir; fotoğrafı azaltıp raporu yeniden oluşturun.',
     );
 
+    const displayName = String(fromDisplayName ?? '').trim()
+      || (mailbox === 'HASAR' ? 'Meridyen' : '');
     const messagePayload = {
       subject: subject.trim(),
       body: { contentType, content: trimmed },
+      ...(displayName
+        ? {
+            from: {
+              emailAddress: {
+                address: mailboxAddress,
+                name: displayName,
+              },
+            },
+          }
+        : {}),
       toRecipients: recipients.map((address) => ({
         emailAddress: { address },
       })),

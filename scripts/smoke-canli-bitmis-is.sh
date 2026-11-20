@@ -215,6 +215,9 @@ node --experimental-strip-types --test \
   apps/backend/src/common/helpers/preserve-chosen-file-subject.lock.spec.ts \
   apps/backend/src/common/helpers/claim-file-subject-name.lock.spec.ts \
   apps/backend/src/common/helpers/claim-file-broker-scope.lock.spec.ts \
+  packages/shared/src/approval-72h-reminder.lock.spec.ts \
+  apps/backend/src/modules/claim-files/approval-72h.lock.spec.ts \
+  apps/web/src/components/hasar/approval-72h-owner-banner.lock.spec.ts \
   apps/backend/src/modules/repair-reports/customer-approval-notice.lock.spec.ts \
   apps/backend/src/modules/repair-reports/pdf/report-pdf-layout.lock.spec.ts \
   apps/web/src/utils/expert-portal-role.lock.spec.ts \

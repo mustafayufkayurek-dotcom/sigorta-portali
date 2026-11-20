@@ -109,4 +109,11 @@ describe('72s onay hatırlatması — onay alınmış dosya LOCK', () => {
     assert.match(scheduler, /isClosedState:\s*false/);
     assert.match(scheduler, /shouldSendApproval72hReminder/);
   });
+
+  it('otomatik müşteri maili yok; yalnız dosya sorumlusu bildirimi', () => {
+    assert.doesNotMatch(scheduler, /onApproval72hCustomerReminder/);
+    assert.doesNotMatch(scheduler, /resolveApproval72hCustomerEmailPayload/);
+    assert.doesNotMatch(scheduler, /ClaimEventEmailService/);
+    assert.match(scheduler, /resolveNotifyUserIds/);
+  });
 });

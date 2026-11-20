@@ -48,6 +48,8 @@ import { PanelHelpDrawer } from '@/components/panel/PanelHelpDrawer';
 import { PanelThemeToggle } from '@/components/panel/PanelThemeToggle';
 import { PanelSystemHealth } from '@/components/panel/PanelSystemHealth';
 import { BrandLogo } from '@/components/brand/BrandLogo';
+import { Approval72hReminderDialog } from '@/components/hasar/Approval72hReminderDialog';
+import { fileNoFromApproval72hBody } from '@/components/hasar/approval-72h-file-no';
 import { resolvePanelProfileIdentity } from '@/utils/panel-profile-identity';
 import { PanelUserProvider } from '@/contexts/PanelUserContext';
 import {
@@ -1566,6 +1568,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [approval72hPrompt, setApproval72hPrompt] = useState<{
+    claimId: string;
+    fileNo: string;
+  } | null>(null);
   const [pendingRevisionCount, setPendingRevisionCount] = useState(0);
   const [inboxPendingCount, setInboxPendingCount] = useState(0);
   const [pendingAgreements, setPendingAgreements] = useState<PendingAgreement[]>([]);
@@ -1921,7 +1927,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     if (notif.status !== 'read') await handleMarkRead(notif.id);
     setNotifOpen(false);
     if (notif.relatedEntityType === 'claim_file' && notif.relatedEntityId) {
-      router.push(`/panel/hasar-dosyalari/${notif.relatedEntityId}`);
+      const hatirlat =
+        notif.type === 'approval_72h_exceeded'
+          ? `?aksiyon=onay-hatirlat`
+          : '';
+      router.push(`/panel/hasar-dosyalari/${notif.relatedEntityId}${hatirlat}`);
       return;
     }
     if (
@@ -2016,6 +2026,45 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const isFinance = isFinanceRole(roleCode);
   const isFieldStaff = isFieldStaffRole(roleCode);
   const showAcilYardim = canAccessAcilYardim(roleCode, operationArea, user?.operationalAccessGrants);
+
+  /** 72s: şerit yok; panele girince tek pencere. Dosya sayfasındaysa o sayfa açar. */
+  useEffect(() => {
+    if (loading || !user || isPortalUser || isFieldStaff) return;
+    if (approval72hPrompt) return;
+    if (pathname.startsWith('/panel/hasar-dosyalari/')) return;
+
+    const notif = notifications.find(
+      (n) =>
+        n.type === 'approval_72h_exceeded'
+        && n.status !== 'read'
+        && n.relatedEntityType === 'claim_file'
+        && Boolean(n.relatedEntityId),
+    );
+    if (!notif?.relatedEntityId) return;
+
+    const claimId = notif.relatedEntityId;
+    const storageKey = `approval-72h-prompt:${claimId}`;
+    try {
+      const last = Number(sessionStorage.getItem(storageKey) || '0');
+      if (Number.isFinite(last) && Date.now() - last < 72 * 60 * 60 * 1000) return;
+      sessionStorage.setItem(storageKey, String(Date.now()));
+    } catch {
+      /* ignore */
+    }
+
+    setApproval72hPrompt({
+      claimId,
+      fileNo: fileNoFromApproval72hBody(notif.body) || notif.title || 'Dosya',
+    });
+  }, [
+    loading,
+    user,
+    isPortalUser,
+    isFieldStaff,
+    notifications,
+    pathname,
+    approval72hPrompt,
+  ]);
 
   useEffect(() => {
     if (loading || pathname !== '/panel') return;
@@ -2296,6 +2345,35 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <Suspense fallback={null}>
           <FinansOncelikliGorevModal enabled={isFinance && !loading && Boolean(user) && !mustChangePassword} />
         </Suspense>
+        {approval72hPrompt ? (
+          <Approval72hReminderDialog
+            claimId={approval72hPrompt.claimId}
+            fileNo={approval72hPrompt.fileNo}
+            viewerLastName={(user as { lastName?: string | null } | null)?.lastName}
+            viewerFullName={
+              [
+                (user as { firstName?: string | null } | null)?.firstName,
+                (user as { lastName?: string | null } | null)?.lastName,
+              ]
+                .filter(Boolean)
+                .join(' ')
+              || (user as { name?: string | null } | null)?.name
+            }
+            open
+            onClose={() => setApproval72hPrompt(null)}
+            onSent={() => {
+              setNotifications((prev) =>
+                prev.map((n) =>
+                  n.type === 'approval_72h_exceeded'
+                  && n.relatedEntityId === approval72hPrompt.claimId
+                    ? { ...n, status: 'read' }
+                    : n,
+                ),
+              );
+              setApproval72hPrompt(null);
+            }}
+          />
+        ) : null}
         <WorkHoursPanelGate
           ref={workHoursGateRef}
           enabled={
