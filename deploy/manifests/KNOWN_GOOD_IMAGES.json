@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-11-19",
-  "label": "v699-broker-rapor-musteri-onay",
-  "description": "v699 full: Broker eksper portalı; Raporu Gönder Ad Bey/Hanım Merhaba + Olumlu İş Birliği; müşteri onay bildirimi (Dosya Adı/İl İlçe); Hasar Tespit PDF imza; Hasar Konusu. Geri alma web v698 / backend v698.",
+  "updatedAt": "2026-11-20",
+  "label": "v700-onay-72h-dosya-sorumlusu",
+  "description": "v700 full: 72s onay hatırlatması otomatik müşteriye gitmez; dosya sorumlusu penceresi (Dosya No + Sn. soyad müşteri ilişkisi notu); muhatap seçimi broker/eksper; gönderen Meridyen. Geri alma web v699 / backend v699.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v699-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v699-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v700-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v700-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v698-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v698-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v699-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v699-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

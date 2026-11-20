@@ -2,24 +2,31 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 17 Kasım 2026
+**Son güncelleme:** 20 Kasım 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (17 Kasım 2026 — web v695 / backend v695)
+## Canlı durum (20 Kasım 2026 — web v700 / backend v700)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v695-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v695-amd64` | canlı |
-| **Rollback** | Web **v694** / Backend **v694** | manifest `rollbackImages` |
-| **Etiket** | `v695-raporu-gonder-pdf-bcc` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v700-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v700-amd64` | canlı |
+| **Rollback** | Web **v699** / Backend **v699** | manifest `rollbackImages` |
+| **Etiket** | `v700-onay-72h-dosya-sorumlusu` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v700 — Full (20 Kasım 2026) — 72s onay: dosya sorumlusu penceresi
+
+- Otomatik müşteri maili yok; panele/dosyaya girince pencere (Dosya No + Sn. soyad ilişki notu)
+- Muhatap seçimi broker/eksper; gönderen Meridyen; şerit yok
+- Health/route gate: FAIL=0 PARTIAL=1 (oturum şifresi yok)
+- Geri alma web **v699** / backend **v699**
 
 ### v695 — Full (17 Kasım 2026) — Raporu Gönder + PDF / Gizli alıcı
 
