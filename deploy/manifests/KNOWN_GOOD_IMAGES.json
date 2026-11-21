@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-21",
-  "label": "v701-hakedis-butce-odeme",
-  "description": "v701 full: Hasar hakediş iş grubu bütçe tavanı (eski dosya + bütçe sürümü dahil), kısmi ödeme, ödeme sonrası masraf, cari yalnız mevcutsa. Geri alma web v700 / backend v700.",
+  "label": "v702-masraf-yolu-liste",
+  "description": "v702 full: Masraf Yolu sol menü kırılımlı açılır liste; SlidePanel alt tuşları kesilmez. Geri alma web v701 / backend v701.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v701-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v701-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v702-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v702-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v700-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v700-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v701-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v701-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
