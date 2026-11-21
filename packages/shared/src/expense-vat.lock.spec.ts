@@ -57,12 +57,14 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /Poliçe Yönetimi|police/);
     assert.match(masraf, /masraf-form-footer/);
     assert.match(masraf, /grid-rows-\[auto_minmax\(0,1fr\)_auto\]/);
+    assert.match(masraf, /sticky bottom-0/);
     assert.match(masraf, /safe-area-inset-bottom/);
     assert.match(masraf, /splitGrossVat/);
     assert.match(masraf, /hasTaxDocument/);
     assert.match(masraf, /masraf-kdv-ozet/);
     assert.match(masraf, /masraf-akilli-fis/);
     assert.match(masraf, /scrollContent=\{false\}/);
+    assert.match(masraf, /overscroll-contain/);
     assert.match(masraf, /Tutar — KDV Dahil/);
     assert.match(masraf, /FieldLabel/);
     assert.match(masraf, /masraf-kdv-raporu-link/);

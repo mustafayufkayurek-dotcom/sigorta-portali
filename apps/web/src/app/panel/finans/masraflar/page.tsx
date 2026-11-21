@@ -1329,14 +1329,14 @@ export default function MasraflarPage() {
   );
 
   const masrafYoluHelp = !form.expenseLane
-    ? 'Sol menüdeki gibi seçilir: Hasar Onarım ve Hasar Tespit dosyaya; Danışmanlık, Poliçe Yönetimi ve Acil Yardım müşteriye yazılır. Harici Masraf piyasadan toplanan fişle kayıp KDV’yi telafi eder.'
+    ? 'Sol menüdeki gibi seçilir: Hasar Onarım ve Hasar Tespit dosyaya; Danışmanlık, Poliçe Yönetimi ve Acil Yardım müşteriye yazılır. Yönetim gideri de seçilen müşteri veya dosyaya yansır; sahipsizse havuza düşer. Harici Masraf kayıp KDV telafisidir.'
     : form.expenseLane === 'hasar'
-      ? 'Hasar Onarım dosyası seçilir. Bu kayıt Hasar bütçe kartına girer. Onarım iş kalemi hakedişten gelir; burada Meridyen masrafı yazılır.'
+      ? 'Hasar Onarım dosyası seçilir. Bu kayıt Hasar bütçe kartına girer. Yönetim kalemi de bu dosyanın kâr–zararına yazılır.'
       : form.expenseLane === 'tespit'
         ? 'Hasar Tespit dosyası seçilir. Tespit masrafı dosyaya yazılır; onarım bütçe kartına girmez.'
         : form.expenseLane === 'harici'
           ? 'Piyasadan toplanan fiş ve fatura. Belgeli kayıt kayıp KDV telafisine yazılır; KDV Raporu’nda görülür.'
-          : 'Müşteri seçilir. Bu kayıt dosya bütçe kartına girmez.';
+          : 'Müşteri seçilir. Yönetim gideri dahil tüm kalemler bu müşterinin kâr–zararına yazılır; dosya bütçe kartına girmez.';
 
   const belgeDurumuHelp = form.documentMode === 'belgesiz'
     ? 'Belgesiz masrafın KDV’si kayıp KDV’ye yazılır; dönem ve yıl bazında KDV Raporu’nda görülür.'
@@ -1361,7 +1361,7 @@ export default function MasraflarPage() {
         <FinansHedefBaglamSeridi
           year={baglamYear}
           month={baglamMonth}
-          aciklama="Yönetim Giderleri kaydı ekleyin (dosya seçilmez). Bitince Hedef Ciroya dönün."
+          aciklama="Şirket genel yönetim giderini havuza yazın (müşteri/dosya seçmeden). Müşteriye veya dosyaya aitse ilgili yolu seçip oraya yazın. Bitince Hedef Ciroya dönün."
         />
       ) : null}
 
@@ -1666,7 +1666,7 @@ export default function MasraflarPage() {
             </FileDropZone>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pt-2 pb-3 sm:px-4">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 pt-2 pb-3 sm:px-4">
           {formError && (
             <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-2.5 text-xs text-red-700 dark:text-red-400">
               {formError}
@@ -2441,7 +2441,7 @@ export default function MasraflarPage() {
           </div>
 
           <div
-            className="z-10 flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-white px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(15,23,42,0.08)] sm:px-4 dark:border-slate-700"
+            className="sticky bottom-0 z-20 flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-white px-3 py-3.5 pb-[max(1.25rem,calc(0.75rem+env(safe-area-inset-bottom,0px)))] shadow-[0_-6px_16px_rgba(15,23,42,0.1)] sm:px-4 dark:border-slate-700 dark:bg-slate-900"
             data-testid="masraf-form-footer"
           >
             <button

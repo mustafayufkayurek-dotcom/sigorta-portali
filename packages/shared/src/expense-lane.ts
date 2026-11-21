@@ -107,6 +107,27 @@ export function isTespitExpenseLane(lane: unknown): boolean {
   return lane === EXPENSE_LANE_TESPIT;
 }
 
+export const EXPENSE_GROUP_YONETIM = 'YONETIM_GIDERLERI' as const;
+
+export function isYonetimExpenseGroup(group: unknown): boolean {
+  return String(group ?? '').trim() === EXPENSE_GROUP_YONETIM;
+}
+
+/**
+ * Kâr–zarar omurgası: masraf hangi müşteri/dosyaya aitse oraya yazılır.
+ * Yönetim gideri yalnız müşteri ve dosya yoksa havuza düşer (ay sonu dağıtım).
+ */
+export function isYonetimOverheadPool(input: {
+  expenseGroup: unknown;
+  customerId?: string | null;
+  fileCaseId?: string | null;
+}): boolean {
+  if (!isYonetimExpenseGroup(input.expenseGroup)) return false;
+  if (String(input.customerId ?? '').trim()) return false;
+  if (String(input.fileCaseId ?? '').trim()) return false;
+  return true;
+}
+
 /** Dosya bütçesi, sapma ve dosya kârı bu masrafları okumaz. */
 export function hasarFileBudgetExpenseWhere(): Record<string, unknown> {
   return {

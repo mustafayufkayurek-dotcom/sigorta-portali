@@ -13,6 +13,7 @@ import {
   isFileExpenseLane,
   isHariciExpenseLane,
   isTespitExpenseLane,
+  isYonetimOverheadPool,
   parseExpenseLane,
 } from './expense-lane.ts';
 
@@ -120,6 +121,25 @@ describe('masraf yolu LOCK', () => {
     assert.match(finance, /hasarFileBudgetExpenseWhere/);
   });
 
+  it('yönetim gideri müşteri/dosyaya yazılır; yalnız sahipsiz olan havuza düşer', () => {
+    assert.equal(
+      isYonetimOverheadPool({ expenseGroup: 'YONETIM_GIDERLERI', customerId: 'c1', fileCaseId: null }),
+      false,
+    );
+    assert.equal(
+      isYonetimOverheadPool({ expenseGroup: 'YONETIM_GIDERLERI', customerId: null, fileCaseId: 'f1' }),
+      false,
+    );
+    assert.equal(
+      isYonetimOverheadPool({ expenseGroup: 'YONETIM_GIDERLERI', customerId: null, fileCaseId: null }),
+      true,
+    );
+    assert.equal(
+      isYonetimOverheadPool({ expenseGroup: 'ONARIM_GIDERLERI', customerId: null, fileCaseId: null }),
+      false,
+    );
+  });
+
   it('kayıt dosya zorunluluğunu müşteri yolunda keser', () => {
     const svc = readFileSync(
       join(import.meta.dirname, '../../../apps/backend/src/modules/expenses/expenses.service.ts'),
@@ -127,6 +147,9 @@ describe('masraf yolu LOCK', () => {
     );
     assert.match(svc, /isCustomerExpenseLane/);
     assert.match(svc, /isHariciExpenseLane/);
+    assert.match(svc, /isYonetimOverheadPool/);
+    assert.doesNotMatch(svc, /Yönetim gideri müşteriye yazılmaz/);
+    assert.doesNotMatch(svc, /Yönetim giderleri dosyaya bağlanamaz/);
     assert.match(svc, /Danışmanlık, Poliçe Yönetimi ve Acil Yardım masrafı dosyaya yazılmaz/);
     assert.match(svc, /Harici masraf dosyaya veya müşteriye yazılmaz/);
     assert.match(svc, /Hasar Tespit masrafı yalnız tespit dosyasına yazılır/);
