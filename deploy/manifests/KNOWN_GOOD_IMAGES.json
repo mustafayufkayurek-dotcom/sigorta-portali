@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-21",
-  "label": "v703-masraf-yolu-ek-hizmetler",
-  "description": "v703 full: Masraf Yolu Ek Hizmetler — Hasar Tespit + Poliçe Yönetimi; Harici Diğer grubunda. Geri alma web v702 / backend v702.",
+  "label": "v704-musteri-hizmet-kapsami",
+  "description": "v704 full: Müşteri kartı Hizmet Kapsamı (sol menü kırılımı, Hepsi altta); masraf müşteri listesi kapsamla süzülür. Geri alma web v703 / backend v703.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v703-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v703-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v704-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v704-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v702-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v702-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v703-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v703-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

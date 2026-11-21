@@ -1,11 +1,11 @@
 ---
-description: Canlı web v703 / backend v703
+description: Canlı web v704 / backend v704
 alwaysApply: true
 ---
 
 # Canlı (21.11.2026)
 
-Canlı: web **v703** · backend **v703**. Geri alma: web **v702** / backend **v702**.
+Canlı: web **v704** · backend **v704**. Geri alma: web **v703** / backend **v703**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v704 (full):** Müşteri kartı Hizmet Kapsamı — sol menü gibi Asistans / Ek Hizmetler kırılımı; Hepsi altta ve seçilince tüm kutular işaretli; masraf müşteri listesi kapsama göre süzülür. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v703** / backend **v703**.
 
 **v703 (full):** Masraf Yolu Ek Hizmetler tamamlandı — Danışmanlık, Hasar Tespit, Poliçe Yönetimi; Asistans’ta Acil Yardım / Hasar Onarım; Harici Diğer grubunda. Tespit dosyaya, Poliçe müşteriye yazılır. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v702** / backend **v702**.
 
@@ -283,4 +285,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v703** · backend **v703**.
+Canlı web **v704** · backend **v704**.
