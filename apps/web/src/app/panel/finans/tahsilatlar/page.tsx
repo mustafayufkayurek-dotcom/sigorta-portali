@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/TableColumnPicker';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
 import { CariTahsilatAlModal } from '@/components/finance/CariTahsilatAlModal';
+import { FinansActionButton, FinansModal } from '@/components/finance/FinansPanelUI';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
 import {
@@ -35,11 +36,18 @@ import {
 } from '@/utils/panel-table-sort';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import {
+  formatTrAmountInput,
+  numberToTrAmountInput,
+  parseTrAmountInput,
+} from '@/utils/tr-amount-input';
+import {
   HASAR_AVANS_YARI_USTU_ETIKET,
   isAvansYariUstuNote,
   financePaymentStatusLabel,
   financePaymentMethodDisplay,
   finansPaymentCariEtiket,
+  hakedisPaidRemaining,
+  splitHakedisPaymentAmount,
 } from '@sigorta/shared';
 import { isOfficeStaffRole, usePanelRoleCode } from '@/hooks/usePanelRole';
 import { HintIcon } from '@/components/ui/HintIcon';
@@ -141,6 +149,9 @@ export default function TahsilatlarPage() {
   });
   const [clientSort, setClientSort] = useState<ClientSortState>(null);
   const [showCariTahsilat, setShowCariTahsilat] = useState(false);
+  const [payTarget, setPayTarget] = useState<{ id: string; amount: number; note?: string | null } | null>(null);
+  const [payAmountInput, setPayAmountInput] = useState('');
+  const [paySaving, setPaySaving] = useState(false);
   const tableColumns = usePanelTableColumns('table-cols:finans-tahsilatlar', PAYMENT_TABLE_COLUMNS);
   const rowActions = usePortalRowActionPrefs('row-actions:finans-tahsilatlar-v1', FINANS_TAHSILAT_ROW_ACTIONS);
 
@@ -252,17 +263,48 @@ export default function TahsilatlarPage() {
     }
   };
 
-  const markPaid = async (id: string) => {
+  const openPayDialog = (p: { id: string; amount?: number | null; note?: string | null }) => {
+    const amount = Number(p.amount) || 0;
+    setPayTarget({ id: p.id, amount, note: p.note });
+    setPayAmountInput(numberToTrAmountInput(amount));
+  };
+
+  const confirmPay = async () => {
+    if (!payTarget) return;
+    const payAmount = parseTrAmountInput(payAmountInput);
+    if (payAmount == null) {
+      showToast('error', 'Ödenen tutar girin.');
+      return;
+    }
+    const split = splitHakedisPaymentAmount({
+      originalAmount: payTarget.amount,
+      payAmount,
+    });
+    if (!split.ok) {
+      showToast('error', split.message);
+      return;
+    }
+    setPaySaving(true);
     try {
-      await axios.patch(`${API}/payments/${id}`, {
+      await axios.patch(`${API}/payments/${payTarget.id}`, {
         status: 'completed',
+        amount: split.paid,
         paymentDate: new Date().toISOString().substring(0, 10),
       }, { headers: authHeader() });
-      showToast('success', 'Ödeme tamamlandı olarak işaretlendi.');
+      const bal = hakedisPaidRemaining(payTarget.amount, split.paid);
+      showToast(
+        'success',
+        split.isPartial
+          ? `Ödendi ${formatTryAmount(bal.paid)}. Kalan ${formatTryAmount(bal.remaining)} kuyrukta durur.`
+          : 'Ödeme tamamlandı olarak işaretlendi.',
+      );
+      setPayTarget(null);
       load();
     } catch (e: unknown) {
       const msg = axios.isAxiosError(e) ? e.response?.data?.message : 'İşlem başarısız.';
       showToast('error', typeof msg === 'string' ? msg : 'İşlem başarısız.');
+    } finally {
+      setPaySaving(false);
     }
   };
 
@@ -313,7 +355,7 @@ export default function TahsilatlarPage() {
           Tahsilatlar ve Ödemeler
           <HintIcon text={
             queue === 'payable'
-              ? 'Tedarikçi hakediş ve avans bu sekmede durur. Ayrı sayfa değildir. Ödendi carisine işler.'
+              ? 'Tedarikçi hakediş ve avans bu sekmede durur. Kısmi ödeme yapılabilir; kalan kuyrukta durur. Ödendi, mevcut carisine ve masrafa işler.'
               : 'Tahsilat müşteri carisine işler. Tedarikçi ödemesi ayrı sayfa değildir. Tedarikçi Ödeme Kuyruğu sekmesinde durur.'
           } />
         </h2>
@@ -347,6 +389,51 @@ export default function TahsilatlarPage() {
           switchQueue('completed');
         }}
       />
+
+      <FinansModal
+        open={Boolean(payTarget)}
+        title="Ödendi"
+        subtitle={
+          payTarget
+            ? `Hakediş bakiyesi ${formatTryAmount(payTarget.amount)}. Tam veya kısmi tutar yazılabilir; kalan kuyrukta durur.`
+            : undefined
+        }
+        testId="finans-hakedis-odeme-kutusu"
+        footer={
+          <div className="flex justify-end gap-2">
+            <FinansActionButton
+              label="İptal"
+              variant="neutral"
+              onClick={() => setPayTarget(null)}
+              disabled={paySaving}
+            />
+            <FinansActionButton
+              label={paySaving ? 'Kaydediliyor…' : 'Ödendi'}
+              onClick={() => void confirmPay()}
+              disabled={paySaving}
+              showPlus={false}
+            />
+          </div>
+        }
+      >
+        <label className="block text-xs font-medium text-slate-700">
+          Ödenen Tutar
+          <input
+            type="text"
+            inputMode="decimal"
+            value={payAmountInput}
+            onChange={(e) => setPayAmountInput(formatTrAmountInput(e.target.value))}
+            className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
+            data-testid="finans-hakedis-odenen-tutar"
+            autoFocus
+          />
+        </label>
+        {payTarget ? (
+          <p className="mt-2 text-[11px] text-slate-500">
+            Tamamı: {formatTryAmount(payTarget.amount)}. Daha az yazılırsa kalan bekleyen satır oluşur.
+          </p>
+        ) : null}
+      </FinansModal>
 
       {/* Kompakt özet şeridi — tek satır, alacak/borç ayrımı */}
       <FinanceSummaryStrip
@@ -598,6 +685,9 @@ export default function TahsilatlarPage() {
                           {String(p.note ?? '').toUpperCase().includes('[AVANS]') ? (
                             <span className="mr-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">Avans</span>
                           ) : null}
+                          {String(p.note ?? '').includes('· kalan') ? (
+                            <span className="mr-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">Kalan</span>
+                          ) : null}
                           {p.note ?? '—'}
                         </PanelTableTd>
                       ),
@@ -631,7 +721,7 @@ export default function TahsilatlarPage() {
                                   : null
                             }
                             onMarkPaid={!isFileOwner && (p.status === 'pending' || p.status === 'correction_needed') && p.paymentType === 'outgoing'
-                              ? () => void markPaid(p.id)
+                              ? () => openPayDialog(p)
                               : undefined}
                             onRequestCorrection={isAdmin && p.status === 'completed'
                               ? () => void markCorrectionNeeded(p.id)

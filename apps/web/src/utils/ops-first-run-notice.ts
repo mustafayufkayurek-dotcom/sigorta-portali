@@ -46,10 +46,10 @@ export const OPS_NOTICE = {
       'İş bitince bu dosyanın tedarikçisine hakediş verilir. Ödendi veya ödenmedi kaydı finansa göndermeden önce bu dosyada sizin işinizdir. Finansa gittikten sonra Ödendi işlemini finans personeli yapar. Finans tarafında işlem yapamazsınız. İşlemi yapan adıyla kaydolur. Vade uygulanmaz.',
   },
   finansTedarikciKuyruk: {
-    id: 'finans-tedarikci-kuyruk-v555b',
+    id: 'finans-tedarikci-kuyruk-v701',
     title: 'Ödeme Kuyruğu',
     body:
-      'Hasar hakediş ve avans burada durur. Tamamlanan tahsilat müşteri carisine, tedarikçi ödemesi tedarikçi carisine işler; Cari Hesap Ekstresi şirket carisini açar. Acil’de Ödendi işlemini finans personeli yapar; dosya sorumlusu finans tarafında işlem yapamaz, yalnız kendi dosyasında finansa göndermeden önce kayıt düşer. İşlemi yapan kaydolur. Acil’de vade yoktur. Hasar’da 15 veya 30 gün vade durur.',
+      'Hasar hakediş ve avans burada durur. Ödendi’de tutar yazılır; kısmi ödemede kalan kuyrukta durur. Ödenen tutar masrafa düşer. Cari yalnız mevcut tedarikçi carisine yazılır. Acil’de Ödendi finans personelindedir; dosya sorumlusu finans tarafında işlem yapamaz. Hasar’da 15 veya 30 gün vade durur.',
   },
   finansCariOmurga: {
     id: 'finans-cari-omurga-v692c',

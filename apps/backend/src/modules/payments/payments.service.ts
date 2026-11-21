@@ -39,6 +39,7 @@ import {
   financeAdjustAuditPayload,
   FINANCIAL_CORRECTION_NEEDED,
   paymentTouchesFrozenMoneyFields,
+  splitHakedisPaymentAmount,
 } from '@sigorta/shared';
 import {
   acilHakedisActorName,
@@ -432,7 +433,10 @@ export class PaymentsService {
 
     const existing = await this.prisma.payment.findFirst({
       where: {
-        OR: [{ vendorStatementItemId: itemId }, ...(item.paymentId ? [{ id: item.paymentId }] : [])],
+        OR: [
+          { vendorStatementItemId: itemId, status: { in: ['pending', 'completed'] } },
+          ...(item.paymentId ? [{ id: item.paymentId }] : []),
+        ],
       },
     });
     if (existing) return;
@@ -909,7 +913,22 @@ export class PaymentsService {
       throw new BadRequestException(freeze.message);
     }
     const wasPending = payment.status === 'pending';
-    const nextAmount = dto.amount !== undefined ? dto.amount : payment.amount;
+    let completeAmount = dto.amount !== undefined ? dto.amount : payment.amount;
+    let remainderPending: { amount: number } | null = null;
+    if (dto.status === 'completed' && wasPending && payment.vendorStatementItemId) {
+      const split = splitHakedisPaymentAmount({
+        originalAmount: payment.amount,
+        payAmount: completeAmount,
+      });
+      if (!split.ok) {
+        throw new BadRequestException(split.message);
+      }
+      completeAmount = split.paid;
+      if (split.isPartial) {
+        remainderPending = { amount: split.remaining };
+      }
+    }
+    const nextAmount = completeAmount;
     const nextMethod = dto.method ?? payment.method;
     const nextDate = dto.paymentDate ? new Date(dto.paymentDate) : payment.paymentDate;
     const moneyChanged = dto.amount !== undefined
@@ -919,7 +938,11 @@ export class PaymentsService {
       where: { id },
       data: {
         ...(dto.paymentDate ? { paymentDate: new Date(dto.paymentDate) } : {}),
-        ...(dto.amount !== undefined ? { amount: dto.amount } : {}),
+        ...(dto.status === 'completed' && wasPending
+          ? { amount: completeAmount }
+          : dto.amount !== undefined
+            ? { amount: dto.amount }
+            : {}),
         ...(dto.method ? { method: dto.method } : {}),
         ...(dto.referenceNo !== undefined ? { referenceNo: dto.referenceNo } : {}),
         ...(dto.status ? { status: dto.status } : {}),
@@ -930,6 +953,28 @@ export class PaymentsService {
           : {}),
       },
     });
+
+    if (remainderPending && userId && payment.vendorStatementItemId) {
+      await this.prisma.payment.create({
+        data: {
+          claimFileId: payment.claimFileId,
+          paymentType: payment.paymentType,
+          paymentDate: payment.dueDate ?? payment.paymentDate,
+          dueDate: payment.dueDate,
+          amount: remainderPending.amount,
+          currency: payment.currency,
+          method: payment.method,
+          payerType: payment.payerType,
+          payerId: payment.payerId,
+          status: 'pending',
+          collectionChannel: payment.collectionChannel,
+          vendorStatementItemId: payment.vendorStatementItemId,
+          referenceNo: payment.referenceNo,
+          note: `${payment.note ?? 'Tedarikçi hakediş'} · kalan`,
+          createdByUserId: userId,
+        },
+      });
+    }
 
     if (dto.status === FINANCIAL_CORRECTION_NEEDED && userId) {
       this.auditLogsService.log({
@@ -988,9 +1033,74 @@ export class PaymentsService {
         await this.recordAcilHakedisPaidBy(payment.emergencyCaseId, userId);
       }
       await this.syncPaymentToPartyAccount(updated.id, userId);
+      if (payment.vendorStatementItemId && userId) {
+        await this.postHakedisPaymentExpense(updated.id, userId).catch((err) => {
+          this.logger.warn(
+            `Hakediş ödemesi masrafa yazılamadı (${updated.id}): ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
+      }
     }
 
     return updated;
+  }
+
+  /**
+   * Ödenen hakediş tutarı dosya masrafına düşer (gider raporu).
+   * Ödeme öncesi masraf yazılmaz; kısmi ödemede yalnız ödenen kadar.
+   */
+  private async postHakedisPaymentExpense(paymentId: string, userId: string): Promise<void> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: {
+        vendorStatementItem: {
+          select: {
+            id: true,
+            lineDescription: true,
+            workGroupId: true,
+            workGroup: { select: { name: true } },
+            claimFileId: true,
+          },
+        },
+        claimFile: { select: { id: true, fileNo: true } },
+      },
+    });
+    if (!payment || payment.status !== 'completed') return;
+    if (payment.paymentType !== 'outgoing' || payment.payerType !== 'vendor') return;
+    const item = payment.vendorStatementItem;
+    if (!item?.claimFileId) return;
+
+    const marker = `hakedis-odeme:${paymentId}`;
+    const already = await this.prisma.expense.findFirst({
+      where: { description: { contains: marker } },
+      select: { id: true },
+    });
+    if (already) return;
+
+    const wgName = String(item.workGroup?.name ?? item.lineDescription ?? 'Onarım').trim();
+    const fileNo = payment.claimFile?.fileNo ?? '';
+    const amount = Number(payment.amount) || 0;
+    if (!(amount > 0)) return;
+
+    await this.prisma.expense.create({
+      data: {
+        date: payment.paymentDate,
+        amount,
+        vatRate: 0,
+        vatIncluded: true,
+        hasTaxDocument: true,
+        description: `Hakediş ödemesi · ${wgName}${fileNo ? ` · ${fileNo}` : ''} · ${marker}`,
+        expenseGroup: 'ONARIM_GIDERLERI',
+        expenseSubgroup: wgName.slice(0, 120) || 'Onarım',
+        expensePlan: 'BUTCELENEN',
+        approvalStatus: 'APPROVED',
+        approvedById: userId,
+        approvedAt: new Date(),
+        operationSubject: 'HASAR_ONARIM',
+        fileCaseId: item.claimFileId,
+        createdById: userId,
+      },
+    });
   }
 
   /** Tamamlanan tahsilat / ödeme → şirket carisi (idempotent). */

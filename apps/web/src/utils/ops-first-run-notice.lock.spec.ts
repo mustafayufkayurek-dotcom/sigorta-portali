@@ -68,9 +68,10 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     const finansHome = readFileSync(join(here, '../app/panel/finans/page.tsx'), 'utf8');
     assert.match(tahsilat, /finans-odeme-kuyruk-ilk-kullanim-seridi/);
     assert.match(finansHome, /finans-odeme-kuyruk-ilk-kullanim-seridi/);
-    assert.equal(OPS_NOTICE.finansTedarikciKuyruk.id, 'finans-tedarikci-kuyruk-v555b');
-    assert.match(OPS_NOTICE.finansTedarikciKuyruk.body, /finans tarafında işlem yapamaz/);
-    assert.match(OPS_NOTICE.finansTedarikciKuyruk.body, /müşteri carisine/);
+    assert.equal(OPS_NOTICE.finansTedarikciKuyruk.id, 'finans-tedarikci-kuyruk-v701');
+    assert.match(OPS_NOTICE.finansTedarikciKuyruk.body, /finans personelindedir/);
+    assert.match(OPS_NOTICE.finansTedarikciKuyruk.body, /kısmi ödeme/);
+    assert.match(OPS_NOTICE.finansTedarikciKuyruk.body, /mevcut tedarikçi carisine/);
     assert.match(tahsilat, /emergencyCaseId/);
     assert.match(tahsilat, /acil_hakedis/);
     assert.doesNotMatch(tahsilat, /Vade yok/);

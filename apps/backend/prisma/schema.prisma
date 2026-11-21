@@ -1744,7 +1744,8 @@ model Payment {
   collectionChannel String? @map("collection_channel") // muhasebe | online_kart | manuel_onay
   collectionLinkId  String? @unique @map("collection_link_id")
   providerRef       String? @map("provider_ref")
-  vendorStatementItemId String? @unique @map("vendor_statement_item_id")
+  /// Kısmi ödemede aynı hakediş kalemine birden fazla Payment bağlanır (unique değil).
+  vendorStatementItemId String? @map("vendor_statement_item_id")
   bankAccountId   String?  @map("bank_account_id")
   note            String?
   receiptStorageKey String?   @map("receipt_storage_key")
@@ -1774,6 +1775,7 @@ model Payment {
   @@index([status])
   @@index([dueDate])
   @@index([paymentType, status])
+  @@index([vendorStatementItemId])
   @@map("payments")
 }
 

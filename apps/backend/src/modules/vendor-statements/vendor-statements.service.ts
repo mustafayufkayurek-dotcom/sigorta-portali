@@ -11,9 +11,11 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@/prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import {
+  assertHasarHakedisBudgetCap,
   hakedisMahsupReference,
   netHakedisAfterAvans,
   pickReusableHasarHakedisStatement,
+  repairItemResolvedSupplierTotal,
   resolveHasarAvansHesap,
   scaleAmountsToNet,
 } from '@sigorta/shared';
@@ -166,7 +168,119 @@ export class VendorStatementsService {
     return stmt;
   }
 
-  /** Hasar dosyasında tedarikçiye hakediş verilir — dosya bütçesi / satış paneli değildir. */
+  /**
+   * Dosya + iş grubu tedarikçi bütçesi (rapor alış; yoksa dosya bütçe sürümü).
+   * Eski dosyalar dahil — sunucu tavanı; ekran aşımı API ile de geçemez.
+   */
+  private async resolveHasarWorkGroupBudgets(claimFileId: string): Promise<Map<string, {
+    budgeted: number;
+    label: string;
+  }>> {
+    const reports = await this.prisma.repairReport.findMany({
+      where: {
+        claimFileId,
+        status: { notIn: ['draft', 'rejected', 'cancelled'] },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 5,
+      select: {
+        items: {
+          select: {
+            workGroupId: true,
+            workGroup: { select: { id: true, name: true } },
+            jobDescription: true,
+            quantity: true,
+            unit: true,
+            pricingType: true,
+            lumpSumPrice: true,
+            supplierUnitPrice: true,
+            supplierTotal: true,
+          },
+        },
+      },
+    });
+    const map = new Map<string, { budgeted: number; label: string }>();
+    for (const report of reports) {
+      for (const item of report.items) {
+        let add = repairItemResolvedSupplierTotal(item);
+        if (!(add > 0)) {
+          const stored = Number(item.supplierTotal);
+          if (Number.isFinite(stored) && stored > 0) add = stored;
+        }
+        if (!(add > 0)) continue;
+        const wgId = item.workGroupId ?? item.workGroup?.id;
+        if (!wgId) continue;
+        const label = String(item.workGroup?.name ?? item.jobDescription ?? 'İş grubu').trim();
+        const prev = map.get(wgId) ?? { budgeted: 0, label };
+        prev.budgeted += add;
+        if (!prev.label && label) prev.label = label;
+        map.set(wgId, prev);
+      }
+      if (map.size > 0) break;
+    }
+    if (map.size > 0) return map;
+
+    // Rapor kalemi yoksa (eski dosya / yalnız bütçe) — bütçe sürümü iş grubu adı ile bağlanır.
+    const version = await this.prisma.budgetVersion.findFirst({
+      where: { claimFileId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        items: {
+          select: { category: true, description: true, quantity: true, unitPrice: true },
+        },
+      },
+    });
+    const budgetItems = version?.items ?? [];
+    if (budgetItems.length === 0) return map;
+
+    const workGroups = await this.prisma.workGroup.findMany({
+      select: { id: true, name: true },
+    });
+    const byName = new Map<string, { id: string; name: string }>();
+    for (const wg of workGroups) {
+      const key = String(wg.name ?? '').trim().toLocaleLowerCase('tr-TR');
+      if (key) byName.set(key, wg);
+    }
+    for (const item of budgetItems) {
+      const qty = Number(item.quantity) || 1;
+      const price = Number(item.unitPrice) || 0;
+      const add = Math.round(qty * price * 100) / 100;
+      if (!(add > 0)) continue;
+      const category = String(item.category ?? '').trim();
+      const matched = byName.get(category.toLocaleLowerCase('tr-TR'));
+      if (!matched) continue;
+      const prev = map.get(matched.id) ?? { budgeted: 0, label: matched.name };
+      prev.budgeted += add;
+      map.set(matched.id, prev);
+    }
+    return map;
+  }
+
+  private async sumGrantedHakedisByWorkGroup(
+    claimFileId: string,
+    workGroupIds: string[],
+  ): Promise<Map<string, number>> {
+    const ids = [...new Set(workGroupIds.filter(Boolean))];
+    const out = new Map<string, number>();
+    if (ids.length === 0) return out;
+    const items = await this.prisma.vendorStatementItem.findMany({
+      where: {
+        claimFileId,
+        workGroupId: { in: ids },
+        approvalStatus: { in: ['APPROVED', 'AUTO_APPROVED'] },
+        statement: { status: { not: 'DRAFT' } },
+      },
+      select: { workGroupId: true, totalAmount: true },
+    });
+    for (const row of items) {
+      const wg = row.workGroupId;
+      if (!wg) continue;
+      out.set(wg, (out.get(wg) ?? 0) + Number(row.totalAmount || 0));
+    }
+    return out;
+  }
+
+  /** Hasar dosyasında tedarikçiye hakediş verilir — iş grubu bütçe tavanı katıdır. */
   async grantHasarHakedis(dto: GrantHasarHakedisDto, userId: string) {
     const items = (dto.items ?? []).filter((item) => Number(item.totalAmount) > 0);
     if (items.length === 0) {
@@ -210,7 +324,16 @@ export class VendorStatementsService {
       );
     }
 
-    const [payRows, priorStmts] = await Promise.all([
+    const workGroupIds = items
+      .map((item) => String(item.workGroupId ?? '').trim())
+      .filter(Boolean);
+    if (workGroupIds.length !== items.length) {
+      throw new BadRequestException('Hakediş iş grubu olmadan verilemez.');
+    }
+
+    const [budgets, grantedMap, payRows, priorStmts] = await Promise.all([
+      this.resolveHasarWorkGroupBudgets(dto.claimFileId),
+      this.sumGrantedHakedisByWorkGroup(dto.claimFileId, workGroupIds),
       this.prisma.payment.findMany({
         where: {
           claimFileId: dto.claimFileId,
@@ -224,6 +347,27 @@ export class VendorStatementsService {
         select: { id: true, notes: true },
       }),
     ]);
+
+    for (const item of items) {
+      const wgId = String(item.workGroupId ?? '').trim();
+      const budgetRow = budgets.get(wgId);
+      if (!budgetRow || !(budgetRow.budgeted > 0)) {
+        throw new BadRequestException(
+          'Bu iş grubunda dosya bütçesi / rapor alış tutarı yok. Hakediş verilemez.',
+        );
+      }
+      const cap = assertHasarHakedisBudgetCap({
+        workGroupId: wgId,
+        workGroupLabel: budgetRow.label || item.lineDescription,
+        requested: Number(item.totalAmount),
+        budgeted: budgetRow.budgeted,
+        alreadyGranted: grantedMap.get(wgId) ?? 0,
+      });
+      if (!cap.ok) {
+        throw new BadRequestException(cap.message);
+      }
+    }
+
     const avansHesap = resolveHasarAvansHesap({ payments: payRows, statements: priorStmts });
 
     const gross = items.reduce((sum, item) => sum + Number(item.totalAmount), 0);
@@ -238,6 +382,23 @@ export class VendorStatementsService {
     })).filter((item) => Number(item.totalAmount) > 0);
     if (netItems.length === 0) {
       throw new BadRequestException('Ödenmiş avans hakedişi kapattı. Yeni hakediş yok.');
+    }
+
+    // Avans mahsubundan sonra da tavan geçilmez.
+    for (const item of netItems) {
+      const wgId = String(item.workGroupId ?? '').trim();
+      const budgetRow = budgets.get(wgId);
+      if (!budgetRow) continue;
+      const cap = assertHasarHakedisBudgetCap({
+        workGroupId: wgId,
+        workGroupLabel: budgetRow.label || item.lineDescription,
+        requested: Number(item.totalAmount),
+        budgeted: budgetRow.budgeted,
+        alreadyGranted: grantedMap.get(wgId) ?? 0,
+      });
+      if (!cap.ok) {
+        throw new BadRequestException(cap.message);
+      }
     }
 
     const now = new Date();

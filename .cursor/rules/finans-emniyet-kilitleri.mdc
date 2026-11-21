@@ -15,6 +15,8 @@ alwaysApply: true
 2. Ödeme / dekont `canViewPaymentRecord`. Ofis başka dosyada «Bu kayda erişiminiz yok.»
 3. `grantHasarHakedis` aynı dosya + tedarikçi + iş grubunda mevcut kaydı döner. İkinci iş grubu durur.
 4. Ödenmiş / onaylı ödeme ve fatura satırı dondurulur. Tutar, tarih, yöntem ancak yönetici **Düzeltme Gerekli** açtıktan sonra değişir. Değişince tarihçeye kim, eski tutar, yeni tutar yazılır.
+5. Hasar hakediş iş grubu bütçe tavanı katıdır (`assertHasarHakedisBudgetCap`) — eski dosyalar dahil; rapor yoksa dosya bütçe sürümü. Fazla hakediş API ile de yazılmaz.
+6. Ödeme sonrası masraf (ödendi kadar); kısmi ödemede kalan kuyrukta durur. Cari yalnız mevcut tedarikçi carisine yazılır; otomatik açılmaz.
 
 ## Yasak (açık onay yoksa)
 
@@ -22,10 +24,12 @@ alwaysApply: true
 - Ofise tüm ödeme kayıtlarını açmak
 - Aynı iş grubunda ikinci onaylı ekstre
 - Ödenmiş satırı izsiz düzeltmek
+- İş grubu bütçesini aşan hakediş
+- Ödeme öncesi hakediş masrafı / her ödemede cari açma
 
 ## Durdurma
 
-Yetkisiz Acil finans, yabancı ödeme, çift hakediş veya ödenmiş tutarın izsiz değişmesi geçerse → **dur, aynı gün geri koy.**
+Yetkisiz Acil finans, yabancı ödeme, çift hakediş, bütçe aşımı veya ödenmiş tutarın izsiz değişmesi geçerse → **dur, aynı gün geri koy.**
 
 Regresyon:
 
@@ -34,6 +38,8 @@ node --experimental-strip-types --test \
  packages/shared/src/acil-finance-access.lock.spec.ts \
  packages/shared/src/payment-record-access.lock.spec.ts \
  packages/shared/src/hasar-hakedis-once.lock.spec.ts \
+ packages/shared/src/hasar-hakedis-budget-cap.lock.spec.ts \
+ packages/shared/src/hasar-hakedis-payment-split.lock.spec.ts \
  packages/shared/src/financial-record-freeze.lock.spec.ts
 pnpm smoke:acil-netlesen
 bash scripts/smoke-hasar-hakedis.sh

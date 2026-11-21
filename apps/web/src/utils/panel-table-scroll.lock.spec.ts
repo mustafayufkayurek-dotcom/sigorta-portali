@@ -50,6 +50,8 @@ describe('panel table scroll lock', () => {
     assert.match(picker, /export function PanelTableScroll/);
     assert.match(picker, /min-w-0 w-full max-w-full overflow-x-auto/);
     assert.match(picker, /Yana Kaydırın — İşlemler Sağda/);
+    assert.match(picker, /panel-table-scroll-hint/);
+    assert.doesNotMatch(picker, /absolute -top-6 right-0/);
     assert.match(picker, /bg-gradient-to-l from-white to-transparent/);
     assert.match(picker, /export function PanelOrderedHeaderRow/);
   });

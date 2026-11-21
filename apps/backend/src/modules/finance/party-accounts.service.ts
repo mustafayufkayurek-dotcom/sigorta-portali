@@ -1603,11 +1603,13 @@ export class PartyAccountsService {
     if (amount <= 0) return null;
     const existing = await this.findExistingSourceEntry('odeme', input.paymentId);
     if (existing) return existing;
-    const account = await this.ensureVendorAccount({
-      vendorId: input.vendorId,
-      userId: input.userId,
-      name: input.vendorName,
+    // Her ödemede cari açılmaz — yalnız mevcut tedarikçi carisine yazılır.
+    const account = await this.prisma.partyAccount.findFirst({
+      where: { linkedVendorId: input.vendorId, isActive: true },
+      select: { id: true },
+      orderBy: { createdAt: 'asc' },
     });
+    if (!account) return null;
     const entryDate = await this.entryDateIso(input.entryDate);
     return this.prisma.partyAccountEntry.create({
       data: {

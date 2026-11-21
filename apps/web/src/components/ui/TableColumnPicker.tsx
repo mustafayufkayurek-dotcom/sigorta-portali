@@ -996,27 +996,32 @@ export function PanelTableScroll({
   return (
     <div className={`relative min-w-0 w-full max-w-full ${className}`.trim()}>
       {canScroll ? (
-        <p className="pointer-events-none absolute -top-6 right-0 z-10 text-[11px] font-medium text-slate-400">
+        <p
+          className="mb-1.5 px-4 text-right text-[11px] font-medium text-slate-400"
+          data-testid="panel-table-scroll-hint"
+        >
           Yana Kaydırın — İşlemler Sağda
         </p>
       ) : null}
-      {showLeft ? (
+      <div className="relative min-w-0 w-full max-w-full">
+        {showLeft ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-8 bg-gradient-to-r from-white to-transparent"
+            aria-hidden
+          />
+        ) : null}
+        {showRight ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-10 bg-gradient-to-l from-white to-transparent"
+            aria-hidden
+          />
+        ) : null}
         <div
-          className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-8 bg-gradient-to-r from-white to-transparent"
-          aria-hidden
-        />
-      ) : null}
-      {showRight ? (
-        <div
-          className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-10 bg-gradient-to-l from-white to-transparent"
-          aria-hidden
-        />
-      ) : null}
-      <div
-        ref={scrollerRef}
-        className="min-w-0 w-full max-w-full overflow-x-auto"
-      >
-        {children}
+          ref={scrollerRef}
+          className="min-w-0 w-full max-w-full overflow-x-auto"
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
