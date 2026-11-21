@@ -6,7 +6,7 @@ import {
 import { isOfficeStaffRole } from '@/hooks/usePanelRole';
 import { cardNotesToFormEntries } from '@/utils/card-notes';
 import { normalizeFormFreeText, toTitleCaseTR } from '@/utils/text-helpers';
-import { mergePrimaryIntoCustomerContacts } from '@sigorta/shared';
+import { mergePrimaryIntoCustomerContacts, normalizeCustomerServiceScopes } from '@sigorta/shared';
 import { collapseRepeatedAddressLine, customerCardOpenAddress } from '@/utils/customer-open-address';
 import { parseInternationalPhone } from '@/data/country-codes';
 
@@ -415,6 +415,7 @@ export function mapCustomerRecordToForm(
   const serviceBranches = Array.isArray(customer.serviceBranches)
     ? customer.serviceBranches.filter((v): v is string => typeof v === 'string')
     : [];
+  const serviceScopes = normalizeCustomerServiceScopes(customer.serviceScopes);
   const tags = Array.isArray(customer.tags)
     ? customer.tags.filter((t): t is string => typeof t === 'string')
     : [];
@@ -467,6 +468,7 @@ export function mapCustomerRecordToForm(
     cardNotes: cardNotesToFormEntries(String(customer.notes ?? '')),
     serviceType,
     serviceBranches,
+    serviceScopes,
     privateServiceType: '',
     cariRol: customer.cariRol === 'musteri_tedarikci' ? 'musteri_tedarikci' as const : 'musteri' as const,
   };

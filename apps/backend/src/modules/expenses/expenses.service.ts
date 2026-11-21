@@ -24,6 +24,7 @@ import {
   remainingWorkGroupBudget,
   workGroupExpenseOverLimitMessage,
   customerMatchesExpenseLane,
+  customerMatchesExpenseServiceScope,
   expenseLaneFromSubject,
   EXPENSE_PARTY_ACCOUNT_REQUIRED_MESSAGE,
   hasExpensePartyAccountId,
@@ -31,6 +32,7 @@ import {
   isCustomerExpenseLane,
   isHariciExpenseLane,
   isTespitExpenseLane,
+  normalizeCustomerServiceScopes,
   parseExpenseLane,
   type ExpenseLane,
   parseClaimServiceKind,
@@ -798,6 +800,7 @@ export class ExpensesService {
       select: {
         id: true,
         subType: true,
+        serviceScopes: true,
         fullName: true,
         companyName: true,
         shortName: true,
@@ -805,13 +808,16 @@ export class ExpensesService {
         lastName: true,
       },
       orderBy: { updatedAt: 'desc' },
-      take: 30,
+      take: 80,
     });
     return rows
       .filter((row) => customerMatchesExpenseLane(row.subType, lane))
+      .filter((row) => customerMatchesExpenseServiceScope(row.serviceScopes, lane))
+      .slice(0, 30)
       .map((row) => ({
         id: row.id,
         subType: row.subType,
+        serviceScopes: normalizeCustomerServiceScopes(row.serviceScopes),
         name: row.shortName || row.companyName || row.fullName
           || [row.firstName, row.lastName].filter(Boolean).join(' ')
           || 'Müşteri',

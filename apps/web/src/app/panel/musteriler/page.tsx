@@ -78,7 +78,16 @@ import { MUSTERI_ROW_ACTIONS } from '@/components/portal/portal-row-action-prefs
 import { usePortalRowActionPrefs } from '@/components/portal/use-portal-row-action-prefs';
 import { OpsCustomerCell } from '@/components/operasyon/OpsCustomerCell';
 import { Building2, UserRound, Users } from 'lucide-react';
-import { CARI_KARSI_TARAF_ROL_LABEL, cariCiftRolKimlikHatasi } from '@sigorta/shared';
+import {
+  CARI_KARSI_TARAF_ROL_LABEL,
+  cariCiftRolKimlikHatasi,
+  CUSTOMER_SERVICE_SCOPE_GROUPS,
+  CUSTOMER_SERVICE_SCOPE_HEPSI,
+  customerServiceScopeIsSelected,
+  customerServiceScopeLabel,
+  normalizeCustomerServiceScopes,
+  toggleCustomerServiceScope,
+} from '@sigorta/shared';
 import { listedCustomerShortLabel } from '@/utils/operation-customer-display';
 import {
   PanelTableColumnPicker,
@@ -175,6 +184,7 @@ const emptyForm = () => ({
   followUpDate: '', tags: [] as string[], cardNotes: emptyCardNoteEntries() as CardNoteFormEntry[],
   serviceType: '' as '' | 'hasar' | 'acil_yardim',
   serviceBranches: [] as string[],
+  serviceScopes: [] as string[],
   privateServiceType: '' as string,
   /** Finans karşı taraf rolü — çift rol her iki listede görünür. */
   cariRol: 'musteri' as 'musteri' | 'musteri_tedarikci',
@@ -872,6 +882,7 @@ export default function MusterilerPage() {
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
+  const [hizmetKapsamOpen, setHizmetKapsamOpen] = useState<Record<string, boolean>>({});
 
   // ── Split button kaydet modu ──────────────────────────────────────────────
   type SaveMode = 'close' | 'new' | 'detail';
@@ -1567,7 +1578,7 @@ export default function MusterilerPage() {
     if (!showModal || !ozelMusteriAdd) return;
     setForm((p) => {
       if (p.subType === OZEL_MUSTERI_SUB_TYPE) return p;
-      return { ...p, subType: OZEL_MUSTERI_SUB_TYPE, serviceType: '', serviceBranches: [] };
+      return { ...p, subType: OZEL_MUSTERI_SUB_TYPE, serviceType: '', serviceBranches: [], serviceScopes: [] };
     });
   }, [showModal, ozelMusteriAdd]);
 
@@ -1758,6 +1769,7 @@ export default function MusterilerPage() {
         if (errors.lastName) labels.push('Soyad');
         if (errors.companyName) labels.push('Şirket Adı');
         if (errors.subType) labels.push('Alt Tip');
+        if (errors.taxNumber) labels.push('Vergi No');
         if (errors.identityNo) labels.push('TC Kimlik No');
         if (errors.phone) labels.push('Telefon');
         setSectionErrors(labels.length > 0 ? `Lütfen zorunlu alanları doldurun: ${labels.join(', ')}` : 'Lütfen geçersiz alanları düzeltin');
@@ -1953,6 +1965,11 @@ export default function MusterilerPage() {
               ? 'hasar'
               : null,
         serviceBranches: form.subType === 'sigorta_sirketi' ? form.serviceBranches : [],
+        serviceScopes: normalizeCustomerServiceScopes(
+          form.subType === 'asistan_firmasi' && form.serviceScopes.length === 0
+            ? ['acil']
+            : form.serviceScopes,
+        ),
         contacts: savedContacts,
         contactInfos: savedContactInfos.filter((ci) => ci.value.trim()),
         ...(!editingCustomerId ? { cariRol: form.cariRol } : {}),
@@ -3002,6 +3019,7 @@ export default function MusterilerPage() {
                             subType: ozelMusteriAdd ? OZEL_MUSTERI_SUB_TYPE : '',
                             serviceType: '',
                             serviceBranches: [],
+                            serviceScopes: [],
                           }));
                           setTcResult(null);
                           setGibError(null);
@@ -3066,6 +3084,7 @@ export default function MusterilerPage() {
                           subType: nextSubType,
                           serviceType: nextSubType === 'asistan_firmasi' ? 'acil_yardim' : '',
                           serviceBranches: [],
+                          serviceScopes: nextSubType === 'asistan_firmasi' ? ['acil'] : [],
                         };
                       });
                       setFieldErrors((prev) => { const n = { ...prev }; delete n.subType; return n; });
@@ -3080,7 +3099,132 @@ export default function MusterilerPage() {
                     <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
                       Cari bilgileri için yukarıdan müşteri tipini seçin.
                     </div>
-                  ) : form.customerType === 'individual' ? (
+                  ) : (
+                  <>
+                  <div className="mb-5" data-testid="musteri-hizmet-kapsami">
+                    <SectionDivider emoji="🛠" title="Hizmet Kapsamı" />
+                    <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                      Sol menüdeki gibi ana başlığa tıklayın; alt hizmetleri işaretleyin. Tüm hizmetler gerekiyorsa en alttaki Hepsi’yi seçin.
+                    </p>
+                    <div className="mt-3 space-y-1.5">
+                      {CUSTOMER_SERVICE_SCOPE_GROUPS.map((group) => {
+                        const childSelected = group.options.some((o) =>
+                          customerServiceScopeIsSelected(form.serviceScopes, o.id),
+                        );
+                        const isOpen = hizmetKapsamOpen[group.label] ?? childSelected;
+                        return (
+                          <div key={group.label} className="rounded-lg border border-slate-200 overflow-hidden">
+                            <button
+                              type="button"
+                              data-testid={`musteri-hizmet-kapsam-grup-${group.label}`}
+                              aria-expanded={isOpen}
+                              onClick={() =>
+                                setHizmetKapsamOpen((prev) => ({
+                                  ...prev,
+                                  [group.label]: !(prev[group.label] ?? childSelected),
+                                }))
+                              }
+                              className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+                            >
+                              <span>{group.label}</span>
+                              <svg
+                                className={`w-4 h-4 text-slate-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                aria-hidden
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            {isOpen ? (
+                              <div className="border-t border-slate-100 bg-white px-2 py-1.5 space-y-0.5">
+                                {group.options.map((opt) => {
+                                  const selected = customerServiceScopeIsSelected(form.serviceScopes, opt.id);
+                                  return (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      data-testid={`musteri-hizmet-kapsam-${opt.id}`}
+                                      onClick={() =>
+                                        setForm((p) => ({
+                                          ...p,
+                                          serviceScopes: toggleCustomerServiceScope(p.serviceScopes, opt.id),
+                                        }))
+                                      }
+                                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs transition-all text-left ${
+                                        selected
+                                          ? 'bg-emerald-50 text-emerald-700 font-medium'
+                                          : 'text-slate-600 hover:bg-slate-50'
+                                      }`}
+                                    >
+                                      <span
+                                        className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center text-[9px] ${
+                                          selected
+                                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                                            : 'border-slate-300'
+                                        }`}
+                                      >
+                                        {selected ? '✓' : ''}
+                                      </span>
+                                      {opt.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                      {(() => {
+                        const hepsiSelected = customerServiceScopeIsSelected(
+                          form.serviceScopes,
+                          CUSTOMER_SERVICE_SCOPE_HEPSI,
+                        );
+                        return (
+                          <button
+                            type="button"
+                            data-testid="musteri-hizmet-kapsam-hepsi"
+                            onClick={() =>
+                              setForm((p) => ({
+                                ...p,
+                                serviceScopes: toggleCustomerServiceScope(p.serviceScopes, CUSTOMER_SERVICE_SCOPE_HEPSI),
+                              }))
+                            }
+                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-all text-left ${
+                              hepsiSelected
+                                ? 'border-emerald-400 bg-emerald-50 text-emerald-700 font-medium'
+                                : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span
+                              className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center text-[9px] ${
+                                hepsiSelected
+                                  ? 'bg-emerald-600 border-emerald-600 text-white'
+                                  : 'border-slate-300'
+                              }`}
+                            >
+                              {hepsiSelected ? '✓' : ''}
+                            </span>
+                            <span className="flex flex-col items-start gap-0.5">
+                              <span>Hepsi</span>
+                              <span className="text-[11px] font-normal text-slate-500">Tüm hizmetlerde listelenir</span>
+                            </span>
+                          </button>
+                        );
+                      })()}
+                    </div>
+                    {form.serviceScopes.length > 0 ? (
+                      <p className="text-xs text-slate-500 mt-2">
+                        Seçilen: {form.serviceScopes.map((id) => customerServiceScopeLabel(id)).join(', ')}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-amber-700 mt-2">
+                        Seçilmezse masraf listelerinde tüm müşteri yollarında görünür. Önce ilgili hizmeti işaretleyin; tümü gerekiyorsa Hepsi.
+                      </p>
+                    )}
+                  </div>
+                  {form.customerType === 'individual' ? (
                     <>
                       <SectionDivider emoji="📋" title="Bireysel Bilgiler" />
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
@@ -3112,7 +3256,12 @@ export default function MusterilerPage() {
                             onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v })); }} />
                         </FormField>
                         <div className="col-span-1 sm:col-span-2">
-                          <FormField label="TC Kimlik No" error={identityNoError ?? fieldErrors.identityNo ?? undefined}>
+                          <FormField
+                            label="TC Kimlik No"
+                            required={!editingCustomerId && form.cariRol === 'musteri_tedarikci'}
+                            error={identityNoError ?? fieldErrors.identityNo ?? undefined}
+                            help={!editingCustomerId && form.cariRol === 'musteri_tedarikci' ? 'Müşteri Ve Tedarikçi seçiliyken T.C. kimlik numarası zorunludur.' : undefined}
+                          >
                             <div className="relative">
                               <input
                                 className={`w-full border rounded-lg px-3 py-2 h-[38px] pr-8 text-sm focus:outline-none focus:ring-2 transition-colors ${identityNoError || fieldErrors.identityNo ? 'border-red-400 ring-2 ring-status-danger/20 bg-red-50 focus:ring-status-danger/30' : tcResult === true ? 'border-green-400 ring-2 ring-green-500/20 focus:ring-green-500/30' : 'border-slate-200 focus:ring-purple-500/30'}`}
@@ -3202,9 +3351,14 @@ export default function MusterilerPage() {
                             <input ref={companyNameRef} className={fieldErrors.companyName ? inpError : inp} placeholder="Şirket Unvanı" value={form.companyName} onChange={(e) => { setForm((p) => ({ ...p, companyName: e.target.value })); setFieldErrors((prev) => { const n = { ...prev }; delete n.companyName; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, companyName: v })); }} />
                           </FormField>
                         </div>
-                        <FormField label="Vergi No">
+                        <FormField
+                          label="Vergi No"
+                          required={!editingCustomerId && form.cariRol === 'musteri_tedarikci'}
+                          error={fieldErrors.taxNumber || taxNoError || undefined}
+                          help={!editingCustomerId && form.cariRol === 'musteri_tedarikci' ? 'Müşteri Ve Tedarikçi seçiliyken vergi numarası zorunludur.' : undefined}
+                        >
                           <div className="flex gap-2">
-                            <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-status-success/30 focus:border-emerald-400 transition-colors"
+                            <input className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors ${fieldErrors.taxNumber || taxNoError ? 'border-red-400 ring-2 ring-status-danger/20 bg-red-50 focus:ring-status-danger/30' : 'border-slate-200 focus:ring-status-success/30 focus:border-emerald-400'}`}
                               placeholder="10 Haneli VKN" maxLength={10} inputMode="numeric"
                               value={form.taxNumber}
                               onChange={(e) => {
@@ -3213,6 +3367,8 @@ export default function MusterilerPage() {
                                 setGibError(null); setTaxNoError(null); setTaxNoWarn(null);
                                 setDuplicateConflicts((p) => { const n = { ...p }; delete n.taxNumber; return n; });
                                 setDuplicateExistingCustomerId(null);
+                                setFieldErrors((prev) => { const n = { ...prev }; delete n.taxNumber; return n; });
+                                setSectionErrors(null);
                               }}
                               onBlur={handleTaxNoBlur} />
                             <button type="button" onClick={handleGibQuery} disabled={gibLoading || !form.taxNumber}
@@ -3221,8 +3377,7 @@ export default function MusterilerPage() {
                               Ünvan Sorgula
                             </button>
                           </div>
-                          {taxNoError && <p className="text-xs text-status-danger mt-1.5">{taxNoError}</p>}
-                          {!taxNoError && taxNoWarn && (
+                          {!fieldErrors.taxNumber && !taxNoError && taxNoWarn && (
                             <div className="mt-1.5 space-y-1">
                               <p className="text-xs text-amber-600 flex items-center gap-1">⚠ {taxNoWarn}</p>
                               {duplicateExistingCustomerId && (
@@ -3390,6 +3545,8 @@ export default function MusterilerPage() {
                         </FormField>
                       </div>
                     </>
+                  )}
+                  </>
                   )}
                 </div>
               )}

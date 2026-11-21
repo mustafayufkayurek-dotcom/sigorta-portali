@@ -16,6 +16,7 @@ import {
   AUTHORIZED_PERSON_DIRTY_MESSAGE,
   isDirtyAuthorizedPersonName,
   mergePrimaryIntoCustomerContacts,
+  normalizeCustomerServiceScopes,
   shouldReplaceCustomerContacts,
 } from '@sigorta/shared';
 import * as ExcelJS from 'exceljs';
@@ -1068,6 +1069,9 @@ export class CustomersService {
     if (rest.privateServiceType && !rest.serviceType) {
       rest.serviceType = rest.privateServiceType;
     }
+    if (rest.serviceScopes !== undefined) {
+      rest.serviceScopes = normalizeCustomerServiceScopes(rest.serviceScopes);
+    }
     delete rest.privateServiceType;
     delete rest.customerType;
     const allowed = new Set([
@@ -1076,7 +1080,7 @@ export class CustomersService {
       'authorizedPerson', 'contactFirstName', 'contactLastName',
       'phone', 'email', 'city', 'district', 'neighborhood', 'streetName',
       'buildingNo', 'doorNo', 'address', 'birthDate', 'latitude', 'longitude',
-      'serviceType', 'serviceBranches', 'source', 'satisfactionScore',
+      'serviceType', 'serviceBranches', 'serviceScopes', 'source', 'satisfactionScore',
       'followUpDate', 'tags', 'status', 'notes', 'updatedByUserId',
       'insuranceCompanyId',
     ]);

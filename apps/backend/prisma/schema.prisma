@@ -623,6 +623,8 @@ model Customer {
   // Hizmet türü ve branşlar
   serviceType     String?   @map("service_type")       // HASAR | ACIL_YARDIM
   serviceBranches Json?     @default("[]") @map("service_branches") // string[]
+  /// Operasyon hizmet kapsamı: hepsi | acil | hasar-onarim | danismanlik | hasar-tespit | police-yonetimi
+  serviceScopes   Json?     @default("[]") @map("service_scopes") // string[]
 
   // CRM alanları
   source          String?   // insurance_referral | referral | web | returning
