@@ -23,8 +23,11 @@ describe('SlidePanel alt tuş LOCK', () => {
       'utf8',
     );
     assert.match(masraf, /masraf-form-footer/);
-    assert.match(masraf, /sticky bottom-0/);
     assert.match(masraf, /safe-area-inset-bottom/);
+    assert.match(masraf, /items-center/);
+    assert.match(masraf, /pb-\[max\(2rem/);
+    assert.match(masraf, /bg-slate-50/);
+    assert.doesNotMatch(masraf, /masraf-form-footer[\s\S]{0,120}sticky bottom-0/);
     assert.match(masraf, /scrollContent=\{false\}/);
     assert.match(masraf, /overscroll-contain/);
     assert.ok(

@@ -1744,121 +1744,15 @@ export default function MasraflarPage() {
               </select>
             </div>
 
-            {isCustomerExpenseLane(form.expenseLane) && (
-              <div className="md:col-span-2">
-                <FieldLabel
-                  className={fieldLabelCls}
-                  help={
-                    form.expenseLane === 'asistans'
-                      ? 'Acil Yardım masrafı asistans firması kartına yazılır.'
-                      : 'Danışmanlık veya Poliçe Yönetimi müşteri kartı seçilir.'
-                  }
-                >
-                  Müşteri {requiredHint}
-                </FieldLabel>
-                <SearchableSelect
-                  className="min-w-0"
-                  inputClassName={inputCls}
-                  options={customerOptions.map((row) => ({ value: row.id, label: row.name }))}
-                  value={form.customerId}
-                  onChange={(id) => setForm({ ...form, customerId: id })}
-                  onQueryChange={setCustomerQuery}
-                  placeholder={
-                    form.expenseLane === 'asistans'
-                      ? 'Asistans firması ara...'
-                      : form.expenseLane === 'police'
-                        ? 'Poliçe müşterisi ara...'
-                        : 'Danışmanlık müşterisi ara...'
-                  }
-                  emptyText="Müşteri bulunamadı"
-                />
-              </div>
-            )}
-
-            {form.expenseLane && (
-              <div className="md:col-span-2" data-testid="masraf-cari-kaynak">
-                <FieldLabel
-                  className={fieldLabelCls}
-                  help="Ödemenin çıktığı kredi kartı veya tedarikçi cari. Yoksa Yeni Cari ile açılır."
-                >
-                  Ödeme Kaynağı (Cari) {requiredHint}
-                </FieldLabel>
-                <div className="flex flex-wrap gap-2">
-                  <SearchableSelect
-                    className="min-w-0 flex-1"
-                    inputClassName={inputCls}
-                    options={partyAccounts.map((row) => ({
-                      value: row.id,
-                      label: `${row.name} · ${row.kindLabel}`,
-                    }))}
-                    value={form.partyAccountId}
-                    onChange={(id) => setForm({ ...form, partyAccountId: id })}
-                    placeholder="Kredi kartı veya tedarikçi cari ara..."
-                    emptyText="Cari bulunamadı — Yeni Cari ile açın"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCariCreate(true)}
-                    className="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    data-testid="masraf-yeni-cari"
-                  >
-                    + Yeni Cari
-                  </button>
-                </div>
-                {(() => {
-                  const selected = partyAccounts.find((row) => row.id === form.partyAccountId);
-                  if (!selected) return null;
-                  return (
-                    <div
-                      className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"
-                      data-testid="masraf-cari-kart"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-800">{selected.name}</p>
-                        <p className="text-xs text-slate-500">
-                          {selected.kindLabel}
-                          {selected.cardLast4 ? ` · ****${selected.cardLast4}` : ''}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Link
-                          href={`/panel/finans/cariler/${encodeURIComponent(selected.id)}`}
-                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                          data-testid="masraf-cari-sayfa"
-                        >
-                          Cari Sayfası
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCariOzetId((cur) => (cur === selected.id ? null : selected.id))
-                          }
-                          className="rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-800 hover:bg-brand-100"
-                          data-testid="masraf-cari-ozet-ac"
-                        >
-                          {cariOzetId === selected.id ? 'Cari Özeti Gizle' : 'Cari Kartı Aç'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-                <CariHesapOzetModal
-                  open={Boolean(cariOzetId)}
-                  accountId={cariOzetId}
-                  onClose={() => setCariOzetId(null)}
-                />
-              </div>
-            )}
-
             {/* Hasar Onarım / Hasar Tespit — dosya seçimi */}
             {isFileExpenseLane(form.expenseLane) && (
-            <div className="md:col-span-2">
+            <div className="md:col-span-2" data-testid="masraf-dosya-select">
               <FieldLabel
                 className={fieldLabelCls}
                 help={
                   form.expenseLane === 'tespit'
-                    ? 'Hasar Tespit dosya no veya sigortalı adı ile arayın.'
-                    : 'Dosya no veya sigortalı adı ile arayın. Hatırlamıyorsanız Dosyadan Seç ile listeden alın.'
+                    ? 'Hasar Tespit dosya no veya sigortalı adı soyadı ile arayın.'
+                    : 'Dosya no veya sigortalı adı soyadı ile arayın. Hatırlamıyorsanız Dosyadan Seç ile listeden alın.'
                 }
                 testId="masraf-dosya-help"
               >
@@ -1874,8 +1768,8 @@ export default function MasraflarPage() {
                   onQueryChange={handleFileQueryChange}
                   placeholder={
                     form.expenseLane === 'tespit'
-                      ? 'Tespit dosya no veya sigortalı adı yazın...'
-                      : 'Dosya no, hasar no veya sigortalı adı yazın...'
+                      ? 'Tespit dosya no veya sigortalı adı soyadı yazın...'
+                      : 'Dosya no, hasar no veya sigortalı adı soyadı yazın...'
                   }
                   emptyText={
                     fileLookupLoading
@@ -2013,6 +1907,112 @@ export default function MasraflarPage() {
                 </p>
               )}
             </div>
+            )}
+
+            {isCustomerExpenseLane(form.expenseLane) && (
+              <div className="md:col-span-2">
+                <FieldLabel
+                  className={fieldLabelCls}
+                  help={
+                    form.expenseLane === 'asistans'
+                      ? 'Acil Yardım masrafı asistans firması kartına yazılır.'
+                      : 'Danışmanlık veya Poliçe Yönetimi müşteri kartı seçilir.'
+                  }
+                >
+                  Müşteri {requiredHint}
+                </FieldLabel>
+                <SearchableSelect
+                  className="min-w-0"
+                  inputClassName={inputCls}
+                  options={customerOptions.map((row) => ({ value: row.id, label: row.name }))}
+                  value={form.customerId}
+                  onChange={(id) => setForm({ ...form, customerId: id })}
+                  onQueryChange={setCustomerQuery}
+                  placeholder={
+                    form.expenseLane === 'asistans'
+                      ? 'Asistans firması ara...'
+                      : form.expenseLane === 'police'
+                        ? 'Poliçe müşterisi ara...'
+                        : 'Danışmanlık müşterisi ara...'
+                  }
+                  emptyText="Müşteri bulunamadı"
+                />
+              </div>
+            )}
+
+            {form.expenseLane && (
+              <div className="md:col-span-2" data-testid="masraf-cari-kaynak">
+                <FieldLabel
+                  className={fieldLabelCls}
+                  help="Ödemenin çıktığı kredi kartı veya tedarikçi cari. Yoksa Yeni Cari ile açılır."
+                >
+                  Ödeme Kaynağı (Cari) {requiredHint}
+                </FieldLabel>
+                <div className="flex flex-wrap gap-2">
+                  <SearchableSelect
+                    className="min-w-0 flex-1"
+                    inputClassName={inputCls}
+                    options={partyAccounts.map((row) => ({
+                      value: row.id,
+                      label: `${row.name} · ${row.kindLabel}`,
+                    }))}
+                    value={form.partyAccountId}
+                    onChange={(id) => setForm({ ...form, partyAccountId: id })}
+                    placeholder="Kredi kartı veya tedarikçi cari ara..."
+                    emptyText="Cari bulunamadı — Yeni Cari ile açın"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCariCreate(true)}
+                    className="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    data-testid="masraf-yeni-cari"
+                  >
+                    + Yeni Cari
+                  </button>
+                </div>
+                {(() => {
+                  const selected = partyAccounts.find((row) => row.id === form.partyAccountId);
+                  if (!selected) return null;
+                  return (
+                    <div
+                      className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"
+                      data-testid="masraf-cari-kart"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-800">{selected.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {selected.kindLabel}
+                          {selected.cardLast4 ? ` · ****${selected.cardLast4}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Link
+                          href={`/panel/finans/cariler/${encodeURIComponent(selected.id)}`}
+                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          data-testid="masraf-cari-sayfa"
+                        >
+                          Cari Sayfası
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCariOzetId((cur) => (cur === selected.id ? null : selected.id))
+                          }
+                          className="rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-800 hover:bg-brand-100"
+                          data-testid="masraf-cari-ozet-ac"
+                        >
+                          {cariOzetId === selected.id ? 'Cari Özeti Gizle' : 'Cari Kartı Aç'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <CariHesapOzetModal
+                  open={Boolean(cariOzetId)}
+                  accountId={cariOzetId}
+                  onClose={() => setCariOzetId(null)}
+                />
+              </div>
             )}
 
             {(editId || lastSavedOpNo) ? (
@@ -2441,13 +2441,13 @@ export default function MasraflarPage() {
           </div>
 
           <div
-            className="sticky bottom-0 z-20 flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-white px-3 py-3.5 pb-[max(1.25rem,calc(0.75rem+env(safe-area-inset-bottom,0px)))] shadow-[0_-6px_16px_rgba(15,23,42,0.1)] sm:px-4 dark:border-slate-700 dark:bg-slate-900"
+            className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-3 pt-3.5 pb-[max(2rem,calc(0.75rem+env(safe-area-inset-bottom,0px)))] sm:px-4 dark:border-slate-700 dark:bg-slate-900"
             data-testid="masraf-form-footer"
           >
             <button
               type="button"
               onClick={closeExpenseForm}
-              className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
             >
               İptal
             </button>
@@ -2466,7 +2466,7 @@ export default function MasraflarPage() {
                   type="button"
                   onClick={() => handleSave('close')}
                   disabled={saving || !formCanSave}
-                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                 >
                   Kaydet ve Kapat
                 </button>

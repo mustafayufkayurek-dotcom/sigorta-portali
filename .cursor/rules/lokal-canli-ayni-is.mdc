@@ -1,0 +1,22 @@
+# Lokal Ve Canlı Aynı İş
+
+**Kaynak (Mustafa · 21.11.2026):** Lokalde gösterilen iş canlıda yoktu. Personel canlıyı açınca eski ekranı gördü. «Alım eksik» sanıldı; asıl hata işin hiç alınmamasıydı.
+
+**Temel cümle:** Lokalde bitmiş görünen iş **canlı değildir.** Canlıya gitti sayılmaz. «Canlıya al» denmeden canlı adresinde o iş yoktur.
+
+## Zorunlu
+
+1. Lokal panelde gösterilen düzeltme / sıra / tuş / arama: yanıtta **canlıya alınmadı** açık yazılır. «Hazır» ≠ canlıda.
+2. «Canlıya al» gelince: önce **kirli ağaçtaki o işin dosyaları kayıtlanır**, sonra full alım. Kayıtsız / yarım dosya alıma girmez (`assert-deploy-source`).
+3. Canlı adres (`app.meridyen-tr.com`) ekranı eskiyse: alım scripti bozulmuş sanılmaz; önce bu işin son alımda olup olmadığına bakılır.
+4. Alım bitince canlı sürüm (web + backend etiketi) ve neyin geldiği kısa yazılır.
+
+## Yasak
+
+- Lokalde gösterip «bitti» deyip canlıya almayı unutmak
+- Canlı ekranı eski diye sessizce yeni lokal işe devam etmek
+- Kirli ağaçla alım denemek
+
+## Durdurma
+
+Lokal ≠ canlı yine karışırsa → dur, kaydet + «canlıya al» veya açıkça «canlıda yok» de.

@@ -19,6 +19,7 @@ import { resolveExpenseCategoryFields } from './expense-category-resolver.util';
 import { isOverheadCategoryCode } from '../finance/overhead.constants';
 import { PartyAccountsService } from '../finance/party-accounts.service';
 import {
+  buildClaimFileListSearchWhere,
   canPostWorkGroupExpense,
   expenseMatchesWorkGroup,
   remainingWorkGroupBudget,
@@ -110,17 +111,19 @@ export class ExpensesService {
     },
   };
 
-  /** Boşluk/tire vb. temizlenmiş dosya no araması */
+  /**
+   * Dosya no / hasar no / sigortalı adı soyadı (kelime kelime) araması.
+   * Hasar listesi ile aynı ad–soyad kapısı (`buildClaimFileListSearchWhere`).
+   */
   private buildFileSearchFilter(search: string) {
     const q = search.trim();
     if (!q) return undefined;
-    const digits = q.replace(/[\s\-./]/g, '');
+    const base = buildClaimFileListSearchWhere(q) as { OR: Array<Record<string, unknown>> };
     const or: Array<Record<string, unknown>> = [
-      { fileNo: { contains: q, mode: 'insensitive' } },
-      { claimNo: { contains: q, mode: 'insensitive' } },
-      { insuredName: { contains: q, mode: 'insensitive' } },
+      ...base.OR,
       { description: { contains: q, mode: 'insensitive' } },
     ];
+    const digits = q.replace(/[\s\-./]/g, '');
     if (digits && digits !== q) {
       or.push({ fileNo: { contains: digits, mode: 'insensitive' } });
       or.push({ claimNo: { contains: digits, mode: 'insensitive' } });
@@ -131,21 +134,37 @@ export class ExpensesService {
     return { OR: or };
   }
 
-  /** Özel müşteri dosyalarında dosya no ile arama yapılmaz */
+  /** Özel müşteri dosyalarında dosya no ile arama yapılmaz; sigortalı adı soyadı kelime kelime */
   private buildOzelCustomerSearchFilter(search: string) {
     const q = search.trim();
     if (!q) return undefined;
-    return {
-      OR: [
-        { insuredName: { contains: q, mode: 'insensitive' as const } },
-        { description: { contains: q, mode: 'insensitive' as const } },
-        { customer: { fullName: { contains: q, mode: 'insensitive' as const } } },
-        { customer: { companyName: { contains: q, mode: 'insensitive' as const } } },
-        { customer: { firstName: { contains: q, mode: 'insensitive' as const } } },
-        { customer: { lastName: { contains: q, mode: 'insensitive' as const } } },
-        { customer: { phone: { contains: q } } },
-      ],
-    };
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const or: Array<Record<string, unknown>> = [
+      { insuredName: { contains: q, mode: 'insensitive' as const } },
+      { description: { contains: q, mode: 'insensitive' as const } },
+      { customer: { fullName: { contains: q, mode: 'insensitive' as const } } },
+      { customer: { companyName: { contains: q, mode: 'insensitive' as const } } },
+      { customer: { firstName: { contains: q, mode: 'insensitive' as const } } },
+      { customer: { lastName: { contains: q, mode: 'insensitive' as const } } },
+      { customer: { phone: { contains: q } } },
+    ];
+    if (tokens.length > 1) {
+      or.push({
+        AND: tokens.map((token) => ({
+          insuredName: { contains: token, mode: 'insensitive' as const },
+        })),
+      });
+      or.push({
+        AND: tokens.map((token) => ({
+          OR: [
+            { customer: { firstName: { contains: token, mode: 'insensitive' as const } } },
+            { customer: { lastName: { contains: token, mode: 'insensitive' as const } } },
+            { customer: { fullName: { contains: token, mode: 'insensitive' as const } } },
+          ],
+        })),
+      });
+    }
+    return { OR: or };
   }
 
   private browseSegmentWhere(segment: 'hasar' | 'ozel_musteri') {
@@ -205,7 +224,8 @@ export class ExpensesService {
       id: file.id,
       fileNo: file.fileNo,
       claimNo: file.claimNo,
-      description: customerName || file.insuredName || file.description || file.claimNo || '',
+      // Listede önce sigortalı adı soyadı; müşteri ünvanı yedek
+      description: file.insuredName || customerName || file.description || file.claimNo || '',
       customerSubType: file.customer?.subType ?? null,
       operationSubject: isOzelMusteri ? ('OZEL_OPERASYON' as const) : ('HASAR_ONARIM' as const),
       segment: isOzelMusteri ? ('ozel_musteri' as const) : ('hasar' as const),
