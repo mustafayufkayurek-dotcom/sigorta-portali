@@ -1,11 +1,11 @@
 ---
-description: Canlı web v700 / backend v700
+description: Canlı web v701 / backend v701
 alwaysApply: true
 ---
 
-# Canlı (20.11.2026)
+# Canlı (21.11.2026)
 
-Canlı: web **v700** · backend **v700**. Geri alma: web **v699** / backend **v699**.
+Canlı: web **v701** · backend **v701**. Geri alma: web **v700** / backend **v700**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v701 (full):** Hasar hakediş iş grubu bütçe tavanı katı (eski dosya + bütçe sürümü dahil); fazla hakediş API ile de yazılmaz. Kısmi ödeme (ödendi / kalan); ödeme sonrası masraf (ödendi kadar); cari yalnız mevcut tedarikçi carisine. Masraf listesi kaydırma üst üste binmesi düzeltildi. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v700** / backend **v700**.
 
 **v700 (full):** 72s onay hatırlatması otomatik müşteriye gitmez; dosya sorumlusu penceresi (Dosya No + Sn. soyad müşteri ilişkisi notu); muhatap seçimi broker/eksper; gönderen Meridyen. Panele veya dosyaya girince pencere; şerit yok. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v699** / backend **v699**.
 
@@ -277,4 +279,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v700** · backend **v700**.
+Canlı web **v701** · backend **v701**.
