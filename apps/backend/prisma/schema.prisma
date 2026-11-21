@@ -3515,6 +3515,8 @@ enum ExpenseOperationSubject {
   DANISMANLIK
   TEKNE_YAT
   HARICI_MASRAF
+  HASAR_TESPIT
+  POLICE_YONETIMI
 }
 
 model Expense {

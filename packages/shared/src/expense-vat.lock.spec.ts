@@ -50,10 +50,11 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /belgesiz/);
     assert.match(masraf, /masraf-yolu-\$\{opt\.id\}/);
     assert.match(masraf, /EXPENSE_LANE_SELECT_GROUPS/);
-    assert.match(masraf, /EXPENSE_LANE_SELECT_STANDALONE/);
     assert.match(masraf, /optgroup/);
     assert.match(masraf, /finans-masraf-yolu/);
     assert.match(masraf, /value=\{opt\.id\}/);
+    assert.match(masraf, /Hasar Tespit|tespit/);
+    assert.match(masraf, /Poliçe Yönetimi|police/);
     assert.match(masraf, /masraf-form-footer/);
     assert.match(masraf, /grid-rows-\[auto_minmax\(0,1fr\)_auto\]/);
     assert.match(masraf, /safe-area-inset-bottom/);

@@ -52,14 +52,14 @@ export class ExpensesController {
   }
 
   @Get('eligible-files')
-  async getEligibleFiles(@Query('search') search?: string) {
-    const data = await this.service.getEligibleFiles(search);
+  async getEligibleFiles(@Query('search') search?: string, @Query('lane') lane?: string) {
+    const data = await this.service.getEligibleFiles(search, lane);
     return { data };
   }
 
   @Get('file-lookup')
-  async lookupFile(@Query('q') q?: string) {
-    const data = await this.service.lookupFileForExpense(q ?? '');
+  async lookupFile(@Query('q') q?: string, @Query('lane') lane?: string) {
+    const data = await this.service.lookupFileForExpense(q ?? '', lane);
     return { data };
   }
 
