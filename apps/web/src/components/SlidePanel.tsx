@@ -65,7 +65,7 @@ export function SlidePanel({
       <div
         ref={panelRef}
         style={{ ['--slide-panel-w' as string]: `${width}px` }}
-        className={`fixed top-0 right-0 z-[210] flex h-full w-full max-w-[100vw] flex-col border-l border-gray-100 bg-white shadow-2xl shadow-black/20 transition-transform duration-300 ease-in-out sm:w-[var(--slide-panel-w)] sm:max-w-none ${rightPanelDockClass(open, docked)}`}
+        className={`fixed inset-y-0 right-0 z-[210] flex h-[100dvh] max-h-[100dvh] w-full max-w-[100vw] flex-col border-l border-gray-100 bg-white shadow-2xl shadow-black/20 transition-transform duration-300 ease-in-out sm:w-[var(--slide-panel-w)] sm:max-w-none ${rightPanelDockClass(open, docked)}`}
         role="dialog"
         aria-modal={open && !docked}
       >
@@ -89,20 +89,22 @@ export function SlidePanel({
         )}
 
         {open && !docked ? (
-          <OpsFirstRunNotice
-            noticeId={OPS_NOTICE.sagPanelKaydir.id}
-            title={OPS_NOTICE.sagPanelKaydir.title}
-            body={OPS_NOTICE.sagPanelKaydir.body}
-            testId="sag-panel-kaydir-seridi"
-            className="mx-4 mt-3 sm:mx-5"
-          />
+          <div className="shrink-0">
+            <OpsFirstRunNotice
+              noticeId={OPS_NOTICE.sagPanelKaydir.id}
+              title={OPS_NOTICE.sagPanelKaydir.title}
+              body={OPS_NOTICE.sagPanelKaydir.body}
+              testId="sag-panel-kaydir-seridi"
+              className="mx-4 mt-3 sm:mx-5"
+            />
+          </div>
         ) : null}
 
         <div
           className={
             scrollContent
-              ? 'flex-1 overflow-y-auto'
-              : 'flex min-h-0 flex-1 flex-col overflow-hidden [&>*]:h-full [&>*]:min-h-0'
+              ? 'min-h-0 flex-1 overflow-y-auto'
+              : 'flex min-h-0 flex-1 flex-col overflow-hidden [&>*]:min-h-0 [&>*]:flex-1'
           }
         >
           {children}

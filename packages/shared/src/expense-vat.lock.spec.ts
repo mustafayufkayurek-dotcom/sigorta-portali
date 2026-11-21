@@ -48,7 +48,15 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /documentMode/);
     assert.match(masraf, /belgeli/);
     assert.match(masraf, /belgesiz/);
-    assert.match(masraf, /value="harici"/);
+    assert.match(masraf, /masraf-yolu-\$\{opt\.id\}/);
+    assert.match(masraf, /EXPENSE_LANE_SELECT_GROUPS/);
+    assert.match(masraf, /EXPENSE_LANE_SELECT_STANDALONE/);
+    assert.match(masraf, /optgroup/);
+    assert.match(masraf, /finans-masraf-yolu/);
+    assert.match(masraf, /value=\{opt\.id\}/);
+    assert.match(masraf, /masraf-form-footer/);
+    assert.match(masraf, /grid-rows-\[auto_minmax\(0,1fr\)_auto\]/);
+    assert.match(masraf, /safe-area-inset-bottom/);
     assert.match(masraf, /splitGrossVat/);
     assert.match(masraf, /hasTaxDocument/);
     assert.match(masraf, /masraf-kdv-ozet/);
@@ -69,6 +77,10 @@ describe('masraf KDV LOCK', () => {
     assert.ok(
       masraf.indexOf('masraf-yolu-select') < masraf.indexOf('masraf-kdv-ozet'),
       'Masraf Yolu tutar/KDV özetinden önce durur',
+    );
+    assert.ok(
+      masraf.indexOf('masraf-kdv-ozet') < masraf.indexOf('masraf-form-footer'),
+      'Alt Kaydet tuşları formun altında sabit durur',
     );
 
     const ayar = readFileSync(

@@ -28,6 +28,39 @@ describe('masraf yolu LOCK', () => {
     assert.equal(expenseSubjectForLane('harici'), 'HARICI_MASRAF');
   });
 
+  it('açılır liste sol menü Operasyon kırılımıyla aynı grupları kullanır', async () => {
+    const {
+      EXPENSE_LANE_LABEL,
+      EXPENSE_LANE_SELECT_GROUPS,
+      EXPENSE_LANE_SELECT_STANDALONE,
+    } = await import('./expense-lane.ts');
+    assert.equal(EXPENSE_LANE_LABEL.hasar, 'Hasar Onarım');
+    assert.equal(EXPENSE_LANE_LABEL.asistans, 'Acil Yardım');
+    assert.deepEqual(
+      EXPENSE_LANE_SELECT_GROUPS.map((g) => g.label),
+      ['Asistans Hizmetleri', 'Ek Hizmetler'],
+    );
+    assert.deepEqual(
+      EXPENSE_LANE_SELECT_GROUPS[0].options.map((o) => o.id),
+      ['hasar', 'asistans'],
+    );
+    assert.deepEqual(
+      EXPENSE_LANE_SELECT_GROUPS[1].options.map((o) => o.id),
+      ['danismanlik'],
+    );
+    assert.deepEqual(
+      EXPENSE_LANE_SELECT_STANDALONE.map((o) => o.id),
+      ['harici'],
+    );
+    const page = readFileSync(
+      join(import.meta.dirname, '../../../apps/web/src/app/panel/finans/masraflar/page.tsx'),
+      'utf8',
+    );
+    assert.match(page, /EXPENSE_LANE_SELECT_GROUPS/);
+    assert.match(page, /optgroup/);
+    assert.doesNotMatch(page, /flex flex-wrap gap-2.*Masraf Yolu|role="group" aria-label="Masraf Yolu"/);
+  });
+
   it('asistans firması yalnız asistans yoluna girer', () => {
     assert.equal(customerMatchesExpenseLane('asistan_firmasi', 'asistans'), true);
     assert.equal(customerMatchesExpenseLane('asistans_firmasi', 'asistans'), true);

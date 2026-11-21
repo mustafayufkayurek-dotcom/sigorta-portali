@@ -22,11 +22,34 @@ export const EXPENSE_SUBJECT_HARICI = 'HARICI_MASRAF';
 export const ASISTANS_EXPENSE_CUSTOMER_SUBTYPES = ['asistan_firmasi', 'asistans_firmasi'] as const;
 
 export const EXPENSE_LANE_LABEL: Record<ExpenseLane, string> = {
-  hasar: 'Hasar Dosyası',
+  hasar: 'Hasar Onarım',
   danismanlik: 'Danışmanlık',
-  asistans: 'Asistans',
+  asistans: 'Acil Yardım',
   harici: 'Harici Masraf',
 };
+
+/** Sol menü Operasyon kırılımı ile aynı gruplar — Masraf Yolu açılır listesi. */
+export const EXPENSE_LANE_SELECT_GROUPS: ReadonlyArray<{
+  label: string;
+  options: ReadonlyArray<{ id: ExpenseLane; label: string }>;
+}> = [
+  {
+    label: 'Asistans Hizmetleri',
+    options: [
+      { id: EXPENSE_LANE_HASAR, label: EXPENSE_LANE_LABEL.hasar },
+      { id: EXPENSE_LANE_ASISTANS, label: EXPENSE_LANE_LABEL.asistans },
+    ],
+  },
+  {
+    label: 'Ek Hizmetler',
+    options: [{ id: EXPENSE_LANE_DANISMANLIK, label: EXPENSE_LANE_LABEL.danismanlik }],
+  },
+];
+
+/** Operasyon menüsünde olmayan yol — grup dışı satır. */
+export const EXPENSE_LANE_SELECT_STANDALONE: ReadonlyArray<{ id: ExpenseLane; label: string }> = [
+  { id: EXPENSE_LANE_HARICI, label: EXPENSE_LANE_LABEL.harici },
+];
 
 export function expenseLaneFromSubject(subject: unknown): ExpenseLane {
   const v = String(subject ?? '').trim();

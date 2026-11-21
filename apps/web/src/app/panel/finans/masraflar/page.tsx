@@ -55,6 +55,8 @@ import {
   financeOperationNo,
   DEFAULT_MASRAF_KDV_ORANLARI,
   EXPENSE_LANE_LABEL,
+  EXPENSE_LANE_SELECT_GROUPS,
+  EXPENSE_LANE_SELECT_STANDALONE,
   expenseDocumentModeFromFlag,
   expenseLaneFromSubject,
   expenseSubjectForLane,
@@ -1309,12 +1311,12 @@ export default function MasraflarPage() {
   );
 
   const masrafYoluHelp = !form.expenseLane
-    ? 'Hasar dosyaya, danışmanlık/asistans müşteriye, Harici kayıp KDV telafisine yazılır.'
+    ? 'Sol menüdeki gibi seçilir: Hasar Onarım dosyaya, Danışmanlık ve Acil Yardım müşteriye yazılır. Harici Masraf piyasadan toplanan fişle kayıp KDV’yi telafi eder.'
     : form.expenseLane === 'hasar'
-      ? 'Dosya seçilir. Bu kayıt bütçe kartına girer.'
+      ? 'Dosya seçilir. Bu kayıt Hasar bütçe kartına girer. Onarım iş kalemi hakedişten gelir; burada Meridyen masrafı yazılır.'
       : form.expenseLane === 'harici'
-        ? 'Piyasadan toplanan fiş ve fatura. Belgeli kayıt kayıp KDV telafisine yazılır.'
-        : 'Müşteri seçilir. Bu kayıt dosya bütçesine girmez.';
+        ? 'Piyasadan toplanan fiş ve fatura. Belgeli kayıt kayıp KDV telafisine yazılır; KDV Raporu’nda görülür.'
+        : 'Müşteri seçilir. Bu kayıt dosya bütçe kartına girmez.';
 
   const belgeDurumuHelp = form.documentMode === 'belgesiz'
     ? 'Belgesiz masrafın KDV’si kayıp KDV’ye yazılır; dönem ve yıl bazında KDV Raporu’nda görülür.'
@@ -1557,7 +1559,10 @@ export default function MasraflarPage() {
         width={520}
         scrollContent={false}
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-testid="masraf-form-kabuk">
+        <div
+          className="grid h-full min-h-0 w-full flex-1 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden"
+          data-testid="masraf-form-kabuk"
+        >
           {/* Akıllı fiş — başlığın hemen altında sabit */}
           <div className="shrink-0 border-b border-slate-100 bg-white px-3 pb-2 pt-0 sm:px-4" data-testid="masraf-akilli-fis">
             <FileDropZone
@@ -1662,18 +1667,16 @@ export default function MasraflarPage() {
               <select
                 id="finans-masraf-yolu"
                 className={inputCls}
+                aria-label="Masraf Yolu"
                 value={form.expenseLane}
                 onChange={(e) => {
                   void (async () => {
-                    const next = e.target.value as ExpenseLane | '';
-                    if (!next) {
-                      if (form.fileCaseId || form.customerId) {
-                        const ok = await confirm('Masraf yolu değişince seçili dosya veya müşteri kalkar.');
-                        if (!ok) return;
-                      }
+                    const raw = e.target.value;
+                    if (!raw) {
                       setForm((prev) => ({
                         ...prev,
                         expenseLane: '',
+                        operationSubject: '',
                         fileCaseId: '',
                         customerId: '',
                         workGroupId: '',
@@ -1683,6 +1686,7 @@ export default function MasraflarPage() {
                       setFileLookup(null);
                       return;
                     }
+                    const next = raw as ExpenseLane;
                     if (
                       form.expenseLane &&
                       form.expenseLane !== next &&
@@ -1706,10 +1710,20 @@ export default function MasraflarPage() {
                 }}
               >
                 <option value="">Seçiniz...</option>
-                <option value="hasar">{EXPENSE_LANE_LABEL.hasar}</option>
-                <option value="danismanlik">{EXPENSE_LANE_LABEL.danismanlik}</option>
-                <option value="asistans">{EXPENSE_LANE_LABEL.asistans}</option>
-                <option value="harici">{EXPENSE_LANE_LABEL.harici}</option>
+                {EXPENSE_LANE_SELECT_GROUPS.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.options.map((opt) => (
+                      <option key={opt.id} value={opt.id} data-testid={`masraf-yolu-${opt.id}`}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+                {EXPENSE_LANE_SELECT_STANDALONE.map((opt) => (
+                  <option key={opt.id} value={opt.id} data-testid={`masraf-yolu-${opt.id}`}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -2382,11 +2396,14 @@ export default function MasraflarPage() {
           )}
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 bg-white px-3 py-3 sm:px-4 dark:border-slate-700">
+          <div
+            className="z-10 flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-white px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(15,23,42,0.08)] sm:px-4 dark:border-slate-700"
+            data-testid="masraf-form-footer"
+          >
             <button
               type="button"
               onClick={closeExpenseForm}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+              className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
             >
               İptal
             </button>
@@ -2395,7 +2412,7 @@ export default function MasraflarPage() {
                 type="button"
                 onClick={() => handleSave('close')}
                 disabled={saving || !formCanSave}
-                className="rounded-xl bg-brand-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+                className="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
               >
                 {saving ? 'Kaydediliyor...' : 'Güncelle'}
               </button>
@@ -2405,7 +2422,7 @@ export default function MasraflarPage() {
                   type="button"
                   onClick={() => handleSave('close')}
                   disabled={saving || !formCanSave}
-                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
                 >
                   Kaydet ve Kapat
                 </button>
@@ -2413,7 +2430,7 @@ export default function MasraflarPage() {
                   type="button"
                   onClick={() => handleSave('new')}
                   disabled={saving || !formCanSave}
-                  className="rounded-xl bg-brand-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+                  className="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
                 >
                   {saving ? 'Kaydediliyor...' : 'Kaydet ve Yeni'}
                 </button>
@@ -2456,8 +2473,8 @@ export default function MasraflarPage() {
             { v: '', lane: '' as const, l: 'Tümü' },
             { v: PLAN_BUTCE, lane: '' as const, l: 'Dosya Bütçesi' },
             { v: PLAN_EK, lane: '' as const, l: 'Ek İşler' },
-            { v: '', lane: 'danismanlik' as const, l: 'Danışmanlık' },
-            { v: '', lane: 'asistans' as const, l: 'Asistans' },
+            { v: '', lane: 'danismanlik' as const, l: EXPENSE_LANE_LABEL.danismanlik },
+            { v: '', lane: 'asistans' as const, l: EXPENSE_LANE_LABEL.asistans },
             { v: '', lane: 'harici' as const, l: 'Harici' },
           ].map(({ v, lane, l }) => (
             <button
