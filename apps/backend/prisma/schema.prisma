@@ -2529,7 +2529,8 @@ model VendorStatementItem {
 
   statement        VendorPaymentStatement  @relation(fields: [statementId], references: [id], onDelete: Cascade)
   payment          Payment?                @relation(fields: [paymentId], references: [id])
-  vendorPayment    Payment?                @relation("StatementItemPayment")
+  /// Kısmi ödemede birden fazla Payment aynı kaleme bağlanır.
+  vendorPayments   Payment[]               @relation("StatementItemPayment")
   claimFile        ClaimFile               @relation(fields: [claimFileId], references: [id])
   repairReportItem RepairReportItem?       @relation(fields: [repairReportItemId], references: [id])
   workGroup        WorkGroup?              @relation(fields: [workGroupId], references: [id])
