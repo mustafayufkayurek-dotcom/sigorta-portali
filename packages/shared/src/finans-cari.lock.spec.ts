@@ -36,6 +36,7 @@ import {
   buildFinansSeyirDonemKarZarar,
   cariCiftRolKimlikHatasi,
   CARI_SIRKET_TUR_GRUPLARI,
+  CARI_SIRKET_TURLERI,
   CARI_TUR_GRUPLARI,
   CARI_TUR_LABEL,
   CARI_KARSI_TARAF_ROL_LABEL,
@@ -137,6 +138,7 @@ describe('Finans cari LOCK', () => {
     );
     assert.equal(isCariKarsiTarafTur('musteri'), true);
     assert.equal(isCariSirketTur('kredi_karti'), true);
+    assert.equal(isCariSirketTur('kasa'), true);
     assert.equal(isCariSirketTur('musteri'), false);
     assert.ok(!CARI_SIRKET_TUR_GRUPLARI.some((g) => g.kinds.includes('musteri')));
     assert.equal(cariBakiyeMetin(700, (n) => `${n} TL`), '700 TL Borç');
@@ -342,17 +344,26 @@ describe('Finans cari LOCK', () => {
     assert.equal(bankaCariKodu('acc-1'), 'banka-acc-1');
     assert.equal(NAKIT_KASA_CARI_KODU, 'nakit-kasa');
     assert.equal(isFinansNakitCariTur('banka'), true);
+    assert.equal(isFinansNakitCariTur('kasa'), true);
     assert.equal(isFinansNakitCariTur('musteri'), false);
+    assert.equal(CARI_TUR_LABEL.kasa, 'Kasa');
+    assert.ok(CARI_SIRKET_TURLERI.includes('kasa'));
+    assert.ok(
+      CARI_SIRKET_TUR_GRUPLARI.some(
+        (g) => g.label === 'Ödeme Araçları' && g.kinds.includes('kasa'),
+      ),
+    );
     const ozet = splitFinansSeyirBakiyeleri([
       { kind: 'musteri', netBakiye: 10_000 },
       { kind: 'tedarikci', netBakiye: -4_000 },
       { kind: 'banka', netBakiye: 25_000 },
+      { kind: 'kasa', netBakiye: 3_000 },
       { kind: 'banka', netBakiye: -500 },
       { kind: 'kredi_karti', netBakiye: -2_000 },
     ]);
     assert.equal(ozet.cariAlacak, 10_000);
     assert.equal(ozet.cariBorc, 6_500);
-    assert.equal(ozet.nakit, 25_000);
+    assert.equal(ozet.nakit, 28_000);
   });
 
   it('dönem gelir gider kâr tüm hatlardan toplanır', () => {

@@ -47,6 +47,10 @@ bash "$SCRIPT_DIR/smoke-finans-kart.sh"
 
 node --experimental-strip-types --test \
   packages/shared/src/expense-vat.lock.spec.ts \
+  packages/shared/src/customer-service-scopes.lock.spec.ts \
+  packages/shared/src/finans-cari.lock.spec.ts \
+  apps/backend/src/modules/expenses/expense-file-search.lock.spec.ts \
+  apps/web/src/utils/masraf-aciklama-hatirla.lock.spec.ts \
   apps/backend/src/modules/expense-categories/expense-subgroup-unique.lock.spec.ts \
   apps/web/src/utils/pdf-preview-open.lock.spec.ts \
   apps/web/src/utils/customer-form-identity.lock.spec.ts \

@@ -137,3 +137,33 @@ export function customerMatchesExpenseServiceScope(
   if (lane === 'asistans') return list.includes(CUSTOMER_SERVICE_SCOPE_ACIL);
   return false;
 }
+
+/**
+ * Hasar Onarım dosya masrafı — müşteri kartında Hasar Onarım (veya Hepsi) yoksa listeye girmez.
+ * Boş kapsam = eski kart → dosya listesinde kalır (hizmet türü kilidi ayrıca durur).
+ * Kök neden (Mustafa · 22.11.2026): yalnız Danışmanlık / Hasar Tespit kapsamlı müşterinin
+ * dosyası Hasar Onarım masraf seçicisinde görünüyordu.
+ */
+export function customerAllowsHasarOnarimFileExpense(scopes: unknown): boolean {
+  const list = normalizeCustomerServiceScopes(scopes);
+  if (list.length === 0) return true;
+  if (list.includes(CUSTOMER_SERVICE_SCOPE_HEPSI)) return true;
+  return list.includes(CUSTOMER_SERVICE_SCOPE_HASAR);
+}
+
+/** Masraf formu / listesi — kısa ad kullanılmaz; ünvan veya ad soyad. */
+export function expenseCustomerDisplayName(row: {
+  shortName?: string | null;
+  companyName?: string | null;
+  fullName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+}): string {
+  const company = String(row.companyName ?? '').trim();
+  if (company) return company;
+  const full = String(row.fullName ?? '').trim();
+  if (full) return full;
+  const person = [row.firstName, row.lastName].map((x) => String(x ?? '').trim()).filter(Boolean).join(' ');
+  if (person) return person;
+  return 'Müşteri';
+}

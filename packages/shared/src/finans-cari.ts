@@ -21,6 +21,7 @@ export type CariTur =
   | 'vergi'
   | 'sgk'
   | 'banka'
+  | 'kasa'
   | 'diger';
 
 export const CARI_TUR_LABEL: Record<CariTur, string> = {
@@ -32,6 +33,7 @@ export const CARI_TUR_LABEL: Record<CariTur, string> = {
   vergi: 'Vergi',
   sgk: 'SGK',
   banka: 'Banka',
+  kasa: 'Kasa',
   diger: 'Diğer',
 };
 
@@ -50,6 +52,7 @@ export const CARI_KARSI_TARAF_TURLERI = [
 /** Finans’tan elle açılan şirket carileri (ödeme aracı / yükümlülük). */
 export const CARI_SIRKET_TURLERI = [
   'banka',
+  'kasa',
   'kredi_karti',
   'kredi',
   'vergi',
@@ -68,7 +71,7 @@ export const CARI_TUR_GRUPLARI: ReadonlyArray<{
   },
   {
     label: 'Ödeme Araçları',
-    kinds: ['banka', 'kredi_karti'],
+    kinds: ['banka', 'kasa', 'kredi_karti'],
   },
   {
     label: 'Yükümlülük',
@@ -87,7 +90,7 @@ export const CARI_SIRKET_TUR_GRUPLARI: ReadonlyArray<{
 }> = [
   {
     label: 'Ödeme Araçları',
-    kinds: ['banka', 'kredi_karti'],
+    kinds: ['banka', 'kasa', 'kredi_karti'],
   },
   {
     label: 'Yükümlülük',
@@ -108,6 +111,7 @@ export function isCariKarsiTarafTur(tur: unknown): boolean {
 export function isCariSirketTur(tur: unknown): boolean {
   return (
     tur === 'banka' ||
+    tur === 'kasa' ||
     tur === 'kredi_karti' ||
     tur === 'kredi' ||
     tur === 'vergi' ||
@@ -235,7 +239,7 @@ export const NAKIT_KASA_CARI_KODU = 'nakit-kasa';
 
 /** Banka / kasa carisi — Seyir’de nakit; karşı taraf borcuna karışmaz. */
 export function isFinansNakitCariTur(tur: unknown): boolean {
-  return tur === 'banka';
+  return tur === 'banka' || tur === 'kasa';
 }
 
 /**

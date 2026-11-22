@@ -99,6 +99,7 @@ describe('Party accounts LOCK', () => {
     assert.match(svc, /sigorta-\$/);
     assert.match(svc, /ensureBankAccount/);
     assert.match(svc, /ensureNakitKasaAccount/);
+    assert.match(svc, /kind: 'kasa'/);
     assert.match(svc, /postNakitHareket/);
     assert.match(svc, /bankaCariKodu/);
     assert.match(svc, /cariTurFilterKinds/);

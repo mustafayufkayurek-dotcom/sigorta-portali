@@ -66,6 +66,7 @@ import {
   isCustomerExpenseLane,
   isFileExpenseLane,
   isHariciExpenseLane,
+  expenseCustomerDisplayName,
   normalizeMasrafKdvOranlari,
   parseExpenseLane,
   parseMasrafDocumentFields,
@@ -79,6 +80,10 @@ import { financeIsoPeriod } from '@/utils/finans-merkez-kart';
 import { FinansTarihDonemUyariIkon } from '@/components/finance/FinansTarihDonemUyariIkon';
 import { FinansVerimlilikAnalizUyariBant } from '@/components/finance/FinansVerimlilikAnalizUyariBant';
 import { pushFinansVerimlilikAnalizUyari } from '@/utils/finans-verimlilik-analiz-uyari';
+import {
+  readMasrafAciklamaHatirla,
+  rememberMasrafAciklama,
+} from '@/utils/masraf-aciklama-hatirla';
 
 type FileWorkGroupAuditLine = {
   workGroupId: string;
@@ -415,6 +420,7 @@ export default function MasraflarPage() {
   const [showCariCreate, setShowCariCreate] = useState(false);
   const [cariOzetId, setCariOzetId] = useState<string | null>(null);
   const [lastSavedOpNo, setLastSavedOpNo] = useState('');
+  const [aciklamaHatirla, setAciklamaHatirla] = useState<string[]>([]);
   const [closedYears, setClosedYears] = useState<number[]>([]);
   const [closedMonths, setClosedMonths] = useState<string[]>([]);
   const [fDateFrom, setFDateFrom] = useState(() => {
@@ -431,6 +437,10 @@ export default function MasraflarPage() {
   });
 
   // ── Dosyaları yükle ────────────────────────────────────────────────────────
+  useEffect(() => {
+    setAciklamaHatirla(readMasrafAciklamaHatirla());
+  }, []);
+
   useEffect(() => {
     const y = Number(searchParams.get('year'));
     const m = Number(searchParams.get('month') ?? '0');
@@ -910,13 +920,16 @@ export default function MasraflarPage() {
       setExpenses(rows.map((e) => {
         const cat = parseExpenseCategoryFromRow(e);
         const customer = (e['customer'] ?? {}) as Record<string, unknown>;
-        const customerName = String(
-          customer['shortName']
-          ?? customer['companyName']
-          ?? customer['fullName']
-          ?? [customer['firstName'], customer['lastName']].filter(Boolean).join(' ')
-          ?? '',
-        );
+        // Masraf listesi — kısa ad yok; ünvan / ad soyad.
+        const hasCustomer = Boolean(customer['id'] || e['customerId']);
+        const customerName = hasCustomer
+          ? expenseCustomerDisplayName({
+              companyName: customer['companyName'] != null ? String(customer['companyName']) : null,
+              fullName: customer['fullName'] != null ? String(customer['fullName']) : null,
+              firstName: customer['firstName'] != null ? String(customer['firstName']) : null,
+              lastName: customer['lastName'] != null ? String(customer['lastName']) : null,
+            })
+          : '';
         const expenseLane = expenseLaneFromSubject(e['operationSubject']);
         const doc = parseMasrafDocumentFields({
           description: String(e['description'] ?? ''),
@@ -1205,6 +1218,9 @@ export default function MasraflarPage() {
           || 'Müşteri';
         pushFinansVerimlilikAnalizUyari({ kind: 'musteri', label: customerLabel });
       }
+
+      const remembered = rememberMasrafAciklama(form.description);
+      setAciklamaHatirla(remembered);
 
       if (!editId && mode === 'new') {
         // Kaydet ve Yeni = Yeni Masraf Ekle ile aynı sıfır form (yol/dosya/cari kalmaz).
@@ -2409,7 +2425,7 @@ export default function MasraflarPage() {
               </div>
             ) : null}
 
-            <div data-testid="masraf-tarih-alan" className={form.expenseLane === 'hasar' ? '' : 'md:col-span-2'}>
+            <div data-testid="masraf-tarih-alan">
               <div className="mb-1.5 flex items-center gap-1.5">
                 <FieldLabel
                   className="mb-0 flex items-center gap-1.5 text-xs font-medium text-slate-500"
@@ -2662,12 +2678,17 @@ export default function MasraflarPage() {
             </div>
 
             <div className="md:col-span-2">
-              <FieldLabel htmlFor="finans-masraf-aciklama" className={fieldLabelCls}>
+              <FieldLabel
+                htmlFor="finans-masraf-aciklama"
+                className={fieldLabelCls}
+                help="Son yazdığınız açıklamalar hatırlanır; listeden seçebilirsiniz."
+              >
                 Açıklama {requiredHint}
               </FieldLabel>
               <input
                 id="finans-masraf-aciklama"
                 className={inputCls}
+                list="finans-masraf-aciklama-hatirla"
                 placeholder="Örn. çatı kaplama malzemesi"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -2675,7 +2696,14 @@ export default function MasraflarPage() {
                   const v = normalizeFormFreeText(e.target.value);
                   if (v) setForm((f) => ({ ...f, description: v }));
                 }}
+                data-testid="masraf-aciklama"
+                autoComplete="off"
               />
+              <datalist id="finans-masraf-aciklama-hatirla">
+                {aciklamaHatirla.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
             </div>
           </div>
 

@@ -24,8 +24,10 @@ import {
   expenseMatchesWorkGroup,
   remainingWorkGroupBudget,
   workGroupExpenseOverLimitMessage,
+  customerAllowsHasarOnarimFileExpense,
   customerMatchesExpenseLane,
   customerMatchesExpenseServiceScope,
+  expenseCustomerDisplayName,
   expenseLaneFromSubject,
   EXPENSE_PARTY_ACCOUNT_REQUIRED_MESSAGE,
   hasExpensePartyAccountId,
@@ -101,6 +103,7 @@ export class ExpensesService {
     customer: {
       select: {
         subType: true,
+        serviceScopes: true,
         fullName: true,
         companyName: true,
         firstName: true,
@@ -194,6 +197,11 @@ export class ExpensesService {
     );
   }
 
+  /** Hasar Onarım masraf seçicisi — yalnız Hasar Onarım / Hepsi / boş kapsam müşteri. */
+  private fileCustomerAllowsHasarExpense(customer?: { serviceScopes?: unknown } | null): boolean {
+    return customerAllowsHasarOnarimFileExpense(customer?.serviceScopes);
+  }
+
   private mapFileToEligibleOption(file: {
     id: string;
     fileNo: string;
@@ -205,6 +213,7 @@ export class ExpensesService {
     fileRevenues: Array<{ totalAmount: number }>;
     customer?: {
       subType: string | null;
+      serviceScopes?: unknown;
       fullName: string | null;
       companyName: string | null;
       firstName: string | null;
@@ -455,6 +464,7 @@ export class ExpensesService {
           take: 1,
           select: { totalAmount: true },
         },
+        customer: { select: { serviceScopes: true } },
       },
     });
     if (!file) throw new NotFoundException('Hasar dosyası bulunamadı');
@@ -467,6 +477,11 @@ export class ExpensesService {
     if (kind === 'inspection') {
       throw new BadRequestException(
         'Bu dosya Hasar Tespit’tir. Hasar Tespit masrafı müşteriye yazılır.',
+      );
+    }
+    if (!this.fileCustomerAllowsHasarExpense(file.customer)) {
+      throw new BadRequestException(
+        `${file.fileNo} dosyasının müşterisi Hasar Onarım kapsamında değil. Danışmanlık / Hasar Tespit masrafı müşteriye yazılır.`,
       );
     }
 
@@ -525,11 +540,14 @@ export class ExpensesService {
         ? { AND: [HASAR_FILE_EXPENSE_KIND_WHERE, searchFilter, { OR: [...budgetOr] }] }
         : { AND: [HASAR_FILE_EXPENSE_KIND_WHERE, { OR: [...budgetOr] }] },
       select: this.claimFileExpenseSelect,
-      take: 50,
+      take: 120,
       orderBy: { updatedAt: 'desc' },
     });
 
-    return rows.map((file) => this.mapFileToEligibleOption(file));
+    return rows
+      .filter((file) => this.fileCustomerAllowsHasarExpense(file.customer))
+      .slice(0, 50)
+      .map((file) => this.mapFileToEligibleOption(file));
   }
 
   /** Bütçe şartı olmadan dosya arar — bulundu ama uygun değil geri bildirimi için */
@@ -561,6 +579,15 @@ export class ExpensesService {
     const mapped = this.mapFileToEligibleOption(file);
     const kind = parseClaimServiceKind(file.serviceKind);
     if (kind === 'inspection' || kind === 'consultancy') {
+      return {
+        found: true as const,
+        query: q,
+        ...mapped,
+        canEnterExpense: false,
+        blockReason: 'CUSTOMER_LANE' as const,
+      };
+    }
+    if (!this.fileCustomerAllowsHasarExpense(file.customer)) {
       return {
         found: true as const,
         query: q,
@@ -606,21 +633,21 @@ export class ExpensesService {
       ],
     };
 
-    const [total, rows] = await Promise.all([
-      this.prisma.claimFile.count({ where }),
-      this.prisma.claimFile.findMany({
-        where,
-        select: {
-          ...this.claimFileExpenseSelect,
-          lossType: true,
-          currentStatus: { select: { name: true } },
-          propertyAddress: { select: { city: true, district: true } },
-        },
-        skip,
-        take: limit,
-        orderBy: { updatedAt: 'desc' },
-      }),
-    ]);
+    // Müşteri hizmet kapsamı bellek içinde süzülür (JSON dizi kapısı).
+    const pool = await this.prisma.claimFile.findMany({
+      where,
+      select: {
+        ...this.claimFileExpenseSelect,
+        lossType: true,
+        currentStatus: { select: { name: true } },
+        propertyAddress: { select: { city: true, district: true } },
+      },
+      take: Math.min(500, Math.max(limit * 8, skip + limit * 4)),
+      orderBy: { updatedAt: 'desc' },
+    });
+    const filtered = pool.filter((file) => this.fileCustomerAllowsHasarExpense(file.customer));
+    const total = filtered.length;
+    const rows = filtered.slice(skip, skip + limit);
 
     return {
       data: rows.map((file) => {
@@ -807,9 +834,8 @@ export class ExpensesService {
         id: row.id,
         subType: row.subType,
         serviceScopes: normalizeCustomerServiceScopes(row.serviceScopes),
-        name: row.shortName || row.companyName || row.fullName
-          || [row.firstName, row.lastName].filter(Boolean).join(' ')
-          || 'Müşteri',
+        // Masraf tarafı — kısa ad yok; ünvan / ad soyad.
+        name: expenseCustomerDisplayName(row),
       }));
   }
 

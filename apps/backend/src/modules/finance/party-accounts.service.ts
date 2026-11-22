@@ -1811,7 +1811,7 @@ export class PartyAccountsService {
     return { id: created.id };
   }
 
-  /** Eldeki nakit kasa carisi (method=cash). */
+  /** Eldeki nakit kasa carisi (method=cash). Tür: Kasa — Banka / Kredi Kartı değil. */
   async ensureNakitKasaAccount(input: { userId: string }): Promise<{ id: string }> {
     const existing = await this.prisma.partyAccount.findFirst({
       where: { code: NAKIT_KASA_CARI_KODU },
@@ -1820,7 +1820,7 @@ export class PartyAccountsService {
     if (existing) {
       await this.prisma.partyAccount.update({
         where: { id: existing.id },
-        data: { kind: 'banka', isActive: true, name: 'Nakit Kasa' },
+        data: { kind: 'kasa', isActive: true, name: 'Nakit Kasa' },
       });
       return existing;
     }
@@ -1828,7 +1828,7 @@ export class PartyAccountsService {
       data: {
         code: NAKIT_KASA_CARI_KODU,
         name: 'Nakit Kasa',
-        kind: 'banka',
+        kind: 'kasa',
         notes: 'Eldeki nakit (tahsilat / ödeme method=cash)',
         createdByUserId: input.userId,
       },

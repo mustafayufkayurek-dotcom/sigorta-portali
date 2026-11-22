@@ -20,4 +20,16 @@ describe('Masraf dosya araması LOCK', () => {
     assert.match(src, /file\.insuredName \|\| customerName/);
     assert.doesNotMatch(src, /customerName \|\| file\.insuredName/);
   });
+
+  it('Hasar Onarım dosya listesi müşteri hizmet kapsamını keser', () => {
+    assert.match(src, /customerAllowsHasarOnarimFileExpense/);
+    assert.match(src, /fileCustomerAllowsHasarExpense/);
+    assert.match(src, /serviceScopes: true/);
+    assert.match(src, /CUSTOMER_LANE/);
+  });
+
+  it('Masraf müşteri listesi kısa ad basmaz', () => {
+    assert.match(src, /expenseCustomerDisplayName/);
+    assert.doesNotMatch(src, /name: row\.shortName \|\|/);
+  });
 });

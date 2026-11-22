@@ -5,7 +5,9 @@ import { describe, it } from 'node:test';
 import {
   CUSTOMER_SERVICE_SCOPE_GROUPS,
   CUSTOMER_SERVICE_SCOPE_OPTIONS,
+  customerAllowsHasarOnarimFileExpense,
   customerMatchesExpenseServiceScope,
+  expenseCustomerDisplayName,
   customerServiceScopeIsSelected,
   normalizeCustomerServiceScopes,
   toggleCustomerServiceScope,
@@ -74,6 +76,39 @@ describe('müşteri hizmet kapsamı LOCK', () => {
     assert.equal(customerMatchesExpenseServiceScope(['acil'], 'danismanlik'), false);
   });
 
+  it('Hasar Onarım dosya masrafı müşteri kapsamını keser (Doğanlar kök neden)', () => {
+    assert.equal(customerAllowsHasarOnarimFileExpense([]), true);
+    assert.equal(customerAllowsHasarOnarimFileExpense(['hepsi']), true);
+    assert.equal(customerAllowsHasarOnarimFileExpense(['hasar-onarim']), true);
+    assert.equal(customerAllowsHasarOnarimFileExpense(['danismanlik']), false);
+    assert.equal(customerAllowsHasarOnarimFileExpense(['hasar-tespit']), false);
+    assert.equal(customerAllowsHasarOnarimFileExpense(['danismanlik', 'hasar-tespit']), false);
+    assert.equal(customerAllowsHasarOnarimFileExpense(['danismanlik', 'hasar-onarim']), true);
+  });
+
+  it('Masraf müşteri adı kısa adı kullanmaz', () => {
+    assert.equal(
+      expenseCustomerDisplayName({
+        shortName: 'Dyh',
+        companyName: 'Doğanlar Holding',
+        fullName: null,
+      }),
+      'Doğanlar Holding',
+    );
+    assert.equal(
+      expenseCustomerDisplayName({
+        shortName: 'Dyh',
+        companyName: null,
+        fullName: 'Doğanlar Mobilya Grubu',
+      }),
+      'Doğanlar Mobilya Grubu',
+    );
+    assert.doesNotMatch(
+      expenseCustomerDisplayName({ shortName: 'Dyh', companyName: 'Doğanlar Holding' }),
+      /^Dyh$/,
+    );
+  });
+
   it('şema, masraf listesi ve müşteri formu bu kapıyı kullanır', () => {
     const root = join(import.meta.dirname, '../../..');
     const schema = readFileSync(join(root, 'apps/backend/prisma/schema.prisma'), 'utf8');
@@ -84,6 +119,9 @@ describe('müşteri hizmet kapsamı LOCK', () => {
       'utf8',
     );
     assert.match(svc, /customerMatchesExpenseServiceScope/);
+    assert.match(svc, /customerAllowsHasarOnarimFileExpense/);
+    assert.match(svc, /expenseCustomerDisplayName/);
+    assert.match(svc, /fileCustomerAllowsHasarExpense/);
     const page = readFileSync(join(root, 'apps/web/src/app/panel/musteriler/page.tsx'), 'utf8');
     assert.match(page, /CUSTOMER_SERVICE_SCOPE_GROUPS/);
     assert.match(page, /customerServiceScopeIsSelected/);
@@ -91,5 +129,16 @@ describe('müşteri hizmet kapsamı LOCK', () => {
     assert.match(page, /serviceScopes/);
     assert.match(page, /Hepsi/);
     assert.match(page, /hizmetKapsamOpen/);
+    const masraf = readFileSync(
+      join(root, 'apps/web/src/app/panel/finans/masraflar/page.tsx'),
+      'utf8',
+    );
+    assert.match(masraf, /expenseCustomerDisplayName/);
+    assert.doesNotMatch(masraf, /customer\['shortName'\]/);
+    assert.match(masraf, /data-testid="masraf-tarih-alan"/);
+    assert.doesNotMatch(
+      masraf,
+      /data-testid="masraf-tarih-alan"[^>]*md:col-span-2/,
+    );
   });
 });
