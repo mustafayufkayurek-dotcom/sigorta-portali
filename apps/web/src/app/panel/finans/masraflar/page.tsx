@@ -67,7 +67,7 @@ import {
   normalizeMasrafKdvOranlari,
   parseExpenseLane,
   resolveFinansIslemTarihiDonemDurum,
-  splitGrossVat,
+  sumSplitGrossVatLines,
   type ExpenseDocumentMode,
   type ExpenseLane,
 } from '@sigorta/shared';
@@ -261,6 +261,28 @@ function parseExpenseCategoryFromRow(e: Record<string, unknown>) {
 
 const BELGE_TURU_OPTIONS = ['Kasa Fişi', 'Fatura'] as const;
 
+const DEFAULT_MASRAF_KDV =
+  String(DEFAULT_MASRAF_KDV_ORANLARI[DEFAULT_MASRAF_KDV_ORANLARI.length - 1] ?? 20);
+
+type MasrafKalemSatiri = {
+  key: string;
+  expenseCategoryParentId: string;
+  expenseCategoryId: string;
+  amount: string;
+  vatRate: string;
+};
+
+function newMasrafKalemSatiri(partial?: Partial<MasrafKalemSatiri>): MasrafKalemSatiri {
+  return {
+    key: `satir-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    expenseCategoryParentId: '',
+    expenseCategoryId: '',
+    amount: '',
+    vatRate: DEFAULT_MASRAF_KDV,
+    ...partial,
+  };
+}
+
 const EMPTY_FORM = {
   expenseLane: '' as ExpenseLane | '',
   fileCaseId: '',
@@ -276,7 +298,7 @@ const EMPTY_FORM = {
   documentNo: '',
   description: '',
   amount: '',
-  vatRate: String(DEFAULT_MASRAF_KDV_ORANLARI[DEFAULT_MASRAF_KDV_ORANLARI.length - 1] ?? 20),
+  vatRate: DEFAULT_MASRAF_KDV,
   date: new Date().toISOString().slice(0, 10),
   receiptImageUrl: '',
   operationSubject: 'HASAR_ONARIM' as string,
@@ -361,6 +383,10 @@ export default function MasraflarPage() {
   const [showForm,   setShowForm]   = useState(false);
   const [editId,     setEditId]     = useState<string | null>(null);
   const [form,       setForm]       = useState({ ...EMPTY_FORM });
+  const [kalemSatirlari, setKalemSatirlari] = useState<MasrafKalemSatiri[]>(() => [
+    newMasrafKalemSatiri(),
+  ]);
+  const [categoryDraftLineKey, setCategoryDraftLineKey] = useState<string | null>(null);
   const [saving,     setSaving]     = useState(false);
   const [formError,  setFormError]  = useState('');
   const [fileSearch, setFileSearch] = useState('');
@@ -612,28 +638,64 @@ export default function MasraflarPage() {
     [categoryTree],
   );
 
-  const subgroupOptions = useMemo(() => {
-    if (form.expenseCategoryParentId && categoryChildren.length > 0) {
-      return categoryChildren.map((c) => ({ value: c.id, label: c.name }));
-    }
-    return allSubgroups.map((s) => ({
-      value: s.id,
-      label: s.name,
-      hint: s.parentName ? `Grup: ${s.parentName}` : undefined,
-    }));
-  }, [form.expenseCategoryParentId, categoryChildren, allSubgroups]);
+  const subgroupOptionsFor = useCallback(
+    (parentId: string) => {
+      if (parentId) {
+        const fromTree = categoryTree.find((g) => g.id === parentId)?.children ?? [];
+        if (fromTree.length > 0) {
+          return fromTree.map((c) => ({ value: c.id, label: c.name }));
+        }
+        if (parentId === form.expenseCategoryParentId && categoryChildren.length > 0) {
+          return categoryChildren.map((c) => ({ value: c.id, label: c.name }));
+        }
+        return allSubgroups
+          .filter((s) => s.parentId === parentId)
+          .map((s) => ({ value: s.id, label: s.name }));
+      }
+      return allSubgroups.map((s) => ({
+        value: s.id,
+        label: s.name,
+        hint: s.parentName ? `Grup: ${s.parentName}` : undefined,
+      }));
+    },
+    [allSubgroups, categoryChildren, categoryTree, form.expenseCategoryParentId],
+  );
 
-  const handleSubgroupPick = (subId: string) => {
+  const lineNeedsSubgroup = useCallback(
+    (parentId: string) => {
+      if (!parentId) return false;
+      const fromTree = categoryTree.find((g) => g.id === parentId)?.children ?? [];
+      if (fromTree.length > 0) return true;
+      return allSubgroups.some((s) => s.parentId === parentId);
+    },
+    [allSubgroups, categoryTree],
+  );
+
+  const patchKalemSatiri = (key: string, patch: Partial<MasrafKalemSatiri>) => {
+    setKalemSatirlari((rows) =>
+      rows.map((row) => (row.key === key ? { ...row, ...patch } : row)),
+    );
+  };
+
+  const handleSubgroupPick = (lineKey: string, subId: string) => {
     const global = allSubgroups.find((s) => s.id === subId);
     if (global) {
-      setForm((f) => ({
-        ...f,
+      patchKalemSatiri(lineKey, {
         expenseCategoryParentId: global.parentId,
         expenseCategoryId: subId,
-      }));
+      });
+      setForm((f) =>
+        f.expenseCategoryParentId === '' || kalemSatirlari[0]?.key === lineKey
+          ? {
+              ...f,
+              expenseCategoryParentId: global.parentId,
+              expenseCategoryId: subId,
+            }
+          : f,
+      );
       return;
     }
-    setForm((f) => ({ ...f, expenseCategoryId: subId }));
+    patchKalemSatiri(lineKey, { expenseCategoryId: subId });
   };
 
   const [categoryDraft, setCategoryDraft] = useState<'group' | 'sub' | null>(null);
@@ -645,7 +707,8 @@ export default function MasraflarPage() {
   const [kdvDraftError, setKdvDraftError] = useState('');
   const [kdvDraftSaving, setKdvDraftSaving] = useState(false);
 
-  const openCategoryDraft = (kind: 'group' | 'sub') => {
+  const openCategoryDraft = (kind: 'group' | 'sub', lineKey?: string) => {
+    setCategoryDraftLineKey(lineKey ?? kalemSatirlari[0]?.key ?? null);
     setCategoryDraft(kind);
     setCategoryDraftName('');
     setCategoryDraftError('');
@@ -657,13 +720,16 @@ export default function MasraflarPage() {
       setCategoryDraftError(categoryDraft === 'sub' ? 'Alt grup adı yazın.' : 'Masraf grubu adı yazın.');
       return;
     }
-    if (categoryDraft === 'sub' && !form.expenseCategoryParentId) {
+    const draftLine =
+      kalemSatirlari.find((r) => r.key === categoryDraftLineKey) ?? kalemSatirlari[0];
+    const draftParentId = draftLine?.expenseCategoryParentId || form.expenseCategoryParentId;
+    if (categoryDraft === 'sub' && !draftParentId) {
       setCategoryDraftError('Önce masraf grubunu seçin.');
       return;
     }
     const siblings = categoryDraft === 'group'
       ? categoryTree
-      : allSubgroups.filter((s) => s.parentId === form.expenseCategoryParentId);
+      : allSubgroups.filter((s) => s.parentId === draftParentId);
     if (siblings.some((s) => s.name.trim().toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr'))) {
       setCategoryDraftError('Bu ad zaten duruyor.');
       return;
@@ -672,7 +738,7 @@ export default function MasraflarPage() {
     setCategoryDraftError('');
     const sortOrder = computeAlphabeticSortOrder(name, siblings);
     const baseCode = suggestAutoCode(categoryDraft === 'group' ? 'EXP' : 'ALT', name);
-    const parentId = categoryDraft === 'sub' ? form.expenseCategoryParentId : undefined;
+    const parentId = categoryDraft === 'sub' ? draftParentId : undefined;
     const postCategory = (code: string) => axios.post(`${API}/expense-categories`, {
       code,
       name,
@@ -691,12 +757,20 @@ export default function MasraflarPage() {
       }
       const createdId = String((res.data?.data as { id?: string } | undefined)?.id ?? '');
       await loadCategories();
-      if (categoryDraft === 'group' && createdId) {
-        setForm((f) => ({ ...f, expenseCategoryParentId: createdId, expenseCategoryId: '' }));
-      } else if (createdId) {
-        setForm((f) => ({ ...f, expenseCategoryId: createdId }));
+      if (createdId && draftLine) {
+        if (categoryDraft === 'group') {
+          patchKalemSatiri(draftLine.key, {
+            expenseCategoryParentId: createdId,
+            expenseCategoryId: '',
+          });
+          setForm((f) => ({ ...f, expenseCategoryParentId: createdId, expenseCategoryId: '' }));
+        } else {
+          patchKalemSatiri(draftLine.key, { expenseCategoryId: createdId });
+          setForm((f) => ({ ...f, expenseCategoryId: createdId }));
+        }
       }
       setCategoryDraft(null);
+      setCategoryDraftLineKey(null);
       setCategoryDraftName('');
     } catch (e: unknown) {
       const raw = axios.isAxiosError(e) ? e.response?.data?.message : '';
@@ -735,7 +809,13 @@ export default function MasraflarPage() {
       );
       const rates = normalizeMasrafKdvOranlari(res.data?.data ?? next);
       setMasrafKdvOranlari(rates);
-      setForm((f) => ({ ...f, vatRate: String(rounded) }));
+      const vatRate = String(rounded);
+      setForm((f) => ({ ...f, vatRate }));
+      setKalemSatirlari((rows) =>
+        rows.length === 0
+          ? [newMasrafKalemSatiri({ vatRate })]
+          : rows.map((row, idx) => (idx === 0 ? { ...row, vatRate } : row)),
+      );
       setKdvDraftOpen(false);
       setKdvDraft('');
     } catch (e: unknown) {
@@ -913,13 +993,21 @@ export default function MasraflarPage() {
         configured?: boolean;
       };
 
+      const scannedAmount =
+        data.amount != null && data.amount > 0 ? numberToTrAmountInput(data.amount) : null;
       setForm((prev) => ({
         ...prev,
-        amount: data.amount != null && data.amount > 0 ? numberToTrAmountInput(data.amount) : prev.amount,
+        amount: scannedAmount ?? prev.amount,
         date: data.date ? data.date.slice(0, 10) : prev.date,
         description: data.description || prev.description,
         receiptImageUrl: data.receiptImageUrl ?? prev.receiptImageUrl,
       }));
+      if (scannedAmount) {
+        setKalemSatirlari((rows) => {
+          if (rows.length === 0) return [newMasrafKalemSatiri({ amount: scannedAmount })];
+          return rows.map((row, idx) => (idx === 0 ? { ...row, amount: scannedAmount } : row));
+        });
+      }
       setScanInfo(data.message ?? (data.configured === false
         ? 'Fiş kaydedildi. Otomatik okuma için sistem yöneticisi OpenAI anahtarı tanımlamalı.'
         : 'Belge işlendi — alanları kontrol edin.'));
@@ -949,19 +1037,30 @@ export default function MasraflarPage() {
     if (customerLane && !form.customerId) return setFormError('Müşteri seçimi zorunludur.');
     if (!form.partyAccountId) return setFormError('Ödeme kaynağı cari seçimi zorunludur.');
     if (hasarLane && !form.expensePlan) return setFormError('Bütçe tipi seçimi zorunludur.');
-    if (!form.expenseCategoryParentId) return setFormError('Masraf kalemi (grup) seçimi zorunludur.');
-    {
-      const needsSubgroup =
-        categoryChildren.length > 0
-        || allSubgroups.some((s) => s.parentId === form.expenseCategoryParentId);
-      if (needsSubgroup && !form.expenseCategoryId) {
-        return setFormError('Masraf kalemi (alt grup) seçimi zorunludur.');
+    const saveLines = kalemSatirlari.length > 0 ? kalemSatirlari : [newMasrafKalemSatiri({
+      expenseCategoryParentId: form.expenseCategoryParentId,
+      expenseCategoryId: form.expenseCategoryId,
+      amount: form.amount,
+      vatRate: form.vatRate,
+    })];
+    for (let i = 0; i < saveLines.length; i += 1) {
+      const line = saveLines[i];
+      const label = saveLines.length > 1 ? `${i + 1}. satır: ` : '';
+      if (!line.expenseCategoryParentId) {
+        return setFormError(`${label}Masraf grubu seçimi zorunludur.`);
+      }
+      if (lineNeedsSubgroup(line.expenseCategoryParentId) && !line.expenseCategoryId) {
+        return setFormError(`${label}Masraf alt grubu seçimi zorunludur.`);
+      }
+      const amountNum = parseTrAmountInput(line.amount);
+      if (amountNum == null || amountNum <= 0) {
+        return setFormError(`${label}Geçerli bir tutar giriniz.`);
+      }
+      const vatRateNum = Number(line.vatRate);
+      if (!Number.isFinite(vatRateNum) || vatRateNum < 0) {
+        return setFormError(`${label}KDV oranı seçiniz.`);
       }
     }
-    const amountNum = parseTrAmountInput(form.amount);
-    if (amountNum == null || amountNum <= 0) return setFormError('Geçerli bir tutar giriniz.');
-    const vatRateNum = Number(form.vatRate);
-    if (!Number.isFinite(vatRateNum) || vatRateNum < 0) return setFormError('KDV oranı seçiniz.');
     const dateIso = normalizeTrDateValue(form.date);
     if (!isCompleteTrDateValue(dateIso)) return setFormError('Geçerli bir tarih giriniz (GG.AA.YYYY).');
     if (form.documentMode === 'belgeli' && hariciLane && !form.documentType) {
@@ -978,23 +1077,28 @@ export default function MasraflarPage() {
 
     setSaving(true);
     try {
-      const payload = {
+      const shared = {
         fileCaseId: fileLane ? form.fileCaseId : undefined,
         customerId: customerLane ? form.customerId : undefined,
         partyAccountId: form.partyAccountId,
         expensePlan: hasarLane ? form.expensePlan : undefined,
-        expenseCategoryId: form.expenseCategoryId || form.expenseCategoryParentId,
         operationSubject: expenseSubjectForLane(form.expenseLane as ExpenseLane),
         description: composeMasrafDescription(form),
-        amount:      amountNum,
-        vatRate:     vatRateNum,
         vatIncluded: true,
         hasTaxDocument: hasTaxDocumentFromMode(form.documentMode),
-        date:        dateIso,
+        date: dateIso,
         receiptImageUrl: form.receiptImageUrl || undefined,
       };
       if (editId) {
-        await axios.put(`${API}/expenses/${editId}`, payload, { headers: authHeader() });
+        const line = saveLines[0];
+        const amountNum = parseTrAmountInput(line.amount)!;
+        const vatRateNum = Number(line.vatRate);
+        await axios.put(`${API}/expenses/${editId}`, {
+          ...shared,
+          expenseCategoryId: line.expenseCategoryId || line.expenseCategoryParentId,
+          amount: amountNum,
+          vatRate: vatRateNum,
+        }, { headers: authHeader() });
         setLastSavedOpNo(
           financeOperationNo(
             'MSF',
@@ -1003,16 +1107,23 @@ export default function MasraflarPage() {
           ),
         );
       } else {
-        const created = await axios.post(`${API}/expenses`, payload, { headers: authHeader() });
-        const createdId = String(created.data?.id ?? created.data?.data?.id ?? '');
-        if (createdId) {
-          setLastSavedOpNo(
-            financeOperationNo(
-              'MSF',
-              createdId,
-              created.data?.createdAt ?? created.data?.data?.createdAt ?? dateIso,
-            ),
-          );
+        let lastCreatedId = '';
+        let lastCreatedAt = dateIso;
+        for (let i = 0; i < saveLines.length; i += 1) {
+          const line = saveLines[i];
+          const amountNum = parseTrAmountInput(line.amount)!;
+          const vatRateNum = Number(line.vatRate);
+          const created = await axios.post(`${API}/expenses`, {
+            ...shared,
+            expenseCategoryId: line.expenseCategoryId || line.expenseCategoryParentId,
+            amount: amountNum,
+            vatRate: vatRateNum,
+          }, { headers: authHeader() });
+          lastCreatedId = String(created.data?.id ?? created.data?.data?.id ?? '');
+          lastCreatedAt = created.data?.createdAt ?? created.data?.data?.createdAt ?? dateIso;
+        }
+        if (lastCreatedId) {
+          setLastSavedOpNo(financeOperationNo('MSF', lastCreatedId, lastCreatedAt));
         }
       }
 
@@ -1030,6 +1141,7 @@ export default function MasraflarPage() {
       }
 
       if (!editId && mode === 'new') {
+        const keepVat = saveLines[0]?.vatRate || form.vatRate || DEFAULT_MASRAF_KDV;
         setForm({
           ...EMPTY_FORM,
           expenseLane: form.expenseLane,
@@ -1037,12 +1149,11 @@ export default function MasraflarPage() {
           customerId: customerLane ? form.customerId : '',
           partyAccountId: form.partyAccountId,
           expensePlan: form.expensePlan,
-          expenseCategoryParentId: form.expenseCategoryParentId,
-          expenseCategoryId: form.expenseCategoryId,
           documentMode: form.documentMode,
-          vatRate: form.vatRate,
+          vatRate: keepVat,
           date:        new Date().toISOString().slice(0, 10),
         });
+        setKalemSatirlari([newMasrafKalemSatiri({ vatRate: keepVat })]);
         setEditId(null);
         setFormError('');
         resetReceiptScan();
@@ -1051,6 +1162,7 @@ export default function MasraflarPage() {
         setShowForm(false);
         setEditId(null);
         setForm({ ...EMPTY_FORM });
+        setKalemSatirlari([newMasrafKalemSatiri()]);
         setFormError('');
         resetReceiptScan();
       }
@@ -1091,6 +1203,14 @@ export default function MasraflarPage() {
       receiptImageUrl: '',
       operationSubject: expenseSubjectForLane(e.expenseLane),
     });
+    setKalemSatirlari([
+      newMasrafKalemSatiri({
+        expenseCategoryParentId: e.expenseCategoryParentId,
+        expenseCategoryId: e.expenseCategoryId,
+        amount: numberToTrAmountInput(e.amount),
+        vatRate: String(e.vatRate ?? 20),
+      }),
+    ]);
     resetReceiptScan();
     openExpenseForm(true);
   };
@@ -1163,14 +1283,6 @@ export default function MasraflarPage() {
     [selectableFiles, form.expensePlan],
   );
 
-  const needsExpenseSubgroup = useMemo(() => {
-    if (!form.expenseCategoryParentId) return false;
-    return (
-      categoryChildren.length > 0
-      || allSubgroups.some((s) => s.parentId === form.expenseCategoryParentId)
-    );
-  }, [form.expenseCategoryParentId, categoryChildren, allSubgroups]);
-
   const formSaveBlockers = useMemo(() => {
     const blockers: string[] = [];
     if (!form.expenseLane) {
@@ -1190,12 +1302,18 @@ export default function MasraflarPage() {
     }
     if (!form.partyAccountId) blockers.push('Ödeme kaynağı cari seçin');
     if (form.expenseLane) {
-      if (!form.expenseCategoryParentId) blockers.push('Masraf grubu seçin');
-      if (needsExpenseSubgroup && !form.expenseCategoryId) blockers.push('Masraf alt grubu seçin');
+      if (kalemSatirlari.length === 0) blockers.push('En az bir masraf satırı ekleyin');
+      kalemSatirlari.forEach((line, idx) => {
+        const label = kalemSatirlari.length > 1 ? `${idx + 1}. satır: ` : '';
+        if (!line.expenseCategoryParentId) blockers.push(`${label}Masraf grubu seçin`);
+        if (lineNeedsSubgroup(line.expenseCategoryParentId) && !line.expenseCategoryId) {
+          blockers.push(`${label}Masraf alt grubu seçin`);
+        }
+        const amountNum = parseTrAmountInput(line.amount);
+        if (amountNum == null || amountNum <= 0) blockers.push(`${label}Geçerli bir tutar girin`);
+        if (!line.vatRate) blockers.push(`${label}KDV oranı seçin`);
+      });
     }
-    const amountNum = parseTrAmountInput(form.amount);
-    if (amountNum == null || amountNum <= 0) blockers.push('Geçerli bir tutar girin');
-    if (!form.vatRate) blockers.push('KDV oranı seçin');
     if (!form.description.trim()) blockers.push('Açıklama yazın');
     const dateIso = normalizeTrDateValue(form.date);
     if (!isCompleteTrDateValue(dateIso)) {
@@ -1212,14 +1330,11 @@ export default function MasraflarPage() {
     form.customerId,
     form.partyAccountId,
     form.expensePlan,
-    form.expenseCategoryParentId,
-    form.expenseCategoryId,
-    form.amount,
-    form.vatRate,
     form.date,
     form.description,
     formFileEligible,
-    needsExpenseSubgroup,
+    kalemSatirlari,
+    lineNeedsSubgroup,
     closedYears,
     closedMonths,
   ]);
@@ -1231,10 +1346,18 @@ export default function MasraflarPage() {
   );
 
   const masrafVatSplit = useMemo(() => {
-    const amountNum = parseTrAmountInput(form.amount) ?? 0;
-    const rate = Number(form.vatRate);
-    return splitGrossVat(amountNum, Number.isFinite(rate) ? rate : 0);
-  }, [form.amount, form.vatRate]);
+    const parsed = kalemSatirlari.map((line) => ({
+      amount: parseTrAmountInput(line.amount) ?? 0,
+      vatRate: Number(line.vatRate) || 0,
+    }));
+    const summed = sumSplitGrossVatLines(parsed);
+    return {
+      matrah: summed.matrah,
+      vatAmount: summed.vatAmount,
+      genelToplam: summed.genelToplam,
+      vatRate: parsed.length === 1 ? parsed[0].vatRate : 0,
+    };
+  }, [kalemSatirlari]);
 
   const masrafTarihDonemDurum = useMemo(() => {
     const dateIso = normalizeTrDateValue(form.date);
@@ -1259,9 +1382,12 @@ export default function MasraflarPage() {
   }, [files, fileSearch, form.fileCaseId, form.expensePlan, editId]);
 
   const projectedBudgetWarning = useMemo(() => {
-    if (!selectedFileBudget || !form.amount) return null;
-    const addAmount = parseTrAmountInput(form.amount);
-    if (!addAmount || addAmount <= 0) return null;
+    if (!selectedFileBudget) return null;
+    const addAmount = kalemSatirlari.reduce((sum, line) => {
+      const n = parseTrAmountInput(line.amount);
+      return sum + (n != null && n > 0 ? n : 0);
+    }, 0);
+    if (!(addAmount > 0)) return null;
     if (form.expensePlan === PLAN_BUTCE && selectedFileBudget.budgetLimit > 0) {
       const projected = selectedFileBudget.spentButce + addAmount;
       const remaining = selectedFileBudget.budgetLimit - projected;
@@ -1280,7 +1406,7 @@ export default function MasraflarPage() {
       }
     }
     return null;
-  }, [selectedFileBudget, form.amount, form.expensePlan]);
+  }, [selectedFileBudget, kalemSatirlari, form.expensePlan]);
 
   const handlePickHasarFile = useCallback((file: ExpensePickerHasarFile) => {
     const opt: FileOption = {
@@ -1305,6 +1431,7 @@ export default function MasraflarPage() {
     if (!forEdit) {
       setEditId(null);
       setForm({ ...EMPTY_FORM });
+      setKalemSatirlari([newMasrafKalemSatiri()]);
       setFormError('');
       setFileSearch('');
       setFileLookup(null);
@@ -1322,6 +1449,7 @@ export default function MasraflarPage() {
     if (searchParams.get('yeni') !== '1') return;
     setEditId(null);
     setForm({ ...EMPTY_FORM });
+    setKalemSatirlari([newMasrafKalemSatiri()]);
     setFormError('');
     setFileSearch('');
     setFileLookup(null);
@@ -1336,6 +1464,7 @@ export default function MasraflarPage() {
     setShowForm(false);
     setEditId(null);
     setForm({ ...EMPTY_FORM });
+    setKalemSatirlari([newMasrafKalemSatiri()]);
     setFormError('');
     setFileSearch('');
     setFileLookup(null);
@@ -2222,163 +2351,190 @@ export default function MasraflarPage() {
             </div>
 
             {form.expenseLane && (
-            <div className="md:col-span-2" data-testid="masraf-kalem-alanlari">
+            <div className="md:col-span-2 space-y-3" data-testid="masraf-kalem-alanlari">
               <FieldLabel
                 className={fieldLabelCls}
                 help={(
                   <>
-                    Grup ve alt grup Ayarlar listesinde de durur.{' '}
+                    Aynı fişte farklı KDV’li harcama için satır ekleyin. Grup ve alt grup Ayarlar listesinde de durur.{' '}
                     <Link href={FINANS_KART_YOL.masrafKategorileri} className="font-semibold text-brand-700 underline">
                       Masraf Kategorileri
                     </Link>
                   </>
                 )}
               >
-                Masraf Kalemi {requiredHint}
+                Masraf Satırları {requiredHint}
               </FieldLabel>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <p className="mb-1 text-[11px] text-slate-500 dark:text-slate-400">Masraf Grubu</p>
-                    <SearchableSelect
-                      options={groupOptions}
-                      value={form.expenseCategoryParentId}
-                      onChange={(id) => setForm({
-                        ...form,
-                        expenseCategoryParentId: id,
-                        expenseCategoryId: '',
-                      })}
-                      placeholder="Masraf grubu ara..."
-                      emptyText="Masraf grubu bulunamadı"
-                      inputClassName={inputCls}
-                      createAction={{
-                        label: '+ Yeni Masraf Grubu Ekle',
-                        onSelect: () => openCategoryDraft('group'),
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <p className="mb-1 text-[11px] text-slate-500 dark:text-slate-400">Masraf Alt Grubu</p>
-                    <SearchableSelect
-                      options={subgroupOptions}
-                      value={form.expenseCategoryId}
-                      onChange={handleSubgroupPick}
-                      placeholder={
-                        form.expenseCategoryParentId
-                          ? (loadingChildren ? 'Yükleniyor...' : 'Alt grup ara...')
-                          : 'Önce grup seçin veya alt grup ara...'
-                      }
-                      emptyText="Alt grup bulunamadı"
-                      disabled={loadingChildren}
-                      inputClassName={inputCls}
-                      createAction={{
-                        label: '+ Yeni Alt Grup Ekle',
-                        onSelect: () => openCategoryDraft('sub'),
-                      }}
-                    />
-                  </div>
-                </div>
-                {categoryDraft ? (
-                  <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800">
-                    <p className="mb-1 text-[11px] text-slate-500">
-                      {categoryDraft === 'group' ? 'Yeni Masraf Grubu' : 'Yeni Alt Grup'}
-                    </p>
-                    <div className="flex gap-2">
-                      <input
-                        className={inputCls}
-                        placeholder={categoryDraft === 'group' ? 'Örn. çatı malzemesi' : 'Örn. membran'}
-                        value={categoryDraftName}
-                        autoFocus
-                        onChange={(e) => setCategoryDraftName(e.target.value)}
-                        onBlur={(e) => {
-                          const v = toTitleCaseTR(e.target.value.trim());
-                          if (v) setCategoryDraftName(v);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            void saveCategoryDraft();
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        disabled={categoryDraftSaving}
-                        onClick={() => { void saveCategoryDraft(); }}
-                        className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-                      >
-                        {categoryDraftSaving ? 'Kaydediliyor' : 'Ekle'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setCategoryDraft(null); setCategoryDraftError(''); }}
-                        className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600"
-                      >
-                        Vazgeç
-                      </button>
-                    </div>
-                    {categoryDraftError ? (
-                      <p className="mt-1.5 text-xs text-status-danger">{categoryDraftError}</p>
-                    ) : null}
-                  </div>
-                ) : null}
-            </div>
-            )}
-
-            <div>
-              <FieldLabel className={fieldLabelCls} help="Girilen tutar KDV dahildir. Matrah ve KDV aşağıda ayrılır.">
-                Tutar — KDV Dahil (TL) {requiredHint}
-              </FieldLabel>
-              <TrAmountInput
-                className={inputCls}
-                placeholder="0"
-                value={form.amount}
-                onChange={(amount) => setForm({ ...form, amount })}
-              />
-            </div>
-
-            <div data-testid="masraf-kdv-oran-alan">
-              <FieldLabel
-                htmlFor="finans-masraf-kdv-oran"
-                className={fieldLabelCls}
-                help={(
-                  <>
-                    Liste Ayarlar’dan gelir; burada da yeni oran eklenir.{' '}
-                    <Link href={FINANS_KART_YOL.masrafKategorileri} className="font-semibold text-brand-700 underline">
-                      Masraf Kategorileri
-                    </Link>
-                  </>
-                )}
-                testId="masraf-kdv-oran-help"
-              >
-                KDV Oranı {requiredHint}
-              </FieldLabel>
-              <div className="flex gap-2">
-                <select
-                  id="finans-masraf-kdv-oran"
-                  className={inputCls}
-                  value={form.vatRate}
-                  onChange={(e) => setForm({ ...form, vatRate: e.target.value })}
-                  data-testid="masraf-kdv-oran"
-                >
-                  {masrafKdvOranlari.map((rate) => (
-                    <option key={rate} value={String(rate)}>
-                      %{rate}
-                    </option>
-                  ))}
-                </select>
-                {!kdvDraftOpen ? (
-                  <button
-                    type="button"
-                    onClick={openKdvDraft}
-                    className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:border-slate-600 dark:hover:bg-slate-800"
-                    data-testid="masraf-kdv-oran-ekle-ac"
+              {kalemSatirlari.map((line, idx) => {
+                const subOpts = subgroupOptionsFor(line.expenseCategoryParentId);
+                return (
+                  <div
+                    key={line.key}
+                    className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-800/40"
+                    data-testid={`masraf-kalem-satir-${idx + 1}`}
                   >
-                    + Oran
-                  </button>
-                ) : null}
-              </div>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        {kalemSatirlari.length > 1 ? `${idx + 1}. Satır` : 'Masraf Kalemi'}
+                      </p>
+                      {kalemSatirlari.length > 1 && !editId ? (
+                        <button
+                          type="button"
+                          className="text-xs font-medium text-rose-700 hover:underline"
+                          data-testid={`masraf-kalem-satir-sil-${idx + 1}`}
+                          onClick={() => {
+                            setKalemSatirlari((rows) => rows.filter((r) => r.key !== line.key));
+                          }}
+                        >
+                          Satırı Kaldır
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div>
+                        <p className="mb-1 text-[11px] text-slate-500 dark:text-slate-400">Masraf Grubu</p>
+                        <SearchableSelect
+                          options={groupOptions}
+                          value={line.expenseCategoryParentId}
+                          onChange={(id) => {
+                            patchKalemSatiri(line.key, {
+                              expenseCategoryParentId: id,
+                              expenseCategoryId: '',
+                            });
+                            if (idx === 0) {
+                              setForm((f) => ({
+                                ...f,
+                                expenseCategoryParentId: id,
+                                expenseCategoryId: '',
+                              }));
+                            }
+                          }}
+                          placeholder="Masraf grubu ara..."
+                          emptyText="Masraf grubu bulunamadı"
+                          inputClassName={inputCls}
+                          createAction={{
+                            label: '+ Yeni Masraf Grubu Ekle',
+                            onSelect: () => openCategoryDraft('group', line.key),
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <p className="mb-1 text-[11px] text-slate-500 dark:text-slate-400">Masraf Alt Grubu</p>
+                        <SearchableSelect
+                          options={subOpts}
+                          value={line.expenseCategoryId}
+                          onChange={(id) => handleSubgroupPick(line.key, id)}
+                          placeholder={
+                            line.expenseCategoryParentId
+                              ? 'Alt grup ara...'
+                              : 'Önce grup seçin veya alt grup ara...'
+                          }
+                          emptyText="Alt grup bulunamadı"
+                          inputClassName={inputCls}
+                          createAction={{
+                            label: '+ Yeni Alt Grup Ekle',
+                            onSelect: () => openCategoryDraft('sub', line.key),
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <p className="mb-1 text-[11px] text-slate-500">Tutar — KDV Dahil (TL)</p>
+                        <TrAmountInput
+                          className={inputCls}
+                          placeholder="0"
+                          value={line.amount}
+                          onChange={(amount) => {
+                            patchKalemSatiri(line.key, { amount });
+                            if (idx === 0) setForm((f) => ({ ...f, amount }));
+                          }}
+                        />
+                      </div>
+                      <div data-testid={idx === 0 ? 'masraf-kdv-oran-alan' : undefined}>
+                        <p className="mb-1 text-[11px] text-slate-500">KDV Oranı</p>
+                        <div className="flex gap-2">
+                          <select
+                            id={idx === 0 ? 'finans-masraf-kdv-oran' : undefined}
+                            className={inputCls}
+                            value={line.vatRate}
+                            onChange={(e) => {
+                              const vatRate = e.target.value;
+                              patchKalemSatiri(line.key, { vatRate });
+                              if (idx === 0) setForm((f) => ({ ...f, vatRate }));
+                            }}
+                            data-testid={idx === 0 ? 'masraf-kdv-oran' : `masraf-kdv-oran-${idx + 1}`}
+                          >
+                            {masrafKdvOranlari.map((rate) => (
+                              <option key={rate} value={String(rate)}>
+                                %{rate}
+                              </option>
+                            ))}
+                          </select>
+                          {idx === 0 && !kdvDraftOpen ? (
+                            <button
+                              type="button"
+                              onClick={openKdvDraft}
+                              className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:border-slate-600 dark:hover:bg-slate-800"
+                              data-testid="masraf-kdv-oran-ekle-ac"
+                            >
+                              + Oran
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {categoryDraft ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800">
+                  <p className="mb-1 text-[11px] text-slate-500">
+                    {categoryDraft === 'group' ? 'Yeni Masraf Grubu' : 'Yeni Alt Grup'}
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      className={inputCls}
+                      placeholder={categoryDraft === 'group' ? 'Örn. çatı malzemesi' : 'Örn. membran'}
+                      value={categoryDraftName}
+                      autoFocus
+                      onChange={(e) => setCategoryDraftName(e.target.value)}
+                      onBlur={(e) => {
+                        const v = toTitleCaseTR(e.target.value.trim());
+                        if (v) setCategoryDraftName(v);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void saveCategoryDraft();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={categoryDraftSaving}
+                      onClick={() => { void saveCategoryDraft(); }}
+                      className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                    >
+                      {categoryDraftSaving ? 'Kaydediliyor' : 'Ekle'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCategoryDraft(null);
+                        setCategoryDraftLineKey(null);
+                        setCategoryDraftError('');
+                      }}
+                      className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600"
+                    >
+                      Vazgeç
+                    </button>
+                  </div>
+                  {categoryDraftError ? (
+                    <p className="mt-1.5 text-xs text-status-danger">{categoryDraftError}</p>
+                  ) : null}
+                </div>
+              ) : null}
               {kdvDraftOpen ? (
-                <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800">
                   <p className="mb-1 text-[11px] text-slate-500">Yeni KDV Oranı</p>
                   <div className="flex gap-2">
                     <input
@@ -2418,7 +2574,25 @@ export default function MasraflarPage() {
                   ) : null}
                 </div>
               ) : null}
+              {!editId ? (
+                <button
+                  type="button"
+                  className="rounded-xl border border-dashed border-brand-300 bg-brand-50/50 px-3 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:bg-brand-950/20 dark:text-brand-300"
+                  data-testid="masraf-kalem-satir-ekle"
+                  onClick={() => {
+                    setKalemSatirlari((rows) => [
+                      ...rows,
+                      newMasrafKalemSatiri({
+                        vatRate: rows[0]?.vatRate || DEFAULT_MASRAF_KDV,
+                      }),
+                    ]);
+                  }}
+                >
+                  + Masraf Satırı Ekle
+                </button>
+              ) : null}
             </div>
+            )}
 
             <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-600 dark:bg-slate-800/40" data-testid="masraf-kdv-ozet">
               <div className="grid grid-cols-3 gap-2 text-center">
@@ -2435,7 +2609,9 @@ export default function MasraflarPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-500">Genel Toplam</p>
+                  <p className="text-[10px] text-slate-500">
+                    {kalemSatirlari.length > 1 ? 'Fiş Toplamı' : 'Genel Toplam'}
+                  </p>
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     {formatTryAmount(masrafVatSplit.genelToplam)}
                   </p>

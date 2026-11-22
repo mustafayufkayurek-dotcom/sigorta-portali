@@ -9,6 +9,7 @@ import {
   normalizeMasrafKdvOranlari,
   resolveExpenseVatFate,
   splitGrossVat,
+  sumSplitGrossVatLines,
 } from './expense-vat.ts';
 
 describe('masraf KDV LOCK', () => {
@@ -17,6 +18,17 @@ describe('masraf KDV LOCK', () => {
     assert.equal(r.matrah, 1000);
     assert.equal(r.vatAmount, 200);
     assert.equal(r.genelToplam, 1200);
+  });
+
+  it('çoklu KDV satırını toplar', () => {
+    const s = sumSplitGrossVatLines([
+      { amount: 1200, vatRate: 20 },
+      { amount: 110, vatRate: 10 },
+    ]);
+    assert.equal(s.lineCount, 2);
+    assert.equal(s.matrah, 1100);
+    assert.equal(s.vatAmount, 210);
+    assert.equal(s.genelToplam, 1310);
   });
 
   it('oran listesi boşsa varsayılanı koyar', () => {
@@ -60,13 +72,15 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /safe-area-inset-bottom/);
     assert.match(masraf, /pb-\[max\(2rem/);
     assert.match(masraf, /bg-slate-50/);
-    assert.match(masraf, /splitGrossVat/);
+    assert.match(masraf, /sumSplitGrossVatLines/);
     assert.match(masraf, /hasTaxDocument/);
     assert.match(masraf, /masraf-kdv-ozet/);
+    assert.match(masraf, /masraf-kalem-satir-ekle/);
     assert.match(masraf, /masraf-akilli-fis/);
     assert.match(masraf, /scrollContent=\{false\}/);
     assert.match(masraf, /overscroll-contain/);
     assert.match(masraf, /Tutar — KDV Dahil/);
+    assert.doesNotMatch(masraf, /Rapordaki iş grubunu seçin/);
     assert.match(masraf, /FieldLabel/);
     assert.match(masraf, /masraf-kdv-raporu-link/);
     assert.match(masraf, /masraf-cari-sayfa/);

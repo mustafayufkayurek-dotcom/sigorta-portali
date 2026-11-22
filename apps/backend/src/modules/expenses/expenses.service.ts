@@ -875,28 +875,18 @@ export class ExpensesService {
       }
       await this.assertFileEligibleForExpense(dto.fileCaseId, dto.expensePlan);
       const plan = dto.expensePlan ?? 'BUTCELENEN';
-      if (plan === 'BUTCELENEN') {
+      // İş grubu seçimi zorunlu değil; seçilmişse o satırın bütçesi denetlenir.
+      if (plan === 'BUTCELENEN' && dto.workGroupId) {
         const audit = await this.getWorkGroupExpenseAudit(dto.fileCaseId);
-        if (audit.groups.length > 0) {
-          if (!dto.workGroupId) {
-            throw new BadRequestException('Rapordaki iş grubunu seçin. Masraf bu satırdan denetlenir.');
-          }
-          const line = audit.groups.find((g) => g.workGroupId === dto.workGroupId);
-          if (line && line.jobDefinitions.length > 0 && !String(dto.workSubGroupName ?? '').trim()) {
-            throw new BadRequestException('İş tanımı seçimi zorunludur.');
-          }
-          await this.assertWorkGroupExpenseBudget({
-            fileCaseId: dto.fileCaseId,
-            workGroupId: dto.workGroupId,
-            amount: dto.amount,
-          });
-        } else if (dto.workGroupId) {
-          await this.assertWorkGroupExpenseBudget({
-            fileCaseId: dto.fileCaseId,
-            workGroupId: dto.workGroupId,
-            amount: dto.amount,
-          });
+        const line = audit.groups.find((g) => g.workGroupId === dto.workGroupId);
+        if (line && line.jobDefinitions.length > 0 && !String(dto.workSubGroupName ?? '').trim()) {
+          throw new BadRequestException('İş tanımı seçimi zorunludur.');
         }
+        await this.assertWorkGroupExpenseBudget({
+          fileCaseId: dto.fileCaseId,
+          workGroupId: dto.workGroupId,
+          amount: dto.amount,
+        });
       }
     }
     const date = new Date(dto.date);

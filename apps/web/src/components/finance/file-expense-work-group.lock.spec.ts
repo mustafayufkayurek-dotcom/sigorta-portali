@@ -58,7 +58,8 @@ describe('masraf kalemi UI LOCK', () => {
       'utf8',
     );
     assert.match(page, /masraf-kalem-alanlari/);
-    assert.match(page, /Masraf Kalemi/);
+    assert.match(page, /Masraf Satırları|Masraf Kalemi/);
+    assert.match(page, /masraf-kalem-satir-ekle/);
     assert.match(page, /\+ Yeni Masraf Grubu Ekle/);
     assert.match(page, /\+ Yeni Alt Grup Ekle/);
     assert.match(page, /finans-masraf-plan/);
@@ -67,17 +68,20 @@ describe('masraf kalemi UI LOCK', () => {
     assert.match(page, /Cari Kartı Aç/);
     assert.doesNotMatch(page, /FileWorkGroupExpenseFields/);
     assert.doesNotMatch(page, /İş Grubu \/ İş Tanımı/);
+    assert.doesNotMatch(page, /Rapordaki iş grubunu seçin/);
     // Bütçe uygunluğu için audit hâlâ okunabilir; seçim alanı iş grubu değildir.
     assert.match(page, /work-group-audit/);
   });
 
-  it('API isteğe bağlı iş grubu bütçe denetimini korur', () => {
+  it('API iş grubunu zorunlu tutmaz; seçilmişse bütçe denetler', () => {
     const svc = readFileSync(
       join(root, 'apps/backend/src/modules/expenses/expenses.service.ts'),
       'utf8',
     );
     assert.match(svc, /assertWorkGroupExpenseBudget/);
     assert.match(svc, /getWorkGroupExpenseAudit/);
+    assert.doesNotMatch(svc, /Rapordaki iş grubunu seçin/);
+    assert.match(svc, /İş grubu seçimi zorunlu değil/);
     const ctrl = readFileSync(
       join(root, 'apps/backend/src/modules/expenses/expenses.controller.ts'),
       'utf8',

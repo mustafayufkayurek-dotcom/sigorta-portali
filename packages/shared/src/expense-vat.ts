@@ -40,6 +40,31 @@ export function splitGrossVat(grossAmount: number, vatRate: number): {
   return { matrah, vatAmount, genelToplam: round2(gross), vatRate: rate };
 }
 
+/** Tek fişte birden fazla KDV satırının matrah / KDV / genel toplamı. */
+export function sumSplitGrossVatLines(
+  lines: ReadonlyArray<{ amount: number; vatRate: number }>,
+): {
+  matrah: number;
+  vatAmount: number;
+  genelToplam: number;
+  lineCount: number;
+} {
+  let matrah = 0;
+  let vatAmount = 0;
+  let genelToplam = 0;
+  let lineCount = 0;
+  for (const line of lines) {
+    const amount = Number(line.amount);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    const split = splitGrossVat(amount, Number(line.vatRate) || 0);
+    matrah = round2(matrah + split.matrah);
+    vatAmount = round2(vatAmount + split.vatAmount);
+    genelToplam = round2(genelToplam + split.genelToplam);
+    lineCount += 1;
+  }
+  return { matrah, vatAmount, genelToplam, lineCount };
+}
+
 export function expenseDocumentModeFromFlag(hasTaxDocument: unknown): ExpenseDocumentMode {
   return hasTaxDocument === false ? 'belgesiz' : 'belgeli';
 }
