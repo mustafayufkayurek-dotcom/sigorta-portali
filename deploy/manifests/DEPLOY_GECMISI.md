@@ -2,24 +2,30 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 22 Kasım 2026
+**Son güncelleme:** 23 Kasım 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (22 Kasım 2026 — web v714 / backend v714)
+## Canlı durum (23 Kasım 2026 — web v715 / backend v715)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v714-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v714-amd64` | canlı |
-| **Rollback** | Web **v713** / Backend **v713** | manifest `rollbackImages` |
-| **Etiket** | `v714-masraf-kapsam-kasa-aciklama` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v715-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v715-amd64` | canlı |
+| **Rollback** | Web **v714** / Backend **v714** | manifest `rollbackImages` |
+| **Etiket** | `v715-masraf-modal-kdv-select` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v715 — Full (23 Kasım 2026) — Masraf modal flu + KDV select
+
+- Grup/alt grup FinansModal portal (SlidePanel flu örtü altında kalmaz)
+- KDV oranı native select; route gate FAIL=0 PARTIAL=1
+- Geri alma web **v714** / backend **v714**
 
 ### v714 — Full (22 Kasım 2026) — Masraf kapsam / Kasa / açıklama
 
