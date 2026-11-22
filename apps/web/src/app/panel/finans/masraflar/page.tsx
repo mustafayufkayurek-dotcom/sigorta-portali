@@ -338,7 +338,7 @@ export default function MasraflarPage() {
   const [categoryTree, setCategoryTree] = useState<ExpenseCategoryGroup[]>([]);
   const [categoryFlat, setCategoryFlat] = useState<ExpenseCategoryFlat[]>([]);
   const [categoryChildren, setCategoryChildren] = useState<{ id: string; name: string }[]>([]);
-  const [loadingChildren, setLoadingChildren] = useState(false);
+  const [, setLoadingChildren] = useState(false);
   const [workGroups, setWorkGroups] = useState<FileWorkGroupAuditLine[]>([]);
   const [masrafKdvOranlari, setMasrafKdvOranlari] = useState<number[]>([...DEFAULT_MASRAF_KDV_ORANLARI]);
   const [loading,  setLoading]  = useState(true);
