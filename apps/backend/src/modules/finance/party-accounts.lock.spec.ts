@@ -54,6 +54,8 @@ describe('Party accounts LOCK', () => {
     assert.match(svc, /confirmMaliDonem/);
     assert.match(svc, /uyariMaliDonem/);
     assert.match(svc, /uyariMaliYil/);
+    assert.match(svc, /closedYears/);
+    assert.match(svc, /closedMonths/);
     assert.match(svc, /maliDonemPromptFromLastPosting/);
     assert.match(svc, /lastPostingDate/);
     assert.match(svc, /openFileCount/);

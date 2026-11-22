@@ -93,7 +93,10 @@ describe('Masraf ödeme kaynağı cari LOCK', () => {
     assert.match(page, /Kasa Fişi/);
     assert.match(page, /composeMasrafDescription/);
     assert.match(page, /masraf-tarih-donem-uyari/);
-    assert.match(page, /finansIslemTarihiDonemUyarisi/);
+    assert.match(page, /resolveFinansIslemTarihiDonemDurum/);
+    assert.match(page, /FinansTarihDonemUyariIkon/);
+    assert.match(page, /FINANS_DONEM_KAPALI_MESAJ/);
+    assert.match(page, /FinansVerimlilikAnalizUyariBant|pushFinansVerimlilikAnalizUyari/);
     assert.match(ctrl, /ensure-vendor/);
     assert.match(ctrl, /ensureVendorAccount/);
   });

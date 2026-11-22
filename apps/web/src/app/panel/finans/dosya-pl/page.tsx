@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { FinansVerimlilikAnalizUyariBant } from '@/components/finance/FinansVerimlilikAnalizUyariBant';
 import { FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
 import { FinansTablePager } from '@/components/finance/FinansTablePager';
 import {
@@ -94,6 +95,7 @@ export default function DosyaPLPage() {
   return (
     <div className="space-y-6 min-h-screen bg-white dark:bg-slate-900 p-6">
       <FinansSubpageBreadcrumb current="Dosya P&L" />
+      <FinansVerimlilikAnalizUyariBant href="/panel/finans/dosya-pl" />
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Dosya P/L</h2>

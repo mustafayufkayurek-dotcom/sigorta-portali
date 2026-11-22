@@ -17,6 +17,7 @@ import {
   type TableColumnDef,
 } from '@/components/ui/TableColumnPicker';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
+import { FinansVerimlilikAnalizUyariBant } from '@/components/finance/FinansVerimlilikAnalizUyariBant';
 import { FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
 import { FinansTablePager } from '@/components/finance/FinansTablePager';
 import { FINANS_TABLE_PAGE_KEYS, readFinansTablePageSize, sliceFinansPage, type FinansTablePageSize } from '@/utils/finans-table-page';
@@ -104,6 +105,7 @@ export default function KarlilikPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 space-y-5 p-6">
       <FinansSubpageBreadcrumb current="Kârlılık Analizi" />
+      <FinansVerimlilikAnalizUyariBant href="/panel/finans/karlilik" />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Karlılık Analizi</h2>

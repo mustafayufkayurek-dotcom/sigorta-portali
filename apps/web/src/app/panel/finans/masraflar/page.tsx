@@ -59,18 +59,22 @@ import {
   expenseDocumentModeFromFlag,
   expenseLaneFromSubject,
   expenseSubjectForLane,
-  finansIslemTarihiDonemUyarisi,
+  FINANS_DONEM_KAPALI_MESAJ,
   hasTaxDocumentFromMode,
   isCustomerExpenseLane,
   isFileExpenseLane,
   isHariciExpenseLane,
   normalizeMasrafKdvOranlari,
   parseExpenseLane,
+  resolveFinansIslemTarihiDonemDurum,
   splitGrossVat,
   type ExpenseDocumentMode,
   type ExpenseLane,
 } from '@sigorta/shared';
 import { financeIsoPeriod } from '@/utils/finans-merkez-kart';
+import { FinansTarihDonemUyariIkon } from '@/components/finance/FinansTarihDonemUyariIkon';
+import { FinansVerimlilikAnalizUyariBant } from '@/components/finance/FinansVerimlilikAnalizUyariBant';
+import { pushFinansVerimlilikAnalizUyari } from '@/utils/finans-verimlilik-analiz-uyari';
 
 type FileWorkGroupAuditLine = {
   workGroupId: string;
@@ -386,6 +390,8 @@ export default function MasraflarPage() {
   const [showCariCreate, setShowCariCreate] = useState(false);
   const [cariOzetId, setCariOzetId] = useState<string | null>(null);
   const [lastSavedOpNo, setLastSavedOpNo] = useState('');
+  const [closedYears, setClosedYears] = useState<number[]>([]);
+  const [closedMonths, setClosedMonths] = useState<string[]>([]);
   const [fDateFrom, setFDateFrom] = useState(() => {
     const y = Number(searchParams.get('year'));
     const m = Number(searchParams.get('month') ?? '0');
@@ -470,6 +476,27 @@ export default function MasraflarPage() {
 
   useEffect(() => () => {
     if (fileSearchDebounceRef.current) clearTimeout(fileSearchDebounceRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (!getAccessToken()) return;
+    axios
+      .get(`${API}/finance/party-accounts/donem-kapanis`, { headers: authHeader() })
+      .then((r) => {
+        const data = r.data?.data ?? r.data ?? {};
+        const years = Array.isArray(data.closedYears)
+          ? data.closedYears.map((y: unknown) => Number(y)).filter((y: number) => Number.isFinite(y))
+          : [];
+        const months = Array.isArray(data.closedMonths)
+          ? data.closedMonths.map((m: unknown) => String(m)).filter((m: string) => /^\d{4}-\d{2}$/.test(m))
+          : [];
+        setClosedYears(years);
+        setClosedMonths(months);
+      })
+      .catch(() => {
+        setClosedYears([]);
+        setClosedMonths([]);
+      });
   }, []);
 
   const loadCategories = useCallback(async () => {
@@ -989,6 +1016,19 @@ export default function MasraflarPage() {
         }
       }
 
+      if (fileLane && form.fileCaseId) {
+        const fileLabel =
+          files.find((f) => f.id === form.fileCaseId)?.fileNo
+          || fileOpt?.fileNo
+          || 'Dosya';
+        pushFinansVerimlilikAnalizUyari({ kind: 'dosya', label: fileLabel });
+      } else if (customerLane && form.customerId) {
+        const customerLabel =
+          customerOptions.find((c) => c.id === form.customerId)?.name
+          || 'Müşteri';
+        pushFinansVerimlilikAnalizUyari({ kind: 'musteri', label: customerLabel });
+      }
+
       if (!editId && mode === 'new') {
         setForm({
           ...EMPTY_FORM,
@@ -1158,7 +1198,13 @@ export default function MasraflarPage() {
     if (!form.vatRate) blockers.push('KDV oranı seçin');
     if (!form.description.trim()) blockers.push('Açıklama yazın');
     const dateIso = normalizeTrDateValue(form.date);
-    if (!isCompleteTrDateValue(dateIso)) blockers.push('Geçerli bir tarih girin (GG.AA.YYYY)');
+    if (!isCompleteTrDateValue(dateIso)) {
+      blockers.push('Geçerli bir tarih girin (GG.AA.YYYY)');
+    } else if (
+      resolveFinansIslemTarihiDonemDurum(dateIso, closedYears, closedMonths).kind === 'closed'
+    ) {
+      blockers.push(FINANS_DONEM_KAPALI_MESAJ);
+    }
     return blockers;
   }, [
     form.expenseLane,
@@ -1174,6 +1220,8 @@ export default function MasraflarPage() {
     form.description,
     formFileEligible,
     needsExpenseSubgroup,
+    closedYears,
+    closedMonths,
   ]);
 
   const formCanSave = formSaveBlockers.length === 0 && (
@@ -1188,11 +1236,11 @@ export default function MasraflarPage() {
     return splitGrossVat(amountNum, Number.isFinite(rate) ? rate : 0);
   }, [form.amount, form.vatRate]);
 
-  const masrafTarihDonemUyarisi = useMemo(() => {
+  const masrafTarihDonemDurum = useMemo(() => {
     const dateIso = normalizeTrDateValue(form.date);
-    if (!isCompleteTrDateValue(dateIso)) return null;
-    return finansIslemTarihiDonemUyarisi(dateIso);
-  }, [form.date]);
+    if (!isCompleteTrDateValue(dateIso)) return { kind: 'ok' as const };
+    return resolveFinansIslemTarihiDonemDurum(dateIso, closedYears, closedMonths);
+  }, [form.date, closedYears, closedMonths]);
 
   useEffect(() => {
     if (form.fileCaseId || editId || !fileSearch.trim()) return;
@@ -1344,6 +1392,7 @@ export default function MasraflarPage() {
         backHref={hedefBaglam ? hedefCiroDonYol(baglamYear, baglamMonth) : undefined}
         backLabel={hedefBaglam ? 'Hedef Ciroya Dön' : undefined}
       />
+      <FinansVerimlilikAnalizUyariBant href="/panel/finans/karlilik" />
       {hedefBaglam ? (
         <FinansHedefBaglamSeridi
           year={baglamYear}
@@ -2150,23 +2199,26 @@ export default function MasraflarPage() {
             ) : null}
 
             <div data-testid="masraf-tarih-alan" className={form.expenseLane === 'hasar' ? '' : 'md:col-span-2'}>
-              <FieldLabel className={fieldLabelCls} help="İşlem tarihi mali döneme yazılır.">
-                Tarih {requiredHint}
-              </FieldLabel>
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <FieldLabel
+                  className="mb-0 flex items-center gap-1.5 text-xs font-medium text-slate-500"
+                  help="İşlem tarihi mali döneme yazılır. Açık geçmiş dönem kayıt kesmez; kapalı dönem keser."
+                >
+                  Tarih {requiredHint}
+                </FieldLabel>
+                {masrafTarihDonemDurum.kind !== 'ok' ? (
+                  <FinansTarihDonemUyariIkon
+                    message={masrafTarihDonemDurum.message}
+                    closed={masrafTarihDonemDurum.kind === 'closed'}
+                    testId="masraf-tarih-donem-uyari"
+                  />
+                ) : null}
+              </div>
               <TrDateInput
                 className={inputCls}
                 value={form.date}
                 onChange={(date) => setForm({ ...form, date })}
               />
-              {masrafTarihDonemUyarisi ? (
-                <p
-                  className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"
-                  data-testid="masraf-tarih-donem-uyari"
-                  role="status"
-                >
-                  {masrafTarihDonemUyarisi}
-                </p>
-              ) : null}
             </div>
 
             {form.expenseLane && (

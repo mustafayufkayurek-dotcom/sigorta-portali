@@ -103,7 +103,7 @@ describe('operasyon ilk kullanım şeridi LOCK', () => {
     );
     assert.match(cariModal, /payerType: 'customer'/);
     assert.match(cariModal, /Dosya bakiyesine dokunulmaz/);
-    assert.match(cariModal, /finansIslemTarihiDonemUyarisi/);
+    assert.match(cariModal, /resolveFinansIslemTarihiDonemDurum|finansIslemTarihiDonemUyarisi/);
     assert.match(cariModal, /cari-tahsilat-tarih-donem-uyari/);
   });
 

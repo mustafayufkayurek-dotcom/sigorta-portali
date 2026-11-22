@@ -655,6 +655,8 @@ export class PartyAccountsService {
       currentYear,
       lastPostingDate,
       suggestedYear,
+      closedYears,
+      closedMonths,
       uyariMaliDonem,
       uyariMaliYil,
       disiplin: {

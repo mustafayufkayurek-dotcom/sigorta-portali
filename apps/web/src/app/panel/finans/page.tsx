@@ -23,6 +23,8 @@ import {
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { OpsFirstRunNotice } from '@/components/operasyon/OpsFirstRunNotice';
+import { FinansTarihDonemUyariIkon } from '@/components/finance/FinansTarihDonemUyariIkon';
+import { FinansVerimlilikAnalizUyariBant } from '@/components/finance/FinansVerimlilikAnalizUyariBant';
 import { useToast } from '@/contexts/ToastContext';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { OPS_NOTICE } from '@/utils/ops-first-run-notice';
@@ -46,7 +48,7 @@ import type {
 } from '@sigorta/shared';
 import {
   FINANS_ISLETME_SABIT_KATEGORILER,
-  finansIslemDonemSecimUyarisi,
+  resolveFinansIslemDonemSecimDurum,
   finansIsletmeSabitAktifAyda,
   sumFinansIsletmeSabit,
 } from '@sigorta/shared';
@@ -470,7 +472,7 @@ export default function FinansDashboard() {
   };
 
   const sabitFormTutar = parseTrAmountInput(sabitTutarInput);
-  const sabitDonemUyarisi = finansIslemDonemSecimUyarisi(year, month);
+  const sabitDonemDurum = resolveFinansIslemDonemSecimDurum(year, month);
 
   const kurulumAcik = kurulum != null && !kurulum.seyirAcik;
   const cariTanimEksik = kurulumAcik && kurulum.kurulum.cariTanim === false;
@@ -617,6 +619,7 @@ export default function FinansDashboard() {
             <h2 className="text-sm font-semibold text-slate-800" data-testid="finans-sirket-seyir-baslik">
               Şirket Seyri
             </h2>
+            <FinansVerimlilikAnalizUyariBant href="/panel/finans/karlilik" />
             <div
               className="grid grid-cols-1 gap-3 sm:grid-cols-3"
               data-testid="finans-seyir-donem-ozet"
@@ -779,10 +782,19 @@ export default function FinansDashboard() {
                 <>
                   <div className="space-y-2 border-b border-slate-100 px-4 py-2.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs text-slate-500">
-                        Üstteki dönem ({String(month).padStart(2, '0')}.{year}) için cariye yazılır.
-                        Ödeme kaydı değildir.
-                      </p>
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <p className="text-xs text-slate-500">
+                          Üstteki dönem ({String(month).padStart(2, '0')}.{year}) için cariye yazılır.
+                          Ödeme kaydı değildir.
+                        </p>
+                        {sabitDonemDurum.kind !== 'ok' ? (
+                          <FinansTarihDonemUyariIkon
+                            message={sabitDonemDurum.message}
+                            closed={sabitDonemDurum.kind === 'closed'}
+                            testId="finans-isletme-sabit-donem-uyari"
+                          />
+                        ) : null}
+                      </div>
                       <button
                         type="button"
                         disabled={sabitDusuyor || sabitKaydediliyor}
@@ -793,15 +805,6 @@ export default function FinansDashboard() {
                         {sabitDusuyor ? 'Düşülüyor…' : 'Bu Ayı Cariye Düş'}
                       </button>
                     </div>
-                    {sabitDonemUyarisi ? (
-                      <p
-                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
-                        data-testid="finans-isletme-sabit-donem-uyari"
-                        role="status"
-                      >
-                        {sabitDonemUyarisi}
-                      </p>
-                    ) : null}
                   </div>
                   <FinansDataTable embedded>
                     <thead>

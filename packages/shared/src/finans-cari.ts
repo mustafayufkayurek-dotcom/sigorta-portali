@@ -863,7 +863,8 @@ export function finansIsletmeSabitEntryDateIso(year: number, month: number): str
 
 /**
  * İşlem tarihi bugünün ayından farklıysa uyarı metni.
- * Kayıt engellenmez — fiş/fatura geç gelebilir; yeni ay da serbest.
+ * Açık dönemde kayıt engellenmez — fiş/fatura geç gelebilir; yeni ay da serbest.
+ * Kapalı dönem için `resolveFinansIslemTarihiDonemDurum` kullanılır.
  */
 export function finansIslemTarihiDonemUyarisi(
   entryDateIso: string,
@@ -885,6 +886,31 @@ export function finansIslemTarihiDonemUyarisi(
   return `Tarih ${label} dönemine (önceki ay) ait. Kayıt durdurulmaz; fiş/fatura geç gelebildiği için dönemi kontrol ederek devam edin.`;
 }
 
+export type FinansIslemTarihiDonemDurum =
+  | { kind: 'ok' }
+  | { kind: 'soft'; message: string }
+  | { kind: 'closed'; message: string };
+
+/**
+ * Açık geçmiş/gelecek ay → soft uyarı (kayıt serbest).
+ * Kapalı mali dönem/yıl → closed (kayıt kesilir).
+ */
+export function resolveFinansIslemTarihiDonemDurum(
+  entryDateIso: string,
+  closedYears: readonly number[] = [],
+  closedMonths: readonly string[] = [],
+  todayIso?: string,
+): FinansIslemTarihiDonemDurum {
+  const entry = String(entryDateIso ?? '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(entry)) return { kind: 'ok' };
+  if (isFinansDonemKapaliForDate(entry, closedYears, closedMonths)) {
+    return { kind: 'closed', message: FINANS_DONEM_KAPALI_MESAJ };
+  }
+  const soft = finansIslemTarihiDonemUyarisi(entry, todayIso);
+  if (soft) return { kind: 'soft', message: soft };
+  return { kind: 'ok' };
+}
+
 /** Seçilen yıl/ay, bugünün ayından farklıysa aynı uyarı kapısı. */
 export function finansIslemDonemSecimUyarisi(
   year: number,
@@ -896,6 +922,24 @@ export function finansIslemDonemSecimUyarisi(
   if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return null;
   return finansIslemTarihiDonemUyarisi(
     `${y}-${String(m).padStart(2, '0')}-01`,
+    todayIso,
+  );
+}
+
+export function resolveFinansIslemDonemSecimDurum(
+  year: number,
+  month: number,
+  closedYears: readonly number[] = [],
+  closedMonths: readonly string[] = [],
+  todayIso?: string,
+): FinansIslemTarihiDonemDurum {
+  const y = Math.trunc(Number(year));
+  const m = Math.trunc(Number(month));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return { kind: 'ok' };
+  return resolveFinansIslemTarihiDonemDurum(
+    `${y}-${String(m).padStart(2, '0')}-01`,
+    closedYears,
+    closedMonths,
     todayIso,
   );
 }

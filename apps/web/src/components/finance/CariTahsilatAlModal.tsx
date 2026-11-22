@@ -7,7 +7,7 @@ import { getApiErrorMessage } from '@/utils/api-error';
 import {
   FINANS_ODEME_YONTEM_HAVALE_EFT,
   FINANS_ODEME_YONTEM_OPTIONS,
-  finansIslemTarihiDonemUyarisi,
+  resolveFinansIslemTarihiDonemDurum,
 } from '@sigorta/shared';
 import { parseTrAmountInput } from '@/utils/tr-amount-input';
 import { isCompleteTrDateValue, normalizeTrDateValue } from '@/utils/tr-date-input';
@@ -20,6 +20,7 @@ import {
   FinansModal,
   finansInputClass,
 } from '@/components/finance/FinansPanelUI';
+import { FinansTarihDonemUyariIkon } from '@/components/finance/FinansTarihDonemUyariIkon';
 
 type MusteriCariSecenek = {
   id: string;
@@ -49,10 +50,10 @@ export function CariTahsilatAlModal({
   const [saving, setSaving] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
-  const tarihDonemUyarisi = (() => {
+  const tarihDonemDurum = (() => {
     const dateIso = normalizeTrDateValue(paymentDate);
-    if (!isCompleteTrDateValue(dateIso)) return null;
-    return finansIslemTarihiDonemUyarisi(dateIso);
+    if (!isCompleteTrDateValue(dateIso)) return { kind: 'ok' as const };
+    return resolveFinansIslemTarihiDonemDurum(dateIso);
   })();
 
   useEffect(() => {
@@ -189,21 +190,23 @@ export function CariTahsilatAlModal({
           </div>
         )}
         <div>
-          <FinansFieldLabel required>Tarih</FinansFieldLabel>
+          <div className="mb-1 flex items-center gap-1.5">
+            <label className="text-xs font-medium text-slate-600">
+              Tarih <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>
+            </label>
+            {tarihDonemDurum.kind !== 'ok' ? (
+              <FinansTarihDonemUyariIkon
+                message={tarihDonemDurum.message}
+                closed={tarihDonemDurum.kind === 'closed'}
+                testId="cari-tahsilat-tarih-donem-uyari"
+              />
+            ) : null}
+          </div>
           <TrDateInput
             value={paymentDate}
             onChange={setPaymentDate}
             className={finansInputClass}
           />
-          {tarihDonemUyarisi ? (
-            <p
-              className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
-              data-testid="cari-tahsilat-tarih-donem-uyari"
-              role="status"
-            >
-              {tarihDonemUyarisi}
-            </p>
-          ) : null}
         </div>
         <div>
           <FinansFieldLabel required>Tutar</FinansFieldLabel>

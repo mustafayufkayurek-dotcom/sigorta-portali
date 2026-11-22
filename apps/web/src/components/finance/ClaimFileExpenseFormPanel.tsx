@@ -22,7 +22,9 @@ import { suggestAutoCode } from '@/utils/auto-code';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 import { ACIKLAMA_YARDIM } from '@/utils/aciklama-yardim';
 import { formatTryAmount } from '@/utils/format-try-amount';
-import { financeOperationNo, finansIslemTarihiDonemUyarisi } from '@sigorta/shared';
+import { financeOperationNo, resolveFinansIslemTarihiDonemDurum } from '@sigorta/shared';
+import { FinansTarihDonemUyariIkon } from '@/components/finance/FinansTarihDonemUyariIkon';
+import { pushFinansVerimlilikAnalizUyari } from '@/utils/finans-verimlilik-analiz-uyari';
 
 const PLAN_BUTCE = 'BUTCELENEN';
 const PLAN_EK = 'EKSTRA_SATIS_MASRAFI';
@@ -483,6 +485,10 @@ export function ClaimFileExpenseFormPanel({
       if (createdId) {
         setLastSavedOpNo(financeOperationNo('MSF', createdId, created.data?.createdAt ?? created.data?.data?.createdAt ?? dateIso));
       }
+      pushFinansVerimlilikAnalizUyari({
+        kind: 'dosya',
+        label: fileLabel || eligibility?.fileNo || 'Dosya',
+      });
       onSaved?.();
       if (mode === 'new') {
         setDescription('');
@@ -658,25 +664,25 @@ export function ClaimFileExpenseFormPanel({
         )}
 
         <div>
-          <label className={labelCls}>
-            Tarih {requiredHint}
-          </label>
+          <div className="mb-1 flex items-center gap-1.5">
+            <label className="mb-0 text-xs font-medium text-slate-600">
+              Tarih {requiredHint}
+            </label>
+            {(() => {
+              const dateIso = normalizeTrDateValue(date);
+              if (!isCompleteTrDateValue(dateIso)) return null;
+              const durum = resolveFinansIslemTarihiDonemDurum(dateIso);
+              if (durum.kind === 'ok') return null;
+              return (
+                <FinansTarihDonemUyariIkon
+                  message={durum.message}
+                  closed={durum.kind === 'closed'}
+                  testId="claim-file-tarih-donem-uyari"
+                />
+              );
+            })()}
+          </div>
           <TrDateInput className={inputCls} value={date} onChange={setDate} />
-          {(() => {
-            const dateIso = normalizeTrDateValue(date);
-            const uyari =
-              isCompleteTrDateValue(dateIso) ? finansIslemTarihiDonemUyarisi(dateIso) : null;
-            if (!uyari) return null;
-            return (
-              <p
-                className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
-                data-testid="claim-file-tarih-donem-uyari"
-                role="status"
-              >
-                {uyari}
-              </p>
-            );
-          })()}
         </div>
 
         <div className="grid grid-cols-2 gap-2">

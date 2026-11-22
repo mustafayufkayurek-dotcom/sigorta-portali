@@ -30,6 +30,8 @@ import {
   finansIsletmeSabitSourceId,
   finansIslemDonemSecimUyarisi,
   finansIslemTarihiDonemUyarisi,
+  resolveFinansIslemTarihiDonemDurum,
+  FINANS_DONEM_KAPALI_MESAJ,
   bankaCariKodu,
   buildFinansSeyirDonemKarZarar,
   cariCiftRolKimlikHatasi,
@@ -415,6 +417,13 @@ describe('Finans cari LOCK', () => {
     const secim = finansIslemDonemSecimUyarisi(2026, 12, '2026-11-16');
     assert.ok(secim);
     assert.match(secim, /12\.2026/);
+    const soft = resolveFinansIslemTarihiDonemDurum('2026-10-05', [], [], '2026-11-16');
+    assert.equal(soft.kind, 'soft');
+    const closed = resolveFinansIslemTarihiDonemDurum('2026-10-05', [], ['2026-10'], '2026-11-16');
+    assert.equal(closed.kind, 'closed');
+    assert.equal(closed.kind === 'closed' ? closed.message : '', FINANS_DONEM_KAPALI_MESAJ);
+    const openSame = resolveFinansIslemTarihiDonemDurum('2026-11-16', [], [], '2026-11-16');
+    assert.equal(openSame.kind, 'ok');
   });
 
   it('dönem yılı yalnız gerçek hareket / kilit / kapatılabilir önceki yıldır', () => {

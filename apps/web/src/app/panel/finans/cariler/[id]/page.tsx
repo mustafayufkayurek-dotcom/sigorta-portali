@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { FileSpreadsheet, Mail, MessageCircle, Phone } from 'lucide-react';
-import { buildCariBakiyeIletisimMesaji, cariBakiyeMetin, finansIslemTarihiDonemUyarisi } from '@sigorta/shared';
+import { buildCariBakiyeIletisimMesaji, cariBakiyeMetin, resolveFinansIslemTarihiDonemDurum } from '@sigorta/shared';
+import { FinansTarihDonemUyariIkon } from '@/components/finance/FinansTarihDonemUyariIkon';
 import { API, authHeader } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { formatTryAmount } from '@/utils/format-try-amount';
@@ -392,27 +393,29 @@ export default function FinansCariEkstrePage() {
         >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <FinansFieldLabel required>Tarih</FinansFieldLabel>
+              <div className="mb-1 flex items-center gap-1.5">
+                <label className="text-xs font-medium text-slate-600">
+                  Tarih <span className="ml-1 text-xs font-normal text-slate-400">(Zorunlu)</span>
+                </label>
+                {(() => {
+                  const dateIso = normalizeTrDateValue(form.entryDate);
+                  if (!isCompleteTrDateValue(dateIso)) return null;
+                  const durum = resolveFinansIslemTarihiDonemDurum(dateIso);
+                  if (durum.kind === 'ok') return null;
+                  return (
+                    <FinansTarihDonemUyariIkon
+                      message={durum.message}
+                      closed={durum.kind === 'closed'}
+                      testId="cari-hareket-tarih-donem-uyari"
+                    />
+                  );
+                })()}
+              </div>
               <TrDateInput
                 value={form.entryDate}
                 onChange={(entryDate) => setForm({ ...form, entryDate })}
                 className={finansInputClass}
               />
-              {(() => {
-                const dateIso = normalizeTrDateValue(form.entryDate);
-                const uyari =
-                  isCompleteTrDateValue(dateIso) ? finansIslemTarihiDonemUyarisi(dateIso) : null;
-                if (!uyari) return null;
-                return (
-                  <p
-                    className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
-                    data-testid="cari-hareket-tarih-donem-uyari"
-                    role="status"
-                  >
-                    {uyari}
-                  </p>
-                );
-              })()}
             </div>
             <div>
               <FinansFieldLabel required>Borç / Alacak</FinansFieldLabel>

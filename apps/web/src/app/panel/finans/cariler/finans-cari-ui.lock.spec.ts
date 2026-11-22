@@ -128,16 +128,18 @@ describe('Finans cari UI LOCK', () => {
     assert.match(detail, /CariTahsilatAlModal/);
     assert.match(detail, /Tahsilat Ekle/);
     assert.match(detail, /TrDateInput/);
-    assert.match(detail, /finansIslemTarihiDonemUyarisi/);
+    assert.match(detail, /resolveFinansIslemTarihiDonemDurum/);
+    assert.match(detail, /FinansTarihDonemUyariIkon/);
     assert.match(detail, /cari-hareket-tarih-donem-uyari/);
 
     const tahsilatModal = readFileSync(
       join(here, '../../../../components/finance/CariTahsilatAlModal.tsx'),
       'utf8',
     );
-    assert.match(tahsilatModal, /finansIslemTarihiDonemUyarisi/);
+    assert.match(tahsilatModal, /resolveFinansIslemTarihiDonemDurum/);
+    assert.match(tahsilatModal, /FinansTarihDonemUyariIkon/);
     assert.match(tahsilatModal, /cari-tahsilat-tarih-donem-uyari/);
-    assert.match(tahsilatModal, /Kayıt durdurulmaz|finansIslemTarihiDonemUyarisi/);
+    assert.match(tahsilatModal, /Kayıt durdurulmaz|resolveFinansIslemTarihiDonemDurum/);
 
     assert.match(home, /finans-merkez-kurulum-seridi/);
     assert.match(home, /finans-kurulum-adim-listesi/);
@@ -205,7 +207,9 @@ describe('Finans cari UI LOCK', () => {
     assert.match(home, /isletme-sabit\/dusum/);
     assert.match(home, /cariye yazıldı/);
     assert.match(home, /finans-isletme-sabit-donem-uyari/);
-    assert.match(home, /finansIslemDonemSecimUyarisi/);
+    assert.match(home, /resolveFinansIslemDonemSecimDurum/);
+    assert.match(home, /FinansTarihDonemUyariIkon/);
+    assert.match(home, /FinansVerimlilikAnalizUyariBant/);
     assert.doesNotMatch(home, /Bu ay bekliyor/);
     assert.match(home, /ödeme kaydı değildir/);
     assert.match(home, />Gider</);
