@@ -1,11 +1,11 @@
 ---
-description: Canlı web v706 / backend v706
+description: Canlı web v707 / backend v707
 alwaysApply: true
 ---
 
-# Canlı (21.11.2026)
+# Canlı (22.11.2026)
 
-Canlı: web **v706** · backend **v706**. Geri alma: web **v705** / backend **v705**.
+Canlı: web **v707** · backend **v707**. Geri alma: web **v706** / backend **v706**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v707 (full):** Hasar Tespit masrafı dosya yerine müşteriye yazılır; gelir ve gider aynı müşteride toplanır (Danışmanlık gibi; Tespit hattı ayrı kalır). Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v706** / backend **v706**.
 
 **v706 (full):** Masraf formunda İlgili Dosya / Sigortalı Masraf Yolu’ndan hemen sonra; dosya araması sigortalı adı soyadı; alt Kaydet tuşları bantta ortalı ve kesilmez. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v705** / backend **v705**.
 
@@ -289,4 +291,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v706** · backend **v706**.
+Canlı web **v707** · backend **v707**.
