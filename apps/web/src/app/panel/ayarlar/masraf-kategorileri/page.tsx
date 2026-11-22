@@ -26,6 +26,7 @@ import {
 import { SettingsModal, DeleteConfirmDialog } from '@/components/settings/SettingsModal';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 import { useToast } from '@/contexts/ToastContext';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import {
   DEFAULT_MASRAF_KDV_ORANLARI,
   normalizeMasrafKdvOranlari,
@@ -58,6 +59,7 @@ const emptyItemForm = { code: '', name: '', parentId: '' };
 
 export default function MasrafKategorileriPage() {
   const { showToast } = useToast();
+  const { confirm, dialog } = usePanelConfirm();
   const [groups, setGroups] = useState<ExpenseGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
@@ -298,6 +300,7 @@ export default function MasrafKategorileriPage() {
       setItemError('Bağlanacağı masraf grubu seçilmelidir');
       return;
     }
+    setItemForm((f) => ({ ...f, name }));
     const parent = parentGroup(itemForm.parentId);
     const code = editItem ? itemForm.code : suggestAutoCode(parent?.code ?? 'EXP', name);
     const siblings = parent?.children ?? [];
@@ -313,6 +316,14 @@ export default function MasrafKategorileriPage() {
           : `«${name}» alt grubu zaten «${crossDup.parentName}» altında. Aynı alt grup birden fazla masraf grubuna bağlanamaz.`,
       );
       return;
+    }
+    if (editItem && editItem.parentId && editItem.parentId !== itemForm.parentId) {
+      const fromName = parentGroup(editItem.parentId)?.name || 'eski grup';
+      const toName = parent?.name || 'yeni grup';
+      const ok = await confirm(
+        `«${name}» alt grubu «${fromName}» altından «${toName}» altına taşınacak. Aynı alt grubu iki gruba yazmak kirlilik doğurur. Devam edilsin mi?`,
+      );
+      if (!ok) return;
     }
     setItemSaving(true);
     setItemError('');
@@ -665,9 +676,11 @@ export default function MasrafKategorileriPage() {
           <input
             className={inputCls}
             value={groupForm.name}
+            onFocus={(e) => e.currentTarget.select()}
+            onClick={(e) => e.currentTarget.select()}
             onChange={(e) => setGroupForm((f) => applyNameWithAutoCode(f, e.target.value, !!editGroup, 'EXP'))}
             onBlur={() => setGroupForm((f) => blurNameWithAutoCode(f, !!editGroup, 'EXP'))}
-            placeholder="Örn: Tedarikçi Hakediş, Malzeme Gideri"
+            placeholder="Örn. tedarikçi hakediş"
           />
         </div>
         {editGroup && (
@@ -719,6 +732,8 @@ export default function MasrafKategorileriPage() {
           <input
             className={inputCls}
             value={itemForm.name}
+            onFocus={(e) => e.currentTarget.select()}
+            onClick={(e) => e.currentTarget.select()}
             onChange={(e) =>
               setItemForm((f) =>
                 applyNameWithAutoCode(
@@ -734,7 +749,7 @@ export default function MasrafKategorileriPage() {
                 blurNameWithAutoCode(f, !!editItem, selectedParentForModal?.code ?? 'EXP'),
               )
             }
-            placeholder="Örn: Yedek Parça, Yakıt, Aidat"
+            placeholder="Örn. yedek parça"
           />
         </div>
         {editItem && (
@@ -769,6 +784,7 @@ export default function MasrafKategorileriPage() {
             : undefined
         }
       />
+      {dialog}
     </SettingsPageLayout>
   );
 }

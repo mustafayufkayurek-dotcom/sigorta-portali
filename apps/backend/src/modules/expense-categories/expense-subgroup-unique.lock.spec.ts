@@ -44,8 +44,22 @@ describe('masraf alt grup tek üst LOCK', () => {
     assert.match(calc, /İşlem:/);
     assert.match(calc, /OP_KEYS/);
     assert.match(calc, /evaluateAmountExpression/);
+    assert.match(calc, /h-7 w-7/);
+    assert.match(calc, /pr-\[4\.25rem\]/);
+    assert.doesNotMatch(calc, /flex items-start gap-2/);
     assert.doesNotMatch(calc, /grid-cols-4/);
     assert.match(kdv, /masraf-kdv-oran-liste|masraf-kdv-oran/);
     assert.match(kdv, /startsWith/);
+  });
+
+  it('SearchableSelect odaklanınca tüm metin seçilir; ok tuşları çalışır', () => {
+    const select = readFileSync(
+      join(here, '../../../../web/src/components/ui/SearchableSelect.tsx'),
+      'utf8',
+    );
+    assert.match(select, /selectAllOnFocus/);
+    assert.match(select, /ArrowDown/);
+    assert.match(select, /ArrowUp/);
+    assert.match(select, /\.select\(\)/);
   });
 });

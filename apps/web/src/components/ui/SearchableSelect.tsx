@@ -31,6 +31,8 @@ interface SearchableSelectProps {
   disableBrowserAutocomplete?: boolean;
   /** Listenin altında durur. Sayfa değiştirmez. */
   createAction?: { label: string; onSelect: () => void };
+  /** Odaklanınca mevcut metnin tamamı seçilir (üzerine yazmak kolay). */
+  selectAllOnFocus?: boolean;
 }
 
 const normalizeSearchDigits = (s: string) => s.replace(/\D/g, '');
@@ -50,12 +52,15 @@ export function SearchableSelect({
   inputClassName = '',
   disableBrowserAutocomplete = false,
   createAction,
+  selectAllOnFocus = true,
 }: SearchableSelectProps) {
   const listId = useId();
   const inputName = useId().replace(/:/g, '');
   const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [highlight, setHighlight] = useState(0);
 
   const selected = options.find((o) => o.value === value);
   const displayLabel = selected?.label ?? (value ? (fallbackLabel ?? '') : '');
@@ -85,6 +90,12 @@ export function SearchableSelect({
     });
   }, [options, query]);
 
+  useEffect(() => {
+    if (!open) return;
+    const idx = filtered.findIndex((o) => o.value === value);
+    setHighlight(idx >= 0 ? idx : 0);
+  }, [open, filtered, value]);
+
   const pick = (next: string) => {
     onChange(next);
     const opt = options.find((o) => o.value === next);
@@ -95,10 +106,12 @@ export function SearchableSelect({
   return (
     <div ref={rootRef} className={`relative ${className}`}>
       <input
+        ref={inputRef}
         type="text"
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}
+        aria-activedescendant={open && filtered[highlight] ? `${listId}-opt-${filtered[highlight].value}` : undefined}
         disabled={disabled}
         placeholder={placeholder}
         value={open ? query : displayLabel || query}
@@ -115,13 +128,60 @@ export function SearchableSelect({
           setQuery(next);
           onQueryChange?.(next);
           if (!open) setOpen(true);
+          setHighlight(0);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={(e) => {
+          setOpen(true);
+          if (selectAllOnFocus) {
+            const el = e.currentTarget;
+            window.requestAnimationFrame(() => {
+              el.select();
+            });
+          }
+        }}
+        onClick={(e) => {
+          if (selectAllOnFocus) {
+            e.currentTarget.select();
+          }
+        }}
+        onKeyDown={(e) => {
+          if (disabled) return;
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!open) {
+              setOpen(true);
+              return;
+            }
+            setHighlight((h) => Math.min(h + 1, Math.max(filtered.length - 1, 0)));
+            return;
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!open) {
+              setOpen(true);
+              return;
+            }
+            setHighlight((h) => Math.max(h - 1, 0));
+            return;
+          }
+          if (e.key === 'Enter' && open) {
+            e.preventDefault();
+            const hit = filtered[highlight];
+            if (hit) pick(hit.value);
+            return;
+          }
+          if (e.key === 'Escape' && open) {
+            e.preventDefault();
+            setOpen(false);
+            setQuery(displayLabel);
+          }
+        }}
         className={inputClassName}
       />
       {open && !disabled && (
         <div
           id={listId}
+          role="listbox"
           className="absolute z-30 mt-1 flex max-h-56 w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800"
         >
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -130,14 +190,18 @@ export function SearchableSelect({
           ) : filtered.length === 0 ? (
             <div className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{emptyText}</div>
           ) : (
-            filtered.map((o) => (
+            filtered.map((o, idx) => (
               <button
                 key={o.value}
+                id={`${listId}-opt-${o.value}`}
                 type="button"
+                role="option"
+                aria-selected={o.value === value}
                 onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={() => setHighlight(idx)}
                 onClick={() => pick(o.value)}
                 className={`flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 ${
-                  o.value === value ? 'bg-blue-50/80 dark:bg-blue-900/30' : ''
+                  idx === highlight || o.value === value ? 'bg-blue-50/80 dark:bg-blue-900/30' : ''
                 }`}
               >
                 <span className="font-medium text-slate-800 dark:text-slate-100">{o.label}</span>

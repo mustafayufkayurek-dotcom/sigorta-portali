@@ -47,6 +47,13 @@ describe('masraf KDV LOCK', () => {
     assert.equal(matrahYazilmissa.genelToplam, 237.92);
   });
 
+  it('KDV dahil 350 (%20) matrah 291,67 ve KDV 58,33 eder; tutar değişmez', () => {
+    const r = splitGrossVat(350, 20);
+    assert.equal(r.matrah, 291.67);
+    assert.equal(r.vatAmount, 58.33);
+    assert.equal(r.genelToplam, 350);
+  });
+
   it('oran listesi boşsa varsayılanı koyar', () => {
     assert.deepEqual(normalizeMasrafKdvOranlari(null), [...DEFAULT_MASRAF_KDV_ORANLARI]);
     assert.deepEqual(normalizeMasrafKdvOranlari([20, 1, 10, 20]), [1, 10, 20]);
@@ -125,15 +132,26 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /masraf-tutar-hesap-/);
     assert.match(masraf, /MasrafKdvOranInput/);
     assert.match(masraf, /masraf-kalem-kdv-tutar-/);
-    assert.match(masraf, /masraf-kalem-matrah-/);
     assert.match(masraf, /Hesaplanan KDV/);
-    assert.match(masraf, /Fiş Toplamı \(KDV Dahil\)|Genel Toplam \(KDV Dahil\)/);
+    assert.match(masraf, /MasrafKdvOranInput/);
+    assert.match(masraf, /handleGroupPick|handleSubgroupPick/);
+    assert.match(masraf, /masraf-son-kayit-seridi|Kaydedildi:/);
+    assert.match(masraf, /SettingsModal/);
+    assert.match(masraf, /normalizeFormFreeText/);
+    assert.match(masraf, /minmax\(0,1\.55fr\)/);
+    assert.match(masraf, /masraf-kdv-oran-ekle-ac/);
+    assert.ok(
+      masraf.indexOf('KDV Oranı') < masraf.indexOf('masraf-kdv-oran-ekle-ac'),
+      '+ Oran etiket satırında durur',
+    );
     assert.match(masraf, /readOnly/);
     assert.ok(
       masraf.indexOf('Hesaplanan KDV') < masraf.indexOf('masraf-kalem-kdv-tutar-'),
-      'Hesaplanan KDV oranı yanında kutucukta durur',
+      'Hesaplanan KDV oran yanında kutuda durur',
     );
     assert.doesNotMatch(masraf, /Hesaplanan KDV:\s*\{/);
+    assert.doesNotMatch(masraf, /masraf-kalem-matrah-/);
+    assert.doesNotMatch(masraf, /Fiş Toplamı \(KDV Dahil\)/);
     assert.match(masraf, /receiptDocumentType/);
     assert.match(masraf, /Belge Türü/);
     assert.match(masraf, /birden fazla masraf grubuna bağlanamaz/);

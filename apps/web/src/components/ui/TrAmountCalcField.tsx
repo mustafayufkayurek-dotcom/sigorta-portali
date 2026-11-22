@@ -3,6 +3,7 @@
 /**
  * Tutar girişi + işlem özeti.
  * + − × ÷ tuşuna basınca tam hesap makinesi değil; yalnız işlem özeti açılır.
+ * Hesap ikonu kutunun içinde, küçük; tutar alanı geniş kalır.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Calculator } from 'lucide-react';
@@ -103,83 +104,81 @@ export function TrAmountCalcField({
 
   return (
     <div className="relative" data-testid={testId}>
-      <div className="flex items-start gap-2">
-        <div className="relative min-w-0 flex-1">
-          <input
-            ref={inputRef}
-            type="text"
-            inputMode={exprMode ? 'text' : 'decimal'}
-            autoComplete="off"
-            disabled={disabled}
-            placeholder={placeholder}
-            className={`${className} pr-10 [&:invalid]:shadow-none [&:invalid]:outline-none`}
-            value={display}
-            data-testid={`${testId}-input`}
-            onChange={(e) => {
-              if (exprMode) {
-                const raw = e.target.value
-                  .replace(/×/g, '*')
-                  .replace(/÷/g, '/')
-                  .replace(/[^\d+\-*/.,\s]/g, '');
-                setExpr(raw);
-                return;
-              }
-              onChange(formatTrAmountInput(e.target.value));
-            }}
-            onBlur={() => {
-              if (!exprMode) return;
-              if (!applyExpr()) cancelExpr();
-            }}
-            onKeyDown={(e) => {
-              if (disabled) return;
-              if (OP_KEYS.has(e.key)) {
-                e.preventDefault();
-                if (exprMode) {
-                  setExpr((v) => {
-                    const trimmed = v.replace(/\s+$/g, '');
-                    if (/[+\-*/]$/.test(trimmed)) {
-                      return `${trimmed.slice(0, -1)}${mapOpKey(e.key)}`;
-                    }
-                    return `${trimmed}${mapOpKey(e.key)}`;
-                  });
-                } else {
-                  startExpr(e.key);
-                }
-                return;
-              }
-              if (exprMode && e.key === 'Enter') {
-                e.preventDefault();
-                applyExpr();
-                return;
-              }
-              if (exprMode && e.key === 'Escape') {
-                e.preventDefault();
-                cancelExpr();
-              }
-            }}
-          />
-          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-400">
-            TL
-          </span>
-        </div>
-        <button
-          type="button"
+      <div className="relative min-w-0">
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode={exprMode ? 'text' : 'decimal'}
+          autoComplete="off"
           disabled={disabled}
-          aria-label="İşlem özeti"
-          title="İşlem özeti"
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-          data-testid={`${testId}-ac`}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
+          placeholder={placeholder}
+          className={`${className} pr-[4.25rem] [&:invalid]:shadow-none [&:invalid]:outline-none`}
+          value={display}
+          data-testid={`${testId}-input`}
+          onChange={(e) => {
             if (exprMode) {
+              const raw = e.target.value
+                .replace(/×/g, '*')
+                .replace(/÷/g, '/')
+                .replace(/[^\d+\-*/.,\s]/g, '');
+              setExpr(raw);
+              return;
+            }
+            onChange(formatTrAmountInput(e.target.value));
+          }}
+          onBlur={() => {
+            if (!exprMode) return;
+            if (!applyExpr()) cancelExpr();
+          }}
+          onKeyDown={(e) => {
+            if (disabled) return;
+            if (OP_KEYS.has(e.key)) {
+              e.preventDefault();
+              if (exprMode) {
+                setExpr((v) => {
+                  const trimmed = v.replace(/\s+$/g, '');
+                  if (/[+\-*/]$/.test(trimmed)) {
+                    return `${trimmed.slice(0, -1)}${mapOpKey(e.key)}`;
+                  }
+                  return `${trimmed}${mapOpKey(e.key)}`;
+                });
+              } else {
+                startExpr(e.key);
+              }
+              return;
+            }
+            if (exprMode && e.key === 'Enter') {
+              e.preventDefault();
               applyExpr();
-            } else {
-              startExpr('+');
+              return;
+            }
+            if (exprMode && e.key === 'Escape') {
+              e.preventDefault();
+              cancelExpr();
             }
           }}
-        >
-          <Calculator className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-        </button>
+        />
+        <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center gap-0.5">
+          <button
+            type="button"
+            disabled={disabled}
+            aria-label="İşlem özeti"
+            title="İşlem özeti (+ − × ÷)"
+            className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-brand-700 disabled:opacity-50 dark:hover:bg-slate-700 dark:hover:text-brand-300"
+            data-testid={`${testId}-ac`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              if (exprMode) {
+                applyExpr();
+              } else {
+                startExpr('+');
+              }
+            }}
+          >
+            <Calculator className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          </button>
+          <span className="pr-1 text-sm text-slate-400">TL</span>
+        </div>
       </div>
       {exprMode && preview ? (
         <div

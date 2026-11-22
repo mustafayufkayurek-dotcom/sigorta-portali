@@ -45,11 +45,12 @@ import {
 } from '@/utils/panel-table-sort';
 import { normalizeTrDateValue, isCompleteTrDateValue, isoToTrDateDisplay } from '@/utils/tr-date-input';
 import { parseTrAmountInput, numberToTrAmountInput } from '@/utils/tr-amount-input';
-import { toTitleCaseTR } from '@/utils/text-helpers';
+import { normalizeFormFreeText, toTitleCaseTR } from '@/utils/text-helpers';
 import { suggestAutoCode } from '@/utils/auto-code';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 import { API, authHeader } from '@/utils/api';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
+import { SettingsModal } from '@/components/settings/SettingsModal';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { getAccessToken } from '@/utils/auth-session';
 import {
@@ -675,25 +676,67 @@ export default function MasraflarPage() {
     );
   };
 
-  const handleSubgroupPick = (lineKey: string, subId: string) => {
+  const applySubgroupPick = (lineKey: string, subId: string, parentId: string) => {
+    patchKalemSatiri(lineKey, {
+      expenseCategoryParentId: parentId,
+      expenseCategoryId: subId,
+    });
+    setForm((f) =>
+      f.expenseCategoryParentId === '' || kalemSatirlari[0]?.key === lineKey
+        ? {
+            ...f,
+            expenseCategoryParentId: parentId,
+            expenseCategoryId: subId,
+          }
+        : f,
+    );
+  };
+
+  const handleSubgroupPick = async (lineKey: string, subId: string) => {
+    const line = kalemSatirlari.find((r) => r.key === lineKey);
     const global = allSubgroups.find((s) => s.id === subId);
-    if (global) {
-      patchKalemSatiri(lineKey, {
-        expenseCategoryParentId: global.parentId,
-        expenseCategoryId: subId,
-      });
-      setForm((f) =>
-        f.expenseCategoryParentId === '' || kalemSatirlari[0]?.key === lineKey
-          ? {
-              ...f,
-              expenseCategoryParentId: global.parentId,
-              expenseCategoryId: subId,
-            }
-          : f,
-      );
+    if (!global) {
+      patchKalemSatiri(lineKey, { expenseCategoryId: subId });
       return;
     }
-    patchKalemSatiri(lineKey, { expenseCategoryId: subId });
+    const currentParent = line?.expenseCategoryParentId || '';
+    if (currentParent && currentParent !== global.parentId) {
+      const fromName =
+        categoryTree.find((g) => g.id === currentParent)?.name
+        || 'seçili grup';
+      const toName = global.parentName || 'başka grup';
+      const ok = await confirm(
+        `«${global.name}» alt grubu «${toName}» altındadır. «${fromName}» grubundan «${toName}» grubuna geçilsin mi? Aynı alt grubu iki gruba yazmak kirlilik doğurur.`,
+      );
+      if (!ok) return;
+    }
+    applySubgroupPick(lineKey, subId, global.parentId);
+  };
+
+  const handleGroupPick = async (lineKey: string, groupId: string, lineIdx: number) => {
+    const line = kalemSatirlari.find((r) => r.key === lineKey);
+    if (line?.expenseCategoryId && line.expenseCategoryParentId && line.expenseCategoryParentId !== groupId) {
+      const sub = allSubgroups.find((s) => s.id === line.expenseCategoryId);
+      const fromName = categoryTree.find((g) => g.id === line.expenseCategoryParentId)?.name || 'eski grup';
+      const toName = categoryTree.find((g) => g.id === groupId)?.name || 'yeni grup';
+      const ok = await confirm(
+        sub
+          ? `«${sub.name}» alt grubu «${fromName}» altındadır. Masraf grubunu «${toName}» yapınca alt grup seçimi kalkar. Devam edilsin mi?`
+          : `Masraf grubu «${toName}» olunca alt grup seçimi kalkar. Devam edilsin mi?`,
+      );
+      if (!ok) return;
+    }
+    patchKalemSatiri(lineKey, {
+      expenseCategoryParentId: groupId,
+      expenseCategoryId: '',
+    });
+    if (lineIdx === 0) {
+      setForm((f) => ({
+        ...f,
+        expenseCategoryParentId: groupId,
+        expenseCategoryId: '',
+      }));
+    }
   };
 
   const [categoryDraft, setCategoryDraft] = useState<'group' | 'sub' | null>(null);
@@ -713,11 +756,12 @@ export default function MasraflarPage() {
   };
 
   const saveCategoryDraft = async () => {
-    const name = toTitleCaseTR(categoryDraftName.trim());
+    const name = normalizeFormFreeText(categoryDraftName);
     if (!name) {
       setCategoryDraftError(categoryDraft === 'sub' ? 'Alt grup adı yazın.' : 'Masraf grubu adı yazın.');
       return;
     }
+    setCategoryDraftName(name);
     const draftLine =
       kalemSatirlari.find((r) => r.key === categoryDraftLineKey) ?? kalemSatirlari[0];
     const draftParentId = draftLine?.expenseCategoryParentId || form.expenseCategoryParentId;
@@ -1110,6 +1154,7 @@ export default function MasraflarPage() {
         date: dateIso,
         receiptImageUrl: form.receiptImageUrl || undefined,
       };
+      let savedOpNo = '';
       if (editId) {
         const line = saveLines[0];
         const amountNum = parseTrAmountInput(line.amount)!;
@@ -1120,13 +1165,12 @@ export default function MasraflarPage() {
           amount: amountNum,
           vatRate: vatRateNum,
         }, { headers: authHeader() });
-        setLastSavedOpNo(
-          financeOperationNo(
-            'MSF',
-            editId,
-            expenses.find((e) => e.id === editId)?.createdAt ?? dateIso,
-          ),
+        savedOpNo = financeOperationNo(
+          'MSF',
+          editId,
+          expenses.find((e) => e.id === editId)?.createdAt ?? dateIso,
         );
+        setLastSavedOpNo(savedOpNo);
       } else {
         let lastCreatedId = '';
         let lastCreatedAt = dateIso;
@@ -1144,7 +1188,8 @@ export default function MasraflarPage() {
           lastCreatedAt = created.data?.createdAt ?? created.data?.data?.createdAt ?? dateIso;
         }
         if (lastCreatedId) {
-          setLastSavedOpNo(financeOperationNo('MSF', lastCreatedId, lastCreatedAt));
+          savedOpNo = financeOperationNo('MSF', lastCreatedId, lastCreatedAt);
+          setLastSavedOpNo(savedOpNo);
         }
       }
 
@@ -1166,19 +1211,37 @@ export default function MasraflarPage() {
         setForm({
           ...EMPTY_FORM,
           expenseLane: form.expenseLane,
-          fileCaseId:  fileLane ? form.fileCaseId : '',
+          fileCaseId: fileLane ? form.fileCaseId : '',
           customerId: customerLane ? form.customerId : '',
           partyAccountId: form.partyAccountId,
           expensePlan: form.expensePlan,
           documentMode: form.documentMode,
+          documentType: '',
+          documentNo: '',
+          description: '',
+          amount: '',
           vatRate: keepVat,
-          date:        new Date().toISOString().slice(0, 10),
+          expenseCategoryParentId: '',
+          expenseCategoryId: '',
+          date: new Date().toISOString().slice(0, 10),
         });
         setKalemSatirlari([newMasrafKalemSatiri({ vatRate: keepVat })]);
         setEditId(null);
         setFormError('');
+        setCategoryDraft(null);
+        setCategoryDraftLineKey(null);
+        setCategoryDraftName('');
+        setCategoryDraftError('');
+        setKdvDraftOpen(false);
         resetReceiptScan();
         setShowForm(true);
+        if (savedOpNo) setLastSavedOpNo(savedOpNo);
+        window.requestAnimationFrame(() => {
+          const panel = document.querySelector('[data-testid="masraf-form-scroll"]');
+          if (panel instanceof HTMLElement) panel.scrollTop = 0;
+          const desc = document.querySelector<HTMLInputElement>('#finans-masraf-aciklama');
+          desc?.focus();
+        });
       } else {
         setShowForm(false);
         setEditId(null);
@@ -1856,7 +1919,10 @@ export default function MasraflarPage() {
             </FileDropZone>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 pt-2 pb-3 sm:px-4">
+          <div
+            className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 pt-2 pb-3 sm:px-4"
+            data-testid="masraf-form-scroll"
+          >
           {formError && (
             <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-2.5 text-xs text-red-700 dark:text-red-400">
               {formError}
@@ -2199,28 +2265,26 @@ export default function MasraflarPage() {
               </div>
             )}
 
-            {(editId || lastSavedOpNo) ? (
+            {editId ? (
               <div className="md:col-span-2" data-testid="masraf-islem-no">
                 <FieldLabel className={fieldLabelCls}>İşlem No</FieldLabel>
                 <input
                   readOnly
                   className={`${inputCls} bg-slate-50 font-mono text-slate-700 dark:bg-slate-800 dark:text-slate-200`}
-                  value={
-                    editId
-                      ? financeOperationNo(
-                          'MSF',
-                          editId,
-                          expenses.find((e) => e.id === editId)?.createdAt
-                            ?? expenses.find((e) => e.id === editId)?.date,
-                        )
-                      : lastSavedOpNo
-                  }
+                  value={financeOperationNo(
+                    'MSF',
+                    editId,
+                    expenses.find((e) => e.id === editId)?.createdAt
+                      ?? expenses.find((e) => e.id === editId)?.date,
+                  )}
                 />
-                {!editId && lastSavedOpNo ? (
-                  <p className="mt-1 text-xs font-medium text-emerald-700">
-                    Son kayıt: {lastSavedOpNo}
-                  </p>
-                ) : null}
+              </div>
+            ) : lastSavedOpNo ? (
+              <div
+                className="md:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100"
+                data-testid="masraf-son-kayit-seridi"
+              >
+                Kaydedildi: {lastSavedOpNo}. Yeni fiş için tutar, belge ve açıklama alanları hazır.
               </div>
             ) : null}
 
@@ -2421,22 +2485,11 @@ export default function MasraflarPage() {
                         <SearchableSelect
                           options={groupOptions}
                           value={line.expenseCategoryParentId}
-                          onChange={(id) => {
-                            patchKalemSatiri(line.key, {
-                              expenseCategoryParentId: id,
-                              expenseCategoryId: '',
-                            });
-                            if (idx === 0) {
-                              setForm((f) => ({
-                                ...f,
-                                expenseCategoryParentId: id,
-                                expenseCategoryId: '',
-                              }));
-                            }
-                          }}
+                          onChange={(id) => { void handleGroupPick(line.key, id, idx); }}
                           placeholder="Masraf grubu ara..."
                           emptyText="Masraf grubu bulunamadı"
                           inputClassName={inputCls}
+                          selectAllOnFocus
                           createAction={{
                             label: '+ Yeni Masraf Grubu Ekle',
                             onSelect: () => openCategoryDraft('group', line.key),
@@ -2448,7 +2501,7 @@ export default function MasraflarPage() {
                         <SearchableSelect
                           options={subOpts}
                           value={line.expenseCategoryId}
-                          onChange={(id) => handleSubgroupPick(line.key, id)}
+                          onChange={(id) => { void handleSubgroupPick(line.key, id); }}
                           placeholder={
                             line.expenseCategoryParentId
                               ? 'Alt grup ara...'
@@ -2456,140 +2509,79 @@ export default function MasraflarPage() {
                           }
                           emptyText="Alt grup bulunamadı"
                           inputClassName={inputCls}
+                          selectAllOnFocus
                           createAction={{
                             label: '+ Yeni Alt Grup Ekle',
                             onSelect: () => openCategoryDraft('sub', line.key),
                           }}
                         />
                       </div>
-                      <div>
-                        <p className="mb-1 text-[11px] text-slate-500">Tutar — KDV Dahil (TL)</p>
-                        <TrAmountCalcField
-                          className={inputCls}
-                          placeholder="0"
-                          testId={`masraf-tutar-hesap-${idx + 1}`}
-                          value={line.amount}
-                          onChange={(amount) => {
-                            patchKalemSatiri(line.key, { amount });
-                            if (idx === 0) setForm((f) => ({ ...f, amount }));
-                          }}
-                        />
-                      </div>
-                      <div className="md:col-span-2" data-testid={idx === 0 ? 'masraf-kdv-oran-alan' : undefined}>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="md:col-span-2">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.55fr)_minmax(0,0.85fr)_minmax(0,0.9fr)]">
                           <div>
-                            <p className="mb-1 text-[11px] text-slate-500">KDV Oranı</p>
-                            <div className="flex gap-2">
-                              <MasrafKdvOranInput
-                                id={idx === 0 ? 'finans-masraf-kdv-oran' : undefined}
-                                className={inputCls}
-                                rates={masrafKdvOranlari}
-                                value={line.vatRate}
-                                testId={idx === 0 ? 'masraf-kdv-oran' : `masraf-kdv-oran-${idx + 1}`}
-                                onChange={(vatRate) => {
-                                  patchKalemSatiri(line.key, { vatRate });
-                                  if (idx === 0) setForm((f) => ({ ...f, vatRate }));
-                                }}
-                              />
+                            <p className="mb-1 text-[11px] text-slate-500">Tutar — KDV Dahil</p>
+                            <TrAmountCalcField
+                              className={inputCls}
+                              placeholder="0"
+                              testId={`masraf-tutar-hesap-${idx + 1}`}
+                              value={line.amount}
+                              onChange={(amount) => {
+                                patchKalemSatiri(line.key, { amount });
+                                if (idx === 0) setForm((f) => ({ ...f, amount }));
+                              }}
+                            />
+                          </div>
+                          <div data-testid={idx === 0 ? 'masraf-kdv-oran-alan' : undefined}>
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <p className="text-[11px] text-slate-500">KDV Oranı</p>
                               {idx === 0 && !kdvDraftOpen ? (
                                 <button
                                   type="button"
                                   onClick={openKdvDraft}
-                                  className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:border-slate-600 dark:hover:bg-slate-800"
+                                  className="text-[11px] font-semibold text-brand-700 hover:underline dark:text-brand-300"
                                   data-testid="masraf-kdv-oran-ekle-ac"
                                 >
                                   + Oran
                                 </button>
                               ) : null}
                             </div>
+                            <MasrafKdvOranInput
+                              id={idx === 0 ? 'finans-masraf-kdv-oran' : undefined}
+                              className={inputCls}
+                              rates={masrafKdvOranlari}
+                              value={line.vatRate}
+                              testId={idx === 0 ? 'masraf-kdv-oran' : `masraf-kdv-oran-${idx + 1}`}
+                              onChange={(vatRate) => {
+                                patchKalemSatiri(line.key, { vatRate });
+                                if (idx === 0) setForm((f) => ({ ...f, vatRate }));
+                              }}
+                            />
                           </div>
-                          {(() => {
-                            const gross = parseTrAmountInput(line.amount) ?? 0;
-                            const rate = Number(line.vatRate) || 0;
-                            const split = splitGrossVat(gross, rate);
-                            return (
-                              <>
-                                <div>
-                                  <p className="mb-1 text-[11px] text-slate-500">Matrah</p>
-                                  <input
-                                    type="text"
-                                    readOnly
-                                    tabIndex={-1}
-                                    className={`${inputCls} bg-slate-50 text-slate-700 dark:bg-slate-800/80 dark:text-slate-200`}
-                                    value={formatTryAmount(split.matrah)}
-                                    data-testid={`masraf-kalem-matrah-${idx + 1}`}
-                                    aria-label="Matrah"
-                                  />
-                                </div>
-                                <div>
-                                  <p className="mb-1 text-[11px] text-slate-500">Hesaplanan KDV</p>
-                                  <input
-                                    type="text"
-                                    readOnly
-                                    tabIndex={-1}
-                                    className={`${inputCls} bg-slate-50 text-slate-700 dark:bg-slate-800/80 dark:text-slate-200`}
-                                    value={formatTryAmount(split.vatAmount)}
-                                    data-testid={`masraf-kalem-kdv-tutar-${idx + 1}`}
-                                    aria-label="Hesaplanan KDV"
-                                  />
-                                </div>
-                              </>
-                            );
-                          })()}
+                          <div>
+                            <p className="mb-1 text-[11px] text-slate-500">Hesaplanan KDV</p>
+                            {(() => {
+                              const gross = parseTrAmountInput(line.amount) ?? 0;
+                              const rate = Number(line.vatRate) || 0;
+                              const split = splitGrossVat(gross, rate);
+                              return (
+                                <input
+                                  type="text"
+                                  readOnly
+                                  tabIndex={-1}
+                                  className={`${inputCls} bg-slate-50 tabular-nums text-slate-800 dark:bg-slate-800/80 dark:text-slate-100`}
+                                  value={formatTryAmount(split.vatAmount)}
+                                  data-testid={`masraf-kalem-kdv-tutar-${idx + 1}`}
+                                  aria-label="Hesaplanan KDV"
+                                />
+                              );
+                            })()}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 );
               })}
-              {categoryDraft ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800">
-                  <p className="mb-1 text-[11px] text-slate-500">
-                    {categoryDraft === 'group' ? 'Yeni Masraf Grubu' : 'Yeni Alt Grup'}
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      className={inputCls}
-                      placeholder={categoryDraft === 'group' ? 'Örn. çatı malzemesi' : 'Örn. membran'}
-                      value={categoryDraftName}
-                      autoFocus
-                      onChange={(e) => setCategoryDraftName(e.target.value)}
-                      onBlur={(e) => {
-                        const v = toTitleCaseTR(e.target.value.trim());
-                        if (v) setCategoryDraftName(v);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          void saveCategoryDraft();
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      disabled={categoryDraftSaving}
-                      onClick={() => { void saveCategoryDraft(); }}
-                      className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-                    >
-                      {categoryDraftSaving ? 'Kaydediliyor' : 'Ekle'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCategoryDraft(null);
-                        setCategoryDraftLineKey(null);
-                        setCategoryDraftError('');
-                      }}
-                      className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600"
-                    >
-                      Vazgeç
-                    </button>
-                  </div>
-                  {categoryDraftError ? (
-                    <p className="mt-1.5 text-xs text-status-danger">{categoryDraftError}</p>
-                  ) : null}
-                </div>
-              ) : null}
               {kdvDraftOpen ? (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800">
                   <p className="mb-1 text-[11px] text-slate-500">Yeni KDV Oranı</p>
@@ -2651,43 +2643,43 @@ export default function MasraflarPage() {
             </div>
             )}
 
-            <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-600 dark:bg-slate-800/40" data-testid="masraf-kdv-ozet">
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <p className="text-[10px] text-slate-500">Matrah</p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-600 dark:bg-slate-800/40" data-testid="masraf-kdv-ozet">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg bg-white px-2.5 py-2 text-center dark:bg-slate-900/60">
+                  <p className="text-[10px] font-medium text-slate-500">Matrah</p>
+                  <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
                     {formatTryAmount(masrafVatSplit.matrah)}
                   </p>
                 </div>
-                <div>
-                  <p className="text-[10px] text-slate-500">KDV</p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <div className="rounded-lg bg-white px-2.5 py-2 text-center dark:bg-slate-900/60">
+                  <p className="text-[10px] font-medium text-slate-500">KDV</p>
+                  <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
                     {formatTryAmount(masrafVatSplit.vatAmount)}
                   </p>
                 </div>
-                <div>
-                  <p className="text-[10px] text-slate-500">
-                    {kalemSatirlari.length > 1 ? 'Fiş Toplamı (KDV Dahil)' : 'Genel Toplam (KDV Dahil)'}
+                <div className="rounded-lg border border-brand-100 bg-brand-50/70 px-2.5 py-2 text-center dark:border-brand-900/40 dark:bg-brand-950/30">
+                  <p className="text-[10px] font-medium text-brand-700 dark:text-brand-300">
+                    {kalemSatirlari.length > 1 ? 'Fiş Toplamı' : 'Genel Toplam'}
                   </p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  <p className="mt-0.5 text-sm font-semibold tabular-nums text-brand-900 dark:text-brand-100">
                     {formatTryAmount(masrafVatSplit.genelToplam)}
                   </p>
                 </div>
               </div>
-              <p className="mt-1.5 text-center text-[10px] text-slate-500 dark:text-slate-400">
-                Satır tutarı KDV dahildir; fiş toplamı bu tutarları toplar.
-              </p>
             </div>
 
             <div className="md:col-span-2">
-              <FieldLabel className={fieldLabelCls}>Açıklama {requiredHint}</FieldLabel>
+              <FieldLabel htmlFor="finans-masraf-aciklama" className={fieldLabelCls}>
+                Açıklama {requiredHint}
+              </FieldLabel>
               <input
+                id="finans-masraf-aciklama"
                 className={inputCls}
                 placeholder="Örn. çatı kaplama malzemesi"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 onBlur={(e) => {
-                  const v = toTitleCaseTR(e.target.value.trim());
+                  const v = normalizeFormFreeText(e.target.value);
                   if (v) setForm((f) => ({ ...f, description: v }));
                 }}
               />
@@ -2716,7 +2708,7 @@ export default function MasraflarPage() {
             <button
               type="button"
               onClick={closeExpenseForm}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+              className="shrink-0 whitespace-nowrap rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
             >
               İptal
             </button>
@@ -2725,7 +2717,7 @@ export default function MasraflarPage() {
                 type="button"
                 onClick={() => handleSave('close')}
                 disabled={saving || !formCanSave}
-                className="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+                className="shrink-0 whitespace-nowrap rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
               >
                 {saving ? 'Kaydediliyor...' : 'Güncelle'}
               </button>
@@ -2735,7 +2727,7 @@ export default function MasraflarPage() {
                   type="button"
                   onClick={() => handleSave('close')}
                   disabled={saving || !formCanSave}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  className="shrink-0 whitespace-nowrap rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                 >
                   Kaydet ve Kapat
                 </button>
@@ -2743,7 +2735,7 @@ export default function MasraflarPage() {
                   type="button"
                   onClick={() => handleSave('new')}
                   disabled={saving || !formCanSave}
-                  className="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+                  className="shrink-0 whitespace-nowrap rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
                 >
                   {saving ? 'Kaydediliyor...' : 'Kaydet ve Yeni'}
                 </button>
@@ -2752,6 +2744,62 @@ export default function MasraflarPage() {
           </div>
         </div>
       </SlidePanel>
+
+      <SettingsModal
+        isOpen={categoryDraft != null}
+        onClose={() => {
+          setCategoryDraft(null);
+          setCategoryDraftLineKey(null);
+          setCategoryDraftName('');
+          setCategoryDraftError('');
+        }}
+        title={categoryDraft === 'group' ? 'Yeni Masraf Grubu' : 'Yeni Masraf Alt Grubu'}
+        onSave={() => { void saveCategoryDraft(); }}
+        saving={categoryDraftSaving}
+        saveLabel="Ekle"
+        error={categoryDraftError || undefined}
+        maxWidth="sm"
+      >
+        {categoryDraft === 'sub' ? (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">Masraf Grubu</label>
+            <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+              {categoryTree.find(
+                (g) =>
+                  g.id
+                  === (kalemSatirlari.find((r) => r.key === categoryDraftLineKey)?.expenseCategoryParentId
+                    || form.expenseCategoryParentId),
+              )?.name || 'Önce satırda masraf grubu seçin'}
+            </p>
+          </div>
+        ) : null}
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600" htmlFor="masraf-kategori-draft-ad">
+            {categoryDraft === 'group' ? 'Masraf Grubu Adı' : 'Masraf Alt Grubu Adı'}
+          </label>
+          <input
+            id="masraf-kategori-draft-ad"
+            className={inputCls}
+            placeholder={categoryDraft === 'group' ? 'Örn. çatı malzemesi' : 'Örn. membran'}
+            value={categoryDraftName}
+            autoFocus
+            onFocus={(e) => e.currentTarget.select()}
+            onClick={(e) => e.currentTarget.select()}
+            onChange={(e) => setCategoryDraftName(e.target.value)}
+            onBlur={(e) => {
+              const v = normalizeFormFreeText(e.target.value);
+              if (v) setCategoryDraftName(v);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void saveCategoryDraft();
+              }
+            }}
+            data-testid="masraf-kategori-draft-ad"
+          />
+        </div>
+      </SettingsModal>
 
       <ReceiptCameraModal
         open={showCameraModal}
