@@ -32,6 +32,21 @@ describe('masraf KDV LOCK', () => {
     assert.equal(s.genelToplam, 1310);
   });
 
+  it('KDV dahil 109 (%1) + 130 (%0) fiş toplamı 239 eder; matrah yazılırsa 237,92 olur', () => {
+    const dogru = sumSplitGrossVatLines([
+      { amount: 109, vatRate: 1 },
+      { amount: 130, vatRate: 0 },
+    ]);
+    assert.equal(dogru.genelToplam, 239);
+    assert.equal(splitGrossVat(109, 1).matrah, 107.92);
+
+    const matrahYazilmissa = sumSplitGrossVatLines([
+      { amount: 107.92, vatRate: 1 },
+      { amount: 130, vatRate: 0 },
+    ]);
+    assert.equal(matrahYazilmissa.genelToplam, 237.92);
+  });
+
   it('oran listesi boşsa varsayılanı koyar', () => {
     assert.deepEqual(normalizeMasrafKdvOranlari(null), [...DEFAULT_MASRAF_KDV_ORANLARI]);
     assert.deepEqual(normalizeMasrafKdvOranlari([20, 1, 10, 20]), [1, 10, 20]);
@@ -106,13 +121,25 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /masraf-secili-dosya-link/);
     assert.match(masraf, /masraf-kdv-oran-ekle/);
     assert.match(masraf, /masraf-kdv-oranlari/);
-    assert.match(masraf, /TrAmountCalculator/);
+    assert.match(masraf, /TrAmountCalcField/);
+    assert.match(masraf, /masraf-tutar-hesap-/);
+    assert.match(masraf, /MasrafKdvOranInput/);
     assert.match(masraf, /masraf-kalem-kdv-tutar-/);
+    assert.match(masraf, /masraf-kalem-matrah-/);
     assert.match(masraf, /Hesaplanan KDV/);
+    assert.match(masraf, /Fiş Toplamı \(KDV Dahil\)|Genel Toplam \(KDV Dahil\)/);
+    assert.match(masraf, /readOnly/);
+    assert.ok(
+      masraf.indexOf('Hesaplanan KDV') < masraf.indexOf('masraf-kalem-kdv-tutar-'),
+      'Hesaplanan KDV oranı yanında kutucukta durur',
+    );
+    assert.doesNotMatch(masraf, /Hesaplanan KDV:\s*\{/);
     assert.match(masraf, /receiptDocumentType/);
     assert.match(masraf, /Belge Türü/);
+    assert.match(masraf, /birden fazla masraf grubuna bağlanamaz/);
     assert.doesNotMatch(masraf, /composeMasrafDescription/);
     assert.doesNotMatch(masraf, /masraf-kdv-yazi/);
+    assert.doesNotMatch(masraf, /TrAmountCalculator/);
     assert.ok(
       masraf.indexOf('masraf-akilli-fis') < masraf.indexOf('masraf-yolu-select'),
       'Akıllı fiş Masraf Yolu’ndan önce durur',

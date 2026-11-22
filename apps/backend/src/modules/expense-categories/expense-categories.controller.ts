@@ -32,6 +32,12 @@ export class ExpenseCategoriesController {
     return { data };
   }
 
+  @Get('expense-categories/duplicate-subgroups')
+  async findDuplicateSubgroups() {
+    const data = await this.service.findDuplicateSubgroups();
+    return { data };
+  }
+
   @Post('expense-categories/seed')
   async seed() {
     const data = await this.service.seedSystemData();

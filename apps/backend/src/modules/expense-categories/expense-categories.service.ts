@@ -20,9 +20,8 @@ const SEED_DATA = [
       { name: 'Seyahat Giderleri', code: 'YON_SEYAHAT', sortOrder: 7 },
       { name: 'Yemek/Kırtasiye/Kargo Giderleri', code: 'YON_YKK', sortOrder: 8 },
       { name: 'Sağlık Giderleri', code: 'YON_SAGLIK', sortOrder: 9 },
-      { name: 'Mutfak Yiyecek Malzeme', code: 'YON_MUTFAK', sortOrder: 10 },
-      { name: 'Kredi Geri Ödemeleri', code: 'YON_KREDI', sortOrder: 11 },
-      { name: 'Noter ve Tebligat Giderleri', code: 'YON_NOTER', sortOrder: 12 },
+      { name: 'Kredi Geri Ödemeleri', code: 'YON_KREDI', sortOrder: 10 },
+      { name: 'Noter ve Tebligat Giderleri', code: 'YON_NOTER', sortOrder: 11 },
     ],
   },
   {
@@ -37,6 +36,7 @@ const SEED_DATA = [
       { name: 'Makine Ekipman Alımları', code: 'OPR_MAK_ALIM', sortOrder: 5 },
       { name: 'Makine Ekipman Kiralama', code: 'OPR_MAK_KIRA', sortOrder: 6 },
       { name: 'Hırdavat Malzeme Alımları', code: 'OPR_HIRDAVAT', sortOrder: 7 },
+      { name: 'Mutfak Yiyecek&İçecek Malzeme Alımları', code: 'OPR_MUTFAK', sortOrder: 8 },
     ],
   },
   {
@@ -71,9 +71,80 @@ const SEED_DATA = [
   },
 ];
 
+function normCategoryName(name: string): string {
+  return String(name ?? '').trim().toLocaleLowerCase('tr');
+}
+
 @Injectable()
 export class ExpenseCategoriesService {
   constructor(private prisma: PrismaService) {}
+
+  /** Aynı adlı alt grup birden fazla ana grupta mı? */
+  async findDuplicateSubgroups() {
+    const children = await this.prisma.expenseCategory.findMany({
+      where: { parentId: { not: null }, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        parentId: true,
+        parent: { select: { id: true, name: true, code: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+    const byName = new Map<string, typeof children>();
+    for (const child of children) {
+      const key = normCategoryName(child.name);
+      if (!key) continue;
+      const list = byName.get(key) ?? [];
+      list.push(child);
+      byName.set(key, list);
+    }
+    return Array.from(byName.values())
+      .filter((list) => {
+        const parentIds = new Set(list.map((c) => c.parentId).filter(Boolean));
+        return parentIds.size > 1;
+      })
+      .map((list) => ({
+        name: list[0]?.name ?? '',
+        count: list.length,
+        groups: list.map((c) => ({
+          id: c.id,
+          code: c.code,
+          parentId: c.parentId,
+          parentName: c.parent?.name ?? '—',
+          parentCode: c.parent?.code ?? '',
+        })),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+  }
+
+  private async assertSubgroupNameUnique(name: string, parentId: string | null | undefined, excludeId?: string) {
+    if (!parentId) return;
+    const key = normCategoryName(name);
+    if (!key) return;
+    const siblings = await this.prisma.expenseCategory.findMany({
+      where: {
+        parentId: { not: null },
+        isActive: true,
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        parent: { select: { name: true } },
+      },
+    });
+    const hit = siblings.find((s) => normCategoryName(s.name) === key);
+    if (!hit) return;
+    if (hit.parentId === parentId) {
+      throw new ConflictException('Bu isimde bir kategori zaten mevcut');
+    }
+    throw new ConflictException(
+      `«${name}» alt grubu zaten «${hit.parent?.name ?? 'başka grup'}» altında tanımlı. Aynı alt grup birden fazla masraf grubuna bağlanamaz.`,
+    );
+  }
 
   async findTree(params?: { includeInactive?: boolean }) {
     const activeFilter = params?.includeInactive ? {} : { isActive: true };
@@ -117,6 +188,7 @@ export class ExpenseCategoriesService {
       where: { name: dto.name, parentId: dto.parentId ?? null, isActive: true },
     });
     if (nameConflict) throw new ConflictException('Bu isimde bir kategori zaten mevcut');
+    await this.assertSubgroupNameUnique(dto.name, dto.parentId ?? null);
 
     let level = 1;
     if (dto.parentId) {
@@ -146,6 +218,11 @@ export class ExpenseCategoriesService {
         where: { name: dto.name, parentId: nextParentId, isActive: true, NOT: { id } },
       });
       if (conflict) throw new ConflictException('Bu isimde bir kategori zaten mevcut');
+    }
+    const nextName = dto.name ?? cat.name;
+    const nextIsSub = nextParentId != null;
+    if (nextIsSub && (dto.name !== undefined || dto.parentId !== undefined)) {
+      await this.assertSubgroupNameUnique(nextName, nextParentId, id);
     }
 
     const data: UpdateExpenseCategoryDto & { level?: number } = { ...dto };

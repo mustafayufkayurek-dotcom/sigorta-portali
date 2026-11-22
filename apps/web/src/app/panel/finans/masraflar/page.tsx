@@ -7,8 +7,8 @@ import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';
 import { FieldLabel } from '@/components/ui/FieldHelpTip';
 import { TrDateInput } from '@/components/ui/TrDateInput';
-import { TrAmountInput } from '@/components/ui/TrAmountInput';
-import { TrAmountCalculator } from '@/components/ui/TrAmountCalculator';
+import { TrAmountCalcField } from '@/components/ui/TrAmountCalcField';
+import { MasrafKdvOranInput } from '@/components/ui/MasrafKdvOranInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ExpenseFilePickerModal, type ExpensePickerHasarFile } from '@/components/finance/ExpenseFilePickerModal';
 import { CariHesapCreateModal } from '@/components/finance/CariHesapCreateModal';
@@ -725,13 +725,27 @@ export default function MasraflarPage() {
       setCategoryDraftError('Önce masraf grubunu seçin.');
       return;
     }
+    if (categoryDraft === 'group') {
+      if (categoryTree.some((s) => s.name.trim().toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr'))) {
+        setCategoryDraftError('Bu ad zaten duruyor.');
+        return;
+      }
+    } else {
+      const sameName = allSubgroups.find(
+        (s) => s.name.trim().toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr'),
+      );
+      if (sameName) {
+        setCategoryDraftError(
+          sameName.parentId === draftParentId
+            ? 'Bu ad zaten duruyor.'
+            : `«${name}» alt grubu zaten «${sameName.parentName || 'başka grup'}» altında. Aynı alt grup birden fazla masraf grubuna bağlanamaz.`,
+        );
+        return;
+      }
+    }
     const siblings = categoryDraft === 'group'
       ? categoryTree
       : allSubgroups.filter((s) => s.parentId === draftParentId);
-    if (siblings.some((s) => s.name.trim().toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr'))) {
-      setCategoryDraftError('Bu ad zaten duruyor.');
-      return;
-    }
     setCategoryDraftSaving(true);
     setCategoryDraftError('');
     const sortOrder = computeAlphabeticSortOrder(name, siblings);
@@ -2450,74 +2464,79 @@ export default function MasraflarPage() {
                       </div>
                       <div>
                         <p className="mb-1 text-[11px] text-slate-500">Tutar — KDV Dahil (TL)</p>
-                        <div className="flex items-start gap-2">
-                          <div className="min-w-0 flex-1">
-                            <TrAmountInput
-                              className={inputCls}
-                              placeholder="0"
-                              value={line.amount}
-                              onChange={(amount) => {
-                                patchKalemSatiri(line.key, { amount });
-                                if (idx === 0) setForm((f) => ({ ...f, amount }));
-                              }}
-                            />
-                          </div>
-                          <TrAmountCalculator
-                            testId={`masraf-tutar-hesap-${idx + 1}`}
-                            onApply={(amount) => {
-                              patchKalemSatiri(line.key, { amount });
-                              if (idx === 0) setForm((f) => ({ ...f, amount }));
-                            }}
-                          />
-                        </div>
+                        <TrAmountCalcField
+                          className={inputCls}
+                          placeholder="0"
+                          testId={`masraf-tutar-hesap-${idx + 1}`}
+                          value={line.amount}
+                          onChange={(amount) => {
+                            patchKalemSatiri(line.key, { amount });
+                            if (idx === 0) setForm((f) => ({ ...f, amount }));
+                          }}
+                        />
                       </div>
-                      <div data-testid={idx === 0 ? 'masraf-kdv-oran-alan' : undefined}>
-                        <p className="mb-1 text-[11px] text-slate-500">KDV Oranı</p>
-                        <div className="flex gap-2">
-                          <select
-                            id={idx === 0 ? 'finans-masraf-kdv-oran' : undefined}
-                            className={inputCls}
-                            value={line.vatRate}
-                            onChange={(e) => {
-                              const vatRate = e.target.value;
-                              patchKalemSatiri(line.key, { vatRate });
-                              if (idx === 0) setForm((f) => ({ ...f, vatRate }));
-                            }}
-                            data-testid={idx === 0 ? 'masraf-kdv-oran' : `masraf-kdv-oran-${idx + 1}`}
-                          >
-                            {masrafKdvOranlari.map((rate) => (
-                              <option key={rate} value={String(rate)}>
-                                %{rate}
-                              </option>
-                            ))}
-                          </select>
-                          {idx === 0 && !kdvDraftOpen ? (
-                            <button
-                              type="button"
-                              onClick={openKdvDraft}
-                              className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:border-slate-600 dark:hover:bg-slate-800"
-                              data-testid="masraf-kdv-oran-ekle-ac"
-                            >
-                              + Oran
-                            </button>
-                          ) : null}
+                      <div className="md:col-span-2" data-testid={idx === 0 ? 'masraf-kdv-oran-alan' : undefined}>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <div>
+                            <p className="mb-1 text-[11px] text-slate-500">KDV Oranı</p>
+                            <div className="flex gap-2">
+                              <MasrafKdvOranInput
+                                id={idx === 0 ? 'finans-masraf-kdv-oran' : undefined}
+                                className={inputCls}
+                                rates={masrafKdvOranlari}
+                                value={line.vatRate}
+                                testId={idx === 0 ? 'masraf-kdv-oran' : `masraf-kdv-oran-${idx + 1}`}
+                                onChange={(vatRate) => {
+                                  patchKalemSatiri(line.key, { vatRate });
+                                  if (idx === 0) setForm((f) => ({ ...f, vatRate }));
+                                }}
+                              />
+                              {idx === 0 && !kdvDraftOpen ? (
+                                <button
+                                  type="button"
+                                  onClick={openKdvDraft}
+                                  className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:border-slate-600 dark:hover:bg-slate-800"
+                                  data-testid="masraf-kdv-oran-ekle-ac"
+                                >
+                                  + Oran
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                          {(() => {
+                            const gross = parseTrAmountInput(line.amount) ?? 0;
+                            const rate = Number(line.vatRate) || 0;
+                            const split = splitGrossVat(gross, rate);
+                            return (
+                              <>
+                                <div>
+                                  <p className="mb-1 text-[11px] text-slate-500">Matrah</p>
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    tabIndex={-1}
+                                    className={`${inputCls} bg-slate-50 text-slate-700 dark:bg-slate-800/80 dark:text-slate-200`}
+                                    value={formatTryAmount(split.matrah)}
+                                    data-testid={`masraf-kalem-matrah-${idx + 1}`}
+                                    aria-label="Matrah"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="mb-1 text-[11px] text-slate-500">Hesaplanan KDV</p>
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    tabIndex={-1}
+                                    className={`${inputCls} bg-slate-50 text-slate-700 dark:bg-slate-800/80 dark:text-slate-200`}
+                                    value={formatTryAmount(split.vatAmount)}
+                                    data-testid={`masraf-kalem-kdv-tutar-${idx + 1}`}
+                                    aria-label="Hesaplanan KDV"
+                                  />
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
-                        {(() => {
-                          const gross = parseTrAmountInput(line.amount) ?? 0;
-                          const rate = Number(line.vatRate) || 0;
-                          const split = splitGrossVat(gross, rate);
-                          return (
-                            <p
-                              className="mt-1.5 text-xs text-slate-600 dark:text-slate-300"
-                              data-testid={`masraf-kalem-kdv-tutar-${idx + 1}`}
-                            >
-                              Hesaplanan KDV:{' '}
-                              <span className="font-semibold tabular-nums">
-                                {formatTryAmount(split.vatAmount)}
-                              </span>
-                            </p>
-                          );
-                        })()}
                       </div>
                     </div>
                   </div>
@@ -2648,13 +2667,16 @@ export default function MasraflarPage() {
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500">
-                    {kalemSatirlari.length > 1 ? 'Fiş Toplamı' : 'Genel Toplam'}
+                    {kalemSatirlari.length > 1 ? 'Fiş Toplamı (KDV Dahil)' : 'Genel Toplam (KDV Dahil)'}
                   </p>
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     {formatTryAmount(masrafVatSplit.genelToplam)}
                   </p>
                 </div>
               </div>
+              <p className="mt-1.5 text-center text-[10px] text-slate-500 dark:text-slate-400">
+                Satır tutarı KDV dahildir; fiş toplamı bu tutarları toplar.
+              </p>
             </div>
 
             <div className="md:col-span-2">

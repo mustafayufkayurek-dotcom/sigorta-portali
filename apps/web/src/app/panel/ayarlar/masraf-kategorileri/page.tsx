@@ -83,11 +83,16 @@ export default function MasrafKategorileriPage() {
   const [kdvOranlari, setKdvOranlari] = useState<number[]>([...DEFAULT_MASRAF_KDV_ORANLARI]);
   const [kdvDraft, setKdvDraft] = useState('');
   const [kdvSaving, setKdvSaving] = useState(false);
+  const [duplicateSubgroups, setDuplicateSubgroups] = useState<{
+    name: string;
+    count: number;
+    groups: { id: string; parentName: string; code: string }[];
+  }[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [res, kdvRes] = await Promise.all([
+      const [res, kdvRes, dupRes] = await Promise.all([
         axios.get(`${API}/expense-categories`, {
           headers: authHeader(),
           params: { includeInactive: true },
@@ -95,10 +100,14 @@ export default function MasrafKategorileriPage() {
         axios
           .get(`${API}/finance/analytics/masraf-kdv-oranlari`, { headers: authHeader() })
           .catch(() => ({ data: { data: [...DEFAULT_MASRAF_KDV_ORANLARI] } })),
+        axios
+          .get(`${API}/expense-categories/duplicate-subgroups`, { headers: authHeader() })
+          .catch(() => ({ data: { data: [] } })),
       ]);
       const data: ExpenseGroup[] = res.data.data ?? [];
       setGroups(data);
       setKdvOranlari(normalizeMasrafKdvOranlari(kdvRes.data?.data ?? kdvRes.data));
+      setDuplicateSubgroups((dupRes.data?.data ?? []) as typeof duplicateSubgroups);
       setExpandedGroups((prev) => {
         if (prev.size > 0) return prev;
         return new Set(data.slice(0, 2).map((g) => g.id));
@@ -292,11 +301,17 @@ export default function MasrafKategorileriPage() {
     const parent = parentGroup(itemForm.parentId);
     const code = editItem ? itemForm.code : suggestAutoCode(parent?.code ?? 'EXP', name);
     const siblings = parent?.children ?? [];
-    const dupName = siblings.find((c) =>
-      c.name.trim().toLowerCase() === name.toLowerCase() && (!editItem || c.id !== editItem.id),
+    const allChildren = groups.flatMap((g) => (g.children ?? []).map((c) => ({ ...c, parentName: g.name })));
+    const crossDup = allChildren.find((c) =>
+      c.name.trim().toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr')
+      && (!editItem || c.id !== editItem.id),
     );
-    if (dupName) {
-      setItemError('Seçili masraf grubunda aynı isimde bir alt grup zaten mevcut');
+    if (crossDup) {
+      setItemError(
+        crossDup.parentId === itemForm.parentId
+          ? 'Seçili masraf grubunda aynı isimde bir alt grup zaten mevcut'
+          : `«${name}» alt grubu zaten «${crossDup.parentName}» altında. Aynı alt grup birden fazla masraf grubuna bağlanamaz.`,
+      );
       return;
     }
     setItemSaving(true);
@@ -354,7 +369,7 @@ export default function MasrafKategorileriPage() {
   return (
     <SettingsPageLayout
       title="Masraf Kategorileri"
-      description="Masraf grupları ve alt grupları hiyerarşik olarak yönetin. Her alt grup mutlaka bir masraf grubuna bağlanır."
+      description="Masraf grupları ve alt grupları hiyerarşik olarak yönetin. Her alt grup mutlaka bir masraf grubuna bağlanır. Aynı adlı alt grup başka gruba yazılmaz."
       backHref={TANIMLAR_BACK_HREF}
       backText={TANIMLAR_BACK_TEXT}
       headerExtra={
@@ -440,6 +455,58 @@ export default function MasrafKategorileriPage() {
             </span>
           ))}
         </div>
+      </div>
+
+      <div
+        className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-600 dark:bg-slate-800/50"
+        data-testid="masraf-alt-grup-cift-liste"
+      >
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+          Birden Fazla Gruba Tanımlı Alt Grup
+        </p>
+        {duplicateSubgroups.length === 0 ? (
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Aynı adlı alt grup birden fazla masraf grubunda yok. Yeni kayıtta da yazılamaz.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {duplicateSubgroups.map((row) => (
+              <li
+                key={row.name}
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"
+              >
+                <span className="font-semibold">{row.name}</span>
+                <span className="text-amber-800/80 dark:text-amber-200/80"> · {row.count} kayıt · </span>
+                {row.groups.map((g) => g.parentName).join(' | ')}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          Tanımlı Alt Gruplar (Masraf Grubu)
+        </p>
+        <ul className="mt-2 space-y-1.5" data-testid="masraf-alt-grup-envanter">
+          {groups
+            .flatMap((g) =>
+              (g.children ?? [])
+                .filter((c) => c.isActive !== false)
+                .map((c) => ({ alt: c.name, ust: g.name, id: c.id })),
+            )
+            .sort((a, b) => a.alt.localeCompare(b.alt, 'tr'))
+            .map((row) => (
+              <li
+                key={row.id}
+                className="flex flex-wrap items-baseline gap-x-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{row.alt}</span>
+                <span className="text-slate-400">→</span>
+                <span>{row.ust}</span>
+              </li>
+            ))}
+        </ul>
+        {groups.every((g) => !(g.children ?? []).some((c) => c.isActive !== false)) ? (
+          <p className="mt-1 text-xs text-slate-500">Henüz alt grup yok.</p>
+        ) : null}
       </div>
 
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
