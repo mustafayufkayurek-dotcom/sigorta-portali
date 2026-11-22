@@ -137,9 +137,28 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /handleGroupPick|handleSubgroupPick/);
     assert.match(masraf, /masraf-son-kayit-seridi|Kaydedildi:/);
     assert.match(masraf, /SettingsModal/);
+    assert.match(masraf, /masraf-kategori-draft-kdv/);
+    assert.match(masraf, /Masraf KDV Oranları/);
     assert.match(masraf, /normalizeFormFreeText/);
     assert.match(masraf, /minmax\(0,1\.55fr\)/);
     assert.match(masraf, /masraf-kdv-oran-ekle-ac/);
+    // Kaydet ve Yeni = sıfır form; yol/dosya/cari önceki fişten kalmaz
+    assert.match(masraf, /mode === 'new'/);
+    assert.doesNotMatch(
+      masraf,
+      /mode === 'new'[\s\S]{0,800}expenseLane:\s*form\.expenseLane/,
+      'Kaydet ve Yeni Masraf Yolu’nu eski fişten taşımaz',
+    );
+    assert.doesNotMatch(
+      masraf,
+      /mode === 'new'[\s\S]{0,800}partyAccountId:\s*form\.partyAccountId/,
+      'Kaydet ve Yeni cariyi eski fişten taşımaz',
+    );
+    assert.doesNotMatch(
+      masraf,
+      /mode === 'new'[\s\S]{0,900}fileCaseId:\s*fileLane \? form\.fileCaseId/,
+      'Kaydet ve Yeni dosyayı eski fişten taşımaz',
+    );
     assert.ok(
       masraf.indexOf('KDV Oranı') < masraf.indexOf('masraf-kdv-oran-ekle-ac'),
       '+ Oran etiket satırında durur',

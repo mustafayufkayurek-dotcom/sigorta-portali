@@ -1207,40 +1207,33 @@ export default function MasraflarPage() {
       }
 
       if (!editId && mode === 'new') {
-        const keepVat = saveLines[0]?.vatRate || form.vatRate || DEFAULT_MASRAF_KDV;
+        // Kaydet ve Yeni = Yeni Masraf Ekle ile aynı sıfır form (yol/dosya/cari kalmaz).
+        setEditId(null);
         setForm({
           ...EMPTY_FORM,
-          expenseLane: form.expenseLane,
-          fileCaseId: fileLane ? form.fileCaseId : '',
-          customerId: customerLane ? form.customerId : '',
-          partyAccountId: form.partyAccountId,
-          expensePlan: form.expensePlan,
-          documentMode: form.documentMode,
-          documentType: '',
-          documentNo: '',
-          description: '',
-          amount: '',
-          vatRate: keepVat,
-          expenseCategoryParentId: '',
-          expenseCategoryId: '',
           date: new Date().toISOString().slice(0, 10),
         });
-        setKalemSatirlari([newMasrafKalemSatiri({ vatRate: keepVat })]);
-        setEditId(null);
+        setKalemSatirlari([newMasrafKalemSatiri()]);
         setFormError('');
+        setFileSearch('');
+        setFileLookup(null);
+        setShowCariCreate(false);
+        setCariOzetId(null);
         setCategoryDraft(null);
         setCategoryDraftLineKey(null);
         setCategoryDraftName('');
         setCategoryDraftError('');
         setKdvDraftOpen(false);
+        setKdvDraft('');
+        setKdvDraftError('');
         resetReceiptScan();
         setShowForm(true);
         if (savedOpNo) setLastSavedOpNo(savedOpNo);
         window.requestAnimationFrame(() => {
           const panel = document.querySelector('[data-testid="masraf-form-scroll"]');
           if (panel instanceof HTMLElement) panel.scrollTop = 0;
-          const desc = document.querySelector<HTMLInputElement>('#finans-masraf-aciklama');
-          desc?.focus();
+          const yol = document.querySelector<HTMLElement>('#finans-masraf-yolu');
+          yol?.focus();
         });
       } else {
         setShowForm(false);
@@ -2798,6 +2791,53 @@ export default function MasraflarPage() {
             }}
             data-testid="masraf-kategori-draft-ad"
           />
+        </div>
+        <div
+          className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800/60"
+          data-testid="masraf-kategori-draft-kdv"
+        >
+          <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300">Masraf KDV Oranları</p>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            Formda seçilen oranlar. Buradan da eklenir; Ayarlar listesine düşer.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {masrafKdvOranlari.map((rate) => (
+              <span
+                key={rate}
+                className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+              >
+                %{rate}
+              </span>
+            ))}
+          </div>
+          <div className="mt-2 flex gap-2">
+            <input
+              className={inputCls}
+              inputMode="decimal"
+              placeholder="Örn. 8"
+              value={kdvDraft}
+              onChange={(e) => setKdvDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void saveKdvDraft();
+                }
+              }}
+              data-testid="masraf-kategori-draft-kdv-input"
+            />
+            <button
+              type="button"
+              disabled={kdvDraftSaving}
+              onClick={() => { void saveKdvDraft(); }}
+              className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+              data-testid="masraf-kategori-draft-kdv-ekle"
+            >
+              {kdvDraftSaving ? 'Kaydediliyor' : 'Oran Ekle'}
+            </button>
+          </div>
+          {kdvDraftError ? (
+            <p className="mt-1.5 text-xs text-status-danger">{kdvDraftError}</p>
+          ) : null}
         </div>
       </SettingsModal>
 

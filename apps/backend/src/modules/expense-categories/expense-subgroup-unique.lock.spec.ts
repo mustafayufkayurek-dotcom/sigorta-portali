@@ -62,4 +62,18 @@ describe('masraf alt grup tek üst LOCK', () => {
     assert.match(select, /ArrowUp/);
     assert.match(select, /\.select\(\)/);
   });
+
+  it('grup/alt grup pop-up’ta KDV oranları durur; Kaydet ve Yeni sıfır formdur', () => {
+    const masraf = readFileSync(
+      join(here, '../../../../web/src/app/panel/finans/masraflar/page.tsx'),
+      'utf8',
+    );
+    assert.match(masraf, /masraf-kategori-draft-kdv/);
+    assert.match(masraf, /masraf-kategori-draft-kdv-ekle/);
+    assert.match(masraf, /Masraf KDV Oranları/);
+    assert.doesNotMatch(
+      masraf,
+      /mode === 'new'[\s\S]{0,800}expenseLane:\s*form\.expenseLane/,
+    );
+  });
 });
