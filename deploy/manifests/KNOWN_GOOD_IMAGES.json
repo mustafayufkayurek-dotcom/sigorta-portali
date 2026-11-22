@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-22",
-  "label": "v711-masraf-islem-kdv-altgrup",
-  "description": "v711 full: tutar işlem özeti; yazılabilir KDV; Matrah/Hesaplanan KDV kutusu; alt grup tek üst; Mutfak Operasyon’da. Geri alma web v710 / backend v710.",
+  "label": "v712-masraf-form-genis",
+  "description": "v712 full: tutar alanı geniş; hesap makinesi ve + Oran sade; Kaydet ve Yeni temizler; grup/alt grup uyarı ve ok tuşu; Hesaplanan KDV kalın değil. Geri alma web v711 / backend v711.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v711-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v711-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v712-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v712-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v710-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v710-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v711-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v711-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
