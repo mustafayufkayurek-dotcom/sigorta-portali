@@ -1,11 +1,11 @@
 ---
-description: Canlı web v708 / backend v708
+description: Canlı web v709 / backend v709
 alwaysApply: true
 ---
 
 # Canlı (22.11.2026)
 
-Canlı: web **v708** · backend **v708**. Geri alma: web **v707** / backend **v707**.
+Canlı: web **v709** · backend **v709**. Geri alma: web **v708** / backend **v708**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v709 (full):** Hasar masrafta rapor iş grubu zorunlu değil; tek fişte çoklu masraf grubu + KDV satırı ve toplam. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v708** / backend **v708**.
 
 **v708 (full):** Masraf tarih uyarısı yanıp sönen ikona alındı; açık dönem kayıt serbest, kapalı dönem kesilir; Verimlilik Analizi hatırlatması Finans’ta durur. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v707** / backend **v707**.
 
@@ -293,4 +295,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v708** · backend **v708**.
+Canlı web **v709** · backend **v709**.
