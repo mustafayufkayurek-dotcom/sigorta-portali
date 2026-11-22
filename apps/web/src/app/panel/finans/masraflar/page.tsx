@@ -917,11 +917,7 @@ export default function MasraflarPage() {
     const fileLane = isFileExpenseLane(form.expenseLane);
     const hasarLane = form.expenseLane === 'hasar';
     if (fileLane && !form.fileCaseId) {
-      return setFormError(
-        form.expenseLane === 'tespit'
-          ? 'Hasar Tespit dosyası seçimi zorunludur.'
-          : 'Hasar Onarım dosyası seçimi zorunludur.',
-      );
+      return setFormError('Hasar Onarım dosyası seçimi zorunludur.');
     }
     if (customerLane && !form.customerId) return setFormError('Müşteri seçimi zorunludur.');
     if (!form.partyAccountId) return setFormError('Ödeme kaynağı cari seçimi zorunludur.');
@@ -1084,11 +1080,9 @@ export default function MasraflarPage() {
   );
 
   const selectableFiles = useMemo(() => {
-    const filtered = form.expenseLane === 'tespit'
-      ? files
-      : files.filter((f) =>
-        form.expensePlan === PLAN_EK ? f.hasEkBudget : f.hasApprovedBudget,
-      );
+    const filtered = files.filter((f) =>
+      form.expensePlan === PLAN_EK ? f.hasEkBudget : f.hasApprovedBudget,
+    );
     if (form.fileCaseId && !filtered.some((f) => f.id === form.fileCaseId)) {
       const current = files.find((f) => f.id === form.fileCaseId);
       if (current) return [...filtered, current];
@@ -1107,15 +1101,14 @@ export default function MasraflarPage() {
       }
     }
     return filtered;
-  }, [files, form.expenseLane, form.expensePlan, form.fileCaseId, editId, expenses]);
+  }, [files, form.expensePlan, form.fileCaseId, editId, expenses]);
 
   const formFileEligible = useMemo(() => {
     if (!form.fileCaseId) return false;
-    if (form.expenseLane === 'tespit') return true;
     const f = files.find((x) => x.id === form.fileCaseId);
     if (!f) return Boolean(editId);
     return form.expensePlan === PLAN_EK ? f.hasEkBudget : (f.hasApprovedBudget || workGroups.length > 0);
-  }, [form.fileCaseId, form.expenseLane, form.expensePlan, files, editId, workGroups.length]);
+  }, [form.fileCaseId, form.expensePlan, files, editId, workGroups.length]);
 
   const fileSelectOptions = useMemo(
     () =>
@@ -1146,12 +1139,8 @@ export default function MasraflarPage() {
       if (!form.customerId) blockers.push('Müşteri seçin');
     } else if (isFileExpenseLane(form.expenseLane)) {
       if (!form.fileCaseId) {
-        blockers.push(
-          form.expenseLane === 'tespit'
-            ? 'Hasar Tespit dosyası seçin'
-            : 'Hasar Onarım dosyası seçin (dosya no veya sigortalı adı ile arayın)',
-        );
-      } else if (form.expenseLane === 'hasar' && !formFileEligible) {
+        blockers.push('Hasar Onarım dosyası seçin (dosya no veya sigortalı adı ile arayın)');
+      } else if (!formFileEligible) {
         blockers.push(
           form.expensePlan === PLAN_EK
             ? 'Seçilen dosyada ek iş satış bütçesi yok'
@@ -1190,9 +1179,7 @@ export default function MasraflarPage() {
   const formCanSave = formSaveBlockers.length === 0 && (
     form.expenseLane === 'hasar'
       ? (Boolean(editId) || selectableFiles.length > 0)
-      : form.expenseLane === 'tespit'
-        ? (Boolean(editId) || Boolean(form.fileCaseId) || selectableFiles.length > 0)
-        : Boolean(form.expenseLane)
+      : Boolean(form.expenseLane)
   );
 
   const masrafVatSplit = useMemo(() => {
@@ -1329,11 +1316,11 @@ export default function MasraflarPage() {
   );
 
   const masrafYoluHelp = !form.expenseLane
-    ? 'Sol menüdeki gibi seçilir: Hasar Onarım ve Hasar Tespit dosyaya; Danışmanlık, Poliçe Yönetimi ve Acil Yardım müşteriye yazılır. Yönetim gideri de seçilen müşteri veya dosyaya yansır; sahipsizse havuza düşer. Harici Masraf kayıp KDV telafisidir.'
+    ? 'Sol menüdeki gibi seçilir: Hasar Onarım dosyaya; Hasar Tespit, Danışmanlık, Poliçe Yönetimi ve Acil Yardım müşteriye yazılır. Yönetim gideri de seçilen müşteri veya dosyaya yansır; sahipsizse havuza düşer. Harici Masraf kayıp KDV telafisidir.'
     : form.expenseLane === 'hasar'
       ? 'Hasar Onarım dosyası seçilir. Bu kayıt Hasar bütçe kartına girer. Yönetim kalemi de bu dosyanın kâr–zararına yazılır.'
       : form.expenseLane === 'tespit'
-        ? 'Hasar Tespit dosyası seçilir. Tespit masrafı dosyaya yazılır; onarım bütçe kartına girmez.'
+        ? 'Hasar Tespit müşterisi seçilir. Gelir ve gider bu müşteride toplanır; onarım bütçe kartına girmez.'
         : form.expenseLane === 'harici'
           ? 'Piyasadan toplanan fiş ve fatura. Belgeli kayıt kayıp KDV telafisine yazılır; KDV Raporu’nda görülür.'
           : 'Müşteri seçilir. Yönetim gideri dahil tüm kalemler bu müşterinin kâr–zararına yazılır; dosya bütçe kartına girmez.';
@@ -1744,16 +1731,12 @@ export default function MasraflarPage() {
               </select>
             </div>
 
-            {/* Hasar Onarım / Hasar Tespit — dosya seçimi */}
+            {/* Hasar Onarım — dosya seçimi */}
             {isFileExpenseLane(form.expenseLane) && (
             <div className="md:col-span-2" data-testid="masraf-dosya-select">
               <FieldLabel
                 className={fieldLabelCls}
-                help={
-                  form.expenseLane === 'tespit'
-                    ? 'Hasar Tespit dosya no veya sigortalı adı soyadı ile arayın.'
-                    : 'Dosya no veya sigortalı adı soyadı ile arayın. Hatırlamıyorsanız Dosyadan Seç ile listeden alın.'
-                }
+                help="Dosya no veya sigortalı adı soyadı ile arayın. Hatırlamıyorsanız Dosyadan Seç ile listeden alın."
                 testId="masraf-dosya-help"
               >
                 İlgili Dosya / Sigortalı {requiredHint}
@@ -1766,11 +1749,7 @@ export default function MasraflarPage() {
                   value={form.fileCaseId}
                   onChange={(id) => setForm({ ...form, fileCaseId: id })}
                   onQueryChange={handleFileQueryChange}
-                  placeholder={
-                    form.expenseLane === 'tespit'
-                      ? 'Tespit dosya no veya sigortalı adı soyadı yazın...'
-                      : 'Dosya no, hasar no veya sigortalı adı soyadı yazın...'
-                  }
+                  placeholder="Dosya no, hasar no veya sigortalı adı soyadı yazın..."
                   emptyText={
                     fileLookupLoading
                       ? 'Aranıyor...'
@@ -1822,11 +1801,9 @@ export default function MasraflarPage() {
                   )}
                   <p className="text-xs text-amber-800 dark:text-amber-200 mt-2">
                     {fileLookup.blockReason === 'CUSTOMER_LANE'
-                      ? 'Bu dosya Hasar Onarım değildir. Danışmanlık, Poliçe Yönetimi veya Acil Yardım masrafı müşteriye yazılır.'
+                      ? 'Bu dosya Hasar Onarım değildir. Hasar Tespit, Danışmanlık, Poliçe Yönetimi veya Acil Yardım masrafı müşteriye yazılır.'
                       : fileLookup.blockReason === 'WRONG_LANE'
-                        ? (form.expenseLane === 'tespit'
-                          ? 'Bu dosya Hasar Tespit değildir. Hasar Onarım için Masraf Yolu’nda Hasar Onarım seçin.'
-                          : 'Bu dosya Hasar Tespit’tir. Masraf Yolu’nda Hasar Tespit seçin.')
+                        ? 'Bu dosya Hasar Onarım değildir. Doğru masraf yolunu seçin.'
                         : 'Dosya sistemde kayıtlı ancak onaylı bütçe veya ek iş satışı yok. Masraf girebilmek için önce bütçe oluşturup onaylatın.'}
                   </p>
                   <a
@@ -1916,7 +1893,9 @@ export default function MasraflarPage() {
                   help={
                     form.expenseLane === 'asistans'
                       ? 'Acil Yardım masrafı asistans firması kartına yazılır.'
-                      : 'Danışmanlık veya Poliçe Yönetimi müşteri kartı seçilir.'
+                      : form.expenseLane === 'tespit'
+                        ? 'Hasar Tespit masrafı müşteri kartına yazılır; gelir ve gider aynı müşteride toplanır.'
+                        : 'Danışmanlık veya Poliçe Yönetimi müşteri kartı seçilir.'
                   }
                 >
                   Müşteri {requiredHint}
@@ -1933,7 +1912,9 @@ export default function MasraflarPage() {
                       ? 'Asistans firması ara...'
                       : form.expenseLane === 'police'
                         ? 'Poliçe müşterisi ara...'
-                        : 'Danışmanlık müşterisi ara...'
+                        : form.expenseLane === 'tespit'
+                          ? 'Hasar Tespit müşterisi ara...'
+                          : 'Danışmanlık müşterisi ara...'
                   }
                   emptyText="Müşteri bulunamadı"
                 />

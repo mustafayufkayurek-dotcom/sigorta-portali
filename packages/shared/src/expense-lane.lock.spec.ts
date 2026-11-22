@@ -18,7 +18,7 @@ import {
 } from './expense-lane.ts';
 
 describe('masraf yolu LOCK', () => {
-  it('Hasar ve Tespit dosyadadır; danışmanlık/poliçe/acil müşteridedir; harici telafidir', () => {
+  it('Hasar dosyadadır; Tespit/Danışmanlık/Poliçe/Acil müşteridedir; harici telafidir', () => {
     assert.equal(expenseLaneFromSubject('HASAR_ONARIM'), 'hasar');
     assert.equal(expenseLaneFromSubject(''), 'hasar');
     assert.equal(expenseLaneFromSubject('HASAR_TESPIT'), 'tespit');
@@ -27,12 +27,12 @@ describe('masraf yolu LOCK', () => {
     assert.equal(expenseLaneFromSubject('ACIL_YARDIM'), 'asistans');
     assert.equal(expenseLaneFromSubject('HARICI_MASRAF'), 'harici');
     assert.equal(isCustomerExpenseLane('danismanlik'), true);
+    assert.equal(isCustomerExpenseLane('tespit'), true);
     assert.equal(isCustomerExpenseLane('police'), true);
     assert.equal(isCustomerExpenseLane('asistans'), true);
     assert.equal(isCustomerExpenseLane('hasar'), false);
-    assert.equal(isCustomerExpenseLane('tespit'), false);
     assert.equal(isFileExpenseLane('hasar'), true);
-    assert.equal(isFileExpenseLane('tespit'), true);
+    assert.equal(isFileExpenseLane('tespit'), false);
     assert.equal(isTespitExpenseLane('tespit'), true);
     assert.equal(isHariciExpenseLane('harici'), true);
     assert.equal(expenseSubjectForLane('danismanlik'), 'DANISMANLIK');
@@ -88,10 +88,13 @@ describe('masraf yolu LOCK', () => {
     assert.equal(customerMatchesExpenseLane('asistan_firmasi', 'asistans'), true);
     assert.equal(customerMatchesExpenseLane('asistans_firmasi', 'asistans'), true);
     assert.equal(customerMatchesExpenseLane('asistan_firmasi', 'danismanlik'), false);
+    assert.equal(customerMatchesExpenseLane('asistan_firmasi', 'tespit'), false);
     assert.equal(customerMatchesExpenseLane('asistan_firmasi', 'police'), false);
     assert.equal(customerMatchesExpenseLane('sigorta_sirketi', 'danismanlik'), true);
+    assert.equal(customerMatchesExpenseLane('sigorta_sirketi', 'tespit'), true);
     assert.equal(customerMatchesExpenseLane('sigorta_sirketi', 'police'), true);
     assert.equal(customerMatchesExpenseLane('private_customer', 'danismanlik'), true);
+    assert.equal(customerMatchesExpenseLane('private_customer', 'tespit'), true);
     assert.equal(customerMatchesExpenseLane('sigorta_sirketi', 'asistans'), false);
     assert.equal(customerMatchesExpenseLane('private_customer', 'hasar'), false);
   });
@@ -113,7 +116,7 @@ describe('masraf yolu LOCK', () => {
       'utf8',
     );
     assert.match(svc, /hasarFileBudgetExpenseWhere/);
-    assert.match(svc, /isTespitExpenseLane/);
+    assert.match(svc, /Hasar Tespit masrafı müşteriye yazılır/);
     const finance = readFileSync(
       join(import.meta.dirname, '../../../apps/backend/src/modules/finance/financial-summary.service.ts'),
       'utf8',
@@ -150,14 +153,17 @@ describe('masraf yolu LOCK', () => {
     assert.match(svc, /isYonetimOverheadPool/);
     assert.doesNotMatch(svc, /Yönetim gideri müşteriye yazılmaz/);
     assert.doesNotMatch(svc, /Yönetim giderleri dosyaya bağlanamaz/);
-    assert.match(svc, /Danışmanlık, Poliçe Yönetimi ve Acil Yardım masrafı dosyaya yazılmaz/);
+    assert.match(svc, /Hasar Tespit, Danışmanlık, Poliçe Yönetimi ve Acil Yardım masrafı dosyaya yazılmaz/);
     assert.match(svc, /Harici masraf dosyaya veya müşteriye yazılmaz/);
-    assert.match(svc, /Hasar Tespit masrafı yalnız tespit dosyasına yazılır/);
-    // Danışmanlık dosyası masraf yazmaz; Hasar Tespit ve hizmet türü boş eski onarım dosyası yazar (13.11.2026).
+    assert.doesNotMatch(svc, /Hasar Tespit masrafı yalnız tespit dosyasına yazılır/);
     assert.match(svc, /if \(kind === 'consultancy'\) \{/);
-    assert.match(svc, /if \(kind === 'inspection'\) return kind;/);
-    assert.match(svc, /OR: \[\{ serviceKind: null \}, \{ serviceKind: \{ in: \['repair', 'inspection'\] \} \}\]/);
-    assert.match(svc, /plan === 'BUTCELENEN' && fileKind !== 'inspection'/);
-    assert.match(svc, /serviceKind: 'repair'/);
+    assert.match(svc, /Bu dosya Hasar Tespit/);
+    assert.match(svc, /OR: \[\{ serviceKind: null \}, \{ serviceKind: 'repair' \}\]/);
+    const page = readFileSync(
+      join(import.meta.dirname, '../../../apps/web/src/app/panel/finans/masraflar/page.tsx'),
+      'utf8',
+    );
+    assert.match(page, /Hasar Tespit müşterisi ara/);
+    assert.match(page, /[Gg]elir ve gider bu müşteride toplanır/);
   });
 });

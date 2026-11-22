@@ -1,4 +1,4 @@
-/** Masraf yolu: sol menü Operasyon kırılımıyla aynı. Hasar/Tespit dosyadadır. Danışmanlık/Poliçe/Acil müşteridedir. Harici kayıp KDV telafisidir. */
+/** Masraf yolu: sol menü Operasyon kırılımıyla aynı. Hasar Onarım dosyadadır. Hasar Tespit / Danışmanlık / Poliçe / Acil müşteridedir. Harici kayıp KDV telafisidir. */
 
 export const EXPENSE_LANE_HASAR = 'hasar' as const;
 export const EXPENSE_LANE_TESPIT = 'tespit' as const;
@@ -90,13 +90,14 @@ export function parseExpenseLane(raw: unknown): ExpenseLane | null {
 export function isCustomerExpenseLane(lane: unknown): boolean {
   return (
     lane === EXPENSE_LANE_DANISMANLIK
+    || lane === EXPENSE_LANE_TESPIT
     || lane === EXPENSE_LANE_POLICE
     || lane === EXPENSE_LANE_ASISTANS
   );
 }
 
 export function isFileExpenseLane(lane: unknown): boolean {
-  return lane === EXPENSE_LANE_HASAR || lane === EXPENSE_LANE_TESPIT;
+  return lane === EXPENSE_LANE_HASAR;
 }
 
 export function isHariciExpenseLane(lane: unknown): boolean {

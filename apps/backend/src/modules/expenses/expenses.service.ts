@@ -32,7 +32,6 @@ import {
   hasarFileBudgetExpenseWhere,
   isCustomerExpenseLane,
   isHariciExpenseLane,
-  isTespitExpenseLane,
   isYonetimOverheadPool,
   normalizeCustomerServiceScopes,
   parseExpenseLane,
@@ -45,9 +44,9 @@ import {
   RequestUser,
 } from '@/common/helpers/claim-file-scope.helper';
 
-/** Hasar dosyası masrafı: onarım, Hasar Tespit ve hizmet türü boş eski onarım dosyası. Danışmanlık müşteriye yazılır. */
+/** Hasar Onarım dosya masrafı: onarım ve hizmet türü boş eski onarım dosyası. Hasar Tespit / Danışmanlık müşteriye yazılır. */
 const HASAR_FILE_EXPENSE_KIND_WHERE = {
-  OR: [{ serviceKind: null }, { serviceKind: { in: ['repair', 'inspection'] } }],
+  OR: [{ serviceKind: null }, { serviceKind: 'repair' }],
 };
 
 @Injectable()
@@ -465,8 +464,11 @@ export class ExpensesService {
         'Bu dosya Hasar onarım değildir. Danışmanlık ve asistans masrafı müşteriye yazılır.',
       );
     }
-    // Hasar Tespit onarım bütçesi taşımaz; tespit masrafı dosyaya yazılır, bütçe aranmaz.
-    if (kind === 'inspection') return kind;
+    if (kind === 'inspection') {
+      throw new BadRequestException(
+        'Bu dosya Hasar Tespit’tir. Hasar Tespit masrafı müşteriye yazılır.',
+      );
+    }
 
     const plan = expensePlan ?? 'BUTCELENEN';
 
@@ -505,9 +507,8 @@ export class ExpensesService {
     return kind;
   }
 
-  async getEligibleFiles(search?: string, laneRaw?: string) {
+  async getEligibleFiles(search?: string, _laneRaw?: string) {
     const searchFilter = search?.trim() ? this.buildFileSearchFilter(search) : undefined;
-    const lane = parseExpenseLane(laneRaw);
 
     const budgetOr = [
       { approvedBudgetAmount: { gt: 0 } },
@@ -519,20 +520,10 @@ export class ExpensesService {
       },
     ] as const;
 
-    const kindWhere = isTespitExpenseLane(lane)
-      ? { serviceKind: 'inspection' as const }
-      : lane === 'hasar'
-        ? { OR: [{ serviceKind: null }, { serviceKind: 'repair' as const }] }
-        : HASAR_FILE_EXPENSE_KIND_WHERE;
-
-    const eligibilityOr = isTespitExpenseLane(lane)
-      ? [{ serviceKind: 'inspection' as const }]
-      : [...budgetOr, ...(lane === 'hasar' ? [] : [{ serviceKind: 'inspection' as const }])];
-
     const rows = await this.prisma.claimFile.findMany({
       where: searchFilter
-        ? { AND: [kindWhere, searchFilter, { OR: eligibilityOr }] }
-        : { AND: [kindWhere, { OR: eligibilityOr }] },
+        ? { AND: [HASAR_FILE_EXPENSE_KIND_WHERE, searchFilter, { OR: [...budgetOr] }] }
+        : { AND: [HASAR_FILE_EXPENSE_KIND_WHERE, { OR: [...budgetOr] }] },
       select: this.claimFileExpenseSelect,
       take: 50,
       orderBy: { updatedAt: 'desc' },
@@ -542,10 +533,9 @@ export class ExpensesService {
   }
 
   /** Bütçe şartı olmadan dosya arar — bulundu ama uygun değil geri bildirimi için */
-  async lookupFileForExpense(query: string, laneRaw?: string) {
+  async lookupFileForExpense(query: string, _laneRaw?: string) {
     const q = query.trim();
     if (q.length < 2) return { found: false as const, query: q };
-    const lane = parseExpenseLane(laneRaw);
 
     const digits = q.replace(/[\s\-./]/g, '');
     const searchFilter = this.buildFileSearchFilter(q)!;
@@ -570,31 +560,7 @@ export class ExpensesService {
 
     const mapped = this.mapFileToEligibleOption(file);
     const kind = parseClaimServiceKind(file.serviceKind);
-    if (isTespitExpenseLane(lane)) {
-      if (kind === 'inspection') {
-        return { found: true as const, query: q, ...mapped, canEnterExpense: true, blockReason: null };
-      }
-      return {
-        found: true as const,
-        query: q,
-        ...mapped,
-        canEnterExpense: false,
-        blockReason: kind === 'consultancy' ? ('CUSTOMER_LANE' as const) : ('WRONG_LANE' as const),
-      };
-    }
-    if (lane === 'hasar' && kind === 'inspection') {
-      return {
-        found: true as const,
-        query: q,
-        ...mapped,
-        canEnterExpense: false,
-        blockReason: 'WRONG_LANE' as const,
-      };
-    }
-    if (kind === 'inspection') {
-      return { found: true as const, query: q, ...mapped, canEnterExpense: true, blockReason: null };
-    }
-    if (kind === 'consultancy') {
+    if (kind === 'inspection' || kind === 'consultancy') {
       return {
         found: true as const,
         query: q,
@@ -791,7 +757,7 @@ export class ExpensesService {
       throw new BadRequestException(
         lane === 'asistans'
           ? 'Acil Yardım masrafı asistans firmasına yazılır.'
-          : 'Danışmanlık ve Poliçe Yönetimi masrafı asistans firmasına yazılmaz.',
+          : 'Hasar Tespit, Danışmanlık ve Poliçe Yönetimi masrafı asistans firmasına yazılmaz.',
       );
     }
   }
@@ -799,7 +765,9 @@ export class ExpensesService {
   async listCustomersForExpense(laneRaw: string | undefined, search?: string) {
     const lane = parseExpenseLane(laneRaw);
     if (!lane || !isCustomerExpenseLane(lane)) {
-      throw new BadRequestException('Müşteri listesi Danışmanlık, Poliçe Yönetimi veya Acil Yardım içindir.');
+      throw new BadRequestException(
+        'Müşteri listesi Hasar Tespit, Danışmanlık, Poliçe Yönetimi veya Acil Yardım içindir.',
+      );
     }
     const q = search?.trim();
     const nameOr = q
@@ -896,23 +864,18 @@ export class ExpensesService {
       }
     } else if (customerLane) {
       if (dto.fileCaseId) {
-        throw new BadRequestException('Danışmanlık, Poliçe Yönetimi ve Acil Yardım masrafı dosyaya yazılmaz. Müşteri seçin.');
+        throw new BadRequestException(
+          'Hasar Tespit, Danışmanlık, Poliçe Yönetimi ve Acil Yardım masrafı dosyaya yazılmaz. Müşteri seçin.',
+        );
       }
       await this.assertCustomerExpense(dto.customerId, createLane);
     } else {
       if (!dto.fileCaseId) {
         throw new BadRequestException('Masraf girişi için hasar dosyası seçimi zorunludur.');
       }
-      const createFileLane = createLane;
-      const fileKind = await this.assertFileEligibleForExpense(dto.fileCaseId, dto.expensePlan);
-      if (isTespitExpenseLane(createFileLane) && fileKind !== 'inspection') {
-        throw new BadRequestException('Hasar Tespit masrafı yalnız tespit dosyasına yazılır.');
-      }
-      if (createFileLane === 'hasar' && fileKind === 'inspection') {
-        throw new BadRequestException('Hasar Tespit dosyası için Masraf Yolu’nda Hasar Tespit seçin.');
-      }
+      await this.assertFileEligibleForExpense(dto.fileCaseId, dto.expensePlan);
       const plan = dto.expensePlan ?? 'BUTCELENEN';
-      if (plan === 'BUTCELENEN' && fileKind !== 'inspection') {
+      if (plan === 'BUTCELENEN') {
         const audit = await this.getWorkGroupExpenseAudit(dto.fileCaseId);
         if (audit.groups.length > 0) {
           if (!dto.workGroupId) {
@@ -927,13 +890,13 @@ export class ExpensesService {
             workGroupId: dto.workGroupId,
             amount: dto.amount,
           });
+        } else if (dto.workGroupId) {
+          await this.assertWorkGroupExpenseBudget({
+            fileCaseId: dto.fileCaseId,
+            workGroupId: dto.workGroupId,
+            amount: dto.amount,
+          });
         }
-      } else if (dto.workGroupId && plan === 'BUTCELENEN') {
-        await this.assertWorkGroupExpenseBudget({
-          fileCaseId: dto.fileCaseId,
-          workGroupId: dto.workGroupId,
-          amount: dto.amount,
-        });
       }
     }
     const date = new Date(dto.date);
@@ -1037,7 +1000,9 @@ export class ExpensesService {
       }
     } else if (customerLane) {
       if (dto.fileCaseId) {
-        throw new BadRequestException('Danışmanlık, Poliçe Yönetimi ve Acil Yardım masrafı dosyaya yazılmaz. Müşteri seçin.');
+        throw new BadRequestException(
+          'Hasar Tespit, Danışmanlık, Poliçe Yönetimi ve Acil Yardım masrafı dosyaya yazılmaz. Müşteri seçin.',
+        );
       }
       await this.assertCustomerExpense(nextCustomerId, lane);
     } else {
@@ -1045,13 +1010,7 @@ export class ExpensesService {
         throw new BadRequestException('Masraf kaydında hasar dosyası zorunludur.');
       }
       if (dto.fileCaseId !== undefined || dto.expensePlan !== undefined || dto.operationSubject !== undefined) {
-        const fileKind = await this.assertFileEligibleForExpense(nextFileCaseId, nextPlan);
-        if (isTespitExpenseLane(lane) && fileKind !== 'inspection') {
-          throw new BadRequestException('Hasar Tespit masrafı yalnız tespit dosyasına yazılır.');
-        }
-        if (lane === 'hasar' && fileKind === 'inspection') {
-          throw new BadRequestException('Hasar Tespit dosyası için Masraf Yolu’nda Hasar Tespit seçin.');
-        }
+        await this.assertFileEligibleForExpense(nextFileCaseId, nextPlan);
       }
     }
     const data: Record<string, unknown> = {};

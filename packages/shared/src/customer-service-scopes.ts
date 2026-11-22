@@ -119,14 +119,20 @@ export function customerServiceScopeLabel(id: string): string {
  */
 export function customerMatchesExpenseServiceScope(
   scopes: unknown,
-  lane: 'danismanlik' | 'police' | 'asistans' | string,
+  lane: 'danismanlik' | 'tespit' | 'police' | 'asistans' | string,
 ): boolean {
   const list = normalizeCustomerServiceScopes(scopes);
   if (list.length === 0) return true;
   if (list.includes(CUSTOMER_SERVICE_SCOPE_HEPSI)) {
-    return lane === 'danismanlik' || lane === 'police' || lane === 'asistans';
+    return (
+      lane === 'danismanlik'
+      || lane === 'tespit'
+      || lane === 'police'
+      || lane === 'asistans'
+    );
   }
   if (lane === 'danismanlik') return list.includes(CUSTOMER_SERVICE_SCOPE_DANISMANLIK);
+  if (lane === 'tespit') return list.includes(CUSTOMER_SERVICE_SCOPE_TESPIT);
   if (lane === 'police') return list.includes(CUSTOMER_SERVICE_SCOPE_POLICE);
   if (lane === 'asistans') return list.includes(CUSTOMER_SERVICE_SCOPE_ACIL);
   return false;

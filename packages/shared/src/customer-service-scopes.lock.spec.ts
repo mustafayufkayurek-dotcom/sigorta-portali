@@ -63,8 +63,11 @@ describe('müşteri hizmet kapsamı LOCK', () => {
   it('Masraf listesi kapsam ve boş eski kartı okur', () => {
     assert.equal(customerMatchesExpenseServiceScope([], 'danismanlik'), true);
     assert.equal(customerMatchesExpenseServiceScope(['hepsi'], 'danismanlik'), true);
+    assert.equal(customerMatchesExpenseServiceScope(['hepsi'], 'tespit'), true);
     assert.equal(customerMatchesExpenseServiceScope(['hepsi'], 'asistans'), true);
     assert.equal(customerMatchesExpenseServiceScope(['danismanlik'], 'danismanlik'), true);
+    assert.equal(customerMatchesExpenseServiceScope(['hasar-tespit'], 'tespit'), true);
+    assert.equal(customerMatchesExpenseServiceScope(['danismanlik'], 'tespit'), false);
     assert.equal(customerMatchesExpenseServiceScope(['danismanlik'], 'police'), false);
     assert.equal(customerMatchesExpenseServiceScope(['police-yonetimi'], 'police'), true);
     assert.equal(customerMatchesExpenseServiceScope(['acil'], 'asistans'), true);
