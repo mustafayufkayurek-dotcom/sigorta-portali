@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-22",
-  "label": "v707-hasar-tespit-musteri-masraf",
-  "description": "v707 full: Hasar Tespit masrafı dosya yerine müşteriye yazılır; gelir ve gider aynı müşteride toplanır. Geri alma web v706 / backend v706.",
+  "label": "v708-finans-tarih-verimlilik",
+  "description": "v708 full: Masraf tarih uyarısı ikona alındı; açık dönem kayıt serbest, kapalı kesilir; Verimlilik Analizi hatırlatması. Geri alma web v707 / backend v707.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v707-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v707-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v708-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v708-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v706-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v706-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v707-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v707-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
