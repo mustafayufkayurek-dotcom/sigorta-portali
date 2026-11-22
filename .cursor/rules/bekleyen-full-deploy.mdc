@@ -1,11 +1,11 @@
 ---
-description: Canlı web v709 / backend v709
+description: Canlı web v710 / backend v710
 alwaysApply: true
 ---
 
 # Canlı (22.11.2026)
 
-Canlı: web **v709** · backend **v709**. Geri alma: web **v708** / backend **v708**.
+Canlı: web **v710** · backend **v710**. Geri alma: web **v709** / backend **v709**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v710 (full):** Masrafta Belge Türü ve Belge No ayrı sütun; tarihte iki haneli yıl 20xx; tutar satırında hesap makinesi; satırda hesaplanan KDV (KDV Raporu’na yansır). Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v709** / backend **v709**.
 
 **v709 (full):** Hasar masrafta rapor iş grubu zorunlu değil; tek fişte çoklu masraf grubu + KDV satırı ve toplam. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v708** / backend **v708**.
 
@@ -295,4 +297,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v709** · backend **v709**.
+Canlı web **v710** · backend **v710**.

@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-22",
-  "label": "v709-masraf-coklu-satir",
-  "description": "v709 full: Hasar masrafta rapor iş grubu zorunlu değil; tek fişte çoklu masraf grubu+KDV satırı ve toplam. Geri alma web v708 / backend v708.",
+  "label": "v710-masraf-belge-tarih-hesap",
+  "description": "v710 full: Belge türü/no ayrı sütun; iki haneli yıl 20xx; tutar hesap makinesi; satır KDV’si KDV raporuna. Geri alma web v709 / backend v709.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v709-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v709-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v710-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v710-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v708-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v708-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v709-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v709-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
