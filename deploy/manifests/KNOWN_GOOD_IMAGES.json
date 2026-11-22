@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-22",
-  "label": "v713-masraf-sifir-kdv-popup",
-  "description": "v713 full: Kaydet ve Yeni sıfır form; grup/alt grup pop-up’ta KDV oranları; eksik alım kilidi. Geri alma web v712 / backend v712.",
+  "label": "v714-masraf-kapsam-kasa-aciklama",
+  "description": "v714 full: Hasar Onarım dosya seçicisi müşteri hizmet kapsamını keser; masrafta kısa ad yok; açıklama hatırlama; Kasa cari türü; Danışmanlık tarih yarım sütun. Geri alma web v713 / backend v713.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v713-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v713-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v714-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v714-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v712-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v712-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v713-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v713-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

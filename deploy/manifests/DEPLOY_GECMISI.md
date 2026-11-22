@@ -2,24 +2,31 @@
 
 **Tek kaynak (image):** `deploy/manifests/KNOWN_GOOD_IMAGES.json`  
 **Açık işler:** `CANLIYA_ALINMAMIS_ENVANTER.md`  
-**Son güncelleme:** 20 Kasım 2026
+**Son güncelleme:** 22 Kasım 2026
 
 > Her deploy sonrası: bu dosyaya **yeni satır** + manifest `label` / `description` güncelle. Sohbet değil, bu dosya “son ne alındı?” cevabıdır.
 
 ---
 
-## Canlı durum (20 Kasım 2026 — web v700 / backend v700)
+## Canlı durum (22 Kasım 2026 — web v714 / backend v714)
 
 | Servis | Sürüm | Durum |
 |--------|-------|--------|
-| **Web** | `sigorta-web:dalga2-agreement-hr-01-v700-amd64` | canlı |
-| **Backend** | `app-backend:dalga2-agreement-hr-01-v700-amd64` | canlı |
-| **Rollback** | Web **v699** / Backend **v699** | manifest `rollbackImages` |
-| **Etiket** | `v700-onay-72h-dosya-sorumlusu` | |
+| **Web** | `sigorta-web:dalga2-agreement-hr-01-v714-amd64` | canlı |
+| **Backend** | `app-backend:dalga2-agreement-hr-01-v714-amd64` | canlı |
+| **Rollback** | Web **v713** / Backend **v713** | manifest `rollbackImages` |
+| **Etiket** | `v714-masraf-kapsam-kasa-aciklama` | |
 
 ---
 
 ## Son deploy kronolojisi
+
+### v714 — Full (22 Kasım 2026) — Masraf kapsam / Kasa / açıklama
+
+- Hasar Onarım dosya seçicisi müşteri hizmet kapsamını keser (Doğanlar kök neden)
+- Masrafta müşteri kısa ad yok; açıklama hatırlama; Kasa cari türü; Danışmanlık tarih yarım sütun
+- Health/route gate: FAIL=0 PARTIAL=1 (oturum şifresi yok)
+- Geri alma web **v713** / backend **v713**
 
 ### v700 — Full (20 Kasım 2026) — 72s onay: dosya sorumlusu penceresi
 

@@ -1,11 +1,11 @@
 ---
-description: Canlı web v713 / backend v713
+description: Canlı web v714 / backend v714
 alwaysApply: true
 ---
 
 # Canlı (22.11.2026)
 
-Canlı: web **v713** · backend **v713**. Geri alma: web **v712** / backend **v712**.
+Canlı: web **v714** · backend **v714**. Geri alma: web **v713** / backend **v713**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v714 (full):** Hasar Onarım dosya seçicisi müşteri hizmet kapsamını keser (Doğanlar kök neden); masrafta kısa ad yok; açıklama hatırlama; Kasa cari türü; Danışmanlık tarih yarım sütun. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v713** / backend **v713**.
 
 **v713 (full):** Kaydet ve Yeni sıfır form (yol/dosya/cari kalmaz); grup/alt grup pop-up’ta KDV oranları; eksik alım kilidi (masraf paket doğrulama). Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v712** / backend **v712**.
 
@@ -303,4 +305,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v713** · backend **v713**.
+Canlı web **v714** · backend **v714**.
