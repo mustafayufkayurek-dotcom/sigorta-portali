@@ -8,14 +8,19 @@ import { FileDropZone } from '@/components/ui/FileDropZone';
 import { FieldLabel } from '@/components/ui/FieldHelpTip';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { TrAmountCalcField } from '@/components/ui/TrAmountCalcField';
-import { MasrafKdvOranInput } from '@/components/ui/MasrafKdvOranInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ExpenseFilePickerModal, type ExpensePickerHasarFile } from '@/components/finance/ExpenseFilePickerModal';
 import { CariHesapCreateModal } from '@/components/finance/CariHesapCreateModal';
 import { CariHesapOzetModal } from '@/components/finance/CariHesapOzetModal';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
 import { FinansHedefBaglamSeridi } from '@/components/finance/FinansHedefBaglamSeridi';
-import { FinansActionButton, FinansEmptyState, FinansKpiStrip, FinansPanelCard } from '@/components/finance/FinansPanelUI';
+import {
+  FinansActionButton,
+  FinansEmptyState,
+  FinansKpiStrip,
+  FinansModal,
+  FinansPanelCard,
+} from '@/components/finance/FinansPanelUI';
 import { FINANS_KART_YOL, hedefCiroDonYol, isHedefCiroDon } from '@/utils/finans-merkez-kart';
 import { FinansTablePager } from '@/components/finance/FinansTablePager';
 import { PinnableRowActions } from '@/components/portal/PinnableRowActions';
@@ -50,7 +55,6 @@ import { suggestAutoCode } from '@/utils/auto-code';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 import { API, authHeader } from '@/utils/api';
 import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
-import { SettingsModal } from '@/components/settings/SettingsModal';
 import { formatTryAmount } from '@/utils/format-try-amount';
 import { getAccessToken } from '@/utils/auth-session';
 import {
@@ -2554,17 +2558,23 @@ export default function MasraflarPage() {
                                 </button>
                               ) : null}
                             </div>
-                            <MasrafKdvOranInput
+                            <select
                               id={idx === 0 ? 'finans-masraf-kdv-oran' : undefined}
                               className={inputCls}
-                              rates={masrafKdvOranlari}
                               value={line.vatRate}
-                              testId={idx === 0 ? 'masraf-kdv-oran' : `masraf-kdv-oran-${idx + 1}`}
-                              onChange={(vatRate) => {
+                              data-testid={idx === 0 ? 'masraf-kdv-oran' : `masraf-kdv-oran-${idx + 1}`}
+                              onChange={(e) => {
+                                const vatRate = e.target.value;
                                 patchKalemSatiri(line.key, { vatRate });
                                 if (idx === 0) setForm((f) => ({ ...f, vatRate }));
                               }}
-                            />
+                            >
+                              {masrafKdvOranlari.map((rate) => (
+                                <option key={rate} value={String(rate)}>
+                                  %{rate}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                           <div>
                             <p className="mb-1 text-[11px] text-slate-500">Hesaplanan KDV</p>
@@ -2766,20 +2776,36 @@ export default function MasraflarPage() {
         </div>
       </SlidePanel>
 
-      <SettingsModal
-        isOpen={categoryDraft != null}
-        onClose={() => {
-          setCategoryDraft(null);
-          setCategoryDraftLineKey(null);
-          setCategoryDraftName('');
-          setCategoryDraftError('');
-        }}
+      <FinansModal
+        open={categoryDraft != null}
         title={categoryDraft === 'group' ? 'Yeni Masraf Grubu' : 'Yeni Masraf Alt Grubu'}
-        onSave={() => { void saveCategoryDraft(); }}
-        saving={categoryDraftSaving}
-        saveLabel="Ekle"
-        error={categoryDraftError || undefined}
-        maxWidth="sm"
+        testId="masraf-kategori-draft-modal"
+        size="md"
+        footer={(
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setCategoryDraft(null);
+                setCategoryDraftLineKey(null);
+                setCategoryDraftName('');
+                setCategoryDraftError('');
+              }}
+              className="flex-1 rounded-lg border border-slate-200 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              İptal
+            </button>
+            <button
+              type="button"
+              onClick={() => { void saveCategoryDraft(); }}
+              disabled={categoryDraftSaving}
+              className="flex-1 rounded-lg bg-brand-600 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+              data-testid="masraf-kategori-draft-kaydet"
+            >
+              {categoryDraftSaving ? 'Kaydediliyor...' : 'Ekle'}
+            </button>
+          </div>
+        )}
       >
         {categoryDraft === 'sub' ? (
           <div>
@@ -2794,7 +2820,7 @@ export default function MasraflarPage() {
             </p>
           </div>
         ) : null}
-        <div>
+        <div className={categoryDraft === 'sub' ? 'mt-4' : undefined}>
           <label className="mb-1 block text-xs font-medium text-slate-600" htmlFor="masraf-kategori-draft-ad">
             {categoryDraft === 'group' ? 'Masraf Grubu Adı' : 'Masraf Alt Grubu Adı'}
           </label>
@@ -2821,21 +2847,31 @@ export default function MasraflarPage() {
           />
         </div>
         <div
-          className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800/60"
+          className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800/60"
           data-testid="masraf-kategori-draft-kdv"
         >
           <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300">Masraf KDV Oranları</p>
           <p className="mt-0.5 text-[11px] text-slate-500">
-            Formda seçilen oranlar. Buradan da eklenir; Ayarlar listesine düşer.
+            Formdaki listede seçilir. Buradan yeni oran eklenir; Ayarlar listesine düşer.
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {masrafKdvOranlari.map((rate) => (
-              <span
+              <button
                 key={rate}
-                className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                type="button"
+                className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-700 hover:border-brand-300 hover:bg-brand-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                onClick={() => {
+                  const vatRate = String(rate);
+                  const lineKey = categoryDraftLineKey || kalemSatirlari[0]?.key;
+                  if (lineKey) {
+                    patchKalemSatiri(lineKey, { vatRate });
+                    setForm((f) => ({ ...f, vatRate }));
+                  }
+                }}
+                data-testid={`masraf-kategori-draft-kdv-sec-${rate}`}
               >
                 %{rate}
-              </span>
+              </button>
             ))}
           </div>
           <div className="mt-2 flex gap-2">
@@ -2866,8 +2902,11 @@ export default function MasraflarPage() {
           {kdvDraftError ? (
             <p className="mt-1.5 text-xs text-status-danger">{kdvDraftError}</p>
           ) : null}
+          {categoryDraftError ? (
+            <p className="mt-1.5 text-xs text-status-danger">{categoryDraftError}</p>
+          ) : null}
         </div>
-      </SettingsModal>
+      </FinansModal>
 
       <ReceiptCameraModal
         open={showCameraModal}

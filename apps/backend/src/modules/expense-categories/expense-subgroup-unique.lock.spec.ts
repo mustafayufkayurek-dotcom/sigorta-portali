@@ -19,8 +19,8 @@ const calc = readFileSync(
   join(here, '../../../../web/src/components/ui/TrAmountCalcField.tsx'),
   'utf8',
 );
-const kdv = readFileSync(
-  join(here, '../../../../web/src/components/ui/MasrafKdvOranInput.tsx'),
+const masrafPage = readFileSync(
+  join(here, '../../../../web/src/app/panel/finans/masraflar/page.tsx'),
   'utf8',
 );
 
@@ -40,7 +40,7 @@ describe('masraf alt grup tek üst LOCK', () => {
     assert.match(ayar, /birden fazla masraf grubuna bağlanamaz/);
   });
 
-  it('tutar +−×÷ ile işlem özeti; KDV oranı klavyeden yazılır', () => {
+  it('tutar +−×÷ ile işlem özeti; KDV oranı listeden seçilir', () => {
     assert.match(calc, /İşlem:/);
     assert.match(calc, /OP_KEYS/);
     assert.match(calc, /evaluateAmountExpression/);
@@ -48,8 +48,9 @@ describe('masraf alt grup tek üst LOCK', () => {
     assert.match(calc, /pr-\[4\.25rem\]/);
     assert.doesNotMatch(calc, /flex items-start gap-2/);
     assert.doesNotMatch(calc, /grid-cols-4/);
-    assert.match(kdv, /masraf-kdv-oran-liste|masraf-kdv-oran/);
-    assert.match(kdv, /startsWith/);
+    assert.match(masrafPage, /<select[\s\S]{0,500}masraf-kdv-oran/);
+    assert.match(masrafPage, /masrafKdvOranlari\.map/);
+    assert.doesNotMatch(masrafPage, /MasrafKdvOranInput/);
   });
 
   it('SearchableSelect odaklanınca tüm metin seçilir; ok tuşları çalışır', () => {
@@ -64,15 +65,13 @@ describe('masraf alt grup tek üst LOCK', () => {
   });
 
   it('grup/alt grup pop-up’ta KDV oranları durur; Kaydet ve Yeni sıfır formdur', () => {
-    const masraf = readFileSync(
-      join(here, '../../../../web/src/app/panel/finans/masraflar/page.tsx'),
-      'utf8',
-    );
-    assert.match(masraf, /masraf-kategori-draft-kdv/);
-    assert.match(masraf, /masraf-kategori-draft-kdv-ekle/);
-    assert.match(masraf, /Masraf KDV Oranları/);
+    assert.match(masrafPage, /masraf-kategori-draft-kdv/);
+    assert.match(masrafPage, /masraf-kategori-draft-kdv-ekle/);
+    assert.match(masrafPage, /Masraf KDV Oranları/);
+    assert.match(masrafPage, /FinansModal/);
+    assert.match(masrafPage, /masraf-kategori-draft-modal/);
     assert.doesNotMatch(
-      masraf,
+      masrafPage,
       /mode === 'new'[\s\S]{0,800}expenseLane:\s*form\.expenseLane/,
     );
   });
