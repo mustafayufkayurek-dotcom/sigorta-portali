@@ -507,7 +507,7 @@ export class VatReportService {
         fileNo: e.isOverheadPool || e.customerId || vatFate === 'recovery'
           ? null
           : e.fileCase?.fileNo ?? null,
-        documentNo: null,
+        documentNo: e.receiptDocumentNo?.trim() || null,
         counterparty: e.customer
           ? (e.customer.shortName || e.customer.companyName || e.customer.fullName
             || [e.customer.firstName, e.customer.lastName].filter(Boolean).join(' ')

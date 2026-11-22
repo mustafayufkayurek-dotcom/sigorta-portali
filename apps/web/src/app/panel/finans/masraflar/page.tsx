@@ -8,6 +8,7 @@ import { FileDropZone } from '@/components/ui/FileDropZone';
 import { FieldLabel } from '@/components/ui/FieldHelpTip';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
+import { TrAmountCalculator } from '@/components/ui/TrAmountCalculator';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ExpenseFilePickerModal, type ExpensePickerHasarFile } from '@/components/finance/ExpenseFilePickerModal';
 import { CariHesapCreateModal } from '@/components/finance/CariHesapCreateModal';
@@ -66,7 +67,9 @@ import {
   isHariciExpenseLane,
   normalizeMasrafKdvOranlari,
   parseExpenseLane,
+  parseMasrafDocumentFields,
   resolveFinansIslemTarihiDonemDurum,
+  splitGrossVat,
   sumSplitGrossVatLines,
   type ExpenseDocumentMode,
   type ExpenseLane,
@@ -155,7 +158,9 @@ const EXPENSE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'expensePlan', label: 'Bütçe Tipi', defaultWidth: 96, minWidth: 80 },
   { id: 'expenseGroupName', label: 'Masraf Grubu', defaultWidth: 112, minWidth: 88 },
   { id: 'expenseSubgroupName', label: 'Alt Grup', defaultWidth: 108, minWidth: 88 },
-  { id: 'description', label: 'Açıklama', defaultWidth: 200, minWidth: 120 },
+  { id: 'documentType', label: 'Belge Türü', defaultWidth: 100, minWidth: 88 },
+  { id: 'documentNo', label: 'Belge No', defaultWidth: 88, minWidth: 72 },
+  { id: 'description', label: 'Açıklama', defaultWidth: 180, minWidth: 120 },
   { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
   { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 88 },
   FINANS_ACTIONS_COLUMN,
@@ -175,6 +180,8 @@ interface Expense {
   expenseSubgroupName: string;
   expenseCategoryId:   string;
   expenseCategoryParentId: string;
+  documentType:        string;
+  documentNo:          string;
   description:         string;
   amount:              number;
   vatRate:             number;
@@ -304,18 +311,9 @@ const EMPTY_FORM = {
   operationSubject: 'HASAR_ONARIM' as string,
 };
 
-function composeMasrafDescription(form: {
-  documentType: string;
-  documentNo: string;
-  description: string;
-}) {
-  const parts: string[] = [];
-  if (form.documentType) parts.push(form.documentType);
-  const docNo = form.documentNo.trim();
-  if (docNo) parts.push(`Belge No: ${docNo}`);
-  const desc = form.description.trim();
-  if (desc) parts.push(toTitleCaseTR(desc));
-  return parts.length ? parts.join(' · ') : undefined;
+function plainMasrafDescription(description: string): string | undefined {
+  const desc = description.trim();
+  return desc ? toTitleCaseTR(desc) : undefined;
 }
 
 const getFileDescription = (file: Record<string, unknown>) => {
@@ -862,6 +860,11 @@ export default function MasraflarPage() {
           ?? '',
         );
         const expenseLane = expenseLaneFromSubject(e['operationSubject']);
+        const doc = parseMasrafDocumentFields({
+          description: String(e['description'] ?? ''),
+          receiptDocumentType: e['receiptDocumentType'] != null ? String(e['receiptDocumentType']) : null,
+          receiptDocumentNo: e['receiptDocumentNo'] != null ? String(e['receiptDocumentNo']) : null,
+        });
         return {
           id:          String(e['id']),
           createdAt:   e['createdAt'] ? String(e['createdAt']) : undefined,
@@ -877,7 +880,9 @@ export default function MasraflarPage() {
           expenseSubgroupName: cat.subName,
           expenseCategoryId: cat.categoryId,
           expenseCategoryParentId: cat.parentId,
-          description: String(e['description'] ?? ''),
+          documentType: doc.documentType,
+          documentNo: doc.documentNo,
+          description: doc.description,
           amount:      Number(e['amount'] ?? 0),
           vatRate:     Number(e['vatRate'] ?? 20),
           hasTaxDocument: e['hasTaxDocument'] !== false,
@@ -1083,7 +1088,9 @@ export default function MasraflarPage() {
         partyAccountId: form.partyAccountId,
         expensePlan: hasarLane ? form.expensePlan : undefined,
         operationSubject: expenseSubjectForLane(form.expenseLane as ExpenseLane),
-        description: composeMasrafDescription(form),
+        description: plainMasrafDescription(form.description),
+        receiptDocumentType: form.documentMode === 'belgeli' ? (form.documentType || null) : null,
+        receiptDocumentNo: form.documentMode === 'belgeli' ? (form.documentNo.trim() || null) : null,
         vatIncluded: true,
         hasTaxDocument: hasTaxDocumentFromMode(form.documentMode),
         date: dateIso,
@@ -1196,6 +1203,10 @@ export default function MasraflarPage() {
       workGroupId: matchedGroup?.workGroupId ?? '',
       workSubGroupName: jobParts.join(' · ').trim(),
       documentMode: expenseDocumentModeFromFlag(e.hasTaxDocument),
+      documentType: (BELGE_TURU_OPTIONS.includes(e.documentType as typeof BELGE_TURU_OPTIONS[number])
+        ? e.documentType
+        : '') as '' | (typeof BELGE_TURU_OPTIONS)[number],
+      documentNo: e.documentNo,
       description: e.description,
       amount: numberToTrAmountInput(e.amount),
       vatRate: String(e.vatRate ?? 20),
@@ -2439,15 +2450,26 @@ export default function MasraflarPage() {
                       </div>
                       <div>
                         <p className="mb-1 text-[11px] text-slate-500">Tutar — KDV Dahil (TL)</p>
-                        <TrAmountInput
-                          className={inputCls}
-                          placeholder="0"
-                          value={line.amount}
-                          onChange={(amount) => {
-                            patchKalemSatiri(line.key, { amount });
-                            if (idx === 0) setForm((f) => ({ ...f, amount }));
-                          }}
-                        />
+                        <div className="flex items-start gap-2">
+                          <div className="min-w-0 flex-1">
+                            <TrAmountInput
+                              className={inputCls}
+                              placeholder="0"
+                              value={line.amount}
+                              onChange={(amount) => {
+                                patchKalemSatiri(line.key, { amount });
+                                if (idx === 0) setForm((f) => ({ ...f, amount }));
+                              }}
+                            />
+                          </div>
+                          <TrAmountCalculator
+                            testId={`masraf-tutar-hesap-${idx + 1}`}
+                            onApply={(amount) => {
+                              patchKalemSatiri(line.key, { amount });
+                              if (idx === 0) setForm((f) => ({ ...f, amount }));
+                            }}
+                          />
+                        </div>
                       </div>
                       <div data-testid={idx === 0 ? 'masraf-kdv-oran-alan' : undefined}>
                         <p className="mb-1 text-[11px] text-slate-500">KDV Oranı</p>
@@ -2480,6 +2502,22 @@ export default function MasraflarPage() {
                             </button>
                           ) : null}
                         </div>
+                        {(() => {
+                          const gross = parseTrAmountInput(line.amount) ?? 0;
+                          const rate = Number(line.vatRate) || 0;
+                          const split = splitGrossVat(gross, rate);
+                          return (
+                            <p
+                              className="mt-1.5 text-xs text-slate-600 dark:text-slate-300"
+                              data-testid={`masraf-kalem-kdv-tutar-${idx + 1}`}
+                            >
+                              Hesaplanan KDV:{' '}
+                              <span className="font-semibold tabular-nums">
+                                {formatTryAmount(split.vatAmount)}
+                              </span>
+                            </p>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -2894,6 +2932,16 @@ export default function MasraflarPage() {
                     expenseSubgroupName: (
                       <PanelTableTd key="expenseSubgroupName" colId="expenseSubgroupName" className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-300">
                         {e.expenseSubgroupName ? toTitleCaseTR(e.expenseSubgroupName) : '—'}
+                      </PanelTableTd>
+                    ),
+                    documentType: (
+                      <PanelTableTd key="documentType" colId="documentType" className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-300">
+                        {e.documentType || (e.hasTaxDocument === false ? 'Belgesiz' : '—')}
+                      </PanelTableTd>
+                    ),
+                    documentNo: (
+                      <PanelTableTd key="documentNo" colId="documentNo" className="px-5 py-3.5 text-xs tabular-nums text-slate-600 dark:text-slate-300">
+                        {e.documentNo || '—'}
                       </PanelTableTd>
                     ),
                     description: (

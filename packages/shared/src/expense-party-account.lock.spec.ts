@@ -91,7 +91,9 @@ describe('Masraf ödeme kaynağı cari LOCK', () => {
     assert.match(page, /masraf-belge-turu/);
     assert.match(page, /masraf-belge-no/);
     assert.match(page, /Kasa Fişi/);
-    assert.match(page, /composeMasrafDescription/);
+    assert.match(page, /plainMasrafDescription|parseMasrafDocumentFields/);
+    assert.match(page, /receiptDocumentType|documentType/);
+    assert.match(page, /Belge Türü/);
     assert.match(page, /masraf-tarih-donem-uyari/);
     assert.match(page, /resolveFinansIslemTarihiDonemDurum/);
     assert.match(page, /FinansTarihDonemUyariIkon/);

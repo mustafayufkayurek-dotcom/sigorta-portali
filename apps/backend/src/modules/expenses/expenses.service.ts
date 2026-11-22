@@ -912,6 +912,8 @@ export class ExpensesService {
         vatRate: dto.vatRate ?? 20,
         vatIncluded: dto.vatIncluded ?? true,
         hasTaxDocument: dto.hasTaxDocument !== false,
+        receiptDocumentType: dto.receiptDocumentType?.trim() || null,
+        receiptDocumentNo: dto.receiptDocumentNo?.trim() || null,
         description: dto.description,
         expenseGroup: groupFields.expenseGroup as any,
         expenseSubgroup: groupFields.expenseSubgroup,
@@ -1010,6 +1012,12 @@ export class ExpensesService {
     if (dto.vatRate !== undefined) data.vatRate = dto.vatRate;
     if (dto.vatIncluded !== undefined) data.vatIncluded = dto.vatIncluded;
     if (dto.hasTaxDocument !== undefined) data.hasTaxDocument = dto.hasTaxDocument;
+    if (dto.receiptDocumentType !== undefined) {
+      data.receiptDocumentType = dto.receiptDocumentType?.trim() || null;
+    }
+    if (dto.receiptDocumentNo !== undefined) {
+      data.receiptDocumentNo = dto.receiptDocumentNo?.trim() || null;
+    }
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.expensePlan !== undefined || customerLane || hariciLane || isOverheadPool) {
       data.expensePlan = nextPlan;

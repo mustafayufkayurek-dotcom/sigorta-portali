@@ -30,6 +30,15 @@ export class CreateExpenseDto {
   @IsBoolean()
   hasTaxDocument?: boolean;
 
+  /** Kasa Fişi / Fatura — açıklamaya gömülmez */
+  @IsOptional()
+  @IsString()
+  receiptDocumentType?: string;
+
+  @IsOptional()
+  @IsString()
+  receiptDocumentNo?: string;
+
   @IsOptional()
   @IsString()
   description?: string;
@@ -108,6 +117,14 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsBoolean()
   hasTaxDocument?: boolean;
+
+  @IsOptional()
+  @IsString()
+  receiptDocumentType?: string;
+
+  @IsOptional()
+  @IsString()
+  receiptDocumentNo?: string;
 
   @IsOptional()
   @IsString()

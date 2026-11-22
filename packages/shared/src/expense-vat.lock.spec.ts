@@ -7,6 +7,7 @@ import {
   expenseDocumentModeFromFlag,
   hasTaxDocumentFromMode,
   normalizeMasrafKdvOranlari,
+  parseMasrafDocumentFields,
   resolveExpenseVatFate,
   splitGrossVat,
   sumSplitGrossVatLines,
@@ -51,6 +52,24 @@ describe('masraf KDV LOCK', () => {
     assert.equal(hasTaxDocumentFromMode('belgesiz'), false);
   });
 
+  it('eski açıklamadaki belge türü ve no ayrılır; yeni kayıt ayrı sütundadır', () => {
+    const parsed = parseMasrafDocumentFields({
+      description: 'Kasa Fişi - Belge No: 91 - Muhtelif yiyecek',
+    });
+    assert.equal(parsed.documentType, 'Kasa Fişi');
+    assert.equal(parsed.documentNo, '91');
+    assert.match(parsed.description, /Muhtelif/i);
+
+    const stored = parseMasrafDocumentFields({
+      description: 'Çatı kaplama',
+      receiptDocumentType: 'Fatura',
+      receiptDocumentNo: '102',
+    });
+    assert.equal(stored.documentType, 'Fatura');
+    assert.equal(stored.documentNo, '102');
+    assert.equal(stored.description, 'Çatı kaplama');
+  });
+
   it('masraf formu belge/KDV/Harici ve Ayarlar oran yönetimi durur', () => {
     const root = join(import.meta.dirname, '../../..');
     const masraf = readFileSync(
@@ -87,6 +106,12 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /masraf-secili-dosya-link/);
     assert.match(masraf, /masraf-kdv-oran-ekle/);
     assert.match(masraf, /masraf-kdv-oranlari/);
+    assert.match(masraf, /TrAmountCalculator/);
+    assert.match(masraf, /masraf-kalem-kdv-tutar-/);
+    assert.match(masraf, /Hesaplanan KDV/);
+    assert.match(masraf, /receiptDocumentType/);
+    assert.match(masraf, /Belge Türü/);
+    assert.doesNotMatch(masraf, /composeMasrafDescription/);
     assert.doesNotMatch(masraf, /masraf-kdv-yazi/);
     assert.ok(
       masraf.indexOf('masraf-akilli-fis') < masraf.indexOf('masraf-yolu-select'),
@@ -135,5 +160,6 @@ describe('masraf KDV LOCK', () => {
     );
     assert.match(vatSvc, /lostVatSection/);
     assert.match(vatSvc, /getMasrafKdvOranlari/);
+    assert.match(vatSvc, /receiptDocumentNo/);
   });
 });

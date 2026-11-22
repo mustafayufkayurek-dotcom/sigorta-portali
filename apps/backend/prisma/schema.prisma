@@ -3529,6 +3529,9 @@ model Expense {
   vatIncluded       Boolean                 @default(true) @map("vat_included")
   /// false = belgesiz → KDV kayıp KDV’ye yazılır
   hasTaxDocument    Boolean                 @default(true) @map("has_tax_document")
+  /// Kasa Fişi / Fatura — açıklamaya gömülmez
+  receiptDocumentType String?               @map("receipt_document_type")
+  receiptDocumentNo   String?               @map("receipt_document_no")
   description       String?
   expenseGroup      ExpenseGroup            @map("expense_group")
   expenseSubgroup   String                  @map("expense_subgroup")

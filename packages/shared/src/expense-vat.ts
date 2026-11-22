@@ -73,6 +73,58 @@ export function hasTaxDocumentFromMode(mode: unknown): boolean {
   return String(mode ?? '').trim() !== 'belgesiz';
 }
 
+const MASRAF_DOC_TYPE_RE = /^(Kasa Fişi|Fatura)$/i;
+const MASRAF_DOC_NO_RE = /^(?:Belge\s*No\s*[:：]\s*)(.+)$/i;
+
+/**
+ * Eski kayıtlarda açıklamaya gömülü «Kasa Fişi · Belge No: 91 · …» ayrıştırır.
+ * Yeni kayıtta tür/no ayrı sütundadır; açıklama yalnız açıklamadır.
+ */
+export function parseMasrafDocumentFields(input: {
+  description?: string | null;
+  receiptDocumentType?: string | null;
+  receiptDocumentNo?: string | null;
+}): {
+  documentType: string;
+  documentNo: string;
+  description: string;
+} {
+  const storedType = String(input.receiptDocumentType ?? '').trim();
+  const storedNo = String(input.receiptDocumentNo ?? '').trim();
+  if (storedType || storedNo) {
+    return {
+      documentType: storedType,
+      documentNo: storedNo,
+      description: String(input.description ?? '').trim(),
+    };
+  }
+
+  const raw = String(input.description ?? '').trim();
+  if (!raw) return { documentType: '', documentNo: '', description: '' };
+
+  const parts = raw.split(/\s*[·\-–—]\s*/).map((p) => p.trim()).filter(Boolean);
+  let documentType = '';
+  let documentNo = '';
+  const rest: string[] = [];
+  for (const part of parts) {
+    if (!documentType && MASRAF_DOC_TYPE_RE.test(part)) {
+      documentType = /fatura/i.test(part) ? 'Fatura' : 'Kasa Fişi';
+      continue;
+    }
+    const noMatch = part.match(MASRAF_DOC_NO_RE);
+    if (!documentNo && noMatch) {
+      documentNo = String(noMatch[1] ?? '').trim();
+      continue;
+    }
+    rest.push(part);
+  }
+  return {
+    documentType,
+    documentNo,
+    description: rest.join(' · ').trim() || (documentType || documentNo ? '' : raw),
+  };
+}
+
 /**
  * Belgesiz → kayıp KDV.
  * Harici + belgeli → telafi (kayıp KDV’yi karşılar).

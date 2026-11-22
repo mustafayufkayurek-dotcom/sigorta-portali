@@ -7,6 +7,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import {
+  expandTrDateYearDigits,
+  normalizeTrDateValue,
+  trDateInputDisplayValue,
+} from '../../utils/tr-date-input.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(here, 'TrDateInput.tsx'), 'utf8');
@@ -16,6 +21,13 @@ const tahsilat = readFileSync(
 );
 
 describe('tarih kutusu kırmızı çerçeve LOCK', () => {
+  it('iki haneli yıl 20xx olur; dört haneli yıl bozulmaz', () => {
+    assert.equal(expandTrDateYearDigits('051026'), '05102026');
+    assert.equal(normalizeTrDateValue('05.10.26'), '2026-10-05');
+    assert.equal(normalizeTrDateValue('05.10.2026'), '2026-10-05');
+    assert.equal(trDateInputDisplayValue('05.10.26'), '05.10.2026');
+  });
+
   it('klavye ile yazılır; yazım odakta draft tutar', () => {
     assert.doesNotMatch(src, /inputMode="numeric"/);
     assert.match(src, /inputMode="text"/);
