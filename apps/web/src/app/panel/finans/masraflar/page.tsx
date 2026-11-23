@@ -703,26 +703,41 @@ export default function MasraflarPage() {
     );
   };
 
-  /** Yön tuşu yalnız masraf satırları arasında; açılır listede ve select’te dokunulmaz. */
-  const focusMasrafKalemSatir = (index: number) => {
+  /** Satır içi veri alanları (buton / salt okunur KDV tutarı tab sırasında yok). */
+  const masrafKalemAlanFocusables = (satir: Element): HTMLElement[] =>
+    Array.from(
+      satir.querySelectorAll<HTMLElement>(
+        'input:not([type="hidden"]):not([readonly]):not([disabled]), select:not([disabled]), textarea:not([disabled])',
+      ),
+    ).filter((el) => el.tabIndex >= 0 && !el.closest('button'));
+
+  /** Yön tuşu / Tab: masraf satırları arasında; açılır listede dokunulmaz. */
+  const focusMasrafKalemSatir = (
+    index: number,
+    mode: 'preferred' | 'first' | 'last' = 'preferred',
+  ) => {
     const root = document.querySelector(
       `[data-testid="masraf-kalem-satir-${index + 1}"]`,
     ) as HTMLElement | null;
     if (!root) return;
-    const preferred =
-      (root.querySelector(
-        `[data-testid="masraf-tutar-hesap-${index + 1}-input"]`,
-      ) as HTMLElement | null)
-      || (root.querySelector('[role="combobox"]') as HTMLElement | null)
-      || (root.querySelector(
-        'input:not([tabindex="-1"]):not([readonly]), select',
-      ) as HTMLElement | null);
+    const fields = masrafKalemAlanFocusables(root);
+    let preferred: HTMLElement | null = null;
+    if (mode === 'first') preferred = fields[0] ?? null;
+    else if (mode === 'last') preferred = fields[fields.length - 1] ?? null;
+    else {
+      preferred =
+        (root.querySelector(
+          `[data-testid="masraf-tutar-hesap-${index + 1}-input"]`,
+        ) as HTMLElement | null)
+        || fields[0]
+        || null;
+    }
     preferred?.focus();
     root.scrollIntoView({ block: 'nearest' });
   };
 
   const handleMasrafKalemYonTusu = (e: KeyboardEvent) => {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Tab') return;
     if (categoryDraft != null || kdvDraftOpen) return;
     const target = e.target as HTMLElement | null;
     if (!target) return;
@@ -738,6 +753,31 @@ export default function MasraflarPage() {
     const match = satir.getAttribute('data-testid')?.match(/masraf-kalem-satir-(\d+)/);
     const idx = match ? Number(match[1]) - 1 : -1;
     if (idx < 0) return;
+
+    if (e.key === 'Tab') {
+      const fields = masrafKalemAlanFocusables(satir);
+      if (fields.length === 0) return;
+      const fieldIdx = fields.findIndex((f) => f === target || f.contains(target));
+      if (fieldIdx < 0) return;
+      if (!e.shiftKey && fieldIdx === fields.length - 1) {
+        const next = idx + 1;
+        if (next >= kalemSatirlari.length) return;
+        e.preventDefault();
+        e.stopPropagation();
+        focusMasrafKalemSatir(next, 'first');
+        return;
+      }
+      if (e.shiftKey && fieldIdx === 0) {
+        const prev = idx - 1;
+        if (prev < 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        focusMasrafKalemSatir(prev, 'last');
+        return;
+      }
+      return;
+    }
+
     const next = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
     if (next < 0 || next >= kalemSatirlari.length) return;
     e.preventDefault();
@@ -2588,6 +2628,7 @@ export default function MasraflarPage() {
                       {kalemSatirlari.length > 1 && !editId ? (
                         <button
                           type="button"
+                          tabIndex={-1}
                           className="text-xs font-medium text-rose-700 hover:underline"
                           data-testid={`masraf-kalem-satir-sil-${idx + 1}`}
                           onClick={() => {
@@ -2657,6 +2698,7 @@ export default function MasraflarPage() {
                                 <button
                                   type="button"
                                   onClick={openKdvDraft}
+                                  tabIndex={-1}
                                   className="text-[11px] font-semibold text-brand-700 hover:underline dark:text-brand-300"
                                   data-testid="masraf-kdv-oran-ekle-ac"
                                 >

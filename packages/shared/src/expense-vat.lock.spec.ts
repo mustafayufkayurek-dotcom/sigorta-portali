@@ -151,6 +151,11 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /handleMasrafKalemYonTusu/);
     assert.match(masraf, /data-yon-tusu="satir"/);
     assert.match(masraf, /focusMasrafKalemSatir/);
+    assert.match(masraf, /masrafKalemAlanFocusables/);
+    assert.match(masraf, /e\.key !== 'Tab'/);
+    assert.match(masraf, /focusMasrafKalemSatir\(next, 'first'\)/);
+    assert.match(masraf, /focusMasrafKalemSatir\(prev, 'last'\)/);
+    assert.match(masraf, /tabIndex=\{-1\}[\s\S]{0,160}masraf-kalem-satir-sil-/);
     assert.match(masraf, /normalizeFormFreeText/);
     assert.match(masraf, /minmax\(0,1\.55fr\)/);
     assert.match(masraf, /masraf-kdv-oran-ekle-ac/);

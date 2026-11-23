@@ -161,6 +161,7 @@ export function TrAmountCalcField({
         <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center gap-0.5">
           <button
             type="button"
+            tabIndex={-1}
             disabled={disabled}
             aria-label="İşlem özeti"
             title="İşlem özeti (+ − × ÷)"
