@@ -40,7 +40,7 @@ describe('masraf alt grup tek üst LOCK', () => {
     assert.match(ayar, /birden fazla masraf grubuna bağlanamaz/);
   });
 
-  it('tutar +−×÷ ile işlem özeti; KDV oranı listeden seçilir', () => {
+  it('tutar +−×÷ ile işlem özeti; KDV oranı klavyeden, tanımlı listeden', () => {
     assert.match(calc, /İşlem:/);
     assert.match(calc, /OP_KEYS/);
     assert.match(calc, /evaluateAmountExpression/);
@@ -48,9 +48,9 @@ describe('masraf alt grup tek üst LOCK', () => {
     assert.match(calc, /pr-\[4\.25rem\]/);
     assert.doesNotMatch(calc, /flex items-start gap-2/);
     assert.doesNotMatch(calc, /grid-cols-4/);
-    assert.match(masrafPage, /<select[\s\S]{0,500}masraf-kdv-oran/);
-    assert.match(masrafPage, /masrafKdvOranlari\.map/);
-    assert.doesNotMatch(masrafPage, /MasrafKdvOranInput/);
+    assert.match(masrafPage, /MasrafKdvOranInput/);
+    assert.match(masrafPage, /rates=\{masrafKdvOranlari\}/);
+    assert.doesNotMatch(masrafPage, /<select[\s\S]{0,500}masraf-kdv-oran/);
   });
 
   it('SearchableSelect odaklanınca tüm metin seçilir; ok tuşları çalışır', () => {
@@ -74,5 +74,14 @@ describe('masraf alt grup tek üst LOCK', () => {
       masrafPage,
       /mode === 'new'[\s\S]{0,800}expenseLane:\s*form\.expenseLane/,
     );
+  });
+
+  it('alt grup üst gruba bağlıdır; grup bazlı özet ve filtre durur', () => {
+    assert.match(masrafPage, /masraf-grup-dagilim/);
+    assert.match(masrafPage, /Masraf Grubu Dağılımı/);
+    assert.match(masrafPage, /masraf-filtre-grup/);
+    assert.match(masrafPage, /expenseCategoryParentId/);
+    assert.match(service, /parentId/);
+    assert.match(service, /birden fazla masraf grubuna bağlanamaz/);
   });
 });

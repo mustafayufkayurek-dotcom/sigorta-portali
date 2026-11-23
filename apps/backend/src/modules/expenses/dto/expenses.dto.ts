@@ -193,6 +193,11 @@ export class ExpenseFilterDto {
   @IsString()
   expenseGroup?: string;
 
+  /** Gerçek masraf grubu (üst kategori) — alt grup kayıtları parentId ile bağlanır. */
+  @IsOptional()
+  @IsString()
+  expenseCategoryParentId?: string;
+
   @IsOptional()
   @IsString()
   expensePlan?: string;

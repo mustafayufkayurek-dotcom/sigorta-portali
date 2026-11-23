@@ -102,6 +102,22 @@ export const CARI_SIRKET_TUR_GRUPLARI: ReadonlyArray<{
   },
 ];
 
+/**
+ * Form Hesap Türü listesi — Logo: önce Cari Hesap (müşteri/tedarikçi),
+ * sonra şirket ödeme araçları ve yükümlülük.
+ * Cari Hesap seçilince kart Müşteriler / Tedarikçiler’den açılır.
+ */
+export const CARI_FORM_TUR_GRUPLARI: ReadonlyArray<{
+  label: string;
+  kinds: readonly CariTur[];
+}> = [
+  {
+    label: 'Cari Hesap',
+    kinds: CARI_KARSI_TARAF_TURLERI,
+  },
+  ...CARI_SIRKET_TUR_GRUPLARI,
+];
+
 export function isCariKarsiTarafTur(tur: unknown): boolean {
   return (
     tur === 'musteri' || tur === 'tedarikci' || tur === 'musteri_tedarikci'
@@ -539,7 +555,7 @@ export function cariSirketAciklamaPlaceholder(tur: unknown): string {
 }
 
 /**
- * Form başlığı — tür değişince başlık da değişir (Logo banka/kasa kartı gibi).
+ * Form başlığı — tür değişince başlık da değişir (Logo banka/kasa / cari gibi).
  * Düzenlemede «… Düzenle»; yenide «Yeni …».
  */
 export function cariSirketFormBaslik(
@@ -547,6 +563,11 @@ export function cariSirketFormBaslik(
   opts?: { duzenle?: boolean },
 ): string {
   const duzenle = Boolean(opts?.duzenle);
+  if (tur === 'musteri') return duzenle ? 'Müşteri Carisini Düzenle' : 'Yeni Müşteri Carisi';
+  if (tur === 'tedarikci') return duzenle ? 'Tedarikçi Carisini Düzenle' : 'Yeni Tedarikçi Carisi';
+  if (tur === 'musteri_tedarikci') {
+    return duzenle ? 'Müşteri Ve Tedarikçi Carisini Düzenle' : 'Yeni Müşteri Ve Tedarikçi Carisi';
+  }
   switch (cariSirketAlanProfili(tur)) {
     case 'banka':
       return duzenle ? 'Banka Hesabını Düzenle' : 'Yeni Banka Hesabı';
@@ -567,6 +588,15 @@ export function cariSirketFormBaslik(
 
 /** Form alt yazısı — yalnız seçilen türün işini anlatır. */
 export function cariSirketFormAltYazi(tur: unknown): string {
+  if (tur === 'musteri') {
+    return 'Müşteri cari kartı Müşteriler menüsünden açılır. Bu formda şirket ödeme aracı seçilir.';
+  }
+  if (tur === 'tedarikci') {
+    return 'Tedarikçi cari kartı Tedarikçiler menüsünden açılır. Bu formda şirket ödeme aracı seçilir.';
+  }
+  if (tur === 'musteri_tedarikci') {
+    return 'Çift roller kart Müşteriler veya Tedarikçiler’den açılır. Bu formda şirket ödeme aracı seçilir.';
+  }
   switch (cariSirketAlanProfili(tur)) {
     case 'banka':
       return 'Banka adı, şube ve IBAN bu kartta durur. Müşteri kartı Müşteriler’den açılır.';
@@ -587,13 +617,22 @@ export function cariSirketFormAltYazi(tur: unknown): string {
 
 /** Hesap Türü altındaki kısa yardım — türe göre. */
 export function cariSirketTurYardim(tur: unknown): string {
+  if (tur === 'musteri') {
+    return 'Cari Hesap · Müşteri kartı Müşteriler’den açılır; burada şirket banka / kasa / kart seçilir.';
+  }
+  if (tur === 'tedarikci') {
+    return 'Cari Hesap · Tedarikçi kartı Tedarikçiler’den açılır; burada şirket banka / kasa / kart seçilir.';
+  }
+  if (tur === 'musteri_tedarikci') {
+    return 'Cari Hesap · Çift roller kart Müşteriler veya Tedarikçiler’den açılır.';
+  }
   switch (cariSirketAlanProfili(tur)) {
     case 'banka':
-      return 'Banka hesabı şirket nakit aracıdır. Karşı taraf cari Müşteriler / Tedarikçiler’den açılır.';
+      return 'Banka hesabı şirket nakit aracıdır. Cari Hesap (müşteri / tedarikçi) sol menüden açılır.';
     case 'kasa':
-      return 'Kasa şirket nakit kasasıdır. Karşı taraf cari Müşteriler / Tedarikçiler’den açılır.';
+      return 'Kasa şirket nakit kasasıdır. Cari Hesap (müşteri / tedarikçi) sol menüden açılır.';
     case 'kredi_karti':
-      return 'Kredi kartı şirket ödeme aracıdır. Karşı taraf cari Müşteriler / Tedarikçiler’den açılır.';
+      return 'Kredi kartı şirket ödeme aracıdır. Cari Hesap (müşteri / tedarikçi) sol menüden açılır.';
     case 'kredi':
       return 'Kredi şirket yükümlülüğüdür. Açılış genelde borcumuz (Alacak yönü) ile yazılır.';
     case 'vergi':
@@ -601,7 +640,7 @@ export function cariSirketTurYardim(tur: unknown): string {
     case 'sgk':
       return 'SGK şirket prim borcudur. Sicil no bu kartta durur.';
     default:
-      return 'Müşteri veya tedarikçi cari kartı Müşteriler / Tedarikçiler’den açılır. Bu form şirket ödeme aracı ve yükümlülük içindir.';
+      return 'Cari Hesap müşteri / tedarikçi içindir (sol menü). Bu form şirket ödeme aracı ve yükümlülük içindir.';
   }
 }
 

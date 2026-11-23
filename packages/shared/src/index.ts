@@ -73,6 +73,8 @@ export * from './list-search-tr';
 export * from './expense-lane';
 export * from './customer-service-scopes';
 export * from './expense-vat';
+export * from './expense-masraf-grup';
+export * from './masraf-aciklama-yazim';
 export * from './acil-inbox-file-owner';
 export * from './acil-file-owner-delegation';
 export * from './acil-digital-approval-pause';

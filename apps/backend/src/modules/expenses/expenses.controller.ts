@@ -98,11 +98,26 @@ export class ExpensesController {
   }
 
   @Get('summary')
-  async getSummary(@Query('year') year?: string, @Query('month') month?: string) {
-    return this.service.getSummary(
-      year ? parseInt(year, 10) : undefined,
-      month ? parseInt(month, 10) : undefined,
-    );
+  async getSummary(
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('expensePlan') expensePlan?: string,
+    @Query('operationSubject') operationSubject?: string,
+    @Query('fileCaseId') fileCaseId?: string,
+    @Query('expenseCategoryParentId') expenseCategoryParentId?: string,
+  ) {
+    return this.service.getSummary({
+      year: year ? parseInt(year, 10) : undefined,
+      month: month ? parseInt(month, 10) : undefined,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      expensePlan: expensePlan || undefined,
+      operationSubject: operationSubject || undefined,
+      fileCaseId: fileCaseId || undefined,
+      expenseCategoryParentId: expenseCategoryParentId || undefined,
+    });
   }
 
   @Post('upload-receipt')

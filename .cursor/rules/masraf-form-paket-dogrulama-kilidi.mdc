@@ -19,7 +19,7 @@ alwaysApply: true
 ## Zorunlu
 
 1. **Kaydet ve Yeni** `EMPTY_FORM` + bugünün tarihi; Masraf Yolu, dosya, müşteri, cari, grup/alt grup, belge, tutar, açıklama temiz. Önceki fişten taşıma yok. Yeşil «Kaydedildi» şeridi durabilir.
-2. **Yeni Masraf Grubu / Alt Grubu** pop-up’ta `masraf-kategori-draft-kdv`: mevcut oranlar + Oran Ekle (Ayarlar listesine düşer).
+2. **Yeni Masraf Alt Grubu** pop-up’ta `masraf-kategori-draft-kdv`: mevcut oranlar + Oran Ekle (Ayarlar listesine düşer). Seçilen oran mavi / `aria-pressed`. **Masraf Grubu** pop-up’ında KDV yoktur.
 3. Kabul maddesi kadar `expense-vat.lock.spec.ts` / `expense-subgroup-unique.lock.spec.ts` satırı; madde kilitte yoksa tamam değildir.
 4. Bu kilitler `smoke-canli-bitmis-is.sh` içinde çalışır; full alım atlamaz.
 5. Çok maddeli masraf paketinde «canlıya al» öncesi her madde için kilit PASS + sahibi ekran teyidi (veya açıkça «bakmadan al») gerekir.
@@ -33,7 +33,7 @@ alwaysApply: true
 
 ## Durdurma
 
-Kaydet ve Yeni yine eski dosyayı bırakırsa veya pop-up’ta KDV yoksa → **dur, aynı gün geri koy.**
+Kaydet ve Yeni yine eski dosyayı bırakırsa, alt grup pop-up’ta KDV yoksa, seçim rengi belli değilse veya masraf grubunda KDV çıkarsa → **dur, aynı gün geri koy.**
 
 Regresyon:
 

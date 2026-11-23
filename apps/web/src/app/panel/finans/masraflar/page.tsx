@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from 'react';
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
@@ -8,6 +16,7 @@ import { FileDropZone } from '@/components/ui/FileDropZone';
 import { FieldLabel } from '@/components/ui/FieldHelpTip';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { TrAmountCalcField } from '@/components/ui/TrAmountCalcField';
+import { MasrafKdvOranInput } from '@/components/ui/MasrafKdvOranInput';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ExpenseFilePickerModal, type ExpensePickerHasarFile } from '@/components/finance/ExpenseFilePickerModal';
 import { CariHesapCreateModal } from '@/components/finance/CariHesapCreateModal';
@@ -71,6 +80,7 @@ import {
   isFileExpenseLane,
   isHariciExpenseLane,
   expenseCustomerDisplayName,
+  normalizeMasrafAciklamaForSave,
   normalizeMasrafKdvOranlari,
   parseExpenseLane,
   parseMasrafDocumentFields,
@@ -79,6 +89,7 @@ import {
   sumSplitGrossVatLines,
   type ExpenseDocumentMode,
   type ExpenseLane,
+  type MasrafGrupOzetSatir,
 } from '@sigorta/shared';
 import { financeIsoPeriod } from '@/utils/finans-merkez-kart';
 import { FinansTarihDonemUyariIkon } from '@/components/finance/FinansTarihDonemUyariIkon';
@@ -322,7 +333,7 @@ const EMPTY_FORM = {
 };
 
 function plainMasrafDescription(description: string): string | undefined {
-  const desc = description.trim();
+  const desc = normalizeMasrafAciklamaForSave(description);
   return desc ? toTitleCaseTR(desc) : undefined;
 }
 
@@ -416,6 +427,8 @@ export default function MasraflarPage() {
   const [fPlan,     setFPlan]     = useState('');
   const [fLane,     setFLane]     = useState<'' | ExpenseLane>('');
   const [fFile,     setFFile]     = useState('');
+  const [fGroup,    setFGroup]    = useState('');
+  const [grupOzet,  setGrupOzet]  = useState<MasrafGrupOzetSatir[]>([]);
   const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string }[]>([]);
   const [customerQuery, setCustomerQuery] = useState('');
   const [partyAccounts, setPartyAccounts] = useState<
@@ -690,6 +703,48 @@ export default function MasraflarPage() {
     );
   };
 
+  /** Yön tuşu yalnız masraf satırları arasında; açılır listede ve select’te dokunulmaz. */
+  const focusMasrafKalemSatir = (index: number) => {
+    const root = document.querySelector(
+      `[data-testid="masraf-kalem-satir-${index + 1}"]`,
+    ) as HTMLElement | null;
+    if (!root) return;
+    const preferred =
+      (root.querySelector(
+        `[data-testid="masraf-tutar-hesap-${index + 1}-input"]`,
+      ) as HTMLElement | null)
+      || (root.querySelector('[role="combobox"]') as HTMLElement | null)
+      || (root.querySelector(
+        'input:not([tabindex="-1"]):not([readonly]), select',
+      ) as HTMLElement | null);
+    preferred?.focus();
+    root.scrollIntoView({ block: 'nearest' });
+  };
+
+  const handleMasrafKalemYonTusu = (e: KeyboardEvent) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    if (categoryDraft != null || kdvDraftOpen) return;
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    // Yalnız satır alanında; açıklama / tarih / yol alanına taşınmaz
+    if (!target.closest('[data-testid="masraf-kalem-alanlari"]')) return;
+    if (target.tagName === 'SELECT') return;
+    if (target.getAttribute('role') === 'combobox' && target.getAttribute('aria-expanded') === 'true') {
+      return;
+    }
+    if (target.closest('[role="listbox"]')) return;
+    const satir = target.closest('[data-testid^="masraf-kalem-satir-"]');
+    if (!satir) return;
+    const match = satir.getAttribute('data-testid')?.match(/masraf-kalem-satir-(\d+)/);
+    const idx = match ? Number(match[1]) - 1 : -1;
+    if (idx < 0) return;
+    const next = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
+    if (next < 0 || next >= kalemSatirlari.length) return;
+    e.preventDefault();
+    e.stopPropagation();
+    focusMasrafKalemSatir(next);
+  };
+
   const applySubgroupPick = (lineKey: string, subId: string, parentId: string) => {
     patchKalemSatiri(lineKey, {
       expenseCategoryParentId: parentId,
@@ -905,6 +960,7 @@ export default function MasraflarPage() {
       if (fLane) params['operationSubject'] = expenseSubjectForLane(fLane);
       else if (fPlan) params['expensePlan'] = fPlan;
       if (fFile)     params['fileCaseId']  = fFile;
+      if (fGroup)    params['expenseCategoryParentId'] = fGroup;
       const dateFrom = normalizeTrDateValue(fDateFrom);
       const dateTo   = normalizeTrDateValue(fDateTo);
       if (dateFrom) params['dateFrom'] = dateFrom;
@@ -916,10 +972,23 @@ export default function MasraflarPage() {
       if (dateFrom) budgetParams['dateFrom'] = dateFrom;
       if (dateTo) budgetParams['dateTo'] = dateTo;
 
+      const summaryParams: Record<string, string> = { ...params };
+      delete summaryParams['page'];
+      delete summaryParams['limit'];
+
       const res = await axios.get(`${API}/expenses`, { headers: authHeader(), params });
       const trackRes = await axios.get(`${API}/expenses/budget-tracking`, { headers: authHeader(), params: budgetParams });
       setBudgetFiles((trackRes.data?.files ?? []) as BudgetFileRow[]);
       setBudgetSummary((trackRes.data?.summary ?? null) as BudgetSummary | null);
+      try {
+        const summaryRes = await axios.get(`${API}/expenses/summary`, {
+          headers: authHeader(),
+          params: summaryParams,
+        });
+        setGrupOzet((summaryRes.data?.byMasrafGrubu ?? []) as MasrafGrupOzetSatir[]);
+      } catch {
+        setGrupOzet([]);
+      }
       const rows = (res.data?.data ?? res.data ?? []) as Record<string, unknown>[];
       setExpenses(rows.map((e) => {
         const cat = parseExpenseCategoryFromRow(e);
@@ -969,7 +1038,7 @@ export default function MasraflarPage() {
     } finally {
       setLoading(false);
     }
-  }, [fPlan, fLane, fFile, fDateFrom, fDateTo]);
+  }, [fPlan, fLane, fFile, fGroup, fDateFrom, fDateTo]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -1330,8 +1399,6 @@ export default function MasraflarPage() {
   const butceTotal = expenses.reduce((s, e) => e.expensePlan === PLAN_BUTCE ? s + e.amount : s, 0);
   const ekTotal    = expenses.reduce((s, e) => e.expensePlan === PLAN_EK    ? s + e.amount : s, 0);
   const grandTotal = butceTotal + ekTotal;
-  const butcePct   = grandTotal > 0 ? Math.round((butceTotal / grandTotal) * 100) : 0;
-  const ekPct      = 100 - butcePct;
 
   const pieMax = Math.max(butceTotal, ekTotal, 1);
 
@@ -1730,45 +1797,79 @@ export default function MasraflarPage() {
 
         {analyticsOpen && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-700 p-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Kategori Dağılımı</h3>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">Dosya Bütçesi vs Ek İşler</p>
-              {grandTotal === 0 ? (
+            <div data-testid="masraf-grup-dagilim">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Masraf Grubu Dağılımı</h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
+                Alt grup üst gruba bağlıdır; tutarlar grup bazında toplanır
+              </p>
+              {grupOzet.length === 0 ? (
                 <p className="text-xs text-slate-400 text-center py-4">Veri yok</p>
               ) : (
-                <div className="flex items-center gap-4">
-                  <div className="relative shrink-0 w-20 h-20">
-                    <svg viewBox="0 0 36 36" className="w-20 h-20 -rotate-90">
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f59e0b" strokeWidth="4" strokeDasharray="100" />
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#3b82f6" strokeWidth="4"
-                        strokeDasharray={`${butcePct} ${100 - butcePct}`} />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-base font-bold text-slate-800 dark:text-slate-100">%{butcePct}</span>
-                    </div>
-                  </div>
-                  <div className="flex-1 space-y-2">
+                <div className="max-h-52 space-y-2 overflow-y-auto">
+                  {grupOzet.map((g) => {
+                    const maxAmt = grupOzet[0]?.amount || 1;
+                    const barW = Math.round((g.amount / maxAmt) * 100);
+                    return (
+                      <button
+                        key={g.groupId}
+                        type="button"
+                        className="w-full rounded-lg border border-slate-100 px-2.5 py-2 text-left hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/40"
+                        onClick={() => setFGroup(g.groupId.startsWith('enum:') ? '' : g.groupId)}
+                        data-testid={`masraf-grup-dagilim-${g.groupId}`}
+                      >
+                        <div className="mb-0.5 flex items-center justify-between gap-2">
+                          <span className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">
+                            {toTitleCaseTR(g.groupName)}
+                          </span>
+                          <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                            {fmt(g.amount)}
+                          </span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                          <div className="h-full rounded-full bg-brand-500" style={{ width: `${barW}%` }} />
+                        </div>
+                        {g.subgroups.length > 0 && g.subgroups[0]?.name !== '—' ? (
+                          <p className="mt-1 truncate text-[10px] text-slate-400">
+                            {g.subgroups
+                              .slice(0, 3)
+                              .map((s) => `${toTitleCaseTR(s.name)} ${fmt(s.amount)}`)
+                              .join(' · ')}
+                          </p>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-700">
+                <p className="mb-2 text-[11px] font-medium text-slate-500">Plan Dağılımı</p>
+                {grandTotal === 0 ? (
+                  <p className="text-xs text-slate-400">Veri yok</p>
+                ) : (
+                  <div className="space-y-1.5">
                     {[
-                      { plan: PLAN_BUTCE, value: butceTotal, pct: butcePct },
-                      { plan: PLAN_EK, value: ekTotal, pct: ekPct },
+                      { plan: PLAN_BUTCE, value: butceTotal },
+                      { plan: PLAN_EK, value: ekTotal },
                     ].map(({ plan, value }) => {
-                      const m = PLAN_META[plan];
+                      const meta = PLAN_META[plan];
                       const barW = pieMax > 0 ? Math.round((value / pieMax) * 100) : 0;
                       return (
                         <div key={plan}>
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className={`text-xs font-semibold ${plan === PLAN_BUTCE ? 'text-brand-600' : 'text-amber-600'}`}>{m.label}</span>
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{fmt(value)}</span>
+                          <div className="mb-0.5 flex items-center justify-between">
+                            <span className={`text-[11px] font-semibold ${plan === PLAN_BUTCE ? 'text-brand-600' : 'text-amber-600'}`}>
+                              {meta.label}
+                            </span>
+                            <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">{fmt(value)}</span>
                           </div>
-                          <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
-                            <div className={`h-full rounded-full ${m.barCls}`} style={{ width: `${barW}%` }} />
+                          <div className="h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                            <div className={`h-full rounded-full ${meta.barCls}`} style={{ width: `${barW}%` }} />
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
             <div className="lg:col-span-2">
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Dosya Bazlı Bütçe İzleme</h3>
@@ -1935,6 +2036,7 @@ export default function MasraflarPage() {
           <div
             className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 pt-2 pb-3 sm:px-4"
             data-testid="masraf-form-scroll"
+            onKeyDown={handleMasrafKalemYonTusu}
           >
           {formError && (
             <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-2.5 text-xs text-red-700 dark:text-red-400">
@@ -2453,7 +2555,11 @@ export default function MasraflarPage() {
             </div>
 
             {form.expenseLane && (
-            <div className="md:col-span-2 space-y-3" data-testid="masraf-kalem-alanlari">
+            <div
+              className="md:col-span-2 space-y-3"
+              data-testid="masraf-kalem-alanlari"
+              data-yon-tusu="satir"
+            >
               <FieldLabel
                 className={fieldLabelCls}
                 help={(
@@ -2558,23 +2664,17 @@ export default function MasraflarPage() {
                                 </button>
                               ) : null}
                             </div>
-                            <select
+                            <MasrafKdvOranInput
                               id={idx === 0 ? 'finans-masraf-kdv-oran' : undefined}
                               className={inputCls}
                               value={line.vatRate}
-                              data-testid={idx === 0 ? 'masraf-kdv-oran' : `masraf-kdv-oran-${idx + 1}`}
-                              onChange={(e) => {
-                                const vatRate = e.target.value;
+                              rates={masrafKdvOranlari}
+                              testId={idx === 0 ? 'masraf-kdv-oran' : `masraf-kdv-oran-${idx + 1}`}
+                              onChange={(vatRate) => {
                                 patchKalemSatiri(line.key, { vatRate });
                                 if (idx === 0) setForm((f) => ({ ...f, vatRate }));
                               }}
-                            >
-                              {masrafKdvOranlari.map((rate) => (
-                                <option key={rate} value={String(rate)}>
-                                  %{rate}
-                                </option>
-                              ))}
-                            </select>
+                            />
                           </div>
                           <div>
                             <p className="mb-1 text-[11px] text-slate-500">Hesaplanan KDV</p>
@@ -2703,7 +2803,7 @@ export default function MasraflarPage() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 onBlur={(e) => {
-                  const v = normalizeFormFreeText(e.target.value);
+                  const v = normalizeFormFreeText(normalizeMasrafAciklamaForSave(e.target.value));
                   if (v) setForm((f) => ({ ...f, description: v }));
                 }}
                 data-testid="masraf-aciklama"
@@ -2846,66 +2946,80 @@ export default function MasraflarPage() {
             data-testid="masraf-kategori-draft-ad"
           />
         </div>
-        <div
-          className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800/60"
-          data-testid="masraf-kategori-draft-kdv"
-        >
-          <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300">Masraf KDV Oranları</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            Formdaki listede seçilir. Buradan yeni oran eklenir; Ayarlar listesine düşer.
-          </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {masrafKdvOranlari.map((rate) => (
-              <button
-                key={rate}
-                type="button"
-                className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-700 hover:border-brand-300 hover:bg-brand-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
-                onClick={() => {
-                  const vatRate = String(rate);
-                  const lineKey = categoryDraftLineKey || kalemSatirlari[0]?.key;
-                  if (lineKey) {
-                    patchKalemSatiri(lineKey, { vatRate });
-                    setForm((f) => ({ ...f, vatRate }));
+        {categoryDraft === 'sub' ? (
+          <div
+            className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-800/60"
+            data-testid="masraf-kategori-draft-kdv"
+          >
+            <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300">Masraf KDV Oranları</p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Seçilen oran mavi durur. Yeni oran Ayarlar listesine düşer. Masraf grubunda KDV aranmaz.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Masraf KDV Oranları">
+              {masrafKdvOranlari.map((rate) => {
+                const lineKey = categoryDraftLineKey || kalemSatirlari[0]?.key;
+                const lineVat =
+                  kalemSatirlari.find((r) => r.key === lineKey)?.vatRate || form.vatRate;
+                const selected = String(rate) === String(lineVat);
+                return (
+                  <button
+                    key={rate}
+                    type="button"
+                    aria-pressed={selected}
+                    className={
+                      selected
+                        ? 'inline-flex rounded-full border border-brand-600 bg-brand-600 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm dark:border-brand-500 dark:bg-brand-500'
+                        : 'inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-700 hover:border-brand-300 hover:bg-brand-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200'
+                    }
+                    onClick={() => {
+                      const vatRate = String(rate);
+                      if (lineKey) {
+                        patchKalemSatiri(lineKey, { vatRate });
+                        setForm((f) => ({ ...f, vatRate }));
+                      }
+                    }}
+                    data-testid={`masraf-kategori-draft-kdv-sec-${rate}`}
+                  >
+                    %{rate}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <input
+                className={inputCls}
+                inputMode="decimal"
+                placeholder="Örn. 8"
+                value={kdvDraft}
+                onChange={(e) => setKdvDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void saveKdvDraft();
                   }
                 }}
-                data-testid={`masraf-kategori-draft-kdv-sec-${rate}`}
+                data-testid="masraf-kategori-draft-kdv-input"
+              />
+              <button
+                type="button"
+                disabled={kdvDraftSaving}
+                onClick={() => { void saveKdvDraft(); }}
+                className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                data-testid="masraf-kategori-draft-kdv-ekle"
               >
-                %{rate}
+                {kdvDraftSaving ? 'Kaydediliyor' : 'Oran Ekle'}
               </button>
-            ))}
+            </div>
+            {kdvDraftError ? (
+              <p className="mt-1.5 text-xs text-status-danger">{kdvDraftError}</p>
+            ) : null}
           </div>
-          <div className="mt-2 flex gap-2">
-            <input
-              className={inputCls}
-              inputMode="decimal"
-              placeholder="Örn. 8"
-              value={kdvDraft}
-              onChange={(e) => setKdvDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  void saveKdvDraft();
-                }
-              }}
-              data-testid="masraf-kategori-draft-kdv-input"
-            />
-            <button
-              type="button"
-              disabled={kdvDraftSaving}
-              onClick={() => { void saveKdvDraft(); }}
-              className="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-              data-testid="masraf-kategori-draft-kdv-ekle"
-            >
-              {kdvDraftSaving ? 'Kaydediliyor' : 'Oran Ekle'}
-            </button>
-          </div>
-          {kdvDraftError ? (
-            <p className="mt-1.5 text-xs text-status-danger">{kdvDraftError}</p>
-          ) : null}
-          {categoryDraftError ? (
-            <p className="mt-1.5 text-xs text-status-danger">{categoryDraftError}</p>
-          ) : null}
-        </div>
+        ) : null}
+        {categoryDraftError ? (
+          <p className="mt-1.5 text-xs text-status-danger" data-testid="masraf-kategori-draft-hata">
+            {categoryDraftError}
+          </p>
+        ) : null}
       </FinansModal>
 
       <ReceiptCameraModal
@@ -2975,6 +3089,21 @@ export default function MasraflarPage() {
           {files.map((f) => (
             <option key={f.id} value={f.id}>
               {f.fileNo}{f.description ? ` — ${f.description}` : ''}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={fGroup}
+          onChange={(e) => setFGroup(e.target.value)}
+          className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+          data-testid="masraf-filtre-grup"
+          aria-label="Masraf Grubu"
+        >
+          <option value="">Tüm Masraf Grupları</option>
+          {categoryTree.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
             </option>
           ))}
         </select>

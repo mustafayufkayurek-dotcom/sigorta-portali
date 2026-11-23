@@ -48,6 +48,8 @@ describe('canlı bitmiş iş kilit kapısı LOCK', () => {
     assert.match(src, /smoke-outbound-mail\.sh/);
     assert.match(src, /smoke-finans-kart\.sh/);
     assert.match(src, /expense-vat\.lock\.spec/);
+    assert.match(src, /expense-masraf-grup\.lock\.spec/);
+    assert.match(src, /masraf-aciklama-yazim\.lock\.spec/);
     assert.match(src, /expense-subgroup-unique\.lock\.spec/);
     assert.match(src, /field-open-list-smoke\.mjs/);
     assert.match(src, /pdf-preview-open\.lock\.spec/);

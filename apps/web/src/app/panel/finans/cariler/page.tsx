@@ -25,6 +25,7 @@ import {
   cariBakiyeMetin,
   cariSirketFormAltYazi,
   cariSirketFormBaslik,
+  isCariKarsiTarafTur,
   type CariTur,
 } from '@sigorta/shared';
 import { API, authHeader } from '@/utils/api';
@@ -328,6 +329,13 @@ export default function FinansCarilerPage() {
   };
 
   const handleSave = async () => {
+    if (isCariKarsiTarafTur(form.kind)) {
+      showToast(
+        'warning',
+        'Cari Hesap (müşteri / tedarikçi) Müşteriler veya Tedarikçiler’den açılır.',
+      );
+      return;
+    }
     const name = toTitleCaseTR(form.name.trim());
     if (name.length < 2) {
       showToast('warning', 'Cari Hesap Adı Zorunludur');
@@ -534,7 +542,7 @@ export default function FinansCarilerPage() {
             />
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || isCariKarsiTarafTur(form.kind)}
               onClick={() => {
                 void handleSave();
               }}

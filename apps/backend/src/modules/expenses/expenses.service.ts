@@ -19,6 +19,8 @@ import { resolveExpenseCategoryFields } from './expense-category-resolver.util';
 import { isOverheadCategoryCode } from '../finance/overhead.constants';
 import { PartyAccountsService } from '../finance/party-accounts.service';
 import {
+  aggregateMasrafByGrup,
+  normalizeMasrafAciklamaForSave,
   buildClaimFileListSearchWhere,
   canPostWorkGroupExpense,
   expenseMatchesWorkGroup,
@@ -684,6 +686,17 @@ export class ExpensesService {
       if (filters.dateTo) where.date.lte = new Date(filters.dateTo + 'T23:59:59.999Z');
     }
     if (filters.expenseGroup) where.expenseGroup = filters.expenseGroup;
+    if (filters.expenseCategoryParentId) {
+      where.AND = [
+        ...(where.AND ?? []),
+        {
+          OR: [
+            { expenseCategoryId: filters.expenseCategoryParentId },
+            { expenseCategory: { parentId: filters.expenseCategoryParentId } },
+          ],
+        },
+      ];
+    }
     if (filters.expensePlan) where.expensePlan = filters.expensePlan as any;
     if (filters.fileCaseId) where.fileCaseId = filters.fileCaseId;
     if (filters.approvalStatus) where.approvalStatus = filters.approvalStatus;
@@ -940,7 +953,7 @@ export class ExpensesService {
         hasTaxDocument: dto.hasTaxDocument !== false,
         receiptDocumentType: dto.receiptDocumentType?.trim() || null,
         receiptDocumentNo: dto.receiptDocumentNo?.trim() || null,
-        description: dto.description,
+        description: normalizeMasrafAciklamaForSave(dto.description ?? '') || dto.description,
         expenseGroup: groupFields.expenseGroup as any,
         expenseSubgroup: groupFields.expenseSubgroup,
         expenseCategoryId: groupFields.expenseCategoryId,
@@ -1044,7 +1057,9 @@ export class ExpensesService {
     if (dto.receiptDocumentNo !== undefined) {
       data.receiptDocumentNo = dto.receiptDocumentNo?.trim() || null;
     }
-    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.description !== undefined) {
+      data.description = normalizeMasrafAciklamaForSave(dto.description) || dto.description;
+    }
     if (dto.expensePlan !== undefined || customerLane || hariciLane || isOverheadPool) {
       data.expensePlan = nextPlan;
     }
@@ -1346,22 +1361,51 @@ export class ExpensesService {
     };
   }
 
-  async getSummary(year?: number, month?: number) {
+  async getSummary(opts?: {
+    year?: number;
+    month?: number;
+    dateFrom?: string;
+    dateTo?: string;
+    expensePlan?: string;
+    operationSubject?: string;
+    fileCaseId?: string;
+    expenseCategoryParentId?: string;
+  }) {
     const now = new Date();
-    const y = year ?? now.getFullYear();
-    const m = month ?? now.getMonth() + 1;
-    const startDate = new Date(y, m - 1, 1);
-    const endDate = new Date(y, m, 0, 23, 59, 59, 999);
+    const y = opts?.year ?? now.getFullYear();
+    const m = opts?.month ?? now.getMonth() + 1;
+    let startDate = new Date(y, m - 1, 1);
+    let endDate = new Date(y, m, 0, 23, 59, 59, 999);
+    if (opts?.dateFrom) startDate = new Date(opts.dateFrom);
+    if (opts?.dateTo) endDate = new Date(`${opts.dateTo}T23:59:59.999Z`);
+
+    const where: Record<string, unknown> = {
+      date: { gte: startDate, lte: endDate },
+    };
+    if (opts?.expensePlan) where.expensePlan = opts.expensePlan;
+    if (opts?.operationSubject) where.operationSubject = opts.operationSubject;
+    if (opts?.fileCaseId) where.fileCaseId = opts.fileCaseId;
+    if (opts?.expenseCategoryParentId) {
+      where.OR = [
+        { expenseCategoryId: opts.expenseCategoryParentId },
+        { expenseCategory: { parentId: opts.expenseCategoryParentId } },
+      ];
+    }
 
     const expenses = await this.prisma.expense.findMany({
-      where: {
-        date: { gte: startDate, lte: endDate },
-        ...hasarFileBudgetExpenseWhere(),
-      },
+      where,
       select: {
         amount: true,
         expenseGroup: true,
         approvalStatus: true,
+        expenseCategory: {
+          select: {
+            id: true,
+            name: true,
+            parentId: true,
+            parent: { select: { id: true, name: true } },
+          },
+        },
       },
     });
 
@@ -1370,6 +1414,15 @@ export class ExpensesService {
     for (const e of expenses) {
       byGroup[e.expenseGroup] = (byGroup[e.expenseGroup] ?? 0) + Number(e.amount);
     }
+
+    // Grup bazlı analiz — alt grubun bağlı olduğu üst kategori adı
+    const byMasrafGrubu = aggregateMasrafByGrup(
+      expenses.map((e) => ({
+        amount: Number(e.amount),
+        expenseGroup: e.expenseGroup,
+        expenseCategory: e.expenseCategory,
+      })),
+    );
 
     const pending = expenses.filter(e => e.approvalStatus === 'PENDING').length;
     const approved = expenses.filter(e => e.approvalStatus === 'APPROVED').reduce((sum, e) => sum + Number(e.amount), 0);
@@ -1381,6 +1434,7 @@ export class ExpensesService {
       approved,
       pending,
       byGroup,
+      byMasrafGrubu,
     };
   }
 

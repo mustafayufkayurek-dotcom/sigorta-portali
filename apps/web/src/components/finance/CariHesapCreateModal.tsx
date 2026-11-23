@@ -6,7 +6,11 @@
  */
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { cariSirketFormAltYazi, cariSirketFormBaslik } from '@sigorta/shared';
+import {
+  cariSirketFormAltYazi,
+  cariSirketFormBaslik,
+  isCariKarsiTarafTur,
+} from '@sigorta/shared';
 import {
   CariHesapFormFields,
   newCariHesapForm,
@@ -40,6 +44,10 @@ export function CariHesapCreateModal({
   }, [open]);
 
   const handleSave = async () => {
+    if (isCariKarsiTarafTur(form.kind)) {
+      setError('Cari Hesap (müşteri / tedarikçi) Müşteriler veya Tedarikçiler’den açılır.');
+      return;
+    }
     const name = toTitleCaseTR(form.name.trim());
     if (name.length < 2) {
       setError('Cari Hesap Adı Zorunludur');
@@ -118,7 +126,7 @@ export function CariHesapCreateModal({
           />
           <button
             type="button"
-            disabled={saving}
+            disabled={saving || isCariKarsiTarafTur(form.kind)}
             onClick={() => {
               void handleSave();
             }}

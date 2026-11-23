@@ -42,6 +42,7 @@ import {
   buildFinansSeyirDonemKarZarar,
   cariCiftRolKimlikHatasi,
   CARI_ACILIS_YON_LABEL,
+  CARI_FORM_TUR_GRUPLARI,
   CARI_SIRKET_TUR_GRUPLARI,
   CARI_SIRKET_TURLERI,
   CARI_TUR_GRUPLARI,
@@ -163,6 +164,15 @@ describe('Finans cari LOCK', () => {
     assert.equal(isCariSirketTur('kasa'), true);
     assert.equal(isCariSirketTur('musteri'), false);
     assert.ok(!CARI_SIRKET_TUR_GRUPLARI.some((g) => g.kinds.includes('musteri')));
+    assert.ok(CARI_FORM_TUR_GRUPLARI.some((g) => g.label === 'Cari Hesap'));
+    assert.ok(
+      CARI_FORM_TUR_GRUPLARI.find((g) => g.label === 'Cari Hesap')?.kinds.includes('musteri'),
+    );
+    assert.ok(
+      CARI_FORM_TUR_GRUPLARI.find((g) => g.label === 'Cari Hesap')?.kinds.includes('tedarikci'),
+    );
+    assert.equal(cariSirketFormBaslik('musteri'), 'Yeni Müşteri Carisi');
+    assert.match(cariSirketTurYardim('musteri'), /Cari Hesap/);
     assert.equal(cariBakiyeMetin(700, (n) => `${n} TL`), '700 TL Borç');
     assert.equal(cariBakiyeMetin(-2500, (n) => `${n} TL`), '2500 TL Alacak');
     assert.match(

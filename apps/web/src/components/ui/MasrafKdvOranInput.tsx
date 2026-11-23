@@ -68,6 +68,8 @@ export function MasrafKdvOranInput({
     setDraft(value);
   };
 
+  const listId = `${testId}-liste`;
+
   return (
     <div className="relative min-w-0 flex-1" ref={wrapRef} data-testid={testId}>
       <input
@@ -76,6 +78,10 @@ export function MasrafKdvOranInput({
         className={className}
         inputMode="decimal"
         autoComplete="off"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
         placeholder="%20"
         value={focused || open ? (draft.startsWith('%') ? draft : draft ? `%${draft}` : '') : rateLabel(Number(value) || 0)}
         data-testid={`${testId}-input`}
@@ -107,16 +113,20 @@ export function MasrafKdvOranInput({
             setDraft(value);
             setOpen(false);
           }
-          if (e.key === 'ArrowDown') {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            // Tanımlı oran listesinde gezinme; satır yön tuşuna bırakılmaz
             e.preventDefault();
+            e.stopPropagation();
             setOpen(true);
           }
         }}
       />
       {open && filtered.length > 0 ? (
         <ul
+          id={listId}
+          role="listbox"
           className="absolute z-30 mt-1 max-h-40 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-900"
-          data-testid={`${testId}-liste`}
+          data-testid={listId}
         >
           {filtered.map((rate) => (
             <li key={rate}>

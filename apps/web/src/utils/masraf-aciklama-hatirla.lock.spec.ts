@@ -76,6 +76,10 @@ describe('Masraf açıklama hatırlama LOCK', () => {
         'Ekmek ve Sigara Alımı',
         'Muhtelif Yiyecek',
       ]);
+      rememberMasrafAciklama('Akatyakıt Alımı (Bodrum Dönüş)');
+      assert.equal(readMasrafAciklamaHatirla()[0], 'Akaryakıt Alımı (Bodrum Dönüş)');
+      rememberMasrafAciklama('Akatyakıt Alımı');
+      assert.ok(readMasrafAciklamaHatirla().every((x) => !/akatyak/i.test(x)));
     } finally {
       if (prev === undefined) delete g.window;
       else g.window = prev;

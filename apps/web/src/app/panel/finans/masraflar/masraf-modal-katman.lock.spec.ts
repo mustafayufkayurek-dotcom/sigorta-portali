@@ -1,6 +1,6 @@
 /**
  * Masraf grup/alt grup penceresi SlidePanel flu örtüsünün altında kalmaz.
- * KDV oranı native select ile seçilir.
+ * KDV oranı klavyeden yazılır; yalnız tanımlı oranlar kabul edilir.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -27,6 +27,8 @@ describe('Masraf modal katman LOCK', () => {
     assert.match(masraf, /FinansModal/);
     assert.match(masraf, /masraf-kategori-draft-modal/);
     assert.match(masraf, /masraf-kategori-draft-kdv/);
+    assert.match(masraf, /categoryDraft === 'sub'/);
+    assert.match(masraf, /aria-pressed=\{selected\}/);
     assert.doesNotMatch(masraf, /SettingsModal/);
     assert.match(finansModal, /createPortal/);
     assert.match(finansModal, /z-\[400\]/);
@@ -38,9 +40,16 @@ describe('Masraf modal katman LOCK', () => {
     assert.match(slide, /z-\[210\]/);
   });
 
-  it('KDV oranı açılır liste (select) ile seçilir', () => {
-    assert.match(masraf, /<select[\s\S]{0,500}masraf-kdv-oran/);
-    assert.match(masraf, /masrafKdvOranlari\.map/);
-    assert.doesNotMatch(masraf, /MasrafKdvOranInput/);
+  it('KDV oranı klavyeden yazılır; tanımlı oranlar listelenir', () => {
+    assert.match(masraf, /MasrafKdvOranInput/);
+    assert.match(masraf, /rates=\{masrafKdvOranlari\}/);
+    assert.doesNotMatch(masraf, /<select[\s\S]{0,500}masraf-kdv-oran/);
+    const kdvInput = readFileSync(
+      join(root, 'apps/web/src/components/ui/MasrafKdvOranInput.tsx'),
+      'utf8',
+    );
+    assert.match(kdvInput, /inputMode="decimal"/);
+    assert.match(kdvInput, /role="combobox"/);
+    assert.match(kdvInput, /rates\.find/);
   });
 });

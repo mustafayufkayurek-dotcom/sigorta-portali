@@ -130,11 +130,11 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /masraf-kdv-oranlari/);
     assert.match(masraf, /TrAmountCalcField/);
     assert.match(masraf, /masraf-tutar-hesap-/);
-    assert.match(masraf, /data-testid=\{idx === 0 \? 'masraf-kdv-oran'/);
-    assert.match(masraf, /<select[\s\S]{0,400}masraf-kdv-oran/);
+    assert.match(masraf, /MasrafKdvOranInput/);
+    assert.match(masraf, /testId=\{idx === 0 \? 'masraf-kdv-oran'/);
     assert.match(masraf, /masraf-kalem-kdv-tutar-/);
     assert.match(masraf, /Hesaplanan KDV/);
-    assert.doesNotMatch(masraf, /MasrafKdvOranInput/);
+    assert.doesNotMatch(masraf, /<select[\s\S]{0,400}masraf-kdv-oran/);
     assert.match(masraf, /handleGroupPick|handleSubgroupPick/);
     assert.match(masraf, /masraf-son-kayit-seridi|Kaydedildi:/);
     // SlidePanel z-210 flu örtü altında kalmasın — FinansModal portal z-400
@@ -143,6 +143,14 @@ describe('masraf KDV LOCK', () => {
     assert.doesNotMatch(masraf, /SettingsModal/);
     assert.match(masraf, /masraf-kategori-draft-kdv/);
     assert.match(masraf, /Masraf KDV Oranları/);
+    // KDV yalnız alt grup pop-up’ında; masraf grubunda yok
+    assert.match(masraf, /categoryDraft === 'sub'/);
+    assert.match(masraf, /aria-pressed=\{selected\}/);
+    assert.match(masraf, /border-brand-600 bg-brand-600/);
+    assert.match(masraf, /Masraf grubunda KDV aranmaz/);
+    assert.match(masraf, /handleMasrafKalemYonTusu/);
+    assert.match(masraf, /data-yon-tusu="satir"/);
+    assert.match(masraf, /focusMasrafKalemSatir/);
     assert.match(masraf, /normalizeFormFreeText/);
     assert.match(masraf, /minmax\(0,1\.55fr\)/);
     assert.match(masraf, /masraf-kdv-oran-ekle-ac/);
