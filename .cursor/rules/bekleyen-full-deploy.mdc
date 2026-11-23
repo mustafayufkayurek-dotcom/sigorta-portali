@@ -1,11 +1,11 @@
 ---
-description: Canlı web v715 / backend v715
+description: Canlı web v716 / backend v716
 alwaysApply: true
 ---
 
 # Canlı (23.11.2026)
 
-Canlı: web **v715** · backend **v715**. Geri alma: web **v714** / backend **v714**.
+Canlı: web **v716** · backend **v716**. Geri alma: web **v715** / backend **v715**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v716 (full):** Şirket carisi türe göre alan ve başlık (Banka / Kasa / Kredi Kartı…); banka adı-şube-IBAN; lokalde e-posta kodu kapısı yok. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v715** / backend **v715**.
 
 **v715 (full):** Masraf grup/alt grup penceresi FinansModal portal (flu örtü altında kalmaz); KDV oranı native select. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v714** / backend **v714**.
 
@@ -307,4 +309,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v715** · backend **v715**.
+Canlı web **v716** · backend **v716**.
