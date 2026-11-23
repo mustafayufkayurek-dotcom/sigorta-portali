@@ -736,17 +736,35 @@ export default function MasraflarPage() {
     root.scrollIntoView({ block: 'nearest' });
   };
 
+  /** Son satırın son alanından Tab: doluysa yeni satır aç (fiş girişi ilerler). */
+  const appendMasrafKalemSatirAndFocus = () => {
+    const vatRate = kalemSatirlari[0]?.vatRate || DEFAULT_MASRAF_KDV;
+    setKalemSatirlari((rows) => {
+      const next = [...rows, newMasrafKalemSatiri({ vatRate })];
+      const newIdx = next.length - 1;
+      window.requestAnimationFrame(() => focusMasrafKalemSatir(newIdx, 'first'));
+      return next;
+    });
+  };
+
+  const masrafKalemSatirDolu = (index: number): boolean => {
+    const line = kalemSatirlari[index];
+    if (!line) return false;
+    return Boolean(
+      line.expenseCategoryParentId
+      || line.expenseCategoryId
+      || (parseTrAmountInput(line.amount) ?? 0) > 0,
+    );
+  };
+
   const handleMasrafKalemYonTusu = (e: KeyboardEvent) => {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Tab') return;
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Tab' && e.key !== 'Enter') return;
     if (categoryDraft != null || kdvDraftOpen) return;
     const target = e.target as HTMLElement | null;
     if (!target) return;
     // Yalnız satır alanında; açıklama / tarih / yol alanına taşınmaz
     if (!target.closest('[data-testid="masraf-kalem-alanlari"]')) return;
     if (target.tagName === 'SELECT') return;
-    if (target.getAttribute('role') === 'combobox' && target.getAttribute('aria-expanded') === 'true') {
-      return;
-    }
     if (target.closest('[role="listbox"]')) return;
     const satir = target.closest('[data-testid^="masraf-kalem-satir-"]');
     if (!satir) return;
@@ -754,30 +772,52 @@ export default function MasraflarPage() {
     const idx = match ? Number(match[1]) - 1 : -1;
     if (idx < 0) return;
 
-    if (e.key === 'Tab') {
-      const fields = masrafKalemAlanFocusables(satir);
-      if (fields.length === 0) return;
-      const fieldIdx = fields.findIndex((f) => f === target || f.contains(target));
+    const fields = masrafKalemAlanFocusables(satir);
+    const fieldIdx = fields.findIndex((f) => f === target || f.contains(target));
+    const comboboxOpen =
+      target.getAttribute('role') === 'combobox' && target.getAttribute('aria-expanded') === 'true';
+
+    // Enter / Tab: satır içi sonraki alan → sonraki satır → yeni satır (fiş girişi)
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      if (e.key === 'Enter' && comboboxOpen) return;
+      if (e.key === 'Tab' && e.shiftKey) {
+        if (fieldIdx === 0) {
+          const prev = idx - 1;
+          if (prev < 0) return;
+          e.preventDefault();
+          e.stopPropagation();
+          focusMasrafKalemSatir(prev, 'last');
+        }
+        return;
+      }
       if (fieldIdx < 0) return;
-      if (!e.shiftKey && fieldIdx === fields.length - 1) {
-        const next = idx + 1;
-        if (next >= kalemSatirlari.length) return;
-        e.preventDefault();
-        e.stopPropagation();
+      // Satır içi sonraki alana
+      if (fieldIdx < fields.length - 1) {
+        if (e.key === 'Enter' || comboboxOpen) {
+          e.preventDefault();
+          e.stopPropagation();
+          fields[fieldIdx + 1]?.focus();
+        }
+        return;
+      }
+      // Son alan: sonraki satır veya yeni satır
+      e.preventDefault();
+      e.stopPropagation();
+      const next = idx + 1;
+      if (next < kalemSatirlari.length) {
         focusMasrafKalemSatir(next, 'first');
         return;
       }
-      if (e.shiftKey && fieldIdx === 0) {
-        const prev = idx - 1;
-        if (prev < 0) return;
-        e.preventDefault();
-        e.stopPropagation();
-        focusMasrafKalemSatir(prev, 'last');
+      if (!editId && masrafKalemSatirDolu(idx)) {
+        appendMasrafKalemSatirAndFocus();
         return;
       }
+      const aciklama = document.getElementById('finans-masraf-aciklama') as HTMLElement | null;
+      aciklama?.focus();
       return;
     }
 
+    if (comboboxOpen) return;
     const next = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
     if (next < 0 || next >= kalemSatirlari.length) return;
     e.preventDefault();
@@ -2036,6 +2076,7 @@ export default function MasraflarPage() {
                   />
                   <button
                     type="button"
+                    tabIndex={-1}
                     disabled={scanning}
                     onClick={startReceiptCapture}
                     className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
@@ -2044,6 +2085,7 @@ export default function MasraflarPage() {
                   </button>
                   <button
                     type="button"
+                    tabIndex={-1}
                     disabled={scanning}
                     onClick={() => receiptFileInputRef.current?.click()}
                     className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-white disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -2185,6 +2227,7 @@ export default function MasraflarPage() {
                 {form.expenseLane === 'hasar' ? (
                   <button
                     type="button"
+                    tabIndex={-1}
                     onClick={() => setShowFilePicker(true)}
                     className="shrink-0 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-900/40"
                     title="Hasar Onarım listesinden dosya seç"
@@ -2368,6 +2411,7 @@ export default function MasraflarPage() {
                   />
                   <button
                     type="button"
+                    tabIndex={-1}
                     onClick={() => setShowCariCreate(true)}
                     className="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                     data-testid="masraf-yeni-cari"
@@ -2393,6 +2437,7 @@ export default function MasraflarPage() {
                       <div className="flex flex-wrap gap-2">
                         <Link
                           href={`/panel/finans/cariler/${encodeURIComponent(selected.id)}`}
+                          tabIndex={-1}
                           className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                           data-testid="masraf-cari-sayfa"
                         >
@@ -2400,6 +2445,7 @@ export default function MasraflarPage() {
                         </Link>
                         <button
                           type="button"
+                          tabIndex={-1}
                           onClick={() =>
                             setCariOzetId((cur) => (cur === selected.id ? null : selected.id))
                           }
@@ -2787,6 +2833,7 @@ export default function MasraflarPage() {
               {!editId ? (
                 <button
                   type="button"
+                  tabIndex={-1}
                   className="rounded-xl border border-dashed border-brand-300 bg-brand-50/50 px-3 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:bg-brand-950/20 dark:text-brand-300"
                   data-testid="masraf-kalem-satir-ekle"
                   onClick={() => {

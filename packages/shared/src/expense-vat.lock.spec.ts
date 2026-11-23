@@ -152,10 +152,19 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /data-yon-tusu="satir"/);
     assert.match(masraf, /focusMasrafKalemSatir/);
     assert.match(masraf, /masrafKalemAlanFocusables/);
-    assert.match(masraf, /e\.key !== 'Tab'/);
-    assert.match(masraf, /focusMasrafKalemSatir\(next, 'first'\)/);
+    assert.match(masraf, /appendMasrafKalemSatirAndFocus/);
+    assert.match(masraf, /masrafKalemSatirDolu/);
+    assert.match(masraf, /e\.key !== 'Enter'/);
+    assert.match(masraf, /finans-masraf-aciklama/);
     assert.match(masraf, /focusMasrafKalemSatir\(prev, 'last'\)/);
-    assert.match(masraf, /tabIndex=\{-1\}[\s\S]{0,160}masraf-kalem-satir-sil-/);
+    assert.match(masraf, /masraf-kalem-satir-sil-/);
+    assert.match(masraf, /masraf-yeni-cari/);
+    assert.match(masraf, /masraf-kalem-satir-ekle/);
+    assert.equal(
+      (masraf.match(/tabIndex=\{-1\}/g) || []).length >= 8,
+      true,
+      'Tab yolunda i dışı yardımcı tuşlar atlanır',
+    );
     assert.match(masraf, /normalizeFormFreeText/);
     assert.match(masraf, /minmax\(0,1\.55fr\)/);
     assert.match(masraf, /masraf-kdv-oran-ekle-ac/);

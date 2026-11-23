@@ -55,6 +55,7 @@ export function FieldHelpTip({
     >
       <button
         type="button"
+        tabIndex={-1}
         data-testid={testId ?? 'field-help-tip'}
         aria-expanded={open}
         aria-controls={panelId}

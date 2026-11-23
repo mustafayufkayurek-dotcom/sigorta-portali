@@ -24,6 +24,8 @@ describe('alan açıklaması i kilidi', () => {
     assert.match(tip, /onClick/);
     assert.match(tip, /onMouseEnter/);
     assert.match(tip, /aria-label="Açıklama"/);
+    // Veri girişinde Tab i’ye uğramaz; fare / tıklama durur
+    assert.match(tip, /tabIndex=\{-1\}/);
     assert.match(hint, /return null/);
   });
 
