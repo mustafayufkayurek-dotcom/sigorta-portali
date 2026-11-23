@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-23",
-  "label": "v716-cari-tur-alan-baslik",
-  "description": "v716 full: Şirket carisi türe göre alan ve başlık (banka/kasa/kart); banka adı-şube-IBAN. Geri alma web v715 / backend v715.",
+  "label": "v717-masraf-yazim-cari-kdv-grup",
+  "description": "v717 full: Masraf Akatyakıt→Akaryakıt (kayıt + hatırlama); cari Hesap Türü / yeni sekme; KDV klavye ve alt grup rengi; masraf grup raporu üst gruba. Geri alma web v716 / backend v716.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v716-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v716-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v717-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v717-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v715-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v715-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v716-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v716-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",

@@ -6,7 +6,7 @@ BEGIN;
 UPDATE expenses
 SET
   description = regexp_replace(description, 'akatyak[ıiİI]t', 'Akaryakıt', 'gi'),
-  updated_at = NOW()
+  updated_at = CURRENT_TIMESTAMP
 WHERE description ~* 'akatyak[ıiİI]t';
 
 COMMIT;
