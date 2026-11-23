@@ -213,8 +213,8 @@ export function cariCiftRolKimlikHatasi(input: {
 export type CariAcilisYon = 'alacak' | 'borc';
 
 export const CARI_ACILIS_YON_LABEL: Record<CariAcilisYon, string> = {
-  alacak: 'Borç',
-  borc: 'Alacak',
+  borc: 'Borç',
+  alacak: 'Alacak',
 };
 
 export type CariHareketKaynak =
@@ -473,8 +473,136 @@ export function buildCariBakiyeIletisimMesaji(input: {
 /** Kredi kartı / tedarikçi / kredi için varsayılan açılış yönü = borcumuz. */
 export function cariVarsayilanAcilisYon(tur: CariTur): CariAcilisYon {
   if (tur === 'musteri' || tur === 'musteri_tedarikci') return 'alacak';
-  if (tur === 'banka') return 'alacak';
+  if (tur === 'banka' || tur === 'kasa') return 'alacak';
   return 'borc';
+}
+
+/**
+ * Şirket carisi form profili — Logo / Xero: tür değişince alanlar değişir.
+ * Müşteri / tedarikçi cari kartı bu formda açılmaz (Müşteriler / Tedarikçiler).
+ */
+export type CariSirketAlanProfili =
+  | 'banka'
+  | 'kasa'
+  | 'kredi_karti'
+  | 'kredi'
+  | 'vergi'
+  | 'sgk'
+  | 'diger';
+
+export function cariSirketAlanProfili(tur: unknown): CariSirketAlanProfili {
+  if (tur === 'banka') return 'banka';
+  if (tur === 'kasa') return 'kasa';
+  if (tur === 'kredi_karti') return 'kredi_karti';
+  if (tur === 'kredi') return 'kredi';
+  if (tur === 'vergi') return 'vergi';
+  if (tur === 'sgk') return 'sgk';
+  return 'diger';
+}
+
+export function cariSirketAdPlaceholder(tur: unknown): string {
+  switch (cariSirketAlanProfili(tur)) {
+    case 'banka':
+      return 'Örn. garanti vadesiz tl';
+    case 'kasa':
+      return 'Örn. merkez kasa';
+    case 'kredi_karti':
+      return 'Örn. ofis kredi kartı';
+    case 'kredi':
+      return 'Örn. işletme kredisi';
+    case 'vergi':
+      return 'Örn. kdv borcu';
+    case 'sgk':
+      return 'Örn. sgk prim borcu';
+    default:
+      return 'Örn. şirket cari hesabı';
+  }
+}
+
+export function cariSirketAciklamaPlaceholder(tur: unknown): string {
+  switch (cariSirketAlanProfili(tur)) {
+    case 'banka':
+      return 'Örn. günlük havale ve eft hesabı';
+    case 'kasa':
+      return 'Örn. ofis nakit kasası';
+    case 'kredi_karti':
+      return 'Örn. ekstre kesim tarihi ayın 5’i';
+    case 'kredi':
+      return 'Örn. vade ve faiz notu';
+    case 'vergi':
+      return 'Örn. dönem kdv tahakkuku';
+    case 'sgk':
+      return 'Örn. aylık prim tahakkuku';
+    default:
+      return 'Örn. hesap kullanım notu';
+  }
+}
+
+/**
+ * Form başlığı — tür değişince başlık da değişir (Logo banka/kasa kartı gibi).
+ * Düzenlemede «… Düzenle»; yenide «Yeni …».
+ */
+export function cariSirketFormBaslik(
+  tur: unknown,
+  opts?: { duzenle?: boolean },
+): string {
+  const duzenle = Boolean(opts?.duzenle);
+  switch (cariSirketAlanProfili(tur)) {
+    case 'banka':
+      return duzenle ? 'Banka Hesabını Düzenle' : 'Yeni Banka Hesabı';
+    case 'kasa':
+      return duzenle ? 'Kasayı Düzenle' : 'Yeni Kasa';
+    case 'kredi_karti':
+      return duzenle ? 'Kredi Kartını Düzenle' : 'Yeni Kredi Kartı';
+    case 'kredi':
+      return duzenle ? 'Krediyi Düzenle' : 'Yeni Kredi';
+    case 'vergi':
+      return duzenle ? 'Vergi Hesabını Düzenle' : 'Yeni Vergi';
+    case 'sgk':
+      return duzenle ? 'SGK Hesabını Düzenle' : 'Yeni SGK';
+    default:
+      return duzenle ? 'Cari Hesabı Düzenle' : 'Şirket Carisi';
+  }
+}
+
+/** Form alt yazısı — yalnız seçilen türün işini anlatır. */
+export function cariSirketFormAltYazi(tur: unknown): string {
+  switch (cariSirketAlanProfili(tur)) {
+    case 'banka':
+      return 'Banka adı, şube ve IBAN bu kartta durur. Müşteri kartı Müşteriler’den açılır.';
+    case 'kasa':
+      return 'Nakit kasa yeri ve açılış bakiyesi bu kartta durur. Müşteri kartı Müşteriler’den açılır.';
+    case 'kredi_karti':
+      return 'Kart son 4 hane ve etiket bu kartta durur. Müşteri kartı Müşteriler’den açılır.';
+    case 'kredi':
+      return 'Kredi veren kurum ve borç bakiyesi bu kartta durur.';
+    case 'vergi':
+      return 'Vergi dairesi ve tahakkuk notu bu kartta durur.';
+    case 'sgk':
+      return 'İşyeri / sicil no ve prim notu bu kartta durur.';
+    default:
+      return 'Şirket ödeme aracı veya yükümlülük. Müşteri / tedarikçi sol menüden açılır.';
+  }
+}
+
+/** Hesap Türü altındaki kısa yardım — türe göre. */
+export function cariSirketTurYardim(tur: unknown): string {
+  switch (cariSirketAlanProfili(tur)) {
+    case 'banka':
+      return 'Banka hesabı şirket nakit aracıdır. Karşı taraf cari Müşteriler / Tedarikçiler’den açılır.';
+    case 'kasa':
+      return 'Kasa şirket nakit kasasıdır. Karşı taraf cari Müşteriler / Tedarikçiler’den açılır.';
+    case 'kredi_karti':
+      return 'Kredi kartı şirket ödeme aracıdır. Karşı taraf cari Müşteriler / Tedarikçiler’den açılır.';
+    case 'kredi':
+      return 'Kredi şirket yükümlülüğüdür. Açılış genelde borcumuz (Alacak yönü) ile yazılır.';
+    case 'vergi':
+      return 'Vergi şirketin kamu borcudur. Tahakkuk açıklamada durur.';
+    case 'sgk':
+      return 'SGK şirket prim borcudur. Sicil no bu kartta durur.';
+    default:
+      return 'Müşteri veya tedarikçi cari kartı Müşteriler / Tedarikçiler’den açılır. Bu form şirket ödeme aracı ve yükümlülük içindir.';
+  }
 }
 
 /**

@@ -96,7 +96,12 @@ export class AuthService {
       throw new UnauthorizedException('E-posta veya şifre hatalı');
     }
 
-    if (roleRequiresLoginEmailCode(user.role?.code)) {
+    // Lokal geliştirmede e-posta kodu kapısı yok — mail beklenmez, şifre yeter.
+    // Canlıda yönetici/finans kod adımı aynı kalır.
+    const skipLoginEmailCode =
+      process.env.NODE_ENV === 'development' ||
+      process.env.SKIP_LOGIN_EMAIL_CODE === '1';
+    if (!skipLoginEmailCode && roleRequiresLoginEmailCode(user.role?.code)) {
       const challenge = await this.startLoginEmailChallenge(user);
       if (challenge) {
         return challenge;

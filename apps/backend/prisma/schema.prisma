@@ -3576,9 +3576,13 @@ model PartyAccount {
   code               String?   @unique
   name               String
   kind               String
-  /// musteri | tedarikci | kredi_karti | kredi | vergi | sgk | banka | diger
+  /// musteri | tedarikci | kredi_karti | kredi | vergi | sgk | banka | kasa | diger
   cardLast4          String?   @map("card_last4")
   cardLabel          String?   @map("card_label")
+  /// Banka adı / kredi veren / vergi dairesi (türe göre)
+  bankName           String?   @map("bank_name")
+  branchName         String?   @map("branch_name")
+  iban               String?
   contactPhone       String?   @map("contact_phone")
   contactEmail       String?   @map("contact_email")
   linkedCustomerId   String?   @map("linked_customer_id")

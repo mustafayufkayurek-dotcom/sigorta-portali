@@ -13,6 +13,12 @@ import {
   cariBakiyeMetin,
   cariNetBakiye,
   cariVarsayilanAcilisYon,
+  cariSirketAciklamaPlaceholder,
+  cariSirketAdPlaceholder,
+  cariSirketAlanProfili,
+  cariSirketFormAltYazi,
+  cariSirketFormBaslik,
+  cariSirketTurYardim,
   finansDonemKapanisGun,
   addCalendarMonthsIso,
   finansDonemYilListesi,
@@ -35,6 +41,7 @@ import {
   bankaCariKodu,
   buildFinansSeyirDonemKarZarar,
   cariCiftRolKimlikHatasi,
+  CARI_ACILIS_YON_LABEL,
   CARI_SIRKET_TUR_GRUPLARI,
   CARI_SIRKET_TURLERI,
   CARI_TUR_GRUPLARI,
@@ -107,6 +114,21 @@ describe('Finans cari LOCK', () => {
     assert.equal(cariVarsayilanAcilisYon('kredi_karti'), 'borc');
     assert.equal(cariVarsayilanAcilisYon('musteri'), 'alacak');
     assert.equal(cariVarsayilanAcilisYon('musteri_tedarikci'), 'alacak');
+    assert.equal(cariVarsayilanAcilisYon('banka'), 'alacak');
+    assert.equal(cariVarsayilanAcilisYon('kasa'), 'alacak');
+    assert.equal(CARI_ACILIS_YON_LABEL.borc, 'Borç');
+    assert.equal(CARI_ACILIS_YON_LABEL.alacak, 'Alacak');
+    assert.equal(cariSirketAlanProfili('banka'), 'banka');
+    assert.equal(cariSirketAlanProfili('kasa'), 'kasa');
+    assert.equal(cariSirketAlanProfili('kredi_karti'), 'kredi_karti');
+    assert.match(cariSirketAdPlaceholder('banka'), /garanti/);
+    assert.match(cariSirketAdPlaceholder('kasa'), /kasa/);
+    assert.match(cariSirketAciklamaPlaceholder('kredi_karti'), /ekstre/);
+    assert.equal(cariSirketFormBaslik('kasa'), 'Yeni Kasa');
+    assert.equal(cariSirketFormBaslik('banka'), 'Yeni Banka Hesabı');
+    assert.equal(cariSirketFormBaslik('kredi_karti', { duzenle: true }), 'Kredi Kartını Düzenle');
+    assert.match(cariSirketFormAltYazi('kasa'), /Nakit kasa/);
+    assert.match(cariSirketTurYardim('banka'), /Banka hesabı/);
     assert.equal(CARI_TUR_LABEL.musteri_tedarikci, 'Müşteri Ve Tedarikçi');
     assert.ok(CARI_TUR_GRUPLARI.some((g) => g.kinds.includes('musteri_tedarikci')));
     assert.equal(isCariMusteriRolu('musteri_tedarikci'), true);

@@ -23,6 +23,8 @@ import {
   CARI_TUR_LABEL,
   buildCariBakiyeIletisimMesaji,
   cariBakiyeMetin,
+  cariSirketFormAltYazi,
+  cariSirketFormBaslik,
   type CariTur,
 } from '@sigorta/shared';
 import { API, authHeader } from '@/utils/api';
@@ -93,6 +95,9 @@ type CariRow = {
   notes: string | null;
   cardLast4: string | null;
   cardLabel: string | null;
+  bankName: string | null;
+  branchName: string | null;
+  iban: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
   resolvedPhone: string | null;
@@ -224,6 +229,9 @@ export default function FinansCarilerPage() {
       kind: row.kind,
       cardLast4: row.cardLast4 ?? '',
       cardLabel: row.cardLabel ?? '',
+      bankName: row.bankName ?? '',
+      branchName: row.branchName ?? '',
+      iban: row.iban ?? '',
       contactPhone: row.contactPhone || row.resolvedPhone || '',
       contactEmail: row.contactEmail || row.resolvedEmail || '',
       notes: row.notes ?? '',
@@ -330,7 +338,14 @@ export default function FinansCarilerPage() {
       showToast('warning', 'Açıklama Zorunludur');
       return;
     }
+    if (form.kind === 'banka' && !form.bankName.trim()) {
+      showToast('warning', 'Banka Adı Zorunludur');
+      return;
+    }
     const openingAmount = parseTrAmountInput(form.openingAmount) ?? 0;
+    const bankName = form.bankName ? toTitleCaseTR(form.bankName.trim()) : '';
+    const branchName = form.branchName ? toTitleCaseTR(form.branchName.trim()) : '';
+    const iban = form.iban.replace(/\s+/g, '').toUpperCase();
     setSaving(true);
     try {
       const contactPhone = form.contactPhone.trim()
@@ -345,6 +360,9 @@ export default function FinansCarilerPage() {
             kind: form.kind,
             cardLast4: form.cardLast4 || null,
             cardLabel: form.cardLabel ? toTitleCaseTR(form.cardLabel.trim()) : null,
+            bankName: bankName || null,
+            branchName: branchName || null,
+            iban: iban || null,
             contactPhone: contactPhone || null,
             contactEmail: contactEmail || null,
             notes,
@@ -360,6 +378,9 @@ export default function FinansCarilerPage() {
             kind: form.kind,
             cardLast4: form.cardLast4 || undefined,
             cardLabel: form.cardLabel ? toTitleCaseTR(form.cardLabel.trim()) : undefined,
+            bankName: bankName || undefined,
+            branchName: branchName || undefined,
+            iban: iban || undefined,
             contactPhone: contactPhone || undefined,
             contactEmail: contactEmail || undefined,
             notes,
@@ -492,8 +513,8 @@ export default function FinansCarilerPage() {
 
       <FinansDrawer
         open={showForm}
-        title={editId ? 'Cari Hesabı Düzenle' : 'Şirket Carisi'}
-        subtitle="Kredi kartı, banka, vergi, SGK veya kredi hesabı. Müşteri / tedarikçi sol menüden açılır."
+        title={cariSirketFormBaslik(form.kind, { duzenle: Boolean(editId) })}
+        subtitle={cariSirketFormAltYazi(form.kind)}
         testId="cari-hesap-cekmece"
         onClose={() => {
           setShowForm(false);

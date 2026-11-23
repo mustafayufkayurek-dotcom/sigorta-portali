@@ -3,13 +3,18 @@
 /**
  * Cariler sayfasındaki Yeni Cari Hesap alanları — tek kaynak.
  * Masraf / dosya masrafı aynı formu açar; masraf işleminden kopmaz.
- * Finans’tan yalnız şirket carisi (kart / banka / vergi…).
- * Karşı taraf → Müşteriler / Tedarikçiler kartından doğar.
+ * Finans’tan yalnız şirket carisi (kart / banka / kasa / vergi…).
+ * Karşı taraf (müşteri / tedarikçi cari) → Müşteriler / Tedarikçiler kartından doğar.
+ * Tür değişince alanlar Logo / Xero gibi değişir.
  */
 import {
   CARI_ACILIS_YON_LABEL,
   CARI_SIRKET_TUR_GRUPLARI,
   CARI_TUR_LABEL,
+  cariSirketAciklamaPlaceholder,
+  cariSirketAdPlaceholder,
+  cariSirketAlanProfili,
+  cariSirketTurYardim,
   cariVarsayilanAcilisYon,
   type CariAcilisYon,
   type CariTur,
@@ -24,6 +29,9 @@ export type CariHesapFormValues = {
   kind: CariTur;
   cardLast4: string;
   cardLabel: string;
+  bankName: string;
+  branchName: string;
+  iban: string;
   contactPhone: string;
   contactEmail: string;
   notes: string;
@@ -36,6 +44,9 @@ export const CARI_HESAP_EMPTY_FORM: CariHesapFormValues = {
   kind: 'kredi_karti',
   cardLast4: '',
   cardLabel: '',
+  bankName: '',
+  branchName: '',
+  iban: '',
   contactPhone: '',
   contactEmail: '',
   notes: '',
@@ -51,6 +62,11 @@ export function newCariHesapForm(kind: CariTur = 'kredi_karti'): CariHesapFormVa
   };
 }
 
+function formatIbanDisplay(raw: string): string {
+  const compact = raw.replace(/\s+/g, '').toUpperCase();
+  return compact.replace(/(.{4})/g, '$1 ').trim();
+}
+
 export function CariHesapFormFields({
   form,
   setForm,
@@ -63,23 +79,12 @@ export function CariHesapFormFields({
   /** Yeni kayıtta açılış tutarı / borç-alacak */
   showOpening?: boolean;
 }) {
-  const kartAlani = form.kind === 'kredi_karti';
+  const profil = cariSirketAlanProfili(form.kind);
+  const iletisimGoster =
+    profil === 'kredi_karti' || profil === 'kredi' || profil === 'vergi' || profil === 'sgk' || profil === 'diger';
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="cari-hesap-form-alanlari">
-      <div>
-        <FinansFieldLabel required>Cari Hesap Adı</FinansFieldLabel>
-        <input
-          type="text"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          onBlur={() =>
-            setForm((f) => ({ ...f, name: f.name ? toTitleCaseTR(f.name.trim()) : '' }))
-          }
-          className={finansInputClass}
-          placeholder="Örn. garanti kredi kartı"
-        />
-      </div>
       <div>
         <FinansFieldLabel required>Hesap Türü</FinansFieldLabel>
         <select
@@ -90,6 +95,16 @@ export function CariHesapFormFields({
               ...f,
               kind,
               openingDirection: cariVarsayilanAcilisYon(kind),
+              // Tür değişince alakasız kart alanlarını temizle
+              cardLast4: kind === 'kredi_karti' ? f.cardLast4 : '',
+              cardLabel:
+                kind === 'kredi_karti' || kind === 'kasa' || kind === 'vergi' || kind === 'sgk'
+                  ? f.cardLabel
+                  : '',
+              bankName:
+                kind === 'banka' || kind === 'kredi' || kind === 'vergi' ? f.bankName : '',
+              branchName: kind === 'banka' ? f.branchName : '',
+              iban: kind === 'banka' ? f.iban : '',
             }));
           }}
           className={finansInputClass}
@@ -105,55 +120,108 @@ export function CariHesapFormFields({
             </optgroup>
           ))}
         </select>
-        <p className="mt-1 text-[11px] text-slate-500">
-          Müşteri veya tedarikçi kartı Müşteriler / Tedarikçiler sayfasından açılır.
+        <p className="mt-1 text-[11px] text-slate-500" data-testid="cari-tur-yardim">
+          {cariSirketTurYardim(form.kind)}
         </p>
       </div>
-      <div className="sm:col-span-2">
-        <FinansFieldLabel required>Açıklama</FinansFieldLabel>
+      <div>
+        <FinansFieldLabel required>Cari Hesap Adı</FinansFieldLabel>
         <input
           type="text"
-          value={form.notes}
-          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
           onBlur={() =>
-            setForm((f) => ({ ...f, notes: f.notes ? toTitleCaseTR(f.notes.trim()) : '' }))
+            setForm((f) => ({ ...f, name: f.name ? toTitleCaseTR(f.name.trim()) : '' }))
           }
           className={finansInputClass}
-          placeholder="Örn. ekstre kesim tarihi ayın 5’i"
-          data-testid="cari-aciklama"
+          placeholder={cariSirketAdPlaceholder(form.kind)}
+          data-testid="cari-hesap-adi"
         />
       </div>
-      <div>
-        <FinansFieldLabel>Telefon</FinansFieldLabel>
-        <input
-          type="tel"
-          value={form.contactPhone}
-          onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
-          onBlur={() =>
-            setForm((f) => ({
-              ...f,
-              contactPhone: f.contactPhone.trim()
-                ? formatPhoneGrouped(f.contactPhone.trim()) || f.contactPhone.trim()
-                : '',
-            }))
-          }
-          className={finansInputClass}
-          placeholder="532 133 4144"
-          data-testid="cari-telefon"
-        />
-      </div>
-      <div>
-        <FinansFieldLabel>E-posta</FinansFieldLabel>
-        <input
-          type="email"
-          value={form.contactEmail}
-          onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-          className={finansInputClass}
-          placeholder="ornek@firma.com"
-          data-testid="cari-eposta"
-        />
-      </div>
-      {kartAlani ? (
+
+      {profil === 'banka' ? (
+        <>
+          <div>
+            <FinansFieldLabel required>Banka Adı</FinansFieldLabel>
+            <input
+              type="text"
+              value={form.bankName}
+              onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+              onBlur={() =>
+                setForm((f) => ({
+                  ...f,
+                  bankName: f.bankName ? toTitleCaseTR(f.bankName.trim()) : '',
+                }))
+              }
+              className={finansInputClass}
+              placeholder="Örn. garanti bbva"
+              data-testid="cari-banka-adi"
+            />
+          </div>
+          <div>
+            <FinansFieldLabel>Şube</FinansFieldLabel>
+            <input
+              type="text"
+              value={form.branchName}
+              onChange={(e) => setForm({ ...form, branchName: e.target.value })}
+              onBlur={() =>
+                setForm((f) => ({
+                  ...f,
+                  branchName: f.branchName ? toTitleCaseTR(f.branchName.trim()) : '',
+                }))
+              }
+              className={finansInputClass}
+              placeholder="Örn. ankara çankaya"
+              data-testid="cari-banka-sube"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <FinansFieldLabel>IBAN</FinansFieldLabel>
+            <input
+              type="text"
+              value={form.iban}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  iban: e.target.value.replace(/[^a-zA-Z0-9\s]/g, '').slice(0, 34),
+                })
+              }
+              onBlur={() =>
+                setForm((f) => ({
+                  ...f,
+                  iban: f.iban ? formatIbanDisplay(f.iban) : '',
+                }))
+              }
+              className={finansInputClass}
+              placeholder="TR00 0000 0000 0000 0000 0000 00"
+              data-testid="cari-banka-iban"
+              autoComplete="off"
+            />
+          </div>
+        </>
+      ) : null}
+
+      {profil === 'kasa' ? (
+        <div className="sm:col-span-2">
+          <FinansFieldLabel>Kasa Yeri / Etiket</FinansFieldLabel>
+          <input
+            type="text"
+            value={form.cardLabel}
+            onChange={(e) => setForm({ ...form, cardLabel: e.target.value })}
+            onBlur={() =>
+              setForm((f) => ({
+                ...f,
+                cardLabel: f.cardLabel ? toTitleCaseTR(f.cardLabel.trim()) : '',
+              }))
+            }
+            className={finansInputClass}
+            placeholder="Örn. ofis kasa / şantiye kasa"
+            data-testid="cari-kasa-etiket"
+          />
+        </div>
+      ) : null}
+
+      {profil === 'kredi_karti' ? (
         <>
           <div>
             <FinansFieldLabel>Kart Son 4 Hane</FinansFieldLabel>
@@ -166,6 +234,7 @@ export function CariHesapFormFields({
               }
               className={finansInputClass}
               placeholder="1234"
+              data-testid="cari-kart-son4"
             />
           </div>
           <div>
@@ -182,10 +251,116 @@ export function CariHesapFormFields({
               }
               className={finansInputClass}
               placeholder="Örn. ofis kartı"
+              data-testid="cari-kart-etiket"
             />
           </div>
         </>
       ) : null}
+
+      {profil === 'kredi' ? (
+        <div className="sm:col-span-2">
+          <FinansFieldLabel>Kredi Veren Banka / Kurum</FinansFieldLabel>
+          <input
+            type="text"
+            value={form.bankName}
+            onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+            onBlur={() =>
+              setForm((f) => ({
+                ...f,
+                bankName: f.bankName ? toTitleCaseTR(f.bankName.trim()) : '',
+              }))
+            }
+            className={finansInputClass}
+            placeholder="Örn. ziraat bankası"
+            data-testid="cari-kredi-kurum"
+          />
+        </div>
+      ) : null}
+
+      {profil === 'vergi' ? (
+        <div className="sm:col-span-2">
+          <FinansFieldLabel>Vergi Dairesi</FinansFieldLabel>
+          <input
+            type="text"
+            value={form.bankName}
+            onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+            onBlur={() =>
+              setForm((f) => ({
+                ...f,
+                bankName: f.bankName ? toTitleCaseTR(f.bankName.trim()) : '',
+              }))
+            }
+            className={finansInputClass}
+            placeholder="Örn. çankaya vergi dairesi"
+            data-testid="cari-vergi-dairesi"
+          />
+        </div>
+      ) : null}
+
+      {profil === 'sgk' ? (
+        <div className="sm:col-span-2">
+          <FinansFieldLabel>İşyeri / Sicil No</FinansFieldLabel>
+          <input
+            type="text"
+            value={form.cardLabel}
+            onChange={(e) => setForm({ ...form, cardLabel: e.target.value })}
+            className={finansInputClass}
+            placeholder="Örn. işyeri sicil no"
+            data-testid="cari-sgk-sicil"
+          />
+        </div>
+      ) : null}
+
+      <div className="sm:col-span-2">
+        <FinansFieldLabel required>Açıklama</FinansFieldLabel>
+        <input
+          type="text"
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          onBlur={() =>
+            setForm((f) => ({ ...f, notes: f.notes ? toTitleCaseTR(f.notes.trim()) : '' }))
+          }
+          className={finansInputClass}
+          placeholder={cariSirketAciklamaPlaceholder(form.kind)}
+          data-testid="cari-aciklama"
+        />
+      </div>
+
+      {iletisimGoster ? (
+        <>
+          <div>
+            <FinansFieldLabel>Telefon</FinansFieldLabel>
+            <input
+              type="tel"
+              value={form.contactPhone}
+              onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+              onBlur={() =>
+                setForm((f) => ({
+                  ...f,
+                  contactPhone: f.contactPhone.trim()
+                    ? formatPhoneGrouped(f.contactPhone.trim()) || f.contactPhone.trim()
+                    : '',
+                }))
+              }
+              className={finansInputClass}
+              placeholder="532 133 4144"
+              data-testid="cari-telefon"
+            />
+          </div>
+          <div>
+            <FinansFieldLabel>E-posta</FinansFieldLabel>
+            <input
+              type="email"
+              value={form.contactEmail}
+              onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+              className={finansInputClass}
+              placeholder="ornek@firma.com"
+              data-testid="cari-eposta"
+            />
+          </div>
+        </>
+      ) : null}
+
       {showOpening ? (
         <>
           <div>
@@ -227,7 +402,9 @@ export function CariHesapFormFields({
               )}
             </select>
             <p className="mt-1 text-[11px] text-slate-500">
-              Borç: cari bize borçlu · Alacak: biz cariye borçluyuz
+              {profil === 'banka' || profil === 'kasa'
+                ? 'Banka / kasa bakiyesi genelde Alacak (bizdeki nakit) ile açılır.'
+                : 'Borç: cari bize borçlu · Alacak: biz cariye borçluyuz'}
             </p>
           </div>
         </>

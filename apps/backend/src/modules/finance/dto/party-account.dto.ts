@@ -20,6 +20,7 @@ const CARI_TUR_LIST = [
   'vergi',
   'sgk',
   'banka',
+  'kasa',
   'diger',
 ] as const;
 
@@ -42,6 +43,18 @@ export class CreatePartyAccountDto {
   @IsOptional()
   @IsString()
   cardLabel?: string;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  branchName?: string;
+
+  @IsOptional()
+  @IsString()
+  iban?: string;
 
   @IsOptional()
   @IsString()
@@ -101,6 +114,18 @@ export class UpdatePartyAccountDto {
   @IsOptional()
   @IsString()
   cardLabel?: string | null;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  branchName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  iban?: string | null;
 
   @IsOptional()
   @IsString()

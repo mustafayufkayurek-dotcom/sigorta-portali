@@ -737,6 +737,9 @@ export class PartyAccountsService {
       kind: string;
       cardLast4: string | null;
       cardLabel: string | null;
+      bankName: string | null;
+      branchName: string | null;
+      iban: string | null;
       contactPhone: string | null;
       contactEmail: string | null;
       linkedCustomerId: string | null;
@@ -785,6 +788,9 @@ export class PartyAccountsService {
       kindLabel: CARI_TUR_LABEL[kind],
       cardLast4: row.cardLast4,
       cardLabel: row.cardLabel,
+      bankName: row.bankName,
+      branchName: row.branchName,
+      iban: row.iban,
       contactPhone: row.contactPhone,
       contactEmail: row.contactEmail,
       resolvedPhone: contactPhone,
@@ -923,6 +929,9 @@ export class PartyAccountsService {
         'Müşteri veya tedarikçi carisi Müşteriler / Tedarikçiler kartından açılır.',
       );
     }
+    if (kind === 'banka' && !dto.bankName?.trim()) {
+      throw new BadRequestException('Banka adı zorunludur');
+    }
     const openingAmount = round2(Number(dto.openingAmount) || 0);
     let openingDirection: CariAcilisYon = cariVarsayilanAcilisYon(kind);
     if (dto.openingDirection && isCariAcilisYon(dto.openingDirection)) {
@@ -950,6 +959,9 @@ export class PartyAccountsService {
           code: dto.code?.trim() || null,
           cardLast4: dto.cardLast4?.replace(/\D/g, '').slice(-4) || null,
           cardLabel: dto.cardLabel?.trim() || null,
+          bankName: dto.bankName?.trim() || null,
+          branchName: dto.branchName?.trim() || null,
+          iban: dto.iban?.replace(/\s+/g, '').toUpperCase() || null,
           contactPhone: dto.contactPhone?.trim() || null,
           contactEmail: dto.contactEmail?.trim().toLowerCase() || null,
           linkedCustomerId: dto.linkedCustomerId || null,
@@ -983,12 +995,18 @@ export class PartyAccountsService {
   }
 
   async update(id: string, dto: UpdatePartyAccountDto) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
     if (dto.kind != null && !isCariTur(dto.kind)) {
       throw new BadRequestException('Cari türü geçersiz');
     }
     if (dto.name != null && dto.name.trim().length < 2) {
       throw new BadRequestException('Cari adı zorunludur');
+    }
+    const nextKind = (dto.kind ?? existing.kind) as CariTur;
+    const nextBankName =
+      dto.bankName !== undefined ? dto.bankName?.trim() || '' : String(existing.bankName ?? '');
+    if (nextKind === 'banka' && !nextBankName) {
+      throw new BadRequestException('Banka adı zorunludur');
     }
 
     await this.prisma.partyAccount.update({
@@ -1001,6 +1019,11 @@ export class PartyAccountsService {
           ? { cardLast4: dto.cardLast4?.replace(/\D/g, '').slice(-4) || null }
           : {}),
         ...(dto.cardLabel !== undefined ? { cardLabel: dto.cardLabel?.trim() || null } : {}),
+        ...(dto.bankName !== undefined ? { bankName: dto.bankName?.trim() || null } : {}),
+        ...(dto.branchName !== undefined ? { branchName: dto.branchName?.trim() || null } : {}),
+        ...(dto.iban !== undefined
+          ? { iban: dto.iban?.replace(/\s+/g, '').toUpperCase() || null }
+          : {}),
         ...(dto.contactPhone !== undefined
           ? { contactPhone: dto.contactPhone?.trim() || null }
           : {}),

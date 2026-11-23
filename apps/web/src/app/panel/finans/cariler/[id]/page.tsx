@@ -44,6 +44,9 @@ type Account = {
   netBakiye: number;
   cardLast4: string | null;
   cardLabel: string | null;
+  bankName?: string | null;
+  branchName?: string | null;
+  iban?: string | null;
   linkedCustomerId?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
@@ -271,15 +274,25 @@ export default function FinansCariEkstrePage() {
           <h2 className="text-xl font-bold text-slate-900">{account?.name ?? 'Cari Ekstre'}</h2>
           <p className="mt-0.5 text-sm text-slate-500">
             {account
-              ? `${account.kindLabel}${
-                  account.notes ? ` · ${account.notes}` : ''
-                }${
+              ? [
+                  account.kindLabel,
+                  account.notes,
+                  account.kind === 'banka'
+                    ? [account.bankName, account.branchName, account.iban]
+                        .filter(Boolean)
+                        .join(' · ')
+                    : null,
+                  account.kind === 'kasa' && account.cardLabel
+                    ? account.cardLabel
+                    : null,
                   account.cardLast4
-                    ? ` · **** ${account.cardLast4}${
+                    ? `**** ${account.cardLast4}${
                         account.cardLabel ? ` · ${account.cardLabel}` : ''
                       }`
-                    : ''
-                }`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
               : 'Hareketler · Borç / Alacak / Bakiye'}
           </p>
         </div>

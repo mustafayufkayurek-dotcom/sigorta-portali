@@ -6,6 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { cariSirketFormAltYazi, cariSirketFormBaslik } from '@sigorta/shared';
 import {
   CariHesapFormFields,
   newCariHesapForm,
@@ -49,6 +50,10 @@ export function CariHesapCreateModal({
       setError('Açıklama Zorunludur');
       return;
     }
+    if (form.kind === 'banka' && !form.bankName.trim()) {
+      setError('Banka Adı Zorunludur');
+      return;
+    }
     const openingAmount = parseTrAmountInput(form.openingAmount) ?? 0;
     setSaving(true);
     setError('');
@@ -64,6 +69,9 @@ export function CariHesapCreateModal({
           kind: form.kind,
           cardLast4: form.cardLast4 || undefined,
           cardLabel: form.cardLabel ? toTitleCaseTR(form.cardLabel.trim()) : undefined,
+          bankName: form.bankName ? toTitleCaseTR(form.bankName.trim()) : undefined,
+          branchName: form.branchName ? toTitleCaseTR(form.branchName.trim()) : undefined,
+          iban: form.iban.replace(/\s+/g, '').toUpperCase() || undefined,
           contactPhone: contactPhone || undefined,
           contactEmail: contactEmail || undefined,
           notes,
@@ -95,8 +103,8 @@ export function CariHesapCreateModal({
   return (
     <FinansModal
       open={open}
-      title="Şirket Carisi"
-      subtitle="Kredi kartı / banka / vergi · Masraf kaydı durur. Müşteri kartı Müşteriler’den açılır."
+      title={cariSirketFormBaslik(form.kind)}
+      subtitle={cariSirketFormAltYazi(form.kind)}
       size="lg"
       testId="masraf-cari-kart-ac"
       footer={
