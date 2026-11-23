@@ -1,11 +1,11 @@
 ---
-description: Canlı web v717 / backend v717
+description: Canlı web v718 / backend v717
 alwaysApply: true
 ---
 
 # Canlı (23.11.2026)
 
-Canlı: web **v717** · backend **v717**. Geri alma: web **v716** / backend **v716**.
+Canlı: web **v718** · backend **v717**. Geri alma: web **v717** / backend **v717**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v718 (yalnız web):** Masraf satırında Tab sıradaki satıra geçer (KDV’den sonraki satırın başına; Shift+Tab bir üste). Backend **v717**. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v717** / backend **v717**.
 
 **v717 (full):** Masraf açıklama yazım (Akatyakıt→Akaryakıt; kayıt + hatırlama + canlı SQL); cari Hesap Türü / yeni sekme; KDV klavye ve alt grup seçim rengi (grup pop-up’ta KDV yok); masraf grup raporu üst gruba. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v716** / backend **v716**.
 
@@ -311,4 +313,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v717** · backend **v717**.
+Canlı web **v718** · backend **v717**.
