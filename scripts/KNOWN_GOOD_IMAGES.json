@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-24",
-  "label": "v720-masraf-tedarikci-cari",
-  "description": "v720 full: Masraf Ödeme Kaynağı tüm aktif tedarikçiler + cari yoksa ensure-vendor; yükleme adı UTF-8; Tab SearchableSelect açmaz; kimlik no tekil. Geri alma web v719 / backend v717.",
+  "label": "v721-tedarikci-masraf-belge",
+  "description": "v721 full: Tedarikçi 5 adım (ofis/sabit, vade, hizmet türü); masraf açıkken tedarikçi dönüş köprüsü; belge no 25≡025 kontrol penceresi; Hasar/Acil hakediş uyarısı. Geri alma web v720 / backend v720.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v720-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v720-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v721-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v721-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v719-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v717-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v720-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v720-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
