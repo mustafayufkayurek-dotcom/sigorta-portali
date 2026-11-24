@@ -31,7 +31,9 @@ describe('masraf kalemi UI LOCK', () => {
     assert.match(form, /CariHesapOzetModal/);
     assert.match(form, /claim-file-yeni-cari/);
     assert.match(form, /claim-file-cari-ozet-ac/);
-    assert.doesNotMatch(form, /ensure-vendor/);
+    // Aktif tedarikçi carisi yoksa seçimde ensure-vendor açar
+    assert.match(form, /ensure-vendor/);
+    assert.match(form, /mergeMasrafOdemeKaynaklari/);
     assert.doesNotMatch(form, /Kayıt Sonrası Oluşur/);
     assert.match(form, /\(Zorunlu\)/);
     assert.match(form, /placeholder=\{ACIKLAMA_YARDIM\.masraf\}/);
