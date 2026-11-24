@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
-  Optional,
+  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { applyTitleCase } from '@/common/utils/text-helpers';
@@ -21,7 +23,11 @@ import {
   normalizeLocationLabel,
   resolveProvinceDistrictIds,
 } from '@/modules/claim-files/vendor-area-match.util';
-import { vendorContractIdentityMissing } from '@sigorta/shared';
+import {
+  normalizeVendorIdentityForSave,
+  vendorContractIdentityMissing,
+  vendorUniqueIdentityConflictMessage,
+} from '@sigorta/shared';
 import * as ExcelJS from 'exceljs';
 
 @Injectable()
@@ -31,7 +37,8 @@ export class VendorsService {
     private readonly vendorRecommendation: VendorRecommendationService,
     private readonly vendorCostMemory: VendorCostMemoryService,
     private readonly auditLogsService: AuditLogsService,
-    @Optional() private partyAccounts?: PartyAccountsService,
+    @Inject(forwardRef(() => PartyAccountsService))
+    private readonly partyAccounts: PartyAccountsService,
   ) {}
 
   private mapVendorContactInput(c: any, vendorId: string) {
@@ -224,36 +231,79 @@ export class VendorsService {
     return rows.filter((v) => vendorContractIdentityMissing(v)).map((v) => v.id);
   }
 
-  async findOne(id: string) {
-    const vendor = await this.prisma.vendor.findUnique({
-      where: { id },
-      include: {
-        serviceAreas: {
-          include: {
-            province: { select: { id: true, plateCode: true, name: true } },
-            district: { select: { id: true, name: true } },
-          },
-        },
-        vendorWorkGroups: {
-          include: {
-            workGroup: { select: { id: true, code: true, name: true, sortOrder: true } },
-          },
-        },
-        contacts: {
-          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
-        },
-        contactInfos: {
-          orderBy: { createdAt: 'asc' },
-        },
-        partyAccounts: {
-          where: { isActive: true },
-          select: { id: true, kind: true, linkedCustomerId: true },
-          take: 1,
-          orderBy: { createdAt: 'asc' },
+  /**
+   * Kural: Aktif tedarikçi kartının carisi vardır.
+   * Eksikler sessizce açılır; personel ayrı cari formu doldurmaz.
+   */
+  async ensureActiveVendorCariler(userId?: string | null): Promise<number> {
+    try {
+      return await this.partyAccounts.ensureMissingVendorCariler(userId || 'system');
+    } catch {
+      return 0;
+    }
+  }
+
+  private async ensureSingleVendorCari(vendor: {
+    id: string;
+    name: string;
+    status?: string | null;
+    createdByUserId?: string | null;
+  }) {
+    if (String(vendor.status ?? 'active').toLowerCase() !== 'active') return;
+    try {
+      await this.partyAccounts.ensureVendorAccount({
+        vendorId: vendor.id,
+        userId: vendor.createdByUserId || 'system',
+        name: vendor.name,
+        cariRol: 'tedarikci',
+      });
+    } catch {
+      /* detay yine açılır; cari sonraki listede tamamlanır */
+    }
+  }
+
+  private vendorDetailInclude() {
+    return {
+      serviceAreas: {
+        include: {
+          province: { select: { id: true, plateCode: true, name: true } },
+          district: { select: { id: true, name: true } },
         },
       },
+      vendorWorkGroups: {
+        include: {
+          workGroup: { select: { id: true, code: true, name: true, sortOrder: true } },
+        },
+      },
+      contacts: {
+        orderBy: [{ isPrimary: 'desc' as const }, { createdAt: 'asc' as const }],
+      },
+      contactInfos: {
+        orderBy: { createdAt: 'asc' as const },
+      },
+      partyAccounts: {
+        where: { isActive: true },
+        select: { id: true, kind: true, linkedCustomerId: true },
+        take: 1,
+        orderBy: { createdAt: 'asc' as const },
+      },
+    };
+  }
+
+  async findOne(id: string) {
+    let vendor = await this.prisma.vendor.findUnique({
+      where: { id },
+      include: this.vendorDetailInclude(),
     });
     if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
+    if (!vendor.partyAccounts[0]) {
+      await this.ensureSingleVendorCari(vendor);
+      vendor = await this.prisma.vendor.findUnique({
+        where: { id },
+        include: this.vendorDetailInclude(),
+      });
+      if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
+    }
     const { partyAccounts, ...vendorRest } = vendor;
     const pa = partyAccounts[0];
     return {
@@ -340,6 +390,17 @@ export class VendorsService {
       }
     }
 
+    if (Object.prototype.hasOwnProperty.call(vendorData, 'identityNo')) {
+      vendorData.identityNo = normalizeVendorIdentityForSave(
+        vendorData.identityNo as string | null | undefined,
+      );
+    }
+    if (Object.prototype.hasOwnProperty.call(vendorData, 'taxNumber')) {
+      vendorData.taxNumber = normalizeVendorIdentityForSave(
+        vendorData.taxNumber as string | null | undefined,
+      );
+    }
+
     return vendorData;
   }
 
@@ -353,16 +414,79 @@ export class VendorsService {
     }
   }
 
+  private async assertVendorIdentityUnique(
+    vendorData: { identityNo?: string | null; taxNumber?: string | null },
+    excludeId?: string,
+  ) {
+    const identityNo = normalizeVendorIdentityForSave(vendorData.identityNo);
+    const taxNumber = normalizeVendorIdentityForSave(vendorData.taxNumber);
+    if (identityNo) {
+      const match = await this.prisma.vendor.findFirst({
+        where: {
+          identityNo,
+          ...(excludeId ? { id: { not: excludeId } } : {}),
+        },
+        select: { id: true, name: true },
+      });
+      if (match) {
+        throw new ConflictException(
+          vendorUniqueIdentityConflictMessage({
+            field: 'identity_no',
+            existingName: match.name,
+          }),
+        );
+      }
+    }
+    if (taxNumber) {
+      const match = await this.prisma.vendor.findFirst({
+        where: {
+          taxNumber,
+          ...(excludeId ? { id: { not: excludeId } } : {}),
+        },
+        select: { id: true, name: true },
+      });
+      if (match) {
+        throw new ConflictException(
+          vendorUniqueIdentityConflictMessage({
+            field: 'tax_number',
+            existingName: match.name,
+          }),
+        );
+      }
+    }
+  }
+
+  private rethrowVendorUniqueConflict(err: any): void {
+    if (err?.code !== 'P2002') return;
+    const targets = (err?.meta?.target as string[] | string | undefined) ?? [];
+    const list = Array.isArray(targets) ? targets : [String(targets)];
+    const field =
+      list.find((t) => t === 'identity_no' || t === 'tax_number') ??
+      list[0] ??
+      'identity_no';
+    throw new ConflictException(vendorUniqueIdentityConflictMessage({ field }));
+  }
+
   async create(data: any, createdByUserId?: string) {
     const { serviceAreas, workGroupIds, contacts, contactInfos, cariRol, ...rest } = data;
     const vendorData = this.sanitizeVendorWriteData(rest);
     this.assertVendorIdentity(vendorData as { entityType?: string | null; identityNo?: string | null; taxNumber?: string | null });
-    const vendor = await this.prisma.vendor.create({
-      data: {
-        ...(vendorData as any),
-        ...(createdByUserId ? { createdByUserId } : {}),
-      },
-    });
+    await this.assertVendorIdentityUnique(
+      vendorData as { identityNo?: string | null; taxNumber?: string | null },
+    );
+
+    let vendor;
+    try {
+      vendor = await this.prisma.vendor.create({
+        data: {
+          ...(vendorData as any),
+          ...(createdByUserId ? { createdByUserId } : {}),
+        },
+      });
+    } catch (err) {
+      this.rethrowVendorUniqueConflict(err);
+      throw err;
+    }
 
     if (serviceAreas?.length) {
       await this.prisma.vendorServiceArea.createMany({
@@ -401,19 +525,13 @@ export class VendorsService {
       });
     }
 
-    if (this.partyAccounts && createdByUserId) {
-      try {
-        await this.partyAccounts.ensureVendorAccount({
-          vendorId: vendor.id,
-          userId: createdByUserId,
-          name: vendor.name,
-          cariRol: cariRol ?? 'tedarikci',
-        });
-      } catch (e) {
-        if (String(cariRol) === 'musteri_tedarikci') throw e;
-        /* tek roller cari sonradan ödemede açılır */
-      }
-    }
+    // Tedarikçi kaydı = masraf Ödeme Kaynağı listesinde görünür cari
+    await this.partyAccounts.ensureVendorAccount({
+      vendorId: vendor.id,
+      userId: createdByUserId || 'system',
+      name: vendor.name,
+      cariRol: cariRol ?? 'tedarikci',
+    });
 
     return this.findOne(vendor.id);
   }
@@ -427,8 +545,24 @@ export class VendorsService {
       identityNo: (vendorData.identityNo as string | null | undefined) ?? (existing as { identityNo?: string | null }).identityNo,
       taxNumber: (vendorData.taxNumber as string | null | undefined) ?? (existing as { taxNumber?: string | null }).taxNumber,
     });
+    await this.assertVendorIdentityUnique(
+      {
+        identityNo:
+          (vendorData.identityNo as string | null | undefined) ??
+          (existing as { identityNo?: string | null }).identityNo,
+        taxNumber:
+          (vendorData.taxNumber as string | null | undefined) ??
+          (existing as { taxNumber?: string | null }).taxNumber,
+      },
+      id,
+    );
 
-    await this.prisma.vendor.update({ where: { id }, data: vendorData as any });
+    try {
+      await this.prisma.vendor.update({ where: { id }, data: vendorData as any });
+    } catch (err) {
+      this.rethrowVendorUniqueConflict(err);
+      throw err;
+    }
 
     if (serviceAreas !== undefined) {
       await this.prisma.vendorServiceArea.deleteMany({ where: { vendorId: id } });
@@ -479,7 +613,15 @@ export class VendorsService {
       }
     }
 
-    return this.findOne(id);
+    const updated = await this.findOne(id);
+    await this.partyAccounts.ensureVendorAccount({
+      vendorId: id,
+      userId:
+        (existing as { createdByUserId?: string | null }).createdByUserId || 'system',
+      name: updated.name,
+      cariRol: (data as { cariRol?: unknown }).cariRol ?? 'tedarikci',
+    });
+    return updated;
   }
 
   async offerBankConfirmationWhatsapp(id: string, phone: string | undefined, userId: string) {
@@ -632,7 +774,35 @@ export class VendorsService {
     return { message: 'Tedarikçi silindi' };
   }
 
-  async checkDuplicate(field: 'phone' | 'email', value: string, excludeId?: string) {
+  async checkDuplicate(
+    field: 'phone' | 'email' | 'tc' | 'taxNumber',
+    value: string,
+    excludeId?: string,
+  ) {
+    if (field === 'tc' || field === 'taxNumber') {
+      const digits = normalizeVendorIdentityForSave(value);
+      if (!digits) return { exists: false };
+      const column = field === 'tc' ? 'identityNo' : 'taxNumber';
+      const vendorWhere: any = { [column]: digits };
+      if (excludeId) vendorWhere.id = { not: excludeId };
+      const vendorMatch = await this.prisma.vendor.findFirst({
+        where: vendorWhere,
+        select: { id: true, name: true, entityType: true },
+      });
+      if (vendorMatch) {
+        return {
+          exists: true,
+          existingRecord: {
+            id: vendorMatch.id,
+            name: vendorMatch.name,
+            entityType: vendorMatch.entityType,
+            sourceType: 'vendor' as const,
+          },
+        };
+      }
+      return { exists: false };
+    }
+
     // 1. Vendor tablosunda doğrudan alan kontrolü
     const vendorWhere: any = { [field]: value };
     if (excludeId) vendorWhere.id = { not: excludeId };

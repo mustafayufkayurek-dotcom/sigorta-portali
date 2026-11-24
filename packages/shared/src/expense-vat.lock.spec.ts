@@ -160,6 +160,10 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /masraf-kalem-satir-sil-/);
     assert.match(masraf, /masraf-yeni-cari/);
     assert.match(masraf, /masraf-kalem-satir-ekle/);
+    assert.match(masraf, /ensureVendors=1/);
+    assert.match(masraf, /mergeMasrafOdemeKaynaklari/);
+    assert.match(masraf, /ensure-vendor/);
+    assert.match(masraf, /totalPages/);
     assert.equal(
       (masraf.match(/tabIndex=\{-1\}/g) || []).length >= 8,
       true,

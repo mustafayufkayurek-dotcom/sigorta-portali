@@ -192,6 +192,8 @@ node --experimental-strip-types --test \
   apps/web/src/utils/vendor-region-proximity.lock.spec.ts \
   apps/web/src/utils/vendor-service-domains.lock.spec.ts \
   packages/shared/src/vendor-identity.lock.spec.ts \
+  packages/shared/src/upload-filename.lock.spec.ts \
+  packages/shared/src/masraf-odeme-kaynak.lock.spec.ts \
   apps/web/src/components/hasar-operasyon-planlayicisi/step-supplier-maket.lock.spec.ts \
   apps/web/src/app/panel/asistans-portal/_components/asistans-portal-role-gate.lock.spec.ts \
   apps/web/src/utils/emergency-cases-list.lock.spec.ts \

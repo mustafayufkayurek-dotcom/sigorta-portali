@@ -78,6 +78,11 @@ describe('Party accounts LOCK', () => {
     assert.match(svc, /postOdemeBorc/);
     assert.match(svc, /ensureCustomerAccount/);
     assert.match(svc, /ensureVendorAccount/);
+    assert.match(svc, /ensureMissingVendorCariler/);
+    assert.match(svc, /resolveActorUserId/);
+    assert.match(svc, /partyAccounts: \{ none: \{\} \}/);
+    assert.match(svc, /partyAccounts: \{ every: \{ isActive: false \} \}/);
+    assert.match(ctrl, /ensureVendors/);
     assert.match(svc, /ensureKarsiTarafCari/);
     assert.match(svc, /ensureVendorTwinForCustomer/);
     assert.match(svc, /ensureCustomerTwinForVendor/);
@@ -91,6 +96,13 @@ describe('Party accounts LOCK', () => {
     const vendorsSvc = readFileSync(join(here, '../vendors/vendors.service.ts'), 'utf8');
     assert.match(customersSvc, /cariRol/);
     assert.match(vendorsSvc, /cariRol/);
+    assert.match(vendorsSvc, /Inject\(forwardRef\(\(\) => PartyAccountsService\)\)/);
+    assert.match(vendorsSvc, /ensureVendorAccount/);
+    assert.doesNotMatch(
+      vendorsSvc,
+      /tek roller cari sonradan ödemede açılır/,
+      'Tedarikçi kaydında cari ertelenmez — masraf listesinde görünür',
+    );
     assert.match(customersSvc, /linkedVendorId/);
     assert.match(vendorsSvc, /linkedCustomerId/);
     assert.match(svc, /ensurePersonelAccount/);
@@ -194,7 +206,9 @@ describe('Party accounts LOCK', () => {
     assert.match(exp, /EXPENSE_PARTY_ACCOUNT_REQUIRED_MESSAGE/);
     const ctrl = readFileSync(join(here, 'party-accounts.controller.ts'), 'utf8');
     assert.match(ctrl, /ensure-vendor/);
+    assert.match(ctrl, /ensure-all-vendors/);
     assert.match(ctrl, /ensureVendorAccount/);
+    assert.match(ctrl, /ensureMissingVendorCariler/);
     const partyDto = readFileSync(join(here, 'dto/party-account.dto.ts'), 'utf8');
     assert.match(partyDto, /contactPhone/);
     assert.match(partyDto, /contactEmail/);

@@ -22,7 +22,12 @@ import { suggestAutoCode } from '@/utils/auto-code';
 import { computeAlphabeticSortOrder } from '@/utils/definition-sort-order';
 import { ACIKLAMA_YARDIM } from '@/utils/aciklama-yardim';
 import { formatTryAmount } from '@/utils/format-try-amount';
-import { financeOperationNo, resolveFinansIslemTarihiDonemDurum } from '@sigorta/shared';
+import {
+  financeOperationNo,
+  mergeMasrafOdemeKaynaklari,
+  parseMasrafPendingVendorId,
+  resolveFinansIslemTarihiDonemDurum,
+} from '@sigorta/shared';
 import { FinansTarihDonemUyariIkon } from '@/components/finance/FinansTarihDonemUyariIkon';
 import { pushFinansVerimlilikAnalizUyari } from '@/utils/finans-verimlilik-analiz-uyari';
 
@@ -72,8 +77,16 @@ export function ClaimFileExpenseFormPanel({
   const [expenseCategoryId, setExpenseCategoryId] = useState('');
   const [partyAccountId, setPartyAccountId] = useState('');
   const [partyAccounts, setPartyAccounts] = useState<
-    { id: string; name: string; kindLabel: string; linkedVendorId: string | null; cardLast4: string | null }[]
+    {
+      id: string;
+      name: string;
+      kindLabel: string;
+      linkedVendorId: string | null;
+      cardLast4: string | null;
+      pendingVendorId?: string;
+    }[]
   >([]);
+  const [odemeKaynakEnsuring, setOdemeKaynakEnsuring] = useState(false);
   const [showCariCreate, setShowCariCreate] = useState(false);
   const [cariOzetId, setCariOzetId] = useState<string | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<'group' | 'sub' | null>(null);
@@ -142,24 +155,83 @@ export function ClaimFileExpenseFormPanel({
   }, []);
 
   const loadPartyAccounts = useCallback(async () => {
-    const res = await axios.get(`${API}/finance/party-accounts`, { headers: authHeader() });
-    const rows = (res.data?.data ?? []) as Array<{
+    const paRes = await axios.get(`${API}/finance/party-accounts?ensureVendors=1`, {
+      headers: authHeader(),
+    });
+    const accounts = (paRes.data?.data ?? []) as Array<{
       id: string;
       name: string;
       kindLabel: string;
+      kind?: string;
       linkedVendorId?: string | null;
       cardLast4?: string | null;
     }>;
+
+    const vendors: Array<{ id: string; name: string; status?: string | null }> = [];
+    try {
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const vendorRes = await axios.get(`${API}/vendors`, {
+          headers: authHeader(),
+          params: { status: 'active', page, limit: 150 },
+        });
+        const batch = (vendorRes.data?.data ?? []) as Array<{
+          id: string;
+          name: string;
+          status?: string | null;
+        }>;
+        vendors.push(...batch);
+        const meta = vendorRes.data?.meta as { totalPages?: number } | undefined;
+        totalPages = Math.max(1, Number(meta?.totalPages) || 1);
+        page += 1;
+      } while (page <= totalPages && page <= 50);
+    } catch {
+      /* vendor.view yoksa yalnız cari listesi */
+    }
+
     setPartyAccounts(
-      rows.map((r) => ({
-        id: r.id,
-        name: r.name,
-        kindLabel: r.kindLabel,
-        linkedVendorId: r.linkedVendorId ?? null,
-        cardLast4: r.cardLast4 ?? null,
-      })),
+      mergeMasrafOdemeKaynaklari({
+        accounts: accounts.map((r) => ({
+          id: r.id,
+          name: r.name,
+          kindLabel: r.kindLabel,
+          kind: String(r.kind ?? ''),
+          linkedVendorId: r.linkedVendorId ?? null,
+          cardLast4: r.cardLast4 ?? null,
+        })),
+        vendors,
+      }),
     );
   }, []);
+
+  const handleOdemeKaynakChange = async (optionId: string) => {
+    const pendingVendorId = parseMasrafPendingVendorId(optionId);
+    if (!pendingVendorId) {
+      setPartyAccountId(optionId);
+      return;
+    }
+    setOdemeKaynakEnsuring(true);
+    setFormError('');
+    try {
+      const res = await axios.post(
+        `${API}/finance/party-accounts/ensure-vendor`,
+        { vendorId: pendingVendorId },
+        { headers: authHeader() },
+      );
+      const account = res.data?.data as { id?: string } | undefined;
+      await loadPartyAccounts();
+      if (!account?.id) {
+        setFormError('Tedarikçi carisi açılamadı.');
+        return;
+      }
+      setPartyAccountId(account.id);
+    } catch {
+      setFormError('Tedarikçi carisi açılamadı.');
+    } finally {
+      setOdemeKaynakEnsuring(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -847,9 +919,12 @@ export function ClaimFileExpenseFormPanel({
                 label: `${row.name} · ${row.kindLabel}`,
               }))}
               value={partyAccountId}
-              onChange={setPartyAccountId}
-              placeholder="Kredi kartı veya tedarikçi cari ara..."
-              emptyText="Cari bulunamadı — Yeni Cari ile açın"
+              onChange={(id) => { void handleOdemeKaynakChange(id); }}
+              disabled={odemeKaynakEnsuring}
+              placeholder="Kredi kartı veya tedarikçi ara..."
+              emptyText="Tedarikçi veya cari bulunamadı — Tedarikçiler’den kart açın"
+              loading={odemeKaynakEnsuring}
+              loadingText="Tedarikçi carisi açılıyor…"
             />
             <button
               type="button"

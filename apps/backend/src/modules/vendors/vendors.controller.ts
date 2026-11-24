@@ -28,11 +28,25 @@ export class VendorsController {
 
   @Get('check-duplicate')
   @RequirePermissions('vendor.view')
-  @ApiOperation({ summary: 'Telefon/e-posta çakışma kontrolü' })
-  async checkDuplicate(@Query('phone') phone: string, @Query('email') email: string, @Query('excludeId') excludeId: string) {
-    if (!phone && !email) throw new BadRequestException('phone veya email parametresi gerekli');
-    const field = phone ? 'phone' : 'email';
-    const value = phone ?? email;
+  @ApiOperation({ summary: 'Telefon / e-posta / TC / vergi no çakışma kontrolü' })
+  async checkDuplicate(
+    @Query('phone') phone: string,
+    @Query('email') email: string,
+    @Query('tc') tc: string,
+    @Query('taxNumber') taxNumber: string,
+    @Query('excludeId') excludeId: string,
+  ) {
+    if (!phone && !email && !tc && !taxNumber) {
+      throw new BadRequestException('phone, email, tc veya taxNumber parametresi gerekli');
+    }
+    const field = phone
+      ? 'phone'
+      : email
+        ? 'email'
+        : tc
+          ? 'tc'
+          : 'taxNumber';
+    const value = phone ?? email ?? tc ?? taxNumber;
     const data = await this.vendorsService.checkDuplicate(field, value, excludeId);
     return { success: true, data };
   }
@@ -110,7 +124,9 @@ export class VendorsController {
   @Get()
   @RequirePermissions('vendor.view')
   @ApiOperation({ summary: 'Tedarikçi listesi' })
-  async findAll(@Query() query: any) {
+  async findAll(@Query() query: any, @CurrentUser() user: any) {
+    // Aktif kartların carisi yoksa burada tamamlanır — masraf listesi boş kalmaz
+    await this.vendorsService.ensureActiveVendorCariler(user?.id);
     const result = await this.vendorsService.findAll(query);
     return { success: true, data: result.data, meta: result.meta };
   }

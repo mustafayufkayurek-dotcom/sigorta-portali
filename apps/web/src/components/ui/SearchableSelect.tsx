@@ -131,7 +131,7 @@ export function SearchableSelect({
           setHighlight(0);
         }}
         onFocus={(e) => {
-          setOpen(true);
+          // Tab ile odaklanınca liste açılmaz; tıklama / yazma / ok tuşu açar
           if (selectAllOnFocus) {
             const el = e.currentTarget;
             window.requestAnimationFrame(() => {
@@ -140,12 +140,20 @@ export function SearchableSelect({
           }
         }}
         onClick={(e) => {
+          if (!disabled) setOpen(true);
           if (selectAllOnFocus) {
             e.currentTarget.select();
           }
         }}
         onKeyDown={(e) => {
           if (disabled) return;
+          if (e.key === 'Tab') {
+            if (open) {
+              setOpen(false);
+              setQuery(displayLabel);
+            }
+            return;
+          }
           if (e.key === 'ArrowDown') {
             e.preventDefault();
             if (!open) {

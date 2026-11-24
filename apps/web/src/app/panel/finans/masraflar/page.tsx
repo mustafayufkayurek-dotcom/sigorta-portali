@@ -90,6 +90,8 @@ import {
   type ExpenseDocumentMode,
   type ExpenseLane,
   type MasrafGrupOzetSatir,
+  mergeMasrafOdemeKaynaklari,
+  parseMasrafPendingVendorId,
 } from '@sigorta/shared';
 import { financeIsoPeriod } from '@/utils/finans-merkez-kart';
 import { FinansTarihDonemUyariIkon } from '@/components/finance/FinansTarihDonemUyariIkon';
@@ -432,8 +434,17 @@ export default function MasraflarPage() {
   const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string }[]>([]);
   const [customerQuery, setCustomerQuery] = useState('');
   const [partyAccounts, setPartyAccounts] = useState<
-    { id: string; name: string; kindLabel: string; kind: string; linkedVendorId: string | null; cardLast4: string | null }[]
+    {
+      id: string;
+      name: string;
+      kindLabel: string;
+      kind: string;
+      linkedVendorId: string | null;
+      cardLast4: string | null;
+      pendingVendorId?: string;
+    }[]
   >([]);
+  const [odemeKaynakEnsuring, setOdemeKaynakEnsuring] = useState(false);
   const [showCariCreate, setShowCariCreate] = useState(false);
   const [cariOzetId, setCariOzetId] = useState<string | null>(null);
   const [lastSavedOpNo, setLastSavedOpNo] = useState('');
@@ -584,8 +595,10 @@ export default function MasraflarPage() {
   const loadPartyAccounts = useCallback(async () => {
     if (!getAccessToken()) return;
     try {
-      const res = await axios.get(`${API}/finance/party-accounts`, { headers: authHeader() });
-      const rows = (res.data?.data ?? []) as Array<{
+      const paRes = await axios.get(`${API}/finance/party-accounts?ensureVendors=1`, {
+        headers: authHeader(),
+      });
+      const accounts = (paRes.data?.data ?? []) as Array<{
         id: string;
         name: string;
         kindLabel: string;
@@ -593,20 +606,76 @@ export default function MasraflarPage() {
         linkedVendorId?: string | null;
         cardLast4?: string | null;
       }>;
+
+      // Tüm aktif tedarikçi kartları — sayfa sayfa; 20/500 tavanı kesmez
+      const vendors: Array<{ id: string; name: string; status?: string | null }> = [];
+      try {
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const vendorRes = await axios.get(`${API}/vendors`, {
+            headers: authHeader(),
+            params: { status: 'active', page, limit: 150 },
+          });
+          const batch = (vendorRes.data?.data ?? []) as Array<{
+            id: string;
+            name: string;
+            status?: string | null;
+          }>;
+          vendors.push(...batch);
+          const meta = vendorRes.data?.meta as { totalPages?: number } | undefined;
+          totalPages = Math.max(1, Number(meta?.totalPages) || 1);
+          page += 1;
+        } while (page <= totalPages && page <= 50);
+      } catch {
+        /* vendor.view yoksa yalnız cari listesi kalır */
+      }
+
       setPartyAccounts(
-        rows.map((r) => ({
-          id: r.id,
-          name: r.name,
-          kindLabel: r.kindLabel,
-          kind: String(r.kind ?? ''),
-          linkedVendorId: r.linkedVendorId ?? null,
-          cardLast4: r.cardLast4 ?? null,
-        })),
+        mergeMasrafOdemeKaynaklari({
+          accounts: accounts.map((r) => ({
+            id: r.id,
+            name: r.name,
+            kindLabel: r.kindLabel,
+            kind: String(r.kind ?? ''),
+            linkedVendorId: r.linkedVendorId ?? null,
+            cardLast4: r.cardLast4 ?? null,
+          })),
+          vendors,
+        }),
       );
     } catch {
       setPartyAccounts([]);
     }
   }, []);
+
+  const handleOdemeKaynakChange = async (optionId: string) => {
+    const pendingVendorId = parseMasrafPendingVendorId(optionId);
+    if (!pendingVendorId) {
+      setForm((f) => ({ ...f, partyAccountId: optionId }));
+      return;
+    }
+    setOdemeKaynakEnsuring(true);
+    setFormError('');
+    try {
+      const res = await axios.post(
+        `${API}/finance/party-accounts/ensure-vendor`,
+        { vendorId: pendingVendorId },
+        { headers: authHeader() },
+      );
+      const account = res.data?.data as { id?: string } | undefined;
+      await loadPartyAccounts();
+      if (!account?.id) {
+        setFormError('Tedarikçi carisi açılamadı. Tedarikçiler kartından kontrol edin.');
+        return;
+      }
+      setForm((f) => ({ ...f, partyAccountId: account.id! }));
+    } catch {
+      setFormError('Tedarikçi carisi açılamadı. Tedarikçiler kartından kontrol edin.');
+    } finally {
+      setOdemeKaynakEnsuring(false);
+    }
+  };
 
   useEffect(() => {
     void loadPartyAccounts();
@@ -2392,7 +2461,7 @@ export default function MasraflarPage() {
               <div className="md:col-span-2" data-testid="masraf-cari-kaynak">
                 <FieldLabel
                   className={fieldLabelCls}
-                  help="Ödemenin çıktığı kredi kartı veya tedarikçi cari. Yoksa Yeni Cari ile açılır."
+                  help="Ödemenin çıktığı kredi kartı veya tedarikçi. Aktif tedarikçi kartının carisi sistemde kendiliğinden açılır; ayrı cari formu gerekmez."
                 >
                   Ödeme Kaynağı (Cari) {requiredHint}
                 </FieldLabel>
@@ -2405,9 +2474,12 @@ export default function MasraflarPage() {
                       label: `${row.name} · ${row.kindLabel}`,
                     }))}
                     value={form.partyAccountId}
-                    onChange={(id) => setForm({ ...form, partyAccountId: id })}
-                    placeholder="Kredi kartı veya tedarikçi cari ara..."
-                    emptyText="Cari bulunamadı — Yeni Cari ile açın"
+                    onChange={(id) => { void handleOdemeKaynakChange(id); }}
+                    disabled={odemeKaynakEnsuring}
+                    placeholder="Kredi kartı veya tedarikçi ara..."
+                    emptyText="Tedarikçi veya cari bulunamadı — Tedarikçiler’den kart açın"
+                    loading={odemeKaynakEnsuring}
+                    loadingText="Tedarikçi carisi açılıyor…"
                   />
                   <button
                     type="button"
@@ -2419,9 +2491,13 @@ export default function MasraflarPage() {
                     + Yeni Cari
                   </button>
                 </div>
+                <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  Tedarikçiler’deki aktif kartlar burada listelenir. Carisi eksik kalanlar sistemde otomatik tamamlanır.
+                </p>
                 {(() => {
                   const selected = partyAccounts.find((row) => row.id === form.partyAccountId);
                   if (!selected) return null;
+                  const pending = Boolean(selected.pendingVendorId);
                   return (
                     <div
                       className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"
@@ -2432,8 +2508,10 @@ export default function MasraflarPage() {
                         <p className="text-xs text-slate-500">
                           {selected.kindLabel}
                           {selected.cardLast4 ? ` · ****${selected.cardLast4}` : ''}
+                          {pending ? ' · cari açılıyor' : ''}
                         </p>
                       </div>
+                      {!pending ? (
                       <div className="flex flex-wrap gap-2">
                         <Link
                           href={`/panel/finans/cariler/${encodeURIComponent(selected.id)}`}
@@ -2455,6 +2533,7 @@ export default function MasraflarPage() {
                           {cariOzetId === selected.id ? 'Cari Özeti Gizle' : 'Cari Kartı Aç'}
                         </button>
                       </div>
+                      ) : null}
                     </div>
                   );
                 })()}

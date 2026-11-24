@@ -52,11 +52,15 @@ export class PartyAccountsController {
     @Query('kind') kind?: string,
     @Query('q') q?: string,
     @Query('activeOnly') activeOnly?: string,
+    @Query('ensureVendors') ensureVendors?: string,
+    @Request() req?: any,
   ) {
     const data = await this.service.findAll({
       kind,
       q,
       activeOnly: activeOnly === 'false' ? false : true,
+      ensureVendors: ensureVendors === '1' || ensureVendors === 'true',
+      userId: req?.user?.id,
     });
     return { success: true, data };
   }
@@ -191,6 +195,18 @@ export class PartyAccountsController {
     });
     const data = await this.service.findOne(ensured.id);
     return { success: true, data };
+  }
+
+  @Post('ensure-all-vendors')
+  @RequirePermissions('payment.create', 'vendor.update')
+  @ApiOperation({
+    summary: 'Aktif tedarikçi kartlarında eksik carileri toplu açar',
+  })
+  async ensureAllVendors(@Request() req: any) {
+    const created = await this.service.ensureMissingVendorCariler(
+      req.user?.id ?? 'system',
+    );
+    return { success: true, data: { created } };
   }
 
   @Post()

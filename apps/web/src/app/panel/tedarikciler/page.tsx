@@ -854,7 +854,12 @@ export default function VendorsPage() {
 
   const [ibanError, setIbanError] = useState<string | null>(null);
   const [ibanWhatsappSending, setIbanWhatsappSending] = useState(false);
-  const [duplicateConflicts, setDuplicateConflicts] = useState<{ phone?: string; email?: string }>({});
+  const [duplicateConflicts, setDuplicateConflicts] = useState<{
+    phone?: string;
+    email?: string;
+    identityNo?: string;
+    taxNumber?: string;
+  }>({});
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
   const [vendorTypes, setVendorTypes] = useState<string[]>(() => [...DEFAULT_VENDOR_TYPES]);
@@ -1157,6 +1162,11 @@ export default function VendorsPage() {
       return;
     }
     setNumericErrors((p) => { const n = { ...p }; delete n[field]; return n; });
+    setDuplicateConflicts((prev) => {
+      const n = { ...prev };
+      delete n[field];
+      return n;
+    });
     if (field === 'taxNumber') { setForm((p) => ({ ...p, taxNumber: value })); setGibError(null); }
     else { setForm((p) => ({ ...p, identityNo: value })); setNviResult(null); }
   };
@@ -1352,6 +1362,47 @@ export default function VendorsPage() {
         setDuplicateConflicts((p) => { const n = { ...p }; delete n.email; return n; });
       }
     } catch { /* sessizce geç */ }
+  };
+
+  const handleIdentityDuplicateCheck = async (
+    field: 'identityNo' | 'taxNumber',
+    raw: string,
+  ) => {
+    const digits = String(raw ?? '').replace(/\D/g, '');
+    const minLen = field === 'identityNo' ? 11 : 10;
+    if (digits.length < minLen) {
+      setDuplicateConflicts((p) => {
+        const n = { ...p };
+        delete n[field];
+        return n;
+      });
+      return;
+    }
+    const excludeId = editVendor?.id;
+    try {
+      const params = new URLSearchParams(
+        field === 'identityNo' ? { tc: digits } : { taxNumber: digits },
+      );
+      if (excludeId) params.set('excludeId', excludeId);
+      const r = await axios.get(`${API}/vendors/check-duplicate?${params}`, {
+        headers: authHeader(),
+      });
+      const d = r.data.data;
+      if (d.exists) {
+        const label = field === 'identityNo' ? 'TC Kimlik No' : 'Vergi No';
+        const msg = `Bu ${label} zaten [${d.existingRecord.name}] kaydında mevcut. Aynı kimlikle ikinci tedarikçi açılamaz.`;
+        setDuplicateConflicts((p) => ({ ...p, [field]: msg }));
+        showToast('warning', msg);
+      } else {
+        setDuplicateConflicts((p) => {
+          const n = { ...p };
+          delete n[field];
+          return n;
+        });
+      }
+    } catch {
+      /* sessizce geç — kayıtta sunucu yine keser */
+    }
   };
 
   const loadServiceDistricts = async (provinceId: string) => {
@@ -1698,8 +1749,18 @@ export default function VendorsPage() {
       return;
     }
 
-    // Çakışma varsa onay modalı göster
-    if (Object.keys(duplicateConflicts).length > 0) {
+    // TC / vergi unique — «yine de kaydet» ile aşılmaz
+    if (duplicateConflicts.identityNo || duplicateConflicts.taxNumber) {
+      showToast(
+        'error',
+        duplicateConflicts.identityNo || duplicateConflicts.taxNumber || '',
+      );
+      setActiveSection(0);
+      return;
+    }
+
+    // Telefon / e-posta çakışmasında onay modalı
+    if (duplicateConflicts.phone || duplicateConflicts.email) {
       setShowDuplicateModal(true);
       return;
     }
@@ -1831,8 +1892,12 @@ export default function VendorsPage() {
         showToast('success', successMsg);
       }
     } catch (e: any) {
-      const msg = e?.response?.data?.message ?? e?.message ?? 'Bilinmeyen bir hata oluştu';
+      const raw = e?.response?.data?.message ?? e?.message ?? 'Bilinmeyen bir hata oluştu';
+      const msg = Array.isArray(raw) ? raw.join(' ') : String(raw);
       showToast('error', `İşlem başarısız: ${msg}`);
+      if (/TC Kimlik No|Vergi No|aynı kimlik/i.test(msg)) {
+        setActiveSection(0);
+      }
     } finally { setSaving(false); }
   };
 
@@ -2926,11 +2991,12 @@ export default function VendorsPage() {
                           </FormField>
                         </div>
                         <div className="col-span-1 sm:col-span-2">
-                        <FormField label="Vergi No" required error={fieldErrors.taxNumber}>
+                        <FormField label="Vergi No" required error={fieldErrors.taxNumber || duplicateConflicts.taxNumber}>
                           <div className="flex gap-2">
-                            <input className={`flex-1 border rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${numericErrors.taxNumber ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                            <input className={`flex-1 border rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${numericErrors.taxNumber || duplicateConflicts.taxNumber ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
                               placeholder="10 Haneli VKN" maxLength={10} value={form.taxNumber}
-                              onChange={(e) => handleNumericChange('taxNumber', e.target.value)} />
+                              onChange={(e) => handleNumericChange('taxNumber', e.target.value)}
+                              onBlur={() => { if (form.taxNumber.trim()) handleIdentityDuplicateCheck('taxNumber', form.taxNumber); }} />
                             <button type="button" onClick={handleGibQuery} disabled={gibLoading || !form.taxNumber}
                               className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap h-[38px]">
                               {gibLoading
@@ -2941,7 +3007,10 @@ export default function VendorsPage() {
                             </button>
                           </div>
                           {numericErrors.taxNumber && <p className="text-xs text-status-danger mt-1.5">⚠ {numericErrors.taxNumber}</p>}
-                          {!numericErrors.taxNumber && gibError && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {gibError}</p>}
+                          {!numericErrors.taxNumber && duplicateConflicts.taxNumber && (
+                            <p className="text-xs text-status-danger mt-1.5">⚠ {duplicateConflicts.taxNumber}</p>
+                          )}
+                          {!numericErrors.taxNumber && !duplicateConflicts.taxNumber && gibError && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {gibError}</p>}
                         </FormField>
                         </div>
                         <FormField label="Vergi Dairesi">
@@ -2970,11 +3039,15 @@ export default function VendorsPage() {
                         <FormField label="Soyad" required error={fieldErrors.lastName}>
                           <input className={fieldErrors.lastName ? inpError : inp} placeholder="Soyad" value={form.lastName} onChange={(e) => { setForm((p) => ({ ...p, lastName: e.target.value, name: `${p.firstName} ${e.target.value}`.trim() })); setFieldErrors((p) => { const n = { ...p }; delete n.lastName; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v, name: `${p.firstName} ${v}`.trim() })); }} />
                         </FormField>
-                        <FormField label="TC Kimlik No" error={fieldErrors.identityNo}>
-                          <input className={`${inp} ${numericErrors.identityNo ? 'border-red-400 bg-red-50 focus:ring-red-400/30' : ''}`}
+                        <FormField label="TC Kimlik No" error={fieldErrors.identityNo || duplicateConflicts.identityNo}>
+                          <input className={`${inp} ${numericErrors.identityNo || duplicateConflicts.identityNo ? 'border-red-400 bg-red-50 focus:ring-red-400/30' : ''}`}
                             placeholder="11 Haneli TC" maxLength={11} value={form.identityNo}
-                            onChange={(e) => handleNumericChange('identityNo', e.target.value)} />
+                            onChange={(e) => handleNumericChange('identityNo', e.target.value)}
+                            onBlur={() => { if (form.identityNo.trim()) handleIdentityDuplicateCheck('identityNo', form.identityNo); }} />
                           {numericErrors.identityNo && <p className="text-xs text-status-danger mt-1.5">⚠ {numericErrors.identityNo}</p>}
+                          {!numericErrors.identityNo && duplicateConflicts.identityNo && (
+                            <p className="text-xs text-status-danger mt-1.5">⚠ {duplicateConflicts.identityNo}</p>
+                          )}
                         </FormField>
                         <FormField label="Ad (NVI doğrulama için)">
                           <input className={inp} placeholder="Resmi Ad" value={form.firstName}

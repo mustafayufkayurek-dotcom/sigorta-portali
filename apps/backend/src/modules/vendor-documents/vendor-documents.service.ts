@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, InternalServerError
 import { PrismaService } from '@/prisma/prisma.service';
 import { StorageService } from '@/modules/storage/storage.service';
 import { ImageOptimizerService } from '@/modules/storage/image-optimizer.service';
+import { decodeMulterOriginalName } from '@sigorta/shared';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 
@@ -19,7 +20,7 @@ export class VendorDocumentsService {
     const vendor = await this.prisma.vendor.findUnique({ where: { id: vendorId } });
     if (!vendor) throw new NotFoundException('Tedarikçi bulunamadı');
 
-    const data = await this.prisma.vendorDocument.findMany({
+    const rows = await this.prisma.vendorDocument.findMany({
       where: { vendorId, status: 'active' },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -27,6 +28,11 @@ export class VendorDocumentsService {
         uploadedBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    const data = rows.map((row) => ({
+      ...row,
+      fileName: decodeMulterOriginalName(row.fileName),
+    }));
 
     return { data };
   }
@@ -83,14 +89,15 @@ export class VendorDocumentsService {
         await this.storage.upload(file.buffer, storageKey, file.mimetype);
       }
 
-      const ext = path.extname(file.originalname);
+      const safeFileName = decodeMulterOriginalName(file.originalname);
+      const ext = path.extname(safeFileName) || path.extname(file.originalname);
       const trimmedLabel = customLabel?.trim() || null;
       const data = await this.prisma.vendorDocument.create({
         data: {
           vendorId,
           documentTypeId,
           customLabel: trimmedLabel,
-          fileName: file.originalname,
+          fileName: safeFileName,
           fileExtension: ext,
           mimeType,
           fileSize,
@@ -117,7 +124,11 @@ export class VendorDocumentsService {
     if (!doc) throw new NotFoundException('Evrak bulunamadı');
 
     const url = await this.storage.getSignedUrl(doc.storageKey, expiresIn);
-    return { url, fileName: doc.fileName, mimeType: doc.mimeType };
+    return {
+      url,
+      fileName: decodeMulterOriginalName(doc.fileName),
+      mimeType: doc.mimeType,
+    };
   }
 
   async getFileBuffer(
@@ -130,7 +141,11 @@ export class VendorDocumentsService {
     const key = useThumb ? doc.thumbnailKey! : doc.storageKey;
     const buffer = await this.storage.download(key);
     const mimeType = useThumb ? 'image/webp' : doc.mimeType || 'application/octet-stream';
-    return { buffer, fileName: doc.fileName, mimeType };
+    return {
+      buffer,
+      fileName: decodeMulterOriginalName(doc.fileName),
+      mimeType,
+    };
   }
 
   async getThumbnailSignedUrl(id: string, expiresIn = 900): Promise<{ url: string }> {

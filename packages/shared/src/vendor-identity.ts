@@ -81,3 +81,25 @@ export function identityMatchesVendor(opts: {
   if (!tc) return 'ok';
   return extracted.tc.includes(tc) ? 'ok' : 'mismatch';
 }
+
+/** Kayıt öncesi / Prisma unique: personel ham hata görmez. */
+export function vendorUniqueIdentityConflictMessage(opts: {
+  field: 'identity_no' | 'tax_number' | 'identityNo' | 'taxNumber' | string;
+  existingName?: string | null;
+}): string {
+  const key = String(opts.field ?? '');
+  const label =
+    key === 'tax_number' || key === 'taxNumber' ? 'Vergi No' : 'TC Kimlik No';
+  const name = String(opts.existingName ?? '').trim();
+  return name
+    ? `Bu ${label} zaten «${name}» kaydında mevcut. Aynı kimlikle ikinci tedarikçi açılamaz.`
+    : `Bu ${label} zaten kayıtlı. Aynı kimlikle ikinci tedarikçi açılamaz.`;
+}
+
+/** Boş veya yalnız boşluk kimlik → null (unique çakışması doğurmaz). */
+export function normalizeVendorIdentityForSave(
+  value: string | null | undefined,
+): string | null {
+  const digits = digitsOnly(value);
+  return digits || null;
+}

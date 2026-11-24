@@ -839,7 +839,76 @@ export class PartyAccountsService {
     },
   } as const;
 
-  async findAll(query?: { kind?: string; q?: string; activeOnly?: boolean }) {
+  /** Cari create FK: gerçek kullanıcı; 'system' yoksa ilk hesap. */
+  private async resolveActorUserId(userId?: string | null): Promise<string> {
+    const raw = String(userId ?? '').trim();
+    if (raw && raw !== 'system') {
+      const hit = await this.prisma.user.findUnique({
+        where: { id: raw },
+        select: { id: true },
+      });
+      if (hit) return hit.id;
+    }
+    const first = await this.prisma.user.findFirst({
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    if (!first) {
+      throw new BadRequestException('Cari açacak kullanıcı bulunamadı');
+    }
+    return first.id;
+  }
+
+  /**
+   * Aktif tedarikçi kartı varken cari yoksa açar — masraf Ödeme Kaynağı listesi boş kalmaz.
+   * Tek kart hatası tüm listeyi düşürmez.
+   */
+  async ensureMissingVendorCariler(userId: string): Promise<number> {
+    const actorId = await this.resolveActorUserId(userId);
+    const missing = await this.prisma.vendor.findMany({
+      where: {
+        status: 'active',
+        OR: [
+          { partyAccounts: { none: {} } },
+          { partyAccounts: { every: { isActive: false } } },
+        ],
+      },
+      select: { id: true, name: true },
+      take: 500,
+      orderBy: { name: 'asc' },
+    });
+    let created = 0;
+    for (const vendor of missing) {
+      try {
+        await this.ensureVendorAccount({
+          vendorId: vendor.id,
+          userId: actorId,
+          name: vendor.name,
+          cariRol: 'tedarikci',
+        });
+        created += 1;
+      } catch {
+        /* tek kart — liste yine döner; seçimde ensure-vendor yeniden dener */
+      }
+    }
+    return created;
+  }
+
+  async findAll(query?: {
+    kind?: string;
+    q?: string;
+    activeOnly?: boolean;
+    ensureVendors?: boolean;
+    userId?: string;
+  }) {
+    if (query?.ensureVendors) {
+      try {
+        await this.ensureMissingVendorCariler(query.userId || 'system');
+      } catch {
+        /* ensure başarısız olsa da mevcut cariler listelenir */
+      }
+    }
+
     const where: Prisma.PartyAccountWhereInput = {};
     if (query?.activeOnly !== false) where.isActive = true;
     if (query?.kind && isCariTur(query.kind)) {
@@ -1249,10 +1318,11 @@ export class PartyAccountsService {
     if (role === 'musteri') {
       throw new BadRequestException('Tedarikçi kartında cari rol Müşteri olamaz');
     }
+    const userId = await this.resolveActorUserId(input.userId);
     return this.ensureKarsiTarafCari({
       role,
       vendorId: input.vendorId,
-      userId: input.userId,
+      userId,
       name: input.name,
     });
   }

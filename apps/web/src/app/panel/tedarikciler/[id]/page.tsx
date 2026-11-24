@@ -1,7 +1,7 @@
 'use client';
 
 import { API, authHeader } from '@/utils/api';
-import { PAYMENT_RECORD_ACCESS_MESSAGE } from '@sigorta/shared';
+import { displayUploadFilename, PAYMENT_RECORD_ACCESS_MESSAGE } from '@sigorta/shared';
 import { openSessionBlob } from '@/utils/pdf-preview-open';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
@@ -1186,7 +1186,7 @@ function DocPreviewModal({ doc, onClose }: { doc: any; onClose: () => void }) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-800 truncate">{doc.fileName}</p>
+            <p className="text-sm font-semibold text-slate-800 truncate">{displayUploadFilename(doc.fileName)}</p>
             {doc.documentType?.name && (
               <p className="text-xs text-slate-400 mt-0.5">{doc.documentType.name}</p>
             )}
@@ -1209,13 +1209,13 @@ function DocPreviewModal({ doc, onClose }: { doc: any; onClose: () => void }) {
           {isImage ? (
             <img
               src={downloadUrl}
-              alt={doc.fileName}
+              alt={displayUploadFilename(doc.fileName)}
               className="max-w-full max-h-full object-contain rounded-lg shadow-sm"
             />
           ) : isPdf ? (
             <iframe
               src={`${downloadUrl}#view=FitH`}
-              title={doc.fileName}
+              title={displayUploadFilename(doc.fileName)}
               className="w-full h-full min-h-[60vh] rounded-lg border border-slate-100"
             />
           ) : (
@@ -1223,7 +1223,7 @@ function DocPreviewModal({ doc, onClose }: { doc: any; onClose: () => void }) {
               <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <span className="text-slate-500 text-lg font-bold">{ext.toUpperCase() || 'DOC'}</span>
               </div>
-              <p className="text-sm font-medium text-slate-700 mb-1">{doc.fileName}</p>
+              <p className="text-sm font-medium text-slate-700 mb-1">{displayUploadFilename(doc.fileName)}</p>
               <p className="text-xs text-slate-400 mb-4">Bu dosya türü tarayıcıda önizlenemiyor.</p>
               <a href={downloadUrl} target="_blank" rel="noreferrer"
                 className="inline-flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-700 transition-colors font-medium">
@@ -1386,13 +1386,13 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
                     {/* Thumbnail or icon */}
                     <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {showThumb ? (
-                        <img src={downloadUrl} alt={doc.fileName} className="w-10 h-10 object-cover rounded-xl" />
+                        <img src={downloadUrl} alt={displayUploadFilename(doc.fileName)} className="w-10 h-10 object-cover rounded-xl" />
                       ) : (
                         <span className="text-brand-600 text-xs font-bold">{ext.toUpperCase() || 'DOC'}</span>
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{doc.fileName}</p>
+                      <p className="text-sm font-medium text-slate-800 truncate">{displayUploadFilename(doc.fileName)}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
                         <span className="bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded text-xs mr-1">
                           {doc.customLabel ?? doc.documentType?.name ?? doc.documentTypeName ?? '—'}
@@ -1423,7 +1423,7 @@ function EvraklarTab({ vendorId, vendorCategory }: { vendorId: string; vendorCat
                     </button>
                     <a href={downloadUrl} target="_blank" rel="noreferrer"
                       className="text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg transition-colors">İndir</a>
-                    <button type="button" onClick={() => handleDelete(doc.id, doc.fileName)}
+                    <button type="button" onClick={() => handleDelete(doc.id, displayUploadFilename(doc.fileName))}
                       className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg transition-colors">Sil</button>
                   </div>
                 </div>
