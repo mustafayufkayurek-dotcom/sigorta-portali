@@ -5,6 +5,7 @@
  * Bütçelenen veya ek iş seçilir; kâr ayrı ve toplu görünür.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { Trash2 } from 'lucide-react';
 import { FinanceRowActions, printFinanceSlip } from '@/components/finance/FinanceRowActions';
@@ -34,11 +35,16 @@ export function FileMasrafIsleme({
   supplierCostHint?: number | null;
   fileBased?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const [open, setOpen] = useState(() => searchParams.get('masraf') === '1');
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const canDelete = canDeleteClaimFinance();
   const { confirm, dialog } = usePanelConfirm();
+
+  useEffect(() => {
+    if (searchParams.get('masraf') === '1') setOpen(true);
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     setLoading(true);

@@ -7,13 +7,50 @@ import {
   type DocumentTypeScopeRow,
 } from './document-type-scope';
 
-export type VendorCategory = 'hasar' | 'acil' | 'her_ikisi';
+export type VendorCategory = 'hasar' | 'acil' | 'her_ikisi' | 'ofis';
 
-export const VENDOR_CATEGORIES: { value: VendorCategory; label: string }[] = [
+/** Hasar / Acil saha operasyonu — hakediş vadesi bu kapsamdadır. */
+export const VENDOR_OPERATION_CATEGORIES: { value: Exclude<VendorCategory, 'ofis'>; label: string }[] = [
   { value: 'hasar', label: 'Hasar Onarım' },
   { value: 'acil', label: 'Acil Yardım' },
   { value: 'her_ikisi', label: 'Hasar + Acil Yardım' },
 ];
+
+/** Geriye dönük: operasyon kategorileri (ofis hariç). */
+export const VENDOR_CATEGORIES = VENDOR_OPERATION_CATEGORIES;
+
+export type VendorScope = 'operasyon' | 'ofis';
+
+export function vendorScopeFromCategory(category: VendorCategory | string | null | undefined): VendorScope {
+  return String(category ?? '').trim() === 'ofis' ? 'ofis' : 'operasyon';
+}
+
+export function isVendorOfisCategory(category: VendorCategory | string | null | undefined): boolean {
+  return vendorScopeFromCategory(category) === 'ofis';
+}
+
+/** Hasar hakediş ödemesi için 15/30 gün — ofis / sabit hizmette sorulmaz. */
+export function vendorCategoryRequiresPaymentDue(
+  category: VendorCategory | string | null | undefined,
+): boolean {
+  return !isVendorOfisCategory(category);
+}
+
+/** Doğalgaz, internet gibi ofis / sabit hizmet türleri (1. sayfa). */
+export const OFIS_VENDOR_TYPE_QUICK_PICKS = [
+  'Doğalgaz',
+  'İnternet',
+  'Elektrik',
+  'Su',
+  'Telekom',
+  'Kira',
+] as const;
+
+export function parseVendorCategory(raw: unknown): VendorCategory {
+  const value = String(raw ?? '').trim();
+  if (value === 'acil' || value === 'her_ikisi' || value === 'ofis' || value === 'hasar') return value;
+  return 'hasar';
+}
 
 export type VendorDocumentTypeRow = DocumentTypeScopeRow & {
   /** Ayarlar → Evrak Türleri'nde seçilen departman(lar) — geriye dönük */
@@ -89,6 +126,13 @@ export function vendorCategoryShowsHasarKollari(category: VendorCategory): boole
 
 export function vendorCategoryShowsAcilKollari(category: VendorCategory): boolean {
   return category === 'acil' || category === 'her_ikisi';
+}
+
+/** Ofis / sabit hizmette saha hizmet bölgesi zorunlu değildir. */
+export function vendorCategoryRequiresServiceAreas(
+  category: VendorCategory | string | null | undefined,
+): boolean {
+  return !isVendorOfisCategory(category);
 }
 
 /** Tedarikçi türüne göre faaliyet notu placeholder */
@@ -192,6 +236,12 @@ export function vendorCategorySummary(category: VendorCategory): {
         hint: 'Her iki departmanın evrak türleri ve birleşik sözleşme bilgileri geçerlidir.',
         contractLabel: 'Sözleşme Bilgileri',
       };
+    case 'ofis':
+      return {
+        title: 'Ofis / sabit hizmet kapsamı',
+        hint: 'Doğalgaz, internet, elektrik gibi ofis gideri tedarikçileri. Hasar / Acil saha havuzuna girmez.',
+        contractLabel: 'Sözleşme Bilgileri',
+      };
     default:
       return {
         title: 'Hasar Onarım kapsamı',
@@ -234,6 +284,11 @@ export function contractSectionMeta(category: VendorCategory) {
         title: 'Sözleşme Bilgileri',
         hint: 'Hasar ve acil yardım hizmetlerini kapsayan anlaşma tarihleri.',
       };
+    case 'ofis':
+      return {
+        title: 'Sözleşme Bilgileri',
+        hint: 'Ofis / sabit hizmet anlaşması başlangıç ve bitiş tarihleri (opsiyonel).',
+      };
     default:
       return {
         title: 'Hasar Sözleşmesi',
@@ -265,7 +320,7 @@ export const VENDOR_FORM_SECTIONS = [
   'Temel Bilgiler',
   'Yetkili Kişiler',
   'Adres & Hizmet',
-  'İlişki Özeti & Finans',
+  'İlişki ve Finans',
   'Evraklar',
 ] as const;
 
@@ -360,4 +415,20 @@ export function vendorPhoneRequiredError(
 ): string | null {
   if (!phone.trim()) return 'Telefon alanı zorunludur';
   return customerPhoneValidationError(phone, phoneType);
+}
+
+/** Cari rol seçimine göre kısa yardım — doğrulama kurallarını anlatır, değiştirmez */
+export function vendorCariRolHelpText(opts: {
+  cariRol: 'tedarikci' | 'musteri_tedarikci';
+  entityType: 'corporate' | 'individual';
+}): string {
+  const cift = opts.cariRol === 'musteri_tedarikci';
+  if (cift) {
+    return opts.entityType === 'individual'
+      ? 'Çift rolde T.C. kimlik numarası zorunludur. Kart Müşteriler ve Tedarikçiler listelerinde durur.'
+      : 'Çift rolde vergi numarası zorunludur. Kart Müşteriler ve Tedarikçiler listelerinde durur.';
+  }
+  return opts.entityType === 'individual'
+    ? 'T.C. kimlik numarası opsiyoneldir. Kart yalnız Tedarikçiler listesinde durur.'
+    : 'Vergi numarası zorunludur. Kart yalnız Tedarikçiler listesinde durur.';
 }

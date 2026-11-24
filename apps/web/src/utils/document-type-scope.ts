@@ -114,6 +114,13 @@ export function documentTypeMatchesVendorCategory(
   const scope = doc.entityScope ?? 'vendor';
   if (scope === 'customer') return false;
 
+  // Ofis / sabit hizmet: Hasar–Acil kolu yok; genel tedarikçi evrakları açılır.
+  if (category === 'ofis') {
+    const branchTypes = deriveServiceBranchTypes(doc.serviceBranchTypes, doc.departmentIds, deptCodeById);
+    if (branchTypes.length === 0) return true;
+    return false;
+  }
+
   const branchTargets = vendorCategoryToBranchTypes(category);
   const branchTypes = deriveServiceBranchTypes(doc.serviceBranchTypes, doc.departmentIds, deptCodeById);
 

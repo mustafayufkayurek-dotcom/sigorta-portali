@@ -2404,7 +2404,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           }
         />
       </div>
-      <ReactQueryDevtools initialIsOpen={false} />
+      <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-left" />
       </NavigationGuardProvider>
       </PanelHelpDrawerProvider>
       </PanelUserProvider>

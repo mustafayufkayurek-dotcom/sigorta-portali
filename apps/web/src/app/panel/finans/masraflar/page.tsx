@@ -10,7 +10,12 @@ import {
   type ReactNode,
 } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  buildTedarikciAddFromHref,
+  readSelectVendorId,
+} from '@/utils/panel-return-bridge';
+import { saveMasrafFormDraft, takeMasrafFormDraft } from '@/utils/masraf-form-draft';
 import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';
 import { FieldLabel } from '@/components/ui/FieldHelpTip';
@@ -21,6 +26,10 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ExpenseFilePickerModal, type ExpensePickerHasarFile } from '@/components/finance/ExpenseFilePickerModal';
 import { CariHesapCreateModal } from '@/components/finance/CariHesapCreateModal';
 import { CariHesapOzetModal } from '@/components/finance/CariHesapOzetModal';
+import {
+  ExpenseDocumentReviewModal,
+  parseExpenseDocumentReviewFromError,
+} from '@/components/finance/ExpenseDocumentReviewModal';
 import { FinansSubpageBreadcrumb } from '@/components/finance/FinansSubpageBreadcrumb';
 import { FinansHedefBaglamSeridi } from '@/components/finance/FinansHedefBaglamSeridi';
 import {
@@ -88,9 +97,11 @@ import {
   splitGrossVat,
   sumSplitGrossVatLines,
   type ExpenseDocumentMode,
+  type ExpenseDocumentReviewPayload,
   type ExpenseLane,
   type MasrafGrupOzetSatir,
   mergeMasrafOdemeKaynaklari,
+  masrafPendingVendorOptionId,
   parseMasrafPendingVendorId,
 } from '@sigorta/shared';
 import { financeIsoPeriod } from '@/utils/finans-merkez-kart';
@@ -185,7 +196,7 @@ const EXPENSE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'documentNo', label: 'Belge No', defaultWidth: 88, minWidth: 72 },
   { id: 'description', label: 'Açıklama', defaultWidth: 180, minWidth: 120 },
   { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
-  { id: 'date', label: 'Tarih', defaultWidth: 96, minWidth: 88 },
+  { id: 'date', label: 'Tarih', defaultWidth: 120, minWidth: 110 },
   FINANS_ACTIONS_COLUMN,
 ];
 
@@ -352,7 +363,10 @@ const getFileDescription = (file: Record<string, unknown>) => {
 // ── Bileşen ───────────────────────────────────────────────────────────────────
 export default function MasraflarPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { confirm, dialog } = usePanelConfirm();
+  const bootYeniRef = useRef(searchParams.get('yeni') === '1');
+  const bootSelectVendorRef = useRef(readSelectVendorId(searchParams));
   // Veriler
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [files,    setFiles]    = useState<FileOption[]>([]);
@@ -403,6 +417,8 @@ export default function MasraflarPage() {
   // Form
   const [showForm,   setShowForm]   = useState(false);
   const [editId,     setEditId]     = useState<string | null>(null);
+  const [docReview, setDocReview] = useState<ExpenseDocumentReviewPayload | null>(null);
+  const [pendingSaveMode, setPendingSaveMode] = useState<'close' | 'new' | null>(null);
   const [form,       setForm]       = useState({ ...EMPTY_FORM });
   const [kalemSatirlari, setKalemSatirlari] = useState<MasrafKalemSatiri[]>(() => [
     newMasrafKalemSatiri(),
@@ -1321,7 +1337,10 @@ export default function MasraflarPage() {
   // ── Kaydet ─────────────────────────────────────────────────────────────────
   type SaveMode = 'close' | 'new';
 
-  const handleSave = async (mode: SaveMode = 'close') => {
+  const handleSave = async (
+    mode: SaveMode = 'close',
+    opts?: { documentConflictOverrideReason?: string },
+  ) => {
     setFormError('');
 
     if (!form.expenseLane) return setFormError('Masraf yolunu seçin.');
@@ -1388,6 +1407,9 @@ export default function MasraflarPage() {
         hasTaxDocument: hasTaxDocumentFromMode(form.documentMode),
         date: dateIso,
         receiptImageUrl: form.receiptImageUrl || undefined,
+        ...(opts?.documentConflictOverrideReason
+          ? { documentConflictOverrideReason: opts.documentConflictOverrideReason }
+          : {}),
       };
       let savedOpNo = '';
       if (editId) {
@@ -1427,6 +1449,8 @@ export default function MasraflarPage() {
           setLastSavedOpNo(savedOpNo);
         }
       }
+      setDocReview(null);
+      setPendingSaveMode(null);
 
       if (fileLane && form.fileCaseId) {
         const fileLabel =
@@ -1483,8 +1507,21 @@ export default function MasraflarPage() {
       }
       load();
     } catch (err: unknown) {
-      const msg = axios.isAxiosError(err) ? (err.response?.data?.message ?? 'Kayıt başarısız') : 'Kayıt başarısız';
-      setFormError(String(msg));
+      const review = parseExpenseDocumentReviewFromError(err);
+      if (review) {
+        setDocReview(review);
+        setPendingSaveMode(mode);
+        setFormError('');
+        return;
+      }
+      const raw = axios.isAxiosError(err) ? err.response?.data?.message : null;
+      const msg =
+        typeof raw === 'string'
+          ? raw
+          : raw && typeof raw === 'object' && 'message' in (raw as object)
+            ? String((raw as { message?: unknown }).message ?? 'Kayıt başarısız')
+            : 'Kayıt başarısız';
+      setFormError(msg);
     } finally {
       setSaving(false);
     }
@@ -1761,21 +1798,61 @@ export default function MasraflarPage() {
     setShowForm(true);
   };
 
-  /** Sabit Giderler → Masraf Ekle: form aynı sayfada açılır. */
+  /** Sabit Giderler / Tedarikçi dönüşü: form aynı sayfada açılır; taslak düşmez. */
   useEffect(() => {
-    if (searchParams.get('yeni') !== '1') return;
+    if (!bootYeniRef.current) return;
+    bootYeniRef.current = false;
+    const draft = takeMasrafFormDraft();
+    const selectVendorId = bootSelectVendorRef.current;
+    bootSelectVendorRef.current = null;
     setEditId(null);
-    setForm({ ...EMPTY_FORM });
-    setKalemSatirlari([newMasrafKalemSatiri()]);
+    if (draft?.form) {
+      setForm({ ...EMPTY_FORM, ...(draft.form as typeof EMPTY_FORM) });
+      if (Array.isArray(draft.kalemSatirlari) && draft.kalemSatirlari.length > 0) {
+        setKalemSatirlari(draft.kalemSatirlari as MasrafKalemSatiri[]);
+      } else {
+        setKalemSatirlari([newMasrafKalemSatiri()]);
+      }
+      setFileSearch(String(draft.fileSearch ?? ''));
+    } else {
+      setForm({ ...EMPTY_FORM });
+      setKalemSatirlari([newMasrafKalemSatiri()]);
+      setFileSearch('');
+    }
     setFormError('');
-    setFileSearch('');
     setFileLookup(null);
     setLastSavedOpNo('');
     setShowCariCreate(false);
     setCariOzetId(null);
     setAnalyticsOpen(false);
     setShowForm(true);
-  }, [searchParams]);
+    if (selectVendorId) {
+      void (async () => {
+        await loadPartyAccounts();
+        await handleOdemeKaynakChange(masrafPendingVendorOptionId(selectVendorId));
+      })();
+    }
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('selectVendorId');
+      window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnız ilk açılış / dönüş
+  }, []);
+
+  const openYeniTedarikciFromMasraf = () => {
+    saveMasrafFormDraft({
+      form: { ...form },
+      kalemSatirlari,
+      fileSearch,
+    });
+    router.push(
+      buildTedarikciAddFromHref({
+        returnTo: '/panel/finans/masraflar?yeni=1',
+        returnLabel: 'Masraf',
+      }),
+    );
+  };
 
   const closeExpenseForm = () => {
     setShowForm(false);
@@ -2490,9 +2567,18 @@ export default function MasraflarPage() {
                   >
                     + Yeni Cari
                   </button>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={openYeniTedarikciFromMasraf}
+                    className="shrink-0 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-800 hover:bg-brand-100"
+                    data-testid="masraf-yeni-tedarikci"
+                  >
+                    + Yeni Tedarikçi
+                  </button>
                 </div>
                 <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                  Tedarikçiler’deki aktif kartlar burada listelenir. Carisi eksik kalanlar sistemde otomatik tamamlanır.
+                  Tedarikçiler’deki aktif kartlar burada listelenir. Carisi eksik kalanlar sistemde otomatik tamamlanır. Yeni tedarikçi eklerken bu form yazıları korunur.
                 </p>
                 {(() => {
                   const selected = partyAccounts.find((row) => row.id === form.partyAccountId);
@@ -3215,6 +3301,64 @@ export default function MasraflarPage() {
         }}
       />
 
+      <ExpenseDocumentReviewModal
+        open={Boolean(docReview)}
+        review={docReview}
+        saving={saving}
+        onCancel={() => {
+          setDocReview(null);
+          setPendingSaveMode(null);
+        }}
+        onOpenExisting={async (expenseId) => {
+          setDocReview(null);
+          setPendingSaveMode(null);
+          const local = expenses.find((e) => e.id === expenseId);
+          if (local) {
+            handleEdit(local);
+            return;
+          }
+          try {
+            const res = await axios.get(`${API}/expenses/${expenseId}`, { headers: authHeader() });
+            const raw = res.data?.data ?? res.data;
+            if (!raw?.id) return;
+            const docs = parseMasrafDocumentFields({
+              description: String(raw.description ?? ''),
+              receiptDocumentType: raw.receiptDocumentType,
+              receiptDocumentNo: raw.receiptDocumentNo,
+            });
+            handleEdit({
+              id: String(raw.id),
+              createdAt: raw.createdAt,
+              fileCaseId: String(raw.fileCaseId ?? raw.fileCase?.id ?? ''),
+              fileNo: String(raw.fileCase?.fileNo ?? ''),
+              customerId: String(raw.customerId ?? ''),
+              customerName: expenseCustomerDisplayName(raw.customer ?? {}),
+              partyAccountId: String(raw.partyAccountId ?? ''),
+              expenseLane: expenseLaneFromSubject(raw.operationSubject),
+              expensePlan: String(raw.expensePlan ?? ''),
+              expenseGroupName: String(raw.expenseCategory?.parent?.name ?? raw.expenseGroup ?? ''),
+              expenseSubgroupName: String(raw.expenseCategory?.name ?? raw.expenseSubgroup ?? ''),
+              expenseCategoryId: String(raw.expenseCategoryId ?? ''),
+              expenseCategoryParentId: String(raw.expenseCategory?.parentId ?? ''),
+              documentType: docs.documentType,
+              documentNo: docs.documentNo,
+              description: docs.description || String(raw.description ?? ''),
+              amount: Number(raw.amount ?? 0),
+              vatRate: Number(raw.vatRate ?? 20),
+              hasTaxDocument: raw.hasTaxDocument !== false,
+              date: String(raw.date ?? '').slice(0, 10),
+              operationSubject: String(raw.operationSubject ?? ''),
+            } as Expense);
+          } catch {
+            setFormError('Mevcut masraf açılamadı.');
+          }
+        }}
+        onContinueWithReason={(reason) => {
+          const mode = pendingSaveMode ?? 'close';
+          void handleSave(mode, { documentConflictOverrideReason: reason });
+        }}
+      />
+
       {/* Filtreler */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex flex-wrap gap-3 items-center">
         {/* Kategori */}
@@ -3276,21 +3420,25 @@ export default function MasraflarPage() {
           ))}
         </select>
 
-        {/* Tarih aralığı */}
+        {/* Tarih aralığı — GG.AA.YYYY + takvim ikonu sığar */}
         <div className="flex items-center gap-2">
-          <TrDateInput
-            value={fDateFrom}
-            onChange={setFDateFrom}
-            className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 w-[7.5rem]"
-            aria-label="Başlangıç tarihi"
-          />
+          <div className="w-[11.5rem] shrink-0">
+            <TrDateInput
+              value={fDateFrom}
+              onChange={setFDateFrom}
+              className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+              aria-label="Başlangıç tarihi"
+            />
+          </div>
           <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
-          <TrDateInput
-            value={fDateTo}
-            onChange={setFDateTo}
-            className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 w-[7.5rem]"
-            aria-label="Bitiş tarihi"
-          />
+          <div className="w-[11.5rem] shrink-0">
+            <TrDateInput
+              value={fDateTo}
+              onChange={setFDateTo}
+              className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+              aria-label="Bitiş tarihi"
+            />
+          </div>
           {(fDateFrom || fDateTo) && (
             <button type="button" onClick={() => { setFDateFrom(''); setFDateTo(''); }}
               className="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300">Temizle</button>

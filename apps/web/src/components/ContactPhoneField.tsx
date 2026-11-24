@@ -12,6 +12,8 @@ interface ContactPhoneFieldProps {
   onPhoneTypeChange: (type: ContactPhoneType) => void;
   onExtensionChange: (value: string) => void;
   onPhoneBlur?: (value: string) => void;
+  /** Masraf / form paneli yoğunluğu: 36px satır. */
+  compact?: boolean;
 }
 
 export function ContactPhoneField({
@@ -22,13 +24,15 @@ export function ContactPhoneField({
   onPhoneTypeChange,
   onExtensionChange,
   onPhoneBlur,
+  compact = false,
 }: ContactPhoneFieldProps) {
   const mainPlaceholder = phoneType === 'landline' ? '212 123 4567' : '532 133 4144';
+  const rowH = compact ? 'h-9' : 'h-10';
 
   return (
     <div className="space-y-2 w-full min-w-0">
-      <div className="flex flex-wrap gap-1.5 items-stretch w-full min-w-0">
-        <span className="flex h-10 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400">
+      <div className="flex w-full min-w-0 flex-nowrap items-stretch gap-1.5">
+        <span className={`flex ${rowH} w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400`}>
           {phoneType === 'gsm' ? (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <rect x="5" y="2" width="14" height="20" rx="2" strokeWidth={1.8} />
@@ -41,7 +45,7 @@ export function ContactPhoneField({
           )}
         </span>
         <select
-          className="h-10 w-[6.75rem] flex-shrink-0 rounded-lg border border-slate-200 bg-white px-2 text-xs transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className={`${rowH} w-[5.25rem] shrink-0 rounded-lg border border-slate-200 bg-white px-1.5 text-xs transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
           value={phoneType}
           onChange={(e) => onPhoneTypeChange(e.target.value as ContactPhoneType)}
           aria-label="Telefon türü"
@@ -49,9 +53,9 @@ export function ContactPhoneField({
           <option value="gsm">GSM</option>
           <option value="landline">Sabit Hat</option>
         </select>
-        <div className="flex-1 min-w-0 basis-[min(100%,8rem)]">
+        <div className="min-w-0 flex-1">
           <PhoneInput
-            className="w-full min-w-0"
+            className={`w-full min-w-0 ${compact ? '!h-9' : ''}`}
             value={phone}
             onChange={onPhoneChange}
             onBlur={onPhoneBlur}
@@ -67,7 +71,7 @@ export function ContactPhoneField({
             inputMode="numeric"
             maxLength={5}
             placeholder="Örn: 1234"
-            className="h-10 w-24 rounded-lg border border-slate-200 px-2.5 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className={`${rowH} w-24 rounded-lg border border-slate-200 px-2.5 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
             value={extensionNo}
             onChange={(e) => onExtensionChange(e.target.value.replace(/\D/g, '').slice(0, 5))}
           />

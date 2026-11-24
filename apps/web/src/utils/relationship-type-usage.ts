@@ -90,6 +90,9 @@ export function relationshipTypeLabelsForVendorCategory(
   category: string | null | undefined,
 ): string[] {
   const value = String(category ?? '').trim();
+  if (value === 'ofis') {
+    return relationshipTypeLabelsForArea(types, 'tedarikci');
+  }
   if (value === 'her_ikisi') {
     const seen = new Set<string>();
     const labels: string[] = [];
@@ -191,6 +194,11 @@ export function ensureRelationshipVendorUsage(
 ): string[] {
   const current = (prev ?? []).filter((area) => area !== 'dosya');
   const value = String(category ?? '').trim();
+  if (value === 'ofis') {
+    const withoutChildren = current.filter((area) => !isRelationshipVendorChild(area));
+    if (withoutChildren.includes('tedarikci')) return withoutChildren;
+    return [...withoutChildren, 'tedarikci'];
+  }
   if (value === 'her_ikisi') {
     if (isRelationshipVendorParentOn(current) && !current.some((area) => isRelationshipVendorChild(area))) {
       return current;

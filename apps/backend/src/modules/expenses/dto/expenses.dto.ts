@@ -93,6 +93,54 @@ export class CreateExpenseDto {
   @IsInt()
   @Type(() => Number)
   weekNumber?: number;
+
+  /**
+   * Belge / dosya hakediş kontrol penceresinden «Farklı Belge — Devam» gerekçesi.
+   * Çakışma varken zorunlu; audit izine yazılır.
+   */
+  @IsOptional()
+  @IsString()
+  documentConflictOverrideReason?: string;
+
+  /** Acil dosya bağlamı — hakediş uyarısı için (opsiyonel; yoksa müşteri+tedarikçiden bulunur). */
+  @IsOptional()
+  @IsString()
+  emergencyCaseId?: string;
+}
+
+export class ExpenseDocumentReviewDto {
+  @IsOptional()
+  @IsBoolean()
+  hasTaxDocument?: boolean;
+
+  @IsOptional()
+  @IsString()
+  receiptDocumentNo?: string;
+
+  @IsOptional()
+  @IsString()
+  partyAccountId?: string;
+
+  @IsOptional()
+  @IsString()
+  fileCaseId?: string;
+
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
+  @IsOptional()
+  @IsString()
+  operationSubject?: string;
+
+  @IsOptional()
+  @IsString()
+  emergencyCaseId?: string;
+
+  /** Güncellemede kendi kaydı eşleşmeden düşer. */
+  @IsOptional()
+  @IsString()
+  excludeExpenseId?: string;
 }
 
 export class UpdateExpenseDto {
@@ -178,6 +226,14 @@ export class UpdateExpenseDto {
   @IsInt()
   @Type(() => Number)
   weekNumber?: number;
+
+  @IsOptional()
+  @IsString()
+  documentConflictOverrideReason?: string;
+
+  @IsOptional()
+  @IsString()
+  emergencyCaseId?: string;
 }
 
 export class ExpenseFilterDto {

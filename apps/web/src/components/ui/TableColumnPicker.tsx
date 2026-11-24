@@ -686,6 +686,12 @@ interface PanelTableThProps {
   draggable?: boolean;
 }
 
+const PANEL_TABLE_PIN_END_CLASS =
+  'sticky right-0 z-[2] border-l border-slate-200 bg-slate-50 shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)] dark:border-slate-700 dark:bg-slate-800';
+
+const PANEL_TABLE_PIN_END_TD_CLASS =
+  'sticky right-0 z-[2] border-l border-slate-100 bg-white shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)] dark:border-slate-700 dark:bg-slate-900';
+
 export function PanelTableTh({ colId, className = '', children, resizable = true, fitSamples, draggable = true }: PanelTableThProps) {
   const ctx = useTableColumnsCtx();
   if (ctx && !ctx.prefs.isVisible(colId)) return null;
@@ -693,8 +699,10 @@ export function PanelTableTh({ colId, className = '', children, resizable = true
     return <th className={`text-center ${className}`}>{children}</th>;
   }
   const meta = colMeta(ctx, colId);
-  const canDrag = draggable && meta?.pin !== 'end';
+  const pinnedEnd = meta?.pin === 'end';
+  const canDrag = draggable && !pinnedEnd;
   const dragProps = canDrag ? ctx.headerDragProps(colId) : undefined;
+  const pinClass = pinnedEnd ? PANEL_TABLE_PIN_END_CLASS : '';
   return (
     <ResizableTh
       colId={colId}
@@ -704,7 +712,7 @@ export function PanelTableTh({ colId, className = '', children, resizable = true
       fitLabel={meta?.label}
       fitSamples={fitSamples}
       onResize={ctx.widths.setWidth}
-      className={`${className} ${dragProps?.className ?? ''}`.trim()}
+      className={`${className} ${pinClass} ${dragProps?.className ?? ''}`.trim()}
       resizable={resizable && meta?.resizable !== false}
       dragProps={dragProps}
     >
@@ -728,6 +736,8 @@ export function PanelTableTd({ colId, className = '', children, title, align = '
   const ctx = useTableColumnsCtx();
   if (ctx && !ctx.prefs.isVisible(colId)) return null;
   const width = ctx?.widths.getWidth(colId);
+  const meta = ctx ? colMeta(ctx, colId) : undefined;
+  const pinnedEnd = meta?.pin === 'end';
   const alignClass =
     align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
   const innerClass =
@@ -742,9 +752,11 @@ export function PanelTableTd({ colId, className = '', children, title, align = '
       : 'truncate whitespace-nowrap';
   // Esnek kutuda ortalanan uzun metin iki yandan kesilir, «…» gelmez; kırpma iç satırda yapılır.
   const centeredTruncate = wrap !== true && align !== 'left';
+  const pinClass = pinnedEnd ? PANEL_TABLE_PIN_END_TD_CLASS : '';
+  const overflowClass = pinnedEnd ? 'overflow-visible' : 'overflow-hidden';
   return (
     <td
-      className={`max-w-0 overflow-hidden align-middle ${alignClass} ${className}`}
+      className={`max-w-0 align-middle ${overflowClass} ${alignClass} ${pinClass} ${className}`}
       style={width ? tableCellStyle(width) : undefined}
       title={title}
     >

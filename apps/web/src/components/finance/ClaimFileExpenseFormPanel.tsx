@@ -5,7 +5,16 @@
  * Dosya kilitli; kayıt /expenses API’sine gider.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
+import {
+  buildTedarikciAddFromHref,
+  readSelectVendorId,
+} from '@/utils/panel-return-bridge';
+import {
+  saveClaimFileExpenseDraft,
+  takeClaimFileExpenseDraft,
+} from '@/utils/masraf-form-draft';
 import { FileDropZone } from '@/components/ui/FileDropZone';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
@@ -14,6 +23,10 @@ import { SlidePanel } from '@/components/SlidePanel';
 import { ReceiptCameraModal, prefersNativeCameraCapture } from '@/components/ReceiptCameraModal';
 import { CariHesapCreateModal } from '@/components/finance/CariHesapCreateModal';
 import { CariHesapOzetModal } from '@/components/finance/CariHesapOzetModal';
+import {
+  ExpenseDocumentReviewModal,
+  parseExpenseDocumentReviewFromError,
+} from '@/components/finance/ExpenseDocumentReviewModal';
 import { API, authHeader } from '@/utils/api';
 import { normalizeTrDateValue, isCompleteTrDateValue } from '@/utils/tr-date-input';
 import { parseTrAmountInput, numberToTrAmountInput } from '@/utils/tr-amount-input';
@@ -25,8 +38,10 @@ import { formatTryAmount } from '@/utils/format-try-amount';
 import {
   financeOperationNo,
   mergeMasrafOdemeKaynaklari,
+  masrafPendingVendorOptionId,
   parseMasrafPendingVendorId,
   resolveFinansIslemTarihiDonemDurum,
+  type ExpenseDocumentReviewPayload,
 } from '@sigorta/shared';
 import { FinansTarihDonemUyariIkon } from '@/components/finance/FinansTarihDonemUyariIkon';
 import { pushFinansVerimlilikAnalizUyari } from '@/utils/finans-verimlilik-analiz-uyari';
@@ -71,6 +86,9 @@ export function ClaimFileExpenseFormPanel({
   embedded = false,
   allowExtraWorkPlan = false,
 }: ClaimFileExpenseFormPanelProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const openBootKeyRef = useRef('');
   const [expensePlan, setExpensePlan] = useState(PLAN_BUTCE);
   const [lastSavedOpNo, setLastSavedOpNo] = useState<string | null>(null);
   const [expenseCategoryParentId, setExpenseCategoryParentId] = useState('');
@@ -115,6 +133,8 @@ export function ClaimFileExpenseFormPanel({
   } | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [docReview, setDocReview] = useState<ExpenseDocumentReviewPayload | null>(null);
+  const [pendingSaveMode, setPendingSaveMode] = useState<'close' | 'new' | null>(null);
   const [metaLoading, setMetaLoading] = useState(false);
   const [metaError, setMetaError] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -235,7 +255,31 @@ export function ClaimFileExpenseFormPanel({
 
   useEffect(() => {
     if (!open) return;
-    resetForm();
+    const bootKey = `${claimFileId}:${open ? '1' : '0'}`;
+    if (!open) {
+      openBootKeyRef.current = '';
+      return;
+    }
+    if (openBootKeyRef.current === bootKey) return;
+    openBootKeyRef.current = bootKey;
+
+    const draft = takeClaimFileExpenseDraft(claimFileId);
+    if (draft) {
+      setExpensePlan(draft.expensePlan || PLAN_BUTCE);
+      setExpenseCategoryParentId(draft.expenseCategoryParentId || '');
+      setExpenseCategoryId(draft.expenseCategoryId || '');
+      setPartyAccountId(draft.partyAccountId || '');
+      setDescription(draft.description || '');
+      setDocumentType((draft.documentType as '' | 'Kasa Fişi' | 'Fatura') || '');
+      setDocumentNo(draft.documentNo || '');
+      setAmount(draft.amount || '');
+      setVatRate(draft.vatRate || '');
+      setDate(draft.date || new Date().toISOString().slice(0, 10));
+      setReceiptImageUrl(draft.receiptImageUrl || '');
+      setFormError('');
+    } else {
+      resetForm();
+    }
     let cancelled = false;
     setMetaLoading(true);
     setMetaError('');
@@ -274,6 +318,15 @@ export function ClaimFileExpenseFormPanel({
           setEligibility({ hasApprovedBudget: false, hasEkBudget: false });
           setBudgetHint(null);
         }
+        const pendingVendor = readSelectVendorId(searchParams);
+        if (pendingVendor) {
+          await handleOdemeKaynakChange(masrafPendingVendorOptionId(pendingVendor));
+          if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('selectVendorId');
+            window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+          }
+        }
       } catch (err: unknown) {
         if (!cancelled) {
           setCategoryTree([]);
@@ -290,7 +343,8 @@ export function ClaimFileExpenseFormPanel({
       }
     })();
     return () => { cancelled = true; };
-  }, [open, claimFileId, resetForm, loadCategories, loadPartyAccounts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open açılışında bir kez
+  }, [open, claimFileId, resetForm, loadCategories, loadPartyAccounts, searchParams]);
 
   const parentNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -520,7 +574,10 @@ export function ClaimFileExpenseFormPanel({
     setShowCameraModal(true);
   };
 
-  const handleSave = async (mode: 'close' | 'new') => {
+  const handleSave = async (
+    mode: 'close' | 'new',
+    opts?: { documentConflictOverrideReason?: string },
+  ) => {
     setFormError('');
     if (!formCanSave) {
       setFormError(formSaveBlockers[0] ?? 'Eksik alanlar var.');
@@ -530,9 +587,8 @@ export function ClaimFileExpenseFormPanel({
     if (masrafAmounts.gross <= 0 || !dateIso) return;
 
     const descParts: string[] = [];
-    if (documentType) descParts.push(documentType);
-    if (documentNo.trim()) descParts.push(`Belge No: ${documentNo.trim()}`);
     if (description.trim()) descParts.push(toTitleCaseTR(description.trim()));
+    const hasDoc = Boolean(documentType || documentNo.trim());
 
     setSaving(true);
     try {
@@ -548,11 +604,19 @@ export function ClaimFileExpenseFormPanel({
           amount: masrafAmounts.gross,
           vatRate: masrafAmounts.rate,
           vatIncluded: true,
+          hasTaxDocument: hasDoc,
+          receiptDocumentType: documentType || null,
+          receiptDocumentNo: documentNo.trim() || null,
           date: dateIso,
           receiptImageUrl: receiptImageUrl || undefined,
+          ...(opts?.documentConflictOverrideReason
+            ? { documentConflictOverrideReason: opts.documentConflictOverrideReason }
+            : {}),
         },
         { headers: authHeader() },
       );
+      setDocReview(null);
+      setPendingSaveMode(null);
       const createdId = created.data?.id ?? created.data?.data?.id;
       if (createdId) {
         setLastSavedOpNo(financeOperationNo('MSF', createdId, created.data?.createdAt ?? created.data?.data?.createdAt ?? dateIso));
@@ -574,8 +638,19 @@ export function ClaimFileExpenseFormPanel({
         onClose();
       }
     } catch (err: unknown) {
-      const msg = axios.isAxiosError(err) ? (err.response?.data?.message ?? 'Kayıt başarısız') : 'Kayıt başarısız';
-      setFormError(String(msg));
+      const review = parseExpenseDocumentReviewFromError(err);
+      if (review) {
+        setDocReview(review);
+        setPendingSaveMode(mode);
+        setFormError('');
+        return;
+      }
+      const raw = axios.isAxiosError(err) ? err.response?.data?.message : null;
+      const msg =
+        typeof raw === 'string'
+          ? raw
+          : 'Kayıt başarısız';
+      setFormError(msg);
     } finally {
       setSaving(false);
     }
@@ -934,6 +1009,35 @@ export function ClaimFileExpenseFormPanel({
             >
               + Yeni Cari
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                saveClaimFileExpenseDraft({
+                  claimFileId,
+                  expensePlan,
+                  expenseCategoryParentId,
+                  expenseCategoryId,
+                  partyAccountId,
+                  description,
+                  documentType,
+                  documentNo,
+                  amount,
+                  vatRate,
+                  date,
+                  receiptImageUrl,
+                });
+                router.push(
+                  buildTedarikciAddFromHref({
+                    returnTo: `/panel/hasar-dosyalari/${encodeURIComponent(claimFileId)}?grup=finans&alt=gider-butce&masraf=1`,
+                    returnLabel: 'Dosya Masrafı',
+                  }),
+                );
+              }}
+              className="shrink-0 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-800 hover:bg-brand-100"
+              data-testid="dosya-masraf-yeni-tedarikci"
+            >
+              + Yeni Tedarikçi
+            </button>
           </div>
           {selectedParty ? (
             <div
@@ -1084,6 +1188,26 @@ export function ClaimFileExpenseFormPanel({
             setPartyAccountId(account.id);
             setFormError('');
           });
+        }}
+      />
+
+      <ExpenseDocumentReviewModal
+        open={Boolean(docReview)}
+        review={docReview}
+        saving={saving}
+        onCancel={() => {
+          setDocReview(null);
+          setPendingSaveMode(null);
+        }}
+        onOpenExisting={() => {
+          setDocReview(null);
+          setPendingSaveMode(null);
+          onClose();
+          router.push('/panel/finans/masraflar');
+        }}
+        onContinueWithReason={(reason) => {
+          const mode = pendingSaveMode ?? 'close';
+          void handleSave(mode, { documentConflictOverrideReason: reason });
         }}
       />
     </>

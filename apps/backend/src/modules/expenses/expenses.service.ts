@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   forwardRef,
@@ -9,7 +10,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuditLogsService } from '@/modules/audit-logs/audit-logs.service';
-import { CreateExpenseDto, UpdateExpenseDto, ExpenseFilterDto } from './dto/expenses.dto';
+import {
+  CreateExpenseDto,
+  UpdateExpenseDto,
+  ExpenseFilterDto,
+  ExpenseDocumentReviewDto,
+} from './dto/expenses.dto';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 import { v4 as uuidv4 } from 'uuid';
@@ -41,6 +47,14 @@ import {
   parseExpenseLane,
   type ExpenseLane,
   parseClaimServiceKind,
+  buildExpenseDocumentReviewPayload,
+  expenseDocumentNosMatch,
+  financeOperationNo,
+  isValidExpenseDocumentOverrideReason,
+  shouldReviewExpenseDocument,
+  EXPENSE_SUBJECT_ASISTANS,
+  type ExpenseDocumentDuplicateRow,
+  type ExpenseFileHakedisWarning,
 } from '@sigorta/shared';
 import {
   assertClaimFileAccess,
@@ -852,6 +866,233 @@ export class ExpensesService {
       }));
   }
 
+  /**
+   * Belge no (25≡025) + Hasar/Acil dosya hakediş uyarısı.
+   * Kayıt yazmaz; UI penceresi ve create kapısı aynı sonucu kullanır.
+   */
+  async evaluateExpenseDocumentReview(dto: ExpenseDocumentReviewDto): Promise<{
+    needsReview: boolean;
+    review: ReturnType<typeof buildExpenseDocumentReviewPayload>;
+  }> {
+    const documentDuplicates: ExpenseDocumentDuplicateRow[] = [];
+    const hakedisWarnings: ExpenseFileHakedisWarning[] = [];
+
+    const partyAccountId = hasExpensePartyAccountId(dto.partyAccountId)
+      ? String(dto.partyAccountId).trim()
+      : '';
+    let linkedVendorId: string | null = null;
+    let vendorName = '';
+    if (partyAccountId) {
+      const account = await this.prisma.partyAccount.findFirst({
+        where: { id: partyAccountId, isActive: true },
+        select: {
+          id: true,
+          linkedVendorId: true,
+          name: true,
+          vendor: { select: { id: true, name: true } },
+        },
+      });
+      linkedVendorId = account?.linkedVendorId ?? account?.vendor?.id ?? null;
+      vendorName = account?.vendor?.name?.trim() || account?.name?.trim() || '';
+    }
+
+    if (
+      shouldReviewExpenseDocument({
+        hasTaxDocument: dto.hasTaxDocument,
+        receiptDocumentNo: dto.receiptDocumentNo,
+      })
+      && partyAccountId
+    ) {
+      const candidates = await this.prisma.expense.findMany({
+        where: {
+          partyAccountId,
+          hasTaxDocument: true,
+          receiptDocumentNo: { not: null },
+          ...(dto.excludeExpenseId ? { id: { not: dto.excludeExpenseId } } : {}),
+        },
+        select: {
+          id: true,
+          receiptDocumentNo: true,
+          receiptDocumentType: true,
+          amount: true,
+          date: true,
+          description: true,
+          createdAt: true,
+          fileCase: { select: { fileNo: true } },
+          customer: {
+            select: {
+              shortName: true,
+              companyName: true,
+              fullName: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+        orderBy: { date: 'desc' },
+        take: 200,
+      });
+      for (const row of candidates) {
+        if (!expenseDocumentNosMatch(dto.receiptDocumentNo, row.receiptDocumentNo)) continue;
+        const customerName = row.customer ? expenseCustomerDisplayName(row.customer) : null;
+        documentDuplicates.push({
+          id: row.id,
+          receiptDocumentNo: row.receiptDocumentNo,
+          receiptDocumentType: row.receiptDocumentType,
+          amount: Number(row.amount),
+          date: row.date.toISOString().slice(0, 10),
+          fileNo: row.fileCase?.fileNo ?? null,
+          customerName,
+          operationNo: financeOperationNo('MSF', row.id, row.createdAt),
+          description: row.description,
+        });
+      }
+    }
+
+    if (linkedVendorId) {
+      const fileCaseId = String(dto.fileCaseId ?? '').trim();
+      if (fileCaseId) {
+        const items = await this.prisma.vendorStatementItem.findMany({
+          where: {
+            claimFileId: fileCaseId,
+            statement: { vendorId: linkedVendorId },
+          },
+          select: {
+            totalAmount: true,
+            claimFile: { select: { id: true, fileNo: true } },
+            statement: {
+              select: {
+                id: true,
+                createdAt: true,
+                vendor: { select: { name: true } },
+              },
+            },
+            vendorPayments: { select: { id: true, status: true }, take: 5 },
+            payment: { select: { id: true, status: true } },
+          },
+          take: 20,
+        });
+        if (items.length > 0) {
+          const amount = items.reduce((s, i) => s + Number(i.totalAmount ?? 0), 0);
+          const paid = items.some(
+            (i) =>
+              i.payment?.status === 'completed'
+              || i.vendorPayments.some((p) => p.status === 'completed'),
+          );
+          hakedisWarnings.push({
+            kind: 'hasar',
+            fileId: items[0].claimFile.id,
+            fileNo: items[0].claimFile.fileNo || fileCaseId,
+            vendorName: items[0].statement.vendor?.name?.trim() || vendorName || 'Tedarikçi',
+            amount,
+            grantedAt: items[0].statement.createdAt?.toISOString() ?? null,
+            paid,
+          });
+        }
+      }
+
+      const lane = expenseLaneFromSubject(dto.operationSubject);
+      const emergencyCaseId = String(dto.emergencyCaseId ?? '').trim();
+      const customerId = String(dto.customerId ?? '').trim();
+      const lookAcil =
+        Boolean(emergencyCaseId)
+        || lane === 'asistans'
+        || String(dto.operationSubject ?? '').trim() === EXPENSE_SUBJECT_ASISTANS;
+
+      if (lookAcil) {
+        const entitlements = await this.prisma.emergencyVendorEntitlement.findMany({
+          where: {
+            vendorId: linkedVendorId,
+            ...(emergencyCaseId ? { caseId: emergencyCaseId } : {}),
+            ...(!emergencyCaseId && customerId
+              ? { case: { customerId } }
+              : {}),
+          },
+          select: {
+            amount: true,
+            grantedAt: true,
+            case: {
+              select: {
+                id: true,
+                caseNo: true,
+                fileNo: true,
+                vendorPaid: true,
+              },
+            },
+            vendor: { select: { name: true } },
+          },
+          orderBy: { grantedAt: 'desc' },
+          take: 10,
+        });
+        for (const ent of entitlements) {
+          hakedisWarnings.push({
+            kind: 'acil',
+            fileId: ent.case.id,
+            fileNo: ent.case.fileNo?.trim() || ent.case.caseNo,
+            vendorName: ent.vendor?.name?.trim() || vendorName || 'Tedarikçi',
+            amount: Number(ent.amount),
+            grantedAt: ent.grantedAt?.toISOString() ?? null,
+            paid: ent.case.vendorPaid,
+          });
+        }
+      }
+    }
+
+    const review = buildExpenseDocumentReviewPayload({ documentDuplicates, hakedisWarnings });
+    return {
+      needsReview: Boolean(review),
+      review,
+    };
+  }
+
+  private async assertExpenseDocumentDiscipline(
+    input: {
+      hasTaxDocument?: boolean | null;
+      receiptDocumentNo?: string | null;
+      partyAccountId?: string | null;
+      fileCaseId?: string | null;
+      customerId?: string | null;
+      operationSubject?: string | null;
+      emergencyCaseId?: string | null;
+      excludeExpenseId?: string | null;
+      documentConflictOverrideReason?: string | null;
+    },
+    userId: string,
+    entityIdForAudit?: string,
+  ): Promise<void> {
+    const { needsReview, review } = await this.evaluateExpenseDocumentReview({
+      hasTaxDocument: input.hasTaxDocument ?? undefined,
+      receiptDocumentNo: input.receiptDocumentNo ?? undefined,
+      partyAccountId: input.partyAccountId ?? undefined,
+      fileCaseId: input.fileCaseId ?? undefined,
+      customerId: input.customerId ?? undefined,
+      operationSubject: input.operationSubject ?? undefined,
+      emergencyCaseId: input.emergencyCaseId ?? undefined,
+      excludeExpenseId: input.excludeExpenseId ?? undefined,
+    });
+    if (!needsReview || !review) return;
+
+    const reason = String(input.documentConflictOverrideReason ?? '').trim();
+    if (!isValidExpenseDocumentOverrideReason(reason)) {
+      throw new ConflictException(review);
+    }
+
+    this.auditLogsService.log({
+      entityType: 'Expense',
+      entityId: entityIdForAudit || 'pending',
+      action: 'DOCUMENT_CONFLICT_OVERRIDE',
+      newValue: {
+        reason,
+        receiptDocumentNo: input.receiptDocumentNo,
+        partyAccountId: input.partyAccountId,
+        fileCaseId: input.fileCaseId,
+        emergencyCaseId: input.emergencyCaseId,
+        review,
+      },
+      userId,
+    });
+  }
+
   async create(
     dto: CreateExpenseDto,
     userId: string,
@@ -944,23 +1185,42 @@ export class ExpensesService {
       if (!account) throw new BadRequestException('Seçilen cari hesap bulunamadı.');
     }
 
+    const nextFileCaseId = isOverheadPool || customerLane || hariciLane ? null : (dto.fileCaseId ?? null);
+    const nextCustomerId = customerLane ? (dto.customerId ?? null) : null;
+    const nextHasTax = dto.hasTaxDocument !== false;
+    const nextDocNo = dto.receiptDocumentNo?.trim() || null;
+
+    await this.assertExpenseDocumentDiscipline(
+      {
+        hasTaxDocument: nextHasTax,
+        receiptDocumentNo: nextDocNo,
+        partyAccountId,
+        fileCaseId: nextFileCaseId,
+        customerId: nextCustomerId,
+        operationSubject: dto.operationSubject,
+        emergencyCaseId: dto.emergencyCaseId,
+        documentConflictOverrideReason: dto.documentConflictOverrideReason,
+      },
+      userId,
+    );
+
     const created = await this.prisma.expense.create({
       data: {
         date,
         amount: dto.amount,
         vatRate: dto.vatRate ?? 20,
         vatIncluded: dto.vatIncluded ?? true,
-        hasTaxDocument: dto.hasTaxDocument !== false,
+        hasTaxDocument: nextHasTax,
         receiptDocumentType: dto.receiptDocumentType?.trim() || null,
-        receiptDocumentNo: dto.receiptDocumentNo?.trim() || null,
+        receiptDocumentNo: nextDocNo,
         description: normalizeMasrafAciklamaForSave(dto.description ?? '') || dto.description,
         expenseGroup: groupFields.expenseGroup as any,
         expenseSubgroup: groupFields.expenseSubgroup,
         expenseCategoryId: groupFields.expenseCategoryId,
         expensePlan: isOverheadPool || customerLane || hariciLane ? null : (dto.expensePlan as any ?? null),
         operationSubject: dto.operationSubject as any ?? null,
-        fileCaseId: isOverheadPool || customerLane || hariciLane ? null : (dto.fileCaseId ?? null),
-        customerId: customerLane ? (dto.customerId ?? null) : null,
+        fileCaseId: nextFileCaseId,
+        customerId: nextCustomerId,
         partyAccountId,
         isOverheadPool,
         receiptImageUrl: dto.receiptImageUrl ?? null,
@@ -1100,6 +1360,34 @@ export class ExpensesService {
     } else if (!previousPartyId) {
       throw new BadRequestException(EXPENSE_PARTY_ACCOUNT_REQUIRED_MESSAGE);
     }
+
+    const reviewHasTax =
+      dto.hasTaxDocument !== undefined
+        ? dto.hasTaxDocument
+        : Boolean((previous as { hasTaxDocument?: boolean }).hasTaxDocument !== false);
+    const reviewDocNo =
+      dto.receiptDocumentNo !== undefined
+        ? (dto.receiptDocumentNo?.trim() || null)
+        : ((previous as { receiptDocumentNo?: string | null }).receiptDocumentNo ?? null);
+
+    await this.assertExpenseDocumentDiscipline(
+      {
+        hasTaxDocument: reviewHasTax,
+        receiptDocumentNo: reviewDocNo,
+        partyAccountId: nextPartyId,
+        fileCaseId: nextFileCaseId,
+        customerId: nextCustomerId,
+        operationSubject:
+          dto.operationSubject !== undefined
+            ? dto.operationSubject
+            : (previous as { operationSubject?: string | null }).operationSubject,
+        emergencyCaseId: dto.emergencyCaseId,
+        excludeExpenseId: id,
+        documentConflictOverrideReason: dto.documentConflictOverrideReason,
+      },
+      _userId,
+      id,
+    );
 
     const updated = await this.prisma.expense.update({
       where: { id },

@@ -9,11 +9,12 @@ import { describe, it } from 'node:test';
 const webRoot = join(import.meta.dirname, '../..');
 
 describe('SlidePanel alt tuş LOCK', () => {
-  it('çekmece yüksekliği görünür ekranı aşmaz (svh)', () => {
+  it('çekmece yüksekliği görünür ekranı aşmaz (inset + dvh; space-y margin yok)', () => {
     const panel = readFileSync(join(webRoot, 'src/components/SlidePanel.tsx'), 'utf8');
-    assert.match(panel, /h-\[100svh\]/);
-    assert.match(panel, /max-h-\[100svh\]/);
-    assert.doesNotMatch(panel, /h-\[100dvh\]/);
+    assert.match(panel, /inset-y-0/);
+    assert.match(panel, /!mt-0/);
+    assert.match(panel, /max-h-\[100dvh\]/);
+    assert.doesNotMatch(panel, /h-\[100svh\]/);
     assert.match(panel, /data-testid="slide-panel-shell"/);
   });
 

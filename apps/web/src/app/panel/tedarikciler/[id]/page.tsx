@@ -32,6 +32,7 @@ import {
   VENDOR_DOC_OTHER_SELECT,
   VENDOR_RELATION_SECTION_TITLE,
   formatVendorTypeLabel,
+  parseVendorCategory,
   vendorIdentityGapLabel,
   type VendorCategory,
   type VendorDocumentTypeRow,
@@ -177,11 +178,13 @@ function VendorBankConfirmationCard({
         <InfoRow
           label="Hakediş Ödeme Vadesi"
           value={
-            vendor.paymentDueDays === 15 || vendor.paymentDueDays === 30
-              ? `${vendor.paymentDueDays} Gün`
-              : (
-                <span className="font-medium text-amber-700">Seçilmedi — kartı güncelleyin</span>
-              )
+            vendor.category === 'ofis'
+              ? 'Ofis / sabit hizmet — uygulanmaz'
+              : vendor.paymentDueDays === 15 || vendor.paymentDueDays === 30
+                ? `${vendor.paymentDueDays} Gün`
+                : (
+                  <span className="font-medium text-amber-700">Seçilmedi — kartı güncelleyin</span>
+                )
           }
         />
         <InfoRow
@@ -189,11 +192,15 @@ function VendorBankConfirmationCard({
           value={BANK_CONFIRMATION_STATUS_LABELS[status] ?? 'Henüz Teyit Edilmedi'}
         />
       </div>
-      {(vendor.paymentDueDays !== 15 && vendor.paymentDueDays !== 30) && (
+      {vendor.category === 'ofis' ? (
+        <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-600" data-testid="tedarikci-ofis-finans-iz">
+          Ofis / sabit hizmet faturalarına müdahale Finans → Masraflar üzerindendir. Bu kartta yalnız ödeme izi durur.
+        </div>
+      ) : vendor.paymentDueDays !== 15 && vendor.paymentDueDays !== 30 ? (
         <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-sm text-amber-800">
           Hakediş ödeme vadesi (15 veya 30 gün) seçilmemiş. Doğru ödeme planı için tedarikçi kartını güncelleyin.
         </div>
-      )}
+      ) : null}
       {vendor.ibanAccountHolderMatchStatus === 'mismatch' && (
         <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-sm text-amber-800">
           Girilen hesap sahibi adı, tedarikçi kaydındaki unvan/ad ile uyuşmuyor. Ödeme öncesi bilgiyi teyit edin.
@@ -1590,7 +1597,7 @@ export default function VendorDetailPage() {
       {activeTab === 'evraklar' && (
         <EvraklarTab
           vendorId={id!}
-          vendorCategory={(['hasar', 'acil', 'her_ikisi'].includes(vendor.category) ? vendor.category : 'hasar') as VendorCategory}
+          vendorCategory={parseVendorCategory(vendor.category)}
         />
       )}
       {activeTab === 'odemeler' && <OdemelerTab vendorId={id!} />}

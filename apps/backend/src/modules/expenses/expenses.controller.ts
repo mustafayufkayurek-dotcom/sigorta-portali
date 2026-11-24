@@ -16,7 +16,12 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe, RECEIPT_IMAGE_VALIDATION_PIPE } from '@/common/pipes/file-validation.pipe';
 import { ExpensesService } from './expenses.service';
-import { CreateExpenseDto, UpdateExpenseDto, ExpenseFilterDto } from './dto/expenses.dto';
+import {
+  CreateExpenseDto,
+  UpdateExpenseDto,
+  ExpenseFilterDto,
+  ExpenseDocumentReviewDto,
+} from './dto/expenses.dto';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { ClaimFilesService } from '@/modules/claim-files/claim-files.service';
@@ -133,6 +138,12 @@ export class ExpensesController {
   async scanReceipt(@UploadedFile(RECEIPT_IMAGE_VALIDATION_PIPE) file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Fiş görseli bulunamadı');
     return this.service.scanReceipt(file);
+  }
+
+  /** Belge no + dosya hakediş kontrolü — kayıt yazmaz; pencere için. */
+  @Post('document-review')
+  async documentReview(@Body() dto: ExpenseDocumentReviewDto) {
+    return this.service.evaluateExpenseDocumentReview(dto);
   }
 
   @Post()

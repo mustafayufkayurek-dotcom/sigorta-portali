@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { API, authHeader } from '@/utils/api';
 import { formatTryAmount } from '@/utils/format-try-amount';
@@ -26,9 +27,15 @@ export function PlannerFileCostEntry({
   canEdit: boolean;
   section?: 'all' | 'hakedis' | 'gider';
 }) {
-  const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const [open, setOpen] = useState(() => searchParams.get('masraf') === '1');
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (section === 'hakedis') return;
+    if (searchParams.get('masraf') === '1') setOpen(true);
+  }, [searchParams, section]);
 
   const load = useCallback(async () => {
     setLoading(true);

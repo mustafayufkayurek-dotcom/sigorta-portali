@@ -3,6 +3,10 @@
 import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  appendSelectVendorToReturn,
+  parsePanelReturnBridge,
+} from '@/utils/panel-return-bridge';
 import axios from 'axios';
 import { provinces as STATIC_PROVINCES, districts as STATIC_DISTRICTS } from '@/data/turkey-locations';
 import { ContactPhoneField } from '@/components/ContactPhoneField';
@@ -34,15 +38,21 @@ import {
   compareVendorAccountHolder,
 } from '@/utils/vendor-bank-confirmation';
 import {
-  VENDOR_CATEGORIES,
+  VENDOR_OPERATION_CATEGORIES,
   VENDOR_DOC_OTHER_SELECT,
   HIZMET_KOLU_OTHER_KEY,
+  OFIS_VENDOR_TYPE_QUICK_PICKS,
   isVendorTypeOther,
+  isVendorOfisCategory,
+  parseVendorCategory,
   resolveVendorTypeList,
   DEFAULT_VENDOR_TYPES,
   isOtherDocumentTypeName,
+  vendorCategoryRequiresPaymentDue,
+  vendorCategoryRequiresServiceAreas,
   vendorCategoryShowsHasarKollari,
   vendorCategoryShowsAcilKollari,
+  vendorScopeFromCategory,
   vendorTypeActivityPlaceholder,
   resolveVendorTypeHizmetMode,
   vendorTypeActivityLabel,
@@ -59,6 +69,7 @@ import {
   vendorIdentityCardLine,
   vendorIdentityDocumentHint,
   vendorIdentityGapLabel,
+  vendorCariRolHelpText,
   filterDocumentTypesForCategory,
   VENDOR_RELATION_SECTION_TITLE,
   VENDOR_RELATION_SECTION_HINT,
@@ -451,30 +462,95 @@ function HizmetKoluGrid({
 }
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
-function SectionDivider({ icon, title }: { icon: React.ReactNode; title: string }) {
+function SectionDivider({
+  icon,
+  title,
+  hint,
+  tone = 'primary',
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint?: string;
+  tone?: 'primary' | 'secondary';
+}) {
+  const iconWrap =
+    tone === 'secondary'
+      ? 'bg-slate-100 text-slate-500'
+      : 'bg-indigo-50 text-indigo-600';
   return (
-    <div className="flex items-center gap-2.5 mb-4 mt-7 first:mt-0 pb-2 border-b border-slate-100">
-      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600">{icon}</span>
-      <span className="text-sm font-semibold text-slate-700">{title}</span>
+    <div className={`mb-2 mt-3 first:mt-0 pb-1 border-b ${tone === 'secondary' ? 'border-slate-100/80' : 'border-slate-100'}`}>
+      <div className="flex items-center gap-1.5">
+        <span className={`flex h-5 w-5 items-center justify-center rounded-md ${iconWrap}`}>{icon}</span>
+        <span className={`text-xs font-semibold ${tone === 'secondary' ? 'text-slate-600' : 'text-slate-700'}`}>{title}</span>
+      </div>
+      {hint ? <p className="mt-1 pl-6 text-[11px] leading-relaxed text-slate-500">{hint}</p> : null}
     </div>
   );
 }
 
 function FormField({ label, required, error, help, children }: { label: string; required?: boolean; error?: string; help?: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+    <div className="min-w-0">
+      <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
         <span>{label}{required && <span className="text-red-400 ml-0.5">*</span>}</span>
         {help ? <FieldHelpTip text={help} /> : null}
       </label>
       {children}
-      {error && <p className="text-xs text-status-danger mt-1.5">{error}</p>}
+      {error && <p className="text-xs text-status-danger mt-1">{error}</p>}
     </div>
   );
 }
 
-const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors';
-const inpError = 'w-full border border-red-400 ring-2 ring-status-danger/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-status-danger/30 focus:border-red-400 transition-colors bg-red-50';
+/** Tek satırlık kompakt seçim (Şirket/Şahıs, hizmet kategorisi). Seçili: açık mavi + işaret. */
+function CompactChoiceButton({
+  selected,
+  onClick,
+  label,
+  hint,
+  icon,
+  testId,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  label: string;
+  hint?: string;
+  icon?: ReactNode;
+  testId?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      data-testid={testId}
+      onClick={onClick}
+      className={`inline-flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 text-left text-sm font-medium transition-colors ${
+        selected
+          ? 'border-brand-400 bg-brand-50 text-brand-800'
+          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+      }`}
+    >
+      {icon ? <span className={`shrink-0 ${selected ? 'text-brand-600' : 'text-slate-400'}`}>{icon}</span> : null}
+      <span className="min-w-0 truncate">{label}</span>
+      {hint ? (
+        <span className={`shrink-0 text-[10px] font-normal ${selected ? 'text-brand-600/80' : 'text-slate-400'}`}>
+          {hint}
+        </span>
+      ) : null}
+      {selected ? (
+        <svg className="ml-auto h-3.5 w-3.5 shrink-0 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+        </svg>
+      ) : (
+        <span className="ml-auto h-3.5 w-3.5 shrink-0" aria-hidden />
+      )}
+    </button>
+  );
+}
+
+const inp = 'w-full h-9 border border-slate-200 rounded-lg px-3 text-sm leading-none focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors bg-white';
+const inpError = 'w-full h-9 border border-red-400 ring-2 ring-status-danger/20 rounded-lg px-3 text-sm leading-none focus:outline-none focus:ring-2 focus:ring-status-danger/30 focus:border-red-400 transition-colors bg-red-50';
+const fieldGrid = 'grid grid-cols-1 gap-3 min-[420px]:grid-cols-2';
+const sectionStack = 'space-y-3';
 
 // ── Filter Chip ─────────────────────────────────────────────────────────────
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
@@ -590,8 +666,8 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
         </div>
       ) : (
         <div className="pb-24">
-          {/* Kimlik */}
-          <div className="px-5 pt-5 pb-4 border-b border-slate-50">
+          {/* Kimlik — ad, durum, iletişim, konum hızlı okuma */}
+          <div className="px-5 pt-5 pb-4 border-b border-slate-50" data-testid="tedarikci-cekmece-ozet">
             <div className="flex items-start gap-3 mb-4">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white text-base font-bold flex-shrink-0 ${vendor.entityType === 'individual' ? 'bg-purple-500' : 'bg-indigo-600'}`}>
                 {(displayName || '?').charAt(0).toUpperCase()}
@@ -603,17 +679,17 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
                   return (
                     <>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold leading-tight text-slate-900">{displayName}</p>
+                  <p className="truncate text-base font-semibold leading-tight text-slate-900">{displayName}</p>
                   {gap ? (
                     <span className="mt-1 inline-flex max-w-full whitespace-nowrap rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-700" data-testid="tedarikci-cekmece-kimlik-eksik">
                       {gap}
                     </span>
                   ) : null}
                 </div>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                <div className="flex flex-wrap gap-1.5 mt-2">
                   {typeBadge}
-                  <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border ${statusCls}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full mr-1 ${vendor.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
+                  <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border ${statusCls}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${vendor.status === 'active' ? 'bg-green-500' : 'bg-slate-400'}`} />
                     {statusLabel}
                   </span>
                 </div>
@@ -626,26 +702,40 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
                 })()}
               </div>
             </div>
-            <div className="space-y-2.5">
-              {(vendor.city || vendor.district) && (
-                <div className="flex items-center gap-2.5 text-sm text-slate-600">
-                  <span className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center flex-shrink-0 text-slate-500">
+            <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+              {(vendor.city || vendor.district) ? (
+                <div className="flex items-center gap-2.5 text-sm text-slate-700">
+                  <span className="w-7 h-7 bg-white rounded-lg flex items-center justify-center flex-shrink-0 text-slate-500 border border-slate-100">
                     {Icon.mapPin}
                   </span>
-                  <span className="truncate">
+                  <span className="truncate font-medium">
                     {[vendor.city, vendor.district].filter(Boolean).join(' / ')}
                   </span>
                 </div>
+              ) : (
+                <div className="flex items-center gap-2.5 text-sm text-slate-400">
+                  <span className="w-7 h-7 bg-white rounded-lg flex items-center justify-center flex-shrink-0 border border-slate-100">
+                    {Icon.mapPin}
+                  </span>
+                  <span>Konum kayıtlı değil</span>
+                </div>
               )}
-              {vendor.phone && (
+              {vendor.phone ? (
                 <PhoneContactActions phone={vendor.phone} variant="panel" accent="indigo" />
+              ) : (
+                <div className="flex items-center gap-2.5 text-sm text-slate-400">
+                  <span className="w-7 h-7 bg-white rounded-lg flex items-center justify-center flex-shrink-0 border border-slate-100 text-slate-400">
+                    {Icon.phone}
+                  </span>
+                  <span>Telefon kayıtlı değil</span>
+                </div>
               )}
               {vendor.email ? (
                 <a
                   href={`mailto:${vendor.email}`}
                   className="flex items-center gap-2.5 text-sm text-brand-600 hover:text-brand-700 hover:underline"
                 >
-                  <span className="w-7 h-7 bg-brand-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="w-7 h-7 bg-white rounded-lg flex items-center justify-center flex-shrink-0 border border-slate-100">
                     <svg className="w-3.5 h-3.5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
@@ -654,7 +744,7 @@ function VendorDrawer({ vendorId, open, onClose, onEdit }: VendorDrawerProps) {
                 </a>
               ) : (
                 <div className="flex items-center gap-2.5 text-sm text-slate-400">
-                  <span className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="w-7 h-7 bg-white rounded-lg flex items-center justify-center flex-shrink-0 border border-slate-100">
                     <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
@@ -837,6 +927,12 @@ export default function VendorsPage() {
   });
   const [serviceRegionFilter, setServiceRegionFilter] = useState(() => searchParams.get('serviceRegion') ?? '');
   const bootEditIdRef = useRef(searchParams.get('edit'));
+  const bootOpenAddRef = useRef(searchParams.get('openAdd') === '1');
+  const bootScopeRef = useRef(searchParams.get('scope'));
+  const returnBridge = useMemo(
+    () => parsePanelReturnBridge(searchParams),
+    [searchParams],
+  );
   const [wgFilterOpen, setWgFilterOpen] = useState(false);
   const wgFilterRef = useRef<HTMLDivElement>(null);
 
@@ -961,6 +1057,10 @@ export default function VendorsPage() {
   }, [form.city, form.district, form.neighborhood, form.streetName, form.address, form.buildingNo]);
 
   const nameRef = useRef<HTMLInputElement>(null);
+  const taxNumberRef = useRef<HTMLInputElement>(null);
+  const identityNoRef = useRef<HTMLInputElement>(null);
+  const lastNameRef = useRef<HTMLInputElement>(null);
+  const formScrollRef = useRef<HTMLDivElement>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // ── Drawer state ─────────────────────────────────────────────────────────
@@ -1042,9 +1142,26 @@ export default function VendorsPage() {
   };
 
   const handleCategoryChange = (value: VendorCategory) => {
-    setForm((p) => ({ ...p, category: value }));
+    setForm((p) => ({
+      ...p,
+      category: value,
+      ...(value === 'ofis'
+        ? { canActAsInspector: false, paymentDueDays: '' as const }
+        : {}),
+    }));
     setDocSelectedTypeId('');
     setDocCustomType('');
+    if (value === 'ofis') {
+      setSelectedWorkGroupIds([]);
+      setServiceBranches([]);
+      setCustomHasarKol('');
+      setCustomAcilKol('');
+      setTypeActivityPicks([]);
+      setTypeActivityCustom('');
+      setTypeActivityOtherOpen(false);
+      setHizmetKollariOpen(false);
+      return;
+    }
     if (value === 'hasar') {
       setServiceBranches((p) => p.filter((x) => x !== HIZMET_KOLU_OTHER_KEY));
       setCustomAcilKol('');
@@ -1052,6 +1169,16 @@ export default function VendorsPage() {
     if (value === 'acil') {
       setSelectedWorkGroupIds((p) => p.filter((x) => x !== HIZMET_KOLU_OTHER_KEY));
       setCustomHasarKol('');
+    }
+  };
+
+  const handleScopeChange = (scope: 'operasyon' | 'ofis') => {
+    if (scope === 'ofis') {
+      handleCategoryChange('ofis');
+      return;
+    }
+    if (isVendorOfisCategory(form.category)) {
+      handleCategoryChange('hasar');
     }
   };
 
@@ -1566,7 +1693,7 @@ export default function VendorsPage() {
     setTypeCustom(typeIsPreset ? '' : rawType);
     const loadEffectiveType = typeIsPreset ? rawType : rawType;
     const loadHizmetMode = loadEffectiveType ? resolveVendorTypeHizmetMode(loadEffectiveType) : null;
-    const loadCategory = (['hasar', 'acil', 'her_ikisi'].includes(v.category) ? v.category : 'hasar') as VendorCategory;
+    const loadCategory = parseVendorCategory(v.category);
     const individualNameParts = (v.entityType === 'individual' ? (v.name ?? '') : '').trim().split(/\s+/);
     setForm({
       entityType: (v.entityType as 'corporate' | 'individual') || 'corporate',
@@ -1622,7 +1749,7 @@ export default function VendorsPage() {
         Array.isArray(full.serviceBranches) ? full.serviceBranches : [],
         acilServiceBranches,
         (full.vendorWorkGroups || []).map((vwg: { workGroup?: { name?: string } }) => vwg.workGroup?.name ?? '').filter(Boolean),
-        (['hasar', 'acil', 'her_ikisi'].includes(full.category) ? full.category : 'hasar') as VendorCategory,
+        parseVendorCategory(full.category),
         full.type ? resolveVendorTypeHizmetMode(full.type) : null,
       );
       setContacts(full.contacts?.length ? full.contacts.map((c: Record<string, unknown>) => mapVendorContactFromApi(c)) : [emptyContact()]);
@@ -1647,8 +1774,35 @@ export default function VendorsPage() {
       .catch(() => showToast('error', 'Tedarikçi kartı açılamadı.'));
   }, []);
 
-  const handleSave = async (overrideSaveMode?: SaveMode) => {
-    // Validasyon
+  useEffect(() => {
+    if (!bootOpenAddRef.current) return;
+    bootOpenAddRef.current = false;
+    openCreate();
+    if (bootScopeRef.current === 'ofis') {
+      handleCategoryChange('ofis');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnız openAdd=1 ile ilk açılış
+  }, []);
+
+  const focusFirstInvalidField = (errors: Record<string, string>, section: number) => {
+    setActiveSection(section);
+    window.setTimeout(() => {
+      const order = ['firstName', 'name', 'lastName', 'taxNumber', 'identityNo', 'phone'] as const;
+      const first = order.find((key) => Boolean(errors[key]));
+      let el: HTMLElement | null = null;
+      if (first === 'firstName' || first === 'name') el = nameRef.current;
+      else if (first === 'lastName') el = lastNameRef.current;
+      else if (first === 'taxNumber') el = taxNumberRef.current;
+      else if (first === 'identityNo') el = identityNoRef.current;
+      else if (first === 'phone') {
+        el = formScrollRef.current?.querySelector<HTMLElement>('[data-testid="tedarikci-form-telefon"] input') ?? null;
+      }
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el?.focus();
+    }, 120);
+  };
+
+  const collectTemelBilgiErrors = (): { errors: Record<string, string>; missingLabels: string[] } => {
     const errors: Record<string, string> = {};
     const missingLabels: string[] = [];
 
@@ -1698,12 +1852,86 @@ export default function VendorsPage() {
       errors.phone = phoneErr;
       missingLabels.push('Telefon');
     }
+    return { errors, missingLabels };
+  };
+
+  const handleContinue = () => {
+    if (activeSection === 0) {
+      const { errors, missingLabels } = collectTemelBilgiErrors();
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        showToast('warning', `Lütfen zorunlu alanları doldurun: ${missingLabels.join(', ')}`);
+        focusFirstInvalidField(errors, 0);
+        return;
+      }
+      if (!form.type.trim()) {
+        showToast('warning', isVendorOfisCategory(form.category)
+          ? 'Ofis / sabit hizmet türünü seçin (Doğalgaz, İnternet…).'
+          : 'Tedarikçi türünü seçin.');
+        return;
+      }
+      if (isVendorTypeOther(form.type) && !typeCustom.trim()) {
+        showToast('warning', 'Tedarikçi türü "Diğer" seçildiğinde lütfen tür açıklamasını girin.');
+        setHizmetKollariOpen(true);
+        return;
+      }
+      if (!isVendorOfisCategory(form.category)) {
+        const continueEffectiveType = isVendorTypeOther(form.type) ? typeCustom.trim() || form.type : form.type;
+        const continueHizmetMode = form.type ? resolveVendorTypeHizmetMode(continueEffectiveType) : null;
+        if (continueHizmetMode && !vendorTypeShowsWorkGroupGrid(continueHizmetMode) && typeActivityPicks.length === 0 && !typeActivityCustom.trim()) {
+          showToast('warning', `${vendorTypeActivityLabel(continueHizmetMode, continueEffectiveType)} alanını doldurun.`);
+          setHizmetKollariOpen(true);
+          return;
+        }
+        if (selectedWorkGroupIds.includes(HIZMET_KOLU_OTHER_KEY) && !customHasarKol.trim()) {
+          showToast('warning', 'Hasar hizmet kolunda "Diğer" seçildiğinde lütfen açıklamayı girin.');
+          setHizmetKollariOpen(true);
+          return;
+        }
+        if (serviceBranches.includes(HIZMET_KOLU_OTHER_KEY) && !customAcilKol.trim()) {
+          showToast('warning', 'Acil hizmet kolunda "Diğer" seçildiğinde lütfen açıklamayı girin.');
+          setHizmetKollariOpen(true);
+          return;
+        }
+      }
+    }
+    if (activeSection === 2 && vendorCategoryRequiresServiceAreas(form.category) && serviceAreas.length === 0) {
+      showToast('warning', 'En az bir hizmet bölgesi seçin.');
+      window.setTimeout(() => {
+        formScrollRef.current
+          ?.querySelector<HTMLElement>('[data-testid="tedarikci-hizmet-bolgeleri"]')
+          ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 80);
+      return;
+    }
+    if (activeSection === 3 && vendorCategoryRequiresPaymentDue(form.category) && form.paymentDueDays !== '15' && form.paymentDueDays !== '30') {
+      showToast('warning', 'Hakediş ödeme vadesi zorunludur. 15 veya 30 gün seçin.');
+      window.setTimeout(() => {
+        formScrollRef.current
+          ?.querySelector<HTMLElement>('[data-testid="tedarikci-vade-secim"]')
+          ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 80);
+      return;
+    }
+    setActiveSection((s) => s + 1);
+  };
+
+  const handleSave = async (overrideSaveMode?: SaveMode) => {
+    // Validasyon
+    const { errors, missingLabels } = collectTemelBilgiErrors();
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       showToast('warning', `Lütfen zorunlu alanları doldurun: ${missingLabels.join(', ')}`);
+      focusFirstInvalidField(errors, 0);
+      return;
+    }
+
+    if (!form.type.trim()) {
+      showToast('warning', isVendorOfisCategory(form.category)
+        ? 'Ofis / sabit hizmet türünü seçin (Doğalgaz, İnternet…).'
+        : 'Tedarikçi türünü seçin.');
       setActiveSection(0);
-      setTimeout(() => { nameRef.current?.focus(); }, 100);
       return;
     }
 
@@ -1713,29 +1941,37 @@ export default function VendorsPage() {
       return;
     }
 
-    const saveEffectiveType = isVendorTypeOther(form.type) ? typeCustom.trim() || form.type : form.type;
-    const saveHizmetMode = form.type ? resolveVendorTypeHizmetMode(saveEffectiveType) : null;
-    if (saveHizmetMode && !vendorTypeShowsWorkGroupGrid(saveHizmetMode) && typeActivityPicks.length === 0 && !typeActivityCustom.trim()) {
-      showToast('warning', `${vendorTypeActivityLabel(saveHizmetMode, saveEffectiveType)} alanını doldurun.`);
-      setActiveSection(0);
-      setHizmetKollariOpen(true);
-      return;
+    if (!isVendorOfisCategory(form.category)) {
+      const saveEffectiveType = isVendorTypeOther(form.type) ? typeCustom.trim() || form.type : form.type;
+      const saveHizmetMode = form.type ? resolveVendorTypeHizmetMode(saveEffectiveType) : null;
+      if (saveHizmetMode && !vendorTypeShowsWorkGroupGrid(saveHizmetMode) && typeActivityPicks.length === 0 && !typeActivityCustom.trim()) {
+        showToast('warning', `${vendorTypeActivityLabel(saveHizmetMode, saveEffectiveType)} alanını doldurun.`);
+        setActiveSection(0);
+        setHizmetKollariOpen(true);
+        return;
+      }
+
+      if (selectedWorkGroupIds.includes(HIZMET_KOLU_OTHER_KEY) && !customHasarKol.trim()) {
+        showToast('warning', 'Hasar hizmet kolunda "Diğer" seçildiğinde lütfen açıklamayı girin.');
+        setActiveSection(0);
+        return;
+      }
+      if (serviceBranches.includes(HIZMET_KOLU_OTHER_KEY) && !customAcilKol.trim()) {
+        showToast('warning', 'Acil hizmet kolunda "Diğer" seçildiğinde lütfen açıklamayı girin.');
+        setActiveSection(0);
+        return;
+      }
     }
 
-    if (selectedWorkGroupIds.includes(HIZMET_KOLU_OTHER_KEY) && !customHasarKol.trim()) {
-      showToast('warning', 'Hasar hizmet kolunda "Diğer" seçildiğinde lütfen açıklamayı girin.');
-      setActiveSection(0);
-      return;
-    }
-    if (serviceBranches.includes(HIZMET_KOLU_OTHER_KEY) && !customAcilKol.trim()) {
-      showToast('warning', 'Acil hizmet kolunda "Diğer" seçildiğinde lütfen açıklamayı girin.');
-      setActiveSection(0);
-      return;
-    }
-
-    if (serviceAreas.length === 0) {
+    if (vendorCategoryRequiresServiceAreas(form.category) && serviceAreas.length === 0) {
       showToast('warning', 'En az bir hizmet bölgesi seçin.');
       setActiveSection(2);
+      return;
+    }
+
+    if (vendorCategoryRequiresPaymentDue(form.category) && form.paymentDueDays !== '15' && form.paymentDueDays !== '30') {
+      showToast('warning', 'Hakediş ödeme vadesi zorunludur. 15 veya 30 gün seçin.');
+      setActiveSection(3);
       return;
     }
 
@@ -1785,14 +2021,15 @@ export default function VendorsPage() {
           ? toTitleCaseTR(typeCustom.trim())
           : (form.type ? toTitleCaseTR(form.type) : undefined),
         category: form.category,
-        canActAsInspector: !!form.canActAsInspector,
+        canActAsInspector: isVendorOfisCategory(form.category) ? false : !!form.canActAsInspector,
         ...(!editVendor ? { cariRol: form.cariRol } : {}),
         address: form.address || null, city: form.city || null, district: form.district || null,
         neighborhood: form.neighborhood || null, streetName: form.streetName || null,
         buildingNo: form.buildingNo || null, doorNo: form.doorNo || null,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
         iban: form.iban || null, accountHolderName: form.accountHolderName || null,
-        paymentDueDays: form.paymentDueDays === '15' || form.paymentDueDays === '30'
+        paymentDueDays: vendorCategoryRequiresPaymentDue(form.category)
+          && (form.paymentDueDays === '15' || form.paymentDueDays === '30')
           ? Number(form.paymentDueDays)
           : null,
         referral: form.referral ? toTitleCaseTR(form.referral.trim()) : null,
@@ -1869,6 +2106,14 @@ export default function VendorsPage() {
       loadSummary();
 
       const successMsg = wasEdit ? 'Tedarikçi başarıyla güncellendi' : 'Tedarikçi başarıyla eklendi';
+      if (!wasEdit && savedVendorId && returnBridge) {
+        setShowModal(false);
+        setEditVendor(null);
+        resetForm();
+        showToast('success', `${successMsg} — ${returnBridge.returnLabel} formuna dönülüyor`);
+        router.push(appendSelectVendorToReturn(returnBridge.returnTo, savedVendorId));
+        return;
+      }
       if (effectiveSaveMode === 'close') {
         setShowModal(false);
         setEditVendor(null);
@@ -2182,24 +2427,55 @@ export default function VendorsPage() {
         />
       </OpsKpiSegmentBand>
 
-      {/* ── Filters ── */}
-      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card px-3 py-2.5 mb-5">
+      {/* ── Araç çubuğu: arama + filtreler ── */}
+      {returnBridge ? (
+        <div
+          className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5"
+          data-testid="tedarikci-return-bridge"
+        >
+          <p className="text-sm text-brand-900">
+            <span className="font-semibold">{returnBridge.returnLabel}</span> formundan gelindi. Kayıt bitince yazılar korunarak o forma dönülür.
+          </p>
+          <Link
+            href={returnBridge.returnTo}
+            className="shrink-0 rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-xs font-semibold text-brand-800 hover:bg-brand-100"
+          >
+            ← {returnBridge.returnLabel} Formuna Dön
+          </Link>
+        </div>
+      ) : null}
+
+      <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card px-3 py-3 mb-5" data-testid="tedarikci-arac-cubugu">
+        <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
+          <p className="text-xs font-semibold text-slate-600">Ara Ve Süz</p>
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="text-[11px] font-medium text-status-danger hover:underline"
+            >
+              Filtreleri Temizle
+            </button>
+          ) : null}
+        </div>
         <div className="panel-filter-bar">
-          <div className="panel-filter-search-wrap">
+          <div className="panel-filter-search-wrap sm:flex-[1_1_16rem]">
             <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
               autoComplete="off"
-              placeholder="Ad, Telefon, Vergi No..."
+              placeholder="Tedarikçi adı, telefon, vergi / TC..."
+              aria-label="Tedarikçi ara"
               className="panel-search-input"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />
             {searchInput && (
               <button type="button" onClick={() => setSearchInput('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
+                aria-label="Aramayı temizle">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -2207,13 +2483,13 @@ export default function VendorsPage() {
             )}
           </div>
 
-          <select className="panel-filter-control" value={entityTypeFilter} onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(1); }}>
+          <select className="panel-filter-control" value={entityTypeFilter} onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(1); }} aria-label="Tip">
             <option value="">Tüm Tipler</option>
             <option value="individual">Şahıs</option>
             <option value="corporate">Şirket</option>
           </select>
 
-          <select className="panel-filter-control" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
+          <select className="panel-filter-control" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} aria-label="Durum">
             <option value="">Tüm Durumlar</option>
             <option value="active">Aktif</option>
             <option value="passive">Pasif</option>
@@ -2486,7 +2762,7 @@ export default function VendorsPage() {
                     sortDir={clientSort?.dir ?? 'asc'}
                     onSort={(k) => setClientSort((p) => cycleClientSort(p, k))}
                     thClass={(id) =>
-                      id === 'name' || id === 'contact' || id === 'recordOwner' ? 'table-th' : 'table-th-center'
+                      id === 'name' || id === 'contact' || id === 'location' || id === 'recordOwner' ? 'table-th' : 'table-th-center'
                     }
                     unsortableIds={['actions']}
                   />
@@ -2498,18 +2774,20 @@ export default function VendorsPage() {
                   const cells: Record<string, ReactNode> = {
                     name: (
                   <PanelTableTd key="name" colId="name" className="table-td">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${v.entityType === 'individual' ? 'bg-purple-500' : 'bg-indigo-600'}`}>
                         {v.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <Link href={`/panel/tedarikciler/${v.id}`} className="block truncate font-semibold text-slate-800 hover:text-brand-600 transition-colors">{v.name}</Link>
+                        <Link href={`/panel/tedarikciler/${v.id}`} className="block truncate text-sm font-semibold text-slate-900 hover:text-brand-600 transition-colors">{v.name}</Link>
                         {identityGap ? (
                           <span className="mt-1 inline-flex max-w-full whitespace-nowrap rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-700" data-testid="tedarikci-satir-kimlik-eksik">
                             {identityGap}
                           </span>
                         ) : null}
-                        {v.type && <p className="text-xs text-slate-400 mt-0.5">{formatVendorTypeLabel(v.type)}</p>}
+                        {v.type ? (
+                          <p className="mt-0.5 truncate text-[11px] text-slate-500">{formatVendorTypeLabel(v.type)}</p>
+                        ) : null}
                       </div>
                     </div>
                   </PanelTableTd>
@@ -2526,22 +2804,23 @@ export default function VendorsPage() {
                     ),
                     contact: (
                   <PanelTableTd key="contact" colId="contact" className="table-td">
-                    <div className="space-y-1">
-                      {v.email && (
-                        <p className="text-xs text-slate-600 flex items-center gap-1.5">{Icon.mail}{v.email}</p>
-                      )}
-                      {v.phone && (
+                    <div className="min-w-0 space-y-1">
+                      {v.phone ? (
                         <PhoneContactActions phone={v.phone} variant="inline" accent="indigo" size="sm" />
-                      )}
-                      {!v.email && !v.phone && <span className="text-xs text-slate-300">—</span>}
+                      ) : null}
+                      {v.email ? (
+                        <p className="truncate text-xs text-slate-600 flex items-center gap-1.5">{Icon.mail}<span className="truncate">{v.email}</span></p>
+                      ) : null}
+                      {!v.email && !v.phone ? <span className="text-xs text-slate-300">—</span> : null}
                     </div>
                   </PanelTableTd>
                     ),
                     location: (
-                  <PanelTableTd key="location" colId="location" align="center" className="table-td">
+                  <PanelTableTd key="location" colId="location" className="table-td">
                     {v.city ? (
-                      <p className="text-xs text-slate-600 inline-flex items-center justify-center gap-1">
-                        {Icon.mapPin}{v.city}{v.district ? ` / ${v.district}` : ''}
+                      <p className="text-xs font-medium text-slate-700 inline-flex items-center gap-1.5 min-w-0">
+                        <span className="text-slate-400 shrink-0">{Icon.mapPin}</span>
+                        <span className="truncate">{v.city}{v.district ? ` · ${v.district}` : ''}</span>
                       </p>
                     ) : <span className="text-xs text-slate-300">—</span>}
                   </PanelTableTd>
@@ -2661,12 +2940,12 @@ export default function VendorsPage() {
               const extra = [form.phone?.trim(), form.taxNumber?.trim() || form.identityNo?.trim()].filter(Boolean).join(' · ');
               return (
                 <>
-            <div className="flex items-center justify-between px-6 py-5 border-b border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-indigo-700 flex-shrink-0" data-testid="tedarikci-form-kimlik-bandi">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3 flex-shrink-0" data-testid="tedarikci-form-kimlik-bandi">
               <div className="min-w-0 pr-3">
-                <h3 className="text-base font-semibold text-white truncate">{displayName || (editVendor ? 'Tedarikçi Düzenle' : 'Yeni Tedarikçi')}</h3>
-                <p className="text-indigo-100 text-xs mt-0.5 truncate">{displayName ? [typeLabel, extra].filter(Boolean).join(' · ') : (editVendor ? editVendor.name : 'Tüm Bilgileri Eksiksiz Doldurun')}</p>
+                <h3 className="text-sm font-semibold text-slate-900 truncate">{displayName || (editVendor ? 'Tedarikçi Düzenle' : 'Yeni Tedarikçi')}</h3>
+                <p className="text-slate-500 text-[11px] mt-0.5 truncate">{displayName ? [typeLabel, extra].filter(Boolean).join(' · ') : '* işaretli alanlar zorunludur'}</p>
               </div>
-              <button type="button" onClick={() => setShowModal(false)} className="text-indigo-200 hover:text-white transition-colors">{Icon.x}</button>
+              <button type="button" onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-700 transition-colors" aria-label="Kapat">{Icon.x}</button>
             </div>
             {editVendor && vendorIdentityGapLabel(form) ? (
                   <div className="border-b border-amber-200 bg-amber-50 px-6 py-2 text-xs font-medium text-amber-900">
@@ -2677,328 +2956,126 @@ export default function VendorsPage() {
               );
             })()}
 
-            {/* Section Tabs — mobil: dikey; masaüstü: 3+2 grid */}
-            <div className="flex shrink-0 flex-col border-b border-slate-100 bg-slate-50/50 sm:hidden">
+            {/* Adım şeridi — aktif adım belirgin */}
+            <div className="flex shrink-0 flex-col border-b border-slate-100 bg-white sm:hidden" data-testid="tedarikci-form-adimlar">
               {MODAL_SECTIONS.map((sec, i) => (
                 <button
                   key={sec}
                   type="button"
                   onClick={() => setActiveSection(i)}
-                  className={`border-b border-slate-100 px-4 py-2.5 text-left text-xs font-medium transition-all last:border-b-0 ${
-                    activeSection === i ? 'bg-white text-indigo-700 ring-1 ring-inset ring-indigo-200' : 'text-slate-600'
+                  aria-current={activeSection === i ? 'step' : undefined}
+                  className={`flex items-center gap-2 border-b border-slate-100 px-4 py-1.5 text-left text-[11px] font-medium transition-all last:border-b-0 ${
+                    activeSection === i ? 'bg-brand-50 text-brand-700' : 'text-slate-600'
                   }`}
                 >
-                  {i + 1}. {sec}
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                    activeSection === i ? 'bg-brand-600 text-white' : i < activeSection ? 'bg-brand-100 text-brand-700' : 'bg-slate-200 text-slate-600'
+                  }`}>{i + 1}</span>
+                  <span>{sec}</span>
                 </button>
               ))}
             </div>
-            <div className="hidden shrink-0 grid-cols-6 border-b border-slate-100 bg-slate-50/50 sm:grid">
+            <div className="hidden shrink-0 grid-cols-5 border-b border-slate-100 bg-white sm:grid" data-testid="tedarikci-form-adimlar-masa">
               {MODAL_SECTIONS.map((sec, i) => (
                 <button
                   key={sec}
                   type="button"
                   onClick={() => setActiveSection(i)}
                   title={`${i + 1}. ${sec}`}
-                  className={`px-2 py-2.5 text-[11px] font-medium border-b-2 transition-all text-center leading-snug ${
-                    i >= 3 ? 'col-span-3' : 'col-span-2'
-                  } ${activeSection === i ? 'border-indigo-600 text-indigo-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/70'}`}
+                  aria-current={activeSection === i ? 'step' : undefined}
+                  className={`flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-[10px] font-medium border-b-2 transition-all text-center leading-tight ${
+                    activeSection === i
+                      ? 'border-brand-600 text-brand-700 bg-brand-50/60'
+                      : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  }`}
                 >
-                  {i + 1}. {sec}
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                    activeSection === i ? 'bg-brand-600 text-white' : i < activeSection ? 'bg-brand-100 text-brand-700' : 'bg-slate-200 text-slate-600'
+                  }`}>{i + 1}</span>
+                  <span className="w-full px-0.5 text-center break-words hyphens-auto">{sec}</span>
                 </button>
               ))}
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+            <div ref={formScrollRef} className="min-h-0 flex-1 overflow-y-auto p-3 pb-5" data-testid="tedarikci-form-scroll">
               {/* ── Section 0: Temel Bilgiler ── */}
               {activeSection === 0 && (
-                <div>
-                  {/* Tip Toggle */}
-                  <SectionDivider icon={Icon.building} title="Tedarikçi Tipi" />
-                  <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-2">
-                    {[
-                      { val: 'corporate', label: 'Şirket', hint: 'Vergi no', icon: Icon.building, color: 'indigo' },
-                      { val: 'individual', label: 'Şahıs', hint: 'TC kimlik no', icon: Icon.user, color: 'purple' },
-                    ].map(({ val, label, hint, icon, color }) => (
-                      <button key={val} type="button" onClick={() => {
-                        setForm((p) => ({
-                          ...p,
-                          entityType: val as 'corporate' | 'individual',
-                          ...(val === 'corporate' ? { identityNo: '' } : { taxNumber: '', taxOffice: '', tradeRegistryNo: '' }),
-                        }));
-                        setNviResult(null);
-                        setGibError(null);
-                        setNumericErrors({});
-                        setFieldErrors({});
-                      }}
-                        className={`flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer
-                          ${form.entityType === val
-                            ? color === 'indigo' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                          }`}>
-                        <span className="inline-flex items-center gap-2">{icon} {label}</span>
-                        <span className={`text-[10px] font-normal ${form.entityType === val ? 'text-white/80' : 'text-slate-400'}`}>{hint}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {!editVendor ? (
-                    <div className="mb-6 max-w-sm" data-testid="tedarikci-cari-rol">
-                      <label className="mb-1.5 block text-xs font-medium text-slate-700">
-                        Cari Rol
-                      </label>
-                      <select
-                        value={form.cariRol}
-                        onChange={(e) =>
-                          setForm((p) => ({
-                            ...p,
-                            cariRol: e.target.value as 'tedarikci' | 'musteri_tedarikci',
-                          }))
-                        }
-                        className={inp}
-                      >
-                        <option value="tedarikci">{CARI_KARSI_TARAF_ROL_LABEL.tedarikci}</option>
-                        <option value="musteri_tedarikci">
-                          {CARI_KARSI_TARAF_ROL_LABEL.musteri_tedarikci}
-                        </option>
-                      </select>
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        Müşteri Ve Tedarikçi seçilirse kart her iki listede durur.
-                        Bireyselde T.C. kimlik, kurumsalda vergi numarası zorunludur.
-                      </p>
-                    </div>
-                  ) : null}
-
-                  {/* Tür */}
-                  <SectionDivider icon={Icon.briefcase} title="Tedarikçi Türü" />
-                  <div className="flex flex-col gap-2 mb-3 sm:flex-row">
-                    <div className="min-w-0 flex-1" data-testid="tedarikci-turu-sec">
-                      <SearchableSelect
-                        options={vendorTypes.map((t) => ({
-                          value: t,
-                          label: formatVendorTypeLabel(t) || t,
-                        }))}
-                        value={form.type}
-                        onChange={applyVendorType}
-                        placeholder="Tür Seçin..."
-                        emptyText="Tür bulunamadı. Yeni Tür ile ekleyin."
-                        inputClassName={`${inp} bg-white`}
-                      />
-                      {isVendorTypeOther(form.type) && (
-                        <div className="mt-2">
-                          <label className="block text-xs font-medium text-slate-500 mb-1.5">
-                            Tür açıklaması <span className="text-red-400">*</span>
-                          </label>
-                          <input
-                            className={inp}
-                            placeholder="Tür açıklamasını yazın..."
-                            value={typeCustom}
-                            onChange={(e) => setTypeCustom(e.target.value)}
+                <div className={`${sectionStack} w-full min-w-0`} data-testid="tedarikci-temel-bilgiler">
+                  {/* Tip + Cari — etiketler ve kutular aynı hizada */}
+                  <div className="w-full min-w-0" data-testid="tedarikci-tip-cari-satir">
+                    <div className={`grid w-full min-w-0 gap-x-3 gap-y-1 ${editVendor ? 'grid-cols-1' : 'grid-cols-1 min-[480px]:grid-cols-[minmax(0,1fr)_minmax(10rem,12.5rem)]'}`}>
+                      <label className="text-xs font-medium text-slate-500">Tedarikçi Tipi</label>
+                      {!editVendor ? (
+                        <label className="text-xs font-medium text-slate-500">Cari Rol</label>
+                      ) : null}
+                      <div className="flex min-w-0 flex-col gap-1.5 min-[360px]:flex-row" data-testid="tedarikci-tip-secim">
+                        {[
+                          { val: 'corporate' as const, label: 'Şirket', icon: Icon.building },
+                          { val: 'individual' as const, label: 'Şahıs', icon: Icon.user },
+                        ].map(({ val, label, icon }) => (
+                          <CompactChoiceButton
+                            key={val}
+                            selected={form.entityType === val}
+                            label={label}
+                            icon={icon}
+                            testId={`tedarikci-tip-${val}`}
+                            onClick={() => {
+                              setForm((p) => ({
+                                ...p,
+                                entityType: val,
+                                ...(val === 'corporate' ? { identityNo: '' } : { taxNumber: '', taxOffice: '', tradeRegistryNo: '' }),
+                              }));
+                              setNviResult(null);
+                              setGibError(null);
+                              setNumericErrors({});
+                              setFieldErrors({});
+                            }}
                           />
+                        ))}
+                      </div>
+                      {!editVendor ? (
+                        <div className="min-w-0" data-testid="tedarikci-cari-rol">
+                          <select
+                            value={form.cariRol}
+                            onChange={(e) =>
+                              setForm((p) => ({
+                                ...p,
+                                cariRol: e.target.value as 'tedarikci' | 'musteri_tedarikci',
+                              }))
+                            }
+                            className={inp}
+                          >
+                            <option value="tedarikci">{CARI_KARSI_TARAF_ROL_LABEL.tedarikci}</option>
+                            <option value="musteri_tedarikci">
+                              {CARI_KARSI_TARAF_ROL_LABEL.musteri_tedarikci}
+                            </option>
+                          </select>
                         </div>
-                      )}
+                      ) : null}
+                      {!editVendor ? (
+                        <p className="col-span-full mt-0.5 text-[11px] leading-snug text-slate-500" data-testid="tedarikci-cari-rol-yardim">
+                          {vendorCariRolHelpText({ cariRol: form.cariRol, entityType: form.entityType })}
+                        </p>
+                      ) : null}
                     </div>
-                    <button type="button" onClick={() => setShowAddType(!showAddType)}
-                      className="flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600 hover:bg-slate-100 sm:w-auto sm:justify-start sm:py-2">
-                      {Icon.plus} Yeni Tür
-                    </button>
                   </div>
-                  {showAddType && (
-                    <div className="flex gap-2 mb-3 p-3.5 bg-indigo-50 rounded-xl border border-indigo-100">
-                      <input className={inp} placeholder="Tür Adı" value={newTypeName}
-                        onChange={(e) => setNewTypeName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddVendorType(); }} />
-                      <button type="button" onClick={handleAddVendorType} disabled={savingType || !newTypeName.trim()}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50 hover:bg-indigo-700">Ekle</button>
-                      <button type="button" onClick={() => setShowAddType(false)} className="text-sm text-slate-500 hover:text-slate-700 px-2">İptal</button>
-                    </div>
-                  )}
-
-                  {form.type && hizmetMode && (
-                  <div className="mb-6 rounded-xl border border-slate-200 bg-white overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setHizmetKollariOpen((o) => !o)}
-                      className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50/80 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
-                        <span className="text-indigo-600 flex-shrink-0">{Icon.briefcase}</span>
-                        <span className="text-sm font-semibold text-slate-800">Tedarikçi Hizmet Kolları</span>
-                        <span className="text-[10px] font-semibold tracking-wide bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                          {vendorTypeModeBadge(hizmetMode)}
-                        </span>
-                        {selectedHizmetKolCount > 0 && (
-                          <span className="text-[11px] font-medium bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full flex-shrink-0">
-                            {selectedHizmetKolCount} seçili
-                          </span>
-                        )}
-                      </div>
-                      <svg
-                        className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform ${hizmetKollariOpen ? 'rotate-180' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        aria-hidden
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-
-                    {hizmetKollariOpen && (
-                      <div key={hizmetMode} className="px-4 pb-4 border-t border-slate-100">
-                            <p className="text-xs text-slate-500 mt-3 mb-3">
-                              {vendorTypeSectionHint(hizmetMode, effectiveVendorType)}
-                            </p>
-
-                            <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2.5">
-                              <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                                {vendorTypeActivityLabel(hizmetMode, effectiveVendorType)}
-                                {hizmetMode !== 'taseron_grid' && <span className="text-red-400"> *</span>}
-                                {hizmetMode === 'taseron_grid' && (
-                                  <span className="text-slate-400 font-normal"> (isteğe bağlı)</span>
-                                )}
-                              </label>
-
-                              {vendorTypeQuickPicks(hizmetMode).length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 mb-2">
-                                  {vendorTypeQuickPicks(hizmetMode).map((pick) => (
-                                    <button
-                                      key={pick}
-                                      type="button"
-                                      onClick={() => toggleTypeActivityPick(pick)}
-                                      className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
-                                        typeActivityPicks.includes(pick)
-                                          ? 'border-indigo-400 bg-white text-indigo-700 font-medium'
-                                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                                      }`}
-                                    >
-                                      {pick}
-                                    </button>
-                                  ))}
-                                  <button
-                                    type="button"
-                                    onClick={() => setTypeActivityOtherOpen((o) => !o)}
-                                    className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
-                                      typeActivityOtherOpen
-                                        ? 'border-indigo-400 bg-white text-indigo-700 font-medium'
-                                        : 'border-dashed border-slate-200 text-slate-500 hover:border-slate-300'
-                                    }`}
-                                  >
-                                    Diğer
-                                  </button>
-                                </div>
-                              )}
-
-                              {(hizmetMode === 'taseron_grid' || typeActivityOtherOpen || vendorTypeQuickPicks(hizmetMode).length === 0) && (
-                                <input
-                                  type="text"
-                                  className={`${inp} text-xs`}
-                                  placeholder={vendorTypeActivityPlaceholder(effectiveVendorType)}
-                                  value={typeActivityCustom}
-                                  onChange={(e) => setTypeActivityCustom(e.target.value)}
-                                  onBlur={(e) => {
-                                    const v = toTitleCaseTR(e.target.value.trim());
-                                    if (v) setTypeActivityCustom(v);
-                                  }}
-                                />
-                              )}
-
-                              {typeActivityPicks.length > 0 && (
-                                <p className="text-[11px] text-indigo-600 mt-2">
-                                  {typeActivityPicks.length} grup seçildi
-                                </p>
-                              )}
-                            </div>
-
-                            {showHasarGrid && (
-                              <HizmetKoluGrid
-                                title="Hasar Onarım — Tedarikçi Hizmet Kolları"
-                                items={workGroups.map((wg) => ({ key: wg.id, label: wg.name }))}
-                                selectedKeys={selectedWorkGroupIds}
-                                onToggle={toggleHasarWorkGroup}
-                                onSelectAll={(all) => setSelectedWorkGroupIds(all ? workGroups.map((wg) => wg.id) : [])}
-                                emptyMessage="Hasar hizmet kolu bulunamadı. Ayarlar → Tedarikçi Hizmet Kolları → Hasar sekmesinden tanımlayın."
-                                accent="blue"
-                                customOther={customHasarKol}
-                                onCustomOtherChange={setCustomHasarKol}
-                              />
-                            )}
-                            {showAcilGrid && (
-                              <HizmetKoluGrid
-                                title="Acil Yardım — Tedarikçi Hizmet Kolları"
-                                items={acilServiceBranches.map((name) => ({ key: name, label: name }))}
-                                selectedKeys={serviceBranches}
-                                onToggle={toggleAcilServiceBranch}
-                                onSelectAll={(all) => setServiceBranches(all ? [...acilServiceBranches] : [])}
-                                loading={branchesLoading}
-                                emptyMessage="Acil hizmet kolu bulunamadı. Ayarlar → Tedarikçi Hizmet Kolları → Acil sekmesinden ekleyin."
-                                accent="orange"
-                                customOther={customAcilKol}
-                                onCustomOtherChange={setCustomAcilKol}
-                              />
-                            )}
-
-                            {!vendorTypeShowsWorkGroupGrid(hizmetMode) && (
-                              <p className="text-[11px] text-slate-400 mt-1">
-                                Bu tür için usta/iş kolu listesi gösterilmez.
-                              </p>
-                            )}
-                      </div>
-                    )}
-                  </div>
-                  )}
-
-                  <SectionDivider icon={Icon.briefcase} title="Hizmet Kategorisi" />
-                  <div className="grid grid-cols-1 gap-2 mb-6 sm:grid-cols-3 sm:gap-2">
-                    {VENDOR_CATEGORIES.map(({ value, label }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => handleCategoryChange(value)}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-medium border-2 transition-all text-center ${
-                          form.category === value
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <label className="mb-6 flex items-start gap-3 rounded-xl border border-teal-200 bg-teal-50/50 px-4 py-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                      checked={!!form.canActAsInspector}
-                      onChange={(e) => setForm((p) => ({ ...p, canActAsInspector: e.target.checked }))}
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-slate-800">Tespitçi Olarak Da Görevlendir</span>
-                      <span className="block text-[11px] text-slate-500 mt-0.5">
-                        Bu tedarikçi hasar dosyalarında saha tespitçisi olarak seçilebilir. Hizmet bölgesi (il/ilçe) dosya atamasında kullanılır.
-                      </span>
-                    </span>
-                  </label>
 
                   {/* Kurumsal */}
                   {form.entityType === 'corporate' && (
-                    <>
+                    <div className="w-full min-w-0">
                       <SectionDivider icon={Icon.building} title="Kurumsal Bilgiler" />
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="col-span-1 sm:col-span-2">
-                          <FormField label="Şirket Adı" required error={fieldErrors.name}>
-                            <input ref={nameRef} className={fieldErrors.name ? inpError : inp} placeholder="Şirket Unvanı" value={form.name} onChange={(e) => { setForm((p) => ({ ...p, name: e.target.value })); setFieldErrors((p) => { const n = { ...p }; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, name: v })); }} />
-                          </FormField>
-                        </div>
-                        <div className="col-span-1 sm:col-span-2">
+                      <div className="grid w-full min-w-0 grid-cols-1 gap-3 min-[520px]:grid-cols-2">
+                        <FormField label="Şirket Adı" required error={fieldErrors.name}>
+                          <input ref={nameRef} className={fieldErrors.name ? inpError : inp} placeholder="Şirket Unvanı" value={form.name} onChange={(e) => { setForm((p) => ({ ...p, name: e.target.value })); setFieldErrors((p) => { const n = { ...p }; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, name: v })); }} />
+                        </FormField>
                         <FormField label="Vergi No" required error={fieldErrors.taxNumber || duplicateConflicts.taxNumber}>
-                          <div className="flex gap-2">
-                            <input className={`flex-1 border rounded-lg px-3 py-2 h-[38px] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${numericErrors.taxNumber || duplicateConflicts.taxNumber ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}
+                          <div className="flex min-w-0 flex-col gap-1.5 min-[360px]:flex-row">
+                            <input ref={taxNumberRef} className={`min-w-0 flex-1 ${numericErrors.taxNumber || duplicateConflicts.taxNumber ? inpError : inp}`}
                               placeholder="10 Haneli VKN" maxLength={10} value={form.taxNumber}
                               onChange={(e) => handleNumericChange('taxNumber', e.target.value)}
                               onBlur={() => { if (form.taxNumber.trim()) handleIdentityDuplicateCheck('taxNumber', form.taxNumber); }} />
                             <button type="button" onClick={handleGibQuery} disabled={gibLoading || !form.taxNumber}
-                              className="bg-indigo-600 text-white text-xs px-3 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap h-[38px]">
+                              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
                               {gibLoading
                                 ? <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                                 : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -3006,119 +3083,422 @@ export default function VendorsPage() {
                               Ünvan Sorgula
                             </button>
                           </div>
-                          {numericErrors.taxNumber && <p className="text-xs text-status-danger mt-1.5">⚠ {numericErrors.taxNumber}</p>}
+                          {numericErrors.taxNumber && <p className="text-xs text-status-danger mt-1">⚠ {numericErrors.taxNumber}</p>}
                           {!numericErrors.taxNumber && duplicateConflicts.taxNumber && (
-                            <p className="text-xs text-status-danger mt-1.5">⚠ {duplicateConflicts.taxNumber}</p>
+                            <p className="text-xs text-status-danger mt-1">⚠ {duplicateConflicts.taxNumber}</p>
                           )}
-                          {!numericErrors.taxNumber && !duplicateConflicts.taxNumber && gibError && <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">⚠ {gibError}</p>}
-                        </FormField>
-                        </div>
-                        <FormField label="Vergi Dairesi">
-                          <input className={inp} placeholder="Opsiyonel" value={form.taxOffice}
-                            onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))}
-                            onBlur={(e) => {
-                              const v = toTitleCaseTR(e.target.value.trim());
-                              if (v) setForm((p) => ({ ...p, taxOffice: v }));
-                            }} />
-                        </FormField>
-                        <FormField label="Ticaret Sicil No">
-                          <input className={inp} placeholder="Opsiyonel" value={form.tradeRegistryNo} onChange={(e) => setForm((p) => ({ ...p, tradeRegistryNo: e.target.value }))} />
+                          {!numericErrors.taxNumber && !duplicateConflicts.taxNumber && gibError && <p className="mt-1 flex items-center gap-1 text-xs text-amber-600">⚠ {gibError}</p>}
                         </FormField>
                       </div>
-                    </>
+                      <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50/50 p-2.5 open:bg-white" data-testid="tedarikci-kurumsal-ikincil">
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-slate-600 [&::-webkit-details-marker]:hidden">
+                          <span>Ek Kurumsal Bilgiler</span>
+                          <span className="text-[11px] font-normal text-slate-400">Vergi dairesi · Ticaret sicil</span>
+                        </summary>
+                        <div className={`mt-3 ${fieldGrid}`}>
+                          <FormField label="Vergi Dairesi">
+                            <input className={inp} placeholder="Opsiyonel" value={form.taxOffice}
+                              onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))}
+                              onBlur={(e) => {
+                                const v = toTitleCaseTR(e.target.value.trim());
+                                if (v) setForm((p) => ({ ...p, taxOffice: v }));
+                              }} />
+                          </FormField>
+                          <FormField label="Ticaret Sicil No">
+                            <input className={inp} placeholder="Opsiyonel" value={form.tradeRegistryNo} onChange={(e) => setForm((p) => ({ ...p, tradeRegistryNo: e.target.value }))} />
+                          </FormField>
+                        </div>
+                      </details>
+                    </div>
                   )}
 
                   {/* Bireysel */}
                   {form.entityType === 'individual' && (
-                    <>
+                    <div className="w-full min-w-0">
                       <SectionDivider icon={Icon.user} title="Bireysel Bilgiler" />
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className={fieldGrid}>
                         <FormField label="Ad" required error={fieldErrors.firstName}>
-                          <input ref={nameRef} className={fieldErrors.firstName ? inpError : inp} placeholder="Ad" value={form.firstName} onChange={(e) => { setForm((p) => ({ ...p, firstName: e.target.value, name: `${e.target.value} ${p.lastName}`.trim() })); setFieldErrors((p) => { const n = { ...p }; delete n.firstName; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, firstName: v, name: `${v} ${p.lastName}`.trim() })); }} />
+                          <input ref={nameRef} className={fieldErrors.firstName ? inpError : inp} placeholder="Ad" value={form.firstName} onChange={(e) => { setForm((p) => ({ ...p, firstName: e.target.value, name: `${e.target.value} ${p.lastName}`.trim() })); setNviResult(null); setFieldErrors((p) => { const n = { ...p }; delete n.firstName; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, firstName: v, name: `${v} ${p.lastName}`.trim() })); }} />
                         </FormField>
                         <FormField label="Soyad" required error={fieldErrors.lastName}>
-                          <input className={fieldErrors.lastName ? inpError : inp} placeholder="Soyad" value={form.lastName} onChange={(e) => { setForm((p) => ({ ...p, lastName: e.target.value, name: `${p.firstName} ${e.target.value}`.trim() })); setFieldErrors((p) => { const n = { ...p }; delete n.lastName; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v, name: `${p.firstName} ${v}`.trim() })); }} />
+                          <input ref={lastNameRef} className={fieldErrors.lastName ? inpError : inp} placeholder="Soyad" value={form.lastName} onChange={(e) => { setForm((p) => ({ ...p, lastName: e.target.value, name: `${p.firstName} ${e.target.value}`.trim() })); setNviResult(null); setFieldErrors((p) => { const n = { ...p }; delete n.lastName; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v, name: `${p.firstName} ${v}`.trim() })); }} />
                         </FormField>
-                        <FormField label="TC Kimlik No" error={fieldErrors.identityNo || duplicateConflicts.identityNo}>
-                          <input className={`${inp} ${numericErrors.identityNo || duplicateConflicts.identityNo ? 'border-red-400 bg-red-50 focus:ring-red-400/30' : ''}`}
+                        <FormField
+                          label="TC Kimlik No"
+                          required={!editVendor && form.cariRol === 'musteri_tedarikci'}
+                          error={fieldErrors.identityNo || duplicateConflicts.identityNo}
+                        >
+                          <input
+                            ref={identityNoRef}
+                            className={`${inp} ${numericErrors.identityNo || duplicateConflicts.identityNo || fieldErrors.identityNo ? 'border-red-400 bg-red-50 focus:ring-red-400/30' : ''}`}
                             placeholder="11 Haneli TC" maxLength={11} value={form.identityNo}
                             onChange={(e) => handleNumericChange('identityNo', e.target.value)}
                             onBlur={() => { if (form.identityNo.trim()) handleIdentityDuplicateCheck('identityNo', form.identityNo); }} />
-                          {numericErrors.identityNo && <p className="text-xs text-status-danger mt-1.5">⚠ {numericErrors.identityNo}</p>}
+                          {numericErrors.identityNo && <p className="text-xs text-status-danger mt-1">⚠ {numericErrors.identityNo}</p>}
                           {!numericErrors.identityNo && duplicateConflicts.identityNo && (
-                            <p className="text-xs text-status-danger mt-1.5">⚠ {duplicateConflicts.identityNo}</p>
+                            <p className="text-xs text-status-danger mt-1">⚠ {duplicateConflicts.identityNo}</p>
                           )}
                         </FormField>
-                        <FormField label="Ad (NVI doğrulama için)">
-                          <input className={inp} placeholder="Resmi Ad" value={form.firstName}
-                            onChange={(e) => { setForm((p) => ({ ...p, firstName: e.target.value })); setNviResult(null); }}
-                            onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, firstName: v })); }} />
-                        </FormField>
-                        <FormField label="Soyad">
-                          <input className={inp} placeholder="Resmi Soyad" value={form.lastName}
-                            onChange={(e) => { setForm((p) => ({ ...p, lastName: e.target.value })); setNviResult(null); }}
-                            onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v })); }} />
-                        </FormField>
-                        <FormField label="Doğum Tarihi">
-                          <div className="flex gap-2">
-                            <input type="text" inputMode="numeric" className={`flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30`}
-                              placeholder="GG.AA.YYYY" maxLength={10}
-                              value={isoToDisplayBirth(form.birthDate)}
-                              onChange={(e) => {
-                                const masked = maskBirthDate(e.target.value);
-                                const iso = birthMaskToISO(masked);
-                                setForm((p) => ({ ...p, birthDate: iso || masked }));
-                                setNviResult(null);
-                              }} />
-                            <button type="button" onClick={handleNviVerify}
-                              disabled={nviLoading || !form.identityNo || !form.firstName || !form.lastName || !form.birthDate}
-                              className="bg-purple-600 text-white text-xs px-3 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap">
-                              {nviLoading && <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
-                              NVI Doğrula
-                            </button>
-                          </div>
-                          {nviResult === true && <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">✓ TC Kimlik doğrulandı</p>}
-                          {nviResult === false && <p className="text-xs text-status-danger mt-1.5 flex items-center gap-1">⚠ TC Kimlik doğrulanamadı</p>}
-                        </FormField>
+                        <div className="rounded-lg border border-purple-100 bg-purple-50/40 p-2.5" data-testid="tedarikci-nvi-dogum">
+                          <FormField label="Doğum Tarihi" help="NVI doğrulaması için doğum tarihi bu alanda durur.">
+                            <div className="flex min-w-0 flex-col gap-2 min-[420px]:flex-row min-[420px]:items-stretch">
+                              <input type="text" inputMode="numeric" className={`${inp} flex-1 focus:ring-purple-500/30`}
+                                placeholder="GG.AA.YYYY" maxLength={10}
+                                value={isoToDisplayBirth(form.birthDate)}
+                                onChange={(e) => {
+                                  const masked = maskBirthDate(e.target.value);
+                                  const iso = birthMaskToISO(masked);
+                                  setForm((p) => ({ ...p, birthDate: iso || masked }));
+                                  setNviResult(null);
+                                }} />
+                              <button type="button" onClick={handleNviVerify}
+                                disabled={nviLoading || !form.identityNo || !form.firstName || !form.lastName || !form.birthDate}
+                                className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-purple-200 bg-white px-3 text-xs font-medium text-purple-700 hover:bg-purple-50 disabled:opacity-50 min-[420px]:min-w-[7.5rem]">
+                                {nviLoading && <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
+                                NVI Doğrula
+                              </button>
+                            </div>
+                            {nviResult === true && <p className="mt-1 flex items-center gap-1 text-xs text-green-600">✓ TC Kimlik doğrulandı</p>}
+                            {nviResult === false && <p className="mt-1 flex items-center gap-1 text-xs text-status-danger">⚠ TC Kimlik doğrulanamadı</p>}
+                          </FormField>
+                        </div>
                       </div>
-                    </>
+                    </div>
                   )}
 
-                  <SectionDivider icon={Icon.phone} title="İletişim Bilgileri" />
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-6">
-                    <div className="col-span-1 sm:col-span-2">
-                      <FormField label="Telefon" required error={fieldErrors.phone}>
-                        <ContactPhoneField
-                          phone={form.phone}
-                          phoneType={form.phoneType}
-                          extensionNo={form.extensionNo}
-                          onPhoneChange={(v) => {
-                            setForm((p) => ({ ...p, phone: v }));
-                            setFieldErrors((p) => { const n = { ...p }; delete n.phone; return n; });
-                            setDuplicateConflicts((prev) => { const n = { ...prev }; delete n.phone; return n; });
+                  <div className="w-full min-w-0">
+                    <SectionDivider icon={Icon.phone} title="İletişim Bilgileri" />
+                    <div className="flex w-full min-w-0 flex-col gap-3">
+                      <div data-testid="tedarikci-form-telefon">
+                        <FormField label="Telefon" required error={fieldErrors.phone}>
+                          <ContactPhoneField
+                            compact
+                            phone={form.phone}
+                            phoneType={form.phoneType}
+                            extensionNo={form.extensionNo}
+                            onPhoneChange={(v) => {
+                              setForm((p) => ({ ...p, phone: v }));
+                              setFieldErrors((p) => { const n = { ...p }; delete n.phone; return n; });
+                              setDuplicateConflicts((prev) => { const n = { ...prev }; delete n.phone; return n; });
+                            }}
+                            onPhoneTypeChange={(t) => setForm((p) => ({ ...p, phoneType: t, extensionNo: '' }))}
+                            onExtensionChange={(v) => setForm((p) => ({ ...p, extensionNo: v }))}
+                            onPhoneBlur={(v) => {
+                              const digits = v.replace(/\D/g, '');
+                              if (digits.length >= 10) handlePhoneDuplicateCheck(digits);
+                            }}
+                          />
+                        </FormField>
+                      </div>
+                      <FormField label="E-posta">
+                        <input
+                          type="email"
+                          className={inp}
+                          placeholder="ornek@mail.com"
+                          value={form.email}
+                          onChange={(e) => {
+                            setForm((p) => ({ ...p, email: e.target.value }));
+                            setDuplicateConflicts((prev) => { const n = { ...prev }; delete n.email; return n; });
                           }}
-                          onPhoneTypeChange={(t) => setForm((p) => ({ ...p, phoneType: t, extensionNo: '' }))}
-                          onExtensionChange={(v) => setForm((p) => ({ ...p, extensionNo: v }))}
-                          onPhoneBlur={(v) => {
-                            const digits = v.replace(/\D/g, '');
-                            if (digits.length >= 10) handlePhoneDuplicateCheck(digits);
-                          }}
+                          onBlur={() => { if (form.email.trim()) handleEmailDuplicateCheck(form.email.trim()); }}
                         />
                       </FormField>
                     </div>
-                    <FormField label="E-posta">
-                      <input
-                        type="email"
-                        className={inp}
-                        placeholder="ornek@mail.com"
-                        value={form.email}
-                        onChange={(e) => {
-                          setForm((p) => ({ ...p, email: e.target.value }));
-                          setDuplicateConflicts((prev) => { const n = { ...prev }; delete n.email; return n; });
-                        }}
-                        onBlur={() => { if (form.email.trim()) handleEmailDuplicateCheck(form.email.trim()); }}
-                      />
-                    </FormField>
+                  </div>
+
+                  {/* Hizmet — iş alanı + tür + (operasyonda) kategori / saha */}
+                  <div className="w-full min-w-0">
+                    <SectionDivider icon={Icon.briefcase} title="Hizmet" />
+                    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-2.5" data-testid="tedarikci-hizmet-grubu">
+                      <div data-testid="tedarikci-is-alani">
+                        <p className="mb-1.5 text-xs font-medium text-slate-700">Tedarikçi İşi</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          <CompactChoiceButton
+                            selected={vendorScopeFromCategory(form.category) === 'operasyon'}
+                            label="Operasyon"
+                            testId="tedarikci-is-operasyon"
+                            onClick={() => handleScopeChange('operasyon')}
+                          />
+                          <CompactChoiceButton
+                            selected={isVendorOfisCategory(form.category)}
+                            label="Ofis / Sabit Hizmet"
+                            testId="tedarikci-is-ofis"
+                            onClick={() => handleScopeChange('ofis')}
+                          />
+                        </div>
+                        <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
+                          {isVendorOfisCategory(form.category)
+                            ? 'Doğalgaz, internet, elektrik gibi ofis gideri. Hasar / Acil saha havuzuna girmez; hakediş vadesi sorulmaz.'
+                            : 'Hasar veya Acil saha tedarikçisi. Hakediş ödeme vadesi (15 / 30 gün) zorunludur.'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <p className="text-xs font-medium text-slate-700">
+                            {isVendorOfisCategory(form.category) ? (
+                              <>Hizmet Türü <span className="text-red-400">*</span></>
+                            ) : (
+                              'Tedarikçi Türü'
+                            )}
+                          </p>
+                          {!isVendorOfisCategory(form.category) && (
+                            <button type="button" onClick={() => setShowAddType(!showAddType)}
+                              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700">
+                              {Icon.plus} Yeni Tür
+                            </button>
+                          )}
+                        </div>
+                        {isVendorOfisCategory(form.category) ? (
+                          <div className="space-y-2" data-testid="tedarikci-ofis-turu">
+                            <SearchableSelect
+                              options={[
+                                ...OFIS_VENDOR_TYPE_QUICK_PICKS.map((t) => ({ value: t, label: t })),
+                                { value: 'Diğer', label: 'Diğer' },
+                              ]}
+                              value={
+                                !form.type.trim()
+                                  ? ''
+                                  : (OFIS_VENDOR_TYPE_QUICK_PICKS as readonly string[]).includes(form.type)
+                                    ? form.type
+                                    : 'Diğer'
+                              }
+                              onChange={(next) => {
+                                if (next === 'Diğer') {
+                                  setForm((p) => ({ ...p, type: 'Diğer' }));
+                                  setTypeCustom('');
+                                  return;
+                                }
+                                setForm((p) => ({ ...p, type: next }));
+                                setTypeCustom('');
+                              }}
+                              placeholder="Hizmet Türü Seçin..."
+                              emptyText="Tür bulunamadı."
+                              inputClassName={`${inp} bg-white`}
+                            />
+                            {!!form.type.trim()
+                              && !(OFIS_VENDOR_TYPE_QUICK_PICKS as readonly string[]).includes(form.type) && (
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-slate-500">
+                                  Tür açıklaması <span className="text-red-400">*</span>
+                                </label>
+                                <input
+                                  className={inp}
+                                  placeholder="Örn. doğalgaz abonelik, fiber internet..."
+                                  value={isVendorTypeOther(form.type) ? typeCustom : form.type}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    if (isVendorTypeOther(form.type)) {
+                                      setTypeCustom(v);
+                                    } else {
+                                      setForm((p) => ({ ...p, type: v }));
+                                    }
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="min-w-0" data-testid="tedarikci-turu-sec">
+                              <SearchableSelect
+                                options={vendorTypes.map((t) => ({
+                                  value: t,
+                                  label: formatVendorTypeLabel(t) || t,
+                                }))}
+                                value={form.type}
+                                onChange={applyVendorType}
+                                placeholder="Tür Seçin..."
+                                emptyText="Tür bulunamadı. Yeni Tür ile ekleyin."
+                                inputClassName={`${inp} bg-white`}
+                              />
+                              {isVendorTypeOther(form.type) && (
+                                <div className="mt-2">
+                                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                                    Tür açıklaması <span className="text-red-400">*</span>
+                                  </label>
+                                  <input
+                                    className={inp}
+                                    placeholder="Tür açıklamasını yazın..."
+                                    value={typeCustom}
+                                    onChange={(e) => setTypeCustom(e.target.value)}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            {showAddType && (
+                              <div className="mt-2 flex flex-wrap gap-2 rounded-lg border border-indigo-100 bg-indigo-50 p-2.5">
+                                <input className={`${inp} min-w-[8rem] flex-1`} placeholder="Tür Adı" value={newTypeName}
+                                  onChange={(e) => setNewTypeName(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddVendorType(); }} />
+                                <button type="button" onClick={handleAddVendorType} disabled={savingType || !newTypeName.trim()}
+                                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:opacity-50 hover:bg-slate-50">Ekle</button>
+                                <button type="button" onClick={() => setShowAddType(false)} className="h-9 px-2 text-sm text-slate-500 hover:text-slate-700">İptal</button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {!isVendorOfisCategory(form.category) && form.type && hizmetMode && (
+                        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                          <button
+                            type="button"
+                            onClick={() => setHizmetKollariOpen((o) => !o)}
+                            className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-50/80"
+                          >
+                            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                              <span className="flex-shrink-0 text-indigo-600">{Icon.briefcase}</span>
+                              <span className="text-sm font-semibold text-slate-800">Tedarikçi Hizmet Kolları</span>
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-slate-600">
+                                {vendorTypeModeBadge(hizmetMode)}
+                              </span>
+                              {selectedHizmetKolCount > 0 && (
+                                <span className="flex-shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                                  {selectedHizmetKolCount} seçili
+                                </span>
+                              )}
+                            </div>
+                            <svg
+                              className={`h-4 w-4 flex-shrink-0 text-slate-400 transition-transform ${hizmetKollariOpen ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              aria-hidden
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+
+                          {hizmetKollariOpen && (
+                            <div key={hizmetMode} className="border-t border-slate-100 px-4 pb-4">
+                              <p className="mb-3 mt-3 text-xs text-slate-500">
+                                {vendorTypeSectionHint(hizmetMode, effectiveVendorType)}
+                              </p>
+                              <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2.5">
+                                <label className="mb-1.5 block text-xs font-medium text-slate-700">
+                                  {vendorTypeActivityLabel(hizmetMode, effectiveVendorType)}
+                                  {hizmetMode !== 'taseron_grid' && <span className="text-red-400"> *</span>}
+                                  {hizmetMode === 'taseron_grid' && (
+                                    <span className="font-normal text-slate-400"> (isteğe bağlı)</span>
+                                  )}
+                                </label>
+                                {vendorTypeQuickPicks(hizmetMode).length > 0 && (
+                                  <div className="mb-2 flex flex-wrap gap-1.5">
+                                    {vendorTypeQuickPicks(hizmetMode).map((pick) => (
+                                      <button
+                                        key={pick}
+                                        type="button"
+                                        onClick={() => toggleTypeActivityPick(pick)}
+                                        className={`rounded-lg border px-2.5 py-1 text-xs transition-all ${
+                                          typeActivityPicks.includes(pick)
+                                            ? 'border-indigo-400 bg-white font-medium text-indigo-700'
+                                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                        }`}
+                                      >
+                                        {pick}
+                                      </button>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => setTypeActivityOtherOpen((o) => !o)}
+                                      className={`rounded-lg border px-2.5 py-1 text-xs transition-all ${
+                                        typeActivityOtherOpen
+                                          ? 'border-indigo-400 bg-white font-medium text-indigo-700'
+                                          : 'border-dashed border-slate-200 text-slate-500 hover:border-slate-300'
+                                      }`}
+                                    >
+                                      Diğer
+                                    </button>
+                                  </div>
+                                )}
+                                {(hizmetMode === 'taseron_grid' || typeActivityOtherOpen || vendorTypeQuickPicks(hizmetMode).length === 0) && (
+                                  <input
+                                    type="text"
+                                    className={`${inp} text-xs`}
+                                    placeholder={vendorTypeActivityPlaceholder(effectiveVendorType)}
+                                    value={typeActivityCustom}
+                                    onChange={(e) => setTypeActivityCustom(e.target.value)}
+                                    onBlur={(e) => {
+                                      const v = toTitleCaseTR(e.target.value.trim());
+                                      if (v) setTypeActivityCustom(v);
+                                    }}
+                                  />
+                                )}
+                                {typeActivityPicks.length > 0 && (
+                                  <p className="mt-2 text-[11px] text-indigo-600">
+                                    {typeActivityPicks.length} grup seçildi
+                                  </p>
+                                )}
+                              </div>
+                              {showHasarGrid && (
+                                <HizmetKoluGrid
+                                  title="Hasar Onarım — Tedarikçi Hizmet Kolları"
+                                  items={workGroups.map((wg) => ({ key: wg.id, label: wg.name }))}
+                                  selectedKeys={selectedWorkGroupIds}
+                                  onToggle={toggleHasarWorkGroup}
+                                  onSelectAll={(all) => setSelectedWorkGroupIds(all ? workGroups.map((wg) => wg.id) : [])}
+                                  emptyMessage="Hasar hizmet kolu bulunamadı. Ayarlar → Tedarikçi Hizmet Kolları → Hasar sekmesinden tanımlayın."
+                                  accent="blue"
+                                  customOther={customHasarKol}
+                                  onCustomOtherChange={setCustomHasarKol}
+                                />
+                              )}
+                              {showAcilGrid && (
+                                <HizmetKoluGrid
+                                  title="Acil Yardım — Tedarikçi Hizmet Kolları"
+                                  items={acilServiceBranches.map((name) => ({ key: name, label: name }))}
+                                  selectedKeys={serviceBranches}
+                                  onToggle={toggleAcilServiceBranch}
+                                  onSelectAll={(all) => setServiceBranches(all ? [...acilServiceBranches] : [])}
+                                  loading={branchesLoading}
+                                  emptyMessage="Acil hizmet kolu bulunamadı. Ayarlar → Tedarikçi Hizmet Kolları → Acil sekmesinden ekleyin."
+                                  accent="orange"
+                                  customOther={customAcilKol}
+                                  onCustomOtherChange={setCustomAcilKol}
+                                />
+                              )}
+                              {!vendorTypeShowsWorkGroupGrid(hizmetMode) && (
+                                <p className="mt-1 text-[11px] text-slate-400">
+                                  Bu tür için usta/iş kolu listesi gösterilmez.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {!isVendorOfisCategory(form.category) && (
+                        <>
+                          <div>
+                            <p className="mb-1.5 text-xs font-medium text-slate-700">Hizmet Kategorisi</p>
+                            <div className="flex flex-wrap gap-1.5" data-testid="tedarikci-hizmet-kategori">
+                              {VENDOR_OPERATION_CATEGORIES.map(({ value, label }) => (
+                                <CompactChoiceButton
+                                  key={value}
+                                  selected={form.category === value}
+                                  label={label}
+                                  testId={`tedarikci-kategori-${value}`}
+                                  onClick={() => handleCategoryChange(value)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          <label className="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                              checked={!!form.canActAsInspector}
+                              onChange={(e) => setForm((p) => ({ ...p, canActAsInspector: e.target.checked }))}
+                            />
+                            <span className="min-w-0 truncate text-sm font-medium text-slate-800">Saha Tespitçisi</span>
+                            <span className="hidden min-w-0 truncate text-[11px] text-slate-500 min-[480px]:inline">
+                              Hasar dosyasında seçilebilir
+                            </span>
+                          </label>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -3378,8 +3758,12 @@ export default function VendorsPage() {
               {/* ── Section 2: Adres & Hizmet ── */}
               {activeSection === 2 && (
                 <div>
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 mb-6">
-                  <SectionDivider icon={Icon.mapPin} title="Adres Bilgileri" />
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 mb-6" data-testid="tedarikci-is-yeri-adresi">
+                  <SectionDivider
+                    icon={Icon.mapPin}
+                    title="İş Yeri Adresi"
+                    hint="Kart üzerindeki iş yeri konumu. Hizmet bölgesinden ayrıdır."
+                  />
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-2">
                     <FormField label={ADDRESS_FIELD.province}>
                       <select className={inp} value={form.cityCode}
@@ -3528,9 +3912,18 @@ export default function VendorsPage() {
                     </div>
                   )}
 
-                  <SectionDivider icon={Icon.mapPin} title="Hizmet Bölgeleri" />
+                  <div data-testid="tedarikci-hizmet-bolgeleri">
+                  <SectionDivider
+                    icon={Icon.mapPin}
+                    title="Hizmet Bölgeleri"
+                    hint={vendorCategoryRequiresServiceAreas(form.category)
+                      ? 'Dosya atamasında kullanılan il / ilçe kapsamı. En az bir bölge seçilir.'
+                      : 'Ofis / sabit hizmette bölge zorunlu değildir. İsterseniz iş yeri ilini yazabilirsiniz.'}
+                  />
                   <p className="text-xs text-slate-500 mb-2">
-                    Hasar ile aynı: il seçtikten sonra birden fazla ilçeyi işaretleyebilirsiniz. En az bir il veya ilçe zorunludur.
+                    {vendorCategoryRequiresServiceAreas(form.category)
+                      ? 'Hasar ile aynı: il seçtikten sonra birden fazla ilçeyi işaretleyebilirsiniz. En az bir il veya ilçe zorunludur.'
+                      : 'Doğalgaz / internet gibi kartlarda saha bölgesi gerekmez; boş bırakılabilir.'}
                   </p>
                   <div className="bg-slate-50 rounded-xl border border-slate-100 p-4">
                     {provinces.length === 0 ? (
@@ -3614,47 +4007,15 @@ export default function VendorsPage() {
                       <p className="text-[11px] text-content-tertiary mt-1">Henüz hizmet bölgesi seçilmedi.</p>
                     )}
                   </div>
+                  </div>
                 </div>
               )}
 
-              {/* ── Section 3: İlişki Özeti & Finans ── */}
+              {/* ── Section 3: İlişki ve Finans ── */}
               {activeSection === 3 && (
                 <div className="space-y-6">
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <SectionDivider icon={Icon.tag} title={VENDOR_RELATION_SECTION_TITLE} />
-                  <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 mb-4 leading-relaxed">
-                    {VENDOR_RELATION_SECTION_HINT}
-                  </p>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-2">
-                    <FormField label="Referans">
-                      <input className={inp} placeholder="Bu Tedarikçiyi Kim Önerdi?" value={form.referral}
-                        onChange={(e) => setForm((p) => ({ ...p, referral: e.target.value }))}
-                        onBlur={(e) => {
-                          const v = toTitleCaseTR(e.target.value.trim());
-                          if (v) setForm((p) => ({ ...p, referral: v }));
-                        }} />
-                    </FormField>
-                    <FormField label="Etiketler">
-                      <div className="flex gap-1.5">
-                        <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors"
-                          placeholder="Etiket Yaz, Enter veya + Bas" value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} />
-                        <button type="button" onClick={addTag}
-                          className="bg-slate-100 text-slate-600 text-xs px-3 py-2 rounded-lg hover:bg-slate-200 flex items-center">{Icon.plus}</button>
-                      </div>
-                    </FormField>
-                  </div>
-                  {form.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {form.tags.map((t) => (
-                        <span key={t} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">
-                          {toTitleCaseTR(t)}
-                          <button type="button" onClick={() => setForm((p) => ({ ...p, tags: p.tags.filter((x) => x !== t) }))} className="text-amber-400 hover:text-status-danger">{Icon.x}</button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <SectionDivider icon={Icon.tag} title={VENDOR_RELATION_SECTION_TITLE} hint={VENDOR_RELATION_SECTION_HINT} />
                   <FormField label="Kart Notları" error={fieldErrors.cardNotes}>
                     <CardNotesEditor
                       entries={form.cardNotes}
@@ -3663,6 +4024,42 @@ export default function VendorsPage() {
                       error={fieldErrors.cardNotes}
                     />
                   </FormField>
+                  <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3" data-testid="tedarikci-iliski-ikincil">
+                    <summary className="cursor-pointer list-none text-xs font-semibold text-slate-600 [&::-webkit-details-marker]:hidden flex items-center justify-between gap-2">
+                      <span>Referans Ve Etiketler</span>
+                      <span className="text-[11px] font-normal text-slate-400">İkincil</span>
+                    </summary>
+                    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <FormField label="Referans">
+                        <input className={inp} placeholder="Bu Tedarikçiyi Kim Önerdi?" value={form.referral}
+                          onChange={(e) => setForm((p) => ({ ...p, referral: e.target.value }))}
+                          onBlur={(e) => {
+                            const v = toTitleCaseTR(e.target.value.trim());
+                            if (v) setForm((p) => ({ ...p, referral: v }));
+                          }} />
+                      </FormField>
+                      <FormField label="Etiketler">
+                        <div className="flex gap-1.5">
+                          <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-colors"
+                            placeholder="Etiket Yaz, Enter veya + Bas" value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} />
+                          <button type="button" onClick={addTag}
+                            className="bg-slate-100 text-slate-600 text-xs px-3 py-2 rounded-lg hover:bg-slate-200 flex items-center">{Icon.plus}</button>
+                        </div>
+                      </FormField>
+                    </div>
+                    {form.tags.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {form.tags.map((t) => (
+                          <span key={t} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 rounded-full px-2.5 py-1 border border-amber-100">
+                            {toTitleCaseTR(t)}
+                            <button type="button" onClick={() => setForm((p) => ({ ...p, tags: p.tags.filter((x) => x !== t) }))} className="text-amber-400 hover:text-status-danger">{Icon.x}</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </details>
                   </div>
 
                   <div className="rounded-xl border border-indigo-100 bg-indigo-50/30 p-4">
@@ -3707,35 +4104,44 @@ export default function VendorsPage() {
                         </p>
                       )}
                     </FormField>
-                    <FormField label="Hakediş Ödeme Vadesi">
-                      <div className="flex gap-2">
-                        {(['15', '30'] as const).map((days) => (
-                          <button
-                            key={days}
-                            type="button"
-                            onClick={() => setForm((p) => ({
-                              ...p,
-                              paymentDueDays: p.paymentDueDays === days ? '' : days,
-                            }))}
-                            className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
-                              form.paymentDueDays === days
-                                ? 'border-brand-600 bg-brand-50 text-brand-700'
-                                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                            }`}
-                          >
-                            {days} Gün
-                          </button>
-                        ))}
-                      </div>
-                      <p className="mt-1.5 text-xs text-slate-500">
-                        Hakediş onayından sonra ödeme sırası vadesi. Seçim zorunludur.
-                      </p>
-                      {!form.paymentDueDays && (
-                        <p className="mt-1 text-xs font-medium text-amber-700">
-                          15 veya 30 gün seçiniz; aksi halde hakediş ödemesi doğru planlanamaz.
+                    {vendorCategoryRequiresPaymentDue(form.category) ? (
+                      <FormField label="Hakediş Ödeme Vadesi" required>
+                        <div className="flex gap-2" data-testid="tedarikci-vade-secim">
+                          {(['15', '30'] as const).map((days) => (
+                            <button
+                              key={days}
+                              type="button"
+                              onClick={() => setForm((p) => ({
+                                ...p,
+                                paymentDueDays: days,
+                              }))}
+                              className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${
+                                form.paymentDueDays === days
+                                  ? 'border-brand-600 bg-brand-50 text-brand-700'
+                                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              {days} Gün
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-1.5 text-xs text-slate-500" data-testid="tedarikci-vade-yardim">
+                          Hasar hakedişi için 15 veya 30 gün vade seçin. Seçim zorunludur.
                         </p>
-                      )}
-                    </FormField>
+                        {!form.paymentDueDays && (
+                          <p className="mt-1 text-xs text-status-danger" data-testid="tedarikci-vade-zorunlu">
+                            Devam etmek için vade seçilmelidir.
+                          </p>
+                        )}
+                      </FormField>
+                    ) : (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5" data-testid="tedarikci-vade-ofis">
+                        <p className="text-xs font-medium text-slate-700">Hakediş Ödeme Vadesi</p>
+                        <p className="mt-1 text-[11px] leading-snug text-slate-500">
+                          Ofis / sabit hizmet kartında Hasar hakediş vadesi sorulmaz.
+                        </p>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-slate-500">Teyit Durumu</p>
                       <p className="text-sm font-medium text-slate-700">
@@ -3822,25 +4228,35 @@ export default function VendorsPage() {
                       })()}
                     </FormField>
                   </div>
-                  <div className="mb-5">
-                    <FormField label="Sözleşme Notları">
-                      <textarea
-                        rows={2}
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                        placeholder="Sözleşme Hakkında Notlar, Özel Şartlar..."
-                        value={form.contractNotes}
-                        onChange={(e) => setForm((p) => ({ ...p, contractNotes: e.target.value }))}
-                      />
-                    </FormField>
-                  </div>
+                  <details className="mb-1 rounded-xl border border-slate-200 bg-slate-50/60 p-3" data-testid="tedarikci-sozlesme-notlari">
+                    <summary className="cursor-pointer list-none text-xs font-semibold text-slate-600 [&::-webkit-details-marker]:hidden flex items-center justify-between gap-2">
+                      <span>Sözleşme Notları</span>
+                      <span className="text-[11px] font-normal text-slate-400">İkincil</span>
+                    </summary>
+                    <div className="mt-3">
+                      <FormField label="Sözleşme Notları">
+                        <textarea
+                          rows={2}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 bg-white"
+                          placeholder="Sözleşme Hakkında Notlar, Özel Şartlar..."
+                          value={form.contractNotes}
+                          onChange={(e) => setForm((p) => ({ ...p, contractNotes: e.target.value }))}
+                        />
+                      </FormField>
+                    </div>
+                  </details>
                   </div>
 
                   {/* Evrak Yükleme */}
-                  <SectionDivider icon={
+                  <SectionDivider
+                    icon={
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                     </svg>
-                  } title="Evrak Yükleme" />
+                    }
+                    title="Evrak Yükleme"
+                    hint="Yüklerken evrak türü seçilir. Kart kaydı evrak olmadan da tamamlanır."
+                  />
                   <div className="space-y-2 mb-2">
                     <div className="flex flex-wrap gap-3 items-end">
                       <div className="flex-1 min-w-48">
@@ -3998,48 +4414,61 @@ export default function VendorsPage() {
               )}
             </div>
 
-            {/* Panel Footer */}
-            <div className="flex shrink-0 flex-col gap-3 border-t border-slate-100 bg-slate-50/50 px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div className="flex gap-1.5">
-                {MODAL_SECTIONS.map((_, i) => (
-                  <button key={i} type="button" onClick={() => setActiveSection(i)}
-                    className={`w-2 h-2 rounded-full transition-all ${activeSection === i ? 'bg-indigo-600 w-4' : 'bg-slate-300 hover:bg-slate-400'}`} />
-                ))}
-              </div>
-              <div className="flex gap-2 items-center">
+            {/* Sabit işlem alanı — dar ekranda iki satıra geçer; tüm tuşlar tıklanır */}
+            <div
+              className="relative z-30 flex shrink-0 flex-col gap-2 border-t border-slate-200 bg-white px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6"
+              data-testid="tedarikci-form-footer"
+            >
+              <p className="text-[11px] font-medium text-slate-500 sm:hidden">
+                Adım {activeSection + 1} / {MODAL_SECTIONS.length}
+              </p>
+              <div
+                className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end"
+                data-testid="tedarikci-form-footer-actions"
+              >
                 {activeSection > 0 && (
                   <button type="button" onClick={() => setActiveSection((s) => s - 1)}
-                    className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
-                    ← Önceki
+                    className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 px-3 text-sm text-slate-600 hover:bg-white sm:shrink-0 sm:px-4">
+                    Geri
                   </button>
                 )}
+                <button type="button" onClick={() => setShowModal(false)}
+                  className={`inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 px-3 text-sm text-slate-600 hover:bg-slate-50 sm:shrink-0 sm:px-4 ${activeSection > 0 ? '' : 'col-start-1'}`}>
+                  İptal
+                </button>
                 {activeSection < MODAL_SECTIONS.length - 1 ? (
-                  <button type="button" onClick={() => setActiveSection((s) => s + 1)}
-                    className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                  <button type="button" onClick={handleContinue}
+                    className="col-span-2 inline-flex h-9 items-center justify-center rounded-lg bg-brand-600 px-3 text-sm text-white hover:bg-brand-700 disabled:opacity-50 sm:col-auto sm:shrink-0 sm:px-4"
                     disabled={false}>
-                    Sonraki →
+                    Devam
                   </button>
                 ) : (
-                  <div ref={saveModeDropdownRef} className="relative flex items-stretch">
+                  <div
+                    ref={saveModeDropdownRef}
+                    className="relative col-span-2 flex h-9 w-full items-stretch sm:w-auto sm:shrink-0"
+                    data-testid="tedarikci-form-kaydet-grup"
+                  >
                     <button
                       type="button"
                       onClick={() => handleSave()}
                       disabled={saving}
-                      className="flex items-center gap-2 px-5 py-2 text-sm bg-indigo-600 text-white rounded-l-xl hover:bg-indigo-700 disabled:opacity-50 font-medium border-r border-indigo-500 transition-colors"
+                      className="flex min-w-0 flex-1 items-center justify-center gap-2 truncate rounded-l-lg border-r border-brand-500 bg-brand-600 px-3 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 sm:flex-none sm:px-5"
                     >
                       {saving && (
-                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
                       )}
-                      {saving ? 'Kaydediliyor...' : saveMode === 'close' ? 'Kaydet ve Kapat' : saveMode === 'new' ? 'Kaydet ve Yeni Ekle' : 'Kaydet ve Detaya Git'}
+                      <span className="truncate">
+                        {saving ? 'Kaydediliyor...' : saveMode === 'close' ? 'Kaydet ve Kapat' : saveMode === 'new' ? 'Kaydet ve Yeni Ekle' : 'Kaydet ve Detaya Git'}
+                      </span>
                     </button>
                     <button
                       type="button"
                       disabled={saving}
                       onClick={() => setSaveModeDropdownOpen((o) => !o)}
-                      className="flex items-center justify-center px-2.5 bg-indigo-600 text-white rounded-r-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                      className="flex shrink-0 items-center justify-center rounded-r-lg bg-brand-600 px-3 text-white transition-colors hover:bg-brand-700 disabled:opacity-50 sm:px-2.5"
                       aria-label="Kaydetme seçenekleri"
                     >
                       <svg className={`w-3.5 h-3.5 transition-transform duration-150 ${saveModeDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4047,7 +4476,7 @@ export default function VendorsPage() {
                       </svg>
                     </button>
                     {saveModeDropdownOpen && (
-                      <div className="absolute bottom-full right-0 mb-2 bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[220px] z-50">
+                      <div className="absolute bottom-full right-0 mb-2 max-w-[calc(100vw-1.5rem)] bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[220px] z-50">
                         {([
                           { mode: 'close' as const, label: 'Kaydet ve Kapat', desc: 'Listeye geri dön', icon: '✓' },
                           { mode: 'new' as const, label: 'Kaydet ve Yeni Ekle', desc: 'Formu sıfırla, devam et', icon: '+' },
@@ -4062,13 +4491,13 @@ export default function VendorsPage() {
                               setSaveModeDropdownOpen(false);
                               handleSave(mode);
                             }}
-                            className={`w-full text-left px-4 py-2.5 flex items-start gap-3 hover:bg-indigo-50 transition-colors ${saveMode === mode ? 'bg-indigo-50' : ''}`}
+                            className={`w-full text-left px-4 py-2.5 flex items-start gap-3 hover:bg-brand-50 transition-colors ${saveMode === mode ? 'bg-brand-50' : ''}`}
                           >
-                            <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${saveMode === mode ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                            <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${saveMode === mode ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
                               {saveMode === mode ? '✓' : icon}
                             </span>
                             <div>
-                              <p className={`text-xs font-medium ${saveMode === mode ? 'text-indigo-700' : 'text-slate-700'}`}>{label}</p>
+                              <p className={`text-xs font-medium ${saveMode === mode ? 'text-brand-700' : 'text-slate-700'}`}>{label}</p>
                               <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
                             </div>
                           </button>
@@ -4077,10 +4506,6 @@ export default function VendorsPage() {
                     )}
                   </div>
                 )}
-                <button type="button" onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
-                  İptal
-                </button>
               </div>
             </div>
         </div>

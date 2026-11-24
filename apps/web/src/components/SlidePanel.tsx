@@ -65,7 +65,7 @@ export function SlidePanel({
       <div
         ref={panelRef}
         style={{ ['--slide-panel-w' as string]: `${width}px` }}
-        className={`fixed top-0 right-0 z-[210] flex h-[100svh] max-h-[100svh] w-full max-w-[100vw] flex-col border-l border-gray-100 bg-white shadow-2xl shadow-black/20 transition-transform duration-300 ease-in-out sm:w-[var(--slide-panel-w)] sm:max-w-none ${rightPanelDockClass(open, docked)}`}
+        className={`fixed inset-y-0 right-0 z-[210] !mt-0 flex h-auto max-h-[100dvh] w-full max-w-[100vw] flex-col border-l border-gray-100 bg-white shadow-2xl shadow-black/20 transition-transform duration-300 ease-in-out sm:w-[var(--slide-panel-w)] sm:max-w-none ${rightPanelDockClass(open, docked)}`}
         role="dialog"
         aria-modal={open && !docked}
         data-testid="slide-panel-shell"
