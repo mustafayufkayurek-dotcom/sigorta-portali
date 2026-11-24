@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-11-23",
-  "label": "v715-masraf-modal-kdv-select",
-  "description": "v715 full: Masraf grup/alt grup penceresi FinansModal portal (flu örtü altında kalmaz); KDV oranı native select. Geri alma web v714 / backend v714.",
+  "updatedAt": "2026-11-24",
+  "label": "v720-masraf-tedarikci-cari",
+  "description": "v720 full: Masraf Ödeme Kaynağı tüm aktif tedarikçiler + cari yoksa ensure-vendor; yükleme adı UTF-8; Tab SearchableSelect açmaz; kimlik no tekil. Geri alma web v719 / backend v717.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v715-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v715-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v720-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v720-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v714-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v714-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v719-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v717-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
