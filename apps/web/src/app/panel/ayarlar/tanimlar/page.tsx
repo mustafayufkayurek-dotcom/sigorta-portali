@@ -11,6 +11,7 @@ type MetricKey =
   | 'relationshipTypes'
   | 'customerSubTypes'
   | 'vendorServiceBranches'
+  | 'officeVendorTypes'
   | 'locations'
   | 'workGroups'
   | 'claimSubjects'
@@ -226,6 +227,7 @@ export default function TanimlarPage() {
     relationshipTypes: emptyMetric(),
     customerSubTypes: emptyMetric(),
     vendorServiceBranches: emptyMetric(),
+    officeVendorTypes: emptyMetric(),
     locations: emptyMetric(),
     workGroups: emptyMetric(),
     claimSubjects: emptyMetric(),
@@ -246,6 +248,7 @@ export default function TanimlarPage() {
         relationshipTypes,
         customerSubTypes,
         vendorServiceBranches,
+        officeVendorTypes,
         locations,
         workGroups,
         claimSubjects,
@@ -270,6 +273,10 @@ export default function TanimlarPage() {
         safeMetric(axios.get(`${API}/service-branches/admin`, { headers, params: { scope: 'vendor', type: 'acil_yardim' } }), (raw) => {
           const items = extractArray(raw);
           return { total: items.length, active: countActive(items) };
+        }),
+        safeMetric(axios.get(`${API}/system-settings/office-vendor-types`, { headers }), (raw) => {
+          const items = extractArray(raw);
+          return { total: items.length, active: items.length };
         }),
         safeMetric(axios.get(`${API}/claim-locations`, { headers }), (raw) => {
           const items = extractArray(raw);
@@ -343,6 +350,7 @@ export default function TanimlarPage() {
         relationshipTypes,
         customerSubTypes,
         vendorServiceBranches,
+        officeVendorTypes,
         locations,
         workGroups,
         claimSubjects,
