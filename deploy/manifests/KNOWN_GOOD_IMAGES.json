@@ -1,17 +1,17 @@
 {
   "updatedAt": "2026-11-24",
-  "label": "v721-tedarikci-masraf-belge",
-  "description": "v721 full: Tedarikçi 5 adım (ofis/sabit, vade, hizmet türü); masraf açıkken tedarikçi dönüş köprüsü; belge no 25≡025 kontrol penceresi; Hasar/Acil hakediş uyarısı. Geri alma web v720 / backend v720.",
+  "label": "v722-ofis-hizmet-turu-cari-yazim",
+  "description": "v722 full: Ofis Hizmet Türleri (Ayarlar + form Yeni Tür); müşteri kartında Cari Rol / çift rol; tedarikçi Title Case ve eksik yazım onayı; hizmet alanı Tümünü Kaldır; masraf→tedarikçi dönüş. Geri alma web v721 / backend v721.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v721-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v721-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v722-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v722-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v720-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v720-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v721-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v721-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
@@ -26,6 +26,7 @@
     "/panel/raporlar",
     "/panel/carilerim",
     "/panel/ayarlar/tanimlar",
+    "/panel/ayarlar/ofis-hizmet-turleri",
     "/panel/ayarlar/evrak-turleri",
     "/panel/ayarlar/yetkilendirme",
     "/panel/harita",

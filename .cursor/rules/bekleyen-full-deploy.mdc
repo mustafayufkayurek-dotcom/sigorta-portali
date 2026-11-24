@@ -1,11 +1,11 @@
 ---
-description: Canlı web v721 / backend v721
+description: Canlı web v722 / backend v722
 alwaysApply: true
 ---
 
 # Canlı (24.11.2026)
 
-Canlı: web **v721** · backend **v721**. Geri alma: web **v720** / backend **v720**.
+Canlı: web **v722** · backend **v722**. Geri alma: web **v721** / backend **v721**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v722 (full):** Ofis Hizmet Türleri (Ayarlar → Tanımlar + formda Yeni Tür); müşteri kartında Cari Rol / Müşteri+Tedarikçi; tedarikçi Title Case ve eksik yazım onayı; hizmet alanı Tümünü Kaldır; masraf→tedarikçi tam form dönüşü. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v721** / backend **v721**.
 
 **v721 (full):** Tedarikçi 5 adım (ofis/sabit, vade zorunlu, hizmet türü açılır liste); masraf açıkken Yeni Tedarikçi form düşmez; belge no 25≡025 kontrol penceresi; Hasar ve Acil hakediş uyarısı (kesmez); masraf tarih alanları geniş. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v720** / backend **v720**.
 
@@ -319,4 +321,4 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
 
-Canlı web **v721** · backend **v721**.
+Canlı web **v722** · backend **v722**.
