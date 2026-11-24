@@ -16,6 +16,7 @@ import { DistrictCheckboxGrid } from '@/components/ui/DistrictCheckboxGrid';
 import { ADDRESS_FIELD } from '@/constants/address-fields';
 import {
   addWholeProvinceEntry,
+  clearDistrictsInProvince,
   isDistrictAreaChecked,
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
@@ -513,6 +514,11 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
     );
   };
 
+  const clearDistrictsForSelectedProvince = () => {
+    if (!selectedProvinceId) return;
+    setServiceAreas((p) => clearDistrictsInProvince(p, selectedProvinceId));
+  };
+
   const removeArea = (sa: { provinceId: string; districtId: string | null }) => {
     const key = sa.districtId ? `${sa.provinceId}:${sa.districtId}` : `${sa.provinceId}:`;
     setServiceAreas((p) => p.filter((x) => (x.districtId ? `${x.provinceId}:${x.districtId}` : `${x.provinceId}:`) !== key));
@@ -582,13 +588,26 @@ function BolgelerTab({ vendor, onUpdate }: { vendor: any; onUpdate: () => void }
               inputClassName="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
             />
             {selectedProvince && (
-              <button
-                type="button"
-                onClick={addAllDistrictsForProvince}
-                className="w-full text-xs font-medium text-brand-700 bg-white border border-brand-200 hover:bg-brand-50 px-3 py-2 rounded-lg transition-colors"
-              >
-                Tüm ilçeleri ekle
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={addAllDistrictsForProvince}
+                  className="w-full text-xs font-medium text-brand-700 bg-white border border-brand-200 hover:bg-brand-50 px-3 py-2 rounded-lg transition-colors"
+                  data-testid="tedarikci-detay-tum-ilceleri-ekle"
+                >
+                  Tüm İlçeleri Seç
+                </button>
+                {serviceAreas.some((sa) => sa.provinceId === selectedProvinceId) && (
+                  <button
+                    type="button"
+                    onClick={clearDistrictsForSelectedProvince}
+                    className="w-full text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors"
+                    data-testid="tedarikci-detay-tumunu-kaldir"
+                  >
+                    Tümünü Kaldır
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

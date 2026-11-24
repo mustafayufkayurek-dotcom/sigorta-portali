@@ -33,4 +33,15 @@ describe('tedarikçi türü yetki LOCK', () => {
     assert.match(fn, /Ekipman/);
     assert.match(fn, /Diğer/);
   });
+
+  it('ofis hizmet türleri GET/PUT ve varsayılan liste durur', () => {
+    const ctrl = readFileSync(join(here, 'system-settings.controller.ts'), 'utf8');
+    assert.match(ctrl, /office-vendor-types/);
+    assert.match(ctrl, /getOfficeVendorTypes/);
+    assert.match(ctrl, /setOfficeVendorTypes/);
+    const src = readFileSync(join(here, 'system-settings.service.ts'), 'utf8');
+    assert.match(src, /office_vendor_types/);
+    assert.match(src, /Doğalgaz/);
+    assert.match(src, /İnternet/);
+  });
 });

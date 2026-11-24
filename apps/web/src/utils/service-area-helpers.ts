@@ -48,6 +48,14 @@ export function addAllDistrictsInProvince(
   return [...cleaned.map(normalizeArea), ...entries];
 }
 
+/** Seçili ilin tüm hizmet bölgesi kayıtlarını kaldırır (Tümünü Kaldır) */
+export function clearDistrictsInProvince(
+  areas: ServiceAreaInput[],
+  provinceId: string,
+): ServiceAreaLike[] {
+  return areas.filter((sa) => sa.provinceId !== provinceId).map(normalizeArea);
+}
+
 /** İlin tamamını tek kayıt olarak ekler (districtId: null — "Tüm İl") */
 export function addWholeProvinceEntry(
   areas: ServiceAreaInput[],

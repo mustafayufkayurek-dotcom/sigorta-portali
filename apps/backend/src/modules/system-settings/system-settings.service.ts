@@ -608,6 +608,22 @@ export class SystemSettingsService {
     return types;
   }
 
+  /** Ofis / sabit hizmet türleri (doğalgaz, internet…). */
+  async getOfficeVendorTypes(): Promise<string[]> {
+    const value = await this.get('office_vendor_types');
+    const list = Array.isArray(value)
+      ? value.map((item) => String(item ?? '').trim()).filter(Boolean)
+      : [];
+    return list.length > 0
+      ? list
+      : ['Doğalgaz', 'İnternet', 'Elektrik', 'Su', 'Telekom', 'Kira', 'Diğer'];
+  }
+
+  async setOfficeVendorTypes(types: string[]): Promise<string[]> {
+    await this.set('office_vendor_types', types);
+    return types;
+  }
+
   private readonly DEFAULT_MAIL_CONFIG: MailConfig = {
     host: '',
     port: 587,

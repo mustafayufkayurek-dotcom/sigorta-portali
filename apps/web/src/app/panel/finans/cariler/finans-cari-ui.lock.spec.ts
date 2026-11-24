@@ -336,11 +336,16 @@ describe('Finans cari UI LOCK', () => {
       'utf8',
     );
     assert.match(musteriPage, /musteri-cari-rol/);
+    assert.match(musteriPage, /musteri-cari-rol-cift/);
+    assert.match(musteriPage, /musteri-tip-grubu/);
+    assert.match(musteriPage, /Kart Türü Ve Cari Rol/);
     assert.match(tedarikciPage, /tedarikci-cari-rol/);
     assert.match(musteriPage, /musteri_tedarikci/);
     assert.match(tedarikciPage, /musteri_tedarikci/);
     assert.match(musteriPage, /CARI_KARSI_TARAF_ROL_LABEL/);
     assert.match(tedarikciPage, /CARI_KARSI_TARAF_ROL_LABEL/);
+    // Düzenlemede de Cari Rol görünür (yalnız yeni kayıtta gizlenmez)
+    assert.doesNotMatch(musteriPage, /!editingCustomerId \? \([\s\S]*?musteri-cari-rol/);
     assert.match(shared, /bankaCariKodu/);
     assert.match(shared, /NAKIT_KASA_CARI_KODU/);
     assert.match(shared, /Masraf kaynağı/);

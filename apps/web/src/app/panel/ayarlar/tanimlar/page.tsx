@@ -90,6 +90,13 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
         tone: 'emerald',
       },
       {
+        key: 'officeVendorTypes',
+        title: 'Ofis Hizmet Türleri',
+        purpose: 'Ofis / sabit hizmet tedarikçisinde Hizmet Türü listesi (doğalgaz, internet…). Formdan Yeni Tür ile de eklenir.',
+        href: '/panel/ayarlar/ofis-hizmet-turleri',
+        tone: 'emerald',
+      },
+      {
         key: 'locations',
         title: 'Mahal Ve Kategori',
         purpose: 'Hasar raporunda kullanılan mahal/bölge ve kategori.',

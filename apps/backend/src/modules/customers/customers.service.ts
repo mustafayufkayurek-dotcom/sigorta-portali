@@ -624,7 +624,7 @@ export class CustomersService {
 
   async update(id: string, data: any, actorUserId?: string) {
     const existing = await this.findOne(id);
-    const { contacts, contactInfos, customerType, cariRol: _cariRol, ...rest } = data as any;
+    const { contacts, contactInfos, customerType, cariRol, ...rest } = data as any;
     this.sanitizeCustomerWriteData(rest);
     await this.assertCustomerSubTypeIfRequired(rest);
     await this.assertInsuranceCatalogBind(rest, existing);
@@ -705,7 +705,21 @@ export class CustomersService {
       }
     }
 
-    return this.findOne(id);
+    const updated = await this.findOne(id);
+    if (this.partyAccounts && actorUserId && cariRol != null) {
+      try {
+        await this.partyAccounts.ensureCustomerAccount({
+          customerId: id,
+          userId: actorUserId,
+          name: updated.shortName || updated.companyName || updated.fullName,
+          cariRol,
+        });
+      } catch (e) {
+        if (String(cariRol) === 'musteri_tedarikci') throw e;
+        /* tek rol cari sonradan tahsilatta açılır */
+      }
+    }
+    return updated;
   }
 
   async remove(id: string) {

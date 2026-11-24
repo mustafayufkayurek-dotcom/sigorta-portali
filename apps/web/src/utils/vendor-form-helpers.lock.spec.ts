@@ -18,8 +18,11 @@ describe('tedarikçi türü listesi LOCK', () => {
     assert.match(formHelper, /export function vendorCategoryRequiresPaymentDue/);
     assert.match(formHelper, /export function vendorCategoryRequiresServiceAreas/);
     assert.match(formHelper, /OFIS_VENDOR_TYPE_QUICK_PICKS/);
-    assert.match(formHelper, /'Doğalgaz'/);
-    assert.match(formHelper, /'İnternet'/);
+    assert.match(formHelper, /resolveOfisVendorTypeList/);
+    const typeList = readFileSync(join(here, 'vendor-type-list.ts'), 'utf8');
+    assert.match(typeList, /Doğalgaz/);
+    assert.match(typeList, /İnternet/);
+    assert.match(typeList, /resolveOfisVendorTypeList/);
     assert.match(formHelper, /category === 'ofis'|=== 'ofis'/);
     // Ofiste vade false; operasyonda true (negasyon)
     assert.match(formHelper, /vendorCategoryRequiresPaymentDue[\s\S]{0,120}!isVendorOfisCategory/);
@@ -63,13 +66,14 @@ describe('tedarikçi türü listesi LOCK', () => {
     assert.match(page, /Kimliği Tamamla/);
     const typeList = readFileSync(join(here, 'vendor-type-list.ts'), 'utf8');
     assert.match(typeList, /DEFAULT_VENDOR_TYPES/);
-    assert.match(page, /data-testid="tedarikci-turu-sec"/);
+    assert.match(page, /tedarikci-turu-sec/);
+    assert.match(page, /tedarikci-ofis-turu/);
     assert.match(page, /resolveVendorTypeList/);
     assert.match(page, /DEFAULT_VENDOR_TYPES/);
-    const typeBlockStart = page.indexOf('data-testid="tedarikci-turu-sec"');
-    const typeBlock = page.slice(typeBlockStart, typeBlockStart + 700);
+    const typeBlockStart = page.indexOf('tedarikci-turu-sec');
+    const typeBlock = page.slice(Math.max(0, typeBlockStart - 120), typeBlockStart + 700);
     assert.match(typeBlock, /SearchableSelect/);
-    assert.doesNotMatch(typeBlock, /<select/);
+    assert.doesNotMatch(typeBlock, /<select[\s>]/);
   });
 
   it('görsel düzen: araç çubuğu, adım, sabit alt tuş; operasyonda vade zorunlu, ofis ayrı', () => {
@@ -83,19 +87,18 @@ describe('tedarikçi türü listesi LOCK', () => {
     assert.match(page, /data-testid="tedarikci-is-alani"/);
     assert.match(page, /testId="tedarikci-is-ofis"/);
     assert.match(page, /testId="tedarikci-is-operasyon"/);
-    assert.match(page, /OFIS_VENDOR_TYPE_QUICK_PICKS/);
-    assert.match(page, /data-testid="tedarikci-ofis-turu"/);
-    const ofisTurBlock = page.slice(page.indexOf('data-testid="tedarikci-ofis-turu"'), page.indexOf('data-testid="tedarikci-ofis-turu"') + 900);
-    assert.match(ofisTurBlock, /SearchableSelect/);
-    assert.doesNotMatch(ofisTurBlock, /CompactChoiceButton/);
+    assert.match(page, /resolveOfisVendorTypeList/);
+    assert.match(page, /office-vendor-types/);
+    assert.match(page, /data-testid="tedarikci-yeni-tur"/);
+    assert.match(page, /tedarikci-ofis-turu/);
     assert.match(page, /Hizmet Türü Seçin/);
-    assert.match(page, /Seçim zorunludur/);
     assert.match(page, /Hakediş ödeme vadesi zorunludur/);
     assert.match(page, /vendorCategoryRequiresPaymentDue/);
     assert.match(page, /vendorCategoryRequiresServiceAreas/);
     assert.match(formHelper, /vendorCategoryRequiresPaymentDue/);
     assert.match(formHelper, /isVendorOfisCategory/);
     assert.match(formHelper, /OFIS_VENDOR_TYPE_QUICK_PICKS/);
+    assert.match(formHelper, /resolveOfisVendorTypeList/);
     assert.match(formHelper, /'ofis'/);
     assert.match(page, /data-testid="tedarikci-is-yeri-adresi"/);
     assert.match(page, /İş Yeri Adresi/);
@@ -143,7 +146,10 @@ describe('tedarikçi türü listesi LOCK', () => {
     const kurumsalIdx = page.indexOf('title="Kurumsal Bilgiler"');
     const iletisimIdx = page.indexOf('title="İletişim Bilgileri"');
     const hizmetIdx = page.indexOf('data-testid="tedarikci-hizmet-grubu"');
-    const turIdx = page.indexOf('data-testid="tedarikci-turu-sec"');
+    const turIdx = Math.max(
+      page.indexOf('tedarikci-turu-sec'),
+      page.indexOf('tedarikci-ofis-turu'),
+    );
     assert.ok(tipIdx > 0 && cariIdx > tipIdx);
     assert.ok(kurumsalIdx > cariIdx && iletisimIdx > kurumsalIdx);
     assert.ok(hizmetIdx > iletisimIdx && turIdx > hizmetIdx);

@@ -50,6 +50,22 @@ export class SystemSettingsController {
     return { success: true, data };
   }
 
+  @Get('office-vendor-types')
+  @RequirePermissions('settings.view', 'vendor.view', 'vendor.create')
+  @ApiOperation({ summary: 'Ofis / sabit hizmet türlerini getir' })
+  async getOfficeVendorTypes() {
+    const data = await this.service.getOfficeVendorTypes();
+    return { success: true, data };
+  }
+
+  @Put('office-vendor-types')
+  @RequirePermissions('settings.manage', 'vendor.create')
+  @ApiOperation({ summary: 'Ofis / sabit hizmet türlerini güncelle' })
+  async setOfficeVendorTypes(@Body() body: { types: string[] }) {
+    const data = await this.service.setOfficeVendorTypes(body.types);
+    return { success: true, data };
+  }
+
   @Get('mail-config')
   @RequirePermissions('settings.view')
   @ApiOperation({ summary: 'Mail yapılandırmasını getir' })

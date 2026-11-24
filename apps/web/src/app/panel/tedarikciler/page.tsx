@@ -17,9 +17,11 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import {
   addAllDistrictsInProvince,
   addWholeProvinceEntry,
+  clearDistrictsInProvince,
   isDistrictAreaChecked,
   toggleDistrictArea,
 } from '@/utils/service-area-helpers';
+import { usePanelConfirm } from '@/components/ui/use-panel-confirm';
 import { fetchProvinceDistricts } from '@/utils/fetch-province-districts';
 import { useToast } from '@/contexts/ToastContext';
 import { SlidePanel } from '@/components/SlidePanel';
@@ -41,12 +43,13 @@ import {
   VENDOR_OPERATION_CATEGORIES,
   VENDOR_DOC_OTHER_SELECT,
   HIZMET_KOLU_OTHER_KEY,
-  OFIS_VENDOR_TYPE_QUICK_PICKS,
   isVendorTypeOther,
   isVendorOfisCategory,
   parseVendorCategory,
   resolveVendorTypeList,
+  resolveOfisVendorTypeList,
   DEFAULT_VENDOR_TYPES,
+  DEFAULT_OFIS_VENDOR_TYPES,
   isOtherDocumentTypeName,
   vendorCategoryRequiresPaymentDue,
   vendorCategoryRequiresServiceAreas,
@@ -71,6 +74,9 @@ import {
   vendorIdentityGapLabel,
   vendorCariRolHelpText,
   filterDocumentTypesForCategory,
+  applyVendorTitleCaseBlur,
+  vendorWritingLiveHint,
+  vendorIncompleteWritingConfirmMessage,
   VENDOR_RELATION_SECTION_TITLE,
   VENDOR_RELATION_SECTION_HINT,
   VENDOR_FORM_SECTIONS,
@@ -287,12 +293,14 @@ function contactDisplayLabel(c: ContactPerson, idx: number, kind: 'corporate' | 
 }
 
 function mapContactToPayload(c: ContactPerson) {
+  const firstName = toTitleCaseTR(c.firstName.trim());
+  const lastName = toTitleCaseTR(c.lastName.trim());
   return {
     id: c.id,
-    fullName: `${c.firstName} ${c.lastName}`.trim(),
-    firstName: c.firstName,
-    lastName: c.lastName,
-    title: c.title === '__other__' ? '' : c.title,
+    fullName: `${firstName} ${lastName}`.trim(),
+    firstName,
+    lastName,
+    title: c.title === '__other__' ? '' : toTitleCaseTR(String(c.title ?? '').trim()),
     phone: c.phone || null,
     phoneType: c.phoneType,
     phoneExtension: c.extensionNo || null,
@@ -509,6 +517,7 @@ function CompactChoiceButton({
   hint,
   icon,
   testId,
+  grow = true,
 }: {
   selected: boolean;
   onClick: () => void;
@@ -516,6 +525,8 @@ function CompactChoiceButton({
   hint?: string;
   icon?: ReactNode;
   testId?: string;
+  /** false: çerçeve içinde ortalanan grupta sabit genişlik */
+  grow?: boolean;
 }) {
   return (
     <button
@@ -523,7 +534,9 @@ function CompactChoiceButton({
       aria-pressed={selected}
       data-testid={testId}
       onClick={onClick}
-      className={`inline-flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 text-left text-sm font-medium transition-colors ${
+      className={`inline-flex h-9 min-w-0 items-center gap-2 rounded-lg border px-3 text-left text-sm font-medium transition-colors ${
+        grow ? 'flex-1' : 'flex-none'
+      } ${
         selected
           ? 'border-brand-400 bg-brand-50 text-brand-800'
           : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
@@ -905,6 +918,7 @@ export default function VendorsPage() {
   const tableColumns = usePanelTableColumns('table-cols:tedarikciler', TABLE_COLUMNS);
   const rowActions = usePortalRowActionPrefs('row-actions:tedarikciler-v1', TEDARIKCI_ROW_ACTIONS);
   const { showToast } = useToast();
+  const { confirm, dialog: writingConfirmDialog } = usePanelConfirm();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [vendors, setVendors] = useState<any[]>([]);
@@ -959,6 +973,7 @@ export default function VendorsPage() {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
   const [vendorTypes, setVendorTypes] = useState<string[]>(() => [...DEFAULT_VENDOR_TYPES]);
+  const [ofisVendorTypes, setOfisVendorTypes] = useState<string[]>(() => [...DEFAULT_OFIS_VENDOR_TYPES]);
   const [showAddType, setShowAddType] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
   const [savingType, setSavingType] = useState(false);
@@ -1307,6 +1322,15 @@ export default function VendorsPage() {
     }
   }, []);
 
+  const loadOfisVendorTypes = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API}/system-settings/office-vendor-types`, { headers: authHeader() });
+      setOfisVendorTypes(resolveOfisVendorTypeList(r.data.data));
+    } catch {
+      setOfisVendorTypes(resolveOfisVendorTypeList([]));
+    }
+  }, []);
+
   const loadProvinces = useCallback(async () => {
     try {
       const r = await axios.get(`${API}/locations/provinces`, { headers: authHeader() });
@@ -1386,7 +1410,13 @@ export default function VendorsPage() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadSummary(); }, [loadSummary]);
-  useEffect(() => { loadProvinces(); loadWorkGroups(); loadVendorTypes(); loadDocumentTypes(); }, [loadProvinces, loadWorkGroups, loadVendorTypes, loadDocumentTypes]);
+  useEffect(() => {
+    loadProvinces();
+    loadWorkGroups();
+    loadVendorTypes();
+    loadOfisVendorTypes();
+    loadDocumentTypes();
+  }, [loadProvinces, loadWorkGroups, loadVendorTypes, loadOfisVendorTypes, loadDocumentTypes]);
 
   useEffect(() => {
     setBranchesLoading(true);
@@ -1569,6 +1599,10 @@ export default function VendorsPage() {
     setServiceAreas((p) => addWholeProvinceEntry(p, prov.id, prov.name));
   };
 
+  const clearDistrictsForProvince = (prov: Province) => {
+    setServiceAreas((p) => clearDistrictsInProvince(p, prov.id));
+  };
+
   // Adres ilinden Hizmet Bölgeleri ilini otomatik aç — çoklu ilçe kutuları hemen görünsün
   useEffect(() => {
     if (activeSection !== 2 || !form.city?.trim() || provinces.length === 0) return;
@@ -1605,15 +1639,35 @@ export default function VendorsPage() {
   };
 
   const handleAddVendorType = async () => {
-    const t = newTypeName.trim();
-    if (!t || vendorTypes.includes(t)) return;
+    const t = toTitleCaseTR(newTypeName.trim());
+    if (!t) return;
+    const ofis = isVendorOfisCategory(form.category);
+    const list = ofis ? ofisVendorTypes : vendorTypes;
+    if (list.some((x) => x.toLocaleLowerCase('tr') === t.toLocaleLowerCase('tr'))) {
+      showToast('warning', 'Bu tür zaten listede');
+      return;
+    }
     setSavingType(true);
     try {
-      const updated = [...vendorTypes, t];
-      await axios.put(`${API}/system-settings/vendor-types`, { types: updated }, { headers: authHeader() });
-      setVendorTypes(updated); setNewTypeName(''); setShowAddType(false);
+      const updated = [...list.filter((x) => !isVendorTypeOther(x)), t];
+      if (!updated.some(isVendorTypeOther)) updated.push('Diğer');
+      if (ofis) {
+        await axios.put(`${API}/system-settings/office-vendor-types`, { types: updated }, { headers: authHeader() });
+        setOfisVendorTypes(updated);
+      } else {
+        await axios.put(`${API}/system-settings/vendor-types`, { types: updated }, { headers: authHeader() });
+        setVendorTypes(updated);
+      }
+      setForm((p) => ({ ...p, type: t }));
+      setTypeCustom('');
+      setNewTypeName('');
+      setShowAddType(false);
       showToast('success', `"${t}" türü eklendi`);
-    } catch (e: any) { showToast('error', e?.response?.data?.message ?? 'Tür eklenemedi'); } finally { setSavingType(false); }
+    } catch (e: any) {
+      showToast('error', e?.response?.data?.message ?? 'Tür eklenemedi');
+    } finally {
+      setSavingType(false);
+    }
   };
 
   const openCreate = () => { setEditVendor(null); resetForm(); setShowModal(true); };
@@ -1829,7 +1883,7 @@ export default function VendorsPage() {
       errors.taxNumber = 'Vergi numarası zorunludur';
       missingLabels.push('Vergi No');
     }
-    if (!editVendor && form.cariRol === 'musteri_tedarikci') {
+    if (form.cariRol === 'musteri_tedarikci') {
       const kimlik = cariCiftRolKimlikHatasi({
         entityType: form.entityType,
         taxNumber: form.taxNumber,
@@ -1855,7 +1909,7 @@ export default function VendorsPage() {
     return { errors, missingLabels };
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (activeSection === 0) {
       const { errors, missingLabels } = collectTemelBilgiErrors();
       if (Object.keys(errors).length > 0) {
@@ -1894,6 +1948,22 @@ export default function VendorsPage() {
           return;
         }
       }
+      const yazim = vendorIncompleteWritingConfirmMessage({
+        entityType: form.entityType,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        name: form.name,
+      });
+      if (yazim) {
+        const ok = await confirm({
+          title: 'Yazım Kontrolü',
+          message: yazim,
+          confirmLabel: 'Devam Et',
+          cancelLabel: 'Düzenle',
+          danger: false,
+        });
+        if (!ok) return;
+      }
     }
     if (activeSection === 2 && vendorCategoryRequiresServiceAreas(form.category) && serviceAreas.length === 0) {
       showToast('warning', 'En az bir hizmet bölgesi seçin.');
@@ -1904,14 +1974,30 @@ export default function VendorsPage() {
       }, 80);
       return;
     }
-    if (activeSection === 3 && vendorCategoryRequiresPaymentDue(form.category) && form.paymentDueDays !== '15' && form.paymentDueDays !== '30') {
-      showToast('warning', 'Hakediş ödeme vadesi zorunludur. 15 veya 30 gün seçin.');
-      window.setTimeout(() => {
-        formScrollRef.current
-          ?.querySelector<HTMLElement>('[data-testid="tedarikci-vade-secim"]')
-          ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      }, 80);
-      return;
+    if (activeSection === 3) {
+      if (vendorCategoryRequiresPaymentDue(form.category) && form.paymentDueDays !== '15' && form.paymentDueDays !== '30') {
+        showToast('warning', 'Hakediş ödeme vadesi zorunludur. 15 veya 30 gün seçin.');
+        window.setTimeout(() => {
+          formScrollRef.current
+            ?.querySelector<HTMLElement>('[data-testid="tedarikci-vade-secim"]')
+            ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }, 80);
+        return;
+      }
+      const yazim = vendorIncompleteWritingConfirmMessage({
+        entityType: form.entityType,
+        accountHolderName: form.accountHolderName,
+      });
+      if (yazim) {
+        const ok = await confirm({
+          title: 'Yazım Kontrolü',
+          message: yazim,
+          confirmLabel: 'Devam Et',
+          cancelLabel: 'Düzenle',
+          danger: false,
+        });
+        if (!ok) return;
+      }
     }
     setActiveSection((s) => s + 1);
   };
@@ -1995,6 +2081,24 @@ export default function VendorsPage() {
       return;
     }
 
+    const yazim = vendorIncompleteWritingConfirmMessage({
+      entityType: form.entityType,
+      firstName: form.firstName,
+      lastName: form.lastName,
+      name: form.name,
+      accountHolderName: form.accountHolderName,
+    });
+    if (yazim) {
+      const ok = await confirm({
+        title: 'Yazım Kontrolü',
+        message: yazim,
+        confirmLabel: 'Kaydet',
+        cancelLabel: 'Düzenle',
+        danger: false,
+      });
+      if (!ok) return;
+    }
+
     // Telefon / e-posta çakışmasında onay modalı
     if (duplicateConflicts.phone || duplicateConflicts.email) {
       setShowDuplicateModal(true);
@@ -2022,12 +2126,15 @@ export default function VendorsPage() {
           : (form.type ? toTitleCaseTR(form.type) : undefined),
         category: form.category,
         canActAsInspector: isVendorOfisCategory(form.category) ? false : !!form.canActAsInspector,
-        ...(!editVendor ? { cariRol: form.cariRol } : {}),
+        cariRol: form.cariRol,
         address: form.address || null, city: form.city || null, district: form.district || null,
         neighborhood: form.neighborhood || null, streetName: form.streetName || null,
         buildingNo: form.buildingNo || null, doorNo: form.doorNo || null,
         latitude: locationCoords?.lat ?? null, longitude: locationCoords?.lng ?? null,
-        iban: form.iban || null, accountHolderName: form.accountHolderName || null,
+        iban: form.iban || null,
+        accountHolderName: form.accountHolderName
+          ? toTitleCaseTR(form.accountHolderName.replace(/\s+/g, ' ').trim())
+          : null,
         paymentDueDays: vendorCategoryRequiresPaymentDue(form.category)
           && (form.paymentDueDays === '15' || form.paymentDueDays === '30')
           ? Number(form.paymentDueDays)
@@ -2048,11 +2155,14 @@ export default function VendorsPage() {
         contactInfos: contactInfos.filter((ci) => ci.value.trim()),
       };
       if (form.entityType === 'corporate') {
+        payload.name = toTitleCaseTR(String(form.name ?? '').trim());
         payload.taxNumber = form.taxNumber || null;
         payload.taxOffice = form.taxOffice || null;
         payload.tradeRegistryNo = form.tradeRegistryNo || null;
       } else {
-        payload.name = `${form.firstName} ${form.lastName}`.trim() || form.name;
+        const firstName = toTitleCaseTR(form.firstName.trim());
+        const lastName = toTitleCaseTR(form.lastName.trim());
+        payload.name = `${firstName} ${lastName}`.trim() || toTitleCaseTR(form.name.trim());
         payload.identityNo = form.identityNo || null;
       }
       let savedVendorId: string | undefined = editVendor?.id;
@@ -2317,6 +2427,7 @@ export default function VendorsPage() {
   return (
     <TableColumnsProvider value={tableColumns}>
     <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden sm:space-y-5">
+      {writingConfirmDialog}
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
         <a href="/panel" className="hover:text-brand-600 transition-colors">Panel</a>
@@ -3033,30 +3144,26 @@ export default function VendorsPage() {
                           />
                         ))}
                       </div>
-                      {!editVendor ? (
-                        <div className="min-w-0" data-testid="tedarikci-cari-rol">
-                          <select
-                            value={form.cariRol}
-                            onChange={(e) =>
-                              setForm((p) => ({
-                                ...p,
-                                cariRol: e.target.value as 'tedarikci' | 'musteri_tedarikci',
-                              }))
-                            }
-                            className={inp}
-                          >
-                            <option value="tedarikci">{CARI_KARSI_TARAF_ROL_LABEL.tedarikci}</option>
-                            <option value="musteri_tedarikci">
-                              {CARI_KARSI_TARAF_ROL_LABEL.musteri_tedarikci}
-                            </option>
-                          </select>
-                        </div>
-                      ) : null}
-                      {!editVendor ? (
-                        <p className="col-span-full mt-0.5 text-[11px] leading-snug text-slate-500" data-testid="tedarikci-cari-rol-yardim">
-                          {vendorCariRolHelpText({ cariRol: form.cariRol, entityType: form.entityType })}
-                        </p>
-                      ) : null}
+                      <div className="min-w-0" data-testid="tedarikci-cari-rol">
+                        <select
+                          value={form.cariRol}
+                          onChange={(e) =>
+                            setForm((p) => ({
+                              ...p,
+                              cariRol: e.target.value as 'tedarikci' | 'musteri_tedarikci',
+                            }))
+                          }
+                          className={inp}
+                        >
+                          <option value="tedarikci">{CARI_KARSI_TARAF_ROL_LABEL.tedarikci}</option>
+                          <option value="musteri_tedarikci">
+                            {CARI_KARSI_TARAF_ROL_LABEL.musteri_tedarikci}
+                          </option>
+                        </select>
+                      </div>
+                      <p className="col-span-full mt-0.5 text-[11px] leading-snug text-slate-500" data-testid="tedarikci-cari-rol-yardim">
+                        {vendorCariRolHelpText({ cariRol: form.cariRol, entityType: form.entityType })}
+                      </p>
                     </div>
                   </div>
 
@@ -3066,7 +3173,10 @@ export default function VendorsPage() {
                       <SectionDivider icon={Icon.building} title="Kurumsal Bilgiler" />
                       <div className="grid w-full min-w-0 grid-cols-1 gap-3 min-[520px]:grid-cols-2">
                         <FormField label="Şirket Adı" required error={fieldErrors.name}>
-                          <input ref={nameRef} className={fieldErrors.name ? inpError : inp} placeholder="Şirket Unvanı" value={form.name} onChange={(e) => { setForm((p) => ({ ...p, name: e.target.value })); setFieldErrors((p) => { const n = { ...p }; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, name: v })); }} />
+                          <input ref={nameRef} className={fieldErrors.name ? inpError : inp} placeholder="Şirket Unvanı" value={form.name} onChange={(e) => { setForm((p) => ({ ...p, name: e.target.value })); setFieldErrors((p) => { const n = { ...p }; delete n.name; return n; }); }} onBlur={(e) => { const { value, notice } = applyVendorTitleCaseBlur(e.target.value); if (value) setForm((p) => ({ ...p, name: value })); if (notice) showToast('info', notice); }} />
+                          {vendorWritingLiveHint(form.name) && (
+                            <p className="mt-1 text-[11px] text-amber-700" data-testid="tedarikci-yazim-uyari">{vendorWritingLiveHint(form.name)}</p>
+                          )}
                         </FormField>
                         <FormField label="Vergi No" required error={fieldErrors.taxNumber || duplicateConflicts.taxNumber}>
                           <div className="flex min-w-0 flex-col gap-1.5 min-[360px]:flex-row">
@@ -3118,14 +3228,20 @@ export default function VendorsPage() {
                       <SectionDivider icon={Icon.user} title="Bireysel Bilgiler" />
                       <div className={fieldGrid}>
                         <FormField label="Ad" required error={fieldErrors.firstName}>
-                          <input ref={nameRef} className={fieldErrors.firstName ? inpError : inp} placeholder="Ad" value={form.firstName} onChange={(e) => { setForm((p) => ({ ...p, firstName: e.target.value, name: `${e.target.value} ${p.lastName}`.trim() })); setNviResult(null); setFieldErrors((p) => { const n = { ...p }; delete n.firstName; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, firstName: v, name: `${v} ${p.lastName}`.trim() })); }} />
+                          <input ref={nameRef} className={fieldErrors.firstName ? inpError : inp} placeholder="Ad" value={form.firstName} onChange={(e) => { setForm((p) => ({ ...p, firstName: e.target.value, name: `${e.target.value} ${p.lastName}`.trim() })); setNviResult(null); setFieldErrors((p) => { const n = { ...p }; delete n.firstName; delete n.name; return n; }); }} onBlur={(e) => { const { value, notice } = applyVendorTitleCaseBlur(e.target.value); if (value) setForm((p) => ({ ...p, firstName: value, name: `${value} ${p.lastName}`.trim() })); if (notice) showToast('info', notice); }} />
+                          {vendorWritingLiveHint(form.firstName) && (
+                            <p className="mt-1 text-[11px] text-amber-700" data-testid="tedarikci-yazim-uyari-ad">{vendorWritingLiveHint(form.firstName)}</p>
+                          )}
                         </FormField>
                         <FormField label="Soyad" required error={fieldErrors.lastName}>
-                          <input ref={lastNameRef} className={fieldErrors.lastName ? inpError : inp} placeholder="Soyad" value={form.lastName} onChange={(e) => { setForm((p) => ({ ...p, lastName: e.target.value, name: `${p.firstName} ${e.target.value}`.trim() })); setNviResult(null); setFieldErrors((p) => { const n = { ...p }; delete n.lastName; delete n.name; return n; }); }} onBlur={(e) => { const v = toTitleCaseTR(e.target.value.trim()); if (v) setForm((p) => ({ ...p, lastName: v, name: `${p.firstName} ${v}`.trim() })); }} />
+                          <input ref={lastNameRef} className={fieldErrors.lastName ? inpError : inp} placeholder="Soyad" value={form.lastName} onChange={(e) => { setForm((p) => ({ ...p, lastName: e.target.value, name: `${p.firstName} ${e.target.value}`.trim() })); setNviResult(null); setFieldErrors((p) => { const n = { ...p }; delete n.lastName; delete n.name; return n; }); }} onBlur={(e) => { const { value, notice } = applyVendorTitleCaseBlur(e.target.value); if (value) setForm((p) => ({ ...p, lastName: value, name: `${p.firstName} ${value}`.trim() })); if (notice) showToast('info', notice); }} />
+                          {vendorWritingLiveHint(form.lastName) && (
+                            <p className="mt-1 text-[11px] text-amber-700" data-testid="tedarikci-yazim-uyari-soyad">{vendorWritingLiveHint(form.lastName)}</p>
+                          )}
                         </FormField>
                         <FormField
                           label="TC Kimlik No"
-                          required={!editVendor && form.cariRol === 'musteri_tedarikci'}
+                          required={form.cariRol === 'musteri_tedarikci'}
                           error={fieldErrors.identityNo || duplicateConflicts.identityNo}
                         >
                           <input
@@ -3242,101 +3358,95 @@ export default function VendorsPage() {
                               'Tedarikçi Türü'
                             )}
                           </p>
-                          {!isVendorOfisCategory(form.category) && (
-                            <button type="button" onClick={() => setShowAddType(!showAddType)}
-                              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700">
-                              {Icon.plus} Yeni Tür
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setShowAddType(!showAddType)}
+                            className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                            data-testid="tedarikci-yeni-tur"
+                          >
+                            {Icon.plus} Yeni Tür
+                          </button>
                         </div>
-                        {isVendorOfisCategory(form.category) ? (
-                          <div className="space-y-2" data-testid="tedarikci-ofis-turu">
-                            <SearchableSelect
-                              options={[
-                                ...OFIS_VENDOR_TYPE_QUICK_PICKS.map((t) => ({ value: t, label: t })),
-                                { value: 'Diğer', label: 'Diğer' },
-                              ]}
-                              value={
-                                !form.type.trim()
-                                  ? ''
-                                  : (OFIS_VENDOR_TYPE_QUICK_PICKS as readonly string[]).includes(form.type)
-                                    ? form.type
-                                    : 'Diğer'
-                              }
-                              onChange={(next) => {
-                                if (next === 'Diğer') {
+                        <div className="min-w-0" data-testid={isVendorOfisCategory(form.category) ? 'tedarikci-ofis-turu' : 'tedarikci-turu-sec'}>
+                          <SearchableSelect
+                            options={(isVendorOfisCategory(form.category) ? ofisVendorTypes : vendorTypes).map((t) => ({
+                              value: t,
+                              label: formatVendorTypeLabel(t) || t,
+                            }))}
+                            value={
+                              !form.type.trim()
+                                ? ''
+                                : (isVendorOfisCategory(form.category) ? ofisVendorTypes : vendorTypes).some(
+                                    (t) => t.toLocaleLowerCase('tr') === form.type.toLocaleLowerCase('tr'),
+                                  )
+                                  ? form.type
+                                  : (isVendorTypeOther(form.type) ? 'Diğer' : form.type)
+                            }
+                            onChange={(next) => {
+                              if (isVendorOfisCategory(form.category)) {
+                                if (isVendorTypeOther(next)) {
                                   setForm((p) => ({ ...p, type: 'Diğer' }));
                                   setTypeCustom('');
                                   return;
                                 }
                                 setForm((p) => ({ ...p, type: next }));
                                 setTypeCustom('');
-                              }}
-                              placeholder="Hizmet Türü Seçin..."
-                              emptyText="Tür bulunamadı."
-                              inputClassName={`${inp} bg-white`}
-                            />
-                            {!!form.type.trim()
-                              && !(OFIS_VENDOR_TYPE_QUICK_PICKS as readonly string[]).includes(form.type) && (
-                              <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-500">
-                                  Tür açıklaması <span className="text-red-400">*</span>
-                                </label>
-                                <input
-                                  className={inp}
-                                  placeholder="Örn. doğalgaz abonelik, fiber internet..."
-                                  value={isVendorTypeOther(form.type) ? typeCustom : form.type}
-                                  onChange={(e) => {
-                                    const v = e.target.value;
-                                    if (isVendorTypeOther(form.type)) {
-                                      setTypeCustom(v);
-                                    } else {
-                                      setForm((p) => ({ ...p, type: v }));
-                                    }
-                                  }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <>
-                            <div className="min-w-0" data-testid="tedarikci-turu-sec">
-                              <SearchableSelect
-                                options={vendorTypes.map((t) => ({
-                                  value: t,
-                                  label: formatVendorTypeLabel(t) || t,
-                                }))}
-                                value={form.type}
-                                onChange={applyVendorType}
-                                placeholder="Tür Seçin..."
-                                emptyText="Tür bulunamadı. Yeni Tür ile ekleyin."
-                                inputClassName={`${inp} bg-white`}
+                                return;
+                              }
+                              applyVendorType(next);
+                            }}
+                            placeholder={isVendorOfisCategory(form.category) ? 'Hizmet Türü Seçin...' : 'Tür Seçin...'}
+                            emptyText="Tür bulunamadı. Yeni Tür ile ekleyin."
+                            inputClassName={`${inp} bg-white`}
+                          />
+                          {isVendorTypeOther(form.type) && (
+                            <div className="mt-2">
+                              <label className="mb-1 block text-xs font-medium text-slate-500">
+                                Tür açıklaması <span className="text-red-400">*</span>
+                              </label>
+                              <input
+                                className={inp}
+                                placeholder={
+                                  isVendorOfisCategory(form.category)
+                                    ? 'Örn. doğalgaz abonelik, fiber internet...'
+                                    : 'Tür açıklamasını yazın...'
+                                }
+                                value={typeCustom}
+                                onChange={(e) => setTypeCustom(e.target.value)}
                               />
-                              {isVendorTypeOther(form.type) && (
-                                <div className="mt-2">
-                                  <label className="mb-1 block text-xs font-medium text-slate-500">
-                                    Tür açıklaması <span className="text-red-400">*</span>
-                                  </label>
-                                  <input
-                                    className={inp}
-                                    placeholder="Tür açıklamasını yazın..."
-                                    value={typeCustom}
-                                    onChange={(e) => setTypeCustom(e.target.value)}
-                                  />
-                                </div>
-                              )}
                             </div>
-                            {showAddType && (
-                              <div className="mt-2 flex flex-wrap gap-2 rounded-lg border border-indigo-100 bg-indigo-50 p-2.5">
-                                <input className={`${inp} min-w-[8rem] flex-1`} placeholder="Tür Adı" value={newTypeName}
-                                  onChange={(e) => setNewTypeName(e.target.value)}
-                                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddVendorType(); }} />
-                                <button type="button" onClick={handleAddVendorType} disabled={savingType || !newTypeName.trim()}
-                                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:opacity-50 hover:bg-slate-50">Ekle</button>
-                                <button type="button" onClick={() => setShowAddType(false)} className="h-9 px-2 text-sm text-slate-500 hover:text-slate-700">İptal</button>
-                              </div>
-                            )}
-                          </>
+                          )}
+                        </div>
+                        {showAddType && (
+                          <div className="mt-2 flex flex-wrap gap-2 rounded-lg border border-indigo-100 bg-indigo-50 p-2.5">
+                            <input
+                              className={`${inp} min-w-[8rem] flex-1`}
+                              placeholder="Tür Adı"
+                              value={newTypeName}
+                              onChange={(e) => setNewTypeName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  void handleAddVendorType();
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => { void handleAddVendorType(); }}
+                              disabled={savingType || !newTypeName.trim()}
+                              className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:opacity-50 hover:bg-slate-50"
+                            >
+                              Ekle
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddType(false)}
+                              className="h-9 px-2 text-sm text-slate-500 hover:text-slate-700"
+                            >
+                              İptal
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -3470,14 +3580,15 @@ export default function VendorsPage() {
 
                       {!isVendorOfisCategory(form.category) && (
                         <>
-                          <div>
-                            <p className="mb-1.5 text-xs font-medium text-slate-700">Hizmet Kategorisi</p>
-                            <div className="flex flex-wrap gap-1.5" data-testid="tedarikci-hizmet-kategori">
+                          <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-3" data-testid="tedarikci-hizmet-kategori-cerceve">
+                            <p className="mb-2 text-center text-xs font-medium text-slate-700">Hizmet Kategorisi</p>
+                            <div className="flex flex-wrap items-center justify-center gap-1.5" data-testid="tedarikci-hizmet-kategori">
                               {VENDOR_OPERATION_CATEGORIES.map(({ value, label }) => (
                                 <CompactChoiceButton
                                   key={value}
                                   selected={form.category === value}
                                   label={label}
+                                  grow={false}
                                   testId={`tedarikci-kategori-${value}`}
                                   onClick={() => handleCategoryChange(value)}
                                 />
@@ -3544,10 +3655,30 @@ export default function VendorsPage() {
                                 </div>
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                   <FormField label="Ad">
-                                    <input className={inp} placeholder="Ad" value={c.firstName} onChange={(e) => upC(idx, 'firstName', e.target.value)} />
+                                    <input
+                                      className={inp}
+                                      placeholder="Ad"
+                                      value={c.firstName}
+                                      onChange={(e) => upC(idx, 'firstName', e.target.value)}
+                                      onBlur={(e) => {
+                                        const { value, notice } = applyVendorTitleCaseBlur(e.target.value);
+                                        upC(idx, 'firstName', value);
+                                        if (notice) showToast('info', notice);
+                                      }}
+                                    />
                                   </FormField>
                                   <FormField label="Soyad">
-                                    <input className={inp} placeholder="Soyad" value={c.lastName} onChange={(e) => upC(idx, 'lastName', e.target.value)} />
+                                    <input
+                                      className={inp}
+                                      placeholder="Soyad"
+                                      value={c.lastName}
+                                      onChange={(e) => upC(idx, 'lastName', e.target.value)}
+                                      onBlur={(e) => {
+                                        const { value, notice } = applyVendorTitleCaseBlur(e.target.value);
+                                        upC(idx, 'lastName', value);
+                                        if (notice) showToast('info', notice);
+                                      }}
+                                    />
                                   </FormField>
                                   <FormField label="İlişki Türü">
                                     <select
@@ -3656,10 +3787,30 @@ export default function VendorsPage() {
                             </div>
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                               <FormField label="Ad">
-                                <input className={inp} placeholder="Yetkili Kişinin Adı" value={c.firstName} onChange={(e) => upC(idx, 'firstName', e.target.value)} />
+                                <input
+                                  className={inp}
+                                  placeholder="Yetkili Kişinin Adı"
+                                  value={c.firstName}
+                                  onChange={(e) => upC(idx, 'firstName', e.target.value)}
+                                  onBlur={(e) => {
+                                    const { value, notice } = applyVendorTitleCaseBlur(e.target.value);
+                                    upC(idx, 'firstName', value);
+                                    if (notice) showToast('info', notice);
+                                  }}
+                                />
                               </FormField>
                               <FormField label="Soyad">
-                                <input className={inp} placeholder="Yetkili Kişinin Soyadı" value={c.lastName} onChange={(e) => upC(idx, 'lastName', e.target.value)} />
+                                <input
+                                  className={inp}
+                                  placeholder="Yetkili Kişinin Soyadı"
+                                  value={c.lastName}
+                                  onChange={(e) => upC(idx, 'lastName', e.target.value)}
+                                  onBlur={(e) => {
+                                    const { value, notice } = applyVendorTitleCaseBlur(e.target.value);
+                                    upC(idx, 'lastName', value);
+                                    if (notice) showToast('info', notice);
+                                  }}
+                                />
                               </FormField>
                               <FormField label="İlişki Türü">
                                 <select
@@ -3953,10 +4104,26 @@ export default function VendorsPage() {
                         inputClassName="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/30"
                       />
                       {selectedProvince && (
-                        <button type="button" onClick={() => addAllDistrictsForProvince(selectedProvince)}
-                          className="text-xs bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-100 whitespace-nowrap">
-                          Tüm İlçeleri Seç
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => addAllDistrictsForProvince(selectedProvince)}
+                            className="text-xs bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-100 whitespace-nowrap"
+                            data-testid="tedarikci-tum-ilceleri-sec"
+                          >
+                            Tüm İlçeleri Seç
+                          </button>
+                          {serviceAreas.some((sa) => sa.provinceId === selectedProvince.id) && (
+                            <button
+                              type="button"
+                              onClick={() => clearDistrictsForProvince(selectedProvince)}
+                              className="text-xs bg-slate-50 text-slate-700 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 whitespace-nowrap"
+                              data-testid="tedarikci-tumunu-kaldir"
+                            >
+                              Tümünü Kaldır
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                     )}
@@ -4094,10 +4261,16 @@ export default function VendorsPage() {
                         value={form.accountHolderName}
                         onChange={(e) => setForm((p) => ({ ...p, accountHolderName: e.target.value }))}
                         onBlur={(e) => {
-                          const value = toTitleCaseTR(e.target.value.replace(/\s+/g, ' ').trim());
+                          const { value, notice } = applyVendorTitleCaseBlur(e.target.value);
                           setForm((p) => ({ ...p, accountHolderName: value }));
+                          if (notice) showToast('info', notice);
                         }}
                       />
+                      {vendorWritingLiveHint(form.accountHolderName) && (
+                        <p className="mt-1.5 text-[11px] text-amber-700" data-testid="tedarikci-yazim-uyari-hesap">
+                          {vendorWritingLiveHint(form.accountHolderName)}
+                        </p>
+                      )}
                       {form.iban && !form.accountHolderName.trim() && (
                         <p className="mt-1.5 text-xs font-medium text-amber-700">
                           Ödeme güvenliği için hesap sahibi bilgisini girmeniz önerilir.
@@ -4437,7 +4610,7 @@ export default function VendorsPage() {
                   İptal
                 </button>
                 {activeSection < MODAL_SECTIONS.length - 1 ? (
-                  <button type="button" onClick={handleContinue}
+                  <button type="button" onClick={() => { void handleContinue(); }}
                     className="col-span-2 inline-flex h-9 items-center justify-center rounded-lg bg-brand-600 px-3 text-sm text-white hover:bg-brand-700 disabled:opacity-50 sm:col-auto sm:shrink-0 sm:px-4"
                     disabled={false}>
                     Devam

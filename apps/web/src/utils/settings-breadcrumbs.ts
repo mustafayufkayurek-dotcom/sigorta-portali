@@ -18,6 +18,7 @@ const DEFINITION_PAGE_LABELS: Record<string, string> = {
   '/panel/ayarlar/hasar-tespit-arac': 'Hasar Tespit Araç Giderleri',
   '/panel/ayarlar/hizmet-branslari': 'Dosya Konuları',
   '/panel/ayarlar/tedarikci-hizmet-kollari': 'Tedarikçi Hizmet Kolları',
+  '/panel/ayarlar/ofis-hizmet-turleri': 'Ofis Hizmet Türleri',
   '/panel/ayarlar/is-gruplari': 'İş Grupları',
   '/panel/ayarlar/masraf-kategorileri': 'Masraf Kategorileri',
   '/panel/ayarlar/mahaller': 'Mahal Ve Kategori',

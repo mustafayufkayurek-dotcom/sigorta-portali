@@ -315,6 +315,42 @@ function FormField({ label, required, error, help, children }: { label: string; 
   );
 }
 
+function CompactChoiceButton({
+  selected,
+  onClick,
+  label,
+  icon,
+  testId,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  label: string;
+  icon?: ReactNode;
+  testId?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      data-testid={testId}
+      onClick={onClick}
+      className={`inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-center text-sm font-medium transition-colors ${
+        selected
+          ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
+          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+      }`}
+    >
+      {icon ? <span className={`shrink-0 ${selected ? 'text-emerald-600' : 'text-slate-400'}`}>{icon}</span> : null}
+      <span className="min-w-0 truncate">{label}</span>
+      {selected ? (
+        <svg className="h-3.5 w-3.5 shrink-0 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+        </svg>
+      ) : null}
+    </button>
+  );
+}
+
 function SectionDivider({ emoji, title }: { emoji: string; title: string }) {
   return (
     <div className="flex items-center gap-2.5 mb-4 mt-7 first:mt-0 pb-2 border-b border-slate-100">
@@ -1737,7 +1773,7 @@ export default function MusterilerPage() {
         errors.subType = 'Alt tip seçimi zorunludur';
       }
     }
-    if (!editingCustomerId && form.cariRol === 'musteri_tedarikci') {
+    if (form.cariRol === 'musteri_tedarikci') {
       const kimlik = cariCiftRolKimlikHatasi({
         entityType: form.customerType,
         taxNumber: form.taxNumber,
@@ -1809,7 +1845,7 @@ export default function MusterilerPage() {
         missingLabels.push('Alt Tip');
       }
     }
-    if (!editingCustomerId && form.cariRol === 'musteri_tedarikci') {
+    if (form.cariRol === 'musteri_tedarikci') {
       const kimlik = cariCiftRolKimlikHatasi({
         entityType: form.customerType,
         taxNumber: form.taxNumber,
@@ -1972,7 +2008,7 @@ export default function MusterilerPage() {
         ),
         contacts: savedContacts,
         contactInfos: savedContactInfos.filter((ci) => ci.value.trim()),
-        ...(!editingCustomerId ? { cariRol: form.cariRol } : {}),
+        cariRol: form.cariRol,
       };
       if (form.customerType === 'individual') {
         payload.firstName = written.firstName; payload.lastName = written.lastName;
@@ -3003,69 +3039,72 @@ export default function MusterilerPage() {
               />
               {activeSection === 0 && (
                 <div>
-                  <SectionDivider emoji="👤" title="Önce Müşteri Tipi" />
-                  <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                  <SectionDivider emoji="👤" title="Kart Türü Ve Cari Rol" />
+                  <p className="mb-3 text-xs leading-relaxed text-slate-500">
                     {ozelMusteriAdd
                       ? 'Önce kurumsal veya bireysel seçin. Müşteri tipi Özel Müşteri durur. Sigorta, eksper, broker veya asistans firması değildir.'
-                      : 'Kurumsal veya bireysel seçin; ardından müşteri tipini belirleyin. Cari adı ve iletişim bilgileri tip seçildikten sonra açılır.'}
+                      : 'Kurumsal veya bireysel seçin; cari rolü belirleyin. Müşteri tipi ve cari bilgileri ardından açılır.'}
                   </p>
-                  <div className="grid grid-cols-1 gap-3 mb-5 sm:grid-cols-2">
-                    {CUSTOMER_TYPE_OPTIONS.map(({ val, label, emoji }) => (
-                      <button key={val} type="button"
-                        onClick={() => {
-                          setForm((p) => ({
-                            ...p,
-                            customerType: val,
-                            subType: ozelMusteriAdd ? OZEL_MUSTERI_SUB_TYPE : '',
-                            serviceType: '',
-                            serviceBranches: [],
-                            serviceScopes: [],
-                          }));
-                          setTcResult(null);
-                          setGibError(null);
-                          setTaxNoError(null);
-                          setFieldErrors((prev) => {
-                            const n = { ...prev };
-                            delete n.customerType;
-                            delete n.subType;
-                            return n;
-                          });
-                        }}
-                        className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium border-2 transition-all ${form.customerType === val ? val === 'individual' ? 'bg-purple-600 text-white border-purple-600' : 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>
-                        <span>{emoji}</span>{label}
-                      </button>
-                    ))}
-                  </div>
-                  {fieldErrors.customerType ? (
-                    <p className="text-xs text-status-danger mb-3">{fieldErrors.customerType}</p>
-                  ) : null}
-
-                  {!editingCustomerId ? (
-                    <div className="mb-5 max-w-sm" data-testid="musteri-cari-rol">
-                      <label className="mb-1.5 block text-xs font-medium text-slate-700">
-                        Cari Rol
-                      </label>
-                      <select
-                        value={form.cariRol}
-                        onChange={(e) =>
-                          setForm((p) => ({
-                            ...p,
-                            cariRol: e.target.value as 'musteri' | 'musteri_tedarikci',
-                          }))
-                        }
-                        className={inp}
-                      >
-                        <option value="musteri">{CARI_KARSI_TARAF_ROL_LABEL.musteri}</option>
-                        <option value="musteri_tedarikci">
-                          {CARI_KARSI_TARAF_ROL_LABEL.musteri_tedarikci}
-                        </option>
-                      </select>
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        Müşteri Ve Tedarikçi seçilirse kart her iki listede durur.
-                        Bireyselde T.C. kimlik, kurumsalda vergi numarası zorunludur.
+                  <div className="mb-5 space-y-3 rounded-lg border border-slate-200 bg-white p-2.5" data-testid="musteri-tip-grubu">
+                    <div>
+                      <p className="mb-1.5 text-xs font-medium text-slate-700">Kart Türü</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {CUSTOMER_TYPE_OPTIONS.map(({ val, label, emoji }) => (
+                          <CompactChoiceButton
+                            key={val}
+                            selected={form.customerType === val}
+                            label={label}
+                            icon={<span aria-hidden>{emoji}</span>}
+                            testId={`musteri-tip-${val}`}
+                            onClick={() => {
+                              setForm((p) => ({
+                                ...p,
+                                customerType: val,
+                                subType: ozelMusteriAdd ? OZEL_MUSTERI_SUB_TYPE : '',
+                                serviceType: '',
+                                serviceBranches: [],
+                                serviceScopes: [],
+                              }));
+                              setTcResult(null);
+                              setGibError(null);
+                              setTaxNoError(null);
+                              setFieldErrors((prev) => {
+                                const n = { ...prev };
+                                delete n.customerType;
+                                delete n.subType;
+                                return n;
+                              });
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    {fieldErrors.customerType ? (
+                      <p className="text-xs text-status-danger">{fieldErrors.customerType}</p>
+                    ) : null}
+                    <div data-testid="musteri-cari-rol">
+                      <p className="mb-1.5 text-xs font-medium text-slate-700">Cari Rol</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        <CompactChoiceButton
+                          selected={form.cariRol === 'musteri'}
+                          label={CARI_KARSI_TARAF_ROL_LABEL.musteri}
+                          testId="musteri-cari-rol-musteri"
+                          onClick={() => setForm((p) => ({ ...p, cariRol: 'musteri' }))}
+                        />
+                        <CompactChoiceButton
+                          selected={form.cariRol === 'musteri_tedarikci'}
+                          label={CARI_KARSI_TARAF_ROL_LABEL.musteri_tedarikci}
+                          testId="musteri-cari-rol-cift"
+                          onClick={() => setForm((p) => ({ ...p, cariRol: 'musteri_tedarikci' }))}
+                        />
+                      </div>
+                      <p className="mt-1.5 text-[11px] leading-snug text-slate-500" data-testid="musteri-cari-rol-yardim">
+                        {form.cariRol === 'musteri_tedarikci'
+                          ? 'Kart Müşteriler ve Tedarikçiler listelerinde durur. Bireyselde T.C. kimlik, kurumsalda vergi numarası zorunludur.'
+                          : 'Kart yalnız Müşteriler listesinde durur. İsterseniz Müşteri Ve Tedarikçi seçerek her iki listede görünür.'}
                       </p>
                     </div>
-                  ) : null}
+                  </div>
 
                   <CustomerSubTypePicker
                     customerType={form.customerType}
@@ -3258,9 +3297,9 @@ export default function MusterilerPage() {
                         <div className="col-span-1 sm:col-span-2">
                           <FormField
                             label="TC Kimlik No"
-                            required={!editingCustomerId && form.cariRol === 'musteri_tedarikci'}
+                            required={form.cariRol === 'musteri_tedarikci'}
                             error={identityNoError ?? fieldErrors.identityNo ?? undefined}
-                            help={!editingCustomerId && form.cariRol === 'musteri_tedarikci' ? 'Müşteri Ve Tedarikçi seçiliyken T.C. kimlik numarası zorunludur.' : undefined}
+                            help={form.cariRol === 'musteri_tedarikci' ? 'Müşteri Ve Tedarikçi seçiliyken T.C. kimlik numarası zorunludur.' : undefined}
                           >
                             <div className="relative">
                               <input
@@ -3353,9 +3392,9 @@ export default function MusterilerPage() {
                         </div>
                         <FormField
                           label="Vergi No"
-                          required={!editingCustomerId && form.cariRol === 'musteri_tedarikci'}
+                          required={form.cariRol === 'musteri_tedarikci'}
                           error={fieldErrors.taxNumber || taxNoError || undefined}
-                          help={!editingCustomerId && form.cariRol === 'musteri_tedarikci' ? 'Müşteri Ve Tedarikçi seçiliyken vergi numarası zorunludur.' : undefined}
+                          help={form.cariRol === 'musteri_tedarikci' ? 'Müşteri Ve Tedarikçi seçiliyken vergi numarası zorunludur.' : undefined}
                         >
                           <div className="flex gap-2">
                             <input className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors ${fieldErrors.taxNumber || taxNoError ? 'border-red-400 ring-2 ring-status-danger/20 bg-red-50 focus:ring-status-danger/30' : 'border-slate-200 focus:ring-status-success/30 focus:border-emerald-400'}`}

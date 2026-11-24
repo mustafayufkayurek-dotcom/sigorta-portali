@@ -36,16 +36,6 @@ export function vendorCategoryRequiresPaymentDue(
   return !isVendorOfisCategory(category);
 }
 
-/** Doğalgaz, internet gibi ofis / sabit hizmet türleri (1. sayfa). */
-export const OFIS_VENDOR_TYPE_QUICK_PICKS = [
-  'Doğalgaz',
-  'İnternet',
-  'Elektrik',
-  'Su',
-  'Telekom',
-  'Kira',
-] as const;
-
 export function parseVendorCategory(raw: unknown): VendorCategory {
   const value = String(raw ?? '').trim();
   if (value === 'acil' || value === 'her_ikisi' || value === 'ofis' || value === 'hasar') return value;
@@ -78,7 +68,17 @@ export function isVendorTypeOther(type: string): boolean {
   return type.trim().toLowerCase() === 'diğer' || type.trim().toLowerCase() === 'diger';
 }
 
-export { DEFAULT_VENDOR_TYPES, resolveVendorTypeList } from './vendor-type-list';
+/**
+ * Ofis / sabit hizmet türleri — varsayılan kısa liste (OFIS_VENDOR_TYPE_QUICK_PICKS).
+ * Canlı liste Ayarlar `office_vendor_types` + satırdan Yeni Tür.
+ */
+export {
+  DEFAULT_VENDOR_TYPES,
+  DEFAULT_OFIS_VENDOR_TYPES,
+  DEFAULT_OFIS_VENDOR_TYPES as OFIS_VENDOR_TYPE_QUICK_PICKS,
+  resolveVendorTypeList,
+  resolveOfisVendorTypeList,
+} from './vendor-type-list';
 
 /** Tedarikçi türü görüntüleme — Türkçe yazım kuralı (hizmet → Hizmet) */
 export function formatVendorTypeLabel(type: string | null | undefined): string | null {
@@ -432,3 +432,10 @@ export function vendorCariRolHelpText(opts: {
     ? 'T.C. kimlik numarası opsiyoneldir. Kart yalnız Tedarikçiler listesinde durur.'
     : 'Vergi numarası zorunludur. Kart yalnız Tedarikçiler listesinde durur.';
 }
+
+export {
+  applyVendorTitleCaseBlur,
+  vendorWritingLiveHint,
+  isIncompleteNamePart,
+  vendorIncompleteWritingConfirmMessage,
+} from './vendor-writing';
