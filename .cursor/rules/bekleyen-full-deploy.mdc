@@ -1,11 +1,11 @@
 ---
-description: Canlı web v722 / backend v722
+description: Canlı web v723 / backend v723
 alwaysApply: true
 ---
 
-# Canlı (24.11.2026)
+# Canlı (26.11.2026)
 
-Canlı: web **v722** · backend **v722**. Geri alma: web **v721** / backend **v721**.
+Canlı: web **v723** · backend **v723**. Geri alma: web **v722** / backend **v722**.
 
 Her alımda üç önlem birlikte:
 
@@ -16,6 +16,8 @@ Her alımda üç önlem birlikte:
 Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Alınan
+
+**v723 (full):** Masraf benzer belge no yumuşak kontrol (Kaydetmeye Devam / Belge No’yu Değiştir); Hasar Tespit araç kurulum giriş penceresi ve sağ şerit (adımlar bitince kalıcı kalkar, yeni eksikte yeniden açılır). Saha rut / geçiş ücreti alınmadı. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v722** / backend **v722**.
 
 **v722 (full):** Ofis Hizmet Türleri (Ayarlar → Tanımlar + formda Yeni Tür); müşteri kartında Cari Rol / Müşteri+Tedarikçi; tedarikçi Title Case ve eksik yazım onayı; hizmet alanı Tümünü Kaldır; masraf→tedarikçi tam form dönüşü. Alımda iki servis birden durmaz; oturum anahtarı ve Redis silinmez. Geri alma web **v721** / backend **v721**.
 
@@ -319,6 +321,6 @@ Alım yalnız Mustafa «canlıya al» deyince.
 
 ## Sırada (henüz alınmadı — yalnız «canlıya al» deyince)
 
-Şu an bekleyen ayrı canlı paketi yok. (Saha rut / geçiş ücreti gibi alım dışı stash duruyor; «canlıya al» ayrı söylenince.)
+Saha rut / geçiş ücreti alım dışı stash’te duruyor; «canlıya al» ayrı söylenince.
 
-Canlı web **v722** · backend **v722**.
+Canlı web **v723** · backend **v723**.
