@@ -592,27 +592,54 @@ export function ClaimFileExpenseFormPanel({
 
     setSaving(true);
     try {
+      const payload = {
+        fileCaseId: claimFileId,
+        partyAccountId,
+        expensePlan: allowExtraWorkPlan ? expensePlan : PLAN_BUTCE,
+        expenseCategoryId: expenseCategoryId || expenseCategoryParentId,
+        operationSubject: 'HASAR_ONARIM',
+        description: descParts.length ? descParts.join(' · ') : undefined,
+        amount: masrafAmounts.gross,
+        vatRate: masrafAmounts.rate,
+        vatIncluded: true,
+        hasTaxDocument: hasDoc,
+        receiptDocumentType: documentType || null,
+        receiptDocumentNo: documentNo.trim() || null,
+        date: dateIso,
+        receiptImageUrl: receiptImageUrl || undefined,
+        ...(opts?.documentConflictOverrideReason
+          ? { documentConflictOverrideReason: opts.documentConflictOverrideReason }
+          : {}),
+      };
+
+      if (!opts?.documentConflictOverrideReason && hasDoc && documentNo.trim()) {
+        try {
+          const pre = await axios.post(
+            `${API}/expenses/document-review`,
+            {
+              hasTaxDocument: true,
+              receiptDocumentNo: documentNo.trim(),
+              partyAccountId,
+              fileCaseId: claimFileId,
+              operationSubject: 'HASAR_ONARIM',
+            },
+            { headers: authHeader() },
+          );
+          const body = pre.data?.data ?? pre.data;
+          if (body?.needsReview && body?.review) {
+            setDocReview(body.review);
+            setPendingSaveMode(mode);
+            setFormError('');
+            return;
+          }
+        } catch {
+          /* 409 yedeği */
+        }
+      }
+
       const created = await axios.post(
         `${API}/expenses`,
-        {
-          fileCaseId: claimFileId,
-          partyAccountId,
-          expensePlan: allowExtraWorkPlan ? expensePlan : PLAN_BUTCE,
-          expenseCategoryId: expenseCategoryId || expenseCategoryParentId,
-          operationSubject: 'HASAR_ONARIM',
-          description: descParts.length ? descParts.join(' · ') : undefined,
-          amount: masrafAmounts.gross,
-          vatRate: masrafAmounts.rate,
-          vatIncluded: true,
-          hasTaxDocument: hasDoc,
-          receiptDocumentType: documentType || null,
-          receiptDocumentNo: documentNo.trim() || null,
-          date: dateIso,
-          receiptImageUrl: receiptImageUrl || undefined,
-          ...(opts?.documentConflictOverrideReason
-            ? { documentConflictOverrideReason: opts.documentConflictOverrideReason }
-            : {}),
-        },
+        payload,
         { headers: authHeader() },
       );
       setDocReview(null);
@@ -1198,6 +1225,18 @@ export function ClaimFileExpenseFormPanel({
         onCancel={() => {
           setDocReview(null);
           setPendingSaveMode(null);
+        }}
+        onEditDocumentNo={() => {
+          setDocReview(null);
+          setPendingSaveMode(null);
+          setFormError('');
+          window.requestAnimationFrame(() => {
+            const el = document.getElementById('claim-file-belge-no');
+            if (el instanceof HTMLInputElement) {
+              el.focus();
+              el.select();
+            }
+          });
         }}
         onOpenExisting={() => {
           setDocReview(null);

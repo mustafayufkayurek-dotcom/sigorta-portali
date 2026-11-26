@@ -2,12 +2,11 @@
 
 /**
  * Masraf belge / dosya hakediş kontrol penceresi.
- * Belge çakışması veya Hasar/Acil hakediş uyarısında kayıt yazılmaz; personel seçer.
+ * Benzer belge no kırmızı şeritte kilitlemez: pop-up’ta mevcut kayıtlar görülür,
+ * karşı seçenekler (Vazgeç / Belge No Değiştir / Mevcut Aç) veya devam.
  */
-import { useState } from 'react';
 import {
-  EXPENSE_DOCUMENT_OVERRIDE_REASON_MIN,
-  isValidExpenseDocumentOverrideReason,
+  EXPENSE_DOCUMENT_CONTINUE_REASON,
   type ExpenseDocumentDuplicateRow,
   type ExpenseDocumentReviewPayload,
   type ExpenseFileHakedisWarning,
@@ -21,6 +20,8 @@ export type ExpenseDocumentReviewModalProps = {
   review: ExpenseDocumentReviewPayload | null;
   saving?: boolean;
   onCancel: () => void;
+  /** Belge no alanına dön; yeni numara yazılsın. */
+  onEditDocumentNo: () => void;
   onOpenExisting: (expenseId: string) => void;
   onContinueWithReason: (reason: string) => void;
 };
@@ -76,14 +77,17 @@ function DuplicateRow({
             {[row.fileNo, row.customerName].filter(Boolean).join(' · ')}
           </div>
         )}
+        {row.description ? (
+          <div className="mt-0.5 truncate text-slate-400">{row.description}</div>
+        ) : null}
       </div>
       <button
         type="button"
         onClick={onOpen}
-        className="shrink-0 text-xs font-medium text-brand-700 hover:underline"
+        className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50"
         data-testid="masraf-belge-mevcut-ac"
       >
-        Aç
+        Kaydı Aç
       </button>
     </li>
   );
@@ -94,90 +98,90 @@ export function ExpenseDocumentReviewModal({
   review,
   saving,
   onCancel,
+  onEditDocumentNo,
   onOpenExisting,
   onContinueWithReason,
 }: ExpenseDocumentReviewModalProps) {
-  const [reason, setReason] = useState('');
-  const [showContinue, setShowContinue] = useState(false);
-  const [localError, setLocalError] = useState('');
-
   if (!open || !review) return null;
 
   const duplicates = review.documentDuplicates ?? [];
   const hakedis = review.hakedisWarnings ?? [];
   const firstDupId = duplicates[0]?.id;
-
-  const submitContinue = () => {
-    setLocalError('');
-    if (!isValidExpenseDocumentOverrideReason(reason)) {
-      setLocalError(
-        `Gerekçe en az ${EXPENSE_DOCUMENT_OVERRIDE_REASON_MIN} karakter olmalıdır.`,
-      );
-      return;
-    }
-    onContinueWithReason(reason.trim());
-  };
+  const hasDocs = duplicates.length > 0;
 
   return (
     <FinansModal
       open={open}
-      title="Belge Ve Hakediş Kontrolü"
-      subtitle={review.message}
+      title="Belge Kontrolü"
+      subtitle="Önce listedeki kayıtları kontrol edin. Aynı fiş değilse devam edebilirsiniz."
       size="lg"
       testId="masraf-belge-kontrol-pencere"
       footer={(
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-          <FinansActionButton
-            label="Kaydı İptal Et"
-            variant="neutral"
-            showPlus={false}
-            onClick={onCancel}
-            disabled={saving}
-            testId="masraf-belge-iptal"
-          />
-          {firstDupId ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-[11px] text-slate-500 sm:text-right">
+            Karşı seçenekler: vazgeçin, belge numarasını değiştirin veya mevcut kaydı açın.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
             <FinansActionButton
-              label="Mevcut Kaydı Aç"
+              label="Vazgeç"
               variant="neutral"
               showPlus={false}
-              onClick={() => onOpenExisting(firstDupId)}
+              onClick={onCancel}
               disabled={saving}
-              testId="masraf-belge-mevcut-kayit"
+              testId="masraf-belge-iptal"
             />
-          ) : null}
-          {!showContinue ? (
             <FinansActionButton
-              label="Farklı Belge — Devam"
+              label="Belge No'yu Değiştir"
+              variant="neutral"
+              showPlus={false}
+              onClick={onEditDocumentNo}
+              disabled={saving}
+              testId="masraf-belge-no-degistir"
+            />
+            {firstDupId ? (
+              <FinansActionButton
+                label="Mevcut Kaydı Aç"
+                variant="neutral"
+                showPlus={false}
+                onClick={() => onOpenExisting(firstDupId)}
+                disabled={saving}
+                testId="masraf-belge-mevcut-kayit"
+              />
+            ) : null}
+            <FinansActionButton
+              label={saving ? 'Kaydediliyor…' : 'Kaydetmeye Devam Et'}
               variant="primary"
               showPlus={false}
-              onClick={() => setShowContinue(true)}
-              disabled={saving}
-              testId="masraf-belge-farkli-ac"
-            />
-          ) : (
-            <FinansActionButton
-              label={saving ? 'Kaydediliyor…' : 'Gerekçe İle Kaydet'}
-              variant="primary"
-              showPlus={false}
-              onClick={submitContinue}
+              onClick={() => onContinueWithReason(EXPENSE_DOCUMENT_CONTINUE_REASON)}
               disabled={saving}
               testId="masraf-belge-farkli-kaydet"
             />
-          )}
+          </div>
         </div>
       )}
     >
       <div className="space-y-4" data-testid="masraf-belge-kontrol-govde">
-        {duplicates.length > 0 ? (
+        <p className="rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">
+          {review.message}
+        </p>
+
+        {hasDocs ? (
           <section>
-            <h4 className="mb-2 text-xs font-semibold text-slate-700">Eşleşen Masraflar</h4>
-            <ul className="space-y-2">
+            <h4 className="mb-2 text-xs font-semibold text-slate-700">
+              Aynı Veya Benzer Belge No · {duplicates.length} Kayıt
+            </h4>
+            <ul className="max-h-56 space-y-2 overflow-y-auto">
               {duplicates.map((row) => (
                 <DuplicateRow key={row.id} row={row} onOpen={() => onOpenExisting(row.id)} />
               ))}
             </ul>
           </section>
-        ) : null}
+        ) : (
+          <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            Benzer belge uyarısı geldi. Mevcut satır listesi bu yanıtta yoksa önce belge numarasını
+            değiştirin; aynı fiş olduğundan eminseniz kaydetmeye devam edin.
+          </p>
+        )}
 
         {hakedis.length > 0 ? (
           <section>
@@ -191,31 +195,17 @@ export function ExpenseDocumentReviewModal({
             </ul>
           </section>
         ) : null}
-
-        {showContinue ? (
-          <div className="space-y-1.5" data-testid="masraf-belge-gerekce">
-            <label htmlFor="masraf-belge-gerekce-input" className="text-xs font-medium text-slate-600">
-              Neden farklı belge?
-            </label>
-            <textarea
-              id="masraf-belge-gerekce-input"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
-              placeholder="Örn. farklı dönem faturası, yeni iş kalemi"
-              data-testid="masraf-belge-gerekce-input"
-            />
-            {localError ? (
-              <p className="text-xs text-red-600" role="alert">{localError}</p>
-            ) : null}
-          </div>
-        ) : null}
       </div>
     </FinansModal>
   );
 }
 
+export function looksLikeBelgeConflictMessage(raw: unknown): boolean {
+  const text = String(raw ?? '');
+  return /belge no|benzer belge|aynı veya benzer belge|belge kontrol/i.test(text);
+}
+
+/** 409 gövdesinden kontrol penceresi; eski düz metin uyarısı da pop-up’a açılır. */
 export function parseExpenseDocumentReviewFromError(err: unknown): ExpenseDocumentReviewPayload | null {
   if (!err || typeof err !== 'object') return null;
   const ax = err as {
@@ -223,14 +213,45 @@ export function parseExpenseDocumentReviewFromError(err: unknown): ExpenseDocume
   };
   if (ax.response?.status !== 409) return null;
   const data = ax.response.data;
-  if (!data || typeof data !== 'object') return null;
+  if (!data || typeof data !== 'object') {
+    if (typeof data === 'string' && looksLikeBelgeConflictMessage(data)) {
+      return {
+        code: 'EXPENSE_DOCUMENT_REVIEW',
+        message: data,
+        documentDuplicates: [],
+        hakedisWarnings: [],
+        requiresOverride: true,
+      };
+    }
+    return null;
+  }
   const body = data as Record<string, unknown>;
-  // Nest ConflictException: { statusCode, message: payload | string, ... }
   const nested = body.message;
   const payload =
     nested && typeof nested === 'object'
       ? (nested as Record<string, unknown>)
       : body;
-  if (payload.code !== 'EXPENSE_DOCUMENT_REVIEW') return null;
-  return payload as unknown as ExpenseDocumentReviewPayload;
+  if (payload.code === 'EXPENSE_DOCUMENT_REVIEW') {
+    return payload as unknown as ExpenseDocumentReviewPayload;
+  }
+  const text =
+    typeof nested === 'string'
+      ? nested
+      : typeof body.message === 'string'
+        ? body.message
+        : '';
+  if (looksLikeBelgeConflictMessage(text) || looksLikeBelgeConflictMessage(body.error)) {
+    return {
+      code: 'EXPENSE_DOCUMENT_REVIEW',
+      message: text || String(body.error ?? 'Benzer belge no bulundu. Kontrol penceresinden devam edin.'),
+      documentDuplicates: Array.isArray((body as { documentDuplicates?: unknown }).documentDuplicates)
+        ? ((body as { documentDuplicates: ExpenseDocumentDuplicateRow[] }).documentDuplicates)
+        : [],
+      hakedisWarnings: Array.isArray((body as { hakedisWarnings?: unknown }).hakedisWarnings)
+        ? ((body as { hakedisWarnings: ExpenseFileHakedisWarning[] }).hakedisWarnings)
+        : [],
+      requiresOverride: true,
+    };
+  }
+  return null;
 }

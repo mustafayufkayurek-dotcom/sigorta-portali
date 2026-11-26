@@ -35,7 +35,7 @@ describe('masraf belge disiplini LOCK', () => {
     assert.equal(shouldReviewExpenseDocument({ hasTaxDocument: true, receiptDocumentNo: '25' }), true);
   });
 
-  it('çakışma veya hakediş uyarısı payload üretir; gerekçe en az 8 karakter', () => {
+  it('çakışma veya hakediş uyarısı payload üretir; yine de kaydet kısa teyitle ilerler', () => {
     const payload = buildExpenseDocumentReviewPayload({
       documentDuplicates: [
         {
@@ -61,10 +61,10 @@ describe('masraf belge disiplini LOCK', () => {
     assert.ok(payload);
     assert.equal(payload!.code, EXPENSE_DOCUMENT_REVIEW_CODE);
     assert.equal(payload!.requiresOverride, true);
-    assert.match(payload!.message, /belge no/i);
+    assert.match(payload!.message, /benzer belge no|kaydetmeye devam/i);
     assert.match(payload!.message, /hakediş/i);
-    assert.equal(isValidExpenseDocumentOverrideReason('kısa'), false);
-    assert.equal(isValidExpenseDocumentOverrideReason('Farklı dönem faturası'), true);
+    assert.equal(isValidExpenseDocumentOverrideReason(''), false);
+    assert.equal(isValidExpenseDocumentOverrideReason('Benzer belge no ile devam (personel teyidi)'), true);
   });
 
   it('API ve form kontrol penceresini kullanır; Hasar ve Acil aynı kapı', () => {
@@ -87,12 +87,22 @@ describe('masraf belge disiplini LOCK', () => {
     assert.match(svc, /buildExpenseDocumentReview|evaluateExpenseDocumentReview|document-review/);
     assert.match(ctrl, /document-review/);
     assert.match(dto, /documentConflictOverrideReason/);
-    assert.match(popup, /Farklı Belge/);
-    assert.match(popup, /Kaydı İptal Et/);
+    assert.match(popup, /Kaydetmeye Devam Et/);
+    assert.match(popup, /Belge No'yu Değiştir/);
+    assert.match(popup, /onEditDocumentNo/);
+    assert.match(popup, /EXPENSE_DOCUMENT_CONTINUE_REASON/);
+    assert.match(popup, /Vazgeç/);
     assert.match(popup, /Mevcut Kaydı Aç/);
     assert.match(popup, /hakedisWarnings/);
+    assert.match(popup, /Aynı Veya Benzer Belge No/);
+    assert.doesNotMatch(popup, /Gerekçe İle Kaydet/);
     assert.match(masraf, /ExpenseDocumentReviewModal/);
+    assert.match(masraf, /onEditDocumentNo/);
+    assert.match(masraf, /expenses\/document-review/);
     assert.match(claim, /ExpenseDocumentReviewModal/);
+    assert.match(claim, /onEditDocumentNo/);
+    assert.match(claim, /expenses\/document-review/);
+    assert.match(shared, /kaydetmeye devam edebilirsiniz/i);
     assert.match(svc, /acil|ACIL_YARDIM|EmergencyVendorEntitlement|vendorEntitlement/i);
     assert.match(svc, /VendorStatementItem|vendor_statement|claimFileId/i);
   });

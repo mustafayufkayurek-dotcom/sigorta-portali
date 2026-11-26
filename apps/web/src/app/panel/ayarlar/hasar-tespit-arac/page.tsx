@@ -31,6 +31,8 @@ interface Form {
   varsayilanCikisAdresi: string;
   gecisler: GecisForm[];
   otoyollar: OtoyolForm[];
+  tespitciBedelTaslagi: boolean;
+  kurulumSorumluUserIds: string[];
 }
 
 function toForm(a: HasarTespitAracAyarlari): Form {
@@ -42,6 +44,8 @@ function toForm(a: HasarTespitAracAyarlari): Form {
     varsayilanCikisAdresi: a.varsayilanCikisAdresi,
     gecisler: a.gecisler.map((g) => ({ id: g.id, ad: g.ad, ucret: numberToTrAmountInput(g.ucret), ciftYon: g.ciftYon, lat: g.lat, lng: g.lng })),
     otoyollar: a.otoyollar.map((o) => ({ ref: o.ref, ad: o.ad ?? '', kmUcreti: o.kmUcreti == null ? '' : String(o.kmUcreti).replace('.', ',') })),
+    tespitciBedelTaslagi: a.tespitciBedelTaslagi === true,
+    kurulumSorumluUserIds: [...a.kurulumSorumluUserIds],
   };
 }
 
@@ -54,6 +58,8 @@ function fromForm(f: Form): HasarTespitAracAyarlari {
     varsayilanCikisAdresi: f.varsayilanCikisAdresi,
     gecisler: f.gecisler.map((g) => ({ ...g, ucret: parseTrAmountInput(g.ucret) })),
     otoyollar: f.otoyollar.map((o) => ({ ref: o.ref, ad: o.ad, kmUcreti: parseTrAmountInput(o.kmUcreti) })),
+    tespitciBedelTaslagi: f.tespitciBedelTaslagi,
+    kurulumSorumluUserIds: f.kurulumSorumluUserIds,
   });
 }
 
@@ -69,13 +75,19 @@ export default function HasarTespitAracPage() {
   const [savedNote, setSavedNote] = useState('');
   const [newGecis, setNewGecis] = useState('');
   const [newRef, setNewRef] = useState('');
+  const [tespitciAdaylar, setTespitciAdaylar] = useState<Array<{ id: string; name: string; email: string }>>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get(`${API}/hasar-tespit-bedel/arac`, { headers: authHeader() });
+      const [res, kurulum] = await Promise.all([
+        axios.get(`${API}/hasar-tespit-bedel/arac`, { headers: authHeader() }),
+        axios.get(`${API}/hasar-tespit-bedel/arac-kurulum`, { headers: authHeader() }).catch(() => null),
+      ]);
       setForm(toForm(normalizeHasarTespitArac(res.data?.data)));
+      const adaylar = kurulum?.data?.data?.adaylar;
+      setTespitciAdaylar(Array.isArray(adaylar) ? adaylar : []);
     } catch (e: unknown) {
       setError(formatSettingsApiError(e));
     } finally {
@@ -100,6 +112,9 @@ export default function HasarTespitAracPage() {
       const res = await axios.put(`${API}/hasar-tespit-bedel/arac`, fromForm(form), { headers: authHeader() });
       setForm(toForm(normalizeHasarTespitArac(res.data?.data)));
       setSavedNote('Kaydedildi. Hasar Tespit dosyasında Hizmet Bedeli Hesapla bu rakamlarla açılır.');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('hasar-tespit-arac-kaydedildi'));
+      }
     } catch (e: unknown) {
       setError(formatSettingsApiError(e));
     } finally {
@@ -139,13 +154,60 @@ export default function HasarTespitAracPage() {
         {savedNote ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{savedNote}</p> : null}
         {loading ? <p className="text-sm text-slate-500">Yükleniyor</p> : null}
 
+        <section id="arac-kurulum-sorumlular" className="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-4" data-testid="arac-kurulum-sorumlular">
+          <h2 className="text-sm font-semibold text-slate-900">Kurulumdan Sorumlu Tespitçi</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Yazılıma girince eksik araç bilgisi yalnız bu hesaplarda sırayla sorulur. Her bölge ve her
+            tespitçi için zorunlu değildir.
+          </p>
+          {tespitciAdaylar.length === 0 ? (
+            <p className="mt-3 text-xs text-slate-500">Aktif tespitçi hesabı yok.</p>
+          ) : (
+            <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-100 p-2">
+              {tespitciAdaylar.map((a) => {
+                const on = form.kurulumSorumluUserIds.includes(a.id);
+                return (
+                  <li key={a.id}>
+                    <button
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => {
+                        patch({
+                          kurulumSorumluUserIds: on
+                            ? form.kurulumSorumluUserIds.filter((id) => id !== a.id)
+                            : [...form.kurulumSorumluUserIds, a.id],
+                        });
+                      }}
+                      className={`flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm ${
+                        on ? 'bg-brand-50 text-brand-900' : 'hover:bg-slate-50 text-slate-800'
+                      }`}
+                    >
+                      <span
+                        className={`mt-0.5 h-4 w-4 shrink-0 rounded border ${
+                          on ? 'border-brand-600 bg-brand-600' : 'border-slate-300 bg-white'
+                        }`}
+                        aria-hidden
+                      />
+                      <span className="min-w-0">
+                        <span className="block font-medium">{a.name}</span>
+                        <span className="block truncate text-xs text-slate-500">{a.email}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+
         <section className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="mb-3 flex items-center gap-2">
             <Car className="h-4 w-4 text-brand-600" aria-hidden />
             <h2 className="text-sm font-semibold text-slate-900">Araç</h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div>
+            <div id="arac-kurulum-kira" className="scroll-mt-24">
               <SettingsFieldLabel htmlFor="arac-kira" help="Kiralık aracın aylık kirası. Gün payı Pazar düşülerek hesaplanır.">Aylık Araç Kirası</SettingsFieldLabel>
               <TrAmountInput id="arac-kira" className={inputCls} value={form.aylikKira} onChange={(v) => patch({ aylikKira: v })} />
               {kira.gunluk > 0 ? (
@@ -164,7 +226,7 @@ export default function HasarTespitAracPage() {
                 ))}
               </select>
             </div>
-            <div>
+            <div id="arac-kurulum-tuketim" className="scroll-mt-24">
               <SettingsFieldLabel htmlFor="tuketim" help="Aracın 100 km’de yaktığı litre.">Yakıt Tüketimi (L/100 km)</SettingsFieldLabel>
               <input
                 id="tuketim"
@@ -175,7 +237,7 @@ export default function HasarTespitAracPage() {
                 onChange={(e) => patch({ tuketimL100: e.target.value.replace(/[^\d,]/g, '') })}
               />
             </div>
-            <div className="sm:col-span-2 xl:col-span-4">
+            <div id="arac-kurulum-cikis" className="scroll-mt-24 sm:col-span-2 xl:col-span-4">
               <SettingsFieldLabel htmlFor="cikis" help="Dosyada çıkış adresi bununla dolar; dosyada değiştirilebilir.">Varsayılan Çıkış Adresi</SettingsFieldLabel>
               <input
                 id="cikis"
@@ -193,13 +255,16 @@ export default function HasarTespitAracPage() {
             <Route className="h-4 w-4 text-brand-600" aria-hidden />
             <h2 className="text-sm font-semibold text-slate-900">Köprü Ve Tünel Geçişleri</h2>
           </div>
-          <p className="mb-3 text-xs text-slate-500">Rota bu geçişlerden geçerse satır dosyada kendiliğinden gelir. Ücret boşsa hesapta uyarı çıkar.</p>
+          <p className="mb-3 text-xs text-slate-500">
+            Bu liste geçiş konumudur (rota buradan geçerse satır düşer). Güncel TL ücreti Yandex rotasında önerilir;
+            dosyada bir kez teyit edilir. Buraya 0 TL yazmak zorunlu değildir.
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
                   <th className="py-2 pr-3 font-medium">Geçiş</th>
-                  <th className="w-44 py-2 pr-3 font-medium">Tek Geçiş Ücreti</th>
+                  <th className="w-44 py-2 pr-3 font-medium">Yedek Ücret (İsteğe Bağlı)</th>
                   <th className="w-40 py-2 pr-3 font-medium">Gidiş Ve Dönüş</th>
                   <th className="w-12 py-2" aria-label="İşlem" />
                 </tr>

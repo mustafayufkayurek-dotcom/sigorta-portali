@@ -13,6 +13,32 @@ function assertBedelRole(req: { user?: { roleCode?: string | null } }) {
 export class HasarTespitBedelController {
   constructor(private readonly service: HasarTespitBedelService) {}
 
+  @Get('hasar-tespit-bedel/arac-kurulum')
+  @RequirePermissions('claim_file.view', 'claim_file.update', 'settings.view')
+  @ApiOperation({ summary: 'Hasar Tespit araç kurulum durumu (giriş penceresi)' })
+  async getAracKurulum(@Request() req: any) {
+    return {
+      success: true,
+      data: await this.service.getAracKurulumDurum({
+        id: req?.user?.id,
+        roleCode: req?.user?.roleCode ?? req?.user?.role?.code,
+      }),
+    };
+  }
+
+  @Put('hasar-tespit-bedel/arac-kurulum')
+  @RequirePermissions('claim_file.view', 'claim_file.update', 'settings.manage')
+  @ApiOperation({ summary: 'Hasar Tespit araç kurulum adımını kaydet' })
+  async putAracKurulum(@Body() body: unknown, @Request() req: any) {
+    return {
+      success: true,
+      data: await this.service.patchAracKurulum(body, {
+        id: req?.user?.id,
+        roleCode: req?.user?.roleCode ?? req?.user?.role?.code,
+      }),
+    };
+  }
+
   @Get('hasar-tespit-bedel/arac')
   @RequirePermissions('settings.view', 'claim_file.update')
   @ApiOperation({ summary: 'Hasar Tespit araç giderleri' })

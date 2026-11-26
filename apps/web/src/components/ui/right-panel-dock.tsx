@@ -20,6 +20,10 @@ import {
 
 export { RIGHT_PANEL_DOCK_REMIND_MS, rightPanelDockClass };
 
+/** Sabit şerit ölçüsü — Panel ve Kurulum aynı boy (h-52 / w-11) */
+export const RIGHT_PANEL_DOCK_TAB_CLASS =
+  'fixed right-0 z-[220] flex h-52 w-11 flex-col items-center justify-between rounded-l-xl border border-r-0 border-slate-200 bg-white py-5 shadow-[0_6px_20px_rgba(15,23,42,0.08)] hover:bg-slate-50';
+
 export type RightPanelDockOptions = {
   title?: string;
   restore?: RightPanelRestore;
@@ -70,66 +74,80 @@ export function useRightPanelDock(open: boolean, options?: RightPanelDockOptions
 export function RightPanelDockTab({
   label,
   onClick,
+  testId = 'sag-panel-geri-ac',
+  /** Dikey konum — ikinci şerit için örn. top-[68%] */
+  positionClass = 'top-1/2 -translate-y-1/2',
+  tone = 'default',
+  /** Çift balon karmaşası olmasın diye kapatılabilir */
+  remindEnabled = true,
 }: {
   label: string;
   onClick: () => void;
+  testId?: string;
+  positionClass?: string;
+  tone?: 'default' | 'amber';
+  remindEnabled?: boolean;
 }) {
   const [remind, setRemind] = useState(false);
   const [remindHidden, setRemindHidden] = useState(false);
+  const isAmber = tone === 'amber';
 
   useEffect(() => {
+    if (!remindEnabled) return;
     const t = window.setTimeout(() => setRemind(true), RIGHT_PANEL_DOCK_REMIND_MS);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [remindEnabled]);
 
   if (typeof document === 'undefined') return null;
-  const showRemind = remind && !remindHidden;
+  const showRemind = remindEnabled && remind && !remindHidden;
 
   return createPortal(
     <>
       <button
         type="button"
         onClick={onClick}
-        data-testid="sag-panel-geri-ac"
+        data-testid={testId}
         aria-label={`${label} — geri aç`}
-        className={`fixed right-0 top-1/2 z-[220] flex w-10 min-h-[10.5rem] -translate-y-1/2 flex-col items-center gap-4 rounded-l-xl border border-r-0 bg-white py-7 shadow-[-10px_0_28px_rgba(15,23,42,0.14)] hover:bg-slate-50 ${
-          showRemind ? 'acil-siradaki-pulse border-amber-400' : 'border-slate-200'
-        }`}
+        className={`${RIGHT_PANEL_DOCK_TAB_CLASS} ${positionClass}`}
       >
         <span
-          className={`absolute bottom-5 left-0 top-5 w-[3px] rounded-full ${showRemind ? 'bg-amber-500' : 'bg-slate-800'}`}
+          className={`absolute bottom-5 left-0 top-5 w-[3px] rounded-r-full ${
+            isAmber ? 'bg-amber-500' : 'bg-slate-700'
+          }`}
           aria-hidden
         />
         <ChevronLeft className="h-4 w-4 shrink-0 text-slate-500" strokeWidth={2.25} />
-        <span className="px-0 text-sm font-semibold leading-none tracking-[0.42em] text-slate-800 [writing-mode:vertical-rl]">
+        <span className="max-h-[9.5rem] overflow-hidden px-0 text-[13px] font-semibold leading-none tracking-[0.28em] text-slate-800 [writing-mode:vertical-rl]">
           {label}
         </span>
+        <span className="h-4 w-4 shrink-0" aria-hidden />
       </button>
       {showRemind ? (
         <div
-          className="acil-siradaki-pulse fixed right-12 top-1/2 z-[219] w-[17.5rem] -translate-y-1/2 rounded-xl border border-amber-400 bg-white px-4 py-3 shadow-sm"
+          className={`fixed right-14 z-[219] w-64 rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.1)] ${positionClass}`}
           role="status"
           data-testid="sag-panel-hatirlat"
         >
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Bekleyen işlem</p>
-          <p className="mt-0.5 text-sm font-semibold text-slate-900">{label} açık kaldı</p>
-          <p className="mt-0.5 text-xs text-slate-500">Şeride tıklayınca yazdığınız yerden devam eder.</p>
-          <div className="mt-2.5 flex items-center gap-2">
+          <p className="text-sm font-semibold text-slate-900">{label}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Şeride tıklayınca kaldığınız yerden devam eder.
+          </p>
+          <div className="mt-3 flex items-center gap-3">
             <button
               type="button"
               onClick={onClick}
-              className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+              className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
               data-testid="sag-panel-hatirlat-ac"
             >
-              Geri aç
+              Geri Aç
             </button>
             <button
               type="button"
               onClick={() => setRemindHidden(true)}
-              className="text-[11px] font-semibold text-slate-500 hover:text-slate-700"
+              className="text-xs font-medium text-slate-500 hover:text-slate-700"
               data-testid="sag-panel-hatirlat-sonra"
             >
-              Şimdi değil
+              Şimdi Değil
             </button>
           </div>
         </div>

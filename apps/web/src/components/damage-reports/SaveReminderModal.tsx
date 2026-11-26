@@ -52,6 +52,7 @@ export default function SaveReminderModal({
   message,
   canSave = true,
   saving = false,
+  forbidExit = false,
   countdownSeconds = DEFAULT_COUNTDOWN,
   onSave,
   onDiscard,
@@ -63,6 +64,8 @@ export default function SaveReminderModal({
   message?: string;
   canSave?: boolean;
   saving?: boolean;
+  /** Kurulum gibi: çıkışa izin yok */
+  forbidExit?: boolean;
   countdownSeconds?: number;
   onSave: () => void;
   onDiscard: () => void;
@@ -74,6 +77,8 @@ export default function SaveReminderModal({
 
   useEffect(() => {
     if (!open) return;
+    // Çıkış yasakken geri sayım kapanıp karışıklık yaratmasın
+    if (forbidExit) return;
     setSecondsLeft(countdownSeconds);
     const interval = window.setInterval(() => {
       setSecondsLeft((prev) => {
@@ -86,11 +91,53 @@ export default function SaveReminderModal({
       });
     }, 1000);
     return () => window.clearInterval(interval);
-  }, [open, countdownSeconds]);
+  }, [open, countdownSeconds, forbidExit]);
 
   if (!open) return null;
 
   const isLogout = intent === 'logout';
+
+  if (forbidExit) {
+    return (
+      <div
+        className="fixed inset-0 z-[450] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]"
+        data-testid="kurulum-cikis-engeli"
+      >
+        <div
+          className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl"
+          role="alertdialog"
+          aria-labelledby="kurulum-cikis-title"
+          aria-describedby="kurulum-cikis-desc"
+        >
+          <div className="bg-amber-900 px-5 py-4">
+            <p className="mb-1 text-[10px] font-semibold tracking-wide text-amber-200/90">
+              Eksik Kurulum
+            </p>
+            <h3 id="kurulum-cikis-title" className="text-base font-semibold leading-snug text-white">
+              Kurulum İşlemlerini Tamamlayın
+            </h3>
+          </div>
+          <div className="px-5 py-4">
+            <p id="kurulum-cikis-desc" className="text-sm leading-relaxed text-slate-600">
+              {message
+                ?? 'Kurulum işlemleri bitmeden yazılımdan çıkılamaz. Eksik adımları tamamlayın.'}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 px-5 pb-5">
+            <button
+              type="button"
+              onClick={onContinue}
+              className="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700"
+              data-testid="kurulum-cikis-engeli-don"
+            >
+              Kuruluma Dön
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const discardLabel = isLogout ? 'Kaydetmeden Çıkış Yap' : 'Kaydetmeden Çık';
   const bodyExtra = isLogout
     ? ' Oturumu kapatmadan önce kaydetmenizi öneririz.'

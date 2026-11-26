@@ -54,6 +54,16 @@ export interface HasarTespitAracAyarlari {
   varsayilanCikisAdresi: string;
   gecisler: HasarTespitGecis[];
   otoyollar: HasarTespitOtoyol[];
+  /**
+   * Açıkken tespitçi Atanan Dosyalar’da rut + köprü/otoyol + yemek taslağı görür.
+   * Para kaydı (Gelire Düşür) yine yönetici / finanstadır. (Saha yüzü ayrı alım.)
+   */
+  tespitciBedelTaslagi: boolean;
+  /**
+   * Araç kurulumunu dolduracak tespitçi kullanıcılar.
+   * Boşsa saha penceresi açılmaz; yalnız yönetici / finans atar ve doldurur.
+   */
+  kurulumSorumluUserIds: string[];
 }
 
 /** Konumlar köprü / tünel orta noktasıdır; ücretler personel tarafından girilir. */
@@ -74,6 +84,8 @@ export const DEFAULT_HASAR_TESPIT_ARAC: HasarTespitAracAyarlari = {
   varsayilanCikisAdresi: '',
   gecisler: DEFAULT_HASAR_TESPIT_GECISLER,
   otoyollar: [],
+  tespitciBedelTaslagi: false,
+  kurulumSorumluUserIds: [],
 };
 
 function num(v: unknown): number | null {
@@ -115,7 +127,93 @@ export function normalizeHasarTespitArac(raw: unknown): HasarTespitAracAyarlari 
     varsayilanCikisAdresi: typeof o.varsayilanCikisAdresi === 'string' ? o.varsayilanCikisAdresi.trim() : '',
     gecisler,
     otoyollar,
+    tespitciBedelTaslagi: o.tespitciBedelTaslagi === true,
+    kurulumSorumluUserIds: Array.isArray(o.kurulumSorumluUserIds)
+      ? Array.from(
+          new Set(
+            (o.kurulumSorumluUserIds as unknown[])
+              .map((id) => String(id ?? '').trim())
+              .filter(Boolean),
+          ),
+        )
+      : [],
   };
+}
+
+
+export type HasarTespitAracKurulumAdim = 'sorumlu' | 'cikis' | 'kira' | 'tuketim';
+
+/** Araç bilgisi eksikse sıradaki adımlar. */
+export function hasarTespitAracKurulumEksikleri(
+  arac: HasarTespitAracAyarlari | null | undefined,
+): Array<'cikis' | 'kira' | 'tuketim'> {
+  const a = normalizeHasarTespitArac(arac ?? null);
+  const eksik: Array<'cikis' | 'kira' | 'tuketim'> = [];
+  if (!a.varsayilanCikisAdresi.trim()) eksik.push('cikis');
+  if (a.aylikKira == null || a.aylikKira <= 0) eksik.push('kira');
+  if (a.tuketimL100 == null || a.tuketimL100 <= 0) eksik.push('tuketim');
+  return eksik;
+}
+
+export function isHasarTespitAracKurulumTamam(
+  arac: HasarTespitAracAyarlari | null | undefined,
+): boolean {
+  const a = normalizeHasarTespitArac(arac ?? null);
+  return hasarTespitAracKurulumEksikleri(a).length === 0 && a.kurulumSorumluUserIds.length > 0;
+}
+
+/** Panele girişte sırayla açılacak kurulum adımları (yönetici önce sorumluları seçer). */
+export function hasarTespitAracKurulumSirasi(
+  arac: HasarTespitAracAyarlari | null | undefined,
+  opts?: { includeSorumluAdimi?: boolean },
+): HasarTespitAracKurulumAdim[] {
+  const a = normalizeHasarTespitArac(arac ?? null);
+  const steps: HasarTespitAracKurulumAdim[] = [];
+  if (opts?.includeSorumluAdimi !== false && a.kurulumSorumluUserIds.length === 0) {
+    steps.push('sorumlu');
+  }
+  steps.push(...hasarTespitAracKurulumEksikleri(a));
+  return steps;
+}
+
+/**
+ * Yazılıma girince kurulum penceresi kimde açılır.
+ * Her tespitçiye değil; yalnız seçilen sorumlulara. Sorumlu yokken yalnız yönetici / finans.
+ */
+export function shouldShowHasarTespitAracKurulumWizard(input: {
+  roleCode: string | null | undefined;
+  userId: string | null | undefined;
+  arac: HasarTespitAracAyarlari | null | undefined;
+}): boolean {
+  const a = normalizeHasarTespitArac(input.arac ?? null);
+  const steps = hasarTespitAracKurulumSirasi(a, { includeSorumluAdimi: true });
+  if (steps.length === 0) return false;
+  if (canSeeHasarTespitBedel(input.roleCode)) return true;
+  const role = String(input.roleCode ?? '').trim().toLowerCase().replace(/-/g, '_');
+  if (role !== 'field_staff') return false;
+  const uid = String(input.userId ?? '').trim();
+  if (!uid) return false;
+  if (!a.kurulumSorumluUserIds.includes(uid)) return false;
+  return hasarTespitAracKurulumEksikleri(a).length > 0;
+}
+
+export const HASAR_TESPIT_ARAC_KURULUM_ETIKET: Record<HasarTespitAracKurulumAdim, string> = {
+  sorumlu: 'Kurulumdan sorumlu tespitçi',
+  cikis: 'Varsayılan çıkış adresi',
+  kira: 'Aylık araç kirası',
+  tuketim: 'Yakıt tüketimi (L/100 km)',
+};
+
+/** Eksik adımın doldurulacağı panel yolu (çekmece yönlendirmesi). */
+export const HASAR_TESPIT_ARAC_KURULUM_HREF: Record<HasarTespitAracKurulumAdim, string> = {
+  sorumlu: '/panel/ayarlar/hasar-tespit-arac#arac-kurulum-sorumlular',
+  cikis: '/panel/ayarlar/hasar-tespit-arac#arac-kurulum-cikis',
+  kira: '/panel/ayarlar/hasar-tespit-arac#arac-kurulum-kira',
+  tuketim: '/panel/ayarlar/hasar-tespit-arac#arac-kurulum-tuketim',
+};
+
+export function hasarTespitAracKurulumHref(adim: HasarTespitAracKurulumAdim): string {
+  return HASAR_TESPIT_ARAC_KURULUM_HREF[adim];
 }
 
 // ─── Müşteri tarifesi ─────────────────────────────────────────────────────────

@@ -20,6 +20,10 @@ export type NavigationGuardRegistration = {
   onSave?: () => void | Promise<void>;
   onDiscard?: () => void | Promise<void>;
   onContinue?: () => void;
+  /** Yalnız çıkış / oturum kapatmada engelle; sayfa gezintisine dokunma */
+  logoutOnly?: boolean;
+  /** Çıkışı tamamen kes — «Kaydetmeden çık» yok */
+  forbidExit?: boolean;
 };
 
 type TryNavigateFn = (proceed: () => void, intent?: NavigationIntent) => void;
@@ -47,14 +51,20 @@ export function NavigationGuardProvider({
   const [intent, setIntent] = useState<NavigationIntent>('leave');
   const [modalDetail, setModalDetail] = useState<SaveReminderDetail>('none');
   const [modalMessage, setModalMessage] = useState<string | undefined>(undefined);
+  const [forbidExit, setForbidExit] = useState(false);
   const [pendingProceed, setPendingProceed] = useState<(() => void) | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const pickDirtyGuard = useCallback((): NavigationGuardRegistration | null => {
+  const pickDirtyGuard = useCallback((navIntent: NavigationIntent = 'leave'): NavigationGuardRegistration | null => {
+    let first: NavigationGuardRegistration | null = null;
     for (const guard of guardsRef.current.values()) {
-      if (guard.hasUnsaved()) return guard;
+      if (!guard.hasUnsaved()) continue;
+      if (guard.logoutOnly && navIntent !== 'logout') continue;
+      // Çıkışta kurulum kilidi kaydet-hatırlatmasından önce gelir
+      if (navIntent === 'logout' && guard.forbidExit) return guard;
+      if (!first) first = guard;
     }
-    return null;
+    return first;
   }, []);
 
   const registerGuard = useCallback((guard: NavigationGuardRegistration | null, id = 'default') => {
@@ -65,20 +75,22 @@ export function NavigationGuardProvider({
   const closeModal = useCallback(() => {
     setOpen(false);
     setPendingProceed(null);
+    setForbidExit(false);
   }, []);
 
   const openModal = useCallback((navIntent: NavigationIntent, proceed: (() => void) | null) => {
-    const guard = pickDirtyGuard();
+    const guard = pickDirtyGuard(navIntent);
     activeGuardRef.current = guard;
     setModalDetail(guard?.detail ?? 'none');
     setModalMessage(guard?.message);
+    setForbidExit(Boolean(guard?.forbidExit));
     setIntent(navIntent);
     setPendingProceed(proceed ? () => proceed : null);
     setOpen(true);
   }, [pickDirtyGuard]);
 
   const tryNavigate = useCallback<TryNavigateFn>((proceed, navIntent = 'leave') => {
-    const guard = pickDirtyGuard();
+    const guard = pickDirtyGuard(navIntent);
     if (!guard?.hasUnsaved()) {
       proceed();
       return;
@@ -87,7 +99,7 @@ export function NavigationGuardProvider({
   }, [openModal, pickDirtyGuard]);
 
   const showSaveReminder = useCallback(() => {
-    const guard = pickDirtyGuard();
+    const guard = pickDirtyGuard('leave');
     if (!guard?.hasUnsaved()) return;
     openModal('leave', null);
   }, [openModal, pickDirtyGuard]);
@@ -119,6 +131,7 @@ export function NavigationGuardProvider({
   };
 
   const handleDiscard = async () => {
+    if (forbidExit) return;
     await guard?.onDiscard?.();
     allowUnloadRef.current = true;
     const proceed = pendingProceed;
@@ -143,6 +156,7 @@ export function NavigationGuardProvider({
         message={modalMessage}
         canSave={Boolean(guard?.onSave)}
         saving={saving || !!guard?.saving}
+        forbidExit={forbidExit}
         onSave={() => void handleSave()}
         onDiscard={() => void handleDiscard()}
         onContinue={handleContinue}

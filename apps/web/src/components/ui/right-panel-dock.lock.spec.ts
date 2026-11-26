@@ -31,15 +31,21 @@ describe('sağ panel kaydır LOCK', () => {
     assert.doesNotMatch(tab, /from '\.\/right-panel-dock-state\.ts'/);
     assert.match(tab, /sag-panel-geri-ac/);
     assert.match(tab, /createPortal/);
-    assert.match(tab, /w-10/);
-    assert.match(tab, /min-h-\[10\.5rem\]/);
+    // Panel ve Kurulum aynı sabit boy — amatör farklı yükseklik yok
+    assert.match(tab, /RIGHT_PANEL_DOCK_TAB_CLASS/);
+    assert.match(tab, /\bh-52\b/);
+    assert.match(tab, /\bw-11\b/);
+    assert.match(tab, /rounded-l-xl/);
+    assert.match(tab, /text-\[13px\] font-semibold/);
     assert.match(tab, /writing-mode:vertical-rl/);
-    assert.match(tab, /tracking-\[0\.42em\]/);
-    assert.doesNotMatch(tab, /absolute left-0/);
+    assert.match(tab, /tracking-\[0\.28em\]/);
+    assert.match(tab, /remindEnabled/);
+    assert.doesNotMatch(tab, /\bw-10\b/);
+    assert.doesNotMatch(tab, /min-h-\[10\.5rem\]/);
+    assert.doesNotMatch(tab, /acil-siradaki-pulse/);
+    assert.doesNotMatch(tab, /BEKLEYEN İŞLEM/);
     assert.match(tab, /sag-panel-hatirlat/);
-    assert.match(tab, /acil-siradaki-pulse/);
-    assert.match(tab, /Bekleyen işlem/);
-    assert.match(tab, /Geri aç/);
+    assert.match(tab, /Geri Aç/);
     assert.equal(RIGHT_PANEL_DOCK_REMIND_MS, 20_000);
     const session = readFileSync(join(here, 'right-panel-session.ts'), 'utf8');
     const host = readFileSync(join(here, 'right-panel-dock-host.tsx'), 'utf8');

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsUUID, IsNotEmpty, IsBoolean, Min } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsNotEmpty, IsBoolean, Min } from 'class-validator';
 
 export class CreateExpenseCategoryDto {
   @IsString()
@@ -9,8 +9,10 @@ export class CreateExpenseCategoryDto {
   @IsNotEmpty()
   code!: string;
 
+  /** Ana grup kimliği — UUID v4 şartı değil; kayıt varlığı serviste doğrulanır. */
   @IsOptional()
-  @IsUUID('4')
+  @IsString()
+  @IsNotEmpty()
   parentId?: string;
 
   @IsOptional()
@@ -35,6 +37,6 @@ export class UpdateExpenseCategoryDto {
   isActive?: boolean;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsString()
   parentId?: string | null;
 }

@@ -67,16 +67,21 @@ describe('Hasar Tespit hizmet bedeli arka taraf LOCK', () => {
     assert.match(app, /HasarTespitBedelModule/);
   });
 
-  it('her adres rol kapısından geçer; dosya sorumlusu hesabı görmez', () => {
+  it('bedel adresleri rol kapısından geçer; araç kurulum ayrı kapıdır', () => {
     const ctl = read('hasar-tespit-bedel.controller.ts');
     const routes = ctl.match(/@(Get|Put|Post)\(/g) ?? [];
     const gates = ctl.match(/assertBedelRole\(req\);/g) ?? [];
-    assert.ok(routes.length >= 8);
-    assert.equal(gates.length, routes.length);
+    assert.ok(routes.length >= 10);
+    // arac-kurulum GET/PUT: assertBedelRole yok (sorumlu tespitçi de okur)
+    assert.equal(gates.length, routes.length - 2);
+    assert.match(ctl, /arac-kurulum/);
+    assert.match(ctl, /getAracKurulum|putAracKurulum/);
     assert.match(ctl, /canSeeHasarTespitBedel\(req\?\.user\?\.roleCode\)/);
     const svc = read('hasar-tespit-bedel.service.ts');
     assert.match(svc, /description: `\$\{satir\.ad\} · \$\{file\.fileNo\}`/);
     assert.match(svc, /description: 'Hasar Tespit Hizmet Bedeli gelire düşürüldü\.'/);
+    assert.match(svc, /getAracKurulumDurum/);
+    assert.match(svc, /patchAracKurulum/);
     const claims = readFileSync(join(here, '../claim-files/claim-files.service.ts'), 'utf8');
     assert.match(claims, /if \(canSeeHasarTespitBedel\(requestingUser\?\.roleCode\)\) return rows;/);
     assert.match(claims, /kind === HASAR_TESPIT_BEDEL_LOG_KIND \? \{ \.\.\.row, metadata: \{ kind \} \} : row/);

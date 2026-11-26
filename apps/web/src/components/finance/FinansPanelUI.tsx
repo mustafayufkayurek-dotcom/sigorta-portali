@@ -168,6 +168,7 @@ export function FinansModal({
   testId,
   size = 'md',
   ariaLabel,
+  onBackdropClose,
 }: {
   open: boolean;
   title: string;
@@ -177,6 +178,8 @@ export function FinansModal({
   testId?: string;
   size?: 'md' | 'lg';
   ariaLabel?: string;
+  /** Dışarı (örtü) tıklanınca — panel içi tıklama tetiklemez */
+  onBackdropClose?: () => void;
 }) {
   if (!open || typeof document === 'undefined') return null;
   const width = size === 'lg' ? 'max-w-lg' : 'max-w-md';
@@ -187,9 +190,11 @@ export function FinansModal({
       aria-modal="true"
       aria-label={ariaLabel ?? title}
       data-testid={testId}
+      onClick={onBackdropClose ? () => onBackdropClose() : undefined}
     >
       <div
         className={`flex max-h-[min(92vh,100dvh)] w-full ${width} flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl`}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 border-b border-slate-100 px-5 py-4">
           <h3 className="text-base font-semibold text-slate-900">{title}</h3>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
+import { isHasarTespitAracKurulumTamam, normalizeHasarTespitArac } from '@sigorta/shared';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { API, authHeader } from '@/utils/api';
 
@@ -141,7 +142,7 @@ const DASHBOARD_GROUPS: DashboardGroup[] = [
       {
         key: 'hasarTespitArac',
         title: 'Hasar Tespit Araç Giderleri',
-        purpose: 'Yakıt ve km aşımı burada; araç kirası Sabit Giderler’de; köprü ücreti rut planında önerilir.',
+        purpose: 'Çıkış, kira ve yakıt. Eksik kurulum yazılıma girince sırayla sorulur.',
         href: '/panel/ayarlar/hasar-tespit-arac',
         tone: 'violet',
       },
@@ -317,21 +318,14 @@ export default function TanimlarPage() {
           return { total: items.length || 5, active: items.filter((row) => (row as { menuVisible?: boolean }).menuVisible !== false).length || 5 };
         }),
         safeMetric(axios.get(`${API}/hasar-tespit-bedel/arac`, { headers }), (raw) => {
-          const a = ((raw as { data?: unknown })?.data ?? {}) as {
-            kmAsimUcreti?: number | null;
-            tuketimL100?: number | null;
-            varsayilanCikisAdresi?: string | null;
-          };
-          const eksik = [
-            a.kmAsimUcreti == null ? 'km aşım' : null,
-            a.tuketimL100 == null ? 'yakıt tüketimi' : null,
-          ].filter(Boolean);
+          const a = normalizeHasarTespitArac((raw as { data?: unknown })?.data ?? raw);
+          const tamam = isHasarTespitAracKurulumTamam(a);
           return {
             total: 1,
             active: null,
-            note: eksik.length
-              ? `Girilmemiş: ${eksik.join(', ')}`
-              : (a.varsayilanCikisAdresi ? 'Yakıt ayarı hazır · kira Sabit Giderler’de' : 'Yakıt ayarı hazır'),
+            note: tamam
+              ? 'Kurulum tamam'
+              : 'Eksik kurulum girişte sırayla sorulur',
           };
         }),
         safeMetric(axios.get(`${API}/document-types`, { headers }), (raw) => {

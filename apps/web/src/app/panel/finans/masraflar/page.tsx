@@ -821,7 +821,7 @@ export default function MasraflarPage() {
     root.scrollIntoView({ block: 'nearest' });
   };
 
-  /** Son satırın son alanından Tab: doluysa yeni satır aç (fiş girişi ilerler). */
+  /** Yeni satır yalnız «Satır Ekle» tıklanınca; Tab / Enter satır açmaz. */
   const appendMasrafKalemSatirAndFocus = () => {
     const vatRate = kalemSatirlari[0]?.vatRate || DEFAULT_MASRAF_KDV;
     setKalemSatirlari((rows) => {
@@ -830,16 +830,6 @@ export default function MasraflarPage() {
       window.requestAnimationFrame(() => focusMasrafKalemSatir(newIdx, 'first'));
       return next;
     });
-  };
-
-  const masrafKalemSatirDolu = (index: number): boolean => {
-    const line = kalemSatirlari[index];
-    if (!line) return false;
-    return Boolean(
-      line.expenseCategoryParentId
-      || line.expenseCategoryId
-      || (parseTrAmountInput(line.amount) ?? 0) > 0,
-    );
   };
 
   const handleMasrafKalemYonTusu = (e: KeyboardEvent) => {
@@ -862,7 +852,7 @@ export default function MasraflarPage() {
     const comboboxOpen =
       target.getAttribute('role') === 'combobox' && target.getAttribute('aria-expanded') === 'true';
 
-    // Enter / Tab: satır içi sonraki alan → sonraki satır → yeni satır (fiş girişi)
+    // Enter / Tab: satır içi sonraki alan → sonraki satır → açıklama (yeni satır yok)
     if (e.key === 'Enter' || e.key === 'Tab') {
       if (e.key === 'Enter' && comboboxOpen) return;
       if (e.key === 'Tab' && e.shiftKey) {
@@ -885,16 +875,12 @@ export default function MasraflarPage() {
         }
         return;
       }
-      // Son alan: sonraki satır veya yeni satır
+      // Son alan: sonraki satır veya açıklama — Tab/Enter satır açmaz (masraf-kalem-satir-ekle)
       e.preventDefault();
       e.stopPropagation();
       const next = idx + 1;
       if (next < kalemSatirlari.length) {
         focusMasrafKalemSatir(next, 'first');
-        return;
-      }
-      if (!editId && masrafKalemSatirDolu(idx)) {
-        appendMasrafKalemSatirAndFocus();
         return;
       }
       const aciklama = document.getElementById('finans-masraf-aciklama') as HTMLElement | null;
@@ -998,9 +984,17 @@ export default function MasraflarPage() {
     setCategoryDraftName(name);
     const draftLine =
       kalemSatirlari.find((r) => r.key === categoryDraftLineKey) ?? kalemSatirlari[0];
-    const draftParentId = draftLine?.expenseCategoryParentId || form.expenseCategoryParentId;
+    const draftParentIdRaw = draftLine?.expenseCategoryParentId || form.expenseCategoryParentId;
+    const draftParentId = String(draftParentIdRaw ?? '').trim();
+    const parentInTree = draftParentId
+      ? categoryTree.find((g) => g.id === draftParentId)
+      : undefined;
     if (categoryDraft === 'sub' && !draftParentId) {
       setCategoryDraftError('Önce masraf grubunu seçin.');
+      return;
+    }
+    if (categoryDraft === 'sub' && !parentInTree) {
+      setCategoryDraftError('Seçilen masraf grubu listede yok. Grubu yeniden seçin.');
       return;
     }
     if (categoryDraft === 'group') {
@@ -1411,6 +1405,35 @@ export default function MasraflarPage() {
           ? { documentConflictOverrideReason: opts.documentConflictOverrideReason }
           : {}),
       };
+
+      // Kaydetmeden önce kontrol penceresi — mevcut belgeler listesi pop-up’ta açılsın.
+      if (!opts?.documentConflictOverrideReason && shared.hasTaxDocument !== false && shared.receiptDocumentNo) {
+        try {
+          const pre = await axios.post(
+            `${API}/expenses/document-review`,
+            {
+              hasTaxDocument: shared.hasTaxDocument,
+              receiptDocumentNo: shared.receiptDocumentNo,
+              partyAccountId: shared.partyAccountId,
+              fileCaseId: shared.fileCaseId,
+              customerId: shared.customerId,
+              operationSubject: shared.operationSubject,
+              excludeExpenseId: editId || undefined,
+            },
+            { headers: authHeader() },
+          );
+          const body = pre.data?.data ?? pre.data;
+          if (body?.needsReview && body?.review) {
+            setDocReview(body.review);
+            setPendingSaveMode(mode);
+            setFormError('');
+            return;
+          }
+        } catch {
+          /* Ön kontrol düşerse kayıt 409 ile aynı pencereyi açar */
+        }
+      }
+
       let savedOpNo = '';
       if (editId) {
         const line = saveLines[0];
@@ -3001,14 +3024,7 @@ export default function MasraflarPage() {
                   tabIndex={-1}
                   className="rounded-xl border border-dashed border-brand-300 bg-brand-50/50 px-3 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:bg-brand-950/20 dark:text-brand-300"
                   data-testid="masraf-kalem-satir-ekle"
-                  onClick={() => {
-                    setKalemSatirlari((rows) => [
-                      ...rows,
-                      newMasrafKalemSatiri({
-                        vatRate: rows[0]?.vatRate || DEFAULT_MASRAF_KDV,
-                      }),
-                    ]);
-                  }}
+                  onClick={() => appendMasrafKalemSatirAndFocus()}
                 >
                   + Masraf Satırı Ekle
                 </button>
@@ -3308,6 +3324,18 @@ export default function MasraflarPage() {
         onCancel={() => {
           setDocReview(null);
           setPendingSaveMode(null);
+        }}
+        onEditDocumentNo={() => {
+          setDocReview(null);
+          setPendingSaveMode(null);
+          setFormError('');
+          window.requestAnimationFrame(() => {
+            const el = document.getElementById('finans-masraf-belge-no');
+            if (el instanceof HTMLInputElement) {
+              el.focus();
+              el.select();
+            }
+          });
         }}
         onOpenExisting={async (expenseId) => {
           setDocReview(null);

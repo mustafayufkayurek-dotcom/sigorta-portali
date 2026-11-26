@@ -6,12 +6,16 @@
 export const EXPENSE_DOCUMENT_REVIEW_CODE = 'EXPENSE_DOCUMENT_REVIEW' as const;
 
 export const EXPENSE_DOCUMENT_DUPLICATE_MESSAGE =
-  'Bu tedarikçide aynı veya benzer belge no zaten kayıtlı. Önce mevcut faturaları kontrol edin.';
+  'Bu tedarikçide benzer belge no bulundu. Aşağıdaki kayıtları kontrol edin; aynı fiş değilse kaydetmeye devam edebilirsiniz.';
 
 export const EXPENSE_FILE_HAKEDIS_WARN_MESSAGE =
   'Bu dosyada seçilen tedarikçiye hakediş verilmiş. Çift kayıt riski için listedeki hakedişi kontrol edin.';
 
-export const EXPENSE_DOCUMENT_OVERRIDE_REASON_MIN = 8;
+/** Yine de kaydet — uzun gerekçe zorunlu değil; iz için kısa teyit yeter. */
+export const EXPENSE_DOCUMENT_OVERRIDE_REASON_MIN = 1;
+
+export const EXPENSE_DOCUMENT_CONTINUE_REASON =
+  'Benzer belge no ile devam (personel teyidi)';
 
 export type ExpenseHakedisFileKind = 'hasar' | 'acil';
 

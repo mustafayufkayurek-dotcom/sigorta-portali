@@ -16,7 +16,11 @@ import {
   canSeeHasarTespitBedel,
   gecisSatirlari,
   hesaplaHasarTespitBedeli,
+  hasarTespitAracKurulumEksikleri,
+  hasarTespitAracKurulumSirasi,
+  isHasarTespitAracKurulumTamam,
   normalizeHasarTespitArac,
+  shouldShowHasarTespitAracKurulumWizard,
   rotaGecisleri,
   type HasarTespitBedelGirdi,
 } from './hasar-tespit-bedel.ts';
@@ -136,4 +140,38 @@ describe('Hasar Tespit hizmet bedeli LOCK', () => {
     const smoke = readFileSync(join(here, '../../../scripts/smoke-canli-bitmis-is.sh'), 'utf8');
     assert.match(smoke, /hasar-tespit-bedel\.lock\.spec/);
   });
+  it('araç kurulum sırası + sorumlu tespitçi kapısı', () => {
+    assert.deepEqual(hasarTespitAracKurulumEksikleri(null), ['cikis', 'kira', 'tuketim']);
+    assert.equal(isHasarTespitAracKurulumTamam(null), false);
+    const dolu = {
+      ...normalizeHasarTespitArac(null),
+      varsayilanCikisAdresi: 'Ankara',
+      aylikKira: 37500,
+      tuketimL100: 7.5,
+      kurulumSorumluUserIds: ['u-tespit-1'],
+    };
+    assert.equal(isHasarTespitAracKurulumTamam(dolu), true);
+    assert.deepEqual(hasarTespitAracKurulumSirasi(null), ['sorumlu', 'cikis', 'kira', 'tuketim']);
+    assert.equal(
+      shouldShowHasarTespitAracKurulumWizard({ roleCode: 'field_staff', userId: 'u-x', arac: null }),
+      false,
+    );
+    assert.equal(
+      shouldShowHasarTespitAracKurulumWizard({
+        roleCode: 'field_staff',
+        userId: 'u-tespit-1',
+        arac: { ...normalizeHasarTespitArac(null), kurulumSorumluUserIds: ['u-tespit-1'] },
+      }),
+      true,
+    );
+    assert.equal(
+      shouldShowHasarTespitAracKurulumWizard({ roleCode: 'admin', userId: 'u-admin', arac: null }),
+      true,
+    );
+    assert.equal(
+      shouldShowHasarTespitAracKurulumWizard({ roleCode: 'admin', userId: 'u-admin', arac: dolu }),
+      false,
+    );
+  });
+
 });

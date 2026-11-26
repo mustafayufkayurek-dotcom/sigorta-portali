@@ -14,6 +14,7 @@ import { installAxiosAuthInterceptors } from '@/utils/setup-axios-auth';
 import SessionTimeoutBar from '@/components/SessionTimeoutBar';
 import { FinansOncelikliGorevModal } from '@/components/finance/FinansOncelikliGorevModal';
 import { FinansDonemDisiplinModal } from '@/components/finance/FinansDonemDisiplinModal';
+import { HasarTespitAracKurulumWizard } from '@/components/settings/HasarTespitAracKurulumWizard';
 import { WorkHoursPanelGate, type WorkHoursPanelGateHandle } from '@/components/hr/WorkHoursPanelGate';
 import { AttendancePanelGate } from '@/components/hr/AttendancePanelGate';
 import { PanelActivityHeartbeat } from '@/components/hr/PanelActivityHeartbeat';
@@ -2317,6 +2318,17 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                   && (isFinance || isOfficeStaffRole(roleCode))
                 }
                 canClosePeriod={isFinance}
+              />
+              <HasarTespitAracKurulumWizard
+                enabled={
+                  !loading
+                  && authChecked
+                  && Boolean(user)
+                  && !mustChangePassword
+                  && !isPortalUser
+                }
+                userId={user?.id}
+                roleCode={roleCode}
               />
             </ToastProvider>
           </div>

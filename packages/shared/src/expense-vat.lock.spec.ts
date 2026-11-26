@@ -153,13 +153,19 @@ describe('masraf KDV LOCK', () => {
     assert.match(masraf, /focusMasrafKalemSatir/);
     assert.match(masraf, /masrafKalemAlanFocusables/);
     assert.match(masraf, /appendMasrafKalemSatirAndFocus/);
-    assert.match(masraf, /masrafKalemSatirDolu/);
     assert.match(masraf, /e\.key !== 'Enter'/);
     assert.match(masraf, /finans-masraf-aciklama/);
     assert.match(masraf, /focusMasrafKalemSatir\(prev, 'last'\)/);
     assert.match(masraf, /masraf-kalem-satir-sil-/);
     assert.match(masraf, /masraf-yeni-cari/);
     assert.match(masraf, /masraf-kalem-satir-ekle/);
+    // Tab / Enter yeni satır açmaz; satır yalnız tıklamayla (masraf-kalem-satir-ekle)
+    assert.doesNotMatch(masraf, /masrafKalemSatirDolu/);
+    assert.doesNotMatch(
+      masraf,
+      /appendMasrafKalemSatirAndFocus\(\);\s*return;/,
+      'Tab/Enter yolundan yeni satır açılmaz',
+    );
     assert.match(masraf, /ensureVendors=1/);
     assert.match(masraf, /mergeMasrafOdemeKaynaklari/);
     assert.match(masraf, /ensure-vendor/);

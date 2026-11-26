@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   FILE_FEE_CUSTOMER_SOURCE,
@@ -7,10 +7,13 @@ import {
   HASAR_TESPIT_FEE_DESCRIPTION,
   HASAR_TESPIT_TARIFE_KEY,
   bedelGiderKategorisi,
+  canSeeHasarTespitBedel,
   bedelGiderSatirlari,
   hesaplaHasarTespitBedeli,
   isInspectionServiceKind,
+  hasarTespitAracKurulumSirasi,
   normalizeHasarTespitArac,
+  shouldShowHasarTespitAracKurulumWizard,
   normalizeHasarTespitTarife,
   rotaGecisleri,
   type HasarTespitAracAyarlari,
@@ -91,6 +94,79 @@ export class HasarTespitBedelService {
     await this.writeSetting(HASAR_TESPIT_ARAC_AYAR_KEY, next);
     return next;
   }
+
+  async listKurulumTespitciAdaylari(): Promise<Array<{ id: string; name: string; email: string }>> {
+    const rows = await this.prisma.user.findMany({
+      where: {
+        status: 'active',
+        role: { code: { equals: 'field_staff', mode: 'insensitive' } },
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      take: 200,
+    });
+    return rows.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.email,
+    }));
+  }
+
+  async getAracKurulumDurum(user: { id?: string; roleCode?: string | null } | undefined) {
+    const arac = await this.getArac();
+    const show = shouldShowHasarTespitAracKurulumWizard({
+      roleCode: user?.roleCode,
+      userId: user?.id,
+      arac,
+    });
+    const includeSorumlu = canSeeHasarTespitBedel(user?.roleCode);
+    return {
+      show,
+      arac,
+      steps: show
+        ? hasarTespitAracKurulumSirasi(arac, { includeSorumluAdimi: includeSorumlu })
+        : [],
+      adaylar: includeSorumlu ? await this.listKurulumTespitciAdaylari() : [],
+    };
+  }
+
+  async patchAracKurulum(
+    body: unknown,
+    user: { id?: string; roleCode?: string | null } | undefined,
+  ): Promise<HasarTespitAracAyarlari> {
+    const current = await this.getArac();
+    const patch = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+    const isAdmin = canSeeHasarTespitBedel(user?.roleCode);
+    const uid = String(user?.id ?? '').trim();
+    const isSorumlu =
+      Boolean(uid)
+      && current.kurulumSorumluUserIds.includes(uid)
+      && String(user?.roleCode ?? '').toLowerCase().replace(/-/g, '_') === 'field_staff';
+
+    if (!isAdmin && !isSorumlu) {
+      throw new ForbiddenException('Bu kurulum adımı sizin hesabınıza açık değil.');
+    }
+
+    const nextRaw: Record<string, unknown> = { ...current };
+    if (isAdmin && Array.isArray(patch.kurulumSorumluUserIds)) {
+      nextRaw.kurulumSorumluUserIds = patch.kurulumSorumluUserIds;
+    }
+    if (typeof patch.varsayilanCikisAdresi === 'string') {
+      nextRaw.varsayilanCikisAdresi = patch.varsayilanCikisAdresi;
+    }
+    if (patch.aylikKira !== undefined) nextRaw.aylikKira = patch.aylikKira;
+    if (patch.tuketimL100 !== undefined) nextRaw.tuketimL100 = patch.tuketimL100;
+
+    const next = normalizeHasarTespitArac(nextRaw);
+    await this.writeSetting(HASAR_TESPIT_ARAC_AYAR_KEY, next);
+    return next;
+  }
+
 
   private async tarifeMap(): Promise<Record<string, unknown>> {
     const raw = await this.readSetting(HASAR_TESPIT_TARIFE_KEY);
