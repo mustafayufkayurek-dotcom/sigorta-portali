@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-11-26",
-  "label": "v723-belge-kurulum",
-  "description": "v723 full: Masraf benzer belge no yumuşak kontrol (Kaydetmeye Devam); Hasar Tespit araç kurulum giriş penceresi + sağ şerit (bitince kalkar). Geri alma web v722 / backend v722.",
+  "updatedAt": "2026-11-27",
+  "label": "v726-masraf-tedarikci-hatirla",
+  "description": "v726 full: Masraf Yeni Tedarikçi sayfada kalır (Ofis kartı); Açıklama ve Belge Sahibi hatırlama satırları. Geri alma web v725 / backend v725.",
   "composeProject": "sigorta-hasar-sistemi",
   "remoteHost": "94.138.216.18",
   "remoteAppDir": "/opt/app",
   "images": {
-    "backend": "app-backend:dalga2-agreement-hr-01-v723-amd64",
-    "web": "sigorta-web:dalga2-agreement-hr-01-v723-amd64"
+    "backend": "app-backend:dalga2-agreement-hr-01-v726-amd64",
+    "web": "sigorta-web:dalga2-agreement-hr-01-v726-amd64"
   },
   "rollbackImages": {
-    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v722-amd64",
-    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v722-amd64"
+    "webPrevious": "sigorta-web:dalga2-agreement-hr-01-v725-amd64",
+    "backendPrevious": "app-backend:dalga2-agreement-hr-01-v725-amd64"
   },
   "mustPassSmokeRoutes": [
     "/giris",
