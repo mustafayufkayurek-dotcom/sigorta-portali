@@ -13,6 +13,13 @@ function assertBedelRole(req: { user?: { roleCode?: string | null } }) {
 export class HasarTespitBedelController {
   constructor(private readonly service: HasarTespitBedelService) {}
 
+  @Get('hasar-tespit-bedel/tespitci-taslak-tercih')
+  @RequirePermissions('claim_file.view', 'claim_file.update', 'settings.view')
+  @ApiOperation({ summary: 'Tespitçi bedel taslağı Ayarlar tercihi (saha okur)' })
+  async getTespitciTaslakTercih() {
+    return { success: true, data: await this.service.getTespitciTaslakTercih() };
+  }
+
   @Get('hasar-tespit-bedel/arac-kurulum')
   @RequirePermissions('claim_file.view', 'claim_file.update', 'settings.view')
   @ApiOperation({ summary: 'Hasar Tespit araç kurulum durumu (giriş penceresi)' })
@@ -93,6 +100,16 @@ export class HasarTespitBedelController {
     return { success: true, data: await this.service.dosyaOzeti(id) };
   }
 
+  @Post('hasar-tespit-bedel/rut-plani')
+  @RequirePermissions('claim_file.view', 'claim_file.update')
+  @ApiOperation({ summary: 'Tespitçi rut planı: çıkış + dosyalar → önerilen sıra' })
+  async rutPlani(
+    @Body() body: { cikisAdresi?: string; claimFileIds?: string[]; ucretOner?: boolean },
+    @Request() req: any,
+  ) {
+    return { success: true, data: await this.service.rutPlani(body ?? {}, req.user) };
+  }
+
   @Post('claim-files/:id/hasar-tespit-bedel/rota')
   @RequirePermissions('claim_file.update')
   @ApiOperation({ summary: 'Çıkış adresinden tespit adresine rota' })
@@ -107,5 +124,25 @@ export class HasarTespitBedelController {
   async gelireDusur(@Param('id') id: string, @Body() body: GelireDusurBody, @Request() req: any) {
     assertBedelRole(req);
     return { success: true, data: await this.service.gelireDusur(id, body, req.user) };
+  }
+
+  @Post('claim-files/:id/hasar-tespit-bedel/taslak')
+  @RequirePermissions('claim_file.update', 'claim_file.view')
+  @ApiOperation({ summary: 'Tespitçi bedel taslağı (Gelire Düşür değildir)' })
+  async kaydetSahaTaslak(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      cikisAdresi?: string;
+      toplamKm?: number | null;
+      gecisler?: Array<{ id: string; ad: string; adet?: number; ucret: number | null }>;
+      otoyollar?: Array<{ ref: string; ad?: string; km?: number; kmUcreti: number | null }>;
+      yemekTutar?: number | null;
+      yemekNot?: string | null;
+      not?: string | null;
+    },
+    @Request() req: any,
+  ) {
+    return { success: true, data: await this.service.kaydetSahaTaslak(id, body ?? {}, req.user) };
   }
 }

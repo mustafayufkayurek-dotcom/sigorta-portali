@@ -85,6 +85,7 @@ import {
 } from '@/utils/field-staff-claim-view';
 import { FieldInsuredContactActions } from '@/components/field-survey/FieldInsuredContactActions';
 import { FieldAcilAssignmentCard } from '@/components/field-survey/FieldAcilAssignmentCard';
+import { FieldRutPlaniPanel } from '@/components/field-survey/FieldRutPlaniPanel';
 import { useFieldAssignedAcilCases } from '@/hooks/useFieldAssignedAcilCases';
 import { usePanelAccess } from '@/hooks/usePanelAccess';
 import { fieldStaffIncludesAcil } from '@/app/panel/kullanicilar/_lib/user-invite-config';
@@ -830,6 +831,23 @@ function ClaimFilesPageContent() {
           </button>
         </div>
       )}
+
+      {isFieldStaff && !loading ? (
+        <FieldRutPlaniPanel
+          dosyalar={visibleClaims.map((claim: any) => ({
+            id: claim.id,
+            fileNo: claim.fileNo,
+            insuredName: fieldStaffInsuredName(claim),
+            propertyAddress: claim.propertyAddress
+              ? {
+                  addressLine: claim.propertyAddress.addressLine,
+                  city: claim.propertyAddress.city,
+                  district: claim.propertyAddress.district,
+                }
+              : null,
+          }))}
+        />
+      ) : null}
 
       {/* Table */}
       {loading ? (

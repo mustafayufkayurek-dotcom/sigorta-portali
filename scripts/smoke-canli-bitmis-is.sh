@@ -248,8 +248,10 @@ node --experimental-strip-types --test \
   apps/backend/src/modules/repair-reports/report-image-shared-key.lock.spec.ts \
   packages/shared/src/hasar-tespit-bedel.lock.spec.ts \
   apps/backend/src/modules/hasar-tespit-bedel/hasar-tespit-bedel.lock.spec.ts \
+  apps/backend/src/modules/hasar-tespit-bedel/rota-yandex.lock.spec.ts \
   apps/web/src/components/finance/hasar-tespit-bedel-ui.lock.spec.ts \
   apps/web/src/components/settings/hasar-tespit-arac-kurulum-wizard.lock.spec.ts \
+  apps/web/src/components/field-survey/field-rut-plani.lock.spec.ts \
   scripts/deploy-disk-gate.lock.spec.ts
 
 echo "=== Canlı bitmiş iş kilitleri: PASS ==="

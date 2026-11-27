@@ -117,6 +117,12 @@ export const OPS_NOTICE = {
     body:
       'Çıkış adresini yazıp Rotayı Hesapla deyin; km, köprü ve otoyol satırları gelir. Akaryakıt fiyatı günlük okunur, kutudan düzeltilebilir. Tarife müşteri kartından, araç giderleri Ayarlar’dan gelir. Gelire Düşür hizmet bedelini gelire yazar. Fatura talebini dosya sorumlusu bedel girdikten sonra Fatura Talebi Aç ile açar; rapor zorunlu değildir.',
   },
+  fieldRutPlani: {
+    id: 'field-rut-plani-v723',
+    title: 'Rut Planı',
+    body:
+      'Nereden çıktığınızı yazın; yazılım atanan dosyaların sırasını önerir. Telefonunuz izlenmez. Köprü ve otoyol ücreti yönetici / finans bedel hesabındadır.',
+  },
   hasarGelirFaturali: {
     id: 'hasar-gelir-faturali-v549',
     title: 'Gelir kaydı',

@@ -200,6 +200,37 @@ export default function HasarTespitAracPage() {
           )}
         </section>
 
+        <section className="rounded-xl border border-slate-200 bg-white p-4" data-testid="tespitci-bedel-taslak-tercih">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-900">Tespitçi Bedel Taslağı</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Açıkken tespitçi Atanan Dosyalar’da rut, köprü / otoyol ve yemek satırını yazar. Bu taslak
+                tespit maliyetine yansır; Gelire Düşür yine yönetici ve finanstadır.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.tespitciBedelTaslagi}
+              aria-label="Bedel taslağını tespitçi de görsün"
+              data-testid="tespitci-bedel-taslak-anahtar"
+              onClick={() => patch({ tespitciBedelTaslagi: !form.tespitciBedelTaslagi })}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                form.tespitciBedelTaslagi ? 'bg-brand-600' : 'bg-slate-300'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                  form.tespitciBedelTaslagi ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+          <p className="mt-2 text-xs font-medium text-slate-700">
+            {form.tespitciBedelTaslagi ? 'Açık — tespitçi taslak yazar' : 'Kapalı — yalnız yönetici / finans'}
+          </p>
+        </section>
 
         <section className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="mb-3 flex items-center gap-2">

@@ -17,6 +17,8 @@ export const HASAR_TESPIT_BEDEL_YETKI_MESAJI = 'Hizmet bedeli hesabı yönetici 
 export const HASAR_TESPIT_ARAC_AYAR_KEY = 'hasar_tespit_arac_giderleri';
 export const HASAR_TESPIT_TARIFE_KEY = 'hasar_tespit_tarifeleri';
 export const HASAR_TESPIT_BEDEL_LOG_KIND = 'hasar_tespit_bedel_hesabi';
+/** Tespitçi yol / köprü / yemek taslağı — Gelire Düşür değildir. */
+export const HASAR_TESPIT_BEDEL_DRAFT_KIND = 'hasar_tespit_bedel_taslak';
 
 export type YakitTuru = 'benzin' | 'motorin' | 'lpg';
 
@@ -56,7 +58,7 @@ export interface HasarTespitAracAyarlari {
   otoyollar: HasarTespitOtoyol[];
   /**
    * Açıkken tespitçi Atanan Dosyalar’da rut + köprü/otoyol + yemek taslağı görür.
-   * Para kaydı (Gelire Düşür) yine yönetici / finanstadır. (Saha yüzü ayrı alım.)
+   * Para kaydı (Gelire Düşür) yine yönetici / finanstadır.
    */
   tespitciBedelTaslagi: boolean;
   /**
@@ -140,6 +142,16 @@ export function normalizeHasarTespitArac(raw: unknown): HasarTespitAracAyarlari 
   };
 }
 
+/** Tespitçi bedel taslağı Ayarlar’da açıksa saha rut + maliyet önizlemesi görür. */
+export function canSeeHasarTespitBedelTaslak(
+  roleCode: string | null | undefined,
+  arac: Pick<HasarTespitAracAyarlari, 'tespitciBedelTaslagi'> | null | undefined,
+): boolean {
+  if (canSeeHasarTespitBedel(roleCode)) return true;
+  const role = String(roleCode ?? '').trim().toLowerCase().replace(/-/g, '_');
+  if (role !== 'field_staff') return false;
+  return Boolean(arac?.tespitciBedelTaslagi);
+}
 
 export type HasarTespitAracKurulumAdim = 'sorumlu' | 'cikis' | 'kira' | 'tuketim';
 
@@ -307,13 +319,47 @@ export function aracGunlukKira(aylikKira: number | null, tarih: Date): { gunluk:
 
 // ─── Rota üzerindeki geçişler ─────────────────────────────────────────────────
 
-function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(bLat - aLat);
   const dLng = toRad(bLng - aLng);
   const x = Math.sin(dLat / 2) ** 2
     + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
   return 6371 * 2 * Math.asin(Math.sqrt(x));
+}
+
+export interface RutNokta {
+  id: string;
+  lat: number;
+  lng: number;
+}
+
+/**
+ * Çıkıştan en yakın komşu sırası.
+ * Canlı konum takibi yoktur; personel çıkış yazar, yazılım sırayı önerir.
+ */
+export function siralaRutEnYakin(
+  cikis: { lat: number; lng: number },
+  noktalar: RutNokta[],
+): RutNokta[] {
+  const remaining = [...noktalar];
+  const ordered: RutNokta[] = [];
+  let cur = cikis;
+  while (remaining.length) {
+    let bestIdx = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < remaining.length; i += 1) {
+      const d = haversineKm(cur.lat, cur.lng, remaining[i].lat, remaining[i].lng);
+      if (d < bestD) {
+        bestD = d;
+        bestIdx = i;
+      }
+    }
+    const next = remaining.splice(bestIdx, 1)[0];
+    ordered.push(next);
+    cur = { lat: next.lat, lng: next.lng };
+  }
+  return ordered;
 }
 
 export const GECIS_ESLESME_KM = 0.8;

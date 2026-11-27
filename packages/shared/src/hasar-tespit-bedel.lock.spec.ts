@@ -14,14 +14,16 @@ import {
   bedelGiderKategorisi,
   bedelGiderSatirlari,
   canSeeHasarTespitBedel,
-  gecisSatirlari,
-  hesaplaHasarTespitBedeli,
+  canSeeHasarTespitBedelTaslak,
   hasarTespitAracKurulumEksikleri,
   hasarTespitAracKurulumSirasi,
   isHasarTespitAracKurulumTamam,
-  normalizeHasarTespitArac,
   shouldShowHasarTespitAracKurulumWizard,
+  gecisSatirlari,
+  hesaplaHasarTespitBedeli,
+  normalizeHasarTespitArac,
   rotaGecisleri,
+  siralaRutEnYakin,
   type HasarTespitBedelGirdi,
 } from './hasar-tespit-bedel.ts';
 
@@ -81,6 +83,16 @@ describe('Hasar Tespit hizmet bedeli LOCK', () => {
     assert.deepEqual(rotaGecisleri([[29.40, 40.80]], ayar.gecisler), []);
   });
 
+  it('rut sırası çıkıştan en yakın komşuya göre önerilir', () => {
+    const cikis = { lat: 41.0, lng: 29.0 };
+    const sirali = siralaRutEnYakin(cikis, [
+      { id: 'uzak', lat: 41.2, lng: 29.2 },
+      { id: 'yakin', lat: 41.01, lng: 29.01 },
+      { id: 'orta', lat: 41.05, lng: 29.05 },
+    ]);
+    assert.deepEqual(sirali.map((n) => n.id), ['yakin', 'orta', 'uzak']);
+  });
+
   it('sabit tarife ve asgari / azami sınır', () => {
     const sabit = hesaplaHasarTespitBedeli(girdi({
       tarife: { ...DEFAULT_HASAR_TESPIT_TARIFE, yontem: 'sabit', sabitBedel: 5000, azamiBedel: 4500 },
@@ -126,20 +138,16 @@ describe('Hasar Tespit hizmet bedeli LOCK', () => {
     assert.equal(canSeeHasarTespitBedel(null), false);
   });
 
-  it('varsayılan geçişlerde uydurma ücret yok', () => {
+  it('tespitçi bedel taslağı Ayarlar tercihine bağlıdır; Gelire Düşür ayrı kalır', () => {
+    assert.equal(canSeeHasarTespitBedelTaslak('field_staff', { tespitciBedelTaslagi: false }), false);
+    assert.equal(canSeeHasarTespitBedelTaslak('field_staff', { tespitciBedelTaslagi: true }), true);
+    assert.equal(canSeeHasarTespitBedelTaslak('admin', { tespitciBedelTaslagi: false }), true);
+    assert.equal(canSeeHasarTespitBedelTaslak('office_staff', { tespitciBedelTaslagi: true }), false);
     const ayar = normalizeHasarTespitArac(null);
-    assert.ok(ayar.gecisler.length >= 6);
-    assert.ok(ayar.gecisler.every((g) => g.ucret === null));
-    assert.equal(ayar.aylikKira, null);
+    assert.equal(ayar.tespitciBedelTaslagi, false);
+    assert.equal(normalizeHasarTespitArac({ tespitciBedelTaslagi: true }).tespitciBedelTaslagi, true);
   });
 
-  it('kaynak: kalıcı sabitler ve kilit kapısı', () => {
-    const src = readFileSync(join(here, 'hasar-tespit-bedel.ts'), 'utf8');
-    assert.match(src, /HASAR_TESPIT_ARAC_AYAR_KEY = 'hasar_tespit_arac_giderleri'/);
-    assert.match(src, /HASAR_TESPIT_TARIFE_KEY = 'hasar_tespit_tarifeleri'/);
-    const smoke = readFileSync(join(here, '../../../scripts/smoke-canli-bitmis-is.sh'), 'utf8');
-    assert.match(smoke, /hasar-tespit-bedel\.lock\.spec/);
-  });
   it('araç kurulum sırası + sorumlu tespitçi kapısı', () => {
     assert.deepEqual(hasarTespitAracKurulumEksikleri(null), ['cikis', 'kira', 'tuketim']);
     assert.equal(isHasarTespitAracKurulumTamam(null), false);
@@ -174,4 +182,29 @@ describe('Hasar Tespit hizmet bedeli LOCK', () => {
     );
   });
 
+  it('varsayılan geçişlerde uydurma ücret yok', () => {
+    const ayar = normalizeHasarTespitArac(null);
+    assert.ok(ayar.gecisler.length >= 6);
+    assert.ok(ayar.gecisler.every((g) => g.ucret === null));
+    assert.equal(ayar.aylikKira, null);
+  });
+
+  it('kaynak: kalıcı sabitler ve kilit kapısı', () => {
+    const src = readFileSync(join(here, 'hasar-tespit-bedel.ts'), 'utf8');
+    assert.match(src, /HASAR_TESPIT_ARAC_AYAR_KEY = 'hasar_tespit_arac_giderleri'/);
+    assert.match(src, /HASAR_TESPIT_TARIFE_KEY = 'hasar_tespit_tarifeleri'/);
+    assert.match(src, /kurulumSorumluUserIds/);
+    assert.match(src, /shouldShowHasarTespitAracKurulumWizard/);
+    const smoke = readFileSync(join(here, '../../../scripts/smoke-canli-bitmis-is.sh'), 'utf8');
+    assert.match(smoke, /hasar-tespit-bedel\.lock\.spec/);
+    const layout = readFileSync(
+      join(here, '../../../apps/web/src/app/panel/layout.tsx'),
+      'utf8',
+    );
+    assert.match(layout, /HasarTespitAracKurulumWizard/);
+    assert.doesNotMatch(
+      readFileSync(join(here, '../../../apps/web/src/app/panel/ayarlar/tanimlar/page.tsx'), 'utf8'),
+      /tanimlar-arac-kurulum-checklist/,
+    );
+  });
 });

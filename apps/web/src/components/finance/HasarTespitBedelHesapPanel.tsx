@@ -31,6 +31,16 @@ interface Ozet {
   tarifeKayitli: boolean;
   hizmetBedeli: { id: string; amount: number; entryDate: string } | null;
   sonHesap: { tarih: string; sonuc?: { satirlar: BedelSatiri[]; bedel: number; toplamKm: number } } | null;
+  sahaTaslak?: {
+    tarih?: string;
+    cikisAdresi?: string | null;
+    toplamKm?: number | null;
+    gecisler?: Array<{ id: string; ad: string; adet?: number; ucret: number | null }>;
+    otoyollar?: Array<{ ref: string; ad?: string; km?: number; kmUcreti: number | null }>;
+    yemekTutar?: number | null;
+    yemekNot?: string | null;
+    maliyetOnizleme?: number | null;
+  } | null;
 }
 
 type GecisRow = { id: string; ad: string; adet: string; ucret: string };
@@ -60,6 +70,7 @@ export function HasarTespitBedelHesapPanel({ claimId, onDone }: { claimId: strin
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [sonucNot, setSonucNot] = useState('');
+  const [sahaNot, setSahaNot] = useState('');
 
   const fetchYakit = useCallback(async (o: Ozet, tur: YakitTuru) => {
     if (!o.dosya.il) {
@@ -101,6 +112,49 @@ export function HasarTespitBedelHesapPanel({ claimId, onDone }: { claimId: strin
       setCikis(o.arac.varsayilanCikisAdresi);
       setYakitTuru(o.arac.yakitTuru);
       setEkMiktar(Object.fromEntries(o.tarife.ekKalemler.map((k) => [k.id, String(k.varsayilanMiktar).replace('.', ',')])));
+      const taslak = o.sahaTaslak;
+      if (taslak && !o.hizmetBedeli) {
+        if (taslak.cikisAdresi) setCikis(taslak.cikisAdresi);
+        if (taslak.toplamKm != null && taslak.toplamKm > 0) {
+          setRotaKm(String(taslak.toplamKm).replace('.', ','));
+        }
+        if (Array.isArray(taslak.gecisler) && taslak.gecisler.length) {
+          setGecisler(
+            taslak.gecisler.map((g) => ({
+              id: g.id,
+              ad: g.ad,
+              adet: String(g.adet ?? 1),
+              ucret: numberToTrAmountInput(g.ucret),
+            })),
+          );
+        }
+        if (Array.isArray(taslak.otoyollar) && taslak.otoyollar.length) {
+          setOtoyollar(
+            taslak.otoyollar.map((y) => ({
+              ref: y.ref,
+              ad: y.ad,
+              km: y.km ? String(y.km).replace('.', ',') : '',
+              kmUcreti: numberToTrAmountInput(y.kmUcreti),
+            })),
+          );
+        }
+        const yemekParca = [
+          taslak.yemekTutar != null && taslak.yemekTutar > 0
+            ? `Yemek taslağı ${tl(taslak.yemekTutar)}`
+            : null,
+          taslak.yemekNot || null,
+          taslak.maliyetOnizleme != null ? `önizleme ${tl(taslak.maliyetOnizleme)}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        setSahaNot(
+          yemekParca
+            ? `Tespitçi taslağı yüklendi. ${yemekParca}. Yemek Gelire Düşür’e girmez; Masraf olarak yazılır.`
+            : 'Tespitçi taslağı yüklendi. Köprü / otoyol satırları dolduruldu.',
+        );
+      } else {
+        setSahaNot('');
+      }
       if (!o.hizmetBedeli) void fetchYakit(o, o.arac.yakitTuru);
     } catch (e: unknown) {
       setLoadError(formatSettingsApiError(e));
@@ -116,15 +170,33 @@ export function HasarTespitBedelHesapPanel({ claimId, onDone }: { claimId: strin
     setRotaNot('');
     try {
       const res = await axios.post(`${API}/claim-files/${claimId}/hasar-tespit-bedel/rota`, { cikisAdresi: cikis }, { headers: authHeader() });
-      const d = res.data?.data as { km: number; dakika: number; gecisler: string[]; otoyollar: Array<{ ref: string; ad?: string; km: number }> };
+      const d = res.data?.data as {
+        km: number;
+        dakika: number;
+        gecisler: string[];
+        otoyollar: Array<{ ref: string; ad?: string; km: number }>;
+        gecisUcretOneri?: Array<{ id: string; ucret: number | null }>;
+        otoyolUcretOneri?: Array<{ ref: string; kmUcreti: number | null }>;
+      };
       setRotaKm(String(d.km).replace('.', ','));
       setRotaNot(`Tek yön ${d.km.toLocaleString('tr-TR')} km · yaklaşık ${Math.floor(d.dakika / 60)} sa ${d.dakika % 60} dk`);
-      setGecisler(gecisSatirlari(d.gecisler, ozet.arac.gecisler, gidisDonus).map((g) => ({
-        id: g.id, ad: g.ad, adet: String(g.adet), ucret: numberToTrAmountInput(g.ucret),
-      })));
-      setOtoyollar(otoyolSatirlari(d.otoyollar, ozet.arac.otoyollar).map((y) => ({
-        ref: y.ref, ad: y.ad, km: String(y.km).replace('.', ','), kmUcreti: y.kmUcreti == null ? '' : String(y.kmUcreti).replace('.', ','),
-      })));
+      const gecisOneri = new Map((d.gecisUcretOneri ?? []).map((g) => [g.id, g.ucret]));
+      setGecisler(gecisSatirlari(d.gecisler, ozet.arac.gecisler, gidisDonus).map((g) => {
+        const oneri = gecisOneri.get(g.id);
+        const ucret = oneri != null ? oneri : g.ucret;
+        return { id: g.id, ad: g.ad, adet: String(g.adet), ucret: numberToTrAmountInput(ucret) };
+      }));
+      const otoyolOneri = new Map((d.otoyolUcretOneri ?? []).map((o) => [o.ref.toUpperCase(), o.kmUcreti]));
+      setOtoyollar(otoyolSatirlari(d.otoyollar, ozet.arac.otoyollar).map((y) => {
+        const oneri = otoyolOneri.get(y.ref.toUpperCase());
+        const kmUcreti = oneri != null ? oneri : y.kmUcreti;
+        return {
+          ref: y.ref,
+          ad: y.ad,
+          km: String(y.km).replace('.', ','),
+          kmUcreti: kmUcreti == null ? '' : String(kmUcreti).replace('.', ','),
+        };
+      }));
     } catch (e: unknown) {
       setError(formatSettingsApiError(e));
     } finally {
@@ -209,6 +281,12 @@ export function HasarTespitBedelHesapPanel({ claimId, onDone }: { claimId: strin
             {ozet.tarife.not ? <span className="mt-0.5 block">Anlaşma: {ozet.tarife.not}</span> : null}
           </p>
         </div>
+
+        {sahaNot ? (
+          <p className="rounded-lg border border-brand-100 bg-brand-50/70 px-3 py-2 text-xs text-brand-900" data-testid="saha-bedel-taslak-not">
+            {sahaNot}
+          </p>
+        ) : null}
 
         {kilitli ? (
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">

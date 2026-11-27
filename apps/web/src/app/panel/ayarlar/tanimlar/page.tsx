@@ -238,7 +238,6 @@ export default function TanimlarPage() {
     documentTypes: emptyMetric(),
     hrLeaveTypes: emptyMetric(),
   });
-
   useEffect(() => {
     let alive = true;
 
@@ -324,7 +323,7 @@ export default function TanimlarPage() {
             total: 1,
             active: null,
             note: tamam
-              ? 'Kurulum tamam'
+              ? 'Kurulum tamam · köprü TL Yandex rotasında'
               : 'Eksik kurulum girişte sırayla sorulur',
           };
         }),

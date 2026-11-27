@@ -3,19 +3,23 @@ import { ConfigService } from '@nestjs/config';
 import {
   FILE_FEE_CUSTOMER_SOURCE,
   HASAR_TESPIT_ARAC_AYAR_KEY,
+  HASAR_TESPIT_BEDEL_DRAFT_KIND,
   HASAR_TESPIT_BEDEL_LOG_KIND,
   HASAR_TESPIT_FEE_DESCRIPTION,
   HASAR_TESPIT_TARIFE_KEY,
   bedelGiderKategorisi,
-  canSeeHasarTespitBedel,
   bedelGiderSatirlari,
+  canSeeHasarTespitBedel,
+  canSeeHasarTespitBedelTaslak,
+  hasarTespitAracKurulumSirasi,
   hesaplaHasarTespitBedeli,
   isInspectionServiceKind,
-  hasarTespitAracKurulumSirasi,
   normalizeHasarTespitArac,
-  shouldShowHasarTespitAracKurulumWizard,
   normalizeHasarTespitTarife,
+  haversineKm,
   rotaGecisleri,
+  shouldShowHasarTespitAracKurulumWizard,
+  siralaRutEnYakin,
   type HasarTespitAracAyarlari,
   type HasarTespitBedelGirdi,
   type HasarTespitTarife,
@@ -26,6 +30,7 @@ import { LocationsService } from '@/modules/locations/locations.service';
 import { ClaimFileRevenueService } from '@/modules/finance/claim-file-revenue.service';
 import { ExpensesService } from '@/modules/expenses/expenses.service';
 import { akaryakitFiyatiOku, type AkaryakitFiyatSonuc } from './akaryakit-fiyat.util';
+import { gecisUcretleriOner, otoyolKmUcretleriOner } from './gecis-ucret.util';
 import { rotaHesapla } from './rota.util';
 
 const AKARYAKIT_ONBELLEK_KEY = 'akaryakit_fiyat_onbellek';
@@ -87,6 +92,12 @@ export class HasarTespitBedelService {
 
   async getArac(): Promise<HasarTespitAracAyarlari> {
     return normalizeHasarTespitArac(await this.readSetting(HASAR_TESPIT_ARAC_AYAR_KEY));
+  }
+
+  /** Saha yalnız tercih bayrağını okur; araç ücret tablosunu açmaz. */
+  async getTespitciTaslakTercih(): Promise<{ tespitciBedelTaslagi: boolean }> {
+    const arac = await this.getArac();
+    return { tespitciBedelTaslagi: arac.tespitciBedelTaslagi === true };
   }
 
   async setArac(body: unknown): Promise<HasarTespitAracAyarlari> {
@@ -167,6 +178,12 @@ export class HasarTespitBedelService {
     return next;
   }
 
+  private async assertTaslakYetkisi(user: { id?: string; roleCode?: string | null } | undefined) {
+    const arac = await this.getArac();
+    if (!canSeeHasarTespitBedelTaslak(user?.roleCode, arac)) {
+      throw new BadRequestException('Tespitçi bedel taslağı Ayarlar’da kapalı. Yönetici açmadan saha yazamaz.');
+    }
+  }
 
   private async tarifeMap(): Promise<Record<string, unknown>> {
     const raw = await this.readSetting(HASAR_TESPIT_TARIFE_KEY);
@@ -217,6 +234,7 @@ export class HasarTespitBedelService {
         serviceKind: true,
         customerId: true,
         notificationDate: true,
+        assignedFieldUserId: true,
         customer: {
           select: { id: true, shortName: true, companyName: true, fullName: true, firstName: true, lastName: true },
         },
@@ -240,7 +258,7 @@ export class HasarTespitBedelService {
 
   async dosyaOzeti(claimFileId: string) {
     const file = await this.loadInspectionFile(claimFileId);
-    const [arac, tarifeRes, feeRevenue, lastLog] = await Promise.all([
+    const [arac, tarifeRes, feeRevenue, lastLog, draftLog] = await Promise.all([
       this.getArac(),
       file.customerId ? this.getTarife(file.customerId) : Promise.resolve({ tarife: normalizeHasarTespitTarife(null), kayitli: false }),
       this.prisma.claimFileRevenue.findFirst({
@@ -249,6 +267,11 @@ export class HasarTespitBedelService {
       }),
       this.prisma.fileActivityLog.findFirst({
         where: { claimFileId, metadata: { path: ['kind'], equals: HASAR_TESPIT_BEDEL_LOG_KIND } },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true, metadata: true, description: true },
+      }),
+      this.prisma.fileActivityLog.findFirst({
+        where: { claimFileId, metadata: { path: ['kind'], equals: HASAR_TESPIT_BEDEL_DRAFT_KIND } },
         orderBy: { createdAt: 'desc' },
         select: { createdAt: true, metadata: true, description: true },
       }),
@@ -269,6 +292,9 @@ export class HasarTespitBedelService {
       tarifeKayitli: tarifeRes.kayitli,
       hizmetBedeli: feeRevenue,
       sonHesap: lastLog ? { tarih: lastLog.createdAt, ...(lastLog.metadata as Record<string, unknown>) } : null,
+      sahaTaslak: draftLog
+        ? { tarih: draftLog.createdAt, ...(draftLog.metadata as Record<string, unknown>) }
+        : null,
     };
   }
 
@@ -298,14 +324,276 @@ export class HasarTespitBedelService {
     const rota = await rotaHesapla({ lat: cikis.lat, lng: cikis.lng }, { lat: hedef.lat, lng: hedef.lng });
     if (!rota) throw new BadRequestException('Rota hesaplanamadı. Km’yi elle yazın.');
     const arac = await this.getArac();
+    const gecisIds = rotaGecisleri(rota.koordinatlar, arac.gecisler);
+    const apiKey = this.config.get<string>('OPENAI_API_KEY') ?? null;
+    const [gecisUcretOneri, otoyolUcretOneri] = await Promise.all([
+      gecisUcretleriOner(
+        gecisIds.map((id) => {
+          const g = arac.gecisler.find((x) => x.id === id);
+          return { id, ad: g?.ad ?? id };
+        }),
+        apiKey,
+      ),
+      otoyolKmUcretleriOner(
+        rota.otoyollar.map((o) => ({ ref: o.ref, ad: o.ad })),
+        apiKey,
+      ),
+    ]);
     return {
       km: rota.km,
       dakika: rota.dakika,
-      gecisler: rotaGecisleri(rota.koordinatlar, arac.gecisler),
+      gecisler: gecisIds,
       otoyollar: rota.otoyollar,
+      gecisUcretOneri,
+      otoyolUcretOneri,
       cikis: { lat: cikis.lat, lng: cikis.lng, ad: cikis.displayName },
       hedef: { lat: hedef.lat, lng: hedef.lng, ad: hedef.displayName },
     };
+  }
+
+  /**
+   * Tespitçi Atanan Dosyalar — çıkış + dosya listesi → önerilen sıra ve bacak km.
+   * Canlı takip yok. Ücret hesabı yönetici / finans bedel panelindedir.
+   */
+  async rutPlani(
+    body: { cikisAdresi?: string; claimFileIds?: string[]; ucretOner?: boolean },
+    user: { id?: string; roleCode?: string | null } | undefined,
+  ) {
+    const cikisAdresi = String(body?.cikisAdresi ?? '').trim();
+    if (!cikisAdresi) throw new BadRequestException('Çıkış adresini yazın.');
+    const ids = Array.isArray(body?.claimFileIds)
+      ? [...new Set(body.claimFileIds.map((id) => String(id ?? '').trim()).filter(Boolean))]
+      : [];
+    if (!ids.length) throw new BadRequestException('Ruta eklenecek dosya seçin.');
+    if (ids.length > 20) throw new BadRequestException('Bir rutte en çok 20 dosya önerilir.');
+
+    const cikis = await this.geocode(cikisAdresi);
+    if (!cikis) throw new BadRequestException('Çıkış adresi haritada bulunamadı. Adresi ilçe ve il ile yazın.');
+
+    const role = String(user?.roleCode ?? '').trim().toLowerCase().replace(/-/g, '_');
+    const userId = String(user?.id ?? '').trim();
+    const files = await this.prisma.claimFile.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        fileNo: true,
+        assignedFieldUserId: true,
+        propertyAddress: {
+          select: { addressLine: true, district: true, city: true, latitude: true, longitude: true },
+        },
+      },
+    });
+    if (files.length !== ids.length) throw new NotFoundException('Bazı dosyalar bulunamadı.');
+    if (role === 'field_staff') {
+      if (!userId) throw new BadRequestException('Oturum bulunamadı.');
+      const yabanci = files.filter((f) => f.assignedFieldUserId !== userId);
+      if (yabanci.length) throw new BadRequestException('Yalnız size atanan dosyalar rut planına alınır.');
+    }
+
+    type Nokta = {
+      id: string;
+      fileNo: string;
+      adres: string;
+      lat: number;
+      lng: number;
+    };
+    const noktalar: Nokta[] = [];
+    const atlanan: string[] = [];
+    for (const file of files) {
+      const a = file.propertyAddress;
+      const adres = [a?.addressLine, a?.district, a?.city].filter((p) => p && String(p).trim()).join(', ');
+      let lat = a?.latitude ?? null;
+      let lng = a?.longitude ?? null;
+      if ((lat == null || lng == null) && adres) {
+        const geo = await this.geocode(adres);
+        if (geo) {
+          lat = geo.lat;
+          lng = geo.lng;
+        }
+      }
+      if (lat == null || lng == null || !adres) {
+        atlanan.push(file.fileNo ?? file.id);
+        continue;
+      }
+      noktalar.push({
+        id: file.id,
+        fileNo: file.fileNo ?? file.id,
+        adres,
+        lat,
+        lng,
+      });
+    }
+    if (!noktalar.length) {
+      throw new BadRequestException(
+        atlanan.length
+          ? `Adresi haritada bulunamayan dosyalar: ${atlanan.join(', ')}`
+          : 'Ruta eklenecek adresli dosya yok.',
+      );
+    }
+
+    const sirali = siralaRutEnYakin(
+      { lat: cikis.lat, lng: cikis.lng },
+      noktalar.map((n) => ({ id: n.id, lat: n.lat, lng: n.lng })),
+    );
+    const byId = new Map(noktalar.map((n) => [n.id, n]));
+    const duraklar: Array<{
+      sira: number;
+      claimFileId: string;
+      fileNo: string;
+      adres: string;
+      bacakKm: number;
+      bacakDakika: number;
+    }> = [];
+    let onceki = { lat: cikis.lat, lng: cikis.lng };
+    let toplamKm = 0;
+    let sira = 1;
+    for (const node of sirali) {
+      const n = byId.get(node.id);
+      if (!n) continue;
+      const bacak = await rotaHesapla(onceki, { lat: n.lat, lng: n.lng });
+      const bacakKm = bacak?.km
+        ?? Math.round(haversineKm(onceki.lat, onceki.lng, n.lat, n.lng) * 10) / 10;
+      const bacakDakika = bacak?.dakika ?? Math.max(1, Math.round(bacakKm * 1.5));
+      toplamKm += bacakKm;
+      duraklar.push({
+        sira,
+        claimFileId: n.id,
+        fileNo: n.fileNo,
+        adres: n.adres,
+        bacakKm,
+        bacakDakika,
+      });
+      onceki = { lat: n.lat, lng: n.lng };
+      sira += 1;
+    }
+
+    let gecisOneri: Array<{ id: string; ad: string; ucret: number | null }> = [];
+    let otoyolOneri: Array<{ ref: string; ad?: string; km: number; kmUcreti: number | null }> = [];
+    if (body?.ucretOner) {
+      await this.assertTaslakYetkisi(user);
+      const arac = await this.getArac();
+      const poly: Array<[number, number]> = [[cikis.lng, cikis.lat]];
+      for (const d of duraklar) {
+        const n = byId.get(d.claimFileId);
+        if (n) poly.push([n.lng, n.lat]);
+      }
+      const gecisIds = rotaGecisleri(poly, arac.gecisler);
+      const apiKey = this.config.get<string>('OPENAI_API_KEY') ?? null;
+      const [gecisUcretOneri, otoyolUcretOneri] = await Promise.all([
+        gecisUcretleriOner(
+          gecisIds.map((id) => {
+            const g = arac.gecisler.find((x) => x.id === id);
+            return { id, ad: g?.ad ?? id };
+          }),
+          apiKey,
+        ),
+        otoyolKmUcretleriOner(
+          arac.otoyollar.map((o) => ({ ref: o.ref, ad: o.ad })),
+          apiKey,
+        ),
+      ]);
+      gecisOneri = gecisIds.map((id) => {
+        const g = arac.gecisler.find((x) => x.id === id);
+        const oneri = gecisUcretOneri.find((x) => x.id === id);
+        return {
+          id,
+          ad: g?.ad ?? id,
+          ucret: oneri?.ucret ?? g?.ucret ?? null,
+        };
+      });
+      otoyolOneri = arac.otoyollar.map((o) => {
+        const oneri = otoyolUcretOneri.find((x) => x.ref === o.ref);
+        return {
+          ref: o.ref,
+          ad: o.ad,
+          km: 0,
+          kmUcreti: oneri?.kmUcreti ?? o.kmUcreti ?? null,
+        };
+      });
+    }
+
+    return {
+      cikis: { lat: cikis.lat, lng: cikis.lng, ad: cikis.displayName },
+      duraklar,
+      toplamKm: Math.round(toplamKm * 10) / 10,
+      atlanan,
+      gecisOneri,
+      otoyolOneri,
+    };
+  }
+
+  /**
+   * Tespitçi / finans: yol-köprü-yemek taslağı dosyaya yazılır.
+   * Gelire düşmez; yönetici Hizmet Bedeli Hesapla’da görür.
+   */
+  async kaydetSahaTaslak(
+    claimFileId: string,
+    body: {
+      cikisAdresi?: string;
+      toplamKm?: number | null;
+      gecisler?: Array<{ id: string; ad: string; adet?: number; ucret: number | null }>;
+      otoyollar?: Array<{ ref: string; ad?: string; km?: number; kmUcreti: number | null }>;
+      yemekTutar?: number | null;
+      yemekNot?: string | null;
+      not?: string | null;
+    },
+    user: { id?: string; roleCode?: string | null } | undefined,
+  ) {
+    await this.assertTaslakYetkisi(user);
+    const userId = String(user?.id ?? '').trim();
+    if (!userId) throw new BadRequestException('Oturum bulunamadı.');
+    const file = await this.loadInspectionFile(claimFileId);
+    const role = String(user?.roleCode ?? '').trim().toLowerCase().replace(/-/g, '_');
+    if (role === 'field_staff' && file.assignedFieldUserId !== userId) {
+      throw new BadRequestException('Yalnız size atanan dosyaya taslak yazılır.');
+    }
+    const yemek = nonNegative(body?.yemekTutar);
+    const gecisler = Array.isArray(body?.gecisler)
+      ? body!.gecisler
+          .filter((g) => g && typeof g.ad === 'string')
+          .map((g) => ({
+            id: String(g.id),
+            ad: String(g.ad),
+            adet: Math.max(0, Math.round(Number(g.adet) || 1)),
+            ucret: nonNegative(g.ucret),
+          }))
+      : [];
+    const otoyollar = Array.isArray(body?.otoyollar)
+      ? body!.otoyollar
+          .filter((o) => o && typeof o.ref === 'string')
+          .map((o) => ({
+            ref: String(o.ref),
+            ad: o.ad,
+            km: nonNegative(o.km) ?? 0,
+            kmUcreti: nonNegative(o.kmUcreti),
+          }))
+      : [];
+    const gecisToplam = gecisler.reduce((s, g) => s + (g.ucret ?? 0) * g.adet, 0);
+    const otoyolToplam = otoyollar.reduce((s, o) => s + (o.kmUcreti ?? 0) * (o.km || 0), 0);
+    const maliyetOnizleme = Math.round((gecisToplam + otoyolToplam + (yemek ?? 0)) * 100) / 100;
+
+    await this.prisma.fileActivityLog.create({
+      data: {
+        claimFileId,
+        action: 'NOTE_ADDED' as any,
+        actorId: userId,
+        actorRole: String(user?.roleCode ?? 'field_staff'),
+        description: 'Tespitçi bedel taslağı kaydedildi (Gelire Düşür değildir).',
+        metadata: {
+          kind: HASAR_TESPIT_BEDEL_DRAFT_KIND,
+          cikisAdresi: String(body?.cikisAdresi ?? '').trim() || null,
+          toplamKm: nonNegative(body?.toplamKm),
+          gecisler,
+          otoyollar,
+          yemekTutar: yemek,
+          yemekNot: String(body?.yemekNot ?? '').trim() || null,
+          not: String(body?.not ?? '').trim() || null,
+          maliyetOnizleme,
+        } as any,
+      },
+    });
+
+    return { claimFileId, maliyetOnizleme, yemekTutar: yemek, gecisSayisi: gecisler.length };
   }
 
   private buildGirdi(
