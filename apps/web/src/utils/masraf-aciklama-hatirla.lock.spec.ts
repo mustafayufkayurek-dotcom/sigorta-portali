@@ -1,5 +1,5 @@
 /**
- * Masraf Açıklama hatırlama + tarih satırı + Kasa türü kilidi.
+ * Masraf Açıklama + Belge Sahibi hatırlama kilidi.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -8,28 +8,39 @@ import { describe, it } from 'node:test';
 import {
   MASRAF_ACIKLAMA_HATIRLA_KEY,
   MASRAF_ACIKLAMA_HATIRLA_MAX,
+  MASRAF_BELGE_SAHIBI_HATIRLA_KEY,
   readMasrafAciklamaHatirla,
+  readMasrafBelgeSahibiHatirla,
   rememberMasrafAciklama,
+  rememberMasrafBelgeSahibi,
 } from './masraf-aciklama-hatirla.ts';
 
 const root = join(import.meta.dirname, '../../../..');
 
-describe('Masraf açıklama hatırlama LOCK', () => {
+describe('Masraf açıklama / belge sahibi hatırlama LOCK', () => {
   it('anahtar ve üst sınır durur', () => {
     assert.equal(MASRAF_ACIKLAMA_HATIRLA_KEY, 'finans-masraf-aciklama-son');
+    assert.equal(MASRAF_BELGE_SAHIBI_HATIRLA_KEY, 'finans-masraf-belge-sahibi-son');
     assert.equal(MASRAF_ACIKLAMA_HATIRLA_MAX, 12);
   });
 
-  it('form datalist ve kaydet hatırlamayı kullanır', () => {
+  it('form datalist, chip ve kaydet hatırlamayı kullanır', () => {
     const page = readFileSync(
       join(root, 'apps/web/src/app/panel/finans/masraflar/page.tsx'),
       'utf8',
     );
     assert.match(page, /rememberMasrafAciklama/);
     assert.match(page, /readMasrafAciklamaHatirla/);
+    assert.match(page, /rememberMasrafBelgeSahibi/);
+    assert.match(page, /readMasrafBelgeSahibiHatirla/);
     assert.match(page, /finans-masraf-aciklama-hatirla/);
     assert.match(page, /list="finans-masraf-aciklama-hatirla"/);
+    assert.match(page, /list="finans-masraf-belge-sahibi-hatirla"/);
     assert.match(page, /data-testid="masraf-aciklama"/);
+    assert.match(page, /data-testid="masraf-belge-sahibi"/);
+    assert.match(page, /MasrafHatirlaChips/);
+    assert.match(page, /masraf-aciklama-hatirla-liste/);
+    assert.match(page, /masraf-belge-sahibi-hatirla-liste/);
   });
 
   it('Danışmanlıkta tarih tam satır kaplamaz', () => {
@@ -80,6 +91,12 @@ describe('Masraf açıklama hatırlama LOCK', () => {
       assert.equal(readMasrafAciklamaHatirla()[0], 'Akaryakıt Alımı (Bodrum Dönüş)');
       rememberMasrafAciklama('Akatyakıt Alımı');
       assert.ok(readMasrafAciklamaHatirla().every((x) => !/akatyak/i.test(x)));
+
+      assert.deepEqual(readMasrafBelgeSahibiHatirla(), []);
+      rememberMasrafBelgeSahibi('SHELL');
+      rememberMasrafBelgeSahibi('manav ahmet');
+      rememberMasrafBelgeSahibi('Shell');
+      assert.deepEqual(readMasrafBelgeSahibiHatirla(), ['Shell', 'Manav Ahmet']);
     } finally {
       if (prev === undefined) delete g.window;
       else g.window = prev;

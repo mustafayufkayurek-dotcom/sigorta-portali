@@ -1,6 +1,6 @@
 /**
  * Kilit: Tedarikçi yazım Title Case + eksik yazım onayı + Tümünü Kaldır.
- * Masraf Yeni Tedarikçi: dönüşlü tam form (kısa kayıt yok).
+ * Masraf Yeni Tedarikçi: sayfada Ofis kartı (VendorQuickCreateModal); form düşmez.
  * Çalıştır: node --experimental-strip-types --test apps/web/src/utils/vendor-writing.lock.spec.ts
  */
 import assert from 'node:assert/strict';
@@ -42,7 +42,7 @@ describe('tedarikçi yazım ve bölge LOCK', () => {
     assert.match(helpers, /from '\.\/vendor-writing'/);
   });
 
-  it('form ve masraf kaynakta Tümünü Kaldır + dönüşlü tam kayıt durur', () => {
+  it('form ve masraf kaynakta Tümünü Kaldır + sayfada Ofis kayıt durur', () => {
     const page = readFileSync(join(here, '../app/panel/tedarikciler/page.tsx'), 'utf8');
     assert.match(page, /tedarikci-tumunu-kaldir/);
     assert.match(page, /clearDistrictsInProvince/);
@@ -55,14 +55,18 @@ describe('tedarikçi yazım ve bölge LOCK', () => {
     assert.match(detail, /clearDistrictsInProvince/);
 
     const masraf = readFileSync(join(here, '../app/panel/finans/masraflar/page.tsx'), 'utf8');
-    assert.match(masraf, /buildTedarikciAddFromHref/);
-    assert.match(masraf, /saveMasrafFormDraft/);
-    assert.doesNotMatch(masraf, /VendorQuickCreateModal/);
-    assert.doesNotMatch(masraf, /showVendorQuickCreate/);
+    assert.match(masraf, /VendorQuickCreateModal/);
+    assert.match(masraf, /showVendorQuickCreate/);
+    assert.doesNotMatch(masraf, /buildTedarikciAddFromHref/);
 
     const dosya = readFileSync(join(here, '../components/finance/ClaimFileExpenseFormPanel.tsx'), 'utf8');
-    assert.match(dosya, /buildTedarikciAddFromHref/);
-    assert.match(dosya, /saveClaimFileExpenseDraft/);
-    assert.doesNotMatch(dosya, /VendorQuickCreateModal/);
+    assert.match(dosya, /VendorQuickCreateModal/);
+    assert.doesNotMatch(dosya, /buildTedarikciAddFromHref/);
+
+    const quick = readFileSync(join(here, '../components/finance/VendorQuickCreateModal.tsx'), 'utf8');
+    assert.match(quick, /masraf-tedarikci-hizli-ac/);
+    assert.match(quick, /category: 'ofis'/);
+    assert.match(quick, /applyVendorTitleCaseBlur/);
+    assert.match(quick, /Masraf sayfasından çıkmadan/);
   });
 });

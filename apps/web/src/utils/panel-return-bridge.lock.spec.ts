@@ -46,7 +46,7 @@ describe('panel return bridge LOCK', () => {
     );
   });
 
-  it('masraf ve dosya masrafı taslak + Yeni Tedarikçi köprüsünü kullanır', () => {
+  it('masraf Yeni Tedarikçi sayfada kalır; taslak dönüş yedeği durur', () => {
     const masraf = readFileSync(join(root, 'apps/web/src/app/panel/finans/masraflar/page.tsx'), 'utf8');
     const claimExpense = readFileSync(
       join(root, 'apps/web/src/components/finance/ClaimFileExpenseFormPanel.tsx'),
@@ -55,14 +55,15 @@ describe('panel return bridge LOCK', () => {
     const vendors = readFileSync(join(root, 'apps/web/src/app/panel/tedarikciler/page.tsx'), 'utf8');
     assert.equal(MASRAF_FORM_DRAFT_KEY, 'meridyen:masraf-form-draft');
     assert.equal(CLAIM_FILE_EXPENSE_DRAFT_KEY, 'meridyen:claim-file-expense-draft');
-    assert.match(masraf, /saveMasrafFormDraft/);
     assert.match(masraf, /takeMasrafFormDraft/);
-    assert.match(masraf, /buildTedarikciAddFromHref/);
+    assert.match(masraf, /VendorQuickCreateModal/);
     assert.match(masraf, /data-testid="masraf-yeni-tedarikci"/);
     assert.match(masraf, /readSelectVendorId/);
-    assert.match(claimExpense, /saveClaimFileExpenseDraft/);
-    assert.match(claimExpense, /buildTedarikciAddFromHref/);
+    assert.doesNotMatch(masraf, /buildTedarikciAddFromHref/);
+    assert.match(claimExpense, /takeClaimFileExpenseDraft/);
+    assert.match(claimExpense, /VendorQuickCreateModal/);
     assert.match(claimExpense, /data-testid="dosya-masraf-yeni-tedarikci"/);
+    assert.doesNotMatch(claimExpense, /buildTedarikciAddFromHref/);
     assert.match(vendors, /parsePanelReturnBridge/);
     assert.match(vendors, /appendSelectVendorToReturn/);
     assert.match(vendors, /openAdd/);

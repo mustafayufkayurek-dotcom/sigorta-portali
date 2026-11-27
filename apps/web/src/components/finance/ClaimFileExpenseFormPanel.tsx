@@ -7,14 +7,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
-import {
-  buildTedarikciAddFromHref,
-  readSelectVendorId,
-} from '@/utils/panel-return-bridge';
-import {
-  saveClaimFileExpenseDraft,
-  takeClaimFileExpenseDraft,
-} from '@/utils/masraf-form-draft';
+import { readSelectVendorId } from '@/utils/panel-return-bridge';
+import { takeClaimFileExpenseDraft } from '@/utils/masraf-form-draft';
 import { FileDropZone } from '@/components/ui/FileDropZone';
 import { TrDateInput } from '@/components/ui/TrDateInput';
 import { TrAmountInput } from '@/components/ui/TrAmountInput';
@@ -23,6 +17,14 @@ import { SlidePanel } from '@/components/SlidePanel';
 import { ReceiptCameraModal, prefersNativeCameraCapture } from '@/components/ReceiptCameraModal';
 import { CariHesapCreateModal } from '@/components/finance/CariHesapCreateModal';
 import { CariHesapOzetModal } from '@/components/finance/CariHesapOzetModal';
+import { MasrafHatirlaChips } from '@/components/finance/MasrafHatirlaChips';
+import { VendorQuickCreateModal } from '@/components/finance/VendorQuickCreateModal';
+import {
+  readMasrafAciklamaHatirla,
+  readMasrafBelgeSahibiHatirla,
+  rememberMasrafAciklama,
+  rememberMasrafBelgeSahibi,
+} from '@/utils/masraf-aciklama-hatirla';
 import {
   ExpenseDocumentReviewModal,
   parseExpenseDocumentReviewFromError,
@@ -39,6 +41,7 @@ import {
   financeOperationNo,
   mergeMasrafOdemeKaynaklari,
   masrafPendingVendorOptionId,
+  normalizeMasrafAciklamaForSave,
   parseMasrafPendingVendorId,
   resolveFinansIslemTarihiDonemDurum,
   type ExpenseDocumentReviewPayload,
@@ -106,7 +109,10 @@ export function ClaimFileExpenseFormPanel({
   >([]);
   const [odemeKaynakEnsuring, setOdemeKaynakEnsuring] = useState(false);
   const [showCariCreate, setShowCariCreate] = useState(false);
+  const [showVendorQuickCreate, setShowVendorQuickCreate] = useState(false);
   const [cariOzetId, setCariOzetId] = useState<string | null>(null);
+  const [aciklamaHatirla, setAciklamaHatirla] = useState<string[]>([]);
+  const [belgeSahibiHatirla, setBelgeSahibiHatirla] = useState<string[]>([]);
   const [categoryDraft, setCategoryDraft] = useState<'group' | 'sub' | null>(null);
   const [categoryDraftName, setCategoryDraftName] = useState('');
   const [categoryDraftError, setCategoryDraftError] = useState('');
@@ -255,6 +261,12 @@ export function ClaimFileExpenseFormPanel({
       setOdemeKaynakEnsuring(false);
     }
   };
+
+  useEffect(() => {
+    if (!open) return;
+    setAciklamaHatirla(readMasrafAciklamaHatirla());
+    setBelgeSahibiHatirla(readMasrafBelgeSahibiHatirla());
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -659,6 +671,12 @@ export function ClaimFileExpenseFormPanel({
         kind: 'dosya',
         label: fileLabel || eligibility?.fileNo || 'Dosya',
       });
+      if (description.trim()) {
+        setAciklamaHatirla(rememberMasrafAciklama(description));
+      }
+      if (documentOwner.trim()) {
+        setBelgeSahibiHatirla(rememberMasrafBelgeSahibi(documentOwner));
+      }
       onSaved?.();
       if (mode === 'new') {
         setDescription('');
@@ -872,6 +890,7 @@ export function ClaimFileExpenseFormPanel({
             <input
               id="claim-file-belge-sahibi"
               className={inputCls}
+              list="claim-file-belge-sahibi-hatirla"
               placeholder="Örn. manav"
               value={documentOwner}
               onChange={(e) => setDocumentOwner(e.target.value)}
@@ -882,6 +901,17 @@ export function ClaimFileExpenseFormPanel({
                 if (next !== documentOwner) setDocumentOwner(next);
               }}
               data-testid="claim-file-belge-sahibi"
+              autoComplete="off"
+            />
+            <datalist id="claim-file-belge-sahibi-hatirla">
+              {belgeSahibiHatirla.map((item) => (
+                <option key={item} value={item} />
+              ))}
+            </datalist>
+            <MasrafHatirlaChips
+              items={belgeSahibiHatirla}
+              testId="claim-file-belge-sahibi-hatirla-liste"
+              onPick={setDocumentOwner}
             />
           </div>
         </div>
@@ -1067,29 +1097,7 @@ export function ClaimFileExpenseFormPanel({
             </button>
             <button
               type="button"
-              onClick={() => {
-                saveClaimFileExpenseDraft({
-                  claimFileId,
-                  expensePlan,
-                  expenseCategoryParentId,
-                  expenseCategoryId,
-                  partyAccountId,
-                  description,
-                  documentType,
-                  documentOwner,
-                  documentNo,
-                  amount,
-                  vatRate,
-                  date,
-                  receiptImageUrl,
-                });
-                router.push(
-                  buildTedarikciAddFromHref({
-                    returnTo: `/panel/hasar-dosyalari/${encodeURIComponent(claimFileId)}?grup=finans&alt=gider-butce&masraf=1`,
-                    returnLabel: 'Dosya Masrafı',
-                  }),
-                );
-              }}
+              onClick={() => setShowVendorQuickCreate(true)}
               className="shrink-0 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-800 hover:bg-brand-100"
               data-testid="dosya-masraf-yeni-tedarikci"
             >
@@ -1167,13 +1175,26 @@ export function ClaimFileExpenseFormPanel({
           <label className={labelCls}>Açıklama {requiredHint}</label>
           <input
             className={inputCls}
+            list="claim-file-masraf-aciklama-hatirla"
             placeholder={ACIKLAMA_YARDIM.masraf}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             onBlur={(e) => {
-              const v = toTitleCaseTR(e.target.value.trim());
+              const v = normalizeMasrafAciklamaForSave(e.target.value);
               if (v) setDescription(v);
             }}
+            data-testid="claim-file-masraf-aciklama"
+            autoComplete="off"
+          />
+          <datalist id="claim-file-masraf-aciklama-hatirla">
+            {aciklamaHatirla.map((item) => (
+              <option key={item} value={item} />
+            ))}
+          </datalist>
+          <MasrafHatirlaChips
+            items={aciklamaHatirla}
+            testId="claim-file-masraf-aciklama-hatirla-liste"
+            onPick={setDescription}
           />
         </div>
 
@@ -1243,6 +1264,17 @@ export function ClaimFileExpenseFormPanel({
         onCreated={(account) => {
           void loadPartyAccounts().then(() => {
             setPartyAccountId(account.id);
+            setFormError('');
+          });
+        }}
+      />
+
+      <VendorQuickCreateModal
+        open={showVendorQuickCreate}
+        onClose={() => setShowVendorQuickCreate(false)}
+        onCreated={(partyAccountIdNext) => {
+          void loadPartyAccounts().then(() => {
+            setPartyAccountId(partyAccountIdNext);
             setFormError('');
           });
         }}

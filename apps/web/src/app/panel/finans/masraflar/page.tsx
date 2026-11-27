@@ -10,12 +10,9 @@ import {
   type ReactNode,
 } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  buildTedarikciAddFromHref,
-  readSelectVendorId,
-} from '@/utils/panel-return-bridge';
-import { saveMasrafFormDraft, takeMasrafFormDraft } from '@/utils/masraf-form-draft';
+import { useSearchParams } from 'next/navigation';
+import { readSelectVendorId } from '@/utils/panel-return-bridge';
+import { takeMasrafFormDraft } from '@/utils/masraf-form-draft';
 import axios from 'axios';
 import { FileDropZone } from '@/components/ui/FileDropZone';
 import { FieldLabel } from '@/components/ui/FieldHelpTip';
@@ -26,6 +23,8 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { ExpenseFilePickerModal, type ExpensePickerHasarFile } from '@/components/finance/ExpenseFilePickerModal';
 import { CariHesapCreateModal } from '@/components/finance/CariHesapCreateModal';
 import { CariHesapOzetModal } from '@/components/finance/CariHesapOzetModal';
+import { MasrafHatirlaChips } from '@/components/finance/MasrafHatirlaChips';
+import { VendorQuickCreateModal } from '@/components/finance/VendorQuickCreateModal';
 import {
   ExpenseDocumentReviewModal,
   parseExpenseDocumentReviewFromError,
@@ -113,7 +112,9 @@ import { FinansVerimlilikAnalizUyariBant } from '@/components/finance/FinansVeri
 import { pushFinansVerimlilikAnalizUyari } from '@/utils/finans-verimlilik-analiz-uyari';
 import {
   readMasrafAciklamaHatirla,
+  readMasrafBelgeSahibiHatirla,
   rememberMasrafAciklama,
+  rememberMasrafBelgeSahibi,
 } from '@/utils/masraf-aciklama-hatirla';
 
 type FileWorkGroupAuditLine = {
@@ -369,7 +370,6 @@ const getFileDescription = (file: Record<string, unknown>) => {
 // ── Bileşen ───────────────────────────────────────────────────────────────────
 export default function MasraflarPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { confirm, dialog } = usePanelConfirm();
   const bootYeniRef = useRef(searchParams.get('yeni') === '1');
   const bootSelectVendorRef = useRef(readSelectVendorId(searchParams));
@@ -468,9 +468,11 @@ export default function MasraflarPage() {
   >([]);
   const [odemeKaynakEnsuring, setOdemeKaynakEnsuring] = useState(false);
   const [showCariCreate, setShowCariCreate] = useState(false);
+  const [showVendorQuickCreate, setShowVendorQuickCreate] = useState(false);
   const [cariOzetId, setCariOzetId] = useState<string | null>(null);
   const [lastSavedOpNo, setLastSavedOpNo] = useState('');
   const [aciklamaHatirla, setAciklamaHatirla] = useState<string[]>([]);
+  const [belgeSahibiHatirla, setBelgeSahibiHatirla] = useState<string[]>([]);
   const [closedYears, setClosedYears] = useState<number[]>([]);
   const [closedMonths, setClosedMonths] = useState<string[]>([]);
   const [fDateFrom, setFDateFrom] = useState(() => {
@@ -489,6 +491,7 @@ export default function MasraflarPage() {
   // ── Dosyaları yükle ────────────────────────────────────────────────────────
   useEffect(() => {
     setAciklamaHatirla(readMasrafAciklamaHatirla());
+    setBelgeSahibiHatirla(readMasrafBelgeSahibiHatirla());
   }, []);
 
   useEffect(() => {
@@ -1504,6 +1507,9 @@ export default function MasraflarPage() {
 
       const remembered = rememberMasrafAciklama(form.description);
       setAciklamaHatirla(remembered);
+      if (form.documentMode === 'belgeli' && form.documentOwner.trim()) {
+        setBelgeSahibiHatirla(rememberMasrafBelgeSahibi(form.documentOwner));
+      }
 
       if (!editId && mode === 'new') {
         // Kaydet ve Yeni = Yeni Masraf Ekle ile aynı sıfır form (yol/dosya/cari kalmaz).
@@ -1832,9 +1838,12 @@ export default function MasraflarPage() {
       setFileLookup(null);
       setLastSavedOpNo('');
       setShowCariCreate(false);
+      setShowVendorQuickCreate(false);
       setCariOzetId(null);
       resetReceiptScan();
     }
+    setAciklamaHatirla(readMasrafAciklamaHatirla());
+    setBelgeSahibiHatirla(readMasrafBelgeSahibiHatirla());
     setAnalyticsOpen(false);
     setShowForm(true);
   };
@@ -1864,8 +1873,11 @@ export default function MasraflarPage() {
     setFileLookup(null);
     setLastSavedOpNo('');
     setShowCariCreate(false);
+    setShowVendorQuickCreate(false);
     setCariOzetId(null);
     setAnalyticsOpen(false);
+    setAciklamaHatirla(readMasrafAciklamaHatirla());
+    setBelgeSahibiHatirla(readMasrafBelgeSahibiHatirla());
     setShowForm(true);
     if (selectVendorId) {
       void (async () => {
@@ -1882,17 +1894,7 @@ export default function MasraflarPage() {
   }, []);
 
   const openYeniTedarikciFromMasraf = () => {
-    saveMasrafFormDraft({
-      form: { ...form },
-      kalemSatirlari,
-      fileSearch,
-    });
-    router.push(
-      buildTedarikciAddFromHref({
-        returnTo: '/panel/finans/masraflar?yeni=1',
-        returnLabel: 'Masraf',
-      }),
-    );
+    setShowVendorQuickCreate(true);
   };
 
   const closeExpenseForm = () => {
@@ -1905,6 +1907,7 @@ export default function MasraflarPage() {
     setFileLookup(null);
     setLastSavedOpNo('');
     setShowCariCreate(false);
+    setShowVendorQuickCreate(false);
     setCariOzetId(null);
     setKdvDraftOpen(false);
     setKdvDraft('');
@@ -2579,7 +2582,7 @@ export default function MasraflarPage() {
               <div className="md:col-span-2" data-testid="masraf-cari-kaynak">
                 <FieldLabel
                   className={fieldLabelCls}
-                  help="Ödemenin çıktığı kredi kartı veya tedarikçi. Tedarikçiler’deki aktif kartlar burada listelenir; carisi eksik kalanlar sistemde otomatik tamamlanır. Yeni tedarikçi eklerken bu form yazıları korunur."
+                  help="Ödemenin çıktığı kredi kartı veya tedarikçi. Tedarikçiler’deki aktif kartlar burada listelenir; carisi eksik kalanlar sistemde otomatik tamamlanır. Yeni tedarikçi bu sayfada açılır; masraf formu kapanmaz."
                   testId="masraf-odeme-kaynak-help"
                 >
                   Ödeme Kaynağı (Cari) {requiredHint}
@@ -2813,13 +2816,14 @@ export default function MasraflarPage() {
                   <FieldLabel
                     htmlFor="finans-masraf-belge-sahibi"
                     className={fieldLabelCls}
-                    help="Fiş veya faturadaki satıcı / ünvan. Kamerayla okuyunca buraya düşer."
+                    help="Fiş veya faturadaki satıcı / ünvan. Son yazdıklarınız hatırlanır; listeden seçebilirsiniz. Kamerayla okuyunca buraya düşer."
                   >
                     Belge Sahibi
                   </FieldLabel>
                   <input
                     id="finans-masraf-belge-sahibi"
                     className={inputCls}
+                    list="finans-masraf-belge-sahibi-hatirla"
                     placeholder="Örn. manav"
                     value={form.documentOwner}
                     onChange={(e) => setForm({ ...form, documentOwner: e.target.value })}
@@ -2832,6 +2836,17 @@ export default function MasraflarPage() {
                       });
                     }}
                     data-testid="masraf-belge-sahibi"
+                    autoComplete="off"
+                  />
+                  <datalist id="finans-masraf-belge-sahibi-hatirla">
+                    {belgeSahibiHatirla.map((item) => (
+                      <option key={item} value={item} />
+                    ))}
+                  </datalist>
+                  <MasrafHatirlaChips
+                    items={belgeSahibiHatirla}
+                    testId="masraf-belge-sahibi-hatirla-liste"
+                    onPick={(value) => setForm((f) => ({ ...f, documentOwner: value }))}
                   />
                 </div>
               </>
@@ -3132,6 +3147,11 @@ export default function MasraflarPage() {
                   <option key={item} value={item} />
                 ))}
               </datalist>
+              <MasrafHatirlaChips
+                items={aciklamaHatirla}
+                testId="masraf-aciklama-hatirla-liste"
+                onPick={(value) => setForm((f) => ({ ...f, description: value }))}
+              />
             </div>
           </div>
 
@@ -3360,6 +3380,17 @@ export default function MasraflarPage() {
         onCreated={(account) => {
           void loadPartyAccounts().then(() => {
             setForm((f) => ({ ...f, partyAccountId: account.id }));
+            setFormError('');
+          });
+        }}
+      />
+
+      <VendorQuickCreateModal
+        open={showVendorQuickCreate}
+        onClose={() => setShowVendorQuickCreate(false)}
+        onCreated={(partyAccountId) => {
+          void loadPartyAccounts().then(() => {
+            setForm((f) => ({ ...f, partyAccountId }));
             setFormError('');
           });
         }}
