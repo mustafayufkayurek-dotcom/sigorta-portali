@@ -52,4 +52,20 @@ describe('Masraf modal katman LOCK', () => {
     assert.match(kdvInput, /role="combobox"/);
     assert.match(kdvInput, /rates\.find/);
   });
+
+  it('Masraf Yeri Belge Durumu yanındadır; ödeme kaynağı açıklaması i ikonundadır', () => {
+    const belge = masraf.indexOf('data-testid="masraf-belge-modu"');
+    const yeri = masraf.indexOf('data-testid="masraf-yeri-alan"');
+    const sahibi = masraf.indexOf('data-testid="masraf-belge-sahibi"');
+    assert.ok(belge > 0 && yeri > 0, 'Belge Durumu ve Masraf Yeri alanları durur');
+    assert.ok(belge < yeri && yeri < sahibi, 'Sıra: Belge Durumu → Masraf Yeri → Belge Sahibi');
+    // Yan yana: Masraf Yeri tam satır col-span-2 değil
+    const yeriBlok = masraf.slice(yeri, yeri + 120);
+    assert.doesNotMatch(yeriBlok, /md:col-span-2/);
+    assert.match(masraf, /masraf-odeme-kaynak-help/);
+    assert.doesNotMatch(
+      masraf,
+      /Tedarikçiler’deki aktif kartlar burada listelenir[\s\S]{0,40}<\/p>/,
+    );
+  });
 });

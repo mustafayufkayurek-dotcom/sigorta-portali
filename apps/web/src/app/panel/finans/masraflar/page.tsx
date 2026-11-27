@@ -95,6 +95,9 @@ import {
   parseMasrafDocumentFields,
   resolveFinansIslemTarihiDonemDurum,
   splitGrossVat,
+  sumExpenseListAmounts,
+  sumExpensePlanButce,
+  sumExpensePlanEk,
   sumSplitGrossVatLines,
   type ExpenseDocumentMode,
   type ExpenseDocumentReviewPayload,
@@ -193,7 +196,8 @@ const EXPENSE_TABLE_COLUMNS: TableColumnDef[] = [
   { id: 'expenseGroupName', label: 'Masraf Grubu', defaultWidth: 112, minWidth: 88 },
   { id: 'expenseSubgroupName', label: 'Alt Grup', defaultWidth: 108, minWidth: 88 },
   { id: 'documentType', label: 'Belge Türü', defaultWidth: 100, minWidth: 88 },
-  { id: 'documentNo', label: 'Belge No', defaultWidth: 88, minWidth: 72 },
+  { id: 'documentOwner', label: 'Belge Sahibi', defaultWidth: 120, minWidth: 96 },
+  { id: 'documentNo', label: 'Fiş No', defaultWidth: 88, minWidth: 72 },
   { id: 'description', label: 'Açıklama', defaultWidth: 180, minWidth: 120 },
   { id: 'amount', label: 'Tutar', defaultWidth: 100, minWidth: 88 },
   { id: 'date', label: 'Tarih', defaultWidth: 120, minWidth: 110 },
@@ -215,6 +219,7 @@ interface Expense {
   expenseCategoryId:   string;
   expenseCategoryParentId: string;
   documentType:        string;
+  documentOwner:       string;
   documentNo:          string;
   description:         string;
   amount:              number;
@@ -336,6 +341,7 @@ const EMPTY_FORM = {
   workSubGroupName: '',
   documentMode: 'belgeli' as ExpenseDocumentMode,
   documentType: '' as '' | (typeof BELGE_TURU_OPTIONS)[number],
+  documentOwner: '',
   documentNo: '',
   description: '',
   amount: '',
@@ -1184,6 +1190,7 @@ export default function MasraflarPage() {
           expenseCategoryId: cat.categoryId,
           expenseCategoryParentId: cat.parentId,
           documentType: doc.documentType,
+          documentOwner: e['receiptDocumentOwner'] != null ? String(e['receiptDocumentOwner']) : '',
           documentNo: doc.documentNo,
           description: doc.description,
           amount:      Number(e['amount'] ?? 0),
@@ -1308,6 +1315,9 @@ export default function MasraflarPage() {
         amount: scannedAmount ?? prev.amount,
         date: data.date ? data.date.slice(0, 10) : prev.date,
         description: data.description || prev.description,
+        documentOwner: data.merchant?.trim()
+          ? toTitleCaseTR(data.merchant.trim())
+          : prev.documentOwner,
         receiptImageUrl: data.receiptImageUrl ?? prev.receiptImageUrl,
       }));
       if (scannedAmount) {
@@ -1397,6 +1407,10 @@ export default function MasraflarPage() {
         description: plainMasrafDescription(form.description),
         receiptDocumentType: form.documentMode === 'belgeli' ? (form.documentType || null) : null,
         receiptDocumentNo: form.documentMode === 'belgeli' ? (form.documentNo.trim() || null) : null,
+        receiptDocumentOwner:
+          form.documentMode === 'belgeli'
+            ? (form.documentOwner.trim() ? toTitleCaseTR(form.documentOwner.trim()) : null)
+            : null,
         vatIncluded: true,
         hasTaxDocument: hasTaxDocumentFromMode(form.documentMode),
         date: dateIso,
@@ -1574,6 +1588,7 @@ export default function MasraflarPage() {
       documentType: (BELGE_TURU_OPTIONS.includes(e.documentType as typeof BELGE_TURU_OPTIONS[number])
         ? e.documentType
         : '') as '' | (typeof BELGE_TURU_OPTIONS)[number],
+      documentOwner: e.documentOwner || '',
       documentNo: e.documentNo,
       description: e.description,
       amount: numberToTrAmountInput(e.amount),
@@ -1605,9 +1620,12 @@ export default function MasraflarPage() {
   };
 
   // ── Hesaplamalar ───────────────────────────────────────────────────────────
-  const butceTotal = expenses.reduce((s, e) => e.expensePlan === PLAN_BUTCE ? s + e.amount : s, 0);
-  const ekTotal    = expenses.reduce((s, e) => e.expensePlan === PLAN_EK    ? s + e.amount : s, 0);
-  const grandTotal = butceTotal + ekTotal;
+  // Liste alt toplamı tüm yolları alır (Hasar Tespit / Danışmanlık / Harici dahil).
+  // Plan dağılımı yalnız Hasar Onarım Bütçelenen / Ek İş içindir.
+  const butceTotal = sumExpensePlanButce(expenses);
+  const ekTotal = sumExpensePlanEk(expenses);
+  const grandTotal = sumExpenseListAmounts(expenses);
+  const planDagilimTotal = butceTotal + ekTotal;
 
   const pieMax = Math.max(butceTotal, ekTotal, 1);
 
@@ -2092,7 +2110,7 @@ export default function MasraflarPage() {
               )}
               <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-700">
                 <p className="mb-2 text-[11px] font-medium text-slate-500">Plan Dağılımı</p>
-                {grandTotal === 0 ? (
+                {planDagilimTotal === 0 ? (
                   <p className="text-xs text-slate-400">Veri yok</p>
                 ) : (
                   <div className="space-y-1.5">
@@ -2561,7 +2579,8 @@ export default function MasraflarPage() {
               <div className="md:col-span-2" data-testid="masraf-cari-kaynak">
                 <FieldLabel
                   className={fieldLabelCls}
-                  help="Ödemenin çıktığı kredi kartı veya tedarikçi. Aktif tedarikçi kartının carisi sistemde kendiliğinden açılır; ayrı cari formu gerekmez."
+                  help="Ödemenin çıktığı kredi kartı veya tedarikçi. Tedarikçiler’deki aktif kartlar burada listelenir; carisi eksik kalanlar sistemde otomatik tamamlanır. Yeni tedarikçi eklerken bu form yazıları korunur."
+                  testId="masraf-odeme-kaynak-help"
                 >
                   Ödeme Kaynağı (Cari) {requiredHint}
                 </FieldLabel>
@@ -2600,9 +2619,6 @@ export default function MasraflarPage() {
                     + Yeni Tedarikçi
                   </button>
                 </div>
-                <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                  Tedarikçiler’deki aktif kartlar burada listelenir. Carisi eksik kalanlar sistemde otomatik tamamlanır. Yeni tedarikçi eklerken bu form yazıları korunur.
-                </p>
                 {(() => {
                   const selected = partyAccounts.find((row) => row.id === form.partyAccountId);
                   if (!selected) return null;
@@ -2678,7 +2694,10 @@ export default function MasraflarPage() {
             ) : null}
 
             {form.expenseLane ? (
-              <div className="md:col-span-2" data-testid="masraf-belge-modu">
+              <div
+                className={form.expenseLane === 'hasar' ? undefined : 'md:col-span-2'}
+                data-testid="masraf-belge-modu"
+              >
                 <FieldLabel
                   className={fieldLabelCls}
                   help={(
@@ -2708,6 +2727,7 @@ export default function MasraflarPage() {
                           ...f,
                           documentMode: opt.id,
                           documentType: opt.id === 'belgesiz' ? '' : f.documentType,
+                          documentOwner: opt.id === 'belgesiz' ? '' : f.documentOwner,
                           documentNo: opt.id === 'belgesiz' ? '' : f.documentNo,
                         }))
                       }
@@ -2725,51 +2745,8 @@ export default function MasraflarPage() {
               </div>
             ) : null}
 
-            {form.documentMode === 'belgeli' ? (
-              <>
-                <div>
-                  <FieldLabel htmlFor="finans-masraf-belge-turu" className={fieldLabelCls}>
-                    Belge Türü
-                    {form.expenseLane === 'harici' ? requiredHint : null}
-                  </FieldLabel>
-                  <select
-                    id="finans-masraf-belge-turu"
-                    className={inputCls}
-                    value={form.documentType}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        documentType: e.target.value as typeof form.documentType,
-                      })
-                    }
-                    data-testid="masraf-belge-turu"
-                  >
-                    <option value="">Seçiniz...</option>
-                    {BELGE_TURU_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <FieldLabel htmlFor="finans-masraf-belge-no" className={fieldLabelCls}>
-                    Belge No
-                  </FieldLabel>
-                  <input
-                    id="finans-masraf-belge-no"
-                    className={inputCls}
-                    placeholder="Örn. 1425"
-                    value={form.documentNo}
-                    onChange={(e) => setForm({ ...form, documentNo: e.target.value })}
-                    data-testid="masraf-belge-no"
-                  />
-                </div>
-              </>
-            ) : null}
-
             {form.expenseLane === 'hasar' ? (
-              <div>
+              <div data-testid="masraf-yeri-alan">
                 <FieldLabel
                   htmlFor="finans-masraf-plan"
                   className={fieldLabelCls}
@@ -2805,6 +2782,61 @@ export default function MasraflarPage() {
               </div>
             ) : null}
 
+            {form.documentMode === 'belgeli' ? (
+              <>
+                <div>
+                  <FieldLabel htmlFor="finans-masraf-belge-turu" className={fieldLabelCls}>
+                    Belge Türü
+                    {form.expenseLane === 'harici' ? requiredHint : null}
+                  </FieldLabel>
+                  <select
+                    id="finans-masraf-belge-turu"
+                    className={inputCls}
+                    value={form.documentType}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        documentType: e.target.value as typeof form.documentType,
+                      })
+                    }
+                    data-testid="masraf-belge-turu"
+                  >
+                    <option value="">Seçiniz...</option>
+                    {BELGE_TURU_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <FieldLabel
+                    htmlFor="finans-masraf-belge-sahibi"
+                    className={fieldLabelCls}
+                    help="Fiş veya faturadaki satıcı / ünvan. Kamerayla okuyunca buraya düşer."
+                  >
+                    Belge Sahibi
+                  </FieldLabel>
+                  <input
+                    id="finans-masraf-belge-sahibi"
+                    className={inputCls}
+                    placeholder="Örn. manav"
+                    value={form.documentOwner}
+                    onChange={(e) => setForm({ ...form, documentOwner: e.target.value })}
+                    onBlur={() => {
+                      setForm((f) => {
+                        const v = f.documentOwner.trim();
+                        if (!v) return f;
+                        const next = toTitleCaseTR(v);
+                        return next === f.documentOwner ? f : { ...f, documentOwner: next };
+                      });
+                    }}
+                    data-testid="masraf-belge-sahibi"
+                  />
+                </div>
+              </>
+            ) : null}
+
             <div data-testid="masraf-tarih-alan">
               <div className="mb-1.5 flex items-center gap-1.5">
                 <FieldLabel
@@ -2827,6 +2859,22 @@ export default function MasraflarPage() {
                 onChange={(date) => setForm({ ...form, date })}
               />
             </div>
+
+            {form.documentMode === 'belgeli' ? (
+              <div>
+                <FieldLabel htmlFor="finans-masraf-fis-no" className={fieldLabelCls}>
+                  Fiş No
+                </FieldLabel>
+                <input
+                  id="finans-masraf-fis-no"
+                  className={inputCls}
+                  placeholder="Örn. 1425"
+                  value={form.documentNo}
+                  onChange={(e) => setForm({ ...form, documentNo: e.target.value })}
+                  data-testid="masraf-fis-no"
+                />
+              </div>
+            ) : null}
 
             {form.expenseLane && (
             <div
@@ -3330,7 +3378,7 @@ export default function MasraflarPage() {
           setPendingSaveMode(null);
           setFormError('');
           window.requestAnimationFrame(() => {
-            const el = document.getElementById('finans-masraf-belge-no');
+            const el = document.getElementById('finans-masraf-fis-no');
             if (el instanceof HTMLInputElement) {
               el.focus();
               el.select();
@@ -3369,6 +3417,7 @@ export default function MasraflarPage() {
               expenseCategoryId: String(raw.expenseCategoryId ?? ''),
               expenseCategoryParentId: String(raw.expenseCategory?.parentId ?? ''),
               documentType: docs.documentType,
+              documentOwner: raw.receiptDocumentOwner != null ? String(raw.receiptDocumentOwner) : '',
               documentNo: docs.documentNo,
               description: docs.description || String(raw.description ?? ''),
               amount: Number(raw.amount ?? 0),
@@ -3587,6 +3636,13 @@ export default function MasraflarPage() {
                     documentType: (
                       <PanelTableTd key="documentType" colId="documentType" className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-300">
                         {e.documentType || (e.hasTaxDocument === false ? 'Belgesiz' : '—')}
+                      </PanelTableTd>
+                    ),
+                    documentOwner: (
+                      <PanelTableTd key="documentOwner" colId="documentOwner" className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-300 max-w-0">
+                        <span className="block truncate">
+                          {e.documentOwner ? toTitleCaseTR(e.documentOwner) : '—'}
+                        </span>
                       </PanelTableTd>
                     ),
                     documentNo: (

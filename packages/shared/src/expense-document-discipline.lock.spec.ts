@@ -88,7 +88,7 @@ describe('masraf belge disiplini LOCK', () => {
     assert.match(ctrl, /document-review/);
     assert.match(dto, /documentConflictOverrideReason/);
     assert.match(popup, /Kaydetmeye Devam Et/);
-    assert.match(popup, /Belge No'yu Değiştir/);
+    assert.match(popup, /Fiş No'yu Değiştir/);
     assert.match(popup, /onEditDocumentNo/);
     assert.match(popup, /EXPENSE_DOCUMENT_CONTINUE_REASON/);
     assert.match(popup, /Vazgeç/);
@@ -99,10 +99,21 @@ describe('masraf belge disiplini LOCK', () => {
     assert.match(masraf, /ExpenseDocumentReviewModal/);
     assert.match(masraf, /onEditDocumentNo/);
     assert.match(masraf, /expenses\/document-review/);
+    assert.match(masraf, /masraf-belge-sahibi/);
+    assert.match(masraf, /masraf-fis-no/);
+    assert.match(masraf, /Belge Sahibi/);
+    assert.match(masraf, />\s*Fiş No\s*</);
     assert.match(claim, /ExpenseDocumentReviewModal/);
     assert.match(claim, /onEditDocumentNo/);
     assert.match(claim, /expenses\/document-review/);
+    assert.match(claim, /claim-file-belge-sahibi/);
+    assert.match(claim, /claim-file-fis-no/);
     assert.match(shared, /kaydetmeye devam edebilirsiniz/i);
+    // Sıra: Belge Sahibi → Tarih → Fiş No (Belge No eski yerinde kalmaz)
+    const sahibiIdx = masraf.indexOf('masraf-belge-sahibi');
+    const tarihIdx = masraf.indexOf('masraf-tarih-alan');
+    const fisIdx = masraf.indexOf('masraf-fis-no');
+    assert.ok(sahibiIdx > 0 && tarihIdx > sahibiIdx && fisIdx > tarihIdx);
     assert.match(svc, /acil|ACIL_YARDIM|EmergencyVendorEntitlement|vendorEntitlement/i);
     assert.match(svc, /VendorStatementItem|vendor_statement|claimFileId/i);
   });

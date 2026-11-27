@@ -1213,6 +1213,7 @@ export class ExpensesService {
         hasTaxDocument: nextHasTax,
         receiptDocumentType: dto.receiptDocumentType?.trim() || null,
         receiptDocumentNo: nextDocNo,
+        receiptDocumentOwner: dto.receiptDocumentOwner?.trim() || null,
         description: normalizeMasrafAciklamaForSave(dto.description ?? '') || dto.description,
         expenseGroup: groupFields.expenseGroup as any,
         expenseSubgroup: groupFields.expenseSubgroup,
@@ -1316,6 +1317,9 @@ export class ExpensesService {
     }
     if (dto.receiptDocumentNo !== undefined) {
       data.receiptDocumentNo = dto.receiptDocumentNo?.trim() || null;
+    }
+    if (dto.receiptDocumentOwner !== undefined) {
+      data.receiptDocumentOwner = dto.receiptDocumentOwner?.trim() || null;
     }
     if (dto.description !== undefined) {
       data.description = normalizeMasrafAciklamaForSave(dto.description) || dto.description;

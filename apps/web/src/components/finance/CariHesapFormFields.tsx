@@ -89,6 +89,7 @@ export function CariHesapFormFields({
       profil === 'kredi' ||
       profil === 'vergi' ||
       profil === 'sgk' ||
+      profil === 'personel' ||
       profil === 'diger');
 
   return (
@@ -106,7 +107,11 @@ export function CariHesapFormFields({
               // Tür değişince alakasız kart alanlarını temizle
               cardLast4: kind === 'kredi_karti' ? f.cardLast4 : '',
               cardLabel:
-                kind === 'kredi_karti' || kind === 'kasa' || kind === 'vergi' || kind === 'sgk'
+                kind === 'kredi_karti' ||
+                kind === 'kasa' ||
+                kind === 'vergi' ||
+                kind === 'sgk' ||
+                kind === 'personel'
                   ? f.cardLabel
                   : '',
               bankName:
@@ -360,6 +365,26 @@ export function CariHesapFormFields({
             </div>
           ) : null}
 
+          {profil === 'personel' ? (
+            <div className="sm:col-span-2">
+              <FinansFieldLabel>Sicil / Görev</FinansFieldLabel>
+              <input
+                type="text"
+                value={form.cardLabel}
+                onChange={(e) => setForm({ ...form, cardLabel: e.target.value })}
+                onBlur={() =>
+                  setForm((f) => ({
+                    ...f,
+                    cardLabel: f.cardLabel ? toTitleCaseTR(f.cardLabel.trim()) : '',
+                  }))
+                }
+                className={finansInputClass}
+                placeholder="Örn. operasyon / sicil no"
+                data-testid="cari-personel-sicil"
+              />
+            </div>
+          ) : null}
+
           <div className="sm:col-span-2">
             <FinansFieldLabel required>Açıklama</FinansFieldLabel>
             <input
@@ -456,7 +481,9 @@ export function CariHesapFormFields({
                 <p className="mt-1 text-[11px] text-slate-500">
                   {profil === 'banka' || profil === 'kasa'
                     ? 'Banka / kasa bakiyesi genelde Alacak (bizdeki nakit) ile açılır.'
-                    : 'Borç: cari bize borçlu · Alacak: biz cariye borçluyuz'}
+                    : profil === 'personel'
+                      ? 'Maaş borcumuz Alacak · Verilen iş avansı Borç (personel bize borçlu)'
+                      : 'Borç: cari bize borçlu · Alacak: biz cariye borçluyuz'}
                 </p>
               </div>
             </>

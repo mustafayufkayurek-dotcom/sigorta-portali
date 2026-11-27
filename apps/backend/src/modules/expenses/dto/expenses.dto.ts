@@ -39,6 +39,11 @@ export class CreateExpenseDto {
   @IsString()
   receiptDocumentNo?: string;
 
+  /** Fiş / faturadaki satıcı veya ünvan */
+  @IsOptional()
+  @IsString()
+  receiptDocumentOwner?: string;
+
   @IsOptional()
   @IsString()
   description?: string;
@@ -173,6 +178,10 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsString()
   receiptDocumentNo?: string;
+
+  @IsOptional()
+  @IsString()
+  receiptDocumentOwner?: string;
 
   @IsOptional()
   @IsString()

@@ -113,6 +113,7 @@ export function ClaimFileExpenseFormPanel({
   const [categoryDraftSaving, setCategoryDraftSaving] = useState(false);
   const [description, setDescription] = useState('');
   const [documentType, setDocumentType] = useState<'' | 'Kasa Fişi' | 'Fatura'>('');
+  const [documentOwner, setDocumentOwner] = useState('');
   const [documentNo, setDocumentNo] = useState('');
   const [amount, setAmount] = useState('');
   const [vatRate, setVatRate] = useState('');
@@ -154,6 +155,8 @@ export function ClaimFileExpenseFormPanel({
     setCategoryDraftName('');
     setCategoryDraftError('');
     setDescription('');
+    setDocumentType('');
+    setDocumentOwner('');
     setDocumentNo('');
     setAmount('');
     setVatRate('');
@@ -271,6 +274,7 @@ export function ClaimFileExpenseFormPanel({
       setPartyAccountId(draft.partyAccountId || '');
       setDescription(draft.description || '');
       setDocumentType((draft.documentType as '' | 'Kasa Fişi' | 'Fatura') || '');
+      setDocumentOwner(draft.documentOwner || '');
       setDocumentNo(draft.documentNo || '');
       setAmount(draft.amount || '');
       setVatRate(draft.vatRate || '');
@@ -605,6 +609,9 @@ export function ClaimFileExpenseFormPanel({
         hasTaxDocument: hasDoc,
         receiptDocumentType: documentType || null,
         receiptDocumentNo: documentNo.trim() || null,
+        receiptDocumentOwner: documentOwner.trim()
+          ? toTitleCaseTR(documentOwner.trim())
+          : null,
         date: dateIso,
         receiptImageUrl: receiptImageUrl || undefined,
         ...(opts?.documentConflictOverrideReason
@@ -655,6 +662,8 @@ export function ClaimFileExpenseFormPanel({
       onSaved?.();
       if (mode === 'new') {
         setDescription('');
+        setDocumentType('');
+        setDocumentOwner('');
         setDocumentNo('');
         setAmount('');
         setVatRate('');
@@ -837,6 +846,46 @@ export function ClaimFileExpenseFormPanel({
           </div>
         )}
 
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={labelCls} htmlFor="claim-file-belge-turu">
+              Belge Türü
+            </label>
+            <select
+              id="claim-file-belge-turu"
+              className={inputCls}
+              value={documentType}
+              onChange={(e) =>
+                setDocumentType(e.target.value as '' | 'Kasa Fişi' | 'Fatura')
+              }
+              data-testid="claim-file-belge-turu"
+            >
+              <option value="">Seçiniz...</option>
+              <option value="Kasa Fişi">Kasa Fişi</option>
+              <option value="Fatura">Fatura</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="claim-file-belge-sahibi">
+              Belge Sahibi
+            </label>
+            <input
+              id="claim-file-belge-sahibi"
+              className={inputCls}
+              placeholder="Örn. manav"
+              value={documentOwner}
+              onChange={(e) => setDocumentOwner(e.target.value)}
+              onBlur={() => {
+                const v = documentOwner.trim();
+                if (!v) return;
+                const next = toTitleCaseTR(v);
+                if (next !== documentOwner) setDocumentOwner(next);
+              }}
+              data-testid="claim-file-belge-sahibi"
+            />
+          </div>
+        </div>
+
         <div>
           <div className="mb-1 flex items-center gap-1.5">
             <label className="mb-0 text-xs font-medium text-slate-600">
@@ -859,38 +908,18 @@ export function ClaimFileExpenseFormPanel({
           <TrDateInput className={inputCls} value={date} onChange={setDate} />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className={labelCls} htmlFor="claim-file-belge-turu">
-              Belge Türü
-            </label>
-            <select
-              id="claim-file-belge-turu"
-              className={inputCls}
-              value={documentType}
-              onChange={(e) =>
-                setDocumentType(e.target.value as '' | 'Kasa Fişi' | 'Fatura')
-              }
-              data-testid="claim-file-belge-turu"
-            >
-              <option value="">Seçiniz...</option>
-              <option value="Kasa Fişi">Kasa Fişi</option>
-              <option value="Fatura">Fatura</option>
-            </select>
-          </div>
-          <div>
-            <label className={labelCls} htmlFor="claim-file-belge-no">
-              Belge No
-            </label>
-            <input
-              id="claim-file-belge-no"
-              className={inputCls}
-              placeholder="Örn. 1425"
-              value={documentNo}
-              onChange={(e) => setDocumentNo(e.target.value)}
-              data-testid="claim-file-belge-no"
-            />
-          </div>
+        <div>
+          <label className={labelCls} htmlFor="claim-file-fis-no">
+            Fiş No
+          </label>
+          <input
+            id="claim-file-fis-no"
+            className={inputCls}
+            placeholder="Örn. 1425"
+            value={documentNo}
+            onChange={(e) => setDocumentNo(e.target.value)}
+            data-testid="claim-file-fis-no"
+          />
         </div>
 
         <div data-testid="claim-file-masraf-kalem">
@@ -1047,6 +1076,7 @@ export function ClaimFileExpenseFormPanel({
                   partyAccountId,
                   description,
                   documentType,
+                  documentOwner,
                   documentNo,
                   amount,
                   vatRate,
@@ -1231,7 +1261,7 @@ export function ClaimFileExpenseFormPanel({
           setPendingSaveMode(null);
           setFormError('');
           window.requestAnimationFrame(() => {
-            const el = document.getElementById('claim-file-belge-no');
+            const el = document.getElementById('claim-file-fis-no');
             if (el instanceof HTMLInputElement) {
               el.focus();
               el.select();

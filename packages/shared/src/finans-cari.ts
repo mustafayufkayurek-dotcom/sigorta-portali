@@ -22,6 +22,7 @@ export type CariTur =
   | 'sgk'
   | 'banka'
   | 'kasa'
+  | 'personel'
   | 'diger';
 
 export const CARI_TUR_LABEL: Record<CariTur, string> = {
@@ -34,6 +35,7 @@ export const CARI_TUR_LABEL: Record<CariTur, string> = {
   sgk: 'SGK',
   banka: 'Banka',
   kasa: 'Kasa',
+  personel: 'Personel',
   diger: 'Diğer',
 };
 
@@ -49,7 +51,7 @@ export const CARI_KARSI_TARAF_TURLERI = [
   'musteri_tedarikci',
 ] as const satisfies readonly CariTur[];
 
-/** Finans’tan elle açılan şirket carileri (ödeme aracı / yükümlülük). */
+/** Finans’tan elle açılan şirket carileri (ödeme aracı / yükümlülük / personel). */
 export const CARI_SIRKET_TURLERI = [
   'banka',
   'kasa',
@@ -57,6 +59,7 @@ export const CARI_SIRKET_TURLERI = [
   'kredi',
   'vergi',
   'sgk',
+  'personel',
   'diger',
 ] as const satisfies readonly CariTur[];
 
@@ -72,6 +75,10 @@ export const CARI_TUR_GRUPLARI: ReadonlyArray<{
   {
     label: 'Ödeme Araçları',
     kinds: ['banka', 'kasa', 'kredi_karti'],
+  },
+  {
+    label: 'Personel',
+    kinds: ['personel'],
   },
   {
     label: 'Yükümlülük',
@@ -91,6 +98,10 @@ export const CARI_SIRKET_TUR_GRUPLARI: ReadonlyArray<{
   {
     label: 'Ödeme Araçları',
     kinds: ['banka', 'kasa', 'kredi_karti'],
+  },
+  {
+    label: 'Personel',
+    kinds: ['personel'],
   },
   {
     label: 'Yükümlülük',
@@ -132,6 +143,7 @@ export function isCariSirketTur(tur: unknown): boolean {
     tur === 'kredi' ||
     tur === 'vergi' ||
     tur === 'sgk' ||
+    tur === 'personel' ||
     tur === 'diger'
   );
 }
@@ -490,6 +502,8 @@ export function buildCariBakiyeIletisimMesaji(input: {
 export function cariVarsayilanAcilisYon(tur: CariTur): CariAcilisYon {
   if (tur === 'musteri' || tur === 'musteri_tedarikci') return 'alacak';
   if (tur === 'banka' || tur === 'kasa') return 'alacak';
+  // Personel: maaş tahakkuku genelde borcumuz (Alacak yönü); iş avansı Borç seçilir.
+  if (tur === 'personel') return 'alacak';
   return 'borc';
 }
 
@@ -504,6 +518,7 @@ export type CariSirketAlanProfili =
   | 'kredi'
   | 'vergi'
   | 'sgk'
+  | 'personel'
   | 'diger';
 
 export function cariSirketAlanProfili(tur: unknown): CariSirketAlanProfili {
@@ -513,6 +528,7 @@ export function cariSirketAlanProfili(tur: unknown): CariSirketAlanProfili {
   if (tur === 'kredi') return 'kredi';
   if (tur === 'vergi') return 'vergi';
   if (tur === 'sgk') return 'sgk';
+  if (tur === 'personel') return 'personel';
   return 'diger';
 }
 
@@ -530,6 +546,8 @@ export function cariSirketAdPlaceholder(tur: unknown): string {
       return 'Örn. kdv borcu';
     case 'sgk':
       return 'Örn. sgk prim borcu';
+    case 'personel':
+      return 'Örn. mustafa yufkayürek';
     default:
       return 'Örn. şirket cari hesabı';
   }
@@ -549,6 +567,8 @@ export function cariSirketAciklamaPlaceholder(tur: unknown): string {
       return 'Örn. dönem kdv tahakkuku';
     case 'sgk':
       return 'Örn. aylık prim tahakkuku';
+    case 'personel':
+      return 'Örn. maaş / iş avansı takibi';
     default:
       return 'Örn. hesap kullanım notu';
   }
@@ -581,6 +601,8 @@ export function cariSirketFormBaslik(
       return duzenle ? 'Vergi Hesabını Düzenle' : 'Yeni Vergi';
     case 'sgk':
       return duzenle ? 'SGK Hesabını Düzenle' : 'Yeni SGK';
+    case 'personel':
+      return duzenle ? 'Personel Carisini Düzenle' : 'Yeni Personel Carisi';
     default:
       return duzenle ? 'Cari Hesabı Düzenle' : 'Şirket Carisi';
   }
@@ -610,6 +632,8 @@ export function cariSirketFormAltYazi(tur: unknown): string {
       return 'Vergi dairesi ve tahakkuk notu bu kartta durur.';
     case 'sgk':
       return 'İşyeri / sicil no ve prim notu bu kartta durur.';
+    case 'personel':
+      return 'Personel maaş ve iş avansı borç / alacak bu kartta durur. Her personel için ayrı cari açılır.';
     default:
       return 'Şirket ödeme aracı veya yükümlülük. Müşteri / tedarikçi sol menüden açılır.';
   }
@@ -639,6 +663,8 @@ export function cariSirketTurYardim(tur: unknown): string {
       return 'Vergi şirketin kamu borcudur. Tahakkuk açıklamada durur.';
     case 'sgk':
       return 'SGK şirket prim borcudur. Sicil no bu kartta durur.';
+    case 'personel':
+      return 'Personel cari · Maaş borcumuz Alacak; verilen iş avansı Borç. Borç / alacak bakiyesi bu kartta izlenir.';
     default:
       return 'Cari Hesap müşteri / tedarikçi içindir (sol menü). Bu form şirket ödeme aracı ve yükümlülük içindir.';
   }

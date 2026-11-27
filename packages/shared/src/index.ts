@@ -76,6 +76,7 @@ export * from './expense-lane';
 export * from './customer-service-scopes';
 export * from './expense-vat';
 export * from './expense-document-discipline';
+export * from './expense-list-totals';
 export * from './expense-masraf-grup';
 export * from './masraf-aciklama-yazim';
 export * from './acil-inbox-file-owner';

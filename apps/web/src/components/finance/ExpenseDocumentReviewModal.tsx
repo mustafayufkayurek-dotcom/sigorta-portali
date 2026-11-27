@@ -131,12 +131,12 @@ export function ExpenseDocumentReviewModal({
               testId="masraf-belge-iptal"
             />
             <FinansActionButton
-              label="Belge No'yu Değiştir"
+              label="Fiş No'yu Değiştir"
               variant="neutral"
               showPlus={false}
               onClick={onEditDocumentNo}
               disabled={saving}
-              testId="masraf-belge-no-degistir"
+              testId="masraf-fis-no-degistir"
             />
             {firstDupId ? (
               <FinansActionButton

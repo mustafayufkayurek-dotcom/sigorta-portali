@@ -3532,6 +3532,8 @@ model Expense {
   /// Kasa Fişi / Fatura — açıklamaya gömülmez
   receiptDocumentType String?               @map("receipt_document_type")
   receiptDocumentNo   String?               @map("receipt_document_no")
+  /// Fiş / faturadaki satıcı veya ünvan
+  receiptDocumentOwner String?              @map("receipt_document_owner")
   description       String?
   expenseGroup      ExpenseGroup            @map("expense_group")
   expenseSubgroup   String                  @map("expense_subgroup")
@@ -3576,7 +3578,7 @@ model PartyAccount {
   code               String?   @unique
   name               String
   kind               String
-  /// musteri | tedarikci | kredi_karti | kredi | vergi | sgk | banka | kasa | diger
+  /// musteri | tedarikci | kredi_karti | kredi | vergi | sgk | banka | kasa | personel | diger
   cardLast4          String?   @map("card_last4")
   cardLabel          String?   @map("card_label")
   /// Banka adı / kredi veren / vergi dairesi (türe göre)

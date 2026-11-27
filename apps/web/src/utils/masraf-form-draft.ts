@@ -20,6 +20,7 @@ export type ClaimFileExpenseDraftPayload = {
   partyAccountId: string;
   description: string;
   documentType: string;
+  documentOwner?: string;
   documentNo: string;
   amount: string;
   vatRate: string;

@@ -46,6 +46,7 @@ describe('Party accounts LOCK', () => {
     assert.match(dto, /baslangic/);
     assert.match(dto, /bitis/);
     assert.match(dto, /durum/);
+    assert.match(dto, /'personel'/);
     assert.doesNotMatch(dto, /manuelSabitAylik/);
     assert.match(svc, /normalizeFinansIsletmeSabitKalemi/);
     assert.match(svc, /sourceKind: 'acilis'/);
@@ -132,6 +133,7 @@ describe('Party accounts LOCK', () => {
     assert.match(svc, /sourceKind: 'nakit'/);
     assert.match(svc, /postPersonelMaasBorc/);
     assert.match(svc, /personel-\$/);
+    assert.match(svc, /kind: 'personel'/);
     assert.match(svc, /sourceKind: 'maas'/);
     assert.match(svc, /postIsletmeSabitAylikDusum/);
     assert.match(svc, /listIsletmeSabitDusumDurum/);

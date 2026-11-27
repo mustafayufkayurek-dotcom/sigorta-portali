@@ -1748,7 +1748,7 @@ export class PartyAccountsService {
       data: {
         code,
         name: `Personel — ${name}`.slice(0, 160),
-        kind: 'diger',
+        kind: 'personel',
         notes: `Personel cari (userId=${input.personnelUserId})`,
         createdByUserId: input.actorUserId,
       },

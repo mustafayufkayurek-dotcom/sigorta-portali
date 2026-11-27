@@ -63,6 +63,9 @@ describe('Finans cari UI LOCK', () => {
     assert.match(cariForm, /profil === 'banka'/);
     assert.match(cariForm, /profil === 'kasa'/);
     assert.match(cariForm, /profil === 'kredi_karti'/);
+    assert.match(cariForm, /profil === 'personel'/);
+    assert.match(cariForm, /cari-personel-sicil/);
+    assert.match(cariForm, /Maaş borcumuz Alacak/);
     assert.match(cariForm, /cari-karsi-taraf-yonlendirme/);
     assert.match(cariForm, /isCariKarsiTarafTur/);
     assert.match(cariForm, /Cari Hesap/);

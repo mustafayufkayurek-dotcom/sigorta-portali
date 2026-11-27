@@ -21,6 +21,7 @@ const CARI_TUR_LIST = [
   'sgk',
   'banka',
   'kasa',
+  'personel',
   'diger',
 ] as const;
 

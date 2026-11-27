@@ -117,21 +117,33 @@ describe('Finans cari LOCK', () => {
     assert.equal(cariVarsayilanAcilisYon('musteri_tedarikci'), 'alacak');
     assert.equal(cariVarsayilanAcilisYon('banka'), 'alacak');
     assert.equal(cariVarsayilanAcilisYon('kasa'), 'alacak');
+    assert.equal(cariVarsayilanAcilisYon('personel'), 'alacak');
     assert.equal(CARI_ACILIS_YON_LABEL.borc, 'Borç');
     assert.equal(CARI_ACILIS_YON_LABEL.alacak, 'Alacak');
     assert.equal(cariSirketAlanProfili('banka'), 'banka');
     assert.equal(cariSirketAlanProfili('kasa'), 'kasa');
     assert.equal(cariSirketAlanProfili('kredi_karti'), 'kredi_karti');
+    assert.equal(cariSirketAlanProfili('personel'), 'personel');
     assert.match(cariSirketAdPlaceholder('banka'), /garanti/);
     assert.match(cariSirketAdPlaceholder('kasa'), /kasa/);
+    assert.match(cariSirketAdPlaceholder('personel'), /mustafa/);
     assert.match(cariSirketAciklamaPlaceholder('kredi_karti'), /ekstre/);
+    assert.match(cariSirketAciklamaPlaceholder('personel'), /maaş|avans/i);
     assert.equal(cariSirketFormBaslik('kasa'), 'Yeni Kasa');
     assert.equal(cariSirketFormBaslik('banka'), 'Yeni Banka Hesabı');
     assert.equal(cariSirketFormBaslik('kredi_karti', { duzenle: true }), 'Kredi Kartını Düzenle');
+    assert.equal(cariSirketFormBaslik('personel'), 'Yeni Personel Carisi');
     assert.match(cariSirketFormAltYazi('kasa'), /Nakit kasa/);
+    assert.match(cariSirketFormAltYazi('personel'), /maaş|avans/i);
     assert.match(cariSirketTurYardim('banka'), /Banka hesabı/);
+    assert.match(cariSirketTurYardim('personel'), /Personel cari/);
     assert.equal(CARI_TUR_LABEL.musteri_tedarikci, 'Müşteri Ve Tedarikçi');
+    assert.equal(CARI_TUR_LABEL.personel, 'Personel');
     assert.ok(CARI_TUR_GRUPLARI.some((g) => g.kinds.includes('musteri_tedarikci')));
+    assert.ok(CARI_TUR_GRUPLARI.some((g) => g.label === 'Personel' && g.kinds.includes('personel')));
+    assert.ok(
+      CARI_SIRKET_TUR_GRUPLARI.some((g) => g.label === 'Personel' && g.kinds.includes('personel')),
+    );
     assert.equal(isCariMusteriRolu('musteri_tedarikci'), true);
     assert.equal(isCariTedarikciRolu('musteri_tedarikci'), true);
     assert.equal(isCariMusteriRolu('tedarikci'), false);
@@ -162,6 +174,7 @@ describe('Finans cari LOCK', () => {
     assert.equal(isCariKarsiTarafTur('musteri'), true);
     assert.equal(isCariSirketTur('kredi_karti'), true);
     assert.equal(isCariSirketTur('kasa'), true);
+    assert.equal(isCariSirketTur('personel'), true);
     assert.equal(isCariSirketTur('musteri'), false);
     assert.ok(!CARI_SIRKET_TUR_GRUPLARI.some((g) => g.kinds.includes('musteri')));
     assert.ok(CARI_FORM_TUR_GRUPLARI.some((g) => g.label === 'Cari Hesap'));
@@ -171,6 +184,7 @@ describe('Finans cari LOCK', () => {
     assert.ok(
       CARI_FORM_TUR_GRUPLARI.find((g) => g.label === 'Cari Hesap')?.kinds.includes('tedarikci'),
     );
+    assert.ok(CARI_FORM_TUR_GRUPLARI.some((g) => g.kinds.includes('personel')));
     assert.equal(cariSirketFormBaslik('musteri'), 'Yeni Müşteri Carisi');
     assert.match(cariSirketTurYardim('musteri'), /Cari Hesap/);
     assert.equal(cariBakiyeMetin(700, (n) => `${n} TL`), '700 TL Borç');
